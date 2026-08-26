@@ -2,7 +2,7 @@ package com.example.platform.extension.config;
 
 import com.example.platform.extension.app.ToolRegistry;
 import com.example.platform.extension.domain.ToolDefinition;
-import com.example.platform.extension.domain.ToolSandboxPolicy;
+import com.example.platform.extension.domain.ToolExecutionSafetyPolicy;
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -48,7 +48,7 @@ public class CliToolRegistryBootstrap {
                         "Configured CLI recipe",
                         executablePath,
                         List.of(),
-                        ToolSandboxPolicy.defaults()));
+                        ToolExecutionSafetyPolicy.defaults()));
             }
 
             for (String toolKey : RENDER_TOOL_KEYS) {
@@ -65,7 +65,7 @@ public class CliToolRegistryBootstrap {
                         "Render media CLI",
                         executablePath,
                         List.of(),
-                        ToolSandboxPolicy.defaults()));
+                        ToolExecutionSafetyPolicy.defaults()));
                 log.info("Auto-registered pass-through render tool: {}", toolKey);
             }
         };

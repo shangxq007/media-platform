@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.example.platform.extension.domain.ToolDefinition;
 import com.example.platform.extension.domain.ToolCapability;
-import com.example.platform.extension.domain.ToolSandboxPolicy;
+import com.example.platform.extension.domain.ToolExecutionSafetyPolicy;
 import com.example.platform.extension.domain.ToolEnvironmentReport;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -78,7 +78,7 @@ class ToolRegistryTest {
                 "ffmpeg", "FFmpeg", "Video processing tool",
                 "/usr/bin/ffmpeg",
                 List.of(new ToolCapability("h264", "H.264 encoding")),
-                ToolSandboxPolicy.defaults());
+                ToolExecutionSafetyPolicy.defaults());
         registry.registerTool(tool);
 
         assertTrue(registry.findTool("ffmpeg").isPresent());
@@ -91,7 +91,7 @@ class ToolRegistryTest {
                 "ffmpeg", "FFmpeg", "Video processing tool",
                 "/opt/ffmpeg/bin/ffmpeg",
                 List.of(new ToolCapability("h264", "H.264 encoding")),
-                ToolSandboxPolicy.defaults());
+                ToolExecutionSafetyPolicy.defaults());
         assertThrows(IllegalArgumentException.class, () -> registry.registerTool(tool));
     }
 
@@ -107,7 +107,7 @@ class ToolRegistryTest {
                 "ffmpeg", "FFmpeg", "Video processing tool",
                 "/usr/bin/ffmpeg",
                 List.of(new ToolCapability("h264", "H.264 encoding")),
-                ToolSandboxPolicy.defaults());
+                ToolExecutionSafetyPolicy.defaults());
         registry.registerTool(tool);
 
         ToolEnvironmentReport report = registry.validateEnvironment();
@@ -124,10 +124,10 @@ class ToolRegistryTest {
         registry.registerExecutable("melt", "/usr/bin/melt");
         registry.registerTool(new ToolDefinition(
                 "ffmpeg", "FFmpeg", "Video tool", "/usr/bin/ffmpeg",
-                List.of(), ToolSandboxPolicy.defaults()));
+                List.of(), ToolExecutionSafetyPolicy.defaults()));
         registry.registerTool(new ToolDefinition(
                 "melt", "MLT melt", "Timeline renderer", "/usr/bin/melt",
-                List.of(), ToolSandboxPolicy.defaults()));
+                List.of(), ToolExecutionSafetyPolicy.defaults()));
 
         List<ToolDefinition> tools = registry.listTools();
         assertEquals(2, tools.size());

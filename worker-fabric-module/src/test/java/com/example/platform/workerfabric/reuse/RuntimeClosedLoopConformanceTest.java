@@ -556,6 +556,7 @@ class RuntimeClosedLoopConformanceTest {
         private ProviderNativeRuntimeBinding<TestNativePlan> binding() {
             return new ProviderNativeRuntimeBinding<>(
                     (task, context) -> new TestNativePlan(task.id(), task.providerBindingPin()),
+                    runtime,
                     runtime);
         }
 
@@ -678,7 +679,9 @@ class RuntimeClosedLoopConformanceTest {
             ExecutableTaskId executableTaskId,
             ProviderBindingPin providerBindingPin) implements ProviderNativeExecutionPlan {}
 
-    private static final class RecordingRuntimeAdapter implements RuntimeAdapter<TestNativePlan> {
+    private static final class RecordingRuntimeAdapter
+            implements RuntimeAdapter<TestNativePlan>,
+                    com.example.platform.workerfabric.domain.providernative.RuntimeCommandExecutor {
         private final AtomicInteger executions = new AtomicInteger();
         private final List<Integer> inputCounts = new ArrayList<>();
         private final Map<ExecutableTaskId, List<MaterializedExecutionInput>> inputsByTask =

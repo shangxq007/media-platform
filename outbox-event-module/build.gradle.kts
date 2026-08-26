@@ -1,6 +1,7 @@
 plugins { id("java-library") }
 
 dependencies {
+    implementation(project(":sandbox-isolation-module"))
     implementation(project(":typed-schema-module"))
     implementation(project(":notification-module")) // NotificationEventPublisher rehomed to notification (K2)
     api(project(":shared-kernel"))

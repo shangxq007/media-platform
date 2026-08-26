@@ -7,7 +7,7 @@ import com.example.platform.render.app.timeline.TimelineSpecImportAdapter;
 import com.example.platform.extension.app.ProcessToolRunner;
 import com.example.platform.extension.domain.ToolExecutionRequest;
 import com.example.platform.extension.domain.ToolExecutionResult;
-import com.example.platform.extension.domain.ToolSandboxPolicy;
+import com.example.platform.extension.domain.ToolExecutionSafetyPolicy;
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.render.app.input.RenderInputMaterializationService;
 import com.example.platform.render.app.output.RenderOutputRegistrationService;
@@ -118,7 +118,7 @@ class TimelineRevisionRenderServiceTest {
 
             @Override
             public ToolExecutionResult execute(ToolExecutionRequest request,
-                    ToolSandboxPolicy policy) {
+                    ToolExecutionSafetyPolicy policy) {
                 return execute(request);
             }
         };
@@ -535,7 +535,7 @@ class TimelineRevisionRenderServiceTest {
 
             @Override
             public ToolExecutionResult execute(ToolExecutionRequest request,
-                    ToolSandboxPolicy policy) {
+                    ToolExecutionSafetyPolicy policy) {
                 return execute(request);
             }
         };

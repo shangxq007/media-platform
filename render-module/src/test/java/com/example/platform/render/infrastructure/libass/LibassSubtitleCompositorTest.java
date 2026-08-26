@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.example.platform.extension.app.ProcessToolRunner;
 import com.example.platform.extension.domain.ToolExecutionRequest;
 import com.example.platform.extension.domain.ToolExecutionResult;
-import com.example.platform.extension.domain.ToolSandboxPolicy;
+import com.example.platform.extension.domain.ToolExecutionSafetyPolicy;
 import com.example.platform.render.domain.interchange.TimelineOutputSpec;
 import com.example.platform.render.domain.interchange.TimelineSpec;
 import com.example.platform.render.domain.interchange.TimelineTextOverlay;
@@ -69,7 +69,7 @@ TimelineTextOverlay.of("1", "Hello",
             }
 
             @Override
-            public ToolExecutionResult execute(ToolExecutionRequest request, ToolSandboxPolicy policy) {
+            public ToolExecutionResult execute(ToolExecutionRequest request, ToolExecutionSafetyPolicy policy) {
                 return execute(request);
             }
         };
@@ -107,7 +107,7 @@ TimelineTextOverlay.of("1", "Hello",
             }
 
             @Override
-            public ToolExecutionResult execute(ToolExecutionRequest request, ToolSandboxPolicy policy) {
+            public ToolExecutionResult execute(ToolExecutionRequest request, ToolExecutionSafetyPolicy policy) {
                 return execute(request);
             }
         };
@@ -156,7 +156,7 @@ TimelineTextOverlay.of("1", "Test",
             }
 
             @Override
-            public ToolExecutionResult execute(ToolExecutionRequest request, ToolSandboxPolicy policy) {
+            public ToolExecutionResult execute(ToolExecutionRequest request, ToolExecutionSafetyPolicy policy) {
                 return execute(request);
             }
         };
@@ -185,7 +185,7 @@ TimelineTextOverlay.of("1", "Test",
             }
 
             @Override
-            public ToolExecutionResult execute(ToolExecutionRequest request, ToolSandboxPolicy policy) {
+            public ToolExecutionResult execute(ToolExecutionRequest request, ToolExecutionSafetyPolicy policy) {
                 return execute(request);
             }
         };

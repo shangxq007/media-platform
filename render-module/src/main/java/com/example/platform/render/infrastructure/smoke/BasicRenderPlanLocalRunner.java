@@ -424,7 +424,8 @@ public final class BasicRenderPlanLocalRunner {
                 LocalRenderExecutionStatus.NOT_AVAILABLE,
                 null, null, null, 0, -1, 0, 0, 0, null, null,
                 null, 0, -1, Duration.ZERO, -1, 0, 0, 0, null, null,
-                request.unsupportedSteps(), 0, issues, Map.of("reason", "binary-not-available"));
+                request.unsupportedSteps(), request.captionOverlaySpecs().size(), issues,
+                terminalMetadata(request, "binary-not-available"));
     }
 
     private static LocalRenderExecutionResult buildBlockedResult(
@@ -435,7 +436,8 @@ public final class BasicRenderPlanLocalRunner {
                 LocalRenderExecutionStatus.BLOCKED,
                 null, null, null, 0, -1, 0, 0, 0, null, null,
                 null, 0, -1, Duration.ZERO, -1, 0, 0, 0, null, null,
-                request.unsupportedSteps(), 0, issues, Map.of("reason", "safety-violation"));
+                request.unsupportedSteps(), request.captionOverlaySpecs().size(), issues,
+                terminalMetadata(request, "safety-violation"));
     }
 
     private static LocalRenderExecutionResult buildFailResult(
@@ -450,6 +452,24 @@ public final class BasicRenderPlanLocalRunner {
                 request.hasRealMediaSource() ? request.mediaSourceSpec().path() : null,
                 0, -1, 0, 0, 0, null, null,
                 outputPath, 0, exitCode, duration, -1, 0, 0, 0, null, null,
-                request.unsupportedSteps(), 0, issues, Map.of());
+                request.unsupportedSteps(), request.captionOverlaySpecs().size(), issues,
+                terminalMetadata(request, null));
+    }
+
+    private static Map<String, String> terminalMetadata(
+            LocalRenderExecutionRequest request, String reason) {
+        int captionOverlayCount = request.captionOverlaySpecs().size();
+        int unsupportedCaptionCount = (int) request.unsupportedSteps().stream()
+                .filter(step -> step.contains("CAPTION"))
+                .count();
+        Map<String, String> metadata = new LinkedHashMap<>();
+        metadata.put("planId", request.planId());
+        metadata.put("captionOverlayCount", String.valueOf(captionOverlayCount));
+        metadata.put("supportedCaptionOverlayCount", String.valueOf(captionOverlayCount));
+        metadata.put("unsupportedCaptionOverlayCount", String.valueOf(unsupportedCaptionCount));
+        if (reason != null) {
+            metadata.put("reason", reason);
+        }
+        return metadata;
     }
 }

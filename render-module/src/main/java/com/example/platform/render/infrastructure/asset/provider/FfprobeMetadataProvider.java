@@ -118,27 +118,18 @@ public class FfprobeMetadataProvider implements SemanticMetadataProvider {
     }
 
     private ProcessResult executeWithTimeout(List<String> cmd, int timeoutSec) throws Exception {
-        ProcessBuilder pb = new ProcessBuilder(cmd);
-        pb.redirectErrorStream(false);
-        Process proc = pb.start();
-
-        String stdout, stderr;
-        try (var in = new BufferedReader(new InputStreamReader(proc.getInputStream()));
-             var err = new BufferedReader(new InputStreamReader(proc.getErrorStream()))) {
-            stdout = in.lines().reduce("", (a, b) -> a + b + "\n");
-            stderr = err.lines().reduce("", (a, b) -> a + b + "\n");
-        }
-
-        boolean finished = proc.waitFor(timeoutSec, TimeUnit.SECONDS);
-        if (!finished) {
-            proc.destroyForcibly();
-            return new ProcessResult(false, -1, "", "Timeout after " + timeoutSec + "s");
-        }
-        int exitCode = proc.exitValue();
-        if (exitCode != 0) {
-            return new ProcessResult(false, exitCode, stdout, stderr);
-        }
-        return new ProcessResult(true, exitCode, stdout, stderr);
+        java.nio.file.Path input = java.nio.file.Path.of(cmd.getLast()).toAbsolutePath().normalize();
+        java.nio.file.Path workspace = input.getParent();
+        var proc = com.example.platform.sandbox.LocalSandboxProcess.execute(
+                cmd, workspace, workspace, java.util.Set.of(input),
+                java.util.Map.of("PATH", "/usr/bin:/bin", "LANG", "C"),
+                java.time.Duration.ofSeconds(timeoutSec), 2L << 20,
+                com.example.platform.sandbox.SandboxCancellation.never());
+        int exitCode = proc.exitCode().orElse(-1);
+        String stderr = proc.failure().map(f -> f.code() + ": " + f.message())
+                .orElse(proc.stderr().utf8());
+        return new ProcessResult(proc.failure().isEmpty() && exitCode == 0,
+                exitCode, proc.stdout().utf8(), stderr);
     }
 
     private record ProcessResult(boolean success, int exitCode, String stdout, String stderr) {}

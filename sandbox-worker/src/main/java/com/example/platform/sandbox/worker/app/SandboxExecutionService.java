@@ -1,6 +1,8 @@
 package com.example.platform.sandbox.worker.app;
 
 import com.example.platform.sandbox.worker.config.SandboxWorkerProperties;
+import com.example.platform.sandbox.SandboxCancellation;
+import com.example.platform.sandbox.SandboxProcessExecutionPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -42,9 +44,12 @@ public class SandboxExecutionService {
     private static final Logger log = LoggerFactory.getLogger(SandboxExecutionService.class);
 
     private final SandboxWorkerProperties properties;
+    private final SandboxProcessExecutionPort processExecution;
 
-    public SandboxExecutionService(SandboxWorkerProperties properties) {
+    public SandboxExecutionService(
+            SandboxWorkerProperties properties, SandboxProcessExecutionPort processExecution) {
         this.properties = properties;
+        this.processExecution = processExecution;
     }
 
     /**
@@ -104,100 +109,40 @@ public class SandboxExecutionService {
             Files.writeString(scriptFile, code, StandardCharsets.UTF_8,
                     StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
 
-            // Build subprocess with minimal environment
-            ProcessBuilder pb = new ProcessBuilder(interpreter, scriptFile.toString());
-            pb.directory(tempDir.toFile());
-
-            // Minimal environment — no PATH leaks, no secrets
-            pb.environment().clear();
-            pb.environment().put("PATH", "/usr/bin:/bin");
-            pb.environment().put("HOME", tempDir.toString());
-            pb.environment().put("LANG", "C.UTF-8");
-            pb.environment().put("PYTHONUNBUFFERED", "1");
-            pb.environment().put("PYTHONDONTWRITEBYTECODE", "1");
-
-            // Redirect stderr to stdout for capture
-            pb.redirectErrorStream(true);
-
-            // Start process
-            Process process = pb.start();
-
-            // Read output with timeout
-            Future<String> outputFuture = CompletableFuture.supplyAsync(() -> {
-                try (InputStream is = process.getInputStream();
-                     ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-                    byte[] buffer = new byte[8192];
-                    int read;
-                    while ((read = is.read(buffer)) != -1) {
-                        baos.write(buffer, 0, read);
-                        if (baos.size() > properties.maxOutputBytes() * 2) {
-                            // Stop reading if output is way too large
-                            break;
-                        }
-                    }
-                    return baos.toString(StandardCharsets.UTF_8);
-                } catch (IOException e) {
-                    return "";
-                }
-            });
-
-            String output;
-            boolean timedOut = false;
-            try {
-                output = outputFuture.get(timeoutMs, TimeUnit.MILLISECONDS);
-            } catch (TimeoutException e) {
-                timedOut = true;
-                process.destroyForcibly();
-                output = "";
-            } catch (Exception e) {
-                process.destroyForcibly();
-                output = "";
-            }
-
-            // Wait for process to finish (with buffer after timeout)
-            if (!timedOut) {
-                boolean finished = process.waitFor(
-                        properties.timeoutBufferMs(), TimeUnit.MILLISECONDS);
-                if (!finished) {
-                    timedOut = true;
-                    process.destroyForcibly();
-                }
-            }
-
-            int exitCode = -1;
-            try {
-                exitCode = process.exitValue();
-            } catch (IllegalThreadStateException ignored) {
-                // Process was killed
-            }
-
-            // Truncate output
-            String truncatedOutput = truncateOutput(output, properties.maxOutputBytes());
-            boolean wasTruncated = output.getBytes(StandardCharsets.UTF_8).length > properties.maxOutputBytes();
-
-            if (timedOut) {
+            var process = processExecution.execute(
+                    java.util.List.of(interpreter, scriptFile.toString()), tempDir, tempDir,
+                    java.util.Set.of(scriptFile),
+                    java.util.Map.of(
+                            "PATH", "/usr/bin:/bin", "HOME", tempDir.toString(), "LANG", "C.UTF-8",
+                            "PYTHONUNBUFFERED", "1", "PYTHONDONTWRITEBYTECODE", "1"),
+                    java.time.Duration.ofMillis(timeoutMs), properties.maxOutputBytes(),
+                    SandboxCancellation.never());
+            int exitCode = process.exitCode().orElse(-1);
+            String output = process.stdout().utf8();
+            String errors = process.stderr().utf8();
+            if (process.failure().isPresent()) {
+                var failure = process.failure().orElseThrow();
+                if (failure.code() == com.example.platform.sandbox.SandboxFailureCode.PROCESS_TIMEOUT) {
                 log.warn("SandboxExecutionService: execution timed out (timeout={}ms)", timeoutMs);
                 return SandboxExecutionResult.timeout(timeoutMs);
+                }
+                if (failure.code() == com.example.platform.sandbox.SandboxFailureCode.PROCESS_CRASHED) {
+                    return SandboxExecutionResult.failed(process.stderr().utf8(), exitCode);
+                }
+                return SandboxExecutionResult.error(failure.code() + ": " + failure.message());
             }
-
+            boolean wasTruncated = process.stdout().truncated() || process.stderr().truncated();
             if (exitCode == 0) {
                 log.info("SandboxExecutionService: execution succeeded (exitCode=0, outputSize={})",
-                        truncatedOutput.length());
-                return SandboxExecutionResult.success(truncatedOutput, wasTruncated);
+                        output.length());
+                return SandboxExecutionResult.success(output, wasTruncated);
             } else {
-                log.info("SandboxExecutionService: execution failed (exitCode={}, outputSize={})",
-                        exitCode, truncatedOutput.length());
-                return SandboxExecutionResult.failed(truncatedOutput, exitCode);
+                return SandboxExecutionResult.failed(errors, exitCode);
             }
 
         } catch (IOException e) {
             log.error("SandboxExecutionService: I/O error during execution", e);
             return SandboxExecutionResult.error("I/O error: " + e.getMessage());
-
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            log.error("SandboxExecutionService: execution interrupted", e);
-            return SandboxExecutionResult.error("Execution interrupted");
 
         } finally {
             // Clean up temporary directory

@@ -13,7 +13,7 @@ import com.example.platform.extension.domain.PluginHealth;
 import com.example.platform.extension.domain.PluginRuntimeRequirement;
 import com.example.platform.extension.domain.ToolCapability;
 import com.example.platform.extension.domain.ToolDefinition;
-import com.example.platform.extension.domain.ToolSandboxPolicy;
+import com.example.platform.extension.domain.ToolExecutionSafetyPolicy;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -49,7 +49,7 @@ class FfmpegSelfDescriptionTest {
         toolRegistry.registerTool(new ToolDefinition(
                 "ffmpeg", "FFmpeg", "media tool", path,
                 List.of(new ToolCapability("h264", "h264"), new ToolCapability("subtitle-burn", "subtitle burn-in")),
-                ToolSandboxPolicy.defaults()));
+                ToolExecutionSafetyPolicy.defaults()));
     }
 
     @Test

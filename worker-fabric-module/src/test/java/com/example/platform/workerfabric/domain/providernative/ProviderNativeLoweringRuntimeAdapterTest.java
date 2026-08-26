@@ -263,17 +263,13 @@ class ProviderNativeLoweringRuntimeAdapterTest {
                         List.of())),
                 List.of());
         AtomicInteger adapterExecutions = new AtomicInteger();
-        RuntimeAdapter<TestNativePlan> adapter = new TestRuntimeAdapter() {
-            @Override
-            public ProviderExecutionOutput execute(
-                    RuntimeExecutionBundle executionBundle,
-                    List<MaterializedExecutionInput> runtimeLocalInputs) {
-                adapterExecutions.incrementAndGet();
-                return super.execute(executionBundle, runtimeLocalInputs);
-            }
+        RuntimeAdapter<TestNativePlan> adapter = new TestRuntimeAdapter();
+        RuntimeCommandExecutor executor = (executionBundle, runtimeLocalInputs) -> {
+            adapterExecutions.incrementAndGet();
+            return new ProviderExecutionOutput(new java.io.ByteArrayInputStream(new byte[0]));
         };
         ProviderNativeRuntimeBinding<TestNativePlan> runtimeBinding =
-                new ProviderNativeRuntimeBinding<>(new TestPlanLowerer(), adapter);
+                new ProviderNativeRuntimeBinding<>(new TestPlanLowerer(), adapter, executor);
         Path localPath = Files.write(tempDir.resolve("source-runtime-input.bin"), new byte[] {1, 2, 3});
         MaterializedArtifact local = new MaterializedArtifact(
                 pin, localPath, Files.size(localPath));
@@ -352,13 +348,6 @@ class ProviderNativeLoweringRuntimeAdapterTest {
                     context.platformOwnershipGeneration(),
                     commands);
         }
-
-        @Override
-        public ProviderExecutionOutput execute(
-                RuntimeExecutionBundle executionBundle,
-                List<com.example.platform.workerfabric.reuse.MaterializedExecutionInput> runtimeLocalInputs) {
-            return new ProviderExecutionOutput(new java.io.ByteArrayInputStream(new byte[0]));
-        }
     }
 
     private static final class StrictTestRuntimeAdapter implements RuntimeAdapter<ProviderNativeExecutionPlan> {
@@ -370,13 +359,6 @@ class ProviderNativeLoweringRuntimeAdapterTest {
                         "fixture runtime adapter supports only TestNativePlan");
             }
             return new TestRuntimeAdapter().adapt(testNativePlan, context);
-        }
-
-        @Override
-        public ProviderExecutionOutput execute(
-                RuntimeExecutionBundle executionBundle,
-                List<com.example.platform.workerfabric.reuse.MaterializedExecutionInput> runtimeLocalInputs) {
-            return new ProviderExecutionOutput(new java.io.ByteArrayInputStream(new byte[0]));
         }
     }
 

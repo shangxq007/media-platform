@@ -67,7 +67,7 @@ public class GoldenRenderSmokeTest {
         }
         @Override
         public ToolExecutionResult execute(ToolExecutionRequest request,
-                com.example.platform.extension.domain.ToolSandboxPolicy policy) {
+                com.example.platform.extension.domain.ToolExecutionSafetyPolicy policy) {
             try {
                 List<String> cmd = new ArrayList<>();
                 cmd.add(request.toolKey());

@@ -1,5 +1,8 @@
 package com.example.platform.render.infrastructure.font;
 
+import com.example.platform.sandbox.LocalSandboxProcess;
+import com.example.platform.sandbox.SandboxCancellation;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -92,22 +95,13 @@ public class PyftsubsetFontSubsetter implements FontSubsetter {
                 if (options.desubroutinize()) cmd.add("--desubroutinize");
                 if (options.notdefOutline()) cmd.add("--notdef-outline");
 
-                ProcessBuilder pb = new ProcessBuilder(cmd);
-                pb.redirectErrorStream(false);
-                Process process = pb.start();
-
-                String errors = new String(process.getErrorStream().readAllBytes());
-                boolean finished = process.waitFor(60, TimeUnit.SECONDS);
-
-                if (!finished) {
-                    process.destroyForcibly();
-                    log.error("pyftsubset timed out for: {}", fontFile);
-                    return new FontSubsetResult("pyftsubset", false, cacheKey, null, "ttf", 0, 0, 0,
-                            List.of(), Map.of());
-                }
-
-                if (process.exitValue() != 0) {
-                    log.error("pyftsubset failed: {}", errors);
+                var process = LocalSandboxProcess.execute(cmd,
+                        cacheDir.toAbsolutePath().normalize(), cacheDir.toAbsolutePath().normalize(),
+                        Set.of(fontFile.toAbsolutePath().normalize(), charsFile.toAbsolutePath().normalize()),
+                        Map.of("PATH", "/usr/bin:/bin", "LANG", "C"),
+                        java.time.Duration.ofSeconds(60), 1L << 20, SandboxCancellation.never());
+                if (process.failure().isPresent()) {
+                    log.error("pyftsubset failed: {}", process.failure().orElseThrow());
                     return new FontSubsetResult("pyftsubset", false, cacheKey, null, "ttf", 0, 0, 0,
                             List.of(), Map.of());
                 }

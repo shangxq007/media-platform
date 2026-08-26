@@ -17,6 +17,7 @@ repositories {
 }
 
 dependencies {
+    implementation(project(":sandbox-isolation-module"))
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("com.fasterxml.jackson.core:jackson-databind")

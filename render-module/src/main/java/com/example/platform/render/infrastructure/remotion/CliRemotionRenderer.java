@@ -1,10 +1,10 @@
 package com.example.platform.render.infrastructure.remotion;
 
+import com.example.platform.sandbox.LocalSandboxProcess;
+import com.example.platform.sandbox.SandboxCancellation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -41,30 +41,19 @@ public class CliRemotionRenderer implements RemotionRenderer {
         long startTime = System.currentTimeMillis();
 
         try {
-            ProcessBuilder pb = new ProcessBuilder(command);
-            pb.directory(request.workingDir().toFile());
-            pb.redirectErrorStream(false);
-
-            Process process = pb.start();
-
-            try (BufferedReader outReader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-                 BufferedReader errReader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
-                String line;
-                while ((line = outReader.readLine()) != null) {
-                    logs.add(line);
-                    log.debug("[remotion stdout] {}", line);
-                }
-                while ((line = errReader.readLine()) != null) {
-                    errors.add(line);
-                    log.warn("[remotion stderr] {}", line);
-                }
-            }
-
-            int exitCode = process.waitFor();
+            var process = LocalSandboxProcess.execute(command,
+                    request.workingDir().toAbsolutePath().normalize(),
+                    request.workingDir().toAbsolutePath().normalize(), java.util.Set.of(),
+                    java.util.Map.of("PATH", "/usr/bin:/bin", "LANG", "C"),
+                    java.time.Duration.ofMinutes(30), 4L << 20, SandboxCancellation.never());
+            logs.addAll(process.stdout().utf8().lines().toList());
+            errors.addAll(process.stderr().utf8().lines().toList());
+            process.failure().ifPresent(failure -> errors.add(failure.code() + ": " + failure.message()));
+            int exitCode = process.exitCode().orElse(-1);
             long durationMs = System.currentTimeMillis() - startTime;
 
             String outputUri = request.outputPath().toString();
-            boolean success = exitCode == 0 && Files.exists(request.outputPath());
+            boolean success = process.failure().isEmpty() && exitCode == 0 && Files.exists(request.outputPath());
 
             return new RemotionRenderResult(
                     request.compositionId(),

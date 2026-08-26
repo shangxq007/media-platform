@@ -21,6 +21,7 @@ tasks.withType<JavaCompile>().configureEach {
 }
 
 dependencies {
+    implementation(project(":sandbox-isolation-module"))
     implementation(project(":media-execution-plan-module"))
     implementation(project(":artifact-module"))
     implementation(project(":storage-module"))
@@ -32,7 +33,6 @@ dependencies {
     testImplementation("org.mockito:mockito-core:5.14.2")
     testImplementation(testFixtures(project(":shared-kernel")))
     testImplementation(project(":render-module"))
-    testImplementation(project(":extension-module"))
     testImplementation(project(":audio-module"))
     testImplementation("org.postgresql:postgresql")
     testImplementation("org.flywaydb:flyway-core")

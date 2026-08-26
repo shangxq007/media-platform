@@ -1,16 +1,17 @@
 package com.example.platform.ingest.preflight.ffprobe;
 
 import com.example.platform.ingest.contract.*;
+import com.example.platform.sandbox.LocalSandboxProcess;
+import com.example.platform.sandbox.SandboxCancellation;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
 import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
+import java.util.Map;
+import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -43,39 +44,22 @@ public class FFprobeMediaMetadataProvider {
                 "-show_format", "-show_streams", mediaPath.toString()
             );
 
-            ProcessBuilder pb = new ProcessBuilder(command);
-            pb.redirectErrorStream(false);
-            Process process = pb.start();
-
-            StringBuilder stdout = new StringBuilder();
-            StringBuilder stderr = new StringBuilder();
-
-            try (BufferedReader outReader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-                 BufferedReader errReader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
-                String line;
-                while ((line = outReader.readLine()) != null) {
-                    stdout.append(line).append("\n");
-                }
-                while ((line = errReader.readLine()) != null) {
-                    stderr.append(line).append("\n");
-                }
-            }
-
-            boolean completed = process.waitFor(timeoutMs, TimeUnit.MILLISECONDS);
+            Path workspace = mediaPath.toAbsolutePath().normalize().getParent();
+            var process = LocalSandboxProcess.execute(
+                    command, workspace, workspace, Set.of(mediaPath.toAbsolutePath().normalize()),
+                    Map.of("PATH", "/usr/bin:/bin", "LANG", "C"),
+                    java.time.Duration.ofMillis(timeoutMs), 1L << 20, SandboxCancellation.never());
             long durationMs = System.currentTimeMillis() - startTime;
-
-            if (!completed) {
-                process.destroyForcibly();
+            if (process.failure().isPresent()) {
+                var failure = process.failure().orElseThrow();
+                if (failure.code() == com.example.platform.sandbox.SandboxFailureCode.PROCESS_TIMEOUT) {
                 warnings.add("MEDIA_PROBE_TIMEOUT");
                 return FFprobeProbeResult.timeout(durationMs, warnings);
-            }
-
-            if (process.exitValue() != 0) {
+                }
                 warnings.add("MEDIA_PROBE_FAILED");
-                return FFprobeProbeResult.failed("FFprobe exited with code " + process.exitValue(), warnings);
+                return FFprobeProbeResult.failed(failure.code() + ": " + failure.message(), warnings);
             }
-
-            JsonNode root = MAPPER.readTree(stdout.toString());
+            JsonNode root = MAPPER.readTree(process.stdout().utf8());
             return parseFfprobeOutput(root, filename, declaredContentType, durationMs, warnings);
 
         } catch (Exception e) {

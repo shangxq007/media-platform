@@ -16,10 +16,10 @@ package com.example.platform.extension.domain;
  * @param maxQueueSize         required (FFmpeg: 0)
  * @param maxInputBytes        declared bound
  * @param maxOutputBytes       declared bound
- * @param timeoutMs            declared bound (FFmpeg: 60000 — ToolSandboxPolicy default)
+ * @param timeoutMs            declared bound (FFmpeg: 60000 — ToolExecutionSafetyPolicy default)
  * @param gpu                  required (FFmpeg local: false)
  * @param temporaryDiskMb      declared temporary-disk bound
- * @param networkAllowed       declared network flag (FFmpeg: false — ToolSandboxPolicy default)
+ * @param networkAllowed       declared network flag (FFmpeg: false — ToolExecutionSafetyPolicy default)
  * @param executionDurationMs  declared execution duration (&lt;= timeoutMs)
  */
 public record ResourceRequirement(

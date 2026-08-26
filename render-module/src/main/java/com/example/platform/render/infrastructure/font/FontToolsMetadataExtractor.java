@@ -1,15 +1,14 @@
 package com.example.platform.render.infrastructure.font;
 
+import com.example.platform.sandbox.LocalSandboxProcess;
+import com.example.platform.sandbox.SandboxCancellation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Feature-flagged FontTools metadata extractor.
@@ -68,26 +67,18 @@ public class FontToolsMetadataExtractor implements FontMetadataExtractor {
         }
 
         try {
-            ProcessBuilder pb = new ProcessBuilder("python3", fontToolsScript.toString(), fontFile.toString());
-            pb.redirectErrorStream(false);
-            Process process = pb.start();
-
-            String output = new String(process.getInputStream().readAllBytes());
-            String errors = new String(process.getErrorStream().readAllBytes());
-
-            boolean finished = process.waitFor(30, TimeUnit.SECONDS);
-            if (!finished) {
-                process.destroyForcibly();
-                log.error("FontTools extraction timed out for: {}", fontFile);
+            Path workspace = fontFile.toAbsolutePath().normalize().getParent();
+            var process = LocalSandboxProcess.execute(
+                    List.of("python3", fontToolsScript.toString(), fontFile.toString()),
+                    workspace, workspace,
+                    Set.of(fontToolsScript.toAbsolutePath().normalize(), fontFile.toAbsolutePath().normalize()),
+                    Map.of("PATH", "/usr/bin:/bin", "LANG", "C"),
+                    java.time.Duration.ofSeconds(30), 1L << 20, SandboxCancellation.never());
+            if (process.failure().isPresent()) {
+                log.error("FontTools extraction failed: {}", process.failure().orElseThrow());
                 return emptyMetadata(fontFile);
             }
-
-            if (process.exitValue() != 0) {
-                log.error("FontTools extraction failed: {}", errors);
-                return emptyMetadata(fontFile);
-            }
-
-            return parseMetadata(output, fontFile);
+            return parseMetadata(process.stdout().utf8(), fontFile);
         } catch (Exception e) {
             log.error("FontTools extraction error for {}: {}", fontFile, e.getMessage());
             return emptyMetadata(fontFile);

@@ -2,20 +2,16 @@ package com.example.platform.extension.app;
 
 import com.example.platform.extension.domain.ToolExecutionRequest;
 import com.example.platform.extension.domain.ToolExecutionResult;
-import com.example.platform.extension.domain.ToolSandboxPolicy;
-import java.time.Duration;
-import java.time.Instant;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.example.platform.extension.domain.ToolExecutionSafetyPolicy;
 
 /**
  * Port interface for executing media tools as external processes.
  *
  * <p>Implementations must:</p>
  * <ul>
- *   <li>Use {@link java.util.List String} arguments, never shell concatenation</li>
+ *   <li>Use ordered argument values, never shell concatenation</li>
  *   <li>Enforce executable allowlist from {@link ToolRegistry}</li>
- *   <li>Support timeout via {@link ToolSandboxPolicy#getTimeoutMillis()}</li>
+ *   <li>Enforce the typed timeout from {@link ToolExecutionSafetyPolicy}</li>
  *   <li>Capture stdout/stderr with size limits</li>
  *   <li>Protect against path traversal</li>
  * </ul>
@@ -40,11 +36,11 @@ public interface ProcessToolRunner {
     ToolExecutionResult execute(ToolExecutionRequest request);
 
     /**
-     * Executes a media tool with an explicit sandbox policy override.
+     * Executes a media tool with an explicit execution-safety projection.
      *
      * @param request the tool execution request
-     * @param policy  the sandbox policy to apply
+     * @param policy  the execution-safety projection to apply
      * @return the execution result
      */
-    ToolExecutionResult execute(ToolExecutionRequest request, ToolSandboxPolicy policy);
+    ToolExecutionResult execute(ToolExecutionRequest request, ToolExecutionSafetyPolicy policy);
 }

@@ -4,6 +4,7 @@ plugins {
 }
 
 dependencies {
+    implementation(project(":sandbox-isolation-module"))
     implementation(project(":typed-schema-module"))
     implementation(project(":extension-module")) // OM: ContractVersion reuse (no cycle: extension -> shared-kernel/billing)
     implementation(project(":media-module")) // MCMV2-C: Media Canonical Model (frozen direction: Render -> Media)

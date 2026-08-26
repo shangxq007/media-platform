@@ -55,10 +55,7 @@ class ModularityTest {
         // PMPR-S1: render providers implement canonical PluginRuntimeProviderBinding
         // (extension::runtime) — provider effect binding under single PluginRuntime authority.
         "render' depends on named interface(s) 'extension :: runtime",
-        // PMPR-S1: lifecycle graceful-shutdown coordinator holds optional SandboxRuntimeService
-        // (sandbox runtime moved into extension::runtime sandbox package) — declared also in
-        // lifecycle allowedDependencies; Modulith reports nested named-interface subpackage at
-        // module level, so registered here per debt-register pattern.
+        // PMPR-S1: lifecycle coordinator retains no superseded sandbox runtime authority.
         "lifecycle' depends on module 'extension",
         // K2 (K2-04): cost ports (CostEstimationPort/BudgetGuardPort + nested results) rehomed
         // from shared-kernel to billing::app — entitlement consumes the cost-facing contract at

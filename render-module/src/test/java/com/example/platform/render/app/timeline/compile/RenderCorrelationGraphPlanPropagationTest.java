@@ -12,7 +12,7 @@ import com.example.platform.render.infrastructure.ProviderType;
 import com.example.platform.render.infrastructure.RenderToolCapabilityInventory;
 import com.example.platform.extension.app.ProcessToolRunner;
 import com.example.platform.extension.domain.ToolExecutionResult;
-import com.example.platform.extension.domain.ToolSandboxPolicy;
+import com.example.platform.extension.domain.ToolExecutionSafetyPolicy;
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.render.app.input.RenderInputMaterializationService;
 import com.example.platform.render.app.output.RenderOutputRegistrationService;
@@ -186,7 +186,7 @@ class RenderCorrelationGraphPlanPropagationTest {
             }
             @Override
             public ToolExecutionResult execute(com.example.platform.extension.domain.ToolExecutionRequest request,
-                                                com.example.platform.extension.domain.ToolSandboxPolicy policy) {
+                                                com.example.platform.extension.domain.ToolExecutionSafetyPolicy policy) {
                 return execute(request);
             }
         };
@@ -232,7 +232,7 @@ class RenderCorrelationGraphPlanPropagationTest {
                 }
             }
             @Override public ToolExecutionResult execute(com.example.platform.extension.domain.ToolExecutionRequest r,
-                                                          com.example.platform.extension.domain.ToolSandboxPolicy p) { return execute(r); }
+                                                          com.example.platform.extension.domain.ToolExecutionSafetyPolicy p) { return execute(r); }
         };
         RenderInputMaterializationService matService = new RenderInputMaterializationService(storageRuntime, productRuntime);
         RenderOutputRegistrationService regService = new RenderOutputRegistrationService(storageRuntime, productRuntime, tempDir, mockProvider(null), mockProvider(null));

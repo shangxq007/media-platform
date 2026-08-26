@@ -1,6 +1,7 @@
 plugins { id("org.springframework.boot") }
 
 dependencies {
+    implementation(project(":sandbox-isolation-module"))
     implementation(project(":typed-schema-module"))
     implementation("org.apache.tika:tika-core:2.9.2")  // Tika experimental (disabled by default)
     implementation(project(":shared-kernel"))

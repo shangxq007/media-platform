@@ -1,11 +1,12 @@
 package com.example.platform.render.infrastructure;
 
+import com.example.platform.sandbox.LocalSandboxProcess;
+import com.example.platform.sandbox.SandboxCancellation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -21,32 +22,18 @@ public class FFprobeMediaProbeAdapter implements MediaProbeAdapter {
     @Override
     public MediaProbeResult probe(String jobId, String filePath) {
         try {
-            ProcessBuilder pb = new ProcessBuilder(
+            List<String> command = List.of(
                 "ffprobe", "-v", "quiet", "-print_format", "json",
                 "-show_format", "-show_streams", filePath
             );
-            pb.redirectErrorStream(true);
-            Process process = pb.start();
-
-            StringBuilder output = new StringBuilder();
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    output.append(line).append("\n");
-                }
-            }
-
-            boolean finished = process.waitFor(30, TimeUnit.SECONDS);
-            if (!finished) {
-                process.destroyForcibly();
-                return MediaProbeResult.failed(jobId, "ffprobe timeout");
-            }
-
-            if (process.exitValue() != 0) {
-                return MediaProbeResult.failed(jobId, "ffprobe failed: " + process.exitValue());
-            }
-
-            String json = output.toString();
+            Path input = Path.of(filePath).toAbsolutePath().normalize();
+            Path workspace = input.getParent();
+            var process = LocalSandboxProcess.execute(command, workspace, workspace, java.util.Set.of(input),
+                    java.util.Map.of("PATH", "/usr/bin:/bin", "LANG", "C"),
+                    java.time.Duration.ofSeconds(30), 1L << 20, SandboxCancellation.never());
+            if (process.failure().isPresent()) return MediaProbeResult.failed(jobId,
+                    process.failure().orElseThrow().code() + ": " + process.failure().orElseThrow().message());
+            String json = process.stdout().utf8();
             String duration = extractJsonValue(json, "duration");
             String width = extractJsonValue(json, "width");
             String height = extractJsonValue(json, "height");

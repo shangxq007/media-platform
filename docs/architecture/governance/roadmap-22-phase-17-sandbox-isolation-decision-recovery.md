@@ -31,28 +31,30 @@ The canonical, mechanically parsed ledger is:
 
 `docs/architecture/governance/automated-guards/phase17-sandbox-isolation-clean-forward-ledger.tsv`
 
-Each row identifies one exact tracked repository surface and contains: ROW_ID, EXACT_PATH, SYMBOL_OR_COMPONENT, CURRENT_CALLERS, CURRENT_DEPENDENCY_DIRECTION, CURRENT_RUNTIME_ROLE, CURRENT_AUTHORITY_CLAIM, PHASE_17_RELEVANCE, DISPOSITION, and RATIONALE. It covers existing extension/plugin sandbox production and tests; sandbox-worker source, tests, configuration and deployment; direct production ProcessBuilder paths; worker-fabric sandbox eligibility and Artifact/fencing authorities; OpenCue source/tests/docs; Kubernetes/GitOps sandbox surfaces; and generated persistence projections. No path placeholder or undeclared glob is permitted.
+Each row identifies one exact repository-reality obligation and contains: ROW_ID, EXACT_PATH, SYMBOL_OR_COMPONENT, CURRENT_CALLERS, CURRENT_DEPENDENCY_DIRECTION, CURRENT_RUNTIME_ROLE, CURRENT_AUTHORITY_CLAIM, PHASE_17_RELEVANCE, DISPOSITION, and RATIONALE. Present or moved obligations use an exact current file path. Deleted shadows use a unique Git-history-qualified exact path at the accepted ledger revision, and the guard proves both that the historical blob exists and that the working-tree source is absent. It covers the accepted extension/plugin sandbox production and tests; sandbox-worker source, tests, configuration and deployment; direct production ProcessBuilder paths; worker-fabric sandbox eligibility and Artifact/fencing authorities; OpenCue source/tests/docs; Kubernetes/GitOps sandbox surfaces; and generated persistence projections. It is not a general inventory of implementation types. No path placeholder or undeclared glob is permitted.
 
 TOTAL_ROWS=131
 REUSE_AS_CANONICAL_COUNT=8
-REUSE_MECHANICS_ONLY_COUNT=21
-MIGRATE_REDESIGN_COUNT=37
-DELETE_SHADOW_COUNT=0
-DEFER_COUNT=65
+REUSE_MECHANICS_ONLY_COUNT=45
+MIGRATE_REDESIGN_COUNT=0
+DELETE_SHADOW_COUNT=16
+DEFER_COUNT=62
 UNCLASSIFIED_COUNT=0
 DUPLICATE_ROW_COUNT=0
+PLACEHOLDER_PATH_COUNT=0
+GLOB_PATH_COUNT=0
 
 The counts above are derived from the TSV by `docs/architecture/governance/automated-guards/check-phase17-sandbox-ledger.py`; they are not hand-maintained independently.
 
 ## Typed contract proposal
 
-Phase 17 implementation requires bounded worker-fabric-owned runtime contracts equivalent to: IsolationRequirement (immutable runtime requirement, non-semantic, no digest participation); SandboxCapabilityAdvertisement (mutable ephemeral capability evidence); SandboxFeasibilityDecision (ephemeral policy/capability decision); SandboxExecutionRequest/Handle/Observation/Result (ephemeral attempt-correlated runtime records); bounded Filesystem, Network, Process, Privilege, Environment, Secret, ResourceLimit and DeviceExposure policies. Exact names are implementation-time decisions; no universal context object is authorized.
+Phase 17 implementation requires bounded, technology-neutral contracts in the pure Java `:sandbox-isolation-module` project and `com.example.platform.sandbox` package equivalent to: IsolationRequirement (immutable runtime requirement, non-semantic, no digest participation); SandboxCapabilityAdvertisement (mutable ephemeral capability evidence); SandboxFeasibilityDecision (ephemeral policy/capability decision); SandboxExecutionRequest/Handle/Observation/Result (ephemeral attempt-correlated runtime records); bounded Filesystem, Network, Process, Privilege, Environment, Secret, ResourceLimit and DeviceExposure policies. Worker-fabric owns the RuntimeAdapter, runtime eligibility, Artifact, completion and fencing composition around those contracts. Exact names are implementation-time decisions; no universal context object is authorized.
 
 Immutable policy/requirements remain separate from mutable runtime capability advertisement. CAN_RUN technical feasibility remains distinct from MAY_RUN trust/tenant/data permission.
 
 ## Process, filesystem, network and secrets
 
-Process: RuntimeAdapter -> sandbox boundary -> concrete process/provider runtime. Process tree containment, cancellation, timeout, forced termination, orphan cleanup, bounded stdout/stderr capture, signal/result mapping are required. Exit 0 is only an observation, never authoritative completion.
+Process: RuntimeAdapter -> worker-fabric composition -> sandbox-isolation boundary -> concrete process/provider runtime. Process tree containment, cancellation, timeout, forced termination, orphan cleanup, bounded stdout/stderr capture, signal/result mapping are required. Exit 0 is only an observation, never authoritative completion.
 
 Filesystem: immutable Artifact inputs are materialized explicitly and read-only by default; writable workspace/temp/output areas are bounded and platform-controlled; no implicit host path exposure; traversal, unsafe absolute paths, mounts, symlink/hardlink/special file escape must fail closed. Output bytes enter platform staging, then existing Artifact commit path.
 
@@ -82,7 +84,7 @@ Implementation must enforce zero counts for sandbox domain/media/timeline/render
 
 ## Technology classification
 
-Docker: ADOPTED build/test mechanics only. Podman: POC_CANDIDATE local rootless execution mechanism. Linux namespaces, cgroups v2, seccomp, no-new-privileges and systemd scopes: PLANNED Linux enforcement mechanisms, not semantic contract. containerd/LXC: REFERENCE_ONLY pending concrete deployment need. No technology dependency is adopted by this Decision Recovery.
+Docker: ADOPTED build/test mechanics only. Bubblewrap: ADOPTED local host-binary isolation mechanics only when its real production-shape namespace/mount/environment probe passes. Podman: POC_CANDIDATE local rootless execution mechanism. Linux namespaces, cgroups v2, seccomp, no-new-privileges and systemd scopes: PLANNED Linux enforcement mechanisms, not semantic contract. containerd/LXC: REFERENCE_ONLY pending concrete deployment need. No concrete mechanism becomes architecture or execution authority.
 
 ## Community Compute and Roadmap #23 boundaries
 
@@ -97,6 +99,18 @@ Required future evidence: child containment/timeout/cancel/orphan; read-only inp
 ## Governance Correction 1
 
 The independent review accepted the architecture semantics and identified three governance defects: the former summary declared ten rows while its visible table contained nine; the entries were aggregated and not mechanically traceable; and the two project-state next-gate surfaces disagreed. Correction 1 preserves all accepted semantics, replaces the summary with the 131-row exact-path TSV ledger, adds a fail-closed parser/validator with six required RED mutations, and normalizes both next-gate surfaces. The reviewed commit `63f0b49590a3b6cd6aa072d31d5483904d32e668` remains immutable in history.
+
+## Architecture Correction 2
+
+Repository dependency evidence proved that placing the Phase 17 process boundary in worker-fabric creates the cycle `worker-fabric -> media-execution-plan -> render/outbox -> worker-fabric`. The repository-consistent project identity is therefore `:sandbox-isolation-module`, with the technology-neutral Java package `com.example.platform.sandbox`. Render, outbox, platform-app and sandbox-worker consume it directly; worker-fabric consumes it while retaining its required dependency on media-execution-plan. The neutral module owns only safety contracts, validation, the process-launch port and local mechanics. Worker/provider identity, RuntimeAdapter, eligibility, Artifact, completion, fencing and resource-accounting authority remain outside it, and the former `com.example.platform.workerfabric.sandbox` package has no wrapper or alias.
+
+## Governance Correction 3
+
+The final ledger is rebuilt from the accepted `b81d1227087d3dd4316948b0b05a7e1ea28515e1` `HEAD` blob and preserves exactly the stable `P17-L-001` through `P17-L-131` obligation set. Current paths, dispositions, roles and rationales are updated one-for-one; retired shadow rows retain their original ROW_ID through a mechanically checked Git-history-qualified exact path. The 46 implementation-inventory rows formerly appended as `P17-L-132` through `P17-L-177` are removed because new canonical classes are governed by architecture guards and tests, not by expanding the frozen Clean Forward denominator.
+
+## Runtime Correction 4
+
+The neutral local process port selects bubblewrap mechanics only after a real production-shape probe succeeds. The adapter builds a private mount, PID, network, session and device namespace; exposes only the available `/usr`, `/bin`, `/lib` and `/lib64` runtime roots; mounts the approved workspace read-only; overlays only exact read-only inputs and explicit writable temporary/output staging roots; clears the environment; and preserves bounded capture, timeout/cancellation and cleanup evidence. It advertises no endpoint allowlist, secret injection, device grant or extended cgroup limit. If the probe fails, the neutral boundary fails closed and never invokes the best-effort unrestricted local launcher.
 
 ## Escalation and final decision
 

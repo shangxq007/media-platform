@@ -20,7 +20,8 @@
             "extension :: app",
             "extension :: domain",
             "media",
-            "audio"
+            "audio",
+            "sandbox :: API"
         }
 )
 package com.example.platform.render;

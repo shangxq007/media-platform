@@ -27,13 +27,13 @@ import org.springframework.stereotype.Component;
  * PLUGIN_CAPABILITY_REGISTRY_V1_CONTRACT_V1).
  *
  * <p>Describes the EXISTING render tool capability represented by the
- * ToolRegistry ffmpeg allowlist entry + DefaultProcessToolRunner execution.
+ * ToolRegistry ffmpeg allowlist entry plus canonical sandbox execution.
  * This is a self-description only: it registers into {@link PluginRegistryImpl}
  * (the descriptor authority) at startup and derives plugin health from the
  * existing tool availability check ({@code ToolRegistry.validateEnvironment()}).
  * It does NOT create a second FFmpeg provider, does NOT change the existing
  * provider identity, does NOT reroute render invocation, does NOT change
- * command generation, ToolRegistry execution, DefaultProcessToolRunner, output
+ * command generation, ToolRegistry execution, canonical sandbox boundary, output
  * registration or Product READY behavior.</p>
  *
  * <p>Registration mechanism (frozen A074): Spring startup adapter — @Component

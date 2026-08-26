@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.example.platform.extension.app.ProcessToolRunner;
 import com.example.platform.extension.domain.ToolExecutionRequest;
 import com.example.platform.extension.domain.ToolExecutionResult;
-import com.example.platform.extension.domain.ToolSandboxPolicy;
+import com.example.platform.extension.domain.ToolExecutionSafetyPolicy;
 import com.example.platform.render.app.output.RenderOutputRegistrationService;
 import com.example.platform.render.app.output.RenderProductProvenance;
 import com.example.platform.render.app.product.ProductRuntimeService;

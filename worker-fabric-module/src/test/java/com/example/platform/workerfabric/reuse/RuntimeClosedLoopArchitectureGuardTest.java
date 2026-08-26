@@ -57,6 +57,7 @@ class RuntimeClosedLoopArchitectureGuardTest {
     @Test
     void typedRuntimeInputContractHasNoCompatibilityUntypedPositionalOrPinDedupEscape() {
         String adapter = source(PROVIDER_NATIVE.resolve("RuntimeAdapter.java"));
+        String executor = source(PROVIDER_NATIVE.resolve("RuntimeCommandExecutor.java"));
         String binding = source(PROVIDER_NATIVE.resolve("ProviderNativeRuntimeBinding.java"));
         String closedLoop = source(REUSE.resolve("RuntimeClosedLoopOrchestrator.java"));
         String typedInput = source(REUSE.resolve("MaterializedExecutionInput.java"));
@@ -66,7 +67,8 @@ class RuntimeClosedLoopArchitectureGuardTest {
                 "ExecutionInputId inputId",
                 "ArtifactPin artifactPin",
                 "MaterializedArtifact materializedArtifact");
-        assertThat(occurrences(adapter, "ProviderExecutionOutput execute(")).isEqualTo(1);
+        assertThat(occurrences(adapter, "ProviderExecutionOutput execute(")).isZero();
+        assertThat(occurrences(executor, "ProviderExecutionOutput execute(")).isEqualTo(1);
         assertThat(occurrences(binding, "public ProviderExecutionOutput execute(")).isEqualTo(1);
         assertThat(combined).doesNotContain(
                 "List<MaterializedArtifact>",

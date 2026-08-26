@@ -18,7 +18,7 @@ import com.example.platform.render.testsupport.TimelineCoreSmokeFixture;
 import com.example.platform.shared.Ids;
 import com.example.platform.extension.app.ProcessToolRunner;
 import com.example.platform.extension.domain.ToolExecutionResult;
-import com.example.platform.extension.domain.ToolSandboxPolicy;
+import com.example.platform.extension.domain.ToolExecutionSafetyPolicy;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -75,7 +75,7 @@ class CaptionTemplateRenderServiceTest {
                     return ToolExecutionResult.failed(1, "", e.getMessage(), Instant.now(), Instant.now());
                 }
             }
-            @Override public ToolExecutionResult execute(com.example.platform.extension.domain.ToolExecutionRequest r, ToolSandboxPolicy p) { return execute(r); }
+            @Override public ToolExecutionResult execute(com.example.platform.extension.domain.ToolExecutionRequest r, ToolExecutionSafetyPolicy p) { return execute(r); }
         };
 
         RenderToolCapabilityInventory toolInv = new RenderToolCapabilityInventory() {

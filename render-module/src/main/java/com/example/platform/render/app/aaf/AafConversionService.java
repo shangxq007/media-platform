@@ -3,14 +3,14 @@ package com.example.platform.render.app.aaf;
 import com.example.platform.render.domain.interchange.TimelineSpec;
 import com.example.platform.render.domain.standards.AafTimelineAdapter;
 import com.example.platform.shared.Ids;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
+import com.example.platform.sandbox.LocalSandboxProcess;
+import com.example.platform.sandbox.SandboxCancellation;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -79,17 +79,15 @@ public class AafConversionService {
         if (converterEnabled && converterCommand != null && !converterCommand.isBlank()) {
             Path outManifest = Files.createTempFile("aaf-manifest-", ".json");
             List<String> command = parseCommand(converterCommand, job.aafPath(), outManifest.toString());
-            ProcessBuilder pb = new ProcessBuilder(command);
-            pb.redirectErrorStream(true);
-            Process process = pb.start();
-            try (BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
-                reader.lines().forEach(line -> log.debug("AAF converter: {}", line));
-            }
-            int exit = process.waitFor();
-            if (exit != 0) {
+            Path workspace = outManifest.toAbsolutePath().normalize().getParent();
+            var process = LocalSandboxProcess.execute(command, workspace, workspace,
+                    Set.of(aafPath.toAbsolutePath().normalize()),
+                    Map.of("PATH", "/usr/bin:/bin", "LANG", "C"),
+                    java.time.Duration.ofMinutes(1), 1L << 20, SandboxCancellation.never());
+            if (process.failure().isPresent()) {
                 return AafConversionResult.failed(job.conversionId(),
-                        "AAF converter exited with code " + exit);
+                        process.failure().orElseThrow().code() + ": "
+                                + process.failure().orElseThrow().message());
             }
             String manifest = Files.readString(outManifest);
             TimelineSpec spec = AafTimelineAdapter.importFromSource(
@@ -120,15 +118,9 @@ public class AafConversionService {
     }
 
     private static List<String> parseCommand(String template, String input, String output) {
-        String cmd = template
-                .replace("{input}", input)
-                .replace("{output}", output);
-        List<String> parts = new ArrayList<>();
-        for (String token : cmd.split("\\s+")) {
-            if (!token.isBlank()) {
-                parts.add(token);
-            }
+        if (template.isBlank() || template.chars().anyMatch(Character::isWhitespace)) {
+            throw new IllegalArgumentException("converter-command must be one exact executable path");
         }
-        return parts;
+        return List.of(template, input, output);
     }
 }

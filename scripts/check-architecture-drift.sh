@@ -1383,6 +1383,23 @@ else
     fail "Phase 16 clean-forward authority counters are non-zero"
 fi
 
+echo "--- ROADMAP_22_PHASE_17 Sandbox Isolation Guards ---"
+if python3 docs/architecture/governance/automated-guards/check-phase17-sandbox-ledger-test.py; then
+  pass "Phase 17 ledger guard RED matrix rejects sixteen corruptions"
+else
+    fail "Phase 17 ledger guard RED matrix failed"
+fi
+if python3 docs/architecture/governance/automated-guards/check-phase17-sandbox-ledger.py; then
+    pass "Phase 17 clean-forward ledger is closed"
+else
+    fail "Phase 17 clean-forward ledger is invalid"
+fi
+if python3 docs/architecture/governance/automated-guards/check-phase17-sandbox-architecture.py; then
+    pass "Phase 17 sandbox boundary and authority guards are zero"
+else
+    fail "Phase 17 sandbox boundary or authority guard failed"
+fi
+
 if [ $FAILED -eq 0 ]; then
     echo "✅ All architecture drift checks passed"
     exit 0

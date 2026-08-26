@@ -16,7 +16,6 @@ import static org.mockito.Mockito.*;
 class ExtensionRegistryServiceTest {
 
     private AuditPort auditPort;
-    private SandboxExecutionService sandboxService;
     private ExtensionAuditService auditService;
     private ExtensionResourceLimiter resourceLimiter;
     private ExtensionRouter router;
@@ -25,7 +24,6 @@ class ExtensionRegistryServiceTest {
     @BeforeEach
     void setUp() {
         auditPort = mock(AuditPort.class);
-        sandboxService = mock(SandboxExecutionService.class);
         auditService = new ExtensionAuditService(auditPort);
         resourceLimiter = new ExtensionResourceLimiter(auditPort);
         router = new ExtensionRouter(auditPort);

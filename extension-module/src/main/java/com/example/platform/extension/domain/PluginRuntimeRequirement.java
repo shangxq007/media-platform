@@ -16,7 +16,7 @@ package com.example.platform.extension.domain;
  * reload and marketplace installation are all prohibited.</p>
  *
  * @param runtime              TRUSTED_IN_PROCESS for P1
- * @param executionEnvironment LOCAL_PROCESS (evidence-derived: ToolRegistry/DefaultProcessToolRunner)
+ * @param executionEnvironment LOCAL_PROCESS (evidence-derived: ToolRegistry/canonical sandbox adapter)
  * @param trustLevel           ExtensionTrustLevel.FULLY_TRUSTED required
  */
 public record PluginRuntimeRequirement(

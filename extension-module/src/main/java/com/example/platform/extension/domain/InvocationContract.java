@@ -7,14 +7,14 @@ package com.example.platform.extension.domain;
  * <p>P1 is declarative only: the descriptor declares invocation properties but
  * introduces NO new dispatch path. Generic execution routing remains
  * unchanged. The first provider declares SYNC_ONLY with a bounded 60s timeout
- * (matching {@code ToolSandboxPolicy.defaults()}), platform-owned retry,
+ * (matching {@code ToolExecutionSafetyPolicy.defaults()}), platform-owned retry,
  * cancellation and error model.</p>
  *
  * @param synchronous            true for the P1 first provider (SYNC_ONLY)
  * @param idempotency            NOT_DECLARED unless asserted by test evidence
  * @param cancelable             false (P1 declaration)
  * @param streaming              false (P1 declaration)
- * @param timeoutClassification  BOUNDED_DEFAULT_60S (matches ToolSandboxPolicy.defaults())
+ * @param timeoutClassification  BOUNDED_DEFAULT_60S (matches ToolExecutionSafetyPolicy.defaults())
  * @param retryOwnership         PLATFORM (retry remains with callers)
  * @param progressReporting      false (P1 declaration)
  * @param errorBoundary          PLATFORM_ERROR_MODEL (ExtensionExecutionException-style codes)

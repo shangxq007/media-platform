@@ -14,12 +14,15 @@ public final class ProviderNativeRuntimeBinding<P extends ProviderNativeExecutio
 
     private final PlanLowerer<P> planLowerer;
     private final RuntimeAdapter<P> runtimeAdapter;
+    private final RuntimeCommandExecutor commandExecutor;
 
     public ProviderNativeRuntimeBinding(
             PlanLowerer<P> planLowerer,
-            RuntimeAdapter<P> runtimeAdapter) {
+            RuntimeAdapter<P> runtimeAdapter,
+            RuntimeCommandExecutor commandExecutor) {
         this.planLowerer = Objects.requireNonNull(planLowerer, "planLowerer");
         this.runtimeAdapter = Objects.requireNonNull(runtimeAdapter, "runtimeAdapter");
+        this.commandExecutor = Objects.requireNonNull(commandExecutor, "commandExecutor");
     }
 
     public ProviderExecutionOutput execute(
@@ -43,7 +46,7 @@ public final class ProviderNativeRuntimeBinding<P extends ProviderNativeExecutio
                 task.providerBindingPin(),
                 ProviderNativeFailureCode.PROVIDER_BINDING_MISMATCH);
         RuntimeExecutionBundle bundle = runtimeAdapter.adapt(nativePlan, runtimeContext);
-        return runtimeAdapter.execute(bundle, List.copyOf(runtimeLocalInputs));
+        return commandExecutor.execute(bundle, List.copyOf(runtimeLocalInputs));
     }
 
     private static void validateRuntimeInputIdentities(

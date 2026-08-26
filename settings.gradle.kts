@@ -30,6 +30,7 @@ include(
     "billing-module",
     "entitlement-module",
     "policy-governance-module",
+    "sandbox-isolation-module",
     "sandbox-worker",
     "federation-query-module",
     "user-analytics-module",

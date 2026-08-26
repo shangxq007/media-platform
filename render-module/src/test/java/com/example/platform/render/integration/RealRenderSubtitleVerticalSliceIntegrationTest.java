@@ -7,7 +7,8 @@ import com.example.platform.timeline.app.ProductCurrentRevisionHeadUpdateAdapter
 
 import com.example.platform.extension.app.ProcessToolRunner;
 import com.example.platform.extension.app.ToolRegistry;
-import com.example.platform.extension.infrastructure.DefaultProcessToolRunner;
+import com.example.platform.render.integration.extension.ExtensionSandboxToolRunnerAdapter;
+import com.example.platform.sandbox.LocalSandboxProcessExecutionAdapter;
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.render.app.input.RenderInputMaterializationService;
 import com.example.platform.render.app.output.RenderOutputRegistrationService;
@@ -265,8 +266,9 @@ class RealRenderSubtitleVerticalSliceIntegrationTest extends PostgresTestContain
         registry.registerExecutable("ffprobe", findBinary("ffprobe"));
         registry.registerTool(new com.example.platform.extension.domain.ToolDefinition(
                 "ffmpeg", "ffmpeg", "FFmpeg", ffmpegBin,
-                java.util.List.of(), com.example.platform.extension.domain.ToolSandboxPolicy.defaults()));
-        ProcessToolRunner runner = new DefaultProcessToolRunner(registry);
+                java.util.List.of(), com.example.platform.extension.domain.ToolExecutionSafetyPolicy.defaults()));
+        ProcessToolRunner runner = new ExtensionSandboxToolRunnerAdapter(
+                registry, new LocalSandboxProcessExecutionAdapter());
         FFmpegRenderProvider provider = new FFmpegRenderProvider(runner, new FFmpegCommandFactory(),
                 new TimelineScriptParser(new com.example.platform.render.domain.interchange.TimelineExtensionsReader()),
                 new MediaAssetResolver("/tmp/platform", Optional.empty()));
@@ -362,8 +364,9 @@ class RealRenderSubtitleVerticalSliceIntegrationTest extends PostgresTestContain
         registry.registerExecutable("ffprobe", findBinary("ffprobe"));
         registry.registerTool(new com.example.platform.extension.domain.ToolDefinition(
                 "ffmpeg", "ffmpeg", "FFmpeg", ffmpegBin,
-                java.util.List.of(), com.example.platform.extension.domain.ToolSandboxPolicy.defaults()));
-        ProcessToolRunner runner = new DefaultProcessToolRunner(registry);
+                java.util.List.of(), com.example.platform.extension.domain.ToolExecutionSafetyPolicy.defaults()));
+        ProcessToolRunner runner = new ExtensionSandboxToolRunnerAdapter(
+                registry, new LocalSandboxProcessExecutionAdapter());
         RenderAuditRecorder auditRecorder = new RenderAuditRecorder(new RenderAuditEventSink() {
             @Override public void record(RenderAuditEvent event) { }
             @Override public List<RenderAuditEvent> findAll() { return List.of(); }

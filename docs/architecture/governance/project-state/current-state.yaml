@@ -21,8 +21,8 @@ repository:
   main_merged_roadmap_22: true
 local_observation:
   authority: INFORMATIONAL_ONLY
-  roadmap_22_worktree: .worktrees/community-compute-distributed-runtime-governance-amendment1
-  executor_branch: agent/community-compute-distributed-runtime-governance-amendment1
+  roadmap_22_worktree: .worktrees/roadmap22-phase17-sandbox-isolation-decision-recovery
+  executor_branch: agent/roadmap22-phase17-sandbox-isolation-decision-recovery
 current_roadmap:
   number: 22
   name: EXECUTABLE_TASK_GRAPH_AND_WORKER_FABRIC_RUNTIME
@@ -45,8 +45,11 @@ roadmap_22:
   phase_16_final_ci_status: completed/success
   phase_16_correction_3_final_review: PASS
   phase_16_decision_recovery: CLOSED
-  phase_17_started: false
-  phase_17_sandbox_isolation_decision_recovery: FROZEN_CANDIDATE_PENDING_INDEPENDENT_REVIEW
+  phase_17_started: true
+  phase_17_sandbox_isolation_decision_recovery: CLOSED
+  phase_17_sandbox_isolation_bounded_implementation: FROZEN_CANDIDATE_PENDING_FCV
+  phase_18_started: false
+  phase_19_started: false
   canonical_main_integration: FAST_FORWARDED_TO_ACCEPTED_SOURCE_TIP
   canonical_main_integration_source_tip: b16b7505ddc37c542d2c422a64d44fc6a5be5ffa
 roadmap_22_epochs:
@@ -61,11 +64,11 @@ epoch_3:
 roadmap_23:
   status: NOT_STARTED
 governance_execution:
-  immediate_next_gate: CHATGPT_ROADMAP_22_PHASE_17_SANDBOX_ISOLATION_DECISION_RECOVERY_FINAL_REVIEW
+  immediate_next_gate: CHATGPT_ROADMAP_22_PHASE_17_SANDBOX_ISOLATION_BOUNDED_IMPLEMENTATION_FCV_REVIEW
   next_roadmap_execution_after_governance_gate:
     roadmap: 22
     phase: 17
-    started: false
+    started: true
     topic:
     - Sandbox
     - Isolation
@@ -98,7 +101,7 @@ governance:
   - docs/architecture/governance/project-architecture-state-v1-governance-review-correction-2.md
   project_state_dir: docs/architecture/governance/project-state/
   authority_precedence: docs/architecture/governance/source-of-truth/authority-precedence.md
-  next_gate: CHATGPT_ROADMAP_22_PHASE_17_SANDBOX_ISOLATION_DECISION_RECOVERY_FINAL_REVIEW
+  next_gate: CHATGPT_ROADMAP_22_PHASE_17_SANDBOX_ISOLATION_BOUNDED_IMPLEMENTATION_FCV_REVIEW
   expansion_records:
   - docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md
   data_integrity_correction_records:
@@ -112,3 +115,5 @@ governance:
   edge_serverless_integration_compute_amendment: docs/architecture/governance/edge-serverless-integration-compute-amendment-1.md
   community_compute_distributed_runtime_foundation_amendment: docs/architecture/governance/community-compute-and-distributed-runtime-foundation-amendment-1.md
   phase_16_governance_normalization_correction_1_record: docs/architecture/governance/roadmap-22-phase-16-governance-normalization-correction-1.md
+  phase_17_decision_recovery_record: docs/architecture/governance/roadmap-22-phase-17-sandbox-isolation-decision-recovery.md
+  phase_17_bounded_implementation_record: docs/architecture/governance/roadmap-22-phase-17-sandbox-isolation-bounded-implementation.md

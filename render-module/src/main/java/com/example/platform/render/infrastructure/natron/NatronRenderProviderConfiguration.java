@@ -3,7 +3,7 @@ package com.example.platform.render.infrastructure.natron;
 import com.example.platform.extension.app.ProcessToolRunner;
 import com.example.platform.extension.app.ToolRegistry;
 import com.example.platform.extension.domain.ToolDefinition;
-import com.example.platform.extension.domain.ToolSandboxPolicy;
+import com.example.platform.extension.domain.ToolExecutionSafetyPolicy;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,7 +48,7 @@ public class NatronRenderProviderConfiguration {
                         "Natron batch script + FFmpeg fallback",
                         scriptPath,
                         List.of(),
-                        ToolSandboxPolicy.defaults()));
+                        ToolExecutionSafetyPolicy.defaults()));
             }
             log.info("Registered Natron POC tool at {}", scriptPath);
 
@@ -61,7 +61,7 @@ public class NatronRenderProviderConfiguration {
                             "Natron headless renderer",
                             rendererPath,
                             List.of(),
-                            ToolSandboxPolicy.defaults()));
+                            ToolExecutionSafetyPolicy.defaults()));
                 }
                 log.info("Registered NatronRenderer at {}", rendererPath);
             });
