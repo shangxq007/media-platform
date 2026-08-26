@@ -23,6 +23,7 @@ METRICS = {
 }
 DECISION_RECOVERY_GATE = "CHATGPT_ROADMAP_22_PHASE_17_SANDBOX_ISOLATION_DECISION_RECOVERY_FINAL_REVIEW"
 CORRECTION_18_FCV_GATE = "CHATGPT_ROADMAP_22_PHASE_17_SANDBOX_ISOLATION_BOUNDED_IMPLEMENTATION_CORRECTION_18_FCV_REVIEW"
+PHASE17_CLOSURE_GATE = "CHATGPT_ROADMAP_22_PHASE_17_CANONICAL_INTEGRATION_AUTHORIZATION"
 EXPECTED_CANONICAL_MAIN = {
     "sha": "d2cc856939fe0a73d6f1ef799078a0a5e7c5b179",
     "tree": "d2e68f5af848cb49a5db1ea33cd8629ad5b250e0",
@@ -53,9 +54,21 @@ CORRECTION_15_FROZEN_CANDIDATE = (
     "NOT_STARTED",
     "ADOPTED_DEFERRED",
 )
+PHASE17_CLOSED = (
+    True,
+    "CLOSED",
+    "CLOSED",
+    False,
+    False,
+    PHASE17_CLOSURE_GATE,
+    PHASE17_CLOSURE_GATE,
+    "NOT_STARTED",
+    "ADOPTED_DEFERRED",
+)
 ACCEPTED_PHASE_STATES = {
     DECISION_RECOVERY_CANDIDATE,
     CORRECTION_15_FROZEN_CANDIDATE,
+    PHASE17_CLOSED,
 }
 
 def fail(msg: str) -> None:
@@ -151,7 +164,7 @@ def main() -> None:
     )
     if phase_state not in ACCEPTED_PHASE_STATES:
         fail("governance Phase 17 state does not match an accepted transition")
-    if roadmap_22.get("phase_17_sandbox_isolation_bounded_implementation") == "FROZEN_CANDIDATE_PENDING_FCV":
+    if roadmap_22.get("phase_17_sandbox_isolation_bounded_implementation") in {"FROZEN_CANDIDATE_PENDING_FCV", "CLOSED"}:
         active_governed_branch = state.get("repository", {}).get("active_governed_branch", {}).get("name", ABSENT)
         expected_branch = "agent/roadmap22-phase17-sandbox-isolation-decision-recovery"
         if active_governed_branch != expected_branch:

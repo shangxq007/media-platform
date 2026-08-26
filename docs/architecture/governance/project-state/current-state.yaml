@@ -47,7 +47,11 @@ roadmap_22:
   phase_16_decision_recovery: CLOSED
   phase_17_started: true
   phase_17_sandbox_isolation_decision_recovery: CLOSED
-  phase_17_sandbox_isolation_bounded_implementation: FROZEN_CANDIDATE_PENDING_FCV
+  phase_17: CLOSED
+  phase_17_sandbox_isolation_bounded_implementation: CLOSED
+  phase_17_final_validated_tip: c158e06c7a582b3019d31797d085880189b943c2
+  phase_17_final_validated_tree: 469944cbe9cb91dfe8bbf0b2f2d30ad45416db14
+  phase_17_final_fcv: PASS
   phase_18_started: false
   phase_19_started: false
   canonical_main_integration: FAST_FORWARDED_TO_ACCEPTED_SOURCE_TIP
@@ -64,7 +68,7 @@ epoch_3:
 roadmap_23:
   status: NOT_STARTED
 governance_execution:
-  immediate_next_gate: CHATGPT_ROADMAP_22_PHASE_17_SANDBOX_ISOLATION_BOUNDED_IMPLEMENTATION_CORRECTION_18_FCV_REVIEW
+  immediate_next_gate: CHATGPT_ROADMAP_22_PHASE_17_CANONICAL_INTEGRATION_AUTHORIZATION
   next_roadmap_execution_after_governance_gate:
     roadmap: 22
     phase: 17
@@ -101,7 +105,8 @@ governance:
   - docs/architecture/governance/project-architecture-state-v1-governance-review-correction-2.md
   project_state_dir: docs/architecture/governance/project-state/
   authority_precedence: docs/architecture/governance/source-of-truth/authority-precedence.md
-  next_gate: CHATGPT_ROADMAP_22_PHASE_17_SANDBOX_ISOLATION_BOUNDED_IMPLEMENTATION_CORRECTION_18_FCV_REVIEW
+  next_gate: CHATGPT_ROADMAP_22_PHASE_17_CANONICAL_INTEGRATION_AUTHORIZATION
+  phase_17_closure_record: docs/architecture/governance/roadmap-22-phase-17-sandbox-isolation-closure.md
   expansion_records:
   - docs/architecture/governance/project-architecture-state-v1-governance-expansion-1.md
   data_integrity_correction_records:
