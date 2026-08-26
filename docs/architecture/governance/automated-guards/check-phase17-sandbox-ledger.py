@@ -22,7 +22,7 @@ METRICS = {
     "GLOB_PATH_COUNT",
 }
 DECISION_RECOVERY_GATE = "CHATGPT_ROADMAP_22_PHASE_17_SANDBOX_ISOLATION_DECISION_RECOVERY_FINAL_REVIEW"
-CORRECTION_17_FCV_GATE = "CHATGPT_ROADMAP_22_PHASE_17_SANDBOX_ISOLATION_BOUNDED_IMPLEMENTATION_CORRECTION_17_FCV_REVIEW"
+CORRECTION_18_FCV_GATE = "CHATGPT_ROADMAP_22_PHASE_17_SANDBOX_ISOLATION_BOUNDED_IMPLEMENTATION_CORRECTION_18_FCV_REVIEW"
 EXPECTED_CANONICAL_MAIN = {
     "sha": "d2cc856939fe0a73d6f1ef799078a0a5e7c5b179",
     "tree": "d2e68f5af848cb49a5db1ea33cd8629ad5b250e0",
@@ -48,8 +48,8 @@ CORRECTION_15_FROZEN_CANDIDATE = (
     "FROZEN_CANDIDATE_PENDING_FCV",
     False,
     False,
-    CORRECTION_17_FCV_GATE,
-    CORRECTION_17_FCV_GATE,
+    CORRECTION_18_FCV_GATE,
+    CORRECTION_18_FCV_GATE,
     "NOT_STARTED",
     "ADOPTED_DEFERRED",
 )
@@ -151,6 +151,11 @@ def main() -> None:
     )
     if phase_state not in ACCEPTED_PHASE_STATES:
         fail("governance Phase 17 state does not match an accepted transition")
+    if roadmap_22.get("phase_17_sandbox_isolation_bounded_implementation") == "FROZEN_CANDIDATE_PENDING_FCV":
+        active_governed_branch = state.get("repository", {}).get("active_governed_branch", {}).get("name", ABSENT)
+        expected_branch = "agent/roadmap22-phase17-sandbox-isolation-decision-recovery"
+        if active_governed_branch != expected_branch:
+            fail("persisted active governed branch differs from Phase 17 governed branch")
     print(
         f"PHASE17_SANDBOX_LEDGER_GUARD=PASS rows={len(rows)} "
         f"dispositions={dict(sorted(counts.items()))} unclassified={unclassified} "

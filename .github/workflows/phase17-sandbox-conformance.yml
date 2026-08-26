@@ -19,7 +19,7 @@ jobs:
       - linux
       - x64
       - phase17-sandbox-conformance
-      - phase17-c17-20260827
+      - phase17-c18-20260827
     timeout-minutes: 60
     env:
       MEDIA_PLATFORM_REQUIRE_PHASE17_SANDBOX_CONFORMANCE: "true"
