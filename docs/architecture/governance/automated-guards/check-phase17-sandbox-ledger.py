@@ -24,7 +24,7 @@ METRICS = {
 DECISION_RECOVERY_GATE = "CHATGPT_ROADMAP_22_PHASE_17_SANDBOX_ISOLATION_DECISION_RECOVERY_FINAL_REVIEW"
 CORRECTION_18_FCV_GATE = "CHATGPT_ROADMAP_22_PHASE_17_SANDBOX_ISOLATION_BOUNDED_IMPLEMENTATION_CORRECTION_18_FCV_REVIEW"
 PHASE17_CLOSURE_GATE = "CHATGPT_ROADMAP_22_PHASE_17_CANONICAL_INTEGRATION_AUTHORIZATION"
-PHASE17_POST_INTEGRATION_GATE = "CHATGPT_ROADMAP_22_PHASE_17_POST_INTEGRATION_GOVERNANCE_FINAL_REVIEW"
+PHASE17_POST_INTEGRATION_GATE = "CHATGPT_ROADMAP_22_PHASE_17_POST_INTEGRATION_GOVERNANCE_CORRECTION_1_FINAL_REVIEW"
 EXPECTED_PRE_INTEGRATION_MAIN = {
     "sha": "d2cc856939fe0a73d6f1ef799078a0a5e7c5b179",
     "tree": "d2e68f5af848cb49a5db1ea33cd8629ad5b250e0",
@@ -185,6 +185,15 @@ def main() -> None:
             fail("persisted post-integration active governed branch differs from main")
         if roadmap_22.get("canonical_main_integration_source_tip") != EXPECTED_POST_INTEGRATION_MAIN["sha"]:
             fail("persisted canonical integration source tip differs from accepted Phase 17 closure publication")
+        next_execution = governance_execution.get("next_roadmap_execution_after_governance_gate", {})
+        expected_next_execution = {
+            "roadmap": 22,
+            "phase": 18,
+            "started": False,
+            "topic": ["FAOF-2", "Formal Algorithm Validation"],
+        }
+        if next_execution != expected_next_execution:
+            fail("persisted next roadmap execution after governance gate is stale")
     else:
         if canonical_main != EXPECTED_PRE_INTEGRATION_MAIN:
             fail("persisted pre-integration canonical main differs from expected baseline")

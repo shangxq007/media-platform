@@ -97,6 +97,15 @@ def main():
             "agent/roadmap22-executable-task-graph-worker-fabric-decision-recovery")
         state_mutations.append(("active-governed-branch-drift", changed))
 
+        changed = copy.deepcopy(baseline_state)
+        changed["governance_execution"]["next_roadmap_execution_after_governance_gate"] = {
+            "roadmap": 22,
+            "phase": 17,
+            "started": True,
+            "topic": ["Sandbox", "Isolation"],
+        }
+        state_mutations.append(("stale-next-roadmap-execution", changed))
+
         decision_state = copy.deepcopy(baseline_state)
         decision_state["repository"]["canonical_main"] = {
             "sha": "d2cc856939fe0a73d6f1ef799078a0a5e7c5b179",

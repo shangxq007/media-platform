@@ -67,14 +67,14 @@ epoch_3:
 roadmap_23:
   status: NOT_STARTED
 governance_execution:
-  immediate_next_gate: CHATGPT_ROADMAP_22_PHASE_17_POST_INTEGRATION_GOVERNANCE_FINAL_REVIEW
+  immediate_next_gate: CHATGPT_ROADMAP_22_PHASE_17_POST_INTEGRATION_GOVERNANCE_CORRECTION_1_FINAL_REVIEW
   next_roadmap_execution_after_governance_gate:
     roadmap: 22
-    phase: 17
-    started: true
+    phase: 18
+    started: false
     topic:
-    - Sandbox
-    - Isolation
+    - FAOF-2
+    - Formal Algorithm Validation
   adopted_cross_cutting_amendments:
     worker_runtime_backend_resource_accounting: ADOPTED
     edge_serverless_integration_compute: ADOPTED
@@ -104,7 +104,7 @@ governance:
   - docs/architecture/governance/project-architecture-state-v1-governance-review-correction-2.md
   project_state_dir: docs/architecture/governance/project-state/
   authority_precedence: docs/architecture/governance/source-of-truth/authority-precedence.md
-  next_gate: CHATGPT_ROADMAP_22_PHASE_17_POST_INTEGRATION_GOVERNANCE_FINAL_REVIEW
+  next_gate: CHATGPT_ROADMAP_22_PHASE_17_POST_INTEGRATION_GOVERNANCE_CORRECTION_1_FINAL_REVIEW
   phase_17_closure_record: docs/architecture/governance/roadmap-22-phase-17-sandbox-isolation-closure.md
   phase_17_canonical_integration_record: docs/architecture/governance/roadmap-22-phase-17-canonical-integration-and-cleanup.md
   expansion_records:
