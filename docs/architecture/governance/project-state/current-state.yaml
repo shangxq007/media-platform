@@ -67,7 +67,7 @@ epoch_3:
 roadmap_23:
   status: NOT_STARTED
 governance_execution:
-  immediate_next_gate: CHATGPT_CHANGE_IMPACT_DRIVEN_CI_GOVERNANCE_AMENDMENT_1_FINAL_REVIEW
+  immediate_next_gate: CHATGPT_CHANGE_IMPACT_DRIVEN_CI_GOVERNANCE_AMENDMENT_1_CORRECTION_1_FINAL_REVIEW
   next_roadmap_execution_after_governance_gate:
     roadmap: 22
     phase: 18
@@ -105,7 +105,7 @@ governance:
   - docs/architecture/governance/project-architecture-state-v1-governance-review-correction-2.md
   project_state_dir: docs/architecture/governance/project-state/
   authority_precedence: docs/architecture/governance/source-of-truth/authority-precedence.md
-  next_gate: CHATGPT_CHANGE_IMPACT_DRIVEN_CI_GOVERNANCE_AMENDMENT_1_FINAL_REVIEW
+  next_gate: CHATGPT_CHANGE_IMPACT_DRIVEN_CI_GOVERNANCE_AMENDMENT_1_CORRECTION_1_FINAL_REVIEW
   phase_17_closure_record: docs/architecture/governance/roadmap-22-phase-17-sandbox-isolation-closure.md
   phase_17_canonical_integration_record: docs/architecture/governance/roadmap-22-phase-17-canonical-integration-and-cleanup.md
   expansion_records:
@@ -121,6 +121,7 @@ governance:
   edge_serverless_integration_compute_amendment: docs/architecture/governance/edge-serverless-integration-compute-amendment-1.md
   community_compute_distributed_runtime_foundation_amendment: docs/architecture/governance/community-compute-and-distributed-runtime-foundation-amendment-1.md
   change_impact_driven_ci_governance_amendment: docs/architecture/governance/change-impact-driven-ci-governance-amendment-1.md
+  change_impact_driven_ci_governance_amendment_correction_1_record: docs/architecture/governance/change-impact-driven-ci-governance-amendment-1-correction-1.md
   phase_16_governance_normalization_correction_1_record: docs/architecture/governance/roadmap-22-phase-16-governance-normalization-correction-1.md
   phase_17_decision_recovery_record: docs/architecture/governance/roadmap-22-phase-17-sandbox-isolation-decision-recovery.md
   phase_17_bounded_implementation_record: docs/architecture/governance/roadmap-22-phase-17-sandbox-isolation-bounded-implementation.md

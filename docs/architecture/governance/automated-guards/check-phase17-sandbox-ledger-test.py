@@ -16,6 +16,7 @@ TRACKS = ROOT / "docs/architecture/governance/project-state/roadmap-tracks.yaml"
 DECISION_RECOVERY_GATE = "CHATGPT_ROADMAP_22_PHASE_17_SANDBOX_ISOLATION_DECISION_RECOVERY_FINAL_REVIEW"
 CORRECTION_18_FCV_GATE = "CHATGPT_ROADMAP_22_PHASE_17_SANDBOX_ISOLATION_BOUNDED_IMPLEMENTATION_CORRECTION_18_FCV_REVIEW"
 AMENDMENT_GATE = "CHATGPT_CHANGE_IMPACT_DRIVEN_CI_GOVERNANCE_AMENDMENT_1_FINAL_REVIEW"
+CORRECTION_1_GATE = "CHATGPT_CHANGE_IMPACT_DRIVEN_CI_GOVERNANCE_AMENDMENT_1_CORRECTION_1_FINAL_REVIEW"
 OBSOLETE_C1_GATE = "CHATGPT_ROADMAP_22_PHASE_17_POST_INTEGRATION_GOVERNANCE_CORRECTION_1_FINAL_REVIEW"
 
 def invoke(doc, ledger, state, tracks):
@@ -35,9 +36,9 @@ def main():
     with LEDGER.open() as f:
         reader = csv.DictReader(f, delimiter="\t"); fields = reader.fieldnames; rows = list(reader)
     baseline_state = yaml.safe_load(STATE.read_text())
-    if (baseline_state["governance_execution"]["immediate_next_gate"] != AMENDMENT_GATE
-            or baseline_state["governance"]["next_gate"] != AMENDMENT_GATE):
-        raise SystemExit("frozen baseline does not carry the exact CI governance amendment gate")
+    if (baseline_state["governance_execution"]["immediate_next_gate"] != CORRECTION_1_GATE
+            or baseline_state["governance"]["next_gate"] != CORRECTION_1_GATE):
+        raise SystemExit("frozen baseline does not carry the exact CI governance correction-1 gate")
     with tempfile.TemporaryDirectory(prefix="phase17-ledger-red-") as directory:
         root = Path(directory); doc = root / "doc.md"; ledger = root / "ledger.tsv"; state = root / "state.yaml"; tracks = root / "tracks.yaml"
         doc.write_text(DOC.read_text()); write_state(state, baseline_state); write_rows(ledger, fields, rows); tracks.write_text(TRACKS.read_text())
@@ -59,9 +60,13 @@ def main():
 
         state_mutations = []
         changed = copy.deepcopy(baseline_state)
+        changed["governance_execution"]["immediate_next_gate"] = AMENDMENT_GATE
+        changed["governance"]["next_gate"] = AMENDMENT_GATE
+        state_mutations.append(("old-amendment-final-review-matching-gates", changed))
+        changed = copy.deepcopy(baseline_state)
         changed["governance_execution"]["immediate_next_gate"] = OBSOLETE_C1_GATE
         changed["governance"]["next_gate"] = OBSOLETE_C1_GATE
-        state_mutations.append(("obsolete-correction-1-matching-gates", changed))
+        state_mutations.append(("obsolete-phase17-correction-1-matching-gates", changed))
         changed = copy.deepcopy(baseline_state)
         changed["governance_execution"]["immediate_next_gate"] = "INVALID_GATE"
         state_mutations.append(("gate-mismatch", changed))
@@ -157,7 +162,12 @@ def main():
             write_state(state, mutation_state)
             if invoke(doc, ledger, state, tracks).returncode == 0:
                 raise SystemExit(f"mutation passed: {name}")
-    print(f"PHASE17_SANDBOX_LEDGER_RED_MATRIX=PASS mutations={len(mutations) + 2 + len(state_mutations)}")
+    print(
+        f"PHASE17_SANDBOX_LEDGER_RED_MATRIX=PASS "
+        f"mutations={len(mutations) + 2 + len(state_mutations)} "
+        "exact_correction_1_gate_pass=1 old_amendment_gate_red=1 "
+        "arbitrary_matching_gate_red=1"
+    )
 
 if __name__ == "__main__":
     main()

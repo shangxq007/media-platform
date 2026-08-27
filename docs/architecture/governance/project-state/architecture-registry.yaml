@@ -2887,8 +2887,8 @@
   persistence: REPOSITORY_PERSISTED
   authority_scope: CI_GOVERNANCE
   summary: GitOps, Semgrep, architecture drift, and Foundation backend verification are explicit impact decisions; full-CI impacts select all validation lanes.
-  implementation_status: IMPLEMENTED (Standard CI, Foundation Verification, and Semgrep Architecture workflows)
-  references: [docs/architecture/governance/change-impact-driven-ci-governance-amendment-1.md]
+  implementation_status: IMPLEMENTED (Standard CI owns GitOps and Semgrep; Foundation Verification owns architecture and backend consumers)
+  references: [docs/architecture/governance/change-impact-driven-ci-governance-amendment-1.md, docs/architecture/governance/change-impact-driven-ci-governance-amendment-1-correction-1.md]
 
 - id: CLASSIFIER_DEPENDENT_CHECKOUTS_USE_COMPLETE_CREDENTIAL_FREE_HISTORY_V1
   status: ADOPTED

@@ -112,6 +112,7 @@ def classify_path(raw_path: str) -> tuple[str, ...]:
     if (
         basename == "Dockerfile"
         or basename.startswith("Dockerfile.")
+        or path == ".dockerignore"
         or _under(path, "docker/")
         or path.startswith("docker-compose")
     ):
