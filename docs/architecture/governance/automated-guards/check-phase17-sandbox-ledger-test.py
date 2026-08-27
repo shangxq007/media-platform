@@ -17,6 +17,7 @@ DECISION_RECOVERY_GATE = "CHATGPT_ROADMAP_22_PHASE_17_SANDBOX_ISOLATION_DECISION
 CORRECTION_18_FCV_GATE = "CHATGPT_ROADMAP_22_PHASE_17_SANDBOX_ISOLATION_BOUNDED_IMPLEMENTATION_CORRECTION_18_FCV_REVIEW"
 AMENDMENT_GATE = "CHATGPT_CHANGE_IMPACT_DRIVEN_CI_GOVERNANCE_AMENDMENT_1_FINAL_REVIEW"
 PHASE18_DECISION_RECOVERY_GATE = "CHATGPT_ROADMAP_22_PHASE_18_FAOF_2_DECISION_RECOVERY_FINAL_REVIEW"
+PHASE18_DECISION_RECOVERY_CORRECTION_1_GATE = "CHATGPT_ROADMAP_22_PHASE_18_FAOF_2_DECISION_RECOVERY_CORRECTION_1_FINAL_REVIEW"
 OBSOLETE_C1_GATE = "CHATGPT_ROADMAP_22_PHASE_17_POST_INTEGRATION_GOVERNANCE_CORRECTION_1_FINAL_REVIEW"
 
 def invoke(doc, ledger, state, tracks):
@@ -36,9 +37,9 @@ def main():
     with LEDGER.open() as f:
         reader = csv.DictReader(f, delimiter="\t"); fields = reader.fieldnames; rows = list(reader)
     baseline_state = yaml.safe_load(STATE.read_text())
-    if (baseline_state["governance_execution"]["immediate_next_gate"] != PHASE18_DECISION_RECOVERY_GATE
-            or baseline_state["governance"]["next_gate"] != PHASE18_DECISION_RECOVERY_GATE):
-        raise SystemExit("frozen baseline does not carry the exact Phase18 Decision Recovery final-review gate")
+    if (baseline_state["governance_execution"]["immediate_next_gate"] != PHASE18_DECISION_RECOVERY_CORRECTION_1_GATE
+            or baseline_state["governance"]["next_gate"] != PHASE18_DECISION_RECOVERY_CORRECTION_1_GATE):
+        raise SystemExit("frozen baseline does not carry the exact Phase18 Decision Recovery Correction 1 final-review gate")
     with tempfile.TemporaryDirectory(prefix="phase17-ledger-red-") as directory:
         root = Path(directory); doc = root / "doc.md"; ledger = root / "ledger.tsv"; state = root / "state.yaml"; tracks = root / "tracks.yaml"
         doc.write_text(DOC.read_text()); write_state(state, baseline_state); write_rows(ledger, fields, rows); tracks.write_text(TRACKS.read_text())
@@ -59,6 +60,10 @@ def main():
         doc.write_text(DOC.read_text())
 
         state_mutations = []
+        changed = copy.deepcopy(baseline_state)
+        changed["governance_execution"]["immediate_next_gate"] = PHASE18_DECISION_RECOVERY_GATE
+        changed["governance"]["next_gate"] = PHASE18_DECISION_RECOVERY_GATE
+        state_mutations.append(("prior-phase18-decision-recovery-gate-drift", changed))
         changed = copy.deepcopy(baseline_state)
         changed["governance_execution"]["immediate_next_gate"] = AMENDMENT_GATE
         changed["governance"]["next_gate"] = AMENDMENT_GATE
@@ -168,7 +173,7 @@ def main():
     print(
         f"PHASE17_SANDBOX_LEDGER_RED_MATRIX=PASS "
         f"mutations={len(mutations) + 2 + len(state_mutations)} "
-        "exact_correction_1_gate_pass=1 old_amendment_gate_red=1 "
+        "exact_phase18_correction_1_gate_pass=1 old_amendment_gate_red=1 "
         "arbitrary_matching_gate_red=1"
     )
 

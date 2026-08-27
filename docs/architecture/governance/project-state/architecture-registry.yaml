@@ -1953,6 +1953,136 @@
   implementation_status: "PHASE18_DECISION_RECOVERY_FROZEN_CANDIDATE; no Lean4/Coq implementation or production dependency"
   references: [docs/architecture/governance/roadmap-22-phase-18-faof-2-decision-recovery.md]
 
+- id: GRAPH_ALGORITHM_SEMANTICS_ARE_PLATFORM_OWNED_MECHANICS_MAY_BE_LIBRARY_BACKED_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: "Platform owns graph semantics, identity, ordering, failures, and conformance; algorithm engines are replaceable mechanics."
+  implementation_status: "PHASE18_DECISION_RECOVERY_CORRECTION_1_FROZEN_CANDIDATE; no backend migration"
+  references: [docs/architecture/governance/roadmap-22-phase-18-faof-2-decision-recovery-correction-1.md]
+
+- id: GRAPH_ORDER_CONTRACT_IS_EXPLICIT_AND_LANGUAGE_NEUTRAL_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: "Deterministic graph order requires an explicit platform-owned strict total order over canonical identities when consumers require canonical tie-breaking."
+  implementation_status: "FROZEN_CONTRACT; generic DirectedGraphView order remains implementation-defined"
+  references: [docs/architecture/governance/roadmap-22-phase-18-faof-2-decision-recovery-correction-1.md]
+
+- id: OBJECT_TOSTRING_IS_NOT_GRAPH_NODE_IDENTITY_OR_ORDER_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: "Object.toString, object identity, unordered iteration, wall clock, random, and mutable runtime state are prohibited generic canonical graph tie-breakers."
+  implementation_status: "FUTURE_BACKEND_CONFORMANCE_REQUIRED"
+  references: [docs/architecture/governance/roadmap-22-phase-18-faof-2-decision-recovery-correction-1.md]
+
+- id: EXTERNAL_GRAPH_ALGORITHM_ENGINE_IS_REPLACEABLE_MECHANICS_NOT_SEMANTIC_AUTHORITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: "External graph engines may supply internal algorithm mechanics but cannot define platform semantics or leak types across platform boundaries."
+  implementation_status: "JGRAPHT_POC_CANDIDATE_ONLY; no dependency added"
+  references: [docs/architecture/governance/roadmap-22-phase-18-faof-2-decision-recovery-correction-1.md]
+
+- id: FORMAL_PROOF_PROVES_PLATFORM_LAWS_NOT_LIBRARY_INTERNALS_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: "Formal proofs target platform laws and shared conformance vectors, not Java collections, JVM comparators, or library internals."
+  implementation_status: "PHASE18_CORRECTION_1_FROZEN_CANDIDATE"
+  references: [docs/architecture/governance/roadmap-22-phase-18-faof-2-decision-recovery-correction-1.md]
+
+## 9AB-OPT PERFORMANCE / OPTIMIZATION EVIDENCE FOUNDATION
+
+- id: PERFORMANCE_AND_OPTIMIZATION_EVIDENCE_FOUNDATION_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: "Performance and optimization require evidence foundations and never redefine canonical semantics."
+  implementation_status: GOVERNANCE_ONLY
+  references: [docs/architecture/governance/roadmap-22-phase-18-faof-2-decision-recovery-correction-1.md]
+
+- id: MEASURE_BEFORE_OPTIMIZE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: "Optimization proposals require measured evidence before implementation."
+  implementation_status: GOVERNANCE_ONLY
+  references: [docs/architecture/governance/roadmap-22-phase-18-faof-2-decision-recovery-correction-1.md]
+
+- id: OPTIMIZATION_OPERATES_OVER_PROVEN_FEASIBLE_SPACE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: "Optimization may search only a proven feasible semantic space."
+  implementation_status: GOVERNANCE_ONLY
+  references: [docs/architecture/governance/roadmap-22-phase-18-faof-2-decision-recovery-correction-1.md]
+
+- id: EQUIVALENCE_IS_TYPED_AND_EVIDENCE_GRADED_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: "Equivalence is typed and evidence graded rather than inferred from cost or implementation coincidence."
+  implementation_status: GOVERNANCE_ONLY
+  references: [docs/architecture/governance/roadmap-22-phase-18-faof-2-decision-recovery-correction-1.md]
+
+- id: UNKNOWN_EQUIVALENCE_FAILS_CLOSED_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: "Unknown semantic equivalence fails closed."
+  implementation_status: GOVERNANCE_ONLY
+  references: [docs/architecture/governance/roadmap-22-phase-18-faof-2-decision-recovery-correction-1.md]
+
+- id: FORMAL_LAWS_AUTHORIZE_SEMANTIC_REWRITE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: "Formal laws are required authority for any future semantic rewrite."
+  implementation_status: FAOF4_DEFERRED
+  references: [docs/architecture/governance/roadmap-22-phase-18-faof-2-decision-recovery-correction-1.md]
+
+- id: DATA_DRIVEN_COST_MODEL_NEVER_OVERRIDES_SEMANTIC_LEGALITY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: "Cost models cannot override semantic legality."
+  implementation_status: GOVERNANCE_ONLY
+  references: [docs/architecture/governance/roadmap-22-phase-18-faof-2-decision-recovery-correction-1.md]
+
+- id: CONSERVATIVE_SEMANTIC_ENVELOPE_PROGRESSIVE_OPTIMIZATION_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: "Optimization progresses within a conservative accepted semantic envelope."
+  implementation_status: ROADMAP23_NOT_STARTED
+  references: [docs/architecture/governance/roadmap-22-phase-18-faof-2-decision-recovery-correction-1.md]
+
+- id: SEMANTIC_SEARCH_SPACE_IS_ARCHITECTURE_GOVERNED_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: "Architecture governs the semantic search space."
+  implementation_status: GOVERNANCE_ONLY
+  references: [docs/architecture/governance/roadmap-22-phase-18-faof-2-decision-recovery-correction-1.md]
+
+- id: OPTIMIZATION_EXPLORES_WITHIN_BUT_NEVER_REDEFINES_SEMANTIC_SPACE_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: "Optimization explores accepted semantic space but cannot redefine it."
+  implementation_status: ROADMAP23_NOT_STARTED
+  references: [docs/architecture/governance/roadmap-22-phase-18-faof-2-decision-recovery-correction-1.md]
+
+- id: NEW_EVIDENCE_MAY_TRIGGER_EXPLICIT_SEMANTIC_SPACE_EXPANSION_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: "New evidence may initiate, but never silently perform, explicit semantic-space expansion."
+  implementation_status: GOVERNANCE_ONLY
+  references: [docs/architecture/governance/roadmap-22-phase-18-faof-2-decision-recovery-correction-1.md]
+
 - id: FORMAL_VERIFICATION_IS_APPLIED_TO_SHARED_SEMANTIC_AND_RUNTIME_INVARIANTS_NOT_TO_ALL_IMPLEMENTATION_CODE_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED

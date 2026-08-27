@@ -26,6 +26,7 @@ CORRECTION_18_FCV_GATE = "CHATGPT_ROADMAP_22_PHASE_17_SANDBOX_ISOLATION_BOUNDED_
 PHASE17_CLOSURE_GATE = "CHATGPT_ROADMAP_22_PHASE_17_CANONICAL_INTEGRATION_AUTHORIZATION"
 PHASE17_POST_INTEGRATION_GATE = "CHATGPT_CHANGE_IMPACT_DRIVEN_CI_GOVERNANCE_AMENDMENT_1_CORRECTION_1_FINAL_REVIEW"
 PHASE18_DECISION_RECOVERY_GATE = "CHATGPT_ROADMAP_22_PHASE_18_FAOF_2_DECISION_RECOVERY_FINAL_REVIEW"
+PHASE18_DECISION_RECOVERY_CORRECTION_1_GATE = "CHATGPT_ROADMAP_22_PHASE_18_FAOF_2_DECISION_RECOVERY_CORRECTION_1_FINAL_REVIEW"
 EXPECTED_PRE_INTEGRATION_MAIN = {
     "sha": "d2cc856939fe0a73d6f1ef799078a0a5e7c5b179",
     "tree": "d2e68f5af848cb49a5db1ea33cd8629ad5b250e0",
@@ -82,6 +83,17 @@ PHASE18_DECISION_RECOVERY = (
     "NOT_STARTED",
     "ADOPTED_DEFERRED",
 )
+PHASE18_DECISION_RECOVERY_CORRECTION_1 = (
+    True,
+    "CLOSED",
+    "CLOSED",
+    True,
+    False,
+    PHASE18_DECISION_RECOVERY_CORRECTION_1_GATE,
+    PHASE18_DECISION_RECOVERY_CORRECTION_1_GATE,
+    "NOT_STARTED",
+    "ADOPTED_DEFERRED",
+)
 POST_INTEGRATION_PHASE17_CLOSED = (
     True,
     "CLOSED",
@@ -99,6 +111,7 @@ ACCEPTED_PHASE_STATES = {
     PRE_INTEGRATION_PHASE17_CLOSED,
     POST_INTEGRATION_PHASE17_CLOSED,
     PHASE18_DECISION_RECOVERY,
+    PHASE18_DECISION_RECOVERY_CORRECTION_1,
 }
 
 def fail(msg: str) -> None:
@@ -191,12 +204,17 @@ def main() -> None:
     )
     if phase_state not in ACCEPTED_PHASE_STATES:
         fail("governance Phase 17 state does not match an accepted transition")
-    if phase_state == PHASE18_DECISION_RECOVERY:
-        if (roadmap_22.get("phase_18_faof_2_decision_recovery") != "FROZEN_CANDIDATE_PENDING_INDEPENDENT_REVIEW"
+    if phase_state in {PHASE18_DECISION_RECOVERY, PHASE18_DECISION_RECOVERY_CORRECTION_1}:
+        expected_decision_recovery_state = (
+            "CORRECTION_1_FROZEN_CANDIDATE_PENDING_INDEPENDENT_REVIEW"
+            if phase_state == PHASE18_DECISION_RECOVERY_CORRECTION_1
+            else "FROZEN_CANDIDATE_PENDING_INDEPENDENT_REVIEW"
+        )
+        if (roadmap_22.get("phase_18_faof_2_decision_recovery") != expected_decision_recovery_state
                 or roadmap_22.get("phase_18_implementation_authorized") is not False):
             fail("Phase18 Decision Recovery state is not frozen and implementation-unauthorized")
     active_governed_branch = state.get("repository", {}).get("active_governed_branch", {}).get("name", ABSENT)
-    if phase_state in {POST_INTEGRATION_PHASE17_CLOSED, PHASE18_DECISION_RECOVERY}:
+    if phase_state in {POST_INTEGRATION_PHASE17_CLOSED, PHASE18_DECISION_RECOVERY, PHASE18_DECISION_RECOVERY_CORRECTION_1}:
         if canonical_main != EXPECTED_POST_INTEGRATION_MAIN:
             fail("persisted post-integration canonical main differs from accepted Phase 17 source tip")
         if active_governed_branch != "main":
@@ -212,7 +230,7 @@ def main() -> None:
                 "implementation_authorized": False,
                 "topic": ["FAOF-2", "Formal Algorithm Validation", "Decision Recovery frozen candidate pending independent review"],
             }
-            if phase_state == PHASE18_DECISION_RECOVERY else
+            if phase_state in {PHASE18_DECISION_RECOVERY, PHASE18_DECISION_RECOVERY_CORRECTION_1} else
             {
                 "roadmap": 22,
                 "phase": 18,
@@ -231,6 +249,8 @@ def main() -> None:
             fail("roadmap track EXECUTION_AND_PROVIDER_RUNTIME is missing")
         assert execution_track is not None
         expected_action = (
+            "Phase 18 - FAOF-2 Formal Algorithm Validation Decision Recovery Correction 1 (STARTED; FROZEN_CANDIDATE_PENDING_INDEPENDENT_REVIEW; IMPLEMENTATION_NOT_AUTHORIZED)"
+            if phase_state == PHASE18_DECISION_RECOVERY_CORRECTION_1 else
             "Phase 18 - FAOF-2 Formal Algorithm Validation Decision Recovery (STARTED; FROZEN_CANDIDATE_PENDING_INDEPENDENT_REVIEW; IMPLEMENTATION_NOT_AUTHORIZED)"
             if phase_state == PHASE18_DECISION_RECOVERY else
             "Phase 18 - FAOF-2 Formal Algorithm Validation (NEXT; NOT_STARTED)"
