@@ -22,6 +22,12 @@ PHASE18_DECISION_RECOVERY_CORRECTION_1 = ROOT / "docs/architecture/governance/ro
 REGISTRY = ROOT / "docs/architecture/governance/project-state/architecture-registry.yaml"
 CURRENT_STATE = ROOT / "docs/architecture/governance/project-state/current-state.yaml"
 
+PHASE18_ACCEPTED_SHA = "f00c0f36f7686314f6bb75a6b414751f66b95f9a"
+PHASE18_ACCEPTED_TREE = "4b2ccb4c1161d1c4517a1d71b17616e6d8198595"
+PHASE18_CLOSURE_GATE = (
+    "ROADMAP_22_PHASE_18_CANONICAL_MAIN_FAST_FORWARD_INTEGRATION_AUTHORIZED_PENDING"
+)
+
 STABLE_POLICY_IDS = (
     "CI_CHANGE_IMPACT_CLASSIFICATION_IS_PLATFORM_OWNED_V1",
     "CHANGE_IMPACT_TAXONOMY_IS_EXHAUSTIVE_AND_UNKNOWN_FAILS_CLOSED_V1",
@@ -152,6 +158,54 @@ def assert_workflow_contract(
             raise AssertionError(f"{name}: classifier-dependent checkout persists credentials")
 
 
+def assert_phase18_closure_state(state: str) -> None:
+    accepted_identity = (
+        "  accepted_implementation:\n"
+        "    milestone: ROADMAP_22_PHASE_18_FAOF_2\n"
+        f"    sha: {PHASE18_ACCEPTED_SHA}\n"
+        f"    tree: {PHASE18_ACCEPTED_TREE}\n"
+        "    accepted_implementation_remote_reachable: true\n"
+    )
+    required_state = (
+        "  phase_17: CLOSED\n",
+        "  phase_18_started: true\n",
+        "  phase_18: CLOSED\n",
+        "  phase_18_faof_2_decision_recovery: PASS\n",
+        "  phase_18_implementation_authorized: true\n",
+        "  phase_18_faof_2_bounded_implementation: CLOSED\n",
+        "  phase_18_faof_2_bounded_implementation_acceptance: ACCEPTED\n",
+        f"  phase_18_final_validated_tip: {PHASE18_ACCEPTED_SHA}\n",
+        f"  phase_18_final_validated_tree: {PHASE18_ACCEPTED_TREE}\n",
+        "  phase_18_final_review: PASS\n",
+        "  phase_18_canonical_main_integration: AUTHORIZED_PENDING_FAST_FORWARD_ONLY\n",
+        f"  phase_18_canonical_main_integration_source_tip: {PHASE18_ACCEPTED_SHA}\n",
+        f"  phase_18_canonical_main_integration_source_tree: {PHASE18_ACCEPTED_TREE}\n",
+        "  phase_19_started: false\n",
+        "  phase_19_implementation_authorization: AUTHORIZED_ONLY_AFTER_SUCCESSFUL_PHASE18_CANONICAL_INTEGRATION\n",
+        "roadmap_23:\n  status: NOT_STARTED\n",
+        f"  immediate_next_gate: {PHASE18_CLOSURE_GATE}\n",
+        f"  next_gate: {PHASE18_CLOSURE_GATE}\n",
+        "    phase: 19\n",
+        "    started: false\n",
+        "    implementation_authorized: false\n",
+        "    authorization_condition: AUTHORIZED_ONLY_AFTER_SUCCESSFUL_PHASE18_CANONICAL_INTEGRATION\n",
+        "  phase_18_faof_2_bounded_implementation_record: docs/architecture/governance/roadmap-22-phase-18-faof-2-bounded-implementation.md\n",
+        "  phase_18_faof_2_closure_publication_record: docs/architecture/governance/roadmap-22-phase-18-faof-2-closure-publication.md\n",
+    )
+    if state.count(accepted_identity) != 1 or any(
+        state.count(item) != 1 for item in required_state
+    ):
+        raise AssertionError("Phase 18 FAOF-2 closure-publication state drifted")
+    forbidden_state = (
+        "  phase_18: IN_PROGRESS\n",
+        "  phase_18_faof_2_bounded_implementation: IN_PROGRESS\n",
+        "  phase_19_started: true\n",
+        "CHATGPT_ROADMAP_22_PHASE_18_FAOF_2_BOUNDED_IMPLEMENTATION_REVIEW",
+    )
+    if any(item in state for item in forbidden_state):
+        raise AssertionError("stale or unauthorized Phase 18 lifecycle state remains")
+
+
 def assert_governance_contract() -> None:
     amendment = AMENDMENT.read_text()
     correction = CORRECTION.read_text()
@@ -167,23 +221,7 @@ def assert_governance_contract() -> None:
             raise AssertionError(f"registry stable ID is not adopted: {stable_id}")
     phase18_recovery = PHASE18_DECISION_RECOVERY.read_text()
     phase18_correction = PHASE18_DECISION_RECOVERY_CORRECTION_1.read_text()
-    required_state = (
-        "  phase_17: CLOSED\n",
-        "  phase_18_started: true\n",
-        "  phase_18: IN_PROGRESS\n",
-        "  phase_18_faof_2_decision_recovery: PASS\n",
-        "  phase_18_implementation_authorized: true\n",
-        "  phase_18_faof_2_bounded_implementation: IN_PROGRESS\n",
-        "  phase_19_started: false\n",
-        "roadmap_23:\n  status: NOT_STARTED\n",
-        "    phase: 18\n",
-        "    - FAOF-2\n",
-        "  phase_18_faof_2_bounded_implementation_record: docs/architecture/governance/roadmap-22-phase-18-faof-2-bounded-implementation.md\n",
-    )
-    if any(item not in state for item in required_state):
-        raise AssertionError("Phase 18 FAOF-2 bounded implementation lifecycle state drifted")
-    if "phase_18: CLOSED" in state or "phase_19_started: true" in state:
-        raise AssertionError("Phase 18 was closed or Phase 19 was started without authorization")
+    assert_phase18_closure_state(state)
     if "ROADMAP_22_PHASE_18_FAOF_2_BOUNDED_ARCHITECTURE_CONTRACT_V1" not in phase18_recovery:
         raise AssertionError("Phase18 Decision Recovery contract is missing")
     if "ROADMAP_22_PHASE_18_FAOF_2_DECISION_RECOVERY_CORRECTION_1_CONTRACT_V1" not in phase18_correction:
@@ -202,6 +240,14 @@ def expect_red(
 ) -> None:
     try:
         assert_workflow_contract(standard, foundation, standalone_semgrep_exists)
+    except AssertionError:
+        return
+    raise AssertionError(f"RED mutation passed: {name}")
+
+
+def expect_governance_red(name: str, state: str) -> None:
+    try:
+        assert_phase18_closure_state(state)
     except AssertionError:
         return
     raise AssertionError(f"RED mutation passed: {name}")
@@ -255,6 +301,30 @@ def main() -> None:
     for mutation in mutations:
         expect_red(*mutation)
 
+    state = CURRENT_STATE.read_text()
+    governance_mutations = (
+        (
+            "old-phase18-in-progress-state",
+            state.replace("  phase_18: CLOSED\n", "  phase_18: IN_PROGRESS\n", 1).replace(
+                "  phase_18_faof_2_bounded_implementation: CLOSED\n",
+                "  phase_18_faof_2_bounded_implementation: IN_PROGRESS\n",
+                1,
+            ),
+        ),
+        (
+            "wrong-phase18-closure-gate",
+            state.replace(PHASE18_CLOSURE_GATE, "ARBITRARY_AGREED_GATE"),
+        ),
+        (
+            "wrong-phase18-accepted-identity",
+            state.replace(PHASE18_ACCEPTED_SHA, "0" * 40).replace(
+                PHASE18_ACCEPTED_TREE, "1" * 40
+            ),
+        ),
+    )
+    for mutation in governance_mutations:
+        expect_governance_red(*mutation)
+
     original_classify_path = classifier.classify_path
     classifier.classify_path = lambda path: (("unknown",) if path == ".dockerignore"
                                                else original_classify_path(path))
@@ -271,7 +341,8 @@ def main() -> None:
 
     print(
         f"CHANGE_IMPACT_CLASSIFIER_RED_MATRIX=PASS cases={len(CASES) + 4} "
-        f"workflow_mutations={len(mutations)} classifier_mutations=1"
+        f"workflow_mutations={len(mutations)} governance_mutations={len(governance_mutations)} "
+        "classifier_mutations=1"
     )
 
 

@@ -6,10 +6,10 @@ tracks:
 - id: EXECUTION_AND_PROVIDER_RUNTIME
   status: ACTIVE
   purpose: "Worker fabric, execution backend, provider runtime and native pull - the core of Roadmap #22 after Epoch 3."
-  current_dependencies: "Roadmap #22 epochs 1-3, Phase 15, Phase 16, and Phase 17 Sandbox/Isolation CLOSED; provider immutable foundation, worker-fabric module, resource model, ETG, runtime authority, Native Pull V1, typed PlanLowerer/RuntimeAdapter, Artifact staging/materialization/reuse closure, and sandbox isolation are accepted"
+  current_dependencies: "Roadmap #22 epochs 1-3, Phase 15, Phase 16, and Phase 17 Sandbox/Isolation CLOSED; Phase 18 FAOF-2 CLOSED/ACCEPTED pending canonical-main fast-forward-only integration; provider immutable foundation, worker-fabric module, resource model, ETG, runtime authority, Native Pull V1, typed PlanLowerer/RuntimeAdapter, Artifact staging/materialization/reuse closure, sandbox isolation, and bounded formal validation are accepted"
   next_actions:
-  - Phase 18 - FAOF-2 Formal Algorithm Validation Bounded Implementation (IN_PROGRESS; IMPLEMENTATION_AUTHORIZED; FINAL_REVIEW_PENDING)
-  - Phase 19 - blocking WorkerRuntime Support Advertisement plus first real FFmpeg CPU Native Pull Provider vertical slice (NOT_STARTED)
+  - Phase 18 - FAOF-2 Formal Algorithm Validation Closure Publication (CLOSED; ACCEPTED; CANONICAL_MAIN_FF_ONLY_INTEGRATION_AUTHORIZED_PENDING)
+  - Phase 19 - blocking WorkerRuntime Support Advertisement plus first real FFmpeg CPU Native Pull Provider vertical slice (NOT_STARTED; IMPLEMENTATION_AUTHORIZED_ONLY_AFTER_SUCCESSFUL_PHASE18_CANONICAL_INTEGRATION)
   - Phase 20 - Resource Accounting Domain implementation before two platform runtime incarnations share physical capacity in production (NOT_STARTED; trigger-gated)
   - Phase 21 - OpenCue specialized VFX/offline ExecutionBackend plugin bounded POC, mapping, and native-management-surface preservation (NOT_STARTED)
   - Phases 22-24 - remote backend conformance, NVIDIA/cloud, candidate freeze/FCV/closure
@@ -22,9 +22,10 @@ tracks:
   - "Roadmap #23 optimization may select/score backends but never invades delegated-backend internal placement"
   explicit_exclusions:
   - No Global Execution Optimizer (#23 scope)
-  - Phase 18 bounded implementation is in progress and remains pending independent final review; Phase 18 is not closed
-  - Phase 19, Phase 20, and Phase 21 are not started by this bounded implementation
-  - No merge of canonical main in this governance update
+  - Phase 18 is CLOSED/ACCEPTED; its closure publication remains pending canonical-main fast-forward-only integration
+  - Phase 19 is not started; implementation is authorized only after successful Phase 18 canonical integration
+  - Phase 20 and Phase 21 are not started by this closure publication
+  - No canonical-main integration, merge commit, or history rewrite occurs in this governance publication
   - No production code changes in governance persistence tasks
 - id: SEMANTIC_COMPOSITION_FOUNDATION
   status: ACTIVE
@@ -91,9 +92,9 @@ tracks:
 - id: FORMAL_VERIFICATION_TRACK
   status: ACTIVE
   purpose: FAOF-1..FAOF-4; machine-checked laws; model checking for concurrent runtime protocols (family 9AB).
-  current_dependencies: "FAOF-1 IMPLEMENTED (Roadmap #21); Phase18 FAOF-2 bounded implementation is IN_PROGRESS; Lean4/Coq proof POC and test-only JGraphT conformance POC are pending independent final review"
+  current_dependencies: "FAOF-1 IMPLEMENTED (Roadmap #21); Phase 18 FAOF-2 bounded implementation is CLOSED/ACCEPTED; Lean4/Coq proof POC and test-only JGraphT conformance POC passed independent final review; canonical-main fast-forward-only integration is authorized/pending"
   next_actions:
-  - Phase 18 - independent final review of FAOF-2 bounded implementation; closure remains pending
+  - Phase 18 - validate closure publication, then perform authorized canonical-main fast-forward-only integration
   - TLA+/PlusCal for concurrent lease/reservation/generation protocols
   - FAOF-4 only after execution semantics stabilize
   roadmap_relationship: "Roadmap #22 Phase 18; #23 global optimization scope"
