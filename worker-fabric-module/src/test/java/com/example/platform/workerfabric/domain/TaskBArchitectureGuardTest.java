@@ -73,8 +73,12 @@ class TaskBArchitectureGuardTest {
     }
 
     @Test
-    void runtimeEligibilityAlgebraIsExactlyTheSixteenFrozenRuntimeReasons() {
+    void runtimeEligibilityAlgebraRetainsSixteenFrozenReasonsPlusPhase19SupportEvidenceReasons() {
         assertThat(RuntimeEligibilityReason.values()).containsExactly(
+                RuntimeEligibilityReason.RUNTIME_SUPPORT_REQUIREMENT_MISSING,
+                RuntimeEligibilityReason.RUNTIME_SUPPORT_ADVERTISEMENT_MISSING,
+                RuntimeEligibilityReason.RUNTIME_SUPPORT_MISMATCH,
+                RuntimeEligibilityReason.RUNTIME_SUPPORT_UNSUPPORTED,
                 RuntimeEligibilityReason.PROBE_UNKNOWN,
                 RuntimeEligibilityReason.PROBE_STALE,
                 RuntimeEligibilityReason.PROBE_FAILED,

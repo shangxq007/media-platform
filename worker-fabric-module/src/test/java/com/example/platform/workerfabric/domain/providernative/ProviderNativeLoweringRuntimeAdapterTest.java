@@ -278,12 +278,15 @@ class ProviderNativeLoweringRuntimeAdapterTest {
         MaterializedExecutionInput unknown = new MaterializedExecutionInput(
                 new ExecutionInputId("input-unknown"), pin, local);
 
-        assertThrows(IllegalArgumentException.class, () -> runtimeBinding.execute(
-                task, runtimeContext(task), List.of()));
-        assertThrows(IllegalArgumentException.class, () -> runtimeBinding.execute(
-                task, runtimeContext(task), List.of(unknown)));
-        assertThrows(IllegalArgumentException.class, () -> runtimeBinding.execute(
-                task, runtimeContext(task), List.of(expected, expected)));
+        for (List<MaterializedExecutionInput> invalid : List.of(
+                List.<MaterializedExecutionInput>of(),
+                List.of(unknown), List.of(expected, expected))) {
+            ProviderNativeExecutionFailure failure = assertThrows(
+                    ProviderNativeExecutionFailure.class,
+                    () -> runtimeBinding.execute(task, runtimeContext(task), invalid));
+            assertEquals(ProviderNativeFailureCode.INVALID_MATERIALIZED_INPUT_BINDING,
+                    failure.code());
+        }
         assertEquals(0, adapterExecutions.get());
     }
 

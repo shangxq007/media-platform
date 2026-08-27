@@ -56,22 +56,30 @@ public final class ProviderNativeRuntimeBinding<P extends ProviderNativeExecutio
         task.requiredRuntimeInputs().stream()
                 .forEach(input -> {
                     if (!knownInputIds.add(input.inputId())) {
-                        throw new IllegalArgumentException(
+                        throw invalidInput(
                                 "executable task contains duplicate logical input identity");
                     }
                 });
         Set<ExecutionInputId> suppliedInputIds = new HashSet<>();
         for (MaterializedExecutionInput input : runtimeLocalInputs) {
-            Objects.requireNonNull(input, "runtimeLocalInputs element");
+            if (input == null) {
+                throw invalidInput("materialized runtime input must not be null");
+            }
             if (!suppliedInputIds.add(input.inputId())) {
-                throw new IllegalArgumentException("duplicate materialized runtime input identity");
+                throw invalidInput("duplicate materialized runtime input identity");
             }
             if (!knownInputIds.contains(input.inputId())) {
-                throw new IllegalArgumentException("unknown materialized runtime input identity");
+                throw invalidInput("unknown materialized runtime input identity");
             }
         }
         if (!suppliedInputIds.equals(knownInputIds)) {
-            throw new IllegalArgumentException("required materialized runtime input identity is absent");
+            throw invalidInput("required materialized runtime input identity is absent");
         }
+    }
+
+    private static ProviderNativeExecutionFailure invalidInput(String message) {
+        return new ProviderNativeExecutionFailure(
+                ProviderNativeFailureCode.INVALID_MATERIALIZED_INPUT_BINDING,
+                message);
     }
 }

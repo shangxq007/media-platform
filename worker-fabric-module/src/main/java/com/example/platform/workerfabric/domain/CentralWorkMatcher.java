@@ -195,6 +195,8 @@ public final class CentralWorkMatcher {
                 requestWork.runtimeEnvironmentAvailability(),
                 candidate.sandboxRequirement(),
                 requestWork.sandboxRuntimeAvailability(),
+                requestWork.runtimeSupportAdvertisement(),
+                candidate.runtimeSupportRequirement(),
                 candidate.providerProbeRequirement(),
                 candidate.providerProbeResult());
         RuntimeEligibilityDecision runtimeDecision =

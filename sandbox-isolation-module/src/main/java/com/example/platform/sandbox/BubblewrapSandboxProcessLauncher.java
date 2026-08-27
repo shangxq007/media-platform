@@ -180,7 +180,8 @@ public final class BubblewrapSandboxProcessLauncher implements BoundedProcessLau
                 .sorted(Map.Entry.comparingByKey())
                 .forEach(entry -> command.addAll(
                         List.of("--setenv", entry.getKey(), entry.getValue())));
-        command.add(spec.process().executable());
+        command.add(translateAbsolutePath(
+                filesystem, inputs, spec.process().executable()));
         for (String argument : spec.process().arguments()) {
             command.add(translateArgument(filesystem, inputs, argument));
         }

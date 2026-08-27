@@ -21,6 +21,7 @@ public record RequestWork(
         Map<DeviceId, DeviceAvailability> deviceAvailability,
         RuntimeEnvironmentAvailability runtimeEnvironmentAvailability,
         SandboxRuntimeAvailability sandboxRuntimeAvailability,
+        Optional<WorkerRuntimeSupportAdvertisement> runtimeSupportAdvertisement,
         Optional<SchedulableCapacity> workerDerivedSchedulableCapacity) {
 
     public RequestWork {
@@ -36,6 +37,8 @@ public record RequestWork(
         Objects.requireNonNull(runtimeEnvironmentAvailability,
                 "runtimeEnvironmentAvailability");
         Objects.requireNonNull(sandboxRuntimeAvailability, "sandboxRuntimeAvailability");
+        runtimeSupportAdvertisement = Objects.requireNonNull(
+                runtimeSupportAdvertisement, "runtimeSupportAdvertisement");
         workerDerivedSchedulableCapacity = Objects.requireNonNull(
                 workerDerivedSchedulableCapacity, "workerDerivedSchedulableCapacity");
 
@@ -76,6 +79,12 @@ public record RequestWork(
                             capacity.physicalHostIncarnationId())) {
                 throw new IllegalArgumentException(
                         "worker-derived capacity must bind the exact host incarnation");
+            }
+        });
+        runtimeSupportAdvertisement.ifPresent(advertisement -> {
+            if (!workerRuntimeId.equals(advertisement.runtimeId())) {
+                throw new IllegalArgumentException(
+                        "runtime support advertisement must bind the requesting runtime");
             }
         });
     }

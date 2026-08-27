@@ -41,6 +41,7 @@ include(
     "artifact-module",
     "media-execution-plan-module",
     "worker-fabric-module",
+    "ffmpeg-provider-module",
     "media-module",
     "color-image-module",
     "font-text-module",

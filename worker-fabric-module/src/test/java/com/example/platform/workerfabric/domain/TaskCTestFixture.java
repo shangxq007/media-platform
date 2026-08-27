@@ -105,6 +105,7 @@ final class TaskCTestFixture {
                 Map.of(DEVICE_ID, new DeviceAvailability(DEVICE_ID, AvailabilityState.REACHABLE)),
                 RuntimeEnvironmentAvailability.AVAILABLE,
                 SandboxRuntimeAvailability.AVAILABLE,
+                Optional.empty(),
                 Optional.empty());
         RequestWorkValidationContext context = new RequestWorkValidationContext(
                 WorkerRuntimeDescriptor.local(
@@ -180,6 +181,7 @@ final class TaskCTestFixture {
                 resourceDemand,
                 reservationFeasibility,
                 SandboxRuntimeRequirement.NOT_REQUIRED,
+                Optional.empty(),
                 ProviderProbeRequirement.NOT_REQUIRED,
                 Optional.empty());
         return new CandidateFixture(candidate, task, graph, provider);
@@ -199,6 +201,7 @@ final class TaskCTestFixture {
                     requestWork.deviceAvailability(),
                     requestWork.runtimeEnvironmentAvailability(),
                     requestWork.sandboxRuntimeAvailability(),
+                    requestWork.runtimeSupportAdvertisement(),
                     requestWork.workerDerivedSchedulableCapacity());
         }
     }

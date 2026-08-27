@@ -25,12 +25,80 @@ class RuntimeEligibilityEvaluatorTest {
     }
 
     @Test
+    void matching_support_advertisement_is_only_one_required_candidate_evidence_input() {
+        RequestBuilder builder = new RequestBuilder();
+        builder.requireAdvertisedSupport();
+        builder.capacity = Optional.empty();
+
+        RuntimeEligibilityDecision decision = RuntimeEligibilityEvaluator.evaluate(builder.build());
+
+        assertThat(decision.eligible()).isFalse();
+        assertThat(decision.reasons())
+                .contains(RuntimeEligibilityReason.UNKNOWN_RUNTIME_ELIGIBILITY)
+                .doesNotContain(
+                        RuntimeEligibilityReason.RUNTIME_SUPPORT_ADVERTISEMENT_MISSING,
+                        RuntimeEligibilityReason.RUNTIME_SUPPORT_MISMATCH,
+                        RuntimeEligibilityReason.RUNTIME_SUPPORT_UNSUPPORTED);
+    }
+
+    @Test
+    void missing_unsupported_mismatched_and_requirementless_advertisement_are_rejected() {
+        assertSupportRejected(
+                builder -> {
+                    builder.requireAdvertisedSupport();
+                    builder.supportAdvertisement = Optional.empty();
+                },
+                RuntimeEligibilityReason.RUNTIME_SUPPORT_ADVERTISEMENT_MISSING);
+        assertSupportRejected(
+                builder -> {
+                    builder.requireAdvertisedSupport();
+                    builder.supportAdvertisement = Optional.of(new WorkerRuntimeSupportAdvertisement(
+                            builder.runtimeId,
+                            RuntimeLifecycleKind.EPHEMERAL_TASK,
+                            Map.of()));
+                },
+                RuntimeEligibilityReason.RUNTIME_SUPPORT_UNSUPPORTED);
+        assertSupportRejected(
+                builder -> {
+                    builder.requireAdvertisedSupport();
+                    builder.supportAdvertisement = Optional.of(new WorkerRuntimeSupportAdvertisement(
+                            WorkerRuntimeId.of("runtime-foreign"),
+                            RuntimeLifecycleKind.EPHEMERAL_TASK,
+                            Map.of(builder.supportId, builder.supportEvidence)));
+                },
+                RuntimeEligibilityReason.RUNTIME_SUPPORT_MISMATCH);
+        assertSupportRejected(
+                builder -> builder.supportAdvertisement = Optional.of(
+                        builder.matchingAdvertisement()),
+                RuntimeEligibilityReason.RUNTIME_SUPPORT_REQUIREMENT_MISSING);
+    }
+
+    @Test
     void completeSixteenReasonAlgebraIsReachableAndTyped() {
         Map<RuntimeEligibilityReason, Consumer<RequestBuilder>> scenarios =
                 new EnumMap<>(RuntimeEligibilityReason.class);
         scenarios.put(RuntimeEligibilityReason.PROBE_UNKNOWN, builder -> {
             builder.probeRequirement = ProviderProbeRequirement.REQUIRED;
             builder.probe = Optional.empty();
+        });
+        scenarios.put(RuntimeEligibilityReason.RUNTIME_SUPPORT_REQUIREMENT_MISSING,
+                builder -> builder.supportAdvertisement = Optional.of(
+                        builder.matchingAdvertisement()));
+        scenarios.put(RuntimeEligibilityReason.RUNTIME_SUPPORT_ADVERTISEMENT_MISSING, builder -> {
+            builder.requireAdvertisedSupport();
+            builder.supportAdvertisement = Optional.empty();
+        });
+        scenarios.put(RuntimeEligibilityReason.RUNTIME_SUPPORT_MISMATCH, builder -> {
+            builder.requireAdvertisedSupport();
+            builder.supportAdvertisement = Optional.of(new WorkerRuntimeSupportAdvertisement(
+                    WorkerRuntimeId.of("runtime-foreign"),
+                    RuntimeLifecycleKind.EPHEMERAL_TASK,
+                    Map.of(builder.supportId, builder.supportEvidence)));
+        });
+        scenarios.put(RuntimeEligibilityReason.RUNTIME_SUPPORT_UNSUPPORTED, builder -> {
+            builder.requireAdvertisedSupport();
+            builder.supportAdvertisement = Optional.of(new WorkerRuntimeSupportAdvertisement(
+                    builder.runtimeId, RuntimeLifecycleKind.EPHEMERAL_TASK, Map.of()));
         });
         scenarios.put(RuntimeEligibilityReason.PROBE_STALE, builder -> {
             builder.probeRequirement = ProviderProbeRequirement.REQUIRED;
@@ -133,6 +201,15 @@ class RuntimeEligibilityEvaluatorTest {
                         || name.contains("LOWERING"));
     }
 
+    private static void assertSupportRejected(
+            Consumer<RequestBuilder> mutation, RuntimeEligibilityReason expected) {
+        RequestBuilder builder = new RequestBuilder();
+        mutation.accept(builder);
+        RuntimeEligibilityDecision decision = RuntimeEligibilityEvaluator.evaluate(builder.build());
+        assertThat(decision.eligible()).isFalse();
+        assertThat(decision.reasons()).contains(expected);
+    }
+
     private static final class RequestBuilder {
 
         private final TaskBTestFixture.Scenario scenario;
@@ -174,6 +251,12 @@ class RuntimeEligibilityEvaluatorTest {
         private SandboxRuntimeAvailability sandboxAvailability = SandboxRuntimeAvailability.AVAILABLE;
         private ProviderProbeRequirement probeRequirement = ProviderProbeRequirement.NOT_REQUIRED;
         private Optional<ProviderProbeResult> probe;
+        private final RuntimeSupportIdentifier supportId =
+                RuntimeSupportIdentifier.of("ffmpeg.cpu.transcode.v1");
+        private final RuntimeSupportEvidence supportEvidence =
+                new RuntimeSupportEvidence("provider-module", "ffmpeg-provider-module:v1");
+        private Optional<WorkerRuntimeSupportAdvertisement> supportAdvertisement = Optional.empty();
+        private Optional<WorkerRuntimeSupportRequirement> supportRequirement = Optional.empty();
 
         private RequestBuilder() {
             this(TaskBTestFixture.scenario("provider-a", "unit-a"));
@@ -233,8 +316,25 @@ class RuntimeEligibilityEvaluatorTest {
                     runtimeEnvironment,
                     sandboxRequirement,
                     sandboxAvailability,
+                    supportAdvertisement,
+                    supportRequirement,
                     probeRequirement,
                     probe);
+        }
+
+        private void requireAdvertisedSupport() {
+            supportAdvertisement = Optional.of(matchingAdvertisement());
+            supportRequirement = Optional.of(new WorkerRuntimeSupportRequirement(
+                    scenario.task().providerBindingPin(),
+                    RuntimeLifecycleKind.EPHEMERAL_TASK,
+                    supportId));
+        }
+
+        private WorkerRuntimeSupportAdvertisement matchingAdvertisement() {
+            return new WorkerRuntimeSupportAdvertisement(
+                    runtimeId,
+                    RuntimeLifecycleKind.EPHEMERAL_TASK,
+                    Map.of(supportId, supportEvidence));
         }
 
         private Map<DeviceId, RuntimeResourceDemand.DeviceDemand> deviceDemand() {

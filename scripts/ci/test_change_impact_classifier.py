@@ -29,7 +29,7 @@ PHASE18_INTEGRATED_TREE = "df93f7fb95d3dcd09132794b986aa3a995d8cdc1"
 PHASE18_PRE_INTEGRATION_MAIN = "bb4c683d11f6fb866c64f5d68ca81be79985bfdb"
 PHASE19_AUTHORIZATION_GATE = (
     "CHATGPT_ROADMAP_22_PHASE_19_FFMPEG_CPU_NATIVE_PULL_PROVIDER_"
-    "BOUNDED_IMPLEMENTATION_AUTHORIZATION"
+    "BOUNDED_IMPLEMENTATION_FINAL_REVIEW"
 )
 
 STABLE_POLICY_IDS = (
@@ -198,19 +198,23 @@ def assert_phase18_post_integration_state(state: str) -> None:
         "  phase_18_post_integration_standard_ci_status: completed/success\n",
         "  phase_18_post_integration_foundation_verification_run: 33070334585\n",
         "  phase_18_post_integration_foundation_verification_status: completed/success\n",
-        "  phase_19_started: false\n",
+        "  phase_19_started: true\n",
         "  phase_19_implementation_authorization: AUTHORIZED\n",
+        "  phase_19: IMPLEMENTATION_CANDIDATE_PENDING_CHATGPT_FINAL_REVIEW\n",
+        "  phase_19_ffmpeg_cpu_native_pull_provider_bounded_implementation: IMPLEMENTATION_CANDIDATE_PENDING_CHATGPT_FINAL_REVIEW\n",
         "  faof_3: NOT_AUTHORIZED\n",
         "roadmap_23:\n  status: NOT_STARTED\n",
         f"  immediate_next_gate: {PHASE19_AUTHORIZATION_GATE}\n",
         f"  next_gate: {PHASE19_AUTHORIZATION_GATE}\n",
         "    phase: 19\n",
-        "    started: false\n",
+        "    started: true\n",
         "    implementation_authorized: true\n",
+        "    implementation_status: IMPLEMENTATION_CANDIDATE_PENDING_CHATGPT_FINAL_REVIEW\n",
         "    authorization_condition: SATISFIED_BY_SUCCESSFUL_PHASE18_CANONICAL_INTEGRATION\n",
         "  phase_18_faof_2_bounded_implementation_record: docs/architecture/governance/roadmap-22-phase-18-faof-2-bounded-implementation.md\n",
         "  phase_18_faof_2_closure_publication_record: docs/architecture/governance/roadmap-22-phase-18-faof-2-closure-publication.md\n",
         "  phase_18_post_integration_governance_record: docs/architecture/governance/roadmap-22-phase-18-post-integration-governance.md\n",
+        "  phase_19_ffmpeg_cpu_native_pull_provider_bounded_implementation_record: docs/architecture/governance/roadmap-22-phase-19-ffmpeg-cpu-native-pull-provider-bounded-implementation.md\n",
     )
     if state.count(accepted_identity) != 1 or any(
         state.count(item) != 1 for item in required_state
@@ -219,7 +223,7 @@ def assert_phase18_post_integration_state(state: str) -> None:
     forbidden_state = (
         "  phase_18: IN_PROGRESS\n",
         "  phase_18_faof_2_bounded_implementation: IN_PROGRESS\n",
-        "  phase_19_started: true\n",
+        "  phase_19_started: false\n",
         "  phase_18_canonical_main_integration: AUTHORIZED_PENDING_FAST_FORWARD_ONLY\n",
         "  phase_19_implementation_authorization: AUTHORIZED_ONLY_AFTER_SUCCESSFUL_PHASE18_CANONICAL_INTEGRATION\n",
         "ROADMAP_22_PHASE_18_CANONICAL_MAIN_FAST_FORWARD_INTEGRATION_AUTHORIZED_PENDING",
@@ -346,8 +350,8 @@ def main() -> None:
             ),
         ),
         (
-            "phase19-started",
-            state.replace("  phase_19_started: false\n", "  phase_19_started: true\n"),
+            "phase19-not-started",
+            state.replace("  phase_19_started: true\n", "  phase_19_started: false\n"),
         ),
         (
             "phase19-authorization-drift",

@@ -15,7 +15,6 @@ import com.example.platform.sandbox.SandboxExecutionRequirement;
 import com.example.platform.sandbox.SandboxExecutionResult;
 import com.example.platform.sandbox.SandboxFailure;
 import com.example.platform.sandbox.SandboxFailureCode;
-import com.example.platform.sandbox.SandboxProcessExecutionException;
 import com.example.platform.sandbox.SandboxResolution;
 import com.example.platform.sandbox.SandboxRuntimeCapabilities;
 import com.example.platform.execution.domain.provider.ProviderBindingPin;
@@ -29,6 +28,7 @@ import com.example.platform.workerfabric.domain.providernative.ProcessInvocation
 import com.example.platform.workerfabric.domain.providernative.RuntimeExecutionBundle;
 import java.time.Duration;
 import java.time.Instant;
+import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 import java.util.OptionalInt;
@@ -60,9 +60,9 @@ class SandboxRuntimeCommandExecutorTest {
                         EffectiveSandboxExecutionSpecification.class)), SandboxCancellation.never());
 
         assertThatThrownBy(() -> executor.execute(bundle(), List.of()))
-                .isInstanceOfSatisfying(SandboxProcessExecutionException.class, failure ->
-                        assertThat(failure.failure().code())
-                                .isEqualTo(SandboxFailureCode.OUTPUT_STAGING_FAILED));
+                .isInstanceOfSatisfying(ProviderNativeExecutionFailure.class, failure ->
+                        assertThat(failure.code())
+                                .isEqualTo(ProviderNativeFailureCode.EMPTY_PROVIDER_OUTPUT));
     }
 
     @Test
@@ -76,8 +76,60 @@ class SandboxRuntimeCommandExecutorTest {
                         EffectiveSandboxExecutionSpecification.class)), SandboxCancellation.never());
 
         assertThatThrownBy(() -> executor.execute(bundle(), List.of()))
-                .isInstanceOfSatisfying(SandboxProcessExecutionException.class,
-                        failure -> assertThat(failure.failure()).isEqualTo(cleanup));
+                .isInstanceOfSatisfying(ProviderNativeExecutionFailure.class,
+                        failure -> assertThat(failure.code())
+                                .isEqualTo(ProviderNativeFailureCode.PROCESS_CLEANUP_FAILED));
+    }
+
+    @Test
+    void truncated_stdout_cannot_become_provider_output() {
+        BoundedProcessLauncher launcher = (specification, cancellation) -> result(
+                OptionalInt.of(0),
+                new BoundedCapture("partial-media".getBytes(), true),
+                Optional.empty());
+        SandboxRuntimeCommandExecutor executor = new SandboxRuntimeCommandExecutor(
+                launcher, (command, inputs) -> new SandboxResolution.Resolved(mock(
+                        EffectiveSandboxExecutionSpecification.class)), SandboxCancellation.never());
+
+        assertThatThrownBy(() -> executor.execute(bundle(), List.of()))
+                .isInstanceOfSatisfying(ProviderNativeExecutionFailure.class,
+                        failure -> assertThat(failure.code()).isEqualTo(
+                                ProviderNativeFailureCode.PROCESS_OUTPUT_TRUNCATED));
+    }
+
+    @Test
+    void launch_nonzero_cancel_and_unknown_failures_map_to_platform_algebra() {
+        assertMapped(SandboxFailureCode.PROCESS_LAUNCH_FAILED,
+                ProviderNativeFailureCode.PROCESS_LAUNCH_FAILED);
+        assertMapped(SandboxFailureCode.PROCESS_CRASHED,
+                ProviderNativeFailureCode.PROCESS_NONZERO_EXIT);
+        assertMapped(SandboxFailureCode.PROCESS_TERMINATED_BY_LIMIT,
+                ProviderNativeFailureCode.PROCESS_CANCELLED);
+
+        BoundedProcessLauncher unknown = (specification, cancellation) -> {
+            throw new IOException("unclassified launcher failure");
+        };
+        SandboxRuntimeCommandExecutor executor = new SandboxRuntimeCommandExecutor(
+                unknown, (command, inputs) -> new SandboxResolution.Resolved(mock(
+                        EffectiveSandboxExecutionSpecification.class)), SandboxCancellation.never());
+        assertThatThrownBy(() -> executor.execute(bundle(), List.of()))
+                .isInstanceOfSatisfying(ProviderNativeExecutionFailure.class,
+                        failure -> assertThat(failure.code())
+                                .isEqualTo(ProviderNativeFailureCode.RUNTIME_EXECUTION_UNKNOWN));
+    }
+
+    private void assertMapped(
+            SandboxFailureCode sandboxCode, ProviderNativeFailureCode expected) {
+        SandboxFailure sandboxFailure = SandboxFailure.of(sandboxCode, "typed", Set.of());
+        BoundedProcessLauncher launcher = (specification, cancellation) -> result(
+                OptionalInt.empty(), new byte[0], Optional.of(sandboxFailure));
+        SandboxRuntimeCommandExecutor executor = new SandboxRuntimeCommandExecutor(
+                launcher, (command, inputs) -> new SandboxResolution.Resolved(mock(
+                        EffectiveSandboxExecutionSpecification.class)), SandboxCancellation.never());
+
+        assertThatThrownBy(() -> executor.execute(bundle(), List.of()))
+                .isInstanceOfSatisfying(ProviderNativeExecutionFailure.class,
+                        failure -> assertThat(failure.code()).isEqualTo(expected));
     }
 
     private RuntimeExecutionBundle bundle() {
@@ -92,8 +144,13 @@ class SandboxRuntimeCommandExecutorTest {
 
     private SandboxExecutionResult result(
             OptionalInt exit, byte[] stdout, Optional<SandboxFailure> failure) {
+        return result(exit, new BoundedCapture(stdout, false), failure);
+    }
+
+    private SandboxExecutionResult result(
+            OptionalInt exit, BoundedCapture stdout, Optional<SandboxFailure> failure) {
         Instant now = Instant.now();
-        return new SandboxExecutionResult(exit, new BoundedCapture(stdout, false),
+        return new SandboxExecutionResult(exit, stdout,
                 new BoundedCapture(new byte[0], false), failure,
                 new SandboxExecutionObservation(new SandboxExecutionHandle(1, now),
                         java.nio.file.Path.of("/tmp"), Duration.ZERO,

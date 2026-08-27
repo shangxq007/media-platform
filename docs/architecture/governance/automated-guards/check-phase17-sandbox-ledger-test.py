@@ -25,6 +25,10 @@ INTEGRATED_TREE = "df93f7fb95d3dcd09132794b986aa3a995d8cdc1"
 PRE_INTEGRATION_MAIN = "bb4c683d11f6fb866c64f5d68ca81be79985bfdb"
 POST_INTEGRATION_GATE = (
     "CHATGPT_ROADMAP_22_PHASE_19_FFMPEG_CPU_NATIVE_PULL_PROVIDER_"
+    "BOUNDED_IMPLEMENTATION_FINAL_REVIEW"
+)
+PHASE18_POST_INTEGRATION_RECORD_GATE = (
+    "CHATGPT_ROADMAP_22_PHASE_19_FFMPEG_CPU_NATIVE_PULL_PROVIDER_"
     "BOUNDED_IMPLEMENTATION_AUTHORIZATION"
 )
 POST_INTEGRATION_ACTION = (
@@ -33,13 +37,13 @@ POST_INTEGRATION_ACTION = (
 )
 PHASE19_ACTION = (
     "Phase 19 - blocking WorkerRuntime Support Advertisement plus first real "
-    "FFmpeg CPU Native Pull Provider vertical slice (NOT_STARTED; "
-    "IMPLEMENTATION_AUTHORIZED)"
+    "FFmpeg CPU Native Pull Provider vertical slice "
+    "(IMPLEMENTATION_CANDIDATE_PENDING_CHATGPT_FINAL_REVIEW)"
 )
 PHASE19_AUTHORIZATION = "AUTHORIZED"
 FORMAL_TRACK_ACTION = (
-    "Phase 19 - use the authorized-not-started implementation planning/start gate; "
-    "do not claim implementation started"
+    "Phase 19 - review the bounded FFmpeg CPU Native Pull Provider implementation "
+    "candidate; do not claim Phase 19 closed"
 )
 
 
@@ -108,7 +112,9 @@ def main():
         or roadmap_22.get("phase_18_faof_2_bounded_implementation") != "CLOSED"
         or roadmap_22.get("phase_18_faof_2_bounded_implementation_acceptance")
         != "ACCEPTED"
-        or roadmap_22.get("phase_19_started") is not False
+        or roadmap_22.get("phase_19_started") is not True
+        or roadmap_22.get("phase_19")
+        != "IMPLEMENTATION_CANDIDATE_PENDING_CHATGPT_FINAL_REVIEW"
         or roadmap_22.get("phase_19_implementation_authorization")
         != PHASE19_AUTHORIZATION
         or roadmap_22.get("phase_18_canonical_main_integration")
@@ -155,6 +161,11 @@ def main():
             "tree": "34765d742ccc37d215ee800d0c203f584649049e",
         }
         historical_roadmap = historical_state["roadmap_22"]
+        historical_roadmap["phase_19_started"] = False
+        historical_roadmap.pop("phase_19", None)
+        historical_roadmap.pop(
+            "phase_19_ffmpeg_cpu_native_pull_provider_bounded_implementation", None
+        )
         for key in (
             "phase_18_closure_publication_sha",
             "phase_18_closure_publication_tree",
@@ -192,6 +203,8 @@ def main():
             "next_roadmap_execution_after_governance_gate"
         ]
         historical_next["implementation_authorized"] = False
+        historical_next["started"] = False
+        historical_next.pop("implementation_status", None)
         historical_next["authorization_condition"] = (
             "AUTHORIZED_ONLY_AFTER_SUCCESSFUL_PHASE18_CANONICAL_INTEGRATION"
         )
@@ -305,7 +318,7 @@ def main():
             ),
             (
                 "post-integration-next-gate",
-                f"NEXT_GATE={POST_INTEGRATION_GATE}",
+                f"NEXT_GATE={PHASE18_POST_INTEGRATION_RECORD_GATE}",
                 "NEXT_GATE=INTEGRATION_PENDING",
             ),
         ):
@@ -350,8 +363,8 @@ def main():
             ),
         )
         mutate(
-            "phase19-started",
-            lambda data: data["roadmap_22"].__setitem__("phase_19_started", True),
+            "phase19-not-started",
+            lambda data: data["roadmap_22"].__setitem__("phase_19_started", False),
         )
         mutate(
             "accepted-sha-drift",
@@ -415,10 +428,10 @@ def main():
             ),
         )
         mutate(
-            "next-roadmap-execution-started",
+            "next-roadmap-execution-not-started",
             lambda data: data["governance_execution"][
                 "next_roadmap_execution_after_governance_gate"
-            ].__setitem__("started", True),
+            ].__setitem__("started", False),
         )
         mutate(
             "roadmap23-started",

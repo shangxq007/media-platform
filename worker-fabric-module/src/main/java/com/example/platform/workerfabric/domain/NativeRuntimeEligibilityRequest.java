@@ -35,6 +35,8 @@ public record NativeRuntimeEligibilityRequest(
         RuntimeEnvironmentAvailability runtimeEnvironmentAvailability,
         SandboxRuntimeRequirement sandboxRequirement,
         SandboxRuntimeAvailability sandboxRuntimeAvailability,
+        Optional<WorkerRuntimeSupportAdvertisement> runtimeSupportAdvertisement,
+        Optional<WorkerRuntimeSupportRequirement> runtimeSupportRequirement,
         ProviderProbeRequirement providerProbeRequirement,
         Optional<ProviderProbeResult> providerProbeResult) {
 
@@ -60,6 +62,10 @@ public record NativeRuntimeEligibilityRequest(
         Objects.requireNonNull(runtimeEnvironmentAvailability, "runtimeEnvironmentAvailability");
         Objects.requireNonNull(sandboxRequirement, "sandboxRequirement");
         Objects.requireNonNull(sandboxRuntimeAvailability, "sandboxRuntimeAvailability");
+        runtimeSupportAdvertisement = Objects.requireNonNull(
+                runtimeSupportAdvertisement, "runtimeSupportAdvertisement");
+        runtimeSupportRequirement = Objects.requireNonNull(
+                runtimeSupportRequirement, "runtimeSupportRequirement");
         Objects.requireNonNull(providerProbeRequirement, "providerProbeRequirement");
         providerProbeResult = Objects.requireNonNull(providerProbeResult, "providerProbeResult");
 
@@ -86,6 +92,12 @@ public record NativeRuntimeEligibilityRequest(
             if (!probe.providerBindingPin().equals(executableTask.providerBindingPin())) {
                 throw new IllegalArgumentException(
                         "provider probe must bind the task ProviderBindingPin");
+            }
+        });
+        runtimeSupportRequirement.ifPresent(requirement -> {
+            if (!requirement.providerBindingPin().equals(executableTask.providerBindingPin())) {
+                throw new IllegalArgumentException(
+                        "runtime support requirement cannot rebind the task ProviderBindingPin");
             }
         });
     }

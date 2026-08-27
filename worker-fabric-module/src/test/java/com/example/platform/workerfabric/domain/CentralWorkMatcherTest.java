@@ -18,6 +18,46 @@ import org.junit.jupiter.api.Test;
 class CentralWorkMatcherTest {
 
     @Test
+    void native_pull_matcher_requires_matching_advertisement_for_provider_requirement() {
+        var runtime = TaskCTestFixture.runtime("phase19-support");
+        var work = TaskCTestFixture.candidate(19);
+        RuntimeSupportIdentifier supportId = RuntimeSupportIdentifier.of("ffmpeg.cpu.transcode.v1");
+        WorkerRuntimeSupportRequirement requirement = new WorkerRuntimeSupportRequirement(
+                work.task().providerBindingPin(),
+                runtime.context().workerRuntime().lifecycleKind(),
+                supportId);
+        PendingNativeWorkCandidate requiredCandidate = withSupportRequirement(
+                work.candidate(), Optional.of(requirement));
+        RequestWork matchingRequest = withAdvertisement(
+                runtime.requestWork(),
+                Optional.of(new WorkerRuntimeSupportAdvertisement(
+                        runtime.requestWork().workerRuntimeId(),
+                        runtime.context().workerRuntime().lifecycleKind(),
+                        java.util.Map.of(supportId, new RuntimeSupportEvidence(
+                                "provider-module", "ffmpeg-provider-module:v1")))));
+
+        RequestWorkResult matching = new CentralWorkMatcher(
+                new TaskCTestFixture.RecordingGrantBoundary()).match(
+                        matchingRequest, runtime.context(), List.of(requiredCandidate));
+        RequestWorkResult missing = new CentralWorkMatcher(
+                new TaskCTestFixture.RecordingGrantBoundary()).match(
+                        runtime.requestWork(), runtime.context(), List.of(requiredCandidate));
+        RequestWorkResult advertisementAlone = new CentralWorkMatcher(
+                new TaskCTestFixture.RecordingGrantBoundary()).match(
+                        matchingRequest, runtime.context(), List.of(work.candidate()));
+        RequestWorkResult missingProbe = new CentralWorkMatcher(
+                new TaskCTestFixture.RecordingGrantBoundary()).match(
+                        matchingRequest,
+                        runtime.context(),
+                        List.of(withProbeResult(requiredCandidate, Optional.empty())));
+
+        assertThat(matching).isInstanceOf(RequestWorkResult.Granted.class);
+        assertThat(missing).isInstanceOf(RequestWorkResult.NoWork.class);
+        assertThat(advertisementAlone).isInstanceOf(RequestWorkResult.NoWork.class);
+        assertThat(missingProbe).isInstanceOf(RequestWorkResult.NoWork.class);
+    }
+
+    @Test
     void n1RequestWorkContainsNoCallerSelectedExecutableTaskId() {
         List<Class<?>> componentTypes = Arrays.stream(RequestWork.class.getRecordComponents())
                 .map(RecordComponent::getType)
@@ -32,6 +72,54 @@ class CentralWorkMatcherTest {
                 || name.toLowerCase().contains("priority")
                 || name.toLowerCase().contains("fairness")
                 || name.toLowerCase().contains("deadline"));
+    }
+
+    private static PendingNativeWorkCandidate withSupportRequirement(
+            PendingNativeWorkCandidate candidate,
+            Optional<WorkerRuntimeSupportRequirement> requirement) {
+        return new PendingNativeWorkCandidate(
+                candidate.providerBoundGraph(),
+                candidate.executableTask(),
+                candidate.staticallyCompatibleProviderCandidate(),
+                candidate.backendExecutionSupport(),
+                candidate.claimState(),
+                candidate.resourceDemand(),
+                candidate.authoritativeReservationFeasibility(),
+                candidate.sandboxRequirement(),
+                requirement,
+                ProviderProbeRequirement.REQUIRED,
+                Optional.of(new ProviderProbeResult(
+                        candidate.executableTask().providerBindingPin(),
+                        ProviderProbeResult.Status.HEALTHY)));
+    }
+
+    private static PendingNativeWorkCandidate withProbeResult(
+            PendingNativeWorkCandidate candidate, Optional<ProviderProbeResult> probe) {
+        return new PendingNativeWorkCandidate(
+                candidate.providerBoundGraph(), candidate.executableTask(),
+                candidate.staticallyCompatibleProviderCandidate(),
+                candidate.backendExecutionSupport(), candidate.claimState(),
+                candidate.resourceDemand(), candidate.authoritativeReservationFeasibility(),
+                candidate.sandboxRequirement(), candidate.runtimeSupportRequirement(),
+                ProviderProbeRequirement.REQUIRED, probe);
+    }
+
+    private static RequestWork withAdvertisement(
+            RequestWork request,
+            Optional<WorkerRuntimeSupportAdvertisement> advertisement) {
+        return new RequestWork(
+                request.requestWorkId(),
+                request.workerRuntimeId(),
+                request.workerRuntimeIncarnationId(),
+                request.physicalHostId(),
+                request.physicalHostIncarnationId(),
+                request.hostResourceSnapshot(),
+                request.workerRuntimeAvailability(),
+                request.deviceAvailability(),
+                request.runtimeEnvironmentAvailability(),
+                request.sandboxRuntimeAvailability(),
+                advertisement,
+                request.workerDerivedSchedulableCapacity());
     }
 
     @Test
@@ -146,6 +234,7 @@ class CentralWorkMatcherTest {
                         work.candidate().resourceDemand(),
                         ReservationFeasibility.FEASIBLE,
                         SandboxRuntimeRequirement.NOT_REQUIRED,
+                        Optional.empty(),
                         ProviderProbeRequirement.NOT_REQUIRED,
                         Optional.empty()))
                 .withMessageContaining("cannot rebind");

@@ -63,6 +63,36 @@ class BubblewrapSandboxProcessLauncherTest {
     }
 
     @Test
+    void approved_external_static_executable_is_mounted_read_only_and_translated() throws Exception {
+        Path workspace = Files.createDirectory(temp.resolve("external-executable-workspace"));
+        Path temporary = Files.createDirectory(workspace.resolve(".sandbox-tmp"));
+        Path output = Files.createDirectory(workspace.resolve(".sandbox-output"));
+        Path executable = Files.writeString(temp.resolve("ffmpeg-static"), "fixture");
+        executable.toFile().setExecutable(true);
+        ProcessRequirement process = ProcessRequirement.of(
+                Set.of(executable.toString()), executable.toString(), List.of("-version"),
+                Duration.ofSeconds(5));
+        SandboxExecutionRequirement requirement = new SandboxExecutionRequirement(
+                process,
+                FilesystemPolicy.exact(
+                        Set.of(executable), workspace, temporary, output, workspace),
+                NetworkPolicy.none(), EnvironmentPolicy.exact(Map.of()), SecretExposure.none(),
+                PrivilegePolicy.unprivileged(), ResourceEnforcementLimits.captureOnly(4096),
+                DeviceExposurePolicy.none());
+        EffectiveSandboxExecutionSpecification specification =
+                EffectiveSandboxExecutionSpecification.resolved(
+                        requirement, SandboxRuntimeCapabilities.unavailable("argv-test"));
+
+        List<String> command = BubblewrapSandboxProcessLauncher.buildCommand(
+                Path.of("/usr/bin/bwrap"), specification);
+
+        assertThat(command)
+                .containsSubsequence("--ro-bind", executable.toRealPath().toString(),
+                        "/sandbox-inputs/input-0")
+                .endsWith("/sandbox-inputs/input-0", "-version");
+    }
+
+    @Test
     void sensitive_config_input_is_rejected_before_bubblewrap_launch() throws Exception {
         Path workspace = Files.createDirectory(temp.resolve("sensitive-workspace"));
         Path temporary = workspace.resolve(".sandbox-tmp");

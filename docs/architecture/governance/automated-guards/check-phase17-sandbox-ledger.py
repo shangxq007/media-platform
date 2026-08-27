@@ -57,6 +57,15 @@ PHASE19_ACTION = (
     "FFmpeg CPU Native Pull Provider vertical slice (NOT_STARTED; "
     "IMPLEMENTATION_AUTHORIZED)"
 )
+PHASE19_IMPLEMENTATION_GATE = (
+    "CHATGPT_ROADMAP_22_PHASE_19_FFMPEG_CPU_NATIVE_PULL_PROVIDER_"
+    "BOUNDED_IMPLEMENTATION_FINAL_REVIEW"
+)
+PHASE19_IMPLEMENTATION_ACTION = (
+    "Phase 19 - blocking WorkerRuntime Support Advertisement plus first real "
+    "FFmpeg CPU Native Pull Provider vertical slice "
+    "(IMPLEMENTATION_CANDIDATE_PENDING_CHATGPT_FINAL_REVIEW)"
+)
 PHASE19_CONDITIONAL_AUTHORIZATION = (
     "AUTHORIZED_ONLY_AFTER_SUCCESSFUL_PHASE18_CANONICAL_INTEGRATION"
 )
@@ -214,6 +223,22 @@ PHASE18_POST_INTEGRATION = (
     "CLOSED",
     True,
 )
+PHASE19_IMPLEMENTATION_CANDIDATE = (
+    True,
+    "CLOSED",
+    "CLOSED",
+    True,
+    True,
+    PHASE19_IMPLEMENTATION_GATE,
+    PHASE19_IMPLEMENTATION_GATE,
+    "NOT_STARTED",
+    "ADOPTED_DEFERRED",
+    "CLOSED",
+    "CLOSED",
+    "PASS",
+    "CLOSED",
+    True,
+)
 POST_INTEGRATION_PHASE17_CLOSED = (
     True,
     "CLOSED",
@@ -230,7 +255,11 @@ POST_INTEGRATION_PHASE17_CLOSED = (
     ABSENT,
     ABSENT,
 )
-ACCEPTED_PHASE_STATES = {PHASE18_CLOSURE_PUBLICATION, PHASE18_POST_INTEGRATION}
+ACCEPTED_PHASE_STATES = {
+    PHASE18_CLOSURE_PUBLICATION,
+    PHASE18_POST_INTEGRATION,
+    PHASE19_IMPLEMENTATION_CANDIDATE,
+}
 
 def fail(msg: str) -> None:
     print(f"FAIL: {msg}", file=sys.stderr)
@@ -360,7 +389,9 @@ def main() -> None:
         if (
             post_integration_record
             != "docs/architecture/governance/roadmap-22-phase-18-post-integration-governance.md"
-            or phase_state != PHASE18_POST_INTEGRATION
+            or phase_state not in {
+                PHASE18_POST_INTEGRATION, PHASE19_IMPLEMENTATION_CANDIDATE
+            }
         ):
             fail("persisted post-integration baseline marker or transition tuple differs")
         if not post_integration_path.is_file():
@@ -427,10 +458,11 @@ def main() -> None:
         if roadmap_22.get(key, ABSENT) != expected:
             fail(f"persisted Phase 18 closure field differs: {key}")
 
+    phase19_started = phase_state == PHASE19_IMPLEMENTATION_CANDIDATE
     expected_next_execution = {
         "roadmap": 22,
         "phase": 19,
-        "started": False,
+        "started": phase19_started,
         "implementation_authorized": is_post_integration,
         "authorization_condition": (
             "SATISFIED_BY_SUCCESSFUL_PHASE18_CANONICAL_INTEGRATION"
@@ -442,6 +474,10 @@ def main() -> None:
             "First real FFmpeg CPU Native Pull Provider vertical slice",
         ],
     }
+    if phase19_started:
+        expected_next_execution["implementation_status"] = (
+            "IMPLEMENTATION_CANDIDATE_PENDING_CHATGPT_FINAL_REVIEW"
+        )
     if (
         governance_execution.get("next_roadmap_execution_after_governance_gate")
         != expected_next_execution
@@ -529,7 +565,11 @@ def main() -> None:
     expected_phase18_action = (
         PHASE18_POST_INTEGRATION_ACTION if is_post_integration else PHASE18_CLOSURE_ACTION
     )
-    expected_phase19_action = PHASE19_ACTION if is_post_integration else PHASE19_CONDITIONAL_ACTION
+    expected_phase19_action = (
+        PHASE19_IMPLEMENTATION_ACTION
+        if phase19_started
+        else PHASE19_ACTION if is_post_integration else PHASE19_CONDITIONAL_ACTION
+    )
     expected_dependency = (
         "Phase 18 FAOF-2 CLOSED/ACCEPTED and integrated"
         if is_post_integration
@@ -559,15 +599,23 @@ def main() -> None:
         None,
     )
     expected_formal_action = (
-        "Phase 19 - use the authorized-not-started implementation planning/start gate; "
+        "Phase 19 - review the bounded FFmpeg CPU Native Pull Provider implementation "
+        "candidate; do not claim Phase 19 closed"
+        if phase19_started
+        else "Phase 19 - use the authorized-not-started implementation planning/start gate; "
         "do not claim implementation started"
+    )
+    expected_phase19_dependency = (
+        "Phase 19 implementation candidate is pending ChatGPT final review"
+        if phase19_started
+        else "Phase 19 implementation is AUTHORIZED but NOT_STARTED"
     )
     if (
         formal_track is None
         or formal_track.get("next_actions", [ABSENT])[0] != expected_formal_action
         or "Phase 18 FAOF-2 bounded implementation is CLOSED/ACCEPTED and integrated"
         not in formal_track.get("current_dependencies", "")
-        or "Phase 19 implementation is AUTHORIZED but NOT_STARTED"
+        or expected_phase19_dependency
         not in formal_track.get("current_dependencies", "")
         or "FAOF-3 is NOT_AUTHORIZED"
         not in formal_track.get("current_dependencies", "")

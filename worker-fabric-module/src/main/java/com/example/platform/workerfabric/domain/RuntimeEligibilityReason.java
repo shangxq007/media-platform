@@ -2,6 +2,10 @@ package com.example.platform.workerfabric.domain;
 
 /** Complete typed mutable-runtime failure algebra for Epoch 3 Task B. */
 public enum RuntimeEligibilityReason {
+    RUNTIME_SUPPORT_REQUIREMENT_MISSING,
+    RUNTIME_SUPPORT_ADVERTISEMENT_MISSING,
+    RUNTIME_SUPPORT_MISMATCH,
+    RUNTIME_SUPPORT_UNSUPPORTED,
     PROBE_UNKNOWN,
     PROBE_STALE,
     PROBE_FAILED,

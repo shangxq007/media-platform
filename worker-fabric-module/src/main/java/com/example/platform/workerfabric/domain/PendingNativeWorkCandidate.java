@@ -16,6 +16,7 @@ public record PendingNativeWorkCandidate(
         RuntimeResourceDemand resourceDemand,
         ReservationFeasibility authoritativeReservationFeasibility,
         SandboxRuntimeRequirement sandboxRequirement,
+        Optional<WorkerRuntimeSupportRequirement> runtimeSupportRequirement,
         ProviderProbeRequirement providerProbeRequirement,
         Optional<ProviderProbeResult> providerProbeResult) {
 
@@ -30,6 +31,8 @@ public record PendingNativeWorkCandidate(
         Objects.requireNonNull(authoritativeReservationFeasibility,
                 "authoritativeReservationFeasibility");
         Objects.requireNonNull(sandboxRequirement, "sandboxRequirement");
+        runtimeSupportRequirement = Objects.requireNonNull(
+                runtimeSupportRequirement, "runtimeSupportRequirement");
         Objects.requireNonNull(providerProbeRequirement, "providerProbeRequirement");
         providerProbeResult = Objects.requireNonNull(providerProbeResult,
                 "providerProbeResult");
@@ -49,6 +52,12 @@ public record PendingNativeWorkCandidate(
             if (!executableTask.providerBindingPin().equals(probe.providerBindingPin())) {
                 throw new IllegalArgumentException(
                         "Native Pull provider probe cannot rebind the task ProviderBindingPin");
+            }
+        });
+        runtimeSupportRequirement.ifPresent(requirement -> {
+            if (!executableTask.providerBindingPin().equals(requirement.providerBindingPin())) {
+                throw new IllegalArgumentException(
+                        "Native Pull runtime support requirement cannot rebind the task ProviderBindingPin");
             }
         });
     }

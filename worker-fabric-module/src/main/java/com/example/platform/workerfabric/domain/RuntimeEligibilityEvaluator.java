@@ -15,6 +15,7 @@ public final class RuntimeEligibilityEvaluator {
         EnumSet<RuntimeEligibilityReason> reasons = EnumSet.noneOf(RuntimeEligibilityReason.class);
 
         evaluateProbe(request, reasons);
+        evaluateRuntimeSupportAdvertisement(request, reasons);
         evaluateWorkerAndHost(request, reasons);
         evaluateRuntimeMechanics(request, reasons);
         evaluateDevice(request, reasons);
@@ -34,6 +35,35 @@ public final class RuntimeEligibilityEvaluator {
                 request.executableTask().id(),
                 request.executableTask().providerBindingPin(),
                 reasons.stream().toList());
+    }
+
+    private static void evaluateRuntimeSupportAdvertisement(
+            NativeRuntimeEligibilityRequest request,
+            EnumSet<RuntimeEligibilityReason> reasons) {
+        if (request.runtimeSupportAdvertisement().isEmpty()
+                && request.runtimeSupportRequirement().isEmpty()) {
+            return;
+        }
+        if (request.workerRuntime().isEmpty()) {
+            reasons.add(RuntimeEligibilityReason.RUNTIME_SUPPORT_MISMATCH);
+            return;
+        }
+        RuntimeSupportAdvertisementDecision decision =
+                RuntimeSupportAdvertisementEvaluator.evaluate(
+                        request.workerRuntime().orElseThrow(),
+                        request.runtimeSupportAdvertisement(),
+                        request.runtimeSupportRequirement());
+        switch (decision.reason()) {
+            case ACCEPTED_CANDIDATE_EVIDENCE -> { }
+            case REQUIREMENT_MISSING ->
+                    reasons.add(RuntimeEligibilityReason.RUNTIME_SUPPORT_REQUIREMENT_MISSING);
+            case MISSING ->
+                    reasons.add(RuntimeEligibilityReason.RUNTIME_SUPPORT_ADVERTISEMENT_MISSING);
+            case RUNTIME_MISMATCH ->
+                    reasons.add(RuntimeEligibilityReason.RUNTIME_SUPPORT_MISMATCH);
+            case UNSUPPORTED ->
+                    reasons.add(RuntimeEligibilityReason.RUNTIME_SUPPORT_UNSUPPORTED);
+        }
     }
 
     private static void evaluateProbe(
