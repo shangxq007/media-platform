@@ -37,6 +37,7 @@ jobs:
       architecture_drift: ${{ steps.classify.outputs.architecture_drift }}
       gitops_validation: ${{ steps.classify.outputs.gitops_validation }}
       semgrep_validation: ${{ steps.classify.outputs.semgrep_validation }}
+      formal_verification: ${{ steps.classify.outputs.formal_verification }}
       runtime_image_publish: ${{ steps.classify.outputs.runtime_image_publish }}
       categories: ${{ steps.classify.outputs.categories }}
       changed_path_count: ${{ steps.classify.outputs.changed_path_count }}
@@ -159,6 +160,42 @@ jobs:
           ./scripts/validate-production-readiness.sh gitops/production
           ./scripts/verify-egress-smoke-config.sh gitops/production
 
+  # ── Targeted formal validation ────────────────────────────────────────
+  formal-validation:
+    runs-on: ubuntu-latest
+    needs: change-impact
+    if: needs.change-impact.outputs.formal_verification == 'true'
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install pinned Lean 4.19.0 release
+        run: |
+          set -euo pipefail
+          curl -fsSLO https://github.com/leanprover/lean4/releases/download/v4.19.0/lean-4.19.0-linux.tar.zst
+          echo "6fe3ce97a58f44e2b3567d455b994eacec5bfe9ae7774f2a573444480ba813fe  lean-4.19.0-linux.tar.zst" | sha256sum -c -
+          tar --use-compress-program=unzstd -xf lean-4.19.0-linux.tar.zst
+
+      - name: Pull and verify pinned Coq 8.20.1 image
+        env:
+          COQ_IMAGE: docker.io/coqorg/coq@sha256:e50d77c4c5a9aa0d76ae1b343d79c5f922da3a75054b79c5dc635895438e4674
+        run: |
+          set -euo pipefail
+          docker pull "$COQ_IMAGE"
+          test "$(docker image inspect "$COQ_IMAGE" --format '{{.Id}}')" = "sha256:b80d66c91b4da3a1b3c5d3e6672cf8f4ab72ed2f7a6a1f0cf7d3aef747cf6a4b"
+
+      - name: Validate FAOF-2 proofs and shared witness mapping
+        env:
+          LEAN: ${{ github.workspace }}/lean-4.19.0-linux/bin/lean
+          COQ_CONTAINER_ENGINE: docker
+          COQ_IMAGE: docker.io/coqorg/coq@sha256:e50d77c4c5a9aa0d76ae1b343d79c5f922da3a75054b79c5dc635895438e4674
+        run: scripts/formal/validate-faof2.sh
+
   # ── Targeted architecture Semgrep validation ─────────────────────────
   semgrep:
     runs-on: ubuntu-latest
@@ -183,7 +220,7 @@ jobs:
   policy-summary:
     runs-on: ubuntu-latest
     if: always()
-    needs: [change-impact, backend, frontend, gitops-validation, semgrep]
+    needs: [change-impact, backend, frontend, gitops-validation, formal-validation, semgrep]
     steps:
       - name: Report and enforce selected policy
         env:
@@ -198,6 +235,8 @@ jobs:
           GITOPS_RESULT: ${{ needs['gitops-validation'].result }}
           SEMGREP_REQUIRED: ${{ needs.change-impact.outputs.semgrep_validation }}
           SEMGREP_RESULT: ${{ needs.semgrep.result }}
+          FORMAL_REQUIRED: ${{ needs.change-impact.outputs.formal_verification }}
+          FORMAL_RESULT: ${{ needs['formal-validation'].result }}
           RUNTIME_IMAGE_PUBLISH: ${{ needs.change-impact.outputs.runtime_image_publish }}
         run: |
           set -euo pipefail
@@ -211,6 +250,7 @@ jobs:
             echo "- frontend: required=$FRONTEND_REQUIRED result=$FRONTEND_RESULT"
             echo "- gitops: required=$GITOPS_REQUIRED result=$GITOPS_RESULT"
             echo "- semgrep: required=$SEMGREP_REQUIRED result=$SEMGREP_RESULT"
+            echo "- formal: required=$FORMAL_REQUIRED result=$FORMAL_RESULT"
             echo "- runtime_image_publish: $RUNTIME_IMAGE_PUBLISH"
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -235,6 +275,7 @@ jobs:
           require_result "$FRONTEND_REQUIRED" "$FRONTEND_RESULT" frontend
           require_result "$GITOPS_REQUIRED" "$GITOPS_RESULT" gitops-validation
           require_result "$SEMGREP_REQUIRED" "$SEMGREP_RESULT" semgrep
+          require_result "$FORMAL_REQUIRED" "$FORMAL_RESULT" formal-validation
 
   # ── Image build + push + GitOps (main branch push) ─────────────────────
   images:

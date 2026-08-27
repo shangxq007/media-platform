@@ -12,6 +12,7 @@ import com.example.platform.render.domain.renderplan.graph.RenderGraphValidator;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Comparator;
 import java.util.Map;
 import java.util.Set;
 
@@ -62,7 +63,8 @@ class RenderGraphKernelDelegationTest {
                 GraphViews.directedFromEdges(Set.copyOf(ids), kernelEdges);
 
         assertTrue(GraphAlgorithms.detectCycles(topology).isAcyclic(), "fixture graph is acyclic");
-        TopologicalOrderResult<RenderNodeId> topo = GraphAlgorithms.topologicalOrder(topology);
+        TopologicalOrderResult<RenderNodeId> topo = GraphAlgorithms.topologicalOrder(
+                topology, Comparator.comparing(RenderNodeId::value));
         assertTrue(topo instanceof TopologicalOrderResult.Ordered, "kernel returns Ordered");
         assertEquals(ids.size(), topo.order().size(), "topo order length == node count");
     }

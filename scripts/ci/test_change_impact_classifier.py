@@ -7,6 +7,8 @@ import importlib.util
 import sys
 from pathlib import Path
 
+sys.dont_write_bytecode = True
+
 
 ROOT = Path(__file__).resolve().parents[2]
 CLASSIFIER_PATH = ROOT / "scripts/ci/change_impact_classifier.py"
@@ -49,9 +51,11 @@ CASES = (
     ("root-dockerignore", ".dockerignore", {"container"}, {"backend_ci", "runtime_image_publish"}),
     ("gitops", "gitops/staging/deployment-api.yaml", {"gitops"}, {"gitops_validation"}),
     ("semgrep", ".semgrep/media-platform-architecture.yml", {"semgrep"}, {"semgrep_validation"}),
-    ("workflow", ".github/workflows/ci.yml", {"workflow"}, {"full_ci", "backend_ci", "frontend_ci", "architecture_drift", "gitops_validation", "semgrep_validation"}),
-    ("ci-infrastructure", "scripts/ci/setup-test-runtime.sh", {"ci_infrastructure"}, {"full_ci", "backend_ci", "frontend_ci", "architecture_drift", "gitops_validation", "semgrep_validation"}),
-    ("unknown", "unowned/new-surface.xyz", {"unknown"}, {"full_ci", "backend_ci", "frontend_ci", "architecture_drift", "gitops_validation", "semgrep_validation"}),
+    ("formal-source", "formal/lean/Faof2Graph.lean", {"formal_verification"}, {"formal_verification"}),
+    ("formal-script", "scripts/formal/validate-faof2.sh", {"formal_verification"}, {"formal_verification"}),
+    ("workflow", ".github/workflows/ci.yml", {"workflow"}, {"full_ci", "backend_ci", "frontend_ci", "architecture_drift", "gitops_validation", "semgrep_validation", "formal_verification"}),
+    ("ci-infrastructure", "scripts/ci/setup-test-runtime.sh", {"ci_infrastructure"}, {"full_ci", "backend_ci", "frontend_ci", "architecture_drift", "gitops_validation", "semgrep_validation", "formal_verification"}),
+    ("unknown", "unowned/new-surface.xyz", {"unknown"}, {"full_ci", "backend_ci", "frontend_ci", "architecture_drift", "gitops_validation", "semgrep_validation", "formal_verification"}),
 )
 
 
@@ -84,6 +88,8 @@ def assert_workflow_contract(
         raise AssertionError("Standard CI backend is not independently conditional")
     if "if: needs.change-impact.outputs.frontend_ci == 'true'" not in standard:
         raise AssertionError("Standard CI frontend is not independently conditional")
+    if "if: needs.change-impact.outputs.formal_verification == 'true'" not in standard:
+        raise AssertionError("Standard CI formal validation is not independently conditional")
     if "policy-summary:" not in standard or "if: always()" not in standard:
         raise AssertionError("Standard CI policy summary is not unconditional")
     image_gate = "needs.change-impact.outputs.runtime_image_publish == 'true'"
@@ -95,6 +101,22 @@ def assert_workflow_contract(
         raise AssertionError("Foundation full backend is not independently conditional")
     if standard.count("\n  semgrep:\n") != 1:
         raise AssertionError("Standard CI does not own exactly one Semgrep job")
+    if standard.count("\n  formal-validation:\n") != 1:
+        raise AssertionError("Standard CI does not own exactly one formal validation job")
+    formal_job = standard.split("\n  formal-validation:\n", 1)[1].split("\n  semgrep:\n", 1)[0]
+    required_formal_job_contract = (
+        "needs: change-impact",
+        "if: needs.change-impact.outputs.formal_verification == 'true'",
+        "uses: actions/checkout@v4",
+        "fetch-depth: 0",
+        "persist-credentials: false",
+        "scripts/formal/validate-faof2.sh",
+        "lean-4.19.0-linux.tar.zst",
+        "6fe3ce97a58f44e2b3567d455b994eacec5bfe9ae7774f2a573444480ba813fe",
+        "b80d66c91b4da3a1b3c5d3e6672cf8f4ab72ed2f7a6a1f0cf7d3aef747cf6a4b",
+    )
+    if any(item not in formal_job for item in required_formal_job_contract):
+        raise AssertionError("Standard CI formal validation job is not reproducibly pinned")
     semgrep_job = standard.split("\n  semgrep:\n", 1)[1].split("\n  policy-summary:\n", 1)[0]
     required_semgrep_job_contract = (
         "needs: change-impact",
@@ -109,13 +131,16 @@ def assert_workflow_contract(
     if any(item not in semgrep_job for item in required_semgrep_job_contract):
         raise AssertionError("Standard CI Semgrep job does not match the canonical targeted contract")
     required_semgrep_policy_contract = (
-        "needs: [change-impact, backend, frontend, gitops-validation, semgrep]",
+        "needs: [change-impact, backend, frontend, gitops-validation, formal-validation, semgrep]",
+        "FORMAL_REQUIRED: ${{ needs.change-impact.outputs.formal_verification }}",
+        "FORMAL_RESULT: ${{ needs['formal-validation'].result }}",
         "SEMGREP_REQUIRED: ${{ needs.change-impact.outputs.semgrep_validation }}",
         "SEMGREP_RESULT: ${{ needs.semgrep.result }}",
         'echo "- semgrep: required=$SEMGREP_REQUIRED result=$SEMGREP_RESULT"',
         'test "$result" = "success"',
         'test "$result" = "skipped"',
         'require_result "$SEMGREP_REQUIRED" "$SEMGREP_RESULT" semgrep',
+        'require_result "$FORMAL_REQUIRED" "$FORMAL_RESULT" formal-validation',
     )
     if any(item not in standard for item in required_semgrep_policy_contract):
         raise AssertionError("Standard CI policy summary does not report and enforce Semgrep")
@@ -142,20 +167,23 @@ def assert_governance_contract() -> None:
             raise AssertionError(f"registry stable ID is not adopted: {stable_id}")
     phase18_recovery = PHASE18_DECISION_RECOVERY.read_text()
     phase18_correction = PHASE18_DECISION_RECOVERY_CORRECTION_1.read_text()
-    gate = "CHATGPT_ROADMAP_22_PHASE_18_FAOF_2_DECISION_RECOVERY_CORRECTION_1_FINAL_REVIEW"
-    obsolete = "CHATGPT_ROADMAP_22_PHASE_18_FAOF_2_DECISION_RECOVERY_FINAL_REVIEW"
-    if state.count(gate) != 2 or obsolete in state:
-        raise AssertionError("current state does not freeze the exact Phase18 Decision Recovery gate")
     required_state = (
         "  phase_17: CLOSED\n",
         "  phase_18_started: true\n",
-        "  phase_18_faof_2_decision_recovery: CORRECTION_1_FROZEN_CANDIDATE_PENDING_INDEPENDENT_REVIEW\n",
-        "  phase_18_implementation_authorized: false\n",
+        "  phase_18: IN_PROGRESS\n",
+        "  phase_18_faof_2_decision_recovery: PASS\n",
+        "  phase_18_implementation_authorized: true\n",
+        "  phase_18_faof_2_bounded_implementation: IN_PROGRESS\n",
+        "  phase_19_started: false\n",
+        "roadmap_23:\n  status: NOT_STARTED\n",
         "    phase: 18\n",
         "    - FAOF-2\n",
+        "  phase_18_faof_2_bounded_implementation_record: docs/architecture/governance/roadmap-22-phase-18-faof-2-bounded-implementation.md\n",
     )
     if any(item not in state for item in required_state):
-        raise AssertionError("Phase 17/18/FAOF-2 frozen lifecycle state drifted")
+        raise AssertionError("Phase 18 FAOF-2 bounded implementation lifecycle state drifted")
+    if "phase_18: CLOSED" in state or "phase_19_started: true" in state:
+        raise AssertionError("Phase 18 was closed or Phase 19 was started without authorization")
     if "ROADMAP_22_PHASE_18_FAOF_2_BOUNDED_ARCHITECTURE_CONTRACT_V1" not in phase18_recovery:
         raise AssertionError("Phase18 Decision Recovery contract is missing")
     if "ROADMAP_22_PHASE_18_FAOF_2_DECISION_RECOVERY_CORRECTION_1_CONTRACT_V1" not in phase18_correction:
@@ -192,6 +220,20 @@ def main() -> None:
     )
     if mixed.policy()["runtime_image_publish"] or not mixed.policy()["backend_ci"]:
         raise AssertionError("governance/test-only change could publish a runtime image")
+    formal_only = classifier.Classification.from_paths(
+        ["formal/lean/Faof2Graph.lean", "formal/coq/Faof2Graph.v"], "matrix"
+    )
+    if (not formal_only.policy()["formal_verification"]
+            or formal_only.policy()["backend_ci"]
+            or formal_only.policy()["runtime_image_publish"]):
+        raise AssertionError("formal-only change did not remain formal-only and non-publishing")
+    formal_runtime_mixed = classifier.Classification.from_paths(
+        ["formal/lean/Faof2Graph.lean", "render-module/src/main/java/Example.java"], "matrix"
+    )
+    if (not formal_runtime_mixed.policy()["formal_verification"]
+            or not formal_runtime_mixed.policy()["backend_ci"]
+            or not formal_runtime_mixed.policy()["runtime_image_publish"]):
+        raise AssertionError("actual mixed formal/runtime diff lost runtime effects")
 
     standard = STANDARD_CI.read_text()
     foundation = FOUNDATION_CI.read_text()
@@ -204,6 +246,7 @@ def main() -> None:
         ("shallow-checkout", standard.replace("fetch-depth: 0", "fetch-depth: 1", 1), foundation),
         ("foundation-coupled", standard, foundation.replace("if: needs.change-impact.outputs.backend_ci == 'true'", "if: needs.change-impact.outputs.architecture_drift == 'true'", 1)),
         ("semgrep-unconditional", standard.replace("if: needs.change-impact.outputs.semgrep_validation == 'true'", "if: always()", 1), foundation),
+        ("formal-unconditional", standard.replace("if: needs.change-impact.outputs.formal_verification == 'true'", "if: always()", 1), foundation),
         ("semgrep-policy-need-removed", standard.replace(", semgrep]", "]", 1), foundation),
         ("semgrep-policy-enforcement-removed", standard.replace('          require_result "$SEMGREP_REQUIRED" "$SEMGREP_RESULT" semgrep\n', "", 1), foundation),
         ("conditional-skip-contract-weakened", standard.replace('test "$result" = "skipped"', 'test "$result" = "success"', 1), foundation),
@@ -227,7 +270,7 @@ def main() -> None:
         classifier.classify_path = original_classify_path
 
     print(
-        f"CHANGE_IMPACT_CLASSIFIER_RED_MATRIX=PASS cases={len(CASES) + 2} "
+        f"CHANGE_IMPACT_CLASSIFIER_RED_MATRIX=PASS cases={len(CASES) + 4} "
         f"workflow_mutations={len(mutations)} classifier_mutations=1"
     )
 

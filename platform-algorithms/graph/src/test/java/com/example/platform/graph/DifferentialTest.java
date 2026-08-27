@@ -64,7 +64,8 @@ class DifferentialTest {
             CycleDetectionResult<String> cycle = GraphAlgorithms.detectCycles(graph);
             assertThat(cycle.isAcyclic()).isTrue();
 
-            TopologicalOrderResult<String> topo = GraphAlgorithms.topologicalOrder(graph);
+            TopologicalOrderResult<String> topo =
+                    GraphAlgorithms.topologicalOrder(graph, Comparator.naturalOrder());
             assertThat(topo.order()).hasSize(50);
         }
 
@@ -75,7 +76,8 @@ class DifferentialTest {
             DirectedGraphView<String> graph = buildAdj(adj);
 
             assertThat(GraphAlgorithms.detectCycles(graph).isAcyclic()).isTrue();
-            assertThat(GraphAlgorithms.topologicalOrder(graph).order()).hasSize(100);
+            assertThat(GraphAlgorithms.topologicalOrder(graph, Comparator.naturalOrder()).order())
+                    .hasSize(100);
         }
     }
 
@@ -94,7 +96,8 @@ class DifferentialTest {
             DirectedGraphView<String> graph = buildAdj(adj);
 
             assertThat(GraphAlgorithms.detectCycles(graph).isAcyclic()).isFalse();
-            TopologicalOrderResult<String> topo = GraphAlgorithms.topologicalOrder(graph);
+            TopologicalOrderResult<String> topo =
+                    GraphAlgorithms.topologicalOrder(graph, Comparator.naturalOrder());
             assertThat(topo).isInstanceOf(TopologicalOrderResult.CycleDetected.class);
         }
 
@@ -162,7 +165,8 @@ class DifferentialTest {
             DirectedGraphView<String> graph = buildAdj(adj);
 
             assertThat(GraphAlgorithms.detectCycles(graph).isAcyclic()).isTrue();
-            List<String> order = GraphAlgorithms.topologicalOrder(graph).order();
+            List<String> order =
+                    GraphAlgorithms.topologicalOrder(graph, Comparator.naturalOrder()).order();
             assertThat(order).hasSize(6);
             // Verify chain ordering preserved
             assertThat(order.indexOf("a")).isLessThan(order.indexOf("b"));
@@ -182,7 +186,8 @@ class DifferentialTest {
             DirectedGraphView<String> graph = buildAdj(adj);
 
             assertThat(GraphAlgorithms.detectCycles(graph).isAcyclic()).isTrue();
-            assertThat(GraphAlgorithms.topologicalOrder(graph).order()).hasSize(4);
+            assertThat(GraphAlgorithms.topologicalOrder(graph, Comparator.naturalOrder()).order())
+                    .hasSize(4);
         }
     }
 
@@ -203,7 +208,8 @@ class DifferentialTest {
             DirectedGraphView<String> graph = buildAdj(adj);
 
             assertThat(graph.roots()).containsExactlyInAnyOrder("r1", "r2", "r3");
-            List<String> order = GraphAlgorithms.topologicalOrder(graph).order();
+            List<String> order =
+                    GraphAlgorithms.topologicalOrder(graph, Comparator.naturalOrder()).order();
             assertThat(order).hasSize(4);
             // m must be last
             assertThat(order.get(3)).isEqualTo("m");
@@ -242,7 +248,8 @@ class DifferentialTest {
             DirectedGraphView<String> graph = buildAdj(adj);
 
             assertThat(GraphAlgorithms.detectCycles(graph).isAcyclic()).isTrue();
-            List<String> order = GraphAlgorithms.topologicalOrder(graph).order();
+            List<String> order =
+                    GraphAlgorithms.topologicalOrder(graph, Comparator.naturalOrder()).order();
             assertThat(order.get(0)).isEqualTo("a");
             assertThat(order.get(3)).isEqualTo("d");
         }
@@ -278,7 +285,8 @@ class DifferentialTest {
             DirectedGraphView<String> graph = buildAdj(adj);
 
             assertThat(GraphAlgorithms.detectCycles(graph).isAcyclic()).isTrue();
-            List<String> order = GraphAlgorithms.topologicalOrder(graph).order();
+            List<String> order =
+                    GraphAlgorithms.topologicalOrder(graph, Comparator.naturalOrder()).order();
             assertThat(order).hasSize(6);
             assertThat(order.get(0)).isEqualTo("a");
             assertThat(order.get(5)).isEqualTo("f");
@@ -349,8 +357,8 @@ class DifferentialTest {
             DirectedGraphView<String> g1 = buildAdj(adj1);
             DirectedGraphView<String> g2 = buildAdj(adj2);
 
-            assertThat(GraphAlgorithms.topologicalOrder(g1).order())
-                    .isEqualTo(GraphAlgorithms.topologicalOrder(g2).order());
+            assertThat(GraphAlgorithms.topologicalOrder(g1, Comparator.naturalOrder()).order())
+                    .isEqualTo(GraphAlgorithms.topologicalOrder(g2, Comparator.naturalOrder()).order());
         }
 
         @Test

@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "catalogId": "FAOF2_GRAPH_LAWS_V1",
+  "authority": "platform",
+  "formalStatusMatrix": "formal/faof2-status-matrix-v1.json",
+  "laws": [
+    {
+      "lawId": "FAOF2-GRAPH-001",
+      "inputs": ["finite directed graph", "explicit strict total node order when canonical output is required"],
+      "preconditions": ["semantic node identities are stable", "input is acyclic for successful ordering"],
+      "expectedResult": "successful topological order contains every semantic node exactly once",
+      "failure": "cycle returns the platform cycle result; comparator collapse is rejected",
+      "orderingRelevance": "explicit canonical tie-break only when the consumer observes order",
+      "status": {"formal": "LEAN_AND_COQ_PROVED_BOUNDED_POC", "java": "CUSTOM_AND_JGRAPHT_CONFORMANCE", "witness": "COVERED"}
+    },
+    {
+      "lawId": "FAOF2-GRAPH-002",
+      "inputs": ["finite directed graph", "successful topological order"],
+      "preconditions": ["input is acyclic"],
+      "expectedResult": "for every edge u -> v, u precedes v",
+      "failure": "cycle cannot produce a successful complete order",
+      "orderingRelevance": "independent of tie-breaking",
+      "status": {"formal": "LEAN_AND_COQ_PROVED_BOUNDED_POC", "java": "CUSTOM_AND_JGRAPHT_CONFORMANCE", "witness": "COVERED"}
+    },
+    {
+      "lawId": "FAOF2-GRAPH-003",
+      "inputs": ["finite directed graph containing a directed cycle"],
+      "preconditions": ["cycle edges use semantic node identity"],
+      "expectedResult": "platform cycle result and no successful complete topological order",
+      "failure": "typed cycle result, never partial success",
+      "orderingRelevance": "none",
+      "status": {"formal": "JAVA_CONFORMANCE_ONLY", "java": "CUSTOM_AND_JGRAPHT_CONFORMANCE", "witness": "COVERED"}
+    },
+    {
+      "lawId": "FAOF2-GRAPH-004",
+      "inputs": ["semantically identical finite DAGs", "same explicit strict total node order"],
+      "preconditions": ["canonical output is required by the consumer"],
+      "expectedResult": "identical ordered result independent of construction order",
+      "failure": "invalid comparator is rejected rather than repaired with runtime identity or rendering",
+      "orderingRelevance": "mandatory and platform-owned",
+      "status": {"formal": "LEAN_PROVED_BOUNDED_POC", "java": "CUSTOM_AND_JGRAPHT_CONFORMANCE", "witness": "COVERED"}
+    },
+    {
+      "lawId": "FAOF2-GRAPH-005",
+      "inputs": ["finite directed graph", "source set"],
+      "preconditions": ["source nodes have stable semantic identity"],
+      "expectedResult": "each source is reachable from itself",
+      "failure": "invalid or absent graph nodes fail under the platform graph-view contract",
+      "orderingRelevance": "none; result is a semantic set",
+      "status": {"formal": "JAVA_CONFORMANCE_ONLY", "java": "CUSTOM_AND_JGRAPHT_CONFORMANCE", "witness": "COVERED"}
+    },
+    {
+      "lawId": "FAOF2-GRAPH-006",
+      "inputs": ["finite directed graph", "start node", "non-negative maximum depth"],
+      "preconditions": ["depth is non-negative"],
+      "expectedResult": "bounded descendants or ancestors contain exactly nodes with a path no longer than the bound, including the start",
+      "failure": "negative depth is rejected",
+      "orderingRelevance": "none; result is a semantic set",
+      "status": {"formal": "JAVA_CONFORMANCE_ONLY", "java": "CUSTOM_AND_JGRAPHT_CONFORMANCE", "witness": "COVERED"}
+    },
+    {
+      "lawId": "FAOF2-GRAPH-007",
+      "inputs": ["finite directed graph", "source set", "candidate target"],
+      "preconditions": ["edges and nodes use semantic identity"],
+      "expectedResult": "targets with a directed path are included and targets without one are excluded",
+      "failure": "no fabricated reachability across disconnected components",
+      "orderingRelevance": "none; result is a semantic set",
+      "status": {"formal": "JAVA_CONFORMANCE_ONLY", "java": "CUSTOM_AND_JGRAPHT_CONFORMANCE", "witness": "COVERED"}
+    },
+    {
+      "lawId": "FAOF2-GRAPH-008",
+      "inputs": ["finite graph projection and repeated algorithm invocation"],
+      "preconditions": ["stable equals and hashCode during invocation"],
+      "expectedResult": "algorithms do not mutate graph input and preserve distinct semantic identities even when renderings are equal",
+      "failure": "silent identity collapse is forbidden",
+      "orderingRelevance": "Object.toString, object identity, identityHashCode, unordered iteration, time, randomness, and provider state are prohibited",
+      "status": {"formal": "JAVA_MODEL_BOUNDARY", "java": "CUSTOM_AND_JGRAPHT_CONFORMANCE", "witness": "COVERED"}
+    }
+  ]
+}

@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "matrixId": "FAOF2_FORMAL_STATUS_V1",
+  "lawCatalog": "formal/faof2-law-catalog-v1.json",
+  "witnessCorpus": "formal/witnesses/faof2-graph-witnesses-v1.json",
+  "models": {
+    "lean": "formal/lean/Faof2Graph.lean",
+    "coq": "formal/coq/Faof2Graph.v"
+  },
+  "laws": [
+    {
+      "lawId": "FAOF2-GRAPH-001",
+      "lean": ["explicit_order_complete", "explicit_order_nodup", "explicit_order_is_topological"],
+      "coq": ["explicit_order_complete", "explicit_order_nodup"],
+      "scope": "bounded three-node graph completeness and uniqueness",
+      "status": "LEAN_AND_COQ_PROVED_BOUNDED_POC"
+    },
+    {
+      "lawId": "FAOF2-GRAPH-002",
+      "lean": ["dependency_respects_explicit_order", "explicit_order_is_topological"],
+      "coq": ["dependency_respects_explicit_order"],
+      "scope": "bounded three-node dependency precedence",
+      "status": "LEAN_AND_COQ_PROVED_BOUNDED_POC"
+    },
+    {
+      "lawId": "FAOF2-GRAPH-003",
+      "lean": [],
+      "coq": [],
+      "scope": "Java shared witnesses only in this POC",
+      "status": "JAVA_CONFORMANCE_ONLY"
+    },
+    {
+      "lawId": "FAOF2-GRAPH-004",
+      "lean": ["explicit_ready_order_is_deterministic"],
+      "coq": [],
+      "scope": "bounded explicit ready-set order",
+      "status": "LEAN_PROVED_BOUNDED_POC"
+    },
+    {
+      "lawId": "FAOF2-GRAPH-005",
+      "lean": [],
+      "coq": [],
+      "scope": "Java shared witnesses only in this POC",
+      "status": "JAVA_CONFORMANCE_ONLY"
+    },
+    {
+      "lawId": "FAOF2-GRAPH-006",
+      "lean": [],
+      "coq": [],
+      "scope": "Java shared witnesses only in this POC",
+      "status": "JAVA_CONFORMANCE_ONLY"
+    },
+    {
+      "lawId": "FAOF2-GRAPH-007",
+      "lean": [],
+      "coq": [],
+      "scope": "Java shared witnesses only in this POC",
+      "status": "JAVA_CONFORMANCE_ONLY"
+    },
+    {
+      "lawId": "FAOF2-GRAPH-008",
+      "lean": [],
+      "coq": [],
+      "scope": "Java identity and non-mutation boundary",
+      "status": "JAVA_MODEL_BOUNDARY"
+    }
+  ]
+}

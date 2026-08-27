@@ -23,6 +23,7 @@ CATEGORY_ORDER = (
     "container",
     "gitops",
     "semgrep",
+    "formal_verification",
     "workflow",
     "ci_infrastructure",
     "unknown",
@@ -95,6 +96,9 @@ def classify_path(raw_path: str) -> tuple[str, ...]:
 
     if _under(path, "frontend/"):
         categories.add("frontend")
+
+    if _under(path, "formal/") or _under(path, "scripts/formal/"):
+        categories.add("formal_verification")
 
     if "/src/test/" in f"/{path}" or _under(path, "scripts/test/"):
         categories.add("backend_test")
@@ -177,6 +181,7 @@ class Classification:
             "gitops_validation": full_ci or "gitops" in categories,
             "semgrep_validation": full_ci
             or bool(categories & {"backend_runtime", "build_graph", "semgrep"}),
+            "formal_verification": full_ci or "formal_verification" in categories,
             "runtime_image_publish": bool(categories & RUNTIME_IMAGE_INPUT_CATEGORIES),
         }
 

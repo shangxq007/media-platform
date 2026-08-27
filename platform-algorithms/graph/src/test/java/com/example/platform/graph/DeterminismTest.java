@@ -41,7 +41,8 @@ class DeterminismTest {
         for (var edges : edgeOrders) {
             Set<String> nodes = Set.of("a", "b", "c", "d");
             DirectedGraphView<String> graph = GraphViews.directedFromEdges(nodes, edges);
-            List<String> order = GraphAlgorithms.topologicalOrder(graph).order();
+            List<String> order =
+                    GraphAlgorithms.topologicalOrder(graph, Comparator.naturalOrder()).order();
             if (firstOrder == null) {
                 firstOrder = order;
             } else {
@@ -81,7 +82,8 @@ class DeterminismTest {
         adj.put("step-3", Set.of());
         DirectedGraphView<String> graph = GraphViews.directedFromAdjacency(adj);
 
-        TopologicalOrderResult<String> result = GraphAlgorithms.topologicalOrder(graph);
+        TopologicalOrderResult<String> result =
+                GraphAlgorithms.topologicalOrder(graph, Comparator.naturalOrder());
         List<String> order = result.order();
         assertThat(order.get(0)).isEqualTo("step-1");
         // step-2 should come before step-3 (sorted order)
@@ -99,7 +101,8 @@ class DeterminismTest {
         adj.put("step-4", Set.of());
         DirectedGraphView<String> graph = GraphViews.directedFromAdjacency(adj);
 
-        TopologicalOrderResult<String> result = GraphAlgorithms.topologicalOrder(graph);
+        TopologicalOrderResult<String> result =
+                GraphAlgorithms.topologicalOrder(graph, Comparator.naturalOrder());
         List<String> order = result.order();
         assertThat(order.get(0)).isEqualTo("step-1");
         assertThat(order.get(3)).isEqualTo("step-4");
@@ -118,8 +121,10 @@ class DeterminismTest {
         DirectedGraphView<String> graph = GraphViews.directedFromAdjacency(adj);
 
         for (int i = 0; i < 100; i++) {
-            TopologicalOrderResult<String> r1 = GraphAlgorithms.topologicalOrder(graph);
-            assertThat(r1.order()).isEqualTo(GraphAlgorithms.topologicalOrder(graph).order());
+            TopologicalOrderResult<String> r1 =
+                    GraphAlgorithms.topologicalOrder(graph, Comparator.naturalOrder());
+            assertThat(r1.order()).isEqualTo(
+                    GraphAlgorithms.topologicalOrder(graph, Comparator.naturalOrder()).order());
         }
     }
 }

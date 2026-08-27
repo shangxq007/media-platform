@@ -18,7 +18,6 @@ public final class BidirectionalAdjacencyGraphView<N> implements BidirectionalGr
     private final Map<N, Set<N>> reverse;
     private final Set<N> nodes;
     private final int edgeCount;
-    private final Comparator<N> comparator;
 
     // Cached reachability (lazy)
     private volatile Map<N, Set<N>> descendantCache;
@@ -26,8 +25,6 @@ public final class BidirectionalAdjacencyGraphView<N> implements BidirectionalGr
     private volatile Boolean acyclic;
 
     public BidirectionalAdjacencyGraphView(Map<N, Set<N>> adjacencyMap) {
-        this.comparator = Comparator.comparing(Object::toString);
-
         Set<N> allNodes = new HashSet<>(adjacencyMap.keySet());
         for (Set<N> successors : adjacencyMap.values()) {
             allNodes.addAll(successors);
@@ -37,8 +34,8 @@ public final class BidirectionalAdjacencyGraphView<N> implements BidirectionalGr
         this.reverse = new HashMap<>();
 
         for (N node : allNodes) {
-            forward.put(node, new TreeSet<>(comparator));
-            reverse.put(node, new TreeSet<>(comparator));
+            forward.put(node, new HashSet<>());
+            reverse.put(node, new HashSet<>());
         }
 
         int totalEdges = 0;
@@ -155,9 +152,7 @@ public final class BidirectionalAdjacencyGraphView<N> implements BidirectionalGr
             inDegree.put(node, reverse.get(node).size());
         }
         Deque<N> queue = new ArrayDeque<>();
-        List<N> sortedNodes = new ArrayList<>(nodes);
-        sortedNodes.sort(comparator);
-        for (N node : sortedNodes) {
+        for (N node : nodes) {
             if (inDegree.get(node) == 0) {
                 queue.add(node);
             }
@@ -223,7 +218,7 @@ public final class BidirectionalAdjacencyGraphView<N> implements BidirectionalGr
         for (N node : nodes) {
             inDegree.put(node, reverse.get(node).size());
         }
-        TreeSet<N> ready = new TreeSet<>(comparator);
+        Deque<N> ready = new ArrayDeque<>();
         for (N node : nodes) {
             if (inDegree.get(node) == 0) {
                 ready.add(node);
@@ -231,7 +226,7 @@ public final class BidirectionalAdjacencyGraphView<N> implements BidirectionalGr
         }
         List<N> order = new ArrayList<>();
         while (!ready.isEmpty()) {
-            N current = ready.pollFirst();
+            N current = ready.poll();
             order.add(current);
             for (N successor : forward.get(current)) {
                 int newDegree = inDegree.merge(successor, -1, Integer::sum);

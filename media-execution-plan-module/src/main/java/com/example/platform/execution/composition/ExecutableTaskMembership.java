@@ -122,7 +122,8 @@ public final class ExecutableTaskMembership {
         }
 
         DirectedGraphView<String> topology = GraphViews.directedFromAdjacency(successors);
-        TopologicalOrderResult<String> topologyOrder = GraphAlgorithms.topologicalOrder(topology);
+        TopologicalOrderResult<String> topologyOrder =
+                GraphAlgorithms.topologicalOrder(topology, Comparator.naturalOrder());
         if (topologyOrder instanceof TopologicalOrderResult.CycleDetected<String>) {
             throw new IllegalArgumentException("membership dependencies must be acyclic");
         }

@@ -28,7 +28,8 @@ class PropertyTest {
         @DisplayName("empty graph: order is complete (empty)")
         void emptyGraphComplete() {
             DirectedGraphView<String> graph = GraphViews.directedFromAdjacency(Map.of());
-            TopologicalOrderResult<String> result = GraphAlgorithms.topologicalOrder(graph);
+            TopologicalOrderResult<String> result =
+                    GraphAlgorithms.topologicalOrder(graph, Comparator.naturalOrder());
             assertThat(result.order()).isEmpty();
         }
 
@@ -41,7 +42,8 @@ class PropertyTest {
             adj.put("c", Set.of());
             DirectedGraphView<String> graph = GraphViews.directedFromAdjacency(adj);
 
-            List<String> order = GraphAlgorithms.topologicalOrder(graph).order();
+            List<String> order =
+                    GraphAlgorithms.topologicalOrder(graph, Comparator.naturalOrder()).order();
             assertThat(order).containsExactlyInAnyOrder("a", "b", "c");
             assertThat(order).hasSize(3);
         }
@@ -51,7 +53,8 @@ class PropertyTest {
         void randomDagComplete() {
             Map<String, Set<String>> adj = randomDag(30, 0.15, 7L);
             DirectedGraphView<String> graph = GraphViews.directedFromAdjacency(adj);
-            List<String> order = GraphAlgorithms.topologicalOrder(graph).order();
+            List<String> order =
+                    GraphAlgorithms.topologicalOrder(graph, Comparator.naturalOrder()).order();
             assertThat(order).hasSize(30);
             assertThat(new HashSet<>(order)).containsExactlyInAnyOrderElementsOf(graph.nodes());
         }
@@ -74,7 +77,8 @@ class PropertyTest {
             adj.put("e", Set.of());
             DirectedGraphView<String> graph = GraphViews.directedFromAdjacency(adj);
 
-            List<String> order = GraphAlgorithms.topologicalOrder(graph).order();
+            List<String> order =
+                    GraphAlgorithms.topologicalOrder(graph, Comparator.naturalOrder()).order();
             for (String node : graph.nodes()) {
                 for (String succ : graph.successors(node)) {
                     assertThat(order.indexOf(node))
@@ -94,7 +98,8 @@ class PropertyTest {
             adj.put("d", Set.of());
             DirectedGraphView<String> graph = GraphViews.directedFromAdjacency(adj);
 
-            List<String> order = GraphAlgorithms.topologicalOrder(graph).order();
+            List<String> order =
+                    GraphAlgorithms.topologicalOrder(graph, Comparator.naturalOrder()).order();
             assertThat(order.indexOf("a")).isLessThan(order.indexOf("b"));
             assertThat(order.indexOf("a")).isLessThan(order.indexOf("c"));
             assertThat(order.indexOf("b")).isLessThan(order.indexOf("d"));
@@ -118,7 +123,8 @@ class PropertyTest {
             adj.put("d", Set.of());
             DirectedGraphView<String> graph = GraphViews.directedFromAdjacency(adj);
 
-            List<String> order = GraphAlgorithms.topologicalOrder(graph).order();
+            List<String> order =
+                    GraphAlgorithms.topologicalOrder(graph, Comparator.naturalOrder()).order();
             Set<String> unique = new HashSet<>(order);
             assertThat(unique).hasSize(order.size());
         }
@@ -210,9 +216,9 @@ class PropertyTest {
             DirectedGraphView<String> g2 = GraphViews.directedFromAdjacency(adj2);
             DirectedGraphView<String> g3 = GraphViews.directedFromAdjacency(adj3);
 
-            List<String> o1 = GraphAlgorithms.topologicalOrder(g1).order();
-            List<String> o2 = GraphAlgorithms.topologicalOrder(g2).order();
-            List<String> o3 = GraphAlgorithms.topologicalOrder(g3).order();
+            List<String> o1 = GraphAlgorithms.topologicalOrder(g1, Comparator.naturalOrder()).order();
+            List<String> o2 = GraphAlgorithms.topologicalOrder(g2, Comparator.naturalOrder()).order();
+            List<String> o3 = GraphAlgorithms.topologicalOrder(g3, Comparator.naturalOrder()).order();
 
             assertThat(o1).isEqualTo(o2);
             assertThat(o2).isEqualTo(o3);

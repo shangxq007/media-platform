@@ -112,10 +112,26 @@ class GraphAlgorithmsTest {
     class TopologicalOrderTest {
 
         @Test
+        @DisplayName("distinct semantic nodes with equal toString are never silently collapsed")
+        void distinctSemanticNodesWithEqualToStringAreNeverSilentlyCollapsed() {
+            CollisionNode first = new CollisionNode("node-001");
+            CollisionNode second = new CollisionNode("node-002");
+            DirectedGraphView<CollisionNode> graph = GraphViews.directedFromAdjacency(
+                    Map.of(first, Set.of(), second, Set.of()));
+
+            TopologicalOrderResult<CollisionNode> result = GraphAlgorithms.topologicalOrder(
+                    graph, Comparator.comparing(CollisionNode::semanticId));
+
+            assertThat(result).isInstanceOf(TopologicalOrderResult.Ordered.class);
+            assertThat(result.order()).containsExactlyInAnyOrder(first, second);
+        }
+
+        @Test
         @DisplayName("empty graph returns empty order")
         void emptyGraphReturnsEmptyOrder() {
             DirectedGraphView<String> graph = GraphViews.directedFromAdjacency(Map.of());
-            TopologicalOrderResult<String> result = GraphAlgorithms.topologicalOrder(graph);
+            TopologicalOrderResult<String> result =
+                    GraphAlgorithms.topologicalOrder(graph, Comparator.naturalOrder());
             assertThat(result.order()).isEmpty();
         }
 
@@ -127,7 +143,8 @@ class GraphAlgorithmsTest {
             adj.put("b", Set.of("c"));
             adj.put("c", Set.of());
             DirectedGraphView<String> graph = GraphViews.directedFromAdjacency(adj);
-            TopologicalOrderResult<String> result = GraphAlgorithms.topologicalOrder(graph);
+            TopologicalOrderResult<String> result =
+                    GraphAlgorithms.topologicalOrder(graph, Comparator.naturalOrder());
             assertThat(result.order()).containsExactly("a", "b", "c");
         }
 
@@ -140,7 +157,8 @@ class GraphAlgorithmsTest {
             adj.put("c", Set.of("d"));
             adj.put("d", Set.of());
             DirectedGraphView<String> graph = GraphViews.directedFromAdjacency(adj);
-            TopologicalOrderResult<String> result = GraphAlgorithms.topologicalOrder(graph);
+            TopologicalOrderResult<String> result =
+                    GraphAlgorithms.topologicalOrder(graph, Comparator.naturalOrder());
             List<String> order = result.order();
             assertThat(order).hasSize(4);
             assertThat(order.indexOf("a")).isLessThan(order.indexOf("b"));
@@ -158,8 +176,8 @@ class GraphAlgorithmsTest {
             adj.put("c", Set.of("d"));
             adj.put("d", Set.of());
             DirectedGraphView<String> graph = GraphViews.directedFromAdjacency(adj);
-            List<String> order1 = GraphAlgorithms.topologicalOrder(graph).order();
-            List<String> order2 = GraphAlgorithms.topologicalOrder(graph).order();
+            List<String> order1 = GraphAlgorithms.topologicalOrder(graph, Comparator.naturalOrder()).order();
+            List<String> order2 = GraphAlgorithms.topologicalOrder(graph, Comparator.naturalOrder()).order();
             assertThat(order1).isEqualTo(order2);
         }
 
@@ -170,7 +188,8 @@ class GraphAlgorithmsTest {
             adj.put("a", Set.of("b"));
             adj.put("b", Set.of("a"));
             DirectedGraphView<String> graph = GraphViews.directedFromAdjacency(adj);
-            TopologicalOrderResult<String> result = GraphAlgorithms.topologicalOrder(graph);
+            TopologicalOrderResult<String> result =
+                    GraphAlgorithms.topologicalOrder(graph, Comparator.naturalOrder());
             assertThat(result).isInstanceOf(TopologicalOrderResult.CycleDetected.class);
         }
 
@@ -182,7 +201,8 @@ class GraphAlgorithmsTest {
             adj.put("b", Set.of());
             adj.put("c", Set.of());
             DirectedGraphView<String> graph = GraphViews.directedFromAdjacency(adj);
-            TopologicalOrderResult<String> result = GraphAlgorithms.topologicalOrder(graph);
+            TopologicalOrderResult<String> result =
+                    GraphAlgorithms.topologicalOrder(graph, Comparator.naturalOrder());
             assertThat(result.order()).containsExactlyInAnyOrder("a", "b", "c");
         }
     }
@@ -327,6 +347,13 @@ class GraphAlgorithmsTest {
             DirectedGraphView<String> graph = GraphViews.directedFromAdjacency(adj);
             Set<String> anc = GraphAlgorithms.ancestorsBounded(graph, "d", 2);
             assertThat(anc).containsExactlyInAnyOrder("a", "b", "c", "d");
+        }
+    }
+
+    private record CollisionNode(String semanticId) {
+        @Override
+        public String toString() {
+            return "same-rendering";
         }
     }
 }

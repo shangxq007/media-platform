@@ -23,6 +23,8 @@ tasks.withType<JavaCompile>().configureEach {
 dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.3")
     testImplementation("org.assertj:assertj-core:3.26.3")
+    testImplementation("com.fasterxml.jackson.core:jackson-databind:2.18.2")
+    testImplementation("org.jgrapht:jgrapht-core:1.5.2")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
@@ -36,6 +38,7 @@ tasks.test {
     environment("AWS_ACCESS_KEY_ID", "test-access-key")
     environment("AWS_SECRET_ACCESS_KEY", "test-secret-key")
     environment("AWS_REGION", "us-east-1")
+    systemProperty("faof2.repositoryRoot", rootProject.projectDir.absolutePath)
 }
 
 tasks.withType<JacocoReport> {

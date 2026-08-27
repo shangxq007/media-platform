@@ -5,21 +5,17 @@ import com.example.platform.graph.result.ReachabilityResult;
 import com.example.platform.graph.result.TopologicalOrderResult;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * Pure functional graph algorithms operating on {@link DirectedGraphView}.
  *
- * <p>All methods are deterministic: same graph + same natural node order →
- * same result. No side effects, no mutable state.
+ * <p>All methods are side-effect free and hold no mutable state. Operations
+ * whose result requires canonical tie-breaking accept the platform-owned node
+ * order explicitly; generic graph nodes have no implicit semantic order.
  */
 public final class GraphAlgorithms {
 
     private GraphAlgorithms() {
-    }
-
-    private static <N> Comparator<N> defaultComparator() {
-        return Comparator.comparing(Object::toString);
     }
 
     // ── Cycle Detection ─────────────────────────────────────────────────────
@@ -38,16 +34,13 @@ public final class GraphAlgorithms {
             return CycleDetectionResult.acyclic();
         }
 
-        Comparator<N> cmp = defaultComparator();
         Map<N, Integer> inDegree = new HashMap<>();
         for (N node : graph.nodes()) {
             inDegree.put(node, graph.predecessors(node).size());
         }
 
         Deque<N> queue = new ArrayDeque<>();
-        List<N> sortedNodes = new ArrayList<>(graph.nodes());
-        sortedNodes.sort(cmp);
-        for (N node : sortedNodes) {
+        for (N node : graph.nodes()) {
             if (inDegree.get(node) == 0) {
                 queue.add(node);
             }
@@ -70,7 +63,7 @@ public final class GraphAlgorithms {
         }
 
         List<N> cycleNodes = new ArrayList<>();
-        for (N node : sortedNodes) {
+        for (N node : graph.nodes()) {
             if (inDegree.getOrDefault(node, 0) > 0) {
                 cycleNodes.add(node);
             }
@@ -81,18 +74,28 @@ public final class GraphAlgorithms {
     // ── Topological Order ───────────────────────────────────────────────────
 
     /**
-     * Computes a stable topological ordering of the graph nodes.
+     * Computes a canonical topological ordering using an explicit platform
+     * order for dependency-independent tie-breaking.
+     *
+     * <p>The comparator must be a strict total order over distinct semantic
+     * nodes. In particular, it must not compare unequal nodes as equal.
+     *
+     * @throws IllegalArgumentException if the supplied comparator collapses
+     *         distinct graph nodes or is not a strict total order
      */
-    public static <N> TopologicalOrderResult<N> topologicalOrder(DirectedGraphView<N> graph) {
+    public static <N> TopologicalOrderResult<N> topologicalOrder(
+            DirectedGraphView<N> graph,
+            Comparator<? super N> nodeOrder) {
         Objects.requireNonNull(graph);
+        Objects.requireNonNull(nodeOrder);
 
-        Comparator<N> cmp = defaultComparator();
+        validateStrictTotalOrder(graph.nodes(), nodeOrder);
         Map<N, Integer> inDegree = new HashMap<>();
         for (N node : graph.nodes()) {
             inDegree.put(node, graph.predecessors(node).size());
         }
 
-        TreeSet<N> ready = new TreeSet<>(cmp);
+        PriorityQueue<N> ready = new PriorityQueue<>(nodeOrder);
         for (N node : graph.nodes()) {
             if (inDegree.get(node) == 0) {
                 ready.add(node);
@@ -101,7 +104,7 @@ public final class GraphAlgorithms {
 
         List<N> order = new ArrayList<>();
         while (!ready.isEmpty()) {
-            N current = ready.pollFirst();
+            N current = ready.poll();
             order.add(current);
             for (N successor : graph.successors(current)) {
                 int newDegree = inDegree.merge(successor, -1, Integer::sum);
@@ -114,12 +117,51 @@ public final class GraphAlgorithms {
         if (order.size() < graph.nodeCount()) {
             List<N> cycleNodes = graph.nodes().stream()
                     .filter(n -> !order.contains(n))
-                    .sorted(cmp)
-                    .collect(Collectors.toList());
+                    .sorted(nodeOrder)
+                    .toList();
             return TopologicalOrderResult.cycleDetected(cycleNodes);
         }
 
         return TopologicalOrderResult.ordered(List.copyOf(order));
+    }
+
+    private static <N> void validateStrictTotalOrder(
+            Set<N> nodes,
+            Comparator<? super N> nodeOrder) {
+        List<N> nodeList = List.copyOf(nodes);
+        for (N node : nodeList) {
+            if (nodeOrder.compare(node, node) != 0) {
+                throw new IllegalArgumentException("nodeOrder must compare each node equal to itself");
+            }
+        }
+        for (int leftIndex = 0; leftIndex < nodeList.size(); leftIndex++) {
+            for (int rightIndex = leftIndex + 1; rightIndex < nodeList.size(); rightIndex++) {
+                N left = nodeList.get(leftIndex);
+                N right = nodeList.get(rightIndex);
+                int forward = Integer.signum(nodeOrder.compare(left, right));
+                int reverse = Integer.signum(nodeOrder.compare(right, left));
+                if (!left.equals(right) && forward == 0) {
+                    throw new IllegalArgumentException(
+                            "nodeOrder must distinguish all distinct semantic graph nodes");
+                }
+                if (forward != -reverse) {
+                    throw new IllegalArgumentException("nodeOrder must be asymmetric");
+                }
+            }
+        }
+        List<N> sorted = new ArrayList<>(nodeList);
+        try {
+            sorted.sort(nodeOrder);
+        } catch (IllegalArgumentException invalidComparator) {
+            throw new IllegalArgumentException("nodeOrder must be transitive", invalidComparator);
+        }
+        for (int leftIndex = 0; leftIndex < sorted.size(); leftIndex++) {
+            for (int rightIndex = leftIndex + 1; rightIndex < sorted.size(); rightIndex++) {
+                if (nodeOrder.compare(sorted.get(leftIndex), sorted.get(rightIndex)) >= 0) {
+                    throw new IllegalArgumentException("nodeOrder must be transitive");
+                }
+            }
+        }
     }
 
     // ── Reachability ────────────────────────────────────────────────────────

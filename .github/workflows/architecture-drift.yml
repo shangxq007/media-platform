@@ -15,6 +15,7 @@ jobs:
     outputs:
       architecture_drift: ${{ steps.classify.outputs.architecture_drift }}
       backend_ci: ${{ steps.classify.outputs.backend_ci }}
+      formal_verification: ${{ steps.classify.outputs.formal_verification }}
       categories: ${{ steps.classify.outputs.categories }}
     steps:
       - uses: actions/checkout@v4

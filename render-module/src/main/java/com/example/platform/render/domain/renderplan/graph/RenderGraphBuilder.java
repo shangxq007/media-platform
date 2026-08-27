@@ -66,10 +66,12 @@ public final class RenderGraphBuilder {
                     RenderDiagnosticSeverity.ERROR,
                     "RenderGraph contains a directed cycle"));
             // delegate topological order computation to the kernel anyway (reports cycle)
-            TopologicalOrderResult<RenderNodeId> topoResult = GraphAlgorithms.topologicalOrder(topology);
+            TopologicalOrderResult<RenderNodeId> topoResult = GraphAlgorithms.topologicalOrder(
+                    topology, Comparator.comparing(RenderNodeId::value));
             topologicalOrder = extractOrder(topoResult);
         } else {
-            TopologicalOrderResult<RenderNodeId> topoResult = GraphAlgorithms.topologicalOrder(topology);
+            TopologicalOrderResult<RenderNodeId> topoResult = GraphAlgorithms.topologicalOrder(
+                    topology, Comparator.comparing(RenderNodeId::value));
             topologicalOrder = extractOrder(topoResult);
         }
 

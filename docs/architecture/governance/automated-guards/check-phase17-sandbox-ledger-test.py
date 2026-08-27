@@ -18,7 +18,12 @@ CORRECTION_18_FCV_GATE = "CHATGPT_ROADMAP_22_PHASE_17_SANDBOX_ISOLATION_BOUNDED_
 AMENDMENT_GATE = "CHATGPT_CHANGE_IMPACT_DRIVEN_CI_GOVERNANCE_AMENDMENT_1_FINAL_REVIEW"
 PHASE18_DECISION_RECOVERY_GATE = "CHATGPT_ROADMAP_22_PHASE_18_FAOF_2_DECISION_RECOVERY_FINAL_REVIEW"
 PHASE18_DECISION_RECOVERY_CORRECTION_1_GATE = "CHATGPT_ROADMAP_22_PHASE_18_FAOF_2_DECISION_RECOVERY_CORRECTION_1_FINAL_REVIEW"
+PHASE18_BOUNDED_IMPLEMENTATION_GATE = "CHATGPT_ROADMAP_22_PHASE_18_FAOF_2_BOUNDED_IMPLEMENTATION_REVIEW"
 OBSOLETE_C1_GATE = "CHATGPT_ROADMAP_22_PHASE_17_POST_INTEGRATION_GOVERNANCE_CORRECTION_1_FINAL_REVIEW"
+PHASE18_BOUNDED_IMPLEMENTATION_ACTION = (
+    "Phase 18 - FAOF-2 Formal Algorithm Validation Bounded Implementation "
+    "(IN_PROGRESS; IMPLEMENTATION_AUTHORIZED; FINAL_REVIEW_PENDING)"
+)
 
 def invoke(doc, ledger, state, tracks):
     return subprocess.run(["python3", str(GUARD), "--document", str(doc),
@@ -37,9 +42,19 @@ def main():
     with LEDGER.open() as f:
         reader = csv.DictReader(f, delimiter="\t"); fields = reader.fieldnames; rows = list(reader)
     baseline_state = yaml.safe_load(STATE.read_text())
-    if (baseline_state["governance_execution"]["immediate_next_gate"] != PHASE18_DECISION_RECOVERY_CORRECTION_1_GATE
-            or baseline_state["governance"]["next_gate"] != PHASE18_DECISION_RECOVERY_CORRECTION_1_GATE):
-        raise SystemExit("frozen baseline does not carry the exact Phase18 Decision Recovery Correction 1 final-review gate")
+    if (baseline_state["governance_execution"]["immediate_next_gate"] != PHASE18_BOUNDED_IMPLEMENTATION_GATE
+            or baseline_state["governance"]["next_gate"] != PHASE18_BOUNDED_IMPLEMENTATION_GATE):
+        raise SystemExit("baseline does not carry the exact Phase18 bounded-implementation review gate")
+    roadmap_22 = baseline_state["roadmap_22"]
+    if (roadmap_22.get("phase_17") != "CLOSED"
+            or roadmap_22.get("phase_18_started") is not True
+            or roadmap_22.get("phase_18") != "IN_PROGRESS"
+            or roadmap_22.get("phase_18_faof_2_decision_recovery") != "PASS"
+            or roadmap_22.get("phase_18_implementation_authorized") is not True
+            or roadmap_22.get("phase_18_faof_2_bounded_implementation") != "IN_PROGRESS"
+            or roadmap_22.get("phase_19_started") is not False
+            or baseline_state["roadmap_23"].get("status") != "NOT_STARTED"):
+        raise SystemExit("baseline does not carry the exact Phase18 bounded-implementation state")
     with tempfile.TemporaryDirectory(prefix="phase17-ledger-red-") as directory:
         root = Path(directory); doc = root / "doc.md"; ledger = root / "ledger.tsv"; state = root / "state.yaml"; tracks = root / "tracks.yaml"
         doc.write_text(DOC.read_text()); write_state(state, baseline_state); write_rows(ledger, fields, rows); tracks.write_text(TRACKS.read_text())
@@ -60,6 +75,10 @@ def main():
         doc.write_text(DOC.read_text())
 
         state_mutations = []
+        changed = copy.deepcopy(baseline_state)
+        changed["governance_execution"]["immediate_next_gate"] = PHASE18_DECISION_RECOVERY_CORRECTION_1_GATE
+        changed["governance"]["next_gate"] = PHASE18_DECISION_RECOVERY_CORRECTION_1_GATE
+        state_mutations.append(("prior-phase18-c1-gate-drift", changed))
         changed = copy.deepcopy(baseline_state)
         changed["governance_execution"]["immediate_next_gate"] = PHASE18_DECISION_RECOVERY_GATE
         changed["governance"]["next_gate"] = PHASE18_DECISION_RECOVERY_GATE
@@ -92,6 +111,9 @@ def main():
         changed["roadmap_22"]["phase_17_started"] = False
         state_mutations.append(("implementation-phase17-started-drift", changed))
         changed = copy.deepcopy(baseline_state)
+        changed["roadmap_22"]["phase_17"] = "IN_PROGRESS"
+        state_mutations.append(("phase17-closure-state-drift", changed))
+        changed = copy.deepcopy(baseline_state)
         changed["roadmap_22"]["phase_17_sandbox_isolation_decision_recovery"] = (
             "FROZEN_CANDIDATE_PENDING_INDEPENDENT_REVIEW")
         state_mutations.append(("mixed-decision-recovery-state", changed))
@@ -99,11 +121,20 @@ def main():
         changed["roadmap_22"]["phase_17_sandbox_isolation_bounded_implementation"] = "IN_PROGRESS"
         state_mutations.append(("implementation-state-drift", changed))
         changed = copy.deepcopy(baseline_state)
+        changed["roadmap_22"]["phase_18_started"] = False
+        state_mutations.append(("phase18-started-drift", changed))
+        changed = copy.deepcopy(baseline_state)
+        changed["roadmap_22"]["phase_18"] = "CLOSED"
+        state_mutations.append(("phase18-premature-closure-drift", changed))
+        changed = copy.deepcopy(baseline_state)
         changed["roadmap_22"]["phase_18_faof_2_decision_recovery"] = "IN_PROGRESS"
         state_mutations.append(("phase18-decision-recovery-state-drift", changed))
         changed = copy.deepcopy(baseline_state)
-        changed["roadmap_22"]["phase_18_implementation_authorized"] = True
+        changed["roadmap_22"]["phase_18_implementation_authorized"] = False
         state_mutations.append(("phase18-implementation-authorization-drift", changed))
+        changed = copy.deepcopy(baseline_state)
+        changed["roadmap_22"]["phase_18_faof_2_bounded_implementation"] = "CLOSED"
+        state_mutations.append(("phase18-bounded-implementation-state-drift", changed))
         changed = copy.deepcopy(baseline_state)
         changed["roadmap_22"]["phase_19_started"] = True
         state_mutations.append(("phase19-started-drift", changed))
@@ -130,12 +161,24 @@ def main():
         state_mutations.append(("stale-next-roadmap-execution", changed))
 
         tracks_data = yaml.safe_load(TRACKS.read_text())
+        execution_track = next(track for track in tracks_data["tracks"] if track["id"] == "EXECUTION_AND_PROVIDER_RUNTIME")
+        if execution_track["next_actions"][0] != PHASE18_BOUNDED_IMPLEMENTATION_ACTION:
+            raise SystemExit("baseline does not carry the exact Phase18 bounded-implementation track action")
         stale_tracks = copy.deepcopy(tracks_data)
         execution_track = next(track for track in stale_tracks["tracks"] if track["id"] == "EXECUTION_AND_PROVIDER_RUNTIME")
         execution_track["next_actions"][0] = "Phase 17 - sandbox / isolation (NEXT; NOT_STARTED)"
         tracks.write_text(yaml.safe_dump(stale_tracks, sort_keys=False))
         if invoke(doc, ledger, state, tracks).returncode == 0:
             raise SystemExit("mutation passed: stale-roadmap-track-next-execution")
+        altered_tracks = copy.deepcopy(tracks_data)
+        execution_track = next(track for track in altered_tracks["tracks"] if track["id"] == "EXECUTION_AND_PROVIDER_RUNTIME")
+        execution_track["next_actions"][0] = (
+            "Phase 18 - FAOF-2 Formal Algorithm Validation Bounded Implementation "
+            "(IN_PROGRESS; IMPLEMENTATION_AUTHORIZED; FINAL_REVIEW_COMPLETE)"
+        )
+        tracks.write_text(yaml.safe_dump(altered_tracks, sort_keys=False))
+        if invoke(doc, ledger, state, tracks).returncode == 0:
+            raise SystemExit("mutation passed: altered-phase18-track-action")
         tracks.write_text(TRACKS.read_text())
 
         decision_state = copy.deepcopy(baseline_state)
@@ -147,10 +190,15 @@ def main():
             "agent/roadmap22-phase17-sandbox-isolation-decision-recovery")
         roadmap_22 = decision_state["roadmap_22"]
         roadmap_22["phase_17_started"] = False
+        roadmap_22.pop("phase_17")
         roadmap_22["phase_17_sandbox_isolation_decision_recovery"] = (
             "FROZEN_CANDIDATE_PENDING_INDEPENDENT_REVIEW")
         roadmap_22.pop("phase_17_sandbox_isolation_bounded_implementation")
         roadmap_22.pop("phase_18_started")
+        roadmap_22.pop("phase_18")
+        roadmap_22.pop("phase_18_faof_2_decision_recovery")
+        roadmap_22.pop("phase_18_implementation_authorized")
+        roadmap_22.pop("phase_18_faof_2_bounded_implementation")
         roadmap_22.pop("phase_19_started")
         decision_state["governance_execution"]["immediate_next_gate"] = DECISION_RECOVERY_GATE
         decision_state["governance_execution"]["next_roadmap_execution_after_governance_gate"]["started"] = False
@@ -172,9 +220,9 @@ def main():
                 raise SystemExit(f"mutation passed: {name}")
     print(
         f"PHASE17_SANDBOX_LEDGER_RED_MATRIX=PASS "
-        f"mutations={len(mutations) + 2 + len(state_mutations)} "
-        "exact_phase18_correction_1_gate_pass=1 old_amendment_gate_red=1 "
-        "arbitrary_matching_gate_red=1"
+        f"mutations={len(mutations) + 3 + len(state_mutations)} "
+        "exact_phase18_bounded_implementation_gate_pass=1 prior_c1_gate_red=1 "
+        "altered_phase18_state_gate_action_red=1 arbitrary_matching_gate_red=1"
     )
 
 if __name__ == "__main__":

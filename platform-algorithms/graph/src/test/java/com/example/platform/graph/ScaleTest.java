@@ -82,7 +82,8 @@ class ScaleTest {
         long cycleTime = System.nanoTime() - start;
 
         start = System.nanoTime();
-        TopologicalOrderResult<String> topo = GraphAlgorithms.topologicalOrder(graph);
+        TopologicalOrderResult<String> topo =
+                GraphAlgorithms.topologicalOrder(graph, Comparator.naturalOrder());
         long topoTime = System.nanoTime() - start;
 
         assertThat(cycle.isAcyclic()).isTrue();
@@ -107,7 +108,8 @@ class ScaleTest {
         long cycleTime = System.nanoTime() - start;
 
         start = System.nanoTime();
-        TopologicalOrderResult<String> topo = GraphAlgorithms.topologicalOrder(graph);
+        TopologicalOrderResult<String> topo =
+                GraphAlgorithms.topologicalOrder(graph, Comparator.naturalOrder());
         long topoTime = System.nanoTime() - start;
 
         assertThat(cycle.isAcyclic()).isTrue();
@@ -134,7 +136,8 @@ class ScaleTest {
         long cycleTime = System.nanoTime() - start;
 
         start = System.nanoTime();
-        TopologicalOrderResult<String> topo = GraphAlgorithms.topologicalOrder(graph);
+        TopologicalOrderResult<String> topo =
+                GraphAlgorithms.topologicalOrder(graph, Comparator.naturalOrder());
         long topoTime = System.nanoTime() - start;
 
         assertThat(cycle.isAcyclic()).isTrue();
@@ -159,7 +162,8 @@ class ScaleTest {
         long cycleTime = System.nanoTime() - start;
 
         start = System.nanoTime();
-        TopologicalOrderResult<String> topo = GraphAlgorithms.topologicalOrder(graph);
+        TopologicalOrderResult<String> topo =
+                GraphAlgorithms.topologicalOrder(graph, Comparator.naturalOrder());
         long topoTime = System.nanoTime() - start;
 
         assertThat(cycle.isAcyclic()).isTrue();
@@ -186,7 +190,8 @@ class ScaleTest {
         long cycleTime = System.nanoTime() - start;
 
         start = System.nanoTime();
-        TopologicalOrderResult<String> topo = GraphAlgorithms.topologicalOrder(graph);
+        TopologicalOrderResult<String> topo =
+                GraphAlgorithms.topologicalOrder(graph, Comparator.naturalOrder());
         long topoTime = System.nanoTime() - start;
 
         assertThat(cycle.isAcyclic()).isTrue();
@@ -211,7 +216,8 @@ class ScaleTest {
         long cycleTime = System.nanoTime() - start;
 
         start = System.nanoTime();
-        TopologicalOrderResult<String> topo = GraphAlgorithms.topologicalOrder(graph);
+        TopologicalOrderResult<String> topo =
+                GraphAlgorithms.topologicalOrder(graph, Comparator.naturalOrder());
         long topoTime = System.nanoTime() - start;
 
         assertThat(cycle.isAcyclic()).isTrue();

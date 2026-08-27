@@ -10,15 +10,15 @@ import java.util.Set;
  * mutation, construction details, and storage. Implementations may be backed by
  * adjacency lists, database projections, or in-memory kernels.
  *
- * <p>All operations are deterministic: same graph + same node ordering produces
- * identical results.
+ * <p>The view defines semantic identity through stable equality and hashing,
+ * but intentionally defines no universal order for generic nodes.
  *
  * @param <N> node type (must have stable {@link Object#equals}/{@link Object#hashCode})
  */
 public interface DirectedGraphView<N> {
 
     /**
-     * Returns all nodes in the graph. Order is implementation-defined but stable.
+     * Returns all nodes in the graph. Iteration order is not semantic authority.
      */
     Set<N> nodes();
 

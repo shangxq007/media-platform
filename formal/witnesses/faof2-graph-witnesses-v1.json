@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "corpusId": "FAOF2_GRAPH_WITNESSES_V1",
+  "identityField": "id",
+  "displayFieldIsNonSemantic": "display",
+  "canonicalOrder": "ascending id",
+  "witnesses": [
+    {"id":"empty","nodes":[],"edges":[],"expected":{"kind":"ORDERED","order":[],"cycle":false},"laws":["FAOF2-GRAPH-001","FAOF2-GRAPH-008"]},
+    {"id":"single","nodes":[{"id":"a","display":"a"}],"edges":[],"expected":{"kind":"ORDERED","order":["a"],"cycle":false},"laws":["FAOF2-GRAPH-001","FAOF2-GRAPH-005"]},
+    {"id":"independent","nodes":[{"id":"b","display":"b"},{"id":"a","display":"a"},{"id":"c","display":"c"}],"edges":[],"expected":{"kind":"ORDERED","order":["a","b","c"],"cycle":false},"laws":["FAOF2-GRAPH-001","FAOF2-GRAPH-004"]},
+    {"id":"single-edge","nodes":[{"id":"b","display":"b"},{"id":"a","display":"a"}],"edges":[["a","b"]],"expected":{"kind":"ORDERED","order":["a","b"],"cycle":false},"laws":["FAOF2-GRAPH-001","FAOF2-GRAPH-002"]},
+    {"id":"chain","nodes":[{"id":"c","display":"c"},{"id":"a","display":"a"},{"id":"b","display":"b"}],"edges":[["a","b"],["b","c"]],"sources":["a"],"expected":{"kind":"ORDERED","order":["a","b","c"],"cycle":false,"reachable":["a","b","c"]},"laws":["FAOF2-GRAPH-001","FAOF2-GRAPH-002","FAOF2-GRAPH-005","FAOF2-GRAPH-007"]},
+    {"id":"diamond","nodes":[{"id":"d","display":"d"},{"id":"c","display":"c"},{"id":"b","display":"b"},{"id":"a","display":"a"}],"edges":[["a","c"],["b","d"],["a","b"],["c","d"]],"sources":["a"],"expected":{"kind":"ORDERED","order":["a","b","c","d"],"cycle":false,"reachable":["a","b","c","d"]},"laws":["FAOF2-GRAPH-001","FAOF2-GRAPH-002","FAOF2-GRAPH-004","FAOF2-GRAPH-007"]},
+    {"id":"tie-break","nodes":[{"id":"root","display":"root"},{"id":"z","display":"z"},{"id":"a","display":"a"}],"edges":[["root","z"],["root","a"]],"expected":{"kind":"ORDERED","order":["root","a","z"],"cycle":false},"laws":["FAOF2-GRAPH-004"]},
+    {"id":"disconnected","nodes":[{"id":"x","display":"x"},{"id":"b","display":"b"},{"id":"a","display":"a"},{"id":"y","display":"y"}],"edges":[["a","b"],["x","y"]],"sources":["a"],"expected":{"kind":"ORDERED","order":["a","b","x","y"],"cycle":false,"reachable":["a","b"]},"laws":["FAOF2-GRAPH-001","FAOF2-GRAPH-007"]},
+    {"id":"duplicate-edge","nodes":[{"id":"a","display":"a"},{"id":"b","display":"b"}],"edges":[["a","b"],["a","b"]],"expected":{"kind":"ORDERED","order":["a","b"],"cycle":false,"edgeCount":1},"laws":["FAOF2-GRAPH-001","FAOF2-GRAPH-002","FAOF2-GRAPH-008"]},
+    {"id":"self-cycle","nodes":[{"id":"a","display":"a"}],"edges":[["a","a"]],"expected":{"kind":"CYCLE","order":[],"cycle":true},"laws":["FAOF2-GRAPH-003"]},
+    {"id":"two-cycle","nodes":[{"id":"a","display":"a"},{"id":"b","display":"b"}],"edges":[["a","b"],["b","a"]],"expected":{"kind":"CYCLE","order":[],"cycle":true},"laws":["FAOF2-GRAPH-003"]},
+    {"id":"multihop-cycle","nodes":[{"id":"a","display":"a"},{"id":"b","display":"b"},{"id":"c","display":"c"}],"edges":[["a","b"],["b","c"],["c","a"]],"expected":{"kind":"CYCLE","order":[],"cycle":true},"laws":["FAOF2-GRAPH-003"]},
+    {"id":"reachability-positive-negative","nodes":[{"id":"a","display":"a"},{"id":"b","display":"b"},{"id":"c","display":"c"},{"id":"x","display":"x"}],"edges":[["a","b"],["b","c"]],"sources":["a"],"expected":{"kind":"ORDERED","order":["a","b","c","x"],"cycle":false,"reachable":["a","b","c"]},"laws":["FAOF2-GRAPH-005","FAOF2-GRAPH-007"]},
+    {"id":"multiple-roots-sinks","nodes":[{"id":"r2","display":"r2"},{"id":"s2","display":"s2"},{"id":"m","display":"m"},{"id":"r1","display":"r1"},{"id":"s1","display":"s1"}],"edges":[["r1","m"],["r2","m"],["m","s1"],["m","s2"]],"sources":["r1","r2"],"expected":{"kind":"ORDERED","order":["r1","r2","m","s1","s2"],"cycle":false,"reachable":["m","r1","r2","s1","s2"],"roots":["r1","r2"],"sinks":["s1","s2"]},"laws":["FAOF2-GRAPH-001","FAOF2-GRAPH-005","FAOF2-GRAPH-007"]},
+    {"id":"bounded-depth","nodes":[{"id":"a","display":"a"},{"id":"b","display":"b"},{"id":"c","display":"c"},{"id":"d","display":"d"}],"edges":[["a","b"],["b","c"],["c","d"]],"bounded":{"start":"a","depth":2},"expected":{"kind":"ORDERED","order":["a","b","c","d"],"cycle":false,"descendants":["a","b","c"]},"laws":["FAOF2-GRAPH-006"]},
+    {"id":"equal-to-string-distinct-ids","nodes":[{"id":"node-001","display":"same-rendering"},{"id":"node-002","display":"same-rendering"},{"id":"root","display":"same-rendering"}],"edges":[["root","node-002"],["root","node-001"]],"expected":{"kind":"ORDERED","order":["root","node-001","node-002"],"cycle":false},"laws":["FAOF2-GRAPH-001","FAOF2-GRAPH-004","FAOF2-GRAPH-008"]},
+    {"id":"construction-order-a","constructionGroup":"construction-order","nodes":[{"id":"d","display":"d"},{"id":"a","display":"a"},{"id":"c","display":"c"},{"id":"b","display":"b"}],"edges":[["a","c"],["c","d"],["a","b"],["b","d"]],"expected":{"kind":"ORDERED","order":["a","b","c","d"],"cycle":false},"laws":["FAOF2-GRAPH-004"]},
+    {"id":"construction-order-b","constructionGroup":"construction-order","nodes":[{"id":"b","display":"b"},{"id":"c","display":"c"},{"id":"a","display":"a"},{"id":"d","display":"d"}],"edges":[["b","d"],["a","b"],["c","d"],["a","c"]],"expected":{"kind":"ORDERED","order":["a","b","c","d"],"cycle":false},"laws":["FAOF2-GRAPH-004"]}
+  ]
+}

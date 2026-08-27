@@ -33,7 +33,8 @@ class BehavioralParityTest {
             CycleDetectionResult<String> cycle = GraphAlgorithms.detectCycles(graph);
             assertThat(cycle.isAcyclic()).isTrue();
 
-            TopologicalOrderResult<String> topo = GraphAlgorithms.topologicalOrder(graph);
+            TopologicalOrderResult<String> topo =
+                    GraphAlgorithms.topologicalOrder(graph, Comparator.naturalOrder());
             assertThat(topo.order()).containsExactly("a", "b", "c");
         }
 
@@ -47,7 +48,8 @@ class BehavioralParityTest {
             DirectedGraphView<String> graph = GraphViews.directedFromAdjacency(adj);
 
             assertThat(GraphAlgorithms.detectCycles(graph).isAcyclic()).isTrue();
-            List<String> order = GraphAlgorithms.topologicalOrder(graph).order();
+            List<String> order =
+                    GraphAlgorithms.topologicalOrder(graph, Comparator.naturalOrder()).order();
             assertThat(order).hasSize(3);
             assertThat(order.get(0)).isEqualTo("a");
             assertThat(order.indexOf("b")).isLessThan(order.indexOf("c"));
@@ -64,7 +66,8 @@ class BehavioralParityTest {
             DirectedGraphView<String> graph = GraphViews.directedFromAdjacency(adj);
 
             assertThat(GraphAlgorithms.detectCycles(graph).isAcyclic()).isTrue();
-            List<String> order = GraphAlgorithms.topologicalOrder(graph).order();
+            List<String> order =
+                    GraphAlgorithms.topologicalOrder(graph, Comparator.naturalOrder()).order();
             assertThat(order).hasSize(4);
             assertThat(order.get(0)).isEqualTo("a");
             assertThat(order.get(3)).isEqualTo("d");
@@ -80,7 +83,8 @@ class BehavioralParityTest {
             DirectedGraphView<String> graph = GraphViews.directedFromAdjacency(adj);
 
             assertThat(GraphAlgorithms.detectCycles(graph).isAcyclic()).isTrue();
-            List<String> order = GraphAlgorithms.topologicalOrder(graph).order();
+            List<String> order =
+                    GraphAlgorithms.topologicalOrder(graph, Comparator.naturalOrder()).order();
             assertThat(order).hasSize(3);
             assertThat(order.get(2)).isEqualTo("c");
         }
@@ -95,7 +99,8 @@ class BehavioralParityTest {
             DirectedGraphView<String> graph = GraphViews.directedFromAdjacency(adj);
 
             assertThat(GraphAlgorithms.detectCycles(graph).isAcyclic()).isTrue();
-            List<String> order = GraphAlgorithms.topologicalOrder(graph).order();
+            List<String> order =
+                    GraphAlgorithms.topologicalOrder(graph, Comparator.naturalOrder()).order();
             assertThat(order).hasSize(3);
             assertThat(order.get(0)).isEqualTo("a");
         }
@@ -169,8 +174,8 @@ class BehavioralParityTest {
             DirectedGraphView<String> g1 = GraphViews.directedFromAdjacency(adj1);
             DirectedGraphView<String> g2 = GraphViews.directedFromAdjacency(adj2);
 
-            assertThat(GraphAlgorithms.topologicalOrder(g1).order())
-                    .isEqualTo(GraphAlgorithms.topologicalOrder(g2).order());
+            assertThat(GraphAlgorithms.topologicalOrder(g1, Comparator.naturalOrder()).order())
+                    .isEqualTo(GraphAlgorithms.topologicalOrder(g2, Comparator.naturalOrder()).order());
         }
     }
 }

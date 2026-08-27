@@ -52,8 +52,10 @@ roadmap_22:
   phase_17_final_validated_tree: 469944cbe9cb91dfe8bbf0b2f2d30ad45416db14
   phase_17_final_fcv: PASS
   phase_18_started: true
-  phase_18_faof_2_decision_recovery: CORRECTION_1_FROZEN_CANDIDATE_PENDING_INDEPENDENT_REVIEW
-  phase_18_implementation_authorized: false
+  phase_18: IN_PROGRESS
+  phase_18_faof_2_decision_recovery: PASS
+  phase_18_implementation_authorized: true
+  phase_18_faof_2_bounded_implementation: IN_PROGRESS
   phase_19_started: false
   canonical_main_integration: FAST_FORWARDED_TO_ACCEPTED_SOURCE_TIP
   canonical_main_integration_source_tip: ef0de1ed02147a701c649be7e4c7ebd0987bbea9
@@ -69,16 +71,16 @@ epoch_3:
 roadmap_23:
   status: NOT_STARTED
 governance_execution:
-  immediate_next_gate: CHATGPT_ROADMAP_22_PHASE_18_FAOF_2_DECISION_RECOVERY_CORRECTION_1_FINAL_REVIEW
+  immediate_next_gate: CHATGPT_ROADMAP_22_PHASE_18_FAOF_2_BOUNDED_IMPLEMENTATION_REVIEW
   next_roadmap_execution_after_governance_gate:
     roadmap: 22
     phase: 18
     started: true
-    implementation_authorized: false
+    implementation_authorized: true
     topic:
     - FAOF-2
     - Formal Algorithm Validation
-    - Decision Recovery frozen candidate pending independent review
+    - Bounded implementation in progress
   adopted_cross_cutting_amendments:
     change_impact_driven_ci_governance: ADOPTED
     worker_runtime_backend_resource_accounting: ADOPTED
@@ -109,7 +111,7 @@ governance:
   - docs/architecture/governance/project-architecture-state-v1-governance-review-correction-2.md
   project_state_dir: docs/architecture/governance/project-state/
   authority_precedence: docs/architecture/governance/source-of-truth/authority-precedence.md
-  next_gate: CHATGPT_ROADMAP_22_PHASE_18_FAOF_2_DECISION_RECOVERY_CORRECTION_1_FINAL_REVIEW
+  next_gate: CHATGPT_ROADMAP_22_PHASE_18_FAOF_2_BOUNDED_IMPLEMENTATION_REVIEW
   phase_17_closure_record: docs/architecture/governance/roadmap-22-phase-17-sandbox-isolation-closure.md
   phase_17_canonical_integration_record: docs/architecture/governance/roadmap-22-phase-17-canonical-integration-and-cleanup.md
   expansion_records:
@@ -131,3 +133,4 @@ governance:
   phase_17_bounded_implementation_record: docs/architecture/governance/roadmap-22-phase-17-sandbox-isolation-bounded-implementation.md
   phase_18_faof_2_decision_recovery_record: docs/architecture/governance/roadmap-22-phase-18-faof-2-decision-recovery.md
   phase_18_faof_2_decision_recovery_correction_1_record: docs/architecture/governance/roadmap-22-phase-18-faof-2-decision-recovery-correction-1.md
+  phase_18_faof_2_bounded_implementation_record: docs/architecture/governance/roadmap-22-phase-18-faof-2-bounded-implementation.md

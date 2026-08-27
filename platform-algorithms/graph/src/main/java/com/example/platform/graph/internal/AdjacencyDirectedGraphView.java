@@ -8,7 +8,9 @@ import java.util.stream.Collectors;
 /**
  * Internal in-memory implementation of {@link DirectedGraphView}.
  *
- * <p>Stores forward adjacency in a deterministic structure for stable iteration.
+ * <p>Stores identity-preserving forward adjacency without inventing a generic
+ * node order. Consumers that require canonical ordering supply it explicitly
+ * to the relevant graph algorithm.
  */
 public final class AdjacencyDirectedGraphView<N> implements DirectedGraphView<N> {
 
@@ -22,16 +24,12 @@ public final class AdjacencyDirectedGraphView<N> implements DirectedGraphView<N>
         for (Set<N> successors : adjacencyMap.values()) {
             allNodes.addAll(successors);
         }
-        List<N> sortedNodes = new ArrayList<>(allNodes);
-        sortedNodes.sort(Comparator.comparing(Object::toString));
-
         int totalEdges = 0;
-        for (N node : sortedNodes) {
+        for (N node : allNodes) {
             Set<N> successors = adjacencyMap.getOrDefault(node, Set.of());
-            Set<N> sortedSuccessors = new TreeSet<>(Comparator.comparing(Object::toString));
-            sortedSuccessors.addAll(successors);
-            this.forward.put(node, Set.copyOf(sortedSuccessors));
-            totalEdges += sortedSuccessors.size();
+            Set<N> identityPreservingSuccessors = Set.copyOf(successors);
+            this.forward.put(node, identityPreservingSuccessors);
+            totalEdges += identityPreservingSuccessors.size();
         }
         this.nodes = Set.copyOf(allNodes);
         this.edgeCount = totalEdges;

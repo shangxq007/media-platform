@@ -38,7 +38,7 @@ public final class ExecutionReuseKeyDeriver {
                 new ProviderBoundExecutableTaskGraph.TaskGraphView(
                         graph.tasks(), graph.taskDependencies());
         TopologicalOrderResult<ExecutableTaskId> orderResult =
-                GraphAlgorithms.topologicalOrder(topology);
+                GraphAlgorithms.topologicalOrder(topology, Comparator.naturalOrder());
         if (orderResult instanceof TopologicalOrderResult.CycleDetected<ExecutableTaskId> cycle) {
             throw new IllegalArgumentException(
                     "ExecutionReuseKey derivation requires an acyclic graph: " + cycle.cycleNodes());

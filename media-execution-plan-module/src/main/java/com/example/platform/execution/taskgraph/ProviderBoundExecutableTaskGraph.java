@@ -212,7 +212,7 @@ public final class ProviderBoundExecutableTaskGraph {
             predecessors.get(dependency.consumerTaskId()).add(dependency.producerTaskId());
         });
         TopologicalOrderResult<ExecutableTaskId> result = GraphAlgorithms.topologicalOrder(
-                new DirectedGraphView<>() {
+                new DirectedGraphView<ExecutableTaskId>() {
                     @Override public Set<ExecutableTaskId> nodes() { return successors.keySet(); }
                     @Override public Set<ExecutableTaskId> successors(ExecutableTaskId node) {
                         return successors.get(node);
@@ -224,7 +224,7 @@ public final class ProviderBoundExecutableTaskGraph {
                     @Override public int edgeCount() {
                         return successors.values().stream().mapToInt(Set::size).sum();
                     }
-                });
+                }, Comparator.naturalOrder());
         if (result instanceof TopologicalOrderResult.CycleDetected<ExecutableTaskId>) {
             throw new IllegalStateException("provider-bound executable task graph is cyclic");
         }

@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "lean": {
+    "version": "4.19.0",
+    "releaseArchive": "lean-4.19.0-linux.tar.zst",
+    "releaseArchiveSha256": "6fe3ce97a58f44e2b3567d455b994eacec5bfe9ae7774f2a573444480ba813fe"
+  },
+  "coq": {
+    "version": "8.20.1",
+    "image": "docker.io/coqorg/coq:8.20",
+    "imageId": "sha256:b80d66c91b4da3a1b3c5d3e6672cf8f4ab72ed2f7a6a1f0cf7d3aef747cf6a4b",
+    "repositoryDigest": "docker.io/coqorg/coq@sha256:e50d77c4c5a9aa0d76ae1b343d79c5f922da3a75054b79c5dc635895438e4674"
+  }
+}
