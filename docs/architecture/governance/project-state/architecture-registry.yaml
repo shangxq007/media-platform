@@ -2831,3 +2831,69 @@
   summary: Community Native Pull workers, delegated-backend internal workers, and provider-local distributed-runtime nodes retain distinct identities, lifecycles, placement, resources, and authorities.
   implementation_status: DEFERRED
   references: [docs/architecture/governance/community-compute-and-distributed-runtime-foundation-amendment-1.md]
+
+## 9AO CHANGE-IMPACT-DRIVEN CI GOVERNANCE
+
+- id: CI_CHANGE_IMPACT_CLASSIFICATION_IS_PLATFORM_OWNED_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: CI_GOVERNANCE
+  summary: A repository-owned executable classifier is the sole path-to-CI-policy authority; workflow triggers and consumers do not maintain competing path taxonomies.
+  implementation_status: IMPLEMENTED (scripts/ci/change_impact_classifier.py and classifier-dependent workflows)
+  references: [docs/architecture/governance/change-impact-driven-ci-governance-amendment-1.md]
+
+- id: CHANGE_IMPACT_TAXONOMY_IS_EXHAUSTIVE_AND_UNKNOWN_FAILS_CLOSED_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: CI_GOVERNANCE
+  summary: Governance, docs, frontend, backend test, backend runtime, build graph, container, GitOps, Semgrep, workflow, CI infrastructure, and unknown are explicit; empty, invalid, unresolvable, or unmatched input selects unknown and full CI.
+  implementation_status: IMPLEMENTED (executable classifier GREEN/RED matrix)
+  references: [docs/architecture/governance/change-impact-driven-ci-governance-amendment-1.md]
+
+- id: BACKEND_AND_FRONTEND_CI_ARE_INDEPENDENTLY_IMPACT_GATED_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: CI_GOVERNANCE
+  summary: Backend and frontend jobs consume independent decisions, and Foundation architecture drift is distinct from conditional full-backend verification.
+  implementation_status: IMPLEMENTED (.github/workflows/ci.yml and .github/workflows/architecture-drift.yml)
+  references: [docs/architecture/governance/change-impact-driven-ci-governance-amendment-1.md]
+
+- id: CI_POLICY_SUMMARY_IS_UNCONDITIONAL_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: CI_GOVERNANCE
+  summary: Standard CI always reports and enforces classifier selection and selected-job outcomes through one stable policy-summary job.
+  implementation_status: IMPLEMENTED (.github/workflows/ci.yml policy-summary)
+  references: [docs/architecture/governance/change-impact-driven-ci-governance-amendment-1.md]
+
+- id: RUNTIME_IMAGE_PUBLICATION_REQUIRES_RUNTIME_CONTAINER_OR_BUILD_INPUT_IMPACT_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: RELEASE_GOVERNANCE
+  summary: Main-branch runtime image publication requires a classified backend-runtime, container, or backend-build-graph input change.
+  implementation_status: IMPLEMENTED (runtime_image_publish classifier output and images job gate)
+  references: [docs/architecture/governance/change-impact-driven-ci-governance-amendment-1.md]
+
+- id: NON_RUNTIME_CHANGES_MUST_NOT_PUBLISH_RUNTIME_IMAGES_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: RELEASE_GOVERNANCE
+  summary: Governance, docs, backend-test-only, frontend-only, GitOps, Semgrep, workflow, CI-infrastructure, and unknown-only changes do not publish runtime images.
+  implementation_status: IMPLEMENTED (classifier decision matrix and RED tests)
+  references: [docs/architecture/governance/change-impact-driven-ci-governance-amendment-1.md]
+
+- id: GITOPS_SEMGREP_AND_ARCHITECTURE_VALIDATION_ARE_TARGETED_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: CI_GOVERNANCE
+  summary: GitOps, Semgrep, architecture drift, and Foundation backend verification are explicit impact decisions; full-CI impacts select all validation lanes.
+  implementation_status: IMPLEMENTED (Standard CI, Foundation Verification, and Semgrep Architecture workflows)
+  references: [docs/architecture/governance/change-impact-driven-ci-governance-amendment-1.md]
+
+- id: CLASSIFIER_DEPENDENT_CHECKOUTS_USE_COMPLETE_CREDENTIAL_FREE_HISTORY_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: CI_SECURITY
+  summary: Classifier-dependent workflow checkouts fetch complete history and do not persist checkout credentials.
+  implementation_status: IMPLEMENTED (fetch-depth 0 and persist-credentials false, RED guarded)
+  references: [docs/architecture/governance/change-impact-driven-ci-governance-amendment-1.md]

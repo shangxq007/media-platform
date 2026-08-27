@@ -173,14 +173,13 @@ def main():
     if found_raw_resource_flags:
         fail("raw conformance workflow invents resource capability: " + ", ".join(found_raw_resource_flags))
     foundation_workflow = (ROOT / ".github/workflows/architecture-drift.yml").read_text()
-    architecture_drift_checkout = """  architecture-drift:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          persist-credentials: false"""
-    if architecture_drift_checkout not in foundation_workflow:
+    architecture_drift_job = foundation_workflow.split("  architecture-drift:\n", 1)
+    if len(architecture_drift_job) != 2:
+        fail("Foundation Verification architecture-drift job is missing")
+    architecture_drift_job = architecture_drift_job[1].split("\n  foundation-verification:\n", 1)[0]
+    if ("uses: actions/checkout@v4" not in architecture_drift_job
+            or "fetch-depth: 0" not in architecture_drift_job
+            or "persist-credentials: false" not in architecture_drift_job):
         fail("Foundation Verification does not provide Phase 17 governance history")
     print(
         "PHASE17_SANDBOX_ARCHITECTURE_GUARD=PASS "

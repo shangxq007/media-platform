@@ -1383,6 +1383,13 @@ else
     fail "Phase 16 clean-forward authority counters are non-zero"
 fi
 
+echo "--- CHANGE_IMPACT_DRIVEN_CI_GOVERNANCE_AMENDMENT_1 Guards ---"
+if python3 scripts/ci/test_change_impact_classifier.py; then
+    pass "Change-impact classifier and workflow RED matrix is closed"
+else
+    fail "Change-impact classifier or workflow policy drifted"
+fi
+
 echo "--- ROADMAP_22_PHASE_17 Sandbox Isolation Guards ---"
 if python3 docs/architecture/governance/automated-guards/check-phase17-sandbox-ledger-test.py; then
   pass "Phase 17 ledger guard RED matrix rejects the fail-closed corruption set"
