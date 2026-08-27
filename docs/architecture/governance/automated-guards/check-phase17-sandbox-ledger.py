@@ -97,9 +97,10 @@ def main() -> None:
     ap.add_argument("--document", default="docs/architecture/governance/roadmap-22-phase-17-sandbox-isolation-decision-recovery.md")
     ap.add_argument("--ledger", default="docs/architecture/governance/automated-guards/phase17-sandbox-isolation-clean-forward-ledger.tsv")
     ap.add_argument("--state", default="docs/architecture/governance/project-state/current-state.yaml")
+    ap.add_argument("--tracks", default="docs/architecture/governance/project-state/roadmap-tracks.yaml")
     args = ap.parse_args()
-    doc_path, ledger_path, state_path = map(Path, (args.document, args.ledger, args.state))
-    for p in (doc_path, ledger_path, state_path):
+    doc_path, ledger_path, state_path, tracks_path = map(Path, (args.document, args.ledger, args.state, args.tracks))
+    for p in (doc_path, ledger_path, state_path, tracks_path):
         if not p.is_file(): fail(f"missing required file: {p}")
     doc = doc_path.read_text()
     with ledger_path.open(newline="") as f:
@@ -194,6 +195,21 @@ def main() -> None:
         }
         if next_execution != expected_next_execution:
             fail("persisted next roadmap execution after governance gate is stale")
+        tracks = yaml.safe_load(tracks_path.read_text())
+        if not isinstance(tracks, dict) or not isinstance(tracks.get("tracks"), list):
+            fail("roadmap tracks document is not a track list")
+        execution_track = next((track for track in tracks["tracks"]
+                                if isinstance(track, dict) and track.get("id") == "EXECUTION_AND_PROVIDER_RUNTIME"), None)
+        if execution_track is None:
+            fail("roadmap track EXECUTION_AND_PROVIDER_RUNTIME is missing")
+        assert execution_track is not None
+        expected_action = "Phase 18 - FAOF-2 Formal Algorithm Validation (NEXT; NOT_STARTED)"
+        stale_action = "Phase 17 - sandbox / isolation (NEXT; NOT_STARTED)"
+        actions = execution_track.get("next_actions")
+        dependencies = execution_track.get("current_dependencies", "")
+        if (not isinstance(actions, list) or not actions or actions[0] != expected_action
+                or stale_action in actions or "Phase 17 Sandbox/Isolation CLOSED" not in dependencies):
+            fail("persisted roadmap track next execution is stale after Phase17 closure")
     else:
         if canonical_main != EXPECTED_PRE_INTEGRATION_MAIN:
             fail("persisted pre-integration canonical main differs from expected baseline")

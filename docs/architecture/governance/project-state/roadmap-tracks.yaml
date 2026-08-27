@@ -6,9 +6,9 @@ tracks:
 - id: EXECUTION_AND_PROVIDER_RUNTIME
   status: ACTIVE
   purpose: "Worker fabric, execution backend, provider runtime and native pull - the core of Roadmap #22 after Epoch 3."
-  current_dependencies: "Roadmap #22 epochs 1-3, Phase 15, and Phase 16 CLOSED; provider immutable foundation, worker-fabric module, resource model, ETG, runtime authority, Native Pull V1, typed PlanLowerer/RuntimeAdapter, and Artifact staging/materialization/reuse closure are accepted"
+  current_dependencies: "Roadmap #22 epochs 1-3, Phase 15, Phase 16, and Phase 17 Sandbox/Isolation CLOSED; provider immutable foundation, worker-fabric module, resource model, ETG, runtime authority, Native Pull V1, typed PlanLowerer/RuntimeAdapter, Artifact staging/materialization/reuse closure, and sandbox isolation are accepted"
   next_actions:
-  - Phase 17 - sandbox / isolation (NEXT; NOT_STARTED)
+  - Phase 18 - FAOF-2 Formal Algorithm Validation (NEXT; NOT_STARTED)
   - Phase 19 - blocking WorkerRuntime Support Advertisement plus first real FFmpeg CPU Native Pull Provider vertical slice (NOT_STARTED)
   - Phase 20 - Resource Accounting Domain implementation before two platform runtime incarnations share physical capacity in production (NOT_STARTED; trigger-gated)
   - Phase 21 - OpenCue specialized VFX/offline ExecutionBackend plugin bounded POC, mapping, and native-management-surface preservation (NOT_STARTED)
@@ -22,7 +22,7 @@ tracks:
   - "Roadmap #23 optimization may select/score backends but never invades delegated-backend internal placement"
   explicit_exclusions:
   - No Global Execution Optimizer (#23 scope)
-  - Phase 17, Phase 18, Phase 19, Phase 20, and Phase 21 are not started by this governance update
+  - Phase 18, Phase 19, Phase 20, and Phase 21 are not started by this governance update
   - No merge of canonical main in this governance update
   - No production code changes in governance persistence tasks
 - id: SEMANTIC_COMPOSITION_FOUNDATION

@@ -12,12 +12,13 @@ GUARD = ROOT / "docs/architecture/governance/automated-guards/check-phase17-sand
 DOC = ROOT / "docs/architecture/governance/roadmap-22-phase-17-sandbox-isolation-decision-recovery.md"
 LEDGER = ROOT / "docs/architecture/governance/automated-guards/phase17-sandbox-isolation-clean-forward-ledger.tsv"
 STATE = ROOT / "docs/architecture/governance/project-state/current-state.yaml"
+TRACKS = ROOT / "docs/architecture/governance/project-state/roadmap-tracks.yaml"
 DECISION_RECOVERY_GATE = "CHATGPT_ROADMAP_22_PHASE_17_SANDBOX_ISOLATION_DECISION_RECOVERY_FINAL_REVIEW"
 CORRECTION_18_FCV_GATE = "CHATGPT_ROADMAP_22_PHASE_17_SANDBOX_ISOLATION_BOUNDED_IMPLEMENTATION_CORRECTION_18_FCV_REVIEW"
 
-def invoke(doc, ledger, state):
+def invoke(doc, ledger, state, tracks):
     return subprocess.run(["python3", str(GUARD), "--document", str(doc),
-        "--ledger", str(ledger), "--state", str(state)], cwd=ROOT, capture_output=True)
+        "--ledger", str(ledger), "--state", str(state), "--tracks", str(tracks)], cwd=ROOT, capture_output=True)
 
 def write_rows(path, fields, rows):
     with path.open("w", newline="") as f:
@@ -33,9 +34,9 @@ def main():
         reader = csv.DictReader(f, delimiter="\t"); fields = reader.fieldnames; rows = list(reader)
     baseline_state = yaml.safe_load(STATE.read_text())
     with tempfile.TemporaryDirectory(prefix="phase17-ledger-red-") as directory:
-        root = Path(directory); doc = root / "doc.md"; ledger = root / "ledger.tsv"; state = root / "state.yaml"
-        doc.write_text(DOC.read_text()); write_state(state, baseline_state); write_rows(ledger, fields, rows)
-        if invoke(doc, ledger, state).returncode != 0: raise SystemExit("baseline did not pass")
+        root = Path(directory); doc = root / "doc.md"; ledger = root / "ledger.tsv"; state = root / "state.yaml"; tracks = root / "tracks.yaml"
+        doc.write_text(DOC.read_text()); write_state(state, baseline_state); write_rows(ledger, fields, rows); tracks.write_text(TRACKS.read_text())
+        if invoke(doc, ledger, state, tracks).returncode != 0: raise SystemExit("baseline did not pass")
         mutations = []
         mutations.append(("missing-column", fields[:-1], rows))
         empty = [dict(row) for row in rows]; empty[0]["rationale"] = ""
@@ -46,9 +47,9 @@ def main():
         mutations.append(("invalid-disposition", fields, invalid))
         for name, mutation_fields, mutation_rows in mutations:
             write_rows(ledger, mutation_fields, mutation_rows)
-            if invoke(doc, ledger, state).returncode == 0: raise SystemExit(f"mutation passed: {name}")
+            if invoke(doc, ledger, state, tracks).returncode == 0: raise SystemExit(f"mutation passed: {name}")
         write_rows(ledger, fields, rows); doc.write_text(DOC.read_text().replace("TOTAL_ROWS=131", "TOTAL_ROWS=130"))
-        if invoke(doc, ledger, state).returncode == 0: raise SystemExit("mutation passed: count-mismatch")
+        if invoke(doc, ledger, state, tracks).returncode == 0: raise SystemExit("mutation passed: count-mismatch")
         doc.write_text(DOC.read_text())
 
         state_mutations = []
@@ -106,6 +107,15 @@ def main():
         }
         state_mutations.append(("stale-next-roadmap-execution", changed))
 
+        tracks_data = yaml.safe_load(TRACKS.read_text())
+        stale_tracks = copy.deepcopy(tracks_data)
+        execution_track = next(track for track in stale_tracks["tracks"] if track["id"] == "EXECUTION_AND_PROVIDER_RUNTIME")
+        execution_track["next_actions"][0] = "Phase 17 - sandbox / isolation (NEXT; NOT_STARTED)"
+        tracks.write_text(yaml.safe_dump(stale_tracks, sort_keys=False))
+        if invoke(doc, ledger, state, tracks).returncode == 0:
+            raise SystemExit("mutation passed: stale-roadmap-track-next-execution")
+        tracks.write_text(TRACKS.read_text())
+
         decision_state = copy.deepcopy(baseline_state)
         decision_state["repository"]["canonical_main"] = {
             "sha": "d2cc856939fe0a73d6f1ef799078a0a5e7c5b179",
@@ -124,7 +134,7 @@ def main():
         decision_state["governance_execution"]["next_roadmap_execution_after_governance_gate"]["started"] = False
         decision_state["governance"]["next_gate"] = DECISION_RECOVERY_GATE
         write_state(state, decision_state)
-        if invoke(doc, ledger, state).returncode != 0:
+        if invoke(doc, ledger, state, tracks).returncode != 0:
             raise SystemExit("decision recovery candidate baseline did not pass")
         changed = copy.deepcopy(decision_state)
         changed["roadmap_22"]["phase_17_started"] = True
@@ -136,9 +146,9 @@ def main():
 
         for name, mutation_state in state_mutations:
             write_state(state, mutation_state)
-            if invoke(doc, ledger, state).returncode == 0:
+            if invoke(doc, ledger, state, tracks).returncode == 0:
                 raise SystemExit(f"mutation passed: {name}")
-    print(f"PHASE17_SANDBOX_LEDGER_RED_MATRIX=PASS mutations={len(mutations) + 1 + len(state_mutations)}")
+    print(f"PHASE17_SANDBOX_LEDGER_RED_MATRIX=PASS mutations={len(mutations) + 2 + len(state_mutations)}")
 
 if __name__ == "__main__":
     main()
