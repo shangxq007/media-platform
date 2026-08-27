@@ -39,14 +39,28 @@ PHASE18_CLOSURE_ACTION = (
     "Phase 18 - FAOF-2 Formal Algorithm Validation Closure Publication "
     "(CLOSED; ACCEPTED; CANONICAL_MAIN_FF_ONLY_INTEGRATION_AUTHORIZED_PENDING)"
 )
-PHASE19_ACTION = (
+PHASE18_POST_INTEGRATION_GATE = (
+    "CHATGPT_ROADMAP_22_PHASE_19_FFMPEG_CPU_NATIVE_PULL_PROVIDER_"
+    "BOUNDED_IMPLEMENTATION_AUTHORIZATION"
+)
+PHASE18_POST_INTEGRATION_ACTION = (
+    "Phase 18 - FAOF-2 Formal Algorithm Validation Closure Publication "
+    "(CLOSED; ACCEPTED; CANONICAL_MAIN_FF_ONLY_INTEGRATION_COMPLETE)"
+)
+PHASE19_CONDITIONAL_ACTION = (
     "Phase 19 - blocking WorkerRuntime Support Advertisement plus first real "
     "FFmpeg CPU Native Pull Provider vertical slice (NOT_STARTED; "
     "IMPLEMENTATION_AUTHORIZED_ONLY_AFTER_SUCCESSFUL_PHASE18_CANONICAL_INTEGRATION)"
 )
-PHASE19_AUTHORIZATION = (
+PHASE19_ACTION = (
+    "Phase 19 - blocking WorkerRuntime Support Advertisement plus first real "
+    "FFmpeg CPU Native Pull Provider vertical slice (NOT_STARTED; "
+    "IMPLEMENTATION_AUTHORIZED)"
+)
+PHASE19_CONDITIONAL_AUTHORIZATION = (
     "AUTHORIZED_ONLY_AFTER_SUCCESSFUL_PHASE18_CANONICAL_INTEGRATION"
 )
+PHASE19_AUTHORIZATION = "AUTHORIZED"
 ACCEPTED_PHASE18_IMPLEMENTATION = {
     "milestone": "ROADMAP_22_PHASE_18_FAOF_2",
     "sha": "f00c0f36f7686314f6bb75a6b414751f66b95f9a",
@@ -60,6 +74,13 @@ EXPECTED_PRE_INTEGRATION_MAIN = {
 EXPECTED_POST_INTEGRATION_MAIN = {
     "sha": "ef0de1ed02147a701c649be7e4c7ebd0987bbea9",
     "tree": "34765d742ccc37d215ee800d0c203f584649049e",
+}
+EXPECTED_PHASE18_PRE_INTEGRATION_MAIN = (
+    "bb4c683d11f6fb866c64f5d68ca81be79985bfdb"
+)
+EXPECTED_PHASE18_POST_INTEGRATION_MAIN = {
+    "sha": "c15751ee625248160dbd899a5f79172578619961",
+    "tree": "df93f7fb95d3dcd09132794b986aa3a995d8cdc1",
 }
 EXPECTED_ROW_IDS = [f"P17-L-{number:03d}" for number in range(1, 132)]
 GIT_QUALIFIED_PATH = re.compile(r"^(?P<revision>[0-9a-f]{40}):(?P<path>.+)$")
@@ -177,6 +198,22 @@ PHASE18_CLOSURE_PUBLICATION = (
     "CLOSED",
     True,
 )
+PHASE18_POST_INTEGRATION = (
+    True,
+    "CLOSED",
+    "CLOSED",
+    True,
+    False,
+    PHASE18_POST_INTEGRATION_GATE,
+    PHASE18_POST_INTEGRATION_GATE,
+    "NOT_STARTED",
+    "ADOPTED_DEFERRED",
+    "CLOSED",
+    "CLOSED",
+    "PASS",
+    "CLOSED",
+    True,
+)
 POST_INTEGRATION_PHASE17_CLOSED = (
     True,
     "CLOSED",
@@ -193,7 +230,7 @@ POST_INTEGRATION_PHASE17_CLOSED = (
     ABSENT,
     ABSENT,
 )
-ACCEPTED_PHASE_STATES = {PHASE18_CLOSURE_PUBLICATION}
+ACCEPTED_PHASE_STATES = {PHASE18_CLOSURE_PUBLICATION, PHASE18_POST_INTEGRATION}
 
 def fail(msg: str) -> None:
     print(f"FAIL: {msg}", file=sys.stderr)
@@ -209,12 +246,29 @@ def main() -> None:
         "--closure-publication",
         default="docs/architecture/governance/roadmap-22-phase-18-faof-2-closure-publication.md",
     )
-    args = ap.parse_args()
-    doc_path, ledger_path, state_path, tracks_path, closure_path = map(
-        Path,
-        (args.document, args.ledger, args.state, args.tracks, args.closure_publication),
+    ap.add_argument(
+        "--post-integration-governance",
+        default="docs/architecture/governance/roadmap-22-phase-18-post-integration-governance.md",
     )
-    for p in (doc_path, ledger_path, state_path, tracks_path, closure_path):
+    args = ap.parse_args()
+    doc_path, ledger_path, state_path, tracks_path, closure_path, post_integration_path = map(
+        Path,
+        (
+            args.document,
+            args.ledger,
+            args.state,
+            args.tracks,
+            args.closure_publication,
+            args.post_integration_governance,
+        ),
+    )
+    for p in (
+        doc_path,
+        ledger_path,
+        state_path,
+        tracks_path,
+        closure_path,
+    ):
         if not p.is_file(): fail(f"missing required file: {p}")
     doc = doc_path.read_text()
     with ledger_path.open(newline="") as f:
@@ -298,8 +352,26 @@ def main() -> None:
     if phase_state not in ACCEPTED_PHASE_STATES:
         fail("governance Phase 17 state does not match an accepted transition")
     repository = state.get("repository", {})
-    if canonical_main != EXPECTED_POST_INTEGRATION_MAIN:
-        fail("persisted canonical main differs from accepted Phase 17 source tip")
+    post_integration_record = state.get("governance", {}).get(
+        "phase_18_post_integration_governance_record", ABSENT
+    )
+    is_post_integration = post_integration_record != ABSENT
+    if is_post_integration:
+        if (
+            post_integration_record
+            != "docs/architecture/governance/roadmap-22-phase-18-post-integration-governance.md"
+            or phase_state != PHASE18_POST_INTEGRATION
+        ):
+            fail("persisted post-integration baseline marker or transition tuple differs")
+        if not post_integration_path.is_file():
+            fail(f"missing required file: {post_integration_path}")
+        if canonical_main != EXPECTED_PHASE18_POST_INTEGRATION_MAIN:
+            fail("persisted canonical main differs from integrated Phase 18 closure publication")
+    else:
+        if phase_state != PHASE18_CLOSURE_PUBLICATION:
+            fail("historical fixture does not match the accepted closure-publication tuple")
+        if canonical_main != EXPECTED_POST_INTEGRATION_MAIN:
+            fail("historical canonical main differs from accepted Phase 17 source tip")
     active_governed_branch = repository.get("active_governed_branch", {}).get(
         "name", ABSENT
     )
@@ -307,11 +379,13 @@ def main() -> None:
         fail("persisted active governed branch differs from main")
     if repository.get("accepted_implementation") != ACCEPTED_PHASE18_IMPLEMENTATION:
         fail("accepted Phase 18 implementation identity differs from final-review PASS")
-    if (
-        roadmap_22.get("canonical_main_integration_source_tip")
-        != EXPECTED_POST_INTEGRATION_MAIN["sha"]
-    ):
-        fail("persisted Phase 17 canonical integration source tip is stale")
+    expected_canonical_source = (
+        EXPECTED_PHASE18_POST_INTEGRATION_MAIN["sha"]
+        if is_post_integration
+        else EXPECTED_POST_INTEGRATION_MAIN["sha"]
+    )
+    if roadmap_22.get("canonical_main_integration_source_tip") != expected_canonical_source:
+        fail("persisted canonical integration source tip is stale")
 
     expected_phase18_state = {
         "phase_18_faof_2_bounded_implementation_acceptance": "ACCEPTED",
@@ -322,11 +396,33 @@ def main() -> None:
         "phase_18_standard_ci_status": "completed/success",
         "phase_18_foundation_verification_run": 33064958805,
         "phase_18_foundation_verification_status": "completed/success",
-        "phase_18_canonical_main_integration": "AUTHORIZED_PENDING_FAST_FORWARD_ONLY",
-        "phase_18_canonical_main_integration_source_tip": ACCEPTED_PHASE18_IMPLEMENTATION["sha"],
-        "phase_18_canonical_main_integration_source_tree": ACCEPTED_PHASE18_IMPLEMENTATION["tree"],
-        "phase_19_implementation_authorization": PHASE19_AUTHORIZATION,
     }
+    if is_post_integration:
+        expected_phase18_state.update({
+        "phase_18_closure_publication_sha": EXPECTED_PHASE18_POST_INTEGRATION_MAIN["sha"],
+        "phase_18_closure_publication_tree": EXPECTED_PHASE18_POST_INTEGRATION_MAIN["tree"],
+        "phase_18_closure_publication_standard_ci_run": 33068621878,
+        "phase_18_closure_publication_standard_ci_status": "completed/success",
+        "phase_18_closure_publication_foundation_verification_run": 33068621876,
+        "phase_18_closure_publication_foundation_verification_status": "completed/success",
+        "phase_18_canonical_main_pre_integration_sha": EXPECTED_PHASE18_PRE_INTEGRATION_MAIN,
+        "phase_18_canonical_main_integration": "COMPLETED_FAST_FORWARD_ONLY",
+        "phase_18_canonical_main_integration_source_tip": EXPECTED_PHASE18_POST_INTEGRATION_MAIN["sha"],
+        "phase_18_canonical_main_integration_source_tree": EXPECTED_PHASE18_POST_INTEGRATION_MAIN["tree"],
+        "phase_18_post_integration_standard_ci_run": 33070334626,
+        "phase_18_post_integration_standard_ci_status": "completed/success",
+        "phase_18_post_integration_foundation_verification_run": 33070334585,
+        "phase_18_post_integration_foundation_verification_status": "completed/success",
+        "phase_19_implementation_authorization": PHASE19_AUTHORIZATION,
+        "faof_3": "NOT_AUTHORIZED",
+        })
+    else:
+        expected_phase18_state.update({
+            "phase_18_canonical_main_integration": "AUTHORIZED_PENDING_FAST_FORWARD_ONLY",
+            "phase_18_canonical_main_integration_source_tip": ACCEPTED_PHASE18_IMPLEMENTATION["sha"],
+            "phase_18_canonical_main_integration_source_tree": ACCEPTED_PHASE18_IMPLEMENTATION["tree"],
+            "phase_19_implementation_authorization": PHASE19_CONDITIONAL_AUTHORIZATION,
+        })
     for key, expected in expected_phase18_state.items():
         if roadmap_22.get(key, ABSENT) != expected:
             fail(f"persisted Phase 18 closure field differs: {key}")
@@ -335,8 +431,12 @@ def main() -> None:
         "roadmap": 22,
         "phase": 19,
         "started": False,
-        "implementation_authorized": False,
-        "authorization_condition": PHASE19_AUTHORIZATION,
+        "implementation_authorized": is_post_integration,
+        "authorization_condition": (
+            "SATISFIED_BY_SUCCESSFUL_PHASE18_CANONICAL_INTEGRATION"
+            if is_post_integration
+            else PHASE19_CONDITIONAL_AUTHORIZATION
+        ),
         "topic": [
             "WorkerRuntime Support Advertisement",
             "First real FFmpeg CPU Native Pull Provider vertical slice",
@@ -369,13 +469,46 @@ def main() -> None:
         "MERGE_COMMIT": "PROHIBITED",
         "HISTORY_REWRITE": "PROHIBITED",
         "PHASE_19_STARTED": "NO",
-        "PHASE_19_IMPLEMENTATION": PHASE19_AUTHORIZATION,
+        "PHASE_19_IMPLEMENTATION": PHASE19_CONDITIONAL_AUTHORIZATION,
         "ROADMAP_23": "NOT_STARTED",
     }
     for key, expected in expected_closure_facts.items():
         values = re.findall(rf"(?m)^{re.escape(key)}=(.+)$", closure)
         if values != [expected]:
             fail(f"closure publication fact differs: {key}")
+
+    if is_post_integration:
+        post_integration = post_integration_path.read_text()
+        expected_post_integration_facts = {
+        "PRE_INTEGRATION_MAIN": EXPECTED_PHASE18_PRE_INTEGRATION_MAIN,
+        "CANONICAL_MAIN_INTEGRATION": EXPECTED_PHASE18_POST_INTEGRATION_MAIN["sha"],
+        "CANONICAL_MAIN_TREE": EXPECTED_PHASE18_POST_INTEGRATION_MAIN["tree"],
+        "INTEGRATION_METHOD": "FAST_FORWARD_ONLY",
+        "ACCEPTED_IMPLEMENTATION_SHA": ACCEPTED_PHASE18_IMPLEMENTATION["sha"],
+        "ACCEPTED_IMPLEMENTATION_TREE": ACCEPTED_PHASE18_IMPLEMENTATION["tree"],
+        "ACCEPTED_IMPLEMENTATION_DISTINCT_AND_REACHABLE": "YES",
+        "CLOSURE_PUBLICATION_SHA": EXPECTED_PHASE18_POST_INTEGRATION_MAIN["sha"],
+        "CLOSURE_PUBLICATION_TREE": EXPECTED_PHASE18_POST_INTEGRATION_MAIN["tree"],
+        "BRANCH_PUBLICATION_STANDARD_CI_RUN": "33068621878",
+        "BRANCH_PUBLICATION_STANDARD_CI_RESULT": "completed/success",
+        "BRANCH_PUBLICATION_FOUNDATION_VERIFICATION_RUN": "33068621876",
+        "BRANCH_PUBLICATION_FOUNDATION_VERIFICATION_RESULT": "completed/success",
+        "POST_INTEGRATION_MAIN_STANDARD_CI_RUN": "33070334626",
+        "POST_INTEGRATION_MAIN_STANDARD_CI_RESULT": "completed/success",
+        "POST_INTEGRATION_MAIN_FOUNDATION_VERIFICATION_RUN": "33070334585",
+        "POST_INTEGRATION_MAIN_FOUNDATION_VERIFICATION_RESULT": "completed/success",
+        "PHASE_18": "CLOSED",
+        "PHASE_18_BOUNDED_IMPLEMENTATION": "CLOSED/ACCEPTED",
+        "PHASE_19_IMPLEMENTATION_AUTHORIZATION": PHASE19_AUTHORIZATION,
+        "PHASE_19_STARTED": "NO",
+        "FAOF_3": "NOT_AUTHORIZED",
+        "ROADMAP_23": "NOT_STARTED",
+        "NEXT_GATE": PHASE18_POST_INTEGRATION_GATE,
+        }
+        for key, expected in expected_post_integration_facts.items():
+            values = re.findall(rf"(?m)^{re.escape(key)}=(.+)$", post_integration)
+            if values != [expected]:
+                fail(f"post-integration governance fact differs: {key}")
 
     tracks = yaml.safe_load(tracks_path.read_text())
     if not isinstance(tracks, dict) or not isinstance(tracks.get("tracks"), list):
@@ -393,14 +526,53 @@ def main() -> None:
         fail("roadmap track EXECUTION_AND_PROVIDER_RUNTIME is missing")
     actions = execution_track.get("next_actions")
     dependencies = execution_track.get("current_dependencies", "")
+    expected_phase18_action = (
+        PHASE18_POST_INTEGRATION_ACTION if is_post_integration else PHASE18_CLOSURE_ACTION
+    )
+    expected_phase19_action = PHASE19_ACTION if is_post_integration else PHASE19_CONDITIONAL_ACTION
+    expected_dependency = (
+        "Phase 18 FAOF-2 CLOSED/ACCEPTED and integrated"
+        if is_post_integration
+        else "Phase 18 FAOF-2 CLOSED/ACCEPTED"
+    )
     if (
         not isinstance(actions, list)
         or len(actions) < 2
-        or actions[0] != PHASE18_CLOSURE_ACTION
-        or actions[1] != PHASE19_ACTION
-        or "Phase 18 FAOF-2 CLOSED/ACCEPTED" not in dependencies
+        or actions[0] != expected_phase18_action
+        or actions[1] != expected_phase19_action
+        or expected_dependency not in dependencies
     ):
-        fail("persisted roadmap track does not match exact Phase 18 closure action")
+        fail("persisted roadmap track does not match exact Phase 18 post-integration action")
+    if not is_post_integration:
+        print(
+            f"PHASE17_SANDBOX_LEDGER_GUARD=PASS rows={len(rows)} "
+            f"dispositions={dict(sorted(counts.items()))} unclassified={unclassified} "
+            f"duplicates={duplicate_count} placeholders=0 globs=0"
+        )
+        return
+    formal_track = next(
+        (
+            track
+            for track in tracks["tracks"]
+            if isinstance(track, dict) and track.get("id") == "FORMAL_VERIFICATION_TRACK"
+        ),
+        None,
+    )
+    expected_formal_action = (
+        "Phase 19 - use the authorized-not-started implementation planning/start gate; "
+        "do not claim implementation started"
+    )
+    if (
+        formal_track is None
+        or formal_track.get("next_actions", [ABSENT])[0] != expected_formal_action
+        or "Phase 18 FAOF-2 bounded implementation is CLOSED/ACCEPTED and integrated"
+        not in formal_track.get("current_dependencies", "")
+        or "Phase 19 implementation is AUTHORIZED but NOT_STARTED"
+        not in formal_track.get("current_dependencies", "")
+        or "FAOF-3 is NOT_AUTHORIZED"
+        not in formal_track.get("current_dependencies", "")
+    ):
+        fail("persisted formal verification track is stale")
     print(
         f"PHASE17_SANDBOX_LEDGER_GUARD=PASS rows={len(rows)} "
         f"dispositions={dict(sorted(counts.items()))} unclassified={unclassified} "

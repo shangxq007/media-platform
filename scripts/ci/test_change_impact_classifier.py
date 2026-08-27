@@ -24,8 +24,12 @@ CURRENT_STATE = ROOT / "docs/architecture/governance/project-state/current-state
 
 PHASE18_ACCEPTED_SHA = "f00c0f36f7686314f6bb75a6b414751f66b95f9a"
 PHASE18_ACCEPTED_TREE = "4b2ccb4c1161d1c4517a1d71b17616e6d8198595"
-PHASE18_CLOSURE_GATE = (
-    "ROADMAP_22_PHASE_18_CANONICAL_MAIN_FAST_FORWARD_INTEGRATION_AUTHORIZED_PENDING"
+PHASE18_INTEGRATED_SHA = "c15751ee625248160dbd899a5f79172578619961"
+PHASE18_INTEGRATED_TREE = "df93f7fb95d3dcd09132794b986aa3a995d8cdc1"
+PHASE18_PRE_INTEGRATION_MAIN = "bb4c683d11f6fb866c64f5d68ca81be79985bfdb"
+PHASE19_AUTHORIZATION_GATE = (
+    "CHATGPT_ROADMAP_22_PHASE_19_FFMPEG_CPU_NATIVE_PULL_PROVIDER_"
+    "BOUNDED_IMPLEMENTATION_AUTHORIZATION"
 )
 
 STABLE_POLICY_IDS = (
@@ -158,7 +162,7 @@ def assert_workflow_contract(
             raise AssertionError(f"{name}: classifier-dependent checkout persists credentials")
 
 
-def assert_phase18_closure_state(state: str) -> None:
+def assert_phase18_post_integration_state(state: str) -> None:
     accepted_identity = (
         "  accepted_implementation:\n"
         "    milestone: ROADMAP_22_PHASE_18_FAOF_2\n"
@@ -167,6 +171,9 @@ def assert_phase18_closure_state(state: str) -> None:
         "    accepted_implementation_remote_reachable: true\n"
     )
     required_state = (
+        "  canonical_main:\n",
+        f"    sha: {PHASE18_INTEGRATED_SHA}\n",
+        f"    tree: {PHASE18_INTEGRATED_TREE}\n",
         "  phase_17: CLOSED\n",
         "  phase_18_started: true\n",
         "  phase_18: CLOSED\n",
@@ -177,29 +184,45 @@ def assert_phase18_closure_state(state: str) -> None:
         f"  phase_18_final_validated_tip: {PHASE18_ACCEPTED_SHA}\n",
         f"  phase_18_final_validated_tree: {PHASE18_ACCEPTED_TREE}\n",
         "  phase_18_final_review: PASS\n",
-        "  phase_18_canonical_main_integration: AUTHORIZED_PENDING_FAST_FORWARD_ONLY\n",
-        f"  phase_18_canonical_main_integration_source_tip: {PHASE18_ACCEPTED_SHA}\n",
-        f"  phase_18_canonical_main_integration_source_tree: {PHASE18_ACCEPTED_TREE}\n",
+        f"  phase_18_closure_publication_sha: {PHASE18_INTEGRATED_SHA}\n",
+        f"  phase_18_closure_publication_tree: {PHASE18_INTEGRATED_TREE}\n",
+        "  phase_18_closure_publication_standard_ci_run: 33068621878\n",
+        "  phase_18_closure_publication_standard_ci_status: completed/success\n",
+        "  phase_18_closure_publication_foundation_verification_run: 33068621876\n",
+        "  phase_18_closure_publication_foundation_verification_status: completed/success\n",
+        f"  phase_18_canonical_main_pre_integration_sha: {PHASE18_PRE_INTEGRATION_MAIN}\n",
+        "  phase_18_canonical_main_integration: COMPLETED_FAST_FORWARD_ONLY\n",
+        f"  phase_18_canonical_main_integration_source_tip: {PHASE18_INTEGRATED_SHA}\n",
+        f"  phase_18_canonical_main_integration_source_tree: {PHASE18_INTEGRATED_TREE}\n",
+        "  phase_18_post_integration_standard_ci_run: 33070334626\n",
+        "  phase_18_post_integration_standard_ci_status: completed/success\n",
+        "  phase_18_post_integration_foundation_verification_run: 33070334585\n",
+        "  phase_18_post_integration_foundation_verification_status: completed/success\n",
         "  phase_19_started: false\n",
-        "  phase_19_implementation_authorization: AUTHORIZED_ONLY_AFTER_SUCCESSFUL_PHASE18_CANONICAL_INTEGRATION\n",
+        "  phase_19_implementation_authorization: AUTHORIZED\n",
+        "  faof_3: NOT_AUTHORIZED\n",
         "roadmap_23:\n  status: NOT_STARTED\n",
-        f"  immediate_next_gate: {PHASE18_CLOSURE_GATE}\n",
-        f"  next_gate: {PHASE18_CLOSURE_GATE}\n",
+        f"  immediate_next_gate: {PHASE19_AUTHORIZATION_GATE}\n",
+        f"  next_gate: {PHASE19_AUTHORIZATION_GATE}\n",
         "    phase: 19\n",
         "    started: false\n",
-        "    implementation_authorized: false\n",
-        "    authorization_condition: AUTHORIZED_ONLY_AFTER_SUCCESSFUL_PHASE18_CANONICAL_INTEGRATION\n",
+        "    implementation_authorized: true\n",
+        "    authorization_condition: SATISFIED_BY_SUCCESSFUL_PHASE18_CANONICAL_INTEGRATION\n",
         "  phase_18_faof_2_bounded_implementation_record: docs/architecture/governance/roadmap-22-phase-18-faof-2-bounded-implementation.md\n",
         "  phase_18_faof_2_closure_publication_record: docs/architecture/governance/roadmap-22-phase-18-faof-2-closure-publication.md\n",
+        "  phase_18_post_integration_governance_record: docs/architecture/governance/roadmap-22-phase-18-post-integration-governance.md\n",
     )
     if state.count(accepted_identity) != 1 or any(
         state.count(item) != 1 for item in required_state
     ):
-        raise AssertionError("Phase 18 FAOF-2 closure-publication state drifted")
+        raise AssertionError("Phase 18 FAOF-2 post-integration state drifted")
     forbidden_state = (
         "  phase_18: IN_PROGRESS\n",
         "  phase_18_faof_2_bounded_implementation: IN_PROGRESS\n",
         "  phase_19_started: true\n",
+        "  phase_18_canonical_main_integration: AUTHORIZED_PENDING_FAST_FORWARD_ONLY\n",
+        "  phase_19_implementation_authorization: AUTHORIZED_ONLY_AFTER_SUCCESSFUL_PHASE18_CANONICAL_INTEGRATION\n",
+        "ROADMAP_22_PHASE_18_CANONICAL_MAIN_FAST_FORWARD_INTEGRATION_AUTHORIZED_PENDING",
         "CHATGPT_ROADMAP_22_PHASE_18_FAOF_2_BOUNDED_IMPLEMENTATION_REVIEW",
     )
     if any(item in state for item in forbidden_state):
@@ -221,7 +244,7 @@ def assert_governance_contract() -> None:
             raise AssertionError(f"registry stable ID is not adopted: {stable_id}")
     phase18_recovery = PHASE18_DECISION_RECOVERY.read_text()
     phase18_correction = PHASE18_DECISION_RECOVERY_CORRECTION_1.read_text()
-    assert_phase18_closure_state(state)
+    assert_phase18_post_integration_state(state)
     if "ROADMAP_22_PHASE_18_FAOF_2_BOUNDED_ARCHITECTURE_CONTRACT_V1" not in phase18_recovery:
         raise AssertionError("Phase18 Decision Recovery contract is missing")
     if "ROADMAP_22_PHASE_18_FAOF_2_DECISION_RECOVERY_CORRECTION_1_CONTRACT_V1" not in phase18_correction:
@@ -247,7 +270,7 @@ def expect_red(
 
 def expect_governance_red(name: str, state: str) -> None:
     try:
-        assert_phase18_closure_state(state)
+        assert_phase18_post_integration_state(state)
     except AssertionError:
         return
     raise AssertionError(f"RED mutation passed: {name}")
@@ -312,8 +335,32 @@ def main() -> None:
             ),
         ),
         (
-            "wrong-phase18-closure-gate",
-            state.replace(PHASE18_CLOSURE_GATE, "ARBITRARY_AGREED_GATE"),
+            "wrong-phase19-authorization-gate",
+            state.replace(PHASE19_AUTHORIZATION_GATE, "ARBITRARY_AGREED_GATE"),
+        ),
+        (
+            "pending-phase18-integration-state",
+            state.replace(
+                "  phase_18_canonical_main_integration: COMPLETED_FAST_FORWARD_ONLY\n",
+                "  phase_18_canonical_main_integration: AUTHORIZED_PENDING_FAST_FORWARD_ONLY\n",
+            ),
+        ),
+        (
+            "phase19-started",
+            state.replace("  phase_19_started: false\n", "  phase_19_started: true\n"),
+        ),
+        (
+            "phase19-authorization-drift",
+            state.replace(
+                "  phase_19_implementation_authorization: AUTHORIZED\n",
+                "  phase_19_implementation_authorization: NOT_AUTHORIZED\n",
+            ),
+        ),
+        (
+            "integrated-main-identity-drift",
+            state.replace(PHASE18_INTEGRATED_SHA, "2" * 40).replace(
+                PHASE18_INTEGRATED_TREE, "3" * 40
+            ),
         ),
         (
             "wrong-phase18-accepted-identity",

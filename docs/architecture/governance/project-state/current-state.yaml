@@ -3,8 +3,8 @@ project:
   governance_schema_version: 1
 repository:
   canonical_main:
-    sha: ef0de1ed02147a701c649be7e4c7ebd0987bbea9
-    tree: 34765d742ccc37d215ee800d0c203f584649049e
+    sha: c15751ee625248160dbd899a5f79172578619961
+    tree: df93f7fb95d3dcd09132794b986aa3a995d8cdc1
   active_governed_branch:
     name: main
   accepted_implementation:
@@ -64,13 +64,25 @@ roadmap_22:
   phase_18_standard_ci_status: completed/success
   phase_18_foundation_verification_run: 33064958805
   phase_18_foundation_verification_status: completed/success
-  phase_18_canonical_main_integration: AUTHORIZED_PENDING_FAST_FORWARD_ONLY
-  phase_18_canonical_main_integration_source_tip: f00c0f36f7686314f6bb75a6b414751f66b95f9a
-  phase_18_canonical_main_integration_source_tree: 4b2ccb4c1161d1c4517a1d71b17616e6d8198595
+  phase_18_closure_publication_sha: c15751ee625248160dbd899a5f79172578619961
+  phase_18_closure_publication_tree: df93f7fb95d3dcd09132794b986aa3a995d8cdc1
+  phase_18_closure_publication_standard_ci_run: 33068621878
+  phase_18_closure_publication_standard_ci_status: completed/success
+  phase_18_closure_publication_foundation_verification_run: 33068621876
+  phase_18_closure_publication_foundation_verification_status: completed/success
+  phase_18_canonical_main_pre_integration_sha: bb4c683d11f6fb866c64f5d68ca81be79985bfdb
+  phase_18_canonical_main_integration: COMPLETED_FAST_FORWARD_ONLY
+  phase_18_canonical_main_integration_source_tip: c15751ee625248160dbd899a5f79172578619961
+  phase_18_canonical_main_integration_source_tree: df93f7fb95d3dcd09132794b986aa3a995d8cdc1
+  phase_18_post_integration_standard_ci_run: 33070334626
+  phase_18_post_integration_standard_ci_status: completed/success
+  phase_18_post_integration_foundation_verification_run: 33070334585
+  phase_18_post_integration_foundation_verification_status: completed/success
   phase_19_started: false
-  phase_19_implementation_authorization: AUTHORIZED_ONLY_AFTER_SUCCESSFUL_PHASE18_CANONICAL_INTEGRATION
+  phase_19_implementation_authorization: AUTHORIZED
+  faof_3: NOT_AUTHORIZED
   canonical_main_integration: FAST_FORWARDED_TO_ACCEPTED_SOURCE_TIP
-  canonical_main_integration_source_tip: ef0de1ed02147a701c649be7e4c7ebd0987bbea9
+  canonical_main_integration_source_tip: c15751ee625248160dbd899a5f79172578619961
 roadmap_22_epochs:
   epoch_1: CLOSED
   epoch_2: CLOSED
@@ -83,13 +95,13 @@ epoch_3:
 roadmap_23:
   status: NOT_STARTED
 governance_execution:
-  immediate_next_gate: ROADMAP_22_PHASE_18_CANONICAL_MAIN_FAST_FORWARD_INTEGRATION_AUTHORIZED_PENDING
+  immediate_next_gate: CHATGPT_ROADMAP_22_PHASE_19_FFMPEG_CPU_NATIVE_PULL_PROVIDER_BOUNDED_IMPLEMENTATION_AUTHORIZATION
   next_roadmap_execution_after_governance_gate:
     roadmap: 22
     phase: 19
     started: false
-    implementation_authorized: false
-    authorization_condition: AUTHORIZED_ONLY_AFTER_SUCCESSFUL_PHASE18_CANONICAL_INTEGRATION
+    implementation_authorized: true
+    authorization_condition: SATISFIED_BY_SUCCESSFUL_PHASE18_CANONICAL_INTEGRATION
     topic:
     - WorkerRuntime Support Advertisement
     - First real FFmpeg CPU Native Pull Provider vertical slice
@@ -123,7 +135,7 @@ governance:
   - docs/architecture/governance/project-architecture-state-v1-governance-review-correction-2.md
   project_state_dir: docs/architecture/governance/project-state/
   authority_precedence: docs/architecture/governance/source-of-truth/authority-precedence.md
-  next_gate: ROADMAP_22_PHASE_18_CANONICAL_MAIN_FAST_FORWARD_INTEGRATION_AUTHORIZED_PENDING
+  next_gate: CHATGPT_ROADMAP_22_PHASE_19_FFMPEG_CPU_NATIVE_PULL_PROVIDER_BOUNDED_IMPLEMENTATION_AUTHORIZATION
   phase_17_closure_record: docs/architecture/governance/roadmap-22-phase-17-sandbox-isolation-closure.md
   phase_17_canonical_integration_record: docs/architecture/governance/roadmap-22-phase-17-canonical-integration-and-cleanup.md
   expansion_records:
@@ -147,3 +159,4 @@ governance:
   phase_18_faof_2_decision_recovery_correction_1_record: docs/architecture/governance/roadmap-22-phase-18-faof-2-decision-recovery-correction-1.md
   phase_18_faof_2_bounded_implementation_record: docs/architecture/governance/roadmap-22-phase-18-faof-2-bounded-implementation.md
   phase_18_faof_2_closure_publication_record: docs/architecture/governance/roadmap-22-phase-18-faof-2-closure-publication.md
+  phase_18_post_integration_governance_record: docs/architecture/governance/roadmap-22-phase-18-post-integration-governance.md
