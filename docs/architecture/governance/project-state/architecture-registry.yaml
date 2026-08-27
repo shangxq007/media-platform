@@ -1945,6 +1945,14 @@
   implementation_status: "PARTIALLY_IMPLEMENTED (FAOF-1 in Roadmap #21; FAOF-2/3/4 deferred - deferred-items)"
   references: [docs/architecture/governance/roadmap-21-execution-graph-planning-final-review-and-integration.md, docs/architecture/governance/project-state/deferred-items.yaml]
 
+- id: FORMAL_TOOLING_MUST_NOT_DEFINE_SEMANTICS_V1
+  status: ADOPTED
+  persistence: REPOSITORY_PERSISTED
+  authority_scope: PLATFORM
+  summary: "Lean4 and Coq are tooling-only validation evidence; frozen architecture contracts and canonical production semantics remain authoritative, and formal disagreement fails closed."
+  implementation_status: "PHASE18_DECISION_RECOVERY_FROZEN_CANDIDATE; no Lean4/Coq implementation or production dependency"
+  references: [docs/architecture/governance/roadmap-22-phase-18-faof-2-decision-recovery.md]
+
 - id: FORMAL_VERIFICATION_IS_APPLIED_TO_SHARED_SEMANTIC_AND_RUNTIME_INVARIANTS_NOT_TO_ALL_IMPLEMENTATION_CODE_V1
   status: ADOPTED
   persistence: REPOSITORY_PERSISTED

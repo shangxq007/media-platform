@@ -51,7 +51,9 @@ roadmap_22:
   phase_17_final_validated_tip: c158e06c7a582b3019d31797d085880189b943c2
   phase_17_final_validated_tree: 469944cbe9cb91dfe8bbf0b2f2d30ad45416db14
   phase_17_final_fcv: PASS
-  phase_18_started: false
+  phase_18_started: true
+  phase_18_faof_2_decision_recovery: FROZEN_CANDIDATE_PENDING_INDEPENDENT_REVIEW
+  phase_18_implementation_authorized: false
   phase_19_started: false
   canonical_main_integration: FAST_FORWARDED_TO_ACCEPTED_SOURCE_TIP
   canonical_main_integration_source_tip: ef0de1ed02147a701c649be7e4c7ebd0987bbea9
@@ -67,14 +69,16 @@ epoch_3:
 roadmap_23:
   status: NOT_STARTED
 governance_execution:
-  immediate_next_gate: CHATGPT_CHANGE_IMPACT_DRIVEN_CI_GOVERNANCE_AMENDMENT_1_CORRECTION_1_FINAL_REVIEW
+  immediate_next_gate: CHATGPT_ROADMAP_22_PHASE_18_FAOF_2_DECISION_RECOVERY_FINAL_REVIEW
   next_roadmap_execution_after_governance_gate:
     roadmap: 22
     phase: 18
-    started: false
+    started: true
+    implementation_authorized: false
     topic:
     - FAOF-2
     - Formal Algorithm Validation
+    - Decision Recovery frozen candidate pending independent review
   adopted_cross_cutting_amendments:
     change_impact_driven_ci_governance: ADOPTED
     worker_runtime_backend_resource_accounting: ADOPTED
@@ -105,7 +109,7 @@ governance:
   - docs/architecture/governance/project-architecture-state-v1-governance-review-correction-2.md
   project_state_dir: docs/architecture/governance/project-state/
   authority_precedence: docs/architecture/governance/source-of-truth/authority-precedence.md
-  next_gate: CHATGPT_CHANGE_IMPACT_DRIVEN_CI_GOVERNANCE_AMENDMENT_1_CORRECTION_1_FINAL_REVIEW
+  next_gate: CHATGPT_ROADMAP_22_PHASE_18_FAOF_2_DECISION_RECOVERY_FINAL_REVIEW
   phase_17_closure_record: docs/architecture/governance/roadmap-22-phase-17-sandbox-isolation-closure.md
   phase_17_canonical_integration_record: docs/architecture/governance/roadmap-22-phase-17-canonical-integration-and-cleanup.md
   expansion_records:
@@ -125,3 +129,4 @@ governance:
   phase_16_governance_normalization_correction_1_record: docs/architecture/governance/roadmap-22-phase-16-governance-normalization-correction-1.md
   phase_17_decision_recovery_record: docs/architecture/governance/roadmap-22-phase-17-sandbox-isolation-decision-recovery.md
   phase_17_bounded_implementation_record: docs/architecture/governance/roadmap-22-phase-17-sandbox-isolation-bounded-implementation.md
+  phase_18_faof_2_decision_recovery_record: docs/architecture/governance/roadmap-22-phase-18-faof-2-decision-recovery.md

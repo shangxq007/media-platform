@@ -15,6 +15,7 @@ FOUNDATION_CI = ROOT / ".github/workflows/architecture-drift.yml"
 SEMGREP_CI = ROOT / ".github/workflows/semgrep-architecture.yml"
 AMENDMENT = ROOT / "docs/architecture/governance/change-impact-driven-ci-governance-amendment-1.md"
 CORRECTION = ROOT / "docs/architecture/governance/change-impact-driven-ci-governance-amendment-1-correction-1.md"
+PHASE18_DECISION_RECOVERY = ROOT / "docs/architecture/governance/roadmap-22-phase-18-faof-2-decision-recovery.md"
 REGISTRY = ROOT / "docs/architecture/governance/project-state/architecture-registry.yaml"
 CURRENT_STATE = ROOT / "docs/architecture/governance/project-state/current-state.yaml"
 
@@ -138,24 +139,30 @@ def assert_governance_contract() -> None:
         registry_entry = registry.split(f"- id: {stable_id}\n", 1)[1]
         if not registry_entry.startswith("  status: ADOPTED\n"):
             raise AssertionError(f"registry stable ID is not adopted: {stable_id}")
-    gate = "CHATGPT_CHANGE_IMPACT_DRIVEN_CI_GOVERNANCE_AMENDMENT_1_CORRECTION_1_FINAL_REVIEW"
-    obsolete = "CHATGPT_CHANGE_IMPACT_DRIVEN_CI_GOVERNANCE_AMENDMENT_1_FINAL_REVIEW"
+    phase18_recovery = PHASE18_DECISION_RECOVERY.read_text()
+    gate = "CHATGPT_ROADMAP_22_PHASE_18_FAOF_2_DECISION_RECOVERY_FINAL_REVIEW"
+    obsolete = "CHATGPT_CHANGE_IMPACT_DRIVEN_CI_GOVERNANCE_AMENDMENT_1_CORRECTION_1_FINAL_REVIEW"
     if state.count(gate) != 2 or obsolete in state:
-        raise AssertionError("current state does not freeze the exact Correction 1 gate")
+        raise AssertionError("current state does not freeze the exact Phase18 Decision Recovery gate")
     required_state = (
         "  phase_17: CLOSED\n",
-        "  phase_18_started: false\n",
+        "  phase_18_started: true\n",
+        "  phase_18_faof_2_decision_recovery: FROZEN_CANDIDATE_PENDING_INDEPENDENT_REVIEW\n",
+        "  phase_18_implementation_authorized: false\n",
         "    phase: 18\n",
         "    - FAOF-2\n",
     )
     if any(item not in state for item in required_state):
         raise AssertionError("Phase 17/18/FAOF-2 frozen lifecycle state drifted")
+    if "ROADMAP_22_PHASE_18_FAOF_2_BOUNDED_ARCHITECTURE_CONTRACT_V1" not in phase18_recovery:
+        raise AssertionError("Phase18 Decision Recovery contract is missing")
     if ("    change_impact_driven_ci_governance: ADOPTED\n" not in state
             or "  change_impact_driven_ci_governance_amendment: docs/architecture/governance/change-impact-driven-ci-governance-amendment-1.md\n" not in state
             or "  change_impact_driven_ci_governance_amendment_correction_1_record: docs/architecture/governance/change-impact-driven-ci-governance-amendment-1-correction-1.md\n" not in state):
         raise AssertionError("current state does not index the adopted amendment and correction")
-    if correction.count(gate) != 2 or "BASE=4cc61569f284a53efff0bb8462a4f8a416f04ed5" not in correction:
-        raise AssertionError("append-forward correction does not freeze its base and exact review gate")
+    if (correction.count("CHATGPT_CHANGE_IMPACT_DRIVEN_CI_GOVERNANCE_AMENDMENT_1_CORRECTION_1_FINAL_REVIEW") != 2
+            or "BASE=4cc61569f284a53efff0bb8462a4f8a416f04ed5" not in correction):
+        raise AssertionError("historical append-forward correction evidence drifted")
 
 
 def expect_red(
