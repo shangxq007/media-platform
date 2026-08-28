@@ -44,16 +44,8 @@ import com.example.platform.render.domain.interchange.TimelineScriptParser;
 import com.example.platform.render.domain.interchange.TimelineSpec;
 
 /**
- * Smoke test for plan-based TimelineRevision rendering through LocalExecutionPlanRunner.
- *
- * <p>Proves:
- * <ul>
- *   <li>Plan-based render produces READY output Product</li>
- *   <li>Plan-based render creates ProductDependency lineage</li>
- *   <li>Plan-based render uses FFmpeg baseline</li>
- *   <li>Plan-based render does not expose storage internals in result</li>
- *   <li>Missing FFmpeg fails closed</li>
- * </ul>
+ * Smoke test proving the legacy plan-based TimelineRevision API fails closed
+ * without local FFmpeg execution, output commit, lineage, or internal leaks.
  */
 class PlanBasedTimelineRevisionRenderSmokeTest {
     @SuppressWarnings("unchecked")
@@ -89,10 +81,13 @@ class PlanBasedTimelineRevisionRenderSmokeTest {
     private InMemoryTimelineRevisionRepository revisionRepo;
     private InMemoryTimelineSnapshotService snapshotService;
     private boolean ffmpegAvailable = true;
+    private InMemoryStorageReferenceRepository storageRepo;
+    private final java.util.concurrent.atomic.AtomicInteger processInvocations =
+            new java.util.concurrent.atomic.AtomicInteger();
 
     @BeforeEach
     void setUp() {
-        StorageReferenceRepository storageRepo = new InMemoryStorageReferenceRepository();
+        storageRepo = new InMemoryStorageReferenceRepository();
         ProductRepository productRepo = new InMemoryProductRepository();
         ProductDependencyRepository depRepo = new InMemoryProductDependencyRepository();
         storageRuntime = new StorageRuntimeService(storageRepo, mockProvider(null));
@@ -122,6 +117,7 @@ class PlanBasedTimelineRevisionRenderSmokeTest {
         ProcessToolRunner toolRunner = new ProcessToolRunner() {
             @Override
             public ToolExecutionResult execute(ToolExecutionRequest request) {
+                processInvocations.incrementAndGet();
                 try {
                     List<String> args = request.args();
                     String outputPath = args.get(args.size() - 1);
@@ -166,8 +162,8 @@ class PlanBasedTimelineRevisionRenderSmokeTest {
     }
 
     @Test
-    @DisplayName("Plan-based render produces READY output Product")
-    void planBasedRenderProducesReadyProduct() throws Exception {
+    @DisplayName("Plan-based legacy render fails closed without a READY output Product")
+    void planBasedRenderFailsClosedWithoutReadyProduct() throws Exception {
         // 1. Register input Product
         registerReadyRawMediaProduct(
                 TimelineCoreSmokeFixture.ASSET_ID,
@@ -186,23 +182,12 @@ class PlanBasedTimelineRevisionRenderSmokeTest {
                 TimelineCoreSmokeFixture.PROJECT_ID,
                 TimelineCoreSmokeFixture.TENANT_ID, snapshotId));
 
-        // 3. Execute plan-based render
-        TimelineRevisionRenderService.RevisionRenderResult result =
-                renderService.render(
-                        TimelineCoreSmokeFixture.PROJECT_ID, revisionId, "default_1080p");
-
-        // 4. Verify result
-        assertNotNull(result);
-        assertNotNull(result.outputProductId());
-        assertEquals("READY", result.productStatus());
-        assertEquals("ffmpeg-libass", result.baselineRenderer());
-        assertFalse(result.inputProductIds().isEmpty());
-        assertTrue(result.inputDependencyCount() > 0);
+        assertPlanBasedFailClosed(revisionId);
     }
 
     @Test
-    @DisplayName("Plan-based render creates ProductDependency lineage")
-    void planBasedRenderCreatesLineage() throws Exception {
+    @DisplayName("Plan-based fail-closed render creates no output lineage")
+    void planBasedFailClosedCreatesNoLineage() throws Exception {
         registerReadyRawMediaProduct(
                 TimelineCoreSmokeFixture.ASSET_ID,
                 TimelineCoreSmokeFixture.TENANT_ID,
@@ -219,18 +204,12 @@ class PlanBasedTimelineRevisionRenderSmokeTest {
                 TimelineCoreSmokeFixture.PROJECT_ID,
                 TimelineCoreSmokeFixture.TENANT_ID, snapshotId));
 
-        TimelineRevisionRenderService.RevisionRenderResult result =
-                renderService.render(
-                        TimelineCoreSmokeFixture.PROJECT_ID, revisionId, "default_1080p");
-
-        // Verify ProductDependency exists
-        List<ProductDependency> deps = productRuntime.findDependencies(result.outputProductId());
-        assertFalse(deps.isEmpty(), "Should have at least one ProductDependency");
+        assertPlanBasedFailClosed(revisionId);
     }
 
     @Test
-    @DisplayName("Plan-based render result does not expose storage internals")
-    void planBasedRenderResultIsSafe() throws Exception {
+    @DisplayName("Plan-based fail-closed exception does not expose storage internals")
+    void planBasedFailClosedExceptionIsSafe() throws Exception {
         registerReadyRawMediaProduct(
                 TimelineCoreSmokeFixture.ASSET_ID,
                 TimelineCoreSmokeFixture.TENANT_ID,
@@ -247,14 +226,11 @@ class PlanBasedTimelineRevisionRenderSmokeTest {
                 TimelineCoreSmokeFixture.PROJECT_ID,
                 TimelineCoreSmokeFixture.TENANT_ID, snapshotId));
 
-        TimelineRevisionRenderService.RevisionRenderResult result =
-                renderService.render(
-                        TimelineCoreSmokeFixture.PROJECT_ID, revisionId, "default_1080p");
-
-        // Result should not expose raw command, process environment, bucket, key, etc.
-        assertNotNull(result.renderJobId());
-        assertNotNull(result.outputProductId());
-        assertNotNull(result.baselineRenderer());
+        IllegalStateException failure = assertPlanBasedFailClosed(revisionId);
+        assertFalse(failure.getMessage().contains("bucket"));
+        assertFalse(failure.getMessage().contains("storageReferenceId"));
+        assertFalse(failure.getMessage().contains(tempDir.toString()));
+        assertFalse(failure.getMessage().contains("ffmpeg -i"));
     }
 
     @Test
@@ -293,6 +269,19 @@ class PlanBasedTimelineRevisionRenderSmokeTest {
 
         assertEquals(t1.timelineId(), t2.timelineId());
         assertEquals(t1.tracks().size(), t2.tracks().size());
+    }
+
+    private IllegalStateException assertPlanBasedFailClosed(String revisionId) {
+        IllegalStateException failure = assertThrows(IllegalStateException.class,
+                () -> renderService.render(
+                        TimelineCoreSmokeFixture.PROJECT_ID, revisionId, "default_1080p"));
+        assertEquals("Plan-based render failed: One or more steps failed", failure.getMessage());
+        assertEquals(0, processInvocations.get(), "Removed local FFmpeg authority must not run");
+        assertEquals(1, storageRepo.size(), "Only input storage may be committed");
+        assertTrue(productRuntime.findBySourceTimelineRevisionId(revisionId).isEmpty());
+        assertTrue(productRuntime.findByProject(TimelineCoreSmokeFixture.PROJECT_ID, 100).stream()
+                .noneMatch(product -> product.productType() == ProductType.FINAL_RENDER));
+        return failure;
     }
 
     // --- Helpers ---
@@ -420,6 +409,10 @@ class PlanBasedTimelineRevisionRenderSmokeTest {
         @Override
         public Optional<StorageReference> findById(String id) {
             return Optional.ofNullable(store.get(id));
+        }
+
+        int size() {
+            return store.size();
         }
     }
 

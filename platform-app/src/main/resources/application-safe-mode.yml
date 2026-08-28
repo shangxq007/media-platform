@@ -30,8 +30,6 @@ app:
 render:
   providers:
     # Stable providers only
-    ffmpeg:
-      enabled: true
     libass:
       enabled: true
     # Experimental providers DISABLED

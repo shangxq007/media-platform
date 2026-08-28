@@ -10,10 +10,9 @@ package com.example.platform.extension.domain;
  * any other trust level is rejected at registration (TRUST-REJECTED /
  * PLG-016).</p>
  *
- * <p>No code path may start loading new plugin binaries: arbitrary external
- * JAR, PF4J dynamic loading, tenant code upload, untrusted provider,
- * separate-process protocol, container sandbox, remote plugin protocol, hot
- * reload and marketplace installation are all prohibited.</p>
+ * <p>The trusted provider-plugin host may load platform-distributed PF4J JARs.
+ * This declaration still grants no tenant code upload, untrusted provider,
+ * separate-process protocol, remote plugin protocol, or marketplace authority.</p>
  *
  * @param runtime              TRUSTED_IN_PROCESS for P1
  * @param executionEnvironment LOCAL_PROCESS (evidence-derived: ToolRegistry/canonical sandbox adapter)

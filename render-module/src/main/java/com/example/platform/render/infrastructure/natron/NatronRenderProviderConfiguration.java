@@ -25,10 +25,9 @@ public class NatronRenderProviderConfiguration {
                                               NatronPocJobExtractor jobExtractor,
                                               NatronPocCommandBuilder commandBuilder,
                                               NatronBatchScriptGenerator batchScriptGenerator,
-                                              NatronRenderDurationResolver durationResolver,
                                               NatronRenderProviderProperties properties) {
         return new NatronRenderProvider(processToolRunner, jobExtractor, commandBuilder,
-                batchScriptGenerator, durationResolver, properties);
+                batchScriptGenerator, properties);
     }
 
     @Bean
@@ -45,7 +44,7 @@ public class NatronRenderProviderConfiguration {
                 toolRegistry.registerTool(new ToolDefinition(
                         NatronPocCommandBuilder.TOOL_KEY,
                         "Natron POC render",
-                        "Natron batch script + FFmpeg fallback",
+                        "Natron batch script",
                         scriptPath,
                         List.of(),
                         ToolExecutionSafetyPolicy.defaults()));

@@ -37,8 +37,13 @@ public class PluginDescriptorValidator {
     /** Supported platform API version for P1 (frozen). */
     public static final Set<String> SUPPORTED_PLATFORM_API_VERSIONS = Set.of("1");
 
-    /** Recognized handled-object type IDs for P1 (frozen: RenderExecutionPlan). */
-    public static final Set<String> RECOGNIZED_HANDLED_OBJECT_TYPE_IDS = Set.of("RenderExecutionPlan");
+    /**
+     * Recognized handled-object type IDs. ExecutableTask is the truthful typed
+     * provider-native boundary; it does not grant a plugin render-plan,
+     * lifecycle, or artifact authority.
+     */
+    public static final Set<String> RECOGNIZED_HANDLED_OBJECT_TYPE_IDS =
+            Set.of("RenderExecutionPlan", "ExecutableTask");
 
     /** Stable plugin ID pattern: reverse-dns style, lower-case alphanumeric segments. */
     private static final Pattern PLUGIN_ID_PATTERN = Pattern.compile("[a-z0-9]+(\\.[a-z0-9]+)+");

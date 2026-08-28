@@ -11,10 +11,10 @@ import java.util.Map;
  * 
  * <p>Routing rules:
  * <ul>
- *   <li>clip → FFmpeg</li>
+ *   <li>clip → unavailable (FFmpeg execution is provider-plugin owned)</li>
  *   <li>transition → MLT</li>
  *   <li>scene → Remotion</li>
- *   <li>audio → FFmpeg</li>
+ *   <li>audio → unavailable (FFmpeg execution is provider-plugin owned)</li>
  * </ul>
  * 
  * <p>NO dynamic routing systems.
@@ -24,12 +24,10 @@ public class ToolRouter {
 
     private static final Logger log = LoggerFactory.getLogger(ToolRouter.class);
 
-    private final FFmpegTool ffmpegTool;
     private final MLTTool mltTool;
     private final RemotionTool remotionTool;
 
-    public ToolRouter(FFmpegTool ffmpegTool, MLTTool mltTool, RemotionTool remotionTool) {
-        this.ffmpegTool = ffmpegTool;
+    public ToolRouter(MLTTool mltTool, RemotionTool remotionTool) {
         this.mltTool = mltTool;
         this.remotionTool = remotionTool;
     }
@@ -39,7 +37,7 @@ public class ToolRouter {
      */
     public RenderTool getTool(RenderPlanIr.ToolType toolType) {
         return switch (toolType) {
-            case FFMPEG -> ffmpegTool;
+            case FFMPEG -> throw ffmpegToolUnavailable();
             case MLT -> mltTool;
             case REMOTION -> remotionTool;
         };
@@ -50,10 +48,15 @@ public class ToolRouter {
      */
     public RenderTool getToolForNode(RenderPlanIr.NodeType nodeType) {
         return switch (nodeType) {
-            case CLIP, AUDIO, OUTPUT -> ffmpegTool;
+            case CLIP, AUDIO, OUTPUT -> throw ffmpegToolUnavailable();
             case TRANSITION -> mltTool;
             case SCENE -> remotionTool;
         };
+    }
+
+    private IllegalStateException ffmpegToolUnavailable() {
+        return new IllegalStateException(
+                "FFmpeg renderplan execution requires the typed provider-plugin path");
     }
 
     // ---------------------------------------------------------------------------

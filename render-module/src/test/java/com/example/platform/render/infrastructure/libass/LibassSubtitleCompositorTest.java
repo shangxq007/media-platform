@@ -54,7 +54,7 @@ TimelineTextOverlay.of("1", "Hello",
     }
 
     @Test
-    void assFileWrittenToExpectedLocation(@TempDir Path tempDir) throws Exception {
+    void overlaysFailClosedWithoutWritingAssOrOutput(@TempDir Path tempDir) throws Exception {
         // Create a dummy input video file
         Path inputVideo = tempDir.resolve("input.mp4");
         Files.write(inputVideo, "fake video content".getBytes());
@@ -81,20 +81,18 @@ TimelineTextOverlay.of("1", "Hello",
         TimelineSpec spec = new TimelineSpec(null, null, null, List.of(), overlays, null, 0, Map.of());
 
         Path outputVideo = tempDir.resolve("output.mp4");
-        compositor.applyTextOverlays(inputVideo, outputVideo, spec);
+        var result = compositor.applyTextOverlays(inputVideo, outputVideo, spec);
 
-        // Verify ASS file was created
         Path assPath = tempDir.resolve("burn-in.ass");
-        assertTrue(Files.exists(assPath), "ASS file should be created alongside output");
-
-        // Verify ASS file contains sanitized text
-        String assContent = Files.readString(assPath);
-        assertTrue(assContent.contains("Hello"), "ASS file should contain the subtitle text");
-        assertTrue(assContent.contains("[Script Info]"), "ASS file should have proper header");
+        assertFalse(result.success());
+        assertEquals("TYPED_PROVIDER_PLUGIN_EXECUTION_REQUIRED", result.errorMessage());
+        assertFalse(Files.exists(assPath), "Fail-closed path must not stage an ASS file");
+        assertFalse(Files.exists(outputVideo), "Fail-closed path must not manufacture output");
+        assertNull(capturedArgs.get(), "Fail-closed path must not invoke a process command");
     }
 
     @Test
-    void commandUsesProcessBuilderNotShell(@TempDir Path tempDir) throws Exception {
+    void removedCommandAuthorityInvokesNoProcessOrShell(@TempDir Path tempDir) throws Exception {
         Path inputVideo = tempDir.resolve("input.mp4");
         Files.write(inputVideo, "fake video content".getBytes());
 
@@ -126,26 +124,17 @@ TimelineTextOverlay.of("1", "Test",
                 new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 1.0, 2.0));
         TimelineSpec spec = new TimelineSpec(null, null, null, List.of(), overlays, null, 0, Map.of());
 
-        compositor.applyTextOverlays(inputVideo, tempDir.resolve("output.mp4"), spec);
+        Path output = tempDir.resolve("output.mp4");
+        var result = compositor.applyTextOverlays(inputVideo, output, spec);
 
-        // Verify command is a list (not shell string)
-        assertNotNull(capturedArgs.get(), "Command should be captured");
-        List<String> args = capturedArgs.get();
-        assertTrue(args.size() >= 2, "Command should have multiple args");
-        assertEquals("ffmpeg", args.get(0), "First arg should be ffmpeg binary");
-
-        // Verify no shell invocation
-        assertFalse(args.contains("sh"), "Should not invoke shell");
-        assertFalse(args.contains("bash"), "Should not invoke bash");
-        assertFalse(args.contains("-c"), "Should not use shell -c");
-
-        // Verify subtitles filter uses ass= with a path
-        String vfArg = args.stream().filter(a -> a.startsWith("ass=")).findFirst().orElse(null);
-        assertNotNull(vfArg, "Should have ass= filter");
+        assertFalse(result.success());
+        assertEquals("TYPED_PROVIDER_PLUGIN_EXECUTION_REQUIRED", result.errorMessage());
+        assertNull(capturedArgs.get(), "Removed FFmpeg authority must invoke no process command");
+        assertFalse(Files.exists(output));
     }
 
     @Test
-    void nonZeroExitReturnsFailed(@TempDir Path tempDir) throws Exception {
+    void runnerIsNotReachedAndTypedProviderRequirementIsReturned(@TempDir Path tempDir) throws Exception {
         Path inputVideo = tempDir.resolve("input.mp4");
         Files.write(inputVideo, "fake video content".getBytes());
 
@@ -170,7 +159,8 @@ TimelineTextOverlay.of("1", "Test",
         var result = compositor.applyTextOverlays(inputVideo, tempDir.resolve("output.mp4"), spec);
 
         assertFalse(result.success());
-        assertTrue(result.errorMessage().contains("libass burn-in failed"));
+        assertEquals("TYPED_PROVIDER_PLUGIN_EXECUTION_REQUIRED", result.errorMessage());
+        assertFalse(Files.exists(tempDir.resolve("output.mp4")));
     }
 
     @Test
@@ -197,9 +187,14 @@ TimelineTextOverlay.of("1", "{\\pos(0,0)}{\\fnEvilFont}Hello",
                 new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 1.0, 3.0));
         TimelineSpec spec = new TimelineSpec(null, null, null, List.of(), overlays, null, 0, Map.of());
 
-        compositor.applyTextOverlays(inputVideo, tempDir.resolve("output.mp4"), spec);
-
+        var result = compositor.applyTextOverlays(inputVideo, tempDir.resolve("output.mp4"), spec);
         Path assPath = tempDir.resolve("burn-in.ass");
+        assertFalse(result.success());
+        assertEquals("TYPED_PROVIDER_PLUGIN_EXECUTION_REQUIRED", result.errorMessage());
+        assertFalse(Files.exists(assPath), "Compositor must not stage an ASS file while fail-closed");
+
+        // Sanitization remains a pure writer responsibility and is still preserved.
+        new LibassAssFileWriter().write(assPath, overlays, 1920, 1080);
         String assContent = Files.readString(assPath);
 
         // Verify override tags are neutralized

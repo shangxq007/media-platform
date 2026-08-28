@@ -35,10 +35,8 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * E2E smoke test for Caption Template Render.
  *
- * <p>Proves the full product flow:
- * RAW_MEDIA Product → Caption Template Render → PLAN_BASED → FFmpeg/libass
- * → StorageRuntime output registration → READY FINAL_RENDER Product
- * → ProductDependency lineage → safe result contract.</p>
+ * <p>Proves the former plan-based product flow fails closed without local
+ * FFmpeg execution, output registration, fabricated lineage, or data leaks.</p>
  */
 class CaptionTemplateRenderE2ESmokeTest {
     @SuppressWarnings("unchecked")
@@ -57,10 +55,13 @@ class CaptionTemplateRenderE2ESmokeTest {
     private CaptionTemplateRenderService service;
     private InMemoryRenderAuditEventSink auditSink;
     private RenderAuditRecorder auditRecorder;
+    private InMemoryStorageReferenceRepository storageRepo;
+    private final java.util.concurrent.atomic.AtomicInteger processInvocations =
+            new java.util.concurrent.atomic.AtomicInteger();
 
     @BeforeEach
     void setUp() {
-        StorageReferenceRepository storageRepo = new InMemoryStorageReferenceRepository();
+        storageRepo = new InMemoryStorageReferenceRepository();
         productRepo = new InMemoryProductRepository();
         depRepo = new InMemoryProductDependencyRepository();
         storageRuntime = new StorageRuntimeService(storageRepo, mockProvider(null));
@@ -75,6 +76,7 @@ class CaptionTemplateRenderE2ESmokeTest {
 
         ProcessToolRunner toolRunner = new ProcessToolRunner() {
             @Override public ToolExecutionResult execute(com.example.platform.extension.domain.ToolExecutionRequest r) {
+                processInvocations.incrementAndGet();
                 try {
                     String outputPath = r.args().get(r.args().size() - 1);
                     Path output = Path.of(outputPath);
@@ -114,45 +116,33 @@ class CaptionTemplateRenderE2ESmokeTest {
     }
 
     @Test
-    @DisplayName("E2E: caption render produces READY FINAL_RENDER Product")
+    @DisplayName("E2E: caption render fails closed without a READY FINAL_RENDER Product")
     void e2eProducesReadyProduct() throws Exception {
         String assetId = registerSourceProduct();
         CaptionTemplateRenderResult result = render(assetId);
 
-        assertTrue(result.isSuccess(), "Failed: status=" + result.status()
-                + " msg=" + result.safeMessage()
-                + " errors=" + result.validationErrors());
-        assertNotNull(result.outputProductId());
-        assertEquals("READY", result.status());
-
-        // Verify output Product exists and is READY
-        Product outputProduct = productRuntime.find(result.outputProductId()).orElseThrow();
-        assertEquals(ProductStatus.READY, outputProduct.status());
-        assertEquals(ProductType.FINAL_RENDER, outputProduct.productType());
+        assertFailClosed(result);
+        assertNoOutputCommit();
     }
 
     @Test
-    @DisplayName("E2E: output Product linked to source by ProductDependency lineage")
+    @DisplayName("E2E: fail-closed caption render creates no output lineage")
     void e2eProductLineage() throws Exception {
         String assetId = registerSourceProduct();
         CaptionTemplateRenderResult result = render(assetId);
 
-        // Verify ProductDependency from output to source
-        List<ProductDependency> deps = productRuntime.findDependencies(result.outputProductId());
-        assertFalse(deps.isEmpty(), "Should have at least one ProductDependency");
-        // Dependency links output product to some input product
-        assertNotNull(deps.get(0).dependsOnProductId());
+        assertFailClosed(result);
+        assertNoOutputCommit();
     }
 
     @Test
-    @DisplayName("E2E: output registered through StorageRuntime")
+    @DisplayName("E2E: fail-closed caption render commits no output storage")
     void e2eStorageRegistration() throws Exception {
         String sourceProductId = registerSourceProduct();
         CaptionTemplateRenderResult result = render(sourceProductId);
 
-        Product outputProduct = productRuntime.find(result.outputProductId()).orElseThrow();
-        assertNotNull(outputProduct.storageReferenceId(),
-                "Output product should have storage reference");
+        assertFailClosed(result);
+        assertNoOutputCommit();
     }
 
     @Test
@@ -198,27 +188,41 @@ class CaptionTemplateRenderE2ESmokeTest {
     }
 
     @Test
-    @DisplayName("E2E: outputProductId usable for downstream lookup")
+    @DisplayName("E2E: fail-closed caption render exposes no fabricated outputProductId")
     void e2eOutputProductIdUsable() throws Exception {
         String sourceProductId = registerSourceProduct();
         CaptionTemplateRenderResult result = render(sourceProductId);
 
-        // outputProductId can be used to load the product
-        Product outputProduct = productRuntime.find(result.outputProductId()).orElseThrow();
-        assertNotNull(outputProduct);
-        assertEquals(result.outputProductId(), outputProduct.productId());
+        assertFailClosed(result);
+        assertNoOutputCommit();
     }
 
     @Test
-    @DisplayName("E2E: PLAN_BASED mode used (not Remotion)")
+    @DisplayName("E2E: plan-based legacy API fails closed without Remotion or local FFmpeg")
     void e2ePlanBasedModeUsed() throws Exception {
         String sourceProductId = registerSourceProduct();
         CaptionTemplateRenderResult result = render(sourceProductId);
 
-        // If this passes, PLAN_BASED pipeline executed successfully
-        assertTrue(result.isSuccess());
-        // No Remotion reference in result
+        assertFailClosed(result);
         assertFalse(result.toString().contains("remotion"));
+        assertEquals(0, processInvocations.get());
+    }
+
+    private void assertFailClosed(CaptionTemplateRenderResult result) {
+        assertFalse(result.isSuccess());
+        assertEquals("FAILED", result.status());
+        assertFalse(result.ready());
+        assertNotNull(result.renderJobId());
+        assertNull(result.outputProductId());
+        assertEquals("One or more steps failed", result.safeMessage());
+        assertTrue(result.validationErrors().isEmpty());
+        assertEquals(0, processInvocations.get());
+    }
+
+    private void assertNoOutputCommit() {
+        assertEquals(1, storageRepo.size(), "Only source storage may be committed");
+        assertTrue(productRuntime.findByProject("proj-1", 100).stream()
+                .noneMatch(product -> product.productType() == ProductType.FINAL_RENDER));
     }
 
     // --- Helpers ---
@@ -286,6 +290,7 @@ class CaptionTemplateRenderE2ESmokeTest {
             store.put(id, saved); return saved;
         }
         @Override public Optional<StorageReference> findById(String id) { return Optional.ofNullable(store.get(id)); }
+        int size() { return store.size(); }
     }
 
     static class InMemoryProductRepository extends ProductRepository {

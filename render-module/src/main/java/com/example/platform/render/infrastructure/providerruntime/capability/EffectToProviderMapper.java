@@ -36,18 +36,15 @@ public class EffectToProviderMapper {
 
         // Register capability -> provider mappings
         registerCapabilityProvider("video_processing", Set.of(
-                "FFmpegRenderProvider",
                 "GStreamerRenderProvider",
                 "NatronRenderProvider"
         ));
 
         registerCapabilityProvider("audio_processing", Set.of(
-                "FFmpegRenderProvider",
                 "GStreamerRenderProvider"
         ));
 
         registerCapabilityProvider("subtitle_processing", Set.of(
-                "FFmpegRenderProvider",
                 "LibassSubtitleProvider"
         ));
 

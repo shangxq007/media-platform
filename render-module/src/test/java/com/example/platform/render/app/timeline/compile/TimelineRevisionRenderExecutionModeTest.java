@@ -44,19 +44,8 @@ import com.example.platform.render.domain.interchange.TimelineScriptParser;
 import com.example.platform.render.domain.interchange.TimelineSpec;
 
 /**
- * Tests for TimelineRevision render execution mode switching.
- *
- * <p>Proves:
- * <ul>
- *   <li>LEGACY mode uses TimelineRevisionRenderService</li>
- *   <li>PLAN_BASED mode uses PlanBasedTimelineRevisionRenderService</li>
- *   <li>Both modes produce READY Product</li>
- *   <li>Both modes create ProductDependency lineage</li>
- *   <li>Both modes return safe public API contract</li>
- *   <li>Feature flag is internal only (not in public DTOs)</li>
- *   <li>Plan-based mode does not expose storage internals</li>
- *   <li>Plan-based mode does not expose raw commands</li>
- * </ul>
+ * Tests that both removed TimelineRevision execution modes route to their
+ * typed fail-closed contracts without output, lineage, command, or data leaks.
  */
 class TimelineRevisionRenderExecutionModeTest {
     @SuppressWarnings("unchecked")
@@ -80,10 +69,13 @@ class TimelineRevisionRenderExecutionModeTest {
 
     private InMemoryTimelineRevisionRepository revisionRepo;
     private InMemoryTimelineSnapshotService snapshotService;
+    private InMemoryStorageReferenceRepository storageRepo;
+    private final java.util.concurrent.atomic.AtomicInteger processInvocations =
+            new java.util.concurrent.atomic.AtomicInteger();
 
     @BeforeEach
     void setUp() {
-        StorageReferenceRepository storageRepo = new InMemoryStorageReferenceRepository();
+        storageRepo = new InMemoryStorageReferenceRepository();
         ProductRepository productRepo = new InMemoryProductRepository();
         ProductDependencyRepository depRepo = new InMemoryProductDependencyRepository();
         storageRuntime = new StorageRuntimeService(storageRepo, mockProvider(null));
@@ -103,74 +95,54 @@ class TimelineRevisionRenderExecutionModeTest {
     }
 
     @Test
-    @DisplayName("LEGACY mode produces READY Product")
-    void legacyModeProducesReadyProduct() throws Exception {
+    @DisplayName("LEGACY mode fails closed without a READY Product")
+    void legacyModeFailsClosed() throws Exception {
         registerReadyRawMediaProduct();
         String revisionId = setupRevision();
 
         TimelineRevisionRenderFacade facade = createFacade(TimelineRenderExecutionMode.LEGACY);
-        TimelineRevisionRenderService.RevisionRenderResult result =
-                facade.render(TimelineCoreSmokeFixture.PROJECT_ID, revisionId, "default_1080p");
-
-        assertNotNull(result);
-        assertEquals("READY", result.productStatus());
-        assertEquals(TimelineRenderExecutionMode.LEGACY, facade.getExecutionMode());
+        assertFacadeFailClosed(facade, revisionId, TimelineRenderExecutionMode.LEGACY);
     }
 
     @Test
-    @DisplayName("PLAN_BASED mode produces READY Product")
-    void planBasedModeProducesReadyProduct() throws Exception {
+    @DisplayName("PLAN_BASED mode fails closed without a READY Product")
+    void planBasedModeFailsClosed() throws Exception {
         registerReadyRawMediaProduct();
         String revisionId = setupRevision();
 
         TimelineRevisionRenderFacade facade = createFacade(TimelineRenderExecutionMode.PLAN_BASED);
-        TimelineRevisionRenderService.RevisionRenderResult result =
-                facade.render(TimelineCoreSmokeFixture.PROJECT_ID, revisionId, "default_1080p");
-
-        assertNotNull(result);
-        assertEquals("READY", result.productStatus());
-        assertEquals(TimelineRenderExecutionMode.PLAN_BASED, facade.getExecutionMode());
+        assertFacadeFailClosed(facade, revisionId, TimelineRenderExecutionMode.PLAN_BASED);
     }
 
     @Test
-    @DisplayName("Both modes create ProductDependency lineage")
-    void bothModesCreateLineage() throws Exception {
+    @DisplayName("Both removed modes fail closed without fabricated lineage")
+    void bothModesFailClosedWithoutLineage() throws Exception {
         registerReadyRawMediaProduct();
         String revisionId = setupRevision();
 
         // LEGACY
         TimelineRevisionRenderFacade legacyFacade = createFacade(TimelineRenderExecutionMode.LEGACY);
-        TimelineRevisionRenderService.RevisionRenderResult legacyResult =
-                legacyFacade.render(TimelineCoreSmokeFixture.PROJECT_ID, revisionId, "default_1080p");
-        List<ProductDependency> legacyDeps = productRuntime.findDependencies(legacyResult.outputProductId());
-        assertFalse(legacyDeps.isEmpty(), "Legacy should create dependency");
+        assertFacadeFailClosed(legacyFacade, revisionId, TimelineRenderExecutionMode.LEGACY);
 
         // Reset for PLAN_BASED
         registerReadyRawMediaProduct();
         revisionId = setupRevision();
         TimelineRevisionRenderFacade planFacade = createFacade(TimelineRenderExecutionMode.PLAN_BASED);
-        TimelineRevisionRenderService.RevisionRenderResult planResult =
-                planFacade.render(TimelineCoreSmokeFixture.PROJECT_ID, revisionId, "default_1080p");
-        List<ProductDependency> planDeps = productRuntime.findDependencies(planResult.outputProductId());
-        assertFalse(planDeps.isEmpty(), "Plan-based should create dependency");
+        assertFacadeFailClosed(planFacade, revisionId, TimelineRenderExecutionMode.PLAN_BASED);
     }
 
     @Test
-    @DisplayName("Both modes return safe public API contract")
-    void bothModesReturnSafeContract() throws Exception {
+    @DisplayName("Both modes return a safe typed fail-closed exception")
+    void bothModesReturnSafeFailure() throws Exception {
         registerReadyRawMediaProduct();
         String revisionId = setupRevision();
 
         TimelineRevisionRenderFacade facade = createFacade(TimelineRenderExecutionMode.PLAN_BASED);
-        TimelineRevisionRenderService.RevisionRenderResult result =
-                facade.render(TimelineCoreSmokeFixture.PROJECT_ID, revisionId, "default_1080p");
-
-        // Result should not expose storage internals
-        assertNotNull(result.renderJobId());
-        assertNotNull(result.outputProductId());
-        assertNotNull(result.baselineRenderer());
-        assertNotNull(result.inputProductIds());
-        // storageReferenceId is in the existing contract (not a leak)
+        IllegalStateException failure = assertFacadeFailClosed(
+                facade, revisionId, TimelineRenderExecutionMode.PLAN_BASED);
+        assertFalse(failure.getMessage().contains("storageReferenceId"));
+        assertFalse(failure.getMessage().contains(tempDir.toString()));
+        assertFalse(failure.getMessage().contains("ffmpeg -i"));
     }
 
     @Test
@@ -184,23 +156,39 @@ class TimelineRevisionRenderExecutionModeTest {
     }
 
     @Test
-    @DisplayName("Facade uses correct service based on mode")
-    void facadeRoutesCorrectly() throws Exception {
+    @DisplayName("Facade routes each removed mode to its truthful fail-closed contract")
+    void facadeRoutesToCorrectFailure() throws Exception {
         registerReadyRawMediaProduct();
         String revisionId = setupRevision();
 
-        // Both modes should succeed
         TimelineRevisionRenderFacade legacyFacade = createFacade(TimelineRenderExecutionMode.LEGACY);
-        TimelineRevisionRenderService.RevisionRenderResult legacyResult =
-                legacyFacade.render(TimelineCoreSmokeFixture.PROJECT_ID, revisionId, "default_1080p");
-        assertNotNull(legacyResult.outputProductId());
+        assertFacadeFailClosed(legacyFacade, revisionId, TimelineRenderExecutionMode.LEGACY);
 
         registerReadyRawMediaProduct();
         revisionId = setupRevision();
         TimelineRevisionRenderFacade planFacade = createFacade(TimelineRenderExecutionMode.PLAN_BASED);
-        TimelineRevisionRenderService.RevisionRenderResult planResult =
-                planFacade.render(TimelineCoreSmokeFixture.PROJECT_ID, revisionId, "default_1080p");
-        assertNotNull(planResult.outputProductId());
+        assertFacadeFailClosed(planFacade, revisionId, TimelineRenderExecutionMode.PLAN_BASED);
+    }
+
+    private IllegalStateException assertFacadeFailClosed(
+            TimelineRevisionRenderFacade facade,
+            String revisionId,
+            TimelineRenderExecutionMode expectedMode) {
+        int storageCountBefore = storageRepo.size();
+        IllegalStateException failure = assertThrows(IllegalStateException.class,
+                () -> facade.render(
+                        TimelineCoreSmokeFixture.PROJECT_ID, revisionId, "default_1080p"));
+        String expectedMessage = expectedMode == TimelineRenderExecutionMode.LEGACY
+                ? "Typed provider plugin execution required"
+                : "Plan-based render failed: One or more steps failed";
+        assertEquals(expectedMessage, failure.getMessage());
+        assertEquals(expectedMode, facade.getExecutionMode());
+        assertEquals(0, processInvocations.get());
+        assertEquals(storageCountBefore, storageRepo.size(), "Render must not commit storage");
+        assertTrue(productRuntime.findBySourceTimelineRevisionId(revisionId).isEmpty());
+        assertTrue(productRuntime.findByProject(TimelineCoreSmokeFixture.PROJECT_ID, 100).stream()
+                .noneMatch(product -> product.productType() == ProductType.FINAL_RENDER));
+        return failure;
     }
 
     // --- Helpers ---
@@ -212,6 +200,7 @@ class TimelineRevisionRenderExecutionModeTest {
         ProcessToolRunner toolRunner = new ProcessToolRunner() {
             @Override
             public ToolExecutionResult execute(ToolExecutionRequest request) {
+                processInvocations.incrementAndGet();
                 try {
                     List<String> args = request.args();
                     String outputPath = args.get(args.size() - 1);
@@ -411,6 +400,10 @@ class TimelineRevisionRenderExecutionModeTest {
         @Override
         public Optional<StorageReference> findById(String id) {
             return Optional.ofNullable(store.get(id));
+        }
+
+        int size() {
+            return store.size();
         }
     }
 

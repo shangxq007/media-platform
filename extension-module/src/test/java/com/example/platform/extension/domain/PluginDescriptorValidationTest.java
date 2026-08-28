@@ -53,6 +53,31 @@ class PluginDescriptorValidationTest {
     }
 
     @Test
+    void executableTaskHandledObjectIsAcceptedWithoutDeclaringRenderExecutionPlan() {
+        PluginDescriptor executableTaskPlugin = new PluginDescriptor(
+                "media.transcode.ffmpeg", "1.0.0", "1", "media-platform",
+                List.of(new CapabilityDescriptor(
+                        "media.transcode", "1.0", "transcode", "ExecutableTask",
+                        "ProviderExecutionOutput", CapabilityDescriptor.InvocationMode.SYNC_ONLY)),
+                List.of(new HandledObjectDescriptor(
+                        "ExecutableTask", "1",
+                        "com.example.platform.execution.taskgraph.ExecutableTask",
+                        List.of("providerBindingPin"), List.of(),
+                        HandledObjectDescriptor.TenantBehavior.TENANT_SCOPED)),
+                InvocationContract.syncOnlyDefault(),
+                List.of(new PermissionDescriptor("ffmpeg.execute")),
+                ResourceRequirement.ffmpegDefaults(),
+                PluginRuntimeRequirement.trustedInProcess(),
+                PluginGuarantee.ffmpegDefaults());
+
+        var issues = new PluginDescriptorValidator().validate(executableTaskPlugin);
+
+        assertTrue(issues.isEmpty(), "ExecutableTask must be a truthful handled object: " + issues);
+        assertTrue(PluginDescriptorValidator.RECOGNIZED_HANDLED_OBJECT_TYPE_IDS
+                .contains("ExecutableTask"));
+    }
+
+    @Test
     void blankPluginIdRejectedPlg001() {
         PluginDescriptor blank = new PluginDescriptor(" ", "1.0.0", "1", "vendor",
                 List.of(capability("media.render")), List.of(handledObject()),

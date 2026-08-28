@@ -4,7 +4,6 @@ import com.example.platform.render.infrastructure.RenderProviderRegistry;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.File;
 import java.net.URI;
 import java.net.http.*;
 import java.nio.file.*;
@@ -21,14 +20,15 @@ import org.springframework.test.context.TestPropertySource;
 
 /**
  * Minimal Media Render Boundary Validation.
- * Proves real FFmpegRenderProvider.render() invocation with valid media.
+ * Preserves the application render-job, persistence, status, and removed-route boundaries
+ * while legacy in-process FFmpeg execution is absent.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles({"test", "preview"})
 @TestPropertySource(properties = {
     "app.security.enabled=false",
     "app.identity.api-key-auth-enabled=false",
-    "render.providers.ffmpeg.enabled=true",
+    "render.providers.ffmpeg.enabled=false",
     "render.providers.gstreamer.enabled=false",
     "render.providers.vapoursynth.enabled=false",
     "render.providers.natron.enabled=false",
@@ -55,20 +55,6 @@ class MinimalMediaRenderBoundaryTest extends PostgresTestContainerSupport {
     private static final String MEDIA_PATH = "/tmp/test-render-boundary.mp4";
     private static final StringBuilder evidence = new StringBuilder();
 
-    @BeforeAll
-    static void generateMediaFixture() throws Exception {
-        // Generate minimal MP4 using FFmpeg (1 second, 320x180, test pattern)
-        ProcessBuilder pb = new ProcessBuilder(
-                "ffmpeg", "-y", "-f", "lavfi", "-i", "testsrc=size=320x180:rate=1",
-                "-t", "1", "-pix_fmt", "yuv420p", MEDIA_PATH);
-        pb.redirectErrorStream(true);
-        Process p = pb.start();
-        p.waitFor();
-        Assertions.assertEquals(0, p.exitValue(), "FFmpeg should generate test media");
-        File f = new File(MEDIA_PATH);
-        Assertions.assertTrue(f.exists() && f.length() > 0, "Test media should exist");
-    }
-
     @BeforeEach
     void setUp() {
         client = HttpClient.newHttpClient();
@@ -78,23 +64,21 @@ class MinimalMediaRenderBoundaryTest extends PostgresTestContainerSupport {
     @AfterAll
     static void writeEvidence() throws Exception {
         Files.writeString(Path.of("/tmp/minimal-media-evidence.txt"), evidence.toString());
-        // Cleanup
-        new File(MEDIA_PATH).delete();
     }
 
     // ========== Canonical Provider ID ==========
 
     @Test
-    void canonicalFfmpegId_is_ffmpeg() {
+    void legacyFfmpegProvider_isAbsentFromRenderRegistry() {
         boolean present = registry.getProvider("ffmpeg").isPresent();
-        evidence.append(String.format("CANONICAL_ID: ffmpeg (present=%b)%n", present));
-        Assertions.assertTrue(present);
+        evidence.append(String.format("LEGACY_FFMPEG_REGISTRY_PRESENT: %b%n", present));
+        Assertions.assertFalse(present);
     }
 
     // ========== R1-R10: Full render boundary flow ==========
 
     @Test
-    void renderBoundary_reachedWithValidMedia() throws Exception {
+    void renderBoundary_recordsStateWhenNoLegacyFfmpegProviderExists() throws Exception {
         // Create tenant + project
         String tenantId = createTenant("render-tenant");
         String projectId = createProject(tenantId, "render-project");
@@ -150,14 +134,8 @@ class MinimalMediaRenderBoundaryTest extends PostgresTestContainerSupport {
         evidence.append(String.format("ERROR_MSG: %s%n", errorMsg));
         evidence.append(String.format("TRACE_ID: %s%n", traceId));
 
-        // Verify canonical Provider ID persisted
-        if (postProvider != null) {
-            Assertions.assertEquals("ffmpeg", postProvider,
-                    "selected_provider must be canonical ID 'ffmpeg', not class name");
-            evidence.append("CANONICAL_ID_PERSISTED: YES\n");
-        } else {
-            evidence.append("CANONICAL_ID_PERSISTED: NO (render may have failed)\n");
-        }
+        Assertions.assertNotEquals("FFmpegRenderProvider", postProvider,
+                "selected_provider must not persist the removed legacy class name");
 
         // Status API
         HttpResponse<String> statusResp = httpGet(
@@ -172,10 +150,10 @@ class MinimalMediaRenderBoundaryTest extends PostgresTestContainerSupport {
     // ========== Flyway ==========
 
     @Test
-    void flywayV4_columnExists() {
+    void selectedProviderColumnExists() {
         try {
             jdbc.execute("SELECT selected_provider FROM render_job LIMIT 0");
-            evidence.append("V4_COLUMN: EXISTS\n");
+            evidence.append("SELECTED_PROVIDER_COLUMN: EXISTS\n");
         } catch (Exception e) {
             Assertions.fail("selected_provider column should exist");
         }

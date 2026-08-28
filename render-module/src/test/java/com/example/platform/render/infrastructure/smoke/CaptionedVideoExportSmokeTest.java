@@ -22,7 +22,6 @@ import static org.junit.jupiter.api.Assertions.*;
  * This test requires:
  * - node / npx available
  * - remotion CLI available
- * - ffmpeg available
  * - A working directory with write access
  *
  * Disabled by default. Run manually with:
@@ -61,15 +60,6 @@ class CaptionedVideoExportSmokeTest {
         if (outputDir != null) {
             deleteRecursive(outputDir);
         }
-    }
-
-    @Test
-    void environmentCheckPasses() {
-        RenderEnvironmentChecker checker = new FfmpegEnvironmentCheck();
-        RenderEnvironmentCheckResult result = checker.check(ExecutionMode.LOCAL, workingDir, outputDir);
-        assertNotNull(result);
-        assertNotNull(result.checks());
-        assertFalse(result.checks().isEmpty());
     }
 
     @Test
@@ -128,23 +118,13 @@ class CaptionedVideoExportSmokeTest {
         assertTrue(plan.steps().size() >= 2);
 
         boolean hasRemotionStep = plan.steps().stream().anyMatch(s -> s.providerName().equals("remotion"));
-        boolean hasFFmpegStep = plan.steps().stream().anyMatch(s -> s.providerName().equals("ffmpeg"));
         assertTrue(hasRemotionStep, "Should have remotion step");
-        assertTrue(hasFFmpegStep, "Should have ffmpeg step");
 
         for (RenderStep step : plan.steps()) {
             assertNotNull(step.id());
             assertNotNull(step.providerName());
             assertNotNull(step.providerType());
         }
-    }
-
-    @Test
-    void ffmpegCliExecution() {
-        RenderStepResult result = executeFfmpegStep();
-        assertNotNull(result);
-        assertNotNull(result.stepId());
-        assertNotNull(result.status());
     }
 
     @Test
@@ -184,7 +164,7 @@ class CaptionedVideoExportSmokeTest {
                 5000, false, java.time.Instant.now(), java.time.Instant.now()
         );
         RenderStepResult step2 = new RenderStepResult(
-                "step-2", "ffmpeg", "MediaProcessing", "COMPLETED",
+                "step-2", "mlt", "TimelineComposition", "COMPLETED",
                 null, List.of(), List.of(), List.of(), List.of(),
                 2000, false, java.time.Instant.now(), java.time.Instant.now()
         );
@@ -209,9 +189,9 @@ class CaptionedVideoExportSmokeTest {
                 5000, false, java.time.Instant.now(), java.time.Instant.now()
         );
         RenderStepResult step2 = new RenderStepResult(
-                "step-2", "ffmpeg", "MediaProcessing", "FAILED",
+                "step-2", "remotion", "CompositionRender", "FAILED",
                 null, List.of(), List.of(), List.of(),
-                List.of("ffmpeg exit code 1: codec not found"),
+                List.of("composition process exited non-zero"),
                 1000, false, java.time.Instant.now(), java.time.Instant.now()
         );
 
@@ -236,24 +216,6 @@ class CaptionedVideoExportSmokeTest {
         return new RenderStepResult(id, provider, type, status,
                 null, emptyArtifacts, emptyList, emptyList, safeErrors,
                 durationMs, false, start, Instant.now());
-    }
-
-    private RenderStepResult executeFfmpegStep() {
-        Instant start = Instant.now();
-        try {
-            ProcessBuilder pb = new ProcessBuilder("ffmpeg", "-version");
-            pb.redirectErrorStream(true);
-            Process p = pb.start();
-            int exit = p.waitFor();
-            long durationMs = java.time.Duration.between(start, Instant.now()).toMillis();
-            List<String> errors = exit == 0 ? List.of() : List.of("ffmpeg exit: " + exit);
-            return makeStepResult("ffmpeg-smoke", "ffmpeg", "MediaProcessing",
-                    exit == 0 ? "COMPLETED" : "FAILED", errors, durationMs, start);
-        } catch (Exception e) {
-            long durationMs = java.time.Duration.between(start, Instant.now()).toMillis();
-            return makeStepResult("ffmpeg-smoke", "ffmpeg", "MediaProcessing",
-                    "FAILED", List.of("ffmpeg error: " + e.getMessage()), durationMs, start);
-        }
     }
 
     private RenderStepResult executeRemotionStep() {

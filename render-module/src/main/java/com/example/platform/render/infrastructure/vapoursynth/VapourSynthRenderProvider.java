@@ -18,7 +18,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 
 /**
- * VapourSynth external render worker: runs {@code vspipe} when available, otherwise FFmpeg preprocess fallback.
+ * VapourSynth external render worker: runs {@code vspipe} when available.
  *
  * <p>Status: HOLD / P2. Not a general-purpose render provider.
  * Only for video preprocessing (denoise, deinterlace, frame rate conversion, enhancement).
@@ -113,19 +113,13 @@ public class VapourSynthRenderProvider implements RenderProvider {
                     ToolExecutionRequest.withTimeout("vapoursynth", args, properties.getTimeoutMillis()));
 
             if (!vsResult.isSuccess()) {
-                if (properties.isFallbackToFfmpeg()) {
-                    runFfmpegFallback(inputPath, output);
-                } else if (properties.isStubOnMissingBinary()) {
+                if (properties.isStubOnMissingBinary()) {
                     Files.write(output, new byte[] {0, 0, 0, 8});
                 } else {
                     throw new IllegalStateException("VapourSynth failed: " + vsResult.stderr());
                 }
             } else if (!Files.isRegularFile(output) || Files.size(output) == 0) {
-                if (properties.isFallbackToFfmpeg()) {
-                    runFfmpegFallback(inputPath, output);
-                } else {
-                    Files.write(output, new byte[] {0, 0, 0, 8});
-                }
+                Files.write(output, new byte[] {0, 0, 0, 8});
             }
 
             return new RenderResult(
@@ -136,19 +130,6 @@ public class VapourSynthRenderProvider implements RenderProvider {
                     "1920x1080");
         } catch (Exception e) {
             throw new IllegalStateException("VapourSynth render failed: " + e.getMessage(), e);
-        }
-    }
-
-    private void runFfmpegFallback(Path input, Path output) throws Exception {
-        log.warn("VapourSynth unavailable; FFmpeg fallback input={}", input);
-        List<String> ffmpegArgs = List.of(
-                "ffmpeg", "-y", "-i", input.toString(),
-                "-c:v", "libx264", "-preset", "fast", "-crf", "23",
-                "-c:a", "aac", output.toString());
-        ToolExecutionResult ff = processToolRunner.execute(
-                ToolExecutionRequest.withTimeout("ffmpeg", ffmpegArgs, properties.getTimeoutMillis()));
-        if (!ff.isSuccess() || !Files.isRegularFile(output)) {
-            Files.write(output, new byte[] {0, 0, 0, 8});
         }
     }
 
@@ -184,7 +165,7 @@ public class VapourSynthRenderProvider implements RenderProvider {
         if (r.isSuccess()) {
             return EnvironmentValidationResult.ok();
         }
-        if (properties.isFallbackToFfmpeg() || properties.isStubOnMissingBinary()) {
+        if (properties.isStubOnMissingBinary()) {
             return EnvironmentValidationResult.ok();
         }
         return EnvironmentValidationResult.failed("vspipe not available: " + r.stderr());

@@ -1,7 +1,6 @@
 package com.example.platform;
 
 import com.example.platform.render.infrastructure.*;
-import com.example.platform.render.infrastructure.ffmpeg.FFmpegRenderProvider;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -30,7 +29,7 @@ import org.springframework.test.context.TestPropertySource;
 @TestPropertySource(properties = {
     "app.security.enabled=false",
     "app.identity.api-key-auth-enabled=false",
-    "render.providers.ffmpeg.enabled=true",
+    "render.providers.ffmpeg.enabled=false",
     "render.providers.gstreamer.enabled=false",
     "render.providers.vapoursynth.enabled=false",
     "render.providers.natron.enabled=false",
@@ -56,11 +55,11 @@ class ProviderRegistrationValidationTest extends PostgresTestContainerSupport {
     // ========== L4: Spring Bean Registration ==========
 
     @Test
-    void ffmpegRenderProvider_isSpringBean() {
+    void legacyFfmpegRenderProvider_isNotSpringBean() {
         boolean hasBean = ctx.getBeansOfType(RenderProvider.class).values().stream()
-                .anyMatch(p -> p instanceof FFmpegRenderProvider);
+                .anyMatch(p -> "FFmpegRenderProvider".equals(p.getClass().getSimpleName()));
         evidence.append(String.format("L4_FFMPEG_BEAN: %b%n", hasBean));
-        Assertions.assertTrue(hasBean, "FFmpegRenderProvider should be a Spring Bean");
+        Assertions.assertFalse(hasBean, "Legacy FFmpegRenderProvider must not be a Spring Bean");
     }
 
     @Test
@@ -83,10 +82,10 @@ class ProviderRegistrationValidationTest extends PostgresTestContainerSupport {
     // ========== L5: Registry Entry ==========
 
     @Test
-    void registryContains_ffmpeg() {
+    void registryDoesNotContainLegacyFfmpeg() {
         Optional<RenderProvider> ffmpeg = registry.getProvider("ffmpeg");
         evidence.append(String.format("L5_FFMPEG_REGISTRY: %b%n", ffmpeg.isPresent()));
-        Assertions.assertTrue(ffmpeg.isPresent(), "FFmpeg should be in the Registry");
+        Assertions.assertTrue(ffmpeg.isEmpty(), "Legacy FFmpeg must not be in the render registry");
     }
 
     @Test
@@ -134,47 +133,30 @@ class ProviderRegistrationValidationTest extends PostgresTestContainerSupport {
     }
 
     @Test
-    void ffmpeg_registryEntryHasCorrectKey() {
-        // Verify FFmpeg specifically has the correct key (not "unknown")
+    void legacyFfmpegRegistryEntryIsAbsent() {
         Optional<RenderProviderCapability> ffmpegCap = registry.getCapability("ffmpeg");
-        Assertions.assertTrue(ffmpegCap.isPresent(), "FFmpeg capability should be in registry");
-        Assertions.assertEquals("ffmpeg", ffmpegCap.get().providerKey(),
-                "FFmpeg capability should have providerKey='ffmpeg'");
-        evidence.append(String.format("L5_FFMPEG_KEY_CORRECT: %b%n",
-                "ffmpeg".equals(ffmpegCap.get().providerKey())));
+        evidence.append(String.format("L5_FFMPEG_CAPABILITY_PRESENT: %b%n", ffmpegCap.isPresent()));
+        Assertions.assertTrue(ffmpegCap.isEmpty());
     }
 
     // ========== L6: Eligibility ==========
 
     @Test
-    void ffmpeg_hasProductionStatus() {
-        Optional<RenderProvider> ffmpeg = registry.getProvider("ffmpeg");
-        Assertions.assertTrue(ffmpeg.isPresent(), "FFmpeg not in registry");
-        ProviderStatus status = ffmpeg.get().getStatus();
-        evidence.append(String.format("L6_FFMPEG_STATUS: %s%n", status));
-        // FFmpeg should be PRODUCTION or at least not STUB/HOLD
-        Assertions.assertNotEquals(ProviderStatus.STUB, status,
-                "FFmpeg should not be STUB");
+    void registeredProvidersExposeStatus() {
+        registry.getAllProviders().forEach(provider -> Assertions.assertNotNull(provider.getStatus()));
     }
 
     @Test
-    void ffmpeg_supportsExpectedCapabilities() {
-        Optional<RenderProvider> ffmpeg = registry.getProvider("ffmpeg");
-        Assertions.assertTrue(ffmpeg.isPresent(), "FFmpeg not in registry");
-        List<String> profiles = ffmpeg.get().getSupportedProfiles();
-        evidence.append(String.format("L6_FFMPEG_PROFILES: %s%n", profiles));
-        Assertions.assertTrue(profiles.contains("default_1080p"),
-                "FFmpeg should support default_1080p");
+    void registeredProvidersExposeProfiles() {
+        registry.getAllProviders().forEach(provider ->
+                Assertions.assertNotNull(provider.getSupportedProfiles()));
     }
 
     @Test
-    void ffmpeg_environmentValidation() {
-        Optional<RenderProvider> ffmpeg = registry.getProvider("ffmpeg");
-        Assertions.assertTrue(ffmpeg.isPresent(), "FFmpeg not in registry");
-        RenderProvider.EnvironmentValidationResult result = ffmpeg.get().validateEnvironment();
-        evidence.append(String.format("L6_FFMPEG_ENV_VALID: %b (%s)%n",
-                result.valid(), result.message()));
-        // Note: FFmpeg executable must be available on the system
+    void registryIsSubsetOfProviderBeans() {
+        Assertions.assertTrue(ctx.getBeansOfType(RenderProvider.class).size()
+                        >= registry.getAllProviders().size(),
+                "The render registry cannot contain more providers than the application context");
     }
 
     @Test
@@ -190,7 +172,7 @@ class ProviderRegistrationValidationTest extends PostgresTestContainerSupport {
     // ========== L7: Selection ==========
 
     @Test
-    void ffmpegSelected_forSupportedRequest() {
+    void legacyFfmpegIsNotSelected_forSupportedRequest() {
         // Simulate selection: find a provider that supports default_1080p
         List<RenderProviderCapability> caps = registry.getCapabilitiesForProfile("default_1080p");
         evidence.append(String.format("L7_CANDIDATES_FOR_default_1080p: %d%n", caps.size()));
@@ -201,8 +183,8 @@ class ProviderRegistrationValidationTest extends PostgresTestContainerSupport {
         boolean ffmpegAmongCandidates = caps.stream()
                 .anyMatch(cap -> "ffmpeg".equals(cap.providerKey()));
         evidence.append(String.format("L7_FFMPEG_IN_CANDIDATES: %b%n", ffmpegAmongCandidates));
-        Assertions.assertTrue(ffmpegAmongCandidates,
-                "FFmpeg should be among candidates for default_1080p");
+        Assertions.assertFalse(ffmpegAmongCandidates,
+                "Legacy FFmpeg must not be among render-registry candidates");
     }
 
     @Test

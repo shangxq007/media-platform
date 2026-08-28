@@ -74,6 +74,7 @@ class TimelineRevisionRenderServiceTest {
     private TimelineScriptParser parser;
     private TimelineInputProductResolver inputProductResolver;
     private TimelineRevisionRenderService renderService;
+    private InMemoryStorageReferenceRepository storageRepo;
 
     // In-memory test doubles
     private InMemoryTimelineRevisionRepository revisionRepo;
@@ -81,7 +82,7 @@ class TimelineRevisionRenderServiceTest {
 
     @BeforeEach
     void setUp() {
-        StorageReferenceRepository storageRepo = new InMemoryStorageReferenceRepository();
+        storageRepo = new InMemoryStorageReferenceRepository();
         ProductRepository productRepo = new InMemoryProductRepository();
         ProductDependencyRepository depRepo = new InMemoryProductDependencyRepository();
         storageRuntime = new StorageRuntimeService(storageRepo, mockProvider(null));
@@ -179,7 +180,7 @@ class TimelineRevisionRenderServiceTest {
     // ─── R6.1: Input Product resolution tests ───
 
     @Test
-    @DisplayName("R6.1: render resolves input Product and uses materialized input path")
+    @DisplayName("R6.1: legacy render resolves input then fails closed before local execution")
     void r61RenderUsesMaterializedInputNotTestsrc() throws Exception {
         R2FixtureGenerator.assumeFfmpegAvailable();
 
@@ -214,43 +215,17 @@ class TimelineRevisionRenderServiceTest {
                 registrationService, productRuntime, storageRuntime,
                 inputProductResolver, capturingRunner, tempDir);
 
-        // 4. Render
-        TimelineRevisionRenderService.RevisionRenderResult result =
-                serviceWithCapturing.render(
-                        TimelineCoreSmokeFixture.PROJECT_ID, revisionId, "default_720p");
+        IllegalStateException failure = assertThrows(IllegalStateException.class,
+                () -> serviceWithCapturing.render(
+                        TimelineCoreSmokeFixture.PROJECT_ID, revisionId, "default_720p"));
 
-        // 5. Verify result
-        assertNotNull(result);
-        assertNotNull(result.outputProductId());
-        assertEquals("READY", result.productStatus());
-
-        // 6. Verify inputProductIds populated
-        assertNotNull(result.inputProductIds());
-        assertEquals(1, result.inputProductIds().size());
-        assertEquals(inputProduct.productId(), result.inputProductIds().get(0));
-        assertEquals(1, result.inputDependencyCount());
-
-        // 7. Verify FFmpeg command used materialized input (no testsrc/lavfi)
-        assertFalse(capturedArgs.isEmpty(), "FFmpeg must have been invoked");
-        List<String> ffmpegArgs = capturedArgs.get(0);
-
-        // Find the -i argument and verify it points to a real file
-        int iIndex = ffmpegArgs.indexOf("-i");
-        assertTrue(iIndex >= 0, "FFmpeg args must contain -i");
-        String inputPath = ffmpegArgs.get(iIndex + 1);
-        assertFalse(inputPath.contains("testsrc"), "FFmpeg must NOT use testsrc");
-        assertFalse(inputPath.contains("lavfi"), "FFmpeg must NOT use lavfi");
-        assertTrue(Files.exists(Path.of(inputPath)),
-                "Materialized input path must exist: " + inputPath);
-
-        // Verify full args do not contain lavfi or testsrc anywhere
-        String argsString = String.join(" ", ffmpegArgs);
-        assertFalse(argsString.contains("lavfi"), "FFmpeg args must not contain lavfi");
-        assertFalse(argsString.contains("testsrc"), "FFmpeg args must not contain testsrc");
+        assertEquals("Typed provider plugin execution required", failure.getMessage());
+        assertTrue(capturedArgs.isEmpty(), "Removed local execution authority must not run a command");
+        assertNoOutputCommit(revisionId);
     }
 
     @Test
-    @DisplayName("R6.1: render creates formal ProductDependency edges")
+    @DisplayName("R6.1: fail-closed legacy render creates no fabricated ProductDependency edges")
     void r61ResolvesInputProductIdsAndCreatesDependency() throws Exception {
         R2FixtureGenerator.assumeFfmpegAvailable();
 
@@ -282,29 +257,14 @@ class TimelineRevisionRenderServiceTest {
                 registrationService, productRuntime, storageRuntime,
                 inputProductResolver, capturingRunner, tempDir);
 
-        TimelineRevisionRenderService.RevisionRenderResult result =
-                serviceWithCapturing.render(
-                        TimelineCoreSmokeFixture.PROJECT_ID, revisionId, "default_720p");
+        IllegalStateException failure = assertThrows(IllegalStateException.class,
+                () -> serviceWithCapturing.render(
+                        TimelineCoreSmokeFixture.PROJECT_ID, revisionId, "default_720p"));
 
-        // Verify dependency edges
-        List<ProductDependency> deps = productRuntime.findDependencies(result.outputProductId());
-        assertEquals(1, deps.size(), "Output must have exactly 1 dependency edge");
-
-        ProductDependency dep = deps.get(0);
-        assertEquals(result.outputProductId(), dep.productId());
-        assertEquals(inputProduct.productId(), dep.dependsOnProductId());
-        assertEquals(DependencyType.DERIVED_FROM, dep.dependencyType());
-        assertEquals(TimelineCoreSmokeFixture.TENANT_ID, dep.tenantId());
-        assertEquals(TimelineCoreSmokeFixture.PROJECT_ID, dep.projectId());
-
-        // Verify upstream/downstream queries
-        List<String> upstream = productRuntime.findUpstream(result.outputProductId());
-        assertEquals(1, upstream.size());
-        assertEquals(inputProduct.productId(), upstream.get(0));
-
-        List<String> downstream = productRuntime.findDownstream(inputProduct.productId());
-        assertEquals(1, downstream.size());
-        assertEquals(result.outputProductId(), downstream.get(0));
+        assertEquals("Typed provider plugin execution required", failure.getMessage());
+        assertTrue(capturedArgs.isEmpty());
+        assertTrue(productRuntime.findDownstream(inputProduct.productId()).isEmpty());
+        assertNoOutputCommit(revisionId);
     }
 
     @Test
@@ -405,7 +365,7 @@ class TimelineRevisionRenderServiceTest {
     }
 
     @Test
-    @DisplayName("R6.1: response excludes sensitive data")
+    @DisplayName("R6.1: typed fail-closed exception excludes sensitive data")
     void r61ResponseExcludesSensitiveData() throws Exception {
         R2FixtureGenerator.assumeFfmpegAvailable();
 
@@ -437,25 +397,25 @@ class TimelineRevisionRenderServiceTest {
                 registrationService, productRuntime, storageRuntime,
                 inputProductResolver, capturingRunner, tempDir);
 
-        TimelineRevisionRenderService.RevisionRenderResult result =
-                serviceWithCapturing.render(
-                        TimelineCoreSmokeFixture.PROJECT_ID, revisionId, "default_720p");
+        IllegalStateException failure = assertThrows(IllegalStateException.class,
+                () -> serviceWithCapturing.render(
+                        TimelineCoreSmokeFixture.PROJECT_ID, revisionId, "default_720p"));
 
-        // Verify Product metadata excludes sensitive data
-        Optional<Product> outputProduct = productRuntime.find(result.outputProductId());
-        assertTrue(outputProduct.isPresent());
-        String metadata = outputProduct.get().metadataJson();
+        assertEquals("Typed provider plugin execution required", failure.getMessage());
+        String publicFailure = failure.getMessage();
+        assertFalse(publicFailure.contains("signedUrl"));
+        assertFalse(publicFailure.contains("storageReferenceId"));
+        assertFalse(publicFailure.contains(tempDir.toString()));
+        assertFalse(publicFailure.contains("ffmpeg -i"));
+        assertTrue(capturedArgs.isEmpty());
+        assertNoOutputCommit(revisionId);
+    }
 
-        assertFalse(metadata.contains("signedUrl"), "No signed URL in metadata");
-        assertFalse(metadata.contains("signed-url"), "No signed URL in metadata");
-        assertFalse(metadata.contains("presign"), "No presign in metadata");
-        assertFalse(metadata.contains(tempDir.toString()), "No absolute path in metadata");
-        assertFalse(metadata.contains("storageProvider"), "No storageProvider in metadata");
-        assertFalse(metadata.contains("remotion"), "No remotion in metadata");
-        assertFalse(metadata.contains("opencue"), "No opencue in metadata");
-
-        // Verify inputProductIds IS present
-        assertTrue(metadata.contains("\"inputProductIds\":"), "Must contain inputProductIds");
+    private void assertNoOutputCommit(String revisionId) {
+        assertEquals(1, storageRepo.size(), "Only input storage may be committed");
+        assertTrue(productRuntime.findBySourceTimelineRevisionId(revisionId).isEmpty());
+        assertTrue(productRuntime.findByProject(TimelineCoreSmokeFixture.PROJECT_ID, 100).stream()
+                .noneMatch(product -> product.productType() == ProductType.FINAL_RENDER));
     }
 
     // ─── Helper: register a READY RAW_MEDIA Product ───
@@ -662,6 +622,10 @@ class TimelineRevisionRenderServiceTest {
         public void delete(String id) {
             StorageReference ref = store.remove(id);
             if (ref != null && ref.contentHash() != null) byContentHash.remove(ref.contentHash());
+        }
+
+        int size() {
+            return store.size();
         }
     }
 

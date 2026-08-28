@@ -8,7 +8,6 @@ render:
       poc-effect-key: video.natron_vignette
       poc-script-path: ${NATRON_POC_SCRIPT:/app/bin/natron-poc-render.sh}
       renderer-binary: ${NATRON_RENDERER_BIN:NatronRenderer}
-      fallback-to-ffmpeg: ${NATRON_POC_FALLBACK:true}
       auto-select-profile: true
       reader-node-name: MyReader
       writer-node-name: MyWriter
@@ -26,4 +25,3 @@ app:
   cli-tools:
     executables:
       natron-poc-render: ${NATRON_POC_SCRIPT:/app/bin/natron-poc-render.sh}
-      ffmpeg: ${MEDIA_FFMPEG_PATH:/usr/bin/ffmpeg}

@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.example.platform.extension.app.ProcessToolRunner;
@@ -15,6 +16,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
+import org.mockito.ArgumentCaptor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -29,17 +31,12 @@ class NatronRenderProviderTest {
         toolRunner = mock(ProcessToolRunner.class);
         NatronRenderProviderProperties properties = new NatronRenderProviderProperties();
         properties.setPocEffectKey("video.natron_vignette");
-        properties.setFallbackToFfmpeg(true);
-
-        NatronRenderDurationResolver durationResolver = mock(NatronRenderDurationResolver.class);
-        when(durationResolver.resolveDurationSeconds(any(), any())).thenReturn(12L);
 
         provider = new NatronRenderProvider(
                 toolRunner,
                 new NatronPocJobExtractor(new TimelineScriptParser()),
                 new NatronPocCommandBuilder(),
                 new NatronBatchScriptGenerator(),
-                durationResolver,
                 properties);
         provider.setStorageRoot(tempDir.toString());
 
@@ -75,5 +72,10 @@ class NatronRenderProviderTest {
 
         assertEquals("mp4", result.format());
         assertTrue(result.storageUri().contains("artifacts/job-natron/output.mp4"));
+        assertEquals(30L, result.duration());
+
+        ArgumentCaptor<ToolExecutionRequest> request = ArgumentCaptor.forClass(ToolExecutionRequest.class);
+        verify(toolRunner).execute(request.capture());
+        assertTrue(request.getValue().args().stream().noneMatch("--fallback-ffmpeg"::equals));
     }
 }

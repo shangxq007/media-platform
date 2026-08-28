@@ -52,7 +52,7 @@ public enum ProviderStatus {
     /**
      * API client or adapter exists but not wired as a Spring bean or not
      * production-tested. Not dispatchable.
-     * Example: Shotstack (real API client, not wired), Natron (FFmpeg fallback).
+     * Example: Shotstack (real API client, not wired), Natron (optional node compositor).
      */
     SKELETON(false, false),
 

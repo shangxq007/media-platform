@@ -8,7 +8,6 @@ public class VapourSynthRenderProviderProperties {
     private boolean enabled = true;
     private String binary = "vspipe";
     private boolean stubOnMissingBinary = false;
-    private boolean fallbackToFfmpeg = true;
     private long timeoutMillis = 600_000L;
 
     public boolean isEnabled() {
@@ -33,14 +32,6 @@ public class VapourSynthRenderProviderProperties {
 
     public void setStubOnMissingBinary(boolean stubOnMissingBinary) {
         this.stubOnMissingBinary = stubOnMissingBinary;
-    }
-
-    public boolean isFallbackToFfmpeg() {
-        return fallbackToFfmpeg;
-    }
-
-    public void setFallbackToFfmpeg(boolean fallbackToFfmpeg) {
-        this.fallbackToFfmpeg = fallbackToFfmpeg;
     }
 
     public long getTimeoutMillis() {

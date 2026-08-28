@@ -21,7 +21,7 @@ import org.springframework.beans.factory.annotation.Value;
 
 /**
  * Natron worker POC: applies {@link NatronRenderProviderProperties#getPocEffectKey()} via
- * {@code poc-render.sh} (FFmpeg vignette fallback until .ntp templates are wired).
+ * {@code poc-render.sh} with the Natron batch template.
  *
  * <p>Status: HOLD / P3. Node-based VFX compositing provider.
  * Overlaps with Blender, Remotion, and OFX capabilities.
@@ -37,7 +37,6 @@ public class NatronRenderProvider implements RenderProvider {
     private final NatronPocJobExtractor jobExtractor;
     private final NatronPocCommandBuilder commandBuilder;
     private final NatronBatchScriptGenerator batchScriptGenerator;
-    private final NatronRenderDurationResolver durationResolver;
     private final NatronRenderProviderProperties properties;
 
     @Value("${app.storage.local-root:/tmp/platform}")
@@ -47,13 +46,11 @@ public class NatronRenderProvider implements RenderProvider {
                                 NatronPocJobExtractor jobExtractor,
                                 NatronPocCommandBuilder commandBuilder,
                                 NatronBatchScriptGenerator batchScriptGenerator,
-                                NatronRenderDurationResolver durationResolver,
                                 NatronRenderProviderProperties properties) {
         this.processToolRunner = processToolRunner;
         this.jobExtractor = jobExtractor;
         this.commandBuilder = commandBuilder;
         this.batchScriptGenerator = batchScriptGenerator;
-        this.durationResolver = durationResolver;
         this.properties = properties;
     }
 
@@ -86,14 +83,10 @@ public class NatronRenderProvider implements RenderProvider {
             }
 
             Path natronDir = outputDir.resolve("natron");
-            String batchScriptPath = null;
-            if (!properties.isFallbackToFfmpeg()) {
-                batchScriptPath = batchScriptGenerator.generate(job.get(), natronDir).toString();
-            }
+            String batchScriptPath = batchScriptGenerator.generate(job.get(), natronDir).toString();
 
             List<String> args = commandBuilder.buildArgs(
                     job.get(),
-                    properties.isFallbackToFfmpeg(),
                     batchScriptPath,
                     properties.getReaderNodeName(),
                     properties.getWriterNodeName());
@@ -133,7 +126,7 @@ public class NatronRenderProvider implements RenderProvider {
             String resolution = preset.width() + "x" + preset.height();
             log.info("NatronRenderProvider: complete artifact={}", artifactId);
 
-            long durationSec = durationResolver.resolveDurationSeconds(jobId, outputPath);
+            long durationSec = 30L;
 
             return new RenderResult(
                     artifactId,
@@ -162,16 +155,12 @@ public class NatronRenderProvider implements RenderProvider {
 
     @Override
     public EnvironmentValidationResult validateEnvironment() {
-        if (properties.isFallbackToFfmpeg()) {
-            return EnvironmentValidationResult.ok();
-        }
         Path renderer = Path.of(properties.getRendererBinary());
         if (renderer.isAbsolute() && Files.isExecutable(renderer)) {
             return EnvironmentValidationResult.ok();
         }
         return EnvironmentValidationResult.failed(
-                "Natron renderer not executable: " + properties.getRendererBinary()
-                        + " (enable render.providers.natron.fallback-to-ffmpeg for POC)");
+                "Natron renderer not executable: " + properties.getRendererBinary());
     }
 
     @Override
@@ -191,7 +180,7 @@ public class NatronRenderProvider implements RenderProvider {
 
     @Override
     public String getPurpose() {
-        return "Node-based VFX compositing provider (currently FFmpeg vignette fallback, not real Natron)";
+        return "Node-based VFX compositing provider";
     }
 
     @Override
@@ -199,7 +188,7 @@ public class NatronRenderProvider implements RenderProvider {
         return List.of(
                 "HOLD status - pause development unless explicit node-based VFX workflow needed",
                 "Overlaps with Blender, Remotion, and OFX capabilities",
-                "Currently FFmpeg vignette fallback, not real Natron integration",
+                "Requires an installed NatronRenderer and generated batch template",
                 "Does not participate in auto-routing",
                 "Only resume for: chroma key, node-based compositing, Natron project reuse, cinematic VFX"
         );

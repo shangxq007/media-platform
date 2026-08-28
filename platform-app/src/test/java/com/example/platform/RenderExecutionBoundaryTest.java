@@ -19,14 +19,15 @@ import org.springframework.test.context.TestPropertySource;
 
 /**
  * Render Execution Boundary and Concurrency Remainder.
- * Proves canonical Provider ID, render boundary, failure paths, concurrency.
+ * Proves the render boundary, persistence, failure paths, and removed routes without
+ * registering the legacy in-process FFmpeg provider.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles({"test", "preview"})
 @TestPropertySource(properties = {
     "app.security.enabled=false",
     "app.identity.api-key-auth-enabled=false",
-    "render.providers.ffmpeg.enabled=true",
+    "render.providers.ffmpeg.enabled=false",
     "render.providers.gstreamer.enabled=false",
     "render.providers.vapoursynth.enabled=false",
     "render.providers.natron.enabled=false",
@@ -86,10 +87,10 @@ class RenderExecutionBoundaryTest extends PostgresTestContainerSupport {
     // ========== Canonical Provider ID ==========
 
     @Test
-    void canonicalFfmpegId_is_ffmpeg() {
+    void legacyFfmpegId_isAbsent() {
         boolean present = registry.getProvider("ffmpeg").isPresent();
         evidence.append(String.format("CANONICAL_ID: ffmpeg (present=%b)%n", present));
-        Assertions.assertTrue(present, "FFmpeg should be in Registry with key 'ffmpeg'");
+        Assertions.assertFalse(present, "Legacy FFmpeg should not be in the render registry");
     }
 
     @Test
@@ -133,8 +134,7 @@ class RenderExecutionBoundaryTest extends PostgresTestContainerSupport {
         // Verify canonical ID
         Assertions.assertNotEquals("FFmpegRenderProvider", dbProvider,
                 "selected_provider must not be Java class name");
-        // Note: dbProvider may be null if render fails before provider write,
-        // or "ffmpeg" if provider was selected
+        // dbProvider may be null when execution fails before provider selection.
 
         // Status API
         HttpResponse<String> statusResp = httpGet(

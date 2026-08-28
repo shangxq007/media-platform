@@ -194,10 +194,11 @@ class RenderJobPreselectionTest extends PostgresTestContainerSupport {
     // ========== Provider Registry ==========
 
     @Test
-    void providerRegistry_ffmpegPresent() {
+    void providerRegistry_legacyFfmpegAbsent() {
         boolean present = registry.getProvider("ffmpeg").isPresent();
         evidence.append(String.format("FFMPEG_REGISTRY: %b%n", present));
-        Assertions.assertTrue(present);
+        Assertions.assertFalse(present,
+                "Legacy FFmpeg must not remain in the render-integrated registry");
     }
 
     // ========== Helpers ==========

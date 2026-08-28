@@ -25,7 +25,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 /**
- * Stitches ordered segment MP4 artifacts into a mezzanine (FFmpeg concat or MLT playlist).
+ * Stitches ordered segment MP4 artifacts through the MLT provider path.
  */
 @Service
 public class SegmentStitchComposeService {
@@ -59,7 +59,7 @@ public class SegmentStitchComposeService {
     public StitchResult stitch(String jobId,
                                Map<String, String> orderedSegmentUris,
                                String profile) {
-        return stitch(jobId, orderedSegmentUris, profile, FinalComposerHint.FFMPEG);
+        return stitch(jobId, orderedSegmentUris, profile, FinalComposerHint.MLT);
     }
 
     public StitchResult stitch(String jobId,
@@ -73,10 +73,10 @@ public class SegmentStitchComposeService {
             try {
                 return stitchWithMlt(jobId, orderedSegmentUris, profile);
             } catch (Exception e) {
-                log.warn("MLT segment stitch failed for job={}, falling back to FFmpeg: {}", jobId, e.getMessage());
+                throw new IllegalStateException("MLT segment stitch failed for job=" + jobId, e);
             }
         }
-        return stitchWithFfmpeg(jobId, orderedSegmentUris, profile);
+        throw new IllegalStateException("Typed provider plugin is required for non-MLT segment composition");
     }
 
     private boolean shouldUseMlt(FinalComposerHint composer) {
@@ -88,76 +88,6 @@ public class SegmentStitchComposeService {
                 .map(r -> r.getProvider("mlt").isPresent())
                 .orElse(false);
         return meltOk && providerOk;
-    }
-
-    public StitchResult stitchWithFfmpeg(String jobId,
-                                         Map<String, String> orderedSegmentUris,
-                                         String profile) {
-        try {
-            Path outputDir = Path.of(storageRoot, "artifacts", jobId);
-            Files.createDirectories(outputDir);
-            Path outputPath = outputDir.resolve("segment-stitch-output.mp4");
-            Path listFile = outputDir.resolve("segments.ffconcat");
-
-            List<String> localPaths = new ArrayList<>();
-            StringBuilder listContent = new StringBuilder("ffconcat version 1.0\n");
-            for (Map.Entry<String, String> entry : orderedSegmentUris.entrySet()) {
-                String local = timelineScriptParser.resolveLocalPath(entry.getValue(), storageRoot);
-                if (!timelineScriptParser.mediaFileExists(entry.getValue(), storageRoot)) {
-                    log.warn("Segment stitch: missing file for {} uri={}", entry.getKey(), entry.getValue());
-                    continue;
-                }
-                localPaths.add(local);
-                listContent.append("file '").append(escapePath(local)).append("'\n");
-            }
-            if (localPaths.isEmpty()) {
-                throw new PlatformException(
-                        new ConfigurableErrorCode("RENDER-400-004", 500404,
-                                Map.of("en", "No local segment files for stitch", "zh", "无可用段文件拼接"),
-                                "render", 400),
-                        "Segment stitch: no resolvable local files",
-                        Map.of("jobId", jobId),
-                        "en");
-            }
-            Files.writeString(listFile, listContent.toString());
-
-            RenderPreset preset = RenderPreset.fromProfile(profile);
-            List<String> args = new ArrayList<>();
-            args.add("-f");
-            args.add("concat");
-            args.add("-safe");
-            args.add("0");
-            args.add("-i");
-            args.add(listFile.toString());
-            args.add("-c");
-            args.add("copy");
-            if (preset.width() > 0 && preset.height() > 0) {
-                args.add("-s");
-                args.add(preset.width() + "x" + preset.height());
-            }
-            args.add("-y");
-            args.add(outputPath.toString());
-
-            ToolExecutionResult result = processToolRunner.execute(
-                    ToolExecutionRequest.withTimeout("ffmpeg", args, 600_000));
-            if (!result.isSuccess()) {
-                throw new PlatformException(
-                        new ConfigurableErrorCode("RENDER-500-005", 500505,
-                                Map.of("en", "Segment stitch failed", "zh", "段拼接失败"),
-                                "render", 500),
-                        "ffmpeg concat failed: " + result.stderr(),
-                        Map.of("jobId", jobId),
-                        "en");
-            }
-
-            String storageUri = "localFsStorageProvider://artifacts/" + jobId + "/segment-stitch-output.mp4";
-            log.info("Segment stitch (ffmpeg) complete job={} segments={} uri={}", jobId, localPaths.size(), storageUri);
-            return new StitchResult(Ids.newId("art"), storageUri, localPaths.size(), "ffmpeg");
-        } catch (PlatformException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new IllegalStateException("Segment stitch failed for job " + jobId, e);
-        }
     }
 
     public StitchResult stitchWithMlt(String jobId,
@@ -213,10 +143,6 @@ public class SegmentStitchComposeService {
             return localPath;
         }
         return "file://" + localPath;
-    }
-
-    private static String escapePath(String path) {
-        return path.replace("'", "'\\''");
     }
 
     public record StitchResult(String artifactId, String storageUri, int segmentCount, String backend) {

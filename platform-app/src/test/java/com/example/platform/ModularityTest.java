@@ -133,7 +133,12 @@ class ModularityTest {
         // The storage named interfaces are registered, but the consumed contract
         // types surface as non-exposed through the platform-app Modulith scan;
         // retain the repository debt-register convention with a package-specific match.
-        "workerfabric' depends on non-exposed type com.example.platform.storage.contract"
+        "workerfabric' depends on non-exposed type com.example.platform.storage.contract",
+        // ROADMAP_22_PHASE_19: provider-plugin-runtime is the integration layer above
+        // worker-fabric and consumes these existing typed contracts; worker-fabric does
+        // not depend back on plugin/extension.
+        "providerplugin' depends on non-exposed type com.example.platform.workerfabric.domain.providernative.ProviderNativeRuntimeBinding",
+        "providerplugin' depends on non-exposed type com.example.platform.workerfabric.domain.WorkerRuntimeSupportRequirement"
     );
 
     @Test

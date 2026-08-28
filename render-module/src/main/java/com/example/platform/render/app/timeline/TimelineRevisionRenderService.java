@@ -192,16 +192,15 @@ public class TimelineRevisionRenderService {
                 .inputProductIds(inputProductIds)
                 .build();
 
-        // 9. Invoke FFmpeg/libass baseline render with materialized input
+        // 9. Concrete execution is exclusively owned by the typed provider plugin path.
         Path outputDir = storageRoot.resolve("render-output").resolve(renderJobId);
         Path outputVideo = outputDir.resolve("output.mp4");
 
         try {
-            invokeFfmpegRender(timelineJson, outputVideo,
-                    mappingResult.width(), mappingResult.height(), materializedInput);
+            requireTypedProviderPluginExecution();
         } catch (Exception e) {
-            log.error("FFmpeg render failed for revision={}: {}", revisionId, e.getMessage());
-            throw new IllegalStateException("FFmpeg render failed: " + e.getMessage(), e);
+            log.error("Typed provider execution unavailable for revision={}: {}", revisionId, e.getMessage());
+            throw new IllegalStateException("Typed provider plugin execution required", e);
         }
 
         // 10. Register output through RenderOutputRegistrationService
@@ -238,62 +237,8 @@ public class TimelineRevisionRenderService {
                 inputProductIds.size());
     }
 
-    /**
-     * Invoke FFmpeg to render using a materialized input file.
-     * Uses libx264/aac baseline encoding.
-     *
-     * <p>R6.1: Requires a materialized input path from StorageRuntime.
-     * No testsrc/lavfi fallback — the input file is the actual media source.</p>
-     */
-    private void invokeFfmpegRender(String timelineJson, Path outputVideo,
-                                     int width, int height,
-                                     Path materializedInput) throws IOException {
-        Files.createDirectories(outputVideo.getParent());
-
-        // Write timeline JSON to temp file for audit trail
-        Path tempDir = outputVideo.getParent().resolve("temp");
-        Files.createDirectories(tempDir);
-        Files.writeString(tempDir.resolve("timeline.json"), timelineJson);
-
-        // Defensive validation of materialized input
-        if (materializedInput == null) {
-            throw new IOException("Materialized input path is null");
-        }
-        if (!Files.exists(materializedInput)) {
-            throw new IOException("Materialized input file does not exist: " + materializedInput);
-        }
-        if (!Files.isRegularFile(materializedInput)) {
-            throw new IOException("Materialized input is not a regular file: " + materializedInput);
-        }
-        if (Files.size(materializedInput) == 0) {
-            throw new IOException("Materialized input file is zero-byte: " + materializedInput);
-        }
-
-        // R6.1: FFmpeg uses materialized input file — no testsrc, no lavfi
-        List<String> cmd = List.of(
-                "ffmpeg", "-y",
-                "-i", materializedInput.toAbsolutePath().toString(),
-                "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p",
-                "-c:a", "aac", "-b:a", "64k",
-                "-shortest",
-                outputVideo.toAbsolutePath().toString()
-        );
-
-        ToolExecutionRequest request = ToolExecutionRequest.withTimeout(
-                "ffmpeg", cmd.subList(1, cmd.size()), 60_000);
-
-        ToolExecutionResult result = processToolRunner.execute(request);
-        if (!result.isSuccess()) {
-            throw new IOException("FFmpeg render failed: " + result.stderr());
-        }
-
-        if (!Files.exists(outputVideo) || Files.size(outputVideo) == 0) {
-            throw new IOException(
-                    "FFmpeg render produced no output or zero-byte output: " + outputVideo);
-        }
-
-        log.info("FFmpeg render with materialized input: input={} output={} size={}",
-                materializedInput, outputVideo, Files.size(outputVideo));
+    private static void requireTypedProviderPluginExecution() {
+        throw new IllegalStateException("TYPED_PROVIDER_PLUGIN_EXECUTION_REQUIRED");
     }
 
     /**

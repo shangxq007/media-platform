@@ -40,8 +40,8 @@ import com.example.platform.render.domain.interchange.TimelineScriptParser;
 import com.example.platform.render.domain.interchange.TimelineSpec;
 
 /**
- * LEGACY vs PLAN_BASED parity tests.
- * Verifies behavioral equivalence for FFmpeg baseline renders.
+ * LEGACY vs PLAN_BASED fail-closed parity tests after removal of their local
+ * FFmpeg execution authority.
  */
 class TimelineRevisionRenderModeParityTest {
     @SuppressWarnings("unchecked")
@@ -59,10 +59,13 @@ class TimelineRevisionRenderModeParityTest {
     private RenderAuditRecorder auditRecorder;
     private InMemoryTimelineRevisionRepository revisionRepo;
     private InMemoryTimelineSnapshotService snapshotService;
+    private InMemoryStorageReferenceRepository storageRepo;
+    private final java.util.concurrent.atomic.AtomicInteger processInvocations =
+            new java.util.concurrent.atomic.AtomicInteger();
 
     @BeforeEach
     void setUp() {
-        StorageReferenceRepository storageRepo = new InMemoryStorageReferenceRepository();
+        storageRepo = new InMemoryStorageReferenceRepository();
         ProductRepository productRepo = new InMemoryProductRepository();
         ProductDependencyRepository depRepo = new InMemoryProductDependencyRepository();
         storageRuntime = new StorageRuntimeService(storageRepo, mockProvider(null));
@@ -74,96 +77,67 @@ class TimelineRevisionRenderModeParityTest {
     }
 
     @Test
-    @DisplayName("LEGACY produces READY FINAL_RENDER Product")
-    void legacyProducesReadyProduct() throws Exception {
+    @DisplayName("LEGACY fails closed without a READY FINAL_RENDER Product")
+    void legacyFailsClosedWithoutReadyProduct() throws Exception {
         registerReadyRawMediaProduct();
         String revisionId = setupRevision();
         TimelineRevisionRenderService legacyService = createLegacyService();
-        TimelineRevisionRenderService.RevisionRenderResult result =
-                legacyService.render(TimelineCoreSmokeFixture.PROJECT_ID, revisionId, "default_1080p");
-        assertNotNull(result);
-        assertEquals("READY", result.productStatus());
-        assertNotNull(result.outputProductId());
+        assertLegacyFailClosed(legacyService, revisionId);
     }
 
     @Test
-    @DisplayName("PLAN_BASED produces READY FINAL_RENDER Product")
-    void planBasedProducesReadyProduct() throws Exception {
+    @DisplayName("PLAN_BASED fails closed without a READY FINAL_RENDER Product")
+    void planBasedFailsClosedWithoutReadyProduct() throws Exception {
         registerReadyRawMediaProduct();
         String revisionId = setupRevision();
         PlanBasedTimelineRevisionRenderService planService = createPlanBasedService();
-        TimelineRevisionRenderService.RevisionRenderResult result =
-                planService.render(TimelineCoreSmokeFixture.PROJECT_ID, revisionId, "default_1080p");
-        assertNotNull(result);
-        assertEquals("READY", result.productStatus());
-        assertNotNull(result.outputProductId());
+        assertPlanFailClosed(planService, revisionId);
     }
 
     @Test
-    @DisplayName("Both modes use same RevisionRenderResult contract")
-    void bothModesUseSameResultContract() throws Exception {
+    @DisplayName("Both removed modes expose typed fail-closed contracts instead of a result")
+    void bothModesUseTypedFailClosedContracts() throws Exception {
         registerReadyRawMediaProduct();
         String legacyRevId = setupRevision();
-        TimelineRevisionRenderService.RevisionRenderResult legacyResult =
-                createLegacyService().render(TimelineCoreSmokeFixture.PROJECT_ID, legacyRevId, "default_1080p");
+        IllegalStateException legacyFailure = assertLegacyFailClosed(createLegacyService(), legacyRevId);
 
         registerReadyRawMediaProduct();
         String planRevId = setupRevision();
-        TimelineRevisionRenderService.RevisionRenderResult planResult =
-                createPlanBasedService().render(TimelineCoreSmokeFixture.PROJECT_ID, planRevId, "default_1080p");
-
-        // Same contract fields
-        assertNotNull(legacyResult.renderJobId());
-        assertNotNull(planResult.renderJobId());
-        assertEquals(legacyResult.productStatus(), planResult.productStatus());
-        assertEquals(legacyResult.baselineRenderer(), planResult.baselineRenderer());
-        assertEquals(legacyResult.outputFormat(), planResult.outputFormat());
-        assertFalse(legacyResult.inputProductIds().isEmpty());
-        assertFalse(planResult.inputProductIds().isEmpty());
+        IllegalStateException planFailure = assertPlanFailClosed(createPlanBasedService(), planRevId);
+        assertFalse(legacyFailure.getMessage().contains("storageReferenceId"));
+        assertFalse(planFailure.getMessage().contains("storageReferenceId"));
     }
 
     @Test
-    @DisplayName("Both modes create ProductDependency lineage")
-    void bothModesCreateLineage() throws Exception {
+    @DisplayName("Both removed modes create no fabricated ProductDependency lineage")
+    void bothModesCreateNoLineage() throws Exception {
         registerReadyRawMediaProduct();
         String legacyRevId = setupRevision();
-        TimelineRevisionRenderService.RevisionRenderResult legacyResult =
-                createLegacyService().render(TimelineCoreSmokeFixture.PROJECT_ID, legacyRevId, "default_1080p");
-        List<ProductDependency> legacyDeps = productRuntime.findDependencies(legacyResult.outputProductId());
-        assertFalse(legacyDeps.isEmpty(), "LEGACY should create ProductDependency");
+        assertLegacyFailClosed(createLegacyService(), legacyRevId);
 
         registerReadyRawMediaProduct();
         String planRevId = setupRevision();
-        TimelineRevisionRenderService.RevisionRenderResult planResult =
-                createPlanBasedService().render(TimelineCoreSmokeFixture.PROJECT_ID, planRevId, "default_1080p");
-        List<ProductDependency> planDeps = productRuntime.findDependencies(planResult.outputProductId());
-        assertFalse(planDeps.isEmpty(), "PLAN_BASED should create ProductDependency");
+        assertPlanFailClosed(createPlanBasedService(), planRevId);
     }
 
     @Test
-    @DisplayName("Both modes register output through StorageRuntime")
-    void bothModesRegisterThroughStorageRuntime() throws Exception {
+    @DisplayName("Both removed modes commit no output through StorageRuntime")
+    void bothModesCommitNoOutputStorage() throws Exception {
         registerReadyRawMediaProduct();
         String legacyRevId = setupRevision();
-        TimelineRevisionRenderService.RevisionRenderResult legacyResult =
-                createLegacyService().render(TimelineCoreSmokeFixture.PROJECT_ID, legacyRevId, "default_1080p");
-        assertNotNull(legacyResult.storageReferenceId());
+        assertLegacyFailClosed(createLegacyService(), legacyRevId);
 
         registerReadyRawMediaProduct();
         String planRevId = setupRevision();
-        TimelineRevisionRenderService.RevisionRenderResult planResult =
-                createPlanBasedService().render(TimelineCoreSmokeFixture.PROJECT_ID, planRevId, "default_1080p");
-        assertNotNull(planResult.storageReferenceId());
+        assertPlanFailClosed(createPlanBasedService(), planRevId);
     }
 
     @Test
-    @DisplayName("Both modes do not expose storage internals in result")
-    void bothModesNoStorageInternals() throws Exception {
+    @DisplayName("Both modes do not expose storage internals in failure")
+    void bothModesNoStorageInternalsInFailure() throws Exception {
         registerReadyRawMediaProduct();
         String revId = setupRevision();
-        TimelineRevisionRenderService.RevisionRenderResult result =
-                createLegacyService().render(TimelineCoreSmokeFixture.PROJECT_ID, revId, "default_1080p");
-        String resultStr = result.toString();
+        String resultStr = assertLegacyFailClosed(createLegacyService(), revId).getMessage();
         assertFalse(resultStr.contains("bucket"));
         assertFalse(resultStr.contains("objectKey"));
         assertFalse(resultStr.contains("rootPath"));
@@ -172,24 +146,25 @@ class TimelineRevisionRenderModeParityTest {
     }
 
     @Test
-    @DisplayName("Both modes do not expose raw command in result")
+    @DisplayName("Both modes do not expose or execute a raw command")
     void bothModesNoRawCommand() throws Exception {
         registerReadyRawMediaProduct();
         String revId = setupRevision();
-        TimelineRevisionRenderService.RevisionRenderResult result =
-                createLegacyService().render(TimelineCoreSmokeFixture.PROJECT_ID, revId, "default_1080p");
-        String resultStr = result.toString();
+        String resultStr = assertLegacyFailClosed(createLegacyService(), revId).getMessage();
         assertFalse(resultStr.contains("ffmpeg -i"));
         assertFalse(resultStr.contains("libx264"));
+        assertEquals(0, processInvocations.get());
     }
 
     @Test
-    @DisplayName("PLAN_BASED emits audit/correlation events")
-    void planBasedEmitsAuditEvents() throws Exception {
+    @DisplayName("PLAN_BASED emits audit/correlation events without completion publication")
+    void planBasedEmitsFailClosedAuditEvents() throws Exception {
         registerReadyRawMediaProduct();
         String revId = setupRevision();
-        createPlanBasedService().render(TimelineCoreSmokeFixture.PROJECT_ID, revId, "default_1080p");
+        assertPlanFailClosed(createPlanBasedService(), revId);
         assertFalse(auditSink.findAll().isEmpty(), "PLAN_BASED should emit audit events");
+        assertFalse(auditSink.findAll().stream()
+                .anyMatch(event -> event.eventType() == RenderAuditEventType.RENDER_COMPLETED));
     }
 
     @Test
@@ -200,6 +175,40 @@ class TimelineRevisionRenderModeParityTest {
         // The guard checks non-production providers - STUB providers are never executable
         // This is verified by existing LocalExecutionPlanRunnerTest
         assertNotNull(guard);
+    }
+
+    private IllegalStateException assertLegacyFailClosed(
+            TimelineRevisionRenderService service, String revisionId) {
+        return assertFailClosed(service, null, revisionId,
+                "Typed provider plugin execution required");
+    }
+
+    private IllegalStateException assertPlanFailClosed(
+            PlanBasedTimelineRevisionRenderService service, String revisionId) {
+        return assertFailClosed(null, service, revisionId,
+                "Plan-based render failed: One or more steps failed");
+    }
+
+    private IllegalStateException assertFailClosed(
+            TimelineRevisionRenderService legacyService,
+            PlanBasedTimelineRevisionRenderService planService,
+            String revisionId,
+            String expectedMessage) {
+        int storageCountBefore = storageRepo.size();
+        IllegalStateException failure = assertThrows(IllegalStateException.class, () -> {
+            if (legacyService != null) {
+                legacyService.render(TimelineCoreSmokeFixture.PROJECT_ID, revisionId, "default_1080p");
+            } else {
+                planService.render(TimelineCoreSmokeFixture.PROJECT_ID, revisionId, "default_1080p");
+            }
+        });
+        assertEquals(expectedMessage, failure.getMessage());
+        assertEquals(0, processInvocations.get());
+        assertEquals(storageCountBefore, storageRepo.size(), "Render must not commit storage");
+        assertTrue(productRuntime.findBySourceTimelineRevisionId(revisionId).isEmpty());
+        assertTrue(productRuntime.findByProject(TimelineCoreSmokeFixture.PROJECT_ID, 100).stream()
+                .noneMatch(product -> product.productType() == ProductType.FINAL_RENDER));
+        return failure;
     }
 
     // --- Helpers ---
@@ -254,6 +263,7 @@ class TimelineRevisionRenderModeParityTest {
     private ProcessToolRunner createToolRunner() {
         return new ProcessToolRunner() {
             @Override public ToolExecutionResult execute(com.example.platform.extension.domain.ToolExecutionRequest request) {
+                processInvocations.incrementAndGet();
                 try {
                     String outputPath = request.args().get(request.args().size() - 1);
                     Path output = Path.of(outputPath);
@@ -360,6 +370,7 @@ class TimelineRevisionRenderModeParityTest {
             store.put(id, saved); return saved;
         }
         @Override public Optional<StorageReference> findById(String id) { return Optional.ofNullable(store.get(id)); }
+        int size() { return store.size(); }
     }
     static class InMemoryProductRepository extends ProductRepository {
         private final Map<String, Product> store = new ConcurrentHashMap<>();

@@ -14,23 +14,12 @@ public class ProviderFallbackGraph {
     private final Map<String, List<String>> fallbackChains = new HashMap<>();
 
     public ProviderFallbackGraph() {
-        // Default fallback chains
-        // FFmpeg is the primary provider for most operations
-        registerFallbackChain("FFmpegRenderProvider", List.of(
-                "GStreamerRenderProvider",
-                "GPACRenderProvider",
-                "Bento4PackagingProvider"
-        ));
-
-        // GStreamer falls back to FFmpeg
+        // Default fallback chains contain only independently available peers.
         registerFallbackChain("GStreamerRenderProvider", List.of(
-                "FFmpegRenderProvider",
                 "GPACRenderProvider"
         ));
 
-        // GPAC falls back to FFmpeg
         registerFallbackChain("GPACRenderProvider", List.of(
-                "FFmpegRenderProvider",
                 "GStreamerRenderProvider"
         ));
 
@@ -46,25 +35,6 @@ public class ProviderFallbackGraph {
                 "GPACRenderProvider"
         ));
 
-        // Natron falls back to FFmpeg
-        registerFallbackChain("NatronRenderProvider", List.of(
-                "FFmpegRenderProvider"
-        ));
-
-        // Blender falls back to FFmpeg
-        registerFallbackChain("BlenderRenderProvider", List.of(
-                "FFmpegRenderProvider"
-        ));
-
-        // VapourSynth falls back to FFmpeg
-        registerFallbackChain("VapourSynthRenderProvider", List.of(
-                "FFmpegRenderProvider"
-        ));
-
-        // RemoteRender falls back to FFmpeg (when no remote workers available)
-        registerFallbackChain("RemoteRenderProvider", List.of(
-                "FFmpegRenderProvider"
-        ));
     }
 
     /**

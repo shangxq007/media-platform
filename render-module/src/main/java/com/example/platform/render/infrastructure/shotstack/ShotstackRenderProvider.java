@@ -3,7 +3,6 @@ package com.example.platform.render.infrastructure.shotstack;
 import com.example.platform.render.domain.legacy.TimelineClipEffect;
 import com.example.platform.render.domain.interchange.TimelineScriptParser;
 import com.example.platform.render.domain.interchange.TimelineSpec;
-import com.example.platform.render.infrastructure.FfprobeMediaProbeExecutor;
 import com.example.platform.render.infrastructure.ProviderStatus;
 import com.example.platform.render.infrastructure.ProviderType;
 import com.example.platform.render.infrastructure.RenderPreset;
@@ -38,7 +37,6 @@ public class ShotstackRenderProvider implements RenderProvider {
     private final ShotstackApiClient apiClient;
     private final ShotstackRenderProviderProperties properties;
     private final TimelineScriptParser timelineScriptParser;
-    private final FfprobeMediaProbeExecutor mediaProbeService;
 
     @Value("${app.storage.local-root:/tmp/platform}")
     private String storageRoot;
@@ -46,13 +44,11 @@ public class ShotstackRenderProvider implements RenderProvider {
     public ShotstackRenderProvider(ShotstackTimelineMapper timelineMapper,
                                    ShotstackApiClient apiClient,
                                    ShotstackRenderProviderProperties properties,
-                                   TimelineScriptParser timelineScriptParser,
-                                   FfprobeMediaProbeExecutor mediaProbeService) {
+                                   TimelineScriptParser timelineScriptParser) {
         this.timelineMapper = timelineMapper;
         this.apiClient = apiClient;
         this.properties = properties;
         this.timelineScriptParser = timelineScriptParser;
-        this.mediaProbeService = mediaProbeService;
     }
 
     @Override
@@ -95,10 +91,6 @@ public class ShotstackRenderProvider implements RenderProvider {
 
             RenderPreset preset = RenderPreset.fromProfile(profile);
             long durationSec = 30L;
-            var probe = mediaProbeService.probeAbsolute(jobId, outputPath.toString());
-            if (probe.valid() && probe.durationMs() > 0) {
-                durationSec = Math.max(1L, Math.round(probe.durationMs() / 1000.0));
-            }
 
             return new RenderResult(
                     Ids.newId("art"),

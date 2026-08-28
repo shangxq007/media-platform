@@ -40,6 +40,7 @@ dependencies {
     implementation(project(":user-analytics-module"))
     implementation(project(":social-publish-module"))
     implementation(project(":worker-fabric-module"))
+    implementation(project(":provider-plugin-runtime-module"))
 
     implementation("org.springframework.boot:spring-boot-starter-graphql")
 

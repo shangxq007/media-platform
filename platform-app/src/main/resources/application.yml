@@ -161,8 +161,6 @@ app:
   cli-tools:
     executables:
       binary-true: /usr/bin/true
-      ffmpeg: ${MEDIA_FFMPEG_PATH:/usr/bin/ffmpeg}
-      ffprobe: ${MEDIA_FFPROBE_PATH:/usr/bin/ffprobe}
       melt: ${MEDIA_MELT_PATH:/usr/bin/melt}
       gst-launch-1.0: ${MEDIA_GSTREAMER_PATH:/usr/bin/gst-launch-1.0}
       MP4Box: ${MEDIA_MP4BOX_PATH:/usr/bin/MP4Box}
@@ -171,25 +169,6 @@ app:
         executable-key: binary-true
         args: []
         timeout-millis: 5000
-      ffprobe-version:
-        executable-key: ffprobe
-        args: ["-version"]
-        timeout-millis: 15000
-      ffprobe-duration:
-        executable-key: ffprobe
-        args:
-          - "-v"
-          - "error"
-          - "-show_entries"
-          - "format=duration"
-          - "-of"
-          - "default=noprint_wrappers=1:nokey=1"
-          - "{input}"
-        timeout-millis: 60000
-      ffmpeg:
-        executable-key: ffmpeg
-        args: []
-        timeout-millis: 600000
       melt:
         executable-key: melt
         args: []
@@ -290,8 +269,6 @@ render:
       enabled: true
     ofx:
       enabled: true
-    ffmpeg:
-      enabled: true
     gstreamer:
       enabled: true
     gpac:
@@ -302,7 +279,6 @@ render:
       enabled: false
     natron:
       enabled: false
-      fallback-to-ffmpeg: true
       supported-effect-keys:
         - video.natron_vignette
         - video.natron_color_grade
@@ -331,7 +307,6 @@ render:
       enabled: true
       binary: vspipe
       stub-on-missing-binary: true
-      fallback-to-ffmpeg: true
     shaka:
       enabled: true
       packager-bin: packager

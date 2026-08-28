@@ -1,6 +1,5 @@
 package com.example.platform.render.infrastructure;
 
-import com.example.platform.render.infrastructure.ffmpeg.FFmpegRenderProvider;
 import com.example.platform.render.infrastructure.gpac.GPACPackagingProvider;
 import com.example.platform.render.infrastructure.gstreamer.GStreamerRenderProvider;
 import com.example.platform.render.infrastructure.mlt.MltRenderProvider;
@@ -37,7 +36,6 @@ public class RenderProviderAutoConfiguration {
                                         
                                         RenderProviderProperties properties,
                                         Optional<MltRenderProvider> mltProvider,
-                                         Optional<FFmpegRenderProvider> ffmpegProvider,
                                          Optional<GStreamerRenderProvider> gstreamerProvider,
                                          
                                          Optional<GPACPackagingProvider> gpacPackagingProvider,
@@ -55,11 +53,6 @@ public class RenderProviderAutoConfiguration {
             mltProvider.ifPresent(mlt -> {
                 registry.register("mlt", mlt, mlt.getCapability());
                 log.info("MLT render provider registered (POC/P1/Timeline-NLE)");
-            });
-
-            ffmpegProvider.ifPresent(ffmpeg -> {
-                registry.register("ffmpeg", ffmpeg, ffmpeg.getCapability());
-                log.info("FFmpeg render provider registered (PRODUCTION/P0/Core Media)");
             });
 
             gstreamerProvider.ifPresent(gstreamer -> {

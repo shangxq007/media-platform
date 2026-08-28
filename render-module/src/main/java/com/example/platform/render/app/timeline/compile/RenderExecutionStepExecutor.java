@@ -24,7 +24,7 @@ import java.util.List;
  * Executes individual render execution plan steps with audit events.
  *
  * <p>Internal only — delegates to existing services for each step type.
- * Only FFmpeg LOCAL PRODUCTION steps are executable.</p>
+ * Concrete provider execution has migrated to the typed PF4J provider-native host.</p>
  */
 @Service
 public class RenderExecutionStepExecutor {
@@ -150,72 +150,8 @@ public class RenderExecutionStepExecutor {
     private LocalExecutionPlanStepResult executeProvider(RenderExecutionStep step,
                                                            LocalExecutionPlanContext context,
                                                            long start) {
-        // Only FFmpeg baseline is executable
-        if (!"ffmpeg".equals(step.providerName())) {
-            return LocalExecutionPlanStepResult.skipped(step.stepId(), step.type().name(),
-                    "Non-FFmpeg provider not executable: " + step.providerName());
-        }
-
-        // Check FFmpeg availability
-        if (!toolInventory.isToolAvailable("ffmpeg")) {
-            return LocalExecutionPlanStepResult.failed(step.stepId(), step.type().name(),
-                    "FFmpeg tool not available", System.currentTimeMillis() - start);
-        }
-
-        try {
-            // Reuse existing FFmpeg render logic
-            Path outputDir = context.outputDir();
-            Files.createDirectories(outputDir);
-            Path outputVideo = outputDir.resolve(context.outputFileName() != null
-                    ? context.outputFileName() : "output.mp4");
-
-            // Materialize input (should already be materialized by MATERIALIZE_INPUT step)
-            String inputProductId = context.inputProductId();
-            var materialization = materializationService.materialize(inputProductId, null, null);
-            if (!materialization.valid()) {
-                return LocalExecutionPlanStepResult.failed(step.stepId(), step.type().name(),
-                        "Input materialization for FFmpeg failed: " + materialization.failureReason(),
-                        System.currentTimeMillis() - start);
-            }
-            Path materializedInput = materialization.materializedPath();
-
-            // Build FFmpeg command (same as existing baseline)
-            List<String> cmd = List.of(
-                    "ffmpeg", "-y",
-                    "-i", materializedInput.toAbsolutePath().toString(),
-                    "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p",
-                    "-c:a", "aac", "-b:a", "64k",
-                    "-shortest",
-                    outputVideo.toAbsolutePath().toString()
-            );
-
-            ToolExecutionRequest request = ToolExecutionRequest.withTimeout(
-                    "ffmpeg", cmd.subList(1, cmd.size()), 60_000);
-
-            ToolExecutionResult result = processToolRunner.execute(request);
-            if (!result.isSuccess()) {
-                return LocalExecutionPlanStepResult.failed(step.stepId(), step.type().name(),
-                        "FFmpeg execution failed: exitCode=" + result.exitCode(),
-                        System.currentTimeMillis() - start);
-            }
-
-            if (!Files.exists(outputVideo) || Files.size(outputVideo) == 0) {
-                return LocalExecutionPlanStepResult.failed(step.stepId(), step.type().name(),
-                        "FFmpeg produced no output or zero-byte output",
-                        System.currentTimeMillis() - start);
-            }
-
-            long duration = System.currentTimeMillis() - start;
-            log.info("EXECUTE_PROVIDER completed: stepId={} provider=ffmpeg duration={}ms",
-                    step.stepId(), duration);
-            return LocalExecutionPlanStepResult.succeeded(step.stepId(), step.type().name(),
-                    "FFmpeg baseline render completed", duration);
-        } catch (Exception e) {
-            long duration = System.currentTimeMillis() - start;
-            log.error("EXECUTE_PROVIDER failed: stepId={} error={}", step.stepId(), e.getMessage());
-            return LocalExecutionPlanStepResult.failed(step.stepId(), step.type().name(),
-                    "FFmpeg execution error: " + e.getMessage(), duration);
-        }
+        return LocalExecutionPlanStepResult.failed(step.stepId(), step.type().name(),
+                "TYPED_PROVIDER_PLUGIN_EXECUTION_REQUIRED", System.currentTimeMillis() - start);
     }
 
     private LocalExecutionPlanStepResult executeVerifyOutput(RenderExecutionStep step,
@@ -255,14 +191,14 @@ public class RenderExecutionStepExecutor {
 
             RenderProductProvenance provenance = RenderProductProvenance.builder()
                     .renderJobId(context.renderJobId())
-                    .baselineRenderer("ffmpeg-libass")
+                    .baselineRenderer("typed-provider-plugin")
                     .renderMode("plan-based-timeline-revision-render")
                     .inputProductIds(context.inputProductIds())
                     .build();
 
             Product outputProduct = registrationService.registerOutput(
                     context.renderJobId(), context.tenantId(), context.projectId(),
-                    "ffmpeg", relativePath, provenance);
+                    step.providerName(), relativePath, provenance);
 
             // Store outputProductId in context metadata for downstream steps
             // (The context is immutable, but we use the result to propagate this)

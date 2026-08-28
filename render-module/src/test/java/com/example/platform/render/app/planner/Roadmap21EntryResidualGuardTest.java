@@ -19,7 +19,8 @@ import static org.junit.jupiter.api.Assertions.*;
  * - no silent duplicate overwrite in TaskHandlerRegistry (put → must be
  *   putIfAbsent with fail-closed duplicate rejection)
  * - no order-based authority (no @Order on TaskHandler beans, no sorting)
- * - exactly one production ASR handler and one PROBE handler (real paths)
+ * - exactly one production ASR handler; the render-owned PROBE handler is
+ *   intentionally absent after the Phase 19 clean-forward migration
  */
 class Roadmap21EntryResidualGuardTest {
 
@@ -65,7 +66,7 @@ class Roadmap21EntryResidualGuardTest {
     }
 
     @Test
-    void exactlyOneAsrAndOneProbeProductionHandler() throws IOException {
+    void exactlyOneAsrAndNoRenderOwnedProbeProductionHandler() throws IOException {
         int asr = 0;
         int probe = 0;
         for (Path f : productionJavaFiles()) {
@@ -80,7 +81,8 @@ class Roadmap21EntryResidualGuardTest {
             }
         }
         assertEquals(1, asr, "ASR_ACTIVE_HANDLER_COUNT must be exactly 1");
-        assertEquals(1, probe, "PROBE_ACTIVE_HANDLER_COUNT must be exactly 1");
+        assertEquals(0, probe,
+                "PROBE_ACTIVE_HANDLER_COUNT must be 0 after render-owned ffprobe authority removal");
     }
 
     @Test

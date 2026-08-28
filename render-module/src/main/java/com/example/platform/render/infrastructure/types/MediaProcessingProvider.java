@@ -5,7 +5,7 @@ import com.example.platform.render.infrastructure.ProviderJob;
 
 /**
  * Media processing provider interface.
- * Suitable for: FFmpegRenderProvider
+ * Suitable for typed media-processing provider adapters.
  * Responsibilities: trim, transcode, mux, demux, extract_audio, thumbnail, output_normalize
  */
 public interface MediaProcessingProvider extends BaseProvider {

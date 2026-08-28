@@ -61,10 +61,13 @@ class RenderCorrelationGraphPlanPropagationTest {
     private RenderAuditRecorder auditRecorder;
     private InMemoryTimelineRevisionRepository revisionRepo;
     private InMemoryTimelineSnapshotService snapshotService;
+    private InMemoryStorageReferenceRepository storageRepo;
+    private final java.util.concurrent.atomic.AtomicInteger processInvocations =
+            new java.util.concurrent.atomic.AtomicInteger();
 
     @BeforeEach
     void setUp() {
-        StorageReferenceRepository storageRepo = new InMemoryStorageReferenceRepository();
+        storageRepo = new InMemoryStorageReferenceRepository();
         ProductRepository productRepo = new InMemoryProductRepository();
         ProductDependencyRepository depRepo = new InMemoryProductDependencyRepository();
         storageRuntime = new StorageRuntimeService(storageRepo, mockProvider(null));
@@ -76,18 +79,13 @@ class RenderCorrelationGraphPlanPropagationTest {
     }
 
     @Test
-    @DisplayName("Plan-based render succeeds and returns READY product")
-    void planBasedRenderSucceeds() throws Exception {
+    @DisplayName("Plan-based legacy render fails closed without a READY product")
+    void planBasedRenderFailsClosed() throws Exception {
         registerReadyRawMediaProduct();
         String revisionId = setupRevision();
         PlanBasedTimelineRevisionRenderService service = createPlanBasedService();
 
-        TimelineRevisionRenderService.RevisionRenderResult result =
-                service.render(TimelineCoreSmokeFixture.PROJECT_ID, revisionId, "default_1080p");
-
-        assertNotNull(result);
-        assertEquals("READY", result.productStatus());
-        assertNotNull(result.outputProductId());
+        assertPlanBasedFailClosed(service, revisionId);
     }
 
     @Test
@@ -126,18 +124,16 @@ class RenderCorrelationGraphPlanPropagationTest {
     }
 
     @Test
-    @DisplayName("Public render response does not expose localExecutionRunId or graph/plan IDs")
-    void publicResponseNoInternalIds() throws Exception {
+    @DisplayName("Public fail-closed exception exposes no localExecutionRunId or graph/plan IDs")
+    void publicFailureNoInternalIds() throws Exception {
         registerReadyRawMediaProduct();
         String revisionId = setupRevision();
         PlanBasedTimelineRevisionRenderService service = createPlanBasedService();
 
-        TimelineRevisionRenderService.RevisionRenderResult result =
-                service.render(TimelineCoreSmokeFixture.PROJECT_ID, revisionId, "default_1080p");
-
-        // RevisionRenderResult has no localExecutionRunId, graphId, planId fields
-        assertNotNull(result.renderJobId());
-        assertNotNull(result.outputProductId());
+        IllegalStateException failure = assertPlanBasedFailClosed(service, revisionId);
+        assertFalse(failure.getMessage().contains("ler-"));
+        assertFalse(failure.getMessage().contains("graphId"));
+        assertFalse(failure.getMessage().contains("planId"));
     }
 
     @Test
@@ -147,7 +143,7 @@ class RenderCorrelationGraphPlanPropagationTest {
         String revisionId = setupRevision();
         PlanBasedTimelineRevisionRenderService service = createPlanBasedService();
 
-        service.render(TimelineCoreSmokeFixture.PROJECT_ID, revisionId, "default_1080p");
+        assertPlanBasedFailClosed(service, revisionId);
 
         auditSink.findAll().forEach(event -> {
             if (event.message() != null) {
@@ -158,6 +154,22 @@ class RenderCorrelationGraphPlanPropagationTest {
                 assertFalse(event.sanitizedDetails().contains("rootPath"));
             }
         });
+        assertFalse(auditSink.findAll().stream()
+                .anyMatch(event -> event.eventType() == RenderAuditEventType.RENDER_COMPLETED));
+    }
+
+    private IllegalStateException assertPlanBasedFailClosed(
+            PlanBasedTimelineRevisionRenderService service, String revisionId) {
+        IllegalStateException failure = assertThrows(IllegalStateException.class,
+                () -> service.render(
+                        TimelineCoreSmokeFixture.PROJECT_ID, revisionId, "default_1080p"));
+        assertEquals("Plan-based render failed: One or more steps failed", failure.getMessage());
+        assertEquals(0, processInvocations.get());
+        assertEquals(1, storageRepo.size(), "Only input storage may be committed");
+        assertTrue(productRuntime.findBySourceTimelineRevisionId(revisionId).isEmpty());
+        assertTrue(productRuntime.findByProject(TimelineCoreSmokeFixture.PROJECT_ID, 100).stream()
+                .noneMatch(product -> product.productType() == ProductType.FINAL_RENDER));
+        return failure;
     }
 
     // --- Helpers ---
@@ -173,6 +185,7 @@ class RenderCorrelationGraphPlanPropagationTest {
         ProcessToolRunner toolRunner = new ProcessToolRunner() {
             @Override
             public ToolExecutionResult execute(com.example.platform.extension.domain.ToolExecutionRequest request) {
+                processInvocations.incrementAndGet();
                 try {
                     List<String> args = request.args();
                     String outputPath = args.get(args.size() - 1);
@@ -376,6 +389,7 @@ class RenderCorrelationGraphPlanPropagationTest {
         }
         @Override
         public Optional<StorageReference> findById(String id) { return Optional.ofNullable(store.get(id)); }
+        int size() { return store.size(); }
     }
 
     static class InMemoryProductRepository extends ProductRepository {

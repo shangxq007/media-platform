@@ -18,8 +18,7 @@ import java.util.Map;
  * subtitle filter strings for FFmpeg drawtext burn-in.
  *
  * <p>Note: The baseline subtitle burn-in path is via
- * {@code RenderJobExecutionService} → {@code FFmpegRenderProvider} /
- * {@code LibassSubtitleCompositor}. This LiteFlow node is used
+ * {@code RenderJobExecutionService} → typed provider plugin execution. This LiteFlow node is used
  * when the policy chain explicitly includes subtitle burn-in as a step.
  */
 @LiteflowComponent("subtitleBurnIn")
@@ -55,7 +54,7 @@ public class SubtitleBurnInNode extends NodeComponent {
 
             // Note: The filter result is logged but not stored in context
             // because LiteFlow context API varies by version.
-            // The baseline subtitle burn-in path is via RenderJobExecutionService → FFmpegRenderProvider.
+            // Concrete subtitle burn-in is resolved by the typed provider plugin path.
             log.info("LiteFlow: Subtitle burn-in completed for job={}, filter length={}", jobId, filter.length());
         } catch (Exception e) {
             throw new PlatformException(

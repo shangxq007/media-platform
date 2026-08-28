@@ -3,7 +3,7 @@ plugins {
 }
 
 group = "com.example.platform"
-version = "0.2.0-SNAPSHOT"
+version = "1.0.0"
 
 repositories {
     mavenCentral()
@@ -20,12 +20,15 @@ tasks.withType<JavaCompile>().configureEach {
 }
 
 dependencies {
+    implementation(project(":provider-plugin-runtime-module"))
     implementation(project(":media-execution-plan-module"))
     implementation(project(":worker-fabric-module"))
     implementation(project(":sandbox-isolation-module"))
-    // Compile-only ABI companions exposed by canonical media-execution public record signatures.
-    compileOnly(project(":extension-module"))
+    implementation(project(":extension-module"))
+    // ABI companion referenced by canonical execution-plan record signatures.
     compileOnly(project(":render-module"))
+    compileOnly("org.pf4j:pf4j:3.15.0")
+    annotationProcessor("org.pf4j:pf4j:3.15.0")
 
     testImplementation(project(":artifact-module"))
     testImplementation(project(":storage-module"))
@@ -40,4 +43,18 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+}
+
+tasks.jar {
+    archiveBaseName.set("ffmpeg-provider-plugin")
+    manifest {
+        attributes(
+            "Plugin-Id" to "media.transcode.ffmpeg",
+            "Plugin-Version" to project.version,
+            "Plugin-Class" to "com.example.platform.ffmpeg.FfmpegProviderPlugin",
+            "Plugin-Provider" to "media-platform",
+        )
+    }
+    isPreserveFileTimestamps = false
+    isReproducibleFileOrder = true
 }

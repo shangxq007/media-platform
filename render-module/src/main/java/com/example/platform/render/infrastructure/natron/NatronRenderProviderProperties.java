@@ -16,7 +16,7 @@ public class NatronRenderProviderProperties {
     /** Primary POC effect key (backward compatible). */
     private String pocEffectKey = "video.natron_vignette";
 
-    /** All Natron-routed effect keys with batch/FFmpeg templates. */
+    /** All Natron-routed effect keys with batch templates. */
     private List<String> supportedEffectKeys = new ArrayList<>(List.of(
             "video.natron_vignette",
             "video.natron_color_grade"));
@@ -24,14 +24,8 @@ public class NatronRenderProviderProperties {
     /** Absolute path to {@code poc-render.sh}; empty → extract from classpath at runtime. */
     private String pocScriptPath = "";
 
-    /** Natron headless binary name or path (validated when fallback is disabled). */
+    /** Natron headless binary name or path. */
     private String rendererBinary = "NatronRenderer";
-
-    /**
-     * When true, {@code poc-render.sh} uses FFmpeg vignette even if NatronRenderer exists.
-     * Useful for CI and local dev without Natron installed.
-     */
-    private boolean fallbackToFfmpeg = true;
 
     private long timeoutMillis = 600_000L;
 
@@ -88,14 +82,6 @@ public class NatronRenderProviderProperties {
 
     public void setRendererBinary(String rendererBinary) {
         this.rendererBinary = rendererBinary;
-    }
-
-    public boolean isFallbackToFfmpeg() {
-        return fallbackToFfmpeg;
-    }
-
-    public void setFallbackToFfmpeg(boolean fallbackToFfmpeg) {
-        this.fallbackToFfmpeg = fallbackToFfmpeg;
     }
 
     public long getTimeoutMillis() {

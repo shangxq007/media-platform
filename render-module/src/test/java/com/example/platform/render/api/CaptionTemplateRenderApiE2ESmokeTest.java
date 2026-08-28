@@ -38,8 +38,8 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * API-level E2E smoke test for Caption Template Render.
  *
- * <p>Proves the full API boundary: HTTP request → controller → service → PLAN_BASED
- * → FFmpeg/libass → READY Product → safe API response.</p>
+ * <p>Proves the full API boundary fails closed after removal of the legacy
+ * plan-based FFmpeg authority, without product/storage publication or leaks.</p>
  *
  * <p>Uses real service wiring (not mock service) to verify the full product loop
  * through the API boundary.</p>
@@ -59,10 +59,13 @@ class CaptionTemplateRenderApiE2ESmokeTest {
     private CaptionTemplateRenderController controller;
     private InMemoryRenderAuditEventSink auditSink;
     private RenderAuditRecorder auditRecorder;
+    private InMemoryStorageReferenceRepository storageRepo;
+    private final java.util.concurrent.atomic.AtomicInteger processInvocations =
+            new java.util.concurrent.atomic.AtomicInteger();
 
     @BeforeEach
     void setUp() {
-        StorageReferenceRepository storageRepo = new InMemoryStorageReferenceRepository();
+        storageRepo = new InMemoryStorageReferenceRepository();
         ProductRepository productRepo = new InMemoryProductRepository();
         ProductDependencyRepository depRepo = new InMemoryProductDependencyRepository();
         storageRuntime = new StorageRuntimeService(storageRepo, mockProvider(null));
@@ -77,6 +80,7 @@ class CaptionTemplateRenderApiE2ESmokeTest {
 
         ProcessToolRunner toolRunner = new ProcessToolRunner() {
             @Override public ToolExecutionResult execute(com.example.platform.extension.domain.ToolExecutionRequest r) {
+                processInvocations.incrementAndGet();
                 try {
                     String outputPath = r.args().get(r.args().size() - 1);
                     Path output = Path.of(outputPath);
@@ -119,7 +123,7 @@ class CaptionTemplateRenderApiE2ESmokeTest {
     }
 
     @Test
-    @DisplayName("API E2E: valid request returns success with outputProductId")
+    @DisplayName("API E2E: valid legacy request fails closed without outputProductId")
     void apiE2eSuccess() throws Exception {
         registerSourceProduct();
 
@@ -127,58 +131,48 @@ class CaptionTemplateRenderApiE2ESmokeTest {
         ResponseEntity<CaptionTemplateRenderApiResponse> response =
                 controller.render("tenant-1", "proj-1", request);
 
-        assertEquals(200, response.getStatusCode().value());
-        CaptionTemplateRenderApiResponse body = response.getBody();
-        assertNotNull(body);
-        assertEquals("READY", body.status());
-        assertTrue(body.ready());
-        assertNotNull(body.outputProductId());
-        assertNotNull(body.renderJobId());
-        assertTrue(body.validationErrors().isEmpty());
+        assertFailClosedResponse(response);
     }
 
     @Test
-    @DisplayName("API E2E: output Product is READY FINAL_RENDER")
+    @DisplayName("API E2E: fail-closed render creates no READY FINAL_RENDER Product")
     void apiE2eOutputProduct() throws Exception {
         registerSourceProduct();
 
         ResponseEntity<CaptionTemplateRenderApiResponse> response =
                 controller.render("tenant-1", "proj-1", apiRequest());
 
-        String outputProductId = response.getBody().outputProductId();
-        Product outputProduct = productRuntime.find(outputProductId).orElseThrow();
-        assertEquals(ProductStatus.READY, outputProduct.status());
-        assertEquals(ProductType.FINAL_RENDER, outputProduct.productType());
+        assertFailClosedResponse(response);
+        assertNoOutputCommit();
     }
 
     @Test
-    @DisplayName("API E2E: ProductDependency lineage links output to source")
+    @DisplayName("API E2E: fail-closed render creates no fabricated output lineage")
     void apiE2eLineage() throws Exception {
         registerSourceProduct();
 
         ResponseEntity<CaptionTemplateRenderApiResponse> response =
                 controller.render("tenant-1", "proj-1", apiRequest());
 
-        String outputProductId = response.getBody().outputProductId();
-        List<ProductDependency> deps = productRuntime.findDependencies(outputProductId);
-        assertFalse(deps.isEmpty(), "Should have ProductDependency lineage");
+        assertFailClosedResponse(response);
+        assertNoOutputCommit();
     }
 
     @Test
-    @DisplayName("API E2E: output registered through StorageRuntime")
+    @DisplayName("API E2E: fail-closed render does not commit storage")
     void apiE2eStorageRegistration() throws Exception {
         registerSourceProduct();
 
         ResponseEntity<CaptionTemplateRenderApiResponse> response =
                 controller.render("tenant-1", "proj-1", apiRequest());
 
-        String outputProductId = response.getBody().outputProductId();
-        Product outputProduct = productRuntime.find(outputProductId).orElseThrow();
-        assertNotNull(outputProduct.storageReferenceId());
+        assertFailClosedResponse(response);
+        assertEquals(1, storageRepo.size(), "Only the source storage reference may exist");
+        assertNoOutputCommit();
     }
 
     @Test
-    @DisplayName("API E2E: audit REQUESTED and COMPLETED events emitted")
+    @DisplayName("API E2E: audit emits REQUESTED and FAILED but never COMPLETED")
     void apiE2eAuditEvents() throws Exception {
         registerSourceProduct();
 
@@ -187,32 +181,37 @@ class CaptionTemplateRenderApiE2ESmokeTest {
         assertTrue(auditSink.findAll().stream()
                 .anyMatch(e -> e.eventType() == RenderAuditEventType.CAPTION_TEMPLATE_RENDER_REQUESTED));
         assertTrue(auditSink.findAll().stream()
+                .anyMatch(e -> e.eventType() == RenderAuditEventType.CAPTION_TEMPLATE_RENDER_FAILED));
+        assertFalse(auditSink.findAll().stream()
                 .anyMatch(e -> e.eventType() == RenderAuditEventType.CAPTION_TEMPLATE_RENDER_COMPLETED));
     }
 
     @Test
-    @DisplayName("API E2E: audit COMPLETED event includes outputProductId")
+    @DisplayName("API E2E: failed audit exposes no outputProductId")
     void apiE2eAuditIncludesOutputProductId() throws Exception {
         registerSourceProduct();
 
         controller.render("tenant-1", "proj-1", apiRequest());
 
-        auditSink.findAll().stream()
-                .filter(e -> e.eventType() == RenderAuditEventType.CAPTION_TEMPLATE_RENDER_COMPLETED)
-                .forEach(e -> assertNotNull(e.outputProductId()));
+        var failures = auditSink.findAll().stream()
+                .filter(e -> e.eventType() == RenderAuditEventType.CAPTION_TEMPLATE_RENDER_FAILED)
+                .toList();
+        assertEquals(1, failures.size());
+        assertNull(failures.getFirst().outputProductId());
     }
 
     @Test
-    @DisplayName("API E2E: service-level audit events emitted during execution")
+    @DisplayName("API E2E: service and controller audit retain fail-closed trail")
     void apiE2eServiceAuditEvents() throws Exception {
         registerSourceProduct();
 
         controller.render("tenant-1", "proj-1", apiRequest());
 
-        // Controller-level events + service-level execution events
         assertFalse(auditSink.findAll().isEmpty(), "Audit events should be emitted");
         assertTrue(auditSink.findAll().size() >= 2,
-                "At least REQUESTED + COMPLETED events expected");
+                "At least REQUESTED + FAILED events expected");
+        assertFalse(auditSink.findAll().stream()
+                .anyMatch(e -> e.eventType() == RenderAuditEventType.CAPTION_TEMPLATE_RENDER_COMPLETED));
     }
 
     @Test
@@ -249,6 +248,7 @@ class CaptionTemplateRenderApiE2ESmokeTest {
         ResponseEntity<CaptionTemplateRenderApiResponse> response =
                 controller.render("tenant-1", "proj-1", apiRequest());
 
+        assertFailClosedResponse(response);
         String str = response.getBody().toString();
         assertFalse(str.contains("bucket"));
         assertFalse(str.contains("objectKey"));
@@ -275,51 +275,66 @@ class CaptionTemplateRenderApiE2ESmokeTest {
     }
 
     @Test
-    @DisplayName("API E2E: controller does not call Remotion")
+    @DisplayName("API E2E: fail-closed controller calls neither Remotion nor local FFmpeg")
     void apiE2eNoRemotion() throws Exception {
         registerSourceProduct();
 
         ResponseEntity<CaptionTemplateRenderApiResponse> response =
                 controller.render("tenant-1", "proj-1", apiRequest());
 
-        assertEquals(200, response.getStatusCode().value());
-        // No Remotion reference in response
+        assertFailClosedResponse(response);
         assertFalse(response.getBody().toString().contains("remotion"));
+        assertEquals(0, processInvocations.get());
     }
 
     @Test
-    @DisplayName("API E2E: outputProductId usable for downstream lookup")
+    @DisplayName("API E2E: fail-closed response cannot hand off a fabricated product")
     void apiE2eOutputProductIdUsable() throws Exception {
         registerSourceProduct();
 
         ResponseEntity<CaptionTemplateRenderApiResponse> response =
                 controller.render("tenant-1", "proj-1", apiRequest());
 
-        String outputProductId = response.getBody().outputProductId();
-        Product outputProduct = productRuntime.find(outputProductId).orElseThrow();
-        assertNotNull(outputProduct);
-        assertEquals(outputProductId, outputProduct.productId());
+        assertFailClosedResponse(response);
+        assertNoOutputCommit();
     }
 
     // --- Download contract ---
 
     @Test
-    @DisplayName("API E2E: response exposes outputProductId for download handoff")
+    @DisplayName("API E2E: fail-closed response exposes no download handoff or storage internals")
     void apiE2eDownloadContract() throws Exception {
         registerSourceProduct();
 
         ResponseEntity<CaptionTemplateRenderApiResponse> response =
                 controller.render("tenant-1", "proj-1", apiRequest());
 
-        // v0 contract: outputProductId is the download mechanism
-        assertNotNull(response.getBody().outputProductId());
-        assertFalse(response.getBody().outputProductId().isBlank());
-
-        // No raw download URL
+        assertFailClosedResponse(response);
         String str = response.getBody().toString();
         assertFalse(str.contains("downloadUrl"));
         assertFalse(str.contains("signedUrl"));
         assertFalse(str.contains("presign"));
+    }
+
+    private void assertFailClosedResponse(ResponseEntity<CaptionTemplateRenderApiResponse> response) {
+        assertEquals(500, response.getStatusCode().value());
+        CaptionTemplateRenderApiResponse body = response.getBody();
+        assertNotNull(body);
+        assertEquals("FAILED", body.status());
+        assertFalse(body.ready());
+        assertNull(body.outputProductId());
+        assertNull(body.renderJobId());
+        assertTrue(body.validationErrors().isEmpty());
+        assertEquals("One or more steps failed", body.message());
+        assertEquals(0, processInvocations.get(), "Removed local FFmpeg authority must not run");
+    }
+
+    private void assertNoOutputCommit() {
+        assertTrue(productRuntime.findByProject("proj-1", 100).stream()
+                .noneMatch(product -> product.productType() == ProductType.FINAL_RENDER
+                        || product.status() == ProductStatus.FAILED));
+        assertFalse(auditSink.findAll().stream()
+                .anyMatch(event -> event.eventType() == RenderAuditEventType.CAPTION_TEMPLATE_RENDER_COMPLETED));
     }
 
     // --- Helpers ---
@@ -379,6 +394,7 @@ class CaptionTemplateRenderApiE2ESmokeTest {
             store.put(id, saved); return saved;
         }
         @Override public Optional<StorageReference> findById(String id) { return Optional.ofNullable(store.get(id)); }
+        int size() { return store.size(); }
     }
 
     static class InMemoryProductRepository extends ProductRepository {

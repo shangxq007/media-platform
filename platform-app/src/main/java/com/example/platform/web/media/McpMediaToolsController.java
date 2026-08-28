@@ -2,7 +2,6 @@ package com.example.platform.web.media;
 
 import com.example.platform.render.api.dto.SubmitRenderJobRequest;
 import com.example.platform.render.api.port.RenderOrchestratorPort;
-import com.example.platform.render.app.ClipColorProbeService;
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.render.app.NleLayerCatalogService;
 import com.example.platform.timeline.app.TimelinePatchService;
@@ -28,7 +27,6 @@ import com.example.platform.render.domain.standards.AafTimelineAdapter;
 import com.example.platform.render.app.planner.PipelineExecutionPlan;
 import com.example.platform.render.app.planner.PipelinePlanPersistenceService;
 import com.example.platform.render.app.planner.RenderPlannerService;
-import com.example.platform.render.infrastructure.ColorProbeMetadata;
 import com.example.platform.render.domain.interchange.OpenTimelineioAdapter;
 import com.example.platform.render.domain.interchange.TimelineScriptParser;
 import com.example.platform.render.domain.interchange.TimelineOutputSpec;
@@ -37,8 +35,6 @@ import com.example.platform.render.domain.standards.EdlTimelineAdapter;
 import com.example.platform.render.domain.standards.FcpXmlTimelineAdapter;
 import com.example.platform.render.domain.standards.SrtSubtitleAdapter;
 import com.example.platform.render.domain.standards.WebVttSubtitleAdapter;
-import com.example.platform.render.infrastructure.MediaProbeResult;
-import com.example.platform.render.infrastructure.FfprobeMediaProbeExecutor;
 import com.example.platform.render.infrastructure.bento4.Bento4PackagingProvider;
 import com.example.platform.render.infrastructure.gpac.GPACPackagingProvider;
 import com.example.platform.render.infrastructure.gpac.PackagingDrmProfile;
@@ -72,13 +68,11 @@ public class McpMediaToolsController {
 
     private static final Logger log = LoggerFactory.getLogger(McpMediaToolsController.class);
 
-    private final FfprobeMediaProbeExecutor mediaProbeService;
     private final InternalTimelineValidationService timelineValidationService;
     private final TimelineScriptParser timelineScriptParser;
     private final RenderPlannerService renderPlannerService;
     private final TimelinePatchService timelinePatchService;
     private final PipelinePlanPersistenceService pipelinePlanPersistence;
-    private final ClipColorProbeService clipColorProbeService;
     private final AafConversionService aafConversionService;
     private final NleLayerCatalogService nleLayerCatalogService;
     private final Optional<GPACPackagingProvider> gpacPackaging;
@@ -97,13 +91,11 @@ public class McpMediaToolsController {
     private final TimelineSnapshotService timelineSnapshotService;
     private final SegmentPlanFilter segmentPlanFilter;
 
-    public McpMediaToolsController(FfprobeMediaProbeExecutor mediaProbeService,
-                                   InternalTimelineValidationService timelineValidationServiceParam,
+    public McpMediaToolsController(InternalTimelineValidationService timelineValidationServiceParam,
                                    TimelineScriptParser timelineScriptParser,
                                    RenderPlannerService renderPlannerService,
                                    TimelinePatchService timelinePatchService,
                                    PipelinePlanPersistenceService pipelinePlanPersistence,
-                                   ClipColorProbeService clipColorProbeService,
                                    AafConversionService aafConversionService,
                                    NleLayerCatalogService nleLayerCatalogService,
                                    Optional<GPACPackagingProvider> gpacPackaging,
@@ -121,13 +113,11 @@ public class McpMediaToolsController {
                                    Optional<RenderOrchestratorPort> renderOrchestratorPort,
                                    TimelineSnapshotService timelineSnapshotService,
                                    SegmentPlanFilter segmentPlanFilter) {
-        this.mediaProbeService = mediaProbeService;
         this.timelineValidationService = timelineValidationServiceParam;
         this.timelineScriptParser = timelineScriptParser;
         this.renderPlannerService = renderPlannerService;
         this.timelinePatchService = timelinePatchService;
         this.pipelinePlanPersistence = pipelinePlanPersistence;
-        this.clipColorProbeService = clipColorProbeService;
         this.aafConversionService = aafConversionService;
         this.nleLayerCatalogService = nleLayerCatalogService;
         this.gpacPackaging = gpacPackaging;
@@ -294,48 +284,6 @@ public class McpMediaToolsController {
     @Operation(summary = "L3–L7 NLE 层能力与健康状态")
     public ResponseEntity<Map<String, Object>> nleLayers() {
         return ResponseEntity.ok(nleLayerCatalogService.catalog());
-    }
-
-    @PostMapping("/probe")
-    @Operation(summary = "探测媒体文件")
-    public ResponseEntity<Map<String, Object>> probe(
-            @RequestBody ProbeRequest request,
-            HttpServletRequest httpRequest) {
-        log.info("MCP probe: path={} source={}", request.path(), resolveSource(httpRequest));
-        MediaProbeResult result = request.absolute()
-                ? mediaProbeService.probeAbsolute(request.jobId(), request.path())
-                : mediaProbeService.probe(request.jobId(), request.path());
-        Map<String, Object> body = probeBody(result);
-        if (request.mergeTimelineMetadata() && request.timelineJson() != null && result.color() != null) {
-            
-        }
-        if (request.probeTimelineClips() && request.timelineJson() != null) {
-            ClipColorProbeService.ClipProbeResult clipResult =
-                    clipColorProbeService.probeAndEnrichTimeline(
-                            request.timelineJson(), request.jobId() != null ? request.jobId() : "probe");
-            body.put("clipProbeSuccess", clipResult.success());
-            body.put("clipsProbed", clipResult.clipsProbed());
-            body.put("clipProbeWarnings", clipResult.warnings());
-            if (clipResult.success() && clipResult.timelineJson() != null) {
-                body.put("timelineJson", clipResult.timelineJson());
-            }
-        }
-        return ResponseEntity.ok(body);
-    }
-
-    @PostMapping("/probe_timeline_clips")
-    @Operation(summary = "探测时间线各 clip 媒体并写入 assetRef.metadata 色彩信息")
-    public ResponseEntity<Map<String, Object>> probeTimelineClips(@RequestBody ProbeTimelineClipsRequest request) {
-        ClipColorProbeService.ClipProbeResult result = clipColorProbeService.probeAndEnrichTimeline(
-                request.timelineJson(), request.jobId() != null ? request.jobId() : "probe");
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("success", result.success());
-        body.put("clipsProbed", result.clipsProbed());
-        body.put("warnings", result.warnings());
-        if (result.success()) {
-            body.put("timelineJson", result.timelineJson());
-        }
-        return result.success() ? ResponseEntity.ok(body) : ResponseEntity.unprocessableEntity().body(body);
     }
 
     @PostMapping("/get_render_plan")
@@ -732,27 +680,6 @@ public class McpMediaToolsController {
         return result.success() ? ResponseEntity.ok(body) : ResponseEntity.unprocessableEntity().body(body);
     }
 
-    private Map<String, Object> probeBody(MediaProbeResult result) {
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("valid", result.valid());
-        body.put("durationMs", result.durationMs());
-        body.put("width", result.width());
-        body.put("height", result.height());
-        body.put("videoCodec", result.videoCodec());
-        body.put("audioCodec", result.audioCodec());
-        body.put("errorMessage", result.errorMessage());
-        ColorProbeMetadata color = result.color();
-        body.put("color", Map.of(
-                "space", color.colorSpace(),
-                "primaries", color.colorPrimaries(),
-                "transfer", color.colorTransfer(),
-                "range", color.colorRange(),
-                "pixelFormat", color.pixelFormat(),
-                "hdr", deriveHdrProjection(color)));
-        // source color metadata stays Media-owned; no Timeline leakage (ROADMAP_18)
-        return body;
-    }
-
     private com.example.platform.render.infrastructure.gpac.PackagingProvider routePackager(String packager) {
         String key = packager != null ? packager.toLowerCase() : "gpac";
         return switch (key) {
@@ -775,21 +702,6 @@ public class McpMediaToolsController {
         String path = request.getRequestURI();
         return path.startsWith("/api/mcp/") ? CallerContext.SOURCE_MCP : CallerContext.SOURCE_WEB;
     }
-
-    public record ProbeRequest(
-            String jobId,
-            String path,
-            boolean absolute,
-            String timelineJson,
-            boolean mergeTimelineMetadata,
-            boolean probeTimelineClips) {
-
-        public ProbeRequest(String jobId, String path, boolean absolute) {
-            this(jobId, path, absolute, null, false, false);
-        }
-    }
-
-    public record ProbeTimelineClipsRequest(String timelineJson, String jobId) {}
 
     public record GetRenderPlanRequest(String jobId) {}
 
@@ -893,10 +805,5 @@ public class McpMediaToolsController {
 
     public record DiffTimelinesRequest(String oldTimelineJson, String newTimelineJson) {}
 
-    /** ROADMAP_18 (CI27): UI projection only — derived from transfer/primaries, never canonical authority. */
-    private static boolean deriveHdrProjection(com.example.platform.render.infrastructure.ColorProbeMetadata color) {
-        String transfer = color.colorTransfer() == null ? "" : color.colorTransfer().toLowerCase(java.util.Locale.ROOT);
-        return transfer.contains("smpte2084") || transfer.contains("arib-std-b67");
-    }
 
 }

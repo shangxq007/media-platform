@@ -37,8 +37,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * E2E: render → outputProductId → safe result lookup.
- * Proves full product loop through API boundary with delivery contract.
+ * E2E fail-closed delivery contract after removal of legacy FFmpeg execution.
+ * Proves no fabricated outputProductId, lookup handoff, or storage publication.
  */
 class CaptionTemplateRenderDeliveryE2ESmokeTest {
     @SuppressWarnings("unchecked")
@@ -54,10 +54,13 @@ class CaptionTemplateRenderDeliveryE2ESmokeTest {
     private ProductRuntimeService productRuntime;
     private CaptionTemplateRenderController controller;
     private InMemoryRenderAuditEventSink auditSink;
+    private InMemoryStorageReferenceRepository storageRepo;
+    private final java.util.concurrent.atomic.AtomicInteger processInvocations =
+            new java.util.concurrent.atomic.AtomicInteger();
 
     @BeforeEach
     void setUp() {
-        StorageReferenceRepository storageRepo = new InMemoryStorageReferenceRepository();
+        storageRepo = new InMemoryStorageReferenceRepository();
         ProductRepository productRepo = new InMemoryProductRepository();
         ProductDependencyRepository depRepo = new InMemoryProductDependencyRepository();
         storageRuntime = new StorageRuntimeService(storageRepo, mockProvider(null));
@@ -72,6 +75,7 @@ class CaptionTemplateRenderDeliveryE2ESmokeTest {
 
         ProcessToolRunner toolRunner = new ProcessToolRunner() {
             @Override public ToolExecutionResult execute(com.example.platform.extension.domain.ToolExecutionRequest r) {
+                processInvocations.incrementAndGet();
                 try {
                     Path output = Path.of(r.args().get(r.args().size() - 1));
                     Files.createDirectories(output.getParent());
@@ -110,7 +114,7 @@ class CaptionTemplateRenderDeliveryE2ESmokeTest {
     }
 
     @Test
-    @DisplayName("E2E: render → outputProductId → READY lookup")
+    @DisplayName("E2E: fail-closed render exposes no outputProductId for lookup")
     void renderThenLookup() throws Exception {
         registerSourceProduct();
 
@@ -125,22 +129,12 @@ class CaptionTemplateRenderDeliveryE2ESmokeTest {
                 null, Map.of());
         ResponseEntity<CaptionTemplateRenderApiResponse> renderResponse =
                 controller.render("tenant-1", "proj-1", request);
-        assertEquals(200, renderResponse.getStatusCode().value());
-        String outputProductId = renderResponse.getBody().outputProductId();
-        assertNotNull(outputProductId);
-
-        // Lookup
-        ResponseEntity<CaptionTemplateRenderResultLookupResponse> lookupResponse =
-                controller.lookupResult("tenant-1", "proj-1", outputProductId);
-        assertEquals(200, lookupResponse.getStatusCode().value());
-        assertEquals(CaptionTemplateDeliveryStatus.READY, lookupResponse.getBody().status());
-        assertTrue(lookupResponse.getBody().ready());
-        assertEquals(outputProductId, lookupResponse.getBody().outputProductId());
-        assertEquals("FINAL_RENDER", lookupResponse.getBody().productType());
+        assertFailClosedRender(renderResponse);
+        assertNoOutputCommit();
     }
 
     @Test
-    @DisplayName("E2E: render → lookup → downloadAvailable=false")
+    @DisplayName("E2E: fail-closed render publishes no download contract")
     void renderThenLookupDownloadContract() throws Exception {
         registerSourceProduct();
 
@@ -154,18 +148,13 @@ class CaptionTemplateRenderDeliveryE2ESmokeTest {
                 null, Map.of());
         ResponseEntity<CaptionTemplateRenderApiResponse> renderResponse =
                 controller.render("tenant-1", "proj-1", request);
-        String outputProductId = renderResponse.getBody().outputProductId();
-
-        ResponseEntity<CaptionTemplateRenderResultLookupResponse> lookupResponse =
-                controller.lookupResult("tenant-1", "proj-1", outputProductId);
-
-        assertFalse(lookupResponse.getBody().downloadAvailable());
-        assertFalse(lookupResponse.getBody().previewAvailable());
-        assertEquals("OUTPUT_PRODUCT_ID_ONLY", lookupResponse.getBody().deliveryMode());
+        assertFailClosedRender(renderResponse);
+        assertNull(renderResponse.getBody().outputProductId());
+        assertNoOutputCommit();
     }
 
     @Test
-    @DisplayName("E2E: render → lookup → no storage internals")
+    @DisplayName("E2E: fail-closed render response contains no storage internals")
     void renderThenLookupNoInternals() throws Exception {
         registerSourceProduct();
 
@@ -179,12 +168,8 @@ class CaptionTemplateRenderDeliveryE2ESmokeTest {
                 null, Map.of());
         ResponseEntity<CaptionTemplateRenderApiResponse> renderResponse =
                 controller.render("tenant-1", "proj-1", request);
-        String outputProductId = renderResponse.getBody().outputProductId();
-
-        ResponseEntity<CaptionTemplateRenderResultLookupResponse> lookupResponse =
-                controller.lookupResult("tenant-1", "proj-1", outputProductId);
-
-        String str = lookupResponse.getBody().toString();
+        assertFailClosedRender(renderResponse);
+        String str = renderResponse.getBody().toString();
         assertFalse(str.contains("bucket"));
         assertFalse(str.contains("signedUrl"));
         assertFalse(str.contains("storageReferenceId"));
@@ -199,7 +184,7 @@ class CaptionTemplateRenderDeliveryE2ESmokeTest {
     }
 
     @Test
-    @DisplayName("E2E: audit events for render and lookup")
+    @DisplayName("E2E: failed render audit has no completion or lookup publication")
     void auditEventsForRenderAndLookup() throws Exception {
         registerSourceProduct();
 
@@ -213,22 +198,19 @@ class CaptionTemplateRenderDeliveryE2ESmokeTest {
                 null, Map.of());
         ResponseEntity<CaptionTemplateRenderApiResponse> renderResponse =
                 controller.render("tenant-1", "proj-1", request);
-        String outputProductId = renderResponse.getBody().outputProductId();
-
-        controller.lookupResult("tenant-1", "proj-1", outputProductId);
+        assertFailClosedRender(renderResponse);
 
         assertTrue(auditSink.findAll().stream()
                 .anyMatch(e -> e.eventType() == RenderAuditEventType.CAPTION_TEMPLATE_RENDER_REQUESTED));
         assertTrue(auditSink.findAll().stream()
-                .anyMatch(e -> e.eventType() == RenderAuditEventType.CAPTION_TEMPLATE_RENDER_COMPLETED));
-        assertTrue(auditSink.findAll().stream()
-                .anyMatch(e -> e.eventType() == RenderAuditEventType.CAPTION_TEMPLATE_RESULT_LOOKUP_REQUESTED));
-        assertTrue(auditSink.findAll().stream()
-                .anyMatch(e -> e.eventType() == RenderAuditEventType.CAPTION_TEMPLATE_RESULT_LOOKUP_COMPLETED));
+                .anyMatch(e -> e.eventType() == RenderAuditEventType.CAPTION_TEMPLATE_RENDER_FAILED));
+        assertFalse(auditSink.findAll().stream()
+                .anyMatch(e -> e.eventType() == RenderAuditEventType.CAPTION_TEMPLATE_RENDER_COMPLETED
+                        || e.eventType() == RenderAuditEventType.CAPTION_TEMPLATE_RESULT_LOOKUP_COMPLETED));
     }
 
     @Test
-    @DisplayName("E2E: ProductDependency lineage still valid after lookup")
+    @DisplayName("E2E: fail-closed render creates no fabricated ProductDependency lineage")
     void lineageStillValid() throws Exception {
         registerSourceProduct();
 
@@ -242,13 +224,26 @@ class CaptionTemplateRenderDeliveryE2ESmokeTest {
                 null, Map.of());
         ResponseEntity<CaptionTemplateRenderApiResponse> renderResponse =
                 controller.render("tenant-1", "proj-1", request);
-        String outputProductId = renderResponse.getBody().outputProductId();
+        assertFailClosedRender(renderResponse);
+        assertNoOutputCommit();
+    }
 
-        // Lookup doesn't affect lineage
-        controller.lookupResult("tenant-1", "proj-1", outputProductId);
+    private void assertFailClosedRender(
+            ResponseEntity<CaptionTemplateRenderApiResponse> renderResponse) {
+        assertEquals(500, renderResponse.getStatusCode().value());
+        assertNotNull(renderResponse.getBody());
+        assertEquals("FAILED", renderResponse.getBody().status());
+        assertFalse(renderResponse.getBody().ready());
+        assertNull(renderResponse.getBody().renderJobId());
+        assertNull(renderResponse.getBody().outputProductId());
+        assertEquals("One or more steps failed", renderResponse.getBody().message());
+        assertEquals(0, processInvocations.get());
+    }
 
-        List<ProductDependency> deps = productRuntime.findDependencies(outputProductId);
-        assertFalse(deps.isEmpty());
+    private void assertNoOutputCommit() {
+        assertEquals(1, storageRepo.size(), "Only source storage may be committed");
+        assertTrue(productRuntime.findByProject("proj-1", 100).stream()
+                .noneMatch(product -> product.productType() == ProductType.FINAL_RENDER));
     }
 
     // --- Helpers ---
@@ -295,6 +290,7 @@ class CaptionTemplateRenderDeliveryE2ESmokeTest {
             store.put(id, saved); return saved;
         }
         @Override public java.util.Optional<StorageReference> findById(String id) { return java.util.Optional.ofNullable(store.get(id)); }
+        int size() { return store.size(); }
     }
 
     static class InMemoryProductRepository extends ProductRepository {

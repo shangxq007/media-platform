@@ -26,7 +26,7 @@ import org.junit.jupiter.api.Test;
  *   <li>AR-P1-01 stable descriptor API has no Spring dependency</li>
  *   <li>AR-P1-02 public registry API has no PF4J dependency</li>
  *   <li>AR-P1-03 workflow-module is not a registry-foundation dependency</li>
- *   <li>AR-P1-04 render-module may depend on registry API (existing direction, no cycle)</li>
+ *   <li>AR-P1-04 typed provider integration lives above extension and worker boundaries</li>
  *   <li>AR-P1-05 extension-module does NOT depend on render-module (contributor supplies binding)</li>
  *   <li>AR-P1-06 provider-facing API exposes no repositories</li>
  *   <li>AR-P1-07 provider-facing API exposes no Timeline write services</li>
@@ -36,8 +36,8 @@ class PluginRegistryArchitectureTest {
 
     private static final Path EXTENSION_SRC =
             Path.of("src/main/java/com/example/platform/extension");
-    private static final Path RENDER_SRC =
-            Path.of("../render-module/src/main/java/com/example/platform/render");
+    private static final Path PROVIDER_PLUGIN_RUNTIME_SRC = Path.of(
+            "../provider-plugin-runtime-module/src/main/java/com/example/platform/providerplugin");
 
     private static final List<String> P1_DOMAIN_FILES = List.of(
             "domain/PluginDescriptor.java",
@@ -113,17 +113,18 @@ class PluginRegistryArchitectureTest {
     }
 
     @Test
-    void arP104RenderMayDependOnRegistryApiExistingDirectionNoCycle() {
-        // Render -> extension is the existing direction (render-module
-        // build.gradle.kts api(project(":extension-module"))). The contributor
-        // consumes the registry API. Verify the dependency exists and points the
-        // allowed way.
-        Path contributor = RENDER_SRC.resolve(
-                "infrastructure/plugin/FfmpegRenderToolSelfDescription.java");
-        assertTrue(Files.exists(contributor), "contributor source missing: " + contributor);
+    void arP104TypedProviderContributionLivesAtFocusedIntegrationBoundary() {
+        Path contributor = PROVIDER_PLUGIN_RUNTIME_SRC.resolve("ProviderPluginContribution.java");
+        assertTrue(Files.exists(contributor), "typed contribution contract missing: " + contributor);
         String source = read(contributor);
         assertTrue(hasImport(source, "com.example.platform.extension"),
-                "AR-P1-04 violated: contributor does not use extension registry API");
+                "AR-P1-04 violated: typed contribution does not expose platform PluginDescriptor");
+        assertTrue(hasImport(source, "com.example.platform.workerfabric"),
+                "AR-P1-04 violated: typed contribution does not bind the worker-native runtime");
+        assertTrue(!hasImport(source, "com.example.platform.render"),
+                "AR-P1-04 violated: typed contribution depends on render-module");
+        assertTrue(!hasImport(source, "com.example.platform.ffmpeg"),
+                "AR-P1-04 violated: typed contribution depends on concrete FFmpeg");
     }
 
     @Test

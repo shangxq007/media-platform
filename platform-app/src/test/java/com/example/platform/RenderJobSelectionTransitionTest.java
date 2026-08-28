@@ -94,10 +94,11 @@ class RenderJobSelectionTransitionTest extends PostgresTestContainerSupport {
     // ========== Provider Registry verification ==========
 
     @Test
-    void ffmpegInRegistry() {
+    void legacyFfmpegAbsentFromRegistry() {
         boolean present = registry.getProvider("ffmpeg").isPresent();
         evidence.append(String.format("PROVIDER_FFMPEG_REGISTRY: %b%n", present));
-        Assertions.assertTrue(present, "FFmpeg should be in Registry");
+        Assertions.assertFalse(present,
+                "Legacy FFmpeg must not remain in the render-integrated registry");
     }
 
     @Test

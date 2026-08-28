@@ -34,8 +34,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Tests for CaptionTemplateRenderService.
- * Proves: valid request → READY product, invalid → validation errors,
- * no direct FFmpeg, no Remotion.
+ * Proves: valid legacy execution request fails closed without output, invalid
+ * request retains validation errors, and no direct FFmpeg or Remotion runs.
  */
 class CaptionTemplateRenderServiceTest {
     @SuppressWarnings("unchecked")
@@ -50,10 +50,13 @@ class CaptionTemplateRenderServiceTest {
     private StorageRuntimeService storageRuntime;
     private ProductRuntimeService productRuntime;
     private CaptionTemplateRenderService service;
+    private InMemoryStorageReferenceRepository storageRepo;
+    private final java.util.concurrent.atomic.AtomicInteger processInvocations =
+            new java.util.concurrent.atomic.AtomicInteger();
 
     @BeforeEach
     void setUp() {
-        StorageReferenceRepository storageRepo = new InMemoryStorageReferenceRepository();
+        storageRepo = new InMemoryStorageReferenceRepository();
         ProductRepository productRepo = new InMemoryProductRepository();
         ProductDependencyRepository depRepo = new InMemoryProductDependencyRepository();
         storageRuntime = new StorageRuntimeService(storageRepo, mockProvider(null));
@@ -65,6 +68,7 @@ class CaptionTemplateRenderServiceTest {
 
         ProcessToolRunner toolRunner = new ProcessToolRunner() {
             @Override public ToolExecutionResult execute(com.example.platform.extension.domain.ToolExecutionRequest r) {
+                processInvocations.incrementAndGet();
                 try {
                     String outputPath = r.args().get(r.args().size() - 1);
                     Path output = Path.of(outputPath);
@@ -107,8 +111,8 @@ class CaptionTemplateRenderServiceTest {
     }
 
     @Test
-    @DisplayName("Valid request produces READY output Product")
-    void validRequestProducesReady() throws Exception {
+    @DisplayName("Valid legacy request fails closed without an output Product")
+    void validRequestFailsClosed() throws Exception {
         registerSourceProduct("prod-source-1");
         CaptionTemplateRenderResult result = service.render(new CaptionTemplateRenderRequest(
                 "proj-1", "prod-source-1",
@@ -118,12 +122,16 @@ class CaptionTemplateRenderServiceTest {
                                 new FontStyleSpec("DejaVu Sans", 400, "#FFFFFF", "#000000", 2, null),
                                 24, 2, 1.4, "center")),
                 null, Map.of()));
-        assertTrue(result.isSuccess(), "Failed: status=" + result.status()
-                + " msg=" + result.safeMessage()
-                + " errors=" + result.validationErrors());
+        assertFalse(result.isSuccess());
         assertNotNull(result.renderJobId());
-        assertNotNull(result.outputProductId());
-        assertEquals("READY", result.status());
+        assertNull(result.outputProductId());
+        assertEquals("FAILED", result.status());
+        assertFalse(result.ready());
+        assertEquals("One or more steps failed", result.safeMessage());
+        assertEquals(0, processInvocations.get());
+        assertEquals(1, storageRepo.size(), "Only source storage may be committed");
+        assertTrue(productRuntime.findByProject("proj-1", 100).stream()
+                .noneMatch(product -> product.productType() == ProductType.FINAL_RENDER));
     }
 
     @Test
@@ -200,6 +208,7 @@ class CaptionTemplateRenderServiceTest {
             store.put(id, saved); return saved;
         }
         @Override public Optional<StorageReference> findById(String id) { return Optional.ofNullable(store.get(id)); }
+        int size() { return store.size(); }
     }
 
     static class InMemoryProductRepository extends ProductRepository {

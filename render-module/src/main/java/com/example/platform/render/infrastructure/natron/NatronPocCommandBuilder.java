@@ -9,7 +9,7 @@ public class NatronPocCommandBuilder {
 
     public static final String TOOL_KEY = "natron-poc-render";
 
-    public List<String> buildArgs(NatronPocJob job, boolean fallbackToFfmpeg, String batchScriptPath,
+    public List<String> buildArgs(NatronPocJob job, String batchScriptPath,
                                   String readerNode, String writerNode) {
         List<String> args = new ArrayList<>();
         args.add("--effect-key");
@@ -31,9 +31,6 @@ public class NatronPocCommandBuilder {
             args.add(readerNode);
             args.add("--writer-node");
             args.add(writerNode);
-        }
-        if (fallbackToFfmpeg) {
-            args.add("--fallback-ffmpeg");
         }
         return args;
     }

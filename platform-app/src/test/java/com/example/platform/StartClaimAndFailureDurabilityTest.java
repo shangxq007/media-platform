@@ -125,11 +125,17 @@ class StartClaimAndFailureDurabilityTest extends PostgresTestContainerSupport {
             evidence.append(String.format("DURABLE_FAILURE: NO (status=%s)%n", postStatus));
         }
 
-        // Verify canonical Provider ID
+        // The removed render-integrated FFmpeg provider must never be selected.
         if (postProvider != null) {
-            Assertions.assertEquals("ffmpeg", postProvider, "Must use canonical ID");
-            evidence.append("CANONICAL_ID: YES\n");
+            Assertions.assertNotEquals("ffmpeg", postProvider,
+                    "Removed legacy FFmpeg authority must not be selected");
+            evidence.append("LEGACY_FFMPEG_SELECTED: NO\n");
         }
+        Assertions.assertEquals("FAILED", postStatus,
+                "Start without migrated execution authority must fail durably");
+        Assertions.assertNotNull(errorMsg, "Durable failure must retain a safe diagnostic");
+        Assertions.assertFalse(errorMsg.contains("ffmpeg -i"), "No raw command may leak");
+        Assertions.assertFalse(errorMsg.contains("storageReferenceId"), "No storage internals may leak");
 
         // Reload in new transaction
         String reloadStatus = jdbc.queryForObject("SELECT status FROM render_job WHERE id = ?", String.class, jobId);
@@ -137,6 +143,7 @@ class StartClaimAndFailureDurabilityTest extends PostgresTestContainerSupport {
         evidence.append(String.format("RELOAD_STATUS: %s%n", reloadStatus));
         evidence.append(String.format("RELOAD_PROVIDER: %s%n", reloadProvider));
         Assertions.assertEquals(postStatus, reloadStatus, "Status must survive reload");
+        Assertions.assertEquals(postProvider, reloadProvider, "Provider state must survive reload");
     }
 
     // ========== Test 2: Concurrent start — single winner ==========

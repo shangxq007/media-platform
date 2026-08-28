@@ -39,39 +39,7 @@ public class LibassSubtitleCompositor {
         if (!Files.isRegularFile(inputVideo)) {
             return ComposeResult.failed("Input video missing: " + inputVideo);
         }
-        try {
-            TimelineOutputSpec output = spec.outputSpec();
-            int width = output != null ? output.width() : 1920;
-            int height = output != null ? output.height() : 1080;
-            Path assPath = outputVideo.getParent().resolve("burn-in.ass");
-            assFileWriter.write(assPath, spec.textOverlays(), width, height);
-
-            List<String> args = new ArrayList<>();
-            args.add(ffmpegBinary);
-            args.add("-y");
-            args.add("-i");
-            args.add(inputVideo.toString());
-            args.add("-vf");
-            args.add("ass=" + escapeAssPath(assPath));
-            args.add("-c:a");
-            args.add("copy");
-            args.add(outputVideo.toString());
-
-            ToolExecutionResult result = processToolRunner.execute(
-                    ToolExecutionRequest.withTimeout("ffmpeg-libass", args, timeoutMs));
-            if (!result.isSuccess()) {
-                return ComposeResult.failed("libass burn-in failed: " + result.stderr());
-            }
-            log.info("LibassSubtitleCompositor: burned {} overlays into {}", spec.textOverlays().size(), outputVideo);
-            return ComposeResult.success(outputVideo);
-        } catch (Exception e) {
-            log.error("Libass compositor failed", e);
-            return ComposeResult.failed(e.getMessage());
-        }
-    }
-
-    private String escapeAssPath(Path assPath) {
-        return assPath.toAbsolutePath().toString().replace("'", "'\\''").replace(":", "\\:");
+        return ComposeResult.failed("TYPED_PROVIDER_PLUGIN_EXECUTION_REQUIRED");
     }
 
     public record ComposeResult(boolean success, boolean wasSkipped, Path outputPath, String errorMessage) {

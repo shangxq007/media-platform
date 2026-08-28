@@ -40,8 +40,6 @@ public class RenderToolCapabilityInventory {
     public List<ToolInventoryEntry> detectTools() {
         List<ToolInventoryEntry> entries = new ArrayList<>();
 
-        entries.add(detectTool("ffmpeg", "ffmpeg", "-version"));
-        entries.add(detectTool("ffprobe", "ffprobe", "-version"));
         entries.add(detectTool("melt", "melt", "--version"));
         entries.add(detectTool("blender", "blender", "--version"));
         entries.add(detectTool("natron", "natron", "--version"));
