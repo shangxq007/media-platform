@@ -45,7 +45,7 @@ public final class SandboxRuntimeCommandExecutor implements RuntimeCommandExecut
                 SandboxExecutionResult result = launcher.launch(
                         ((SandboxResolution.Resolved) resolution).specification(), cancellation);
                 if (result.failure().isPresent()) {
-                    throw mapped(result.failure().orElseThrow());
+                    throw mapped(result);
                 }
                 if (result.stdout().truncated()) {
                     throw new ProviderNativeExecutionFailure(
@@ -71,6 +71,25 @@ public final class SandboxRuntimeCommandExecutor implements RuntimeCommandExecut
     }
 
     private static ProviderNativeExecutionFailure mapped(SandboxFailure failure) {
+        return mapped(failure, java.util.Map.of(
+                "sandboxFailureCode", failure.code().name()));
+    }
+
+    private static ProviderNativeExecutionFailure mapped(SandboxExecutionResult result) {
+        SandboxFailure failure = result.failure().orElseThrow();
+        return mapped(failure, java.util.Map.of(
+                "sandboxFailureCode", failure.code().name(),
+                "processExitCode", result.exitCode().isPresent()
+                        ? Integer.toString(result.exitCode().getAsInt())
+                        : "NOT_AVAILABLE",
+                "boundedStderr", result.stderr().utf8(),
+                "stderrTruncated", Boolean.toString(result.stderr().truncated()),
+                "boundedStdoutSize", Integer.toString(result.stdout().bytes().length),
+                "stdoutTruncated", Boolean.toString(result.stdout().truncated())));
+    }
+
+    private static ProviderNativeExecutionFailure mapped(
+            SandboxFailure failure, java.util.Map<String, String> diagnostics) {
         ProviderNativeFailureCode code = switch (failure.code()) {
             case PROCESS_LAUNCH_FAILED -> ProviderNativeFailureCode.PROCESS_LAUNCH_FAILED;
             case PROCESS_CRASHED -> ProviderNativeFailureCode.PROCESS_NONZERO_EXIT;
@@ -84,6 +103,6 @@ public final class SandboxRuntimeCommandExecutor implements RuntimeCommandExecut
         return new ProviderNativeExecutionFailure(
                 code,
                 failure.message(),
-                java.util.Map.of("sandboxFailureCode", failure.code().name()));
+                diagnostics);
     }
 }
