@@ -158,12 +158,21 @@ class DualDistributionPluginConformanceTest {
     }
 
     private static Path binary(String name) {
-        return List.of(
-                        Path.of(System.getProperty("user.home"), ".local", "bin", name),
-                        Path.of("/usr/bin", name), Path.of("/bin", name)).stream()
-                .map(path -> path.toAbsolutePath().normalize())
-                .filter(Files::isRegularFile).filter(Files::isExecutable)
-                .findFirst().orElseThrow();
+        String path = System.getenv("PATH");
+        if (path == null) {
+            throw new IllegalStateException("PATH is absent; cannot locate " + name);
+        }
+        for (String directory : path.split(
+                java.util.regex.Pattern.quote(java.io.File.pathSeparator), -1)) {
+            if (directory.isBlank()) {
+                continue;
+            }
+            Path candidate = Path.of(directory).resolve(name).toAbsolutePath().normalize();
+            if (Files.isRegularFile(candidate) && Files.isExecutable(candidate)) {
+                return candidate;
+            }
+        }
+        throw new IllegalStateException(name + " unavailable on PATH");
     }
 
     private static byte[] generateInput(Path executable, Path output) throws Exception {

@@ -250,12 +250,21 @@ class FfmpegClosedLoopIntegrationTest {
     }
 
     private static Path binary(String name) {
-        List<Path> candidates = List.of(
-                Path.of(System.getProperty("user.home"), ".local", "bin", name),
-                Path.of("/usr/bin", name), Path.of("/bin", name));
-        return candidates.stream().map(path -> path.toAbsolutePath().normalize())
-                .filter(Files::isRegularFile).filter(Files::isExecutable)
-                .findFirst().orElseThrow(() -> new IllegalStateException(name + " unavailable"));
+        String path = System.getenv("PATH");
+        if (path == null) {
+            throw new IllegalStateException("PATH is absent; cannot locate " + name);
+        }
+        for (String directory : path.split(
+                java.util.regex.Pattern.quote(java.io.File.pathSeparator), -1)) {
+            if (directory.isBlank()) {
+                continue;
+            }
+            Path candidate = Path.of(directory).resolve(name).toAbsolutePath().normalize();
+            if (Files.isRegularFile(candidate) && Files.isExecutable(candidate)) {
+                return candidate;
+            }
+        }
+        throw new IllegalStateException(name + " unavailable on PATH");
     }
 
     private record ProbeJson(

@@ -11,8 +11,8 @@ ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW = ROOT / ".github/workflows/phase19-runtime-conformance.yml"
 RUNTIME = ROOT / "scripts/ci/phase19-runtime-conformance.sh"
 VERIFIER = ROOT / "scripts/ci/verify_phase19_runtime_conformance_results.py"
-BRANCH = "agent/roadmap22-phase19-c2-disposable-runner-final-conformance"
-NONCE = "media-runtime-conformance-807efc0476d8"
+BRANCH = "agent/roadmap22-phase19-runtime-success-path-defect-correction"
+NONCE = "media-runtime-full-18e2193c23b1"
 DIGEST = "df496276e7a087431d9e5ded07163d92d2ccacaede2c0250fb9f8d9ea0319c30"
 METHODS = (
     "nonzero_and_cancellation_publish_no_artifact_or_completion",
