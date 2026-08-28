@@ -1,0 +1,114 @@
+# Roadmap #22 Phase 19 final publication
+
+TASK=ROADMAP_22_PHASE_19_FINAL_PUBLICATION
+PUBLICATION_POLICY=FINAL_VALIDATED_CANDIDATE_REMAINS_IMMUTABLE_V1
+ACCEPTANCE_RECORD_POLICY=POST_VALIDATION_ACCEPTANCE_IS_RECORDED_BY_APPEND_FORWARD_PUBLICATION_V1
+EVIDENCE_INHERITANCE_POLICY=CI_EVIDENCE_INHERITANCE_ACROSS_NON_RUNTIME_DESCENDANTS_V1
+
+## Accepted authority
+
+FINAL_CANDIDATE_SHA=55ffa1b1cced47fb8807961fed1b985b063bd13b
+FINAL_CANDIDATE_TREE=93ac2cc35b410e52479c8b1eb75532093d6ec53b
+FINAL_CANDIDATE_PARENT=021c610da87ebac9f90db355a77bbbea58ac7e99
+PUBLICATION_PARENT=55ffa1b1cced47fb8807961fed1b985b063bd13b
+PUBLICATION_SHA=COMMIT_CONTAINING_THIS_RECORD
+CHATGPT_FINAL_REVIEW=PASS
+ROADMAP_22_PHASE_19_PUBLICATION=AUTHORIZED
+ROADMAP_22_PHASE_19_CANONICAL_FAST_FORWARD=AUTHORIZED
+
+The final candidate remains byte-for-byte immutable. This record is a new append-forward governance-only publication and does not rewrite the historical candidate-creation snapshot. It introduces no production, test, workflow, CI script, build, configuration, runtime, semantic-contract implementation, or release-artifact bytes.
+
+## Root cause and correction
+
+ROOT_CAUSE=PROVEN
+PRIMARY_ROOT_CAUSE=FFMPEG_RUNTIME_IDENTITY_SELECTION_DEFECT
+SECONDARY_ROOT_CAUSE=WORKER_FABRIC_MAPPING_DEFECT
+RUNTIME_DEFECT=CORRECTED
+
+The conformance helpers had ignored authoritative PATH order and selected an incompatible host FFmpeg. Provider production argv was not the primary defect. Production Provider contribution continued to use the typed executable supplied through ProviderPluginRuntimeContext. The bounded correction restored authoritative runtime identity selection and retained safe typed sandbox/process diagnostics without changing Provider, Worker Fabric, sandbox, Plugin, Artifact, completion, or cancellation authority.
+
+## Accepted implementation and migration results
+
+LEGACY_RENDER_FFMPEG_CLEAN_FORWARD=PASS
+OLD_RENDER_FFMPEG_EXECUTION_AUTHORITY_COUNT=0
+OLD_RENDER_DIRECT_FFMPEG_PROCESS_INVOCATION_COUNT=0
+OLD_RENDER_FFMPEG_COMMAND_BUILDING_AUTHORITY_COUNT=0
+RENDER_TO_CONCRETE_FFMPEG_DEPENDENCY_COUNT=0
+LEGACY_FFMPEG_FALLBACK_COUNT=0
+DUAL_FFMPEG_EXECUTION_AUTHORITY_COUNT=0
+REAL_FFMPEG_PROVIDER_PLUGIN=PASS
+DUAL_DISTRIBUTION=PASS
+PRODUCTION_SHAPE_SANDBOX=PASS
+C2_DISPOSABLE_RUNNER=PASS
+RUNTIME_SECURITY=PASS
+ARTIFACT_AUTHORITY=PASS
+CANCELLATION_FAILURE_EQUIVALENCE=PASS
+PLUGIN_BYTE_EQUIVALENCE=PASS
+PLUGIN_SHA256=df496276e7a087431d9e5ded07163d92d2ccacaede2c0250fb9f8d9ea0319c30
+
+## Exact-SHA validation evidence
+
+TARGETED_RUNTIME=PASS_3_OF_3
+TARGETED_RUNTIME_RUN=33152774186
+TARGETED_RUNTIME_JOB=98788409846
+TARGETED_RUNTIME_HEAD=55ffa1b1cced47fb8807961fed1b985b063bd13b
+
+STANDARD_CI=PASS
+STANDARD_CI_RUN=33152774134
+STANDARD_CI_HEAD=55ffa1b1cced47fb8807961fed1b985b063bd13b
+
+FOUNDATION=PASS
+FOUNDATION_RUN=33152774135
+FOUNDATION_HEAD=55ffa1b1cced47fb8807961fed1b985b063bd13b
+
+FULL_RUNTIME_CONFORMANCE=PASS
+FULL_RUNTIME_RUN=33152774176
+FULL_RUNTIME_ATTEMPT=4
+FULL_RUNTIME_JOB=98810434290
+FULL_RUNTIME_HEAD=55ffa1b1cced47fb8807961fed1b985b063bd13b
+FULL_RUNTIME_RELEVANT_TESTS=501
+FULL_RUNTIME_RELEVANT_PASSED=501
+FULL_RUNTIME_FAILURES=0
+FULL_RUNTIME_ERRORS=0
+FULL_RUNTIME_SKIPPED=0
+FULL_RUNTIME_NONEXECUTION=0
+
+ALL_PHASE19_MANDATORY_GATES=GREEN
+ARCHITECTURE_BLOCKERS=0
+IMPLEMENTATION_BLOCKERS=0
+VALIDATION_BLOCKERS=0
+GOVERNANCE_BLOCKERS=0
+ARCHITECTURE_ESCALATION=NONE
+
+## Evidence integrity
+
+FINAL_REVIEW_REPORT_SHA256=90ff094d9baf5824d6398705a402e0fe1a1ab2f2daf94d7f4103ec948f7549ac
+FINAL_REVIEW_RECEIPT_SHA256=17446f9d0d09aba19de44f4bac854f4ff23c7e60346b59ec53fff2f951a34e29
+FINAL_REVIEW_EVIDENCE_MANIFEST_SHA256=639568c2ac8ea33a9776ec11a1c6918a40ee6e80dd1b94eefa6435fa6429c011
+
+The runtime, security, full-suite, Plugin, distribution, Artifact, failure, and cancellation evidence above is inherited from exact validated candidate `55ffa1b1cced47fb8807961fed1b985b063bd13b` only if the repository-authoritative change-impact classifier and publication diff mechanically prove that this descendant is governance-only with no production, runtime, build, release-artifact, workflow, test, configuration, or runtime-script impact.
+
+## Closure
+
+ROADMAP_22_PHASE_19=CLOSED_ACCEPTED
+ROADMAP_22_PHASE_19_FFMPEG_CPU_NATIVE_PULL_PROVIDER=CLOSED_ACCEPTED
+LEGACY_RENDER_FFMPEG_CLEAN_FORWARD_MIGRATION=CLOSED
+FFMPEG_PLUGIN_PACKAGING_AND_DUAL_DISTRIBUTION=CLOSED
+C2_RUNTIME_SECURITY_CONFORMANCE=CLOSED
+RUNTIME_SUCCESS_PATH_DEFECT=CLOSED
+SEMGREP_CORRECTION=CLOSED
+
+No further Phase 19 implementation is authorized by this publication. Canonical integration is fast-forward-only. Merge commits, amendment, rebase, squash, cherry-pick, force push, production mutation, release tagging, and deployment are outside this authority.
+
+## Next-lane boundary
+
+BMF_STARTED=NO
+PHASE20_STARTED=NO
+OPENCUE_STARTED=NO
+
+The following lanes become eligible only for separate authorization after canonical remote readback and main-push policy success:
+
+- BMF_PROVIDER_AND_CROSS_RUNTIME_EFFECT_CONFORMANCE_POC_V1
+- ROADMAP_22_PHASE_20_RESOURCE_ACCOUNTING_AND_HARDWARE_PROVIDER_CONFORMANCE
+
+OpenCue remains later. This publication starts none of those lanes.
