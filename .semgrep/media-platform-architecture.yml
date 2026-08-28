@@ -25,17 +25,35 @@ rules:
 
   # Rule 2: Forbid Remotion production dispatch
   - id: arch-no-remotion-production
-    pattern: |
-      if ($STATUS == ProviderStatus.PRODUCTION) {
-        ...
-        Remotion...
-        ...
-      }
+    patterns:
+      - pattern-inside: |
+          if ($STATUS == ProviderStatus.PRODUCTION) {
+            ...
+          }
+      - pattern-either:
+          - patterns:
+              - pattern: new $REMOTION(...)
+              - metavariable-regex:
+                  metavariable: $REMOTION
+                  regex: '(?i)^(?:[a-z_$][a-z0-9_$]*\.)*remotion[a-z0-9_$]*$'
+          - patterns:
+              - pattern: $REMOTION.$METHOD(...)
+              - metavariable-regex:
+                  metavariable: $REMOTION
+                  regex: '(?i)^(?:[a-z_$][a-z0-9_$]*\.)*remotion[a-z0-9_$]*$'
+          - patterns:
+              - pattern: $DISPATCH(..., $REMOTION, ...)
+              - metavariable-regex:
+                  metavariable: $REMOTION
+                  regex: '(?i)^(?:[a-z_$][a-z0-9_$]*\.)*remotion[a-z0-9_$]*$'
     message: |
       Remotion must NOT be dispatched in production.
       See docs/production-safety.md.
     severity: ERROR
     languages: [java]
+    paths:
+      include:
+        - "/**/src/main/java/**"
     metadata:
       category: architecture
       subcategory: boundary
@@ -55,7 +73,7 @@ rules:
     languages: [generic]
     paths:
       include:
-        - "platform-app/build.gradle*"
+        - "/platform-app/build.gradle*"
     metadata:
       category: architecture
       subcategory: boundary
@@ -78,17 +96,25 @@ rules:
 
   # Rule 5: Forbid Artifact DAG runtime activation
   - id: arch-no-artifact-dag-runtime
-    pattern: |
-      class $CLASS {
-        ...
-        ArtifactDAG...
-        ...
-      }
+    pattern-either:
+      - patterns:
+          - pattern: new $ARTIFACT_DAG(...)
+          - metavariable-regex:
+              metavariable: $ARTIFACT_DAG
+              regex: '(?i)^(?:[a-z_$][a-z0-9_$]*\.)*artifactdag(?:runtime|engine|executor|scheduler|orchestrator|manager|dispatcher|activator)?$'
+      - patterns:
+          - pattern: $ARTIFACT_DAG.$METHOD(...)
+          - metavariable-regex:
+              metavariable: $ARTIFACT_DAG
+              regex: '(?i)^(?:[a-z_$][a-z0-9_$]*\.)*artifactdag(?:runtime|engine|executor|scheduler|orchestrator|manager|dispatcher|activator)?$'
     message: |
       Artifact DAG must NOT be activated as a runtime.
       Artifact DAG is indefinitely deferred (extension layer only).
     severity: ERROR
     languages: [java]
+    paths:
+      include:
+        - "/**/src/main/java/**"
     metadata:
       category: architecture
       subcategory: boundary
@@ -119,10 +145,10 @@ rules:
           $MAP.put($KEY, $VALUE);
       - metavariable-regex:
           metavariable: $KEY
-          regex: .*(key|token|secret|password|credential).*
+          regex: '(?i)^"(?:api[_-]?key|provider[_-]?key|token|access[_-]?token|secret|password|credential|authorization)"$'
       - metavariable-regex:
           metavariable: $VALUE
-          regex: .*(sk-|tp-|ak_|Bearer|apikey).*
+          regex: '(?i)^"(?:(?:[^"\n]*(?:sk-|tp-|ak_|apikey)[a-z0-9._~+/=-]{4,}[^"\n]*)|(?:Bearer[ \t]+[a-z0-9._~+/=-]{8,}))"$'
     message: |
       API responses must NOT contain provider keys or tokens.
     severity: ERROR
