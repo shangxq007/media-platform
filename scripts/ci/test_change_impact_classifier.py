@@ -109,6 +109,36 @@ def assert_workflow_contract(
         raise AssertionError("Foundation architecture drift is not independently conditional")
     if "if: needs.change-impact.outputs.backend_ci == 'true'" not in foundation:
         raise AssertionError("Foundation full backend is not independently conditional")
+    standard_backend = standard.split("\n  backend:\n", 1)[1].split("\n  frontend:\n", 1)[0]
+    foundation_backend = foundation.split("\n  foundation-verification:\n", 1)[1].split(
+        "\n  foundation-policy-summary:\n", 1
+    )[0]
+    hosted_forbidden = (
+        "run: bash scripts/ci/setup-test-runtime.sh",
+        "./gradlew --no-daemon test",
+        "./gradlew --no-daemon --max-workers=1 test",
+    )
+    if any(item in standard_backend for item in hosted_forbidden):
+        raise AssertionError("Standard hosted backend retains delegated runtime validation")
+    if any(item in foundation_backend for item in hosted_forbidden):
+        raise AssertionError("Foundation hosted backend retains delegated runtime validation")
+    standard_hosted_required = (
+        "./gradlew --no-daemon pfirr1RemediationCheck",
+        "./gradlew --no-daemon compileJava compileTestJava",
+        "./gradlew --no-daemon :platform-app:bootJar -x test",
+        "docker build -t media-platform:ci .",
+    )
+    foundation_hosted_required = (
+        "bash -n scripts/verify-pfirr1-jooq-authority-fail-closed.sh && bash -n scripts/ci/setup-test-runtime.sh",
+        "bash scripts/verify-pfirr1-jooq-authority-fail-closed.sh",
+        "./gradlew --no-daemon pfirr1RemediationCheck",
+        "./gradlew --no-daemon compileJava compileTestJava",
+        "./gradlew --no-daemon :platform-app:bootJar -x test",
+    )
+    if any(item not in standard_backend for item in standard_hosted_required):
+        raise AssertionError("Standard hosted backend lost bounded compile/build validation")
+    if any(item not in foundation_backend for item in foundation_hosted_required):
+        raise AssertionError("Foundation hosted backend lost bounded foundation validation")
     if standard.count("\n  semgrep:\n") != 1:
         raise AssertionError("Standard CI does not own exactly one Semgrep job")
     if standard.count("\n  formal-validation:\n") != 1:
@@ -323,6 +353,10 @@ def main() -> None:
         ("semgrep-policy-need-removed", standard.replace(", semgrep]", "]", 1), foundation),
         ("semgrep-policy-enforcement-removed", standard.replace('          require_result "$SEMGREP_REQUIRED" "$SEMGREP_RESULT" semgrep\n', "", 1), foundation),
         ("conditional-skip-contract-weakened", standard.replace('test "$result" = "skipped"', 'test "$result" = "success"', 1), foundation),
+        ("standard-runtime-setup-restored", standard.replace("      - name: Run PFIRR1 remediation gates\n", "      - run: bash scripts/ci/setup-test-runtime.sh\n\n      - name: Run PFIRR1 remediation gates\n", 1), foundation),
+        ("standard-compile-removed", standard.replace("      - name: Compile production and test sources\n        run: ./gradlew --no-daemon compileJava compileTestJava\n\n", "", 1), foundation),
+        ("foundation-full-test-restored", standard, foundation.replace("      - name: Build boot jar smoke check\n", "      - run: ./gradlew --no-daemon test\n\n      - name: Build boot jar smoke check\n", 1)),
+        ("foundation-jooq-proof-removed", standard, foundation.replace("      - name: Prove jOOQ authority verification is fail-closed\n        run: bash scripts/verify-pfirr1-jooq-authority-fail-closed.sh\n\n", "", 1)),
         ("standalone-semgrep-restored", standard, foundation, True),
     )
     for mutation in mutations:

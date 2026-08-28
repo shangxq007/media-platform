@@ -1,0 +1,43 @@
+name: Phase19 Runtime Conformance
+
+on:
+  push:
+    branches:
+      - agent/roadmap22-phase19-c2-disposable-runner-final-conformance
+
+permissions:
+  contents: read
+
+jobs:
+  runtime-conformance:
+    runs-on:
+      - self-hosted
+      - linux
+      - x64
+      - media-runtime-conformance
+      - media-runtime-conformance-807efc0476d8
+    timeout-minutes: 180
+    env:
+      EXPECTED_SHA: ${{ github.sha }}
+    steps:
+      - name: Checkout exact triggering SHA
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Guard clean exact SHA checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "$(git status --porcelain)"
+          checked_sha="$(git rev-parse HEAD)"
+          test "$checked_sha" = "$GITHUB_SHA"
+          printf 'CHECKED_SHA=%s\n' "$checked_sha"
+
+      - name: Set up authoritative test runtime
+        run: bash scripts/ci/setup-test-runtime.sh
+
+      - name: Run Phase 19 runtime conformance
+        run: bash scripts/ci/phase19-runtime-conformance.sh

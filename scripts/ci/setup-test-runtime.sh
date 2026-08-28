@@ -24,13 +24,23 @@ fail() {
     exit 1
 }
 
-dpkg_package_identity_for_binary() {
+runtime_privileged_path_used=0
+
+prepare_debian_package_install() {
+    [[ -f /etc/debian_version ]] || fail "automatic package installation is limited to Debian runners"
+    command -v apt-get >/dev/null 2>&1 || fail "apt-get unavailable on Debian runner"
+    command -v sudo >/dev/null 2>&1 || fail "sudo unavailable for Debian package installation"
+    [[ "$(id -u)" != "0" ]] || fail "package installation must be requested by the non-root runner"
+    runtime_privileged_path_used=1
+}
+
+dpkg_identity_for_binary() {
     local binary="$1"
     local owner_record owner_suffix owner package_record
 
-    command -v dpkg-query >/dev/null 2>&1 || fail "dpkg-query unavailable for runtime identity"
+    command -v dpkg-query >/dev/null 2>&1 || return 1
     owner_record="$(dpkg-query --search "$binary" 2>/dev/null)" \
-        || fail "no dpkg owner for runtime binary: ${binary}"
+        || return 1
     [[ "$owner_record" != *$'\n'* ]] \
         || fail "multiple dpkg owners for runtime binary: ${binary}"
     owner_suffix=": ${binary}"
@@ -46,15 +56,62 @@ dpkg_package_identity_for_binary() {
     printf '%s\n' "${package_record#'ii |'}"
 }
 
+rpm_identity_for_binary() {
+    local binary="$1"
+    local owner_record name epoch version release arch extra
+
+    command -v rpm >/dev/null 2>&1 || return 1
+    owner_record="$(rpm --query --file --queryformat '%{NAME}|%{EPOCHNUM}|%{VERSION}|%{RELEASE}|%{ARCH}\n' "$binary" 2>/dev/null)" \
+        || return 1
+    [[ -n "$owner_record" && "$owner_record" != *$'\n'* ]] \
+        || fail "rpm owner is missing or ambiguous for runtime binary: ${binary}"
+    IFS='|' read -r name epoch version release arch extra <<< "$owner_record"
+    [[ -n "$name" && -n "$epoch" && -n "$version" && -n "$release" && -n "$arch" && -z "$extra" ]] \
+        || fail "rpm NEVRA is malformed for runtime binary: ${binary}"
+    printf '%s-%s:%s-%s.%s\n' "$name" "$epoch" "$version" "$release" "$arch"
+}
+
+sha256_identity_for_binary() {
+    local binary="$1"
+    local digest_record digest
+
+    command -v sha256sum >/dev/null 2>&1 || fail "sha256sum unavailable for runtime identity"
+    digest_record="$(sha256sum -- "$binary")" \
+        || fail "SHA-256 identity unavailable for runtime binary: ${binary}"
+    digest="${digest_record%% *}"
+    [[ "$digest" =~ ^[0-9a-f]{64}$ ]] \
+        || fail "SHA-256 identity is malformed for runtime binary: ${binary}"
+    printf '%s\n' "$digest"
+}
+
+runtime_identity_for_binary() {
+    local binary="$1"
+    local dpkg_identity rpm_identity sha256_identity
+
+    [[ "$binary" == /* && -x "$binary" ]] \
+        || fail "runtime identity requires an existing absolute executable: ${binary}"
+    if dpkg_identity="$(dpkg_identity_for_binary "$binary")"; then
+        printf 'dpkg:%s\n' "${dpkg_identity}"
+        return 0
+    fi
+    if rpm_identity="$(rpm_identity_for_binary "$binary")"; then
+        printf 'rpm:%s\n' "${rpm_identity}"
+        return 0
+    fi
+    sha256_identity="$(sha256_identity_for_binary "$binary")"
+    printf 'sha256:%s\n' "${sha256_identity}"
+}
+
 # ── bubblewrap package and exact binary path ──
 BWRAP_BINARY="/usr/bin/bwrap"
 if [[ ! -x "$BWRAP_BINARY" ]]; then
     echo "[ci-test-runtime] /usr/bin/bwrap unavailable; installing bubblewrap"
+    prepare_debian_package_install
     sudo apt-get update -qq
     sudo apt-get install -y -qq bubblewrap
 fi
 [[ -x "$BWRAP_BINARY" ]] || fail "/usr/bin/bwrap unavailable after install"
-bubblewrap_package_identity="$(dpkg_package_identity_for_binary "$BWRAP_BINARY")"
+bubblewrap_package_identity="$(runtime_identity_for_binary "$BWRAP_BINARY")"
 bubblewrap_version="$("$BWRAP_BINARY" --version 2>&1)" \
     || fail "/usr/bin/bwrap version query failed"
 [[ -n "$bubblewrap_version" && "$bubblewrap_version" != *$'\n'* ]] \
@@ -100,6 +157,7 @@ printf 'BUBBLEWRAP_PREFLIGHT_UID=%s\n' "$bwrap_preflight_uid"
 # -- FFmpeg/ffprobe bounded runtime identity
 if ! command -v ffmpeg >/dev/null 2>&1 || ! command -v ffprobe >/dev/null 2>&1; then
     echo "[ci-test-runtime] ffmpeg or ffprobe missing; installing ffmpeg package"
+    prepare_debian_package_install
     sudo apt-get update -qq
     sudo apt-get install -y -qq ffmpeg
 fi
@@ -111,10 +169,8 @@ FFPROBE_BINARY="$(readlink -f "$(command -v ffprobe)")"
 [[ "$FFMPEG_BINARY" == /* && -x "$FFMPEG_BINARY" ]] || fail "ffmpeg did not resolve to an absolute executable"
 [[ "$FFPROBE_BINARY" == /* && -x "$FFPROBE_BINARY" ]] || fail "ffprobe did not resolve to an absolute executable"
 
-ffmpeg_package_identity="$(dpkg_package_identity_for_binary "$FFMPEG_BINARY")"
-ffprobe_package_identity="$(dpkg_package_identity_for_binary "$FFPROBE_BINARY")"
-[[ "$ffmpeg_package_identity" == "$ffprobe_package_identity" ]] \
-    || fail "ffmpeg and ffprobe resolve to different dpkg package identities"
+ffmpeg_runtime_identity="$(runtime_identity_for_binary "$FFMPEG_BINARY")"
+ffprobe_runtime_identity="$(runtime_identity_for_binary "$FFPROBE_BINARY")"
 
 ffmpeg_version_output="$("$FFMPEG_BINARY" -version 2>&1)" || fail "ffmpeg version query failed"
 ffprobe_version_output="$("$FFPROBE_BINARY" -version 2>&1)" || fail "ffprobe version query failed"
@@ -139,9 +195,10 @@ printf 'REMOTE_RUNTIME_IDENTITY_POLICY=BOUNDED_AND_VERIFIED\n'
 printf 'FFMPEG_BINARY=%s\n' "$FFMPEG_BINARY"
 printf 'FFMPEG_VERSION=%s\n' "$ffmpeg_version_line"
 printf 'FFMPEG_BUILD_EVIDENCE=%s\n' "$ffmpeg_configuration"
-printf 'FFMPEG_PACKAGE_IDENTITY=%s\n' "$ffmpeg_package_identity"
+printf 'FFMPEG_PACKAGE_IDENTITY=%s\n' "$ffmpeg_runtime_identity"
 printf 'FFPROBE_BINARY=%s\n' "$FFPROBE_BINARY"
 printf 'FFPROBE_VERSION=%s\n' "$ffprobe_version_line"
+printf 'FFPROBE_PACKAGE_IDENTITY=%s\n' "$ffprobe_runtime_identity"
 printf 'FFMPEG_RUNTIME_CONTRACT_RESULT=PASS\n'
 
 # ── 2) container API (deterministic ladder) ──
@@ -179,6 +236,7 @@ if [[ -z "$DOCKER_HOST" ]]; then
     # d) start the repo-owned hermetic podman service (--time=0, no idle churn)
     if ! command -v podman >/dev/null 2>&1; then
         echo "[ci-test-runtime] podman missing; installing"
+        prepare_debian_package_install
         sudo apt-get update -qq
         sudo apt-get install -y -qq podman
     fi
@@ -225,4 +283,10 @@ echo "[ci-test-runtime] OK: DOCKER_HOST=${DOCKER_HOST} Api-Version=${API_VERSION
 # ── 4) persist for subsequent workflow steps ──
 if [[ -n "${GITHUB_ENV:-}" ]]; then
     echo "DOCKER_HOST=${DOCKER_HOST}" >> "$GITHUB_ENV"
+    echo "MEDIA_RUNTIME_BWRAP_IDENTITY=${bubblewrap_package_identity}" >> "$GITHUB_ENV"
+    echo "MEDIA_RUNTIME_FFMPEG_IDENTITY=${ffmpeg_runtime_identity}" >> "$GITHUB_ENV"
+    echo "MEDIA_RUNTIME_FFPROBE_IDENTITY=${ffprobe_runtime_identity}" >> "$GITHUB_ENV"
+    echo "MEDIA_RUNTIME_FALLBACK_USED=0" >> "$GITHUB_ENV"
+    echo "MEDIA_RUNTIME_PRIVILEGED_PATH_USED=${runtime_privileged_path_used}" >> "$GITHUB_ENV"
+    echo "MEDIA_RUNTIME_SETUP_CONFORMANT=1" >> "$GITHUB_ENV"
 fi

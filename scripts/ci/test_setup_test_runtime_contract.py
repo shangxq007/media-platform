@@ -35,7 +35,13 @@ REQUIRED_ONCE = (
         "if ! command -v ffmpeg >/dev/null 2>&1 || ! command -v ffprobe >/dev/null 2>&1; then",
     ),
     ("ffmpeg-package", "sudo apt-get install -y -qq ffmpeg"),
-    ("dpkg-owned-identity", "dpkg_package_identity_for_binary() {"),
+    ("identity-ladder", "runtime_identity_for_binary() {"),
+    ("dpkg-owned-identity", "dpkg_identity_for_binary() {"),
+    ("rpm-owned-identity", "rpm_identity_for_binary() {"),
+    ("sha256-binary-identity", "sha256_identity_for_binary() {"),
+    ("dpkg-identity-prefix", "printf 'dpkg:%s\\n' \"${dpkg_identity}\""),
+    ("rpm-identity-prefix", "printf 'rpm:%s\\n' \"${rpm_identity}\""),
+    ("sha256-identity-prefix", "printf 'sha256:%s\\n' \"${sha256_identity}\""),
     ("matching-version-token", '[[ "$ffmpeg_version_token" == "$ffprobe_version_token" ]] || fail'),
     ("bounded-major-set", '[[ "$ffmpeg_major" == "6" || "$ffmpeg_major" == "7" ]] || fail'),
     ("x264-build-capability", '[[ "$ffmpeg_configuration" == *"--enable-libx264"* ]] || fail'),
@@ -47,6 +53,12 @@ REQUIRED_ONCE = (
     ("ffprobe-binary-evidence", "FFPROBE_BINARY=%s\\n"),
     ("ffprobe-version-evidence", "FFPROBE_VERSION=%s\\n"),
     ("ffmpeg-pass-evidence", "FFMPEG_RUNTIME_CONTRACT_RESULT=PASS\\n"),
+    ("setup-sentinel", 'echo "MEDIA_RUNTIME_SETUP_CONFORMANT=1" >> "$GITHUB_ENV"'),
+    ("bwrap-env-identity", 'echo "MEDIA_RUNTIME_BWRAP_IDENTITY=${bubblewrap_package_identity}" >> "$GITHUB_ENV"'),
+    ("ffmpeg-env-identity", 'echo "MEDIA_RUNTIME_FFMPEG_IDENTITY=${ffmpeg_runtime_identity}" >> "$GITHUB_ENV"'),
+    ("ffprobe-env-identity", 'echo "MEDIA_RUNTIME_FFPROBE_IDENTITY=${ffprobe_runtime_identity}" >> "$GITHUB_ENV"'),
+    ("no-fallback-marker", 'echo "MEDIA_RUNTIME_FALLBACK_USED=0" >> "$GITHUB_ENV"'),
+    ("privileged-path-marker", 'echo "MEDIA_RUNTIME_PRIVILEGED_PATH_USED=${runtime_privileged_path_used}" >> "$GITHUB_ENV"'),
 )
 
 
@@ -70,8 +82,24 @@ def assert_contract(source: str) -> None:
         for line in source.splitlines()
         if ">> \"$GITHUB_ENV\"" in line
     ]
-    if github_env_writes != ['echo "DOCKER_HOST=${DOCKER_HOST}" >> "$GITHUB_ENV"']:
-        raise AssertionError("GITHUB_ENV must persist only the necessary DOCKER_HOST value")
+    expected_github_env_writes = [
+        'echo "DOCKER_HOST=${DOCKER_HOST}" >> "$GITHUB_ENV"',
+        'echo "MEDIA_RUNTIME_BWRAP_IDENTITY=${bubblewrap_package_identity}" >> "$GITHUB_ENV"',
+        'echo "MEDIA_RUNTIME_FFMPEG_IDENTITY=${ffmpeg_runtime_identity}" >> "$GITHUB_ENV"',
+        'echo "MEDIA_RUNTIME_FFPROBE_IDENTITY=${ffprobe_runtime_identity}" >> "$GITHUB_ENV"',
+        'echo "MEDIA_RUNTIME_FALLBACK_USED=0" >> "$GITHUB_ENV"',
+        'echo "MEDIA_RUNTIME_PRIVILEGED_PATH_USED=${runtime_privileged_path_used}" >> "$GITHUB_ENV"',
+        'echo "MEDIA_RUNTIME_SETUP_CONFORMANT=1" >> "$GITHUB_ENV"',
+    ]
+    if github_env_writes != expected_github_env_writes:
+        raise AssertionError("GITHUB_ENV runtime evidence is missing, reordered, or broadened")
+
+    if "UNKNOWN" in source:
+        raise AssertionError("runtime identity may not use UNKNOWN")
+    if '[[ -f /etc/debian_version ]] || fail' not in source:
+        raise AssertionError("package installation is not limited to Debian runners")
+    if source.count("runtime_privileged_path_used=1") != 1:
+        raise AssertionError("privileged package-install use is not tracked exactly once")
 
 
 def main() -> None:
@@ -98,9 +126,17 @@ def main() -> None:
     else:
         raise AssertionError("RED mutation passed after adding sudo to the preflight")
 
+    unknown = source.replace("printf 'sha256:%s\\n' \"${sha256_identity}\"", "printf 'UNKNOWN\\n'", 1)
+    try:
+        assert_contract(unknown)
+    except AssertionError:
+        pass
+    else:
+        raise AssertionError("RED mutation passed after adding UNKNOWN identity")
+
     print(
         "SETUP_TEST_RUNTIME_CONTRACT_RED_MATRIX=PASS "
-        f"required_clauses={len(REQUIRED_ONCE)} mutations={len(REQUIRED_ONCE) + 1}"
+        f"required_clauses={len(REQUIRED_ONCE)} mutations={len(REQUIRED_ONCE) + 2}"
     )
 
 
