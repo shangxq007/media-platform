@@ -6,7 +6,6 @@ import com.example.platform.render.domain.compile.executionplan.*;
 import com.example.platform.render.domain.compile.binding.*;
 import com.example.platform.render.domain.compile.ArtifactNodeType;
 import com.example.platform.render.infrastructure.ProviderType;
-import com.example.platform.render.infrastructure.RenderToolCapabilityInventory;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.*;
@@ -403,8 +402,6 @@ class RemotionExecutionPolicyTest {
     // --- Helpers ---
 
     private RemotionProviderReadiness createReadiness() {
-        RenderToolCapabilityInventory inventory = new RenderToolCapabilityInventory();
-        RemotionRuntimeAvailability avail = new RemotionRuntimeProbe(inventory).probe();
-        return RemotionProviderReadiness.from(avail);
+        return RemotionProviderReadiness.from(RemotionRuntimeAvailability.notChecked());
     }
 }

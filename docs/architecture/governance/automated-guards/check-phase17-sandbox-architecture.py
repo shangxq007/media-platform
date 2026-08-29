@@ -9,9 +9,6 @@ EXPECTED_PROCESS_BUILDER_SITES = {
     "sandbox-isolation-module/src/main/java/com/example/platform/sandbox/BubblewrapProcess.java": 1,
     "sandbox-isolation-module/src/main/java/com/example/platform/sandbox/ContainerEngineProcess.java": 1,
     "sandbox-isolation-module/src/main/java/com/example/platform/sandbox/LocalBoundedProcessLauncher.java": 1,
-    "render-module/src/main/java/com/example/platform/render/infrastructure/NodeEnvironmentCheck.java": 1,
-    "render-module/src/main/java/com/example/platform/render/infrastructure/RemotionEnvironmentCheck.java": 1,
-    "render-module/src/main/java/com/example/platform/render/infrastructure/RenderToolCapabilityInventory.java": 1,
 }
 
 def fail(message):

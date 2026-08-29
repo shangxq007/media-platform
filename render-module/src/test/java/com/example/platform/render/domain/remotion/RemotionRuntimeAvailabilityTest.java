@@ -1,240 +1,97 @@
 package com.example.platform.render.domain.remotion;
 
-import com.example.platform.render.infrastructure.RenderToolCapabilityInventory;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import com.example.platform.render.app.timeline.compile.RenderPlanPolicyGuard;
+import com.example.platform.render.domain.compile.ArtifactNodeType;
+import com.example.platform.render.domain.compile.binding.BoundProviderRef;
+import com.example.platform.render.domain.compile.executionplan.ExecutionEnvironmentTarget;
+import com.example.platform.render.domain.compile.executionplan.ExecutionPolicy;
+import com.example.platform.render.domain.compile.executionplan.RenderExecutionPlan;
+import com.example.platform.render.domain.compile.executionplan.RenderExecutionPlanId;
+import com.example.platform.render.domain.compile.executionplan.RenderExecutionStep;
+import com.example.platform.render.domain.compile.executionplan.RenderExecutionStepStatus;
+import com.example.platform.render.domain.compile.executionplan.RenderExecutionStepType;
+import com.example.platform.render.domain.compile.executionplan.RenderPlanPolicyResult;
 import com.example.platform.render.infrastructure.ProviderStatus;
 import com.example.platform.render.infrastructure.ProviderType;
-import com.example.platform.render.app.timeline.compile.RenderPlanPolicyGuard;
-import com.example.platform.render.domain.compile.executionplan.*;
-import com.example.platform.render.domain.compile.binding.*;
-import com.example.platform.render.domain.compile.ArtifactNodeType;
 import java.util.List;
 import java.util.Map;
-import org.junit.jupiter.api.*;
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
 
-/**
- * Tests for Remotion runtime availability detection.
- * Proves: safe probes, no execution, policy unchanged, diagnostics correct.
- */
+/** Fail-closed model tests after removal of ambient process-level runtime probing. */
 class RemotionRuntimeAvailabilityTest {
 
-    // --- Model tests ---
-
     @Test
-    @DisplayName("Default not-checked availability has executionReady=false")
-    void notCheckedDefaults() {
-        RemotionRuntimeAvailability avail = RemotionRuntimeAvailability.notChecked();
-        assertFalse(avail.executionReady());
-        assertTrue(avail.disabledByPolicy());
-        assertFalse(avail.documentGenerationReady());
-        assertFalse(avail.nodeAvailable());
-        assertFalse(avail.npmAvailable());
-        assertFalse(avail.npxAvailable());
+    void notCheckedAvailabilityFailsClosed() {
+        RemotionRuntimeAvailability availability = RemotionRuntimeAvailability.notChecked();
+
+        assertFalse(availability.executionReady());
+        assertTrue(availability.disabledByPolicy());
+        assertFalse(availability.documentGenerationReady());
+        assertFalse(availability.allToolsAvailable());
+        assertTrue(availability.hasMissingTools());
+        assertFalse(availability.issues().isEmpty());
     }
 
     @Test
-    @DisplayName("Tool status available helper works")
-    void toolStatusAvailable() {
-        RemotionRuntimeToolStatus status = RemotionRuntimeToolStatus.available("node", "v20.0.0");
-        assertTrue(status.isAvailable());
-        assertEquals("node", status.toolName());
-        assertEquals("v20.0.0", status.version());
-        assertNull(status.issue());
+    void toolStatusFactoriesRemainPureDiagnosticValues() {
+        RemotionRuntimeToolStatus available =
+                RemotionRuntimeToolStatus.available("node", "provider-bound-observation");
+        RemotionRuntimeToolStatus missing = RemotionRuntimeToolStatus.missing("npx");
+        RemotionRuntimeToolStatus failed =
+                RemotionRuntimeToolStatus.checkFailed("npm", "probe unavailable");
+
+        assertTrue(available.isAvailable());
+        assertEquals("provider-bound-observation", available.version());
+        assertNull(available.issue());
+        assertFalse(missing.isAvailable());
+        assertNotNull(missing.issue());
+        assertEquals(RemotionRuntimeAvailabilityStatus.CHECK_FAILED, failed.status());
     }
 
     @Test
-    @DisplayName("Tool status missing helper works")
-    void toolStatusMissing() {
-        RemotionRuntimeToolStatus status = RemotionRuntimeToolStatus.missing("npx");
-        assertFalse(status.isAvailable());
-        assertEquals("npx", status.toolName());
-        assertNull(status.version());
-        assertNotNull(status.issue());
-    }
+    void diagnosticToolFlagsCannotEnableExecutionOrProductionDispatch() {
+        RemotionRuntimeAvailability diagnostic = new RemotionRuntimeAvailability(
+                true,
+                "provider-bound-node",
+                true,
+                "provider-bound-npm",
+                true,
+                "provider-bound-npx",
+                false,
+                null,
+                true,
+                false,
+                true,
+                List.of(
+                        RemotionRuntimeToolStatus.available("node", "provider-bound-node"),
+                        RemotionRuntimeToolStatus.available("npm", "provider-bound-npm"),
+                        RemotionRuntimeToolStatus.available("npx", "provider-bound-npx")),
+                List.of());
 
-    @Test
-    @DisplayName("Tool status checkFailed helper works")
-    void toolStatusCheckFailed() {
-        RemotionRuntimeToolStatus status = RemotionRuntimeToolStatus.checkFailed("node", "timeout");
-        assertFalse(status.isAvailable());
-        assertEquals(RemotionRuntimeAvailabilityStatus.CHECK_FAILED, status.status());
-    }
+        RemotionProviderReadiness readiness = RemotionProviderReadiness.from(diagnostic);
 
-    // --- Probe tests (uses real inventory, environment-safe) ---
-
-    @Test
-    @DisplayName("Probe returns valid availability model")
-    void probeReturnsValidModel() {
-        RenderToolCapabilityInventory inventory = new RenderToolCapabilityInventory();
-        RemotionRuntimeProbe probe = new RemotionRuntimeProbe(inventory);
-
-        RemotionRuntimeAvailability avail = probe.probe();
-
-        assertNotNull(avail);
-        // executionReady must always be false
-        assertFalse(avail.executionReady());
-        // disabledByPolicy must always be true
-        assertTrue(avail.disabledByPolicy());
-        // documentGenerationReady must be true
-        assertTrue(avail.documentGenerationReady());
-        // remotionCliAvailable must be false (not probed)
-        assertFalse(avail.remotionCliAvailable());
-        // toolStatuses must not be empty
-        assertFalse(avail.toolStatuses().isEmpty());
-    }
-
-    @Test
-    @DisplayName("Probe never runs npx remotion")
-    void probeNeverRunsNpxRemotion() {
-        // The probe only runs node --version, npm --version, npx --version
-        // It never runs npx remotion or remotion render
-        // This is verified by code inspection and the fact that
-        // remotionCliAvailable is always false
-        RenderToolCapabilityInventory inventory = new RenderToolCapabilityInventory();
-        RemotionRuntimeProbe probe = new RemotionRuntimeProbe(inventory);
-
-        RemotionRuntimeAvailability avail = probe.probe();
-
-        assertFalse(avail.remotionCliAvailable());
-        // remotion-cli tool status should be NOT_CHECKED
-        assertTrue(avail.toolStatuses().stream()
-                .anyMatch(t -> "remotion-cli".equals(t.toolName())
-                        && t.status() == RemotionRuntimeAvailabilityStatus.NOT_CHECKED));
-    }
-
-    @Test
-    @DisplayName("Probe never runs npm install")
-    void probeNeverRunsNpmInstall() {
-        // Verified by code: probe only runs --version commands
-        RenderToolCapabilityInventory inventory = new RenderToolCapabilityInventory();
-        RemotionRuntimeProbe probe = new RemotionRuntimeProbe(inventory);
-        RemotionRuntimeAvailability avail = probe.probe();
-        assertNotNull(avail);
-        // If npm install ran, it would fail or take long — test would timeout
-    }
-
-    @Test
-    @DisplayName("Missing tools represented safely, not exception")
-    void missingToolsSafe() {
-        // Even if tools are missing, probe returns safe model
-        RenderToolCapabilityInventory inventory = new RenderToolCapabilityInventory();
-        RemotionRuntimeProbe probe = new RemotionRuntimeProbe(inventory);
-
-        RemotionRuntimeAvailability avail = probe.probe();
-
-        // May or may not have tools depending on environment
-        // But must never throw
-        assertNotNull(avail.toolStatuses());
-        assertNotNull(avail.issues());
-    }
-
-    // --- Inventory integration ---
-
-    @Test
-    @DisplayName("RenderToolCapabilityInventory includes npx detection")
-    void inventoryIncludesNpx() {
-        RenderToolCapabilityInventory inventory = new RenderToolCapabilityInventory();
-        List<RenderToolCapabilityInventory.ToolInventoryEntry> tools = inventory.detectTools();
-
-        assertTrue(tools.stream().anyMatch(e -> "npx".equals(e.name())),
-                "Inventory should include npx detection");
-    }
-
-    @Test
-    @DisplayName("Inventory includes node and npm")
-    void inventoryIncludesNodeAndNpm() {
-        RenderToolCapabilityInventory inventory = new RenderToolCapabilityInventory();
-        List<RenderToolCapabilityInventory.ToolInventoryEntry> tools = inventory.detectTools();
-
-        assertTrue(tools.stream().anyMatch(e -> "node".equals(e.name())));
-        assertTrue(tools.stream().anyMatch(e -> "npm".equals(e.name())));
-    }
-
-    @Test
-    @DisplayName("Missing npx does not fail inventory")
-    void missingNpxDoesNotFail() {
-        RenderToolCapabilityInventory inventory = new RenderToolCapabilityInventory();
-        // Should not throw even if npx is missing
-        List<RenderToolCapabilityInventory.ToolInventoryEntry> tools = inventory.detectTools();
-        assertNotNull(tools);
-        assertFalse(tools.isEmpty());
-    }
-
-    // --- Readiness diagnostics ---
-
-    @Test
-    @DisplayName("Provider readiness says executionReady=false")
-    void readinessExecutionReadyFalse() {
-        RenderToolCapabilityInventory inventory = new RenderToolCapabilityInventory();
-        RemotionRuntimeProbe probe = new RemotionRuntimeProbe(inventory);
-        RemotionRuntimeAvailability avail = probe.probe();
-        RemotionProviderReadiness readiness = RemotionProviderReadiness.from(avail);
-
+        assertTrue(readiness.runtimeToolsAvailable());
         assertFalse(readiness.executionReady());
-    }
-
-    @Test
-    @DisplayName("Provider readiness says productionEligible=false")
-    void readinessProductionEligibleFalse() {
-        RenderToolCapabilityInventory inventory = new RenderToolCapabilityInventory();
-        RemotionRuntimeProbe probe = new RemotionRuntimeProbe(inventory);
-        RemotionProviderReadiness readiness = RemotionProviderReadiness.from(probe.probe());
-
         assertFalse(readiness.productionEligible());
-    }
-
-    @Test
-    @DisplayName("Provider readiness says autoDispatch=false")
-    void readinessAutoDispatchFalse() {
-        RenderToolCapabilityInventory inventory = new RenderToolCapabilityInventory();
-        RemotionProviderReadiness readiness = RemotionProviderReadiness.from(
-                new RemotionRuntimeProbe(inventory).probe());
-
         assertFalse(readiness.autoDispatch());
-    }
-
-    @Test
-    @DisplayName("Provider readiness says documentGenerationReady=true")
-    void readinessDocumentGenerationReady() {
-        RenderToolCapabilityInventory inventory = new RenderToolCapabilityInventory();
-        RemotionProviderReadiness readiness = RemotionProviderReadiness.from(
-                new RemotionRuntimeProbe(inventory).probe());
-
-        assertTrue(readiness.documentGenerationReady());
-    }
-
-    @Test
-    @DisplayName("Provider readiness blocked reasons include policy")
-    void readinessBlockedReasons() {
-        RenderToolCapabilityInventory inventory = new RenderToolCapabilityInventory();
-        RemotionProviderReadiness readiness = RemotionProviderReadiness.from(
-                new RemotionRuntimeProbe(inventory).probe());
-
-        assertFalse(readiness.blockedReasons().isEmpty());
-        assertTrue(readiness.blockedReasons().stream()
-                .anyMatch(r -> r.contains("disabled by policy")));
-    }
-
-    @Test
-    @DisplayName("Provider readiness status is POC")
-    void readinessStatusPoc() {
-        RenderToolCapabilityInventory inventory = new RenderToolCapabilityInventory();
-        RemotionProviderReadiness readiness = RemotionProviderReadiness.from(
-                new RemotionRuntimeProbe(inventory).probe());
-
         assertEquals("POC", readiness.providerStatus());
+        assertTrue(readiness.blockedReasons().stream()
+                .anyMatch(reason -> reason.contains("disabled by policy")));
     }
 
-    // --- Policy guard safety ---
-
     @Test
-    @DisplayName("RenderPlanPolicyGuard rejects Remotion execution")
-    void policyGuardRejectsRemotion() {
+    void renderPlanPolicyStillRejectsRemotionExecution() {
         RenderPlanPolicyGuard guard = new RenderPlanPolicyGuard();
         BoundProviderRef remotionRef = new BoundProviderRef(
                 "remotion", ProviderStatus.POC, ProviderType.RENDER, "P2",
                 false, false, null, 200);
-        RenderExecutionStep exec = new RenderExecutionStep(
+        RenderExecutionStep execution = new RenderExecutionStep(
                 "s1", RenderExecutionStepType.EXECUTE_PROVIDER,
                 RenderExecutionStepStatus.PENDING, "n1", ArtifactNodeType.FINAL_RENDER,
                 "remotion", remotionRef, null, List.of(), false,
@@ -242,63 +99,29 @@ class RemotionRuntimeAvailabilityTest {
         RenderExecutionPlan plan = new RenderExecutionPlan(
                 RenderExecutionPlanId.fromBindingPlan("bp-1", "PRODUCTION"),
                 "bp-1", "tl-1", ExecutionPolicy.production(),
-                ExecutionEnvironmentTarget.LOCAL, List.of(exec), false, List.of());
+                ExecutionEnvironmentTarget.LOCAL, List.of(execution), false, List.of());
 
         RenderPlanPolicyResult result = guard.evaluate(plan, plan.policy());
+
         assertTrue(result.isRejected() || result.hasViolations());
-    }
-
-    @Test
-    @DisplayName("Remotion POC not production eligible")
-    void remotionPocNotProductionEligible() {
         assertFalse(ProviderStatus.POC.isProductionDispatchEligible());
-        assertTrue(ProviderStatus.POC.canBeConfiguredForDispatch());
-    }
-
-    // --- Safety ---
-
-    @Test
-    @DisplayName("Availability model contains no raw environment variables")
-    void noEnvironmentVariables() {
-        RenderToolCapabilityInventory inventory = new RenderToolCapabilityInventory();
-        RemotionRuntimeAvailability avail = new RemotionRuntimeProbe(inventory).probe();
-
-        String str = avail.toString();
-        // Should not contain PATH, HOME, or common env vars
-        assertFalse(str.contains("PATH="));
-        assertFalse(str.contains("HOME="));
     }
 
     @Test
-    @DisplayName("Availability model contains no local paths in public surfaces")
-    void noLocalPaths() {
-        RenderToolCapabilityInventory inventory = new RenderToolCapabilityInventory();
-        RemotionRuntimeAvailability avail = new RemotionRuntimeProbe(inventory).probe();
+    void diagnosticConstructionDoesNotAffectSemanticFingerprint() {
+        var before = com.example.platform.render.app.timeline.compile.RenderRequestFingerprint.generate(
+                "p", "r", "default_1080p", "PLAN_BASED");
+        RemotionRuntimeAvailability.notChecked();
+        var after = com.example.platform.render.app.timeline.compile.RenderRequestFingerprint.generate(
+                "p", "r", "default_1080p", "PLAN_BASED");
 
-        // Version strings are safe — first line of version output, truncated
-        assertNotNull(avail.nodeVersion());
+        assertEquals(before.value(), after.value());
     }
 
     @Test
-    @DisplayName("Runtime availability does not affect fingerprint")
-    void doesNotAffectFingerprint() {
-        com.example.platform.render.app.timeline.compile.RenderRequestFingerprint fp1 =
-                com.example.platform.render.app.timeline.compile.RenderRequestFingerprint.generate(
-                        "p", "r", "default_1080p", "PLAN_BASED");
-        // Probe in between
-        new RemotionRuntimeProbe(new RenderToolCapabilityInventory()).probe();
-        com.example.platform.render.app.timeline.compile.RenderRequestFingerprint fp2 =
-                com.example.platform.render.app.timeline.compile.RenderRequestFingerprint.generate(
-                        "p", "r", "default_1080p", "PLAN_BASED");
-
-        assertEquals(fp1.value(), fp2.value());
-    }
-
-    @Test
-    @DisplayName("Public API DTOs do not expose runtime availability")
-    void publicApiSafe() {
-        com.example.platform.render.api.dto.TimelineRevisionRenderRequest request =
-                new com.example.platform.render.api.dto.TimelineRevisionRenderRequest("default_1080p");
+    void publicApiDoesNotExposeRuntimeAvailability() {
+        var request = new com.example.platform.render.api.dto.TimelineRevisionRenderRequest(
+                "default_1080p");
         assertEquals("default_1080p", request.outputProfile());
     }
 }

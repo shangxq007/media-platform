@@ -212,12 +212,6 @@ class RemotionLocalExecutionAuditTest {
     // --- Helpers ---
 
     private RemotionProviderReadiness createReadiness() {
-        return RemotionProviderReadiness.from(
-                new com.example.platform.render.infrastructure.RenderToolCapabilityInventory() {
-                    @Override public boolean isToolAvailable(String n) { return "provider-a".equals(n); }
-                }.detectTools().isEmpty()
-                ? RemotionRuntimeAvailability.notChecked()
-                : new RemotionRuntimeProbe(
-                        new com.example.platform.render.infrastructure.RenderToolCapabilityInventory()).probe());
+        return RemotionProviderReadiness.from(RemotionRuntimeAvailability.notChecked());
     }
 }
