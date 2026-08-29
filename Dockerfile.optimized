@@ -13,7 +13,6 @@ COPY storage-module/build.gradle* storage-module/
 COPY extension-module/build.gradle* extension-module/
 COPY entitlement-module/build.gradle* entitlement-module/
 COPY billing-module/build.gradle* billing-module/
-COPY quota-billing-module/build.gradle* quota-billing-module/
 COPY outbox-event-module/build.gradle* outbox-event-module/
 COPY remote-render-worker/build.gradle* remote-render-worker/
 RUN ./gradlew dependencies --no-daemon 2>/dev/null || true

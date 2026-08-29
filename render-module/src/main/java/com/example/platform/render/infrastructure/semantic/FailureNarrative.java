@@ -25,16 +25,16 @@ public record FailureNarrative(
     }
 
     /**
-     * Create a billing failure narrative.
+     * Create a commercial admission failure narrative.
      */
-    public static FailureNarrative billingFailure(String reasonCode, String reasonMessage) {
+    public static FailureNarrative commercialAdmissionFailure(String reasonCode, String reasonMessage) {
         return new FailureNarrative(
-                "Billing check failed: " + reasonMessage,
+                "Commercial admission failed: " + reasonMessage,
                 reasonMessage,
-                "billing",
+                "commercial-admission",
                 List.of("Reason code: " + reasonCode),
-                "Please check your subscription or add credits.",
-                String.format("The render job was rejected because the billing check failed with code %s: %s",
+                "Review entitlement, quota, subscription, or billing action requirements.",
+                String.format("The render job was rejected by commercial admission with code %s: %s",
                         reasonCode, reasonMessage)
         );
     }

@@ -68,16 +68,16 @@ public class UnifiedExecutionTracer {
     }
 
     /**
-     * Add a billing decision node to the graph.
+     * Add a precomputed commercial decision node to the graph.
      */
-    public UnifiedRequestGraph traceBillingDecision(String requestId, String decision,
-                                                       String reasonCode, String reasonMessage,
-                                                       Double estimatedCost) {
+    public UnifiedRequestGraph traceCommercialDecision(String requestId, String decision,
+                                                         String reasonCode, String authorityVersion) {
         UnifiedRequestGraph graph = activeGraphs.get(requestId);
         if (graph == null) return null;
 
-        String nodeId = generateNodeId("billing");
-        GraphNode node = GraphNode.billingDecision(nodeId, decision, reasonCode, reasonMessage, estimatedCost);
+        String nodeId = generateNodeId("commercial");
+        GraphNode node = GraphNode.commercialDecision(
+                nodeId, decision, reasonCode, authorityVersion);
 
         // Link to execution state
         String parentId = findLastNodeId(graph, UnifiedRequestGraph.NodeType.EXECUTION_STATE_NODE);
@@ -103,7 +103,7 @@ public class UnifiedExecutionTracer {
         GraphNode node = GraphNode.policyDecision(nodeId, allowed, denyReason, discountPercent, multiplier);
 
         // Link to billing decision or execution state
-        String parentId = findLastNodeId(graph, UnifiedRequestGraph.NodeType.BILLING_DECISION_NODE);
+        String parentId = findLastNodeId(graph, UnifiedRequestGraph.NodeType.COMMERCIAL_DECISION_NODE);
         if (parentId == null) {
             parentId = findLastNodeId(graph, UnifiedRequestGraph.NodeType.EXECUTION_STATE_NODE);
         }
@@ -128,8 +128,8 @@ public class UnifiedExecutionTracer {
         String nodeId = generateNodeId("provider");
         GraphNode node = GraphNode.providerDecision(nodeId, selectedProvider, provider, reason, fallbackTriggered);
 
-        // Link to billing decision
-        String parentId = findLastNodeId(graph, UnifiedRequestGraph.NodeType.BILLING_DECISION_NODE);
+        // Link to commercial admission decision
+        String parentId = findLastNodeId(graph, UnifiedRequestGraph.NodeType.COMMERCIAL_DECISION_NODE);
 
         UnifiedRequestGraph updated = parentId != null
                 ? graph.addNodeWithParent(node, parentId, GraphEdge.CONSUMES)

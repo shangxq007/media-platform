@@ -10,7 +10,6 @@ import com.example.platform.billing.domain.SubscriptionCommand;
 import com.example.platform.billing.domain.SubscriptionCommandType;
 import com.example.platform.billing.domain.SubscriptionPlan;
 import com.example.platform.commerce.domain.ProductLineType;
-import com.example.platform.entitlement.app.EntitlementPolicyService;
 import com.example.platform.entitlement.app.EntitlementService;
 import com.example.platform.entitlement.app.WorkspaceEntitlementPoolService;
 import com.example.platform.entitlement.domain.EntitlementGrant;
@@ -43,7 +42,6 @@ public class PurchaseFulfillmentService implements PurchaseFulfillmentPort {
 
     private final SubscriptionBillingService subscriptionBillingService;
     private final CreditWalletService creditWalletService;
-    private final EntitlementPolicyService entitlementPolicyService;
     private final EntitlementService entitlementService;
     private final Optional<WorkspaceEntitlementPoolService> workspaceEntitlementPoolService;
     private final BillingLedgerService billingLedgerService;
@@ -52,13 +50,11 @@ public class PurchaseFulfillmentService implements PurchaseFulfillmentPort {
             SubscriptionBillingService subscriptionBillingService,
             CreditWalletService creditWalletService,
             BillingLedgerService billingLedgerService,
-            EntitlementPolicyService entitlementPolicyService,
             EntitlementService entitlementService,
             Optional<WorkspaceEntitlementPoolService> workspaceEntitlementPoolService) {
         this.subscriptionBillingService = subscriptionBillingService;
         this.creditWalletService = creditWalletService;
         this.billingLedgerService = billingLedgerService;
-        this.entitlementPolicyService = entitlementPolicyService;
         this.entitlementService = entitlementService;
         this.workspaceEntitlementPoolService = workspaceEntitlementPoolService;
     }
@@ -88,9 +84,6 @@ public class PurchaseFulfillmentService implements PurchaseFulfillmentPort {
     }
 
     private void fulfillBaseSubscription(PurchaseFulfillmentCommand command) {
-        if (command.tierKey() != null && !command.tierKey().isBlank()) {
-            entitlementPolicyService.setTier(command.tenantId(), command.tierKey());
-        }
         ensurePlan(command.planKey(), command.productCode(), Map.of());
         PrincipalRef principal = PrincipalRef.tenantScoped(
                 command.tenantId(), PrincipalType.USER, command.userId());
@@ -101,6 +94,11 @@ public class PurchaseFulfillmentService implements PurchaseFulfillmentPort {
                 "purchase:" + command.orderId() + ":base-subscription",
                 "commerce", "confirmed purchase", "purchase-" + command.orderId(),
                 command.occurredAt()));
+        if (command.bundleKey() != null && !command.bundleKey().isBlank()) {
+            PrincipalRef organization = PrincipalRef.tenantScoped(
+                    command.tenantId(), PrincipalType.ORGANIZATION, command.tenantId());
+            grantBundle(command, organization, "base-entitlement");
+        }
     }
 
     private void fulfillAddonSubscription(PurchaseFulfillmentCommand command) {
@@ -116,14 +114,20 @@ public class PurchaseFulfillmentService implements PurchaseFulfillmentPort {
                 command.occurredAt()));
 
         if (command.bundleKey() != null && !command.bundleKey().isBlank()) {
-            entitlementService.execute(new EntitlementGrantCommand(
-                    EntitlementCommandType.GRANT, principal, "ent_" + command.orderId(),
-                    command.bundleKey(), command.quotaProfileCode(), "COMMERCE_PURCHASE",
-                    command.orderId(), "purchase:" + command.orderId() + ":entitlement",
-                    "commerce", "confirmed purchase", "purchase-" + command.orderId(),
-                    command.occurredAt(),
-                    command.occurredAt().plus(command.periodDays(), ChronoUnit.DAYS), 0));
+            grantBundle(command, principal, "addon-entitlement");
         }
+    }
+
+    private void grantBundle(
+            PurchaseFulfillmentCommand command, PrincipalRef principal, String commandSuffix) {
+        entitlementService.execute(new EntitlementGrantCommand(
+                EntitlementCommandType.GRANT, principal,
+                "ent_" + command.orderId() + "_" + principal.principalType().name().toLowerCase(),
+                command.bundleKey(), command.quotaProfileCode(), "COMMERCE_PURCHASE",
+                command.orderId(), "purchase:" + command.orderId() + ":" + commandSuffix,
+                "commerce", "confirmed purchase", "purchase-" + command.orderId(),
+                command.occurredAt(),
+                command.occurredAt().plus(command.periodDays(), ChronoUnit.DAYS), 0));
     }
 
     private void fulfillCreditPack(PurchaseFulfillmentCommand command) {

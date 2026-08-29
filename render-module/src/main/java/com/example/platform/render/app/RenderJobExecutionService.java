@@ -32,7 +32,10 @@ import com.example.platform.shared.events.RenderJobFailedEvent;
 import com.example.platform.shared.events.RenderJobStatusChangedEvent;
 import com.example.platform.notification.app.NotificationEventPublisher;
 import com.example.platform.shared.Ids;
-import com.example.platform.entitlement.app.EntitlementPort;
+import com.example.platform.shared.commercial.PrincipalRef;
+import com.example.platform.shared.commercial.PrincipalType;
+import com.example.platform.shared.commercial.QuotaConsumptionPort;
+import com.example.platform.shared.commercial.QuotaConsumptionRequest;
 import com.example.platform.shared.web.TenantContext;
 import org.jooq.Record;
 import org.slf4j.Logger;
@@ -42,6 +45,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.YearMonth;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -58,7 +63,7 @@ public class RenderJobExecutionService {
     private static final Logger log = LoggerFactory.getLogger(RenderJobExecutionService.class);
 
     private final RenderJobRepository renderJobRepository;
-    private final RenderQuotaService quotaService;
+    private final QuotaConsumptionPort quotaConsumption;
     private final AiGatewayPort aiGatewayPort;
     private final RenderProviderRouter renderProviderRouter;
     private final ProviderRuntimeEngine providerRuntimeEngine;
@@ -80,7 +85,6 @@ public class RenderJobExecutionService {
     private final RenderWorkerQueueProperties renderWorkerQueueProperties;
     private final PipelineDagExecutorService pipelineDagExecutorService;
     private final TimelineExtensionsReader timelineExtensionsReader;
-    private final EntitlementPort entitlementPort;
     private final RenderCacheHashInvalidationNotifier hashInvalidationNotifier;
     private final AiRenderScriptNormalizer aiRenderScriptNormalizer;
     private final RenderJobClaimService claimService;
@@ -88,7 +92,7 @@ public class RenderJobExecutionService {
 
     public RenderJobExecutionService(
             RenderJobRepository renderJobRepository,
-            RenderQuotaService quotaService,
+            QuotaConsumptionPort quotaConsumption,
             AiGatewayPort aiGatewayPort,
             RenderProviderRouter renderProviderRouter,
             ProviderRuntimeEngine providerRuntimeEngine,
@@ -115,15 +119,13 @@ public class RenderJobExecutionService {
             PipelineDagExecutorService pipelineDagExecutorService,
             TimelineExtensionsReader timelineExtensionsReader,
             @org.springframework.beans.factory.annotation.Autowired(required = false)
-            EntitlementPort entitlementPort,
-            @org.springframework.beans.factory.annotation.Autowired(required = false)
             RenderCacheHashInvalidationNotifier hashInvalidationNotifier,
             @org.springframework.beans.factory.annotation.Autowired(required = false)
             AiRenderScriptNormalizer aiRenderScriptNormalizer,
             RenderJobClaimService claimService,
             RenderJobFailureService failureService) {
         this.renderJobRepository = renderJobRepository;
-        this.quotaService = quotaService;
+        this.quotaConsumption = quotaConsumption;
         this.aiGatewayPort = aiGatewayPort;
         this.renderProviderRouter = renderProviderRouter;
         this.providerRuntimeEngine = providerRuntimeEngine;
@@ -144,7 +146,6 @@ public class RenderJobExecutionService {
         this.renderWorkerQueueProperties = renderWorkerQueueProperties;
         this.pipelineDagExecutorService = pipelineDagExecutorService;
         this.timelineExtensionsReader = timelineExtensionsReader;
-        this.entitlementPort = entitlementPort;
         this.hashInvalidationNotifier = hashInvalidationNotifier;
         this.aiRenderScriptNormalizer = aiRenderScriptNormalizer;
         this.claimService = claimService;
@@ -419,7 +420,7 @@ public class RenderJobExecutionService {
         stateMachine.transition(jobId, RenderJobStatus.COMPLETING, RenderJobStatus.COMPLETED,
                 "Job successfully completed", "RenderJobExecutionService");
         updateStatus(jobId, projectId, RenderJobStatus.COMPLETING, RenderJobStatus.COMPLETED, null);
-        quotaService.consumeQuota(tenantId, jobId, "render", 1);
+        consumeRenderQuota(tenantId, jobId);
 
         notificationEventPublisher.publish(
                 new ArtifactCreatedEvent(artifactId, jobId, projectId, storageUri, Instant.now()));
@@ -531,13 +532,19 @@ public class RenderJobExecutionService {
     }
 
     private String resolveTier(String tenantId) {
-        if (entitlementPort != null && tenantId != null && !tenantId.isBlank()) {
-            String tier = entitlementPort.getTier(tenantId);
-            if (tier != null && !tier.isBlank()) {
-                return tier.toUpperCase();
-            }
-        }
-        return "FREE";
+        return "ENTITLED";
+    }
+
+    private void consumeRenderQuota(String tenantId, String jobId) {
+        Instant now = Instant.now();
+        YearMonth month = YearMonth.from(now.atZone(ZoneOffset.UTC));
+        Instant periodStart = month.atDay(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+        Instant periodEnd = month.plusMonths(1).atDay(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+        quotaConsumption.consume(new QuotaConsumptionRequest(
+                PrincipalRef.tenantScoped(tenantId, PrincipalType.ORGANIZATION, tenantId),
+                "render.job.create", 1, periodStart, periodEnd,
+                "render-job:" + jobId + ":completion",
+                "render-job:" + jobId, "render completion " + jobId, now));
     }
 
     private boolean shouldDeferNatronRender(String profile) {

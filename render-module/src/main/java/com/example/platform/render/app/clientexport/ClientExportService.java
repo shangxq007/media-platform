@@ -1,12 +1,15 @@
 package com.example.platform.render.app.clientexport;
 
-import com.example.platform.entitlement.domain.ExportCapabilityPolicy;
 import com.example.platform.render.api.port.ClientExportArtifactPort;
+import com.example.platform.render.app.clientexport.ClientExportPresetCatalog.Preset;
 import com.example.platform.render.domain.clientexport.ClientExportSession;
-import com.example.platform.render.infrastructure.ExportPolicyService;
-import com.example.platform.render.infrastructure.ExportPolicyService.ExportPreset;
 import com.example.platform.render.infrastructure.clientexport.ClientExportSessionRepository;
 import com.example.platform.shared.Ids;
+import com.example.platform.shared.commercial.CommercialAdmissionPort;
+import com.example.platform.shared.commercial.CommercialAdmissionRequest;
+import com.example.platform.shared.commercial.CommercialDecision;
+import com.example.platform.shared.commercial.PrincipalRef;
+import com.example.platform.shared.commercial.PrincipalType;
 import com.example.platform.storage.contract.ChecksummingInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -14,6 +17,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.Instant;
+import java.time.YearMonth;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
@@ -32,17 +37,20 @@ public class ClientExportService {
 
     private final Path storageRoot;
     private final ClientExportSessionRepository repository;
-    private final ExportPolicyService exportPolicy;
+    private final ClientExportPresetCatalog presetCatalog;
+    private final CommercialAdmissionPort commercialAdmission;
     private final Optional<ClientExportArtifactPort> artifactPort;
 
     public ClientExportService(
             @Value("${app.storage.local-root:/tmp/platform}") String storageRoot,
             ClientExportSessionRepository repository,
-            ExportPolicyService exportPolicy,
+            ClientExportPresetCatalog presetCatalog,
+            CommercialAdmissionPort commercialAdmission,
             @Autowired(required = false) ClientExportArtifactPort artifactPort) {
         this.storageRoot = Path.of(storageRoot);
         this.repository = repository;
-        this.exportPolicy = exportPolicy;
+        this.presetCatalog = presetCatalog;
+        this.commercialAdmission = commercialAdmission;
         this.artifactPort = Optional.ofNullable(artifactPort);
     }
 
@@ -65,24 +73,29 @@ public class ClientExportService {
             String tenantId, String workspaceId, String projectId, String userId,
             String tier, String requestedPreset, String timelineSnapshotId) {
 
-        ExportCapabilityPolicy capability = ExportCapabilityPolicy.forTier(tier);
-        ExportPreset preset = exportPolicy.getPreset(requestedPreset);
-
-        if (preset == null) {
-            preset = exportPolicy.getDefaultPreset(tier);
+        Preset preset;
+        if (requestedPreset == null || requestedPreset.isBlank()) {
+            preset = presetCatalog.findPreset("client_720p_watermarked")
+                    .orElseThrow(() -> new IllegalStateException("Default client export preset is not catalogued"));
+        } else {
+            preset = presetCatalog.findPreset(requestedPreset)
+                    .orElseThrow(() -> new IllegalArgumentException("Unknown export preset: " + requestedPreset));
+        }
+        Instant now = Instant.now();
+        YearMonth month = YearMonth.from(now.atZone(ZoneOffset.UTC));
+        Instant periodStart = month.atDay(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+        Instant periodEnd = month.plusMonths(1).atDay(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+        PrincipalRef principal = new PrincipalRef(tenantId, PrincipalType.USER, userId, workspaceId, null);
+        CommercialDecision admission = decidePresetAdmission(
+                principal, projectId, preset, periodStart, periodEnd, now);
+        if (!admission.allowed()) {
+            throw new IllegalArgumentException("Export entitlement denied: " + admission.reason());
         }
 
-        if (!capability.isPresetAllowed(preset.name())) {
-            throw new IllegalArgumentException(
-                    "Preset '" + preset.name() + "' not available for tier " + tier);
-        }
-
-        boolean watermark = capability.watermarkRequired() || preset.watermark();
+        boolean watermark = preset.watermark();
         String renderLocation = "client".equals(preset.providerKey()) ? "CLIENT" : "SERVER";
 
         String sessionId = Ids.newId("cex");
-        Instant now = Instant.now();
-
         ClientExportSession session = new ClientExportSession(
                 sessionId, tenantId, workspaceId, projectId, userId,
                 timelineSnapshotId, "CLIENT_BROWSER", preset.name(),
@@ -96,16 +109,10 @@ public class ClientExportService {
 
         repository.insert(session);
 
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> availablePresets = (List<Map<String, Object>>) (List<?>)
-                exportPolicy.getAvailablePresets(tier).stream()
-                .map(p -> Map.<String, Object>of(
-                        "name", p.name(),
-                        "displayName", p.displayName(),
-                        "resolution", p.resolution(),
-                        "format", p.format(),
-                        "watermark", capability.watermarkRequired() || p.watermark(),
-                        "renderLocation", "client".equals(p.providerKey()) ? "CLIENT" : "SERVER"))
+        List<Map<String, Object>> availablePresets = presetCatalog.listPresets().stream()
+                .filter(candidate -> decidePresetAdmission(
+                        principal, projectId, candidate, periodStart, periodEnd, now).allowed())
+                .map(ClientExportService::toAvailablePreset)
                 .toList();
 
         log.info("Client export session created id={} tenant={} tier={} preset={} location={}",
@@ -117,6 +124,35 @@ public class ClientExportService {
                 watermark, estimateVideoBitrate(preset), estimateAudioBitrate(preset),
                 300,
                 renderLocation, availablePresets);
+    }
+
+    private CommercialDecision decidePresetAdmission(
+            PrincipalRef principal,
+            String projectId,
+            Preset preset,
+            Instant periodStart,
+            Instant periodEnd,
+            Instant now) {
+        return commercialAdmission.decide(new CommercialAdmissionRequest(
+                principal,
+                "client-export.create",
+                "export.preset." + preset.name(),
+                "render.job.create",
+                1,
+                periodStart,
+                periodEnd,
+                "client-export:" + principal.tenantId() + ":" + projectId + ":" + preset.name(),
+                now));
+    }
+
+    private static Map<String, Object> toAvailablePreset(Preset preset) {
+        return Map.of(
+                "name", preset.name(),
+                "displayName", preset.displayName(),
+                "resolution", preset.resolution(),
+                "format", preset.format(),
+                "watermark", preset.watermark(),
+                "renderLocation", "client".equals(preset.providerKey()) ? "CLIENT" : "SERVER");
     }
 
     public Optional<ClientExportSession> findSession(String sessionId) {
@@ -255,7 +291,7 @@ public class ClientExportService {
                 .resolve("exports");
     }
 
-    private static int estimateVideoBitrate(ExportPreset preset) {
+    private static int estimateVideoBitrate(Preset preset) {
         return switch (preset.height()) {
             case 2160 -> 20_000_000;
             case 1080 -> 8_000_000;
@@ -265,7 +301,7 @@ public class ClientExportService {
         };
     }
 
-    private static int estimateAudioBitrate(ExportPreset preset) {
+    private static int estimateAudioBitrate(Preset preset) {
         return preset.audioCodec().equals("opus") ? 128_000 : 192_000;
     }
 }

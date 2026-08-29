@@ -5,12 +5,20 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.example.platform.render.domain.clientexport.ClientExportSession;
 import com.example.platform.render.infrastructure.ExportPolicyService;
 import com.example.platform.render.infrastructure.clientexport.ClientExportSessionRepository;
 import com.example.platform.render.testsupport.RenderTestSchemaFixture;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
+import com.example.platform.shared.commercial.CommercialAdmissionPort;
+import com.example.platform.shared.commercial.CommercialDecision;
+import com.example.platform.shared.commercial.CommercialDecisionReason;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import javax.sql.DataSource;
@@ -31,6 +39,7 @@ class ClientExportServiceTest extends PostgresTestContainerSupport {
     private ClientExportSessionRepository repository;
     private ClientExportService service;
     private ExportPolicyService exportPolicy;
+    private CommercialAdmissionPort commercialAdmission;
 
     @TempDir
     java.nio.file.Path tempDir;
@@ -53,7 +62,16 @@ class ClientExportServiceTest extends PostgresTestContainerSupport {
         var jdbc = new JdbcTemplate(dataSource);
         repository = new ClientExportSessionRepository(jdbc);
         exportPolicy = new ExportPolicyService();
-        service = new ClientExportService(tempDir.toString(), repository, exportPolicy, null);
+        commercialAdmission = mock(CommercialAdmissionPort.class);
+        when(commercialAdmission.decide(any())).thenAnswer(invocation -> {
+            var request = invocation.getArgument(0, com.example.platform.shared.commercial.CommercialAdmissionRequest.class);
+            boolean allowed = !request.entitlementKey().endsWith("team_4k");
+            return new CommercialDecision(request.principal(), request.action(), allowed,
+                    allowed ? CommercialDecisionReason.ALLOWED : CommercialDecisionReason.NOT_ENTITLED,
+                    java.util.List.of(), "test-v1", request.traceId(), request.decidedAt());
+        });
+        service = new ClientExportService(
+                tempDir.toString(), repository, exportPolicy, commercialAdmission, null);
     }
 
     @Test
@@ -88,11 +106,11 @@ class ClientExportServiceTest extends PostgresTestContainerSupport {
     }
 
     @Test
-    void freeTierCannotUsePreset() {
+    void commercialAdmissionDenialRejectsPresetRegardlessOfTierLabel() {
         assertThrows(IllegalArgumentException.class, () ->
                 service.createSessionWithConfig(
                         "tenant-1", "ws-1", "proj-1", "user-1",
-                        "FREE", "team_4k", "snap-1"));
+                        "ENTERPRISE", "team_4k", "snap-1"));
     }
 
     @Test
@@ -101,7 +119,8 @@ class ClientExportServiceTest extends PostgresTestContainerSupport {
                 "tenant-1", "ws-1", "proj-1", "user-1",
                 "FREE", null, null);
 
-        var newService = new ClientExportService(tempDir.toString(), repository, exportPolicy, null);
+        var newService = new ClientExportService(
+                tempDir.toString(), repository, exportPolicy, commercialAdmission, null);
         var found = newService.findSession(config.sessionId());
         assertTrue(found.isPresent());
         assertEquals("CREATED", found.get().status());
@@ -222,10 +241,14 @@ class ClientExportServiceTest extends PostgresTestContainerSupport {
     void exportConfigIncludesAvailablePresets() {
         var config = service.createSessionWithConfig(
                 "tenant-1", "ws-1", "proj-1", "user-1",
-                "FREE", null, null);
+                "UNRECOGNIZED_PRESENTATION_TIER", null, null);
 
         assertFalse(config.availablePresets().isEmpty());
         assertTrue(config.availablePresets().stream()
                 .anyMatch(p -> p.get("name").equals("free_720p_watermarked")));
+        assertFalse(config.availablePresets().stream()
+                .anyMatch(p -> p.get("name").equals("team_4k")));
+        verify(commercialAdmission).decide(argThat(request ->
+                request.entitlementKey().equals("export.preset.free_720p_watermarked")));
     }
 }

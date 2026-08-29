@@ -1,52 +1,39 @@
 #!/usr/bin/env python3
-"""Network-free guard for the bounded commercial authority contract V1.
+"""Fail-closed implementation guard for H5 commercial-authority convergence.
 
-Validates the contract, repository inventory/ledger, exact base, bounded changed
-paths, evidence line anchors, frozen writer-candidate sets, and source drift
-markers. ``--self-test`` applies in-memory mutations and succeeds only when
-every negative control is rejected. It never modifies repository files.
+The guard is network-free, accepts both dirty pre-commit worktrees and append-forward
+committed candidates, and never assumes that retired source paths still exist.
 """
 
 from __future__ import annotations
 
 import argparse
-import copy
 import json
 import re
 import subprocess
 import sys
 from collections import Counter
 from pathlib import Path
+from typing import Iterable
 
 
 REPO = Path(__file__).resolve().parents[4]
 GOV = REPO / "docs" / "architecture" / "governance"
 CONTRACT = GOV / "billing-entitlement-payment-authority-convergence-bounded-architecture-contract-v1.md"
 INVENTORY = GOV / "billing-entitlement-payment-authority-convergence-repository-inventory-v1.json"
-GUARD = Path(__file__).resolve()
-BASE_SHA = "e02579181ba3049ae65ed81080c93a7212f5833d"
-BASE_TREE = "b67136e3a4b4e08688091bad0c4dad30d841978d"
 ACCEPTED_CANDIDATE_SHA = "586be5a08e90482ddcda9530fb66bd7783637361"
+ACCEPTED_CANDIDATE_TREE = "18e093b75887d3e975550489c8e411b8dfdd6690"
+FRONTEND_MONEY_PATH = (
+    "federation-query-module/src/main/java/com/example/platform/federation/graphql/dto/MoneyDto.java"
+)
+FRONTEND_CLASSIFICATION = "NON_AUTHORITATIVE_FRONTEND_PROJECTION_OUT_OF_SCOPE"
+SOURCE_ROOTS = (
+    "shared-kernel", "billing-module", "entitlement-module", "payment-module",
+    "commerce-module", "render-module", "platform-app", "worker-fabric-module",
+    "media-execution-plan-module", "federation-query-module",
+)
 
-ALLOWED_CHANGED_PATHS = {
-    CONTRACT.relative_to(REPO).as_posix(),
-    INVENTORY.relative_to(REPO).as_posix(),
-    GUARD.relative_to(REPO).as_posix(),
-}
-DISPOSITIONS = {
-    "REUSE_AS_CANONICAL",
-    "REUSE_MECHANICS_ONLY",
-    "MIGRATE_REDESIGN",
-    "DELETE_SHADOW",
-    "DEFER",
-    "UNCLASSIFIED",
-}
-ENTRY_FIELDS = {
-    "id", "path", "symbol", "current_role", "current_authority",
-    "target_authority", "disposition", "rationale", "dependents",
-    "migration_action", "guard_requirement", "evidence_lines",
-}
-SEPARATIONS = {
+REQUIRED_CONTRACT_TOKENS = {
     "Payment != Billing != Subscription != Entitlement != Quota != Usage != Cost != Price",
     "ObservedRuntimeUsage != BillableUsage",
     "Quota != Capacity",
@@ -55,39 +42,93 @@ SEPARATIONS = {
     "SubscriptionPlan != CapabilityContract",
     "Entitlement != RuntimeAvailability",
     "PaymentStatus != EntitlementAuthority",
-}
-REQUIRED_CONTRACT_TOKENS = {
-    "ONE_CANONICAL_CORE_MANY_ENTITLED_PRODUCT_SURFACES_V1",
-    "SINGLE_CANONICAL_QUOTA_USAGE_WRITER_V1",
-    "MULTIPLE_CANONICAL_WRITER_CANDIDATES",
-    "CapabilityExists && RuntimeAvailable && Entitled && PolicyAllowed && WithinQuota",
-    "NOT_ENTITLED", "POLICY_DENIED", "QUOTA_EXCEEDED", "SUBSCRIPTION_INACTIVE",
-    "COMMERCIAL_ACCOUNT_SUSPENDED", "BILLING_ACTION_REQUIRED", "PAYMENT_FAILED",
-    "TRIAL_EXPIRED",
-    "BILLING_ENTITLEMENT_PAYMENT_DECISION_RECOVERY=PASS",
-    "COMMERCIAL_AUTHORITY_CONTRACT=ACCEPTED_WITH_BOUNDED_REFINEMENTS",
-    "READY_FOR_COMMERCIAL_AUTHORITY_IMPLEMENTATION=YES",
-    "H5_COMMERCIAL_AUTHORITY_IMPLEMENTATION_AUTHORIZATION=GO",
-    "H5_INDEPENDENT_CHATGPT_ARCHITECTURE_REVIEW=PASS_WITH_BOUNDED_REFINEMENTS",
     "EFFECTIVE_CAPABILITY_VIEW_IS_DERIVED_APPLICATION_PROJECTION_V1",
     "ENTITLEMENT_AND_QUOTA_REMAIN_SEPARATE_AUTHORITIES_V1",
     "EXECUTION_COST_IS_NOT_COMMERCIAL_PRICE_AUTHORITY_V1",
     "CANONICAL_MONEY_FLOATING_POINT_AUTHORITY_COUNT=0",
-    "BLOCKERS=0",
+    FRONTEND_CLASSIFICATION,
 }
-WRITER_SETS = {
-    "quota_usage": {"INV-002", "INV-005", "INV-009"},
-    "subscription_state": {"INV-026", "INV-027", "INV-028"},
-    "billing_invoice_state": {"INV-021", "INV-028", "INV-029"},
-    "payment_transaction_state": {"INV-032", "INV-035", "INV-036"},
-    "entitlement_grants": {"INV-037", "INV-038", "INV-039"},
+
+REQUIRED_PRODUCTION_PATHS = {
+    "shared-kernel/src/main/java/com/example/platform/shared/commercial/Money.java",
+    "shared-kernel/src/main/java/com/example/platform/shared/commercial/PrincipalRef.java",
+    "shared-kernel/src/main/java/com/example/platform/shared/commercial/CommercialDecision.java",
+    "shared-kernel/src/main/java/com/example/platform/shared/commercial/EntitlementDecision.java",
+    "shared-kernel/src/main/java/com/example/platform/shared/commercial/QuotaDecision.java",
+    "shared-kernel/src/main/java/com/example/platform/shared/commercial/ExecutionCostProjection.java",
+    "shared-kernel/src/main/java/com/example/platform/shared/commercial/CommercialAdmissionPort.java",
+    "shared-kernel/src/main/java/com/example/platform/shared/commercial/QuotaConsumptionPort.java",
+    "entitlement-module/src/main/java/com/example/platform/entitlement/app/EntitlementService.java",
+    "entitlement-module/src/main/java/com/example/platform/entitlement/app/QuotaUsageAuthority.java",
+    "entitlement-module/src/main/java/com/example/platform/entitlement/app/QuotaDecisionService.java",
+    "entitlement-module/src/main/java/com/example/platform/entitlement/app/CommercialAdmissionService.java",
+    "billing-module/src/main/java/com/example/platform/usage/infrastructure/ObservedRuntimeUsageJdbcRepository.java",
+    "billing-module/src/main/java/com/example/platform/billing/usage/BillableUsage.java",
+    "billing-module/src/main/java/com/example/platform/billing/infrastructure/BillableUsageJdbcRepository.java",
+    "billing-module/src/main/java/com/example/platform/billing/infrastructure/BillingInvoiceRepository.java",
+    "billing-module/src/main/java/com/example/platform/billing/infrastructure/BillingLedgerJdbcRepository.java",
+    "payment-module/src/main/java/com/example/platform/payment/infrastructure/PaymentTransactionJdbcRepository.java",
+    "commerce-module/src/main/java/com/example/platform/commerce/infrastructure/ProductCatalogJdbcRepository.java",
+    "platform-app/src/main/java/com/example/platform/capability/effective/EffectiveCapabilityView.java",
+    "platform-app/src/main/java/com/example/platform/capability/effective/EffectiveCapabilityInputs.java",
 }
-TARGET_WRITERS = {
-    "quota_usage": "INV-002",
-    "subscription_state": "INV-026",
-    "billing_invoice_state": "INV-029",
-    "payment_transaction_state": "INV-032",
-    "entitlement_grants": "INV-037",
+
+RETIRED_JAVA_SHADOW_PATHS = {
+    "render-module/src/main/java/com/example/platform/render/app/QuotaUsageRepository.java",
+    "render-module/src/main/java/com/example/platform/render/app/RenderQuotaService.java",
+    "quota-billing-module/src/main/java/com/example/platform/quota/app/QuotaService.java",
+    "render-module/src/main/java/com/example/platform/render/infrastructure/queue/UsageRecordRepository.java",
+    "render-module/src/main/java/com/example/platform/render/infrastructure/billing/decision/BillingDecisionEngine.java",
+    "render-module/src/main/java/com/example/platform/render/infrastructure/billing/decision/BillingDecision.java",
+    "render-module/src/main/java/com/example/platform/render/infrastructure/billing/decision/BillingDecisionRequest.java",
+    "render-module/src/main/java/com/example/platform/render/infrastructure/billing/decision/BillingDecisionTraceNode.java",
+    "render-module/src/main/java/com/example/platform/render/infrastructure/billing/policy/PricingEngine.java",
+    "render-module/src/main/java/com/example/platform/render/infrastructure/billing/policy/CreditSystem.java",
+    "render-module/src/main/java/com/example/platform/render/infrastructure/billing/BillingEnforcementService.java",
+    "render-module/src/main/java/com/example/platform/render/infrastructure/billing/RenderBillingRecordRepository.java",
+    "billing-module/src/main/java/com/example/platform/billing/infrastructure/SubscriptionContractRepository.java",
+    "payment-module/src/main/java/com/example/platform/payment/app/CheckoutPaymentBindingRegistry.java",
+    "billing-module/src/main/java/com/example/platform/billing/domain/PaymentLedgerEntry.java",
+    "entitlement-module/src/main/java/com/example/platform/entitlement/domain/ExportCapabilityPolicy.java",
+    "entitlement-module/src/main/java/com/example/platform/entitlement/domain/ProviderAccessPolicy.java",
+    "entitlement-module/src/main/java/com/example/platform/entitlement/app/EntitlementPort.java",
+}
+
+TABLE_WRITERS = {
+    "quota_usage": "entitlement-module/src/main/java/com/example/platform/entitlement/infrastructure/QuotaUsageJdbcRepository.java",
+    "quota_usage_operation": "entitlement-module/src/main/java/com/example/platform/entitlement/infrastructure/QuotaUsageJdbcRepository.java",
+    "subscription_contract": "billing-module/src/main/java/com/example/platform/billing/infrastructure/SubscriptionJdbcRepository.java",
+    "subscription_command": "billing-module/src/main/java/com/example/platform/billing/infrastructure/SubscriptionJdbcRepository.java",
+    "subscription_plan": "billing-module/src/main/java/com/example/platform/billing/infrastructure/SubscriptionJdbcRepository.java",
+    "entitlement_grant": "entitlement-module/src/main/java/com/example/platform/entitlement/infrastructure/EntitlementGrantRepository.java",
+    "entitlement_command_audit": "entitlement-module/src/main/java/com/example/platform/entitlement/infrastructure/EntitlementCommandAuditRepository.java",
+    "entitlement_override": "entitlement-module/src/main/java/com/example/platform/entitlement/infrastructure/EntitlementOverrideRepository.java",
+    "entitlement_bundle": "entitlement-module/src/main/java/com/example/platform/entitlement/infrastructure/EntitlementBundleRepository.java",
+    "quota_profile": "entitlement-module/src/main/java/com/example/platform/entitlement/infrastructure/QuotaProfileRepository.java",
+    "workspace_member_entitlement_grant": "entitlement-module/src/main/java/com/example/platform/entitlement/infrastructure/WorkspaceMemberEntitlementGrantRepository.java",
+    "observed_runtime_usage": "billing-module/src/main/java/com/example/platform/usage/infrastructure/ObservedRuntimeUsageJdbcRepository.java",
+    "billable_usage": "billing-module/src/main/java/com/example/platform/billing/infrastructure/BillableUsageJdbcRepository.java",
+    "pricing_rule": "billing-module/src/main/java/com/example/platform/billing/infrastructure/CommercialPricingJdbcRepository.java",
+    "custom_pricing_rule": "billing-module/src/main/java/com/example/platform/billing/infrastructure/CommercialPricingJdbcRepository.java",
+    "discount_policy": "billing-module/src/main/java/com/example/platform/billing/infrastructure/CommercialPricingJdbcRepository.java",
+    "rated_usage_record": "billing-module/src/main/java/com/example/platform/billing/infrastructure/RatedUsageJdbcRepository.java",
+    "billing_invoice": "billing-module/src/main/java/com/example/platform/billing/infrastructure/BillingInvoiceRepository.java",
+    "billing_invoice_command": "billing-module/src/main/java/com/example/platform/billing/infrastructure/BillingInvoiceRepository.java",
+    "invoice_line_item": "billing-module/src/main/java/com/example/platform/billing/infrastructure/BillingInvoiceRepository.java",
+    "billing_ledger_entry": "billing-module/src/main/java/com/example/platform/billing/infrastructure/BillingLedgerJdbcRepository.java",
+    "credit_wallet": "billing-module/src/main/java/com/example/platform/billing/infrastructure/CreditWalletJdbcRepository.java",
+    "credit_transaction": "billing-module/src/main/java/com/example/platform/billing/infrastructure/CreditWalletJdbcRepository.java",
+    "credit_reservation": "billing-module/src/main/java/com/example/platform/billing/infrastructure/CreditWalletJdbcRepository.java",
+    "credit_wallet_command": "billing-module/src/main/java/com/example/platform/billing/infrastructure/CreditWalletJdbcRepository.java",
+    "payment_transaction": "payment-module/src/main/java/com/example/platform/payment/infrastructure/PaymentTransactionJdbcRepository.java",
+    "payment_command": "payment-module/src/main/java/com/example/platform/payment/infrastructure/PaymentTransactionJdbcRepository.java",
+    "provider_webhook_receipt": "payment-module/src/main/java/com/example/platform/payment/infrastructure/PaymentTransactionJdbcRepository.java",
+    "payment_refund": "payment-module/src/main/java/com/example/platform/payment/infrastructure/PaymentTransactionJdbcRepository.java",
+    "payment_outbox": "payment-module/src/main/java/com/example/platform/payment/infrastructure/PaymentTransactionJdbcRepository.java",
+    "commerce_product": "commerce-module/src/main/java/com/example/platform/commerce/infrastructure/ProductCatalogJdbcRepository.java",
+    "commercial_offering": "commerce-module/src/main/java/com/example/platform/commerce/infrastructure/ProductCatalogJdbcRepository.java",
+    "provider_product_mapping": "commerce-module/src/main/java/com/example/platform/commerce/infrastructure/ProductCatalogJdbcRepository.java",
+    "product_catalog_command": "commerce-module/src/main/java/com/example/platform/commerce/infrastructure/ProductCatalogJdbcRepository.java",
 }
 
 
@@ -97,443 +138,410 @@ def git(*args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
-def validate_contract(text: str) -> list[str]:
-    errors: list[str] = []
-    for token in sorted(SEPARATIONS | REQUIRED_CONTRACT_TOKENS):
-        if token not in text:
-            errors.append(f"contract missing token: {token}")
+def load_production_sources(repo: Path) -> dict[str, str]:
+    files: dict[str, str] = {}
+    for root_name in SOURCE_ROOTS:
+        root = repo / root_name / "src" / "main"
+        if not root.is_dir():
+            continue
+        for path in sorted(root.rglob("*.java")):
+            relative = path.relative_to(repo).as_posix()
+            if "/build/" not in relative:
+                files[relative] = path.read_text(encoding="utf-8", errors="replace")
+    return files
 
-    clauses = [int(value) for value in re.findall(r"^### C(\d+) —", text, re.MULTILINE)]
-    if clauses != list(range(1, 28)):
-        errors.append(f"contract clauses are not exact ordered C1..C27: {clauses}")
 
-    phases = [int(value) for value in re.findall(r"^\| I(\d+) \|", text, re.MULTILINE)]
-    if phases != list(range(11)):
-        errors.append(f"implementation phases are not exact ordered I0..I10: {phases}")
+def validate_accepted_ancestor(object_exists: bool, is_ancestor: bool) -> list[str]:
+    if not object_exists:
+        return ["ACCEPTED_ANCESTOR_MISSING"]
+    if not is_ancestor:
+        return ["ACCEPTED_ANCESTOR_NOT_IN_HISTORY"]
+    return []
 
-    forbidden_authorization = (
-        "IMPLEMENTATION_AUTHORIZATION=NO_GO_PENDING_INDEPENDENT_CHATGPT_ACCEPTANCE" in text
-        or "EffectiveCapabilityView is owned by H5" in text
+
+def _writer_paths(files: dict[str, str], table: str) -> list[str]:
+    token = re.escape(table)
+    patterns = (
+        re.compile(rf"\b(?:insertInto|update|deleteFrom|mergeInto)\s*\(\s*{token}\b", re.I),
+        re.compile(rf"\b(?:INSERT\s+INTO|UPDATE|DELETE\s+FROM|MERGE\s+INTO)\s+{token}\b", re.I),
     )
-    if forbidden_authorization:
-        errors.append("contract retains superseded pre-acceptance authority text")
+    upper_token = table.upper()
+    return sorted(path for path, source in files.items()
+                  if upper_token in source.upper()
+                  and any(pattern.search(source) for pattern in patterns))
+
+
+def _strip_java_comments(source: str) -> str:
+    source = re.sub(r"/\*.*?\*/", "", source, flags=re.S)
+    return re.sub(r"//[^\n]*", "", source)
+
+
+def validate_implementation(files: dict[str, str]) -> tuple[list[str], dict[str, int]]:
+    errors: list[str] = []
+    metrics: dict[str, int] = {}
+
+    missing = sorted(REQUIRED_PRODUCTION_PATHS - set(files))
+    metrics["REQUIRED_CANONICAL_PATH_MISSING_COUNT"] = len(missing)
+    errors.extend(f"REQUIRED_CANONICAL_PATH_MISSING:{path}" for path in missing)
+
+    retired_present = sorted(RETIRED_JAVA_SHADOW_PATHS & set(files))
+    render_shadow_symbols = sum(
+        len(re.findall(r"\b(?:BillingDecisionEngine|RenderQuotaService|PricingEngine|CreditSystem|BillingEnforcementService|RenderBillingRecordRepository)\b", source))
+        for path, source in files.items() if path.startswith("render-module/src/main/")
+    )
+    metrics["RENDER_COMMERCIAL_SHADOW_COUNT"] = len(retired_present) + render_shadow_symbols
+    if metrics["RENDER_COMMERCIAL_SHADOW_COUNT"]:
+        errors.append(
+            "RENDER_COMMERCIAL_SHADOW_COUNT="
+            f"{metrics['RENDER_COMMERCIAL_SHADOW_COUNT']} paths={retired_present}"
+        )
+
+    writer_errors = 0
+    for table, expected_path in sorted(TABLE_WRITERS.items()):
+        actual = _writer_paths(files, table)
+        metrics[f"WRITER_{table}"] = len(actual)
+        if actual != [expected_path]:
+            writer_errors += 1
+            errors.append(
+                f"WRITER_{table}=FAIL expected={[expected_path]} actual={actual}"
+            )
+    metrics["CANONICAL_TABLE_WRITER_ERROR_COUNT"] = writer_errors
+
+    money_pattern = re.compile(
+        r"\b(?:double|Double|float|Float)\s+\w*(?:amount|price|credit|balance|charge|invoice|ledger)\w*",
+        re.I,
+    )
+    money_hits = 0
+    for path, source in files.items():
+        if not path.startswith(("shared-kernel/", "billing-module/", "payment-module/", "commerce-module/")):
+            continue
+        if (path == FRONTEND_MONEY_PATH or path.endswith("ExecutionCostProjection.java")
+                or "Cost" in Path(path).name):
+            continue
+        money_hits += len(money_pattern.findall(source))
+    metrics["CANONICAL_MONEY_FLOATING_POINT_AUTHORITY_COUNT"] = money_hits
+    if money_hits:
+        errors.append(f"CANONICAL_MONEY_FLOATING_POINT_AUTHORITY_COUNT={money_hits} expected=0")
+
+    plan_branch = re.compile(
+        r"(?:case\s+\"(?:FREE|PRO|TEAM|ENTERPRISE|EXPERIMENTAL)\"|"
+        r"\"(?:FREE|PRO|TEAM|ENTERPRISE|EXPERIMENTAL)\"\s*\.equals\s*\()",
+        re.I,
+    )
+    capability_term = re.compile(r"\b(?:capability|provider|runtime|gpu|preset|effect|feature)\b", re.I)
+    plan_hits = 0
+    for path, source in files.items():
+        if not path.startswith(("entitlement-module/src/main/", "commerce-module/src/main/")):
+            continue
+        stripped = _strip_java_comments(source)
+        if plan_branch.search(stripped) and capability_term.search(stripped):
+            plan_hits += 1
+    metrics["PLAN_SPECIFIC_CAPABILITY_BRANCH_COUNT"] = plan_hits
+    if plan_hits:
+        errors.append(f"PLAN_SPECIFIC_CAPABILITY_BRANCH_COUNT={plan_hits} expected=0")
+
+    effective_sources = {
+        path: source for path, source in files.items()
+        if path.startswith("platform-app/src/main/java/com/example/platform/capability/effective/")
+    }
+    effective_text = "\n".join(effective_sources.values())
+    persistence_pattern = re.compile(
+        r"\b(?:JdbcTemplate|DSLContext|Repository|EntityManager|@Transactional|insertInto|update\s*\(|deleteFrom|ConcurrentHashMap)\b"
+    )
+    effective_persistence = len(persistence_pattern.findall(effective_text))
+    metrics["EFFECTIVE_CAPABILITY_PERSISTENCE_HITS"] = effective_persistence
+    if effective_persistence:
+        errors.append(f"EFFECTIVE_CAPABILITY_PERSISTENCE_HITS={effective_persistence} expected=0")
+    required_inputs = {
+        "CAPABILITY_LIFECYCLE", "H1_RUNTIME_AVAILABILITY", "H5_ENTITLEMENT",
+        "H5_COMMERCIAL_QUOTA", "ROLE_WORKSPACE_POLICY",
+    }
+    missing_inputs = sorted(token for token in required_inputs if token not in effective_text)
+    metrics["EFFECTIVE_CAPABILITY_DISTINCT_INPUT_COUNT"] = 5 - len(missing_inputs)
+    if missing_inputs:
+        errors.append(f"EFFECTIVE_CAPABILITY_INPUTS_MISSING={missing_inputs}")
+    h1_internal_effective = len(re.findall(
+        r"RuntimeEligibilityEvaluator|RuntimeEligibilityDecision|ProviderCompatibilityGraph|CompatibilityKernel|workerfabric",
+        effective_text,
+    ))
+    metrics["EFFECTIVE_CAPABILITY_H1_INTERNAL_IMPORT_HITS"] = h1_internal_effective
+    if h1_internal_effective:
+        errors.append(f"EFFECTIVE_CAPABILITY_H1_INTERNAL_IMPORT_HITS={h1_internal_effective} expected=0")
+
+    observed_mutations = 0
+    observed_pattern = re.compile(
+        r"\b(?:UPDATE|DELETE\s+FROM|\.update\s*\(|deleteFrom\s*\()\s*\(?\s*OBSERVED_RUNTIME_USAGE\b",
+        re.I,
+    )
+    for source in files.values():
+        observed_mutations += len(observed_pattern.findall(source))
+    metrics["OBSERVED_RUNTIME_USAGE_MUTATION_WRITER_COUNT"] = observed_mutations
+    if observed_mutations:
+        errors.append(f"OBSERVED_RUNTIME_USAGE_MUTATION_WRITER_COUNT={observed_mutations} expected=0")
+    billable = files.get(
+        "billing-module/src/main/java/com/example/platform/billing/usage/BillableUsage.java", ""
+    )
+    required_billable = {
+        "observedUsageId", "meteringRuleId", "meteringRuleVersion",
+        "transformationKind", "sourceObservationTimestamp", "provenanceReference",
+    }
+    missing_billable = sorted(token for token in required_billable if token not in billable)
+    metrics["BILLABLE_USAGE_PROVENANCE_FIELD_COUNT"] = len(required_billable) - len(missing_billable)
+    if missing_billable:
+        errors.append(f"BILLABLE_USAGE_PROVENANCE_FIELDS_MISSING={missing_billable}")
+
+    raw_payload_pattern = re.compile(
+        r"\b(?:raw_payload|rawPayloadColumn|payload_json|WEBHOOK_BODY|setRawPayload)\b",
+        re.I,
+    )
+    raw_payload_hits = sum(
+        len(raw_payload_pattern.findall(source)) for path, source in files.items()
+        if path.startswith("payment-module/src/main/")
+    )
+    metrics["RAW_PAYMENT_WEBHOOK_PAYLOAD_PERSISTENCE_HITS"] = raw_payload_hits
+    if raw_payload_hits:
+        errors.append(f"RAW_PAYMENT_WEBHOOK_PAYLOAD_PERSISTENCE_HITS={raw_payload_hits} expected=0")
+
+    payment_entitlement_imports = sum(
+        len(re.findall(r"^import\s+com\.example\.platform\.(?:entitlement|subscription)\.", source, re.M))
+        for path, source in files.items() if path.startswith("payment-module/src/main/")
+    )
+    metrics["PAYMENT_TO_ENTITLEMENT_AUTHORITY_IMPORT_HITS"] = payment_entitlement_imports
+    if payment_entitlement_imports:
+        errors.append(f"PAYMENT_TO_ENTITLEMENT_AUTHORITY_IMPORT_HITS={payment_entitlement_imports} expected=0")
+
+    h1_import_pattern = re.compile(
+        r"^import\s+com\.example\.platform\.(?:workerfabric|execution\.compatibility|render\.infrastructure\.(?:provider|scheduler|capacity|reservation))\.",
+        re.M,
+    )
+    h5_h1_imports = sum(
+        len(h1_import_pattern.findall(source)) for path, source in files.items()
+        if path.startswith(("billing-module/src/main/", "entitlement-module/src/main/",
+                            "payment-module/src/main/", "commerce-module/src/main/"))
+    )
+    metrics["H5_TO_H1_INTERNAL_IMPORT_HITS"] = h5_h1_imports
+    if h5_h1_imports:
+        errors.append(f"H5_TO_H1_INTERNAL_IMPORT_HITS={h5_h1_imports} expected=0")
+
+    commercial_import_pattern = re.compile(
+        r"^import\s+com\.example\.platform\.(?:billing|entitlement|payment|commerce|quota)\.",
+        re.M,
+    )
+    h1_h5_imports = sum(
+        len(commercial_import_pattern.findall(source)) for path, source in files.items()
+        if path.startswith(("worker-fabric-module/src/main/", "media-execution-plan-module/src/main/",
+                            "render-module/src/main/"))
+    )
+    metrics["H1_TO_H5_COMMERCIAL_AUTHORITY_IMPORT_HITS"] = h1_h5_imports
+    if h1_h5_imports:
+        errors.append(f"H1_TO_H5_COMMERCIAL_AUTHORITY_IMPORT_HITS={h1_h5_imports} expected=0")
+
+    frontend_present = int(FRONTEND_MONEY_PATH in files)
+    metrics["FRONTEND_MONEY_PROJECTION_EXPLICIT_EXCLUSION_COUNT"] = frontend_present
+    if not frontend_present:
+        errors.append("FRONTEND_MONEY_PROJECTION_EXPLICIT_EXCLUSION_COUNT=0 expected=1")
+
+    billing_reconciliation = files.get(
+        "billing-module/src/main/java/com/example/platform/billing/app/ReconciliationService.java", ""
+    )
+    payment_shadow_hits = sum(
+        billing_reconciliation.count(token)
+        for token in ("paymentLedger", "addPaymentEntry", "PaymentLedgerEntry")
+    )
+    metrics["BILLING_PAYMENT_LEDGER_SHADOW_HITS"] = payment_shadow_hits
+    if payment_shadow_hits:
+        errors.append(f"BILLING_PAYMENT_LEDGER_SHADOW_HITS={payment_shadow_hits} expected=0")
+
+    return sorted(set(errors)), metrics
+
+
+def validate_contract(text: str) -> list[str]:
+    errors = [f"CONTRACT_MISSING_TOKEN:{token}" for token in sorted(REQUIRED_CONTRACT_TOKENS)
+              if token not in text]
+    clauses = [int(value) for value in re.findall(r"^### C(\d+) —", text, re.M)]
+    if clauses != list(range(1, 28)):
+        errors.append(f"CONTRACT_CLAUSE_ORDER={clauses} expected=1..27")
+    phases = [int(value) for value in re.findall(r"^\| I(\d+) \|", text, re.M)]
+    if phases != list(range(11)):
+        errors.append(f"CONTRACT_PHASE_ORDER={phases} expected=0..10")
     return errors
 
 
-def validate_inventory(
-    data: dict, *, check_evidence: bool = True, check_drift: bool = True
-) -> tuple[list[str], dict[str, int]]:
+def _delete_shadow_retired(entry_id: str, path: str, files: dict[str, str]) -> bool:
+    if entry_id == "INV-010":
+        settings = (REPO / "settings.gradle.kts").read_text(encoding="utf-8")
+        platform_build = (REPO / "platform-app/build.gradle.kts").read_text(encoding="utf-8")
+        return "quota-billing-module" not in settings + platform_build and not (REPO / "quota-billing-module").exists()
+    if entry_id == "INV-036":
+        source = files.get(path, "")
+        return all(token not in source for token in ("paymentLedger", "addPaymentEntry", "PaymentLedgerEntry"))
+    return path not in files and not (REPO / path).is_file()
+
+
+def validate_inventory(data: dict, files: dict[str, str]) -> tuple[list[str], dict[str, int]]:
     errors: list[str] = []
     metrics: dict[str, int] = {}
-
-    if data.get("schema_version") != 1:
-        errors.append("schema_version must be 1")
-    if data.get("base_sha") != BASE_SHA or data.get("base_tree") != BASE_TREE:
-        errors.append("inventory base SHA/tree mismatch")
-    if set(data.get("allowed_dispositions", [])) != DISPOSITIONS:
-        errors.append("allowed_dispositions does not equal frozen enum")
-    if set(data.get("required_entry_fields", [])) != ENTRY_FIELDS:
-        errors.append("required_entry_fields does not equal frozen schema")
-
     entries = data.get("inventory")
-    if not isinstance(entries, list) or not entries:
-        return errors + ["inventory must be a non-empty list"], metrics
+    if not isinstance(entries, list):
+        return ["INVENTORY_NOT_A_LIST"], metrics
+    ids = [entry.get("id") for entry in entries]
+    metrics["INVENTORY_ENTRY_COUNT"] = len(entries)
+    metrics["INVENTORY_DUPLICATE_ID_COUNT"] = len(ids) - len(set(ids))
+    metrics["INVENTORY_UNCLASSIFIED_COUNT"] = sum(
+        entry.get("disposition") == "UNCLASSIFIED" for entry in entries
+    )
+    if metrics["INVENTORY_DUPLICATE_ID_COUNT"]:
+        errors.append("INVENTORY_DUPLICATE_IDS")
+    if metrics["INVENTORY_UNCLASSIFIED_COUNT"]:
+        errors.append("INVENTORY_UNCLASSIFIED")
 
-    ids: list[str] = []
-    disposition_counts: Counter[str] = Counter()
-    by_id: dict[str, dict] = {}
-    for index, entry in enumerate(entries):
-        if not isinstance(entry, dict):
-            errors.append(f"inventory[{index}] is not an object")
-            continue
-        missing = ENTRY_FIELDS - set(entry)
-        if missing:
-            errors.append(f"inventory[{index}] missing fields: {sorted(missing)}")
-            continue
-        entry_id = entry["id"]
-        ids.append(entry_id)
-        by_id[entry_id] = entry
-        disposition = entry["disposition"]
-        disposition_counts[disposition] += 1
-        if not re.fullmatch(r"INV-\d{3}", str(entry_id)):
-            errors.append(f"invalid inventory id: {entry_id}")
-        if disposition not in DISPOSITIONS:
-            errors.append(f"{entry_id}: invalid disposition {disposition}")
-        for field in ENTRY_FIELDS - {"dependents", "evidence_lines"}:
-            if entry.get(field) is None or str(entry.get(field)).strip() == "":
-                errors.append(f"{entry_id}: blank required field {field}")
-        if not isinstance(entry["dependents"], list) or not entry["dependents"]:
-            errors.append(f"{entry_id}: dependents must be non-empty list")
-        if not isinstance(entry["evidence_lines"], list) or not entry["evidence_lines"]:
-            errors.append(f"{entry_id}: evidence_lines must be non-empty list")
+    frontend = [entry for entry in entries if entry.get("path") == FRONTEND_MONEY_PATH]
+    frontend_ok = len(frontend) == 1 and frontend[0].get("disposition") == FRONTEND_CLASSIFICATION
+    metrics["FRONTEND_PROJECTION_RECLASSIFIED_COUNT"] = int(frontend_ok)
+    if not frontend_ok:
+        errors.append("FRONTEND_PROJECTION_RECLASSIFICATION_MISSING")
 
-        source = REPO / str(entry["path"])
-        if not source.is_file():
-            errors.append(f"{entry_id}: missing source path {entry['path']}")
-            continue
-        if check_evidence:
-            lines = source.read_text(encoding="utf-8", errors="replace").splitlines()
-            for evidence in entry["evidence_lines"]:
-                if not isinstance(evidence, dict) or set(evidence) != {"start", "end", "contains"}:
-                    errors.append(f"{entry_id}: malformed evidence line object")
-                    continue
-                start, end = evidence["start"], evidence["end"]
-                if not isinstance(start, int) or not isinstance(end, int) or start < 1 or end < start or end > len(lines):
-                    errors.append(f"{entry_id}: invalid evidence range {start}-{end}")
-                    continue
-                segment = "\n".join(lines[start - 1:end])
-                if evidence["contains"] not in segment:
-                    errors.append(
-                        f"{entry_id}: evidence token absent at {entry['path']}:{start}-{end}: "
-                        f"{evidence['contains']}"
-                    )
+    delete_entries = [entry for entry in entries if entry.get("disposition") == "DELETE_SHADOW"]
+    retired = [entry for entry in delete_entries
+               if _delete_shadow_retired(str(entry.get("id")), str(entry.get("path")), files)]
+    metrics["ACCEPTED_DELETE_SHADOW_COUNT"] = len(delete_entries)
+    metrics["ACCEPTED_DELETE_SHADOW_RETIRED_COUNT"] = len(retired)
+    if len(retired) != len(delete_entries):
+        remaining = sorted(str(entry.get("id")) for entry in delete_entries if entry not in retired)
+        errors.append(f"ACCEPTED_DELETE_SHADOWS_REMAIN={remaining}")
 
-    duplicate_count = len(ids) - len(set(ids))
-    unclassified_count = disposition_counts["UNCLASSIFIED"]
-    metrics["inventory_entry_count"] = len(entries)
-    metrics["duplicate_inventory_id_count"] = duplicate_count
-    metrics["unclassified_count"] = unclassified_count
-    if duplicate_count:
-        errors.append(f"duplicate inventory IDs: {duplicate_count}")
-    if unclassified_count:
-        errors.append(f"UNCLASSIFIED entries: {unclassified_count}")
-
-    summary = data.get("summary", {})
-    expected_summary = {
-        "inventory_entry_count": len(entries),
-        "duplicate_inventory_id_count": duplicate_count,
-        "unclassified_count": unclassified_count,
-    }
-    for key, computed in expected_summary.items():
-        if summary.get(key) != computed:
-            errors.append(f"summary {key}={summary.get(key)} computed={computed}")
-    declared_counts = summary.get("disposition_counts", {})
-    for disposition in sorted(DISPOSITIONS):
-        if declared_counts.get(disposition) != disposition_counts[disposition]:
-            errors.append(
-                f"disposition count {disposition}={declared_counts.get(disposition)} "
-                f"computed={disposition_counts[disposition]}"
-            )
-    if sum(declared_counts.values()) != len(entries):
-        errors.append("declared disposition counts do not sum to inventory size")
-
-    writer_sets = data.get("writer_candidate_sets", [])
-    if len(writer_sets) != 5:
-        errors.append(f"writer candidate category count must be 5, got {len(writer_sets)}")
-    seen_categories: set[str] = set()
-    for writer_set in writer_sets:
-        category = writer_set.get("category")
-        seen_categories.add(category)
-        if writer_set.get("status") != "MULTIPLE_CANONICAL_WRITER_CANDIDATES":
-            errors.append(f"{category}: missing MULTIPLE_CANONICAL_WRITER_CANDIDATES status")
-        candidates = writer_set.get("candidates", [])
-        candidate_ids = {candidate.get("inventory_id") for candidate in candidates}
-        if candidate_ids != WRITER_SETS.get(category, set()):
-            errors.append(f"{category}: candidate set {sorted(candidate_ids)}")
-        if len(candidates) < 2:
-            errors.append(f"{category}: duplicate writers were not identified")
-        targets = [candidate for candidate in candidates if candidate.get("target_canonical_writer") is True]
-        if len(targets) != 1:
-            errors.append(f"{category}: target canonical writer count={len(targets)}")
-        elif targets[0].get("inventory_id") != TARGET_WRITERS.get(category):
-            errors.append(f"{category}: wrong target canonical writer")
-        if not str(writer_set.get("canonical_authority", "")).strip():
-            errors.append(f"{category}: blank canonical_authority")
-        for candidate_id in candidate_ids:
-            if candidate_id not in by_id:
-                errors.append(f"{category}: unknown inventory candidate {candidate_id}")
-    if seen_categories != set(WRITER_SETS):
-        errors.append(f"writer categories mismatch: {sorted(seen_categories)}")
-
-    storage_tables = data.get("storage_tables", [])
-    if not storage_tables:
-        errors.append("storage_tables is empty")
-    for table in storage_tables:
-        path = REPO / str(table.get("path", ""))
-        match = re.fullmatch(r"(\d+)-(\d+)", str(table.get("lines", "")))
-        if not path.is_file() or not match:
-            errors.append(f"invalid storage table evidence: {table}")
-            continue
-        line_count = len(path.read_text(encoding="utf-8", errors="replace").splitlines())
-        if int(match.group(1)) < 1 or int(match.group(2)) > line_count:
-            errors.append(f"storage table evidence out of bounds: {table.get('table')}")
-
-    if check_drift:
-        assertions = data.get("source_drift_assertions", [])
-        assertion_ids = [assertion.get("id") for assertion in assertions]
-        if len(assertion_ids) != len(set(assertion_ids)) or len(assertions) < 10:
-            errors.append("source drift assertions are missing or duplicated")
-        for assertion in assertions:
-            path = REPO / str(assertion.get("path", ""))
-            if not path.is_file():
-                errors.append(f"{assertion.get('id')}: drift path missing")
-                continue
-            text = path.read_text(encoding="utf-8", errors="replace")
-            actual = text.count(str(assertion.get("pattern", "")))
-            expected = assertion.get("expected_count")
-            if actual != expected:
-                errors.append(
-                    f"{assertion.get('id')}: source drift count actual={actual} expected={expected}"
-                )
-
+    declared = data.get("summary", {}).get("disposition_counts", {})
+    computed = Counter(str(entry.get("disposition")) for entry in entries)
+    all_dispositions = set(declared) | set(computed)
+    normalized_declared = {key: int(declared.get(key, 0)) for key in all_dispositions}
+    normalized_computed = {key: int(computed.get(key, 0)) for key in all_dispositions}
+    if normalized_declared != normalized_computed:
+        errors.append(f"INVENTORY_DISPOSITION_SUMMARY_DRIFT declared={declared} computed={dict(computed)}")
     return errors, metrics
 
 
-def repository_checks() -> tuple[list[str], dict[str, int]]:
-    errors: list[str] = []
-    metrics: dict[str, int] = {}
-
-    trailing_whitespace_lines = 0
-    missing_final_newline_files = 0
-    for artifact in [CONTRACT, INVENTORY, GUARD]:
-        artifact_text = artifact.read_text(encoding="utf-8")
-        trailing_whitespace_lines += sum(
-            1 for line in artifact_text.splitlines() if line.rstrip(" \t") != line
-        )
-        if not artifact_text.endswith("\n"):
-            missing_final_newline_files += 1
-    metrics["artifact_trailing_whitespace_lines"] = trailing_whitespace_lines
-    metrics["artifact_missing_final_newline_files"] = missing_final_newline_files
-    if trailing_whitespace_lines:
-        errors.append(f"new artifacts contain trailing whitespace lines={trailing_whitespace_lines}")
-    if missing_final_newline_files:
-        errors.append(f"new artifacts missing final newline files={missing_final_newline_files}")
-
-    head = git("rev-parse", "HEAD").stdout.strip()
-    origin = git("rev-parse", "origin/main").stdout.strip()
-    base_tree = git("rev-parse", f"{BASE_SHA}^{{tree}}").stdout.strip()
-    if base_tree != BASE_TREE:
-        errors.append(f"base tree drift: {base_tree}")
-    if origin != BASE_SHA:
-        errors.append(f"origin/main drift: {origin}")
-
-    # The refinement guard works on the independently accepted candidate and
-    # on exactly one append-forward bounded-refinement commit above it.
-    committed_refinement = head != ACCEPTED_CANDIDATE_SHA
-    if committed_refinement:
-        parent = git("rev-parse", "HEAD^").stdout.strip()
-        commit_count = git("rev-list", "--count", f"{ACCEPTED_CANDIDATE_SHA}..HEAD").stdout.strip()
-        if parent != ACCEPTED_CANDIDATE_SHA or commit_count != "1":
-            errors.append(
-                f"refinement history must be exactly one commit on accepted candidate: "
-                f"head={head} parent={parent} count={commit_count}"
-            )
-
-    changed: set[str] = set()
-    change_commands = [
-        ("diff", "--name-only"),
-        ("diff", "--cached", "--name-only"),
-        ("ls-files", "--others", "--exclude-standard"),
-    ]
-    if committed_refinement:
-        change_commands.append(("diff", "--name-only", f"{ACCEPTED_CANDIDATE_SHA}..HEAD"))
-    for args in change_commands:
-        result = git(*args)
-        if result.returncode != 0:
-            errors.append(f"git {' '.join(args)} failed: {result.stderr.strip()}")
-        changed.update(line for line in result.stdout.splitlines() if line)
-    out_of_scope = sorted(changed - ALLOWED_CHANGED_PATHS)
-    if out_of_scope:
-        errors.append(f"out-of-scope changed paths: {out_of_scope}")
-    staged = git("diff", "--cached", "--name-only").stdout.splitlines()
-    if staged:
-        errors.append(f"staged changes are not allowed: {staged}")
-    metrics["changed_path_count"] = len(changed)
-
-    technical_files = [
-        REPO / "media-execution-plan-module/src/main/java/com/example/platform/execution/compatibility/CompatibilityKernel.java",
-        REPO / "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/RuntimeEligibilityEvaluator.java",
-        REPO / "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/RuntimeEligibilityReason.java",
-    ]
-    commercial_import = re.compile(r"^import com\.example\.platform\.(billing|entitlement|payment|commerce|quota)\.", re.M)
-    coupling_hits = sum(
-        len(commercial_import.findall(path.read_text(encoding="utf-8")))
-        for path in technical_files
-    )
-    metrics["technical_commercial_import_hits"] = coupling_hits
-    if coupling_hits != 0:
-        errors.append(f"H1 technical/commercial import coupling hits={coupling_hits}")
-
-    render_import = re.compile(r"^import com\.example\.platform\.(billing|entitlement|quota)\.", re.M)
-    render_import_hits = 0
-    for path in (REPO / "render-module/src/main").rglob("*.java"):
-        render_import_hits += len(render_import.findall(path.read_text(encoding="utf-8", errors="replace")))
-    metrics["render_commercial_import_hits"] = render_import_hits
-    if render_import_hits < 3:
-        errors.append("expected Render cross-module commercial imports were not reproduced")
-
-    forbidden_names = re.compile(r"ProTimeline|EnterpriseRenderGraph|FreeAudioMix|Capability\.proOnly")
-    plan_capability_hits = 0
-    for path in REPO.rglob("*.java"):
-        relative = path.relative_to(REPO).as_posix()
-        if "/src/main/" not in relative or "capabil" not in relative.lower():
-            continue
-        plan_capability_hits += len(forbidden_names.findall(path.read_text(encoding="utf-8", errors="replace")))
-    metrics["plan_name_in_capability_hits"] = plan_capability_hits
-    if plan_capability_hits:
-        errors.append(f"plan-specific capability symbols found={plan_capability_hits}")
-
-    effective_hits = 0
-    for path in REPO.rglob("*.java"):
-        relative = path.relative_to(REPO).as_posix()
-        if "/src/main/" in relative:
-            effective_hits += path.read_text(encoding="utf-8", errors="replace").count("EffectiveCapabilityView")
-    metrics["existing_effective_capability_view_hits"] = effective_hits
-    if effective_hits != 0:
-        errors.append(f"base inventory expected no EffectiveCapabilityView, found {effective_hits}")
-
-    raw_payload_paths: set[str] = set()
-    field_pattern = re.compile(r"\bString\s+(?:rawPayload|payload)\b")
-    for base in [REPO / "payment-module/src/main/java/com/example/platform/payment/domain",
-                 REPO / "payment-module/src/main/java/com/example/platform/payment/api/dto"]:
-        for path in base.rglob("*.java"):
-            if field_pattern.search(path.read_text(encoding="utf-8", errors="replace")):
-                raw_payload_paths.add(path.relative_to(REPO).as_posix())
-    expected_payload_paths = {
-        "payment-module/src/main/java/com/example/platform/payment/domain/VerifyPaymentCommand.java",
-        "payment-module/src/main/java/com/example/platform/payment/api/dto/ConfirmPaymentRequest.java",
-    }
-    metrics["raw_provider_payload_leak_paths"] = len(raw_payload_paths)
-    if raw_payload_paths != expected_payload_paths:
-        errors.append(f"raw provider payload leak set drift: {sorted(raw_payload_paths)}")
-
-    money_pattern = re.compile(
-        r"\b(?:double|Double)\s+(?:amount|price|cost|balance|estimatedCost|actualCost|finalPrice|computeCost|storageCost|apiCost)\w*"
-    )
-    money_hits = 0
-    money_paths: set[str] = set()
-    for module in ["billing-module", "payment-module", "commerce-module", "render-module", "federation-query-module"]:
-        for path in (REPO / module / "src/main").rglob("*.java"):
-            count = len(money_pattern.findall(path.read_text(encoding="utf-8", errors="replace")))
-            if count:
-                money_hits += count
-                money_paths.add(path.relative_to(REPO).as_posix())
-    required_unsafe_money_paths = {
-        "render-module/src/main/java/com/example/platform/render/infrastructure/billing/policy/PricingEngine.java",
-        "render-module/src/main/java/com/example/platform/render/infrastructure/billing/policy/CreditSystem.java",
-        "render-module/src/main/java/com/example/platform/render/infrastructure/billing/RenderBillingRecord.java",
-        "billing-module/src/main/java/com/example/platform/billing/domain/PaymentLedgerEntry.java",
-        "federation-query-module/src/main/java/com/example/platform/federation/graphql/dto/MoneyDto.java",
-    }
-    metrics["floating_commercial_money_hits"] = money_hits
-    metrics["floating_commercial_money_paths"] = len(money_paths)
-    if not required_unsafe_money_paths.issubset(money_paths):
-        errors.append(
-            "money scan no longer reproduces classified unsafe paths: "
-            f"{sorted(required_unsafe_money_paths - money_paths)}"
-        )
-
-    canonical_money_paths = [
-        REPO / "billing-module/src/main/java/com/example/platform/billing/domain/BillingDecision.java",
-        REPO / "billing-module/src/main/java/com/example/platform/billing/domain/PricingRule.java",
-        REPO / "billing-module/src/main/java/com/example/platform/billing/infrastructure/BillingInvoiceRepository.java",
-        REPO / "billing-module/src/main/java/com/example/platform/billing/infrastructure/BillingLedgerJdbcRepository.java",
-        REPO / "payment-module/src/main/java/com/example/platform/payment/infrastructure/PaymentAttemptRepository.java",
-        REPO / "commerce-module/src/main/java/com/example/platform/commerce/domain/CanonicalProduct.java",
-    ]
-    canonical_money_float = re.compile(
-        r"\b(?:double|Double|float|Float)\s+\w*(?:amount|price|cost|credit|balance)\w*",
-        re.IGNORECASE,
-    )
-    canonical_money_float_hits = 0
-    for path in canonical_money_paths:
-        canonical_money_float_hits += len(
-            canonical_money_float.findall(path.read_text(encoding="utf-8", errors="replace"))
-        )
-    metrics["CANONICAL_MONEY_FLOATING_POINT_AUTHORITY_COUNT"] = canonical_money_float_hits
-    if canonical_money_float_hits != 0:
-        errors.append(
-            "CANONICAL_MONEY_FLOATING_POINT_AUTHORITY_COUNT="
-            f"{canonical_money_float_hits} expected=0"
-        )
-
+def repository_history_errors() -> tuple[list[str], dict[str, int | str]]:
+    metrics: dict[str, int | str] = {}
+    exists = git("cat-file", "-e", f"{ACCEPTED_CANDIDATE_SHA}^{{commit}}").returncode == 0
+    ancestor = exists and git("merge-base", "--is-ancestor", ACCEPTED_CANDIDATE_SHA, "HEAD").returncode == 0
+    errors = validate_accepted_ancestor(exists, ancestor)
+    metrics["ACCEPTED_ANCESTOR_OBJECT_PRESENT"] = int(exists)
+    metrics["ACCEPTED_ANCESTOR_IN_HEAD_HISTORY"] = int(ancestor)
+    if exists:
+        tree = git("rev-parse", f"{ACCEPTED_CANDIDATE_SHA}^{{tree}}").stdout.strip()
+        metrics["ACCEPTED_ANCESTOR_TREE_MATCH"] = int(tree == ACCEPTED_CANDIDATE_TREE)
+        if tree != ACCEPTED_CANDIDATE_TREE:
+            errors.append(f"ACCEPTED_ANCESTOR_TREE_MISMATCH actual={tree}")
+    else:
+        metrics["ACCEPTED_ANCESTOR_TREE_MATCH"] = 0
+    metrics["HEAD"] = git("rev-parse", "HEAD").stdout.strip()
+    changed = set(git("diff", "--name-only").stdout.splitlines())
+    changed.update(git("diff", "--cached", "--name-only").stdout.splitlines())
+    changed.update(git("ls-files", "--others", "--exclude-standard").stdout.splitlines())
+    metrics["WORKTREE_CHANGED_PATH_COUNT"] = len(changed)
     return errors, metrics
 
 
-def self_test(contract_text: str, inventory_data: dict) -> list[str]:
+def mutation_self_test(files: dict[str, str]) -> list[str]:
+    controls: list[tuple[str, dict[str, str], str]] = []
+
+    def mutated(path: str, source: str) -> dict[str, str]:
+        result = dict(files)
+        result[path] = source
+        return result
+
+    controls.append(("added_quota_writer", mutated(
+        "render-module/src/main/java/example/InjectedQuotaWriter.java",
+        "class X { void x(){ dsl.insertInto(QUOTA_USAGE); } }"), "WRITER_quota_usage"))
+    controls.append(("canonical_money_float", mutated(
+        "billing-module/src/main/java/com/example/platform/billing/domain/InjectedMoney.java",
+        "record X(double priceAmount) {}"), "CANONICAL_MONEY_FLOATING_POINT_AUTHORITY_COUNT"))
+    controls.append(("render_commercial_shadow", mutated(
+        "render-module/src/main/java/com/example/platform/render/infrastructure/billing/decision/BillingDecisionEngine.java",
+        "class BillingDecisionEngine {}"), "RENDER_COMMERCIAL_SHADOW_COUNT"))
+    controls.append(("plan_capability_fork", mutated(
+        "entitlement-module/src/main/java/com/example/platform/entitlement/app/InjectedCapabilityPolicy.java",
+        'class X { boolean capability(String tier){ return "PRO".equals(tier); } }'),
+        "PLAN_SPECIFIC_CAPABILITY_BRANCH_COUNT"))
+    controls.append(("effective_capability_persistence", mutated(
+        "platform-app/src/main/java/com/example/platform/capability/effective/InjectedStore.java",
+        "class X { JdbcTemplate jdbcTemplate; }"), "EFFECTIVE_CAPABILITY_PERSISTENCE_HITS"))
+    controls.append(("raw_webhook_payload", mutated(
+        "payment-module/src/main/java/com/example/platform/payment/infrastructure/InjectedWebhookWriter.java",
+        'class X { String rawPayload; String sql="INSERT INTO provider_webhook_receipt(raw_payload)"; }'),
+        "RAW_PAYMENT_WEBHOOK_PAYLOAD_PERSISTENCE_HITS"))
+    controls.append(("observed_usage_mutation", mutated(
+        "billing-module/src/main/java/com/example/platform/usage/infrastructure/InjectedObservationMutation.java",
+        'class X { String sql="UPDATE observed_runtime_usage SET quantity=0"; }'),
+        "OBSERVED_RUNTIME_USAGE_MUTATION_WRITER_COUNT"))
+
     failures: list[str] = []
-    controls: list[tuple[str, bool]] = []
-
-    controls.append((
-        "remove-separation-token",
-        bool(validate_contract(contract_text.replace("ObservedRuntimeUsage != BillableUsage", ""))),
-    ))
-    controls.append((
-        "remove-contract-clause",
-        bool(validate_contract(contract_text.replace("### C27 —", "### Z27 —"))),
-    ))
-
-    duplicate = copy.deepcopy(inventory_data)
-    duplicate["inventory"][1]["id"] = duplicate["inventory"][0]["id"]
-    controls.append(("duplicate-inventory-id", bool(validate_inventory(duplicate, check_evidence=False, check_drift=False)[0])))
-
-    invalid_enum = copy.deepcopy(inventory_data)
-    invalid_enum["inventory"][0]["disposition"] = "KEEP_MAYBE"
-    controls.append(("invalid-disposition", bool(validate_inventory(invalid_enum, check_evidence=False, check_drift=False)[0])))
-
-    unclassified = copy.deepcopy(inventory_data)
-    unclassified["inventory"][0]["disposition"] = "UNCLASSIFIED"
-    controls.append(("unclassified-entry", bool(validate_inventory(unclassified, check_evidence=False, check_drift=False)[0])))
-
-    no_target = copy.deepcopy(inventory_data)
-    no_target["writer_candidate_sets"][0]["candidates"][0]["target_canonical_writer"] = False
-    controls.append(("zero-canonical-writer", bool(validate_inventory(no_target, check_evidence=False, check_drift=False)[0])))
-
-    for name, rejected in controls:
-        print(f"NEGATIVE_CONTROL {name}: {'PASS' if rejected else 'FAIL'}")
+    for name, candidate, code in controls:
+        errors, _ = validate_implementation(candidate)
+        rejected = any(code in error for error in errors)
+        print(f"MUTATION_{name.upper()}={'PASS' if rejected else 'FAIL'}")
         if not rejected:
             failures.append(name)
-    print(f"NEGATIVE_CONTROLS={len(controls) - len(failures)}/{len(controls)} PASS")
+
+    history_controls = {
+        "missing_accepted_ancestor": validate_accepted_ancestor(False, False),
+        "stale_accepted_ancestor": validate_accepted_ancestor(True, False),
+    }
+    for name, errors in history_controls.items():
+        rejected = bool(errors)
+        print(f"MUTATION_{name.upper()}={'PASS' if rejected else 'FAIL'}")
+        if not rejected:
+            failures.append(name)
+    print(f"MUTATION_SELF_TESTS={len(controls) + len(history_controls) - len(failures)}/{len(controls) + len(history_controls)}")
     return failures
+
+
+def _print_metrics(metrics: dict[str, int | str]) -> None:
+    for key in sorted(metrics):
+        print(f"{key}={metrics[key]}")
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--self-test", action="store_true", help="run in-memory mutation controls")
+    parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
 
-    missing = [path for path in [CONTRACT, INVENTORY] if not path.is_file()]
-    if missing:
-        print(f"FATAL missing artifacts: {[str(path) for path in missing]}")
+    missing_artifacts = [path for path in (CONTRACT, INVENTORY) if not path.is_file()]
+    if missing_artifacts:
+        print("COMMERCIAL_AUTHORITY_GUARD=FAIL")
+        for path in missing_artifacts:
+            print(f"ERROR=REQUIRED_ARTIFACT_MISSING:{path.relative_to(REPO)}")
         return 2
 
-    contract_text = CONTRACT.read_text(encoding="utf-8")
     try:
-        inventory_data = json.loads(INVENTORY.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as error:
-        print(f"FATAL invalid inventory JSON: {error}")
+        inventory = json.loads(INVENTORY.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        print("COMMERCIAL_AUTHORITY_GUARD=FAIL")
+        print(f"ERROR=INVENTORY_INVALID:{error}")
         return 2
 
-    contract_errors = validate_contract(contract_text)
-    inventory_errors, inventory_metrics = validate_inventory(inventory_data)
-    repository_errors, repository_metrics = repository_checks()
-    errors = contract_errors + inventory_errors + repository_errors
+    files = load_production_sources(REPO)
+    contract_errors = validate_contract(CONTRACT.read_text(encoding="utf-8"))
+    inventory_errors, inventory_metrics = validate_inventory(inventory, files)
+    implementation_errors, implementation_metrics = validate_implementation(files)
+    history_errors, history_metrics = repository_history_errors()
+    errors = contract_errors + inventory_errors + implementation_errors + history_errors
 
-    print(f"CONTRACT_CLAUSES=27/27 {'PASS' if not contract_errors else 'FAIL'}")
-    print(
-        "INVENTORY="
-        f"{inventory_metrics.get('inventory_entry_count', 0)} "
-        f"UNCLASSIFIED={inventory_metrics.get('unclassified_count', -1)} "
-        f"DUPLICATE_IDS={inventory_metrics.get('duplicate_inventory_id_count', -1)} "
-        f"{'PASS' if not inventory_errors else 'FAIL'}"
-    )
-    print("WRITER_CANDIDATE_CATEGORIES=5 CANONICAL_TARGETS=5")
-    for key in sorted(repository_metrics):
-        print(f"SCAN {key}={repository_metrics[key]}")
+    _print_metrics(inventory_metrics)
+    _print_metrics(implementation_metrics)
+    _print_metrics(history_metrics)
 
     if args.self_test:
-        negative_failures = self_test(contract_text, inventory_data)
-        if negative_failures:
-            errors.extend(f"negative control failed: {name}" for name in negative_failures)
+        failures = mutation_self_test(files)
+        errors.extend(f"MUTATION_SELF_TEST_FAILED:{name}" for name in failures)
 
     if errors:
-        print(f"COMMERCIAL_AUTHORITY_GUARD=FAIL errors={len(errors)}")
-        for error in errors:
-            print(f"FAIL: {error}")
+        print("COMMERCIAL_AUTHORITY_GUARD=FAIL")
+        for error in sorted(set(errors)):
+            print(f"ERROR={error}")
         return 1
 
     print("ARCHITECTURE_DRIFT_SCAN=PASS")
-    print("BILLING_ENTITLEMENT_PAYMENT_DECISION_RECOVERY=PASS")
     print("COMMERCIAL_AUTHORITY_GUARD=PASS")
     return 0
 

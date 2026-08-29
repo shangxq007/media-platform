@@ -117,9 +117,9 @@ public class NarrativeEngine {
             return SemanticGraph.ProductOutcome.CANCELLED;
         }
 
-        // Check for rejection in billing nodes
-        GraphNode billingNode = ueeg.getBillingDecisionNode().orElse(null);
-        if (billingNode != null && "DENY".equals(billingNode.status())) {
+        // Check the precomputed commercial admission projection.
+        GraphNode billingNode = ueeg.getCommercialDecisionNode().orElse(null);
+        if (billingNode != null && "DENIED".equals(billingNode.status())) {
             return SemanticGraph.ProductOutcome.REJECTED;
         }
 
@@ -139,9 +139,9 @@ public class NarrativeEngine {
                 yield "Your render job failed. " + failure.rootCause();
             }
             case REJECTED -> {
-                GraphNode billingNode = ueeg.getBillingDecisionNode().orElse(null);
+                GraphNode billingNode = ueeg.getCommercialDecisionNode().orElse(null);
                 String reason = billingNode != null
-                        ? billingNode.getStringData("reasonMessage", "Unknown reason")
+                        ? billingNode.getStringData("reasonCode", "Unknown reason")
                         : "Unknown reason";
                 yield "Your render job was rejected. " + reason;
             }
@@ -156,27 +156,9 @@ public class NarrativeEngine {
     // ---------------------------------------------------------------------------
 
     private CostNarrative generateCostNarrative(UnifiedRequestGraph ueeg) {
-        GraphNode billingNode = ueeg.getBillingDecisionNode().orElse(null);
-        if (billingNode == null) {
-            return null;
-        }
-
-        double estimatedCost = billingNode.getDoubleData("estimatedCost", 0);
-        String reasonCode = billingNode.getStringData("reasonCode", "OK");
-
-        String explanation = String.format(
-                "The estimated cost for this render is $%.4f USD. " +
-                "This is based on the provider selected, duration, and resource usage.",
-                estimatedCost
-        );
-
-        List<CostNarrative.CostLineItem> lineItems = List.of(
-                new CostNarrative.CostLineItem("Compute cost", estimatedCost * 0.8, "compute"),
-                new CostNarrative.CostLineItem("Storage cost", estimatedCost * 0.15, "storage"),
-                new CostNarrative.CostLineItem("API cost", estimatedCost * 0.05, "api")
-        );
-
-        return CostNarrative.create(estimatedCost, estimatedCost, "USD", lineItems, explanation);
+        // Commercial admission carries no price and provider ExecutionCost is not customer price.
+        // A cost narrative requires a separately supplied typed cost projection.
+        return null;
     }
 
     // ---------------------------------------------------------------------------
@@ -186,12 +168,12 @@ public class NarrativeEngine {
     private DecisionNarrative generateDecisionNarrative(UnifiedRequestGraph ueeg) {
         List<DecisionNarrative.DecisionStep> steps = new ArrayList<>();
 
-        // Billing decision
-        GraphNode billingNode = ueeg.getBillingDecisionNode().orElse(null);
+        // Neutral commercial admission decision
+        GraphNode billingNode = ueeg.getCommercialDecisionNode().orElse(null);
         if (billingNode != null) {
             steps.add(new DecisionNarrative.DecisionStep(
-                    "Billing & eligibility check",
-                    billingNode.getStringData("reasonMessage", "Checked"),
+                    "Commercial admission check",
+                    billingNode.getStringData("reasonCode", "Checked"),
                     billingNode.status()
             ));
         }
@@ -231,12 +213,12 @@ public class NarrativeEngine {
     // ---------------------------------------------------------------------------
 
     private FailureNarrative generateFailureNarrative(UnifiedRequestGraph ueeg) {
-        // Check billing failure
-        GraphNode billingNode = ueeg.getBillingDecisionNode().orElse(null);
-        if (billingNode != null && "DENY".equals(billingNode.status())) {
-            return FailureNarrative.billingFailure(
+        // Check commercial admission failure
+        GraphNode billingNode = ueeg.getCommercialDecisionNode().orElse(null);
+        if (billingNode != null && "DENIED".equals(billingNode.status())) {
+            return FailureNarrative.commercialAdmissionFailure(
                     billingNode.getStringData("reasonCode", "UNKNOWN"),
-                    billingNode.getStringData("reasonMessage", "Unknown reason")
+                    billingNode.getStringData("reasonCode", "Unknown reason")
             );
         }
 
@@ -273,11 +255,10 @@ public class NarrativeEngine {
                         node.getStringData("toState", "Unknown"),
                         node.getStringData("reason", "")
                 );
-                case BILLING_DECISION_NODE -> SemanticNode.billingDecision(
+                case COMMERCIAL_DECISION_NODE -> SemanticNode.commercialDecision(
                         node.nodeId(),
                         node.status(),
-                        node.getStringData("reasonCode", "UNKNOWN"),
-                        node.getDoubleData("estimatedCost", 0)
+                        node.getStringData("reasonCode", "UNKNOWN")
                 );
                 case POLICY_DECISION_NODE -> SemanticNode.policyDecision(
                         node.nodeId(),

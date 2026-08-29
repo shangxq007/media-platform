@@ -44,7 +44,6 @@ public class EntitlementDecisionService {
         Instant now = Instant.now();
 
         String tier = policyService.getTier(request.tenantId());
-        EntitlementPolicy tierPolicy = policyService.getPolicy(request.tenantId());
 
         if (collaborationAccessPort != null && isSharedResourceCheck(request)) {
             String userId = request.userId() != null ? request.userId() : request.subjectId();
@@ -113,20 +112,10 @@ public class EntitlementDecisionService {
             }
         }
 
-        boolean tierAllowed = checkTierPolicy(tierPolicy, request);
-        if (tierAllowed) {
-            matchedPolicies.add("tier:" + tier);
-            return new EntitlementDecision(
-                    true, "ALLOW", EntitlementDecisionReason.TIER.name(),
-                    "Access granted by tier policy", tier,
-                    matchedPolicies, null, null, null, null,
-                    null, List.of(), null, false);
-        }
-
         matchedPolicies.add("default-deny");
         return new EntitlementDecision(
                 false, "DENY", EntitlementDecisionReason.DEFAULT_DENY.name(),
-                "Access denied: feature not available for current tier", tier,
+                "Access denied: no active entitlement grant", tier,
                 matchedPolicies, null, null, null, null,
                 null, buildUpgradeOptions(tier), null, false);
     }
@@ -150,24 +139,8 @@ public class EntitlementDecisionService {
         return "project".equals(type) || "export".equals(type);
     }
 
-    private boolean checkTierPolicy(EntitlementPolicy policy, AccessCheckRequest request) {
-        if (request.featureKey() == null) return false;
-        if (request.providerKey() != null && !policy.isProviderAllowed(request.providerKey())) return false;
-        if (request.requestedPreset() != null) {
-            if (request.requestedPreset().startsWith("gpu_") && !policy.gpuAllowed()) return false;
-            boolean is4k = request.requestedPreset().contains("4k") || request.requestedPreset().contains("2160p");
-            if (is4k && policy.maxResolutionHeight() < 2160) return false;
-        }
-        return true;
-    }
-
     private List<String> buildUpgradeOptions(String currentTier) {
-        return switch (currentTier.toUpperCase()) {
-            case "FREE" -> List.of("Upgrade to PRO for more features", "Upgrade to TEAM for GPU rendering");
-            case "PRO" -> List.of("Upgrade to TEAM for GPU rendering", "Upgrade to ENTERPRISE for priority queue");
-            case "TEAM" -> List.of("Upgrade to ENTERPRISE for priority rendering and more capacity");
-            default -> List.of();
-        };
+        return List.of("Review available commercial offerings");
     }
 
     private EntitlementDecision persistenceDenied(

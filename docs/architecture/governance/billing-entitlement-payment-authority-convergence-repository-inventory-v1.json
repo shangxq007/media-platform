@@ -3,7 +3,9 @@
   "artifact_id": "BILLING_ENTITLEMENT_PAYMENT_AUTHORITY_CONVERGENCE_REPOSITORY_INVENTORY_V1",
   "base_sha": "e02579181ba3049ae65ed81080c93a7212f5833d",
   "base_tree": "b67136e3a4b4e08688091bad0c4dad30d841978d",
-  "source_scope": "tracked production source and V1 schema at base_sha; tests and generated typed-schema files excluded from classification rows",
+  "source_scope": "I9 implementation-aware tracked production source and consolidated V1 schema; accepted decision candidate remains the required ancestor; tests and generated typed-schema files excluded from authority classification",
+  "implementation_phase": "I9_SHADOW_RETIREMENT_AND_ARCHITECTURE_GUARDS",
+  "implementation_guard_mode": "APPEND_FORWARD_ACCEPTED_ANCESTOR_BOUND",
   "reproduction_commands": [
     "rg -n -S 'quota_usage|QUOTA_USAGE|recordUsage|incrementUsage' entitlement-module/src/main render-module/src/main quota-billing-module/src/main platform-app/src/main/resources/db/migration/V1__initial_schema.sql",
     "rg -n -S 'subscription_contract|SUBSCRIPTION_CONTRACT|billing_invoice|BILLING_INVOICE|payment_attempt|PAYMENT_ATTEMPT|entitlement_grant|ENTITLEMENT_GRANT' billing-module/src/main payment-module/src/main entitlement-module/src/main platform-app/src/main/resources/db/migration/V1__initial_schema.sql",
@@ -16,6 +18,7 @@
     "REUSE_MECHANICS_ONLY",
     "MIGRATE_REDESIGN",
     "DELETE_SHADOW",
+    "NON_AUTHORITATIVE_FRONTEND_PROJECTION_OUT_OF_SCOPE",
     "DEFER",
     "UNCLASSIFIED"
   ],
@@ -41,12 +44,16 @@
       "REUSE_AS_CANONICAL": 12,
       "REUSE_MECHANICS_ONLY": 3,
       "MIGRATE_REDESIGN": 20,
-      "DELETE_SHADOW": 15,
+      "DELETE_SHADOW": 14,
+      "NON_AUTHORITATIVE_FRONTEND_PROJECTION_OUT_OF_SCOPE": 1,
       "DEFER": 0,
       "UNCLASSIFIED": 0
     },
     "writer_candidate_category_count": 5,
-    "multiple_canonical_writer_candidate_category_count": 5,
+    "multiple_canonical_writer_candidate_category_count": 0,
+    "accepted_delete_shadow_count": 14,
+    "accepted_delete_shadow_retired_count": 14,
+    "frontend_projection_explicit_exclusion_count": 1,
     "canonical_writer_count_per_category": 1
   },
   "storage_tables": [
@@ -66,7 +73,7 @@
   "writer_candidate_sets": [
     {
       "category": "quota_usage",
-      "status": "MULTIPLE_CANONICAL_WRITER_CANDIDATES",
+      "status": "CONVERGED_SINGLE_CANONICAL_WRITER",
       "canonical_authority": "entitlement-module::QuotaUsageAuthority",
       "candidates": [
         {"inventory_id": "INV-002", "target_canonical_writer": true},
@@ -76,7 +83,7 @@
     },
     {
       "category": "subscription_state",
-      "status": "MULTIPLE_CANONICAL_WRITER_CANDIDATES",
+      "status": "CONVERGED_SINGLE_CANONICAL_WRITER",
       "canonical_authority": "Subscription command boundary::SubscriptionJdbcRepository",
       "candidates": [
         {"inventory_id": "INV-026", "target_canonical_writer": true},
@@ -86,7 +93,7 @@
     },
     {
       "category": "billing_invoice_state",
-      "status": "MULTIPLE_CANONICAL_WRITER_CANDIDATES",
+      "status": "CONVERGED_SINGLE_CANONICAL_WRITER",
       "canonical_authority": "Billing command boundary::BillingInvoiceRepository",
       "candidates": [
         {"inventory_id": "INV-029", "target_canonical_writer": true},
@@ -96,7 +103,7 @@
     },
     {
       "category": "payment_transaction_state",
-      "status": "MULTIPLE_CANONICAL_WRITER_CANDIDATES",
+      "status": "CONVERGED_SINGLE_CANONICAL_WRITER",
       "canonical_authority": "Payment application boundary::PaymentAttemptRepository",
       "candidates": [
         {"inventory_id": "INV-032", "target_canonical_writer": true},
@@ -106,7 +113,7 @@
     },
     {
       "category": "entitlement_grants",
-      "status": "MULTIPLE_CANONICAL_WRITER_CANDIDATES",
+      "status": "CONVERGED_SINGLE_CANONICAL_WRITER",
       "canonical_authority": "Entitlement grant command boundary::EntitlementGrantRepository",
       "candidates": [
         {"inventory_id": "INV-037", "target_canonical_writer": true},
@@ -780,14 +787,14 @@
       "id": "INV-047",
       "path": "federation-query-module/src/main/java/com/example/platform/federation/graphql/dto/MoneyDto.java",
       "symbol": "MoneyDto",
-      "current_role": "GraphQL-facing duplicate money DTO using double amount.",
-      "current_authority": "Presentation money shadow",
-      "target_authority": "Projection of canonical integral Money",
-      "disposition": "DELETE_SHADOW",
-      "rationale": "Floating money loses precision and creates a duplicate generic price type.",
+      "current_role": "GraphQL-facing frontend wire projection using a presentation amount.",
+      "current_authority": "None; non-authoritative frontend projection",
+      "target_authority": "NON_AUTHORITATIVE_FRONTEND_PROJECTION_OUT_OF_SCOPE",
+      "disposition": "NON_AUTHORITATIVE_FRONTEND_PROJECTION_OUT_OF_SCOPE",
+      "rationale": "Accepted I9 refinement keeps this frontend wire DTO outside canonical H5 monetary authority; frontend redesign is not authorized in this lane.",
       "dependents": ["GraphQL billing/commerce DTO consumers"],
-      "migration_action": "Replace with amountMinor plus ISO currency projection from canonical Money.",
-      "guard_requirement": "No double amount in money/price DTOs.",
+      "migration_action": "Retain unchanged in I9 and classify it explicitly outside canonical-money scans.",
+      "guard_requirement": "Guard must report this explicit exclusion and must not claim the DTO was deleted.",
       "evidence_lines": [{"start": 3, "end": 6, "contains": "double amount"}]
     },
     {

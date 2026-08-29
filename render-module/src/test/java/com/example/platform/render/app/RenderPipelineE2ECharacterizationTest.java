@@ -24,7 +24,10 @@ import com.example.platform.render.infrastructure.RenderProviderRouter;
 import com.example.platform.render.infrastructure.timeline.EditorTimelineConverter;
 import com.example.platform.render.infrastructure.providerruntime.engine.ProviderRuntimeEngine;
 import com.example.platform.render.testsupport.RenderTestSchemaFixture;
-import com.example.platform.entitlement.app.EntitlementPort;
+import com.example.platform.shared.commercial.CommercialAdmissionPort;
+import com.example.platform.shared.commercial.CommercialDecision;
+import com.example.platform.shared.commercial.CommercialDecisionReason;
+import com.example.platform.shared.commercial.QuotaConsumptionPort;
 import com.example.platform.notification.app.NotificationEventPublisher;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import com.example.platform.shared.web.TenantContext;
@@ -60,7 +63,8 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
     private RenderJobRepository renderJobRepository;
 
     // Mocks
-    private RenderQuotaService quotaService;
+    private CommercialAdmissionPort commercialAdmission;
+    private QuotaConsumptionPort quotaConsumption;
     private RenderProviderRouter renderProviderRouter;
     private NotificationEventPublisher notificationEventPublisher;
     private ApplicationEventPublisher eventPublisher;
@@ -91,7 +95,8 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
     void setUp() {
         RenderTestSchemaFixture.truncate(dsl);
 
-        quotaService = mock(RenderQuotaService.class);
+        commercialAdmission = mock(CommercialAdmissionPort.class);
+        quotaConsumption = mock(QuotaConsumptionPort.class);
         renderProviderRouter = mock(RenderProviderRouter.class);
         notificationEventPublisher = mock(NotificationEventPublisher.class);
         eventPublisher = mock(ApplicationEventPublisher.class);
@@ -105,6 +110,11 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
         artifactCatalogService = mock(com.example.platform.artifact.app.ArtifactCatalogService.class);
         editorTimelineConverter = mock(EditorTimelineConverter.class);
         providerRuntimeEngine = mock(ProviderRuntimeEngine.class);
+        when(commercialAdmission.decide(any())).thenAnswer(invocation -> {
+            var request = invocation.getArgument(0, com.example.platform.shared.commercial.CommercialAdmissionRequest.class);
+            return new CommercialDecision(request.principal(), request.action(), true,
+                    CommercialDecisionReason.ALLOWED, List.of(), "test-v1", request.traceId(), request.decidedAt());
+        });
 
         // Default stubs — set up in each test method as needed
         // No default mocks here to avoid conflicts with test-specific overrides
@@ -138,8 +148,7 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
             return updated > 0;
         });
         RenderJobSubmissionService submissionService = new RenderJobSubmissionService(
-                dsl, renderJobRepository, quotaService,
-                null /* billingDecisionEngine */,
+                dsl, renderJobRepository, commercialAdmission,
                 historyRepository,
                 notificationEventPublisher, eventPublisher, timelineScriptParser,
                 effectTimelineInspector, renderProfileResolver,
@@ -148,7 +157,7 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
                 renderJobRepository, mock(com.example.platform.artifact.domain.ArtifactQueryService.class),
                 artifactCatalogService, List.of());
         RenderJobExecutionService executionService = new RenderJobExecutionService(
-                renderJobRepository, quotaService, null, renderProviderRouter,
+                renderJobRepository, quotaConsumption, null, renderProviderRouter,
                 providerRuntimeEngine,
                 notificationEventPublisher, eventPublisher, historyRepository,
                 timelineScriptParser, mock(TimelineSpecResolver.class),
@@ -157,7 +166,7 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
                 timelineSnapshotService,
                 editorTimelineConverter, effectTimelineInspector, renderProfileResolver,
                 null, null, null, null,
-                mock(TimelineExtensionsReader.class), null, null, null,
+                mock(TimelineExtensionsReader.class), null, null,
                 claimService, failureService);
         RenderJobTimelineQueryService timelineQueryService = new RenderJobTimelineQueryService(
                 renderJobRepository, mock(BaseJobTimelineLoader.class));
@@ -199,10 +208,6 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
     }
 
     private void setupDefaultMocks() {
-        com.example.platform.shared.commercial.QuotaDecision allowedQuota =
-                mock(com.example.platform.shared.commercial.QuotaDecision.class);
-        when(allowedQuota.allowed()).thenReturn(true);
-        when(quotaService.checkQuota(anyString(), anyString(), anyInt())).thenReturn(allowedQuota);
         when(effectTimelineInspector.extractFromScript(any()))
                 .thenReturn(new EffectTimelineInspector.EffectUsage(List.of(), List.of()));
         when(renderProfileResolver.resolve(anyString(), anyList(), anyString()))
@@ -557,10 +562,13 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
         setupDefaultMocks();
         TenantContext.set("tenant-7");
         insertProject("proj-7", "tenant-7");
-        com.example.platform.shared.commercial.QuotaDecision deniedQuota =
-                mock(com.example.platform.shared.commercial.QuotaDecision.class);
-        when(deniedQuota.allowed()).thenReturn(false);
-        when(quotaService.checkQuota("tenant-7", "render", 1)).thenReturn(deniedQuota);
+        doAnswer(invocation -> {
+            var request = invocation.getArgument(0, com.example.platform.shared.commercial.CommercialAdmissionRequest.class);
+            return new CommercialDecision(request.principal(), request.action(), false,
+                    CommercialDecisionReason.QUOTA_EXCEEDED, List.of(), "test-v1",
+                    request.traceId(), request.decidedAt());
+        }).when(commercialAdmission).decide(argThat(request ->
+                "tenant-7".equals(request.principal().tenantId())));
 
         SubmitRenderJobRequest request = SubmitRenderJobRequest.withSnapshot(
                 "tenant-7", "proj-7", "snap-7", "default_1080p");
@@ -819,7 +827,8 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
         String jobId = service.submitRenderJob(request);
 
         // Verify quota consumed exactly once
-        verify(quotaService).consumeQuota("tenant-14", jobId, "render", 1);
+        verify(quotaConsumption).consume(argThat(command ->
+                command.idempotencyKey().equals("render-job:" + jobId + ":completion")));
     }
 
     // =========================================================

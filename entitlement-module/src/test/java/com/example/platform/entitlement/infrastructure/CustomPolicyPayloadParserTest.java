@@ -1,38 +1,32 @@
 package com.example.platform.entitlement.infrastructure;
 
-import com.example.platform.entitlement.domain.EntitlementPolicy;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+
+import com.example.platform.entitlement.app.EntitlementPolicyService;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Arrays;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
+/** Adapted retirement proof for plan-named capability override payloads. */
 class CustomPolicyPayloadParserTest {
-
     @Test
-    void parsesCustomPayloadFromJson() {
-        String json = """
-                {
-                  "tier": "CUSTOM",
-                  "maxResolutionHeight": 1080,
-                  "gpuAllowed": false,
-                  "allowedProviders": ["javacv"],
-                  "exportFormats": ["mp4"]
-                }
-                """;
-        EntitlementPolicy policy = CustomPolicyPayloadParser.parse("tenant-1", "ovr-1", json);
-        assertEquals("CUSTOM", policy.tier());
-        assertEquals(1080, policy.maxResolutionHeight());
-        assertTrue(!policy.gpuAllowed());
-        assertTrue(policy.allowedProviders().contains("javacv"));
-        assertTrue(policy.exportFormats().contains("mp4"));
-        assertEquals("custom_policy_db", policy.extra().get("source"));
+    void customCapabilityPolicyParserAndGrantApiAreAbsent() {
+        Path root = repositoryRoot();
+        assertFalse(Files.exists(root.resolve(
+                "entitlement-module/src/main/java/com/example/platform/entitlement/infrastructure/CustomPolicyPayloadParser.java")));
+        var methodNames = Arrays.stream(EntitlementPolicyService.class.getDeclaredMethods())
+                .map(java.lang.reflect.Method::getName).toList();
+        assertFalse(methodNames.contains("getPolicy"));
+        assertFalse(methodNames.contains("validateExport"));
     }
 
-    @Test
-    void usesTierPresetWhenPayloadSpecifiesPro() {
-        String json = "{\"tier\":\"PRO\"}";
-        EntitlementPolicy policy = CustomPolicyPayloadParser.parse("tenant-2", null, json);
-        assertEquals("PRO", policy.tier());
-        assertEquals(1920, policy.maxResolutionWidth());
+    private static Path repositoryRoot() {
+        Path current = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
+        while (current != null && !Files.isRegularFile(current.resolve("settings.gradle.kts"))) {
+            current = current.getParent();
+        }
+        if (current == null) throw new IllegalStateException("repository root not found");
+        return current;
     }
 }

@@ -1,15 +1,17 @@
 package com.example.platform.render.infrastructure;
 
+import com.example.platform.render.app.clientexport.ClientExportPresetCatalog;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Service for determining export tiers, presets, and provider routing based on user entitlements.
  */
 @Service
-public class ExportPolicyService {
+public class ExportPolicyService implements ClientExportPresetCatalog {
 
     private static final Map<String, ExportTier> DEFAULT_TIERS = Map.of(
             "FREE", new ExportTier("FREE", 1, List.of("free_720p_watermarked"), true, false),
@@ -81,6 +83,26 @@ public class ExportPolicyService {
         }
         return DEFAULT_PRESETS.getOrDefault(presetName,
                 DEFAULT_PRESETS.get("free_720p_watermarked"));
+    }
+
+    @Override
+    public Optional<ClientExportPresetCatalog.Preset> findPreset(String presetName) {
+        return Optional.ofNullable(DEFAULT_PRESETS.get(presetName)).map(ExportPolicyService::toCatalogPreset);
+    }
+
+    @Override
+    public List<ClientExportPresetCatalog.Preset> listPresets() {
+        return DEFAULT_PRESETS.values().stream()
+                .map(ExportPolicyService::toCatalogPreset)
+                .sorted(java.util.Comparator.comparing(ClientExportPresetCatalog.Preset::name))
+                .toList();
+    }
+
+    private static ClientExportPresetCatalog.Preset toCatalogPreset(ExportPreset preset) {
+        return new ClientExportPresetCatalog.Preset(
+                preset.name(), preset.displayName(), preset.resolution(), preset.frameRate(),
+                preset.format(), preset.videoCodec(), preset.audioCodec(), preset.watermark(),
+                preset.providerKey());
     }
 
     /**

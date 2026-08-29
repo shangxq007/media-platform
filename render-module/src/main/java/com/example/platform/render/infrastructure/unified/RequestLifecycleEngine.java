@@ -2,11 +2,8 @@ package com.example.platform.render.infrastructure.unified;
 
 import com.example.platform.render.domain.RenderJobStateMachine;
 import com.example.platform.render.domain.RenderJobStatus;
-import com.example.platform.render.infrastructure.billing.decision.BillingDecision;
-import com.example.platform.render.infrastructure.billing.decision.BillingDecisionEngine;
-import com.example.platform.render.infrastructure.billing.decision.BillingDecisionRequest;
-import com.example.platform.render.infrastructure.billing.policy.PolicyEngine;
 import com.example.platform.render.infrastructure.providerruntime.engine.ProviderRuntimeEngine;
+import com.example.platform.shared.commercial.CommercialDecision;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -29,22 +26,16 @@ public class RequestLifecycleEngine {
     private final UnifiedExecutionTracer tracer;
     private final UnifiedGraphRepository graphRepository;
     private final RenderJobStateMachine stateMachine;
-    private final BillingDecisionEngine billingDecisionEngine;
-    private final PolicyEngine policyEngine;
     private final ProviderRuntimeEngine providerRuntimeEngine;
 
     public RequestLifecycleEngine(
             UnifiedExecutionTracer tracer,
             UnifiedGraphRepository graphRepository,
             RenderJobStateMachine stateMachine,
-            BillingDecisionEngine billingDecisionEngine,
-            PolicyEngine policyEngine,
             ProviderRuntimeEngine providerRuntimeEngine) {
         this.tracer = tracer;
         this.graphRepository = graphRepository;
         this.stateMachine = stateMachine;
-        this.billingDecisionEngine = billingDecisionEngine;
-        this.policyEngine = policyEngine;
         this.providerRuntimeEngine = providerRuntimeEngine;
     }
 
@@ -66,10 +57,9 @@ public class RequestLifecycleEngine {
     }
 
     /**
-     * Execute the billing decision phase.
-     * Returns the billing decision and updates the graph.
+     * Record a precomputed neutral commercial decision without recomputing H5 authority.
      */
-    public BillingDecision executeBillingPhase(String requestId, BillingDecisionRequest request) {
+    public CommercialDecision executeCommercialPhase(String requestId, CommercialDecision decision) {
         UnifiedRequestGraph graph = tracer.getGraph(requestId);
         if (graph == null) {
             throw new IllegalStateException("No active graph for request: " + requestId);
@@ -77,32 +67,15 @@ public class RequestLifecycleEngine {
 
         // Emit execution state transition
         tracer.traceExecutionState(requestId, "QUEUED", "SELECTING_PROVIDER",
-                "Starting billing evaluation", "RequestLifecycleEngine");
+                "Recording commercial admission", "RequestLifecycleEngine");
 
-        // Execute billing decision
-        BillingDecision decision = billingDecisionEngine.decide(request);
-
-        // Emit billing decision node
-        tracer.traceBillingDecision(
+        tracer.traceCommercialDecision(
                 requestId,
-                decision.decision().name(),
-                decision.reasonCode().name(),
-                decision.reasonMessage(),
-                decision.costEstimate() != null ? decision.costEstimate().estimatedCost() : null
+                decision.allowed() ? "ALLOWED" : "DENIED",
+                decision.reason().name(),
+                decision.authorityVersion()
         );
-
-        // Emit policy decision if available
-        if (decision.metadata().containsKey("policyApplied")) {
-            tracer.tracePolicyDecision(
-                    requestId,
-                    decision.isAllowed(),
-                    decision.isDenied() ? decision.reasonMessage() : null,
-                    0, // discount percent
-                    1.0 // multiplier
-            );
-        }
-
-        log.info("[{}] Billing decision: {}", requestId, decision.getSummary());
+        log.info("[{}] Commercial decision: {}", requestId, decision.reason());
         return decision;
     }
 

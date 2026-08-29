@@ -2,7 +2,6 @@ package com.example.platform.entitlement.app;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.example.platform.entitlement.domain.QuotaPolicy;
 import com.example.platform.entitlement.domain.QuotaProfile;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,10 +16,9 @@ class QuotaPolicyServiceTest {
     }
 
     @Test
-    void getQuotaPolicyReturnsDefaultForUnknownFeature() {
-        QuotaPolicy policy = service.getQuotaPolicy("unknown.feature");
-        assertNotNull(policy);
-        assertEquals("unknown.feature", policy.featureCode());
+    void getQuotaPolicyFailsClosedForUnknownFeature() {
+        assertThrows(IllegalArgumentException.class,
+                () -> service.getQuotaPolicy("unknown.feature"));
     }
 
     @Test
@@ -82,9 +80,4 @@ class QuotaPolicyServiceTest {
         assertEquals(2000, service.resolveLimitFromProfile(profile, "prompt.execute"));
     }
 
-    @Test
-    void registerPolicyOverridesExisting() {
-        service.registerPolicy(new QuotaPolicy("custom", "custom", "test.feature", 50, "DAILY", 90));
-        assertTrue(service.isExceeded("test.feature", 60));
-    }
 }

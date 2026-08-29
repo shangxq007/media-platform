@@ -25,6 +25,10 @@ import com.example.platform.render.testsupport.RenderTestSchemaFixture;
 import com.example.platform.notification.app.NotificationEventPublisher;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import com.example.platform.shared.web.TenantContext;
+import com.example.platform.shared.commercial.CommercialAdmissionPort;
+import com.example.platform.shared.commercial.CommercialDecision;
+import com.example.platform.shared.commercial.CommercialDecisionReason;
+import com.example.platform.shared.commercial.QuotaConsumptionPort;
 import com.example.platform.storage.api.StorageCatalogPort;
 import org.jooq.DSLContext;
 import org.jooq.impl.DSL;
@@ -53,7 +57,8 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
     private RenderOrchestratorService service;
 
     // Mocks
-    private RenderQuotaService quotaService;
+    private CommercialAdmissionPort commercialAdmission;
+    private QuotaConsumptionPort quotaConsumption;
     private RenderProviderRouter renderProviderRouter;
     private NotificationEventPublisher notificationEventPublisher;
     private ApplicationEventPublisher eventPublisher;
@@ -84,7 +89,8 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
     void setUp() {
         RenderTestSchemaFixture.truncate(dsl);
 
-        quotaService = mock(RenderQuotaService.class);
+        commercialAdmission = mock(CommercialAdmissionPort.class);
+        quotaConsumption = mock(QuotaConsumptionPort.class);
         renderProviderRouter = mock(RenderProviderRouter.class);
         notificationEventPublisher = mock(NotificationEventPublisher.class);
         eventPublisher = mock(ApplicationEventPublisher.class);
@@ -98,10 +104,11 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
         artifactCatalogService = mock(com.example.platform.artifact.app.ArtifactCatalogService.class);
         editorTimelineConverter = mock(EditorTimelineConverter.class);
 
-        com.example.platform.shared.commercial.QuotaDecision allowedQuota =
-                mock(com.example.platform.shared.commercial.QuotaDecision.class);
-        when(allowedQuota.allowed()).thenReturn(true);
-        when(quotaService.checkQuota(anyString(), anyString(), anyInt())).thenReturn(allowedQuota);
+        when(commercialAdmission.decide(any())).thenAnswer(invocation -> {
+            var request = invocation.getArgument(0, com.example.platform.shared.commercial.CommercialAdmissionRequest.class);
+            return new CommercialDecision(request.principal(), request.action(), true,
+                    CommercialDecisionReason.ALLOWED, List.of(), "test-v1", request.traceId(), request.decidedAt());
+        });
         when(effectTimelineInspector.extractFromScript(anyString()))
                 .thenReturn(new EffectTimelineInspector.EffectUsage(List.of(), List.of()));
         when(renderProfileResolver.resolve(anyString(), anyList(), anyString()))
@@ -141,8 +148,7 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
             return updated > 0;
         });
         RenderJobSubmissionService submissionService = new RenderJobSubmissionService(
-                dsl, renderJobRepository, quotaService,
-                null,
+                dsl, renderJobRepository, commercialAdmission,
                 historyRepository,
                 notificationEventPublisher, eventPublisher, timelineScriptParser,
                 effectTimelineInspector, renderProfileResolver,
@@ -151,7 +157,7 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
                 renderJobRepository, mock(com.example.platform.artifact.domain.ArtifactQueryService.class),
                 artifactCatalogService, List.of());
         RenderJobExecutionService executionService = new RenderJobExecutionService(
-                renderJobRepository, quotaService, null, renderProviderRouter,
+                renderJobRepository, quotaConsumption, null, renderProviderRouter,
                 providerRuntimeEngine,
                 notificationEventPublisher, eventPublisher, historyRepository,
                 timelineScriptParser, mock(TimelineSpecResolver.class),
@@ -160,7 +166,7 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
                 timelineSnapshotService,
                 editorTimelineConverter, effectTimelineInspector, renderProfileResolver,
                 null, null, null, null,
-                mock(TimelineExtensionsReader.class), null, null, null,
+                mock(TimelineExtensionsReader.class), null, null,
                 claimService, failureService);
         RenderJobTimelineQueryService timelineQueryService = new RenderJobTimelineQueryService(
                 renderJobRepository, mock(BaseJobTimelineLoader.class));
@@ -244,10 +250,13 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
     void submitRenderJobRejectsWhenQuotaDenied() {
         TenantContext.set("tenant-2");
         insertProject("proj-2", "tenant-2");
-        com.example.platform.shared.commercial.QuotaDecision deniedQuota =
-                mock(com.example.platform.shared.commercial.QuotaDecision.class);
-        when(deniedQuota.allowed()).thenReturn(false);
-        when(quotaService.checkQuota("tenant-2", "render", 1)).thenReturn(deniedQuota);
+        doAnswer(invocation -> {
+            var request = invocation.getArgument(0, com.example.platform.shared.commercial.CommercialAdmissionRequest.class);
+            return new CommercialDecision(request.principal(), request.action(), false,
+                    CommercialDecisionReason.QUOTA_EXCEEDED, List.of(), "test-v1",
+                    request.traceId(), request.decidedAt());
+        }).when(commercialAdmission).decide(argThat(request ->
+                "tenant-2".equals(request.principal().tenantId())));
 
         SubmitRenderJobRequest request = SubmitRenderJobRequest.withSnapshot(
                 "tenant-2", "proj-2", "snap-2", "default_1080p");
@@ -290,7 +299,8 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
         assertEquals("COMPLETED", jobRow.get(field("status"), String.class));
         assertNotNull(jobRow.get(field("artifact_uri"), String.class));
 
-        verify(quotaService).consumeQuota("tenant-3", "rj-3", "render", 1);
+        verify(quotaConsumption).consume(argThat(request ->
+                request.idempotencyKey().equals("render-job:rj-3:completion")));
     }
 
     @Test

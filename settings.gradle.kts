@@ -24,7 +24,6 @@ include(
     "audit-compliance-module",
     "scheduler-module",
     "identity-access-module",
-    "quota-billing-module",
     "commerce-module",
     "payment-module",
     "billing-module",

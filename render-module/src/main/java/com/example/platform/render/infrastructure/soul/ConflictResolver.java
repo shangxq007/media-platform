@@ -40,8 +40,8 @@ public class ConflictResolver {
                                 ObjectiveDrivenDecisionEngine.SubsystemRecommendation::sourceSystem));
 
         // Check for billing vs policy conflicts
-        var billingRecs = byType.getOrDefault("BillingDecisionEngine", List.of());
-        var policyRecs = byType.getOrDefault("PolicyEngine", List.of());
+        var billingRecs = byType.getOrDefault("CommercialAdmission", List.of());
+        var policyRecs = byType.getOrDefault("RoleWorkspacePolicy", List.of());
 
         for (var billing : billingRecs) {
             for (var policy : policyRecs) {
@@ -148,8 +148,8 @@ public class ConflictResolver {
     private double evaluateConflictSide(String sourceSystem, GlobalObjectiveFunction objectiveFunction) {
         // Simplified evaluation based on system priority
         return switch (sourceSystem) {
-            case "BillingDecisionEngine" -> 0.8;
-            case "PolicyEngine" -> 0.9; // Policy has higher priority
+            case "CommercialAdmission" -> 0.8;
+            case "RoleWorkspacePolicy" -> 0.9; // Policy has higher priority
             case "StrategyPlannerEngine" -> 0.7;
             case "ProviderRuntimeEngine" -> 0.75;
             default -> 0.5;

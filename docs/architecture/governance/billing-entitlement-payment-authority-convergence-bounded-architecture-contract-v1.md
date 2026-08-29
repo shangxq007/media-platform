@@ -77,7 +77,7 @@ Webhook processing uses a durable provider-scoped event identity, signature resu
 
 ### C15 — Money precision and currency
 
-Canonical `Money` is `(amountMinor: integer or scale-0 decimal, currency: ISO-4217 code)` with checked arithmetic and explicit rounding at conversion boundaries. Currency is mandatory; mixed-currency arithmetic is rejected. Existing `double`/`Double` money in Render pricing/billing, reconciliation, `PaymentLedgerEntry`, and `MoneyDto` is migration debt and must not cross a new canonical port.
+Canonical `Money` is `(amountMinor: integer or scale-0 decimal, currency: ISO-4217 code)` with checked arithmetic and explicit rounding at conversion boundaries. Currency is mandatory; mixed-currency arithmetic is rejected. Existing `double`/`Double` money in Render pricing/billing, reconciliation, and `PaymentLedgerEntry` is migration debt and must not cross a new canonical port. Federation-query `MoneyDto` is explicitly classified `NON_AUTHORITATIVE_FRONTEND_PROJECTION_OUT_OF_SCOPE`: it is retained as a frontend wire projection, excluded from bounded canonical-money scans, and grants no monetary authority.
 
 ### C16 — Refund, reversal, and adjustment
 
@@ -127,7 +127,7 @@ Stop and seek independent architecture acceptance if a phase needs a second cano
 
 Independent review bound to candidate `586be5a08e90482ddcda9530fb66bd7783637361` returned `H5_INDEPENDENT_CHATGPT_ARCHITECTURE_REVIEW=PASS_WITH_BOUNDED_REFINEMENTS`. `H5_COMMERCIAL_AUTHORITY_IMPLEMENTATION_AUTHORIZATION=GO` applies only after R1-R3 are materialized and only through I0-I10. No push, merge, frontend authority, tax/ERP, H1 feasibility, provider scheduling, or Roadmap #23 work is authorized.
 
-## 3. Mechanically observed repository reality
+## 3. Mechanically observed accepted-baseline repository reality
 
 The companion inventory is authoritative for exact disposition rows. High-value evidence:
 
@@ -150,7 +150,9 @@ The companion inventory is authoritative for exact disposition rows. High-value 
 | payment transaction state | `PaymentAttemptRepository`; in-memory checkout binding; Billing payment ledger map | Payment application boundary + `PaymentAttemptRepository` | adapter-only correlation; Billing consumes payment projection |
 | entitlement grants | generic grant store/cache; workspace member grant store; fulfillment caller | Entitlement grant command boundary + subordinate Entitlement repositories | all callers route through one authority; no direct grant writes |
 
-Each category is currently `MULTIPLE_CANONICAL_WRITER_CANDIDATES`; “exactly one” above means one logical command authority and one owning persistence boundary, not one physical table for every distinct aggregate.
+At the accepted decision baseline each category was `MULTIPLE_CANONICAL_WRITER_CANDIDATES`; the table preserves that reviewed migration input. Through ordered I1-I9 implementation, each category is now `CONVERGED_SINGLE_CANONICAL_WRITER`. The implementation guard proves one physical production SQL writer per named canonical table while preserving the distinction between one logical command authority and subordinate stores for distinct aggregates.
+
+I9 retirement state is explicit: all 14 remaining accepted `DELETE_SHADOW` inventory rows are mechanically retired, including the deprecated quota module, Render-local quota/commercial decision stacks, and Billing payment-ledger shadow. Federation-query `MoneyDto` is retained and reclassified as the one explicit non-authoritative frontend projection exclusion; it is not reported as deleted.
 
 ## 5. Target decision flow
 
@@ -179,7 +181,7 @@ Each category is currently `MULTIPLE_CANONICAL_WRITER_CANDIDATES`; “exactly on
 
 ## 7. Gate contract and stop state
 
-The network-free guard at `docs/architecture/governance/automated-guards/verify-billing-entitlement-payment-authority-convergence-v1.py` validates contract clauses/separations, inventory schema/enums/counts/evidence, exact writer sets, repository drift patterns, and built-in mutations. Full suites are intentionally excluded because this lane changes governance documentation only.
+The network-free guard at `docs/architecture/governance/automated-guards/verify-billing-entitlement-payment-authority-convergence-v1.py` validates accepted-ancestor/tree binding, implementation path/shadow state, exact canonical SQL writer sets, bounded money precision, H1/H5 import direction, plan-specific capability branches, immutable usage lineage, EffectiveCapabilityView neutrality, payment payload boundaries, explicit frontend exclusions, and built-in fail-closed mutations. It supports dirty pre-commit and append-forward committed implementation states without requiring HEAD equality.
 
 `BILLING_ENTITLEMENT_PAYMENT_DECISION_RECOVERY=PASS`
 `COMMERCIAL_AUTHORITY_CONTRACT=ACCEPTED_WITH_BOUNDED_REFINEMENTS`

@@ -23,7 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
  *   <li>Modify GlobalObjectiveFunction weights</li>
  *   <li>Evolve StrategyPlanner heuristics</li>
  *   <li>Adjust Provider scoring model</li>
- *   <li>Update PolicyEngine rules dynamically</li>
+ *   <li>Update non-authoritative recommendation rules dynamically</li>
  *   <li>Evolve Billing thresholds</li>
  *   <li>Generate new execution strategies</li>
  * </ul>

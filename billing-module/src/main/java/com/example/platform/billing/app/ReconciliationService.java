@@ -24,7 +24,6 @@ public class ReconciliationService {
     private final ConcurrentHashMap<String, ThirdPartyInvoiceImport> importedInvoices = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, ReconciliationDifference> differences = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, CostLedgerEntry> costLedger = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, PaymentLedgerEntry> paymentLedger = new ConcurrentHashMap<>();
 
     private final ApplicationEventPublisher eventPublisher;
 
@@ -141,13 +140,6 @@ public class ReconciliationService {
      */
     public void addCostEntry(CostLedgerEntry entry) {
         costLedger.put(entry.entryId(), entry);
-    }
-
-    /**
-     * Add a payment ledger entry.
-     */
-    public void addPaymentEntry(PaymentLedgerEntry entry) {
-        paymentLedger.put(entry.entryId(), entry);
     }
 
     /**

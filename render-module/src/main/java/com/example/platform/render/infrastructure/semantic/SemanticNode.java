@@ -35,23 +35,22 @@ public record SemanticNode(
     }
 
     /**
-     * Create a billing decision semantic node.
+     * Create a neutral commercial admission semantic node.
      */
-    public static SemanticNode billingDecision(String nodeId, String decision,
-                                                  String reasonCode, Double estimatedCost) {
-        String description = "ALLOW".equals(decision)
-                ? String.format("Cost & eligibility verified. Estimated cost: $%.4f", estimatedCost)
-                : String.format("Cost & eligibility check failed: %s", reasonCode);
+    public static SemanticNode commercialDecision(
+            String nodeId, String decision, String reasonCode) {
+        String description = "ALLOWED".equals(decision)
+                ? "Commercial admission allowed"
+                : "Commercial admission denied: " + reasonCode;
 
         return new SemanticNode(
                 nodeId,
-                SemanticNodeType.BILLING,
-                "Cost & eligibility evaluation",
+                SemanticNodeType.COMMERCIAL,
+                "Commercial admission evaluation",
                 description,
-                "attach_money",
-                "ALLOW".equals(decision) ? "success" : "error",
-                Map.of("decision", decision, "reasonCode", reasonCode,
-                        "estimatedCost", estimatedCost != null ? estimatedCost : 0.0),
+                "verified_user",
+                "ALLOWED".equals(decision) ? "success" : "error",
+                Map.of("decision", decision, "reasonCode", reasonCode),
                 Instant.now()
         );
     }
@@ -148,7 +147,7 @@ public record SemanticNode(
      */
     public enum SemanticNodeType {
         EXECUTION,
-        BILLING,
+        COMMERCIAL,
         POLICY,
         PROVIDER,
         ARTIFACT

@@ -1,9 +1,10 @@
 package com.example.platform.identity.api;
 
-import com.example.platform.entitlement.app.EntitlementPolicyService;
+import com.example.platform.entitlement.app.EntitlementDecisionService;
 import com.example.platform.entitlement.app.WorkspaceEntitlementPoolService;
 import com.example.platform.entitlement.domain.EntitlementCommandResult;
 import com.example.platform.entitlement.domain.EntitlementDecision;
+import com.example.platform.entitlement.domain.AccessCheckRequest;
 import com.example.platform.entitlement.domain.WorkspaceMemberEntitlementGrant;
 import com.example.platform.identity.api.dto.*;
 import com.example.platform.identity.app.WorkspaceService;
@@ -23,16 +24,16 @@ public class WorkspaceController {
 
     private final WorkspaceService workspaceService;
     private final WorkspaceEntitlementPoolService poolService;
-    private final EntitlementPolicyService entitlementPolicyService;
+    private final EntitlementDecisionService entitlementDecisionService;
     private final AdminAuditPublisher auditPublisher;
 
     public WorkspaceController(WorkspaceService workspaceService,
             WorkspaceEntitlementPoolService poolService,
-            EntitlementPolicyService entitlementPolicyService,
+            EntitlementDecisionService entitlementDecisionService,
             AdminAuditPublisher auditPublisher) {
         this.workspaceService = workspaceService;
         this.poolService = poolService;
-        this.entitlementPolicyService = entitlementPolicyService;
+        this.entitlementDecisionService = entitlementDecisionService;
         this.auditPublisher = auditPublisher;
     }
 
@@ -128,10 +129,11 @@ public class WorkspaceController {
         if (tenantId == null || tenantId.isBlank()) {
             throw new IllegalArgumentException("Tenant context is required");
         }
-        return entitlementPolicyService.validateExportDecision(
-                tenantId,
-                request.userId(), request.preset(), request.outputFormat(),
-                request.estimatedDurationSeconds() != null ? request.estimatedDurationSeconds() : 60L);
+        return entitlementDecisionService.evaluate(new AccessCheckRequest(
+                tenantId, workspaceId, request.userId(), "USER", request.userId(),
+                "export", "workspace", workspaceId,
+                "export.preset." + request.preset(), request.preset(), null,
+                "workspace-preview", null, Map.of()));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

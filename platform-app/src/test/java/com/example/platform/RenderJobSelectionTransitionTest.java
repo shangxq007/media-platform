@@ -44,6 +44,9 @@ class RenderJobSelectionTransitionTest extends PostgresTestContainerSupport {
     @Autowired
     private JdbcTemplate jdbc;
 
+    @Autowired
+    private com.example.platform.entitlement.app.EntitlementService entitlementService;
+
     private HttpClient client;
     private String baseUrl;
     private final ObjectMapper jsonMapper = new ObjectMapper();
@@ -154,7 +157,9 @@ class RenderJobSelectionTransitionTest extends PostgresTestContainerSupport {
     private String createTenant(String name) throws Exception {
         String body = "{\"name\":\"" + name + "-" + System.nanoTime() + "\"}";
         HttpResponse<String> resp = httpPost("/api/identity/tenants", body);
-        return jsonMapper.readTree(resp.body()).get("id").asText();
+        String tenantId = jsonMapper.readTree(resp.body()).get("id").asText();
+        TestEntitlementGrantSupport.grant(entitlementService, tenantId, "render.job.create");
+        return tenantId;
     }
 
     private String createProject(String tenantId, String name) throws Exception {
