@@ -17,8 +17,8 @@ import java.util.Map;
  * 
  * <p>Replaces ALL independent decision systems:
  * <ul>
- *   <li>BillingDecisionEngine (advisory only)</li>
- *   <li>PolicyEngine (advisory only)</li>
+ *   <li>CommercialAdmission (advisory projection only)</li>
+ *   <li>RoleWorkspacePolicy (advisory projection only)</li>
  *   <li>StrategyPlannerEngine (advisory only)</li>
  *   <li>RuntimeStrategyAdjuster (advisory only)</li>
  * </ul>

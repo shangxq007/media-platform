@@ -4,15 +4,9 @@ import java.time.Instant;
 import java.util.Map;
 
 public record DiscountPolicyResponse(
-        String policyId,
-        String policyKey,
-        String name,
-        String description,
-        String discountType,
-        double discountValue,
-        Map<String, Object> conditions,
-        String status,
-        Instant effectiveFrom,
-        Instant effectiveTo,
-        Instant createdAt) {
-}
+        String policyId, String tenantId, String policyKey, long ruleVersion,
+        String meterKey, String currencyCode,
+        String name, String description, String discountType,
+        long discountNumerator, long discountDenominator, long flatAmountMinor,
+        Map<String, String> conditions, String status,
+        Instant effectiveFrom, Instant effectiveTo, Instant createdAt) {}

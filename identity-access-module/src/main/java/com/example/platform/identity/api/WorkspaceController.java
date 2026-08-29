@@ -1,13 +1,10 @@
 package com.example.platform.identity.api;
 
-import com.example.platform.entitlement.app.EntitlementPolicyService;
-import com.example.platform.entitlement.app.EntitlementService;
+import com.example.platform.entitlement.app.EntitlementDecisionService;
 import com.example.platform.entitlement.app.WorkspaceEntitlementPoolService;
-import com.example.platform.entitlement.domain.EntitlementChangedEvent;
+import com.example.platform.entitlement.domain.EntitlementCommandResult;
 import com.example.platform.entitlement.domain.EntitlementDecision;
-import com.example.platform.entitlement.domain.EntitlementGrant;
-import com.example.platform.entitlement.domain.EntitlementGrantStatus;
-import com.example.platform.entitlement.domain.WorkspaceEntitlementPool;
+import com.example.platform.entitlement.domain.AccessCheckRequest;
 import com.example.platform.entitlement.domain.WorkspaceMemberEntitlementGrant;
 import com.example.platform.identity.api.dto.*;
 import com.example.platform.identity.app.WorkspaceService;
@@ -27,19 +24,16 @@ public class WorkspaceController {
 
     private final WorkspaceService workspaceService;
     private final WorkspaceEntitlementPoolService poolService;
-    private final EntitlementService entitlementService;
-    private final EntitlementPolicyService entitlementPolicyService;
+    private final EntitlementDecisionService entitlementDecisionService;
     private final AdminAuditPublisher auditPublisher;
 
     public WorkspaceController(WorkspaceService workspaceService,
             WorkspaceEntitlementPoolService poolService,
-            EntitlementService entitlementService,
-            EntitlementPolicyService entitlementPolicyService,
+            EntitlementDecisionService entitlementDecisionService,
             AdminAuditPublisher auditPublisher) {
         this.workspaceService = workspaceService;
         this.poolService = poolService;
-        this.entitlementService = entitlementService;
-        this.entitlementPolicyService = entitlementPolicyService;
+        this.entitlementDecisionService = entitlementDecisionService;
         this.auditPublisher = auditPublisher;
     }
 
@@ -100,18 +94,12 @@ public class WorkspaceController {
             @RequestBody CreateWorkspaceGrantRequest request,
             @RequestHeader(value = "X-User-ID", required = false) String actor) {
         String effectiveActor = actor != null ? actor : "system";
-        Instant now = Instant.now();
-        String grantId = com.example.platform.shared.Ids.newId("ws_grant");
-        WorkspaceMemberEntitlementGrant grant = new WorkspaceMemberEntitlementGrant(
-                grantId, workspaceId, request.memberId(), request.featureKey(),
-                request.quotaAmount(),
-                request.startsAt() != null ? request.startsAt() : now,
-                request.expiresAt(), "ACTIVE", effectiveActor, now, now);
+        String tenantId = requireTenantContext();
+        Instant startsAt = request.startsAt() != null ? request.startsAt() : Instant.now();
         return poolService.allocateToMember(
-                workspaceId, request.featureKey(), request.memberId(),
-                request.quotaAmount(),
-                request.startsAt() != null ? request.startsAt() : now,
-                request.expiresAt(), effectiveActor);
+                tenantId, workspaceId, request.featureKey(), request.memberId(),
+                request.quotaAmount(), startsAt, request.expiresAt(), effectiveActor,
+                request.sourceRef(), request.idempotencyKey(), request.reason(), request.traceId());
     }
 
     @GetMapping("/{workspaceId}/entitlements/grants")
@@ -123,12 +111,14 @@ public class WorkspaceController {
     public Map<String, Object> revokeWorkspaceGrant(
             @PathVariable String workspaceId,
             @PathVariable String grantId,
-            @RequestBody(required = false) RevokeGrantRequest request,
+            @RequestBody RevokeGrantRequest request,
             @RequestHeader(value = "X-User-ID", required = false) String actor) {
         String effectiveActor = actor != null ? actor : "system";
-        String reason = request != null ? request.reason() : "revoked";
-        EntitlementChangedEvent event = entitlementService.revokeEntitlement(grantId, effectiveActor, reason);
-        return Map.of("status", "revoked", "event", event);
+        EntitlementCommandResult result = poolService.revokeFromMember(
+                requireTenantContext(), workspaceId, grantId, request.memberId(),
+                request.expectedVersion(), effectiveActor, request.sourceRef(),
+                request.idempotencyKey(), request.reason(), request.traceId());
+        return Map.of("status", "revoked", "event", result);
     }
 
     @PostMapping("/{workspaceId}/entitlements/preview")
@@ -139,10 +129,11 @@ public class WorkspaceController {
         if (tenantId == null || tenantId.isBlank()) {
             throw new IllegalArgumentException("Tenant context is required");
         }
-        return entitlementPolicyService.validateExportDecision(
-                tenantId,
-                request.userId(), request.preset(), request.outputFormat(),
-                request.estimatedDurationSeconds() != null ? request.estimatedDurationSeconds() : 60L);
+        return entitlementDecisionService.evaluate(new AccessCheckRequest(
+                tenantId, workspaceId, request.userId(), "USER", request.userId(),
+                "export", "workspace", workspaceId,
+                "export.preset." + request.preset(), request.preset(), null,
+                "workspace-preview", null, Map.of()));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
@@ -158,10 +149,7 @@ public class WorkspaceController {
      * Otherwise, use TenantContext (current authenticated tenant).
      */
     private String resolveTenantId(String requestedTenantId, jakarta.servlet.http.HttpServletRequest request) {
-        String contextTenant = com.example.platform.shared.web.TenantContext.get();
-        if (contextTenant == null || contextTenant.isBlank()) {
-            throw new IllegalArgumentException("Tenant context is required");
-        }
+        String contextTenant = requireTenantContext();
         if (requestedTenantId != null && !requestedTenantId.isBlank()
                 && !requestedTenantId.equals(contextTenant)) {
             // Cross-tenant workspace creation requires admin role
@@ -174,6 +162,14 @@ public class WorkspaceController {
             return requestedTenantId;
         }
         return contextTenant;
+    }
+
+    private static String requireTenantContext() {
+        String tenantId = com.example.platform.shared.web.TenantContext.get();
+        if (tenantId == null || tenantId.isBlank()) {
+            throw new IllegalArgumentException("Tenant context is required");
+        }
+        return tenantId;
     }
 
     private boolean isAdmin(jakarta.servlet.http.HttpServletRequest request) {
@@ -208,9 +204,12 @@ public class WorkspaceController {
 
     public record CreateWorkspaceGrantRequest(
             String memberId, String featureKey, long quotaAmount,
-            Instant startsAt, Instant expiresAt) {}
+            Instant startsAt, Instant expiresAt, String sourceRef,
+            String idempotencyKey, String reason, String traceId) {}
 
-    public record RevokeGrantRequest(String reason) {}
+    public record RevokeGrantRequest(
+            String memberId, long expectedVersion, String sourceRef,
+            String idempotencyKey, String reason, String traceId) {}
 
     public record PreviewRequest(
             String userId, String preset, String outputFormat, Long estimatedDurationSeconds) {}

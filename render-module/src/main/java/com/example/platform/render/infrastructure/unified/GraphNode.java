@@ -42,20 +42,19 @@ public record GraphNode(
     }
 
     /**
-     * Create a billing decision node.
+     * Create a neutral commercial admission projection node.
      */
-    public static GraphNode billingDecision(String nodeId, String decision, String reasonCode,
-                                              String reasonMessage, Double estimatedCost) {
+    public static GraphNode commercialDecision(
+            String nodeId, String decision, String reasonCode, String authorityVersion) {
         return new GraphNode(
                 nodeId,
-                UnifiedRequestGraph.NodeType.BILLING_DECISION_NODE,
-                "BillingDecisionEngine",
-                "BILLING_DECISION",
+                UnifiedRequestGraph.NodeType.COMMERCIAL_DECISION_NODE,
+                "CommercialAdmission",
+                "COMMERCIAL_DECISION",
                 decision,
                 Map.of(
                         "reasonCode", reasonCode,
-                        "reasonMessage", reasonMessage,
-                        "estimatedCost", estimatedCost != null ? estimatedCost : 0.0
+                        "authorityVersion", authorityVersion
                 ),
                 Instant.now(),
                 Map.of()
@@ -70,7 +69,7 @@ public record GraphNode(
         return new GraphNode(
                 nodeId,
                 UnifiedRequestGraph.NodeType.POLICY_DECISION_NODE,
-                "PolicyEngine",
+                "RoleWorkspacePolicy",
                 "POLICY_EVALUATION",
                 allowed ? "ALLOWED" : "DENIED",
                 Map.of(

@@ -3,13 +3,15 @@ package com.example.platform.billing.usage;
 import com.example.platform.billing.app.PricingRuleService;
 import com.example.platform.billing.app.RatingEngine;
 import com.example.platform.billing.domain.PricingRule;
+import com.example.platform.billing.domain.RateUsageCommand;
+import java.time.Instant;
 import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
- * Canonical billing consumption boundary. Consumes canonical {@link UsageRecord} facts and hands
+ * Canonical billing consumption boundary. Consumes {@link BillableUsage} facts and hands
  * them to the RatingEngine-compatible flow. Rating is purely commercial; absence of a matching
  * rule does not invent or discard usage. There is no legacy double projection — the typed
  * quantity is the only representation.
@@ -29,21 +31,16 @@ public class BillingConsumptionBoundaryImpl implements BillingConsumptionBoundar
     }
 
     @Override
-    public void consume(UsageRecord canonical) {
-        Objects.requireNonNull(canonical, "canonical usage record must not be null");
-        PricingRule rule = pricingRuleService.listPricingRules().stream()
-                .filter(r -> canonical.dimension().name().equals(r.meterKey()))
-                .filter(r -> "ACTIVE".equals(r.status()))
-                .findFirst()
-                .orElse(null);
-
-        if (rule != null) {
-            ratingEngine.rateUsage(canonical, rule);
-            log.debug("BillingConsumptionBoundary: consumed canonical record {} dimension={}",
-                    canonical.recordId(), canonical.dimension().name());
-        } else {
-            log.debug("BillingConsumptionBoundary: consumed canonical record {} dimension={} (no active rule)",
-                    canonical.recordId(), canonical.dimension().name());
-        }
+    public void consume(BillableUsage canonical) {
+        Objects.requireNonNull(canonical, "billable usage must not be null");
+        Instant ratedAt = Instant.now();
+        PricingRule rule = pricingRuleService.requireEffectiveRuleForMeter(
+                canonical.tenantId(), canonical.billableMeter(), ratedAt);
+        ratingEngine.rate(new RateUsageCommand(canonical, rule.ruleKey(), rule.version(),
+                "rate:" + canonical.tenantId() + ":" + canonical.billableUsageId()
+                        + ":" + rule.ruleId() + ":" + rule.version(),
+                ratedAt, canonical.traceId()));
+        log.debug("BillingConsumptionBoundary: consumed canonical record {} dimension={}",
+                canonical.billableUsageId(), canonical.billableDimension().name());
     }
 }

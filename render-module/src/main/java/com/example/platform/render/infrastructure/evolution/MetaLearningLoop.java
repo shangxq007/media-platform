@@ -102,7 +102,7 @@ public class MetaLearningLoop {
         if (drift.policyDriftDetected()) {
             suggestions.add(new ImprovementSuggestion(
                     "sug-" + Instant.now().toEpochMilli(),
-                    "PolicyEngine",
+                    "RoleWorkspacePolicy",
                     SystemMutationGraph.MutationType.POLICY_UPDATE,
                     "Review policy rejection patterns",
                     Map.of(),

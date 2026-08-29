@@ -1,59 +1,40 @@
 package com.example.platform.entitlement.app;
 
-import com.example.platform.entitlement.domain.QuotaDecision;
-import org.junit.jupiter.api.BeforeEach;
+import com.example.platform.entitlement.domain.QuotaOperationKind;
+import com.example.platform.entitlement.domain.QuotaUsageCommand;
+import com.example.platform.entitlement.domain.QuotaUsageOutcome;
+import com.example.platform.entitlement.domain.QuotaUsageResult;
+import com.example.platform.shared.commercial.PrincipalRef;
+import com.example.platform.shared.commercial.PrincipalType;
+import java.time.Instant;
 import org.junit.jupiter.api.Test;
 
-import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class QuotaConsumptionBoundaryTest {
 
-    private QuotaPolicyService policyService;
-    private QuotaUsageService usageService;
-    private QuotaDecisionService decisionService;
-    private QuotaConsumptionBoundary boundary;
-
-    @BeforeEach
-    void setUp() {
-        policyService = new QuotaPolicyService();
-        usageService = new QuotaUsageService(Optional.empty());
-        decisionService = new QuotaDecisionService(policyService, usageService);
-        boundary = new QuotaConsumptionBoundaryImpl(decisionService);
-    }
-
     @Test
-    void recordPostExecutionUsageDelegatesToRecordUsage() {
-        boundary.recordPostExecutionUsage("tenant-1", "render.job.create", 5L);
+    void compatibilityBoundaryDelegatesCompleteCanonicalCommand() {
+        Instant start = Instant.parse("2026-08-01T00:00:00Z");
+        Instant end = Instant.parse("2026-09-01T00:00:00Z");
+        Instant now = Instant.parse("2026-08-29T08:00:00Z");
+        PrincipalRef principal = PrincipalRef.tenantScoped(
+                "tenant-1", PrincipalType.USER, "user-1");
+        QuotaUsageCommand command = new QuotaUsageCommand(
+                principal, "render", start, end, 5, 100, "idem-1",
+                QuotaOperationKind.CONSUMPTION, "trace-1", "post execution", now);
+        QuotaUsageResult expected = new QuotaUsageResult(
+                "op-1", principal, "render", start, end, 5, 100, "idem-1",
+                QuotaOperationKind.CONSUMPTION, QuotaUsageOutcome.APPLIED,
+                0, 5, null, "trace-1", "post execution", now, now);
+        QuotaUsageAuthority authority = mock(QuotaUsageAuthority.class);
+        when(authority.execute(command)).thenReturn(expected);
+        QuotaConsumptionBoundary boundary = new QuotaConsumptionBoundaryImpl(authority);
 
-        // The post-execution consumption reached the existing quota authority.
-        assertEquals(5L, usageService.getUsage("tenant-1", "render.job.create"));
-
-        // A second call accumulates (proves it is accounting, not replacement).
-        boundary.recordPostExecutionUsage("tenant-1", "render.job.create", 3L);
-        assertEquals(8L, usageService.getUsage("tenant-1", "render.job.create"));
-    }
-
-    @Test
-    void preExecutionEvaluateUntouched() {
-        // Pre-execution hard-limit decision semantics are unchanged.
-        QuotaDecision before = decisionService.evaluate("tenant-1", "render.job.create", 10L);
-        assertTrue(before.allowed());
-
-        // Post-execution accounting must not alter the pre-execution decision path.
-        boundary.recordPostExecutionUsage("tenant-1", "render.job.create", 10L);
-        QuotaDecision after = decisionService.evaluate("tenant-1", "render.job.create", 10L);
-
-        // Usage now reflects the recorded consumption; evaluate semantics are identical.
-        assertEquals(10L, usageService.getUsage("tenant-1", "render.job.create"));
-        assertEquals(before.allowed(), after.allowed());
-    }
-
-    @Test
-    void boundaryIsPureConsumer() {
-        // This boundary only accounts — it must produce no usage facts of its own. We
-        // assert by confirming usage is zero before any external emission drives it.
-        assertEquals(0L, usageService.getUsage("tenant-never-emitted", "render.job.create"));
+        assertSame(expected, boundary.recordPostExecutionUsage(command));
+        verify(authority).execute(command);
     }
 }

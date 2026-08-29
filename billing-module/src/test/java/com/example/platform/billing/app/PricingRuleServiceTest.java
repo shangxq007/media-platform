@@ -1,181 +1,143 @@
 package com.example.platform.billing.app;
 
-import com.example.platform.billing.domain.*;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import com.example.platform.billing.domain.CustomPricingRule;
+import com.example.platform.billing.domain.DiscountPolicy;
+import com.example.platform.billing.domain.PricingModel;
+import com.example.platform.billing.domain.PricingRule;
+import com.example.platform.billing.domain.PricingTier;
+import com.example.platform.billing.infrastructure.CommercialPricingJdbcRepository;
+import com.example.platform.shared.commercial.Money;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.*;
+import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 class PricingRuleServiceTest {
 
+    private static final Instant NOW = Instant.parse("2026-08-29T08:00:00Z");
+    private CommercialPricingJdbcRepository repository;
     private PricingRuleService service;
 
     @BeforeEach
     void setUp() {
-        service = new PricingRuleService();
+        repository = mock(CommercialPricingJdbcRepository.class);
+        service = new PricingRuleService(repository);
+        when(repository.saveRule(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(repository.saveOverride(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(repository.saveDiscount(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(repository.findEffectiveDiscounts(any(), any(), any())).thenReturn(List.of());
     }
 
     @Test
-    void shouldCreatePricingRule() {
-        PricingRule rule = service.createPricingRule(
-                "api-standard", "API Standard", "",
-                PricingModel.USAGE_BASED, "api_calls",
-                5, "USD", List.of(), null, null);
-        assertNotNull(rule);
-        assertEquals("api-standard", rule.ruleKey());
-        assertEquals(5, rule.unitPriceMinor());
-        assertEquals("USD", rule.currencyCode());
-        assertEquals("ACTIVE", rule.status());
+    void savesVersionedExactRuleAndListsTenantScopedGlobalRules() {
+        PricingRule rule = rule("api-standard", "api", 5, List.of());
+        when(repository.findRulesByTenant("GLOBAL")).thenReturn(List.of(rule));
+
+        assertEquals(rule, service.saveRule(rule));
+        assertEquals(List.of(rule), service.listPricingRules());
+        verify(repository).findRulesByTenant("GLOBAL");
     }
 
     @Test
-    void shouldGetPricingRule() {
-        service.createPricingRule("r1", "Rule 1", "", PricingModel.USAGE_BASED, "m1", 10, "USD", List.of(), null, null);
-        PricingRule rule = service.getPricingRule("r1");
-        assertNotNull(rule);
-        assertEquals("r1", rule.ruleKey());
+    void archiveUsesLegalActiveToArchivedTransition() {
+        PricingRule rule = rule("api-standard", "api", 5, List.of());
+        when(repository.findRule("GLOBAL", "api-standard", 1)).thenReturn(Optional.of(rule));
+
+        assertEquals("ARCHIVED", service.archivePricingRule("api-standard").status());
+        verify(repository).updateRuleStatus(org.mockito.ArgumentMatchers.eq("GLOBAL"),
+                org.mockito.ArgumentMatchers.eq("api-standard"),
+                org.mockito.ArgumentMatchers.eq(1L), org.mockito.ArgumentMatchers.eq("ACTIVE"),
+                org.mockito.ArgumentMatchers.eq("ARCHIVED"), any());
     }
 
     @Test
-    void shouldListPricingRules() {
-        service.createPricingRule("r1", "Rule 1", "", PricingModel.USAGE_BASED, "m1", 10, "USD", List.of(), null, null);
-        service.createPricingRule("r2", "Rule 2", "", PricingModel.SUBSCRIPTION, "m2", 100, "USD", List.of(), null, null);
-        List<PricingRule> rules = service.listPricingRules();
-        assertEquals(2, rules.size());
+    void unknownRuleFailsClosedWithoutInventingDefaultPrice() {
+        when(repository.findEffectiveRule("tenant-a", "missing", 1, NOW))
+                .thenReturn(Optional.empty());
+        assertThrows(IllegalStateException.class, () -> service.previewPricing(
+                new PricingQuoteCommand("tenant-a", null, "api", 10,
+                        "missing", 1, NOW, Map.of())));
     }
 
     @Test
-    void shouldArchivePricingRule() {
-        service.createPricingRule("r1", "Rule 1", "", PricingModel.USAGE_BASED, "m1", 10, "USD", List.of(), null, null);
-        PricingRule archived = service.archivePricingRule("r1");
-        assertEquals("ARCHIVED", archived.status());
+    void exactTenantOverrideAndRationalDiscountApplyWithoutFloatingPoint() {
+        PricingRule rule = rule("api-standard", "api", 5, List.of());
+        CustomPricingRule override = new CustomPricingRule("override-1", "tenant-a", null,
+                "api", 1, new Money(4, "USD"), 1, 4,
+                NOW.minusSeconds(1), null, "ACTIVE", NOW.minusSeconds(1));
+        when(repository.findEffectiveRule("tenant-a", "api-standard", 1, NOW))
+                .thenReturn(Optional.of(rule));
+        when(repository.findOverride("tenant-a", null, "api", NOW))
+                .thenReturn(Optional.of(override));
+
+        var result = service.previewPricing(new PricingQuoteCommand(
+                "tenant-a", null, "api", 3, "api-standard", 1, NOW, Map.of()));
+
+        assertEquals(new Money(9, "USD"), result.amount());
+        assertEquals("override-1", result.overrideRuleId());
     }
 
     @Test
-    void shouldThrowOnArchiveUnknownRule() {
-        assertThrows(IllegalArgumentException.class, () -> service.archivePricingRule("nonexistent"));
+    void exactPercentageAndFlatDiscountsPreserveBroadPricingBehavior() {
+        PricingRule rule = rule("api-standard", "api", 10, List.of());
+        when(repository.findEffectiveRule("tenant-a", "api-standard", 1, NOW))
+                .thenReturn(Optional.of(rule));
+        when(repository.findOverride("tenant-a", null, "api", NOW)).thenReturn(Optional.empty());
+        DiscountPolicy percentage = new DiscountPolicy("d1", "tenant-a", "summer", 1,
+                "api", "USD", "Summer", "", "PERCENTAGE", 1, 5, 0,
+                Map.of(), "ACTIVE", NOW.minusSeconds(1), null, NOW);
+        DiscountPolicy flat = new DiscountPolicy("d2", "tenant-a", "flat", 1,
+                "api", "USD", "Flat", "", "FLAT", 0, 1, 100,
+                Map.of(), "ACTIVE", NOW.minusSeconds(1), null, NOW);
+        when(repository.findEffectiveDiscounts("tenant-a", "api", NOW))
+                .thenReturn(List.of(percentage, flat));
+
+        var result = service.previewPricing(new PricingQuoteCommand(
+                "tenant-a", null, "api", 100, "api-standard", 1, NOW, Map.of()));
+
+        assertEquals(new Money(700, "USD"), result.amount());
     }
 
     @Test
-    void shouldCreateCustomPricing() {
-        CustomPricingRule rule = service.createCustomPricing(
-                "t1", "ws-1", "api_calls", 3L, 10.0,
-                Instant.now(), null);
-        assertNotNull(rule);
-        assertEquals("t1", rule.tenantId());
-        assertEquals("api_calls", rule.meterKey());
-        assertEquals(3L, rule.overridePriceMinor());
-        assertEquals(10.0, rule.discountPercent());
+    void tieredPricingUsesIncreasingCumulativeThresholds() {
+        PricingRule rule = rule("tiered", "api", 0,
+                List.of(new PricingTier(100, 10, 0), new PricingTier(1_000, 5, 0)));
+        when(repository.findEffectiveRule("tenant-a", "tiered", 1, NOW))
+                .thenReturn(Optional.of(rule));
+        when(repository.findOverride("tenant-a", null, "api", NOW)).thenReturn(Optional.empty());
+
+        var result = service.previewPricing(new PricingQuoteCommand(
+                "tenant-a", null, "api", 150, "tiered", 1, NOW, Map.of()));
+
+        assertEquals(new Money(1_250, "USD"), result.amount());
     }
 
     @Test
-    void shouldGetCustomPricing() {
-        CustomPricingRule rule = service.createCustomPricing(
-                "t1", "ws-1", "api_calls", null, null, null, null);
-        CustomPricingRule found = service.getCustomPricing(rule.ruleId());
-        assertNotNull(found);
-        assertEquals(rule.ruleId(), found.ruleId());
+    void overrideCurrencyMismatchFailsClosed() {
+        PricingRule rule = rule("api-standard", "api", 5, List.of());
+        when(repository.findEffectiveRule("tenant-a", "api-standard", 1, NOW))
+                .thenReturn(Optional.of(rule));
+        when(repository.findOverride("tenant-a", null, "api", NOW)).thenReturn(Optional.of(
+                new CustomPricingRule("override-eur", "tenant-a", null, "api", 1,
+                        new Money(4, "EUR"), 0, 1, NOW.minusSeconds(1), null, "ACTIVE", NOW)));
+
+        assertThrows(IllegalStateException.class, () -> service.previewPricing(
+                new PricingQuoteCommand("tenant-a", null, "api", 1,
+                        "api-standard", 1, NOW, Map.of())));
     }
 
-    @Test
-    void shouldGetCustomPricingForTenant() {
-        service.createCustomPricing("t1", "ws-1", "api_calls", null, null, null, null);
-        service.createCustomPricing("t1", "ws-2", "storage", null, null, null, null);
-        service.createCustomPricing("t2", "ws-1", "api_calls", null, null, null, null);
-        List<CustomPricingRule> t1Rules = service.getCustomPricingForTenant("t1");
-        assertEquals(2, t1Rules.size());
-    }
-
-    @Test
-    void shouldCreateDiscountPolicy() {
-        DiscountPolicy policy = service.createDiscountPolicy(
-                "summer-2025", "Summer Sale", "20% off",
-                "PERCENTAGE", 20.0,
-                Map.of("region", "US"),
-                Instant.now(), null);
-        assertNotNull(policy);
-        assertEquals("summer-2025", policy.policyKey());
-        assertEquals("PERCENTAGE", policy.discountType());
-        assertEquals(20.0, policy.discountValue());
-    }
-
-    @Test
-    void shouldListActiveDiscountPolicies() {
-        service.createDiscountPolicy("d1", "Discount 1", "", "PERCENTAGE", 10.0, Map.of(), null, null);
-        service.createDiscountPolicy("d2", "Discount 2", "", "FLAT", 50.0, Map.of(), null, null);
-        List<DiscountPolicy> policies = service.listDiscountPolicies();
-        assertEquals(2, policies.size());
-    }
-
-    @Test
-    void shouldPreviewPricing() {
-        service.createPricingRule("api-standard", "API", "",
-                PricingModel.USAGE_BASED, "api_calls",
-                5, "USD", List.of(), null, null);
-        PricingRuleService.PricingPreviewResult result = service.previewPricing(
-                "t1", "api_calls", 100.0, Map.of());
-        assertNotNull(result);
-        assertEquals(500, result.estimatedAmountMinor());
-        assertEquals("USD", result.currencyCode());
-    }
-
-    @Test
-    void shouldPreviewWithCustomPricing() {
-        service.createPricingRule("api-standard", "API", "",
-                PricingModel.USAGE_BASED, "api_calls",
-                5, "USD", List.of(), null, null);
-        service.createCustomPricing("t1", "ws-1", "api_calls", 3L, null, Instant.now(), null);
-        PricingRuleService.PricingPreviewResult result = service.previewPricing(
-                "t1", "api_calls", 100.0, Map.of());
-        assertEquals(300, result.estimatedAmountMinor());
-    }
-
-    @Test
-    void shouldPreviewWithDiscount() {
-        service.createPricingRule("api-standard", "API", "",
-                PricingModel.USAGE_BASED, "api_calls",
-                10, "USD", List.of(), null, null);
-        service.createDiscountPolicy("summer", "Sale", "",
-                "PERCENTAGE", 20.0, Map.of(), Instant.now(), null);
-        PricingRuleService.PricingPreviewResult result = service.previewPricing(
-                "t1", "api_calls", 100.0, Map.of());
-        assertEquals(800, result.estimatedAmountMinor());
-    }
-
-    @Test
-    void shouldPreviewWithDefaultPricingWhenNoRule() {
-        PricingRuleService.PricingPreviewResult result = service.previewPricing(
-                "t1", "unknown_meter", 10.0, Map.of());
-        assertNotNull(result);
-        assertEquals(1000, result.estimatedAmountMinor());
-    }
-
-    @Test
-    void shouldPreviewWithFlatDiscount() {
-        service.createPricingRule("api-standard", "API", "",
-                PricingModel.USAGE_BASED, "api_calls",
-                10, "USD", List.of(), null, null);
-        service.createDiscountPolicy("flat-discount", "Flat", "",
-                "FLAT", 200.0, Map.of(), Instant.now(), null);
-        PricingRuleService.PricingPreviewResult result = service.previewPricing(
-                "t1", "api_calls", 100.0, Map.of());
-        assertEquals(800, result.estimatedAmountMinor());
-    }
-
-    @Test
-    void shouldPreviewWithTieredPricing() {
-        List<PricingTier> tiers = List.of(
-                new PricingTier(100, 10, 0),
-                new PricingTier(1000, 5, 0));
-        service.createPricingRule("api-tiered", "Tiered", "",
-                PricingModel.USAGE_BASED, "api_calls",
-                0, "USD", tiers, null, null);
-        PricingRuleService.PricingPreviewResult result = service.previewPricing(
-                "t1", "api_calls", 150.0, Map.of());
-        assertEquals(1250, result.estimatedAmountMinor());
+    private static PricingRule rule(String key, String meter, long price, List<PricingTier> tiers) {
+        return new PricingRule("rule-" + key, "GLOBAL", key, 1, key, "",
+                PricingModel.USAGE_BASED, meter, new Money(price, "USD"), tiers,
+                "ACTIVE", NOW.minusSeconds(1), null, NOW.minusSeconds(1), NOW.minusSeconds(1));
     }
 }

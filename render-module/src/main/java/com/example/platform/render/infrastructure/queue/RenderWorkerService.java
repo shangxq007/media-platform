@@ -4,8 +4,6 @@ import com.example.platform.render.domain.RenderJobStateMachine;
 import com.example.platform.render.domain.RenderJobStatus;
 import com.example.platform.render.infrastructure.RenderJobRepository;
 import com.example.platform.render.infrastructure.RenderProvider;
-import com.example.platform.render.infrastructure.billing.RenderBillingRecord;
-import com.example.platform.render.infrastructure.billing.RenderBillingRecordRepository;
 import org.jooq.Record;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,7 +44,6 @@ public class RenderWorkerService {
     private final RenderJobRepository jobRepository;
     private final RenderProvider renderProvider;
     private final RenderJobStateMachine stateMachine;
-    private final RenderBillingRecordRepository billingRepository;
 
     @Value("${render.worker.enabled:true}")
     private boolean workerEnabled;
@@ -64,14 +61,12 @@ public class RenderWorkerService {
             JobLeaseRepository leaseRepository,
             RenderJobRepository jobRepository,
             RenderProvider renderProvider,
-            RenderJobStateMachine stateMachine,
-            RenderBillingRecordRepository billingRepository) {
+            RenderJobStateMachine stateMachine) {
         this.queue = queue;
         this.leaseRepository = leaseRepository;
         this.jobRepository = jobRepository;
         this.renderProvider = renderProvider;
         this.stateMachine = stateMachine;
-        this.billingRepository = billingRepository;
     }
 
     /**
@@ -146,7 +141,6 @@ public class RenderWorkerService {
             jobRepository.updateArtifactUri(jobId, result.storageUri());
 
             // Create billing record
-            createBillingRecord(jobId, job.tenantId(), durationSeconds, result);
 
             // Complete job
             jobRepository.updateStatus(jobId, RenderJobStatus.COMPLETED.name());
@@ -175,27 +169,6 @@ public class RenderWorkerService {
         queue.fail(jobId, false);
 
         log.error("Job {} failed: {}", jobId, error.getMessage());
-    }
-
-    /**
-     * Create a billing record for a completed job.
-     */
-    private void createBillingRecord(String jobId, String tenantId, long durationSeconds,
-                                      RenderProvider.RenderResult result) {
-        // Simple cost formula: $0.05 per minute
-        double costPerMinute = 0.05;
-        double estimatedCost = (durationSeconds / 60.0) * costPerMinute;
-
-        RenderBillingRecord record = RenderBillingRecord.create(jobId, tenantId, estimatedCost, Instant.now());
-        RenderBillingRecord finalized = record.finalize(
-                estimatedCost,
-                durationSeconds,
-                null,
-                0 // output size unknown at this point
-        );
-
-        billingRepository.save(finalized);
-        log.info("Created billing record for job {}: ${}", jobId, String.format("%.4f", estimatedCost));
     }
 
     /**

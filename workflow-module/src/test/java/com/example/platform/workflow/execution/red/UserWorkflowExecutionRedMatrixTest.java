@@ -1,6 +1,6 @@
 package com.example.platform.workflow.execution.red;
 
-import com.example.platform.billing.usage.CanonicalActorRef;
+import com.example.platform.shared.usage.CanonicalActorRef;
 import com.example.platform.workflow.definition.domain.UserWorkflowDefinition;
 import com.example.platform.workflow.definition.domain.UserWorkflowDefinitionId;
 import com.example.platform.workflow.definition.domain.UserWorkflowDefinitionStatus;
@@ -112,8 +112,8 @@ class UserWorkflowExecutionRedMatrixTest {
         // with canonical category, never raw SDK exception).
         var request = new com.example.platform.extension.runtime.PluginExecutionRequest(
                 "t-1", new CanonicalActorRef("u-1", "USER"),
-                com.example.platform.billing.usage.OperationRef.of("op", "a1"),
-                "cap-none", new com.example.platform.billing.usage.ProviderRef("ghost"),
+                com.example.platform.shared.usage.OperationRef.of("op", "a1"),
+                "cap-none", new com.example.platform.shared.usage.ProviderRef("ghost"),
                 null, com.example.platform.extension.runtime.ExecutionMode.TRUSTED_IN_PROCESS,
                 java.time.Duration.ofSeconds(30),
                 com.example.platform.extension.runtime.ResourceRequirements.defaults(),
@@ -127,8 +127,8 @@ class UserWorkflowExecutionRedMatrixTest {
     void red007_activityRetryDistinctAttempt() {
         // Each Temporal activity retry forms a NEW PluginRuntime attempt
         // (OperationRef attempt id) -> distinct usage/cost (UWE-ADR-012).
-        var op = com.example.platform.billing.usage.OperationRef.of("op-x", "attempt-1");
-        var op2 = com.example.platform.billing.usage.OperationRef.of("op-x", "attempt-2");
+        var op = com.example.platform.shared.usage.OperationRef.of("op-x", "attempt-1");
+        var op2 = com.example.platform.shared.usage.OperationRef.of("op-x", "attempt-2");
         assertTrue(!op.attemptId().equals(op2.attemptId()));
     }
 

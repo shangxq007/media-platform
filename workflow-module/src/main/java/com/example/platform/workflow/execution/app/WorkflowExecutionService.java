@@ -1,6 +1,6 @@
 package com.example.platform.workflow.execution.app;
 
-import com.example.platform.billing.usage.CanonicalActorRef;
+import com.example.platform.shared.usage.CanonicalActorRef;
 import com.example.platform.workflow.definition.domain.UserWorkflowDefinition;
 import com.example.platform.workflow.definition.domain.UserWorkflowDefinitionId;
 import com.example.platform.workflow.definition.domain.UserWorkflowDefinitionVersion;

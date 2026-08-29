@@ -1,12 +1,16 @@
 package com.example.platform.ai.app;
 
 import com.example.platform.ai.api.AiGatewayPort;
-import com.example.platform.billing.usage.OperationRef;
-import com.example.platform.billing.usage.UsageDimension;
-import com.example.platform.billing.usage.UsageQuantity;
-import com.example.platform.billing.usage.UsageRecord;
-import com.example.platform.billing.usage.UsageRecordEmissionPort;
-import com.example.platform.billing.usage.UsageUnit;
+import com.example.platform.shared.usage.CanonicalActorRef;
+import com.example.platform.shared.usage.ObservedRuntimeUsage;
+import com.example.platform.shared.usage.ObservedRuntimeUsageEmissionPort;
+import com.example.platform.shared.usage.OperationRef;
+import com.example.platform.shared.usage.ProviderRef;
+import com.example.platform.shared.usage.RuntimeOutcome;
+import com.example.platform.shared.usage.UsageDimension;
+import com.example.platform.shared.usage.UsageProvenance;
+import com.example.platform.shared.usage.UsageQuantity;
+import com.example.platform.shared.usage.UsageUnit;
 import com.example.platform.ai.domain.ChatProvider;
 import com.example.platform.ai.domain.ChatRequest;
 import com.example.platform.ai.domain.ChatResult;
@@ -30,11 +34,11 @@ public class AiGatewayService implements AiGatewayPort {
 
     private final ModelRouter router;
     private final Map<String, ChatProvider> providers;
-    private final UsageRecordEmissionPort emissionPort;
+    private final ObservedRuntimeUsageEmissionPort emissionPort;
 
     @Autowired
     public AiGatewayService(ModelRouter router, Map<String, ChatProvider> providers,
-            UsageRecordEmissionPort emissionPort) {
+            ObservedRuntimeUsageEmissionPort emissionPort) {
         this.router = router;
         this.providers = providers;
         this.emissionPort = emissionPort;
@@ -68,12 +72,12 @@ public class AiGatewayService implements AiGatewayPort {
         long elapsed = System.currentTimeMillis() - start;
         int tokensUsed = prompt.length() / 4 + result.content().length() / 4;
         log.info("AiGatewayService: script generated in {}ms, tokensUsed={}", elapsed, tokensUsed);
-        emitUsage(tenantId, tokensUsed);
+        emitUsage(tenantId, tokensUsed, result);
         return new AiScriptResult(result.content(), result.model(), tokensUsed, Instant.now());
     }
 
     /**
-     * Emits one canonical TOKEN_INPUT {@link UsageRecord} for the heuristic token count.
+     * Emits one neutral TOKEN_INPUT observation for the heuristic token count.
      *
      * <p>Provenance is deliberately ESTIMATED (a chars/4 heuristic) — this path MUST NOT
      * claim provider-reported usage, and it MUST NOT fabricate a provider cost observation
@@ -81,7 +85,7 @@ public class AiGatewayService implements AiGatewayPort {
      * is skipped with a warning. Any emission failure is swallowed so it can never break
      * script generation.</p>
      */
-    private void emitUsage(String tenantId, int tokensUsed) {
+    private void emitUsage(String tenantId, int tokensUsed, ChatResult result) {
         if (emissionPort == null) {
             return;
         }
@@ -91,22 +95,26 @@ public class AiGatewayService implements AiGatewayPort {
         }
         try {
             String operationId = Ids.newId("aiop");
-            UsageRecord record = UsageRecord.record(
+            Instant occurredAt = Instant.now();
+            ObservedRuntimeUsage record = ObservedRuntimeUsage.observe(
                     tenantId,
                     null,
+                    new CanonicalActorRef("ai-gateway", "SYSTEM"),
+                    OperationRef.of(operationId, "attempt-1"),
                     null,
-                    OperationRef.of(operationId),
-                    null,
-                    null,
+                    new ProviderRef(result.provider()),
                     "script-generation",
                     UsageDimension.TOKEN_INPUT,
                     UsageQuantity.fromBaseUnits(tokensUsed, UsageUnit.TOKEN),
-                    Instant.now(),
-                    Instant.now(),
-                    Instant.now(),
-                    "ai-" + operationId + "-1",
-                    "ESTIMATED",
-                    "ai-gateway-heuristic");
+                    RuntimeOutcome.SUCCEEDED,
+                    occurredAt,
+                    occurredAt,
+                    occurredAt,
+                    UsageProvenance.ESTIMATED,
+                    "ai-gateway-heuristic",
+                    result.provider() + ":" + result.model(),
+                    "ai-" + operationId,
+                    "ai-" + operationId + "-1");
             emissionPort.emit(record);
         } catch (Exception e) {
             log.warn("AiGatewayService: usage emission failed, suppressing to preserve generateScript behavior: {}",

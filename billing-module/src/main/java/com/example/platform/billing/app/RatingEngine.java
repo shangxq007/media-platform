@@ -1,87 +1,114 @@
 package com.example.platform.billing.app;
 
-import com.example.platform.billing.domain.RatedUsageRecord;
 import com.example.platform.billing.domain.PricingRule;
-import com.example.platform.billing.domain.PricingTier;
-import com.example.platform.billing.usage.UsageRecord;
-import com.example.platform.shared.Ids;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
-
+import com.example.platform.billing.domain.RateUsageCommand;
+import com.example.platform.billing.domain.RatedUsageRecord;
+import com.example.platform.billing.infrastructure.CommercialPricingJdbcRepository;
+import com.example.platform.billing.infrastructure.RatedUsageJdbcRepository;
+import com.example.platform.billing.usage.BillableUsage;
+import com.example.platform.shared.commercial.Money;
 import java.time.Instant;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+/** Durable, idempotent rating authority. */
 @Service
 public class RatingEngine {
 
-    private static final Logger log = LoggerFactory.getLogger(RatingEngine.class);
+    private final CommercialPricingJdbcRepository pricing;
+    private final RatedUsageJdbcRepository ratedUsage;
+    private final RatedUsageAuditPort audit;
 
-    private final ConcurrentHashMap<String, RatedUsageRecord> ratedRecords = new ConcurrentHashMap<>();
+    public RatingEngine(CommercialPricingJdbcRepository pricing,
+                        RatedUsageJdbcRepository ratedUsage,
+                        RatedUsageAuditPort audit) {
+        this.pricing = pricing;
+        this.ratedUsage = ratedUsage;
+        this.audit = audit;
+    }
 
-    public RatedUsageRecord rateUsage(UsageRecord usageRecord, PricingRule pricingRule) {
-        if (usageRecord == null) {
-            throw new IllegalArgumentException("usageRecord is required");
+    @Transactional
+    public RatedUsageRecord rate(RateUsageCommand command) {
+        BillableUsage usage = command.billableUsage();
+        PricingRule rule = pricing.findEffectiveRule(usage.tenantId(), command.pricingRuleKey(),
+                        command.pricingRuleVersion(), command.ratedAt())
+                .orElseThrow(() -> new IllegalStateException("Unknown or inactive pricing rule/version"));
+        return rateResolved(usage, rule, command.ratedAt(), command.traceId(),
+                command.idempotencyKey());
+    }
+
+    /**
+     * Typed BillableUsage-only rating boundary retained for callers that already resolved the
+     * exact pricing rule. Its derived identity is stable, so retries remain durable and idempotent.
+     */
+    @Transactional
+    public RatedUsageRecord rateUsage(BillableUsage usage, PricingRule rule) {
+        if (usage == null) {
+            throw new IllegalArgumentException("billableUsage is required");
         }
-        if (pricingRule == null) {
+        if (rule == null) {
             throw new IllegalArgumentException("pricingRule is required");
         }
-
-        long ratedAmountMinor;
-
-        double quantity = (double) usageRecord.quantity().baseUnits();
-        if (pricingRule.tiers() != null && !pricingRule.tiers().isEmpty()) {
-            ratedAmountMinor = calculateTieredAmount(quantity, pricingRule);
-        } else {
-            ratedAmountMinor = Math.round(quantity * pricingRule.unitPriceMinor());
-        }
-
-        String ratedUsageId = Ids.newId("rat");
-        Map<String, Object> details = new HashMap<>();
-        details.put("meterKey", usageRecord.dimension().name());
-        details.put("quantity", quantity);
-        details.put("unit", usageRecord.quantity().unit().name());
-        details.put("pricingModel", pricingRule.pricingModel().name());
-        details.put("unitPriceMinor", pricingRule.unitPriceMinor());
-
-        RatedUsageRecord rated = new RatedUsageRecord(
-                ratedUsageId,
-                usageRecord.recordId(),
-                pricingRule.ruleId(),
-                ratedAmountMinor,
-                pricingRule.currencyCode(),
-                details,
-                Instant.now()
-        );
-
-        ratedRecords.put(ratedUsageId, rated);
-        log.info("RatingEngine: rated usage {} amount={} {} rule={}",
-                ratedUsageId, ratedAmountMinor, pricingRule.currencyCode(), pricingRule.ruleKey());
-        return rated;
+        return rateResolved(usage, rule, usage.meteredAt(), usage.traceId(),
+                "rate:" + usage.tenantId() + ":" + usage.billableUsageId()
+                        + ":" + rule.ruleId() + ":" + rule.version());
     }
 
-    private long calculateTieredAmount(double quantity, PricingRule rule) {
-        long totalMinor = 0;
-        double remaining = quantity;
-
-        for (PricingTier tier : rule.tiers()) {
-            if (remaining <= 0) break;
-            double tierQuantity = Math.min(remaining, tier.upToQuantity());
-            totalMinor += Math.round(tierQuantity * tier.unitPriceMinor()) + tier.flatFeeMinor();
-            remaining -= tierQuantity;
+    private RatedUsageRecord rateResolved(BillableUsage usage, PricingRule rule,
+                                           Instant ratedAt, String traceId,
+                                           String idempotencyKey) {
+        if (!rule.meterKey().equals(usage.billableMeter())) {
+            throw new IllegalStateException("Pricing rule meter does not match BillableUsage meter");
         }
+        long quantity = usage.billableQuantity().baseUnits();
+        Money amount = calculate(quantity, rule);
+        String fingerprint = RatedUsageRecord.fingerprint(usage.tenantId(), usage.billableUsageId(),
+                rule.ruleId(), rule.version(), quantity, amount, ratedAt, traceId);
+        String ratedId = "rat_" + fingerprint.substring(0, 24);
+        Map<String, String> details = new LinkedHashMap<>();
+        details.put("meterKey", usage.billableMeter());
+        details.put("quantityBaseUnits", Long.toString(quantity));
+        details.put("quantityUnit", usage.billableQuantity().unit().name());
+        details.put("pricingModel", rule.pricingModel().name());
+        details.put("unitPriceMinor", Long.toString(rule.unitPriceMinor()));
+        details.put("billableUsageId", usage.billableUsageId());
+        details.put("meteringRuleId", usage.meteringRuleId());
+        details.put("meteringRuleVersion", usage.meteringRuleVersion());
+        RatedUsageRecord candidate = new RatedUsageRecord(ratedId, usage.tenantId(),
+                usage.billableUsageId(), rule.ruleId(), rule.version(), quantity, amount,
+                Map.copyOf(details), ratedAt, traceId, idempotencyKey, fingerprint);
+        RatedUsageJdbcRepository.AppendResult result = ratedUsage.append(candidate);
+        if (result.inserted()) audit.record(result.record());
+        return result.record();
+    }
 
+    @Transactional(readOnly = true)
+    public RatedUsageRecord getRatedRecord(String tenantId, String ratedUsageId) {
+        return ratedUsage.findByTenantAndId(tenantId, ratedUsageId).orElse(null);
+    }
+
+    private static Money calculate(long quantity, PricingRule rule) {
+        if (rule.tiers().isEmpty()) return rule.unitPrice().multiply(quantity);
+        Money total = new Money(0, rule.currencyCode());
+        long prior = 0;
+        long remaining = quantity;
+        for (var tier : rule.tiers()) {
+            if (tier.upToQuantity() <= prior) throw new IllegalStateException("invalid pricing tiers");
+            long used = Math.min(remaining, Math.subtractExact(tier.upToQuantity(), prior));
+            if (used > 0) {
+                total = total.add(new Money(tier.unitPriceMinor(), rule.currencyCode()).multiply(used))
+                        .add(new Money(tier.flatFeeMinor(), rule.currencyCode()));
+                remaining -= used;
+            }
+            prior = tier.upToQuantity();
+            if (remaining == 0) break;
+        }
         if (remaining > 0) {
-            PricingTier lastTier = rule.tiers().get(rule.tiers().size() - 1);
-            totalMinor += Math.round(remaining * lastTier.unitPriceMinor());
+            var last = rule.tiers().get(rule.tiers().size() - 1);
+            total = total.add(new Money(last.unitPriceMinor(), rule.currencyCode()).multiply(remaining));
         }
-
-        return totalMinor;
-    }
-
-    public RatedUsageRecord getRatedRecord(String ratedUsageId) {
-        return ratedRecords.get(ratedUsageId);
+        return total;
     }
 }

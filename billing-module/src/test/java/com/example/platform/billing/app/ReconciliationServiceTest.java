@@ -2,6 +2,7 @@ package com.example.platform.billing.app;
 
 import com.example.platform.billing.domain.*;
 import com.example.platform.shared.events.ReconciliationCompletedEvent;
+import com.example.platform.shared.commercial.Money;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
@@ -25,14 +26,14 @@ class ReconciliationServiceTest {
     @Test
     void shouldImportInvoice() {
         ThirdPartyInvoiceImport imported = service.importInvoice(
-                "aws", "inv-001", "tenant-1", 50.0, "USD",
+                "aws", "inv-001", "tenant-1", new Money(5_000, "USD"),
                 "Compute charges",
                 OffsetDateTime.now().minusDays(30), OffsetDateTime.now(),
                 "{\"raw\": \"data\"}");
         assertNotNull(imported);
         assertEquals("aws", imported.providerCode());
         assertEquals("inv-001", imported.invoiceId());
-        assertEquals(50.0, imported.amount());
+        assertEquals(new Money(5_000, "USD"), imported.amount());
     }
 
     @Test
@@ -40,12 +41,12 @@ class ReconciliationServiceTest {
         // Add internal cost entry
         CostLedgerEntry entry = new CostLedgerEntry(
                 "cle-1", "tenant-1", "job-1", "javacv",
-                10.0, 10.0, "USD", "RENDER",
+                new Money(1_000, "USD"), new Money(1_000, "USD"), "RENDER",
                 OffsetDateTime.now(), "FINALIZED");
         service.addCostEntry(entry);
 
         // Import matching external invoice
-        service.importInvoice("aws", "inv-001", "tenant-1", 10.0, "USD",
+        service.importInvoice("aws", "inv-001", "tenant-1", new Money(1_000, "USD"),
                 "Compute", OffsetDateTime.now().minusDays(30), OffsetDateTime.now(), "{}");
 
         ReconciliationRun run = service.runReconciliation(
@@ -63,7 +64,7 @@ class ReconciliationServiceTest {
         // Add internal record with no matching external
         CostLedgerEntry entry = new CostLedgerEntry(
                 "cle-1", "tenant-1", "job-1", "javacv",
-                25.0, 25.0, "USD", "RENDER",
+                new Money(2_500, "USD"), new Money(2_500, "USD"), "RENDER",
                 OffsetDateTime.now(), "FINALIZED");
         service.addCostEntry(entry);
 
@@ -80,7 +81,7 @@ class ReconciliationServiceTest {
         // Create a difference by running reconciliation with mismatched data
         CostLedgerEntry entry = new CostLedgerEntry(
                 "cle-1", "tenant-1", "job-1", "javacv",
-                25.0, 25.0, "USD", "RENDER",
+                new Money(2_500, "USD"), new Money(2_500, "USD"), "RENDER",
                 OffsetDateTime.now(), "FINALIZED");
         service.addCostEntry(entry);
 

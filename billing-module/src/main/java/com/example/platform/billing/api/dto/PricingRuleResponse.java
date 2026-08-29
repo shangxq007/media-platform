@@ -5,7 +5,9 @@ import java.util.List;
 
 public record PricingRuleResponse(
         String ruleId,
+        String tenantId,
         String ruleKey,
+        long ruleVersion,
         String name,
         String description,
         String pricingModel,

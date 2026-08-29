@@ -1,6 +1,6 @@
 package com.example.platform.workflow.execution.infrastructure;
 
-import com.example.platform.billing.usage.CanonicalActorRef;
+import com.example.platform.shared.usage.CanonicalActorRef;
 import com.example.platform.workflow.execution.domain.WorkflowExecution;
 import com.example.platform.workflow.execution.domain.WorkflowExecutionId;
 import com.example.platform.workflow.execution.domain.WorkflowExecutionStatus;

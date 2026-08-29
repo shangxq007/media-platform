@@ -1,34 +1,29 @@
 package com.example.platform.entitlement.domain;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import com.example.platform.shared.commercial.CommercialAdmissionPort;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
-
+/** Adapted retirement proof: commercial tiers no longer route technical export execution. */
 class ClientExportRoutingPolicyTest {
-
     @Test
-    void freeSimpleTimelineRecommendsClient() {
-        var d = ClientExportRoutingPolicy.resolve(
-                "FREE", "free_720p_watermarked", 120, List.of(), true);
-        assertEquals(ClientExportRoutingPolicy.LOCATION_CLIENT, d.recommendedRenderLocation());
-        assertTrue(d.clientExportSupported());
+    void tierRoutingShadowIsRetiredInFavorOfNeutralAdmission() {
+        Path root = repositoryRoot();
+        assertFalse(Files.exists(root.resolve(
+                "entitlement-module/src/main/java/com/example/platform/entitlement/domain/ClientExportRoutingPolicy.java")));
+        assertTrue(CommercialAdmissionPort.class.isInterface());
     }
 
-    @Test
-    void natronEffectRequiresServer() {
-        var d = ClientExportRoutingPolicy.resolve(
-                "FREE", "free_720p_watermarked", 60, List.of("video.natron_vignette"), true);
-        assertEquals(ClientExportRoutingPolicy.LOCATION_SERVER, d.recommendedRenderLocation());
-        assertFalse(d.clientExportSupported());
-        assertTrue(d.unsupportedReasons().stream().anyMatch(r -> r.startsWith("EFFECT_")));
-    }
-
-    @Test
-    void proTierDefaultsToServer() {
-        var d = ClientExportRoutingPolicy.resolve(
-                "PRO", "default_1080p", 60, List.of(), true);
-        assertEquals(ClientExportRoutingPolicy.LOCATION_SERVER, d.recommendedRenderLocation());
+    private static Path repositoryRoot() {
+        Path current = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
+        while (current != null && !Files.isRegularFile(current.resolve("settings.gradle.kts"))) {
+            current = current.getParent();
+        }
+        if (current == null) throw new IllegalStateException("repository root not found");
+        return current;
     }
 }

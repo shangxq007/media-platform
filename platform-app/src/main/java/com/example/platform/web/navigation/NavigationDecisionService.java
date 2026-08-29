@@ -3,7 +3,6 @@ package com.example.platform.web.navigation;
 import com.example.platform.identity.app.PermissionService;
 import com.example.platform.identity.app.RoleService;
 import com.example.platform.policy.api.FeatureFlagEvaluator;
-import com.example.platform.entitlement.app.EntitlementPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,26 +19,22 @@ public class NavigationDecisionService {
     private final NavigationRegistryService registryService;
     private final PermissionService permissionService;
     private final RoleService roleService;
-    private final EntitlementPort entitlementPort;
     private final FeatureFlagEvaluator featureFlagEvaluator;
 
     public NavigationDecisionService(NavigationRegistryService registryService,
                                       PermissionService permissionService,
-                                      RoleService roleService,
-                                      EntitlementPort entitlementPort) {
-        this(registryService, permissionService, roleService, entitlementPort, null);
+                                      RoleService roleService) {
+        this(registryService, permissionService, roleService, null);
     }
 
     @Autowired
     public NavigationDecisionService(NavigationRegistryService registryService,
                                       PermissionService permissionService,
                                       RoleService roleService,
-                                      EntitlementPort entitlementPort,
                                       FeatureFlagEvaluator featureFlagEvaluator) {
         this.registryService = registryService;
         this.permissionService = permissionService;
         this.roleService = roleService;
-        this.entitlementPort = entitlementPort;
         this.featureFlagEvaluator = featureFlagEvaluator;
     }
 

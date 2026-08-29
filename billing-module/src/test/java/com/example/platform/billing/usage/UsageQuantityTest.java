@@ -1,5 +1,9 @@
 package com.example.platform.billing.usage;
 
+import com.example.platform.shared.usage.UsageDimension;
+import com.example.platform.shared.usage.UsageQuantity;
+import com.example.platform.shared.usage.UsageUnit;
+
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;

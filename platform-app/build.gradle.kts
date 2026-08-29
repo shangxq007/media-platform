@@ -28,7 +28,6 @@ dependencies {
     implementation(project(":audit-compliance-module"))
     implementation(project(":scheduler-module"))
     implementation(project(":identity-access-module"))
-    implementation(project(":quota-billing-module"))
     implementation(project(":commerce-module"))
     implementation(project(":payment-module"))
     implementation(project(":billing-module"))

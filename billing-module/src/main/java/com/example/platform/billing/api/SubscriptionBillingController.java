@@ -3,8 +3,13 @@ package com.example.platform.billing.api;
 import com.example.platform.billing.api.dto.*;
 import com.example.platform.billing.app.SubscriptionBillingService;
 import com.example.platform.billing.domain.SubscriptionContract;
+import com.example.platform.billing.domain.SubscriptionCommand;
+import com.example.platform.billing.domain.SubscriptionCommandType;
+import com.example.platform.billing.domain.SubscriptionContractRole;
 import com.example.platform.billing.domain.SubscriptionPlan;
 import com.example.platform.shared.audit.AdminAuditPublisher;
+import com.example.platform.shared.commercial.PrincipalRef;
+import com.example.platform.shared.commercial.PrincipalType;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.*;
 
@@ -52,8 +57,12 @@ public class SubscriptionBillingController {
     @PostMapping("/billing/subscriptions")
     public SubscriptionResponse createSubscription(@RequestBody CreateSubscriptionRequest request) {
         String tenantId = resolveTenantId(request.tenantId());
-        SubscriptionContract contract = subscriptionBillingService.createSubscription(
-                tenantId, request.userId(), request.planKey(), request.periodDays());
+        PrincipalRef principal = PrincipalRef.tenantScoped(tenantId, PrincipalType.USER, request.userId());
+        SubscriptionContract contract = subscriptionBillingService.execute(new SubscriptionCommand(
+                SubscriptionCommandType.CREATE, principal, request.contractId(), request.planKey(),
+                request.planKey(), request.periodDays(), SubscriptionContractRole.BASE, 0,
+                request.idempotencyKey(), request.actor(), request.reason(), request.traceId(),
+                request.effectiveAt())).contract();
         return toSubscriptionResponse(contract);
     }
 
@@ -62,7 +71,8 @@ public class SubscriptionBillingController {
             @RequestParam(required = false) String tenantId,
             @RequestParam String userId) {
         String effectiveTenant = resolveTenantId(tenantId);
-        SubscriptionContract contract = subscriptionBillingService.getCurrentSubscription(effectiveTenant, userId);
+        SubscriptionContract contract = subscriptionBillingService.getCurrentSubscription(
+                PrincipalRef.tenantScoped(effectiveTenant, PrincipalType.USER, userId));
         if (contract == null) {
             return null;
         }
@@ -74,7 +84,8 @@ public class SubscriptionBillingController {
             @RequestParam(required = false) String tenantId,
             @RequestParam String userId) {
         String effectiveTenant = resolveTenantId(tenantId);
-        return subscriptionBillingService.listActiveSubscriptions(effectiveTenant, userId).stream()
+        return subscriptionBillingService.listActiveSubscriptions(
+                        PrincipalRef.tenantScoped(effectiveTenant, PrincipalType.USER, userId)).stream()
                 .map(this::toSubscriptionResponse)
                 .toList();
     }
@@ -84,19 +95,30 @@ public class SubscriptionBillingController {
             @RequestParam(required = false) String tenantId,
             @RequestParam String userId) {
         String effectiveTenant = resolveTenantId(tenantId);
-        return subscriptionBillingService.getEffectiveIncludedQuota(effectiveTenant, userId);
+        return subscriptionBillingService.getEffectiveIncludedQuota(
+                PrincipalRef.tenantScoped(effectiveTenant, PrincipalType.USER, userId));
     }
 
     @PostMapping("/billing/subscriptions/change-plan")
     public SubscriptionResponse changePlan(@RequestBody ChangePlanRequest request) {
-        SubscriptionContract contract = subscriptionBillingService.changePlan(
-                request.contractId(), request.newPlanKey(), request.periodDays());
+        String tenantId = resolveTenantId(request.tenantId());
+        PrincipalRef principal = PrincipalRef.tenantScoped(tenantId, PrincipalType.USER, request.userId());
+        SubscriptionContract contract = subscriptionBillingService.execute(new SubscriptionCommand(
+                SubscriptionCommandType.CHANGE, principal, request.contractId(), request.newPlanKey(),
+                request.newPlanKey(), request.periodDays(), SubscriptionContractRole.BASE,
+                request.expectedVersion(), request.idempotencyKey(), request.actor(), request.reason(),
+                request.traceId(), request.effectiveAt())).contract();
         return toSubscriptionResponse(contract);
     }
 
     @PostMapping("/billing/subscriptions/cancel")
     public SubscriptionResponse cancel(@RequestBody CancelSubscriptionRequest request) {
-        SubscriptionContract contract = subscriptionBillingService.cancelAtPeriodEnd(request.contractId());
+        String tenantId = resolveTenantId(request.tenantId());
+        PrincipalRef principal = PrincipalRef.tenantScoped(tenantId, PrincipalType.USER, request.userId());
+        SubscriptionContract contract = subscriptionBillingService.execute(new SubscriptionCommand(
+                SubscriptionCommandType.CANCEL, principal, request.contractId(), null, null, 0,
+                SubscriptionContractRole.BASE, request.expectedVersion(), request.idempotencyKey(),
+                request.actor(), request.reason(), request.traceId(), request.effectiveAt())).contract();
         return toSubscriptionResponse(contract);
     }
 

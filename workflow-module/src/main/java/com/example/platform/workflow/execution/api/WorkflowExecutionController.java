@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.example.platform.billing.usage.CanonicalActorRef;
+import com.example.platform.shared.usage.CanonicalActorRef;
 
 /**
  * UWEV1-FV1 execution API — new resource, does NOT touch the 9 W2 definition

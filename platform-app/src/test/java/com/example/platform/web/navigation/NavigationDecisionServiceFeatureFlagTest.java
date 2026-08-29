@@ -6,7 +6,6 @@ import static org.mockito.Mockito.*;
 import com.example.platform.identity.app.PermissionService;
 import com.example.platform.identity.app.RoleService;
 import com.example.platform.policy.api.FeatureFlagEvaluator;
-import com.example.platform.entitlement.app.EntitlementPort;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,7 +20,6 @@ class NavigationDecisionServiceFeatureFlagTest {
     private NavigationRegistryService registryService;
     private PermissionService permissionService;
     private RoleService roleService;
-    private EntitlementPort entitlementPort;
     private FeatureFlagEvaluator featureFlagEvaluator;
     private ObjectMapper objectMapper;
 
@@ -31,11 +29,10 @@ class NavigationDecisionServiceFeatureFlagTest {
         registryService = new NavigationRegistryService(objectMapper);
         permissionService = mock(PermissionService.class);
         roleService = mock(RoleService.class);
-        entitlementPort = mock(EntitlementPort.class);
         featureFlagEvaluator = mock(FeatureFlagEvaluator.class);
         service = new NavigationDecisionService(
                 registryService, permissionService, roleService,
-                entitlementPort, featureFlagEvaluator);
+                featureFlagEvaluator);
     }
 
     @Test

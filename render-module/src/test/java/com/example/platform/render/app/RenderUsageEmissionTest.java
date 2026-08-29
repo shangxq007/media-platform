@@ -5,11 +5,12 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.example.platform.billing.usage.UsageDimension;
-import com.example.platform.billing.usage.UsageQuantity;
-import com.example.platform.billing.usage.UsageRecord;
-import com.example.platform.billing.usage.UsageRecordEmissionPort;
-import com.example.platform.billing.usage.UsageUnit;
+import com.example.platform.shared.usage.UsageDimension;
+import com.example.platform.shared.usage.UsageProvenance;
+import com.example.platform.shared.usage.UsageQuantity;
+import com.example.platform.shared.usage.ObservedRuntimeUsage;
+import com.example.platform.shared.usage.ObservedRuntimeUsageEmissionPort;
+import com.example.platform.shared.usage.UsageUnit;
 import com.example.platform.render.domain.RenderJobPlan;
 import com.example.platform.render.domain.RenderProfile;
 import com.example.platform.render.domain.RenderStep;
@@ -17,6 +18,7 @@ import com.example.platform.render.domain.RenderStepStatus;
 import com.example.platform.render.domain.RenderStepType;
 import com.example.platform.shared.web.TenantContext;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,7 +28,7 @@ import org.junit.jupiter.api.Test;
  * Verifies the additive DURATION usage-emission side effect at the
  * {@link RenderStepExecutionService} step-completion boundary.
  *
- * <p>Pure unit tests (no Spring context, no DB): the {@link UsageRecordEmissionPort} is a
+ * <p>Pure unit tests (no Spring context, no DB): the {@link ObservedRuntimeUsageEmissionPort} is a
  * capturing lambda double, and {@link TenantContext} is set directly. These prove:</p>
  * <ul>
  *   <li>step completion emits exactly one DURATION record with a correct idempotency key;</li>
@@ -40,13 +42,13 @@ class RenderUsageEmissionTest {
 
     private RenderPlanService planService;
     private RenderStepExecutionService service;
-    private final AtomicReference<UsageRecord> captured = new AtomicReference<>();
+    private final AtomicReference<ObservedRuntimeUsage> captured = new AtomicReference<>();
 
     @BeforeEach
     void setUp() {
         TenantContext.set(TENANT);
         planService = new RenderPlanService();
-        UsageRecordEmissionPort port = record -> { captured.set(record); return record; };
+        ObservedRuntimeUsageEmissionPort port = record -> { captured.set(record); return record; };
         service = new RenderStepExecutionService(planService, port);
     }
 
@@ -62,11 +64,11 @@ class RenderUsageEmissionTest {
 
         service.executeNextStep(plan.id());
 
-        UsageRecord record = captured.get();
+        ObservedRuntimeUsage record = captured.get();
         assertNotNull(record, "expected a usage record to be emitted on step completion");
         assertEquals(TENANT, record.tenantId());
         assertEquals(UsageDimension.DURATION, record.dimension());
-        assertEquals("REPORTED", record.provenance());
+        assertEquals(UsageProvenance.REPORTED, record.provenance());
         assertEquals("render-step", record.source());
         assertEquals("render-" + stepId + "-1", record.idempotencyKey());
         assertEquals(UsageUnit.MILLISECONDS, record.quantity().unit());
@@ -74,7 +76,7 @@ class RenderUsageEmissionTest {
         assertNotNull(record.recordedAt());
         // operationRef carries the plan (operation) and step (attempt) identity.
         assertEquals(plan.id(), record.operationRef().operationId());
-        assertEquals(stepId, record.operationRef().attemptId());
+        assertEquals(stepId + ":1", record.operationRef().attemptId());
     }
 
     @Test
@@ -85,11 +87,11 @@ class RenderUsageEmissionTest {
         // Same step identity + same attempt -> same idempotency key.
         RenderStep completed = plan.steps().get(0).markRunning().markCompleted(List.of("art-1"));
         service.emitStepUsage(plan, completed, 1);
-        UsageRecord first = captured.get();
+        ObservedRuntimeUsage first = captured.get();
         assertNotNull(first);
 
         service.emitStepUsage(plan, completed, 1);
-        UsageRecord second = captured.get();
+        ObservedRuntimeUsage second = captured.get();
 
         assertEquals(first.idempotencyKey(), second.idempotencyKey(),
                 "retry of the same attempt must reuse the idempotency key (no double counting)");
@@ -103,10 +105,10 @@ class RenderUsageEmissionTest {
         RenderStep completed = plan.steps().get(0).markRunning().markCompleted(List.of("art-1"));
 
         service.emitStepUsage(plan, completed, 1);
-        UsageRecord first = captured.get();
+        ObservedRuntimeUsage first = captured.get();
 
         service.emitStepUsage(plan, completed, 2);
-        UsageRecord second = captured.get();
+        ObservedRuntimeUsage second = captured.get();
 
         assertNotNull(first);
         assertNotNull(second);
@@ -158,18 +160,18 @@ class RenderUsageEmissionTest {
 
         service.emitStepUsage(plan, failed, 1);
 
-        UsageRecord record = captured.get();
+        ObservedRuntimeUsage record = captured.get();
         assertNotNull(record, "expected a usage record to be emitted for a FAILED step with a real duration fact");
         assertEquals(TENANT, record.tenantId());
         assertEquals(UsageDimension.DURATION, record.dimension());
-        assertEquals("REPORTED", record.provenance());
+        assertEquals(UsageProvenance.REPORTED, record.provenance());
         assertEquals("render-step", record.source());
         assertEquals("render-" + stepId + "-1", record.idempotencyKey());
         assertEquals(UsageUnit.MILLISECONDS, record.quantity().unit());
         assertTrue(record.quantity().baseUnits() >= 0);
         assertNotNull(record.recordedAt());
         assertEquals(plan.id(), record.operationRef().operationId());
-        assertEquals(stepId, record.operationRef().attemptId());
+        assertEquals(stepId + ":1", record.operationRef().attemptId());
     }
 
     @Test
@@ -181,11 +183,11 @@ class RenderUsageEmissionTest {
         RenderStep failed = plan.steps().get(0).markRunning().markFailed("ERR", "boom");
 
         service.emitStepUsage(plan, failed, 1);
-        UsageRecord first = captured.get();
+        ObservedRuntimeUsage first = captured.get();
         assertNotNull(first);
 
         service.emitStepUsage(plan, failed, 1);
-        UsageRecord second = captured.get();
+        ObservedRuntimeUsage second = captured.get();
 
         assertEquals(first.idempotencyKey(), second.idempotencyKey(),
                 "retry of the same failed attempt must reuse the idempotency key (no double counting)");
@@ -213,7 +215,18 @@ class RenderUsageEmissionTest {
         // Leave the step PENDING: executeNextStep selects the next pending step, marks it
         // RUNNING (recording startedAt), then completes it (computing the duration fact).
         RenderStep step = RenderStep.pending("step-" + System.nanoTime(), planId, RenderStepType.PROVIDER_TRANSCODE);
-        RenderJobPlan plan = RenderJobPlan.create(planId, "job-1", RenderProfile.social1080p(), List.of(step));
+        RenderJobPlan plan = RenderJobPlan.create(
+                planId,
+                "job-1",
+                RenderProfile.social1080p(),
+                List.of(step),
+                Map.of(
+                        "usagePrincipalId", "render-system",
+                        "usagePrincipalType", "SYSTEM",
+                        "usageProviderId", "provider-test",
+                        "projectId", "project-test",
+                        "executionRef", "execution-test",
+                        "traceId", "trace-test"));
         return planService.save(plan);
     }
 }

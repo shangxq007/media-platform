@@ -7,7 +7,6 @@ import static org.mockito.Mockito.mock;
 
 import com.example.platform.identity.app.PermissionService;
 import com.example.platform.identity.app.RoleService;
-import com.example.platform.entitlement.app.EntitlementPort;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Set;
@@ -23,7 +22,7 @@ class NavigationDecisionServiceReasonCodeTest {
     void setUp() {
         registry = new NavigationRegistryService(new ObjectMapper());
         service = new NavigationDecisionService(
-                registry, mock(PermissionService.class), mock(RoleService.class), mock(EntitlementPort.class), null);
+                registry, mock(PermissionService.class), mock(RoleService.class), null);
     }
 
     @Test

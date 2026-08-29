@@ -1,7 +1,9 @@
 package com.example.platform.commerce.app;
 
-import com.example.platform.commerce.domain.CanonicalProduct;
-import com.example.platform.commerce.domain.ProductLineType;
+import com.example.platform.commerce.domain.*;
+import java.time.Clock;
+import java.time.Instant;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -9,97 +11,34 @@ import java.util.Optional;
 
 @Service
 public class CommerceCatalogService {
+    private final ProductCatalogAuthority authority;
+    private final Clock clock;
 
-    private final List<CanonicalProduct> products = List.of(
-            CanonicalProduct.baseSubscription(
-                    "basic_monthly",
-                    "basic_monthly",
-                    "FREE",
-                    "basic_features",
-                    "basic_quota",
-                    2999L,
-                    "Basic Monthly"),
-            CanonicalProduct.baseSubscription(
-                    "pro_monthly",
-                    "pro_monthly",
-                    "PRO",
-                    "default_features",
-                    "pro_quota",
-                    9999L,
-                    "Pro Monthly"),
-            CanonicalProduct.baseSubscription(
-                    "team_monthly",
-                    "team_monthly",
-                    "TEAM",
-                    "team_features",
-                    "team_quota",
-                    29999L,
-                    "Team Monthly"),
-            CanonicalProduct.baseSubscription(
-                    "enterprise_monthly",
-                    "enterprise_monthly",
-                    "ENTERPRISE",
-                    "enterprise_features",
-                    "enterprise_quota",
-                    99999L,
-                    "Enterprise Monthly"),
-            CanonicalProduct.addOnSubscription(
-                    "addon_gpu_monthly",
-                    "addon_gpu_monthly",
-                    "gpu_render",
-                    "addon_gpu_features",
-                    "pro_quota",
-                    4999L,
-                    "GPU Render Add-on"),
-            CanonicalProduct.addOnSubscription(
-                    "addon_ai_monthly",
-                    "addon_ai_monthly",
-                    "ai_editing",
-                    "addon_ai_features",
-                    "pro_quota",
-                    2999L,
-                    "AI Editing Add-on"),
-            CanonicalProduct.creditPack(
-                    "credit_pack_50",
-                    5000L,
-                    5000L,
-                    "Credit Pack ($50)"),
-            CanonicalProduct.creditPack(
-                    "credit_pack_200",
-                    20000L,
-                    18000L,
-                    "Credit Pack ($200)"),
-            CanonicalProduct.seatPack(
-                    "seat_pack_5",
-                    5,
-                    "render.minutes",
-                    1999L,
-                    "5 Additional Seats")
-    );
+    @Autowired
+    public CommerceCatalogService(ProductCatalogAuthority authority) { this(authority, Clock.systemUTC()); }
+    public CommerceCatalogService(ProductCatalogAuthority authority, Clock clock) { this.authority = authority; this.clock = clock; }
 
-    public List<CanonicalProduct> listProducts() {
-        return products;
+    public List<CanonicalProduct> listProducts(CatalogReadScope scope, String market) {
+        return authority.listForCheckout(scope, market, clock.instant()).stream().map(CommerceCatalogService::project).toList();
     }
-
-    public Optional<CanonicalProduct> findProduct(String productCode) {
-        return products.stream()
-                .filter(p -> p.productCode().equals(productCode))
-                .findFirst();
+    public Optional<CanonicalProduct> findProduct(CatalogReadScope scope, String market, String code) {
+        return authority.resolveForCheckout(scope, market, code, clock.instant()).map(CommerceCatalogService::project);
     }
-
-    public CanonicalProduct requireProduct(String productCode) {
-        return findProduct(productCode)
-                .orElseThrow(() -> new IllegalArgumentException("Product not found: " + productCode));
+    public CanonicalProduct requireProduct(CatalogReadScope scope, String market, String code) {
+        return findProduct(scope, market, code).orElseThrow(() -> new IllegalArgumentException("active applicable product not found: " + code));
     }
-
-    public boolean isAvailableForTenant(CanonicalProduct product, String tenantId) {
-        if (product.lineType() == ProductLineType.BASE_SUBSCRIPTION
-                && "enterprise_monthly".equals(product.productCode())) {
-            // Enterprise product is restricted to specific tenants via configuration.
-            // Default: only tenants with ENTERPRISE tier can access.
-            // TODO: Move to configuration-driven allowlist when multi-tenant product catalog is implemented.
-            return !tenantId.isBlank();
-        }
-        return true;
+    public CommercialOffering requireOffering(CatalogReadScope scope, String market, String code, Instant at) {
+        return authority.resolveForCheckout(scope, market, code, at).orElseThrow(() -> new IllegalArgumentException("active applicable offering not found: " + code));
+    }
+    public CommercialOffering requireHistorical(CatalogReadScope scope, String offeringId, long version) {
+        return authority.findHistorical(scope, offeringId, version).orElseThrow(() -> new IllegalArgumentException("historical offering not found: " + offeringId));
+    }
+    static CanonicalProduct project(CommercialOffering o) {
+        return new CanonicalProduct(o.productCode(), o.purchaseMode(), o.productLineType(),
+                o.entitlementBundleReference() == null ? null : o.entitlementBundleReference().key(),
+                o.quotaProfileReference() == null ? null : o.quotaProfileReference().key(),
+                o.subscriptionPlanReference() == null ? null : o.subscriptionPlanReference().key(),
+                null, null, o.creditQuantityMinor(), o.seatQuantity(), o.seatFeatureKey(),
+                o.priceSnapshot().amountMinor(), o.priceSnapshot().currency(), o.displayName());
     }
 }

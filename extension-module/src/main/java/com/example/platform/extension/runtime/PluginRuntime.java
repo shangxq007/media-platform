@@ -40,10 +40,10 @@ public interface PluginRuntime {
             throws PluginRuntimeExecutionException {
         return execute(new PluginExecutionRequest(
                 tenantId,
-                new com.example.platform.billing.usage.CanonicalActorRef(actorId, "SYSTEM"),
-                com.example.platform.billing.usage.OperationRef.of(operationId),
+                new com.example.platform.shared.usage.CanonicalActorRef(actorId, "SYSTEM"),
+                com.example.platform.shared.usage.OperationRef.of(operationId, "attempt-1"),
                 "provider-effect",
-                new com.example.platform.billing.usage.ProviderRef(providerId),
+                new com.example.platform.shared.usage.ProviderRef(providerId),
                 input,
                 ExecutionMode.TRUSTED_IN_PROCESS,
                 java.time.Duration.ofSeconds(30),
