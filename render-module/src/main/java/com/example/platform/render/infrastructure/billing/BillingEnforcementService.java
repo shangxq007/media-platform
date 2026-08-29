@@ -2,7 +2,6 @@ package com.example.platform.render.infrastructure.billing;
 
 import com.example.platform.billing.app.CostEstimationService;
 import com.example.platform.billing.app.SubscriptionBillingService;
-import com.example.platform.billing.app.UsageMeteringService;
 import com.example.platform.billing.domain.SubscriptionContract;
 import com.example.platform.render.app.RenderQuotaService;
 import com.example.platform.shared.commercial.PrincipalRef;
@@ -25,7 +24,6 @@ import java.util.Map;
  *   <li>SubscriptionBillingService - validates active subscriptions</li>
  *   <li>RenderQuotaService - obtains typed decisions from canonical Quota</li>
  *   <li>CostEstimationService - estimates render costs</li>
- *   <li>UsageMeteringService - records actual usage</li>
  * </ul>
  */
 @Service
@@ -36,7 +34,6 @@ public class BillingEnforcementService {
     private final SubscriptionBillingService subscriptionService;
     private final RenderQuotaService renderQuotaService;
     private final CostEstimationService costEstimationService;
-    private final UsageMeteringService usageMeteringService;
     private final RenderBillingRecordRepository billingRecordRepository;
 
     @Value("${billing.enforcement.enabled:false}")
@@ -46,12 +43,10 @@ public class BillingEnforcementService {
             SubscriptionBillingService subscriptionService,
             RenderQuotaService renderQuotaService,
             CostEstimationService costEstimationService,
-            UsageMeteringService usageMeteringService,
             RenderBillingRecordRepository billingRecordRepository) {
         this.subscriptionService = subscriptionService;
         this.renderQuotaService = renderQuotaService;
         this.costEstimationService = costEstimationService;
-        this.usageMeteringService = usageMeteringService;
         this.billingRecordRepository = billingRecordRepository;
     }
 
@@ -188,17 +183,6 @@ public class BillingEnforcementService {
         RenderBillingRecord finalized = existing.finalize(
                 actualCost, actualDurationSeconds, providerId, outputSizeBytes);
         billingRecordRepository.save(finalized);
-
-        // Record usage in metering system
-        usageMeteringService.recordUsage(
-                tenantId, "render_seconds", actualDurationSeconds, "seconds",
-                Instant.now(), "job-" + jobId + "-seconds"
-        );
-
-        usageMeteringService.recordUsage(
-                tenantId, "render_output_bytes", outputSizeBytes, "bytes",
-                Instant.now(), "job-" + jobId + "-bytes"
-        );
 
         log.info("Finalized cost for job {}: actual ${} ({} seconds, {} bytes)", 
                 jobId, String.format("%.4f", actualCost), actualDurationSeconds, outputSizeBytes);

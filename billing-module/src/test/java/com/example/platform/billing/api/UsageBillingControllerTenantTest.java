@@ -37,7 +37,7 @@ class UsageBillingControllerTenantTest {
 
     @BeforeEach
     void setUp() {
-        controller = new UsageBillingController(usageMeteringService, ratingEngine,
+        controller = new UsageBillingController(usageMeteringService,
                 billingLedgerService, billingDecisionService, pricingRuleService);
         TenantContext.clear();
     }

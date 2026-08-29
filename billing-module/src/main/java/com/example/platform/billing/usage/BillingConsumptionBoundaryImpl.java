@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
- * Canonical billing consumption boundary. Consumes canonical {@link UsageRecord} facts and hands
+ * Canonical billing consumption boundary. Consumes {@link BillableUsage} facts and hands
  * them to the RatingEngine-compatible flow. Rating is purely commercial; absence of a matching
  * rule does not invent or discard usage. There is no legacy double projection — the typed
  * quantity is the only representation.
@@ -29,10 +29,10 @@ public class BillingConsumptionBoundaryImpl implements BillingConsumptionBoundar
     }
 
     @Override
-    public void consume(UsageRecord canonical) {
-        Objects.requireNonNull(canonical, "canonical usage record must not be null");
+    public void consume(BillableUsage canonical) {
+        Objects.requireNonNull(canonical, "billable usage must not be null");
         PricingRule rule = pricingRuleService.listPricingRules().stream()
-                .filter(r -> canonical.dimension().name().equals(r.meterKey()))
+                .filter(r -> canonical.billableMeter().equals(r.meterKey()))
                 .filter(r -> "ACTIVE".equals(r.status()))
                 .findFirst()
                 .orElse(null);
@@ -40,10 +40,10 @@ public class BillingConsumptionBoundaryImpl implements BillingConsumptionBoundar
         if (rule != null) {
             ratingEngine.rateUsage(canonical, rule);
             log.debug("BillingConsumptionBoundary: consumed canonical record {} dimension={}",
-                    canonical.recordId(), canonical.dimension().name());
+                    canonical.billableUsageId(), canonical.billableDimension().name());
         } else {
             log.debug("BillingConsumptionBoundary: consumed canonical record {} dimension={} (no active rule)",
-                    canonical.recordId(), canonical.dimension().name());
+                    canonical.billableUsageId(), canonical.billableDimension().name());
         }
     }
 }

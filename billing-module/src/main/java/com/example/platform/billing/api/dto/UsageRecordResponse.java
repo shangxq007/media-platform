@@ -6,8 +6,7 @@ public record UsageRecordResponse(
         String recordId,
         String tenantId,
         String meterKey,
-        double quantity,
+        long quantity,
         String unit,
-        Instant recordedAt,
-        String idempotencyKey) {
+        Instant recordedAt) {
 }

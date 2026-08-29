@@ -3,10 +3,8 @@ package com.example.platform.billing.api;
 import com.example.platform.billing.api.dto.*;
 import com.example.platform.billing.app.*;
 import com.example.platform.billing.domain.*;
-import com.example.platform.billing.usage.UsageRecord;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
@@ -15,18 +13,15 @@ import java.util.Map;
 public class UsageBillingController {
 
     private final UsageMeteringService usageMeteringService;
-    private final RatingEngine ratingEngine;
     private final BillingLedgerService billingLedgerService;
     private final BillingDecisionService billingDecisionService;
     private final PricingRuleService pricingRuleService;
 
     public UsageBillingController(UsageMeteringService usageMeteringService,
-                                   RatingEngine ratingEngine,
                                    BillingLedgerService billingLedgerService,
                                    BillingDecisionService billingDecisionService,
                                    PricingRuleService pricingRuleService) {
         this.usageMeteringService = usageMeteringService;
-        this.ratingEngine = ratingEngine;
         this.billingLedgerService = billingLedgerService;
         this.billingDecisionService = billingDecisionService;
         this.pricingRuleService = pricingRuleService;
@@ -44,25 +39,6 @@ public class UsageBillingController {
                 request.unit(), preview.estimatedAmountMinor(), preview.currencyCode(), pricingModel);
     }
 
-    @PostMapping("/usage/record")
-    public UsageRecordResponse recordUsage(@RequestBody RecordUsageRequest request) {
-        String tenantId = resolveTenantId(request.tenantId());
-        Instant recordedAt = request.recordedAt() != null ? request.recordedAt() : Instant.now();
-        UsageRecord record = usageMeteringService.recordUsage(
-                tenantId, request.meterKey(), request.quantity(), request.unit(),
-                recordedAt, request.idempotencyKey());
-
-        PricingRule rule = findRuleForMeter(request.meterKey());
-        if (rule != null) {
-            ratingEngine.rateUsage(record, rule);
-        }
-
-        return new UsageRecordResponse(
-                record.recordId(), record.tenantId(), record.dimension().name(),
-                (double) record.quantity().baseUnits(), record.quantity().unit().name(),
-                record.recordedAt(), record.idempotencyKey());
-    }
-
     @GetMapping("/usage")
     public List<UsageRecordResponse> listUsage(
             @RequestParam(required = false) String tenantId,
@@ -71,8 +47,8 @@ public class UsageBillingController {
         return usageMeteringService.getUsage(effectiveTenant, meterKey).stream()
                 .map(r -> new UsageRecordResponse(
                         r.recordId(), r.tenantId(), r.dimension().name(),
-                        (double) r.quantity().baseUnits(), r.quantity().unit().name(),
-                        r.recordedAt(), r.idempotencyKey()))
+                        r.quantity().baseUnits(), r.quantity().unit().name(),
+                        r.recordedAt()))
                 .toList();
     }
 

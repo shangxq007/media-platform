@@ -5,7 +5,7 @@ import java.util.Map;
 
 public record RatedUsageRecord(
         String ratedUsageId,
-        String usageRecordId,
+        String billableUsageId,
         String pricingRuleId,
         long ratedAmountMinor,
         String currencyCode,

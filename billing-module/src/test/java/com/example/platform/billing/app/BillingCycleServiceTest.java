@@ -7,7 +7,22 @@ import com.example.platform.billing.domain.SubscriptionContractRole;
 import com.example.platform.billing.infrastructure.BillingLedgerJdbcRepository;
 import com.example.platform.billing.infrastructure.CreditWalletJdbcRepository;
 import com.example.platform.billing.infrastructure.SubscriptionJdbcRepository;
+import com.example.platform.billing.infrastructure.BillableUsageJdbcRepository;
+import com.example.platform.billing.usage.MeterUsageCommand;
+import com.example.platform.billing.usage.MeteringRule;
+import com.example.platform.billing.usage.MeteringRuleRegistry;
+import com.example.platform.billing.usage.MeteringTransformationKind;
+import com.example.platform.shared.usage.CanonicalActorRef;
+import com.example.platform.shared.usage.ObservedRuntimeUsage;
+import com.example.platform.shared.usage.OperationRef;
+import com.example.platform.shared.usage.ProviderRef;
+import com.example.platform.shared.usage.RuntimeOutcome;
+import com.example.platform.shared.usage.UsageDimension;
+import com.example.platform.shared.usage.UsageProvenance;
+import com.example.platform.shared.usage.UsageQuantity;
+import com.example.platform.shared.usage.UsageUnit;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
+import com.example.platform.usage.infrastructure.ObservedRuntimeUsageJdbcRepository;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,6 +43,8 @@ class BillingCycleServiceTest extends PostgresTestContainerSupport {
     private SubscriptionBillingService subscriptionBillingService;
     private UsageMeteringService usageMeteringService;
     private PricingRuleService pricingRuleService;
+    private ObservedRuntimeUsageJdbcRepository observations;
+    private MeteringRuleRegistry meteringRules;
 
     @BeforeAll
     static void setUpDatabase() {
@@ -40,6 +57,8 @@ class BillingCycleServiceTest extends PostgresTestContainerSupport {
         jdbc.execute("CREATE TABLE IF NOT EXISTS billing_ledger_entry (id varchar(64) primary key, tenant_id varchar(64) not null, workspace_id varchar(64), user_id varchar(128), entry_type varchar(32) not null, amount_minor bigint not null, currency_code varchar(8) not null, reference_type varchar(64), reference_id varchar(128), description text, created_at timestamp not null)");
         jdbc.execute("CREATE TABLE IF NOT EXISTS credit_wallet (id varchar(64) primary key, tenant_id varchar(64) not null, workspace_id varchar(64), user_id varchar(128), balance_minor bigint not null default 0, currency_code varchar(8) not null, status varchar(32) not null, created_at timestamp not null, updated_at timestamp not null)");
         jdbc.execute("CREATE TABLE IF NOT EXISTS credit_transaction (id varchar(64) primary key, wallet_id varchar(64) not null, transaction_type varchar(32) not null, amount_minor bigint not null, balance_after_minor bigint not null, reference_type varchar(64), reference_id varchar(128), description text, created_at timestamp not null)");
+        jdbc.execute("CREATE TABLE IF NOT EXISTS observed_runtime_usage (observed_usage_id varchar(64) primary key, tenant_id varchar(64) not null, project_id varchar(64), principal_type varchar(32) not null, principal_id varchar(128) not null, operation_ref varchar(128) not null, attempt_ref varchar(128) not null, execution_ref varchar(128), provider_ref varchar(128) not null, capability varchar(128) not null, dimension varchar(64) not null, quantity_base_units bigint not null, quantity_unit varchar(32) not null, operation_outcome varchar(32) not null, occurred_at timestamptz not null, observed_at timestamptz not null, recorded_at timestamptz not null, provenance varchar(32) not null, source varchar(128) not null, source_reference varchar(255) not null, trace_id varchar(128) not null, idempotency_key varchar(255) not null, unique (tenant_id, idempotency_key))");
+        jdbc.execute("CREATE TABLE IF NOT EXISTS billable_usage (billable_usage_id varchar(64) primary key, tenant_id varchar(64) not null, principal_type varchar(32) not null, principal_id varchar(128) not null, observed_usage_id varchar(64) not null, observed_dimension varchar(64) not null, observed_quantity_base_units bigint not null, observed_quantity_unit varchar(32) not null, billable_meter varchar(128) not null, billable_dimension varchar(64) not null, billable_quantity_base_units bigint not null, billable_quantity_unit varchar(32) not null, metering_rule_id varchar(128) not null, metering_rule_version varchar(64) not null, transformation_kind varchar(64) not null, transformation_details text not null, source_observation_timestamp timestamptz not null, metered_at timestamptz not null, idempotency_key varchar(255) not null, trace_id varchar(128) not null, provenance_reference varchar(512) not null, unique (tenant_id, idempotency_key), unique (tenant_id, observed_usage_id, metering_rule_id, metering_rule_version))");
     }
 
     @BeforeEach
@@ -51,9 +70,17 @@ class BillingCycleServiceTest extends PostgresTestContainerSupport {
         jdbc.execute("TRUNCATE TABLE subscription_contract CASCADE");
         jdbc.execute("TRUNCATE TABLE subscription_command CASCADE");
         jdbc.execute("TRUNCATE TABLE subscription_plan CASCADE");
+        jdbc.execute("TRUNCATE TABLE billable_usage, observed_runtime_usage");
 
         subscriptionBillingService = new SubscriptionBillingService(new SubscriptionJdbcRepository(jdbc));
-        usageMeteringService = new UsageMeteringService();
+        observations = new ObservedRuntimeUsageJdbcRepository(jdbc);
+        meteringRules = new MeteringRuleRegistry();
+        meteringRules.register(new MeteringRule(
+                "cycle-duration", "v1", UsageDimension.DURATION, UsageUnit.SECONDS,
+                "DURATION", UsageDimension.DURATION, UsageUnit.SECONDS,
+                1, 1, 1, MeteringTransformationKind.IDENTITY, "identity seconds"));
+        usageMeteringService = new UsageMeteringService(
+                observations, new BillableUsageJdbcRepository(jdbc), meteringRules, usage -> {});
         pricingRuleService = new PricingRuleService();
         cycleService = new BillingCycleService(
                 usageMeteringService,
@@ -77,8 +104,7 @@ class BillingCycleServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void chargesOverageBeyondIncludedQuota() {
-        usageMeteringService.recordUsage(
-                "t1", "render_seconds", 150, "seconds", null, null);
+        meterUsage(150, "cycle-150");
 
         BillingCycleService.BillingCycleResult result = cycleService.runCycle("t1", "u1");
 
@@ -88,11 +114,24 @@ class BillingCycleServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void noChargeWhenWithinIncludedQuota() {
-        usageMeteringService.recordUsage(
-                "t1", "render_seconds", 50, "seconds", null, null);
+        meterUsage(50, "cycle-50");
 
         BillingCycleService.BillingCycleResult result = cycleService.runCycle("t1", "u1");
 
         assertEquals(0L, result.totalChargeMinor());
+    }
+
+    private void meterUsage(long seconds, String key) {
+        Instant now = Instant.parse("2026-08-29T08:00:00Z");
+        ObservedRuntimeUsage observation = observations.append(ObservedRuntimeUsage.observe(
+                "t1", "project-1", new CanonicalActorRef("u1", "USER"),
+                OperationRef.of("operation-" + key, "attempt-1"), "execution-" + key,
+                new ProviderRef("provider-1"), "render", UsageDimension.DURATION,
+                UsageQuantity.fromBaseUnits(seconds, UsageUnit.SECONDS),
+                RuntimeOutcome.SUCCEEDED, now, now, now, UsageProvenance.REPORTED,
+                "test", "source-" + key, "trace-" + key, key));
+        usageMeteringService.meter(new MeterUsageCommand(
+                "t1", observation.observedUsageId(), "cycle-duration", "v1",
+                now, "meter-" + key));
     }
 }

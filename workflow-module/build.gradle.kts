@@ -1,15 +1,13 @@
 plugins { id("java-library") }
 
 dependencies {
+    api(project(":shared-kernel"))
     api(project(":policy-governance-module"))
     api(project(":render-module"))
     implementation(project(":delivery-module"))
     // UWEV1-FV1: effect execution boundary via extension::runtime (UWE-ADR-025)
     implementation(project(":extension-module"))
-    // EUMF canonical types + durable terminal transitions (ArtifactRef lives in
-    // shared-kernel; artifact-module is intentionally NOT depended on — its
-    // render-bound ContentDigest debt must not enter the workflow module graph).
-    implementation(project(":billing-module"))
+    // Neutral runtime identity/operation references live in shared-kernel.
     implementation(project(":observability-module")) // TraceKeys rehomed to observability (K2)
     implementation(project(":outbox-event-module"))
     // UWDV1-V2-PIC: activated conditional path (USER_WORKFLOW_DEFINITION_V1_CONTRACT_V2

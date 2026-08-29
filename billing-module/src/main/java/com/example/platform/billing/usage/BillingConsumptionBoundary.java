@@ -14,7 +14,7 @@ public interface BillingConsumptionBoundary {
      * Consume a canonical usage record by projecting it onto the existing billing
      * consumption path.
      *
-     * @param canonical the canonical usage fact to consume
+     * @param billableUsage the metered, lineage-bearing usage to consume
      */
-    void consume(UsageRecord canonical);
+    void consume(BillableUsage billableUsage);
 }

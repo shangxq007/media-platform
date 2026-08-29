@@ -131,7 +131,12 @@ class SchemaEquivalenceVerificationTest extends PostgresTestContainerSupport {
                 "worker-fabric normalized observation evidence required");
         assertTrue(tables.contains("wf_completion_event"),
                 "worker-fabric fenced completion authority required");
-        assertTrue(tables.contains("render_usage_record"), "render_usage_record required");
+        assertTrue(tables.contains("observed_runtime_usage"),
+                "observed_runtime_usage authority required");
+        assertTrue(tables.contains("billable_usage"), "billable_usage authority required");
+        assertFalse(tables.contains("usage_record"), "legacy usage_record must be absent");
+        assertFalse(tables.contains("render_usage_record"),
+                "render_usage_record shadow must be absent");
         assertTrue(tables.contains("render_billing_record"), "render_billing_record required");
         // P1: ownerless Product-layer tables retired (render_history, render_preset, asset_library,
         // timeline_template, ai_suggestion removed from V1 — no canonical owner existed)

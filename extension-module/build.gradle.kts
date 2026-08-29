@@ -1,6 +1,5 @@
 dependencies {
     implementation(project(":shared-kernel"))
-    implementation(project(":billing-module"))
     implementation("org.springframework.boot:spring-boot-starter")
     implementation("org.springframework.boot:spring-boot-starter-web")
     // Direct Jackson 2.x usage (HttpSandboxWorkerAdapter); previously obtained

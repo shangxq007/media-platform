@@ -3,7 +3,7 @@ package com.example.platform.billing.app;
 import com.example.platform.billing.domain.RatedUsageRecord;
 import com.example.platform.billing.domain.PricingRule;
 import com.example.platform.billing.domain.PricingTier;
-import com.example.platform.billing.usage.UsageRecord;
+import com.example.platform.billing.usage.BillableUsage;
 import com.example.platform.shared.Ids;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,9 +21,9 @@ public class RatingEngine {
 
     private final ConcurrentHashMap<String, RatedUsageRecord> ratedRecords = new ConcurrentHashMap<>();
 
-    public RatedUsageRecord rateUsage(UsageRecord usageRecord, PricingRule pricingRule) {
-        if (usageRecord == null) {
-            throw new IllegalArgumentException("usageRecord is required");
+    public RatedUsageRecord rateUsage(BillableUsage billableUsage, PricingRule pricingRule) {
+        if (billableUsage == null) {
+            throw new IllegalArgumentException("billableUsage is required");
         }
         if (pricingRule == null) {
             throw new IllegalArgumentException("pricingRule is required");
@@ -31,24 +31,24 @@ public class RatingEngine {
 
         long ratedAmountMinor;
 
-        double quantity = (double) usageRecord.quantity().baseUnits();
+        long quantity = billableUsage.billableQuantity().baseUnits();
         if (pricingRule.tiers() != null && !pricingRule.tiers().isEmpty()) {
             ratedAmountMinor = calculateTieredAmount(quantity, pricingRule);
         } else {
-            ratedAmountMinor = Math.round(quantity * pricingRule.unitPriceMinor());
+            ratedAmountMinor = Math.multiplyExact(quantity, pricingRule.unitPriceMinor());
         }
 
         String ratedUsageId = Ids.newId("rat");
         Map<String, Object> details = new HashMap<>();
-        details.put("meterKey", usageRecord.dimension().name());
+        details.put("meterKey", billableUsage.billableMeter());
         details.put("quantity", quantity);
-        details.put("unit", usageRecord.quantity().unit().name());
+        details.put("unit", billableUsage.billableQuantity().unit().name());
         details.put("pricingModel", pricingRule.pricingModel().name());
         details.put("unitPriceMinor", pricingRule.unitPriceMinor());
 
         RatedUsageRecord rated = new RatedUsageRecord(
                 ratedUsageId,
-                usageRecord.recordId(),
+                billableUsage.billableUsageId(),
                 pricingRule.ruleId(),
                 ratedAmountMinor,
                 pricingRule.currencyCode(),
@@ -62,20 +62,23 @@ public class RatingEngine {
         return rated;
     }
 
-    private long calculateTieredAmount(double quantity, PricingRule rule) {
+    private long calculateTieredAmount(long quantity, PricingRule rule) {
         long totalMinor = 0;
-        double remaining = quantity;
+        long remaining = quantity;
 
         for (PricingTier tier : rule.tiers()) {
             if (remaining <= 0) break;
-            double tierQuantity = Math.min(remaining, tier.upToQuantity());
-            totalMinor += Math.round(tierQuantity * tier.unitPriceMinor()) + tier.flatFeeMinor();
+            long tierQuantity = Math.min(remaining, tier.upToQuantity());
+            totalMinor = Math.addExact(totalMinor,
+                    Math.addExact(Math.multiplyExact(tierQuantity, tier.unitPriceMinor()),
+                            tier.flatFeeMinor()));
             remaining -= tierQuantity;
         }
 
         if (remaining > 0) {
             PricingTier lastTier = rule.tiers().get(rule.tiers().size() - 1);
-            totalMinor += Math.round(remaining * lastTier.unitPriceMinor());
+            totalMinor = Math.addExact(
+                    totalMinor, Math.multiplyExact(remaining, lastTier.unitPriceMinor()));
         }
 
         return totalMinor;

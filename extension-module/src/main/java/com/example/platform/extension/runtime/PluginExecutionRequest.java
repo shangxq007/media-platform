@@ -1,8 +1,8 @@
 package com.example.platform.extension.runtime;
 
-import com.example.platform.billing.usage.CanonicalActorRef;
-import com.example.platform.billing.usage.OperationRef;
-import com.example.platform.billing.usage.ProviderRef;
+import com.example.platform.shared.usage.CanonicalActorRef;
+import com.example.platform.shared.usage.OperationRef;
+import com.example.platform.shared.usage.ProviderRef;
 
 import java.time.Duration;
 import java.util.Objects;

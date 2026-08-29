@@ -715,7 +715,7 @@ create index ix_cex_tenant_proj on client_export_session(tenant_id, project_id);
 -- provider_webhook_event, subscription_contract, subscription_plan,
 -- billing_invoice, billing_ledger_entry, credit_wallet,
 -- credit_transaction, invoice_line_item, pricing_rule, usage_meter,
--- usage_record, rated_usage_record, custom_pricing_rule,
+-- observed_runtime_usage, billable_usage, rated_usage_record, custom_pricing_rule,
 -- discount_policy, commerce_cart, commerce_cart_line
 
 create table commerce_product (
@@ -984,31 +984,90 @@ create table usage_meter (
 
 create index ix_usage_meter_key on usage_meter(meter_key);
 
--- EUMF-V1: canonical usage columns (quantity double = legacy, NOT canonical authority; PMPR cleanup target)
-create table usage_record (
-    id varchar(64) primary key,
-    tenant_id varchar(64),
-    recorded_at timestamp not null,
-    idempotency_key varchar(255) unique,
-    created_at timestamp not null default now(),
-    operation_ref varchar(128),
-    attempt_ref varchar(128),
+-- H5 I4: neutral immutable operational observations. This table owns no commercial truth.
+create table observed_runtime_usage (
+    observed_usage_id varchar(64) primary key,
+    tenant_id varchar(64) not null,
+    project_id varchar(64),
+    principal_type varchar(32) not null,
+    principal_id varchar(128) not null,
+    operation_ref varchar(128) not null,
+    attempt_ref varchar(128) not null,
+    execution_ref varchar(128),
+    provider_ref varchar(128) not null,
+    capability varchar(128) not null,
     dimension varchar(64) not null,
-    quantity_base_units bigint not null,
+    quantity_base_units bigint not null check (quantity_base_units >= 0),
     quantity_unit varchar(32) not null,
-    actor_type varchar(32),
-    actor_ref varchar(128),
-    provider_ref varchar(128),
-    capability varchar(128),
-    provenance varchar(32),
-    source varchar(128),
-    observed_at timestamp
+    operation_outcome varchar(32) not null check (
+        operation_outcome in ('SUCCEEDED', 'FAILED', 'CANCELLED', 'TIMED_OUT')),
+    occurred_at timestamptz not null,
+    observed_at timestamptz not null,
+    recorded_at timestamptz not null,
+    provenance varchar(32) not null check (provenance in ('REPORTED', 'ESTIMATED', 'DERIVED')),
+    source varchar(128) not null,
+    source_reference varchar(255) not null,
+    trace_id varchar(128) not null,
+    idempotency_key varchar(255) not null,
+    unique (tenant_id, idempotency_key),
+    unique (tenant_id, observed_usage_id)
 );
 
-create index ix_usage_record_tenant on usage_record(tenant_id);
-create index ix_usage_record_recorded on usage_record(recorded_at);
-create index ix_usage_record_operation on usage_record(operation_ref);
-create index ix_usage_record_dimension on usage_record(dimension);
+create index ix_observed_runtime_usage_tenant on observed_runtime_usage(tenant_id, recorded_at);
+create index ix_observed_runtime_usage_operation on observed_runtime_usage(
+    tenant_id, operation_ref, attempt_ref);
+create index ix_observed_runtime_usage_provider on observed_runtime_usage(provider_ref, occurred_at);
+create index ix_observed_runtime_usage_provenance on observed_runtime_usage(provenance, source);
+
+-- H5 I4: Billing-owned normalized usage. Only this type may enter commercial rating.
+create table billable_usage (
+    billable_usage_id varchar(64) primary key,
+    tenant_id varchar(64) not null,
+    principal_type varchar(32) not null,
+    principal_id varchar(128) not null,
+    observed_usage_id varchar(64) not null,
+    observed_dimension varchar(64) not null,
+    observed_quantity_base_units bigint not null check (observed_quantity_base_units >= 0),
+    observed_quantity_unit varchar(32) not null,
+    billable_meter varchar(128) not null,
+    billable_dimension varchar(64) not null,
+    billable_quantity_base_units bigint not null check (billable_quantity_base_units >= 0),
+    billable_quantity_unit varchar(32) not null,
+    metering_rule_id varchar(128) not null,
+    metering_rule_version varchar(64) not null,
+    transformation_kind varchar(64) not null check (
+        transformation_kind in ('IDENTITY', 'SCALE', 'ROUND_UP_INCREMENT', 'EXCLUDE')),
+    transformation_details text not null,
+    source_observation_timestamp timestamptz not null,
+    metered_at timestamptz not null,
+    idempotency_key varchar(255) not null,
+    trace_id varchar(128) not null,
+    provenance_reference varchar(512) not null,
+    foreign key (tenant_id, observed_usage_id)
+        references observed_runtime_usage(tenant_id, observed_usage_id),
+    unique (tenant_id, idempotency_key),
+    unique (tenant_id, observed_usage_id, metering_rule_id, metering_rule_version)
+);
+
+create index ix_billable_usage_tenant_meter on billable_usage(tenant_id, billable_meter, metered_at);
+create index ix_billable_usage_observation on billable_usage(tenant_id, observed_usage_id);
+create index ix_billable_usage_rule on billable_usage(metering_rule_id, metering_rule_version);
+create index ix_billable_usage_provenance on billable_usage(trace_id, source_observation_timestamp);
+
+create or replace function reject_usage_fact_mutation()
+returns trigger as $$
+begin
+    raise exception 'usage facts are immutable and append-only';
+end;
+$$ language plpgsql;
+
+create trigger observed_runtime_usage_immutable
+before update or delete on observed_runtime_usage
+for each row execute function reject_usage_fact_mutation();
+
+create trigger billable_usage_immutable
+before update or delete on billable_usage
+for each row execute function reject_usage_fact_mutation();
 
 create table provider_cost_observation (
     id varchar(64) primary key,
@@ -1034,7 +1093,7 @@ create index ix_provider_cost_observation_operation on provider_cost_observation
 
 create table rated_usage_record (
     id varchar(64) primary key,
-    usage_record_id varchar(64) not null,
+    billable_usage_id varchar(64) not null references billable_usage(billable_usage_id),
     pricing_rule_id varchar(64) not null,
     rated_amount_minor bigint not null,
     currency_code varchar(8) not null,
@@ -1042,7 +1101,7 @@ create table rated_usage_record (
     created_at timestamp not null default now()
 );
 
-create index ix_rated_usage_record_usage on rated_usage_record(usage_record_id);
+create index ix_rated_usage_record_usage on rated_usage_record(billable_usage_id);
 create index ix_rated_usage_record_rule on rated_usage_record(pricing_rule_id);
 
 create table custom_pricing_rule (
@@ -2584,23 +2643,6 @@ create table system_canonical_edge (
 create index ix_canonical_edge_graph_id on system_canonical_edge(graph_id);
 create index ix_canonical_edge_source on system_canonical_edge(source_event_id);
 create index ix_canonical_edge_target on system_canonical_edge(target_event_id);
-
--- ============================================================
--- USAGE RECORD TABLE (MINIMAL BILLING)
--- ============================================================
-
-create table render_usage_record (
-    id bigint generated by default as identity primary key,
-    job_id varchar(64) not null,
-    tenant_id varchar(64) not null,
-    duration_seconds bigint not null,
-    cost double precision not null,
-    created_at timestamp not null
-);
-
-create index ix_usage_record_job_id on render_usage_record(job_id);
-create index ix_usage_record_tenant_id on render_usage_record(tenant_id);
-create index ix_usage_record_created_at on render_usage_record(created_at);
 
 -- ============================================================
 -- RENDER JOB QUEUE TABLE

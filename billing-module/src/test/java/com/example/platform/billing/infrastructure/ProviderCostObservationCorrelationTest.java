@@ -1,10 +1,10 @@
 package com.example.platform.billing.infrastructure;
 
-import com.example.platform.billing.usage.CanonicalActorRef;
+import com.example.platform.shared.usage.CanonicalActorRef;
 import com.example.platform.billing.usage.CostType;
-import com.example.platform.billing.usage.OperationRef;
+import com.example.platform.shared.usage.OperationRef;
 import com.example.platform.billing.usage.ProviderCostObservation;
-import com.example.platform.billing.usage.ProviderRef;
+import com.example.platform.shared.usage.ProviderRef;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 
 import org.junit.jupiter.api.BeforeAll;

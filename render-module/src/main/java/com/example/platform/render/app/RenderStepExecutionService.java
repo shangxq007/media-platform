@@ -1,11 +1,15 @@
 package com.example.platform.render.app;
 
-import com.example.platform.billing.usage.OperationRef;
-import com.example.platform.billing.usage.UsageDimension;
-import com.example.platform.billing.usage.UsageQuantity;
-import com.example.platform.billing.usage.UsageRecord;
-import com.example.platform.billing.usage.UsageRecordEmissionPort;
-import com.example.platform.billing.usage.UsageUnit;
+import com.example.platform.shared.usage.CanonicalActorRef;
+import com.example.platform.shared.usage.ObservedRuntimeUsage;
+import com.example.platform.shared.usage.ObservedRuntimeUsageEmissionPort;
+import com.example.platform.shared.usage.OperationRef;
+import com.example.platform.shared.usage.ProviderRef;
+import com.example.platform.shared.usage.RuntimeOutcome;
+import com.example.platform.shared.usage.UsageDimension;
+import com.example.platform.shared.usage.UsageProvenance;
+import com.example.platform.shared.usage.UsageQuantity;
+import com.example.platform.shared.usage.UsageUnit;
 import com.example.platform.render.domain.RenderJobPlan;
 import com.example.platform.render.domain.RenderStep;
 import com.example.platform.shared.Ids;
@@ -38,11 +42,11 @@ public class RenderStepExecutionService {
     private static final Logger log = LoggerFactory.getLogger(RenderStepExecutionService.class);
 
     private final RenderPlanService planService;
-    private final UsageRecordEmissionPort emissionPort;
+    private final ObservedRuntimeUsageEmissionPort emissionPort;
     private final Map<String, RenderStep> activeSteps = new ConcurrentHashMap<>();
 
     public RenderStepExecutionService(RenderPlanService planService,
-            UsageRecordEmissionPort emissionPort) {
+            ObservedRuntimeUsageEmissionPort emissionPort) {
         this.planService = planService;
         this.emissionPort = emissionPort;
     }
@@ -139,7 +143,7 @@ public class RenderStepExecutionService {
     }
 
     /**
-     * Emits one canonical DURATION {@link UsageRecord} for a step with a measured duration fact.
+     * Emits one neutral DURATION observation for a step with a measured duration fact.
      *
      * <p>Emission is driven by the actual measured consumption fact ({@link RenderStep#duration()}),
      * independent of business success status: COMPLETED or FAILED steps with a real duration both
@@ -174,24 +178,45 @@ public class RenderStepExecutionService {
                     step.id());
             return;
         }
+        String principalId = plan.parameters().get("usagePrincipalId");
+        String principalType = plan.parameters().get("usagePrincipalType");
+        String providerId = plan.parameters().get("usageProviderId");
+        if (principalId == null || principalId.isBlank()
+                || principalType == null || principalType.isBlank()
+                || providerId == null || providerId.isBlank()) {
+            log.warn("RenderStepExecutionService: skipping usage emission, incomplete principal/provider context for step {}",
+                    step.id());
+            return;
+        }
         try {
             String stepId = step.id();
-            UsageRecord record = UsageRecord.record(
+            Instant occurredAt = step.completedAt();
+            RuntimeOutcome outcome = switch (step.status()) {
+                case COMPLETED -> RuntimeOutcome.SUCCEEDED;
+                case FAILED -> RuntimeOutcome.FAILED;
+                case CANCELLED -> RuntimeOutcome.CANCELLED;
+                default -> throw new IllegalStateException(
+                        "Terminal runtime outcome is required for observed usage");
+            };
+            ObservedRuntimeUsage record = ObservedRuntimeUsage.observe(
                     tenantId,
-                    null,
-                    null,
-                    OperationRef.of(plan.id(), stepId),
-                    null,
-                    null,
+                    plan.parameters().get("projectId"),
+                    new CanonicalActorRef(principalId, principalType),
+                    OperationRef.of(plan.id(), stepId + ":" + attempt),
+                    plan.parameters().get("executionRef"),
+                    new ProviderRef(providerId),
                     step.type() != null ? step.type().name() : null,
                     UsageDimension.DURATION,
                     UsageQuantity.fromBaseUnits(duration.toMillis(), UsageUnit.MILLISECONDS),
-                    step.completedAt(),
-                    Instant.now(),
-                    Instant.now(),
-                    "render-" + stepId + "-" + attempt,
-                    "REPORTED",
-                    "render-step");
+                    outcome,
+                    occurredAt,
+                    occurredAt,
+                    occurredAt,
+                    UsageProvenance.REPORTED,
+                    "render-step",
+                    plan.renderJobId() + ":" + stepId,
+                    plan.parameters().getOrDefault("traceId", "render-" + plan.id()),
+                    "render-" + stepId + "-" + attempt);
             emissionPort.emit(record);
         } catch (Exception e) {
             log.warn("RenderStepExecutionService: usage emission failed for step {}: {}",

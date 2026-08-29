@@ -10,11 +10,12 @@ import com.example.platform.ai.domain.ChatResult;
 import com.example.platform.ai.domain.ModelRouter;
 import com.example.platform.ai.domain.RoutePlan;
 import com.example.platform.ai.domain.RouteTarget;
-import com.example.platform.billing.usage.UsageDimension;
-import com.example.platform.billing.usage.UsageQuantity;
-import com.example.platform.billing.usage.UsageRecord;
-import com.example.platform.billing.usage.UsageRecordEmissionPort;
-import com.example.platform.billing.usage.UsageUnit;
+import com.example.platform.shared.usage.UsageDimension;
+import com.example.platform.shared.usage.UsageProvenance;
+import com.example.platform.shared.usage.UsageQuantity;
+import com.example.platform.shared.usage.ObservedRuntimeUsage;
+import com.example.platform.shared.usage.ObservedRuntimeUsageEmissionPort;
+import com.example.platform.shared.usage.UsageUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,7 +25,7 @@ import org.junit.jupiter.api.Test;
 /**
  * Verifies the ESTIMATED usage-emission side effect added to {@link AiGatewayService#generateScript}.
  *
- * <p>These are pure unit tests (no Spring context, no DB): the {@link UsageRecordEmissionPort}
+ * <p>These are pure unit tests (no Spring context, no DB): the {@link ObservedRuntimeUsageEmissionPort}
  * is supplied as a capturing lambda double.</p>
  */
 class AiUsageEmissionTest {
@@ -40,8 +41,8 @@ class AiUsageEmissionTest {
 
     @Test
     void generateScript_emitsOneEstimatedTokenInputRecord() {
-        AtomicReference<UsageRecord> captured = new AtomicReference<>();
-        UsageRecordEmissionPort port = record -> {
+        AtomicReference<ObservedRuntimeUsage> captured = new AtomicReference<>();
+        ObservedRuntimeUsageEmissionPort port = record -> {
             captured.set(record);
             return record;
         };
@@ -50,11 +51,11 @@ class AiUsageEmissionTest {
         // 16 chars / 4 = 4 tokens for the prompt; "response" 8 chars / 4 = 2 tokens.
         AiScriptResult result = service.generateScript("1234567890123456", "default", TENANT);
 
-        UsageRecord record = captured.get();
+        ObservedRuntimeUsage record = captured.get();
         assertNotNull(record, "expected a usage record to be emitted");
         assertEquals(TENANT, record.tenantId());
         assertEquals(UsageDimension.TOKEN_INPUT, record.dimension());
-        assertEquals("ESTIMATED", record.provenance());
+        assertEquals(UsageProvenance.ESTIMATED, record.provenance());
         assertEquals("ai-gateway-heuristic", record.source());
         assertEquals("script-generation", record.capability());
 
@@ -72,23 +73,23 @@ class AiUsageEmissionTest {
 
     @Test
     void generateScript_doesNotInventProviderCost() {
-        UsageRecordEmissionPort port = record -> record;
+        ObservedRuntimeUsageEmissionPort port = record -> record;
         AiGatewayService service = new AiGatewayService(router, providers, port);
 
         service.generateScript("1234567890123456", "default", TENANT);
 
-        // The emission path only ever constructs a UsageRecord; it never fabricates a
+        // The emission path only ever constructs a ObservedRuntimeUsage; it never fabricates a
         // ProviderCostObservation. We assert this by construction: the captured type is a
-        // UsageRecord and the canonical factory has no cost-bearing fields. No cost observation
+        // ObservedRuntimeUsage and the canonical factory has no cost-bearing fields. No cost observation
         // type is imported or referenced by the emission code path.
-        UsageRecord record = capture(service, "1234567890123456");
-        assertNull(record.providerRef(), "no provider reference should be fabricated");
+        ObservedRuntimeUsage record = capture(service, "1234567890123456");
+        assertEquals("testProvider", record.providerRef().providerId());
     }
 
     @Test
     void generateScript_skipsEmissionWhenNoTenant() {
-        AtomicReference<UsageRecord> captured = new AtomicReference<>();
-        UsageRecordEmissionPort port = record -> { captured.set(record); return record; };
+        AtomicReference<ObservedRuntimeUsage> captured = new AtomicReference<>();
+        ObservedRuntimeUsageEmissionPort port = record -> { captured.set(record); return record; };
 
         AiGatewayService service = new AiGatewayService(router, providers, port);
 
@@ -102,9 +103,9 @@ class AiUsageEmissionTest {
 
     @Test
     void generateScript_twoCallsGetDistinctOperationIds() {
-        AtomicReference<UsageRecord> first = new AtomicReference<>();
-        AtomicReference<UsageRecord> second = new AtomicReference<>();
-        UsageRecordEmissionPort port = record -> {
+        AtomicReference<ObservedRuntimeUsage> first = new AtomicReference<>();
+        AtomicReference<ObservedRuntimeUsage> second = new AtomicReference<>();
+        ObservedRuntimeUsageEmissionPort port = record -> {
             if (first.get() == null) {
                 first.set(record);
             } else {
@@ -127,8 +128,8 @@ class AiUsageEmissionTest {
 
     @Test
     void generateScript_defaultTwoArgOverloadSkipsEmission() {
-        AtomicReference<UsageRecord> captured = new AtomicReference<>();
-        UsageRecordEmissionPort port = record -> { captured.set(record); return record; };
+        AtomicReference<ObservedRuntimeUsage> captured = new AtomicReference<>();
+        ObservedRuntimeUsageEmissionPort port = record -> { captured.set(record); return record; };
 
         AiGatewayService service = new AiGatewayService(router, providers, port);
         // The no-tenant overload cannot emit (tenant required).
@@ -138,10 +139,10 @@ class AiUsageEmissionTest {
         assertEquals("response", result.scriptContent());
     }
 
-    private UsageRecord capture(AiGatewayService service, String prompt) {
-        AtomicReference<UsageRecord> ref = new AtomicReference<>();
+    private ObservedRuntimeUsage capture(AiGatewayService service, String prompt) {
+        AtomicReference<ObservedRuntimeUsage> ref = new AtomicReference<>();
         // Reconstruct with a capturing port to read the emitted record.
-        UsageRecordEmissionPort port = record -> { ref.set(record); return record; };
+        ObservedRuntimeUsageEmissionPort port = record -> { ref.set(record); return record; };
         new AiGatewayService(router, providers, port).generateScript(prompt, "default", TENANT);
         return ref.get();
     }

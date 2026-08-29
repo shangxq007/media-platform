@@ -1,5 +1,9 @@
 package com.example.platform.billing.usage;
 
+import com.example.platform.shared.usage.CanonicalActorRef;
+import com.example.platform.shared.usage.OperationRef;
+import com.example.platform.shared.usage.ProviderRef;
+
 import com.example.platform.billing.infrastructure.ProviderCostObservationJdbcRepository;
 import com.example.platform.outbox.app.OutboxEventService;
 import com.example.platform.outbox.app.PostgresNotificationService;

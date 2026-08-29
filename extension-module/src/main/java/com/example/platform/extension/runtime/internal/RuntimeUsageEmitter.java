@@ -1,75 +1,78 @@
 package com.example.platform.extension.runtime.internal;
 
-import com.example.platform.billing.usage.CanonicalActorRef;
-import com.example.platform.billing.usage.OperationRef;
-import com.example.platform.billing.usage.ProviderRef;
-import com.example.platform.billing.usage.UsageDimension;
-import com.example.platform.billing.usage.UsageQuantity;
-import com.example.platform.billing.usage.UsageRecord;
-import com.example.platform.billing.usage.UsageRecordEmissionPort;
-import com.example.platform.billing.usage.UsageUnit;
-
+import com.example.platform.shared.usage.CanonicalActorRef;
+import com.example.platform.shared.usage.ObservedRuntimeUsage;
+import com.example.platform.shared.usage.ObservedRuntimeUsageEmissionPort;
+import com.example.platform.shared.usage.OperationRef;
+import com.example.platform.shared.usage.ProviderRef;
+import com.example.platform.shared.usage.RuntimeOutcome;
+import com.example.platform.shared.usage.UsageDimension;
+import com.example.platform.shared.usage.UsageProvenance;
+import com.example.platform.shared.usage.UsageQuantity;
+import com.example.platform.shared.usage.UsageUnit;
 import java.time.Instant;
 import java.util.Objects;
 
-/**
- * Runtime-owned canonical usage emission (GAP-002 closure,
- * EVERY_PLUGIN_RUNTIME_EXECUTION_IS_A_GOVERNED_USAGE_PRODUCER).
- *
- * <p>EUMF REUSE ONLY — no second usage system. The runtime emits base facts
- * (REQUEST, DURATION) via {@link UsageRecordEmissionPort}; provider-reported
- * facts (TOKEN_INPUT etc.) are forwarded preserving provenance. Idempotency is
- * anchored on OperationRef + Attempt (same attempt replay → ONE fact; new
- * attempt → distinct fact — PRV2-RED-008/009). FAILED_OPERATION_MAY_STILL_EMIT_USAGE:
- * a failed consumed execution still emits measured facts (PRV2-RED-010).</p>
- */
+/** Runtime-owned producer of neutral, immutable usage observations. */
 public final class RuntimeUsageEmitter {
 
-    private final UsageRecordEmissionPort emissionPort;
+    private final ObservedRuntimeUsageEmissionPort emissionPort;
 
-    public RuntimeUsageEmitter(UsageRecordEmissionPort emissionPort) {
+    public RuntimeUsageEmitter(ObservedRuntimeUsageEmissionPort emissionPort) {
         this.emissionPort = Objects.requireNonNull(emissionPort, "emissionPort must not be null");
     }
 
-    /**
-     * Emits runtime base facts (REQUEST + DURATION) for an execution.
-     *
-     * @param tenantId     tenant (required)
-     * @param actorRef     canonical actor (required)
-     * @param operationRef operation + attempt (required, idempotency anchor)
-     * @param providerRef  provider (required)
-     * @param capability   capability (required)
-     * @param durationMs   measured duration in ms
-     * @return the persisted REQUEST usage record
-     */
-    public UsageRecord emitBaseFacts(String tenantId, CanonicalActorRef actorRef,
-                                     OperationRef operationRef, ProviderRef providerRef,
-                                     String capability, long durationMs) {
-        Instant now = Instant.now();
+    /** Emits REQUEST and, when measured, DURATION facts for one operation attempt. */
+    public ObservedRuntimeUsage emitBaseFacts(
+            String tenantId,
+            CanonicalActorRef actorRef,
+            OperationRef operationRef,
+            ProviderRef providerRef,
+            String capability,
+            long durationMs,
+            RuntimeOutcome outcome,
+            Instant occurredAt,
+            String traceId) {
+        Objects.requireNonNull(occurredAt, "occurredAt must not be null");
+        Objects.requireNonNull(outcome, "outcome must not be null");
+        String sourceReference = providerRef.providerId() + ":"
+                + operationRef.operationId() + ":" + operationRef.attemptId();
 
-        UsageRecord requestRecord = UsageRecord.record(
-                tenantId, null, actorRef, operationRef, null, providerRef, capability,
+        ObservedRuntimeUsage request = observation(
+                tenantId, actorRef, operationRef, providerRef, capability,
                 UsageDimension.REQUEST, UsageQuantity.fromBaseUnits(1, UsageUnit.COUNT),
-                now, now, now,
-                idempotencyKey(operationRef, "REQUEST", "runtime"),
-                "REPORTED", "plugin-runtime-v2");
-
-        emissionPort.emit(requestRecord);
+                outcome, occurredAt, traceId, sourceReference);
+        emissionPort.emit(request);
 
         if (durationMs > 0) {
-            UsageRecord durationRecord = UsageRecord.record(
-                    tenantId, null, actorRef, operationRef, null, providerRef, capability,
-                    UsageDimension.DURATION, UsageQuantity.fromBaseUnits(durationMs, UsageUnit.MILLISECONDS),
-                    now, now, now,
-                    idempotencyKey(operationRef, "DURATION", "runtime"),
-                    "REPORTED", "plugin-runtime-v2");
-            emissionPort.emit(durationRecord);
+            emissionPort.emit(observation(
+                    tenantId, actorRef, operationRef, providerRef, capability,
+                    UsageDimension.DURATION,
+                    UsageQuantity.fromBaseUnits(durationMs, UsageUnit.MILLISECONDS),
+                    outcome, occurredAt, traceId, sourceReference));
         }
-
-        return requestRecord;
+        return request;
     }
 
-    /** Attempt-scoped idempotency key (append-only; replay → one fact). */
+    private static ObservedRuntimeUsage observation(
+            String tenantId,
+            CanonicalActorRef actorRef,
+            OperationRef operationRef,
+            ProviderRef providerRef,
+            String capability,
+            UsageDimension dimension,
+            UsageQuantity quantity,
+            RuntimeOutcome outcome,
+            Instant occurredAt,
+            String traceId,
+            String sourceReference) {
+        return ObservedRuntimeUsage.observe(
+                tenantId, null, actorRef, operationRef, null, providerRef, capability,
+                dimension, quantity, outcome, occurredAt, occurredAt, occurredAt,
+                UsageProvenance.REPORTED, "plugin-runtime-v2", sourceReference, traceId,
+                idempotencyKey(operationRef, dimension.name(), "runtime"));
+    }
+
     static String idempotencyKey(OperationRef operationRef, String dimension, String source) {
         String attempt = operationRef.attemptId() != null ? operationRef.attemptId() : "no-attempt";
         return "prv2-" + operationRef.operationId() + "-" + attempt + "-" + dimension + "-" + source;

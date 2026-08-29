@@ -4,7 +4,7 @@ import com.example.platform.billing.domain.BillingDecision;
 import com.example.platform.billing.domain.BillingLedgerEntry;
 import com.example.platform.billing.domain.BillingState;
 import com.example.platform.billing.domain.CreditWallet;
-import com.example.platform.billing.usage.UsageRecord;
+import com.example.platform.billing.usage.BillableUsage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -40,21 +40,21 @@ public class BillingCycleService {
 
     public BillingCycleResult runCycle(String tenantId, String userId) {
         Map<String, Long> included = subscriptionBillingService.getEffectiveIncludedQuota(tenantId, userId);
-        List<UsageRecord> usage = usageMeteringService.getUsageByTenant(tenantId);
+        List<BillableUsage> usage = usageMeteringService.getBillableUsageByTenant(tenantId);
 
-        Map<String, Double> usageByMeter = new HashMap<>();
-        for (UsageRecord record : usage) {
-            usageByMeter.merge(record.dimension().name(), (double) record.quantity().baseUnits(), Double::sum);
+        Map<String, Long> usageByMeter = new HashMap<>();
+        for (BillableUsage record : usage) {
+            usageByMeter.merge(record.billableMeter(), record.billableQuantity().baseUnits(), Long::sum);
         }
 
         long totalChargeMinor = 0L;
         List<BillingCycleLine> lines = new ArrayList<>();
 
-        for (Map.Entry<String, Double> entry : usageByMeter.entrySet()) {
+        for (Map.Entry<String, Long> entry : usageByMeter.entrySet()) {
             String meterKey = entry.getKey();
-            double totalUsed = entry.getValue();
+            long totalUsed = entry.getValue();
             long includedAmount = included.getOrDefault(meterKey, 0L);
-            double overage = Math.max(0, totalUsed - includedAmount);
+            long overage = Math.max(0, totalUsed - includedAmount);
             if (overage <= 0) {
                 lines.add(new BillingCycleLine(meterKey, totalUsed, includedAmount, 0, 0L, "INCLUDED"));
                 continue;
@@ -96,9 +96,9 @@ public class BillingCycleService {
 
     public record BillingCycleLine(
             String meterKey,
-            double totalUsed,
+            long totalUsed,
             long includedQuota,
-            double overageQuantity,
+            long overageQuantity,
             long chargeMinor,
             String disposition) {
     }

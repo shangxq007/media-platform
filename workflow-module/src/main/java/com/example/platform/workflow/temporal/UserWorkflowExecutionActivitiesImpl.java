@@ -1,8 +1,8 @@
 package com.example.platform.workflow.temporal;
 
-import com.example.platform.billing.usage.CanonicalActorRef;
-import com.example.platform.billing.usage.OperationRef;
-import com.example.platform.billing.usage.ProviderRef;
+import com.example.platform.shared.usage.CanonicalActorRef;
+import com.example.platform.shared.usage.OperationRef;
+import com.example.platform.shared.usage.ProviderRef;
 import com.example.platform.extension.runtime.ExecutionMode;
 import com.example.platform.extension.runtime.PluginExecutionRequest;
 import com.example.platform.extension.runtime.PluginExecutionResult;
