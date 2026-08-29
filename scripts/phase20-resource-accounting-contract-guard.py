@@ -71,7 +71,7 @@ def git(root: pathlib.Path, *args: str) -> str:
     result = subprocess.run(
         ["git", *args], cwd=root, check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
     )
-    return result.stdout.strip()
+    return result.stdout.rstrip("\n")
 
 
 def validate_contract(path: pathlib.Path) -> None:
@@ -83,6 +83,9 @@ def validate_contract(path: pathlib.Path) -> None:
         if token not in text:
             fail(f"required contract token missing: {token}")
     exact_statuses = {
+        "ARCHITECTURE_STATUS": "FROZEN",
+        "INDEPENDENT_REVIEW_STATUS": "PENDING",
+        "IMPLEMENTATION_STATUS": "NOT_STARTED",
         "ROADMAP_22_PHASE20_DECISION_RECOVERY": "PASS",
         "PHASE20_BOUNDED_ARCHITECTURE_CONTRACT": "FROZEN",
         "READY_FOR_PHASE20_IMPLEMENTATION": "YES",
