@@ -1,0 +1,108 @@
+{
+  "schema_version": 1,
+  "task": "H2_PHASE19_DEFERRED_CAPABILITY_REASSESSMENT_V1",
+  "source_ledger": "docs/architecture/governance/roadmap-22-phase-19-legacy-render-ffmpeg-functional-capability-ledger-v1.json",
+  "scope": "Reassessment evidence only; this is not an implementation checklist and does not mutate the historical ledger.",
+  "allowed_primary_categories": [
+    "DIRECT_FFMPEG_PRIMITIVE_CANDIDATE",
+    "BMF_PROVIDER_LOCAL_GRAPH_CANDIDATE",
+    "SHARED_MULTI_PROVIDER_SEMANTIC_CAPABILITY",
+    "REQUIRES_NEW_CANONICAL_CONTRACT",
+    "DEFER_FURTHER"
+  ],
+  "rows": [
+    {
+      "capability_key": "THUMBNAIL_FRAME_EXTRACTION",
+      "primary_category": "DIRECT_FFMPEG_PRIMITIVE_CANDIDATE",
+      "repo_evidence": "The source ledger identifies one seek/one-frame/scale primitive and says the current contract lacks the required typed operation/output role.",
+      "explanation": "Once thumbnail WHAT and output semantics are authorized, this is a bounded direct FFmpeg lowering; a BMF graph adds no demonstrated semantic benefit."
+    },
+    {
+      "capability_key": "REMUX_FASTSTART",
+      "primary_category": "DIRECT_FFMPEG_PRIMITIVE_CANDIDATE",
+      "repo_evidence": "The source ledger identifies stream copy plus MP4 faststart and records the missing typed container/output requirement.",
+      "explanation": "After the typed output contract exists, this is a direct container primitive rather than a multi-node provider graph."
+    },
+    {
+      "capability_key": "CLIP_TRIM_SEEK_LOWERING",
+      "primary_category": "REQUIRES_NEW_CANONICAL_CONTRACT",
+      "repo_evidence": "The source ledger says concrete lowering waits for a typed temporal-window provider contract; PhysicalPlanUnit currently carries temporalWindow but the bounded FFmpeg provider rejects it.",
+      "explanation": "Source seek and duration are media semantics, not an argv or BMF-graph decision; canonical temporal behavior must close first."
+    },
+    {
+      "capability_key": "CONCAT_MULTI_INPUT_VIDEO",
+      "primary_category": "BMF_PROVIDER_LOCAL_GRAPH_CANDIDATE",
+      "repo_evidence": "The source ledger retains RenderGraph composition but records that current multi-membership/multi-input lowering fails closed.",
+      "explanation": "Given already-authoritative typed composition and dependencies, concat is a plausible private BMF multi-node lowering; the classification does not authorize concat or a BMF graph payload."
+    },
+    {
+      "capability_key": "TRANSITION_XFADE_LOWERING",
+      "primary_category": "SHARED_MULTI_PROVIDER_SEMANTIC_CAPABILITY",
+      "repo_evidence": "The source ledger retains transition semantic-model authority and defers only concrete provider HOW.",
+      "explanation": "A transition must mean the same thing across Reference, BMF, FFmpeg, and future providers; xfade is provider-local mechanics, not the shared contract."
+    },
+    {
+      "capability_key": "VIDEO_EFFECT_FILTER_LOWERING",
+      "primary_category": "SHARED_MULTI_PROVIDER_SEMANTIC_CAPABILITY",
+      "repo_evidence": "timeline-module VideoEffectSemantics includes typed GaussianBlur semantics, and the source ledger retains typed effect semantics while deferring concrete HOW.",
+      "explanation": "Blur is the selected conformance POC precisely because its Effect Semantic Contract must be shared while provider lowering remains private."
+    },
+    {
+      "capability_key": "SUBTITLE_CAPTION_BURN_IN_LOWERING",
+      "primary_category": "REQUIRES_NEW_CANONICAL_CONTRACT",
+      "repo_evidence": "The source ledger says the full subtitle domain/provider lowering needs separate contract authority.",
+      "explanation": "Timed text, styling, shaping, fonts, and burn-in behavior cannot be recovered from old FFmpeg/libass commands; a complete typed contract is prerequisite."
+    },
+    {
+      "capability_key": "WATERMARK_STICKER_OVERLAY_LOWERING",
+      "primary_category": "BMF_PROVIDER_LOCAL_GRAPH_CANDIDATE",
+      "repo_evidence": "The source ledger retains spatial/render-graph semantics and identifies scale/overlay only as legacy mechanics.",
+      "explanation": "After exact typed spatial semantics are selected, the private provider implementation may naturally use a BMF graph; this remains outside the blur-first authorization."
+    },
+    {
+      "capability_key": "SPATIAL_CROP_OVERLAY_LOWERING",
+      "primary_category": "BMF_PROVIDER_LOCAL_GRAPH_CANDIDATE",
+      "repo_evidence": "The source ledger retains spatial semantics and identifies crop/scale/overlay as deferred provider mechanics.",
+      "explanation": "This is a plausible private multi-node pipeline under existing/future typed spatial WHAT, not a reason to expose BMF topology."
+    },
+    {
+      "capability_key": "MULTITRACK_AUDIO_MIX_LOWERING",
+      "primary_category": "SHARED_MULTI_PROVIDER_SEMANTIC_CAPABILITY",
+      "repo_evidence": "The source ledger identifies Audio V2 as current canonical authority and forbids revival of legacy approximations.",
+      "explanation": "Mix, gain, mute, pan, and fades require provider-independent semantics; provider-specific audio graphs are replaceable HOW."
+    },
+    {
+      "capability_key": "AUDIO_ENCODING_MUXING",
+      "primary_category": "REQUIRES_NEW_CANONICAL_CONTRACT",
+      "repo_evidence": "The source ledger says the current provider emits no audio and requires a typed audio capability contract.",
+      "explanation": "Although eventual mechanics may be direct FFmpeg, the presently missing typed audio/output contract is the primary blocker."
+    },
+    {
+      "capability_key": "NON_H264_CODEC_CONTAINER_PROFILES",
+      "primary_category": "DIRECT_FFMPEG_PRIMITIVE_CANDIDATE",
+      "repo_evidence": "The source ledger retains provider-neutral codec/container requirements and records only a bounded H.264 provider profile today.",
+      "explanation": "Once each typed codec/container contract and legal runtime closure is admitted, the narrow implementations are direct FFmpeg primitive candidates."
+    },
+    {
+      "capability_key": "RENDER_SIDE_MEDIA_PROBE_PROVIDER",
+      "primary_category": "REQUIRES_NEW_CANONICAL_CONTRACT",
+      "repo_evidence": "MediaProbePortAdapter fails closed with TYPED_PROVIDER_PLUGIN_MEDIA_PROBE_REQUIRED and the source ledger calls for an explicit typed media.probe contribution.",
+      "explanation": "Probe observation semantics and provider contribution shape must be canonicalized outside Render before any ffprobe implementation is authorized."
+    },
+    {
+      "capability_key": "FFPROBE_RUNTIME_IDENTITY_DISCOVERY",
+      "primary_category": "DEFER_FURTHER",
+      "repo_evidence": "The source ledger states this has no standalone value without an authorized media.probe provider.",
+      "explanation": "Reassess only with the preceding typed probe-provider contract; it is runtime mechanics, not an independent capability."
+    }
+  ],
+  "summary": {
+    "TOTAL": 14,
+    "DIRECT_FFMPEG_PRIMITIVE_CANDIDATE": 3,
+    "BMF_PROVIDER_LOCAL_GRAPH_CANDIDATE": 3,
+    "SHARED_MULTI_PROVIDER_SEMANTIC_CAPABILITY": 3,
+    "REQUIRES_NEW_CANONICAL_CONTRACT": 4,
+    "DEFER_FURTHER": 1,
+    "UNCLASSIFIED": 0
+  }
+}
