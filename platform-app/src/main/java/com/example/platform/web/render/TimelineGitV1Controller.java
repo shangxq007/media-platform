@@ -1,6 +1,8 @@
 package com.example.platform.web.render;
 
 import com.example.platform.shared.time.MediaTime;
+import com.example.platform.shared.authorization.CanonicalActorResolver;
+import com.example.platform.shared.events.RenderInitiator;
 import com.example.platform.timeline.app.PatchApplyResult;
 import com.example.platform.timeline.app.PatchPreviewResult;
 import com.example.platform.timeline.app.ProductCurrentRevisionService;
@@ -53,19 +55,22 @@ public class TimelineGitV1Controller {
     private final TimelineContentDigester contentDigester;
     private final TimelineSemanticDiffV1Service diffService;
     private final TimelinePatchApplicationService patchService;
+    private final CanonicalActorResolver canonicalActorResolver;
 
     public TimelineGitV1Controller(TimelineRevisionSaveService saveService,
                                    ProductCurrentRevisionService currentRevisionService,
                                    RenderJobRevisionPinningService pinningService,
                                    TimelineContentDigester contentDigester,
                                    TimelineSemanticDiffV1Service diffService,
-                                   TimelinePatchApplicationService patchService) {
+                                   TimelinePatchApplicationService patchService,
+                                   CanonicalActorResolver canonicalActorResolver) {
         this.saveService = saveService;
         this.currentRevisionService = currentRevisionService;
         this.pinningService = pinningService;
         this.contentDigester = contentDigester;
         this.diffService = diffService;
         this.patchService = patchService;
+        this.canonicalActorResolver = canonicalActorResolver;
     }
 
     @PostMapping("/products/{productId}/revisions")
@@ -118,8 +123,11 @@ public class TimelineGitV1Controller {
     public ResponseEntity<RenderJobResponse> createRenderJob(
             @RequestBody CreateRenderJobRequest request) {
         String jobId = UUID.randomUUID().toString();
+        RenderInitiator initiator = canonicalActorResolver.resolveCurrentActor()
+                .map(RenderInitiator::from)
+                .orElseThrow(() -> new IllegalStateException("Authenticated render initiator is required"));
         pinningService.createRenderJobWithRevision(jobId, request.productId(),
-                request.timelineRevisionId(), request.backend());
+                request.timelineRevisionId(), request.backend(), initiator);
         return ResponseEntity.status(HttpStatus.CREATED).body(new RenderJobResponse(jobId));
     }
 

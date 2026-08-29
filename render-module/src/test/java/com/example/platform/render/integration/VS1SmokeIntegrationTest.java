@@ -20,6 +20,7 @@ import com.example.platform.render.testsupport.fakes.FakeProductDependencyReposi
 import com.example.platform.render.testsupport.fakes.FakeProductRepository;
 import com.example.platform.render.testsupport.fakes.FakeRenderJobService;
 import com.example.platform.render.testsupport.fakes.FakeRenderOrchestratorPort;
+import com.example.platform.render.testsupport.RenderInitiatorFixtures;
 import com.example.platform.render.testsupport.fakes.FakeStorageReferenceRepository;
 import com.example.platform.shared.web.PlatformException;
 import com.example.platform.shared.web.TenantContext;
@@ -86,7 +87,8 @@ class VS1SmokeIntegrationTest {
 
         fakeOrchestrator = new FakeRenderOrchestratorPort();
         controller = new RenderController(fakeJobService, fakeOrchestrator, java.util.List.<com.example.platform.storage.domain.BlobStorage>of(),
-                null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null,
+                RenderInitiatorFixtures.resolver("t-1"));
         stateMachine = new RenderJobStateMachine();
     }
 
@@ -190,7 +192,8 @@ class VS1SmokeIntegrationTest {
         void startExistingJob() {
             fakeJobService.registerProject("proj-1", "t-1");
             CreateRenderJobRequest createReq = new CreateRenderJobRequest("proj-1", "snap-1", "default_1080p");
-            RenderJobResponse created = fakeJobService.createForProject("t-1", "proj-1", createReq);
+            RenderJobResponse created = fakeJobService.createForProject(
+                    "t-1", "proj-1", createReq, RenderInitiatorFixtures.user("t-1"));
 
             Map<String, String> result = controller.startRenderJob("t-1", "proj-1", created.id());
 
@@ -314,7 +317,8 @@ class VS1SmokeIntegrationTest {
         @DisplayName("Missing orchestrator on submit throws IllegalStateException")
         void missingOrchestratorFallback() {
             RenderController controllerNoOrch = new RenderController(fakeJobService, null, java.util.List.of(),
-                    null, null, null, null, null, null, null, null, null);
+                    null, null, null, null, null, null, null, null, null,
+                    RenderInitiatorFixtures.resolver("t-1"));
             SubmitRenderJobRequest req = new SubmitRenderJobRequest(
                     "t-1", "proj-1", "test", "default_1080p", "snap-1");
 

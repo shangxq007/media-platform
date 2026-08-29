@@ -13,6 +13,8 @@ import com.example.platform.shared.Ids;
 import com.example.platform.shared.events.RenderDeliveryCompletedEvent;
 import com.example.platform.shared.events.RenderDeliveryFailedEvent;
 import com.example.platform.shared.events.RenderJobCompletedEvent;
+import com.example.platform.shared.authorization.ActorType;
+import com.example.platform.shared.events.RenderInitiator;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -72,7 +74,10 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
         Record job = dsl.select(
                         RENDER_JOB.TENANT_ID,
                         RENDER_JOB.PROJECT_ID,
-                        RENDER_JOB.ARTIFACT_URI)
+                        RENDER_JOB.ARTIFACT_URI,
+                        RENDER_JOB.INITIATOR_TYPE,
+                        RENDER_JOB.INITIATOR_ID,
+                        RENDER_JOB.INITIATOR_TENANT_ID)
                 .from(RENDER_JOB)
                 .where(RENDER_JOB.ID.eq(event.renderJobId()))
                 .fetchOne();
@@ -354,7 +359,11 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
         String projectId = job.get(RENDER_JOB.PROJECT_ID);
         String artifactUri = job.get(RENDER_JOB.ARTIFACT_URI);
         onRenderJobCompleted(new RenderJobCompletedEvent(
-                renderJobId, projectId, null, artifactUri, Instant.now()));
+                renderJobId, projectId, null, artifactUri, Instant.now(),
+                RenderInitiator.restore(
+                        ActorType.valueOf(job.get(RENDER_JOB.INITIATOR_TYPE)),
+                        job.get(RENDER_JOB.INITIATOR_ID),
+                        job.get(RENDER_JOB.INITIATOR_TENANT_ID))));
         return processQueued(32);
     }
 

@@ -7,6 +7,8 @@ import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
+import com.example.platform.shared.authorization.ActorType;
+import com.example.platform.shared.events.RenderInitiator;
 import org.jooq.DSLContext;
 import org.jooq.Record;
 import org.springframework.stereotype.Repository;
@@ -33,13 +35,17 @@ public class RenderJobRepository {
      * Insert a new render job.
      */
     public void create(String id, String projectId, String tenantId,
-            String timelineSnapshotId, String profile, String status, OffsetDateTime createdAt) {
+            String timelineSnapshotId, String profile, String status,
+            RenderInitiator initiator, OffsetDateTime createdAt) {
+        requireInitiatorTenant(tenantId, initiator);
         dsl.insertInto(RENDER_JOB)
                 .columns(RENDER_JOB.ID, RENDER_JOB.PROJECT_ID, RENDER_JOB.TENANT_ID,
                         RENDER_JOB.TIMELINE_SNAPSHOT_ID, RENDER_JOB.PROFILE,
-                        RENDER_JOB.STATUS, RENDER_JOB.CREATED_AT)
+                        RENDER_JOB.STATUS, RENDER_JOB.INITIATOR_TYPE, RENDER_JOB.INITIATOR_ID,
+                        RENDER_JOB.INITIATOR_TENANT_ID, RENDER_JOB.CREATED_AT)
                 .values(id, projectId, tenantId,
-                        timelineSnapshotId, profile, status, createdAt.toLocalDateTime())
+                        timelineSnapshotId, profile, status, initiator.actorType().name(),
+                        initiator.actorId(), initiator.tenantId(), createdAt.toLocalDateTime())
                 .execute();
     }
 
@@ -292,13 +298,18 @@ public class RenderJobRepository {
      * Create a quota-rejected render job with error message.
      */
     public void createRejected(String id, String projectId, String tenantId,
-            String snapshotId, String profile, String errorMessage, OffsetDateTime createdAt) {
+            String snapshotId, String profile, String errorMessage,
+            RenderInitiator initiator, OffsetDateTime createdAt) {
+        requireInitiatorTenant(tenantId, initiator);
         dsl.insertInto(RENDER_JOB)
                 .columns(RENDER_JOB.ID, RENDER_JOB.PROJECT_ID, RENDER_JOB.TENANT_ID,
                         RENDER_JOB.TIMELINE_SNAPSHOT_ID,
-                        RENDER_JOB.PROFILE, RENDER_JOB.STATUS, RENDER_JOB.CREATED_AT, RENDER_JOB.ERROR_MESSAGE)
+                        RENDER_JOB.PROFILE, RENDER_JOB.STATUS, RENDER_JOB.INITIATOR_TYPE,
+                        RENDER_JOB.INITIATOR_ID, RENDER_JOB.INITIATOR_TENANT_ID,
+                        RENDER_JOB.CREATED_AT, RENDER_JOB.ERROR_MESSAGE)
                 .values(id, projectId, tenantId, snapshotId, profile,
-                        "REJECTED", createdAt.toLocalDateTime(), errorMessage)
+                        "REJECTED", initiator.actorType().name(), initiator.actorId(), initiator.tenantId(),
+                        createdAt.toLocalDateTime(), errorMessage)
                 .execute();
     }
 
@@ -353,7 +364,8 @@ public class RenderJobRepository {
     public Record requireJobRecord(String jobId) {
         Record job = dsl.select(RENDER_JOB.ID, RENDER_JOB.PROJECT_ID, RENDER_JOB.TENANT_ID,
                         RENDER_JOB.PROFILE, RENDER_JOB.TIMELINE_SNAPSHOT_ID, RENDER_JOB.BASE_JOB_ID,
-                        RENDER_JOB.STATUS, RENDER_JOB.AI_SCRIPT, RENDER_JOB.ARTIFACT_URI, RENDER_JOB.ERROR_MESSAGE)
+                        RENDER_JOB.STATUS, RENDER_JOB.AI_SCRIPT, RENDER_JOB.ARTIFACT_URI, RENDER_JOB.ERROR_MESSAGE,
+                        RENDER_JOB.INITIATOR_TYPE, RENDER_JOB.INITIATOR_ID, RENDER_JOB.INITIATOR_TENANT_ID)
                 .from(RENDER_JOB)
                 .where(RENDER_JOB.ID.eq(jobId))
                 .fetchOne();
@@ -450,26 +462,69 @@ public class RenderJobRepository {
 
     
     /**
-     * Create a new RenderJob as a retry of a failed job.
-     * The old job remains unchanged (FAILED). The new job references it via base_job_id.
-     *
-     * @param newId              new RenderJob ID
-     * @param failedJobId        the failed RenderJob ID (becomes base_job_id)
-     * @param projectId          project ID (copied from old job)
-     * @param tenantId           tenant ID (copied from old job)
-     * @param timelineSnapshotId timeline snapshot ID (copied from old job)
-     * @param profile            profile (copied from old job)
+     * Copy a failed job into a new queued retry, including its immutable initiator.
+     * All copied values come from the original row in one INSERT ... SELECT; no
+     * ambient actor or caller-supplied identity can replace the provenance.
      */
-    public void createRetryJob(String newId, String failedJobId, String projectId,
-            String tenantId, String timelineSnapshotId, String profile) {
-        dsl.insertInto(RENDER_JOB)
+    public void createRetryJob(String newId, String failedJobId) {
+        int inserted = dsl.insertInto(RENDER_JOB)
                 .columns(RENDER_JOB.ID, RENDER_JOB.PROJECT_ID, RENDER_JOB.TENANT_ID,
                         RENDER_JOB.TIMELINE_SNAPSHOT_ID, RENDER_JOB.PROFILE,
-                        RENDER_JOB.STATUS, RENDER_JOB.BASE_JOB_ID, RENDER_JOB.CREATED_AT)
-                .values(newId, projectId, tenantId,
-                        timelineSnapshotId, profile,
-                        "QUEUED", failedJobId, java.time.LocalDateTime.now())
+                        RENDER_JOB.STATUS, RENDER_JOB.BASE_JOB_ID,
+                        RENDER_JOB.INITIATOR_TYPE, RENDER_JOB.INITIATOR_ID,
+                        RENDER_JOB.INITIATOR_TENANT_ID, RENDER_JOB.TIMELINE_REVISION_ID,
+                        RENDER_JOB.CREATED_AT)
+                .select(dsl.select(
+                                org.jooq.impl.DSL.val(newId),
+                                RENDER_JOB.PROJECT_ID,
+                                RENDER_JOB.TENANT_ID,
+                                RENDER_JOB.TIMELINE_SNAPSHOT_ID,
+                                RENDER_JOB.PROFILE,
+                                org.jooq.impl.DSL.val("QUEUED"),
+                                org.jooq.impl.DSL.val(failedJobId),
+                                RENDER_JOB.INITIATOR_TYPE,
+                                RENDER_JOB.INITIATOR_ID,
+                                RENDER_JOB.INITIATOR_TENANT_ID,
+                                RENDER_JOB.TIMELINE_REVISION_ID,
+                                org.jooq.impl.DSL.val(java.time.LocalDateTime.now()))
+                        .from(RENDER_JOB)
+                        .where(RENDER_JOB.ID.eq(failedJobId)))
                 .execute();
+        if (inserted != 1) {
+            throw new IllegalArgumentException("Render job not found: " + failedJobId);
+        }
+    }
+
+    /** Load the immutable initiator snapshot, failing closed if the row is absent/corrupt. */
+    public RenderInitiator requireInitiator(String jobId) {
+        Record record = dsl.select(RENDER_JOB.INITIATOR_TYPE, RENDER_JOB.INITIATOR_ID,
+                        RENDER_JOB.INITIATOR_TENANT_ID)
+                .from(RENDER_JOB)
+                .where(RENDER_JOB.ID.eq(jobId))
+                .fetchOne();
+        if (record == null) {
+            throw new IllegalArgumentException("Render job not found: " + jobId);
+        }
+        return RenderInitiator.restore(
+                ActorType.valueOf(record.get(RENDER_JOB.INITIATOR_TYPE)),
+                record.get(RENDER_JOB.INITIATOR_ID),
+                record.get(RENDER_JOB.INITIATOR_TENANT_ID));
+    }
+
+    public static RenderInitiator initiatorFrom(Record record) {
+        return RenderInitiator.restore(
+                ActorType.valueOf(record.get(RENDER_JOB.INITIATOR_TYPE)),
+                record.get(RENDER_JOB.INITIATOR_ID),
+                record.get(RENDER_JOB.INITIATOR_TENANT_ID));
+    }
+
+    private static void requireInitiatorTenant(String tenantId, RenderInitiator initiator) {
+        if (initiator == null) {
+            throw new NullPointerException("initiator must not be null");
+        }
+        if (!tenantId.equals(initiator.tenantId())) {
+            throw new IllegalArgumentException("Render initiator tenant does not match request tenant");
+        }
     }
 
 

@@ -11,4 +11,10 @@ public record RenderJobCompletedEvent(
         String projectId,
         String artifactId,
         String storageUri,
-        Instant completedAt) {}
+        Instant completedAt,
+        RenderInitiator initiator) {
+
+    public RenderJobCompletedEvent {
+        java.util.Objects.requireNonNull(initiator, "initiator must not be null");
+    }
+}

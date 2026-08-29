@@ -31,7 +31,7 @@ import com.example.platform.shared.events.ArtifactCreatedEvent;
 import com.example.platform.shared.events.RenderJobCompletedEvent;
 import com.example.platform.shared.events.RenderJobFailedEvent;
 import com.example.platform.shared.events.RenderJobStatusChangedEvent;
-import com.example.platform.notification.app.NotificationEventPublisher;
+import com.example.platform.shared.events.RenderInitiator;
 import com.example.platform.shared.Ids;
 import com.example.platform.entitlement.app.EntitlementPort;
 import com.example.platform.shared.web.TenantContext;
@@ -63,7 +63,6 @@ public class RenderJobExecutionService {
     private final AiGatewayPort aiGatewayPort;
     private final RenderProviderRouter renderProviderRouter;
     private final ProviderRuntimeEngine providerRuntimeEngine;
-    private final NotificationEventPublisher notificationEventPublisher;
     private final ApplicationEventPublisher eventPublisher;
     private final RenderJobStateMachine stateMachine;
     private final RenderJobStatusHistoryRepository historyRepository;
@@ -94,7 +93,6 @@ public class RenderJobExecutionService {
             AiGatewayPort aiGatewayPort,
             RenderProviderRouter renderProviderRouter,
             ProviderRuntimeEngine providerRuntimeEngine,
-            NotificationEventPublisher notificationEventPublisher,
             ApplicationEventPublisher eventPublisher,
             RenderJobStatusHistoryRepository historyRepository,
             TimelineScriptParser timelineScriptParser,
@@ -131,7 +129,6 @@ public class RenderJobExecutionService {
         this.aiGatewayPort = aiGatewayPort;
         this.renderProviderRouter = renderProviderRouter;
         this.providerRuntimeEngine = providerRuntimeEngine;
-        this.notificationEventPublisher = notificationEventPublisher;
         this.eventPublisher = eventPublisher;
         this.historyRepository = historyRepository;
         this.timelineScriptParser = timelineScriptParser;
@@ -321,6 +318,7 @@ public class RenderJobExecutionService {
 
     private String finishRenderPhaseInternal(String tenantId, String jobId) {
         Record job = renderJobRepository.requireJobRecord(jobId);
+        RenderInitiator initiator = RenderJobRepository.initiatorFrom(job);
         String projectId = job.get("project_id", String.class);
         String jobTenantId = job.get("tenant_id", String.class);
         if (!tenantId.equals(jobTenantId)) {
@@ -444,9 +442,10 @@ public class RenderJobExecutionService {
         updateStatus(jobId, projectId, RenderJobStatus.COMPLETING, RenderJobStatus.COMPLETED, null);
         quotaService.consumeQuota(tenantId, "render", 1);
 
-        notificationEventPublisher.publish(
+        eventPublisher.publishEvent(
                 new ArtifactCreatedEvent(artifactId, jobId, projectId, storageUri, Instant.now()));
-        eventPublisher.publishEvent(new RenderJobCompletedEvent(jobId, projectId, artifactId, storageUri, Instant.now()));
+        eventPublisher.publishEvent(new RenderJobCompletedEvent(
+                jobId, projectId, artifactId, storageUri, Instant.now(), initiator));
 
         log.info("Render job {} completed successfully with artifact graph {}", jobId, artifactGraph.graphId());
         return jobId;
@@ -618,7 +617,8 @@ public class RenderJobExecutionService {
     private void failJob(String jobId, String projectId, RenderJobStatus from, String code, String message) {
         updateStatus(jobId, projectId, from, RenderJobStatus.FAILED, code);
         renderJobRepository.updateErrorMessage(jobId, message);
-        eventPublisher.publishEvent(new RenderJobFailedEvent(jobId, projectId, message, Instant.now()));
+        eventPublisher.publishEvent(new RenderJobFailedEvent(
+                jobId, projectId, message, Instant.now(), renderJobRepository.requireInitiator(jobId)));
     }
 
     private void updateStatus(String jobId, String projectId, RenderJobStatus oldStatus,
@@ -626,7 +626,7 @@ public class RenderJobExecutionService {
         stateMachine.validateTransition(oldStatus, newStatus);
         renderJobRepository.updateStatus(jobId, newStatus.name());
         historyRepository.record(jobId, oldStatus.name(), newStatus.name(), null, errorCode);
-        notificationEventPublisher.publish(
+        eventPublisher.publishEvent(
                 new RenderJobStatusChangedEvent(jobId, projectId, oldStatus.name(), newStatus.name(), Instant.now()));
     }
 

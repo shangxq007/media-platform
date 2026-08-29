@@ -10,4 +10,10 @@ public record RenderJobFailedEvent(
         String renderJobId,
         String projectId,
         String error,
-        Instant failedAt) {}
+        Instant failedAt,
+        RenderInitiator initiator) {
+
+    public RenderJobFailedEvent {
+        java.util.Objects.requireNonNull(initiator, "initiator must not be null");
+    }
+}

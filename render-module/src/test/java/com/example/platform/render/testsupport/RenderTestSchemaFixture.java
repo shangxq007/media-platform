@@ -79,6 +79,9 @@ public final class RenderTestSchemaFixture {
                 pipeline_execution_json text,
                 base_job_id varchar(64),
                 trace_id varchar(128),
+                initiator_type varchar(32) not null,
+                initiator_id varchar(128) not null,
+                initiator_tenant_id varchar(64) not null,
                 selected_provider varchar(128),
                 timeline_revision_id varchar(64),
                 updated_at timestamp with time zone

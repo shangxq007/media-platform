@@ -12,6 +12,8 @@ import com.example.platform.timeline.canonical.TimelineTrack;
 import com.example.platform.timeline.canonical.TimelineMetadata;
 import com.example.platform.timeline.canonical.TrackType;
 import com.example.platform.render.testsupport.RenderTestSchemaFixture;
+import com.example.platform.render.testsupport.RenderInitiatorFixtures;
+import com.example.platform.render.infrastructure.RenderJobRepository;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import java.time.Duration;
 import java.util.List;
@@ -57,7 +59,7 @@ class RenderJobRevisionPinningServiceIntegrationTest extends PostgresTestContain
                 new com.example.platform.timeline.adapter.TimelineSnapshotService(dsl),
                 org.mockito.Mockito.mock(com.example.platform.timeline.app.TimelineArtifactPinValidator.class),
                 org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class), effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new ProductCurrentRevisionHeadUpdateAdapter(currentRevisionService));
-        pinningService = new RenderJobRevisionPinningService(dsl);
+        pinningService = new RenderJobRevisionPinningService(dsl, new RenderJobRepository(dsl));
     }
 
     @Test
@@ -69,7 +71,8 @@ class RenderJobRevisionPinningServiceIntegrationTest extends PostgresTestContain
 
         var revision = revisionSaveService.saveRevision(productId, null, doc, "user-1");
 
-        pinningService.createRenderJobWithRevision(jobId, productId, revision.revisionId(), "provider-a");
+        pinningService.createRenderJobWithRevision(jobId, productId, revision.revisionId(), "provider-a",
+                RenderInitiatorFixtures.user("tenant-1"));
 
         String pinnedRevision = pinningService.getPinnedRevisionId(jobId);
         assertEquals(revision.revisionId(), pinnedRevision);
@@ -85,7 +88,8 @@ class RenderJobRevisionPinningServiceIntegrationTest extends PostgresTestContain
         var revision = revisionSaveService.saveRevision(productId, null, doc, "user-1");
 
         assertDoesNotThrow(() ->
-                pinningService.createRenderJobWithRevision(jobId, productId, revision.revisionId(), "unknown-backend"));
+                pinningService.createRenderJobWithRevision(jobId, productId, revision.revisionId(), "unknown-backend",
+                        RenderInitiatorFixtures.user("tenant-1")));
     }
 
     @Test
@@ -99,7 +103,8 @@ class RenderJobRevisionPinningServiceIntegrationTest extends PostgresTestContain
             String jobId = "job-test-" + UUID.randomUUID();
             assertThrows(IllegalArgumentException.class, () ->
                     pinningService.createRenderJobWithRevision(
-                            jobId, productId, revision.revisionId(), backend));
+                            jobId, productId, revision.revisionId(), backend,
+                            RenderInitiatorFixtures.user("tenant-1")));
         }
     }
 
@@ -116,7 +121,8 @@ class RenderJobRevisionPinningServiceIntegrationTest extends PostgresTestContain
 
         // Try to pin job from product2 to product1's revision
         assertThrows(IllegalArgumentException.class, () ->
-                pinningService.createRenderJobWithRevision(jobId, productId2, revision.revisionId(), "provider-a"));
+                pinningService.createRenderJobWithRevision(jobId, productId2, revision.revisionId(), "provider-a",
+                        RenderInitiatorFixtures.user("tenant-1")));
     }
 
     @Test
@@ -129,7 +135,8 @@ class RenderJobRevisionPinningServiceIntegrationTest extends PostgresTestContain
 
         var revision = revisionSaveService.saveRevision(productId, null, doc, "user-1");
 
-        pinningService.createRenderJobWithRevision(originalJobId, productId, revision.revisionId(), "provider-a");
+        pinningService.createRenderJobWithRevision(originalJobId, productId, revision.revisionId(), "provider-a",
+                RenderInitiatorFixtures.user("tenant-1"));
 
         // Create retry
         String retryPinned = pinningService.createRetryJob(originalJobId, retryJobId);
@@ -148,7 +155,8 @@ class RenderJobRevisionPinningServiceIntegrationTest extends PostgresTestContain
 
         var rev1 = revisionSaveService.saveRevision(productId, null, doc1, "user-1");
 
-        pinningService.createRenderJobWithRevision(jobId, productId, rev1.revisionId(), "provider-a");
+        pinningService.createRenderJobWithRevision(jobId, productId, rev1.revisionId(), "provider-a",
+                RenderInitiatorFixtures.user("tenant-1"));
 
         // Save new revision (changes product current)
         var rev2 = revisionSaveService.saveRevision(productId, rev1.revisionId(), doc2, "user-1");
@@ -174,6 +182,7 @@ class RenderJobRevisionPinningServiceIntegrationTest extends PostgresTestContain
     private void insertProduct(String productId) {
         dsl.insertInto(PRODUCT)
                 .set(PRODUCT.PRODUCT_ID, productId)
+                .set(PRODUCT.TENANT_ID, "tenant-1")
                 .set(PRODUCT.PRODUCT_TYPE, "video")
                 .set(PRODUCT.REPRESENTATION_KIND, "master")
                 .set(PRODUCT.STATUS, "REGISTERED")

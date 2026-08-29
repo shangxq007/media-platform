@@ -182,11 +182,11 @@ class Gcr5Gcr6DatabaseStructuralIntegrityTest extends PostgresTestContainerSuppo
         jdbc.update("INSERT INTO timeline_snapshot (id, project_id, payload_json) VALUES ('snap-1','proj-1','{}')");
         assertThrows(Exception.class,
                 () -> jdbc.update(
-                        "INSERT INTO render_job (id, project_id, timeline_snapshot_id, profile, status, created_at) "
-                                + "VALUES ('job-1','proj-ghost','snap-1','default','PENDING',now())"),
+                        "INSERT INTO render_job (id, project_id, tenant_id, timeline_snapshot_id, profile, status, created_at, initiator_type, initiator_id, initiator_tenant_id) "
+                                + "VALUES ('job-1','proj-ghost','ten-1','snap-1','default','PENDING',now(),'USER','test-principal-p1','ten-1')"),
                 "render_job.project_id FK must reject unknown project");
         assertDoesNotThrow(() -> jdbc.update(
-                "INSERT INTO render_job (id, project_id, timeline_snapshot_id, profile, status, created_at) "
-                        + "VALUES ('job-1','proj-1','snap-1','default','PENDING',now())"));
+                "INSERT INTO render_job (id, project_id, tenant_id, timeline_snapshot_id, profile, status, created_at, initiator_type, initiator_id, initiator_tenant_id) "
+                        + "VALUES ('job-1','proj-1','ten-1','snap-1','default','PENDING',now(),'USER','test-principal-p1','ten-1')"));
     }
 }

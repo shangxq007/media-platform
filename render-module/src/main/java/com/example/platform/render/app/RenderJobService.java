@@ -8,7 +8,7 @@ import com.example.platform.render.domain.RenderJobStateMachine;
 import com.example.platform.render.domain.RenderJobStatus;
 import com.example.platform.render.infrastructure.RenderJobRepository;
 import com.example.platform.shared.events.RenderJobCreatedEvent;
-import com.example.platform.notification.app.NotificationEventPublisher;
+import com.example.platform.shared.events.RenderInitiator;
 import com.example.platform.render.policy.RenderPolicyEngine;
 import com.example.platform.shared.Ids;
 import com.example.platform.shared.web.CommonErrorCode;
@@ -18,20 +18,21 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class RenderJobService {
     private final RenderJobRepository renderJobRepository;
     private final RenderPolicyEngine policyEngine;
-    private final NotificationEventPublisher publisher;
+    private final ApplicationEventPublisher publisher;
     private final RenderJobStateMachine stateMachine;
     private final RenderJobStatusHistoryRepository historyRepository;
     private final RenderJobCancellationContinuation cancellationContinuation;
 
     @org.springframework.beans.factory.annotation.Autowired
     public RenderJobService(RenderJobRepository renderJobRepository, RenderPolicyEngine policyEngine,
-            NotificationEventPublisher publisher,
+            ApplicationEventPublisher publisher,
             RenderJobStatusHistoryRepository historyRepository,
             @Autowired(required = false) RenderJobCancellationContinuation cancellationContinuation) {
         this.renderJobRepository = renderJobRepository;
@@ -42,32 +43,24 @@ public class RenderJobService {
         this.cancellationContinuation = cancellationContinuation;
     }
 
-    /**
-     * Backward-compatible constructor (existing tests / fakes that do not wire
-     * the optional cancellation continuation). The continuation remains
-     * optional: local mode and legacy call sites behave exactly as before.
-     */
-    public RenderJobService(RenderJobRepository renderJobRepository, RenderPolicyEngine policyEngine,
-            NotificationEventPublisher publisher,
-            RenderJobStatusHistoryRepository historyRepository) {
-        this(renderJobRepository, policyEngine, publisher, historyRepository, null);
-    }
-
-    public RenderJobResponse create(CreateRenderJobRequest request) {
+    public RenderJobResponse create(CreateRenderJobRequest request, RenderInitiator initiator) {
         String projectTenantId = renderJobRepository.findProjectTenantId(request.projectId())
                 .orElseThrow(() -> new IllegalArgumentException("Project not found: " + request.projectId()));
         assertTenantAccess(projectTenantId);
 
         var id = Ids.newId("rj");
         var decision = policyEngine.decide(request.profile());
+        assertInitiatorScope(projectTenantId, initiator);
         renderJobRepository.create(id, request.projectId(), projectTenantId,
-                request.timelineSnapshotId(), request.profile(), "QUEUED", OffsetDateTime.now());
+                request.timelineSnapshotId(), request.profile(), "QUEUED", initiator, OffsetDateTime.now());
         historyRepository.record(id, null, "QUEUED", "Job created", null);
-        publisher.publish(new RenderJobCreatedEvent(id, request.projectId(), request.timelineSnapshotId(), request.profile(), decision.primaryBackend()));
+        publisher.publishEvent(new RenderJobCreatedEvent(id, request.projectId(), request.timelineSnapshotId(), request.profile(), decision.primaryBackend()));
         return new RenderJobResponse(id, request.projectId(), request.timelineSnapshotId(), request.profile(), "QUEUED");
     }
 
-    public RenderJobResponse createForProject(String tenantId, String projectId, CreateRenderJobRequest request) {
+    public RenderJobResponse createForProject(String tenantId, String projectId,
+            CreateRenderJobRequest request, RenderInitiator initiator) {
+        assertInitiatorScope(tenantId, initiator);
         assertTenantAccess(tenantId);
         String projectTenantId = renderJobRepository.findProjectTenantId(projectId)
                 .orElseThrow(() -> new IllegalArgumentException("Project not found: " + projectId));
@@ -78,9 +71,9 @@ public class RenderJobService {
         var id = Ids.newId("rj");
         var decision = policyEngine.decide(request.profile());
         renderJobRepository.create(id, projectId, tenantId,
-                request.timelineSnapshotId(), request.profile(), "QUEUED", OffsetDateTime.now());
+                request.timelineSnapshotId(), request.profile(), "QUEUED", initiator, OffsetDateTime.now());
         historyRepository.record(id, null, "QUEUED", "Job created", null);
-        publisher.publish(new RenderJobCreatedEvent(id, projectId, request.timelineSnapshotId(), request.profile(), decision.primaryBackend()));
+        publisher.publishEvent(new RenderJobCreatedEvent(id, projectId, request.timelineSnapshotId(), request.profile(), decision.primaryBackend()));
         return new RenderJobResponse(id, projectId, request.timelineSnapshotId(), request.profile(), "QUEUED");
     }
 
@@ -143,8 +136,7 @@ public class RenderJobService {
         }
 
         var newId = Ids.newId("rj");
-        renderJobRepository.createRetryJob(newId, jobId, job.projectId(),
-                tenantId, job.timelineSnapshotId(), job.profile());
+        renderJobRepository.createRetryJob(newId, jobId);
         historyRepository.record(newId, null, "QUEUED",
                 "Retry of failed job " + jobId, null);
         return getById(newId);
@@ -160,6 +152,15 @@ public class RenderJobService {
         String currentTenant = TenantContext.get();
         if (currentTenant != null && !currentTenant.equals(tenantId)) {
             throw new IllegalArgumentException("Resource not found for tenant");
+        }
+    }
+
+    private void assertInitiatorScope(String tenantId, RenderInitiator initiator) {
+        if (initiator == null) {
+            throw new NullPointerException("initiator must not be null");
+        }
+        if (!tenantId.equals(initiator.tenantId())) {
+            throw new IllegalArgumentException("Render initiator tenant does not match request tenant");
         }
     }
 }

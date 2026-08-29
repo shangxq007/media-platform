@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.example.platform.render.app.dto.RenderJobResponse;
 import com.example.platform.render.testsupport.RenderTestSchemaFixture;
+import com.example.platform.render.testsupport.RenderInitiatorFixtures;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -44,7 +45,7 @@ class RenderJobRepositoryTest extends PostgresTestContainerSupport {
 
     @Test
     void createAndFindById() {
-        repository.create("rj-1", "proj-1", "tenant-1", "snap-1", "social_1080p", "QUEUED", OffsetDateTime.now());
+        repository.create("rj-1", "proj-1", "tenant-1", "snap-1", "social_1080p", "QUEUED", RenderInitiatorFixtures.user("tenant-1"), OffsetDateTime.now());
 
         Optional<RenderJobResponse> found = repository.findById("rj-1");
         assertTrue(found.isPresent());
@@ -63,7 +64,7 @@ class RenderJobRepositoryTest extends PostgresTestContainerSupport {
 
     @Test
     void findByIdAndProjectAndTenant() {
-        repository.create("rj-2", "proj-2", "tenant-2", "snap-2", "standard", "QUEUED", OffsetDateTime.now());
+        repository.create("rj-2", "proj-2", "tenant-2", "snap-2", "standard", "QUEUED", RenderInitiatorFixtures.user("tenant-2"), OffsetDateTime.now());
 
         Optional<RenderJobResponse> found = repository.findByIdAndProjectAndTenant("rj-2", "proj-2", "tenant-2");
         assertTrue(found.isPresent());
@@ -72,7 +73,7 @@ class RenderJobRepositoryTest extends PostgresTestContainerSupport {
 
     @Test
     void findByIdAndProjectAndTenantRejectsWrongTenant() {
-        repository.create("rj-3", "proj-3", "tenant-3", "snap-3", "standard", "QUEUED", OffsetDateTime.now());
+        repository.create("rj-3", "proj-3", "tenant-3", "snap-3", "standard", "QUEUED", RenderInitiatorFixtures.user("tenant-3"), OffsetDateTime.now());
 
         Optional<RenderJobResponse> found = repository.findByIdAndProjectAndTenant("rj-3", "proj-3", "wrong-tenant");
         assertFalse(found.isPresent());
@@ -80,7 +81,7 @@ class RenderJobRepositoryTest extends PostgresTestContainerSupport {
 
     @Test
     void findByIdAndProjectAndTenantRejectsWrongProject() {
-        repository.create("rj-4", "proj-4", "tenant-4", "snap-4", "standard", "QUEUED", OffsetDateTime.now());
+        repository.create("rj-4", "proj-4", "tenant-4", "snap-4", "standard", "QUEUED", RenderInitiatorFixtures.user("tenant-4"), OffsetDateTime.now());
 
         Optional<RenderJobResponse> found = repository.findByIdAndProjectAndTenant("rj-4", "wrong-proj", "tenant-4");
         assertFalse(found.isPresent());
@@ -88,9 +89,9 @@ class RenderJobRepositoryTest extends PostgresTestContainerSupport {
 
     @Test
     void listByTenant() {
-        repository.create("rj-5a", "proj-5", "tenant-5", "snap-5a", "standard", "QUEUED", OffsetDateTime.now());
-        repository.create("rj-5b", "proj-5", "tenant-5", "snap-5b", "social_1080p", "RUNNING", OffsetDateTime.now());
-        repository.create("rj-6", "proj-6", "tenant-6", "snap-6", "standard", "QUEUED", OffsetDateTime.now());
+        repository.create("rj-5a", "proj-5", "tenant-5", "snap-5a", "standard", "QUEUED", RenderInitiatorFixtures.user("tenant-5"), OffsetDateTime.now());
+        repository.create("rj-5b", "proj-5", "tenant-5", "snap-5b", "social_1080p", "RUNNING", RenderInitiatorFixtures.user("tenant-5"), OffsetDateTime.now());
+        repository.create("rj-6", "proj-6", "tenant-6", "snap-6", "standard", "QUEUED", RenderInitiatorFixtures.user("tenant-6"), OffsetDateTime.now());
 
         List<RenderJobResponse> tenant5Jobs = repository.listByTenant("tenant-5");
         assertEquals(2, tenant5Jobs.size());
@@ -99,9 +100,9 @@ class RenderJobRepositoryTest extends PostgresTestContainerSupport {
 
     @Test
     void listByProjectAndTenant() {
-        repository.create("rj-7a", "proj-7", "tenant-7", "snap-7a", "standard", "QUEUED", OffsetDateTime.now());
-        repository.create("rj-7b", "proj-7", "tenant-7", "snap-7b", "social_1080p", "RUNNING", OffsetDateTime.now());
-        repository.create("rj-8", "proj-8", "tenant-7", "snap-8", "standard", "QUEUED", OffsetDateTime.now());
+        repository.create("rj-7a", "proj-7", "tenant-7", "snap-7a", "standard", "QUEUED", RenderInitiatorFixtures.user("tenant-7"), OffsetDateTime.now());
+        repository.create("rj-7b", "proj-7", "tenant-7", "snap-7b", "social_1080p", "RUNNING", RenderInitiatorFixtures.user("tenant-7"), OffsetDateTime.now());
+        repository.create("rj-8", "proj-8", "tenant-7", "snap-8", "standard", "QUEUED", RenderInitiatorFixtures.user("tenant-7"), OffsetDateTime.now());
 
         List<RenderJobResponse> proj7Jobs = repository.listByProjectAndTenant("proj-7", "tenant-7");
         assertEquals(2, proj7Jobs.size());
@@ -110,7 +111,7 @@ class RenderJobRepositoryTest extends PostgresTestContainerSupport {
 
     @Test
     void updateStatus() {
-        repository.create("rj-9", "proj-9", "tenant-9", "snap-9", "standard", "QUEUED", OffsetDateTime.now());
+        repository.create("rj-9", "proj-9", "tenant-9", "snap-9", "standard", "QUEUED", RenderInitiatorFixtures.user("tenant-9"), OffsetDateTime.now());
         repository.updateStatus("rj-9", "RUNNING");
 
         Optional<RenderJobResponse> found = repository.findById("rj-9");
@@ -120,7 +121,7 @@ class RenderJobRepositoryTest extends PostgresTestContainerSupport {
 
     @Test
     void updateStatusAndClearError() {
-        repository.create("rj-10", "proj-10", "tenant-10", "snap-10", "standard", "FAILED", OffsetDateTime.now());
+        repository.create("rj-10", "proj-10", "tenant-10", "snap-10", "standard", "FAILED", RenderInitiatorFixtures.user("tenant-10"), OffsetDateTime.now());
         repository.updateStatusWithError("rj-10", "FAILED", "Something went wrong");
         repository.updateStatusAndClearError("rj-10", "QUEUED");
 
@@ -131,7 +132,7 @@ class RenderJobRepositoryTest extends PostgresTestContainerSupport {
 
     @Test
     void existsByIdAndTenant() {
-        repository.create("rj-11", "proj-11", "tenant-11", "snap-11", "standard", "QUEUED", OffsetDateTime.now());
+        repository.create("rj-11", "proj-11", "tenant-11", "snap-11", "standard", "QUEUED", RenderInitiatorFixtures.user("tenant-11"), OffsetDateTime.now());
 
         assertTrue(repository.existsByIdAndTenant("rj-11", "tenant-11"));
         assertFalse(repository.existsByIdAndTenant("rj-11", "wrong-tenant"));
@@ -140,7 +141,7 @@ class RenderJobRepositoryTest extends PostgresTestContainerSupport {
 
     @Test
     void findTenantIdById() {
-        repository.create("rj-12", "proj-12", "tenant-12", "snap-12", "standard", "QUEUED", OffsetDateTime.now());
+        repository.create("rj-12", "proj-12", "tenant-12", "snap-12", "standard", "QUEUED", RenderInitiatorFixtures.user("tenant-12"), OffsetDateTime.now());
 
         Optional<String> tenantId = repository.findTenantIdById("rj-12");
         assertTrue(tenantId.isPresent());
@@ -174,8 +175,8 @@ class RenderJobRepositoryTest extends PostgresTestContainerSupport {
 
     @Test
     void listAll() {
-        repository.create("rj-14a", "proj-14", "tenant-14", "snap-14a", "standard", "QUEUED", OffsetDateTime.now());
-        repository.create("rj-14b", "proj-15", "tenant-15", "snap-14b", "social_1080p", "RUNNING", OffsetDateTime.now());
+        repository.create("rj-14a", "proj-14", "tenant-14", "snap-14a", "standard", "QUEUED", RenderInitiatorFixtures.user("tenant-14"), OffsetDateTime.now());
+        repository.create("rj-14b", "proj-15", "tenant-15", "snap-14b", "social_1080p", "RUNNING", RenderInitiatorFixtures.user("tenant-15"), OffsetDateTime.now());
 
         List<RenderJobResponse> all = repository.listAll();
         assertTrue(all.size() >= 2);

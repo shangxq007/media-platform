@@ -1,0 +1,63 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.1.0/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build
+
+> Task :verifyC1TimelineMergeConvergence
+OK: C1 timeline merge convergence verified (single engine authority, legacy residue 0, boundaries intact)
+
+> Task :verifyGcr1CorrectionV2IngressAuthority
+OK: GCR-1 CORRECTION V2 ingress authority verified (render validation/write/conversion authority = 0; timeline sole constructor+validator; adapter boundary; no timeline->render dep)
+
+> Task :verifyGcr2ArtifactAuthority
+OK: GCR-2 Artifact authority verified (single domain authority; ArtifactRef retired; storage data-plane only; timeline pin existence/digest/tenant validation; revision-pin atomicity; historical pin protection; single V1; projection catalog)
+
+> Task :verifyGcr2CorrectionV1
+OK: GCR2-CORRECTION-V1 verified (replica/relation/provenance/traversal tenant-scoped at DB level; InMemory/Jooq conformance; maxDepth/limit normalized; no cross-tenant exposure)
+
+> Task :verifyGcr5Gcr6DatabaseCanonicalization
+OK: GCR5/GCR6 database canonicalization verified (single V1; FK integrity; media_stream RESTRICT; render_job identity types; no legacy migration residue; MediaTime/timestamp separation)
+
+> Task :verifyJooqAllowlistIntegrity
+OK: Allowlist integrity verified
+
+> Task :verifyJooqDynamicIdentifierAllowlist
+OK: Dynamic identifier allowlist verified
+
+> Task :verifyJooqGeneratedSources
+Generated source inventory:
+  Table classes: 157
+  Record classes: 157
+  Total Java files: 319
+OK: Generated source verification passed
+
+> Task :verifyJooqNamedInterfacePreservation
+OK: typed-schema named-interface authority preserved (jooq-tables, generator-immune location)
+
+> Task :verifyJooqNoNewUntypedIdentifiers
+Current untyped identifiers: production=$mainCount, test=$testCount
+OK: No new untyped identifiers beyond baseline
+
+> Task :verifyJooqPlainSqlAllowlist
+OK: Plain SQL allowlist verified
+
+> Task :verifyJooqVersionAlignment
+OK: jOOQ version authority verified: $propValue
+
+> Task :verifyP1ProductLayerRetirement
+OK: P1 product-layer retirement verified (module/types/schema/generated absent; identity tables retained)
+
+> Task :verifyTimelineEffectTransitionCanonicalization
+OK: TIMELINE_EFFECT_TRANSITION_CANONICALIZATION_V1 verified (typed parameter hash participation; deterministic serialization; MediaTime automation; first-class transition; zero provider leakage in authored semantics; no V3; production diff/patch/merge semantic closure; local semantic ownership; R5 constructor-injection closure; R5 domain-value authority; R5 single typed source binding; FINAL_CLOSURE_F1 explicit-jOOQ merge transaction; FINAL_CLOSURE_F2 strict canonical codec)
+
+> Task :render-module:verifyC20RenderPlanBoundaryGuard
+OK: ROADMAP20 C20 RenderPlan boundary guard passed (provider-neutral, kernel-bound, R2 B1/B2/B3, R3 B1/B2/M1, R4 A/B/M, R5 A/B/E/F, R6 A/B/C/D/F/H, FINAL snapshot pin, 57 files)
+
+> Task :jooqFoundationCheck
+
+> Task :verifyPfirr1AuthenticationAuthority
+OK PFIRR1-B2: production authentication authority is OIDC-only; legacy HMAC is bounded to non-production
+
+> Task :pfirr1RemediationCheck
+
+BUILD SUCCESSFUL in 8s
+16 actionable tasks: 16 executed
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.1.0/userguide/configuration_cache_enabling.html

@@ -7,6 +7,8 @@ import com.example.platform.render.app.dto.ArtifactInfoResponse;
 import com.example.platform.render.app.dto.CreateRenderJobRequest;
 import com.example.platform.render.app.dto.RenderJobResponse;
 import com.example.platform.render.app.dto.StatusHistoryResponse;
+import com.example.platform.render.testsupport.RenderInitiatorFixtures;
+import com.example.platform.shared.events.RenderInitiator;
 import com.example.platform.shared.web.TenantContext;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -48,7 +50,8 @@ class RenderControllerContractTest {
         fakeOrchestrator = new FakeOrchestratorPort();
         fakeArtifactAccess = new FakeArtifactAccessService();
         controller = new RenderController(fakeService, fakeOrchestrator,
-                null, null, null, null, null, null, null, null, null,fakeArtifactAccess);
+                null, null, null, null, null, null, null, null, null, fakeArtifactAccess,
+                RenderInitiatorFixtures.resolver("t-1"));
     }
 
     @AfterEach
@@ -134,7 +137,8 @@ class RenderControllerContractTest {
         @DisplayName("Start throws IllegalStateException when orchestrator null")
         void startThrowsWhenNoOrchestrator() {
             RenderController controllerNoOrch = new RenderController(fakeService, null, java.util.List.of(),
-                    null, null, null, null, null, null, null, null, null);
+                    null, null, null, null, null, null, null, null, null,
+                    RenderInitiatorFixtures.resolver("t-1"));
 
             assertThrows(IllegalStateException.class,
                     () -> controllerNoOrch.startRenderJob("t-1", "proj-1", "rj-1"));
@@ -192,7 +196,8 @@ class RenderControllerContractTest {
         @DisplayName("Artifacts return empty when orchestrator null")
         void artifactsReturnEmptyWhenNoOrchestrator() {
             RenderController controllerNoOrch = new RenderController(fakeService, null, java.util.List.of(),
-                    null, null, null, null, null, null, null, null, null);
+                    null, null, null, null, null, null, null, null, null,
+                    RenderInitiatorFixtures.resolver("t-1"));
 
             List<ArtifactInfoResponse> result = controllerNoOrch.getArtifacts("rj-1");
 
@@ -332,11 +337,11 @@ class RenderControllerContractTest {
         final Map<String, RenderJobResponse> storedJobs = new HashMap<>();
 
         FakeRenderJobService() {
-            super(null, null, null, null);
+            super(null, null, null, null, null);
         }
 
         @Override
-        public RenderJobResponse create(CreateRenderJobRequest request) {
+        public RenderJobResponse create(CreateRenderJobRequest request, RenderInitiator initiator) {
             createCalls++;
             String id = "rj-" + UUID.randomUUID().toString().substring(0, 8);
             return new RenderJobResponse(id, request.projectId(), request.timelineSnapshotId(),
@@ -344,7 +349,8 @@ class RenderControllerContractTest {
         }
 
         @Override
-        public RenderJobResponse createForProject(String tenantId, String projectId, CreateRenderJobRequest request) {
+        public RenderJobResponse createForProject(String tenantId, String projectId,
+                CreateRenderJobRequest request, RenderInitiator initiator) {
             createForProjectCalls++;
             String id = "rj-" + UUID.randomUUID().toString().substring(0, 8);
             return new RenderJobResponse(id, projectId, request.timelineSnapshotId(),
@@ -411,7 +417,7 @@ class RenderControllerContractTest {
         final Map<String, List<ArtifactInfoResponse>> artifacts = new HashMap<>();
 
         @Override
-        public String submitRenderJob(SubmitRenderJobRequest request) {
+        public String submitRenderJob(SubmitRenderJobRequest request, RenderInitiator initiator) {
             submitCalls++;
             return submitResult;
         }

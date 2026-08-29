@@ -14,8 +14,8 @@ import com.example.platform.render.infrastructure.billing.decision.BillingDecisi
 import com.example.platform.render.infrastructure.billing.decision.BillingDecisionRequest;
 import com.example.platform.shared.events.RenderJobCreatedEvent;
 import com.example.platform.shared.events.RenderJobFailedEvent;
+import com.example.platform.shared.events.RenderInitiator;
 import com.example.platform.shared.Ids;
-import com.example.platform.notification.app.NotificationEventPublisher;
 import com.example.platform.shared.web.TenantContext;
 import com.example.platform.render.domain.interchange.TimelineScriptParser;
 import org.jooq.DSLContext;
@@ -52,7 +52,6 @@ public class RenderJobSubmissionService {
     private final BillingEnforcementService billingEnforcementService;
     private final BillingDecisionEngine billingDecisionEngine;
     private final RenderJobStatusHistoryRepository historyRepository;
-    private final NotificationEventPublisher notificationEventPublisher;
     private final ApplicationEventPublisher eventPublisher;
     private final TimelineScriptParser timelineScriptParser;
     private final EffectTimelineInspector effectTimelineInspector;
@@ -68,7 +67,6 @@ public class RenderJobSubmissionService {
             @org.springframework.beans.factory.annotation.Autowired(required = false)
             BillingDecisionEngine billingDecisionEngine,
             RenderJobStatusHistoryRepository historyRepository,
-            NotificationEventPublisher notificationEventPublisher,
             ApplicationEventPublisher eventPublisher,
             TimelineScriptParser timelineScriptParser,
             EffectTimelineInspector effectTimelineInspector,
@@ -83,7 +81,6 @@ public class RenderJobSubmissionService {
         this.billingEnforcementService = billingEnforcementService;
         this.billingDecisionEngine = billingDecisionEngine;
         this.historyRepository = historyRepository;
-        this.notificationEventPublisher = notificationEventPublisher;
         this.eventPublisher = eventPublisher;
         this.timelineScriptParser = timelineScriptParser;
         this.effectTimelineInspector = effectTimelineInspector;
@@ -104,10 +101,11 @@ public class RenderJobSubmissionService {
      * @throws IllegalArgumentException if tenant/project validation fails
      */
     @Transactional
-    public String submit(SubmitRenderJobRequest request) {
+    public String submit(SubmitRenderJobRequest request, RenderInitiator initiator) {
         log.info("Submitting render job: tenant={}, project={}, profile={}",
                 request.tenantId(), request.projectId(), request.profileOrDefault());
 
+        assertInitiatorScope(request.tenantId(), initiator);
         assertTenantAccess(request.tenantId());
         assertProjectBelongsToTenant(request.tenantId(), request.projectId());
 
@@ -120,7 +118,7 @@ public class RenderJobSubmissionService {
         if (billingDecisionEngine != null) {
             BillingDecisionRequest decisionRequest = BillingDecisionRequest.forRenderJobCreate(
                     request.tenantId(),
-                    null, // userId not available in submit request
+                    initiator.actorId(),
                     request.projectId(),
                     null, // unresolved until a typed provider plugin is bound
                     request.profileOrDefault(),
@@ -131,7 +129,7 @@ public class RenderJobSubmissionService {
             BillingDecision decision = billingDecisionEngine.decide(decisionRequest);
 
             if (!decision.isAllowed()) {
-                return handleBillingDecisionRejected(request, decision);
+                return handleBillingDecisionRejected(request, initiator, decision);
             }
 
             log.info("Billing decision ALLOWED for job submission: {}", decision.getSummary());
@@ -141,67 +139,69 @@ public class RenderJobSubmissionService {
             BillingEnforcementService.ValidationResult subResult = 
                     billingEnforcementService.validateSubscription(request.tenantId());
             if (!subResult.success()) {
-                return handleBillingRejected(request, subResult.code(), subResult.reason());
+                return handleBillingRejected(request, initiator, subResult.code(), subResult.reason());
             }
 
             BillingEnforcementService.ValidationResult quotaResult = 
                     billingEnforcementService.validateQuota(request.tenantId(), 60);
             if (!quotaResult.success()) {
-                return handleBillingRejected(request, quotaResult.code(), quotaResult.reason());
+                return handleBillingRejected(request, initiator, quotaResult.code(), quotaResult.reason());
             }
         }
 
         if (!quotaService.checkQuota(request.tenantId(), "render", 1)) {
-            return handleQuotaRejected(request);
+            return handleQuotaRejected(request, initiator);
         }
 
-        return createQueuedJob(request);
+        return createQueuedJob(request, initiator);
     }
 
-    private String handleQuotaRejected(SubmitRenderJobRequest request) {
+    private String handleQuotaRejected(SubmitRenderJobRequest request, RenderInitiator initiator) {
         String rejectedJobId = Ids.newId("rj");
         String profile = request.profileOrDefault();
         renderJobRepository.createRejected(rejectedJobId, request.projectId(), request.tenantId(),
-                "snap_" + rejectedJobId, profile, "Quota exceeded", OffsetDateTime.now());
+                "snap_" + rejectedJobId, profile, "Quota exceeded", initiator, OffsetDateTime.now());
         historyRepository.record(rejectedJobId, null, RenderJobStatus.REJECTED.name(),
                 "Quota exceeded", "QUOTA_EXCEEDED");
         eventPublisher.publishEvent(new RenderJobFailedEvent(
-                rejectedJobId, request.projectId(), "Quota exceeded", Instant.now()));
+                rejectedJobId, request.projectId(), "Quota exceeded", Instant.now(), initiator));
         throw new IllegalStateException("Quota exceeded for tenant: " + request.tenantId());
     }
 
-    private String handleBillingDecisionRejected(SubmitRenderJobRequest request, BillingDecision decision) {
+    private String handleBillingDecisionRejected(SubmitRenderJobRequest request,
+            RenderInitiator initiator, BillingDecision decision) {
         String rejectedJobId = Ids.newId("rj");
         String profile = request.profileOrDefault();
         String reason = decision.reasonMessage();
         String code = decision.reasonCode().name();
 
         renderJobRepository.createRejected(rejectedJobId, request.projectId(), request.tenantId(),
-                "snap_" + rejectedJobId, profile, reason, OffsetDateTime.now());
+                "snap_" + rejectedJobId, profile, reason, initiator, OffsetDateTime.now());
         historyRepository.record(rejectedJobId, null, RenderJobStatus.REJECTED.name(),
                 reason, code);
         eventPublisher.publishEvent(new RenderJobFailedEvent(
-                rejectedJobId, request.projectId(), reason, Instant.now()));
+                rejectedJobId, request.projectId(), reason, Instant.now(), initiator));
 
         log.warn("Billing decision rejected for tenant {}: {} - {}", 
                 request.tenantId(), code, reason);
         throw new IllegalStateException("Billing rejected: " + reason);
     }
 
-    private String handleBillingRejected(SubmitRenderJobRequest request, String code, String reason) {
+    private String handleBillingRejected(SubmitRenderJobRequest request, RenderInitiator initiator,
+            String code, String reason) {
         String rejectedJobId = Ids.newId("rj");
         String profile = request.profileOrDefault();
         renderJobRepository.createRejected(rejectedJobId, request.projectId(), request.tenantId(),
-                "snap_" + rejectedJobId, profile, reason, OffsetDateTime.now());
+                "snap_" + rejectedJobId, profile, reason, initiator, OffsetDateTime.now());
         historyRepository.record(rejectedJobId, null, RenderJobStatus.REJECTED.name(),
                 reason, code);
         eventPublisher.publishEvent(new RenderJobFailedEvent(
-                rejectedJobId, request.projectId(), reason, Instant.now()));
+                rejectedJobId, request.projectId(), reason, Instant.now(), initiator));
         log.warn("Billing rejected for tenant {}: {} - {}", request.tenantId(), code, reason);
         throw new IllegalStateException("Billing rejected: " + reason);
     }
 
-    private String createQueuedJob(SubmitRenderJobRequest request) {
+    private String createQueuedJob(SubmitRenderJobRequest request, RenderInitiator initiator) {
         String jobId = Ids.newId("rj");
         String profile = request.profileOrDefault();
         String inlineScript = resolveInlineTimelineScript(request);
@@ -212,10 +212,10 @@ public class RenderJobSubmissionService {
         String snapshotId = resolveSnapshotId(request, jobId);
 
         renderJobRepository.create(jobId, request.projectId(), request.tenantId(),
-                snapshotId, profile, RenderJobStatus.QUEUED.name(), OffsetDateTime.now());
+                snapshotId, profile, RenderJobStatus.QUEUED.name(), initiator, OffsetDateTime.now());
         historyRepository.record(jobId, null, RenderJobStatus.QUEUED.name(), "Job created", null);
 
-        notificationEventPublisher.publish(
+        eventPublisher.publishEvent(
                 new RenderJobCreatedEvent(jobId, request.projectId(), snapshotId, profile, null));
 
         persistInlineScriptIfPresent(jobId, request);
@@ -291,6 +291,15 @@ public class RenderJobSubmissionService {
         String currentTenant = TenantContext.get();
         if (currentTenant != null && !currentTenant.equals(tenantId)) {
             throw new IllegalArgumentException("Resource not found for tenant");
+        }
+    }
+
+    private void assertInitiatorScope(String tenantId, RenderInitiator initiator) {
+        if (initiator == null) {
+            throw new NullPointerException("initiator must not be null");
+        }
+        if (!tenantId.equals(initiator.tenantId())) {
+            throw new IllegalArgumentException("Render initiator tenant does not match request tenant");
         }
     }
 

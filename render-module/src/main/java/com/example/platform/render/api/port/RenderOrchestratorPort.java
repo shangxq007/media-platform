@@ -2,6 +2,7 @@ package com.example.platform.render.api.port;
 
 import com.example.platform.render.api.dto.SubmitRenderJobRequest;
 import com.example.platform.render.app.dto.ArtifactInfoResponse;
+import com.example.platform.shared.events.RenderInitiator;
 
 import java.util.List;
 
@@ -31,7 +32,7 @@ public interface RenderOrchestratorPort {
      * @throws IllegalArgumentException if the request is invalid or quota is exceeded
      * @throws IllegalStateException    if the render job cannot be submitted
      */
-    String submitRenderJob(SubmitRenderJobRequest request);
+    String submitRenderJob(SubmitRenderJobRequest request, RenderInitiator initiator);
 
     /**
      * Execute an existing queued render job (loads timeline snapshot when present).

@@ -64,7 +64,7 @@ class RenderWorkflowMemoAndTimeoutTest {
     private RenderOrchestratorPort okOrchestrator() {
         return new RenderOrchestratorPort() {
             @Override
-            public String submitRenderJob(SubmitRenderJobRequest request) {
+            public String submitRenderJob(SubmitRenderJobRequest request, com.example.platform.shared.events.RenderInitiator initiator) {
                 return request.tenantId();
             }
 

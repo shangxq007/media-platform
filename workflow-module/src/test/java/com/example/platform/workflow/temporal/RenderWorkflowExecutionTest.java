@@ -52,7 +52,7 @@ class RenderWorkflowExecutionTest {
         FeatureFlagEvaluator flags = (key, targetingKey, attributes, defaultValue) -> false;
         RenderOrchestratorPort orchestrator = new RenderOrchestratorPort() {
             @Override
-            public String submitRenderJob(SubmitRenderJobRequest request) {
+            public String submitRenderJob(SubmitRenderJobRequest request, com.example.platform.shared.events.RenderInitiator initiator) {
                 return request.tenantId() + "-" + request.projectId();
             }
 
@@ -104,7 +104,9 @@ class RenderWorkflowExecutionTest {
 
         SubmitRenderJobRequest request = new SubmitRenderJobRequest(
                 "tenant-1", "proj-1", "prompt", "hd", "snap-1");
-        String jobId = submitPort.submitRenderJob(request);
+        String jobId = submitPort.submitRenderJob(request,
+                com.example.platform.shared.events.RenderInitiator.from(
+                        com.example.platform.shared.authorization.CanonicalActor.system("test-workflow", "tenant-1")));
 
         assertNotNull(jobId);
         assertTrue(jobId.contains("job-1"));
@@ -117,7 +119,9 @@ class RenderWorkflowExecutionTest {
 
         SubmitRenderJobRequest request = new SubmitRenderJobRequest(
                 "tenant-1", "proj-1", "prompt", "hd", "snap-1");
-        String jobId = submitPort.submitRenderJob(request);
+        String jobId = submitPort.submitRenderJob(request,
+                com.example.platform.shared.events.RenderInitiator.from(
+                        com.example.platform.shared.authorization.CanonicalActor.system("test-workflow", "tenant-1")));
         assertNotNull(jobId);
     }
 
@@ -139,7 +143,7 @@ class RenderWorkflowExecutionTest {
         }
 
         @Override
-        public String submitRenderJob(SubmitRenderJobRequest request) {
+        public String submitRenderJob(SubmitRenderJobRequest request, com.example.platform.shared.events.RenderInitiator initiator) {
             return continuation.continueAfterSubmit(request.tenantId(), fixedJobId, request);
         }
 

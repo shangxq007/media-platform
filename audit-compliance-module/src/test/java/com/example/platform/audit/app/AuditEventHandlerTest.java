@@ -8,6 +8,7 @@ import com.example.platform.shared.events.RenderJobCompletedEvent;
 import com.example.platform.shared.events.RenderJobCreatedEvent;
 import com.example.platform.shared.events.RenderJobFailedEvent;
 import com.example.platform.shared.events.RenderJobStatusChangedEvent;
+import com.example.platform.shared.events.RenderInitiator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,6 +21,11 @@ import java.util.Map;
 
 @ExtendWith(MockitoExtension.class)
 class AuditEventHandlerTest {
+
+    private static RenderInitiator initiator() {
+        return RenderInitiator.from(com.example.platform.shared.authorization.CanonicalActor.user(
+                "test-principal-p1", "tenant-1", java.util.Set.of(), "test"));
+    }
 
     @Mock
     private AuditService auditService;
@@ -92,7 +98,7 @@ class AuditEventHandlerTest {
     @Test
     void onRenderJobCompleted_usesCorrectActorId() {
         RenderJobCompletedEvent event = new RenderJobCompletedEvent(
-                "job-1", "proj-1", "artifact-1", "s3://bucket/key", Instant.now());
+                "job-1", "proj-1", "artifact-1", "s3://bucket/key", Instant.now(), initiator());
 
         handler.onRenderJobCompleted(event);
 
@@ -104,7 +110,7 @@ class AuditEventHandlerTest {
     @Test
     void onRenderJobFailed_usesCorrectActorId() {
         RenderJobFailedEvent event = new RenderJobFailedEvent(
-                "job-1", "proj-1", "FFmpeg error", Instant.now());
+                "job-1", "proj-1", "FFmpeg error", Instant.now(), initiator());
 
         handler.onRenderJobFailed(event);
 
@@ -152,7 +158,7 @@ class AuditEventHandlerTest {
     @Test
     void onRenderJobCompleted_payloadContainsProjectId() {
         RenderJobCompletedEvent event = new RenderJobCompletedEvent(
-                "job-1", "proj-1", "artifact-1", "s3://bucket/key", Instant.now());
+                "job-1", "proj-1", "artifact-1", "s3://bucket/key", Instant.now(), initiator());
 
         handler.onRenderJobCompleted(event);
 
@@ -166,7 +172,7 @@ class AuditEventHandlerTest {
     @Test
     void onRenderJobFailed_payloadContainsProjectIdAndError() {
         RenderJobFailedEvent event = new RenderJobFailedEvent(
-                "job-1", "proj-1", "FFmpeg timeout", Instant.now());
+                "job-1", "proj-1", "FFmpeg timeout", Instant.now(), initiator());
 
         handler.onRenderJobFailed(event);
 

@@ -28,6 +28,8 @@ import com.example.platform.render.app.dto.ArtifactInfoResponse;
 import com.example.platform.render.app.dto.StatusHistoryResponse;
 import com.example.platform.render.app.dto.CreateRenderJobRequest;
 import com.example.platform.render.app.dto.RenderJobResponse;
+import com.example.platform.shared.authorization.CanonicalActorResolver;
+import com.example.platform.shared.events.RenderInitiator;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -56,6 +58,7 @@ public class RenderController {
     private final com.example.platform.render.app.product.ProductRuntimeService productRuntimeService;
     private final com.example.platform.render.infrastructure.storage.StorageReferenceRepository storageReferenceRepository;
     private final com.example.platform.render.app.access.ArtifactAccessService artifactAccessService;
+    private final CanonicalActorResolver canonicalActorResolver;
 
     @org.springframework.beans.factory.annotation.Autowired
     public RenderController(RenderJobService renderJobService,
@@ -69,7 +72,8 @@ public class RenderController {
             @org.springframework.beans.factory.annotation.Autowired(required = false) AiTimelineProposalService aiTimelineProposalService,
             @org.springframework.beans.factory.annotation.Autowired(required = false) com.example.platform.render.app.product.ProductRuntimeService productRuntimeService,
             @org.springframework.beans.factory.annotation.Autowired(required = false) com.example.platform.render.infrastructure.storage.StorageReferenceRepository storageReferenceRepository,
-            @org.springframework.beans.factory.annotation.Autowired(required = false) com.example.platform.render.app.access.ArtifactAccessService artifactAccessService) {
+            @org.springframework.beans.factory.annotation.Autowired(required = false) com.example.platform.render.app.access.ArtifactAccessService artifactAccessService,
+            CanonicalActorResolver canonicalActorResolver) {
         this.renderJobService = renderJobService;
         this.orchestratorPort = orchestratorPort;
         this.storageProviders = storageProviders;
@@ -82,6 +86,7 @@ public class RenderController {
         this.productRuntimeService = productRuntimeService;
         this.storageReferenceRepository = storageReferenceRepository;
         this.artifactAccessService = artifactAccessService;
+        this.canonicalActorResolver = canonicalActorResolver;
     }
 
 
@@ -134,7 +139,8 @@ public class RenderController {
     public RenderJobResponse createRenderJob(@PathVariable String tenantId,
             @PathVariable String projectId,
             @Valid @RequestBody CreateRenderJobRequest request) {
-        return renderJobService.createForProject(tenantId, projectId, request);
+        return renderJobService.createForProject(
+                tenantId, projectId, request, requireInitiator(tenantId));
     }
 
     @GetMapping("/tenants/{tenantId}/projects/{projectId}/render-jobs/{jobId}")
@@ -172,8 +178,18 @@ public class RenderController {
         if (orchestratorPort == null) {
             throw new IllegalStateException("Render orchestrator is not available");
         }
-        String jobId = orchestratorPort.submitRenderJob(request);
+        String jobId = orchestratorPort.submitRenderJob(request, requireInitiator(tenantId));
         return Map.of("jobId", jobId, "status", "QUEUED");
+    }
+
+    private RenderInitiator requireInitiator(String tenantId) {
+        RenderInitiator initiator = canonicalActorResolver.resolveCurrentActor()
+                .map(RenderInitiator::from)
+                .orElseThrow(() -> new IllegalStateException("Authenticated render initiator is required"));
+        if (!tenantId.equals(initiator.tenantId())) {
+            throw new IllegalArgumentException("Render initiator tenant does not match request tenant");
+        }
+        return initiator;
     }
 
     @PostMapping("/tenants/{tenantId}/projects/{projectId}/render/cache/cleanup")

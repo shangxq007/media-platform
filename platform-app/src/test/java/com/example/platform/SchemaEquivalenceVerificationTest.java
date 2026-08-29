@@ -289,6 +289,9 @@ class SchemaEquivalenceVerificationTest extends PostgresTestContainerSupport {
         assertNotNull(columns.get("status"), "status required");
         assertNotNull(columns.get("created_at"), "created_at required");
         assertNotNull(columns.get("selected_provider"), "selected_provider required");
+        assertEquals("NO", columns.get("initiator_type").nullable(), "initiator_type immutable/non-null");
+        assertEquals("NO", columns.get("initiator_id").nullable(), "initiator_id immutable/non-null");
+        assertEquals("NO", columns.get("initiator_tenant_id").nullable(), "initiator tenant immutable/non-null");
 
         // Verify primary key
         List<String> pk = getPrimaryKeys("render_job");

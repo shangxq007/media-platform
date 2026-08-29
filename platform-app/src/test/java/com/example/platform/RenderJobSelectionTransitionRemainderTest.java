@@ -1,6 +1,8 @@
 package com.example.platform;
 
 import com.example.platform.render.infrastructure.RenderProviderRegistry;
+import com.example.platform.shared.authorization.CanonicalActor;
+import com.example.platform.shared.authorization.CanonicalActorResolver;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -16,6 +18,7 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 /**
  * RenderJob Selection Transition Remainder.
@@ -37,6 +40,9 @@ import org.springframework.test.context.TestPropertySource;
 })
 class RenderJobSelectionTransitionRemainderTest extends PostgresTestContainerSupport {
 
+    @MockitoBean
+    private CanonicalActorResolver canonicalActorResolver;
+
     @LocalServerPort
     private int port;
 
@@ -48,12 +54,18 @@ class RenderJobSelectionTransitionRemainderTest extends PostgresTestContainerSup
 
     private HttpClient client;
     private String baseUrl;
+    private volatile String explicitTestTenant;
     private final ObjectMapper mapper = new ObjectMapper();
 
     private static final StringBuilder evidence = new StringBuilder();
 
     @BeforeEach
     void setUp() {
+        explicitTestTenant = null;
+        org.mockito.Mockito.when(canonicalActorResolver.resolveCurrentActor())
+                .thenAnswer(invocation -> Optional.ofNullable(explicitTestTenant)
+                        .map(tenantId -> CanonicalActor.user(
+                                "test-principal-p1", tenantId, Set.of(), "test")));
         client = HttpClient.newHttpClient();
         baseUrl = "http://localhost:" + port;
     }
@@ -89,6 +101,7 @@ class RenderJobSelectionTransitionRemainderTest extends PostgresTestContainerSup
 
         JsonNode projectNode = mapper.readTree(projectResp.body());
         String projectId = projectNode.get("id").asText();
+        explicitTestTenant = tenantId;
         evidence.append(String.format("PROJECT_ID: %s%n", projectId));
 
         // Create a RenderJob
@@ -267,7 +280,9 @@ class RenderJobSelectionTransitionRemainderTest extends PostgresTestContainerSup
     private String createProject(String tenantId, String name) throws Exception {
         String body = "{\"name\":\"" + name + "-" + System.nanoTime() + "\",\"description\":\"test\"}";
         HttpResponse<String> resp = httpPost("/api/identity/tenants/" + tenantId + "/projects", body);
-        return mapper.readTree(resp.body()).get("id").asText();
+        String projectId = mapper.readTree(resp.body()).get("id").asText();
+        explicitTestTenant = tenantId;
+        return projectId;
     }
 
     private String createRenderJob(String tenantId, String projectId) throws Exception {

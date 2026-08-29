@@ -1,0 +1,20 @@
+test_excludes_generated_build_worktree_and_node_modules (scripts.test_h10_r1_render_initiator_guard.H10R1RenderInitiatorGuardMutationTest.test_excludes_generated_build_worktree_and_node_modules) ... ok
+test_fails_on_empty_scan_universe (scripts.test_h10_r1_render_initiator_guard.H10R1RenderInitiatorGuardMutationTest.test_fails_on_empty_scan_universe) ... ok
+test_green_control (scripts.test_h10_r1_render_initiator_guard.H10R1RenderInitiatorGuardMutationTest.test_green_control) ... ok
+test_rejects_arbitrary_tenant_user_fallback (scripts.test_h10_r1_render_initiator_guard.H10R1RenderInitiatorGuardMutationTest.test_rejects_arbitrary_tenant_user_fallback) ... ok
+test_rejects_completion_time_ambient_actor (scripts.test_h10_r1_render_initiator_guard.H10R1RenderInitiatorGuardMutationTest.test_rejects_completion_time_ambient_actor) ... ok
+test_rejects_duplicate_principal_identity_authority (scripts.test_h10_r1_render_initiator_guard.H10R1RenderInitiatorGuardMutationTest.test_rejects_duplicate_principal_identity_authority) ... ok
+test_rejects_fake_human_system_principal (scripts.test_h10_r1_render_initiator_guard.H10R1RenderInitiatorGuardMutationTest.test_rejects_fake_human_system_principal) ... ok
+test_rejects_identity_novu_reference (scripts.test_h10_r1_render_initiator_guard.H10R1RenderInitiatorGuardMutationTest.test_rejects_identity_novu_reference) ... ok
+test_rejects_missing_completed_event_initiator (scripts.test_h10_r1_render_initiator_guard.H10R1RenderInitiatorGuardMutationTest.test_rejects_missing_completed_event_initiator) ... ok
+test_rejects_missing_failed_event_initiator (scripts.test_h10_r1_render_initiator_guard.H10R1RenderInitiatorGuardMutationTest.test_rejects_missing_failed_event_initiator) ... ok
+test_rejects_missing_initiator_schema_column (scripts.test_h10_r1_render_initiator_guard.H10R1RenderInitiatorGuardMutationTest.test_rejects_missing_initiator_schema_column) ... ok
+test_rejects_project_as_recipient (scripts.test_h10_r1_render_initiator_guard.H10R1RenderInitiatorGuardMutationTest.test_rejects_project_as_recipient) ... ok
+test_rejects_render_notification_dependency (scripts.test_h10_r1_render_initiator_guard.H10R1RenderInitiatorGuardMutationTest.test_rejects_render_notification_dependency) ... ok
+test_rejects_render_novu_reference (scripts.test_h10_r1_render_initiator_guard.H10R1RenderInitiatorGuardMutationTest.test_rejects_render_novu_reference) ... ok
+test_rejects_tenant_as_subscriber (scripts.test_h10_r1_render_initiator_guard.H10R1RenderInitiatorGuardMutationTest.test_rejects_tenant_as_subscriber) ... ok
+
+----------------------------------------------------------------------
+Ran 15 tests in 1.039s
+
+OK

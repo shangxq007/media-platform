@@ -59,8 +59,10 @@ class StaleRenderJobCompensationServiceTest extends PostgresTestContainerSupport
     private void insertJob(String id, RenderJobStatus status, OffsetDateTime createdAt) {
         dsl.insertInto(table("render_job"))
                 .columns(field("id"), field("project_id"), field("tenant_id"),
-                        field("timeline_snapshot_id"), field("profile"), field("status"), field("created_at"))
-                .values(id, "p1", "t1", "snap", "prof", status.name(), createdAt)
+                        field("timeline_snapshot_id"), field("profile"), field("status"), field("created_at"),
+                        field("initiator_type"), field("initiator_id"), field("initiator_tenant_id"))
+                .values(id, "p1", "t1", "snap", "prof", status.name(), createdAt,
+                        "USER", "test-principal-p1", "t1")
                 .execute();
     }
 }

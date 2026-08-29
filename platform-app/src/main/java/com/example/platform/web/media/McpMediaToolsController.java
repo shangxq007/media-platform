@@ -22,6 +22,8 @@ import com.example.platform.render.domain.planning.RenderImpactResult;
 import com.example.platform.render.domain.planning.ReusableArtifact;
 import com.example.platform.timeline.diff.merge.SemanticDiffResult;
 import com.example.platform.render.app.aaf.AafConversionService;
+import com.example.platform.shared.authorization.CanonicalActorResolver;
+import com.example.platform.shared.events.RenderInitiator;
 
 import com.example.platform.render.domain.standards.AafTimelineAdapter;
 import com.example.platform.render.app.planner.PipelineExecutionPlan;
@@ -90,6 +92,7 @@ public class McpMediaToolsController {
     private final Optional<RenderOrchestratorPort> renderOrchestratorPort;
     private final TimelineSnapshotService timelineSnapshotService;
     private final SegmentPlanFilter segmentPlanFilter;
+    private final CanonicalActorResolver canonicalActorResolver;
 
     public McpMediaToolsController(InternalTimelineValidationService timelineValidationServiceParam,
                                    TimelineScriptParser timelineScriptParser,
@@ -112,7 +115,8 @@ public class McpMediaToolsController {
                                    TimelineSpecResolver timelineSpecResolver,
                                    Optional<RenderOrchestratorPort> renderOrchestratorPort,
                                    TimelineSnapshotService timelineSnapshotService,
-                                   SegmentPlanFilter segmentPlanFilter) {
+                                   SegmentPlanFilter segmentPlanFilter,
+                                   CanonicalActorResolver canonicalActorResolver) {
         this.timelineValidationService = timelineValidationServiceParam;
         this.timelineScriptParser = timelineScriptParser;
         this.renderPlannerService = renderPlannerService;
@@ -135,6 +139,7 @@ public class McpMediaToolsController {
         this.renderOrchestratorPort = renderOrchestratorPort;
         this.timelineSnapshotService = timelineSnapshotService;
         this.segmentPlanFilter = segmentPlanFilter;
+        this.canonicalActorResolver = canonicalActorResolver;
     }
 
     @PostMapping("/render_timeline")
@@ -158,6 +163,7 @@ public class McpMediaToolsController {
             return ResponseEntity.badRequest().body(Map.of(
                     "error", "timelineJson must be Internal Timeline Schema 1.0"));
         }
+        RenderInitiator initiator = requireInitiator(request.tenantId());
         try {
             var canon = timelineCanonicalizer.canonicalize(request.timelineJson());
             String timelineJson = canon.timelineJson();
@@ -179,7 +185,8 @@ public class McpMediaToolsController {
                     null,
                     null,
                     null);
-            String jobId = renderOrchestratorPort.get().submitRenderJob(submit);
+            String jobId = renderOrchestratorPort.get().submitRenderJob(
+                    submit, initiator);
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("jobId", jobId);
             body.put("status", "QUEUED");
@@ -222,6 +229,7 @@ public class McpMediaToolsController {
                     return ResponseEntity.badRequest().body(Map.of(
                             "error", "tenantId and projectId required when submitJob=true"));
                 }
+                RenderInitiator initiator = requireInitiator(request.tenantId());
                 String snapshotId = timelineSnapshotService.save(
                         request.projectId(), request.tenantId(), timelineJson, "1.0");
                 SubmitRenderJobRequest submit = SubmitRenderJobRequest.segmentRender(
@@ -231,7 +239,8 @@ public class McpMediaToolsController {
                         request.profile() != null ? request.profile() : "default_1080p",
                         request.baseJobId(),
                         request.segmentIds());
-                String jobId = renderOrchestratorPort.get().submitRenderJob(submit);
+                String jobId = renderOrchestratorPort.get().submitRenderJob(
+                        submit, initiator);
                 Map<String, Object> body = new LinkedHashMap<>();
                 body.put("jobId", jobId);
                 body.put("status", "QUEUED");
@@ -687,6 +696,16 @@ public class McpMediaToolsController {
             case "shaka" -> shakaPackaging.orElseThrow(() -> new IllegalStateException("Shaka not enabled"));
             default -> gpacPackaging.orElseThrow(() -> new IllegalStateException("GPAC not enabled"));
         };
+    }
+
+    private RenderInitiator requireInitiator(String tenantId) {
+        RenderInitiator initiator = canonicalActorResolver.resolveCurrentActor()
+                .map(RenderInitiator::from)
+                .orElseThrow(() -> new IllegalStateException("Authenticated render initiator is required"));
+        if (!tenantId.equals(initiator.tenantId())) {
+            throw new IllegalArgumentException("Render initiator tenant does not match request tenant");
+        }
+        return initiator;
     }
 
     private Map<String, Object> internalTimelineBody(TimelineSpec spec) {
