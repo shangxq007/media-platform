@@ -119,6 +119,7 @@ public class ArtifactRepository {
         // observable cross-tenant.
         return dsl.selectFrom(ARTIFACT_REPLICA)
                 .where(ARTIFACT_REPLICA.ARTIFACT_ID.eq(artifactId.value())
+                        .and(ARTIFACT_REPLICA.STATE.eq("ACTIVE"))
                         .and(org.jooq.impl.DSL.exists(
                                 dsl.selectOne()
                                         .from(ARTIFACT)
@@ -141,6 +142,7 @@ public class ArtifactRepository {
         return dsl.selectFrom(ARTIFACT_REPLICA)
                 .where(ARTIFACT_REPLICA.ARTIFACT_ID.eq(artifactId.value())
                         .and(ARTIFACT_REPLICA.REPLICA_ID.eq(replicaId.value()))
+                        .and(ARTIFACT_REPLICA.STATE.eq("ACTIVE"))
                         .and(org.jooq.impl.DSL.exists(
                                 dsl.selectOne()
                                         .from(ARTIFACT)
