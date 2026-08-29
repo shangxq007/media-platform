@@ -1,0 +1,46 @@
+diff --git a/bmf/sdk/CMakeLists.txt b/bmf/sdk/CMakeLists.txt
+index 1a57eff..69116ac 100644
+--- a/bmf/sdk/CMakeLists.txt
++++ b/bmf/sdk/CMakeLists.txt
+@@ -47,6 +47,4 @@ target_include_directories(bmf_module_sdk
+         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/cpp_sdk/include>
+         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/c_sdk/include>
+-        $<BUILD_INTERFACE:/usr/java/jdk1.8.0_301/include>
+-        $<BUILD_INTERFACE:/usr/java/jdk1.8.0_301/include/linux>
+     PRIVATE
+         ${CMAKE_CURRENT_SOURCE_DIR}/cpp_sdk/src
+diff --git a/bmf/sdk/cpp_sdk/src/module_manager.cpp b/bmf/sdk/cpp_sdk/src/module_manager.cpp
+index 43bfa15..012f9bc 100644
+--- a/bmf/sdk/cpp_sdk/src/module_manager.cpp
++++ b/bmf/sdk/cpp_sdk/src/module_manager.cpp
+@@ -26,12 +26,5 @@ namespace bmf_sdk {
+ namespace bmf_sdk {
+-
+-#ifdef _WIN32
+-const fs::path s_bmf_repo_root = "C:\\Users\\Public\\bmf_mods";
+-#elif EMSCRIPTEN
+-const fs::path s_bmf_repo_root = "/bmf/";
+-#else
+-const fs::path s_bmf_repo_root = "/usr/local/share/bmf_mods/";
+-const fs::path s_bmf_mods_path = "/opt/tiger/bmf_mods/";
+-#endif
+-
++const fs::path s_bmf_repo_root = "/nix/store/.bmf-disabled-module-install";
++const fs::path s_bmf_mods_path = "/nix/store/.bmf-disabled-module-install";
++
+ static void string_split(std::vector<std::string> &tokens,
+@@ -550,6 +541,5 @@ void ModuleManager::init() {
+         roots.push_back(lib_path.string());
+         roots.push_back(lib_path.parent_path().string());
+-        roots.push_back(fs::current_path().string());
+         #else
+         roots.push_back("/");
+         #endif
+@@ -594,7 +584,4 @@ void ModuleManager::init() {
+                    "go_modules")
+                       .string());
+     #endif
+-    set_repo_root(s_bmf_repo_root.string());
+-    set_repo_root(s_bmf_mods_path.string());
+-    set_repo_root(fs::current_path().string());
+ }
