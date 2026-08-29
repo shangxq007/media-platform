@@ -230,6 +230,122 @@ def h1_production_files(root: Path) -> list[Path]:
     return files
 
 
+def workerfabric_production_files(root: Path) -> list[Path]:
+    source_root = root / "worker-fabric-module/src/main/java/com/example/platform/workerfabric"
+    files = sorted(source_root.rglob("*.java")) if source_root.is_dir() else []
+    if not files:
+        fail("workerfabric production Java universe is empty")
+    return files
+
+
+def validate_workerfabric_planning_isolation(root: Path) -> None:
+    physical_unit = re.compile(r"\bPhysicalPlanUnit\b")
+    planning_import = re.compile(
+        r"(?m)^\s*import\s+com\.example\.platform\.execution\.planning(?:\.|;)")
+    physical_plan = re.compile(r"\bPhysicalExecutionPlan\b")
+    physical_unit_hits: list[str] = []
+    planning_import_hits: list[str] = []
+    physical_plan_hits: list[str] = []
+    for path in workerfabric_production_files(root):
+        code = strip_java_non_code(path.read_text(encoding="utf-8", errors="replace"))
+        relative = path.relative_to(root).as_posix()
+        if physical_unit.search(code):
+            physical_unit_hits.append(relative)
+        if planning_import.search(code):
+            planning_import_hits.append(relative)
+        if physical_plan.search(code):
+            physical_plan_hits.append(relative)
+    if physical_unit_hits:
+        fail(f"workerfabric PhysicalPlanUnit references found: {physical_unit_hits}")
+    if planning_import_hits:
+        fail(f"workerfabric execution.planning imports found: {planning_import_hits}")
+    if physical_plan_hits:
+        fail(f"workerfabric PhysicalExecutionPlan references found: {physical_plan_hits}")
+
+
+def validate_stage_separation(root: Path) -> None:
+    stage1_root = root / "media-execution-plan-module/src/main/java/com/example/platform/execution/compatibility"
+    stage1_files = sorted(stage1_root.rglob("*.java")) if stage1_root.is_dir() else []
+    if not stage1_files:
+        fail("Stage-1 compatibility production universe is empty")
+    stage2_import = re.compile(
+        r"(?m)^\s*import\s+com\.example\.platform\.workerfabric(?:\.|;)")
+    stage2_runtime_fact = re.compile(
+        r"\b(?:WorkerRuntimeId|PhysicalHostId|DeviceAvailability|HostResourceSnapshot|"
+        r"SchedulableCapacity|RuntimeDependencyObservation|ProviderHardwareObservation)\b")
+    stage1_hits = [
+        path.relative_to(root).as_posix()
+        for path in stage1_files
+        if stage2_import.search(strip_java_non_code(path.read_text(encoding="utf-8", errors="replace")))
+        or stage2_runtime_fact.search(strip_java_non_code(path.read_text(encoding="utf-8", errors="replace")))
+    ]
+    worker_stage1_authority = re.compile(
+        r"\bCompatibilityKernel\b|\bProviderFeasibilityView\s*\.\s*build\s*\(")
+    worker_hits = [
+        path.relative_to(root).as_posix()
+        for path in workerfabric_production_files(root)
+        if worker_stage1_authority.search(
+            strip_java_non_code(path.read_text(encoding="utf-8", errors="replace")))
+    ]
+    if stage1_hits or worker_hits:
+        fail(f"Stage-1/Stage-2 authority collapse found: stage1={stage1_hits} stage2={worker_hits}")
+
+
+def validate_h2_shared_type_shadows(root: Path) -> None:
+    canonical = {
+        "RuntimeDependencyFingerprint": (
+            "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/"
+            "RuntimeDependencyFingerprint.java"),
+        "RuntimeDependencyObservation": (
+            "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/"
+            "RuntimeDependencyObservation.java"),
+        "RuntimeDependencyRequirement": (
+            "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/"
+            "RuntimeDependencyRequirement.java"),
+    }
+    declarations = re.compile(
+        r"\b(?:class|record|interface|enum)\s+"
+        r"(RuntimeDependencyFingerprint|RuntimeDependencyObservation|RuntimeDependencyRequirement)\b")
+    hits: list[str] = []
+    for path in source_files(root):
+        relative = path.relative_to(root).as_posix()
+        for name in declarations.findall(
+                strip_java_non_code(path.read_text(encoding="utf-8", errors="replace"))):
+            if relative != canonical[name]:
+                hits.append(f"{relative}:{name}")
+    if hits:
+        fail(f"H2 shared runtime-dependency type shadows found: {hits}")
+
+
+def validate_h5_production_unchanged(
+        root: Path, closure_by_id: dict[str, dict], baseline_root: Path | None) -> None:
+    h5_paths = sorted({
+        predicate["path"]
+        for row in closure_by_id.values()
+        if row.get("owner_boundary") == "H5"
+        for predicate in row.get("member_predicates", [])
+        if "/src/main/java/" in f"/{predicate['path']}"
+    })
+    if not h5_paths:
+        fail("H5 commercial authority production universe is empty")
+    changed: list[str] = []
+    for relative in h5_paths:
+        current = root / relative
+        if baseline_root is not None:
+            baseline = baseline_root / relative
+            if not current.is_file() or not baseline.is_file() or current.read_bytes() != baseline.read_bytes():
+                changed.append(relative)
+            continue
+        baseline = subprocess.run(
+            ["git", "show", f"{PHASE_PARENT}:{relative}"], cwd=root,
+            check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        )
+        if baseline.returncode != 0 or not current.is_file() or current.read_bytes() != baseline.stdout:
+            changed.append(relative)
+    if changed:
+        fail(f"H5 commercial authority production mutations found: {changed}")
+
+
 def validate_h1_authority_isolation(root: Path) -> None:
     commercial = re.compile(r"(?m)^\s*import\s+[^;]*(?:billing|quota|entitlement|pricing|cost)(?:\.|;)", re.IGNORECASE)
     fully_qualified = re.compile(r"com\.example\.platform\.(?:billing|quota|entitlement)\.", re.IGNORECASE)
@@ -465,6 +581,12 @@ def validate_scope(root: Path) -> None:
         CLOSURE_REL.as_posix(),
         "scripts/phase20-resource-accounting-implementation-closure-guard.py",
         "scripts/test-phase20-resource-accounting-implementation-closure-guard.py",
+        "media-execution-plan-module/src/main/java/com/example/platform/execution/taskgraph/ProviderBoundExecutableTaskGraph.java",
+        "media-execution-plan-module/src/test/java/com/example/platform/execution/taskgraph/ProviderBoundExecutableTaskGraphTest.java",
+        "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/NativeRuntimeEligibilityRequest.java",
+        "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/RuntimeDependencyFingerprint.java",
+        "worker-fabric-module/src/test/java/com/example/platform/workerfabric/domain/RuntimeEligibilityEvaluatorTest.java",
+        "worker-fabric-module/src/test/java/com/example/platform/workerfabric/domain/RuntimeDependencyFingerprintTest.java",
         "docs/architecture/governance/automated-guards/phase17-sandbox-isolation-clean-forward-ledger.tsv",
         "docs/architecture/governance/roadmap-22-phase-17-sandbox-isolation-decision-recovery.md",
         "docs/architecture/governance/automated-guards/check-phase17-sandbox-architecture.py",
@@ -504,6 +626,7 @@ def main() -> int:
     closure = (args.closure or root / CLOSURE_REL).resolve()
     try:
         _, closure_by_id = validate_ledgers(root, ledger, closure)
+        validate_workerfabric_planning_isolation(root)
         validate_obsolete_shadow_references(root)
         validate_global_native_tool_authority(root)
         validate_ambient_render_process_discovery(root)
@@ -511,6 +634,9 @@ def main() -> int:
         validate_semantic_digest_exclusion(root)
         validate_identity_separation(root)
         validate_roadmap23_boundary(root)
+        validate_stage_separation(root)
+        validate_h2_shared_type_shadows(root)
+        validate_h5_production_unchanged(root, closure_by_id, args.physical_baseline_root)
         validate_stage_mapping(root, closure_by_id)
         validate_physical_plan_unchanged(root, args.physical_baseline_root)
         validate_phase19(root)
@@ -526,7 +652,14 @@ def main() -> int:
     print("GLOBAL_NATIVE_TOOL_VERSION_PLATFORM_AUTHORITY_COUNT=0")
     print("AMBIENT_PATH_PROCESS_TOOL_VERSION_DISCOVERY_COUNT=0")
     print("H1_COMMERCIAL_AUTHORITY_REFERENCE_COUNT=0")
+    print("WORKERFABRIC_PHYSICAL_PLAN_UNIT_REFERENCE_COUNT=0")
+    print("WORKERFABRIC_EXECUTION_PLANNING_IMPORT_COUNT=0")
+    print("WORKERFABRIC_PHYSICAL_EXECUTION_PLAN_REFERENCE_COUNT=0")
     print("PHYSICAL_EXECUTION_PLAN_DESTRUCTIVE_CHANGE_COUNT=0")
+    print("STAGE1_STAGE2_COLLAPSE_COUNT=0")
+    print("H2_SHARED_TYPE_SHADOW_COUNT=0")
+    print("H5_COMMERCIAL_AUTHORITY_PRODUCTION_MUTATIONS=0")
+    print("GLOBAL_AMBIENT_NATIVE_TOOL_AUTHORITY_COUNT=0")
     print("RENDER_MODULE_CONCRETE_FFMPEG_AWARENESS_COUNT=0")
     print("MUTABLE_OBSERVATION_SEMANTIC_DIGEST_PARTICIPATION_COUNT=0")
     print("EXACT_IDENTITY_COLLAPSE_PATTERN_COUNT=0")

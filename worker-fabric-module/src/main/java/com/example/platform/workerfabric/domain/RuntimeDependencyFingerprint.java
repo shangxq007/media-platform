@@ -11,6 +11,7 @@ import java.util.Objects;
 /** SHA-256 operational evidence for exact dependency bundle content and its runtime binding. */
 public record RuntimeDependencyFingerprint(String value) implements Serializable {
 
+    private static final String SHA_256_PREFIX = "sha256:";
     private static final String SHA_256_HEX = "[0-9a-f]{64}";
 
     public RuntimeDependencyFingerprint {
@@ -45,6 +46,20 @@ public record RuntimeDependencyFingerprint(String value) implements Serializable
                     frame(digest, "dependency.buildRuntimeFlag", flag));
         }
         return new RuntimeDependencyFingerprint(HexFormat.of().formatHex(digest.digest()));
+    }
+
+    public static RuntimeDependencyFingerprint parseSha256(String canonicalDigest) {
+        if (canonicalDigest == null
+                || !canonicalDigest.matches(SHA_256_PREFIX + SHA_256_HEX)) {
+            throw new IllegalArgumentException(
+                    "canonical runtime dependency fingerprint must be lowercase sha256:<64-hex>");
+        }
+        return new RuntimeDependencyFingerprint(
+                canonicalDigest.substring(SHA_256_PREFIX.length()));
+    }
+
+    public String canonicalSha256() {
+        return SHA_256_PREFIX + value;
     }
 
     @Override

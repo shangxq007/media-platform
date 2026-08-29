@@ -110,19 +110,15 @@ public record NativeRuntimeEligibilityRequest(
         for (int index = 0; index < executableTask.memberships().size(); index++) {
             var membership = executableTask.memberships().get(index);
             StaticProviderCompatibilityProof proof = staticCompatibilityProofs.get(index);
-            StaticProviderCompatibilityProof authoritativeProof = providerBoundGraph
-                    .providerFeasibilityView()
-                    .requireStaticallyFeasible(
-                            membership.physicalPlanUnit(),
-                            staticallyCompatibleProviderCandidate);
-            if (!authoritativeProof.equals(proof)
-                    || !proof.providerCandidate().equals(staticallyCompatibleProviderCandidate)
-                    || !proof.compatibilityRequest().physicalPlanUnit().equals(
-                            membership.physicalPlanUnit())
-                    || !proof.proves(
-                            proof.compatibilityRequest(), staticallyCompatibleProviderCandidate)) {
+            try {
+                providerBoundGraph.requireExactStaticCompatibilityProof(
+                        membership.physicalPlanUnitId(),
+                        staticallyCompatibleProviderCandidate,
+                        proof);
+            } catch (IllegalArgumentException exception) {
                 throw new IllegalArgumentException(
-                        "runtime eligibility Stage-1 proof does not bind the exact task membership and provider");
+                        "runtime eligibility Stage-1 proof does not bind the exact task membership and provider",
+                        exception);
             }
         }
         var expectedProviderImplementationId = staticallyCompatibleProviderCandidate

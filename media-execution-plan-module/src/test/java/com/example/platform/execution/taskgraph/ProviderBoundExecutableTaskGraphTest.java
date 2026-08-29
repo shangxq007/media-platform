@@ -1,12 +1,14 @@
 package com.example.platform.execution.taskgraph;
 
 import com.example.platform.execution.compatibility.CompatibilityRequest;
+import com.example.platform.execution.compatibility.CompatibilityKernel;
 import com.example.platform.execution.compatibility.ProviderBoundaryCompatibilityDeclaration;
 import com.example.platform.execution.compatibility.ProviderBoundaryCompatibilityDeclaration.Declaration;
 import com.example.platform.execution.compatibility.ProviderCandidate;
 import com.example.platform.execution.compatibility.ProviderFeasibilityView;
 import com.example.platform.execution.compatibility.ProviderStaticCompatibility;
 import com.example.platform.execution.compatibility.StaticCompatibilityConstraint.BoundaryContractId;
+import com.example.platform.execution.compatibility.StaticProviderCompatibilityProof;
 import com.example.platform.execution.composition.CompositionDecision;
 import com.example.platform.execution.composition.ExecutableTaskMembership;
 import com.example.platform.execution.composition.FailureAttribution.MemberAttribution;
@@ -59,6 +61,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -67,6 +70,66 @@ class ProviderBoundExecutableTaskGraphTest {
 
     private static final BoundaryContractId DIRECT_CONTRACT =
             BoundaryContractId.of("taskgraph-test-direct.v1");
+
+    @Test
+    void runtimeProofBoundaryResolvesTypedIdentityAndEnforcesCanonicalStageOneSemantics() {
+        PhysicalPlanUnit canonicalUnit = sourcePinnedUnitWithDigest(
+                "runtime-proof-unit", "a".repeat(64));
+        PhysicalExecutionPlan canonicalPlan = plan(canonicalUnit);
+        TaskContext canonicalContext = context(canonicalPlan, "provider-a", "provider-b");
+        ProviderCandidate providerA = canonicalContext.candidate("provider-a");
+        ProviderBoundExecutableTaskGraph graph = ProviderBoundExecutableTaskGraph.derive(
+                canonicalPlan,
+                canonicalContext.feasibilityView(),
+                List.of(task(canonicalContext, "provider-a", List.of(canonicalUnit), List.of())),
+                List.of());
+        StaticProviderCompatibilityProof exactProof = canonicalContext.feasibilityView()
+                .requireStaticallyFeasible(canonicalUnit, providerA);
+        StaticProviderCompatibilityProof semanticallyEqualProof = CompatibilityKernel.evaluate(
+                        exactProof.compatibilityRequest(), providerA)
+                .staticCompatibilityProof()
+                .orElseThrow();
+
+        assertNotSame(exactProof, semanticallyEqualProof);
+        assertEquals(exactProof, semanticallyEqualProof);
+
+        assertSame(
+                exactProof,
+                graph.requireExactStaticCompatibilityProof(
+                        canonicalUnit.stepId(), providerA, exactProof));
+        assertSame(
+                exactProof,
+                graph.requireExactStaticCompatibilityProof(
+                        canonicalUnit.stepId(), providerA, semanticallyEqualProof));
+
+        PhysicalPlanUnit foreignUnit = sourcePinnedUnit("foreign-runtime-proof-unit");
+        TaskContext foreignContext = context(plan(foreignUnit), "provider-a");
+        StaticProviderCompatibilityProof foreignProof = foreignContext.feasibilityView()
+                .requireStaticallyFeasible(foreignUnit, foreignContext.candidate("provider-a"));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> graph.requireExactStaticCompatibilityProof(
+                        canonicalUnit.stepId(), providerA, foreignProof));
+
+        PhysicalPlanUnit sameIdModifiedUnit = sourcePinnedUnitWithDigest(
+                canonicalUnit.stepId().value(), "b".repeat(64));
+        TaskContext modifiedContext = context(plan(sameIdModifiedUnit), "provider-a");
+        StaticProviderCompatibilityProof sameIdModifiedProof = modifiedContext.feasibilityView()
+                .requireStaticallyFeasible(
+                        sameIdModifiedUnit, modifiedContext.candidate("provider-a"));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> graph.requireExactStaticCompatibilityProof(
+                        canonicalUnit.stepId(), providerA, sameIdModifiedProof));
+
+        ProviderCandidate providerB = canonicalContext.candidate("provider-b");
+        StaticProviderCompatibilityProof wrongProviderProof = canonicalContext.feasibilityView()
+                .requireStaticallyFeasible(canonicalUnit, providerB);
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> graph.requireExactStaticCompatibilityProof(
+                        canonicalUnit.stepId(), providerB, wrongProviderProof));
+    }
 
     @Test
     void executionReuseKeyIsVersionedCanonicalAndStableForEquivalentGraphs() {

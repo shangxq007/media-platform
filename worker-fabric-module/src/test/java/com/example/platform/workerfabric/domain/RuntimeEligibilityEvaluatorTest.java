@@ -2,6 +2,8 @@ package com.example.platform.workerfabric.domain;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.when;
 
 import com.example.platform.execution.compatibility.StaticProviderCompatibilityProof;
 import com.example.platform.execution.domain.provider.ProviderImplementationId;
@@ -430,12 +432,19 @@ class RuntimeEligibilityEvaluatorTest {
                 .withMessageContaining("one exact Stage-1 proof per task membership");
 
         RequestBuilder mismatched = new RequestBuilder();
-        var otherUnit = TaskBTestFixture.scenario("provider-a", "unit-foreign");
-        mismatched.staticProofs = otherUnit.task().memberships().stream()
-                .map(membership -> otherUnit.graph().providerFeasibilityView()
-                        .requireStaticallyFeasible(
-                                membership.physicalPlanUnit(), otherUnit.provider()))
-                .toList();
+        RequestBuilder foreign = new RequestBuilder(
+                TaskBTestFixture.scenario("provider-a", "unit-foreign"));
+        var mismatchedMembership = mismatched.scenario.task().memberships().getFirst();
+        var mismatchedUnitId = mismatchedMembership.physicalPlanUnit().stepId();
+        when(mismatchedMembership.physicalPlanUnitId()).thenReturn(mismatchedUnitId);
+        StaticProviderCompatibilityProof foreignProof = foreign.staticProofs.getFirst();
+        doThrow(new IllegalArgumentException("foreign Stage-1 proof"))
+                .when(mismatched.scenario.graph())
+                .requireExactStaticCompatibilityProof(
+                        mismatchedUnitId,
+                        mismatched.provider,
+                        foreignProof);
+        mismatched.staticProofs = List.of(foreignProof);
 
         assertThatIllegalArgumentException().isThrownBy(mismatched::build)
                 .withMessageContaining("does not bind the exact task membership and provider");

@@ -3,6 +3,8 @@ package com.example.platform.execution.taskgraph;
 import com.example.platform.execution.compatibility.ProviderFeasibilityView;
 import com.example.platform.execution.compatibility.ProviderCompatibilityTransition;
 import com.example.platform.execution.compatibility.ProviderCompatibilityTransitionDecision;
+import com.example.platform.execution.compatibility.ProviderCandidate;
+import com.example.platform.execution.compatibility.StaticProviderCompatibilityProof;
 import com.example.platform.execution.composition.ExecutableTaskMembership;
 import com.example.platform.execution.domain.ExecutionEdgeId;
 import com.example.platform.execution.domain.ExecutionStepId;
@@ -275,6 +277,52 @@ public final class ProviderBoundExecutableTaskGraph {
 
     public int mandatoryArtifactBoundaryViolationCount() {
         return 0;
+    }
+
+    /**
+     * Resolves a worker-visible step identity back to this graph's canonical physical member and
+     * requires the exact Stage-1 proof owned by this graph's feasibility view.
+     */
+    public StaticProviderCompatibilityProof requireExactStaticCompatibilityProof(
+            ExecutionStepId physicalPlanUnitId,
+            ProviderCandidate providerCandidate,
+            StaticProviderCompatibilityProof proof) {
+        Objects.requireNonNull(physicalPlanUnitId, "physicalPlanUnitId");
+        Objects.requireNonNull(providerCandidate, "providerCandidate");
+        Objects.requireNonNull(proof, "proof");
+
+        List<PhysicalPlanUnit> sourceUnits = sourcePhysicalPlan.units().stream()
+                .filter(unit -> unit.stepId().equals(physicalPlanUnitId))
+                .toList();
+        List<ExecutableTaskMembership> memberships = tasks.stream()
+                .flatMap(task -> task.memberships().stream())
+                .filter(membership -> membership.physicalPlanUnitId().equals(physicalPlanUnitId))
+                .toList();
+        List<ExecutableTask> providerTasks = tasks.stream()
+                .filter(task -> task.memberships().stream().anyMatch(
+                        membership -> membership.physicalPlanUnitId().equals(physicalPlanUnitId)))
+                .toList();
+        if (sourceUnits.size() != 1
+                || memberships.size() != 1
+                || providerTasks.size() != 1
+                || !sourceUnits.getFirst().equals(memberships.getFirst().physicalPlanUnit())
+                || !providerTasks.getFirst().providerBindingPin()
+                        .equals(providerCandidate.bindingPin())) {
+            throw new IllegalArgumentException(
+                    "Stage-1 proof identity must resolve one canonical membership and provider binding");
+        }
+
+        PhysicalPlanUnit canonicalUnit = sourceUnits.getFirst();
+        StaticProviderCompatibilityProof authoritativeProof = providerFeasibilityView
+                .requireStaticallyFeasible(canonicalUnit, providerCandidate);
+        if (!authoritativeProof.equals(proof)
+                || !proof.providerCandidate().equals(providerCandidate)
+                || !proof.compatibilityRequest().physicalPlanUnit().equals(canonicalUnit)
+                || !proof.proves(authoritativeProof.compatibilityRequest(), providerCandidate)) {
+            throw new IllegalArgumentException(
+                    "Stage-1 proof must be the exact canonical feasibility-view proof");
+        }
+        return authoritativeProof;
     }
 
     private static List<ExecutableTask> canonicalTasks(Collection<ExecutableTask> values) {

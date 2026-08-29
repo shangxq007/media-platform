@@ -58,6 +58,15 @@ def build_fixture(root: Path, baseline: Path) -> None:
 
     copy_file(ROOT / LEDGER_REL, root / LEDGER_REL)
     copy_file(ROOT / CLOSURE_REL, root / CLOSURE_REL)
+    closure = json.loads((ROOT / CLOSURE_REL).read_text(encoding="utf-8"))
+    for row in closure["rows"]:
+        if row.get("owner_boundary") != "H5":
+            continue
+        for predicate in row.get("member_predicates", []):
+            relative = Path(predicate["path"])
+            source = ROOT / relative
+            if source.is_file() and "/src/main/java/" in f"/{relative.as_posix()}":
+                copy_file(source, baseline / relative)
     copy_file(ROOT / PHASE19_REL, root / PHASE19_REL)
     for relative in PHYSICAL_PATHS:
         copy_file(ROOT / relative, baseline / relative)
@@ -198,6 +207,20 @@ final class InjectedCommercialFeasibility { UsageRecord usage; }
 """,
         )
         file_mutation(
+            "INJECTED_WORKERFABRIC_PHYSICAL_PLAN_UNIT_REFERENCE",
+            fixture,
+            baseline,
+            Path("worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/InjectedPlanningLeak.java"),
+            """package com.example.platform.workerfabric.domain;
+import com.example.platform.execution.planning.PhysicalExecutionPlan.PhysicalPlanUnit;
+final class InjectedPlanningLeak { PhysicalPlanUnit unit; }
+""",
+            (
+                "workerfabric PhysicalPlanUnit references found",
+                "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/InjectedPlanningLeak.java",
+            ),
+        )
+        file_mutation(
             "INJECTED_AMBIENT_GLOBAL_PROBE",
             fixture,
             baseline,
@@ -269,7 +292,7 @@ final class InjectedIdentityCollapse {
     if status_after != status_before:
         raise AssertionError("mutation suite changed repository worktree scope")
     print("GUARD_GREEN_BEHAVIOR=PASS")
-    print("GUARD_RED_BEHAVIOR=13/13")
+    print("GUARD_RED_BEHAVIOR=14/14")
     print("MUTATION_FIXTURES_REPOSITORY_WRITE_COUNT=0")
     print("PHASE20_IMPLEMENTATION_CLOSURE_GUARD_MUTATION_TESTS=PASS")
     return 0
