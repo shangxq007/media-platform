@@ -2,9 +2,11 @@
 
 This nested flake is a bounded authoring candidate for
 `BMF_BUILD_RUNTIME_REPRODUCIBILITY_AND_DEPENDENCY_CLOSURE_PROOF`. It does not
-contain platform provider code, a BMF graph/lowering contract, blur execution,
-semantic conformance, or any B1 work. No build, smoke, image, distribution, or
-conformance result is claimed by this document.
+contain platform provider code, a platform graph/lowering contract, blur
+execution, semantic conformance, GPU work, or any B1 work. The smoke harness
+includes one deliberately minimal BMF CPU graph, but this document does not
+claim that the required identity-sensitive reruns have passed. No build, image,
+distribution, or conformance result is claimed by this document.
 
 The frozen identities are `ProviderId=bmf` and the future stable
 `ProviderImplementationId=bmf.cpu.v1`. This POC deliberately creates no
@@ -151,6 +153,36 @@ changes. The same ABI, installation-default, and module-search facts are
 recorded in `share/bmf-b0/bmf-build.json` under
 `module_manager_path_compatibility`.
 
+## Two bounded smoke layers
+
+The harness reports two explicitly separate layers:
+
+- `IMPORT_AND_NATIVE_LINKAGE_SMOKE` preserves the existing BMF/numpy imports,
+  native `_bmf` and `_hmp` resolution, compiled BMF commit/version checks, exact
+  FFmpeg/ffprobe prefix checks, `PYTHONNOUSERSITE=1`, and Nix-store-only absolute
+  `sys.path` checks.
+- `MINIMAL_BMF_GRAPH_EXECUTION_SMOKE` creates an exact 2x2 P6 PPM fixture in
+  memory from the byte sequence for red, green, blue, and white pixels. It
+  writes that deterministic input only to a fresh temporary working directory,
+  records its SHA-256, passes its absolute path to BMF, and executes a
+  `c_ffmpeg_decoder` -> `c_ffmpeg_encoder` graph with the encoder configured as
+  a null sink. The harness records and checks both node/module names.
+
+After graph completion, the second layer reads `/proc/self/maps`, requires a
+mapped `libbuiltin_modules` object, resolves every matching path, and requires
+each one to be beneath the installed BMF package root derived from
+`Path(bmf.__file__).resolve().parent`. The temporary current directory,
+`/usr/local/share/bmf_mods`, `/opt/tiger/bmf_mods`, and host `/usr` or `/home`
+Python site-package paths are excluded as module authorities. The original
+working directory is restored before the temporary directory is cleaned up.
+
+This freezes
+`MINIMAL_GRAPH_EXECUTION_IS_RUNTIME_SMOKE_NOT_SEMANTIC_CONFORMANCE_V1`. Decoding
+one deterministic frame into a null sink proves only minimal runtime graph
+execution and built-in loading. It is not a semantic-conformance corpus and
+does not prove Gaussian blur, output equivalence, cross-runtime conformance,
+Provider implementation, platform lowering, GPU behavior, or B1 work.
+
 ## Hermes commands
 
 Run these from this directory in the authorized Nix builder. Lock generation is
@@ -168,10 +200,13 @@ nix-store --query --references "$(nix path-info .#bmfCpu)" | sort > bmf-direct-r
 nix build .#pureNixImage
 ```
 
-The smoke imports BMF and numpy, checks the full compiled BMF commit/version,
-resolves the two native Python extensions, and records exact Python, FFmpeg,
-and ffprobe observations as one JSON object. It does not run a media graph or a
-Gaussian blur and cannot establish semantic conformance or output equivalence.
+The smoke emits one JSON object containing the distinct import/linkage and
+minimal-graph statuses plus their observations. `PASS` is emitted only after
+all import, identity, path-authority, graph-execution, and mapped-built-in
+assertions complete. Until Hermes runs the commands above against the frozen
+identities, this is a committed validation harness rather than a passing-result
+claim. After those identity-sensitive reruns, their correction evidence must
+supersede the old sealed smoke evidence.
 
 For the compatibility-base seam, the accepted Debian manifest digest is fixed
 to
