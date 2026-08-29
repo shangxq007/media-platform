@@ -43,6 +43,7 @@ include(
     "worker-fabric-module",
     "provider-plugin-runtime-module",
     "ffmpeg-provider-module",
+    "bmf-provider-module",
     "platform-distribution",
     "media-module",
     "color-image-module",
