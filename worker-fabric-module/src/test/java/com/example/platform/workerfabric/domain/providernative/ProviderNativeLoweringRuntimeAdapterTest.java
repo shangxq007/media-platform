@@ -11,7 +11,7 @@ import com.example.platform.artifact.app.ArtifactPinService.ArtifactPin;
 import com.example.platform.execution.compatibility.CompatibilityRequest;
 import com.example.platform.execution.compatibility.ProviderBoundaryCompatibilityDeclaration;
 import com.example.platform.execution.compatibility.ProviderCandidate;
-import com.example.platform.execution.compatibility.ProviderCompatibilityGraph;
+import com.example.platform.execution.compatibility.ProviderFeasibilityView;
 import com.example.platform.execution.compatibility.ProviderStaticCompatibility;
 import com.example.platform.execution.compatibility.StaticCompatibilityConstraint.BoundaryContractId;
 import com.example.platform.execution.composition.CompositionDecision;
@@ -399,7 +399,7 @@ class ProviderNativeLoweringRuntimeAdapterTest {
         List<ExecutableTaskMembership> memberships = ExecutableTaskMembership.canonicalForUnits(units);
         ProviderLocalCompositionRequest request = ProviderLocalCompositionRequest.of(
                 memberships,
-                context.graph(),
+                context.feasibilityView(),
                 candidate,
                 new ProviderCompositionDeclaration(binding, NativePipelineSupport.SUPPORTED),
                 List.of());
@@ -410,12 +410,12 @@ class ProviderNativeLoweringRuntimeAdapterTest {
         List<ProviderCandidate> candidates = Arrays.stream(providers)
                 .map(ProviderNativeLoweringRuntimeAdapterTest::candidate)
                 .toList();
-        ProviderCompatibilityGraph graph = ProviderCompatibilityGraph.build(
+        ProviderFeasibilityView feasibilityView = ProviderFeasibilityView.build(
                 plan,
                 plan.units().stream().map(CompatibilityRequest::forUnit).toList(),
                 candidates,
                 List.of());
-        return new TaskContext(plan, graph, candidates);
+        return new TaskContext(plan, feasibilityView, candidates);
     }
 
     private static ProviderCandidate candidate(String provider) {
@@ -541,7 +541,7 @@ class ProviderNativeLoweringRuntimeAdapterTest {
 
     private record TaskContext(
             PhysicalExecutionPlan plan,
-            ProviderCompatibilityGraph graph,
+            ProviderFeasibilityView feasibilityView,
             List<ProviderCandidate> candidates) {
         private ProviderCandidate candidate(String provider) {
             return candidates.stream()

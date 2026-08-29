@@ -31,7 +31,7 @@ class Correction2ArchitectureGuardTest {
     @Test
     void transitionDefaultAndDirectProofGuardsAreMechanicallyClosed() throws IOException {
         String graph = stripComments(Files.readString(compatibilitySourceRoot()
-                .resolve("ProviderCompatibilityGraph.java")));
+                .resolve("ProviderFeasibilityView.java")));
         String transition = stripComments(Files.readString(compatibilitySourceRoot()
                 .resolve("ProviderCompatibilityTransition.java")));
         Pattern retiredSameBindingBranch = Pattern.compile(

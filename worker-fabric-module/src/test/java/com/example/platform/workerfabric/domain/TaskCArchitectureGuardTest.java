@@ -29,8 +29,11 @@ class TaskCArchitectureGuardTest {
 
         assertThat(componentTypes)
                 .doesNotContain(ExecutableTaskId.class, ProviderBindingPin.class, ExecutionBackend.class);
+        assertThat(componentNames)
+                .contains("providerHardwareObservation", "runtimeDependencyObservation");
         assertThat(componentNames).noneMatch(name -> name.matches(
-                "(?i).*(task|queue|priority|fairness|deadline|provider|backend).*"));
+                "(?i).*(task|queue|priority|fairness|deadline|backend|providerCandidate|"
+                        + "providerSelection|providerBinding).*"));
     }
 
     @Test

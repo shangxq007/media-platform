@@ -35,9 +35,9 @@ Each row identifies one exact repository-reality obligation and contains: ROW_ID
 
 TOTAL_ROWS=131
 REUSE_AS_CANONICAL_COUNT=8
-REUSE_MECHANICS_ONLY_COUNT=38
+REUSE_MECHANICS_ONLY_COUNT=35
 MIGRATE_REDESIGN_COUNT=0
-DELETE_SHADOW_COUNT=23
+DELETE_SHADOW_COUNT=26
 DEFER_COUNT=62
 UNCLASSIFIED_COUNT=0
 DUPLICATE_ROW_COUNT=0
@@ -45,6 +45,10 @@ PLACEHOLDER_PATH_COUNT=0
 GLOB_PATH_COUNT=0
 
 The counts above are derived from the TSV by `docs/architecture/governance/automated-guards/check-phase17-sandbox-ledger.py`; they are not hand-maintained independently.
+
+### Descendant reconciliation — Phase20 P20-I7
+
+The original Phase17 ledger retained `P17-L-086`, `P17-L-087`, and `P17-L-088` as mechanics-only probes. Phase20 P20-I7 supersedes that retained classification by deleting the three ambient render `ProcessBuilder` probe surfaces. Their stable row identities and original Phase17 history remain intact; their current ledger dispositions are `DELETE_SHADOW` with Git-qualified evidence at the Phase20 I5 parent.
 
 ## Typed contract proposal
 

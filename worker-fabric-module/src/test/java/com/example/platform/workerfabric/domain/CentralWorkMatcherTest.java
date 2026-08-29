@@ -18,6 +18,24 @@ import org.junit.jupiter.api.Test;
 class CentralWorkMatcherTest {
 
     @Test
+    void nativePullRequiresCanonicalHardwareAndDependencyEvidenceBeforeGrant() {
+        var runtime = TaskCTestFixture.runtime("i4-evidence");
+        var work = TaskCTestFixture.candidate(20);
+        RequestWork missingEvidence = withCanonicalObservations(
+                runtime.requestWork(), Optional.empty(), Optional.empty());
+
+        RequestWorkResult allGreen = new CentralWorkMatcher(
+                new TaskCTestFixture.RecordingGrantBoundary()).match(
+                        runtime.requestWork(), runtime.context(), List.of(work.candidate()));
+        RequestWorkResult unknown = new CentralWorkMatcher(
+                new TaskCTestFixture.RecordingGrantBoundary()).match(
+                        missingEvidence, runtime.context(), List.of(work.candidate()));
+
+        assertThat(allGreen).isInstanceOf(RequestWorkResult.Granted.class);
+        assertThat(unknown).isInstanceOf(RequestWorkResult.NoWork.class);
+    }
+
+    @Test
     void native_pull_matcher_requires_matching_advertisement_for_provider_requirement() {
         var runtime = TaskCTestFixture.runtime("phase19-support");
         var work = TaskCTestFixture.candidate(19);
@@ -81,6 +99,8 @@ class CentralWorkMatcherTest {
                 candidate.providerBoundGraph(),
                 candidate.executableTask(),
                 candidate.staticallyCompatibleProviderCandidate(),
+                candidate.providerHardwareRequirement(),
+                candidate.runtimeDependencyRequirements(),
                 candidate.backendExecutionSupport(),
                 candidate.claimState(),
                 candidate.resourceDemand(),
@@ -98,6 +118,7 @@ class CentralWorkMatcherTest {
         return new PendingNativeWorkCandidate(
                 candidate.providerBoundGraph(), candidate.executableTask(),
                 candidate.staticallyCompatibleProviderCandidate(),
+                candidate.providerHardwareRequirement(), candidate.runtimeDependencyRequirements(),
                 candidate.backendExecutionSupport(), candidate.claimState(),
                 candidate.resourceDemand(), candidate.authoritativeReservationFeasibility(),
                 candidate.sandboxRequirement(), candidate.runtimeSupportRequirement(),
@@ -118,7 +139,30 @@ class CentralWorkMatcherTest {
                 request.deviceAvailability(),
                 request.runtimeEnvironmentAvailability(),
                 request.sandboxRuntimeAvailability(),
+                request.providerHardwareObservation(),
+                request.runtimeDependencyObservation(),
                 advertisement,
+                request.workerDerivedSchedulableCapacity());
+    }
+
+    private static RequestWork withCanonicalObservations(
+            RequestWork request,
+            Optional<ProviderHardwareObservation> hardwareObservation,
+            Optional<RuntimeDependencyObservation> dependencyObservation) {
+        return new RequestWork(
+                request.requestWorkId(),
+                request.workerRuntimeId(),
+                request.workerRuntimeIncarnationId(),
+                request.physicalHostId(),
+                request.physicalHostIncarnationId(),
+                request.hostResourceSnapshot(),
+                request.workerRuntimeAvailability(),
+                request.deviceAvailability(),
+                request.runtimeEnvironmentAvailability(),
+                request.sandboxRuntimeAvailability(),
+                hardwareObservation,
+                dependencyObservation,
+                request.runtimeSupportAdvertisement(),
                 request.workerDerivedSchedulableCapacity());
     }
 
@@ -227,6 +271,8 @@ class CentralWorkMatcherTest {
                         work.graph(),
                         work.task(),
                         foreignProvider,
+                        work.candidate().providerHardwareRequirement(),
+                        work.candidate().runtimeDependencyRequirements(),
                         ProviderBackendExecutionSupport.declared(
                                 work.task().providerBindingPin(),
                                 Set.of(ExecutionBackend.NATIVE_PULL_WORKER)),

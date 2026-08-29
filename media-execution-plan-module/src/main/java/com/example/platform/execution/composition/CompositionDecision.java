@@ -2,7 +2,7 @@ package com.example.platform.execution.composition;
 
 import com.example.platform.execution.composition.FailureAttribution.MemberAttribution;
 import com.example.platform.execution.compatibility.ProviderCandidate;
-import com.example.platform.execution.compatibility.ProviderCompatibilityGraph;
+import com.example.platform.execution.compatibility.ProviderFeasibilityView;
 import com.example.platform.execution.compatibility.StaticProviderCompatibilityProof;
 import com.example.platform.execution.domain.provider.ProviderBindingPin;
 import java.util.ArrayList;
@@ -19,7 +19,7 @@ public final class CompositionDecision {
     private final List<CompositionBlocker> blockers;
     private final List<MemberAttribution> memberFailureAttributions;
     private final Object evaluatorProvenance;
-    private final ProviderCompatibilityGraph compatibilityGraph;
+    private final ProviderFeasibilityView feasibilityView;
     private final ProviderCandidate providerCandidate;
     private final List<StaticProviderCompatibilityProof> staticCompatibilityProofs;
 
@@ -56,7 +56,7 @@ public final class CompositionDecision {
             List<CompositionBlocker> blockers,
             List<MemberAttribution> memberFailureAttributions,
             Object evaluatorProvenance,
-            ProviderCompatibilityGraph compatibilityGraph,
+            ProviderFeasibilityView feasibilityView,
             ProviderCandidate providerCandidate,
             List<StaticProviderCompatibilityProof> staticCompatibilityProofs) {
         this.status = Objects.requireNonNull(status, "status");
@@ -110,11 +110,11 @@ public final class CompositionDecision {
                     "evaluator provenance must be issued by ProviderLocalCompositionEvaluator");
         }
         this.evaluatorProvenance = evaluatorProvenance;
-        this.compatibilityGraph = compatibilityGraph;
+        this.feasibilityView = feasibilityView;
         this.providerCandidate = providerCandidate;
         this.staticCompatibilityProofs = List.copyOf(staticCompatibilityProofs);
         if (evaluatorProvenance != null) {
-            Objects.requireNonNull(compatibilityGraph, "compatibilityGraph");
+            Objects.requireNonNull(feasibilityView, "feasibilityView");
             Objects.requireNonNull(providerCandidate, "providerCandidate");
             if (this.staticCompatibilityProofs.size() != this.memberships.size()) {
                 throw new IllegalArgumentException(
@@ -129,7 +129,7 @@ public final class CompositionDecision {
                             "evaluator provenance must bind exact membership/provider semantics");
                 }
             }
-        } else if (compatibilityGraph != null
+        } else if (feasibilityView != null
                 || providerCandidate != null
                 || !this.staticCompatibilityProofs.isEmpty()) {
             throw new IllegalArgumentException(
@@ -166,16 +166,16 @@ public final class CompositionDecision {
         return allowed()
                 && ProviderLocalCompositionEvaluator.isEvaluatorProvenance(
                         evaluatorProvenance)
-                && compatibilityGraph != null
+                && feasibilityView != null
                 && providerCandidate != null
                 && staticCompatibilityProofs.size() == memberships.size();
     }
 
-    public ProviderCompatibilityGraph provenCompatibilityGraph() {
+    public ProviderFeasibilityView provenFeasibilityView() {
         if (!evaluatorProvenAllowed()) {
             throw new IllegalStateException("composition decision is not evaluator-proven ALLOWED");
         }
-        return compatibilityGraph;
+        return feasibilityView;
     }
 
     public ProviderCandidate provenProviderCandidate() {

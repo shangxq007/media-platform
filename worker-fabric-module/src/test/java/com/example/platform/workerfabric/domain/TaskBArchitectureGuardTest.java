@@ -73,7 +73,7 @@ class TaskBArchitectureGuardTest {
     }
 
     @Test
-    void runtimeEligibilityAlgebraRetainsSixteenFrozenReasonsPlusPhase19SupportEvidenceReasons() {
+    void runtimeEligibilityAlgebraFreezesCompletePhase20ReasonsInEnumOrder() {
         assertThat(RuntimeEligibilityReason.values()).containsExactly(
                 RuntimeEligibilityReason.RUNTIME_SUPPORT_REQUIREMENT_MISSING,
                 RuntimeEligibilityReason.RUNTIME_SUPPORT_ADVERTISEMENT_MISSING,
@@ -94,7 +94,36 @@ class TaskBArchitectureGuardTest {
                 RuntimeEligibilityReason.HOST_INCARNATION_MISMATCH,
                 RuntimeEligibilityReason.RUNTIME_INCARNATION_MISMATCH,
                 RuntimeEligibilityReason.RESERVATION_CONFLICT,
-                RuntimeEligibilityReason.UNKNOWN_RUNTIME_ELIGIBILITY);
+                RuntimeEligibilityReason.UNKNOWN_RUNTIME_ELIGIBILITY,
+                RuntimeEligibilityReason.PROVIDER_HARDWARE_INCOMPLETE_CRITICAL_EVIDENCE,
+                RuntimeEligibilityReason.PROVIDER_HARDWARE_PROVIDER_IMPLEMENTATION_MISMATCH,
+                RuntimeEligibilityReason.PROVIDER_HARDWARE_WORKER_RUNTIME_MISMATCH,
+                RuntimeEligibilityReason.PROVIDER_HARDWARE_PHYSICAL_HOST_MISMATCH,
+                RuntimeEligibilityReason.PROVIDER_HARDWARE_DEVICE_IDENTITY_MISMATCH,
+                RuntimeEligibilityReason.PROVIDER_HARDWARE_STALE_OBSERVATION,
+                RuntimeEligibilityReason.PROVIDER_HARDWARE_PROBE_UNKNOWN,
+                RuntimeEligibilityReason.PROVIDER_HARDWARE_PROBE_FAILED,
+                RuntimeEligibilityReason.PROVIDER_HARDWARE_RUNTIME_UNAVAILABLE,
+                RuntimeEligibilityReason.PROVIDER_HARDWARE_CPU_ARCHITECTURE_INCOMPATIBLE,
+                RuntimeEligibilityReason.PROVIDER_HARDWARE_DEVICE_CLASS_UNAVAILABLE,
+                RuntimeEligibilityReason.PROVIDER_HARDWARE_DEVICE_UNAVAILABLE,
+                RuntimeEligibilityReason.PROVIDER_HARDWARE_DRIVER_RUNTIME_INCOMPATIBLE,
+                RuntimeEligibilityReason.PROVIDER_HARDWARE_PROVIDER_BUILD_FEATURE_MISSING,
+                RuntimeEligibilityReason.PROVIDER_HARDWARE_CODEC_OR_FILTER_FEATURE_MISSING,
+                RuntimeEligibilityReason.PROVIDER_HARDWARE_DEVICE_FEATURE_UNAVAILABLE,
+                RuntimeEligibilityReason.PROVIDER_HARDWARE_DEVICE_NOT_EXPOSED,
+                RuntimeEligibilityReason.PROVIDER_HARDWARE_SANDBOX_PERMISSION_UNAVAILABLE,
+                RuntimeEligibilityReason.RUNTIME_DEPENDENCY_INCOMPLETE_CRITICAL_EVIDENCE,
+                RuntimeEligibilityReason.RUNTIME_DEPENDENCY_PROBE_SCHEMA_MISMATCH,
+                RuntimeEligibilityReason.RUNTIME_DEPENDENCY_PROVIDER_IMPLEMENTATION_MISMATCH,
+                RuntimeEligibilityReason.RUNTIME_DEPENDENCY_WORKER_RUNTIME_MISMATCH,
+                RuntimeEligibilityReason.RUNTIME_DEPENDENCY_DEVICE_BINDING_MISMATCH,
+                RuntimeEligibilityReason.RUNTIME_DEPENDENCY_STALE_OBSERVATION,
+                RuntimeEligibilityReason.RUNTIME_DEPENDENCY_MISSING,
+                RuntimeEligibilityReason.RUNTIME_DEPENDENCY_VERSION_INCOMPATIBLE,
+                RuntimeEligibilityReason.RUNTIME_DEPENDENCY_ABI_INCOMPATIBLE,
+                RuntimeEligibilityReason.RUNTIME_DEPENDENCY_FEATURE_MISSING,
+                RuntimeEligibilityReason.RUNTIME_DEPENDENCY_BUILD_RUNTIME_FLAG_MISSING);
     }
 
     @Test

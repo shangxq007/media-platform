@@ -5,12 +5,10 @@ import com.example.platform.execution.domain.ExecutionEdgeId;
 import com.example.platform.execution.domain.ExecutionStepId;
 import com.example.platform.execution.domain.provider.ProviderBindingPin;
 import com.example.platform.execution.domain.provider.ProviderCanonicalCodec;
-import com.example.platform.execution.planning.CanonicalWriter;
 import com.example.platform.execution.planning.LogicalExecutionGraph.LogicalDependencyEdge;
 import com.example.platform.execution.planning.PhysicalExecutionPlan;
 import com.example.platform.execution.planning.PhysicalExecutionPlan.PhysicalPlanUnit;
 import com.example.platform.execution.planning.PhysicalExecutionPlanDigest;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -22,26 +20,22 @@ import java.util.Set;
 import java.util.TreeMap;
 
 /**
- * Canonically built, immutable Stage-1 feasibility graph bound to one exact source plan.
+ * Immutable, in-process Stage-1 feasibility view bound to one exact source plan.
  * Positive nodes contain only opaque proofs emitted by {@link CompatibilityKernel}; transitions
  * cover every feasible candidate pair for every source dependency.
  */
-public final class ProviderCompatibilityGraph {
+public final class ProviderFeasibilityView {
 
-    public static final int CURRENT_SCHEMA_VERSION = 3;
-
-    private final int schemaVersion;
     private final PhysicalExecutionPlan sourcePhysicalPlan;
     private final PhysicalExecutionPlanDigest sourcePlanSemanticDigest;
     private final List<UnitCandidates> unitCandidates;
     private final List<ProviderCompatibilityTransition> transitions;
 
-    private ProviderCompatibilityGraph(
+    private ProviderFeasibilityView(
             PhysicalExecutionPlan sourcePhysicalPlan,
             PhysicalExecutionPlanDigest sourcePlanSemanticDigest,
             List<UnitCandidates> unitCandidates,
             List<ProviderCompatibilityTransition> transitions) {
-        this.schemaVersion = CURRENT_SCHEMA_VERSION;
         this.sourcePhysicalPlan = sourcePhysicalPlan;
         this.sourcePlanSemanticDigest = sourcePlanSemanticDigest;
         this.unitCandidates = List.copyOf(unitCandidates);
@@ -49,7 +43,7 @@ public final class ProviderCompatibilityGraph {
     }
 
     /** The sole construction path: candidate discovery order and declaration order are nonsemantic. */
-    public static ProviderCompatibilityGraph build(
+    public static ProviderFeasibilityView build(
             PhysicalExecutionPlan sourcePhysicalPlan,
             List<CompatibilityRequest> requests,
             List<ProviderCandidate> discoveredCandidates,
@@ -109,18 +103,14 @@ public final class ProviderCompatibilityGraph {
             throw new IllegalArgumentException(
                     "transition declaration must reference a statically feasible candidate pair");
         }
-        transitions.sort(Comparator.comparing(ProviderCompatibilityGraph::canonicalTransition));
+        transitions.sort(ProviderFeasibilityView::compareTransitions);
         rejectAdjacentDuplicateTransitions(transitions);
 
-        return new ProviderCompatibilityGraph(
+        return new ProviderFeasibilityView(
                 sourcePhysicalPlan,
                 semanticDigest(sourcePhysicalPlan),
                 nodes,
                 transitions);
-    }
-
-    public int schemaVersion() {
-        return schemaVersion;
     }
 
     public PhysicalExecutionPlan sourcePhysicalPlan() {
@@ -185,41 +175,6 @@ public final class ProviderCompatibilityGraph {
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException(
                         "provider compatibility transition is absent for exact feasible pair"));
-    }
-
-    public byte[] canonicalSerialization() {
-        List<String> nodes = unitCandidates.stream()
-                .map(ProviderCompatibilityGraph::canonicalUnitCandidates)
-                .toList();
-        List<String> transitionValues = transitions.stream()
-                .map(ProviderCompatibilityGraph::canonicalTransition)
-                .toList();
-        String canonical = new CanonicalWriter()
-                .tag("roadmap22.provider-compatibility-graph.v3")
-                .field("schemaVersion", Integer.toString(schemaVersion))
-                .field("sourcePlanSemanticDigest", sourcePlanSemanticDigest.sha256Hex())
-                .field("unitCandidates", new CanonicalWriter().list(nodes).build())
-                .field("transitions", new CanonicalWriter().list(transitionValues).build())
-                .build();
-        return canonical.getBytes(StandardCharsets.UTF_8);
-    }
-
-    public ProviderCompatibilityGraphDigest digest() {
-        return ProviderCompatibilityGraphDigest.fromCanonicalBytes(canonicalSerialization());
-    }
-
-    @Override
-    public boolean equals(Object other) {
-        return other instanceof ProviderCompatibilityGraph that
-                && sourcePhysicalPlan.equals(that.sourcePhysicalPlan)
-                && sourcePlanSemanticDigest.equals(that.sourcePlanSemanticDigest)
-                && unitCandidates.equals(that.unitCandidates)
-                && transitions.equals(that.transitions);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(sourcePhysicalPlan, sourcePlanSemanticDigest, unitCandidates, transitions);
     }
 
     public record UnitCandidates(
@@ -356,7 +311,7 @@ public final class ProviderCompatibilityGraph {
         var canonical = new ArrayList<ProviderBoundaryCompatibilityDeclaration>(declarations.size());
         declarations.forEach(value -> canonical.add(
                 Objects.requireNonNull(value, "transitionDeclarations element")));
-        canonical.sort(Comparator.comparing(ProviderCompatibilityGraph::canonicalDeclaration));
+        canonical.sort(ProviderFeasibilityView::compareDeclarations);
         for (int i = 1; i < canonical.size(); i++) {
             if (sameDeclarationKey(canonical.get(i - 1), canonical.get(i))) {
                 throw new IllegalArgumentException("duplicate provider transition declaration");
@@ -439,84 +394,77 @@ public final class ProviderCompatibilityGraph {
                 ProviderCanonicalCodec.serialize(first), ProviderCanonicalCodec.serialize(second));
     }
 
-    private static String canonicalUnitCandidates(UnitCandidates candidates) {
-        List<String> bindings = candidates.compatibilityProofs().stream()
-                .map(proof -> canonicalCandidate(proof.providerCandidate()))
-                .toList();
-        List<String> constraints = candidates.compatibilityRequest().additionalConstraints().stream()
-                .map(StaticCompatibilityConstraint::canonicalKey)
-                .toList();
-        return new CanonicalWriter()
-                .tag("ProviderCompatibilityGraph.UnitCandidates.v2")
-                .field("physicalPlanUnitId", candidates.physicalPlanUnitId().value())
-                .field("additionalConstraints", new CanonicalWriter().list(constraints).build())
-                .field("feasibleProviderCandidates", new CanonicalWriter().list(bindings).build())
-                .build();
+    private static int compareTransitions(
+            ProviderCompatibilityTransition first,
+            ProviderCompatibilityTransition second) {
+        int comparison = compareDependencies(first.sourceDependency(), second.sourceDependency());
+        if (comparison == 0) {
+            comparison = first.producerUnit().stepId().value()
+                    .compareTo(second.producerUnit().stepId().value());
+        }
+        if (comparison == 0) {
+            comparison = compareBindings(first.producerBindingPin(), second.producerBindingPin());
+        }
+        if (comparison == 0) {
+            comparison = first.consumerUnit().stepId().value()
+                    .compareTo(second.consumerUnit().stepId().value());
+        }
+        if (comparison == 0) {
+            comparison = compareBindings(first.consumerBindingPin(), second.consumerBindingPin());
+        }
+        if (comparison == 0) {
+            comparison = first.decision().compareTo(second.decision());
+        }
+        if (comparison == 0) {
+            comparison = first.boundaryContractId().map(value -> value.value()).orElse("")
+                    .compareTo(second.boundaryContractId().map(value -> value.value()).orElse(""));
+        }
+        return comparison;
     }
 
-    private static String canonicalCandidate(ProviderCandidate candidate) {
-        ProviderStaticCompatibility support = candidate.staticCompatibility();
-        return new CanonicalWriter()
-                .tag("ProviderCandidate.v1")
-                .field("binding", utf8(ProviderCanonicalCodec.serialize(candidate.bindingPin())))
-                .field("descriptor", utf8(ProviderCanonicalCodec.serialize(candidate.descriptor())))
-                .field("contract", utf8(ProviderCanonicalCodec.serialize(candidate.executionContract())))
-                .field("profile", utf8(ProviderCanonicalCodec.serialize(candidate.capabilityProfile())))
-                .field("knowledge", support.knowledge().name())
-                .field("artifactRequirements", enumList(support.supportedArtifactRequirements()))
-                .field("codecs", valueList(support.supportedCodecs().stream()
-                        .map(StaticCompatibilityConstraint.CodecId::value).toList()))
-                .field("deviceKinds", enumList(support.supportedDeviceKinds()))
-                .field("runtimeClasses", enumList(support.supportedRuntimeClasses()))
-                .field("sandboxModes", enumList(support.supportedSandboxModes()))
-                .field("determinismClasses", enumList(support.supportedDeterminismClasses()))
-                .field("boundaryContracts", valueList(support.supportedBoundaryContracts().stream()
-                        .map(StaticCompatibilityConstraint.BoundaryContractId::value).toList()))
-                .field("loweringSupport", support.loweringSupport().name())
-                .build();
+    private static int compareDeclarations(
+            ProviderBoundaryCompatibilityDeclaration first,
+            ProviderBoundaryCompatibilityDeclaration second) {
+        int comparison = compareDependencies(first.sourceDependency(), second.sourceDependency());
+        if (comparison == 0) {
+            comparison = compareBindings(first.producerBindingPin(), second.producerBindingPin());
+        }
+        if (comparison == 0) {
+            comparison = compareBindings(first.consumerBindingPin(), second.consumerBindingPin());
+        }
+        if (comparison == 0) {
+            comparison = first.boundaryContractId().value()
+                    .compareTo(second.boundaryContractId().value());
+        }
+        if (comparison == 0) {
+            comparison = first.declaration().compareTo(second.declaration());
+        }
+        return comparison;
     }
 
-    private static String canonicalTransition(ProviderCompatibilityTransition transition) {
-        return new CanonicalWriter()
-                .tag("ProviderCompatibilityTransition.v2")
-                .field("sourceDependency", canonicalDependency(transition.sourceDependency()))
-                .field("producerUnitId", transition.producerUnit().stepId().value())
-                .field("producerBinding", utf8(ProviderCanonicalCodec.serialize(
-                        transition.producerBindingPin())))
-                .field("consumerUnitId", transition.consumerUnit().stepId().value())
-                .field("consumerBinding", utf8(ProviderCanonicalCodec.serialize(
-                        transition.consumerBindingPin())))
-                .field("decision", transition.decision().name())
-                .field("boundaryContract", new CanonicalWriter()
-                        .optional(transition.boundaryContractId().isPresent(),
-                                transition.boundaryContractId().map(value -> value.value()).orElse(null))
-                        .build())
-                .build();
-    }
-
-    private static String canonicalDeclaration(ProviderBoundaryCompatibilityDeclaration value) {
-        return new CanonicalWriter()
-                .tag("ProviderBoundaryCompatibilityDeclaration.v1")
-                .field("dependency", canonicalDependency(value.sourceDependency()))
-                .field("producerBinding", utf8(ProviderCanonicalCodec.serialize(
-                        value.producerBindingPin())))
-                .field("consumerBinding", utf8(ProviderCanonicalCodec.serialize(
-                        value.consumerBindingPin())))
-                .field("contract", value.boundaryContractId().value())
-                .field("declaration", value.declaration().name())
-                .build();
-    }
-
-    private static String canonicalDependency(LogicalDependencyEdge dependency) {
-        return new CanonicalWriter()
-                .tag("LogicalDependencyEdgeReference.v1")
-                .field("edgeId", dependency.edgeId().value())
-                .field("producerLogicalNodeId", dependency.producerLogicalNodeId())
-                .field("consumerLogicalNodeId", dependency.consumerLogicalNodeId())
-                .field("producerRenderNodeId", dependency.producerRenderNodeId().value())
-                .field("consumerRenderNodeId", dependency.consumerRenderNodeId().value())
-                .field("dependencyType", dependency.dependencyVariant().getClass().getName())
-                .build();
+    private static int compareDependencies(
+            LogicalDependencyEdge first,
+            LogicalDependencyEdge second) {
+        int comparison = first.edgeId().value().compareTo(second.edgeId().value());
+        if (comparison == 0) {
+            comparison = first.producerLogicalNodeId().compareTo(second.producerLogicalNodeId());
+        }
+        if (comparison == 0) {
+            comparison = first.consumerLogicalNodeId().compareTo(second.consumerLogicalNodeId());
+        }
+        if (comparison == 0) {
+            comparison = first.producerRenderNodeId().value()
+                    .compareTo(second.producerRenderNodeId().value());
+        }
+        if (comparison == 0) {
+            comparison = first.consumerRenderNodeId().value()
+                    .compareTo(second.consumerRenderNodeId().value());
+        }
+        if (comparison == 0) {
+            comparison = first.dependencyVariant().getClass().getName()
+                    .compareTo(second.dependencyVariant().getClass().getName());
+        }
+        return comparison;
     }
 
     private static boolean sameDeclarationKey(
@@ -540,21 +488,9 @@ public final class ProviderCompatibilityGraph {
     private static void rejectAdjacentDuplicateTransitions(
             List<ProviderCompatibilityTransition> sorted) {
         for (int i = 1; i < sorted.size(); i++) {
-            if (canonicalTransition(sorted.get(i - 1)).equals(canonicalTransition(sorted.get(i)))) {
+            if (sorted.get(i - 1).equals(sorted.get(i))) {
                 throw new IllegalArgumentException("duplicate provider compatibility transition");
             }
         }
-    }
-
-    private static String utf8(byte[] value) {
-        return new String(value, StandardCharsets.UTF_8);
-    }
-
-    private static String valueList(List<String> values) {
-        return new CanonicalWriter().list(values).build();
-    }
-
-    private static String enumList(List<? extends Enum<?>> values) {
-        return valueList(values.stream().map(Enum::name).toList());
     }
 }
