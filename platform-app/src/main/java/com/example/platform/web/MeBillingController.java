@@ -179,7 +179,8 @@ public class MeBillingController {
     public ResponseEntity<List<Map<String, Object>>> upgrades(HttpServletRequest req) {
         BillingSubject subject = resolveSubject(req);
         String currentTier = entitlementPolicyService.getTier(subject.tenantId());
-        List<Map<String, Object>> options = commerceCatalogService.listProducts().stream()
+        List<Map<String, Object>> options = commerceCatalogService.listProducts(
+                        com.example.platform.commerce.domain.CatalogReadScope.tenant(subject.tenantId()), "GLOBAL").stream()
                 .filter(p -> p.lineType() == ProductLineType.BASE_SUBSCRIPTION)
                 .filter(p -> p.tierKey() != null && tierRank(p.tierKey()) > tierRank(currentTier))
                 .map(p -> {

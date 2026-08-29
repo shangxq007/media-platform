@@ -59,20 +59,23 @@ public class CommerceCartService {
     }
 
     public CommerceCart addLine(String cartId, String productCode, int quantity) {
-        catalogService.requireProduct(productCode);
         CommerceCart cart = getCart(cartId);
+        CommercialOffering offering = catalogService.requireOffering(CatalogReadScope.tenant(cart.tenantId()), "GLOBAL", productCode, Instant.now());
         TenantGuard.assertSameTenantIfContextPresent(cart.tenantId());
         List<CartLineItem> lines = new ArrayList<>(cart.lines());
         boolean merged = false;
         for (int i = 0; i < lines.size(); i++) {
             if (lines.get(i).productCode().equals(productCode)) {
-                lines.set(i, new CartLineItem(productCode, lines.get(i).quantity() + quantity));
+                CartLineItem old = lines.get(i);
+                lines.set(i, new CartLineItem(productCode, old.quantity() + quantity, old.productId(), old.offeringId(),
+                        old.offeringVersion(), old.commercialPriceReference(), old.amountMinorSnapshot(), old.currencyCodeSnapshot()));
                 merged = true;
                 break;
             }
         }
         if (!merged) {
-            lines.add(new CartLineItem(productCode, quantity));
+            lines.add(new CartLineItem(productCode, quantity, offering.productId(), offering.offeringId(), offering.offeringVersion(),
+                    offering.commercialPriceReference(), offering.priceSnapshot().amountMinor(), offering.priceSnapshot().currency()));
         }
         return persistCart(new CommerceCart(
                 cart.cartId(), cart.tenantId(), cart.userId(), List.copyOf(lines), cart.createdAt(), Instant.now()));
@@ -92,8 +95,7 @@ public class CommerceCartService {
         CommerceCart cart = getCart(cartId);
         long total = 0L;
         for (CartLineItem line : cart.lines()) {
-            CanonicalProduct product = catalogService.requireProduct(line.productCode());
-            total += product.priceMinor() * line.quantity();
+            total = Math.addExact(total, Math.multiplyExact(line.amountMinorSnapshot(), line.quantity()));
         }
         return total;
     }
@@ -102,7 +104,8 @@ public class CommerceCartService {
         CommerceCart cart = getCart(cartId);
         List<CanonicalProduct> products = new ArrayList<>();
         for (CartLineItem line : cart.lines()) {
-            CanonicalProduct product = catalogService.requireProduct(line.productCode());
+            CanonicalProduct product = CommerceCatalogService.project(catalogService.requireHistorical(
+                    CatalogReadScope.tenant(cart.tenantId()), line.offeringId(), line.offeringVersion()));
             for (int i = 0; i < line.quantity(); i++) {
                 products.add(product);
             }

@@ -11,7 +11,7 @@ class CommerceCartServiceTest {
 
     @BeforeEach
     void setUp() {
-        cartService = new CommerceCartService(new CommerceCatalogService());
+        cartService = new CommerceCartService(CatalogTestFixtures.catalog());
     }
 
     @Test

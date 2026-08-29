@@ -1,6 +1,8 @@
 package com.example.platform.commerce.app;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 import com.example.platform.commerce.api.dto.CheckoutSessionResponse;
 import com.example.platform.commerce.api.dto.CreateCheckoutSessionRequest;
@@ -16,7 +18,7 @@ class CheckoutOrchestratorTest {
 
     @BeforeEach
     void setUp() {
-        catalogService = new CommerceCatalogService();
+        catalogService = CatalogTestFixtures.catalog();
         CommerceCartService cartService = new CommerceCartService(catalogService);
         orchestrator = new CheckoutOrchestrator(catalogService, cartService, null, null, null, null, new SimpleMeterRegistry());
     }
@@ -49,6 +51,23 @@ class CheckoutOrchestratorTest {
         assertNotNull(event);
         assertEquals("tenant-1", event.tenantId());
         assertEquals("pro_monthly", event.canonicalProductCode());
+        assertEquals(9999, event.amountMinorSnapshot());
+    }
+
+    @Test
+    void checkoutKeepsImmutableOfferingPriceSnapshotAfterCatalogChange() {
+        var response = orchestrator.createSession(new CreateCheckoutSessionRequest(
+                "tenant-1", "pro_monthly", null, "subscription", "https://example.com/success", null));
+        var changed = CatalogTestFixtures.offering("basic_monthly");
+        doReturn(changed).when(catalogService).requireHistorical(any(), anyString(), anyLong());
+
+        var event = orchestrator.confirmCheckout(response.checkoutSessionId());
+
+        assertEquals("offer-pro_monthly", event.offeringId());
+        assertEquals(1, event.offeringVersion());
+        assertEquals("price-pro_monthly", event.commercialPriceReference().key());
+        assertEquals(9999, event.amountMinorSnapshot());
+        assertEquals("USD", event.currencyCodeSnapshot());
     }
 
     @Test
@@ -66,7 +85,7 @@ class CheckoutOrchestratorTest {
         CheckoutSession session2 = orchestrator.createCheckoutSession(intent2);
         orchestrator.confirmCheckout(session2.checkoutSessionId());
 
-        double revenue = orchestrator.getTotalRevenueForTenant("tenant-1");
-        assertEquals(129.98, revenue, 0.01); // 99.99 + 29.99
+        long revenue = orchestrator.getTotalRevenueForTenant("tenant-1");
+        assertEquals(12998, revenue);
     }
 }

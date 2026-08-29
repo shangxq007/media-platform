@@ -2,22 +2,20 @@ package com.example.platform.commerce.domain;
 
 import java.time.Instant;
 
-public record PurchaseOrderCreatedEvent(String orderId, String tenantId, String canonicalProductCode, String orderStatus) {
+public record PurchaseOrderCreatedEvent(String orderId, String tenantId, String canonicalProductCode, String orderStatus,
+        String offeringId, long offeringVersion, AuthorityReference commercialPriceReference,
+        long amountMinorSnapshot, String currencyCodeSnapshot) {
 
     public PurchaseOrderCreatedEvent(String orderId, String tenantId, String canonicalProductCode) {
-        this(orderId, tenantId, canonicalProductCode, "CREATED");
+        this(orderId, tenantId, canonicalProductCode, "CREATED", "unknown", 1,
+                new AuthorityReference("unknown", 1), 0, "USD");
     }
 
-    public double orderValue() {
+    public long orderValueMinor() {
         if ("CANCELLED".equals(orderStatus)) {
-            return 0.0;
+            return 0;
         }
-        return switch (canonicalProductCode) {
-            case "pro_monthly" -> 99.99;
-            case "basic_monthly" -> 29.99;
-            case "enterprise_monthly" -> 299.99;
-            default -> 0.0;
-        };
+        return amountMinorSnapshot;
     }
 
     public Instant eventTime() {

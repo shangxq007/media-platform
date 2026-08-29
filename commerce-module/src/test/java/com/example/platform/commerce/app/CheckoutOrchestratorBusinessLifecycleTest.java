@@ -16,7 +16,7 @@ class CheckoutOrchestratorBusinessLifecycleTest {
 
     @BeforeEach
     void setUp() {
-        catalogService = new CommerceCatalogService();
+        catalogService = CatalogTestFixtures.catalog();
         CommerceCartService cartService = new CommerceCartService(catalogService);
         orchestrator = new CheckoutOrchestrator(catalogService, cartService, null, null, null, null, new SimpleMeterRegistry());
     }
@@ -35,7 +35,7 @@ class CheckoutOrchestratorBusinessLifecycleTest {
 
         assertNotNull(event.orderId());
         assertEquals("CONFIRMED", event.orderStatus());
-        assertEquals(99.99, orchestrator.getTotalRevenueForTenant("tenant-1"), 0.01);
+        assertEquals(9999, orchestrator.getTotalRevenueForTenant("tenant-1"));
         assertTrue(orchestrator.getActiveSessionsCount() < 1);
     }
 
@@ -50,8 +50,8 @@ class CheckoutOrchestratorBusinessLifecycleTest {
 
         assertNotNull(cancelledEvent.orderId());
         assertEquals("CANCELLED", cancelledEvent.orderStatus());
-        assertEquals(0.0, cancelledEvent.orderValue(), 0.01);
-        assertEquals(0.0, orchestrator.getTotalRevenueForTenant("tenant-1"), 0.01);
+        assertEquals(0, cancelledEvent.orderValueMinor());
+        assertEquals(0, orchestrator.getTotalRevenueForTenant("tenant-1"));
     }
 
     @Test
@@ -70,8 +70,8 @@ class CheckoutOrchestratorBusinessLifecycleTest {
         CheckoutSession session2 = orchestrator.createCheckoutSession(intent2);
         orchestrator.confirmCheckout(session2.checkoutSessionId());
 
-        assertEquals(99.99, orchestrator.getTotalRevenueForTenant("tenant-1"), 0.01);
-        assertEquals(29.99, orchestrator.getTotalRevenueForTenant("tenant-2"), 0.01);
+        assertEquals(9999, orchestrator.getTotalRevenueForTenant("tenant-1"));
+        assertEquals(2999, orchestrator.getTotalRevenueForTenant("tenant-2"));
         assertTrue(orchestrator.getRecentEvents("tenant-1", 10).size() >= 1);
         assertTrue(orchestrator.getRecentEvents("tenant-2", 10).size() >= 1);
     }

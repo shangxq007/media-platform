@@ -12,6 +12,8 @@ import java.util.List;
 import java.util.Optional;
 import org.jooq.DSLContext;
 import org.jooq.Record;
+import org.jooq.impl.DSL;
+import com.example.platform.commerce.domain.AuthorityReference;
 
 import org.springframework.stereotype.Repository;
 import static com.example.platform.typedschema.jooq.generated.tables.CommerceCart.COMMERCE_CART;
@@ -48,8 +50,14 @@ public class CommerceCartRepository {
                 .execute();
         for (CartLineItem line : cart.lines()) {
             dsl.insertInto(COMMERCE_CART_LINE)
-                    .columns(COMMERCE_CART.ID, COMMERCE_CART_LINE.CART_ID, COMMERCE_CART_LINE.PRODUCT_CODE, COMMERCE_CART_LINE.QUANTITY, COMMERCE_CART.CREATED_AT)
-                    .values(Ids.newId("cline"), cart.cartId(), line.productCode(), line.quantity(), now)
+                    .columns(COMMERCE_CART_LINE.ID, COMMERCE_CART_LINE.CART_ID, COMMERCE_CART_LINE.PRODUCT_CODE,
+                            DSL.field("product_id", String.class), DSL.field("offering_id", String.class),
+                            DSL.field("offering_version", Long.class), DSL.field("commercial_price_ref", String.class),
+                            DSL.field("commercial_price_version", Long.class), DSL.field("amount_minor_snapshot", Long.class),
+                            DSL.field("currency_code_snapshot", String.class), COMMERCE_CART_LINE.QUANTITY, COMMERCE_CART_LINE.CREATED_AT)
+                    .values(Ids.newId("cline"), cart.cartId(), line.productCode(), line.productId(), line.offeringId(),
+                            line.offeringVersion(), line.commercialPriceReference().key(), line.commercialPriceReference().version(),
+                            line.amountMinorSnapshot(), line.currencyCodeSnapshot(), line.quantity(), now)
                     .execute();
         }
         return cart;
@@ -64,10 +72,14 @@ public class CommerceCartRepository {
         if (header == null) {
             return Optional.empty();
         }
-        List<CartLineItem> lines = dsl.select(COMMERCE_CART_LINE.PRODUCT_CODE, COMMERCE_CART_LINE.QUANTITY)
+        List<CartLineItem> lines = dsl.select()
                 .from(COMMERCE_CART_LINE)
                 .where(COMMERCE_CART_LINE.CART_ID.eq(cartId))
-                .fetch(r -> new CartLineItem(r.get(COMMERCE_CART_LINE.PRODUCT_CODE, String.class), r.get(COMMERCE_CART_LINE.QUANTITY, Integer.class)));
+                .fetch(r -> new CartLineItem(r.get(COMMERCE_CART_LINE.PRODUCT_CODE, String.class),
+                        r.get(COMMERCE_CART_LINE.QUANTITY, Integer.class), r.get("product_id", String.class),
+                        r.get("offering_id", String.class), r.get("offering_version", Long.class),
+                        new AuthorityReference(r.get("commercial_price_ref", String.class), r.get("commercial_price_version", Long.class)),
+                        r.get("amount_minor_snapshot", Long.class), r.get("currency_code_snapshot", String.class)));
         return Optional.of(new CommerceCart(
                 cartId,
                 header.get(COMMERCE_CART.TENANT_ID, String.class),

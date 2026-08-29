@@ -139,6 +139,10 @@ class SchemaEquivalenceVerificationTest extends PostgresTestContainerSupport {
         assertTrue(tables.contains("provider_webhook_receipt"), "provider_webhook_receipt required");
         assertTrue(tables.contains("payment_refund"), "payment_refund authority required");
         assertTrue(tables.contains("payment_outbox"), "payment_outbox authority required");
+        assertTrue(tables.contains("commerce_product"), "commerce_product authority required");
+        assertTrue(tables.contains("commercial_offering"), "commercial_offering authority required");
+        assertTrue(tables.contains("product_catalog_command"), "product_catalog_command audit required");
+        assertFalse(tables.contains("commerce_price"), "Commerce must not own a second price authority");
         assertFalse(tables.contains("payment_attempt"), "legacy payment_attempt must be absent");
         assertFalse(tables.contains("provider_webhook_event"),
                 "raw provider_webhook_event must be absent");
@@ -321,6 +325,27 @@ class SchemaEquivalenceVerificationTest extends PostgresTestContainerSupport {
 
     @Test
     @Order(9)
+    @DisplayName("V1: durable catalog seeds and immutable checkout snapshots")
+    void durableCatalogSeedsAndSnapshots() throws Exception {
+        assertTrue(deployed);
+        for (String table : List.of("checkout_session", "purchase_order", "commerce_cart_line")) {
+            Map<String, ColumnInfo> columns = getTableColumns(table);
+            for (String column : List.of("offering_id", "offering_version", "commercial_price_ref",
+                    "commercial_price_version", "amount_minor_snapshot", "currency_code_snapshot")) {
+                assertNotNull(columns.get(column), table + "." + column + " required");
+            }
+        }
+        try (Connection conn = createDataSource().getConnection(); Statement statement = conn.createStatement()) {
+            statement.execute("SET search_path TO \"" + SCHEMA + "\"");
+            assertEquals(9, count(statement, "commerce_product"));
+            assertEquals(9, count(statement, "commercial_offering"));
+            assertEquals(9, count(statement, "pricing_rule"));
+            assertEquals(6, count(statement, "subscription_plan"));
+        }
+    }
+
+    @Test
+    @Order(10)
     @DisplayName("V1: no active V2-V5 migrations")
     void noActiveV2ToV5() {
         Flyway flyway = Flyway.configure()
@@ -334,6 +359,13 @@ class SchemaEquivalenceVerificationTest extends PostgresTestContainerSupport {
         // exactly one canonical V1 migration; no incremental V2..V7.
         assertEquals(1, info.all().length, "Only canonical V1 should be active");
         assertEquals("1", info.all()[0].getVersion().getVersion());
+    }
+
+    private static int count(Statement statement, String table) throws SQLException {
+        try (ResultSet result = statement.executeQuery("SELECT count(*) FROM " + table)) {
+            result.next();
+            return result.getInt(1);
+        }
     }
 
     // === Helper methods (all scoped to the isolated schema) ===

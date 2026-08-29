@@ -721,24 +721,69 @@ create index ix_cex_tenant_proj on client_export_session(tenant_id, project_id);
 create table commerce_product (
     id varchar(64) primary key,
     product_code varchar(128) not null unique,
-    purchase_mode varchar(64) not null,
-    feature_bundle_code varchar(128) not null,
-    quota_profile_code varchar(128),
-    status varchar(32) not null,
-    created_at timestamp not null
+    product_line_type varchar(64) not null,
+    display_name varchar(255) not null,
+    lifecycle_state varchar(16) not null check (lifecycle_state in ('DRAFT','ACTIVE','RETIRED')),
+    version bigint not null check (version > 0),
+    created_at timestamp with time zone not null,
+    updated_at timestamp with time zone not null
 );
 
-create table commerce_price (
+create table commercial_offering (
     id varchar(64) primary key,
     product_id varchar(64) not null,
-    price_code varchar(128) not null unique,
-    currency_code varchar(8) not null,
-    amount_minor bigint not null,
-    billing_interval varchar(32),
-    created_at timestamp not null
+    offering_key varchar(128) not null,
+    offering_version bigint not null check (offering_version > 0),
+    lifecycle_state varchar(16) not null check (lifecycle_state in ('DRAFT','ACTIVE','RETIRED')),
+    row_version bigint not null check (row_version > 0),
+    purchase_mode varchar(32) not null,
+    tenant_scope varchar(64) not null,
+    market_scope varchar(32) not null,
+    valid_from timestamp with time zone not null,
+    valid_to timestamp with time zone,
+    entitlement_bundle_ref varchar(128),
+    entitlement_bundle_version bigint,
+    quota_profile_ref varchar(128),
+    quota_profile_version bigint,
+    subscription_plan_ref varchar(128),
+    subscription_plan_version bigint,
+    commercial_price_ref varchar(128) not null,
+    commercial_price_version bigint not null check (commercial_price_version > 0),
+    amount_minor_snapshot bigint not null check (amount_minor_snapshot >= 0),
+    currency_code_snapshot varchar(3) not null check (currency_code_snapshot ~ '^[A-Z]{3}$'),
+    credit_quantity_minor bigint,
+    seat_quantity integer,
+    seat_feature_key varchar(128),
+    created_at timestamp with time zone not null,
+    updated_at timestamp with time zone not null,
+    foreign key (product_id) references commerce_product(id),
+    unique (product_id, offering_key, offering_version),
+    check (valid_to is null or valid_to > valid_from)
 );
 
-create index ix_commerce_price_product_id on commerce_price(product_id);
+create index ix_commercial_offering_resolution on commercial_offering(
+    tenant_scope, market_scope, lifecycle_state, valid_from, valid_to);
+
+create table product_catalog_command (
+    id varchar(64) primary key,
+    catalog_scope varchar(64) not null,
+    actor_tenant_id varchar(64) not null,
+    actor_principal_type varchar(32) not null,
+    actor_principal_id varchar(128) not null,
+    command_type varchar(32) not null check (command_type in ('CREATE','LIFECYCLE','PRODUCT_LIFECYCLE','MAP_PROVIDER')),
+    idempotency_key varchar(255) not null,
+    payload_fingerprint varchar(64) not null,
+    product_id varchar(64),
+    offering_id varchar(64),
+    provider_mapping_id varchar(64),
+    result_state varchar(32) not null,
+    result_version bigint not null,
+    source varchar(128) not null,
+    reason varchar(512) not null,
+    trace_id varchar(128) not null,
+    created_at timestamp with time zone not null,
+    unique (catalog_scope, idempotency_key)
+);
 
 create table provider_product_mapping (
     id varchar(64) primary key,
@@ -746,7 +791,15 @@ create table provider_product_mapping (
     external_product_ref varchar(255) not null,
     external_price_ref varchar(255),
     product_id varchar(64) not null,
-    created_at timestamp not null
+    offering_id varchar(64) not null,
+    offering_version bigint not null,
+    version bigint not null check (version > 0),
+    created_at timestamp with time zone not null,
+    updated_at timestamp with time zone not null,
+    foreign key (product_id) references commerce_product(id),
+    foreign key (offering_id) references commercial_offering(id),
+    unique (provider_code, external_product_ref),
+    unique (provider_code, product_id, offering_id, offering_version)
 );
 
 create index ix_provider_product_mapping_product_id on provider_product_mapping(product_id);
@@ -755,14 +808,23 @@ create table checkout_session (
     id varchar(64) primary key,
     checkout_session_code varchar(128) not null unique,
     product_id varchar(64) not null,
+    canonical_product_code varchar(128) not null,
+    offering_id varchar(64) not null,
+    offering_version bigint not null,
+    commercial_price_ref varchar(128) not null,
+    commercial_price_version bigint not null,
+    amount_minor_snapshot bigint not null,
+    currency_code_snapshot varchar(3) not null,
     provider_code varchar(64),
     session_status varchar(32) not null,
     success_url text,
     cancel_url text,
     created_at timestamp not null,
-    tenant_id varchar(64),
+    tenant_id varchar(64) not null,
     user_id varchar(128),
-    cart_id varchar(64)
+    cart_id varchar(64),
+    foreign key (product_id) references commerce_product(id),
+    foreign key (offering_id) references commercial_offering(id)
 );
 
 create index ix_checkout_session_product_id on checkout_session(product_id);
@@ -772,11 +834,20 @@ create table purchase_order (
     id varchar(64) primary key,
     checkout_session_id varchar(64),
     canonical_product_code varchar(128) not null,
+    product_id varchar(64) not null,
+    offering_id varchar(64) not null,
+    offering_version bigint not null,
+    commercial_price_ref varchar(128) not null,
+    commercial_price_version bigint not null,
+    amount_minor_snapshot bigint not null,
+    currency_code_snapshot varchar(3) not null,
     order_status varchar(32) not null,
     total_amount_minor bigint,
     currency_code varchar(8),
     created_at timestamp not null,
-    tenant_id varchar(64)
+    tenant_id varchar(64) not null,
+    foreign key (product_id) references commerce_product(id),
+    foreign key (offering_id) references commercial_offering(id)
 );
 
 create index ix_purchase_order_checkout_session_id on purchase_order(checkout_session_id);
@@ -1374,8 +1445,17 @@ create table commerce_cart_line (
     id varchar(64) primary key,
     cart_id varchar(64) not null,
     product_code varchar(128) not null,
+    product_id varchar(64) not null,
+    offering_id varchar(64) not null,
+    offering_version bigint not null,
+    commercial_price_ref varchar(128) not null,
+    commercial_price_version bigint not null,
+    amount_minor_snapshot bigint not null,
+    currency_code_snapshot varchar(3) not null,
     quantity int not null,
     created_at timestamp not null,
+    foreign key (product_id) references commerce_product(id),
+    foreign key (offering_id) references commercial_offering(id),
     unique(cart_id, product_code)
 );
 
@@ -3820,3 +3900,49 @@ $$;
 create trigger wf_attempt_terminal_closes_backend_selection
 after update of state on wf_execution_attempt
 for each row execute function wf_close_terminal_backend_selection();
+
+-- Durable greenfield commercial seeds. These are data, not a second Java catalog/plan writer.
+insert into subscription_plan(id,plan_key,name,description,billing_interval,base_price_minor,currency_code,included_quota,status) values
+ ('seed-plan-basic','basic_monthly','Basic Monthly','Catalog seed','MONTHLY',2999,'USD','{}','ACTIVE'),
+ ('seed-plan-pro','pro_monthly','Pro Monthly','Catalog seed','MONTHLY',9999,'USD','{}','ACTIVE'),
+ ('seed-plan-team','team_monthly','Team Monthly','Catalog seed','MONTHLY',29999,'USD','{}','ACTIVE'),
+ ('seed-plan-enterprise','enterprise_monthly','Enterprise Monthly','Catalog seed','MONTHLY',99999,'USD','{}','ACTIVE'),
+ ('seed-plan-gpu','addon_gpu_monthly','GPU Add-on','Catalog seed','MONTHLY',4999,'USD','{}','ACTIVE'),
+ ('seed-plan-ai','addon_ai_monthly','AI Add-on','Catalog seed','MONTHLY',2999,'USD','{}','ACTIVE');
+
+insert into pricing_rule(id,tenant_id,rule_key,rule_version,name,description,pricing_model,meter_key,
+ unit_price_minor,currency_code,tier_config,status,effective_from) values
+ ('seed-price-basic','GLOBAL','price-basic',1,'Basic Monthly','Catalog price reference','SUBSCRIPTION','offering.basic',2999,'USD','[]','ACTIVE','2020-01-01T00:00:00Z'),
+ ('seed-price-pro','GLOBAL','price-pro',1,'Pro Monthly','Catalog price reference','SUBSCRIPTION','offering.pro',9999,'USD','[]','ACTIVE','2020-01-01T00:00:00Z'),
+ ('seed-price-team','GLOBAL','price-team',1,'Team Monthly','Catalog price reference','SUBSCRIPTION','offering.team',29999,'USD','[]','ACTIVE','2020-01-01T00:00:00Z'),
+ ('seed-price-enterprise','GLOBAL','price-enterprise',1,'Enterprise Monthly','Catalog price reference','SUBSCRIPTION','offering.enterprise',99999,'USD','[]','ACTIVE','2020-01-01T00:00:00Z'),
+ ('seed-price-gpu','GLOBAL','price-gpu',1,'GPU Add-on','Catalog price reference','SUBSCRIPTION','offering.gpu',4999,'USD','[]','ACTIVE','2020-01-01T00:00:00Z'),
+ ('seed-price-ai','GLOBAL','price-ai',1,'AI Add-on','Catalog price reference','SUBSCRIPTION','offering.ai',2999,'USD','[]','ACTIVE','2020-01-01T00:00:00Z'),
+ ('seed-price-credit50','GLOBAL','price-credit50',1,'Credit Pack 50','Catalog price reference','CREDIT','offering.credit50',5000,'USD','[]','ACTIVE','2020-01-01T00:00:00Z'),
+ ('seed-price-credit200','GLOBAL','price-credit200',1,'Credit Pack 200','Catalog price reference','CREDIT','offering.credit200',18000,'USD','[]','ACTIVE','2020-01-01T00:00:00Z'),
+ ('seed-price-seat5','GLOBAL','price-seat5',1,'Five Seats','Catalog price reference','CUSTOM','offering.seat5',1999,'USD','[]','ACTIVE','2020-01-01T00:00:00Z');
+
+insert into commerce_product(id,product_code,product_line_type,display_name,lifecycle_state,version,created_at,updated_at) values
+ ('seed-product-basic','basic_monthly','BASE_SUBSCRIPTION','Basic Monthly','ACTIVE',1,now(),now()),
+ ('seed-product-pro','pro_monthly','BASE_SUBSCRIPTION','Pro Monthly','ACTIVE',1,now(),now()),
+ ('seed-product-team','team_monthly','BASE_SUBSCRIPTION','Team Monthly','ACTIVE',1,now(),now()),
+ ('seed-product-enterprise','enterprise_monthly','BASE_SUBSCRIPTION','Enterprise Monthly','ACTIVE',1,now(),now()),
+ ('seed-product-gpu','addon_gpu_monthly','ADD_ON_SUBSCRIPTION','GPU Add-on','ACTIVE',1,now(),now()),
+ ('seed-product-ai','addon_ai_monthly','ADD_ON_SUBSCRIPTION','AI Add-on','ACTIVE',1,now(),now()),
+ ('seed-product-credit50','credit_pack_50','CREDIT_PACK','Credit Pack 50','ACTIVE',1,now(),now()),
+ ('seed-product-credit200','credit_pack_200','CREDIT_PACK','Credit Pack 200','ACTIVE',1,now(),now()),
+ ('seed-product-seat5','seat_pack_5','SEAT_PACK','Five Seats','ACTIVE',1,now(),now());
+
+insert into commercial_offering(id,product_id,offering_key,offering_version,lifecycle_state,row_version,purchase_mode,
+ tenant_scope,market_scope,valid_from,entitlement_bundle_ref,entitlement_bundle_version,quota_profile_ref,quota_profile_version,
+ subscription_plan_ref,subscription_plan_version,commercial_price_ref,commercial_price_version,amount_minor_snapshot,currency_code_snapshot,
+ credit_quantity_minor,seat_quantity,seat_feature_key,created_at,updated_at) values
+ ('seed-offer-basic','seed-product-basic','Basic Monthly',1,'ACTIVE',1,'SUBSCRIPTION','GLOBAL','GLOBAL','2020-01-01T00:00:00Z','basic_features',1,'basic_quota',1,'basic_monthly',1,'price-basic',1,2999,'USD',null,null,null,now(),now()),
+ ('seed-offer-pro','seed-product-pro','Pro Monthly',1,'ACTIVE',1,'SUBSCRIPTION','GLOBAL','GLOBAL','2020-01-01T00:00:00Z','default_features',1,'pro_quota',1,'pro_monthly',1,'price-pro',1,9999,'USD',null,null,null,now(),now()),
+ ('seed-offer-team','seed-product-team','Team Monthly',1,'ACTIVE',1,'SUBSCRIPTION','GLOBAL','GLOBAL','2020-01-01T00:00:00Z','team_features',1,'team_quota',1,'team_monthly',1,'price-team',1,29999,'USD',null,null,null,now(),now()),
+ ('seed-offer-enterprise','seed-product-enterprise','Enterprise Monthly',1,'ACTIVE',1,'SUBSCRIPTION','GLOBAL','GLOBAL','2020-01-01T00:00:00Z','enterprise_features',1,'enterprise_quota',1,'enterprise_monthly',1,'price-enterprise',1,99999,'USD',null,null,null,now(),now()),
+ ('seed-offer-gpu','seed-product-gpu','GPU Add-on',1,'ACTIVE',1,'SUBSCRIPTION','GLOBAL','GLOBAL','2020-01-01T00:00:00Z',null,null,'pro_quota',1,'addon_gpu_monthly',1,'price-gpu',1,4999,'USD',null,null,null,now(),now()),
+ ('seed-offer-ai','seed-product-ai','AI Add-on',1,'ACTIVE',1,'SUBSCRIPTION','GLOBAL','GLOBAL','2020-01-01T00:00:00Z',null,null,'pro_quota',1,'addon_ai_monthly',1,'price-ai',1,2999,'USD',null,null,null,now(),now()),
+ ('seed-offer-credit50','seed-product-credit50','Credit Pack 50',1,'ACTIVE',1,'CREDIT_PACK','GLOBAL','GLOBAL','2020-01-01T00:00:00Z',null,null,null,null,null,null,'price-credit50',1,5000,'USD',5000,null,null,now(),now()),
+ ('seed-offer-credit200','seed-product-credit200','Credit Pack 200',1,'ACTIVE',1,'CREDIT_PACK','GLOBAL','GLOBAL','2020-01-01T00:00:00Z',null,null,null,null,null,null,'price-credit200',1,18000,'USD',20000,null,null,now(),now()),
+ ('seed-offer-seat5','seed-product-seat5','Five Seats',1,'ACTIVE',1,'SEAT_PACK','GLOBAL','GLOBAL','2020-01-01T00:00:00Z',null,null,null,null,null,null,'price-seat5',1,1999,'USD',null,5,'render.minutes',now(),now());

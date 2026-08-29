@@ -21,8 +21,9 @@ public class CommerceController {
     }
 
     @GetMapping("/products")
-    public List<CanonicalProductResponse> listProducts() {
-        return checkoutOrchestrator.listCatalogProducts().stream()
+    public List<CanonicalProductResponse> listProducts(@RequestParam String tenantId,
+            @RequestParam(defaultValue = "GLOBAL") String market) {
+        return checkoutOrchestrator.listCatalogProducts(tenantId, market).stream()
                 .map(CommerceController::toProductResponse)
                 .toList();
     }
@@ -48,7 +49,7 @@ public class CommerceController {
     }
 
     @GetMapping("/revenue/{tenantId}")
-    public double getTotalRevenueForTenant(@PathVariable String tenantId) {
+    public long getTotalRevenueForTenant(@PathVariable String tenantId) {
         return checkoutOrchestrator.getTotalRevenueForTenant(tenantId);
     }
 
