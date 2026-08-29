@@ -1,7 +1,7 @@
 # Billing, Entitlement, Payment Authority Convergence — Bounded Architecture Contract V1
 
-Status: `COMMERCIAL_AUTHORITY_CONTRACT=FROZEN`
-Scope: decision recovery and architecture contract only; no implementation or migration is authorized.
+Status: `COMMERCIAL_AUTHORITY_CONTRACT=ACCEPTED_WITH_BOUNDED_REFINEMENTS`
+Scope: independently accepted architecture contract with authoritative R1-R3 refinements; bounded implementation is authorized only through the I0-I10 sequence.
 Base: `e02579181ba3049ae65ed81080c93a7212f5833d` / tree `b67136e3a4b4e08688091bad0c4dad30d841978d`.
 
 ## 1. Non-negotiable separations
@@ -37,7 +37,7 @@ Entitlement answers what a canonical principal may access from subscription, org
 
 ### C5 — Quota authority
 
-Quota answers how much a principal/workspace/organization may consume. The target `QuotaUsageAuthority` belongs to `entitlement-module` as a commercial admission authority and owns quota limits, consumption, adjustments, and projections. Quota is distinct from scheduler capacity, runtime resource reservation, observed usage, provider availability, and price.
+`ENTITLEMENT_AND_QUOTA_REMAIN_SEPARATE_AUTHORITIES_V1` is frozen. Quota answers how much a principal/workspace/organization may consume. `EntitlementGrant != QuotaLimit != QuotaUsage != QuotaDecision`. The target `QuotaUsageAuthority` may remain physically located in `entitlement-module` for minimum-change implementation, but co-location never makes Quota subordinate to or part of Entitlement semantics. Quota owns limits, usage, adjustments, and decisions independently and preserves migration freedom to move modules later without changing Entitlement contracts. Quota is distinct from scheduler capacity, runtime resource reservation, observed usage, provider availability, and price.
 
 ### C6 — Usage and UsageMetering
 
@@ -45,7 +45,7 @@ Runtime producers own immutable `ObservedRuntimeUsage` facts with operation/atte
 
 ### C7 — ExecutionCost versus CommercialPrice
 
-`ExecutionCost` is internal/provider compute, storage, accelerator, network, or vendor cost and is recorded independently of customer price. `CommercialPrice` is customer-facing and may apply offering/rate/margin/promotion/credit/geography/tax. Scheduler and optimizer may consume cost estimates but never define price. Billing may consume cost observations but never decide technical feasibility. Monetary values use typed currency plus integral minor units or explicitly scaled decimal minor units; floating-point money is forbidden.
+`EXECUTION_COST_IS_NOT_COMMERCIAL_PRICE_AUTHORITY_V1` is frozen. H5 owns `CommercialPrice`, billable amount, credit, charge, and invoice semantics. H5 does not define technical/provider `ExecutionCost` authority; it may consume a typed ExecutionCost projection when commercially relevant. ExecutionCost remains independently usable by Roadmap #23 optimization without making Billing execution authority. Scheduler and optimizer never define CommercialPrice, and Billing never decides technical feasibility. Monetary values use typed currency plus integral minor units or explicitly scaled decimal minor units; canonical monetary authority uses no binary floating point and must satisfy `CANONICAL_MONEY_FLOATING_POINT_AUTHORITY_COUNT=0`.
 
 ### C8 — Product, Plan, and Catalog
 
@@ -97,7 +97,7 @@ H1 answers `CAN_THIS_PROVIDER_IMPLEMENTATION_RUN_HERE` through `CompatibilityKer
 
 ### C20 — `EffectiveCapabilityView`
 
-H5 owns a principal-filtered, immutable, versioned `EffectiveCapabilityView` containing only capability IDs/contracts already present in the raw registry and annotated with commercial availability, quota summary, and typed denial reasons. It is derived from registry discovery plus Entitlement/Policy/Quota and H1 availability projections. It does not alter CapabilityRegistry, compatibility proofs, provider bindings, or canonical capability semantics.
+`EFFECTIVE_CAPABILITY_VIEW_IS_DERIVED_APPLICATION_PROJECTION_V1` is frozen. `EffectiveCapabilityView` is not owned by H5. It is a principal-filtered, immutable, versioned application projection derived by the application composition boundary from independent authorities: capability existence/lifecycle, H1 runtime availability, H5 Entitlement, H5 commercial QuotaDecision, and role/workspace policy. H5 must not import, reimplement, or redefine RuntimeEligibility or ProviderCompatibility to construct commercial semantics. The projection contains only existing capability IDs/contracts and does not alter CapabilityRegistry, compatibility proofs, provider bindings, Entitlement, Quota, or canonical capability semantics.
 
 ### C21 — Agent, MCP, frontend, and recipe filtering
 
@@ -113,11 +113,11 @@ Migration is append-forward: introduce canonical ports/types/tables or additive 
 
 ### C24 — H1 and H4 boundaries
 
-H1 retains CapabilityRegistry, compatibility, runtime availability, worker/device/capacity, and execution reservation authority and imports no commercial decision into technical reason enums. H4 may consume `EntitlementProjection`, `UsageProjection`, `BillingProjection`, `SubscriptionProjection`, and `EffectiveCapabilityView`; it derives none of them and performs no commercial writes. H5 never modifies canonical Media/Timeline/Audio/H1/H2/H4 semantics.
+H1 retains CapabilityRegistry, compatibility, runtime availability, worker/device/capacity, ExecutionCost authority, and execution reservation authority and imports no commercial decision into technical reason enums. The application composition boundary derives EffectiveCapabilityView without transferring H1 or H5 authority. H4 may consume `EntitlementProjection`, `UsageProjection`, `BillingProjection`, `SubscriptionProjection`, and `EffectiveCapabilityView`; it derives none of them and performs no commercial writes. H5 never modifies canonical Media/Timeline/Audio/H1/H2/H4 semantics and does not broaden into provider scheduling, tax, general accounting/ERP, or Roadmap #23.
 
 ### C25 — Implementation phases
 
-Implementation is proposed only in the ordered Phase C0–C9 plan below. Each phase freezes a candidate SHA before its own cheap and targeted gates; any history or source change invalidates prior verification. Parallel work is permitted only across already-frozen authority boundaries with one writer lane per unfrozen authority.
+Implementation is authorized only in the ordered I0-I10 plan below. Each phase uses tests-first RED/GREEN evidence and freezes its own append-forward commit before the next authority mutation. Parallel work is permitted only across already-frozen disjoint authority boundaries with one writer lane per unfrozen authority.
 
 ### C26 — Escalation conditions
 
@@ -125,7 +125,7 @@ Stop and seek independent architecture acceptance if a phase needs a second cano
 
 ### C27 — Implementation GO/NO-GO
 
-The repository-reality decision recovery is ready for independent review: `READY_FOR_COMMERCIAL_AUTHORITY_IMPLEMENTATION=YES`. Actual implementation remains `IMPLEMENTATION_AUTHORIZATION=NO_GO_PENDING_INDEPENDENT_CHATGPT_ACCEPTANCE`. This document authorizes no source, test, build, configuration, schema, frontend, GraphQL, or runtime change.
+Independent review bound to candidate `586be5a08e90482ddcda9530fb66bd7783637361` returned `H5_INDEPENDENT_CHATGPT_ARCHITECTURE_REVIEW=PASS_WITH_BOUNDED_REFINEMENTS`. `H5_COMMERCIAL_AUTHORITY_IMPLEMENTATION_AUTHORIZATION=GO` applies only after R1-R3 are materialized and only through I0-I10. No push, merge, frontend authority, tax/ERP, H1 feasibility, provider scheduling, or Roadmap #23 work is authorized.
 
 ## 3. Mechanically observed repository reality
 
@@ -161,27 +161,28 @@ Each category is currently `MULTIPLE_CANONICAL_WRITER_CANDIDATES`; “exactly on
 5. UsageMetering normalizes observations into BillableUsage; Billing prices and invoices it; Payment settles Billing obligations.
 6. Payment/Billing/Subscription workflow events may request Entitlement transitions, but only Entitlement records the resulting grant/revocation.
 
-## 6. Proposed implementation phases — not authorized
+## 6. Authorized bounded implementation ordering
 
-| Phase | Bounded proposal | Exit proof |
+| Phase | Bounded implementation | Exit proof |
 |---|---|---|
-| C0 | accepted contract preflight | independent acceptance, clean base, inventory/guard green |
-| C1 | canonical authority/type ownership | ports/types compile; forbidden imports absent |
-| C2 | quota single-writer convergence | atomic/idempotent concurrency tests; Render/deprecated writers gone |
-| C3 | entitlement/subscription cleanup | one subscription writer; one grant command boundary; projection-only reads |
-| C4 | usage metering | observation-to-billable lineage, dedupe, rounding, adjustment tests |
-| C5 | billing/pricing convergence | integral money; Render price/credit/billing shadows removed |
-| C6 | payment adapter/application boundary | webhook duplicate/out-of-order/refund/retry/reconciliation tests |
-| C7 | effective capability projection/admission | filtered surfaces plus server-side recheck; raw registry bypass negative tests |
-| C8 | shadow deletion/guards | zero forbidden writers/imports/float-money shadows |
-| C9 | bounded integration/migration proof | manifested backfill/reconciliation counts and post-switch verification |
+| I0 | exact accepted-contract preflight and R1-R3 materialization | exact candidate identity; refinement guard green |
+| I1 | canonical ownership and typed contracts | authority packages/types compile; forbidden ownership imports absent |
+| I2 | quota single-writer convergence | atomic/idempotent concurrency tests; one quota writer |
+| I3 | subscription and entitlement writer convergence | one subscription writer; one grant command boundary; projections read-only |
+| I4 | ObservedRuntimeUsage → UsageMetering → BillableUsage | immutable observation, lineage, rule/version, dedupe and rounding proof |
+| I5 | billing/invoice writer convergence | one invoice/ledger path; canonical monetary authority float count zero |
+| I6 | payment transaction writer convergence | webhook duplicate/out-of-order/refund/retry/reconciliation proof |
+| I7 | ProductCatalog / CommercialOffering | versioned offering authority without capability semantics |
+| I8 | EffectiveCapabilityView application projection | independent authority inputs; no H1/H5 authority collapse; server-side recheck |
+| I9 | shadow deletion and architecture guards | zero deprecated/Render commercial writers and canonical float-money authority |
+| I10 | targeted integration, concurrency, idempotency, and failure validation | bounded suites and full serial regression evidence |
 
 ## 7. Gate contract and stop state
 
 The network-free guard at `docs/architecture/governance/automated-guards/verify-billing-entitlement-payment-authority-convergence-v1.py` validates contract clauses/separations, inventory schema/enums/counts/evidence, exact writer sets, repository drift patterns, and built-in mutations. Full suites are intentionally excluded because this lane changes governance documentation only.
 
 `BILLING_ENTITLEMENT_PAYMENT_DECISION_RECOVERY=PASS`
-`COMMERCIAL_AUTHORITY_CONTRACT=FROZEN`
+`COMMERCIAL_AUTHORITY_CONTRACT=ACCEPTED_WITH_BOUNDED_REFINEMENTS`
 `READY_FOR_COMMERCIAL_AUTHORITY_IMPLEMENTATION=YES`
-`IMPLEMENTATION_AUTHORIZATION=NO_GO_PENDING_INDEPENDENT_CHATGPT_ACCEPTANCE`
+`H5_COMMERCIAL_AUTHORITY_IMPLEMENTATION_AUTHORIZATION=GO`
 `BLOCKERS=0`

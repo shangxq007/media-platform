@@ -26,6 +26,7 @@ INVENTORY = GOV / "billing-entitlement-payment-authority-convergence-repository-
 GUARD = Path(__file__).resolve()
 BASE_SHA = "e02579181ba3049ae65ed81080c93a7212f5833d"
 BASE_TREE = "b67136e3a4b4e08688091bad0c4dad30d841978d"
+ACCEPTED_CANDIDATE_SHA = "586be5a08e90482ddcda9530fb66bd7783637361"
 
 ALLOWED_CHANGED_PATHS = {
     CONTRACT.relative_to(REPO).as_posix(),
@@ -64,9 +65,14 @@ REQUIRED_CONTRACT_TOKENS = {
     "COMMERCIAL_ACCOUNT_SUSPENDED", "BILLING_ACTION_REQUIRED", "PAYMENT_FAILED",
     "TRIAL_EXPIRED",
     "BILLING_ENTITLEMENT_PAYMENT_DECISION_RECOVERY=PASS",
-    "COMMERCIAL_AUTHORITY_CONTRACT=FROZEN",
+    "COMMERCIAL_AUTHORITY_CONTRACT=ACCEPTED_WITH_BOUNDED_REFINEMENTS",
     "READY_FOR_COMMERCIAL_AUTHORITY_IMPLEMENTATION=YES",
-    "IMPLEMENTATION_AUTHORIZATION=NO_GO_PENDING_INDEPENDENT_CHATGPT_ACCEPTANCE",
+    "H5_COMMERCIAL_AUTHORITY_IMPLEMENTATION_AUTHORIZATION=GO",
+    "H5_INDEPENDENT_CHATGPT_ARCHITECTURE_REVIEW=PASS_WITH_BOUNDED_REFINEMENTS",
+    "EFFECTIVE_CAPABILITY_VIEW_IS_DERIVED_APPLICATION_PROJECTION_V1",
+    "ENTITLEMENT_AND_QUOTA_REMAIN_SEPARATE_AUTHORITIES_V1",
+    "EXECUTION_COST_IS_NOT_COMMERCIAL_PRICE_AUTHORITY_V1",
+    "CANONICAL_MONEY_FLOATING_POINT_AUTHORITY_COUNT=0",
     "BLOCKERS=0",
 }
 WRITER_SETS = {
@@ -101,16 +107,16 @@ def validate_contract(text: str) -> list[str]:
     if clauses != list(range(1, 28)):
         errors.append(f"contract clauses are not exact ordered C1..C27: {clauses}")
 
-    phases = [int(value) for value in re.findall(r"^\| C(\d) \|", text, re.MULTILINE)]
-    if phases != list(range(10)):
-        errors.append(f"implementation phases are not exact ordered C0..C9: {phases}")
+    phases = [int(value) for value in re.findall(r"^\| I(\d+) \|", text, re.MULTILINE)]
+    if phases != list(range(11)):
+        errors.append(f"implementation phases are not exact ordered I0..I10: {phases}")
 
     forbidden_authorization = (
-        "IMPLEMENTATION_AUTHORIZATION=GO" in text
-        or "implementation is authorized" in text.lower()
+        "IMPLEMENTATION_AUTHORIZATION=NO_GO_PENDING_INDEPENDENT_CHATGPT_ACCEPTANCE" in text
+        or "EffectiveCapabilityView is owned by H5" in text
     )
     if forbidden_authorization:
-        errors.append("contract improperly authorizes implementation")
+        errors.append("contract retains superseded pre-acceptance authority text")
     return errors
 
 
@@ -301,15 +307,15 @@ def repository_checks() -> tuple[list[str], dict[str, int]]:
     if origin != BASE_SHA:
         errors.append(f"origin/main drift: {origin}")
 
-    # The guard must work both before candidate freeze (HEAD == base with
-    # uncommitted artifacts) and after the single append-forward docs commit.
-    committed_candidate = head != BASE_SHA
-    if committed_candidate:
+    # The refinement guard works on the independently accepted candidate and
+    # on exactly one append-forward bounded-refinement commit above it.
+    committed_refinement = head != ACCEPTED_CANDIDATE_SHA
+    if committed_refinement:
         parent = git("rev-parse", "HEAD^").stdout.strip()
-        commit_count = git("rev-list", "--count", f"{BASE_SHA}..HEAD").stdout.strip()
-        if parent != BASE_SHA or commit_count != "1":
+        commit_count = git("rev-list", "--count", f"{ACCEPTED_CANDIDATE_SHA}..HEAD").stdout.strip()
+        if parent != ACCEPTED_CANDIDATE_SHA or commit_count != "1":
             errors.append(
-                f"candidate history must be exactly one commit on base: "
+                f"refinement history must be exactly one commit on accepted candidate: "
                 f"head={head} parent={parent} count={commit_count}"
             )
 
@@ -319,8 +325,8 @@ def repository_checks() -> tuple[list[str], dict[str, int]]:
         ("diff", "--cached", "--name-only"),
         ("ls-files", "--others", "--exclude-standard"),
     ]
-    if committed_candidate:
-        change_commands.append(("diff", "--name-only", f"{BASE_SHA}..HEAD"))
+    if committed_refinement:
+        change_commands.append(("diff", "--name-only", f"{ACCEPTED_CANDIDATE_SHA}..HEAD"))
     for args in change_commands:
         result = git(*args)
         if result.returncode != 0:
@@ -415,6 +421,30 @@ def repository_checks() -> tuple[list[str], dict[str, int]]:
         errors.append(
             "money scan no longer reproduces classified unsafe paths: "
             f"{sorted(required_unsafe_money_paths - money_paths)}"
+        )
+
+    canonical_money_paths = [
+        REPO / "billing-module/src/main/java/com/example/platform/billing/domain/BillingDecision.java",
+        REPO / "billing-module/src/main/java/com/example/platform/billing/domain/PricingRule.java",
+        REPO / "billing-module/src/main/java/com/example/platform/billing/infrastructure/BillingInvoiceRepository.java",
+        REPO / "billing-module/src/main/java/com/example/platform/billing/infrastructure/BillingLedgerJdbcRepository.java",
+        REPO / "payment-module/src/main/java/com/example/platform/payment/infrastructure/PaymentAttemptRepository.java",
+        REPO / "commerce-module/src/main/java/com/example/platform/commerce/domain/CanonicalProduct.java",
+    ]
+    canonical_money_float = re.compile(
+        r"\b(?:double|Double|float|Float)\s+\w*(?:amount|price|cost|credit|balance)\w*",
+        re.IGNORECASE,
+    )
+    canonical_money_float_hits = 0
+    for path in canonical_money_paths:
+        canonical_money_float_hits += len(
+            canonical_money_float.findall(path.read_text(encoding="utf-8", errors="replace"))
+        )
+    metrics["CANONICAL_MONEY_FLOATING_POINT_AUTHORITY_COUNT"] = canonical_money_float_hits
+    if canonical_money_float_hits != 0:
+        errors.append(
+            "CANONICAL_MONEY_FLOATING_POINT_AUTHORITY_COUNT="
+            f"{canonical_money_float_hits} expected=0"
         )
 
     return errors, metrics
