@@ -53,7 +53,7 @@ public final class ProviderLocalCompositionEvaluator {
                     List.copyOf(blockers),
                     attributions,
                     EVALUATOR_PROVENANCE,
-                    request.compatibilityGraph(),
+                    request.feasibilityView(),
                     request.providerCandidate(),
                     request.staticCompatibilityProofs());
         }
@@ -78,7 +78,7 @@ public final class ProviderLocalCompositionEvaluator {
                     List.copyOf(blockers),
                     attributions,
                     EVALUATOR_PROVENANCE,
-                    request.compatibilityGraph(),
+                    request.feasibilityView(),
                     request.providerCandidate(),
                     request.staticCompatibilityProofs());
         }
@@ -91,7 +91,7 @@ public final class ProviderLocalCompositionEvaluator {
                     List.of(CompositionBlocker.UNKNOWN_PROVIDER_COMPOSITION_SEMANTICS),
                     attributions,
                     EVALUATOR_PROVENANCE,
-                    request.compatibilityGraph(),
+                    request.feasibilityView(),
                     request.providerCandidate(),
                     request.staticCompatibilityProofs());
         }
@@ -102,7 +102,7 @@ public final class ProviderLocalCompositionEvaluator {
                 List.of(),
                 attributions,
                 EVALUATOR_PROVENANCE,
-                request.compatibilityGraph(),
+                request.feasibilityView(),
                 request.providerCandidate(),
                 request.staticCompatibilityProofs());
     }

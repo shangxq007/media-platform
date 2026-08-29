@@ -9,6 +9,11 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
+    "architecture:guard": "node scripts/frontend-architecture-guard.mjs",
+    "architecture:guard:test": "node scripts/frontend-architecture-guard.test.mjs",
+    "h4:ledger": "node scripts/validate-h4-disposition-ledger.mjs",
+    "h4:routes": "node scripts/verify-h4-route-reachability.mjs",
+    "h4:clean-forward": "node scripts/verify-h4-clean-forward.mjs",
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
     "lint:fix": "eslint \"src/**/*.{ts,tsx}\" --fix",
     "typecheck": "tsc --noEmit"

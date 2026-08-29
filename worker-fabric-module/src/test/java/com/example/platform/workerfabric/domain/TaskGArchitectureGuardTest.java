@@ -6,8 +6,12 @@ import com.example.platform.execution.domain.provider.ProviderBindingPin;
 import com.example.platform.execution.taskgraph.ExecutableTaskId;
 import java.io.IOException;
 import java.lang.reflect.RecordComponent;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -15,6 +19,7 @@ import java.util.TreeSet;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * Complete mechanical zero-guard matrix for Roadmap #22 Epoch 3 Task G.
@@ -415,9 +420,9 @@ class TaskGArchitectureGuardTest {
     }
 
     @Test
-    void providerCompatibilityGraphRuntimeStateFieldCountIsZero() {
+    void providerFeasibilityViewRuntimeStateFieldCountIsZero() {
         assertStaticTypeHasNoRuntimeState(
-                "com/example/platform/execution/compatibility/ProviderCompatibilityGraph.java");
+                "com/example/platform/execution/compatibility/ProviderFeasibilityView.java");
     }
 
     @Test
@@ -442,6 +447,86 @@ class TaskGArchitectureGuardTest {
                 .as("ROADMAP_23_GLOBAL_OPTIMIZER_IMPLEMENTATION_COUNT=0; "
                         + "scan=**/src/main/java/**/*.java")
                 .isEmpty();
+    }
+
+    @Test
+    void productionJavaDiscoveryDetectsCanonicalModuleForbiddenContent(@TempDir Path repositoryRoot)
+            throws IOException {
+        Path forbidden = writeJava(
+                repositoryRoot,
+                "canonical-module/src/main/java/example/GlobalOptimizer.java",
+                "final class GlobalOptimizer {}\n");
+
+        assertThat(typeDefinitionsMatching(repositoryRoot, ROADMAP_23_OPTIMIZER_TYPE))
+                .containsExactly(relative(repositoryRoot, forbidden) + "#GlobalOptimizer");
+    }
+
+    @Test
+    void productionJavaDiscoveryExcludesAdministrativeWorktreeContent(@TempDir Path repositoryRoot)
+            throws IOException {
+        writeJava(
+                repositoryRoot,
+                ".worktrees/child/module/src/main/java/example/GlobalOptimizer.java",
+                "final class GlobalOptimizer {}\n");
+
+        assertThat(typeDefinitionsMatching(repositoryRoot, ROADMAP_23_OPTIMIZER_TYPE)).isEmpty();
+    }
+
+    @Test
+    void productionJavaDiscoveryExcludesGitAdministrativeStorage(@TempDir Path repositoryRoot)
+            throws IOException {
+        writeJava(
+                repositoryRoot,
+                ".git/administrative/src/main/java/example/GlobalOptimizer.java",
+                "final class GlobalOptimizer {}\n");
+
+        assertThat(typeDefinitionsMatching(repositoryRoot, ROADMAP_23_OPTIMIZER_TYPE)).isEmpty();
+    }
+
+    @Test
+    void productionJavaDiscoveryExcludesBuildOutput(@TempDir Path repositoryRoot)
+            throws IOException {
+        writeJava(
+                repositoryRoot,
+                "module/build/generated/src/main/java/example/GlobalOptimizer.java",
+                "final class GlobalOptimizer {}\n");
+
+        assertThat(typeDefinitionsMatching(repositoryRoot, ROADMAP_23_OPTIMIZER_TYPE)).isEmpty();
+    }
+
+    @Test
+    void productionJavaDiscoveryDetectsNestedNewModuleForbiddenContent(@TempDir Path repositoryRoot)
+            throws IOException {
+        Path forbidden = writeJava(
+                repositoryRoot,
+                "components/nested/new-module/src/main/java/example/GlobalOptimizer.java",
+                "final class GlobalOptimizer {}\n");
+
+        assertThat(typeDefinitionsMatching(repositoryRoot, ROADMAP_23_OPTIMIZER_TYPE))
+                .containsExactly(relative(repositoryRoot, forbidden) + "#GlobalOptimizer");
+    }
+
+    @Test
+    void productionJavaDiscoveryScansAdministrativeRootLookalikes(@TempDir Path repositoryRoot)
+            throws IOException {
+        Path worktreesLookalike = writeJava(
+                repositoryRoot,
+                ".worktrees-backup/module/src/main/java/example/GlobalOptimizer.java",
+                "final class GlobalOptimizer {}\n");
+        Path gitLookalike = writeJava(
+                repositoryRoot,
+                ".git-shadow/module/src/main/java/example/CostOptimizer.java",
+                "final class CostOptimizer {}\n");
+
+        assertThat(typeDefinitionsMatching(repositoryRoot, ROADMAP_23_OPTIMIZER_TYPE))
+                .containsExactly(
+                        relative(repositoryRoot, gitLookalike) + "#CostOptimizer",
+                        relative(repositoryRoot, worktreesLookalike) + "#GlobalOptimizer");
+    }
+
+    @Test
+    void productionJavaDiscoveryIsMateriallyPopulated() {
+        assertThat(allProductionJavaFiles()).hasSizeGreaterThan(100);
     }
 
     @Test
@@ -542,12 +627,17 @@ class TaskGArchitectureGuardTest {
     }
 
     private static List<String> typeDefinitionsMatching(Pattern namePattern) {
+        return typeDefinitionsMatching(REPO_ROOT, namePattern);
+    }
+
+    private static List<String> typeDefinitionsMatching(
+            Path repositoryRoot, Pattern namePattern) {
         Set<String> definitions = new TreeSet<>();
-        allProductionJavaFiles().forEach(path -> {
+        allProductionJavaFiles(repositoryRoot).forEach(path -> {
             var matcher = TYPE_DEFINITION.matcher(stripComments(source(path)));
             while (matcher.find()) {
                 if (namePattern.matcher(matcher.group(1)).matches()) {
-                    definitions.add(relative(path) + "#" + matcher.group(1));
+                    definitions.add(relative(repositoryRoot, path) + "#" + matcher.group(1));
                 }
             }
         });
@@ -736,16 +826,70 @@ class TaskGArchitectureGuardTest {
     }
 
     private static List<Path> allProductionJavaFiles() {
-        try (var files = Files.walk(REPO_ROOT)) {
-            return files.filter(Files::isRegularFile)
-                    .filter(path -> path.getFileName().toString().endsWith(".java"))
-                    .filter(path -> path.toString().contains("/src/main/java/"))
-                    .filter(path -> !path.toString().contains("/build/"))
-                    .sorted()
-                    .toList();
+        return allProductionJavaFiles(REPO_ROOT);
+    }
+
+    private static List<Path> allProductionJavaFiles(Path repositoryRoot) {
+        Path normalizedRepositoryRoot = repositoryRoot.toAbsolutePath().normalize();
+        Path administrativeWorktreesRoot =
+                normalizedRepositoryRoot.resolve(".worktrees").normalize();
+        Path gitAdministrativeRoot = normalizedRepositoryRoot.resolve(".git").normalize();
+        List<Path> productionJavaFiles = new ArrayList<>();
+        try {
+            Files.walkFileTree(normalizedRepositoryRoot, new SimpleFileVisitor<>() {
+                @Override
+                public FileVisitResult preVisitDirectory(
+                        Path directory, BasicFileAttributes attributes) {
+                    Path normalizedDirectory = directory.toAbsolutePath().normalize();
+                    if (isAtOrBelow(normalizedDirectory, administrativeWorktreesRoot)
+                            || isAtOrBelow(normalizedDirectory, gitAdministrativeRoot)
+                            || isBuildOutput(normalizedRepositoryRoot, normalizedDirectory)) {
+                        return FileVisitResult.SKIP_SUBTREE;
+                    }
+                    return FileVisitResult.CONTINUE;
+                }
+
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attributes) {
+                    Path normalizedFile = file.toAbsolutePath().normalize();
+                    if (attributes.isRegularFile()
+                            && normalizedFile.getFileName().toString().endsWith(".java")
+                            && isProductionJavaSource(normalizedRepositoryRoot, normalizedFile)) {
+                        productionJavaFiles.add(normalizedFile);
+                    }
+                    return FileVisitResult.CONTINUE;
+                }
+            });
         } catch (IOException exception) {
             throw new IllegalStateException("cannot enumerate production Java sources", exception);
         }
+        productionJavaFiles.sort(Path::compareTo);
+        return List.copyOf(productionJavaFiles);
+    }
+
+    private static boolean isProductionJavaSource(Path repositoryRoot, Path path) {
+        Path relativePath = repositoryRoot.relativize(path);
+        for (int index = 0; index + 3 < relativePath.getNameCount(); index++) {
+            if (relativePath.getName(index).toString().equals("src")
+                    && relativePath.getName(index + 1).toString().equals("main")
+                    && relativePath.getName(index + 2).toString().equals("java")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isAtOrBelow(Path path, Path root) {
+        return path.equals(root) || path.startsWith(root);
+    }
+
+    private static boolean isBuildOutput(Path repositoryRoot, Path path) {
+        for (Path segment : repositoryRoot.relativize(path)) {
+            if (segment.toString().equals("build")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static List<Path> productionJavaFiles(Path root) {
@@ -773,7 +917,18 @@ class TaskGArchitectureGuardTest {
     }
 
     private static String relative(Path path) {
-        return REPO_ROOT.relativize(path).toString().replace('\\', '/');
+        return relative(REPO_ROOT, path);
+    }
+
+    private static String relative(Path repositoryRoot, Path path) {
+        return repositoryRoot.relativize(path).toString().replace('\\', '/');
+    }
+
+    private static Path writeJava(Path repositoryRoot, String relativePath, String source)
+            throws IOException {
+        Path path = repositoryRoot.resolve(relativePath);
+        Files.createDirectories(path.getParent());
+        return Files.writeString(path, source);
     }
 
     private static Path testDomain() {

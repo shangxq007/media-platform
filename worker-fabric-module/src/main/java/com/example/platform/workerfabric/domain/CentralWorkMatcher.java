@@ -1,5 +1,6 @@
 package com.example.platform.workerfabric.domain;
 
+import com.example.platform.execution.compatibility.StaticProviderCompatibilityProof;
 import com.example.platform.execution.taskgraph.ExecutableTaskId;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -174,10 +175,22 @@ public final class CentralWorkMatcher {
         Optional<DeviceDescriptor> device = selectedDevice(context, candidate.resourceDemand());
         Optional<DeviceAvailability> deviceAvailability = device.flatMap(descriptor ->
                 Optional.ofNullable(requestWork.deviceAvailability().get(descriptor.id())));
+        List<StaticProviderCompatibilityProof> staticCompatibilityProofs = candidate
+                .executableTask().memberships().stream()
+                .map(membership -> candidate.providerBoundGraph().providerFeasibilityView()
+                        .requireStaticallyFeasible(
+                                membership.physicalPlanUnit(),
+                                candidate.staticallyCompatibleProviderCandidate()))
+                .toList();
         NativeRuntimeEligibilityRequest eligibilityRequest = new NativeRuntimeEligibilityRequest(
                 candidate.providerBoundGraph(),
                 candidate.executableTask(),
                 candidate.staticallyCompatibleProviderCandidate(),
+                staticCompatibilityProofs,
+                candidate.providerHardwareRequirement(),
+                candidate.runtimeDependencyRequirements(),
+                requestWork.providerHardwareObservation(),
+                requestWork.runtimeDependencyObservation(),
                 backendSelection,
                 Optional.of(context.workerRuntime()),
                 Optional.of(context.authoritativeWorkerRuntimeAvailability()),

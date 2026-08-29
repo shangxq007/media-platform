@@ -21,6 +21,8 @@ public record RequestWork(
         Map<DeviceId, DeviceAvailability> deviceAvailability,
         RuntimeEnvironmentAvailability runtimeEnvironmentAvailability,
         SandboxRuntimeAvailability sandboxRuntimeAvailability,
+        Optional<ProviderHardwareObservation> providerHardwareObservation,
+        Optional<RuntimeDependencyObservation> runtimeDependencyObservation,
         Optional<WorkerRuntimeSupportAdvertisement> runtimeSupportAdvertisement,
         Optional<SchedulableCapacity> workerDerivedSchedulableCapacity) {
 
@@ -37,6 +39,10 @@ public record RequestWork(
         Objects.requireNonNull(runtimeEnvironmentAvailability,
                 "runtimeEnvironmentAvailability");
         Objects.requireNonNull(sandboxRuntimeAvailability, "sandboxRuntimeAvailability");
+        providerHardwareObservation = Objects.requireNonNull(
+                providerHardwareObservation, "providerHardwareObservation");
+        runtimeDependencyObservation = Objects.requireNonNull(
+                runtimeDependencyObservation, "runtimeDependencyObservation");
         runtimeSupportAdvertisement = Objects.requireNonNull(
                 runtimeSupportAdvertisement, "runtimeSupportAdvertisement");
         workerDerivedSchedulableCapacity = Objects.requireNonNull(
@@ -87,5 +93,37 @@ public record RequestWork(
                         "runtime support advertisement must bind the requesting runtime");
             }
         });
+        providerHardwareObservation.ifPresent(observation -> {
+            if (!workerRuntimeId.equals(observation.workerRuntimeId())
+                    || !physicalHostId.equals(observation.physicalHostId())) {
+                throw new IllegalArgumentException(
+                        "provider hardware observation must bind the requesting runtime and host");
+            }
+            observation.deviceId().ifPresent(deviceId -> {
+                if (!hostResourceSnapshot.staticCapacity().deviceResources().containsKey(deviceId)) {
+                    throw new IllegalArgumentException(
+                            "provider hardware observation device must belong to the exact host snapshot");
+                }
+            });
+        });
+        runtimeDependencyObservation.ifPresent(observation -> {
+            if (!workerRuntimeId.equals(observation.workerRuntimeId())) {
+                throw new IllegalArgumentException(
+                        "runtime dependency observation must bind the requesting runtime");
+            }
+            observation.deviceId().ifPresent(deviceId -> {
+                if (!hostResourceSnapshot.staticCapacity().deviceResources().containsKey(deviceId)) {
+                    throw new IllegalArgumentException(
+                            "runtime dependency observation device must belong to the exact host snapshot");
+                }
+            });
+        });
+        if (providerHardwareObservation.isPresent()
+                && runtimeDependencyObservation.isPresent()
+                && !providerHardwareObservation.orElseThrow().providerImplementationId().equals(
+                        runtimeDependencyObservation.orElseThrow().providerImplementationId())) {
+            throw new IllegalArgumentException(
+                    "RequestWork probe observations must bind one ProviderImplementationId");
+        }
     }
 }

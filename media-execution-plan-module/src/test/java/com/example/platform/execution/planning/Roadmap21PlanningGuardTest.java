@@ -1,10 +1,14 @@
 package com.example.platform.execution.planning;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -15,6 +19,8 @@ import static org.junit.jupiter.api.Assertions.*;
  * FORWARD invariants (contract C22-C24 + §17 zero-count matrix).
  */
 class Roadmap21PlanningGuardTest {
+
+    private static final int MINIMUM_REAL_REPOSITORY_MAIN_JAVA_FILES = 1_000;
 
     private static Path repoRoot() {
         Path p = Path.of(System.getProperty("user.dir"));
@@ -27,15 +33,10 @@ class Roadmap21PlanningGuardTest {
         return p;
     }
 
-    private static boolean rootIsWorktree() {
-        return repoRoot().toString().contains("/.worktrees/");
-    }
-
     /** All production sources under the module (worktree-aware). */
     private static List<Path> moduleMain() throws IOException {
         List<Path> out = new ArrayList<>();
         Path root = repoRoot();
-        boolean wt = rootIsWorktree();
         try (var walk = Files.walk(root.resolve("media-execution-plan-module/src/main/java"))) {
             walk.filter(Files::isRegularFile)
                     .filter(f -> f.toString().endsWith(".java"))
@@ -46,22 +47,86 @@ class Roadmap21PlanningGuardTest {
 
     /** All repository production Java sources (worktree-aware). */
     private static List<Path> repositoryMainJava() throws IOException {
-        List<Path> out = new ArrayList<>();
-        Path root = repoRoot();
-        boolean wt = rootIsWorktree();
-        try (var walk = Files.walk(root)) {
-            walk.filter(Files::isRegularFile)
-                    .filter(f -> f.toString().endsWith(".java"))
-                    .filter(f -> f.toString().contains("/src/main/java/"))
-                    .filter(f -> !f.toString().contains("/.git/"))
-                    .filter(f -> !f.toString().contains("/build/"))
-                    .filter(f -> !f.toString().contains("/generated/"))
-                    .filter(f -> !f.toString().contains("/generated-sources/"))
-                    .filter(f -> !f.toString().contains("/.worktrees/")
-                            || (wt && f.toString().startsWith(root.toString())))
-                    .forEach(out::add);
+        List<Path> out = repositoryMainJava(repoRoot());
+        if (out.size() < MINIMUM_REAL_REPOSITORY_MAIN_JAVA_FILES) {
+            throw new IllegalStateException("canonical repository production Java universe is materially "
+                    + "unpopulated: expected at least " + MINIMUM_REAL_REPOSITORY_MAIN_JAVA_FILES
+                    + " sources but found " + out.size());
         }
         return out;
+    }
+
+    private static List<Path> repositoryMainJava(Path repositoryRoot) throws IOException {
+        Path root = repositoryRoot.toAbsolutePath().normalize();
+        Path worktreesRoot = root.resolve(".worktrees").normalize();
+        Path gitRoot = root.resolve(".git").normalize();
+        List<Path> out = new ArrayList<>();
+
+        Files.walkFileTree(root, new SimpleFileVisitor<>() {
+            @Override
+            public FileVisitResult preVisitDirectory(Path directory, BasicFileAttributes attributes) {
+                Path normalizedDirectory = directory.toAbsolutePath().normalize();
+                if (normalizedDirectory.equals(worktreesRoot)
+                        || normalizedDirectory.equals(gitRoot)
+                        || hasExcludedProductionSegment(root, normalizedDirectory)) {
+                    return FileVisitResult.SKIP_SUBTREE;
+                }
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attributes) {
+                Path normalizedFile = file.toAbsolutePath().normalize();
+                if (attributes.isRegularFile()
+                        && normalizedFile.getFileName().toString().endsWith(".java")
+                        && isInMainJavaTree(root, normalizedFile)) {
+                    out.add(normalizedFile);
+                }
+                return FileVisitResult.CONTINUE;
+            }
+        });
+
+        out.sort(Path::compareTo);
+        if (out.isEmpty()) {
+            throw new IllegalStateException("repository production Java universe is empty under " + root);
+        }
+        return out;
+    }
+
+    private static boolean hasExcludedProductionSegment(Path root, Path directory) {
+        if (!directory.startsWith(root)) {
+            throw new IllegalArgumentException("directory is outside normalized repository root");
+        }
+        for (Path segment : root.relativize(directory)) {
+            if (segment.toString().equals("build")
+                    || segment.toString().equals("generated")
+                    || segment.toString().equals("generated-sources")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isInMainJavaTree(Path root, Path file) {
+        if (!file.startsWith(root)) {
+            return false;
+        }
+        Path relative = root.relativize(file);
+        for (int i = 0; i + 2 < relative.getNameCount(); i++) {
+            if (relative.getName(i).toString().equals("src")
+                    && relative.getName(i + 1).toString().equals("main")
+                    && relative.getName(i + 2).toString().equals("java")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static Path fixtureJavaSource(Path root, String relativePath, String source) throws IOException {
+        Path file = root.resolve(relativePath);
+        Files.createDirectories(file.getParent());
+        Files.writeString(file, source);
+        return file;
     }
 
     /** All production sources in the #21 planning package. */
@@ -717,6 +782,136 @@ class Roadmap21PlanningGuardTest {
         assertTrue(identity.contains("CanonicalWriter writer = new CanonicalWriter()")
                         && identity.contains("writer.tag(\"LOGICAL_EDGE_IDENTITY_V1\")"),
                 "edge identity uses structurally framed canonical encoding");
+    }
+
+    // ---------- repository source-scan universe lifecycle controls ----------
+
+    @Test
+    void repositoryDiscoveryFindsCanonicalModuleMainJavaViolationSource(@TempDir Path tempDir) throws IOException {
+        Path violation = fixtureJavaSource(tempDir,
+                "canonical-module/src/main/java/example/Violation.java",
+                "final class Violation { void call() { LogicalPhysicalPlanner.plan(); } }\n");
+
+        List<Path> discovered = repositoryMainJava(tempDir);
+
+        assertTrue(discovered.contains(violation));
+        assertTrue(join(discovered).contains("LogicalPhysicalPlanner.plan()"));
+    }
+
+    @Test
+    void repositoryDiscoveryExcludesExactWorktreesChild(@TempDir Path tempDir) throws IOException {
+        Path current = fixtureJavaSource(tempDir,
+                "current-module/src/main/java/example/Current.java", "final class Current {}\n");
+        Path administrative = fixtureJavaSource(tempDir,
+                ".worktrees/candidate/src/main/java/example/Administrative.java",
+                "final class Administrative {}\n");
+
+        List<Path> discovered = repositoryMainJava(tempDir);
+
+        assertTrue(discovered.contains(current));
+        assertFalse(discovered.contains(administrative));
+    }
+
+    @Test
+    void repositoryDiscoveryExcludesExactGitAdministration(@TempDir Path tempDir) throws IOException {
+        Path current = fixtureJavaSource(tempDir,
+                "current-module/src/main/java/example/Current.java", "final class Current {}\n");
+        Path administrative = fixtureJavaSource(tempDir,
+                ".git/objects/src/main/java/example/Administrative.java",
+                "final class Administrative {}\n");
+
+        List<Path> discovered = repositoryMainJava(tempDir);
+
+        assertTrue(discovered.contains(current));
+        assertFalse(discovered.contains(administrative));
+    }
+
+    @Test
+    void repositoryDiscoveryPreservesGeneratedAndBuildExclusions(@TempDir Path tempDir) throws IOException {
+        Path build = fixtureJavaSource(tempDir,
+                "module/build/src/main/java/example/BuildOutput.java", "final class BuildOutput {}\n");
+        Path generated = fixtureJavaSource(tempDir,
+                "module/generated/src/main/java/example/Generated.java", "final class Generated {}\n");
+        Path generatedSources = fixtureJavaSource(tempDir,
+                "module/generated-sources/src/main/java/example/GeneratedSources.java",
+                "final class GeneratedSources {}\n");
+        Path lookalike = fixtureJavaSource(tempDir,
+                "module/build-tools/src/main/java/example/BuildTools.java", "final class BuildTools {}\n");
+
+        List<Path> discovered = repositoryMainJava(tempDir);
+
+        assertFalse(discovered.contains(build));
+        assertFalse(discovered.contains(generated));
+        assertFalse(discovered.contains(generatedSources));
+        assertTrue(discovered.contains(lookalike));
+    }
+
+    @Test
+    void repositoryDiscoveryFindsNestedNewModuleWithoutAllowlist(@TempDir Path tempDir) throws IOException {
+        Path nested = fixtureJavaSource(tempDir,
+                "products/new-stack/deep-module/src/main/java/example/Nested.java",
+                "final class Nested {}\n");
+
+        assertTrue(repositoryMainJava(tempDir).contains(nested));
+    }
+
+    @Test
+    void repositoryDiscoveryScansWorktreesBackupLookalike(@TempDir Path tempDir) throws IOException {
+        Path source = fixtureJavaSource(tempDir,
+                ".worktrees-backup/module/src/main/java/example/Backup.java", "final class Backup {}\n");
+
+        assertTrue(repositoryMainJava(tempDir).contains(source));
+    }
+
+    @Test
+    void repositoryDiscoveryScansGitShadowLookalike(@TempDir Path tempDir) throws IOException {
+        Path source = fixtureJavaSource(tempDir,
+                ".git-shadow/module/src/main/java/example/Shadow.java", "final class Shadow {}\n");
+
+        assertTrue(repositoryMainJava(tempDir).contains(source));
+    }
+
+    @Test
+    void realRepositoryProductionUniverseIsMateriallyPopulated() throws IOException {
+        assertTrue(repositoryMainJava().size() >= MINIMUM_REAL_REPOSITORY_MAIN_JAVA_FILES,
+                "canonical repository production universe must contain at least 1,000 Java sources");
+    }
+
+    @Test
+    void repositoryDiscoveryFailsClosedForEmptyProductionUniverse(@TempDir Path tempDir) {
+        assertThrows(IllegalStateException.class, () -> repositoryMainJava(tempDir));
+    }
+
+    @Test
+    void repositoryDiscoveryNeverDescendsIntoInaccessibleWorktreeAdministration(@TempDir Path tempDir)
+            throws IOException {
+        Path current = fixtureJavaSource(tempDir,
+                "current-module/src/main/java/example/Current.java", "final class Current {}\n");
+        Path inaccessible = Files.createDirectories(tempDir.resolve(".worktrees/candidate"));
+        var originalPermissions = Files.getPosixFilePermissions(inaccessible);
+        Files.setPosixFilePermissions(inaccessible, java.util.Set.of());
+        try {
+            List<Path> discovered = assertDoesNotThrow(() -> repositoryMainJava(tempDir));
+            assertEquals(List.of(current), discovered);
+        } finally {
+            Files.setPosixFilePermissions(inaccessible, originalPermissions);
+        }
+    }
+
+    @Test
+    void repositoryDiscoveryNeverDescendsIntoInaccessibleGitAdministration(@TempDir Path tempDir)
+            throws IOException {
+        Path current = fixtureJavaSource(tempDir,
+                "current-module/src/main/java/example/Current.java", "final class Current {}\n");
+        Path inaccessible = Files.createDirectories(tempDir.resolve(".git/objects"));
+        var originalPermissions = Files.getPosixFilePermissions(inaccessible);
+        Files.setPosixFilePermissions(inaccessible, java.util.Set.of());
+        try {
+            List<Path> discovered = assertDoesNotThrow(() -> repositoryMainJava(tempDir));
+            assertEquals(List.of(current), discovered);
+        } finally {
+            Files.setPosixFilePermissions(inaccessible, originalPermissions);
+        }
     }
 
 }

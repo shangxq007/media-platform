@@ -1,8 +1,8 @@
 // =============================================================================
-// Timeline Canvas Domain Model
+// Timeline Canvas Presentation Model
 // =============================================================================
-// Canonical timeline representation for the canvas editor.
-// All types are readonly and immutable. UI components consume only these types.
+// Local layout and interaction representation for the canvas editor.
+// These types are presentation state and are not a canonical Timeline contract.
 //
 // Rules:
 // - Normalized state (keyed by id)

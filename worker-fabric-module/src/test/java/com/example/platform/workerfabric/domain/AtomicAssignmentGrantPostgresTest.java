@@ -324,7 +324,7 @@ class AtomicAssignmentGrantPostgresTest extends PostgresTestContainerSupport {
 
     @Test
     void f2ConcurrentDifferentTasksOnSameDeviceCannotExhaustDeviceTwice() throws Exception {
-        var runtime = TaskCTestFixture.runtime("f2-device");
+        var runtime = TaskCTestFixture.runtimeWithDeviceEvidence("f2-device");
         RuntimeResourceDemand.DeviceDemand deviceDemand = new RuntimeResourceDemand.DeviceDemand(
                 TaskCTestFixture.DEVICE_ID, 0, 60, 0, 0);
         RuntimeResourceDemand demand = new RuntimeResourceDemand(

@@ -1,0 +1,589 @@
+{
+  "allowed_final_outcomes": [
+    "IMPLEMENTED_DELETE_SHADOW",
+    "IMPLEMENTED_MIGRATE_REDESIGN",
+    "IMPLEMENTED_RETAIN_CANONICAL",
+    "NO_GO_RETAIN_UNCHANGED",
+    "OWNER_DEFERRED_NO_H1_MUTATION",
+    "VERIFIED_EXPLICIT_STAGE_MAPPING_NO_PRODUCTION_MUTATION",
+    "VERIFIED_RETAIN_MECHANICS_ONLY"
+  ],
+  "duplicate_id_count": 0,
+  "extra_id_count": 0,
+  "missing_id_count": 0,
+  "outcome_counts": {
+    "IMPLEMENTED_DELETE_SHADOW": 2,
+    "IMPLEMENTED_MIGRATE_REDESIGN": 2,
+    "IMPLEMENTED_RETAIN_CANONICAL": 22,
+    "NO_GO_RETAIN_UNCHANGED": 1,
+    "OWNER_DEFERRED_NO_H1_MUTATION": 16,
+    "VERIFIED_EXPLICIT_STAGE_MAPPING_NO_PRODUCTION_MUTATION": 1,
+    "VERIFIED_RETAIN_MECHANICS_ONLY": 1
+  },
+  "phase_parent_sha": "553b96875d415d3a150ef90e14da37791a714d35",
+  "physical_execution_plan_destructive_change_authorized": false,
+  "required_invariants": [
+    "EXACT_IDENTITY_COLLAPSE_ZERO",
+    "GLOBAL_NATIVE_TOOL_PLATFORM_AUTHORITY_ZERO",
+    "H1_COMMERCIAL_AUTHORITY_REFERENCES_ZERO",
+    "MUTABLE_OBSERVATION_SEMANTIC_DIGEST_PARTICIPATION_ZERO",
+    "OBSOLETE_SHADOW_EXECUTABLE_REFERENCES_ZERO",
+    "OWNER_DEFERRED_SURFACES_ABSENT_FROM_H1_KERNEL",
+    "PHASE19_RENDER_CONCRETE_FFMPEG_AWARENESS_ZERO",
+    "PHYSICAL_EXECUTION_PLAN_DESTRUCTIVE_CHANGE_ZERO",
+    "ROADMAP23_OPTIMIZER_SELECTION_AUTHORITY_ZERO",
+    "ROW_MEMBER_PATH_PREDICATES",
+    "SOURCE_AND_CLOSURE_ID_SETS_EXACTLY_45",
+    "STAGE1_TO_STAGE2_DEVICE_KIND_MAPPING_EXPLICIT"
+  ],
+  "row_count": 45,
+  "rows": [
+    {
+      "final_outcome": "IMPLEMENTED_RETAIN_CANONICAL",
+      "id": "RA-001",
+      "mechanical_evidence": ["ExecutionRequirement remains the present provider-neutral planning requirement after I1."],
+      "member_predicates": [{"expectation": "MUST_EXIST", "path": "media-execution-plan-module/src/main/java/com/example/platform/execution/planning/ExecutionRequirement.java"}],
+      "original_disposition": "REUSE_AS_CANONICAL",
+      "owner_boundary": "H1",
+      "retained_owner_deferred_debt": null
+    },
+    {
+      "final_outcome": "IMPLEMENTED_DELETE_SHADOW",
+      "id": "RA-002",
+      "mechanical_evidence": ["I1 deleted the zero-caller ExecutionResourceRequirement definition; executable references are guarded at zero."],
+      "member_predicates": [{"expectation": "MUST_BE_ABSENT", "path": "media-execution-plan-module/src/main/java/com/example/platform/execution/domain/ExecutionResourceRequirement.java"}],
+      "original_disposition": "DELETE_SHADOW",
+      "owner_boundary": "H1",
+      "retained_owner_deferred_debt": null
+    },
+    {
+      "final_outcome": "IMPLEMENTED_RETAIN_CANONICAL",
+      "id": "RA-003",
+      "mechanical_evidence": ["RuntimeResourceDemand remains the runtime projection consumed by reservation-aware matching."],
+      "member_predicates": [{"expectation": "MUST_EXIST", "path": "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/RuntimeResourceDemand.java"}],
+      "original_disposition": "REUSE_AS_CANONICAL",
+      "owner_boundary": "H1",
+      "retained_owner_deferred_debt": null
+    },
+    {
+      "final_outcome": "IMPLEMENTED_RETAIN_CANONICAL",
+      "id": "RA-004",
+      "mechanical_evidence": ["Both typed static-capacity members remain present and separate from observed usage."],
+      "member_predicates": [
+        {"expectation": "MUST_EXIST", "path": "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/CapacitySnapshot.java"},
+        {"expectation": "MUST_EXIST", "path": "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/DeviceResourceCapacity.java"}
+      ],
+      "original_disposition": "REUSE_AS_CANONICAL",
+      "owner_boundary": "H1",
+      "retained_owner_deferred_debt": null
+    },
+    {
+      "final_outcome": "IMPLEMENTED_RETAIN_CANONICAL",
+      "id": "RA-005",
+      "mechanical_evidence": ["SchedulableCapacity remains the derived reservation-first admission view."],
+      "member_predicates": [{"expectation": "MUST_EXIST", "path": "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/SchedulableCapacity.java"}],
+      "original_disposition": "REUSE_AS_CANONICAL",
+      "owner_boundary": "H1",
+      "retained_owner_deferred_debt": null
+    },
+    {
+      "final_outcome": "IMPLEMENTED_RETAIN_CANONICAL",
+      "id": "RA-006",
+      "mechanical_evidence": ["Worker reservation and reserved-resource types remain present as the bounded claim authority."],
+      "member_predicates": [
+        {"expectation": "MUST_EXIST", "path": "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/Reservation.java"},
+        {"expectation": "MUST_EXIST", "path": "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/ReservedResources.java"}
+      ],
+      "original_disposition": "REUSE_AS_CANONICAL",
+      "owner_boundary": "H1",
+      "retained_owner_deferred_debt": null
+    },
+    {
+      "final_outcome": "IMPLEMENTED_RETAIN_CANONICAL",
+      "id": "RA-007",
+      "mechanical_evidence": ["ObservedUsage remains present while semantic-digest participation is guarded at zero."],
+      "member_predicates": [{"expectation": "MUST_EXIST", "path": "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/ObservedUsage.java"}],
+      "original_disposition": "REUSE_AS_CANONICAL",
+      "owner_boundary": "H1",
+      "retained_owner_deferred_debt": null
+    },
+    {
+      "final_outcome": "IMPLEMENTED_RETAIN_CANONICAL",
+      "id": "RA-008",
+      "mechanical_evidence": ["The bounded host resource producer and its freshness-bound snapshot remain present."],
+      "member_predicates": [
+        {"expectation": "MUST_EXIST", "path": "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/HostResourceAgent.java"},
+        {"expectation": "MUST_EXIST", "path": "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/HostResourceSnapshot.java"}
+      ],
+      "original_disposition": "REUSE_AS_CANONICAL",
+      "owner_boundary": "H1",
+      "retained_owner_deferred_debt": null
+    },
+    {
+      "final_outcome": "IMPLEMENTED_RETAIN_CANONICAL",
+      "id": "RA-009",
+      "mechanical_evidence": ["PhysicalHost descriptor and strong identity remain distinct from runtime and provider identities."],
+      "member_predicates": [
+        {"expectation": "MUST_EXIST", "path": "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/PhysicalHostDescriptor.java"},
+        {"expectation": "MUST_EXIST", "path": "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/PhysicalHostId.java"}
+      ],
+      "original_disposition": "REUSE_AS_CANONICAL",
+      "owner_boundary": "H1",
+      "retained_owner_deferred_debt": null
+    },
+    {
+      "final_outcome": "IMPLEMENTED_RETAIN_CANONICAL",
+      "id": "RA-010",
+      "mechanical_evidence": ["WorkerRuntime descriptor and strong identity remain present and independently bound."],
+      "member_predicates": [
+        {"expectation": "MUST_EXIST", "path": "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/WorkerRuntimeDescriptor.java"},
+        {"expectation": "MUST_EXIST", "path": "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/WorkerRuntimeId.java"}
+      ],
+      "original_disposition": "REUSE_AS_CANONICAL",
+      "owner_boundary": "H1",
+      "retained_owner_deferred_debt": null
+    },
+    {
+      "final_outcome": "IMPLEMENTED_RETAIN_CANONICAL",
+      "id": "RA-011",
+      "mechanical_evidence": ["Provider-neutral device descriptor and strong identity remain present and non-aliased."],
+      "member_predicates": [
+        {"expectation": "MUST_EXIST", "path": "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/DeviceDescriptor.java"},
+        {"expectation": "MUST_EXIST", "path": "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/DeviceId.java"}
+      ],
+      "original_disposition": "REUSE_AS_CANONICAL",
+      "owner_boundary": "H1",
+      "retained_owner_deferred_debt": null
+    },
+    {
+      "final_outcome": "IMPLEMENTED_RETAIN_CANONICAL",
+      "id": "RA-012",
+      "mechanical_evidence": ["Runtime/host availability and exact local incarnation binding remain mutable operational evidence."],
+      "member_predicates": [
+        {"expectation": "MUST_EXIST", "path": "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/WorkerRuntimeAvailability.java"},
+        {"expectation": "MUST_EXIST", "path": "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/PhysicalHostAvailability.java"},
+        {"expectation": "MUST_EXIST", "path": "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/LocalWorkerRuntimeIncarnationBinding.java"}
+      ],
+      "original_disposition": "REUSE_AS_CANONICAL",
+      "owner_boundary": "H1",
+      "retained_owner_deferred_debt": null
+    },
+    {
+      "final_outcome": "IMPLEMENTED_RETAIN_CANONICAL",
+      "id": "RA-013",
+      "mechanical_evidence": ["I4 retains the typed Stage-2 CAN_RUN evaluator/request/decision family."],
+      "member_predicates": [
+        {"expectation": "MUST_EXIST", "path": "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/RuntimeEligibilityEvaluator.java"},
+        {"expectation": "MUST_EXIST", "path": "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/NativeRuntimeEligibilityRequest.java"},
+        {"expectation": "MUST_EXIST", "path": "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/RuntimeEligibilityDecision.java"}
+      ],
+      "original_disposition": "REUSE_AS_CANONICAL",
+      "owner_boundary": "H1",
+      "retained_owner_deferred_debt": null
+    },
+    {
+      "exact_caller_inventory": {
+        "production_modules": ["ffmpeg-provider-module", "provider-plugin-runtime-module", "worker-fabric-module"],
+        "test_modules": ["platform-app", "provider-plugin-runtime-module", "worker-fabric-module"]
+      },
+      "final_outcome": "OWNER_DEFERRED_NO_H1_MUTATION",
+      "id": "RA-014",
+      "mechanical_evidence": ["Exact callers cross three production modules; partial worker-fabric-only deletion would break the active provider-plugin contract."],
+      "member_predicates": [
+        {"expectation": "MUST_EXIST", "path": "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/WorkerRuntimeSupportRequirement.java"},
+        {"expectation": "MUST_EXIST", "path": "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/WorkerRuntimeSupportAdvertisement.java"},
+        {"expectation": "MUST_EXIST", "path": "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/RuntimeSupportIdentifier.java"},
+        {"expectation": "MUST_EXIST", "path": "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/RuntimeSupportEvidence.java"}
+      ],
+      "original_disposition": "MIGRATE_REDESIGN",
+      "owner_boundary": "H1",
+      "retained_owner_deferred_debt": "Migrate the provider-plugin and FFmpeg production contracts together under an expanded write authorization; do not partially remove the worker-fabric half."
+    },
+    {
+      "exact_caller_inventory": {
+        "production_modules": ["ffmpeg-provider-module", "worker-fabric-module"],
+        "test_modules": ["ffmpeg-provider-module", "media-execution-plan-module", "worker-fabric-module"]
+      },
+      "final_outcome": "OWNER_DEFERRED_NO_H1_MUTATION",
+      "id": "RA-015",
+      "mechanical_evidence": ["ProviderProbeResult remains coupled to FfmpegRuntimeProbe and Stage-2 request/evaluator production callers outside the worker-fabric-only migration write set."],
+      "member_predicates": [
+        {"expectation": "MUST_EXIST", "path": "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/ProviderProbeResult.java"},
+        {"expectation": "MUST_EXIST", "path": "ffmpeg-provider-module/src/main/java/com/example/platform/ffmpeg/FfmpegRuntimeProbe.java"}
+      ],
+      "original_disposition": "MIGRATE_REDESIGN",
+      "owner_boundary": "H1",
+      "retained_owner_deferred_debt": "Replace the generic health envelope and FFmpeg probe atomically with exact ProviderImplementation/runtime/executable-bound typed observations under expanded scope."
+    },
+    {
+      "final_outcome": "IMPLEMENTED_RETAIN_CANONICAL",
+      "id": "RA-016",
+      "mechanical_evidence": ["ProviderId and ProviderImplementationId remain separate strong types."],
+      "member_predicates": [
+        {"expectation": "MUST_EXIST", "path": "media-execution-plan-module/src/main/java/com/example/platform/execution/domain/provider/ProviderId.java"},
+        {"expectation": "MUST_EXIST", "path": "media-execution-plan-module/src/main/java/com/example/platform/execution/domain/provider/ProviderImplementationId.java"}
+      ],
+      "original_disposition": "REUSE_AS_CANONICAL",
+      "owner_boundary": "H1",
+      "retained_owner_deferred_debt": null
+    },
+    {
+      "final_outcome": "IMPLEMENTED_RETAIN_CANONICAL",
+      "id": "RA-017",
+      "mechanical_evidence": ["Capability family and implementation identities remain present and outside H1 redefinition."],
+      "member_predicates": [
+        {"expectation": "MUST_EXIST", "path": "extension-module/src/main/java/com/example/platform/extension/domain/CapabilityId.java"},
+        {"expectation": "MUST_EXIST", "path": "extension-module/src/main/java/com/example/platform/extension/domain/CapabilityImplementationId.java"}
+      ],
+      "original_disposition": "REUSE_AS_CANONICAL",
+      "owner_boundary": "H2",
+      "retained_owner_deferred_debt": null
+    },
+    {
+      "final_outcome": "IMPLEMENTED_RETAIN_CANONICAL",
+      "id": "RA-018",
+      "mechanical_evidence": ["ProviderBindingPin remains the immutable executable binding; mutable observations are guarded from semantic digests."],
+      "member_predicates": [{"expectation": "MUST_EXIST", "path": "media-execution-plan-module/src/main/java/com/example/platform/execution/domain/provider/ProviderBindingPin.java"}],
+      "original_disposition": "REUSE_AS_CANONICAL",
+      "owner_boundary": "H1",
+      "retained_owner_deferred_debt": null
+    },
+    {
+      "final_outcome": "IMPLEMENTED_RETAIN_CANONICAL",
+      "id": "RA-019",
+      "mechanical_evidence": ["Static provider descriptor/profile/contract members remain the frozen declaration boundary."],
+      "member_predicates": [
+        {"expectation": "MUST_EXIST", "path": "media-execution-plan-module/src/main/java/com/example/platform/execution/domain/provider/ProviderDescriptor.java"},
+        {"expectation": "MUST_EXIST", "path": "media-execution-plan-module/src/main/java/com/example/platform/execution/domain/provider/ProviderCapabilityProfile.java"},
+        {"expectation": "MUST_EXIST", "path": "media-execution-plan-module/src/main/java/com/example/platform/execution/domain/provider/ProviderExecutionContract.java"}
+      ],
+      "original_disposition": "REUSE_AS_CANONICAL",
+      "owner_boundary": "H1",
+      "retained_owner_deferred_debt": null
+    },
+    {
+      "final_outcome": "IMPLEMENTED_RETAIN_CANONICAL",
+      "id": "RA-020",
+      "mechanical_evidence": ["The pure Stage-1 compatibility kernel, typed decision, and failure algebra remain present."],
+      "member_predicates": [
+        {"expectation": "MUST_EXIST", "path": "media-execution-plan-module/src/main/java/com/example/platform/execution/compatibility/CompatibilityKernel.java"},
+        {"expectation": "MUST_EXIST", "path": "media-execution-plan-module/src/main/java/com/example/platform/execution/compatibility/CompatibilityDecision.java"},
+        {"expectation": "MUST_EXIST", "path": "media-execution-plan-module/src/main/java/com/example/platform/execution/compatibility/StaticCompatibilityFailure.java"}
+      ],
+      "original_disposition": "REUSE_AS_CANONICAL",
+      "owner_boundary": "H1",
+      "retained_owner_deferred_debt": null
+    },
+    {
+      "final_outcome": "IMPLEMENTED_MIGRATE_REDESIGN",
+      "id": "RA-021",
+      "mechanical_evidence": ["I5 replaced canonical graph identity with an ephemeral ProviderFeasibilityView and removed both old graph source paths and executable references."],
+      "member_predicates": [
+        {"expectation": "MUST_BE_ABSENT", "path": "media-execution-plan-module/src/main/java/com/example/platform/execution/compatibility/ProviderCompatibilityGraph.java"},
+        {"expectation": "MUST_BE_ABSENT", "path": "media-execution-plan-module/src/main/java/com/example/platform/execution/compatibility/ProviderCompatibilityGraphDigest.java"}
+      ],
+      "original_disposition": "MIGRATE_REDESIGN",
+      "owner_boundary": "H1",
+      "retained_owner_deferred_debt": null
+    },
+    {
+      "final_outcome": "IMPLEMENTED_RETAIN_CANONICAL",
+      "id": "RA-022",
+      "mechanical_evidence": ["LogicalExecutionGraph remains the last provider-neutral execution graph."],
+      "member_predicates": [{"expectation": "MUST_EXIST", "path": "media-execution-plan-module/src/main/java/com/example/platform/execution/planning/LogicalExecutionGraph.java"}],
+      "original_disposition": "REUSE_AS_CANONICAL",
+      "owner_boundary": "H1",
+      "retained_owner_deferred_debt": null
+    },
+    {
+      "final_outcome": "NO_GO_RETAIN_UNCHANGED",
+      "id": "RA-023",
+      "mechanical_evidence": ["Both PhysicalExecutionPlan authority paths must byte-match the pinned P20-I7 parent; destructive authorization remains false."],
+      "member_predicates": [
+        {"expectation": "MUST_MATCH_PHASE_PARENT", "path": "media-execution-plan-module/src/main/java/com/example/platform/execution/planning/PhysicalExecutionPlan.java"},
+        {"expectation": "MUST_MATCH_PHASE_PARENT", "path": "media-execution-plan-module/src/main/java/com/example/platform/execution/planning/PhysicalPlannerV1.java"}
+      ],
+      "original_disposition": "MIGRATE_REDESIGN",
+      "owner_boundary": "H2",
+      "retained_owner_deferred_debt": "PHYSICAL_EXECUTION_PLAN_COLLAPSE_OR_DOWNGRADE_CANDIDATE awaits real H2 lowering evidence; no destructive change is authorized."
+    },
+    {
+      "final_outcome": "IMPLEMENTED_RETAIN_CANONICAL",
+      "id": "RA-024",
+      "mechanical_evidence": ["Provider-bound ETG and task members remain the coarse cross-runtime boundary."],
+      "member_predicates": [
+        {"expectation": "MUST_EXIST", "path": "media-execution-plan-module/src/main/java/com/example/platform/execution/taskgraph/ProviderBoundExecutableTaskGraph.java"},
+        {"expectation": "MUST_EXIST", "path": "media-execution-plan-module/src/main/java/com/example/platform/execution/taskgraph/ExecutableTask.java"}
+      ],
+      "original_disposition": "REUSE_AS_CANONICAL",
+      "owner_boundary": "H1",
+      "retained_owner_deferred_debt": null
+    },
+    {
+      "final_outcome": "VERIFIED_RETAIN_MECHANICS_ONLY",
+      "id": "RA-025",
+      "mechanical_evidence": ["ProviderLocalTaskDependency remains present solely as logical trace mechanics."],
+      "member_predicates": [{"expectation": "MUST_EXIST", "path": "media-execution-plan-module/src/main/java/com/example/platform/execution/taskgraph/ProviderLocalTaskDependency.java"}],
+      "original_disposition": "REUSE_MECHANICS_ONLY",
+      "owner_boundary": "H1",
+      "retained_owner_deferred_debt": null
+    },
+    {
+      "final_outcome": "IMPLEMENTED_RETAIN_CANONICAL",
+      "id": "RA-026",
+      "mechanical_evidence": ["Provider-native plan and runtime adapter remain downstream implementation-private mechanics."],
+      "member_predicates": [
+        {"expectation": "MUST_EXIST", "path": "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/providernative/ProviderNativeExecutionPlan.java"},
+        {"expectation": "MUST_EXIST", "path": "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/providernative/RuntimeAdapter.java"}
+      ],
+      "original_disposition": "REUSE_AS_CANONICAL",
+      "owner_boundary": "H2",
+      "retained_owner_deferred_debt": null
+    },
+    {
+      "final_outcome": "IMPLEMENTED_RETAIN_CANONICAL",
+      "id": "RA-027",
+      "mechanical_evidence": ["ResourceEnforcementLimits remains a present sandbox enforcement projection."],
+      "member_predicates": [{"expectation": "MUST_EXIST", "path": "sandbox-isolation-module/src/main/java/com/example/platform/sandbox/ResourceEnforcementLimits.java"}],
+      "original_disposition": "REUSE_AS_CANONICAL",
+      "owner_boundary": "H1",
+      "retained_owner_deferred_debt": null
+    },
+    {
+      "final_outcome": "IMPLEMENTED_RETAIN_CANONICAL",
+      "id": "RA-028",
+      "mechanical_evidence": ["DeviceExposurePolicy remains the present post-selection enforcement policy."],
+      "member_predicates": [{"expectation": "MUST_EXIST", "path": "sandbox-isolation-module/src/main/java/com/example/platform/sandbox/DeviceExposurePolicy.java"}],
+      "original_disposition": "REUSE_AS_CANONICAL",
+      "owner_boundary": "H1",
+      "retained_owner_deferred_debt": null
+    },
+    {
+      "final_outcome": "OWNER_DEFERRED_NO_H1_MUTATION",
+      "id": "RA-029",
+      "mechanical_evidence": ["Canonical billing UsageRecord remains present while H1 commercial references are guarded at zero."],
+      "member_predicates": [{"expectation": "MUST_EXIST", "path": "billing-module/src/main/java/com/example/platform/billing/usage/UsageRecord.java"}],
+      "original_disposition": "REUSE_AS_CANONICAL",
+      "owner_boundary": "H5",
+      "retained_owner_deferred_debt": "Billing usage remains H5 authority and was not mutated by P20-I7."
+    },
+    {
+      "final_outcome": "OWNER_DEFERRED_NO_H1_MUTATION",
+      "id": "RA-030",
+      "mechanical_evidence": ["Both entitlement quota authority members remain present and absent from H1 feasibility code."],
+      "member_predicates": [
+        {"expectation": "MUST_EXIST", "path": "entitlement-module/src/main/java/com/example/platform/entitlement/app/QuotaDecisionService.java"},
+        {"expectation": "MUST_EXIST", "path": "entitlement-module/src/main/java/com/example/platform/entitlement/domain/QuotaPolicy.java"}
+      ],
+      "original_disposition": "REUSE_AS_CANONICAL",
+      "owner_boundary": "H5",
+      "retained_owner_deferred_debt": "Quota remains a separate H5 policy gate and was not mutated by P20-I7."
+    },
+    {
+      "final_outcome": "OWNER_DEFERRED_NO_H1_MUTATION",
+      "id": "RA-031",
+      "mechanical_evidence": ["CostReservation and ProviderCostProfile remain present and absent from H1 feasibility code."],
+      "member_predicates": [
+        {"expectation": "MUST_EXIST", "path": "billing-module/src/main/java/com/example/platform/billing/domain/CostReservation.java"},
+        {"expectation": "MUST_EXIST", "path": "billing-module/src/main/java/com/example/platform/billing/domain/ProviderCostProfile.java"}
+      ],
+      "original_disposition": "DEFER",
+      "owner_boundary": "H5",
+      "retained_owner_deferred_debt": "Cost-model representation debt remains with billing governance."
+    },
+    {
+      "final_outcome": "OWNER_DEFERRED_NO_H1_MUTATION",
+      "id": "RA-032",
+      "mechanical_evidence": ["Deprecated quota-billing members remain present by explicit H5 no-mutation authorization and absent from H1."],
+      "member_predicates": [
+        {"expectation": "MUST_EXIST", "path": "quota-billing-module/src/main/java/com/example/platform/quota/app/QuotaService.java"},
+        {"expectation": "MUST_EXIST", "path": "quota-billing-module/src/main/java/com/example/platform/quota/domain/UsageRecord.java"}
+      ],
+      "original_disposition": "DELETE_SHADOW",
+      "owner_boundary": "H5",
+      "retained_owner_deferred_debt": "Retirement requires H5 caller migration; P20-I7 forbids shared commercial mutation."
+    },
+    {
+      "final_outcome": "OWNER_DEFERRED_NO_H1_MUTATION",
+      "id": "RA-033",
+      "mechanical_evidence": ["ProviderUsageMetric remains present as observability mechanics and absent from H1 feasibility."],
+      "member_predicates": [{"expectation": "MUST_EXIST", "path": "observability-module/src/main/java/com/example/platform/observability/domain/ProviderUsageMetric.java"}],
+      "original_disposition": "REUSE_MECHANICS_ONLY",
+      "owner_boundary": "H5",
+      "retained_owner_deferred_debt": "Observability projection ownership remains outside H1."
+    },
+    {
+      "final_outcome": "OWNER_DEFERRED_NO_H1_MUTATION",
+      "id": "RA-034",
+      "mechanical_evidence": ["Legacy render-farm service members remain present while imports into the H1 kernel are guarded at zero."],
+      "member_predicates": [
+        {"expectation": "MUST_EXIST", "path": "render-module/src/main/java/com/example/platform/render/infrastructure/farm/RenderWorkerRegistryService.java"},
+        {"expectation": "MUST_EXIST", "path": "render-module/src/main/java/com/example/platform/render/infrastructure/farm/RenderJobLeaseService.java"}
+      ],
+      "original_disposition": "MIGRATE_REDESIGN",
+      "owner_boundary": "LEGACY_OWNER",
+      "retained_owner_deferred_debt": "Broad legacy farm caller migration is explicitly outside Phase20 I7."
+    },
+    {
+      "final_outcome": "OWNER_DEFERRED_NO_H1_MUTATION",
+      "id": "RA-035",
+      "mechanical_evidence": ["The amendment remains the only accounting-domain evidence; no speculative production type is introduced."],
+      "member_predicates": [{"expectation": "MUST_EXIST", "path": "docs/architecture/governance/roadmap-22-worker-runtime-backend-resource-accounting-amendment-1.md"}],
+      "original_disposition": "DEFER",
+      "owner_boundary": "GOVERNANCE",
+      "retained_owner_deferred_debt": "A first-class ResourceAccountingDomainId awaits a proven independent lifecycle."
+    },
+    {
+      "final_outcome": "OWNER_DEFERRED_NO_H1_MUTATION",
+      "id": "RA-036",
+      "mechanical_evidence": ["CloudResourceProvider remains present outside the H1 compatibility/eligibility kernel."],
+      "member_predicates": [{"expectation": "MUST_EXIST", "path": "cloud-resource-module/src/main/java/com/example/platform/cloudresource/domain/CloudResourceProvider.java"}],
+      "original_disposition": "DEFER",
+      "owner_boundary": "LEGACY_OWNER",
+      "retained_owner_deferred_debt": "Cloud catalog vocabulary remains owned by cloud-resource and is not an H1 capacity authority."
+    },
+    {
+      "final_outcome": "VERIFIED_EXPLICIT_STAGE_MAPPING_NO_PRODUCTION_MUTATION",
+      "id": "RA-037",
+      "mechanical_evidence": ["The guard proves an exhaustive one-to-one typed name mapping without a media-execution-plan import of worker-fabric."],
+      "member_predicates": [
+        {"expectation": "MUST_EXIST", "path": "media-execution-plan-module/src/main/java/com/example/platform/execution/compatibility/StaticCompatibilityConstraint.java"},
+        {"expectation": "MUST_EXIST", "path": "media-execution-plan-module/src/main/java/com/example/platform/execution/compatibility/ProviderStaticCompatibility.java"}
+      ],
+      "original_disposition": "MIGRATE_REDESIGN",
+      "owner_boundary": "H1",
+      "retained_owner_deferred_debt": "A production conversion boundary is deferred until an exact caller requires it; upward worker-fabric imports remain forbidden.",
+      "stage_1_to_stage_2_mapping": {
+        "CPU": "CPU",
+        "GPU": "GPU",
+        "MEDIA_ACCELERATOR": "MEDIA_ACCELERATOR",
+        "OTHER_ACCELERATOR": "OTHER_ACCELERATOR"
+      }
+    },
+    {
+      "final_outcome": "OWNER_DEFERRED_NO_H1_MUTATION",
+      "id": "RA-038",
+      "mechanical_evidence": ["Remote-render registry/service members remain present while imports into H1 are guarded at zero."],
+      "member_predicates": [
+        {"expectation": "MUST_EXIST", "path": "remote-render-worker/src/main/java/com/example/platform/remoterender/app/WorkerRegistryService.java"},
+        {"expectation": "MUST_EXIST", "path": "remote-render-worker/src/main/java/com/example/platform/remoterender/app/RemoteRenderService.java"}
+      ],
+      "original_disposition": "MIGRATE_REDESIGN",
+      "owner_boundary": "LEGACY_OWNER",
+      "retained_owner_deferred_debt": "Remote-render caller migration is a broad registry rewrite forbidden in P20-I7."
+    },
+    {
+      "exact_caller_inventory": {
+        "production_callers_of_probe": [],
+        "retained_production_consumers_of_diagnostic_value": [
+          "render-module/src/main/java/com/example/platform/render/domain/remotion/RemotionLocalExecutionRequest.java",
+          "render-module/src/main/java/com/example/platform/render/domain/remotion/RemotionProviderReadiness.java"
+        ]
+      },
+      "final_outcome": "IMPLEMENTED_MIGRATE_REDESIGN",
+      "id": "RA-039",
+      "mechanical_evidence": ["The zero-production-caller ambient RemotionRuntimeProbe is deleted; the fail-closed diagnostic value remains with no process-probe authority."],
+      "member_predicates": [
+        {"expectation": "MUST_BE_ABSENT", "path": "render-module/src/main/java/com/example/platform/render/domain/remotion/RemotionRuntimeProbe.java"},
+        {"expectation": "MUST_EXIST", "path": "render-module/src/main/java/com/example/platform/render/domain/remotion/RemotionRuntimeAvailability.java"}
+      ],
+      "original_disposition": "MIGRATE_REDESIGN",
+      "owner_boundary": "H1",
+      "retained_owner_deferred_debt": "The disabled Remotion POC diagnostic value remains until its owning provider lifecycle is retired or supplies exact provider-bound observations."
+    },
+    {
+      "final_outcome": "OWNER_DEFERRED_NO_H1_MUTATION",
+      "id": "RA-040",
+      "mechanical_evidence": ["Plugin runtime context/contribution remain present and absent from H1 feasibility authority scans."],
+      "member_predicates": [
+        {"expectation": "MUST_EXIST", "path": "provider-plugin-runtime-module/src/main/java/com/example/platform/providerplugin/ProviderPluginRuntimeContext.java"},
+        {"expectation": "MUST_EXIST", "path": "provider-plugin-runtime-module/src/main/java/com/example/platform/providerplugin/ProviderPluginContribution.java"}
+      ],
+      "original_disposition": "DEFER",
+      "owner_boundary": "LEGACY_OWNER",
+      "retained_owner_deferred_debt": "Lifecycle consolidation awaits provider-plugin host evidence."
+    },
+    {
+      "final_outcome": "OWNER_DEFERRED_NO_H1_MUTATION",
+      "id": "RA-041",
+      "mechanical_evidence": ["All three dual-writer authority members remain present by explicit H5 no-mutation authorization and absent from H1."],
+      "member_predicates": [
+        {"expectation": "MUST_EXIST", "path": "entitlement-module/src/main/java/com/example/platform/entitlement/infrastructure/QuotaUsageJdbcRepository.java"},
+        {"expectation": "MUST_EXIST", "path": "render-module/src/main/java/com/example/platform/render/app/QuotaUsageRepository.java"},
+        {"expectation": "MUST_EXIST", "path": "render-module/src/main/java/com/example/platform/render/app/RenderQuotaService.java"}
+      ],
+      "original_disposition": "MIGRATE_REDESIGN",
+      "owner_boundary": "H5",
+      "retained_owner_deferred_debt": "quota_usage single-writer convergence requires H5-owned caller and persistence migration."
+    },
+    {
+      "final_outcome": "OWNER_DEFERRED_NO_H1_MUTATION",
+      "id": "RA-042",
+      "mechanical_evidence": ["Render billing decision/pricing members remain present by explicit H5 no-mutation authorization and absent from H1."],
+      "member_predicates": [
+        {"expectation": "MUST_EXIST", "path": "render-module/src/main/java/com/example/platform/render/infrastructure/billing/decision/BillingDecisionEngine.java"},
+        {"expectation": "MUST_EXIST", "path": "render-module/src/main/java/com/example/platform/render/infrastructure/billing/decision/BillingDecision.java"},
+        {"expectation": "MUST_EXIST", "path": "render-module/src/main/java/com/example/platform/render/infrastructure/billing/policy/PricingEngine.java"}
+      ],
+      "original_disposition": "MIGRATE_REDESIGN",
+      "owner_boundary": "H5",
+      "retained_owner_deferred_debt": "Render-local billing/pricing convergence remains an H5 governance task."
+    },
+    {
+      "exact_caller_inventory": {
+        "deleted_ambient_authorities": [
+          "render-module/src/main/java/com/example/platform/render/infrastructure/RenderToolCapabilityInventory.java",
+          "render-module/src/main/java/com/example/platform/render/infrastructure/NodeEnvironmentCheck.java",
+          "render-module/src/main/java/com/example/platform/render/infrastructure/RemotionEnvironmentCheck.java"
+        ],
+        "pre_deletion_production_callers": {
+          "NodeEnvironmentCheck": [],
+          "RemotionEnvironmentCheck": [],
+          "RenderToolCapabilityInventory": ["render-module/src/main/java/com/example/platform/render/domain/remotion/RemotionRuntimeProbe.java"]
+        },
+        "pre_deletion_test_callers": {
+          "NodeEnvironmentCheck": [],
+          "RemotionEnvironmentCheck": [],
+          "RenderToolCapabilityInventory": ["render-module/src/test/java/com/example/platform/render/infrastructure/RenderToolCapabilityInventoryTest.java"]
+        },
+        "remaining_production_callers": [],
+        "remaining_test_callers": [],
+        "spring_wire_role": "RenderToolCapabilityInventory was a component with no production injection site; NodeEnvironmentCheck and RemotionEnvironmentCheck were unannotated zero-caller implementations"
+      },
+      "final_outcome": "IMPLEMENTED_DELETE_SHADOW",
+      "id": "RA-043",
+      "mechanical_evidence": ["Exact class-name scans found RenderToolCapabilityInventory's only production caller RemotionRuntimeProbe, its direct inventory test, and zero external production or test callers for NodeEnvironmentCheck and RemotionEnvironmentCheck. All three ambient authorities (RenderToolCapabilityInventory, NodeEnvironmentCheck, and RemotionEnvironmentCheck), the caller, and the direct inventory test are deleted; global platform and ambient PATH process-level discovery authority are guarded at zero."],
+      "member_predicates": [{"expectation": "MUST_BE_ABSENT", "path": "render-module/src/main/java/com/example/platform/render/infrastructure/RenderToolCapabilityInventory.java"}],
+      "original_disposition": "MIGRATE_REDESIGN",
+      "owner_boundary": "H1",
+      "retained_owner_deferred_debt": null
+    },
+    {
+      "final_outcome": "OWNER_DEFERRED_NO_H1_MUTATION",
+      "id": "RA-044",
+      "mechanical_evidence": ["Legacy RenderProvider/capability members remain present while references from the H1 kernel are guarded at zero."],
+      "member_predicates": [
+        {"expectation": "MUST_EXIST", "path": "render-module/src/main/java/com/example/platform/render/infrastructure/RenderProvider.java"},
+        {"expectation": "MUST_EXIST", "path": "render-module/src/main/java/com/example/platform/render/infrastructure/RenderProviderCapability.java"}
+      ],
+      "original_disposition": "MIGRATE_REDESIGN",
+      "owner_boundary": "LEGACY_OWNER",
+      "retained_owner_deferred_debt": "The broad RenderProvider god/string-surface migration is explicitly forbidden in P20-I7."
+    },
+    {
+      "final_outcome": "OWNER_DEFERRED_NO_H1_MUTATION",
+      "id": "RA-045",
+      "mechanical_evidence": ["Both adjacent string identity projections remain present and absent from H1 decisions."],
+      "member_predicates": [
+        {"expectation": "MUST_EXIST", "path": "render-module/src/main/java/com/example/platform/render/domain/asset/semantic/AiProviderDescriptor.java"},
+        {"expectation": "MUST_EXIST", "path": "extension-module/src/main/java/com/example/platform/extension/domain/CapabilityDescriptor.java"}
+      ],
+      "original_disposition": "DEFER",
+      "owner_boundary": "LEGACY_OWNER",
+      "retained_owner_deferred_debt": "Owning authority migration of raw provider/capability strings remains deferred."
+    }
+  ],
+  "schema_version": "ROADMAP_22_PHASE20_RESOURCE_AUTHORITY_IMPLEMENTATION_CLOSURE_V1",
+  "source_ledger": "docs/architecture/governance/roadmap-22-phase-20-resource-accounting-hardware-provider-conformance-disposition-ledger-v1.json",
+  "unclassified_count": 0
+}

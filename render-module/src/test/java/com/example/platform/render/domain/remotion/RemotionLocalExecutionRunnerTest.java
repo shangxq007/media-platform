@@ -2,7 +2,6 @@ package com.example.platform.render.domain.remotion;
 
 import com.example.platform.render.infrastructure.ProviderStatus;
 import com.example.platform.render.infrastructure.ProviderType;
-import com.example.platform.render.infrastructure.RenderToolCapabilityInventory;
 import com.example.platform.render.app.timeline.compile.RenderPlanPolicyGuard;
 import com.example.platform.render.domain.compile.executionplan.*;
 import com.example.platform.render.domain.compile.binding.*;
@@ -283,8 +282,6 @@ class RemotionLocalExecutionRunnerTest {
     }
 
     private RemotionProviderReadiness createReadiness() {
-        RenderToolCapabilityInventory inventory = new RenderToolCapabilityInventory();
-        RemotionRuntimeAvailability avail = new RemotionRuntimeProbe(inventory).probe();
-        return RemotionProviderReadiness.from(avail);
+        return RemotionProviderReadiness.from(RemotionRuntimeAvailability.notChecked());
     }
 }

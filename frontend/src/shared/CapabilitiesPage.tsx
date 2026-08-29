@@ -1,23 +1,14 @@
 export function CapabilitiesPage() {
   return (
     <div className="p-6">
-      <h1 className="text-xl font-bold mb-4">Capabilities</h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {[
-          { name: 'Render Job', status: 'stable', mode: 'async' },
-          { name: 'Media Processing', status: 'stable', mode: 'async' },
-          { name: 'Subtitle Render', status: 'stable', mode: 'async' },
-          { name: 'Font API', status: 'beta', mode: 'sync' },
-          { name: 'Artifact API', status: 'stable', mode: 'sync' },
-        ].map((cap) => (
-          <div key={cap.name} className="bg-gray-800 rounded p-4">
-            <div className="font-medium">{cap.name}</div>
-            <div className="flex gap-2 mt-2">
-              <span className="text-xs px-2 py-0.5 bg-green-900 text-green-300 rounded">{cap.status}</span>
-              <span className="text-xs px-2 py-0.5 bg-blue-900 text-blue-300 rounded">{cap.mode}</span>
-            </div>
-          </div>
-        ))}
+      <h1 className="text-xl font-bold mb-4">Access and runtime availability</h1>
+      <div className="max-w-2xl rounded border border-amber-800 bg-amber-950 p-4">
+        <h2 className="font-medium text-amber-200">Effective access projection unavailable</h2>
+        <p className="mt-2 text-sm text-amber-100">
+          This page will show capability existence, runtime availability, entitlement, policy permission, and quota
+          as separate backend decisions. The current API does not provide that projection, so no access decision is
+          inferred from subscription names, feature labels, or local runtime checks.
+        </p>
       </div>
     </div>
   )

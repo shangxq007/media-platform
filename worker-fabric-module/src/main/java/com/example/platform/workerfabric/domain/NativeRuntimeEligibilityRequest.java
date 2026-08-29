@@ -1,16 +1,19 @@
 package com.example.platform.workerfabric.domain;
 
 import com.example.platform.execution.compatibility.ProviderCandidate;
+import com.example.platform.execution.compatibility.StaticProviderCompatibilityProof;
 import com.example.platform.execution.taskgraph.ExecutableTask;
 import com.example.platform.execution.taskgraph.ProviderBoundExecutableTaskGraph;
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
 /**
  * Mutable Stage-2 evidence for one Native Pull runtime candidate.
  *
- * <p>Construction proves the exact task/provider candidate was admitted by the Stage-1 graph and
+ * <p>Construction proves the exact task/provider candidate was admitted by the Stage-1 feasibility
+ * view and
  * that Native Pull was already selected. OpenCue and remote-provider evaluation intentionally use
  * no nullable fake host/worker context.
  */
@@ -18,6 +21,11 @@ public record NativeRuntimeEligibilityRequest(
         ProviderBoundExecutableTaskGraph providerBoundGraph,
         ExecutableTask executableTask,
         ProviderCandidate staticallyCompatibleProviderCandidate,
+        List<StaticProviderCompatibilityProof> staticCompatibilityProofs,
+        ProviderHardwareRequirement providerHardwareRequirement,
+        List<RuntimeDependencyRequirement> runtimeDependencyRequirements,
+        Optional<ProviderHardwareObservation> providerHardwareObservation,
+        Optional<RuntimeDependencyObservation> runtimeDependencyObservation,
         ExecutionBackendSelection backendSelection,
         Optional<WorkerRuntimeDescriptor> workerRuntime,
         Optional<WorkerRuntimeAvailability> workerAvailability,
@@ -45,6 +53,15 @@ public record NativeRuntimeEligibilityRequest(
         Objects.requireNonNull(executableTask, "executableTask");
         Objects.requireNonNull(staticallyCompatibleProviderCandidate,
                 "staticallyCompatibleProviderCandidate");
+        staticCompatibilityProofs = List.copyOf(Objects.requireNonNull(
+                staticCompatibilityProofs, "staticCompatibilityProofs"));
+        Objects.requireNonNull(providerHardwareRequirement, "providerHardwareRequirement");
+        runtimeDependencyRequirements = List.copyOf(Objects.requireNonNull(
+                runtimeDependencyRequirements, "runtimeDependencyRequirements"));
+        providerHardwareObservation = Objects.requireNonNull(
+                providerHardwareObservation, "providerHardwareObservation");
+        runtimeDependencyObservation = Objects.requireNonNull(
+                runtimeDependencyObservation, "runtimeDependencyObservation");
         Objects.requireNonNull(backendSelection, "backendSelection");
         workerRuntime = Objects.requireNonNull(workerRuntime, "workerRuntime");
         workerAvailability = Objects.requireNonNull(workerAvailability, "workerAvailability");
@@ -85,9 +102,39 @@ public record NativeRuntimeEligibilityRequest(
             throw new IllegalArgumentException(
                     "runtime eligibility candidate cannot rebind the task ProviderBindingPin");
         }
-        executableTask.memberships().forEach(membership ->
-                providerBoundGraph.providerCompatibilityGraph().requireStaticallyFeasible(
-                        membership.physicalPlanUnit(), staticallyCompatibleProviderCandidate));
+        if (executableTask.memberships().isEmpty()
+                || staticCompatibilityProofs.size() != executableTask.memberships().size()) {
+            throw new IllegalArgumentException(
+                    "runtime eligibility requires one exact Stage-1 proof per task membership");
+        }
+        for (int index = 0; index < executableTask.memberships().size(); index++) {
+            var membership = executableTask.memberships().get(index);
+            StaticProviderCompatibilityProof proof = staticCompatibilityProofs.get(index);
+            try {
+                providerBoundGraph.requireExactStaticCompatibilityProof(
+                        membership.physicalPlanUnitId(),
+                        staticallyCompatibleProviderCandidate,
+                        proof);
+            } catch (IllegalArgumentException exception) {
+                throw new IllegalArgumentException(
+                        "runtime eligibility Stage-1 proof does not bind the exact task membership and provider",
+                        exception);
+            }
+        }
+        var expectedProviderImplementationId = staticallyCompatibleProviderCandidate
+                .descriptor().providerImplementationId();
+        if (!providerHardwareRequirement.providerImplementationId()
+                .equals(expectedProviderImplementationId)) {
+            throw new IllegalArgumentException(
+                    "runtime eligibility hardware requirement cannot rebind ProviderImplementationId");
+        }
+        for (RuntimeDependencyRequirement requirement : runtimeDependencyRequirements) {
+            Objects.requireNonNull(requirement, "runtimeDependencyRequirements element");
+            if (!requirement.providerImplementationId().equals(expectedProviderImplementationId)) {
+                throw new IllegalArgumentException(
+                        "runtime eligibility dependency requirement cannot rebind ProviderImplementationId");
+            }
+        }
         providerProbeResult.ifPresent(probe -> {
             if (!probe.providerBindingPin().equals(executableTask.providerBindingPin())) {
                 throw new IllegalArgumentException(

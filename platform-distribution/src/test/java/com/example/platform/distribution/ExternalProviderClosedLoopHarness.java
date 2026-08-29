@@ -15,7 +15,7 @@ import com.example.platform.artifact.domain.ProvenanceEdge;
 import com.example.platform.artifact.domain.ReplicaRole;
 import com.example.platform.execution.compatibility.CompatibilityRequest;
 import com.example.platform.execution.compatibility.ProviderCandidate;
-import com.example.platform.execution.compatibility.ProviderCompatibilityGraph;
+import com.example.platform.execution.compatibility.ProviderFeasibilityView;
 import com.example.platform.execution.compatibility.ProviderStaticCompatibility;
 import com.example.platform.execution.compatibility.StaticCompatibilityConstraint.BoundaryContractId;
 import com.example.platform.execution.composition.ExecutableTaskMembership;
@@ -309,12 +309,12 @@ final class ExternalProviderClosedLoopHarness {
                 contribution.providerExecutionContract(),
                 contribution.providerCapabilityProfile(),
                 staticCompatibility);
-        ProviderCompatibilityGraph compatibility = ProviderCompatibilityGraph.build(
+        ProviderFeasibilityView feasibilityView = ProviderFeasibilityView.build(
                 plan, List.of(CompatibilityRequest.forUnit(unit)), List.of(candidate), List.of());
         var membership = ExecutableTaskMembership.canonicalForUnits(List.of(unit));
         var composition = ProviderLocalCompositionEvaluator.evaluate(
                 ProviderLocalCompositionRequest.of(
-                        membership, compatibility, candidate,
+                        membership, feasibilityView, candidate,
                         new ProviderCompositionDeclaration(
                                 contribution.providerBindingPin(),
                                 ProviderCompositionDeclaration.NativePipelineSupport.SUPPORTED),
@@ -328,7 +328,7 @@ final class ExternalProviderClosedLoopHarness {
                                 unit.stepId(), output,
                                 output.intermediateArtifactExpectations().getFirst()))));
         return ProviderBoundExecutableTaskGraph.derive(
-                plan, compatibility, List.of(task), List.of());
+                plan, feasibilityView, List.of(task), List.of());
     }
 
     private static InputBinding sourceInput(String digest) {

@@ -1,12 +1,14 @@
 package com.example.platform.execution.taskgraph;
 
 import com.example.platform.execution.compatibility.CompatibilityRequest;
+import com.example.platform.execution.compatibility.CompatibilityKernel;
 import com.example.platform.execution.compatibility.ProviderBoundaryCompatibilityDeclaration;
 import com.example.platform.execution.compatibility.ProviderBoundaryCompatibilityDeclaration.Declaration;
 import com.example.platform.execution.compatibility.ProviderCandidate;
-import com.example.platform.execution.compatibility.ProviderCompatibilityGraph;
+import com.example.platform.execution.compatibility.ProviderFeasibilityView;
 import com.example.platform.execution.compatibility.ProviderStaticCompatibility;
 import com.example.platform.execution.compatibility.StaticCompatibilityConstraint.BoundaryContractId;
+import com.example.platform.execution.compatibility.StaticProviderCompatibilityProof;
 import com.example.platform.execution.composition.CompositionDecision;
 import com.example.platform.execution.composition.ExecutableTaskMembership;
 import com.example.platform.execution.composition.FailureAttribution.MemberAttribution;
@@ -59,6 +61,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -67,6 +70,66 @@ class ProviderBoundExecutableTaskGraphTest {
 
     private static final BoundaryContractId DIRECT_CONTRACT =
             BoundaryContractId.of("taskgraph-test-direct.v1");
+
+    @Test
+    void runtimeProofBoundaryResolvesTypedIdentityAndEnforcesCanonicalStageOneSemantics() {
+        PhysicalPlanUnit canonicalUnit = sourcePinnedUnitWithDigest(
+                "runtime-proof-unit", "a".repeat(64));
+        PhysicalExecutionPlan canonicalPlan = plan(canonicalUnit);
+        TaskContext canonicalContext = context(canonicalPlan, "provider-a", "provider-b");
+        ProviderCandidate providerA = canonicalContext.candidate("provider-a");
+        ProviderBoundExecutableTaskGraph graph = ProviderBoundExecutableTaskGraph.derive(
+                canonicalPlan,
+                canonicalContext.feasibilityView(),
+                List.of(task(canonicalContext, "provider-a", List.of(canonicalUnit), List.of())),
+                List.of());
+        StaticProviderCompatibilityProof exactProof = canonicalContext.feasibilityView()
+                .requireStaticallyFeasible(canonicalUnit, providerA);
+        StaticProviderCompatibilityProof semanticallyEqualProof = CompatibilityKernel.evaluate(
+                        exactProof.compatibilityRequest(), providerA)
+                .staticCompatibilityProof()
+                .orElseThrow();
+
+        assertNotSame(exactProof, semanticallyEqualProof);
+        assertEquals(exactProof, semanticallyEqualProof);
+
+        assertSame(
+                exactProof,
+                graph.requireExactStaticCompatibilityProof(
+                        canonicalUnit.stepId(), providerA, exactProof));
+        assertSame(
+                exactProof,
+                graph.requireExactStaticCompatibilityProof(
+                        canonicalUnit.stepId(), providerA, semanticallyEqualProof));
+
+        PhysicalPlanUnit foreignUnit = sourcePinnedUnit("foreign-runtime-proof-unit");
+        TaskContext foreignContext = context(plan(foreignUnit), "provider-a");
+        StaticProviderCompatibilityProof foreignProof = foreignContext.feasibilityView()
+                .requireStaticallyFeasible(foreignUnit, foreignContext.candidate("provider-a"));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> graph.requireExactStaticCompatibilityProof(
+                        canonicalUnit.stepId(), providerA, foreignProof));
+
+        PhysicalPlanUnit sameIdModifiedUnit = sourcePinnedUnitWithDigest(
+                canonicalUnit.stepId().value(), "b".repeat(64));
+        TaskContext modifiedContext = context(plan(sameIdModifiedUnit), "provider-a");
+        StaticProviderCompatibilityProof sameIdModifiedProof = modifiedContext.feasibilityView()
+                .requireStaticallyFeasible(
+                        sameIdModifiedUnit, modifiedContext.candidate("provider-a"));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> graph.requireExactStaticCompatibilityProof(
+                        canonicalUnit.stepId(), providerA, sameIdModifiedProof));
+
+        ProviderCandidate providerB = canonicalContext.candidate("provider-b");
+        StaticProviderCompatibilityProof wrongProviderProof = canonicalContext.feasibilityView()
+                .requireStaticallyFeasible(canonicalUnit, providerB);
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> graph.requireExactStaticCompatibilityProof(
+                        canonicalUnit.stepId(), providerB, wrongProviderProof));
+    }
 
     @Test
     void executionReuseKeyIsVersionedCanonicalAndStableForEquivalentGraphs() {
@@ -312,9 +375,9 @@ class ProviderBoundExecutableTaskGraphTest {
                 pair, context.candidate("provider-a"), context.candidate("provider-a"));
 
         ProviderBoundExecutableTaskGraph forward = ProviderBoundExecutableTaskGraph.derive(
-                plan, context.graph(), List.of(producer, consumer), List.of(boundary));
+                plan, context.feasibilityView(), List.of(producer, consumer), List.of(boundary));
         ProviderBoundExecutableTaskGraph reverse = ProviderBoundExecutableTaskGraph.derive(
-                plan, context.graph(), List.of(consumer, producer), List.of(boundary));
+                plan, context.feasibilityView(), List.of(consumer, producer), List.of(boundary));
 
         assertEquals(forward.digest(), reverse.digest());
         assertEquals(forward.tasks().stream().map(ExecutableTask::id).toList(),
@@ -335,7 +398,7 @@ class ProviderBoundExecutableTaskGraphTest {
         ExecutionArtifactBoundary boundary = executionBoundary(
                 pair, context.candidate("provider-a"), context.candidate("provider-a"));
         ProviderBoundExecutableTaskGraph separate = ProviderBoundExecutableTaskGraph.derive(
-                plan, context.graph(), List.of(producer, consumer), List.of(boundary));
+                plan, context.feasibilityView(), List.of(producer, consumer), List.of(boundary));
 
         assertEquals(1, separate.taskDependencies().size());
         assertEquals(pair.edge(), separate.taskDependencies().getFirst().sourceDependency());
@@ -351,7 +414,7 @@ class ProviderBoundExecutableTaskGraphTest {
         ExecutableTask coalesced = task(
                 context, "provider-a", List.of(pair.consumer(), pair.producer()), List.of());
         ProviderBoundExecutableTaskGraph internal = ProviderBoundExecutableTaskGraph.derive(
-                plan, context.graph(), List.of(coalesced), List.of());
+                plan, context.feasibilityView(), List.of(coalesced), List.of());
 
         assertEquals(0, internal.taskDependencies().size());
         assertEquals(1, internal.providerLocalDependencies().size());
@@ -409,7 +472,7 @@ class ProviderBoundExecutableTaskGraphTest {
 
         IllegalArgumentException missing = assertThrows(IllegalArgumentException.class,
                 () -> ProviderBoundExecutableTaskGraph.derive(
-                        plan, context.graph(), List.of(producer), List.of()));
+                        plan, context.feasibilityView(), List.of(producer), List.of()));
         assertTrue(missing.getMessage().contains("without membership"));
 
         ExecutableTask duplicateOnOtherBinding = task(
@@ -417,7 +480,7 @@ class ProviderBoundExecutableTaskGraphTest {
         IllegalArgumentException duplicate = assertThrows(IllegalArgumentException.class,
                 () -> ProviderBoundExecutableTaskGraph.derive(
                         plan,
-                        context.graph(),
+                        context.feasibilityView(),
                         List.of(producer, duplicateOnOtherBinding),
                         List.of()));
         assertTrue(duplicate.getMessage().contains("duplicate physical plan unit membership"));
@@ -438,7 +501,7 @@ class ProviderBoundExecutableTaskGraphTest {
                 pair, context.candidate("provider-a"), context.candidate("provider-a"));
 
         ProviderBoundExecutableTaskGraph graph = ProviderBoundExecutableTaskGraph.derive(
-                plan, context.graph(), List.of(producer, consumer), List.of(boundary));
+                plan, context.feasibilityView(), List.of(producer, consumer), List.of(boundary));
 
         assertSame(plan, graph.sourcePhysicalPlan());
         assertEquals(before, plan.units());
@@ -507,7 +570,7 @@ class ProviderBoundExecutableTaskGraphTest {
         ExecutionArtifactBoundary boundary = executionBoundary(
                 pair, context.candidate("provider-a"), context.candidate("provider-a"));
         ProviderBoundExecutableTaskGraph graph = ProviderBoundExecutableTaskGraph.derive(
-                plan, context.graph(), List.of(producer, consumer), List.of(boundary));
+                plan, context.feasibilityView(), List.of(producer, consumer), List.of(boundary));
         assertEquals(1, graph.mandatoryArtifactBoundaries().size());
         assertEquals(0, graph.mandatoryArtifactBoundaryViolationCount());
     }
@@ -554,7 +617,7 @@ class ProviderBoundExecutableTaskGraphTest {
         IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
                 () -> ProviderBoundExecutableTaskGraph.derive(
                         plan,
-                        context.graph(),
+                        context.feasibilityView(),
                         List.of(
                                 task(context, "provider-a", List.of(unitA), List.of()),
                                 task(context, "provider-a", List.of(unitB), List.of())),
@@ -580,7 +643,7 @@ class ProviderBoundExecutableTaskGraphTest {
                 ExecutableTaskMembership.canonicalForUnits(units);
         ProviderLocalCompositionRequest request = ProviderLocalCompositionRequest.of(
                 memberships,
-                context.graph(),
+                context.feasibilityView(),
                 candidate,
                 new ProviderCompositionDeclaration(binding, NativePipelineSupport.SUPPORTED),
                 List.of());
@@ -598,12 +661,12 @@ class ProviderBoundExecutableTaskGraphTest {
         List<ProviderCandidate> candidates = Arrays.stream(providers)
                 .map(ProviderBoundExecutableTaskGraphTest::candidate)
                 .toList();
-        ProviderCompatibilityGraph graph = ProviderCompatibilityGraph.build(
+        ProviderFeasibilityView feasibilityView = ProviderFeasibilityView.build(
                 plan,
                 plan.units().stream().map(CompatibilityRequest::forUnit).toList(),
                 candidates,
                 declarations);
-        return new TaskContext(plan, graph, candidates);
+        return new TaskContext(plan, feasibilityView, candidates);
     }
 
     private static ProviderCandidate candidate(String provider) {
@@ -788,7 +851,7 @@ class ProviderBoundExecutableTaskGraphTest {
         TaskContext context = context(plan, "provider-a");
         return ProviderBoundExecutableTaskGraph.derive(
                 plan,
-                context.graph(),
+                context.feasibilityView(),
                 List.of(task(context, "provider-a", List.of(unit), List.of())),
                 List.of());
     }
@@ -803,7 +866,7 @@ class ProviderBoundExecutableTaskGraphTest {
         ExecutionArtifactBoundary boundary = executionBoundary(
                 pair, context.candidate("provider-a"), context.candidate("provider-a"));
         return ProviderBoundExecutableTaskGraph.derive(
-                plan, context.graph(), List.of(producer, consumer), List.of(boundary));
+                plan, context.feasibilityView(), List.of(producer, consumer), List.of(boundary));
     }
 
     private static PhysicalPlanUnit sourcePinnedUnitWithProducerLogicalNodeId(
@@ -905,7 +968,7 @@ class ProviderBoundExecutableTaskGraphTest {
 
     private record TaskContext(
             PhysicalExecutionPlan plan,
-            ProviderCompatibilityGraph graph,
+            ProviderFeasibilityView feasibilityView,
             List<ProviderCandidate> candidates) {
 
         private ProviderCandidate candidate(String provider) {

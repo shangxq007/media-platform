@@ -34,8 +34,7 @@ public final class RuntimeEligibilityDecision {
         }
         this.reasons = List.copyOf(canonical);
 
-        boolean unknown = this.reasons.contains(RuntimeEligibilityReason.PROBE_UNKNOWN)
-                || this.reasons.contains(RuntimeEligibilityReason.UNKNOWN_RUNTIME_ELIGIBILITY);
+        boolean unknown = this.reasons.stream().anyMatch(RuntimeEligibilityReason::unknownEvidence);
         if (status == Status.ELIGIBLE && !this.reasons.isEmpty()) {
             throw new IllegalArgumentException("eligible runtime decision cannot contain reasons");
         }

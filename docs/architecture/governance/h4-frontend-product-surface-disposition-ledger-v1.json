@@ -1,0 +1,466 @@
+{
+  "schemaVersion": "H4_FRONTEND_PRODUCT_SURFACE_DISPOSITION_LEDGER_V1",
+  "task": "FRONTEND_PRODUCT_SURFACE_CANONICAL_CONTRACT_ALIGNMENT_AND_CLEAN_FORWARD_V1",
+  "scope": {
+    "governedRoot": "frontend/src",
+    "includedExtensions": [".ts", ".tsx", ".css"],
+    "excluded": [
+      "frontend/dist/**",
+      "frontend/build/**",
+      "frontend/node_modules/**",
+      "frontend/src/contracts/fixtures/**",
+      "frontend/src/**/*.test.*",
+      "vendor/**",
+      "unrelated worktrees"
+    ],
+    "authorityCountsExclude": "Harmless display text, typed transport enum members, and explicit developer/operator diagnostics are not authority decisions."
+  },
+  "preflight": {
+    "branch": "agent/frontend-product-surface-canonical-alignment",
+    "head": "e02579181ba3049ae65ed81080c93a7212f5833d",
+    "headTree": "b67136e3a4b4e08688091bad0c4dad30d841978d",
+    "originMain": "e02579181ba3049ae65ed81080c93a7212f5833d",
+    "worktreeClean": true,
+    "stashState": "One pre-existing stash on unrelated branch agent/roadmap22-executable-task-graph-worker-fabric-decision-recovery; preserved untouched.",
+    "applicableInstructions": ["AGENTS.md"],
+    "nestedInstructions": [],
+    "instructionConflicts": []
+  },
+  "appendForwardCorrection": {
+    "taskId": "H4_BOUNDED_CORRECTION_R1_R6",
+    "reviewedCandidateSha": "95f53f52b7a50c0f5a5d82bf369d354f62cbb762",
+    "reviewedCandidateTree": "32d8634e117bb05007e4b3797186070f69ec0065",
+    "baseSha": "e02579181ba3049ae65ed81080c93a7212f5833d",
+    "mode": "APPEND_FORWARD_CORRECTION_CANDIDATE",
+    "reviewedCandidateHistoryMutated": false,
+    "corrections": [
+      "Fail the active artifact-list surface closed pending a tenant/project-scoped redacted summary projection.",
+      "Resolve registered render-result routes only from the authenticated workspace projection.",
+      "Remove the Product result surface's unlinked local render-status vocabulary."
+    ]
+  },
+  "auditMethod": {
+    "frontendScan": "rg over repository-relative frontend/src TypeScript, TSX, and CSS, excluding tests and fixtures from production authority totals",
+    "reachabilitySource": "frontend/src/app/routeTree.tsx",
+    "backendContractSources": [
+      "render-module/src/main/java/com/example/platform/render/api/RenderController.java",
+      "render-module/src/main/java/com/example/platform/render/app/dto/RenderJobResponse.java",
+      "render-module/src/main/java/com/example/platform/render/app/dto/ArtifactInfoResponse.java",
+      "render-module/src/main/java/com/example/platform/render/app/access/ArtifactAccessService.java",
+      "platform-app/src/main/java/com/example/platform/web/render/TimelineSnapshotController.java",
+      "platform-app/src/main/java/com/example/platform/web/assets/AssetController.java",
+      "entitlement-module/src/main/java/com/example/platform/entitlement/api/EntitlementController.java",
+      "timeline-module/src/main/java/com/example/platform/timeline/semantics/clip/TimelineSourceBinding.java",
+      "timeline-module/src/main/java/com/example/platform/timeline/semantics/clip/MediaStreamSourceBinding.java",
+      "timeline-module/src/main/java/com/example/platform/timeline/semantics/clip/MediaClip.java",
+      "timeline-module/src/main/java/com/example/platform/timeline/semantics/temporal/TemporalMapping.java",
+      "audio-module/src/main/java/com/example/platform/audio/domain/mix/AudioMix.java"
+    ]
+  },
+  "mechanicalTotals": {
+    "auditBaseline": {
+      "governedFrontendFiles": 187,
+      "registeredRouteComponents": 15,
+      "mediaStorageAssumptionMatches": 25,
+      "mediaStorageAssumptionPaths": 15,
+      "legacyTimelineBindingMatches": 42,
+      "legacyTimelineBindingPaths": 8,
+      "concreteFfmpegLexicalMatches": 3,
+      "concreteFfmpegLexicalPaths": 1,
+      "providerAuthorityShapeMatches": 13,
+      "providerAuthorityShapePaths": 6,
+      "planTierShapeMatches": 54,
+      "planTierShapePaths": 15,
+      "legacyAudioShapeMatches": 6,
+      "legacyAudioShapePaths": 2,
+      "localRevisionMergeMatches": 6,
+      "localRevisionMergePaths": 1,
+      "renderStatusLiteralMatches": 269,
+      "renderStatusLiteralPaths": 53,
+      "oldGraphPlanMatches": 0,
+      "oldGraphPlanPaths": 0,
+      "canonicalShadowLabelMatches": 11,
+      "canonicalShadowLabelPaths": 6
+    },
+    "classifiedConceptFamilies": 20,
+    "dispositionCounts": {
+      "REUSE_AS_PRODUCT_SURFACE": 2,
+      "MIGRATE_TO_CANONICAL_CONTRACT": 2,
+      "DELETE_SHADOW": 6,
+      "REUSE_MECHANICS_ONLY": 1,
+      "BLOCKED_BY_BACKEND_PROJECTION": 5,
+      "DEFER": 4,
+      "UNCLASSIFIED": 0
+    },
+    "postAlignment": {
+      "status": "COMPLETE",
+      "governedFrontendFiles": 160,
+      "guardedTypeScriptFiles": 153,
+      "mediaStorageAssumptionMatches": 5,
+      "mediaStorageAssumptionPaths": 3,
+      "legacyTimelineBindingMatches": 13,
+      "legacyTimelineBindingPaths": 4,
+      "concreteFfmpegLexicalMatches": 3,
+      "concreteFfmpegLexicalPaths": 1,
+      "providerAuthorityShapeMatches": 8,
+      "providerAuthorityShapePaths": 3,
+      "planTierShapeMatches": 45,
+      "planTierShapePaths": 11,
+      "legacyAudioShapeMatches": 6,
+      "legacyAudioShapePaths": 2,
+      "localRevisionMergeMatches": 0,
+      "localRevisionMergePaths": 0,
+      "renderStatusLiteralMatches": 194,
+      "renderStatusLiteralPaths": 37,
+      "oldGraphPlanMatches": 0,
+      "oldGraphPlanPaths": 0,
+      "canonicalShadowLabelMatches": 0,
+      "canonicalShadowLabelPaths": 0
+    },
+    "postCorrection": {
+      "status": "CORRECTION_CANDIDATE_READY_FOR_HERMES_VALIDATION",
+      "governedFrontendFiles": 159,
+      "guardedTypeScriptFiles": 152,
+      "classifiedConceptFamilies": 20,
+      "dispositionCounts": {
+        "REUSE_AS_PRODUCT_SURFACE": 2,
+        "MIGRATE_TO_CANONICAL_CONTRACT": 2,
+        "DELETE_SHADOW": 6,
+        "REUSE_MECHANICS_ONLY": 1,
+        "BLOCKED_BY_BACKEND_PROJECTION": 5,
+        "DEFER": 4,
+        "UNCLASSIFIED": 0
+      },
+      "FRONTEND_SYNTHETIC_WORKSPACE_SCOPE_COUNT": 0,
+      "FRONTEND_ACTIVE_UNSCOPED_RENDER_API_COUNT": 0,
+      "FRONTEND_STALE_RENDER_STATUS_SHADOW_COUNT": 0,
+      "artifactListSurface": "FAIL_CLOSED_PENDING_H4_GAP_006"
+    }
+  },
+  "runtimeReachability": {
+    "activeProductRoutes": [
+      {"path": "/", "component": "frontend/src/editor/EditorPage.tsx", "surface": "EDIT"},
+      {"path": "/render-jobs", "component": "frontend/src/pages/RenderJobDashboard.tsx", "surface": "PRODUCE"},
+      {"path": "/capabilities", "component": "frontend/src/shared/CapabilitiesPage.tsx", "surface": "PRODUCE_SUPPORT"},
+      {"path": "/smoke-editor", "component": "frontend/src/pages/SmokeEditorPage.tsx", "surface": "EDIT_TO_PRODUCE"},
+      {"path": "/app/renders", "component": "frontend/src/routes/app/renders/RenderResultsListPage.tsx", "surface": "PRODUCE"},
+      {"path": "/app/renders/$productId", "component": "frontend/src/routes/app/renders/RenderResultDetailPage.tsx", "surface": "PRODUCE"}
+    ],
+    "operatorRoutes": ["/observability", "/admin/render-jobs", "/admin/storage-health"],
+    "developerRoutes": ["/dev/preview", "/dev/timeline-git", "/dev/diagnostics", "/dev/storage-delivery-profiles", "/dev/ingest/preflight-policy"],
+    "deadOrUnregisteredExamples": [
+      "frontend/src/pages/UserRenderHistoryPage.tsx",
+      "frontend/src/pages/UserRenderResultDetailPage.tsx",
+      "frontend/src/render-job/RenderJobsPage.tsx"
+    ]
+  },
+  "conceptFamilies": [
+    {
+      "id": "H4-CF-001",
+      "concept": "Active smoke editor authors legacy assetRef URI timeline JSON",
+      "pathsOrPatterns": ["frontend/src/api/smoke-editor.ts", "frontend/src/pages/SmokeEditorPage.tsx", "frontend/src/components/smoke-editor/**"],
+      "evidence": "The registered /smoke-editor route accepts a raw assetUri and builds assetRef.uri, floating-point clipStart/clipEnd, and outputSpec locally before POST /api/render/timeline-snapshots. The endpoint accepts opaque JsonNode editorTimeline and does not expose TimelineSourceBinding, immutable pins, MediaTime, or TemporalMapping authoring DTOs.",
+      "runtimeReachability": "ACTIVE_PRODUCT_ROUTE",
+      "disposition": "BLOCKED_BY_BACKEND_PROJECTION",
+      "rationale": "Continuing the form would make the frontend a legacy Timeline/source-binding authority. Fail the authoring action closed until a canonical application projection exists.",
+      "replacementContract": "H4-GAP-001"
+    },
+    {
+      "id": "H4-CF-002",
+      "concept": "Artifact previews consume raw storageUri as a browser URL",
+      "pathsOrPatterns": ["frontend/src/components/render-jobs/ArtifactView.tsx", "frontend/src/components/artifacts/ArtifactPreview.tsx"],
+      "evidence": "Active /render-jobs assigns artifact.storageUri directly to video/image/audio src and anchor href although RenderController exposes /artifacts/{artifactId}/access with a redacted ephemeral descriptor.",
+      "runtimeReachability": "ACTIVE_PRODUCT_ROUTE_AND_DEAD_DUPLICATE",
+      "disposition": "MIGRATE_TO_CANONICAL_CONTRACT",
+      "rationale": "Product UI should request access on demand and never interpret or expose storage coordinates.",
+      "replacementContract": "RenderController artifact access descriptor: accessType, url, expiresAt, mimeType, filename, status, message, redacted"
+    },
+    {
+      "id": "H4-CF-003",
+      "concept": "Render job handwritten schemas disagree with implemented application DTO and routes",
+      "pathsOrPatterns": ["frontend/src/api/contracts/schema.ts", "frontend/src/api/render-jobs.ts", "frontend/src/domain/models.ts", "frontend/src/contracts/app/render-job.ts"],
+      "evidence": "Frontend variants use PROCESSING, timestamps, optional artifactId, or string status. Backend RenderJobResponse is exactly id, projectId, timelineSnapshotId, profile, status and tenant/project routes are implemented; unscoped GET /api/render/jobs is removed.",
+      "runtimeReachability": "ACTIVE_PRODUCT_ROUTE",
+      "disposition": "MIGRATE_TO_CANONICAL_CONTRACT",
+      "rationale": "Use one explicit Zod transport projection matching the controller DTO and typed backend status vocabulary.",
+      "replacementContract": "render-module RenderJobResponse and RenderJobStatus"
+    },
+    {
+      "id": "H4-CF-004",
+      "concept": "Capabilities page hardcodes capability existence and stability",
+      "pathsOrPatterns": ["frontend/src/shared/CapabilitiesPage.tsx"],
+      "evidence": "The registered page declares Render Job, Media Processing, Subtitle Render, Font API, and Artifact API stable/beta without querying effective access.",
+      "runtimeReachability": "ACTIVE_PRODUCT_ROUTE",
+      "disposition": "BLOCKED_BY_BACKEND_PROJECTION",
+      "rationale": "The existing endpoint returns tier plus policy structures and does not separate existence, runtime availability, entitlement, permission, and quota. Remove the fabricated catalog and expose a blocked state.",
+      "replacementContract": "H4-GAP-002"
+    },
+    {
+      "id": "H4-CF-005",
+      "concept": "Frontend domain model layer duplicates transport canonical entities",
+      "pathsOrPatterns": ["frontend/src/domain/models.ts", "frontend/src/domain/mappers.ts", "frontend/src/domain/index.ts"],
+      "evidence": "Files call themselves frontend single source of truth and redefine Asset, RenderJob, Artifact, EffectPack, provider mappings, and allowed tiers; consumers are confined to the smoke-editor asset island.",
+      "runtimeReachability": "ACTIVE_ONLY_THROUGH_BLOCKED_SMOKE_EDITOR",
+      "disposition": "DELETE_SHADOW",
+      "rationale": "Formatting belongs in view models; canonical entity definitions belong to backend/application transport contracts.",
+      "replacementContract": "Explicit transport DTOs plus component-local presentation formatting"
+    },
+    {
+      "id": "H4-CF-006",
+      "concept": "Unused local three-way Timeline merge and equality authority",
+      "pathsOrPatterns": ["frontend/src/utils/timelineConflictMerge.ts"],
+      "evidence": "mergeTrackClips, trackClipsEqual, mergeClipCatalog, and mergeEditorTimelines implement semantic reconciliation locally; no production import consumes the module.",
+      "runtimeReachability": "DEAD_CODE",
+      "disposition": "DELETE_SHADOW",
+      "rationale": "Timeline revision/diff/merge is backend authority and the module has no caller.",
+      "replacementContract": "TimelineRevisionAPI compare/merge application responses when a surface needs them"
+    },
+    {
+      "id": "H4-CF-007",
+      "concept": "Unused Timeline-to-render mapper invents sourceUrl transport and local validity semantics",
+      "pathsOrPatterns": ["frontend/src/timeline/mappers/timelineToRender.ts"],
+      "evidence": "The mapper emits sourceUrl from asset URI maps and locally decides overlap/video validity; no production import consumes its exported functions.",
+      "runtimeReachability": "DEAD_CODE",
+      "disposition": "DELETE_SHADOW",
+      "rationale": "Remove an unreferenced legacy transport/domain authority instead of retaining a second Timeline contract.",
+      "replacementContract": "H4-GAP-001"
+    },
+    {
+      "id": "H4-CF-008",
+      "concept": "Unused client export API sends commercial tier with FREE default",
+      "pathsOrPatterns": ["frontend/src/api/client-export.ts"],
+      "evidence": "startSession accepts tier and substitutes FREE; no production import consumes ClientExportAPI. The backend also currently accepts tier from the client.",
+      "runtimeReachability": "DEAD_CODE",
+      "disposition": "DELETE_SHADOW",
+      "rationale": "A client must consume effective access, never choose the policy tier supplied to a render mutation.",
+      "replacementContract": "H4-GAP-003"
+    },
+    {
+      "id": "H4-CF-009",
+      "concept": "Timeline canvas normalized geometry and interaction state",
+      "pathsOrPatterns": ["frontend/src/timeline/model/**", "frontend/src/timeline/canvas/**", "frontend/src/timeline/interaction/**", "frontend/src/timeline/store/**"],
+      "evidence": "The island stores ordering, selection, pixel height, clip timing handles, drag/trim commands, zoom, and layout mechanics. It is currently reached only by the smoke route.",
+      "runtimeReachability": "BLOCKED_SURFACE_MECHANICS",
+      "disposition": "REUSE_MECHANICS_ONLY",
+      "rationale": "React DOM, dnd-kit, and local presentation state remain useful, but comments and types must not claim canonical Timeline authority and submission must await application projections.",
+      "replacementContract": "Presentation adapter over a future canonical Timeline application projection"
+    },
+    {
+      "id": "H4-CF-010",
+      "concept": "Dev FFmpeg preview diagnostics",
+      "pathsOrPatterns": ["frontend/src/pages/DevConsolePage.tsx"],
+      "evidence": "All three lexical FFmpeg occurrences are explanatory copy inside the registered /dev/preview surface; no provider selection/default logic is present.",
+      "runtimeReachability": "EXPLICIT_DEVELOPER_ROUTE",
+      "disposition": "REUSE_AS_PRODUCT_SURFACE",
+      "rationale": "Concrete runtime diagnostics are permitted in explicit developer/operator surfaces and are excluded from creator authority counts.",
+      "replacementContract": "Backend preview job status and artifact projections"
+    },
+    {
+      "id": "H4-CF-011",
+      "concept": "Observability provider selection/fallback presentation",
+      "pathsOrPatterns": ["frontend/src/observability/**", "frontend/src/pages/ObservabilityDashboard.tsx"],
+      "evidence": "At audit the registered operator surface declared selectedProvider, candidates, fallbackTriggered, metrics, and reasons, but mechanical backend route inspection found no implemented observability controllers for its clients.",
+      "runtimeReachability": "OPERATOR_ROUTE",
+      "disposition": "BLOCKED_BY_BACKEND_PROJECTION",
+      "rationale": "The repository has no implemented observability controllers for these clients. Replace the fabricated dashboard with an explicit projection-gap state.",
+      "replacementContract": "H4-GAP-007"
+    },
+    {
+      "id": "H4-CF-012",
+      "concept": "Backend-owned Timeline revision diff visualization",
+      "pathsOrPatterns": ["frontend/src/pages/TimelineGitConsolePage.tsx", "frontend/src/api/timelineRevision.ts", "frontend/src/utils/timelinePatchHighlight.ts"],
+      "evidence": "The dev route requests compare/snapshot data from TimelineRevisionAPI and highlights returned entity changes. The deleted merge module is not imported.",
+      "runtimeReachability": "EXPLICIT_DEVELOPER_ROUTE",
+      "disposition": "REUSE_AS_PRODUCT_SURFACE",
+      "rationale": "Visualization of returned diff and revision identity is permitted and does not implement equality/diff/merge.",
+      "replacementContract": "TimelineRevisionController compare and snapshot responses"
+    },
+    {
+      "id": "H4-CF-013",
+      "concept": "Large legacy frontend/src/types aggregate duplicates domain and transport types",
+      "pathsOrPatterns": ["frontend/src/types/index.ts"],
+      "evidence": "The file defines Clip, Track, TimelineState, RenderJob, EntitlementPolicy, ProviderAccessPolicy, many admin DTOs, and string statuses. It has numerous consumers in unrelated admin/account API clients.",
+      "runtimeReachability": "MIXED_ACTIVE_DEAD_AND_ADMIN",
+      "disposition": "DEFER",
+      "rationale": "A wholesale migration would cross unrelated surface boundaries. New and modified H4 flows do not add dependencies on it; specific active shadows are removed separately.",
+      "replacementContract": "Incremental migration to route-scoped explicit transport DTOs in future bounded lanes"
+    },
+    {
+      "id": "H4-CF-014",
+      "concept": "Effect pack tier/provider mapping DTOs",
+      "pathsOrPatterns": ["frontend/src/types/index.ts:EffectPackEffect", "frontend/src/api/contracts/schema.ts:EffectPackEffectSchema", "frontend/src/api/index.ts:EffectPackAPI"],
+      "evidence": "Handwritten DTOs expose allowedTiers, providerMappings, and providerPreference, but no registered creator component imports EffectPackAPI in the current route graph.",
+      "runtimeReachability": "UNREACHED_API_ISLAND",
+      "disposition": "DEFER",
+      "rationale": "Do not expand H4 into effect-pack backend authority. Guard prevents these transport fields from becoming frontend decisions.",
+      "replacementContract": "Backend effective access and typed effect compatibility projection"
+    },
+    {
+      "id": "H4-CF-015",
+      "concept": "Legacy audio.volume taxonomy surface",
+      "pathsOrPatterns": ["frontend/src/types/effect-taxonomy.ts:audio.volume"],
+      "evidence": "The only legacy Audio volume product term is a static effect taxonomy entry; no registered active component imports the taxonomy and no AudioMix V2 transport projection is exposed to frontend authoring.",
+      "runtimeReachability": "UNREACHED_TYPE_ISLAND",
+      "disposition": "DEFER",
+      "rationale": "Deleting taxonomy outside an active flow would be speculative; authoring AudioMix without a projection would create frontend authority.",
+      "replacementContract": "H4-GAP-005"
+    },
+    {
+      "id": "H4-CF-016",
+      "concept": "Active render cancellation visibility inferred from status",
+      "pathsOrPatterns": ["frontend/src/components/render-jobs/JobDetail.tsx"],
+      "evidence": "The component computes canCancel from locally named QUEUED/PROCESSING states, while the backend state machine owns transitions and RenderJobResponse exposes no allowedActions projection.",
+      "runtimeReachability": "ACTIVE_PRODUCT_ROUTE",
+      "disposition": "BLOCKED_BY_BACKEND_PROJECTION",
+      "rationale": "Remove inferred action availability; continue status display only. Reintroduce cancellation when the application projection says it is allowed.",
+      "replacementContract": "H4-GAP-004"
+    },
+    {
+      "id": "H4-CF-017",
+      "concept": "Unregistered legacy demo Timeline factories and import utilities",
+      "pathsOrPatterns": ["frontend/src/utils/demoProjectFactory.ts", "frontend/src/utils/demoTimelineFactory.ts", "frontend/src/utils/timelineImport.ts", "frontend/src/types/index.ts:Clip/Track/TimelineState"],
+      "evidence": "These unregistered utility islands retain sourceUrl and float-time editor shapes. Mechanical import scans find no route or active product component consumer; the shared legacy types file also serves unrelated admin/API clients.",
+      "runtimeReachability": "DEAD_OR_UNREGISTERED_UTILITY_ISLAND",
+      "disposition": "DEFER",
+      "rationale": "They are excluded from new H4 flows and guarded from becoming canonical authority. Removing the shared aggregate wholesale would expand into unrelated surfaces.",
+      "replacementContract": "Future bounded migration after H4-GAP-001 provides a canonical Timeline application projection"
+    },
+    {
+      "id": "H4-CF-018",
+      "concept": "Registered render-result routes manufacture an authoritative default workspace scope",
+      "pathsOrPatterns": ["frontend/src/routes/app/renders/RenderResultsListPage.tsx", "frontend/src/routes/app/renders/RenderResultDetailPage.tsx"],
+      "evidence": "The reviewed candidate passed tenantId and projectId literals named default into active Product queries. The append-forward correction reuses useRenderWorkspaceScope(), disables Product queries until its tenant and recent-project IDs exist, and renders an explicit authenticated workspace/project-required state otherwise.",
+      "runtimeReachability": "ACTIVE_PRODUCT_ROUTE",
+      "disposition": "DELETE_SHADOW",
+      "rationale": "A browser literal cannot stand in for authenticated tenant/project authority; incomplete scope must fail closed.",
+      "replacementContract": "RenderWorkspaceScope returned by GET /me/dashboard"
+    },
+    {
+      "id": "H4-CF-019",
+      "concept": "Active render dashboard consumes an unscoped artifact metadata list",
+      "pathsOrPatterns": ["frontend/src/api/render-jobs.ts", "frontend/src/pages/RenderJobDashboard.tsx", "retired frontend/src/components/render-jobs/ArtifactView.tsx"],
+      "evidence": "The reviewed candidate called GET /render/jobs/{jobId}/artifacts after a separately scoped job lookup. No mechanically verified tenant/project-scoped artifact summary/list endpoint exists. The correction removes that request and its now-orphaned list schema/component and shows a scoped-summary-required state while retaining the separately scoped on-demand artifact access contract.",
+      "runtimeReachability": "ACTIVE_PRODUCT_ROUTE",
+      "disposition": "BLOCKED_BY_BACKEND_PROJECTION",
+      "rationale": "Prior browser lookup is not authorization, and a redacted frontend schema cannot make an unscoped backend resource query tenant/project scoped.",
+      "replacementContract": "H4-GAP-006"
+    },
+    {
+      "id": "H4-CF-020",
+      "concept": "Product result list presents a stale local RenderJob status vocabulary without job linkage",
+      "pathsOrPatterns": ["frontend/src/routes/app/renders/RenderResultsListPage.tsx:renderStatus", "frontend/src/routes/app/renders/RenderResultsListPage.tsx:CANCELED"],
+      "evidence": "The reviewed candidate defined an optional local renderStatus, a local status badge map, and the stale CANCELED literal even though ProductSummary exposes no linked RenderJob status. The correction removes the field, badge, and vocabulary without inferring linkage or transitions.",
+      "runtimeReachability": "ACTIVE_PRODUCT_ROUTE",
+      "disposition": "DELETE_SHADOW",
+      "rationale": "Product status may be displayed from ProductSummary, but RenderJob status must not be invented without an application projection linking the records.",
+      "replacementContract": "A backend-owned Product-to-RenderJob linkage/status projection when required"
+    }
+  ],
+  "backendProjectionGaps": [
+    {
+      "id": "H4-GAP-001",
+      "uiConsumer": "frontend/src/pages/SmokeEditorPage.tsx (/smoke-editor)",
+      "missingProjection": "Canonical Timeline authoring/query DTO exposing source-kind-discriminated immutable source pins, exact MediaTime ranges, TemporalMapping, validation, and revision/snapshot identity without raw storage URI.",
+      "smallestBackendContract": "A tenant/project-scoped application command that accepts a typed clip OperationRequest referencing canonical media/stream/artifact/content identities and exact rational time, validates/previews it, then returns an authorized snapshot or new revision projection.",
+      "severity": "P0",
+      "blocking": true,
+      "CROSS_LANE_REQUIREMENT_FOUND": true
+    },
+    {
+      "id": "H4-GAP-002",
+      "uiConsumer": "frontend/src/shared/CapabilitiesPage.tsx (/capabilities)",
+      "missingProjection": "Effective-access catalog separating capability existence, runtime availability, entitlement decision, policy permission, and quota decision without commercial plan-name gating.",
+      "smallestBackendContract": "GET tenant/user effective-access entries keyed by typed capabilityId with distinct existence, runtimeAvailability, entitlement, policyPermission, quota, reason, and diagnostics fields.",
+      "severity": "P1",
+      "blocking": true,
+      "CROSS_LANE_REQUIREMENT_FOUND": true
+    },
+    {
+      "id": "H4-GAP-003",
+      "uiConsumer": "Retired frontend/src/api/client-export.ts; future PRODUCE action",
+      "missingProjection": "Server-resolved effective access for client export; current StartClientExportRequest accepts tier from the browser.",
+      "smallestBackendContract": "Remove tier from StartClientExportRequest and resolve entitlement/policy/quota from authenticated tenant/user before returning permitted presets and render location.",
+      "severity": "P1",
+      "blocking": true,
+      "CROSS_LANE_REQUIREMENT_FOUND": true
+    },
+    {
+      "id": "H4-GAP-004",
+      "uiConsumer": "frontend/src/pages/RenderJobDashboard.tsx and frontend/src/observability/**",
+      "missingProjection": "Typed render status/action/error/provider-runtime projection; RenderJobResponse currently carries status as String and no allowed actions or typed failure.",
+      "smallestBackendContract": "Extend the query projection with typed status, allowedActions, typed failure category/reason, providerId/providerImplementationId when appropriate, runtime availability, and attempt diagnostics.",
+      "severity": "P3",
+      "blocking": false,
+      "CROSS_LANE_REQUIREMENT_FOUND": true
+    },
+    {
+      "id": "H4-GAP-005",
+      "uiConsumer": "Future EDIT audio inspector; current unreachable frontend/src/types/effect-taxonomy.ts",
+      "missingProjection": "Typed AudioMix/Audio V2 query and operation DTOs.",
+      "smallestBackendContract": "Timeline/application projection for AudioMix inputs, routes, buses, gain/pan automation and typed validation, preserving backend Audio canonical semantics.",
+      "severity": "P2",
+      "blocking": false,
+      "CROSS_LANE_REQUIREMENT_FOUND": true
+    },
+    {
+      "id": "H4-GAP-006",
+      "uiConsumer": "frontend/src/pages/RenderJobDashboard.tsx and future product artifact lists",
+      "missingProjection": "Tenant/project-scoped redacted artifact summary/list projection exposing identity, format/media metadata, readiness, and access availability with no storage coordinates.",
+      "smallestBackendContract": "GET /tenants/{tenantId}/projects/{projectId}/render-jobs/{jobId}/artifacts returning redacted summaries with readiness/access availability and no storage coordinates; retain the existing separately scoped on-demand /tenants/{tenantId}/projects/{projectId}/render-jobs/{jobId}/artifacts/{artifactId}/access endpoint.",
+      "severity": "P0",
+      "blocking": true,
+      "CROSS_LANE_REQUIREMENT_FOUND": true
+    },
+    {
+      "id": "H4-GAP-007",
+      "uiConsumer": "frontend/src/pages/ObservabilityDashboard.tsx (/observability)",
+      "missingProjection": "Implemented operator query endpoints for typed render metrics, attempts, provider identity layers, runtime availability, and typed failures.",
+      "smallestBackendContract": "Read-only tenant-scoped observability summaries and job detail DTOs sourced from application authority, with typed states and no provider-internal graph exposure.",
+      "severity": "P3",
+      "blocking": true,
+      "CROSS_LANE_REQUIREMENT_FOUND": true
+    }
+  ],
+  "FRONTEND_TECHNOLOGY_AND_PRODUCT_ARCHITECTURE_ALIGNMENT": {
+    "actualCurrentFrontendStack": ["React 19", "TypeScript 5.7", "Vite 6", "TanStack Router", "TanStack Query", "Zustand", "OIDC client", "GraphQL Request", "Axios/fetch REST clients", "Tailwind CSS", "dnd-kit", "Remotion", "Zod", "Vitest", "ESLint"],
+    "retainedTechnologies": ["React 19", "TypeScript", "Vite", "TanStack Router", "TanStack Query", "Zustand", "OIDC", "GraphQL/application API client use", "Tailwind", "dnd-kit", "Remotion"],
+    "proposedRetirements": [
+      {"target": "frontend domain shadow models", "evidence": "Duplicates explicit application DTOs and is only used by the blocked smoke-editor island."},
+      {"target": "raw-storage smoke Timeline authoring", "evidence": "Active route invents legacy source binding and float time JSON."},
+      {"target": "local Timeline merge/equality helper", "evidence": "Unreferenced and duplicates backend revision authority."},
+      {"target": "client-supplied export tier API", "evidence": "Unreferenced and permits plan-name authority at the browser boundary."}
+    ],
+    "productSurfaceCoverage": {
+      "CREATE": "No coherent registered create surface.",
+      "PLAN": "No registered application plan surface; AI transport exists but is not route-reachable.",
+      "CANVAS": "Timeline canvas mechanics exist; reached only by the blocked smoke editor and not a general infinite canvas.",
+      "FLOW": "No registered Workflow surface.",
+      "EDIT": "Registered root caption/template preview editor using React DOM and Remotion; separate dnd-kit Timeline mechanics exist.",
+      "PRODUCE": "Render/result query surfaces exist; creation is blocked pending canonical Timeline authoring and effective-access projections."
+    },
+    "timelineStatus": "Backend owns canonical source binding, exact time, temporal mapping, revision/diff/merge. Frontend retains presentation mechanics but legacy submission is removed/blocked.",
+    "workflowStatus": "No active Workflow UI; no frontend Workflow process authority or universal graph introduced.",
+    "canvasStatus": "No general CANVAS product surface; no tldraw dependency added. Existing timeline layout remains presentation mechanics only.",
+    "duplicatedFrontendDomainAuthority": ["frontend/src/domain/**", "frontend/src/utils/timelineConflictMerge.ts", "frontend/src/timeline/mappers/timelineToRender.ts", "overlapping render DTOs"],
+    "progressiveDisclosureViolations": ["Raw Asset URI input in creator flow", "raw storage URI artifact links", "hardcoded capability stability catalog", "render profile identifiers in smoke form"],
+    "planProviderRuntimeLeakageIntoCreatorUi": "No concrete provider selection in creator UI. Client export API defaulted tier to FREE and is retired. FFmpeg text is confined to /dev/preview diagnostics.",
+    "missingBackendProjections": ["H4-GAP-001", "H4-GAP-002", "H4-GAP-003", "H4-GAP-004", "H4-GAP-005", "H4-GAP-006", "H4-GAP-007"],
+    "monorepoPackageBoundaryRecommendation": "Keep the current repository and frontend package. Consolidate transport DTOs under frontend/src/contracts by application surface as callers are migrated; do not fragment packages until shared coupling is measured.",
+    "proposedNewLibraries": [],
+    "newDependencyJustifications": [],
+    "reactNativeExpoCompatibility": "No mobile work in H4. Keep transport schemas and view-model-free API projections portable; DOM, dnd-kit, Remotion Player, and window interactions remain web-only presentation mechanics."
+  },
+  "requiredAuthorityCounts": {
+    "FRONTEND_CONCRETE_FFMPEG_AUTHORITY_COUNT": 0,
+    "FRONTEND_PLAN_NAME_FEATURE_AUTHORITY_COUNT": 0,
+    "FRONTEND_LOCAL_CAN_RUN_DECISION_COUNT": 0,
+    "FRONTEND_DUPLICATE_CANONICAL_TIMELINE_AUTHORITY_COUNT": 0,
+    "FRONTEND_CANONICAL_DOMAIN_SHADOW_COUNT": 0,
+    "FRONTEND_PROVIDER_SELECTION_AUTHORITY_COUNT": 0,
+    "FRONTEND_DIRECT_CANONICAL_MUTATION_BYPASS_COUNT": 0,
+    "FRONTEND_PROVIDER_INTERNAL_GRAPH_AUTHORITY_COUNT": 0,
+    "FRONTEND_SYNTHETIC_WORKSPACE_SCOPE_COUNT": 0,
+    "FRONTEND_ACTIVE_UNSCOPED_RENDER_API_COUNT": 0,
+    "FRONTEND_STALE_RENDER_STATUS_SHADOW_COUNT": 0
+  }
+}

@@ -1,8 +1,10 @@
 package com.example.platform.execution.taskgraph;
 
-import com.example.platform.execution.compatibility.ProviderCompatibilityGraph;
+import com.example.platform.execution.compatibility.ProviderFeasibilityView;
 import com.example.platform.execution.compatibility.ProviderCompatibilityTransition;
 import com.example.platform.execution.compatibility.ProviderCompatibilityTransitionDecision;
+import com.example.platform.execution.compatibility.ProviderCandidate;
+import com.example.platform.execution.compatibility.StaticProviderCompatibilityProof;
 import com.example.platform.execution.composition.ExecutableTaskMembership;
 import com.example.platform.execution.domain.ExecutionEdgeId;
 import com.example.platform.execution.domain.ExecutionStepId;
@@ -36,7 +38,7 @@ public final class ProviderBoundExecutableTaskGraph {
     public static final String GRAPH_SCHEMA_VERSION = "roadmap22.provider-bound-etg.v2";
 
     private final PhysicalExecutionPlan sourcePhysicalPlan;
-    private final ProviderCompatibilityGraph providerCompatibilityGraph;
+    private final ProviderFeasibilityView providerFeasibilityView;
     private final List<ExecutableTask> tasks;
     private final List<ProviderLocalTaskDependency> providerLocalDependencies;
     private final List<ExecutableTaskDependency> taskDependencies;
@@ -49,7 +51,7 @@ public final class ProviderBoundExecutableTaskGraph {
 
     private ProviderBoundExecutableTaskGraph(
             PhysicalExecutionPlan sourcePhysicalPlan,
-            ProviderCompatibilityGraph providerCompatibilityGraph,
+            ProviderFeasibilityView providerFeasibilityView,
             List<ExecutableTask> tasks,
             List<ProviderLocalTaskDependency> providerLocalDependencies,
             List<ExecutableTaskDependency> taskDependencies,
@@ -60,7 +62,7 @@ public final class ProviderBoundExecutableTaskGraph {
             int sourceDependencyCount,
             ExecutableTaskGraphDigest digest) {
         this.sourcePhysicalPlan = sourcePhysicalPlan;
-        this.providerCompatibilityGraph = providerCompatibilityGraph;
+        this.providerFeasibilityView = providerFeasibilityView;
         this.tasks = tasks;
         this.providerLocalDependencies = providerLocalDependencies;
         this.taskDependencies = taskDependencies;
@@ -74,16 +76,16 @@ public final class ProviderBoundExecutableTaskGraph {
 
     public static ProviderBoundExecutableTaskGraph derive(
             PhysicalExecutionPlan sourcePhysicalPlan,
-            ProviderCompatibilityGraph providerCompatibilityGraph,
+            ProviderFeasibilityView providerFeasibilityView,
             Collection<ExecutableTask> tasks,
             Collection<ExecutionArtifactBoundary> executionArtifactBoundaries) {
         Objects.requireNonNull(sourcePhysicalPlan, "sourcePhysicalPlan");
-        Objects.requireNonNull(providerCompatibilityGraph, "providerCompatibilityGraph");
+        Objects.requireNonNull(providerFeasibilityView, "providerFeasibilityView");
         Objects.requireNonNull(tasks, "tasks");
         Objects.requireNonNull(executionArtifactBoundaries, "executionArtifactBoundaries");
-        if (!providerCompatibilityGraph.bindsExactSourcePlan(sourcePhysicalPlan)) {
+        if (!providerFeasibilityView.bindsExactSourcePlan(sourcePhysicalPlan)) {
             throw new IllegalArgumentException(
-                    "ProviderCompatibilityGraph must bind the exact source plan semantics");
+                    "ProviderFeasibilityView must bind the exact source plan semantics");
         }
         if (tasks.isEmpty() && !sourcePhysicalPlan.units().isEmpty()) {
             throw new IllegalArgumentException("a non-empty physical plan requires executable tasks");
@@ -92,7 +94,7 @@ public final class ProviderBoundExecutableTaskGraph {
         List<ExecutableTask> baseTasks = canonicalTasks(tasks);
         Coverage baseCoverage = validateCoverage(sourcePhysicalPlan, baseTasks);
         validateEvaluatorProvenComposition(
-                sourcePhysicalPlan, providerCompatibilityGraph, baseTasks);
+                sourcePhysicalPlan, providerFeasibilityView, baseTasks);
         SourceTopology sourceTopology = sourceTopology(sourcePhysicalPlan);
         validateInputDependencyMappings(sourcePhysicalPlan, sourceTopology);
         DependencyClassification dependencyClassification = classifyDependencies(
@@ -102,7 +104,7 @@ public final class ProviderBoundExecutableTaskGraph {
         validatePreAttachedExecutionArtifactActions(
                 baseTasks, canonicalExecutionBoundaries);
         List<ProviderCompatibilityTransition> selectedTransitions = validateTransitionsAndBoundaries(
-                providerCompatibilityGraph,
+                providerFeasibilityView,
                 sourceTopology,
                 baseCoverage,
                 dependencyClassification.externalDependencies(),
@@ -167,7 +169,7 @@ public final class ProviderBoundExecutableTaskGraph {
                 ExecutableTaskCanonicalCodec.sha256(graphCanonical));
         return new ProviderBoundExecutableTaskGraph(
                 sourcePhysicalPlan,
-                providerCompatibilityGraph,
+                providerFeasibilityView,
                 canonicalTasks,
                 List.copyOf(internalDependencies),
                 List.copyOf(externalDependencies),
@@ -183,8 +185,8 @@ public final class ProviderBoundExecutableTaskGraph {
         return sourcePhysicalPlan;
     }
 
-    public ProviderCompatibilityGraph providerCompatibilityGraph() {
-        return providerCompatibilityGraph;
+    public ProviderFeasibilityView providerFeasibilityView() {
+        return providerFeasibilityView;
     }
 
     public List<ExecutableTask> tasks() {
@@ -277,6 +279,52 @@ public final class ProviderBoundExecutableTaskGraph {
         return 0;
     }
 
+    /**
+     * Resolves a worker-visible step identity back to this graph's canonical physical member and
+     * requires the exact Stage-1 proof owned by this graph's feasibility view.
+     */
+    public StaticProviderCompatibilityProof requireExactStaticCompatibilityProof(
+            ExecutionStepId physicalPlanUnitId,
+            ProviderCandidate providerCandidate,
+            StaticProviderCompatibilityProof proof) {
+        Objects.requireNonNull(physicalPlanUnitId, "physicalPlanUnitId");
+        Objects.requireNonNull(providerCandidate, "providerCandidate");
+        Objects.requireNonNull(proof, "proof");
+
+        List<PhysicalPlanUnit> sourceUnits = sourcePhysicalPlan.units().stream()
+                .filter(unit -> unit.stepId().equals(physicalPlanUnitId))
+                .toList();
+        List<ExecutableTaskMembership> memberships = tasks.stream()
+                .flatMap(task -> task.memberships().stream())
+                .filter(membership -> membership.physicalPlanUnitId().equals(physicalPlanUnitId))
+                .toList();
+        List<ExecutableTask> providerTasks = tasks.stream()
+                .filter(task -> task.memberships().stream().anyMatch(
+                        membership -> membership.physicalPlanUnitId().equals(physicalPlanUnitId)))
+                .toList();
+        if (sourceUnits.size() != 1
+                || memberships.size() != 1
+                || providerTasks.size() != 1
+                || !sourceUnits.getFirst().equals(memberships.getFirst().physicalPlanUnit())
+                || !providerTasks.getFirst().providerBindingPin()
+                        .equals(providerCandidate.bindingPin())) {
+            throw new IllegalArgumentException(
+                    "Stage-1 proof identity must resolve one canonical membership and provider binding");
+        }
+
+        PhysicalPlanUnit canonicalUnit = sourceUnits.getFirst();
+        StaticProviderCompatibilityProof authoritativeProof = providerFeasibilityView
+                .requireStaticallyFeasible(canonicalUnit, providerCandidate);
+        if (!authoritativeProof.equals(proof)
+                || !proof.providerCandidate().equals(providerCandidate)
+                || !proof.compatibilityRequest().physicalPlanUnit().equals(canonicalUnit)
+                || !proof.proves(authoritativeProof.compatibilityRequest(), providerCandidate)) {
+            throw new IllegalArgumentException(
+                    "Stage-1 proof must be the exact canonical feasibility-view proof");
+        }
+        return authoritativeProof;
+    }
+
     private static List<ExecutableTask> canonicalTasks(Collection<ExecutableTask> values) {
         List<ExecutableTask> canonical = new ArrayList<>(values.size());
         Set<ExecutableTaskId> seen = new HashSet<>();
@@ -293,7 +341,7 @@ public final class ProviderBoundExecutableTaskGraph {
 
     private static void validateEvaluatorProvenComposition(
             PhysicalExecutionPlan sourcePlan,
-            ProviderCompatibilityGraph compatibilityGraph,
+            ProviderFeasibilityView feasibilityView,
             List<ExecutableTask> tasks) {
         for (ExecutableTask task : tasks) {
             if (!task.compositionDecision().evaluatorProvenAllowed()) {
@@ -302,16 +350,16 @@ public final class ProviderBoundExecutableTaskGraph {
                                 + "ProviderLocalCompositionEvaluator decision: "
                                 + task.id().sha256Hex());
             }
-            if (!task.compositionDecision().provenCompatibilityGraph().equals(compatibilityGraph)
-                    || !task.compositionDecision().provenCompatibilityGraph()
+            if (task.compositionDecision().provenFeasibilityView() != feasibilityView
+                    || !task.compositionDecision().provenFeasibilityView()
                             .bindsExactSourcePlan(sourcePlan)
                     || !task.compositionDecision().provenProviderCandidate().bindingPin()
                             .equals(task.providerBindingPin())) {
                 throw new IllegalArgumentException(
-                        "task proof context must bind the exact ETG graph/source/provider");
+                        "task proof context must bind the exact feasibility view/source/provider");
             }
             for (ExecutableTaskMembership membership : task.memberships()) {
-                compatibilityGraph.requireStaticallyFeasible(
+                feasibilityView.requireStaticallyFeasible(
                         membership.physicalPlanUnit(),
                         task.compositionDecision().provenProviderCandidate());
             }
@@ -336,7 +384,7 @@ public final class ProviderBoundExecutableTaskGraph {
     }
 
     private static List<ProviderCompatibilityTransition> validateTransitionsAndBoundaries(
-            ProviderCompatibilityGraph compatibilityGraph,
+            ProviderFeasibilityView feasibilityView,
             SourceTopology topology,
             Coverage coverage,
             List<LogicalDependencyEdge> externalDependencies,
@@ -350,7 +398,7 @@ public final class ProviderBoundExecutableTaskGraph {
                     .get(dependency.consumerLogicalNodeId());
             ExecutableTask producerTask = coverage.taskByUnit().get(producer.stepId());
             ExecutableTask consumerTask = coverage.taskByUnit().get(consumer.stepId());
-            ProviderCompatibilityTransition transition = compatibilityGraph.requireTransition(
+            ProviderCompatibilityTransition transition = feasibilityView.requireTransition(
                     dependency,
                     producer,
                     producerTask.providerBindingPin(),

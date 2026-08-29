@@ -6,7 +6,7 @@ import com.example.platform.execution.compatibility.CompatibilityRequest;
 import com.example.platform.execution.compatibility.ProviderBoundaryCompatibilityDeclaration;
 import com.example.platform.execution.compatibility.ProviderBoundaryCompatibilityDeclaration.Declaration;
 import com.example.platform.execution.compatibility.ProviderCandidate;
-import com.example.platform.execution.compatibility.ProviderCompatibilityGraph;
+import com.example.platform.execution.compatibility.ProviderFeasibilityView;
 import com.example.platform.execution.compatibility.ProviderStaticCompatibility;
 import com.example.platform.execution.compatibility.StaticCompatibilityConstraint.BoundaryContractId;
 import com.example.platform.execution.compatibility.StaticCompatibilityFailure;
@@ -73,18 +73,18 @@ class Correction1ProofChainAndCrossProviderEtgTest {
         ProviderCandidate incompatible = candidate("provider-a");
         CompatibilityDecision kernelDecision = CompatibilityKernel.evaluate(
                 CompatibilityRequest.forUnit(pair.producer()), incompatible);
-        ProviderCompatibilityGraph graph = graph(plan, List.of(incompatible), List.of());
+        ProviderFeasibilityView view = view(plan, List.of(incompatible), List.of());
 
         assertEquals(CompatibilityDecision.Status.INCOMPATIBLE, kernelDecision.status());
         assertEquals(List.of(StaticCompatibilityFailure.CAPABILITY_UNSUPPORTED),
                 kernelDecision.reasons());
         assertThrows(IllegalArgumentException.class,
-                () -> compositionRequest(graph, incompatible, List.of(pair.producer())),
+                () -> compositionRequest(view, incompatible, List.of(pair.producer())),
                 "SINGLE_MEMBER_WITHOUT_STATIC_COMPATIBILITY_ACCEPTANCE_COUNT=0;"
                         + "STATIC_INCOMPATIBLE_PROVIDER_EXECUTABLE_TASK_ACCEPTANCE_COUNT=0");
         assertThrows(IllegalArgumentException.class,
                 () -> compositionRequest(
-                        graph, incompatible, List.of(pair.producer(), pair.consumer())),
+                        view, incompatible, List.of(pair.producer(), pair.consumer())),
                 "STATIC_INCOMPATIBLE_PROVIDER_ETG_ACCEPTANCE_COUNT=0");
     }
 
@@ -94,14 +94,14 @@ class Correction1ProofChainAndCrossProviderEtgTest {
         PhysicalExecutionPlan plan = plan(pair.producer(), pair.consumer());
         ProviderCandidate providerA = candidate("provider-a");
         ProviderCandidate providerB = candidate("provider-b");
-        ProviderCompatibilityGraph graph = graph(
+        ProviderFeasibilityView view = view(
                 plan, List.of(providerA, providerB), List.of());
-        ExecutableTask producer = task(graph, providerA, pair.producer());
-        ExecutableTask consumer = task(graph, providerB, pair.consumer());
+        ExecutableTask producer = task(view, providerA, pair.producer());
+        ExecutableTask consumer = task(view, providerB, pair.consumer());
         ExecutionArtifactBoundary boundary = boundary(pair, providerA, providerB);
 
         ProviderBoundExecutableTaskGraph etg = ProviderBoundExecutableTaskGraph.derive(
-                plan, graph, List.of(consumer, producer), List.of(boundary));
+                plan, view, List.of(consumer, producer), List.of(boundary));
 
         assertEquals(List.of(boundary), etg.executionArtifactBoundaries());
         assertEquals(1, etg.taskDependencies().size());
@@ -141,16 +141,16 @@ class Correction1ProofChainAndCrossProviderEtgTest {
         PhysicalExecutionPlan plan = plan(pair.producer(), pair.consumer());
         ProviderCandidate providerA = candidate("provider-a");
         ProviderCandidate providerB = candidate("provider-b");
-        ProviderCompatibilityGraph graph = graph(
+        ProviderFeasibilityView view = view(
                 plan, List.of(providerA, providerB), List.of());
 
         IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
                 () -> ProviderBoundExecutableTaskGraph.derive(
                         plan,
-                        graph,
+                        view,
                         List.of(
-                                task(graph, providerA, pair.producer()),
-                                task(graph, providerB, pair.consumer())),
+                                task(view, providerA, pair.producer()),
+                                task(view, providerB, pair.consumer())),
                         List.of()),
                 "BARE_CROSS_PROVIDER_DEPENDENCY_ACCEPTANCE_COUNT=0;"
                         + "CROSS_PROVIDER_REQUIRED_MATERIALIZATION_MISSING_COUNT=0");
@@ -165,7 +165,7 @@ class Correction1ProofChainAndCrossProviderEtgTest {
         ProviderCandidate providerB = candidate("provider-b");
         ExecutionArtifactBoundary boundary = boundary(pair, providerA, providerB);
 
-        ProviderCompatibilityGraph incompatible = graph(
+        ProviderFeasibilityView incompatible = view(
                 plan,
                 List.of(providerA, providerB),
                 List.of(declaration(pair, providerA, providerB, Declaration.INCOMPATIBLE)));
@@ -179,7 +179,7 @@ class Correction1ProofChainAndCrossProviderEtgTest {
                         List.of(boundary)),
                 "INCOMPATIBLE_PROVIDER_TRANSITION_ETG_ACCEPTANCE_COUNT=0");
 
-        ProviderCompatibilityGraph unknown = graph(
+        ProviderFeasibilityView unknown = view(
                 plan,
                 List.of(providerA, providerB),
                 List.of(declaration(pair, providerA, providerB, Declaration.UNKNOWN_FAIL_CLOSED)));
@@ -200,7 +200,7 @@ class Correction1ProofChainAndCrossProviderEtgTest {
         PhysicalExecutionPlan plan = plan(pair.producer(), pair.consumer());
         ProviderCandidate providerA = candidate("provider-a");
         ProviderCandidate providerB = candidate("provider-b");
-        ProviderCompatibilityGraph graph = graph(
+        ProviderFeasibilityView view = view(
                 plan,
                 List.of(providerA, providerB),
                 List.of(declaration(
@@ -209,10 +209,10 @@ class Correction1ProofChainAndCrossProviderEtgTest {
 
         ProviderBoundExecutableTaskGraph etg = ProviderBoundExecutableTaskGraph.derive(
                 plan,
-                graph,
+                view,
                 List.of(
-                        task(graph, providerA, pair.producer()),
-                        task(graph, providerB, pair.consumer())),
+                        task(view, providerA, pair.producer()),
+                        task(view, providerB, pair.consumer())),
                 List.of());
 
         assertEquals(1, etg.taskDependencies().size());
@@ -225,16 +225,16 @@ class Correction1ProofChainAndCrossProviderEtgTest {
         PhysicalExecutionPlan plan = plan(pair.producer(), pair.consumer());
         ProviderCandidate providerA = candidate("provider-a");
         ProviderCandidate providerB = candidate("provider-b");
-        ProviderCompatibilityGraph materializingGraph = graph(
+        ProviderFeasibilityView materializingView = view(
                 plan, List.of(providerA, providerB), List.of());
         ProviderBoundExecutableTaskGraph materializing = ProviderBoundExecutableTaskGraph.derive(
                 plan,
-                materializingGraph,
+                materializingView,
                 List.of(
-                        task(materializingGraph, providerA, pair.producer()),
-                        task(materializingGraph, providerB, pair.consumer())),
+                        task(materializingView, providerA, pair.producer()),
+                        task(materializingView, providerB, pair.consumer())),
                 List.of(boundary(pair, providerA, providerB)));
-        ProviderCompatibilityGraph directGraph = graph(
+        ProviderFeasibilityView directView = view(
                 plan,
                 List.of(providerA, providerB),
                 List.of(declaration(
@@ -242,10 +242,10 @@ class Correction1ProofChainAndCrossProviderEtgTest {
                         Declaration.DIRECT_INTEROPERABILITY_ALLOWED)));
         ProviderBoundExecutableTaskGraph direct = ProviderBoundExecutableTaskGraph.derive(
                 plan,
-                directGraph,
+                directView,
                 List.of(
-                        task(directGraph, providerA, pair.producer()),
-                        task(directGraph, providerB, pair.consumer())),
+                        task(directView, providerA, pair.producer()),
+                        task(directView, providerB, pair.consumer())),
                 List.of());
 
         assertNotEquals(materializing.digest(), direct.digest());
@@ -258,12 +258,12 @@ class Correction1ProofChainAndCrossProviderEtgTest {
         ProviderCandidate providerA = candidate("provider-a");
         ProviderCandidate providerB = candidate("provider-b");
         ProviderCandidate foreignProvider = candidate("provider-foreign");
-        ProviderCompatibilityGraph graph = graph(
+        ProviderFeasibilityView view = view(
                 plan, List.of(providerA, providerB, foreignProvider), List.of());
         ExecutionArtifactBoundary selectedBoundary = boundary(pair, providerA, providerB);
         ExecutionArtifactBoundary foreignBoundary = boundary(
                 pair, providerA, foreignProvider);
-        ExecutableTask producer = task(graph, providerA, pair.producer());
+        ExecutableTask producer = task(view, providerA, pair.producer());
         ExecutableTask producerWithForeignAction = ExecutableTask.create(
                 producer.compositionDecision(),
                 List.of(materializeAction(foreignBoundary, 0)));
@@ -271,10 +271,10 @@ class Correction1ProofChainAndCrossProviderEtgTest {
         IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
                 () -> ProviderBoundExecutableTaskGraph.derive(
                         plan,
-                        graph,
+                        view,
                         List.of(
                                 producerWithForeignAction,
-                                task(graph, providerB, pair.consumer())),
+                                task(view, providerB, pair.consumer())),
                         List.of(selectedBoundary)));
 
         assertTrue(failure.getMessage().contains("no exact canonical boundary"));
@@ -286,7 +286,7 @@ class Correction1ProofChainAndCrossProviderEtgTest {
         PhysicalExecutionPlan plan = plan(pair.producer(), pair.consumer());
         ProviderCandidate providerA = candidate("provider-a");
         ProviderCandidate providerB = candidate("provider-b");
-        ProviderCompatibilityGraph directGraph = graph(
+        ProviderFeasibilityView directView = view(
                 plan,
                 List.of(providerA, providerB),
                 List.of(declaration(
@@ -295,13 +295,13 @@ class Correction1ProofChainAndCrossProviderEtgTest {
                         providerB,
                         Declaration.DIRECT_INTEROPERABILITY_ALLOWED)));
         ExecutionArtifactBoundary unmanifested = boundary(pair, providerA, providerB);
-        ExecutableTask producer = task(directGraph, providerA, pair.producer());
-        ExecutableTask consumer = task(directGraph, providerB, pair.consumer());
+        ExecutableTask producer = task(directView, providerA, pair.producer());
+        ExecutableTask consumer = task(directView, providerB, pair.consumer());
 
         IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
                 () -> ProviderBoundExecutableTaskGraph.derive(
                         plan,
-                        directGraph,
+                        directView,
                         List.of(
                                 ExecutableTask.create(
                                         producer.compositionDecision(),
@@ -320,16 +320,16 @@ class Correction1ProofChainAndCrossProviderEtgTest {
         PhysicalExecutionPlan plan = plan(pair.producer(), pair.consumer());
         ProviderCandidate providerA = candidate("provider-a");
         ProviderCandidate providerB = candidate("provider-b");
-        ProviderCompatibilityGraph graph = graph(
+        ProviderFeasibilityView view = view(
                 plan, List.of(providerA, providerB), List.of());
         ExecutionArtifactBoundary boundary = boundary(pair, providerA, providerB);
-        ExecutableTask producer = task(graph, providerA, pair.producer());
-        ExecutableTask consumer = task(graph, providerB, pair.consumer());
+        ExecutableTask producer = task(view, providerA, pair.producer());
+        ExecutableTask consumer = task(view, providerB, pair.consumer());
 
         IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
                 () -> ProviderBoundExecutableTaskGraph.derive(
                         plan,
-                        graph,
+                        view,
                         List.of(
                                 ExecutableTask.create(
                                         producer.compositionDecision(),
@@ -350,19 +350,19 @@ class Correction1ProofChainAndCrossProviderEtgTest {
         PhysicalExecutionPlan plan = plan(pair.producer(), pair.consumer());
         ProviderCandidate providerA = candidate("provider-a");
         ProviderCandidate providerB = candidate("provider-b");
-        ProviderCompatibilityGraph graph = graph(
+        ProviderFeasibilityView view = view(
                 plan, List.of(providerA, providerB), List.of());
         ExecutionArtifactBoundary boundary = boundary(pair, providerA, providerB);
         ProviderBoundExecutableTaskGraph first = ProviderBoundExecutableTaskGraph.derive(
                 plan,
-                graph,
+                view,
                 List.of(
-                        task(graph, providerA, pair.producer()),
-                        task(graph, providerB, pair.consumer())),
+                        task(view, providerA, pair.producer()),
+                        task(view, providerB, pair.consumer())),
                 List.of(boundary));
 
         ProviderBoundExecutableTaskGraph second = ProviderBoundExecutableTaskGraph.derive(
-                plan, graph, first.tasks(), List.of(boundary));
+                plan, view, first.tasks(), List.of(boundary));
 
         assertEquals(first.digest(), second.digest());
         assertEquals(
@@ -374,21 +374,21 @@ class Correction1ProofChainAndCrossProviderEtgTest {
     }
 
     private static ExecutableTask task(
-            ProviderCompatibilityGraph graph,
+            ProviderFeasibilityView view,
             ProviderCandidate candidate,
             PhysicalPlanUnit... units) {
         CompositionDecision decision = ProviderLocalCompositionEvaluator.evaluate(
-                compositionRequest(graph, candidate, List.of(units)));
+                compositionRequest(view, candidate, List.of(units)));
         return ExecutableTask.create(decision, List.of());
     }
 
     private static ProviderLocalCompositionRequest compositionRequest(
-            ProviderCompatibilityGraph graph,
+            ProviderFeasibilityView view,
             ProviderCandidate candidate,
             List<PhysicalPlanUnit> units) {
         return ProviderLocalCompositionRequest.of(
                 ExecutableTaskMembership.canonicalForUnits(units),
-                graph,
+                view,
                 candidate,
                 new ProviderCompositionDeclaration(
                         candidate.bindingPin(), NativePipelineSupport.SUPPORTED),
@@ -444,11 +444,11 @@ class Correction1ProofChainAndCrossProviderEtgTest {
                 declaration);
     }
 
-    private static ProviderCompatibilityGraph graph(
+    private static ProviderFeasibilityView view(
             PhysicalExecutionPlan plan,
             List<ProviderCandidate> candidates,
             List<ProviderBoundaryCompatibilityDeclaration> declarations) {
-        return ProviderCompatibilityGraph.build(
+        return ProviderFeasibilityView.build(
                 plan,
                 plan.units().stream().map(CompatibilityRequest::forUnit).toList(),
                 candidates,

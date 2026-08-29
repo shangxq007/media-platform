@@ -1,7 +1,7 @@
 package com.example.platform.execution.composition;
 
 import com.example.platform.execution.compatibility.ProviderCandidate;
-import com.example.platform.execution.compatibility.ProviderCompatibilityGraph;
+import com.example.platform.execution.compatibility.ProviderFeasibilityView;
 import com.example.platform.execution.compatibility.StaticProviderCompatibilityProof;
 import com.example.platform.execution.domain.ExecutionStepId;
 import com.example.platform.execution.domain.provider.ProviderBindingPin;
@@ -20,7 +20,7 @@ import java.util.Set;
 public final class ProviderLocalCompositionRequest {
 
     private final List<ExecutableTaskMembership> memberships;
-    private final ProviderCompatibilityGraph compatibilityGraph;
+    private final ProviderFeasibilityView feasibilityView;
     private final ProviderCandidate providerCandidate;
     private final ProviderCompositionDeclaration providerCompositionDeclaration;
     private final List<CompositionBoundaryConstraint> boundaryConstraints;
@@ -28,13 +28,13 @@ public final class ProviderLocalCompositionRequest {
 
     private ProviderLocalCompositionRequest(
             Collection<ExecutableTaskMembership> memberships,
-            ProviderCompatibilityGraph compatibilityGraph,
+            ProviderFeasibilityView feasibilityView,
             ProviderCandidate providerCandidate,
             ProviderCompositionDeclaration providerCompositionDeclaration,
             Collection<CompositionBoundaryConstraint> boundaryConstraints) {
         this.memberships = canonicalMemberships(List.copyOf(memberships));
-        this.compatibilityGraph = Objects.requireNonNull(
-                compatibilityGraph, "compatibilityGraph");
+        this.feasibilityView = Objects.requireNonNull(
+                feasibilityView, "feasibilityView");
         this.providerCandidate = Objects.requireNonNull(providerCandidate, "providerCandidate");
         this.providerCompositionDeclaration = Objects.requireNonNull(
                 providerCompositionDeclaration, "providerCompositionDeclaration");
@@ -66,14 +66,14 @@ public final class ProviderLocalCompositionRequest {
 
     public static ProviderLocalCompositionRequest of(
             Collection<ExecutableTaskMembership> memberships,
-            ProviderCompatibilityGraph compatibilityGraph,
+            ProviderFeasibilityView feasibilityView,
             ProviderCandidate providerCandidate,
             ProviderCompositionDeclaration providerCompositionDeclaration,
             Collection<CompositionBoundaryConstraint> boundaryConstraints) {
         Objects.requireNonNull(memberships, "memberships");
         return new ProviderLocalCompositionRequest(
                 memberships,
-                compatibilityGraph,
+                feasibilityView,
                 providerCandidate,
                 providerCompositionDeclaration,
                 boundaryConstraints);
@@ -83,8 +83,8 @@ public final class ProviderLocalCompositionRequest {
         return memberships;
     }
 
-    public ProviderCompatibilityGraph compatibilityGraph() {
-        return compatibilityGraph;
+    public ProviderFeasibilityView feasibilityView() {
+        return feasibilityView;
     }
 
     public ProviderCandidate providerCandidate() {
@@ -131,7 +131,7 @@ public final class ProviderLocalCompositionRequest {
     private List<StaticProviderCompatibilityProof> requireProofs() {
         List<StaticProviderCompatibilityProof> proofs = new ArrayList<>(memberships.size());
         for (ExecutableTaskMembership membership : memberships) {
-            StaticProviderCompatibilityProof proof = compatibilityGraph.requireStaticallyFeasible(
+            StaticProviderCompatibilityProof proof = feasibilityView.requireStaticallyFeasible(
                     membership.physicalPlanUnit(), providerCandidate);
             if (!proof.compatibilityRequest().physicalPlanUnit()
                             .equals(membership.physicalPlanUnit())

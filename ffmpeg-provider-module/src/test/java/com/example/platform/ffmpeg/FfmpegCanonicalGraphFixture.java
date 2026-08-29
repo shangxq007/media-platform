@@ -2,7 +2,7 @@ package com.example.platform.ffmpeg;
 
 import com.example.platform.execution.compatibility.CompatibilityRequest;
 import com.example.platform.execution.compatibility.ProviderCandidate;
-import com.example.platform.execution.compatibility.ProviderCompatibilityGraph;
+import com.example.platform.execution.compatibility.ProviderFeasibilityView;
 import com.example.platform.execution.compatibility.ProviderStaticCompatibility;
 import com.example.platform.execution.compatibility.StaticCompatibilityConstraint.BoundaryContractId;
 import com.example.platform.execution.composition.ExecutableTaskMembership;
@@ -62,13 +62,13 @@ final class FfmpegCanonicalGraphFixture {
                 null,
                 new PhysicalExecutionPlanDigest("phase19-ffmpeg-plan-digest"));
         ProviderCandidate candidate = candidate();
-        ProviderCompatibilityGraph compatibility = ProviderCompatibilityGraph.build(
+        ProviderFeasibilityView feasibilityView = ProviderFeasibilityView.build(
                 plan, List.of(CompatibilityRequest.forUnit(unit)), List.of(candidate), List.of());
         var membership = ExecutableTaskMembership.canonicalForUnits(List.of(unit));
         var composition = ProviderLocalCompositionEvaluator.evaluate(
                 ProviderLocalCompositionRequest.of(
                         membership,
-                        compatibility,
+                        feasibilityView,
                         candidate,
                         new ProviderCompositionDeclaration(
                                 FfmpegCpuProvider.BINDING,
@@ -85,7 +85,7 @@ final class FfmpegCanonicalGraphFixture {
                                 output,
                                 output.intermediateArtifactExpectations().getFirst()))));
         return ProviderBoundExecutableTaskGraph.derive(
-                plan, compatibility, List.of(task), List.of());
+                plan, feasibilityView, List.of(task), List.of());
     }
 
     private static ProviderCandidate candidate() {

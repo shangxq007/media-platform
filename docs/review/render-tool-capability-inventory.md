@@ -1,12 +1,12 @@
 # Render Tool Capability Inventory
 
-> **Status:** inventory-only — does not change production dispatch behavior
+> **Status:** historical inventory record — the live ambient inventory was removed by Phase20 P20-I7
 > **Created:** 2026-06-28
-> **Scope:** local tool availability and version detection for future provider planning
+> **Scope:** historical local tool availability and version-detection context for provider planning
 
 ## Purpose
 
-This document inventories local render tool availability and versions for future provider planning. It does not implement or enable new providers. Tool detection is read-only and does not affect dispatch semantics.
+This document preserves the historical render-tool inventory context used for provider planning. Phase20 P20-I7 removed the live ambient `RenderToolCapabilityInventory` and its process-level PATH/version probes. The authoritative implementation-closure evidence is `docs/architecture/governance/roadmap-22-phase-20-resource-accounting-hardware-provider-conformance-implementation-closure-v1.json`. This historical record does not implement or enable new providers, and the removal does not change dispatch semantics.
 
 ## Tool Availability Summary
 
@@ -39,27 +39,15 @@ Key facts:
 - **GStreamer/VapourSynth/Natron**: Hold/P2. Not enabled for dispatch.
 - **BMF**: Spike/P2-P3. Not enabled for dispatch.
 
-## Runtime Tool Detection
+## Historical Runtime Tool Detection
 
-The platform has a `RenderToolCapabilityInventory` at:
+The platform formerly had a `RenderToolCapabilityInventory` at:
 
 `render-module/src/main/java/.../infrastructure/RenderToolCapabilityInventory.java`
 
-This component:
-- Detects locally available tools and their versions
-- Reports availability without affecting dispatch behavior
-- Does NOT install tools or execute untrusted code
-- Missing tools are reported as unavailable, not failure
+Phase20 P20-I7 deleted this ambient global inventory. Its former behavior was limited to reporting local tool/version availability without affecting dispatch, installing tools, or upgrading provider status. There is no live `RenderToolCapabilityInventory` API to inject or call.
 
-Usage:
-```java
-@Autowired
-RenderToolCapabilityInventory inventory;
-
-List<ToolInventoryEntry> tools = inventory.detectTools();
-Map<String, Boolean> summary = inventory.getAvailabilitySummary();
-boolean ffmpegAvailable = inventory.isToolAvailable("ffmpeg");
-```
+See the Phase20 implementation-closure JSON linked above for the exact deletion predicates and mechanical evidence.
 
 ## Provider Registry
 
@@ -95,6 +83,7 @@ This registry tracks:
 ## Related Documents
 
 - `docs/render/capability-matrix.md` — Full provider capability matrix
+- `docs/architecture/governance/roadmap-22-phase-20-resource-accounting-hardware-provider-conformance-implementation-closure-v1.json` — Phase20 implementation-closure evidence
 - `docs/architecture/public-capability-architecture.md` — Capability architecture
 - `docs/review/capability-catalog.md` — Capability catalog
 - `docs/review/capability-resolution.md` — Capability resolution logic

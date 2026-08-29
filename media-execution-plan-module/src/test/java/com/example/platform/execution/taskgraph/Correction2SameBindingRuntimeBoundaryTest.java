@@ -5,7 +5,7 @@ import com.example.platform.execution.compatibility.CompatibilityRequest;
 import com.example.platform.execution.compatibility.ProviderBoundaryCompatibilityDeclaration;
 import com.example.platform.execution.compatibility.ProviderBoundaryCompatibilityDeclaration.Declaration;
 import com.example.platform.execution.compatibility.ProviderCandidate;
-import com.example.platform.execution.compatibility.ProviderCompatibilityGraph;
+import com.example.platform.execution.compatibility.ProviderFeasibilityView;
 import com.example.platform.execution.compatibility.ProviderCompatibilityTransition;
 import com.example.platform.execution.compatibility.ProviderCompatibilityTransitionDecision;
 import com.example.platform.execution.compatibility.ProviderStaticCompatibility;
@@ -52,7 +52,6 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -72,10 +71,10 @@ class Correction2SameBindingRuntimeBoundaryTest {
         UnitPair pair = dependentPair(false);
         PhysicalExecutionPlan plan = plan(pair);
         ProviderCandidate provider = candidate("provider-a");
-        ProviderCompatibilityGraph graph = graph(plan, List.of(provider), List.of());
+        ProviderFeasibilityView view = view(plan, List.of(provider), List.of());
 
         ProviderBoundExecutableTaskGraph etg = ProviderBoundExecutableTaskGraph.derive(
-                plan, graph, List.of(task(graph, provider, pair.producer(), pair.consumer())), List.of());
+                plan, view, List.of(task(view, provider, pair.producer(), pair.consumer())), List.of());
 
         assertEquals(1, etg.providerLocalDependencies().size());
         assertTrue(etg.taskDependencies().isEmpty());
@@ -88,7 +87,7 @@ class Correction2SameBindingRuntimeBoundaryTest {
     void t2SameBindingSeparateTasksDefaultToMaterialization() {
         Scenario scenario = sameBindingScenario();
         assertEquals(ProviderCompatibilityTransitionDecision.ARTIFACT_MATERIALIZATION_REQUIRED,
-                transition(scenario.graph(), scenario.pair(), scenario.producer(), scenario.consumer())
+                transition(scenario.view(), scenario.pair(), scenario.producer(), scenario.consumer())
                         .decision(),
                 "SAME_BINDING_DEFAULT_DIRECT_TRANSITION_COUNT=0");
     }
@@ -166,12 +165,12 @@ class Correction2SameBindingRuntimeBoundaryTest {
         UnitPair pair = dependentPair(false);
         PhysicalExecutionPlan plan = plan(pair);
         ProviderCandidate provider = candidate("provider-a");
-        ProviderCompatibilityGraph graph = graph(
+        ProviderFeasibilityView view = view(
                 plan,
                 List.of(provider),
                 List.of(declaration(pair, provider, provider,
                         Declaration.DIRECT_INTEROPERABILITY_ALLOWED)));
-        Scenario scenario = new Scenario(plan, pair, provider, provider, graph);
+        Scenario scenario = new Scenario(plan, pair, provider, provider, view);
 
         assertEquals(ProviderCompatibilityTransitionDecision.DIRECT_COMPATIBLE,
                 selectedTransition(scenario).decision());
@@ -217,12 +216,12 @@ class Correction2SameBindingRuntimeBoundaryTest {
         UnitPair pair = dependentPair(false);
         PhysicalExecutionPlan plan = plan(pair);
         ProviderCandidate provider = candidate("provider-a");
-        ProviderCompatibilityGraph graph = graph(
+        ProviderFeasibilityView view = view(
                 plan,
                 List.of(provider),
                 List.of(declaration(pair, provider, provider,
                         Declaration.ARTIFACT_MATERIALIZATION_REQUIRED)));
-        Scenario scenario = new Scenario(plan, pair, provider, provider, graph);
+        Scenario scenario = new Scenario(plan, pair, provider, provider, view);
         ExecutionArtifactBoundary boundary = boundary(
                 pair, provider, provider,
                 ExecutionArtifactBoundary.MaterializationReason
@@ -238,25 +237,25 @@ class Correction2SameBindingRuntimeBoundaryTest {
     void t18ForeignBindingExecutionBoundaryIsRejected() {
         Scenario scenario = differentBindingScenario(List.of());
         ProviderCandidate foreign = candidate("provider-foreign");
-        ProviderCompatibilityGraph graph = graph(
+        ProviderFeasibilityView view = view(
                 scenario.plan(),
                 List.of(scenario.producer(), scenario.consumer(), foreign),
                 List.of());
-        Scenario graphScenario = new Scenario(
-                scenario.plan(), scenario.pair(), scenario.producer(), scenario.consumer(), graph);
+        Scenario viewScenario = new Scenario(
+                scenario.plan(), scenario.pair(), scenario.producer(), scenario.consumer(), view);
         ExecutionArtifactBoundary foreignBoundary = boundary(
                 scenario.pair(), scenario.producer(), foreign,
                 ExecutionArtifactBoundary.MaterializationReason.PROVIDER_BINDING_CHANGE,
                 Optional.empty());
 
         assertThrows(IllegalArgumentException.class,
-                () -> deriveSeparate(graphScenario, List.of(foreignBoundary)));
+                () -> deriveSeparate(viewScenario, List.of(foreignBoundary)));
 
         ExecutionArtifactBoundary exact = defaultBoundary(scenario);
         ExecutableTask producerTask = task(
-                scenario.graph(), scenario.producer(), scenario.pair().producer());
+                scenario.view(), scenario.producer(), scenario.pair().producer());
         ExecutableTask consumerTask = task(
-                scenario.graph(), scenario.consumer(), scenario.pair().consumer());
+                scenario.view(), scenario.consumer(), scenario.pair().consumer());
         assertThrows(IllegalArgumentException.class, () -> ExecutableTask.create(
                 producerTask.compositionDecision(),
                 List.of(new BoundaryAction(
@@ -307,12 +306,12 @@ class Correction2SameBindingRuntimeBoundaryTest {
                 ExecutionArtifactBoundary.MaterializationReason.PROVIDER_BINDING_CHANGE,
                 Optional.empty());
         ExecutableTask producer = task(
-                scenario.graph(), scenario.producer(), scenario.pair().producer());
+                scenario.view(), scenario.producer(), scenario.pair().producer());
         ExecutableTask consumer = task(
-                scenario.graph(), scenario.consumer(), scenario.pair().consumer());
+                scenario.view(), scenario.consumer(), scenario.pair().consumer());
 
         assertThrows(IllegalArgumentException.class, () -> ProviderBoundExecutableTaskGraph.derive(
-                scenario.plan(), scenario.graph(),
+                scenario.plan(), scenario.view(),
                 List.of(
                         ExecutableTask.create(producer.compositionDecision(),
                                 List.of(materializeAction(unmanifested, 0))),
@@ -359,7 +358,7 @@ class Correction2SameBindingRuntimeBoundaryTest {
         ExecutionArtifactBoundary boundary = defaultBoundary(scenario);
         ProviderBoundExecutableTaskGraph first = deriveSeparate(scenario, List.of(boundary));
         ProviderBoundExecutableTaskGraph second = ProviderBoundExecutableTaskGraph.derive(
-                scenario.plan(), scenario.graph(), first.tasks(), List.of(boundary));
+                scenario.plan(), scenario.view(), first.tasks(), List.of(boundary));
 
         assertEquals(first.digest(), second.digest());
         assertEquals(first.tasks().stream().map(ExecutableTask::id).toList(),
@@ -369,7 +368,7 @@ class Correction2SameBindingRuntimeBoundaryTest {
     }
 
     @Test
-    void t24GraphInputsAndDeclarationsArePermutationDeterministic() {
+    void t24FeasibilityViewInputsAndDeclarationsArePermutationDeterministic() {
         UnitPair pair = dependentPair(false);
         PhysicalExecutionPlan plan = plan(pair);
         ProviderCandidate providerA = candidate("provider-a");
@@ -380,13 +379,13 @@ class Correction2SameBindingRuntimeBoundaryTest {
                 declaration(pair, providerB, providerA, Declaration.UNKNOWN_FAIL_CLOSED),
                 declaration(pair, providerB, providerB, Declaration.ARTIFACT_MATERIALIZATION_REQUIRED));
 
-        ProviderCompatibilityGraph first = ProviderCompatibilityGraph.build(
+        ProviderFeasibilityView first = ProviderFeasibilityView.build(
                 plan,
                 List.of(CompatibilityRequest.forUnit(pair.consumer()),
                         CompatibilityRequest.forUnit(pair.producer())),
                 List.of(providerA, providerB),
                 declarations);
-        ProviderCompatibilityGraph permuted = ProviderCompatibilityGraph.build(
+        ProviderFeasibilityView permuted = ProviderFeasibilityView.build(
                 plan,
                 List.of(CompatibilityRequest.forUnit(pair.producer()),
                         CompatibilityRequest.forUnit(pair.consumer())),
@@ -394,23 +393,22 @@ class Correction2SameBindingRuntimeBoundaryTest {
                 List.of(declarations.get(3), declarations.get(1),
                         declarations.get(0), declarations.get(2)));
 
-        assertEquals(first, permuted);
+        assertEquals(first.sourcePlanSemanticDigest(), permuted.sourcePlanSemanticDigest());
+        assertEquals(first.unitCandidates(), permuted.unitCandidates());
         assertEquals(first.transitions(), permuted.transitions());
-        assertArrayEquals(first.canonicalSerialization(), permuted.canonicalSerialization());
-        assertEquals(first.digest(), permuted.digest());
     }
 
     @Test
     void t25CompatibilityProofRejectsSameStepWithModifiedSemantics() {
         UnitPair pair = dependentPair(false);
         ProviderCandidate provider = candidate("provider-a");
-        ProviderCompatibilityGraph graph = graph(plan(pair), List.of(provider), List.of());
+        ProviderFeasibilityView view = view(plan(pair), List.of(provider), List.of());
         PhysicalPlanUnit modified = unit(
                 "unit-a", "encode", pair.producer().typedInputs(), pair.producer().typedOutputs(),
                 pair.producer().typedDependencies());
 
         assertThrows(IllegalArgumentException.class,
-                () -> graph.requireStaticallyFeasible(modified, provider));
+                () -> view.requireStaticallyFeasible(modified, provider));
     }
 
     @Test
@@ -418,10 +416,10 @@ class Correction2SameBindingRuntimeBoundaryTest {
         UnitPair pair = dependentPair(false);
         ProviderCandidate providerA = candidate("provider-a");
         ProviderCandidate providerB = candidate("provider-b");
-        ProviderCompatibilityGraph graph = graph(plan(pair), List.of(providerA), List.of());
+        ProviderFeasibilityView view = view(plan(pair), List.of(providerA), List.of());
 
         assertThrows(IllegalArgumentException.class,
-                () -> graph.requireStaticallyFeasible(pair.producer(), providerB));
+                () -> view.requireStaticallyFeasible(pair.producer(), providerB));
     }
 
     @Test
@@ -458,10 +456,10 @@ class Correction2SameBindingRuntimeBoundaryTest {
         UnitPair pair = dependentPair(true);
         PhysicalExecutionPlan plan = plan(pair);
         ProviderCandidate provider = candidate("provider-a");
-        ProviderCompatibilityGraph graph = graph(plan, List.of(provider), List.of());
+        ProviderFeasibilityView view = view(plan, List.of(provider), List.of());
 
         CompositionDecision decision = ProviderLocalCompositionEvaluator.evaluate(
-                compositionRequest(graph, provider, pair.producer(), pair.consumer()));
+                compositionRequest(view, provider, pair.producer(), pair.consumer()));
 
         assertEquals(CompositionDecision.Status.FORBIDDEN, decision.status());
         assertTrue(decision.blockers().contains(
@@ -490,11 +488,11 @@ class Correction2SameBindingRuntimeBoundaryTest {
                         List.of(new StaticCompatibilityConstraint.ProviderRuntime(producerRuntime))),
                 new CompatibilityRequest(pair.consumer(),
                         List.of(new StaticCompatibilityConstraint.ProviderRuntime(consumerRuntime))));
-        ProviderCompatibilityGraph graph = ProviderCompatibilityGraph.build(
+        ProviderFeasibilityView view = ProviderFeasibilityView.build(
                 plan, requests, List.of(provider), List.of());
 
         assertEquals(ProviderCompatibilityTransitionDecision.ARTIFACT_MATERIALIZATION_REQUIRED,
-                transition(graph, pair, provider, provider).decision(),
+                transition(view, pair, provider, provider).decision(),
                 "SAME_BINDING_RUNTIME_CLASS_MISMATCH_DIRECT_ACCEPTANCE_COUNT=0");
     }
 
@@ -505,14 +503,14 @@ class Correction2SameBindingRuntimeBoundaryTest {
         PhysicalExecutionPlan plan = plan(pair);
         ProviderCandidate producer = candidate("provider-a", producerSupports);
         ProviderCandidate consumer = candidate("provider-b", consumerSupports);
-        ProviderCompatibilityGraph graph = graph(
+        ProviderFeasibilityView view = view(
                 plan,
                 List.of(producer, consumer),
                 List.of(declaration(pair, producer, consumer,
                         Declaration.DIRECT_INTEROPERABILITY_ALLOWED)));
 
         assertEquals(ProviderCompatibilityTransitionDecision.INCOMPATIBLE,
-                transition(graph, pair, producer, consumer).decision());
+                transition(view, pair, producer, consumer).decision());
     }
 
     private static void assertExplicitFailClosed(Declaration declaration) {
@@ -530,11 +528,11 @@ class Correction2SameBindingRuntimeBoundaryTest {
             List<BoundaryAction> consumerActions,
             ExecutionArtifactBoundary boundary) {
         ExecutableTask producer = task(
-                scenario.graph(), scenario.producer(), scenario.pair().producer());
+                scenario.view(), scenario.producer(), scenario.pair().producer());
         ExecutableTask consumer = task(
-                scenario.graph(), scenario.consumer(), scenario.pair().consumer());
+                scenario.view(), scenario.consumer(), scenario.pair().consumer());
         assertThrows(IllegalArgumentException.class, () -> ProviderBoundExecutableTaskGraph.derive(
-                scenario.plan(), scenario.graph(),
+                scenario.plan(), scenario.view(),
                 List.of(
                         ExecutableTask.create(producer.compositionDecision(), producerActions),
                         ExecutableTask.create(consumer.compositionDecision(), consumerActions)),
@@ -564,7 +562,7 @@ class Correction2SameBindingRuntimeBoundaryTest {
         ProviderCandidate provider = candidate("provider-a");
         return new Scenario(
                 plan, pair, provider, provider,
-                graph(plan, List.of(provider), List.of()));
+                view(plan, List.of(provider), List.of()));
     }
 
     private static Scenario differentBindingScenario(
@@ -575,7 +573,7 @@ class Correction2SameBindingRuntimeBoundaryTest {
         ProviderCandidate consumer = candidate("provider-b");
         return new Scenario(
                 plan, pair, producer, consumer,
-                graph(plan, List.of(producer, consumer), declarations));
+                view(plan, List.of(producer, consumer), declarations));
     }
 
     private static Scenario directDifferentBindingScenario() {
@@ -591,24 +589,24 @@ class Correction2SameBindingRuntimeBoundaryTest {
             List<ExecutionArtifactBoundary> boundaries) {
         return ProviderBoundExecutableTaskGraph.derive(
                 scenario.plan(),
-                scenario.graph(),
+                scenario.view(),
                 List.of(
-                        task(scenario.graph(), scenario.producer(), scenario.pair().producer()),
-                        task(scenario.graph(), scenario.consumer(), scenario.pair().consumer())),
+                        task(scenario.view(), scenario.producer(), scenario.pair().producer()),
+                        task(scenario.view(), scenario.consumer(), scenario.pair().consumer())),
                 boundaries);
     }
 
     private static ProviderCompatibilityTransition selectedTransition(Scenario scenario) {
         return transition(
-                scenario.graph(), scenario.pair(), scenario.producer(), scenario.consumer());
+                scenario.view(), scenario.pair(), scenario.producer(), scenario.consumer());
     }
 
     private static ProviderCompatibilityTransition transition(
-            ProviderCompatibilityGraph graph,
+            ProviderFeasibilityView view,
             UnitPair pair,
             ProviderCandidate producer,
             ProviderCandidate consumer) {
-        return graph.requireTransition(
+        return view.requireTransition(
                 pair.edge(), pair.producer(), producer.bindingPin(),
                 pair.consumer(), consumer.bindingPin());
     }
@@ -664,22 +662,22 @@ class Correction2SameBindingRuntimeBoundaryTest {
     }
 
     private static ExecutableTask task(
-            ProviderCompatibilityGraph graph,
+            ProviderFeasibilityView view,
             ProviderCandidate candidate,
             PhysicalPlanUnit... units) {
         return ExecutableTask.create(
                 ProviderLocalCompositionEvaluator.evaluate(
-                        compositionRequest(graph, candidate, units)),
+                        compositionRequest(view, candidate, units)),
                 List.of());
     }
 
     private static ProviderLocalCompositionRequest compositionRequest(
-            ProviderCompatibilityGraph graph,
+            ProviderFeasibilityView view,
             ProviderCandidate candidate,
             PhysicalPlanUnit... units) {
         return ProviderLocalCompositionRequest.of(
                 ExecutableTaskMembership.canonicalForUnits(List.of(units)),
-                graph,
+                view,
                 candidate,
                 new ProviderCompositionDeclaration(
                         candidate.bindingPin(), NativePipelineSupport.SUPPORTED),
@@ -699,11 +697,11 @@ class Correction2SameBindingRuntimeBoundaryTest {
                 declaration);
     }
 
-    private static ProviderCompatibilityGraph graph(
+    private static ProviderFeasibilityView view(
             PhysicalExecutionPlan plan,
             List<ProviderCandidate> candidates,
             List<ProviderBoundaryCompatibilityDeclaration> declarations) {
-        return ProviderCompatibilityGraph.build(
+        return ProviderFeasibilityView.build(
                 plan,
                 plan.units().stream().map(CompatibilityRequest::forUnit).toList(),
                 candidates,
@@ -836,6 +834,6 @@ class Correction2SameBindingRuntimeBoundaryTest {
             UnitPair pair,
             ProviderCandidate producer,
             ProviderCandidate consumer,
-            ProviderCompatibilityGraph graph) {
+            ProviderFeasibilityView view) {
     }
 }

@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import type { RenderJobSummary } from '../../api/render-jobs'
+import { RENDER_JOB_STATUSES, type RenderJobStatus, type RenderJobSummary } from '../../contracts/app/render-job'
 
-const STATUS_OPTIONS = ['ALL', 'QUEUED', 'PROCESSING', 'COMPLETED', 'FAILED', 'CANCELLED'] as const
+const STATUS_OPTIONS = ['ALL', ...RENDER_JOB_STATUSES] as const
 type StatusFilter = typeof STATUS_OPTIONS[number]
 
 interface Props {
@@ -74,7 +74,7 @@ export function JobList({ jobs, selectedJobId, onSelect }: Props) {
   )
 }
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({ status }: { status: RenderJobStatus }) {
   let color: string
   switch (status) {
     case 'COMPLETED':
@@ -86,14 +86,18 @@ function StatusBadge({ status }: { status: string }) {
     case 'QUEUED':
       color = 'bg-yellow-900 text-yellow-300'
       break
-    case 'PROCESSING':
+    case 'SELECTING_PROVIDER':
+    case 'PROVIDER_SELECTED':
+    case 'EXECUTING':
+    case 'COMPLETING':
       color = 'bg-blue-900 text-blue-300'
       break
     case 'CANCELLED':
       color = 'bg-gray-700 text-gray-400'
       break
-    default:
-      color = 'bg-gray-700 text-gray-400'
+    case 'REJECTED':
+      color = 'bg-orange-900 text-orange-300'
+      break
   }
 
   return (
