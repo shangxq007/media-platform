@@ -98,7 +98,10 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
         artifactCatalogService = mock(com.example.platform.artifact.app.ArtifactCatalogService.class);
         editorTimelineConverter = mock(EditorTimelineConverter.class);
 
-        when(quotaService.checkQuota(anyString(), anyString(), anyInt())).thenReturn(true);
+        com.example.platform.shared.commercial.QuotaDecision allowedQuota =
+                mock(com.example.platform.shared.commercial.QuotaDecision.class);
+        when(allowedQuota.allowed()).thenReturn(true);
+        when(quotaService.checkQuota(anyString(), anyString(), anyInt())).thenReturn(allowedQuota);
         when(effectTimelineInspector.extractFromScript(anyString()))
                 .thenReturn(new EffectTimelineInspector.EffectUsage(List.of(), List.of()));
         when(renderProfileResolver.resolve(anyString(), anyList(), anyString()))
@@ -241,7 +244,10 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
     void submitRenderJobRejectsWhenQuotaDenied() {
         TenantContext.set("tenant-2");
         insertProject("proj-2", "tenant-2");
-        when(quotaService.checkQuota("tenant-2", "render", 1)).thenReturn(false);
+        com.example.platform.shared.commercial.QuotaDecision deniedQuota =
+                mock(com.example.platform.shared.commercial.QuotaDecision.class);
+        when(deniedQuota.allowed()).thenReturn(false);
+        when(quotaService.checkQuota("tenant-2", "render", 1)).thenReturn(deniedQuota);
 
         SubmitRenderJobRequest request = SubmitRenderJobRequest.withSnapshot(
                 "tenant-2", "proj-2", "snap-2", "default_1080p");
@@ -284,7 +290,7 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
         assertEquals("COMPLETED", jobRow.get(field("status"), String.class));
         assertNotNull(jobRow.get(field("artifact_uri"), String.class));
 
-        verify(quotaService).consumeQuota("tenant-3", "render", 1);
+        verify(quotaService).consumeQuota("tenant-3", "rj-3", "render", 1);
     }
 
     @Test

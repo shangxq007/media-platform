@@ -200,7 +200,10 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
     }
 
     private void setupDefaultMocks() {
-        when(quotaService.checkQuota(anyString(), anyString(), anyInt())).thenReturn(true);
+        com.example.platform.shared.commercial.QuotaDecision allowedQuota =
+                mock(com.example.platform.shared.commercial.QuotaDecision.class);
+        when(allowedQuota.allowed()).thenReturn(true);
+        when(quotaService.checkQuota(anyString(), anyString(), anyInt())).thenReturn(allowedQuota);
         when(effectTimelineInspector.extractFromScript(any()))
                 .thenReturn(new EffectTimelineInspector.EffectUsage(List.of(), List.of()));
         when(renderProfileResolver.resolve(anyString(), anyList(), anyString()))
@@ -555,7 +558,10 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
         setupDefaultMocks();
         TenantContext.set("tenant-7");
         insertProject("proj-7", "tenant-7");
-        when(quotaService.checkQuota("tenant-7", "render", 1)).thenReturn(false);
+        com.example.platform.shared.commercial.QuotaDecision deniedQuota =
+                mock(com.example.platform.shared.commercial.QuotaDecision.class);
+        when(deniedQuota.allowed()).thenReturn(false);
+        when(quotaService.checkQuota("tenant-7", "render", 1)).thenReturn(deniedQuota);
 
         SubmitRenderJobRequest request = SubmitRenderJobRequest.withSnapshot(
                 "tenant-7", "proj-7", "snap-7", "default_1080p");
@@ -811,10 +817,10 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
 
         SubmitRenderJobRequest request = SubmitRenderJobRequest.withSnapshot(
                 "tenant-14", "proj-14", "snap-14", "default_1080p");
-        service.submitRenderJob(request);
+        String jobId = service.submitRenderJob(request);
 
         // Verify quota consumed exactly once
-        verify(quotaService).consumeQuota("tenant-14", "render", 1);
+        verify(quotaService).consumeQuota("tenant-14", jobId, "render", 1);
     }
 
     // =========================================================

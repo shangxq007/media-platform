@@ -1,5 +1,7 @@
 package com.example.platform.entitlement.app;
 
+import com.example.platform.entitlement.domain.QuotaUsageCommand;
+import com.example.platform.entitlement.domain.QuotaUsageResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -7,27 +9,25 @@ import org.springframework.stereotype.Service;
 /**
  * Quota consumption boundary implementation.
  *
- * <p>POST-EXECUTION accounting only. Delegates to the existing
- * {@link QuotaDecisionService#recordUsage} hard-limit/usage path without modifying it.
- * Pre-execution decisions ({@code QuotaDecisionService.evaluate}) are untouched. This
- * boundary consumes canonical usage facts; it does NOT write usage_record rows and is
- * not a source of usage facts.</p>
+ * <p>POST-EXECUTION accounting only. This boundary consumes canonical usage facts;
+ * it does not produce observations or persist quota rows directly.</p>
  */
 @Service
 public class QuotaConsumptionBoundaryImpl implements QuotaConsumptionBoundary {
 
     private static final Logger log = LoggerFactory.getLogger(QuotaConsumptionBoundaryImpl.class);
 
-    private final QuotaDecisionService quotaDecisionService;
+    private final QuotaUsageAuthority quotaUsageAuthority;
 
-    public QuotaConsumptionBoundaryImpl(QuotaDecisionService quotaDecisionService) {
-        this.quotaDecisionService = quotaDecisionService;
+    public QuotaConsumptionBoundaryImpl(QuotaUsageAuthority quotaUsageAuthority) {
+        this.quotaUsageAuthority = quotaUsageAuthority;
     }
 
     @Override
-    public void recordPostExecutionUsage(String tenantId, String featureCode, long amount) {
-        quotaDecisionService.recordUsage(tenantId, featureCode, amount);
-        log.debug("QuotaConsumptionBoundary: recorded post-execution usage tenant={} feature={} amount={}",
-                tenantId, featureCode, amount);
+    public QuotaUsageResult recordPostExecutionUsage(QuotaUsageCommand command) {
+        QuotaUsageResult result = quotaUsageAuthority.execute(command);
+        log.debug("QuotaConsumptionBoundary: operation={} outcome={}",
+                result.operationId(), result.outcome());
+        return result;
     }
 }

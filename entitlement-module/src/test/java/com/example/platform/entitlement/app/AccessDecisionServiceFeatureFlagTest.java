@@ -4,7 +4,9 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import com.example.platform.entitlement.domain.*;
+import com.example.platform.entitlement.domain.QuotaUsageQuery;
 import com.example.platform.policy.featureflag.domain.*;
+import com.example.platform.shared.commercial.CommercialDecisionReason;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -26,8 +28,17 @@ class AccessDecisionServiceFeatureFlagTest {
                 policyService, java.util.Optional.empty(), java.util.Optional.empty(),
                 java.util.Optional.empty(), java.util.Optional.empty(), java.util.Optional.empty());
         QuotaPolicyService quotaPolicyService = new QuotaPolicyService();
-        QuotaUsageService quotaUsageService = new QuotaUsageService(java.util.Optional.empty());
-        quotaDecisionService = new QuotaDecisionService(quotaPolicyService, quotaUsageService);
+        QuotaUsageAuthority quotaUsageAuthority = mock(QuotaUsageAuthority.class);
+        when(quotaUsageAuthority.decide(any(QuotaUsageQuery.class))).thenAnswer(invocation -> {
+            QuotaUsageQuery query = invocation.getArgument(0);
+            boolean allowed = query.requestedUnits() <= query.limitUnits();
+            return new com.example.platform.shared.commercial.QuotaDecision(
+                    query.principal(), query.quotaKey(), query.requestedUnits(),
+                    query.limitUnits(), 0, allowed,
+                    allowed ? CommercialDecisionReason.ALLOWED : CommercialDecisionReason.QUOTA_EXCEEDED,
+                    java.util.List.of(), "quota-usage-v1", query.traceId(), query.decidedAt());
+        });
+        quotaDecisionService = new QuotaDecisionService(quotaPolicyService, quotaUsageAuthority);
         featureFlagService = mock(AccessDecisionFeatureFlagService.class);
         accessDecisionService = new AccessDecisionService(
                 entitlementDecisionService, quotaDecisionService, featureFlagService);

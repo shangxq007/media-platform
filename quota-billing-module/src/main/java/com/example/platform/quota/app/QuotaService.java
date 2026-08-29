@@ -1,6 +1,9 @@
 package com.example.platform.quota.app;
 
-import com.example.platform.quota.domain.*;
+import com.example.platform.quota.domain.QuotaBucket;
+import com.example.platform.quota.domain.QuotaBucketStatus;
+import com.example.platform.quota.domain.QuotaPolicy;
+import com.example.platform.quota.domain.ThresholdEvent;
 import com.example.platform.shared.Ids;
 import org.springframework.stereotype.Service;
 
@@ -20,18 +23,15 @@ import java.util.concurrent.ConcurrentHashMap;
 public class QuotaService {
 
     private final Map<String, QuotaBucket> buckets = new ConcurrentHashMap<>();
-    private final Map<String, UsageRecord> usageRecords = new ConcurrentHashMap<>();
     private final Map<String, QuotaPolicy> policies = new ConcurrentHashMap<>();
     private final List<ThresholdEvent> thresholdEvents = new ArrayList<>();
-    private final Map<String, String> idempotencyIndex = new ConcurrentHashMap<>();
 
     public Map<String, Object> overview() {
         return Map.of(
                 "module", "quota-billing-module",
-                "status", "active",
-                "description", "配额与计量模块，负责资源额度、用量汇总与阈值检查。",
+                "status", "read-only-compatibility",
+                "description", "Deprecated quota configuration projection; usage writes are disabled.",
                 "bucketCount", buckets.size(),
-                "usageRecordCount", usageRecords.size(),
                 "policyCount", policies.size(),
                 "thresholdEventCount", thresholdEvents.size()
         );
@@ -42,33 +42,6 @@ public class QuotaService {
         QuotaBucket bucket = new QuotaBucket(id, tenantId, featureCode, limit, period, 0L, Instant.now(), Instant.now());
         buckets.put(id, bucket);
         return bucket;
-    }
-
-    public UsageRecord recordUsage(String bucketId, long amount, String idempotencyKey) {
-        QuotaBucket bucket = buckets.get(bucketId);
-        if (bucket == null) {
-            throw new IllegalArgumentException("QuotaBucket not found: " + bucketId);
-        }
-
-        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
-            String existingRecordId = idempotencyIndex.get(idempotencyKey);
-            if (existingRecordId != null) {
-                return usageRecords.get(existingRecordId);
-            }
-        }
-
-        String recordId = Ids.newId("usr");
-        UsageRecord record = new UsageRecord(recordId, bucketId, amount, Instant.now(), idempotencyKey);
-        usageRecords.put(recordId, record);
-
-        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
-            idempotencyIndex.put(idempotencyKey, recordId);
-        }
-
-        QuotaBucket updated = bucket.withUsage(bucket.currentUsage() + amount);
-        buckets.put(bucketId, updated);
-
-        return record;
     }
 
     public QuotaBucketStatus getBucketStatus(String bucketId) {

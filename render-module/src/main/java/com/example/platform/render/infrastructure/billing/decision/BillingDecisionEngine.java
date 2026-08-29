@@ -3,14 +3,13 @@ package com.example.platform.render.infrastructure.billing.decision;
 import com.example.platform.billing.app.CostEstimationService;
 import com.example.platform.billing.app.SubscriptionBillingService;
 import com.example.platform.billing.domain.SubscriptionContract;
-import com.example.platform.quota.app.QuotaBucketSummary;
-import com.example.platform.quota.app.QuotaService;
 import com.example.platform.render.app.RenderQuotaService;
 import com.example.platform.render.infrastructure.billing.policy.CreditSystem;
 import com.example.platform.render.infrastructure.billing.policy.PolicyDecisionTraceNode;
 import com.example.platform.render.infrastructure.billing.policy.PolicyEngine;
 import com.example.platform.render.infrastructure.billing.policy.PricingEngine;
 import com.example.platform.render.infrastructure.providerruntime.trace.ProviderTraceEmitter;
+import com.example.platform.shared.commercial.QuotaDecision;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -43,7 +42,6 @@ public class BillingDecisionEngine {
     private static final Logger log = LoggerFactory.getLogger(BillingDecisionEngine.class);
 
     private final SubscriptionBillingService subscriptionService;
-    private final QuotaService quotaService;
     private final RenderQuotaService renderQuotaService;
     private final CostEstimationService costEstimationService;
     private final PolicyEngine policyEngine;
@@ -56,7 +54,6 @@ public class BillingDecisionEngine {
 
     public BillingDecisionEngine(
             SubscriptionBillingService subscriptionService,
-            QuotaService quotaService,
             RenderQuotaService renderQuotaService,
             CostEstimationService costEstimationService,
             PolicyEngine policyEngine,
@@ -64,7 +61,6 @@ public class BillingDecisionEngine {
             CreditSystem creditSystem,
             ProviderTraceEmitter traceEmitter) {
         this.subscriptionService = subscriptionService;
-        this.quotaService = quotaService;
         this.renderQuotaService = renderQuotaService;
         this.costEstimationService = costEstimationService;
         this.policyEngine = policyEngine;
@@ -199,33 +195,14 @@ public class BillingDecisionEngine {
 
     private BillingDecision evaluateQuota(BillingDecisionRequest request, String traceId) {
         // Check render-specific quota
-        boolean hasRenderQuota = renderQuotaService.checkQuota(request.tenantId(), "render", 1);
-        if (!hasRenderQuota) {
+        QuotaDecision quotaDecision = renderQuotaService.checkQuota(
+                request.tenantId(), "render", 1);
+        if (!quotaDecision.allowed()) {
             return BillingDecision.deny(
                     BillingDecision.ReasonCode.QUOTA_EXCEEDED,
                     "Render quota exceeded for tenant: " + request.tenantId(),
                     traceId
             );
-        }
-
-        // Check general quota buckets
-        List<QuotaBucketSummary> buckets = quotaService.getBucketSummariesForTenant(request.tenantId());
-        for (QuotaBucketSummary bucket : buckets) {
-            if (bucket.usageRatio() >= 1.0) {
-                return BillingDecision.deny(
-                        BillingDecision.ReasonCode.QUOTA_BUCKET_FULL,
-                        String.format("Quota bucket %s full (usage: %d/%d)", 
-                                bucket.featureCode(), bucket.currentUsage(), bucket.limit()),
-                        traceId
-                );
-            }
-
-            // Warn if approaching limit (80%)
-            if (bucket.usageRatio() >= 0.8) {
-                log.warn("[{}] Quota bucket {} at {}% capacity for tenant {}",
-                        traceId, bucket.featureCode(), 
-                        Math.round(bucket.usageRatio() * 100), request.tenantId());
-            }
         }
 
         return null; // Quota OK
@@ -436,21 +413,10 @@ public class BillingDecisionEngine {
 
     private BillingDecision.QuotaImpact calculateQuotaImpact(BillingDecisionRequest request, String traceId) {
         // Calculate quota impact
-        long currentRenderUsage = 0;
-        List<QuotaBucketSummary> buckets = quotaService.getBucketSummariesForTenant(request.tenantId());
-        for (QuotaBucketSummary bucket : buckets) {
-            if ("render".equals(bucket.featureCode())) {
-                currentRenderUsage = bucket.currentUsage();
-                return BillingDecision.QuotaImpact.of(
-                        "render",
-                        currentRenderUsage,
-                        bucket.limit(),
-                        1
-                );
-            }
-        }
-
-        return BillingDecision.QuotaImpact.of("render", 0, 100, 1);
+        QuotaDecision decision = renderQuotaService.checkQuota(
+                request.tenantId(), "render", 1);
+        return BillingDecision.QuotaImpact.of(
+                "render", decision.usedUnits(), decision.limitUnits(), 1);
     }
 
     // ---------------------------------------------------------------------------

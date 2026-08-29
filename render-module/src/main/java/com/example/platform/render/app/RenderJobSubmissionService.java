@@ -151,7 +151,7 @@ public class RenderJobSubmissionService {
             }
         }
 
-        if (!quotaService.checkQuota(request.tenantId(), "render", 1)) {
+        if (!quotaService.checkQuota(request.tenantId(), "render", 1).allowed()) {
             return handleQuotaRejected(request);
         }
 

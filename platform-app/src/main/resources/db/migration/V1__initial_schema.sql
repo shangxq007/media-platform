@@ -1189,14 +1189,55 @@ create index ix_quota_profile_profile_key on quota_profile(profile_key);
 create table quota_usage (
     id varchar(64) primary key,
     tenant_id varchar(64) not null,
-    feature_code varchar(80) not null,
-    usage_value int not null default 0,
-    created_at timestamp not null,
-    updated_at timestamp not null
+    principal_type varchar(32) not null,
+    principal_id varchar(128) not null,
+    workspace_scope varchar(64) not null default '',
+    organization_scope varchar(64) not null default '',
+    quota_key varchar(128) not null,
+    period_start timestamp with time zone not null,
+    period_end timestamp with time zone not null,
+    usage_value bigint not null default 0 check (usage_value >= 0),
+    created_at timestamp with time zone not null,
+    updated_at timestamp with time zone not null,
+    constraint uq_quota_usage_logical_period unique (
+        tenant_id, principal_type, principal_id, workspace_scope,
+        organization_scope, quota_key, period_start, period_end)
 );
 
 create index ix_quota_usage_tenant_id on quota_usage(tenant_id);
-create index ix_quota_usage_tenant_feature on quota_usage(tenant_id, feature_code);
+create index ix_quota_usage_principal_period on quota_usage(
+    tenant_id, principal_type, principal_id, quota_key, period_start, period_end);
+
+create table quota_usage_operation (
+    id varchar(64) primary key,
+    tenant_id varchar(64) not null,
+    principal_type varchar(32) not null,
+    principal_id varchar(128) not null,
+    workspace_scope varchar(64) not null default '',
+    organization_scope varchar(64) not null default '',
+    quota_key varchar(128) not null,
+    period_start timestamp with time zone not null,
+    period_end timestamp with time zone not null,
+    signed_delta bigint not null,
+    limit_value bigint not null check (limit_value >= 0),
+    idempotency_key varchar(255) not null,
+    operation_kind varchar(32) not null check (
+        operation_kind in ('CONSUMPTION', 'ADJUSTMENT', 'REVERSAL', 'RECONCILIATION')),
+    outcome varchar(32) not null check (outcome in ('PENDING', 'APPLIED', 'REJECTED')),
+    usage_before bigint,
+    usage_after bigint,
+    rejection_reason varchar(64),
+    trace_id varchar(128) not null,
+    reason varchar(512) not null,
+    occurred_at timestamp with time zone not null,
+    created_at timestamp with time zone not null,
+    constraint uq_quota_usage_operation_idempotency unique (
+        tenant_id, principal_type, principal_id, workspace_scope,
+        organization_scope, idempotency_key)
+);
+
+create index ix_quota_usage_operation_period on quota_usage_operation(
+    tenant_id, principal_type, principal_id, quota_key, period_start, period_end);
 
 create table workspace_entitlement_pool (
     id varchar(64) primary key,

@@ -442,7 +442,7 @@ public class RenderJobExecutionService {
         stateMachine.transition(jobId, RenderJobStatus.COMPLETING, RenderJobStatus.COMPLETED,
                 "Job successfully completed", "RenderJobExecutionService");
         updateStatus(jobId, projectId, RenderJobStatus.COMPLETING, RenderJobStatus.COMPLETED, null);
-        quotaService.consumeQuota(tenantId, "render", 1);
+        quotaService.consumeQuota(tenantId, jobId, "render", 1);
 
         notificationEventPublisher.publish(
                 new ArtifactCreatedEvent(artifactId, jobId, projectId, storageUri, Instant.now()));

@@ -18,6 +18,7 @@ public final class RenderTestSchemaFixture {
                 media_asset_artifact,
                 media_asset,
                 client_export_session,
+                quota_usage_operation,
                 quota_usage,
                 render_job_lease,
                 render_worker,
@@ -154,10 +155,47 @@ public final class RenderTestSchemaFixture {
             CREATE TABLE IF NOT EXISTS quota_usage (
                 id varchar(64) primary key,
                 tenant_id varchar(64) not null,
-                feature_code varchar(80) not null,
-                usage_value int not null default 0,
-                created_at timestamp not null,
-                updated_at timestamp not null
+                principal_type varchar(32) not null,
+                principal_id varchar(128) not null,
+                workspace_scope varchar(64) not null default '',
+                organization_scope varchar(64) not null default '',
+                quota_key varchar(128) not null,
+                period_start timestamptz not null,
+                period_end timestamptz not null,
+                usage_value bigint not null default 0 check (usage_value >= 0),
+                created_at timestamptz not null,
+                updated_at timestamptz not null,
+                unique (tenant_id, principal_type, principal_id, workspace_scope,
+                        organization_scope, quota_key, period_start, period_end)
+            )
+        """);
+
+        dsl.execute("""
+            CREATE TABLE IF NOT EXISTS quota_usage_operation (
+                id varchar(64) primary key,
+                tenant_id varchar(64) not null,
+                principal_type varchar(32) not null,
+                principal_id varchar(128) not null,
+                workspace_scope varchar(64) not null default '',
+                organization_scope varchar(64) not null default '',
+                quota_key varchar(128) not null,
+                period_start timestamptz not null,
+                period_end timestamptz not null,
+                signed_delta bigint not null,
+                limit_value bigint not null check (limit_value >= 0),
+                idempotency_key varchar(255) not null,
+                operation_kind varchar(32) not null check (
+                    operation_kind in ('CONSUMPTION', 'ADJUSTMENT', 'REVERSAL', 'RECONCILIATION')),
+                outcome varchar(32) not null check (outcome in ('PENDING', 'APPLIED', 'REJECTED')),
+                usage_before bigint,
+                usage_after bigint,
+                rejection_reason varchar(64),
+                trace_id varchar(128) not null,
+                reason varchar(512) not null,
+                occurred_at timestamptz not null,
+                created_at timestamptz not null,
+                unique (tenant_id, principal_type, principal_id, workspace_scope,
+                        organization_scope, idempotency_key)
             )
         """);
 
@@ -369,6 +407,7 @@ public final class RenderTestSchemaFixture {
                 artifact_replica,
                 artifact,
                 client_export_session,
+                quota_usage_operation,
                 quota_usage,
                 render_job_lease,
                 render_worker,

@@ -1,71 +1,54 @@
 package com.example.platform.entitlement.app;
 
-import static org.junit.jupiter.api.Assertions.*;
-
-import org.junit.jupiter.api.BeforeEach;
+import com.example.platform.entitlement.domain.QuotaOperationKind;
+import com.example.platform.entitlement.domain.QuotaUsageCommand;
+import com.example.platform.entitlement.domain.QuotaUsageOutcome;
+import com.example.platform.entitlement.domain.QuotaUsageQuery;
+import com.example.platform.entitlement.domain.QuotaUsageResult;
+import com.example.platform.shared.commercial.PrincipalRef;
+import com.example.platform.shared.commercial.PrincipalType;
+import java.time.Instant;
 import org.junit.jupiter.api.Test;
 
-import java.util.Map;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class QuotaUsageServiceTest {
 
-    private QuotaUsageService service;
+    private static final Instant START = Instant.parse("2026-08-01T00:00:00Z");
+    private static final Instant END = Instant.parse("2026-09-01T00:00:00Z");
+    private static final Instant NOW = Instant.parse("2026-08-29T08:00:00Z");
 
-    @BeforeEach
-    void setUp() {
-        service = new QuotaUsageService(java.util.Optional.empty());
+    @Test
+    void compatibilityFacadeDelegatesCanonicalCommandWithoutLocalState() {
+        QuotaUsageAuthority authority = mock(QuotaUsageAuthority.class);
+        QuotaUsageService service = new QuotaUsageService(authority);
+        PrincipalRef principal = PrincipalRef.tenantScoped("tenant-1", PrincipalType.USER, "user-1");
+        QuotaUsageCommand command = new QuotaUsageCommand(
+                principal, "render", START, END, 5, 100, "idem-1",
+                QuotaOperationKind.CONSUMPTION, "trace-1", "usage", NOW);
+        QuotaUsageResult expected = new QuotaUsageResult(
+                "op-1", principal, "render", START, END, 5, 100, "idem-1",
+                QuotaOperationKind.CONSUMPTION, QuotaUsageOutcome.APPLIED,
+                0, 5, null, "trace-1", "usage", NOW, NOW);
+        when(authority.execute(command)).thenReturn(expected);
+
+        assertSame(expected, service.execute(command));
+        verify(authority).execute(command);
     }
 
     @Test
-    void getUsageReturnsZeroForUnknownSubject() {
-        assertEquals(0, service.getUsage("unknown", "feature"));
-    }
+    void compatibilityFacadeDelegatesExplicitScopedRead() {
+        QuotaUsageAuthority authority = mock(QuotaUsageAuthority.class);
+        QuotaUsageService service = new QuotaUsageService(authority);
+        QuotaUsageQuery query = new QuotaUsageQuery(
+                PrincipalRef.tenantScoped("tenant-1", PrincipalType.USER, "user-1"),
+                "render", START, END, 0, 100, "trace-read", NOW);
+        when(authority.currentUsage(query)).thenReturn(17L);
 
-    @Test
-    void incrementUsageAccumulates() {
-        service.incrementUsage("sub-1", "render", 5);
-        assertEquals(5, service.getUsage("sub-1", "render"));
-        service.incrementUsage("sub-1", "render", 3);
-        assertEquals(8, service.getUsage("sub-1", "render"));
-    }
-
-    @Test
-    void setUsageOverridesValue() {
-        service.setUsage("sub-1", "render", 100);
-        assertEquals(100, service.getUsage("sub-1", "render"));
-    }
-
-    @Test
-    void resetUsageSetsToZero() {
-        service.setUsage("sub-1", "render", 100);
-        service.resetUsage("sub-1", "render");
-        assertEquals(0, service.getUsage("sub-1", "render"));
-    }
-
-    @Test
-    void resetAllClearsAllFeatures() {
-        service.incrementUsage("sub-1", "render", 10);
-        service.incrementUsage("sub-1", "ai", 5);
-        service.resetAll("sub-1");
-        assertEquals(0, service.getUsage("sub-1", "render"));
-        assertEquals(0, service.getUsage("sub-1", "ai"));
-    }
-
-    @Test
-    void getAllUsageReturnsCopy() {
-        service.incrementUsage("sub-1", "render", 10);
-        service.incrementUsage("sub-1", "ai", 5);
-        Map<String, Long> all = service.getAllUsage("sub-1");
-        assertEquals(2, all.size());
-        assertEquals(10L, all.get("render"));
-        assertEquals(5L, all.get("ai"));
-    }
-
-    @Test
-    void multipleSubjectsTrackedIndependently() {
-        service.incrementUsage("sub-1", "render", 10);
-        service.incrementUsage("sub-2", "render", 20);
-        assertEquals(10, service.getUsage("sub-1", "render"));
-        assertEquals(20, service.getUsage("sub-2", "render"));
+        org.junit.jupiter.api.Assertions.assertEquals(17L, service.currentUsage(query));
+        verify(authority).currentUsage(query);
     }
 }

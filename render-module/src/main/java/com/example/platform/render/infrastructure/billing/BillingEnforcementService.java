@@ -4,16 +4,14 @@ import com.example.platform.billing.app.CostEstimationService;
 import com.example.platform.billing.app.SubscriptionBillingService;
 import com.example.platform.billing.app.UsageMeteringService;
 import com.example.platform.billing.domain.SubscriptionContract;
-import com.example.platform.quota.app.QuotaBucketSummary;
-import com.example.platform.quota.app.QuotaService;
 import com.example.platform.render.app.RenderQuotaService;
+import com.example.platform.shared.commercial.QuotaDecision;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -23,7 +21,7 @@ import java.util.Map;
  * checks in the render execution path. It integrates with:
  * <ul>
  *   <li>SubscriptionBillingService - validates active subscriptions</li>
- *   <li>QuotaService - checks and reserves quota</li>
+ *   <li>RenderQuotaService - obtains typed decisions from canonical Quota</li>
  *   <li>CostEstimationService - estimates render costs</li>
  *   <li>UsageMeteringService - records actual usage</li>
  * </ul>
@@ -34,7 +32,6 @@ public class BillingEnforcementService {
     private static final Logger log = LoggerFactory.getLogger(BillingEnforcementService.class);
 
     private final SubscriptionBillingService subscriptionService;
-    private final QuotaService quotaService;
     private final RenderQuotaService renderQuotaService;
     private final CostEstimationService costEstimationService;
     private final UsageMeteringService usageMeteringService;
@@ -45,13 +42,11 @@ public class BillingEnforcementService {
 
     public BillingEnforcementService(
             SubscriptionBillingService subscriptionService,
-            QuotaService quotaService,
             RenderQuotaService renderQuotaService,
             CostEstimationService costEstimationService,
             UsageMeteringService usageMeteringService,
             RenderBillingRecordRepository billingRecordRepository) {
         this.subscriptionService = subscriptionService;
-        this.quotaService = quotaService;
         this.renderQuotaService = renderQuotaService;
         this.costEstimationService = costEstimationService;
         this.usageMeteringService = usageMeteringService;
@@ -105,21 +100,10 @@ public class BillingEnforcementService {
         }
 
         // Check render quota via RenderQuotaService
-        boolean hasQuota = renderQuotaService.checkQuota(tenantId, "render", 1);
-        if (!hasQuota) {
+        QuotaDecision quotaDecision = renderQuotaService.checkQuota(tenantId, "render", 1);
+        if (!quotaDecision.allowed()) {
             log.warn("Render quota exceeded for tenant {}", tenantId);
             return ValidationResult.failure("QUOTA_EXCEEDED", "Render quota exceeded");
-        }
-
-        // Check usage quota via QuotaService
-        List<QuotaBucketSummary> buckets = quotaService.getBucketSummariesForTenant(tenantId);
-        for (QuotaBucketSummary bucket : buckets) {
-            if (bucket.usageRatio() >= 1.0) {
-                log.warn("Quota bucket {} full for tenant {} (usage: {}/{})", 
-                        bucket.featureCode(), tenantId, bucket.currentUsage(), bucket.limit());
-                return ValidationResult.failure("QUOTA_BUCKET_FULL", 
-                        "Quota exceeded for " + bucket.featureCode());
-            }
         }
 
         log.debug("Quota validated for tenant {}", tenantId);
@@ -140,10 +124,8 @@ public class BillingEnforcementService {
             return ReservationResult.success("reservation_disabled", 0);
         }
 
-        // Consume one render quota unit
-        renderQuotaService.consumeQuota(tenantId, "render", 1);
-
-        // Create billing record
+        // Quota consumption occurs only on stable job completion through the
+        // canonical authority. This legacy method retains billing-record behavior only.
         RenderBillingRecord record = RenderBillingRecord.create(
                 jobId, tenantId, estimatedCost, Instant.now());
         billingRecordRepository.save(record);
