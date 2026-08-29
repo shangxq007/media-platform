@@ -6,6 +6,8 @@ import com.example.platform.billing.app.SubscriptionBillingService;
 import com.example.platform.billing.domain.BillingLedgerEntry;
 import com.example.platform.billing.domain.CreditWallet;
 import com.example.platform.billing.domain.SubscriptionContractRole;
+import com.example.platform.billing.domain.SubscriptionCommand;
+import com.example.platform.billing.domain.SubscriptionCommandType;
 import com.example.platform.billing.domain.SubscriptionPlan;
 import com.example.platform.commerce.domain.ProductLineType;
 import com.example.platform.entitlement.app.EntitlementPolicyService;
@@ -13,8 +15,12 @@ import com.example.platform.entitlement.app.EntitlementService;
 import com.example.platform.entitlement.app.WorkspaceEntitlementPoolService;
 import com.example.platform.entitlement.domain.EntitlementGrant;
 import com.example.platform.entitlement.domain.EntitlementGrantStatus;
+import com.example.platform.entitlement.domain.EntitlementCommandType;
+import com.example.platform.entitlement.domain.EntitlementGrantCommand;
 import com.example.platform.entitlement.domain.WorkspaceEntitlementPool;
 import com.example.platform.shared.Ids;
+import com.example.platform.shared.commercial.PrincipalRef;
+import com.example.platform.shared.commercial.PrincipalType;
 import com.example.platform.commerce.app.PurchaseFulfillmentCommand;
 import com.example.platform.commerce.app.PurchaseFulfillmentPort;
 import org.slf4j.Logger;
@@ -86,47 +92,37 @@ public class PurchaseFulfillmentService implements PurchaseFulfillmentPort {
             entitlementPolicyService.setTier(command.tenantId(), command.tierKey());
         }
         ensurePlan(command.planKey(), command.productCode(), Map.of());
-        subscriptionBillingService.createSubscription(
-                command.tenantId(),
-                command.userId(),
-                command.planKey(),
-                command.productCode(),
-                command.periodDays(),
-                SubscriptionContractRole.BASE);
+        PrincipalRef principal = PrincipalRef.tenantScoped(
+                command.tenantId(), PrincipalType.USER, command.userId());
+        subscriptionBillingService.execute(new SubscriptionCommand(
+                SubscriptionCommandType.CREATE, principal, "sub_" + command.orderId(),
+                command.planKey(), command.productCode(), command.periodDays(),
+                SubscriptionContractRole.BASE, 0,
+                "purchase:" + command.orderId() + ":base-subscription",
+                "commerce", "confirmed purchase", "purchase-" + command.orderId(),
+                command.occurredAt()));
     }
 
     private void fulfillAddonSubscription(PurchaseFulfillmentCommand command) {
         ensurePlan(command.planKey(), command.productCode(), Map.of("addon", 1L));
-        subscriptionBillingService.createAddonSubscription(
-                command.tenantId(),
-                command.userId(),
-                command.planKey(),
-                command.productCode(),
-                command.periodDays());
+        PrincipalRef principal = PrincipalRef.tenantScoped(
+                command.tenantId(), PrincipalType.USER, command.userId());
+        subscriptionBillingService.execute(new SubscriptionCommand(
+                SubscriptionCommandType.CREATE, principal, "sub_" + command.orderId(),
+                command.planKey(), command.productCode(), command.periodDays(),
+                SubscriptionContractRole.ADD_ON, 0,
+                "purchase:" + command.orderId() + ":addon-subscription",
+                "commerce", "confirmed purchase", "purchase-" + command.orderId(),
+                command.occurredAt()));
 
         if (command.bundleKey() != null && !command.bundleKey().isBlank()) {
-            Instant now = Instant.now();
-            EntitlementGrant grant = new EntitlementGrant(
-                    Ids.newId("ent_grant"),
-                    command.tenantId(),
-                    null,
-                    "TENANT",
-                    command.tenantId(),
-                    command.bundleKey(),
-                    command.bundleKey(),
-                    command.quotaProfileCode(),
-                    "commerce",
-                    "purchase:" + command.orderId(),
-                    "system",
-                    now,
-                    now.plus(command.periodDays(), ChronoUnit.DAYS),
-                    null,
-                    null,
-                    null,
-                    EntitlementGrantStatus.ACTIVE,
-                    now,
-                    now);
-            entitlementService.grantEntitlement(grant);
+            entitlementService.execute(new EntitlementGrantCommand(
+                    EntitlementCommandType.GRANT, principal, "ent_" + command.orderId(),
+                    command.bundleKey(), command.quotaProfileCode(), "COMMERCE_PURCHASE",
+                    command.orderId(), "purchase:" + command.orderId() + ":entitlement",
+                    "commerce", "confirmed purchase", "purchase-" + command.orderId(),
+                    command.occurredAt(),
+                    command.occurredAt().plus(command.periodDays(), ChronoUnit.DAYS), 0));
         }
     }
 

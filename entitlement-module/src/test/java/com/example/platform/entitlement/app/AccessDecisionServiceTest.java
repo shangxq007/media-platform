@@ -28,8 +28,8 @@ class AccessDecisionServiceTest {
         policyService.setTier("tenant-1", "FREE");
         policyService.setTier("tenant-pro", "PRO");
         entitlementDecisionService = new EntitlementDecisionService(
-                policyService, java.util.Optional.empty(), java.util.Optional.empty(),
-                java.util.Optional.empty(), java.util.Optional.empty(), java.util.Optional.empty());
+                policyService, mock(EntitlementService.class), java.util.Optional.empty(),
+                java.util.Optional.empty(), java.util.Optional.empty());
         QuotaPolicyService quotaPolicyService = new QuotaPolicyService();
         QuotaUsageAuthority quotaUsageAuthority = mock(QuotaUsageAuthority.class);
         when(quotaUsageAuthority.decide(any(QuotaUsageQuery.class))).thenAnswer(invocation -> {

@@ -810,22 +810,48 @@ create table provider_webhook_event (
 
 create table subscription_contract (
     id varchar(64) primary key,
+    tenant_id varchar(64) not null,
     subject_type varchar(32) not null,
     subject_id varchar(128) not null,
     canonical_product_code varchar(128) not null,
     provider_code varchar(64),
     external_contract_ref varchar(255),
     contract_state varchar(32) not null,
+    contract_role varchar(32) not null default 'BASE',
     period_start_at timestamp,
     period_end_at timestamp,
     created_at timestamp not null,
+    updated_at timestamp not null default now(),
     plan_key varchar(128),
     included_quota_used text,
-    tenant_id varchar(64)
+    version bigint not null default 0,
+    check (contract_state in ('ACTIVE', 'CANCELLED')),
+    check (contract_role in ('BASE', 'ADD_ON', 'SEAT_PACK'))
 );
 
 create index ix_subscription_contract_subject on subscription_contract(subject_type, subject_id);
 create index ix_subscription_contract_tenant on subscription_contract(tenant_id);
+create unique index uq_subscription_contract_active_base
+    on subscription_contract(tenant_id, subject_type, subject_id)
+    where contract_state = 'ACTIVE' and contract_role = 'BASE';
+
+create table subscription_command (
+    id varchar(64) primary key,
+    tenant_id varchar(64) not null,
+    principal_type varchar(32) not null,
+    principal_id varchar(128) not null,
+    idempotency_key varchar(255) not null,
+    command_type varchar(32) not null,
+    payload_fingerprint text not null,
+    result_snapshot text,
+    actor varchar(128) not null,
+    reason varchar(512) not null,
+    trace_id varchar(128) not null,
+    created_at timestamp with time zone not null,
+    completed_at timestamp with time zone,
+    constraint uq_subscription_command_tenant_key unique (tenant_id, idempotency_key),
+    check (command_type in ('CREATE', 'CHANGE', 'CANCEL'))
+);
 
 create table subscription_plan (
     id varchar(64) primary key,
@@ -1108,18 +1134,45 @@ create index ix_feature_bundle_item_feature_id on feature_bundle_item(feature_id
 
 create table entitlement_grant (
     id varchar(64) primary key,
+    tenant_id varchar(64) not null,
     subject_type varchar(32) not null,
     subject_id varchar(128) not null,
     bundle_code varchar(128) not null,
     quota_profile_code varchar(128),
     source_type varchar(32) not null,
-    source_ref varchar(255),
+    source_ref varchar(255) not null,
     grant_status varchar(32) not null,
     effective_at timestamp not null,
-    expires_at timestamp
+    expires_at timestamp,
+    version bigint not null default 0,
+    created_at timestamp not null default now(),
+    updated_at timestamp not null default now(),
+    check (grant_status in ('ACTIVE', 'REVOKED')),
+    constraint uq_entitlement_grant_logical_source unique
+        (tenant_id, subject_type, subject_id, bundle_code, source_type, source_ref)
 );
 
-create index ix_entitlement_grant_subject on entitlement_grant(subject_type, subject_id);
+create index ix_entitlement_grant_subject on entitlement_grant(tenant_id, subject_type, subject_id);
+
+create table entitlement_command_audit (
+    id varchar(64) primary key,
+    tenant_id varchar(64) not null,
+    principal_type varchar(32) not null,
+    principal_id varchar(128) not null,
+    idempotency_key varchar(255) not null,
+    command_type varchar(32) not null,
+    payload_fingerprint text not null,
+    result_snapshot text,
+    actor varchar(128) not null,
+    reason varchar(512) not null,
+    trace_id varchar(128) not null,
+    created_at timestamp with time zone not null,
+    completed_at timestamp with time zone,
+    constraint uq_entitlement_command_tenant_key unique (tenant_id, idempotency_key),
+    check (command_type in (
+        'GRANT', 'REVOKE', 'EXTEND',
+        'WORKSPACE_GRANT', 'WORKSPACE_REVOKE', 'WORKSPACE_EXTEND'))
+);
 
 create table entitlement_override (
     id varchar(64) primary key,
@@ -1255,20 +1308,28 @@ create index ix_workspace_entitlement_pool_feature_key on workspace_entitlement_
 
 create table workspace_member_entitlement_grant (
     id varchar(64) primary key,
+    tenant_id varchar(64) not null,
     workspace_id varchar(64) not null,
-    member_id varchar(64) not null,
+    principal_type varchar(32) not null,
+    member_id varchar(128) not null,
     feature_key varchar(128) not null,
     quota_amount bigint not null default 0,
+    source_type varchar(32) not null,
+    source_ref varchar(255) not null,
     starts_at timestamp not null,
     expires_at timestamp,
     status varchar(32) not null default 'ACTIVE',
-    granted_by varchar(64),
+    version bigint not null default 0,
+    granted_by varchar(128) not null,
     created_at timestamp not null,
-    updated_at timestamp not null
+    updated_at timestamp not null,
+    check (status in ('ACTIVE', 'REVOKED')),
+    constraint uq_workspace_member_grant_logical_source unique
+        (tenant_id, workspace_id, principal_type, member_id, feature_key, source_type, source_ref)
 );
 
-create index ix_workspace_member_grant_workspace_id on workspace_member_entitlement_grant(workspace_id);
-create index ix_workspace_member_grant_member_id on workspace_member_entitlement_grant(member_id);
+create index ix_workspace_member_grant_workspace_id on workspace_member_entitlement_grant(tenant_id, workspace_id);
+create index ix_workspace_member_grant_member_id on workspace_member_entitlement_grant(tenant_id, principal_type, member_id);
 create index ix_workspace_member_grant_status on workspace_member_entitlement_grant(status);
 
 create table workspace_quota_allocation (

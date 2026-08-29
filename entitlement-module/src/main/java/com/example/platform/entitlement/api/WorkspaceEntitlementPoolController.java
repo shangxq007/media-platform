@@ -29,9 +29,12 @@ public class WorkspaceEntitlementPoolController {
             @RequestBody AllocateRequest request,
             @RequestHeader(value = "X-User-ID", required = false) String actor) {
         String effectiveActor = actor != null ? actor : "system";
+        String tenantId = com.example.platform.shared.web.TenantContext.get();
+        if (tenantId == null || tenantId.isBlank()) throw new IllegalArgumentException("Tenant context is required");
         return poolService.allocateToMember(
-                workspaceId, request.featureKey(), request.memberId(),
-                request.quotaAmount(), request.startsAt(), request.expiresAt(), effectiveActor);
+                tenantId, workspaceId, request.featureKey(), request.memberId(),
+                request.quotaAmount(), request.startsAt(), request.expiresAt(), effectiveActor,
+                request.sourceRef(), request.idempotencyKey(), request.reason(), request.traceId());
     }
 
     @PostMapping("/reclaim")
@@ -51,7 +54,11 @@ public class WorkspaceEntitlementPoolController {
             String memberId,
             long quotaAmount,
             Instant startsAt,
-            Instant expiresAt) {}
+            Instant expiresAt,
+            String sourceRef,
+            String idempotencyKey,
+            String reason,
+            String traceId) {}
 
     public record ReclaimRequest(
             String memberId,

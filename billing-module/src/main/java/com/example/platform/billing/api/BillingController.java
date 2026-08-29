@@ -2,6 +2,9 @@ package com.example.platform.billing.api;
 
 import com.example.platform.billing.app.BillingProjectionService;
 import com.example.platform.billing.domain.BillingState;
+import com.example.platform.shared.commercial.PrincipalRef;
+import com.example.platform.shared.commercial.PrincipalType;
+import com.example.platform.shared.web.TenantContext;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -18,6 +21,11 @@ public class BillingController {
 
     @GetMapping("/subjects/{subjectId}")
     public BillingState current(@PathVariable String subjectId) {
-        return billingProjectionService.currentState(subjectId);
+        String tenantId = TenantContext.get();
+        if (tenantId == null || tenantId.isBlank()) {
+            throw new IllegalArgumentException("Tenant context is required");
+        }
+        return billingProjectionService.currentState(
+                PrincipalRef.tenantScoped(tenantId, PrincipalType.USER, subjectId));
     }
 }

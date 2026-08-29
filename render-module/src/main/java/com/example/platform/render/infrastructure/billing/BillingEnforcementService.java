@@ -5,6 +5,8 @@ import com.example.platform.billing.app.SubscriptionBillingService;
 import com.example.platform.billing.app.UsageMeteringService;
 import com.example.platform.billing.domain.SubscriptionContract;
 import com.example.platform.render.app.RenderQuotaService;
+import com.example.platform.shared.commercial.PrincipalRef;
+import com.example.platform.shared.commercial.PrincipalType;
 import com.example.platform.shared.commercial.QuotaDecision;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,7 +71,8 @@ public class BillingEnforcementService {
             return ValidationResult.failure("MISSING_TENANT", "Tenant ID is required");
         }
 
-        SubscriptionContract subscription = subscriptionService.getCurrentSubscription(tenantId, null);
+        SubscriptionContract subscription = subscriptionService.getCurrentSubscription(
+                PrincipalRef.tenantScoped(tenantId, PrincipalType.ORGANIZATION, tenantId));
         if (subscription == null) {
             log.warn("No active subscription found for tenant {}", tenantId);
             return ValidationResult.failure("NO_SUBSCRIPTION", "No active subscription found");

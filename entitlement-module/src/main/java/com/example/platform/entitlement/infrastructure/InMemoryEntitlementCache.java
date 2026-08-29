@@ -17,4 +17,12 @@ public class InMemoryEntitlementCache {
     public void put(EntitlementSnapshot snapshot) {
         cache.put(snapshot.subjectId(), snapshot);
     }
+
+    public void remove(String subjectId) {
+        cache.remove(subjectId);
+    }
+
+    public void clear() {
+        cache.clear();
+    }
 }

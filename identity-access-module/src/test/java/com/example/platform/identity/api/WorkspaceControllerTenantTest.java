@@ -6,11 +6,16 @@ import static org.mockito.Mockito.*;
 import com.example.platform.entitlement.app.EntitlementPolicyService;
 import com.example.platform.entitlement.app.EntitlementService;
 import com.example.platform.entitlement.app.WorkspaceEntitlementPoolService;
+import com.example.platform.entitlement.domain.EntitlementCommandType;
+import com.example.platform.entitlement.domain.EntitlementCommandResult;
 import com.example.platform.entitlement.domain.EntitlementDecision;
+import com.example.platform.entitlement.domain.EntitlementGrantCommand;
+import com.example.platform.entitlement.domain.WorkspaceMemberEntitlementGrant;
 import com.example.platform.identity.api.WorkspaceController;
 import com.example.platform.identity.api.dto.*;
 import com.example.platform.identity.app.WorkspaceService;
 import com.example.platform.shared.audit.AdminAuditPublisher;
+import com.example.platform.shared.commercial.PrincipalType;
 import com.example.platform.shared.web.TenantContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,6 +25,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.time.Instant;
 
 import org.springframework.mock.web.MockHttpServletRequest;
 
@@ -45,7 +51,8 @@ class WorkspaceControllerTenantTest {
 
     @BeforeEach
     void setUp() {
-        controller = new WorkspaceController(workspaceService, poolService, entitlementService, entitlementPolicyService, auditPublisher);
+        controller = new WorkspaceController(
+                workspaceService, poolService, entitlementPolicyService, auditPublisher);
         TenantContext.clear();
     }
 
@@ -106,6 +113,71 @@ class WorkspaceControllerTenantTest {
         controller.previewEntitlements("ws-1", request);
 
         verify(entitlementPolicyService).validateExportDecision("tenant-a", "user-1", "default_720p", "mp4", 60L);
+    }
+
+    @Test
+    void createWorkspaceGrantUsesTenantContextAndCanonicalCommandMetadata() {
+        TenantContext.set("tenant-a");
+        Instant startsAt = Instant.parse("2026-08-29T01:00:00Z");
+        Instant expiresAt = Instant.parse("2026-09-29T01:00:00Z");
+        WorkspaceMemberEntitlementGrant expected = new WorkspaceMemberEntitlementGrant(
+                "ws-grant-1", "ws-1", "member-1", "render", 25L,
+                startsAt, expiresAt, "ACTIVE", "admin-1", startsAt, startsAt);
+        WorkspaceController.CreateWorkspaceGrantRequest request =
+                new WorkspaceController.CreateWorkspaceGrantRequest(
+                        "member-1", "render", 25L, startsAt, expiresAt,
+                        "admin-request-1", "create-grant-1", "project access", "trace-1");
+        when(poolService.allocateToMember(
+                "tenant-a", "ws-1", "render", "member-1", 25L,
+                startsAt, expiresAt, "admin-1", "admin-request-1",
+                "create-grant-1", "project access", "trace-1"))
+                .thenReturn(expected);
+
+        WorkspaceMemberEntitlementGrant result =
+                controller.createWorkspaceGrant("ws-1", request, "admin-1");
+
+        assertSame(expected, result);
+        verify(poolService).allocateToMember(
+                "tenant-a", "ws-1", "render", "member-1", 25L,
+                startsAt, expiresAt, "admin-1", "admin-request-1",
+                "create-grant-1", "project access", "trace-1");
+    }
+
+    @Test
+    void revokeWorkspaceGrantUsesTenantContextMemberVersionAndCanonicalCommandMetadata() {
+        TenantContext.set("tenant-a");
+        EntitlementCommandResult expected = new EntitlementCommandResult("command-1", null);
+        WorkspaceEntitlementPoolService canonicalPoolService =
+                new WorkspaceEntitlementPoolService(null, entitlementService, null);
+        WorkspaceController canonicalController = new WorkspaceController(
+                workspaceService, canonicalPoolService, entitlementPolicyService, auditPublisher);
+        WorkspaceController.RevokeGrantRequest request = new WorkspaceController.RevokeGrantRequest(
+                "member-1", 7L, "admin-request-2", "revoke-grant-1",
+                "member removed", "trace-2");
+        when(entitlementService.execute(any(EntitlementGrantCommand.class))).thenReturn(expected);
+
+        var result = canonicalController.revokeWorkspaceGrant(
+                "ws-1", "ws-grant-1", request, "admin-1");
+
+        assertEquals("revoked", result.get("status"));
+        assertSame(expected, result.get("event"));
+        var commandCaptor = org.mockito.ArgumentCaptor.forClass(EntitlementGrantCommand.class);
+        verify(entitlementService).execute(commandCaptor.capture());
+        EntitlementGrantCommand command = commandCaptor.getValue();
+        assertAll(
+                () -> assertEquals(EntitlementCommandType.WORKSPACE_REVOKE, command.commandType()),
+                () -> assertEquals("tenant-a", command.principal().tenantId()),
+                () -> assertEquals(PrincipalType.USER, command.principal().principalType()),
+                () -> assertEquals("member-1", command.principal().principalId()),
+                () -> assertEquals("ws-1", command.principal().workspaceId()),
+                () -> assertEquals("ws-grant-1", command.grantId()),
+                () -> assertEquals(7L, command.expectedVersion()),
+                () -> assertEquals("ADMIN", command.sourceType()),
+                () -> assertEquals("admin-request-2", command.sourceRef()),
+                () -> assertEquals("revoke-grant-1", command.idempotencyKey()),
+                () -> assertEquals("admin-1", command.actor()),
+                () -> assertEquals("member removed", command.reason()),
+                () -> assertEquals("trace-2", command.traceId()));
     }
 
     // ========== createWorkspace tenant resolution tests ==========

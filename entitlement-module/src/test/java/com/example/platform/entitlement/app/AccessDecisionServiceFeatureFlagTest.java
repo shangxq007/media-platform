@@ -25,8 +25,8 @@ class AccessDecisionServiceFeatureFlagTest {
     void setUp() {
         EntitlementPolicyService policyService = new EntitlementPolicyService(java.util.Optional.empty(), java.util.Optional.empty());
         entitlementDecisionService = new EntitlementDecisionService(
-                policyService, java.util.Optional.empty(), java.util.Optional.empty(),
-                java.util.Optional.empty(), java.util.Optional.empty(), java.util.Optional.empty());
+                policyService, mock(EntitlementService.class), java.util.Optional.empty(),
+                java.util.Optional.empty(), java.util.Optional.empty());
         QuotaPolicyService quotaPolicyService = new QuotaPolicyService();
         QuotaUsageAuthority quotaUsageAuthority = mock(QuotaUsageAuthority.class);
         when(quotaUsageAuthority.decide(any(QuotaUsageQuery.class))).thenAnswer(invocation -> {

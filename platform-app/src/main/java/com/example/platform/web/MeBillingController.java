@@ -11,6 +11,8 @@ import com.example.platform.commerce.app.CommerceCatalogService;
 import com.example.platform.commerce.domain.CanonicalProduct;
 import com.example.platform.commerce.domain.ProductLineType;
 import com.example.platform.entitlement.app.EntitlementPolicyService;
+import com.example.platform.shared.commercial.PrincipalRef;
+import com.example.platform.shared.commercial.PrincipalType;
 import com.example.platform.shared.web.TenantContext;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
@@ -45,7 +47,7 @@ public class MeBillingController {
     public ResponseEntity<Map<String, Object>> getCurrentPlan(HttpServletRequest req) {
         BillingSubject subject = resolveSubject(req);
         SubscriptionContract base = subscriptionBillingService.getCurrentSubscription(
-                subject.tenantId(), subject.userId());
+                PrincipalRef.tenantScoped(subject.tenantId(), PrincipalType.USER, subject.userId()));
         String tier = entitlementPolicyService.getTier(subject.tenantId());
 
         Map<String, Object> plan = new LinkedHashMap<>();
@@ -82,7 +84,8 @@ public class MeBillingController {
     public ResponseEntity<List<Map<String, Object>>> listSubscriptions(HttpServletRequest req) {
         BillingSubject subject = resolveSubject(req);
         List<Map<String, Object>> items = subscriptionBillingService
-                .listActiveSubscriptions(subject.tenantId(), subject.userId()).stream()
+                .listActiveSubscriptions(PrincipalRef.tenantScoped(
+                        subject.tenantId(), PrincipalType.USER, subject.userId())).stream()
                 .map(this::subscriptionToMap)
                 .toList();
         return ResponseEntity.ok(items);

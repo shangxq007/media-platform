@@ -351,7 +351,8 @@ public class CheckoutOrchestrator {
                 product.creditAmountMinor(),
                 product.includedSeats(),
                 product.seatFeatureKey(),
-                30);
+                30,
+                java.time.Instant.now());
     }
 
     private void persistOrder(String orderId, CheckoutSession session, long orderValueMinor, String currencyCode) {

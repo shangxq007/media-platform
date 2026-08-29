@@ -7,6 +7,8 @@ import com.example.platform.entitlement.app.QuotaDecisionService;
 import com.example.platform.entitlement.domain.*;
 import com.example.platform.entitlement.domain.ClientExportRoutingPolicy;
 import com.example.platform.entitlement.app.EntitlementPort;
+import com.example.platform.shared.commercial.PrincipalRef;
+import com.example.platform.shared.commercial.PrincipalType;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -33,7 +35,12 @@ public class EntitlementController {
 
     @GetMapping("/tenants/{tenantId}/entitlements")
     public Map<String, Object> getEntitlements(@PathVariable String tenantId) {
-        EntitlementSnapshot snapshot = entitlementService.getSnapshot(tenantId);
+        String contextTenant = com.example.platform.shared.web.TenantContext.get();
+        if (contextTenant == null || !contextTenant.equals(tenantId)) {
+            throw new IllegalArgumentException("Tenant ID does not match authenticated tenant");
+        }
+        EntitlementSnapshot snapshot = entitlementService.getSnapshot(
+                PrincipalRef.tenantScoped(tenantId, PrincipalType.ORGANIZATION, tenantId));
         return Map.of(
                 "tenantId", tenantId,
                 "entitlements", snapshot
@@ -166,7 +173,10 @@ public class EntitlementController {
 
     @GetMapping("/entitlements/subjects/{subjectId}")
     public EntitlementSnapshot snapshot(@PathVariable String subjectId) {
-        return entitlementService.getSnapshot(subjectId);
+        String tenantId = com.example.platform.shared.web.TenantContext.get();
+        if (tenantId == null || tenantId.isBlank()) throw new IllegalArgumentException("Tenant context is required");
+        return entitlementService.getSnapshot(
+                PrincipalRef.tenantScoped(tenantId, PrincipalType.USER, subjectId));
     }
 
     public record ExportValidationRequest(

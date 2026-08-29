@@ -9,6 +9,8 @@ import com.example.platform.render.infrastructure.billing.policy.PolicyDecisionT
 import com.example.platform.render.infrastructure.billing.policy.PolicyEngine;
 import com.example.platform.render.infrastructure.billing.policy.PricingEngine;
 import com.example.platform.render.infrastructure.providerruntime.trace.ProviderTraceEmitter;
+import com.example.platform.shared.commercial.PrincipalRef;
+import com.example.platform.shared.commercial.PrincipalType;
 import com.example.platform.shared.commercial.QuotaDecision;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -172,7 +174,8 @@ public class BillingDecisionEngine {
 
         // Fetch subscription state
         SubscriptionContract subscription = subscriptionService.getCurrentSubscription(
-                request.tenantId(), request.userId());
+                PrincipalRef.tenantScoped(
+                        request.tenantId(), PrincipalType.USER, request.userId()));
 
         if (subscription == null) {
             return BillingDecision.deny(
