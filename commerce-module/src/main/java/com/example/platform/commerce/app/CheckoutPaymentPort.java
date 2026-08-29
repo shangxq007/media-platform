@@ -1,5 +1,7 @@
 package com.example.platform.commerce.app;
 
+import java.time.Instant;
+
 /**
  * Optional payment initiation when a commerce checkout session is created.
  */
@@ -16,19 +18,10 @@ public interface CheckoutPaymentPort {
             String currencyCode,
             String successUrl,
             String cancelUrl,
-            String cartId) {
-        public CheckoutPaymentRequest(
-                String checkoutSessionId,
-                String tenantId,
-                String userId,
-                String productCode,
-                long amountMinor,
-                String currencyCode,
-                String successUrl,
-                String cancelUrl) {
-            this(checkoutSessionId, tenantId, userId, productCode, amountMinor,
-                    currencyCode, successUrl, cancelUrl, null);
-        }
+            String cartId,
+            String idempotencyKey,
+            String traceId,
+            Instant occurredAt) {
     }
 
     record CheckoutPaymentSession(

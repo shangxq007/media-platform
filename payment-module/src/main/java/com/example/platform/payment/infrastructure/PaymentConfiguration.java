@@ -7,7 +7,8 @@ import org.springframework.context.annotation.Configuration;
 @EnableConfigurationProperties({
     StripePaymentProperties.class,
     HyperswitchPaymentProperties.class,
-    PaymentWebhookProperties.class
+    PaymentWebhookProperties.class,
+    PaymentRoutingProperties.class
 })
 public class PaymentConfiguration {
 }

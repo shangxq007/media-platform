@@ -3,7 +3,8 @@ package com.example.platform.payment.infrastructure;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.example.platform.payment.domain.PaymentVerificationResult;
-import com.example.platform.payment.domain.VerifyPaymentCommand;
+import com.example.platform.payment.domain.PaymentState;
+import com.example.platform.payment.domain.ProviderVerificationRequest;
 import java.io.IOException;
 import java.net.Authenticator;
 import java.net.CookieHandler;
@@ -112,6 +113,10 @@ class StripeHttpPaymentProviderTest {
         return props;
     }
 
+    private static ProviderVerificationRequest request(String reference) {
+        return new ProviderVerificationRequest(reference, "verify-key", "trace-verify");
+    }
+
     private static final String PAID_SESSION_JSON = """
             {"id":"cs_live_abc","object":"checkout.session",\
             "status":"complete","payment_status":"paid",\
@@ -140,12 +145,7 @@ class StripeHttpPaymentProviderTest {
         var provider = new StripeHttpPaymentProvider(
                 propsWithKey("sk_test"), stubClient(200, PAID_SESSION_JSON));
 
-        PaymentVerificationResult result = provider.verifyPayment(
-                new VerifyPaymentCommand(null, "{}"));
-
-        assertFalse(result.verified());
-        assertEquals("missing_reference", result.externalState());
-        assertEquals("unknown", result.canonicalStatus());
+        assertThrows(IllegalArgumentException.class, () -> provider.verifyPayment(request(null)));
     }
 
     @Test
@@ -153,11 +153,7 @@ class StripeHttpPaymentProviderTest {
         var provider = new StripeHttpPaymentProvider(
                 propsWithKey("sk_test"), stubClient(200, PAID_SESSION_JSON));
 
-        PaymentVerificationResult result = provider.verifyPayment(
-                new VerifyPaymentCommand("   ", "{}"));
-
-        assertFalse(result.verified());
-        assertEquals("missing_reference", result.externalState());
+        assertThrows(IllegalArgumentException.class, () -> provider.verifyPayment(request("   ")));
     }
 
     // -------------------------------------------------------------------------
@@ -170,11 +166,11 @@ class StripeHttpPaymentProviderTest {
                 propsWithKey("sk_test"), stubClient(200, PAID_SESSION_JSON));
 
         PaymentVerificationResult result = provider.verifyPayment(
-                new VerifyPaymentCommand("cs_live_abc", "{}"));
+                request("cs_live_abc"));
 
         assertTrue(result.verified());
         assertEquals("paid", result.externalState());
-        assertEquals("paid", result.canonicalStatus());
+        assertEquals(PaymentState.SETTLED, result.canonicalState());
     }
 
     // -------------------------------------------------------------------------
@@ -187,11 +183,11 @@ class StripeHttpPaymentProviderTest {
                 propsWithKey("sk_test"), stubClient(200, UNPAID_SESSION_JSON));
 
         PaymentVerificationResult result = provider.verifyPayment(
-                new VerifyPaymentCommand("cs_live_abc", "{}"));
+                request("cs_live_abc"));
 
         assertFalse(result.verified());
         assertEquals("unpaid", result.externalState());
-        assertEquals("pending", result.canonicalStatus());
+        assertEquals(PaymentState.PENDING, result.canonicalState());
     }
 
     @Test
@@ -200,10 +196,10 @@ class StripeHttpPaymentProviderTest {
                 propsWithKey("sk_test"), stubClient(200, EXPIRED_SESSION_JSON));
 
         PaymentVerificationResult result = provider.verifyPayment(
-                new VerifyPaymentCommand("cs_live_abc", "{}"));
+                request("cs_live_abc"));
 
         assertFalse(result.verified());
-        assertEquals("pending", result.canonicalStatus());
+        assertEquals(PaymentState.PENDING, result.canonicalState());
     }
 
     @Test
@@ -213,7 +209,7 @@ class StripeHttpPaymentProviderTest {
                 propsWithKey("sk_test"), stubClient(200, NO_PAYMENT_REQUIRED_JSON));
 
         PaymentVerificationResult result = provider.verifyPayment(
-                new VerifyPaymentCommand("cs_live_abc", "{}"));
+                request("cs_live_abc"));
 
         assertFalse(result.verified());
     }
@@ -229,11 +225,11 @@ class StripeHttpPaymentProviderTest {
                 stubClient(404, "{\"error\":{\"message\":\"No such checkout.session\"}}"));
 
         PaymentVerificationResult result = provider.verifyPayment(
-                new VerifyPaymentCommand("cs_live_notfound", "{}"));
+                request("cs_live_notfound"));
 
         assertFalse(result.verified());
         assertEquals("http_404", result.externalState());
-        assertEquals("unknown", result.canonicalStatus());
+        assertEquals(PaymentState.PENDING, result.canonicalState());
     }
 
     @Test
@@ -243,7 +239,7 @@ class StripeHttpPaymentProviderTest {
                 stubClient(401, "{\"error\":{\"message\":\"Invalid API key\"}}"));
 
         PaymentVerificationResult result = provider.verifyPayment(
-                new VerifyPaymentCommand("cs_live_abc", "{}"));
+                request("cs_live_abc"));
 
         assertFalse(result.verified());
         assertEquals("http_401", result.externalState());
@@ -255,7 +251,7 @@ class StripeHttpPaymentProviderTest {
                 propsWithKey("sk_test"), stubClient(500, "{\"error\":{\"message\":\"Server error\"}}"));
 
         PaymentVerificationResult result = provider.verifyPayment(
-                new VerifyPaymentCommand("cs_live_abc", "{}"));
+                request("cs_live_abc"));
 
         assertFalse(result.verified());
         assertEquals("http_500", result.externalState());
@@ -271,11 +267,11 @@ class StripeHttpPaymentProviderTest {
                 propsWithKey("sk_test"), failingClient("Connection refused"));
 
         PaymentVerificationResult result = provider.verifyPayment(
-                new VerifyPaymentCommand("cs_live_abc", "{}"));
+                request("cs_live_abc"));
 
         assertFalse(result.verified());
         assertEquals("error", result.externalState());
-        assertEquals("unknown", result.canonicalStatus());
+        assertEquals(PaymentState.PENDING, result.canonicalState());
     }
 
     @Test
@@ -284,11 +280,11 @@ class StripeHttpPaymentProviderTest {
                 propsWithKey("sk_test"), stubClient(200, "not-json-at-all"));
 
         PaymentVerificationResult result = provider.verifyPayment(
-                new VerifyPaymentCommand("cs_live_abc", "{}"));
+                request("cs_live_abc"));
 
         // payment_status will be null → not "paid" → verified=false, canonicalStatus="pending"
         assertFalse(result.verified());
-        assertEquals("pending", result.canonicalStatus());
+        assertEquals(PaymentState.PENDING, result.canonicalState());
     }
 
     @Test
@@ -300,7 +296,7 @@ class StripeHttpPaymentProviderTest {
                 propsWithKey("sk_test"), stubClient(200, incompleteJson));
 
         PaymentVerificationResult result = provider.verifyPayment(
-                new VerifyPaymentCommand("cs_live_abc", "{}"));
+                request("cs_live_abc"));
 
         assertFalse(result.verified());
     }

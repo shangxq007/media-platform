@@ -15,22 +15,23 @@ public class NoopHyperswitchPaymentProvider implements PaymentProvider {
     }
 
     @Override
-    public CheckoutResult createCheckout(CheckoutCommand command) {
+    public CheckoutResult createCheckout(InitiateCheckoutCommand command) {
         String reference = "hs-" + command.checkoutSessionId();
         return new CheckoutResult(reference, command.successUrl() != null ? command.successUrl() : "/checkout/success");
     }
 
     @Override
-    public PaymentVerificationResult verifyPayment(VerifyPaymentCommand command) {
-        return new PaymentVerificationResult(true, "authorized", "paid");
+    public PaymentVerificationResult verifyPayment(ProviderVerificationRequest command) {
+        return new PaymentVerificationResult(true, "authorized", PaymentState.SETTLED);
+    }
+
+    @Override
+    public ProviderRefundResult refund(ProviderRefundRequest command) {
+        return new ProviderRefundResult(true, "hs-refund-" + command.idempotencyKey(), "succeeded");
     }
 
     @Override
     public WebhookParseResult parseWebhook(Map<String, String> headers, String body) {
-        WebhookParseResult parsed = WebhookPayloadSupport.parseCommerceWebhook(body, "hs-demo");
-        if (parsed.checkoutSessionId() != null) {
-            return parsed;
-        }
-        return new WebhookParseResult("payment.succeeded", 1, "hs-demo", false, "paid", null, null, null);
+        return WebhookPayloadSupport.parseCommerceWebhook(body);
     }
 }

@@ -1,23 +1,10 @@
 package com.example.platform.payment.domain;
 
+import java.time.Instant;
+
+/** Safe parsed provider fields; the raw body remains only at the adapter edge. */
 public record WebhookParseResult(
-        String eventType,
-        int eventVersion,
-        String externalReference,
-        boolean validSignature,
-        String canonicalStatus,
-        String checkoutSessionId,
-        String tenantId,
-        String userId) {
-
-    public WebhookParseResult(String eventType, int eventVersion, String externalReference, boolean validSignature) {
-        this(eventType, eventVersion, externalReference, validSignature, null, null, null, null);
-    }
-
-    public boolean paymentSucceeded() {
-        return validSignature
-                && ("payment.succeeded".equals(eventType) || "payment_intent.succeeded".equals(eventType))
-                && checkoutSessionId != null
-                && !checkoutSessionId.isBlank();
-    }
+        String eventId, String eventType, long eventCursor, String providerReference,
+        PaymentState canonicalState, Instant occurredAt, String checkoutSessionId,
+        String tenantId, String userId) {
 }

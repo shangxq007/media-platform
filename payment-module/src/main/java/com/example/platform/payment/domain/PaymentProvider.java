@@ -4,7 +4,8 @@ import java.util.Map;
 
 public interface PaymentProvider {
     ProviderCode code();
-    CheckoutResult createCheckout(CheckoutCommand command);
-    PaymentVerificationResult verifyPayment(VerifyPaymentCommand command);
+    CheckoutResult createCheckout(InitiateCheckoutCommand command);
+    PaymentVerificationResult verifyPayment(ProviderVerificationRequest command);
+    ProviderRefundResult refund(ProviderRefundRequest command);
     WebhookParseResult parseWebhook(Map<String, String> headers, String body);
 }

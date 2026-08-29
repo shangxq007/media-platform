@@ -37,9 +37,9 @@ public class HyperswitchHttpPaymentProvider implements PaymentProvider {
     }
 
     @Override
-    public CheckoutResult createCheckout(CheckoutCommand command) {
-        long amount = command.amountMinor() != null ? command.amountMinor() : 0L;
-        String currency = command.currencyCode() != null ? command.currencyCode().toUpperCase() : "USD";
+    public CheckoutResult createCheckout(InitiateCheckoutCommand command) {
+        long amount = command.amount().amountMinor();
+        String currency = command.amount().currency();
         String success = command.successUrl() != null ? command.successUrl() : properties.getSuccessUrl();
         String cancel = command.cancelUrl() != null ? command.cancelUrl() : properties.getCancelUrl();
 
@@ -53,13 +53,9 @@ public class HyperswitchHttpPaymentProvider implements PaymentProvider {
             }
             ObjectNode metadata = body.putObject("metadata");
             metadata.put("checkout_session_id", command.checkoutSessionId());
-            if (command.tenantId() != null) {
-                metadata.put("tenant_id", command.tenantId());
-            }
-            if (command.userId() != null) {
-                metadata.put("user_id", command.userId());
-            }
-            metadata.put("canonical_product_code", command.canonicalProductCode());
+            metadata.put("tenant_id", command.principal().tenantId());
+            metadata.put("user_id", command.principal().principalId());
+            metadata.put("product_reference", command.productReference());
             ObjectNode paymentLinkConfig = body.putObject("payment_link_config");
             paymentLinkConfig.put("redirect_url", success);
             paymentLinkConfig.put("cancel_url", cancel);
@@ -69,6 +65,7 @@ public class HyperswitchHttpPaymentProvider implements PaymentProvider {
                     .uri(URI.create(endpoint))
                     .header("Content-Type", "application/json")
                     .header("api-key", properties.getApiKey())
+                    .header("x-idempotency-key", command.idempotencyKey())
                     .POST(HttpRequest.BodyPublishers.ofString(MAPPER.writeValueAsString(body)))
                     .build();
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
@@ -94,10 +91,10 @@ public class HyperswitchHttpPaymentProvider implements PaymentProvider {
     }
 
     @Override
-    public PaymentVerificationResult verifyPayment(VerifyPaymentCommand command) {
+    public PaymentVerificationResult verifyPayment(ProviderVerificationRequest command) {
         String ref = command.providerReference();
         if (ref == null || ref.isBlank()) {
-            return new PaymentVerificationResult(false, "missing_reference", "unknown");
+            throw new IllegalArgumentException("providerReference is required");
         }
         try {
             String endpoint = trimTrailingSlash(properties.getBaseUrl()) + "/payments/" + ref;
@@ -108,39 +105,44 @@ public class HyperswitchHttpPaymentProvider implements PaymentProvider {
                     .build();
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() >= 400) {
-                return new PaymentVerificationResult(false, "http_" + response.statusCode(), "unknown");
+                return new PaymentVerificationResult(false, "http_" + response.statusCode(), PaymentState.PENDING);
             }
             String status = extractJsonField(response.body(), "status");
             boolean paid = "succeeded".equalsIgnoreCase(status) || "charged".equalsIgnoreCase(status);
-            return new PaymentVerificationResult(paid, status != null ? status : "unknown", paid ? "paid" : "pending");
+            return new PaymentVerificationResult(paid, status != null ? status : "unknown",
+                    paid ? PaymentState.SETTLED : PaymentState.PENDING);
         } catch (Exception e) {
             log.warn("Hyperswitch verifyPayment failed for {}: {}", ref, e.getMessage());
-            return new PaymentVerificationResult(false, "error", "unknown");
+            return new PaymentVerificationResult(false, "error", PaymentState.PENDING);
+        }
+    }
+
+    @Override
+    public ProviderRefundResult refund(ProviderRefundRequest command) {
+        try {
+            ObjectNode body = MAPPER.createObjectNode();
+            body.put("payment_id", command.providerReference());
+            body.put("refund_id", command.idempotencyKey());
+            body.put("amount", command.amount().amountMinor());
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(trimTrailingSlash(properties.getBaseUrl()) + "/refunds"))
+                    .header("Content-Type", "application/json")
+                    .header("api-key", properties.getApiKey())
+                    .header("x-idempotency-key", command.idempotencyKey())
+                    .POST(HttpRequest.BodyPublishers.ofString(MAPPER.writeValueAsString(body))).build();
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() >= 400) return new ProviderRefundResult(false, null, "http_" + response.statusCode());
+            String reference = extractJsonField(response.body(), "refund_id");
+            if (reference == null) reference = extractJsonField(response.body(), "id");
+            return new ProviderRefundResult(true, reference, extractJsonField(response.body(), "status"));
+        } catch (Exception failure) {
+            throw new IllegalStateException("Hyperswitch refund failed", failure);
         }
     }
 
     @Override
     public WebhookParseResult parseWebhook(Map<String, String> headers, String body) {
-        WebhookParseResult parsed = WebhookPayloadSupport.parseCommerceWebhook(body, "hyperswitch-webhook");
-        if (parsed.checkoutSessionId() != null) {
-            return parsed;
-        }
-        String sessionId = extractMetadata(body, "checkout_session_id");
-        String tenantId = extractMetadata(body, "tenant_id");
-        String userId = extractMetadata(body, "user_id");
-        String ref = extractJsonField(body, "payment_id");
-        if (ref == null) {
-            ref = extractJsonField(body, "id");
-        }
-        String status = extractJsonField(body, "status");
-        boolean paid = status != null && ("succeeded".equalsIgnoreCase(status) || "charged".equalsIgnoreCase(status));
-        if (body != null && (paid || body.contains("payment_succeeded") || body.contains("payment_success"))) {
-            return new WebhookParseResult(
-                    "payment.succeeded", 1,
-                    ref != null ? ref : "hyperswitch-event",
-                    true, "paid", sessionId, tenantId, userId);
-        }
-        return parsed;
+        return WebhookPayloadSupport.parseCommerceWebhook(body);
     }
 
     private static String trimTrailingSlash(String url) {

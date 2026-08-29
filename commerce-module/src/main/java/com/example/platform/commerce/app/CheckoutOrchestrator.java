@@ -118,7 +118,10 @@ public class CheckoutOrchestrator {
                     product.currencyCode(),
                     request.successUrl(),
                     request.cancelUrl(),
-                    cartId);
+                    cartId,
+                    "checkout:" + session.checkoutSessionId(),
+                    "checkout:" + session.checkoutSessionId(),
+                    java.time.Instant.now());
             CheckoutPaymentPort.CheckoutPaymentSession payment =
                     checkoutPaymentPort.get().createPaymentForCheckout(paymentRequest);
             redirectUrl = payment.redirectUrl();

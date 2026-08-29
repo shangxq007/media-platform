@@ -711,8 +711,8 @@ create index ix_cex_tenant_proj on client_export_session(tenant_id, project_id);
 -- 4. COMMERCE & BILLING
 -- ============================================================
 -- commerce_product, commerce_price, provider_product_mapping,
--- checkout_session, purchase_order, payment_attempt,
--- provider_webhook_event, subscription_contract, subscription_plan,
+-- checkout_session, purchase_order, payment_transaction/payment_command,
+-- provider_webhook_receipt/payment_refund/payment_outbox, subscription_contract, subscription_plan,
 -- billing_invoice, billing_ledger_entry, credit_wallet,
 -- credit_transaction, invoice_line_item, pricing_rule, usage_meter,
 -- observed_runtime_usage, billable_usage, rated_usage_record, custom_pricing_rule,
@@ -782,31 +782,131 @@ create table purchase_order (
 create index ix_purchase_order_checkout_session_id on purchase_order(checkout_session_id);
 create index ix_purchase_order_tenant on purchase_order(tenant_id);
 
-create table payment_attempt (
+create table payment_transaction (
     id varchar(64) primary key,
-    purchase_order_id varchar(64),
+    tenant_id varchar(64) not null,
+    principal_type varchar(32) not null,
+    principal_id varchar(128) not null,
+    workspace_id varchar(64) not null default '',
+    organization_id varchar(64) not null default '',
+    order_id varchar(64),
+    checkout_session_id varchar(64) not null,
     provider_code varchar(64) not null,
     provider_reference varchar(255),
-    attempt_status varchar(32) not null,
-    amount_minor bigint,
-    currency_code varchar(8),
-    request_payload text,
-    response_payload text,
-    created_at timestamp not null
+    redirect_url text,
+    amount_minor bigint not null,
+    currency_code varchar(3) not null,
+    transaction_state varchar(32) not null,
+    provider_event_cursor bigint,
+    captured_amount_minor bigint not null default 0,
+    refunded_amount_minor bigint not null default 0,
+    version bigint not null,
+    provider_call_claimed_at timestamp with time zone,
+    source varchar(128) not null,
+    trace_id varchar(128) not null,
+    created_at timestamp with time zone not null,
+    updated_at timestamp with time zone not null,
+    unique (tenant_id, checkout_session_id),
+    unique (provider_code, provider_reference),
+    check (amount_minor > 0),
+    check (currency_code ~ '^[A-Z]{3}$'),
+    check (transaction_state in ('INITIATED', 'PENDING', 'AUTHORIZED', 'SETTLED',
+        'FAILED', 'CANCELLED', 'PARTIALLY_REFUNDED', 'REFUNDED')),
+    check (captured_amount_minor >= 0),
+    check (refunded_amount_minor >= 0),
+    check (refunded_amount_minor <= captured_amount_minor)
 );
 
-create index ix_payment_attempt_purchase_order_id on payment_attempt(purchase_order_id);
+create index ix_payment_transaction_principal on payment_transaction(
+    tenant_id, principal_type, principal_id, workspace_id, organization_id);
+create index ix_payment_transaction_order on payment_transaction(tenant_id, order_id);
 
-create table provider_webhook_event (
+create table payment_command (
     id varchar(64) primary key,
-    provider_code varchar(64) not null,
-    webhook_event_key varchar(255) not null unique,
-    webhook_event_type varchar(128) not null,
-    webhook_event_version int not null,
-    signature_valid boolean not null,
-    payload text not null,
-    created_at timestamp not null
+    tenant_id varchar(64) not null,
+    principal_type varchar(32) not null,
+    principal_id varchar(128) not null,
+    workspace_id varchar(64) not null default '',
+    organization_id varchar(64) not null default '',
+    idempotency_key varchar(255) not null,
+    command_type varchar(32) not null,
+    transaction_id varchar(64) not null,
+    payload_fingerprint varchar(64) not null,
+    result_fingerprint varchar(255),
+    result_state varchar(32) not null,
+    result_version bigint not null,
+    source varchar(128) not null,
+    reason varchar(512) not null,
+    trace_id varchar(128) not null,
+    created_at timestamp with time zone not null,
+    unique (tenant_id, idempotency_key)
 );
+
+create index ix_payment_command_transaction on payment_command(tenant_id, transaction_id);
+
+create table provider_webhook_receipt (
+    id varchar(64) primary key,
+    tenant_id varchar(64) not null,
+    provider_code varchar(64) not null,
+    event_id varchar(255) not null,
+    payload_sha256 varchar(64) not null,
+    event_type varchar(128) not null,
+    event_cursor bigint not null,
+    provider_reference varchar(255) not null,
+    canonical_state varchar(32) not null,
+    processing_outcome varchar(32) not null,
+    transaction_id varchar(64) not null,
+    occurred_at timestamp with time zone not null,
+    received_at timestamp with time zone not null,
+    unique (provider_code, event_id),
+    check (processing_outcome in ('PROJECTED', 'IGNORED_STALE', 'IGNORED_TERMINAL'))
+);
+
+create index ix_provider_webhook_receipt_transaction on provider_webhook_receipt(transaction_id);
+
+create table payment_outbox (
+    id varchar(64) primary key,
+    tenant_id varchar(64) not null,
+    event_type varchar(64) not null,
+    aggregate_id varchar(64) not null,
+    dedupe_key varchar(255) not null,
+    provider_code varchar(64) not null,
+    provider_reference varchar(255) not null,
+    checkout_session_id varchar(64) not null,
+    trace_id varchar(128) not null,
+    created_at timestamp with time zone not null,
+    dispatched_at timestamp with time zone,
+    unique (tenant_id, event_type, dedupe_key),
+    check (event_type = 'PAYMENT_SETTLED')
+);
+
+create index ix_payment_outbox_pending on payment_outbox(created_at) where dispatched_at is null;
+
+create table payment_refund (
+    id varchar(64) primary key,
+    tenant_id varchar(64) not null,
+    transaction_id varchar(64) not null,
+    provider_refund_reference varchar(255),
+    original_capture_reference varchar(255) not null,
+    amount_minor bigint not null,
+    currency_code varchar(3) not null,
+    refund_state varchar(32) not null,
+    provider_call_claimed_at timestamp with time zone,
+    idempotency_key varchar(255) not null,
+    payload_fingerprint varchar(64) not null,
+    source varchar(128) not null,
+    reason varchar(512) not null,
+    trace_id varchar(128) not null,
+    created_at timestamp with time zone not null,
+    updated_at timestamp with time zone not null,
+    unique (tenant_id, idempotency_key),
+    unique (provider_refund_reference),
+    check (amount_minor > 0),
+    check (currency_code ~ '^[A-Z]{3}$'),
+    check (refund_state in ('REQUESTED', 'PROVIDER_CALLING', 'SUCCEEDED', 'FAILED'))
+);
+
+create index ix_payment_refund_transaction on payment_refund(tenant_id, transaction_id, refund_state);
 
 create table subscription_contract (
     id varchar(64) primary key,

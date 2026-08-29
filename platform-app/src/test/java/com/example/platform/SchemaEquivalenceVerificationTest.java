@@ -134,6 +134,14 @@ class SchemaEquivalenceVerificationTest extends PostgresTestContainerSupport {
         assertTrue(tables.contains("observed_runtime_usage"),
                 "observed_runtime_usage authority required");
         assertTrue(tables.contains("billable_usage"), "billable_usage authority required");
+        assertTrue(tables.contains("payment_transaction"), "payment_transaction authority required");
+        assertTrue(tables.contains("payment_command"), "payment_command authority required");
+        assertTrue(tables.contains("provider_webhook_receipt"), "provider_webhook_receipt required");
+        assertTrue(tables.contains("payment_refund"), "payment_refund authority required");
+        assertTrue(tables.contains("payment_outbox"), "payment_outbox authority required");
+        assertFalse(tables.contains("payment_attempt"), "legacy payment_attempt must be absent");
+        assertFalse(tables.contains("provider_webhook_event"),
+                "raw provider_webhook_event must be absent");
         assertFalse(tables.contains("usage_record"), "legacy usage_record must be absent");
         assertFalse(tables.contains("render_usage_record"),
                 "render_usage_record shadow must be absent");
