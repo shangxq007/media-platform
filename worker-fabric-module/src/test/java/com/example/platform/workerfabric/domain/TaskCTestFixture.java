@@ -1,10 +1,7 @@
 package com.example.platform.workerfabric.domain;
 
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-
 import com.example.platform.execution.compatibility.ProviderCandidate;
-import com.example.platform.execution.domain.provider.ProviderBindingPin;
+import com.example.platform.execution.domain.provider.ProviderImplementationId;
 import com.example.platform.execution.taskgraph.ExecutableTask;
 import com.example.platform.execution.taskgraph.ExecutableTaskId;
 import com.example.platform.execution.taskgraph.ProviderBoundExecutableTaskGraph;
@@ -22,11 +19,28 @@ final class TaskCTestFixture {
 
     static final Instant NOW = Instant.parse("2026-08-24T12:00:00Z");
     static final DeviceId DEVICE_ID = DeviceId.of("gpu-0");
+    private static final String PROVIDER_NAME = "native-test";
+    private static final ProviderImplementationId PROVIDER_IMPLEMENTATION_ID =
+            ProviderImplementationId.of(PROVIDER_NAME + ".native");
 
     private TaskCTestFixture() {}
 
     static RuntimeFixture runtime(String suffix) {
-        return runtime(suffix, NOW, "runtime-inc-" + suffix, "runtime-inc-" + suffix);
+        return runtime(
+                suffix,
+                NOW,
+                "runtime-inc-" + suffix,
+                "runtime-inc-" + suffix,
+                Optional.empty());
+    }
+
+    static RuntimeFixture runtimeWithDeviceEvidence(String suffix) {
+        return runtime(
+                suffix,
+                NOW,
+                "runtime-inc-" + suffix,
+                "runtime-inc-" + suffix,
+                Optional.of(DEVICE_ID));
     }
 
     static RuntimeFixture staleRuntime(String suffix) {
@@ -34,18 +48,25 @@ final class TaskCTestFixture {
                 suffix,
                 NOW.minus(Duration.ofMinutes(6)),
                 "runtime-inc-" + suffix,
-                "runtime-inc-" + suffix);
+                "runtime-inc-" + suffix,
+                Optional.empty());
     }
 
     static RuntimeFixture runtimeWithIncarnationMismatch(String suffix) {
-        return runtime(suffix, NOW, "runtime-inc-old-" + suffix, "runtime-inc-current-" + suffix);
+        return runtime(
+                suffix,
+                NOW,
+                "runtime-inc-old-" + suffix,
+                "runtime-inc-current-" + suffix,
+                Optional.empty());
     }
 
     private static RuntimeFixture runtime(
             String suffix,
             Instant capturedAt,
             String requestRuntimeIncarnation,
-            String bindingRuntimeIncarnation) {
+            String bindingRuntimeIncarnation,
+            Optional<DeviceId> observationDeviceId) {
         PhysicalHostId hostId = PhysicalHostId.of("host-" + suffix);
         PhysicalHostIncarnationId hostIncarnation =
                 PhysicalHostIncarnationId.of("host-inc-" + suffix);
@@ -105,6 +126,21 @@ final class TaskCTestFixture {
                 Map.of(DEVICE_ID, new DeviceAvailability(DEVICE_ID, AvailabilityState.REACHABLE)),
                 RuntimeEnvironmentAvailability.AVAILABLE,
                 SandboxRuntimeAvailability.AVAILABLE,
+                Optional.of(I4TestFixture.hardwareObservation(
+                        PROVIDER_IMPLEMENTATION_ID,
+                        runtimeId,
+                        hostId,
+                        observationDeviceId,
+                        NOW.minus(Duration.ofMinutes(1)),
+                        NOW.plus(Duration.ofMinutes(1)),
+                        observationDeviceId.isPresent()
+                                ? I4TestFixture.matchingHardwareEvidence()
+                                : I4TestFixture.matchingHostHardwareEvidence())),
+                Optional.of(I4TestFixture.dependencyObservation(
+                        PROVIDER_IMPLEMENTATION_ID,
+                        runtimeId,
+                        observationDeviceId,
+                        NOW)),
                 Optional.empty(),
                 Optional.empty());
         RequestWorkValidationContext context = new RequestWorkValidationContext(
@@ -161,22 +197,24 @@ final class TaskCTestFixture {
             ReservationFeasibility reservationFeasibility,
             Set<ExecutionBackend> supportedBackends,
             RuntimeResourceDemand resourceDemand) {
-        ProviderBindingPin binding = mock(ProviderBindingPin.class, "binding-" + identity);
-        ProviderCandidate provider = mock(ProviderCandidate.class, "provider-" + identity);
-        when(provider.bindingPin()).thenReturn(binding);
-        ExecutableTask task = mock(ExecutableTask.class, "task-" + identity);
-        when(task.id()).thenReturn(new ExecutableTaskId("%064x".formatted(identity)));
-        when(task.providerBindingPin()).thenReturn(binding);
-        when(task.memberships()).thenReturn(List.of());
-        ProviderBoundExecutableTaskGraph graph = mock(
-                ProviderBoundExecutableTaskGraph.class, "graph-" + identity);
-        when(graph.tasks()).thenReturn(List.of(task));
+        TaskBTestFixture.Scenario scenario = TaskBTestFixture.scenario(
+                PROVIDER_NAME,
+                "unit-" + identity,
+                new ExecutableTaskId("%064x".formatted(identity)));
+        ProviderCandidate provider = scenario.provider();
+        ExecutableTask task = scenario.task();
+        ProviderBoundExecutableTaskGraph graph = scenario.graph();
 
         PendingNativeWorkCandidate candidate = new PendingNativeWorkCandidate(
                 graph,
                 task,
                 provider,
-                ProviderBackendExecutionSupport.declared(binding, supportedBackends),
+                resourceDemand.deviceDemands().isEmpty()
+                        ? I4TestFixture.hostHardwareRequirement(PROVIDER_IMPLEMENTATION_ID)
+                        : I4TestFixture.hardwareRequirement(PROVIDER_IMPLEMENTATION_ID),
+                List.of(I4TestFixture.dependencyRequirement(PROVIDER_IMPLEMENTATION_ID)),
+                ProviderBackendExecutionSupport.declared(
+                        provider.bindingPin(), supportedBackends),
                 claimState,
                 resourceDemand,
                 reservationFeasibility,
@@ -201,6 +239,8 @@ final class TaskCTestFixture {
                     requestWork.deviceAvailability(),
                     requestWork.runtimeEnvironmentAvailability(),
                     requestWork.sandboxRuntimeAvailability(),
+                    requestWork.providerHardwareObservation(),
+                    requestWork.runtimeDependencyObservation(),
                     requestWork.runtimeSupportAdvertisement(),
                     requestWork.workerDerivedSchedulableCapacity());
         }

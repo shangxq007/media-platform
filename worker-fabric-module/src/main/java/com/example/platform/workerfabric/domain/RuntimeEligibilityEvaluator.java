@@ -14,6 +14,7 @@ public final class RuntimeEligibilityEvaluator {
         Objects.requireNonNull(request, "request");
         EnumSet<RuntimeEligibilityReason> reasons = EnumSet.noneOf(RuntimeEligibilityReason.class);
 
+        evaluateProviderHardwareAndRuntimeDependencies(request, reasons);
         evaluateProbe(request, reasons);
         evaluateRuntimeSupportAdvertisement(request, reasons);
         evaluateWorkerAndHost(request, reasons);
@@ -24,8 +25,7 @@ public final class RuntimeEligibilityEvaluator {
         RuntimeEligibilityDecision.Status status;
         if (reasons.isEmpty()) {
             status = RuntimeEligibilityDecision.Status.ELIGIBLE;
-        } else if (reasons.contains(RuntimeEligibilityReason.PROBE_UNKNOWN)
-                || reasons.contains(RuntimeEligibilityReason.UNKNOWN_RUNTIME_ELIGIBILITY)) {
+        } else if (reasons.stream().anyMatch(RuntimeEligibilityReason::unknownEvidence)) {
             status = RuntimeEligibilityDecision.Status.UNKNOWN_FAIL_CLOSED;
         } else {
             status = RuntimeEligibilityDecision.Status.INELIGIBLE;
@@ -35,6 +35,111 @@ public final class RuntimeEligibilityEvaluator {
                 request.executableTask().id(),
                 request.executableTask().providerBindingPin(),
                 reasons.stream().toList());
+    }
+
+    private static void evaluateProviderHardwareAndRuntimeDependencies(
+            NativeRuntimeEligibilityRequest request,
+            EnumSet<RuntimeEligibilityReason> reasons) {
+        if (request.workerRuntime().isEmpty() || request.physicalHost().isEmpty()) {
+            return;
+        }
+        var providerImplementationId = request.staticallyCompatibleProviderCandidate()
+                .descriptor().providerImplementationId();
+        WorkerRuntimeId workerRuntimeId = request.workerRuntime().orElseThrow().id();
+        PhysicalHostId physicalHostId = request.physicalHost().orElseThrow().id();
+        Optional<DeviceId> deviceId = request.device().map(DeviceDescriptor::id);
+
+        ProviderHardwareConformanceDecision hardwareDecision =
+                ProviderHardwareConformanceEvaluator.evaluate(
+                        providerImplementationId,
+                        workerRuntimeId,
+                        physicalHostId,
+                        deviceId,
+                        request.providerHardwareRequirement(),
+                        request.providerHardwareObservation(),
+                        request.evaluatedAt());
+        hardwareDecision.reasons().stream()
+                .map(reason -> mapHardwareReason(reason.code()))
+                .forEach(reasons::add);
+
+        RuntimeDependencyMatchResult dependencyDecision = RuntimeDependencyMatcher.match(
+                providerImplementationId,
+                workerRuntimeId,
+                deviceId,
+                request.runtimeDependencyRequirements(),
+                request.runtimeDependencyObservation(),
+                request.evaluatedAt());
+        dependencyDecision.reasons().stream()
+                .map(reason -> mapRuntimeDependencyReason(reason.code()))
+                .forEach(reasons::add);
+    }
+
+    private static RuntimeEligibilityReason mapHardwareReason(
+            ProviderHardwareConformanceReasonCode reason) {
+        return switch (reason) {
+            case INCOMPLETE_CRITICAL_EVIDENCE ->
+                    RuntimeEligibilityReason.PROVIDER_HARDWARE_INCOMPLETE_CRITICAL_EVIDENCE;
+            case PROVIDER_IMPLEMENTATION_MISMATCH ->
+                    RuntimeEligibilityReason.PROVIDER_HARDWARE_PROVIDER_IMPLEMENTATION_MISMATCH;
+            case WORKER_RUNTIME_MISMATCH ->
+                    RuntimeEligibilityReason.PROVIDER_HARDWARE_WORKER_RUNTIME_MISMATCH;
+            case PHYSICAL_HOST_MISMATCH ->
+                    RuntimeEligibilityReason.PROVIDER_HARDWARE_PHYSICAL_HOST_MISMATCH;
+            case DEVICE_IDENTITY_MISMATCH ->
+                    RuntimeEligibilityReason.PROVIDER_HARDWARE_DEVICE_IDENTITY_MISMATCH;
+            case STALE_OBSERVATION ->
+                    RuntimeEligibilityReason.PROVIDER_HARDWARE_STALE_OBSERVATION;
+            case PROBE_UNKNOWN -> RuntimeEligibilityReason.PROVIDER_HARDWARE_PROBE_UNKNOWN;
+            case PROBE_FAILED -> RuntimeEligibilityReason.PROVIDER_HARDWARE_PROBE_FAILED;
+            case RUNTIME_UNAVAILABLE ->
+                    RuntimeEligibilityReason.PROVIDER_HARDWARE_RUNTIME_UNAVAILABLE;
+            case CPU_ARCHITECTURE_INCOMPATIBLE ->
+                    RuntimeEligibilityReason.PROVIDER_HARDWARE_CPU_ARCHITECTURE_INCOMPATIBLE;
+            case DEVICE_CLASS_UNAVAILABLE ->
+                    RuntimeEligibilityReason.PROVIDER_HARDWARE_DEVICE_CLASS_UNAVAILABLE;
+            case DEVICE_UNAVAILABLE ->
+                    RuntimeEligibilityReason.PROVIDER_HARDWARE_DEVICE_UNAVAILABLE;
+            case DRIVER_RUNTIME_INCOMPATIBLE ->
+                    RuntimeEligibilityReason.PROVIDER_HARDWARE_DRIVER_RUNTIME_INCOMPATIBLE;
+            case PROVIDER_BUILD_FEATURE_MISSING ->
+                    RuntimeEligibilityReason.PROVIDER_HARDWARE_PROVIDER_BUILD_FEATURE_MISSING;
+            case CODEC_OR_FILTER_FEATURE_MISSING ->
+                    RuntimeEligibilityReason.PROVIDER_HARDWARE_CODEC_OR_FILTER_FEATURE_MISSING;
+            case DEVICE_FEATURE_UNAVAILABLE ->
+                    RuntimeEligibilityReason.PROVIDER_HARDWARE_DEVICE_FEATURE_UNAVAILABLE;
+            case DEVICE_NOT_EXPOSED ->
+                    RuntimeEligibilityReason.PROVIDER_HARDWARE_DEVICE_NOT_EXPOSED;
+            case SANDBOX_PERMISSION_UNAVAILABLE ->
+                    RuntimeEligibilityReason.PROVIDER_HARDWARE_SANDBOX_PERMISSION_UNAVAILABLE;
+        };
+    }
+
+    private static RuntimeEligibilityReason mapRuntimeDependencyReason(
+            RuntimeDependencyMatchReasonCode reason) {
+        return switch (reason) {
+            case INCOMPLETE_CRITICAL_EVIDENCE ->
+                    RuntimeEligibilityReason.RUNTIME_DEPENDENCY_INCOMPLETE_CRITICAL_EVIDENCE;
+            case PROBE_SCHEMA_MISMATCH ->
+                    RuntimeEligibilityReason.RUNTIME_DEPENDENCY_PROBE_SCHEMA_MISMATCH;
+            case PROVIDER_IMPLEMENTATION_MISMATCH ->
+                    RuntimeEligibilityReason.RUNTIME_DEPENDENCY_PROVIDER_IMPLEMENTATION_MISMATCH;
+            case WORKER_RUNTIME_MISMATCH ->
+                    RuntimeEligibilityReason.RUNTIME_DEPENDENCY_WORKER_RUNTIME_MISMATCH;
+            case DEVICE_BINDING_MISMATCH ->
+                    RuntimeEligibilityReason.RUNTIME_DEPENDENCY_DEVICE_BINDING_MISMATCH;
+            case STALE_OBSERVATION ->
+                    RuntimeEligibilityReason.RUNTIME_DEPENDENCY_STALE_OBSERVATION;
+            case RUNTIME_DEPENDENCY_MISSING ->
+                    RuntimeEligibilityReason.RUNTIME_DEPENDENCY_MISSING;
+            case RUNTIME_DEPENDENCY_VERSION_INCOMPATIBLE ->
+                    RuntimeEligibilityReason.RUNTIME_DEPENDENCY_VERSION_INCOMPATIBLE;
+            case RUNTIME_DEPENDENCY_ABI_INCOMPATIBLE ->
+                    RuntimeEligibilityReason.RUNTIME_DEPENDENCY_ABI_INCOMPATIBLE;
+            case RUNTIME_DEPENDENCY_FEATURE_MISSING ->
+                    RuntimeEligibilityReason.RUNTIME_DEPENDENCY_FEATURE_MISSING;
+            case RUNTIME_DEPENDENCY_BUILD_RUNTIME_FLAG_MISSING ->
+                    RuntimeEligibilityReason.RUNTIME_DEPENDENCY_BUILD_RUNTIME_FLAG_MISSING;
+        };
     }
 
     private static void evaluateRuntimeSupportAdvertisement(

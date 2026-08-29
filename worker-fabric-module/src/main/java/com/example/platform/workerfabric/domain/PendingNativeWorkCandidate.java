@@ -3,6 +3,9 @@ package com.example.platform.workerfabric.domain;
 import com.example.platform.execution.compatibility.ProviderCandidate;
 import com.example.platform.execution.taskgraph.ExecutableTask;
 import com.example.platform.execution.taskgraph.ProviderBoundExecutableTaskGraph;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -11,6 +14,8 @@ public record PendingNativeWorkCandidate(
         ProviderBoundExecutableTaskGraph providerBoundGraph,
         ExecutableTask executableTask,
         ProviderCandidate staticallyCompatibleProviderCandidate,
+        ProviderHardwareRequirement providerHardwareRequirement,
+        List<RuntimeDependencyRequirement> runtimeDependencyRequirements,
         ProviderBackendExecutionSupport backendExecutionSupport,
         ClaimState claimState,
         RuntimeResourceDemand resourceDemand,
@@ -25,6 +30,8 @@ public record PendingNativeWorkCandidate(
         Objects.requireNonNull(executableTask, "executableTask");
         Objects.requireNonNull(staticallyCompatibleProviderCandidate,
                 "staticallyCompatibleProviderCandidate");
+        Objects.requireNonNull(providerHardwareRequirement, "providerHardwareRequirement");
+        Objects.requireNonNull(runtimeDependencyRequirements, "runtimeDependencyRequirements");
         Objects.requireNonNull(backendExecutionSupport, "backendExecutionSupport");
         Objects.requireNonNull(claimState, "claimState");
         Objects.requireNonNull(resourceDemand, "resourceDemand");
@@ -48,6 +55,31 @@ public record PendingNativeWorkCandidate(
             throw new IllegalArgumentException(
                     "Native Pull candidate cannot rebind the task ProviderBindingPin");
         }
+        var expectedProviderImplementationId = staticallyCompatibleProviderCandidate
+                .descriptor().providerImplementationId();
+        if (!providerHardwareRequirement.providerImplementationId()
+                .equals(expectedProviderImplementationId)) {
+            throw new IllegalArgumentException(
+                    "Native Pull hardware requirement cannot rebind ProviderImplementationId");
+        }
+        ArrayList<RuntimeDependencyRequirement> canonicalRequirements = new ArrayList<>(
+                runtimeDependencyRequirements.size());
+        HashSet<RuntimeDependencyCoordinate> coordinates = new HashSet<>();
+        for (RuntimeDependencyRequirement requirement : runtimeDependencyRequirements) {
+            Objects.requireNonNull(requirement, "runtimeDependencyRequirements element");
+            if (!requirement.providerImplementationId().equals(expectedProviderImplementationId)) {
+                throw new IllegalArgumentException(
+                        "Native Pull dependency requirement cannot rebind ProviderImplementationId");
+            }
+            if (!coordinates.add(requirement.coordinate())) {
+                throw new IllegalArgumentException(
+                        "Native Pull dependency requirements contain a duplicate coordinate");
+            }
+            canonicalRequirements.add(requirement);
+        }
+        canonicalRequirements.sort((left, right) ->
+                left.coordinate().compareTo(right.coordinate()));
+        runtimeDependencyRequirements = List.copyOf(canonicalRequirements);
         providerProbeResult.ifPresent(probe -> {
             if (!executableTask.providerBindingPin().equals(probe.providerBindingPin())) {
                 throw new IllegalArgumentException(
