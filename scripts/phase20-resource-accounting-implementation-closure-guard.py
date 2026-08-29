@@ -19,6 +19,27 @@ PHYSICAL_PATHS = (
     "media-execution-plan-module/src/main/java/com/example/platform/execution/planning/PhysicalExecutionPlan.java",
     "media-execution-plan-module/src/main/java/com/example/platform/execution/planning/PhysicalPlannerV1.java",
 )
+EXECUTION_RESOURCE_REQUIREMENT_PATH = Path(
+    "media-execution-plan-module/src/main/java/com/example/platform/execution/domain/"
+    "ExecutionResourceRequirement.java")
+EXECUTION_REQUIREMENT_PATH = Path(
+    "media-execution-plan-module/src/main/java/com/example/platform/execution/planning/"
+    "ExecutionRequirement.java")
+PROVIDER_COMPATIBILITY_GRAPH_PATH = Path(
+    "media-execution-plan-module/src/main/java/com/example/platform/execution/compatibility/"
+    "ProviderCompatibilityGraph.java")
+PROVIDER_COMPATIBILITY_GRAPH_DIGEST_PATH = Path(
+    "media-execution-plan-module/src/main/java/com/example/platform/execution/compatibility/"
+    "ProviderCompatibilityGraphDigest.java")
+PROVIDER_FEASIBILITY_VIEW_PATH = Path(
+    "media-execution-plan-module/src/main/java/com/example/platform/execution/compatibility/"
+    "ProviderFeasibilityView.java")
+REMOTION_RUNTIME_PROBE_PATH = Path(
+    "render-module/src/main/java/com/example/platform/render/domain/remotion/"
+    "RemotionRuntimeProbe.java")
+RENDER_TOOL_CAPABILITY_INVENTORY_PATH = Path(
+    "render-module/src/main/java/com/example/platform/render/infrastructure/"
+    "RenderToolCapabilityInventory.java")
 EXPECTED_IDS = tuple(f"RA-{number:03d}" for number in range(1, 46))
 ALLOWED_OUTCOMES = {
     "IMPLEMENTED_RETAIN_CANONICAL",
@@ -206,6 +227,152 @@ def validate_obsolete_shadow_references(root: Path) -> None:
             hits.append(path.relative_to(root).as_posix())
     if hits:
         fail(f"obsolete shadow executable references found: {hits}")
+
+
+def require_declared_type(root: Path, relative: Path, type_name: str, label: str) -> None:
+    path = root / relative
+    if not path.is_file():
+        fail(f"{label} missing: {relative.as_posix()}")
+    code = strip_java_non_code(path.read_text(encoding="utf-8", errors="replace"))
+    declaration = re.compile(
+        rf"\b(?:class|record|interface|enum)\s+{re.escape(type_name)}\b")
+    if not declaration.search(code):
+        fail(f"{label} declaration missing: {relative.as_posix()}")
+
+
+def validate_execution_resource_requirement_delete_shadow(root: Path) -> None:
+    if (root / EXECUTION_RESOURCE_REQUIREMENT_PATH).exists():
+        fail("ExecutionResourceRequirement delete-shadow historical member still exists")
+    require_declared_type(
+        root, EXECUTION_REQUIREMENT_PATH, "ExecutionRequirement",
+        "canonical planning ExecutionRequirement")
+    shadow = re.compile(r"\b[A-Za-z0-9_$]*ExecutionResourceRequirement[A-Za-z0-9_$]*\b")
+    hits = [
+        path.relative_to(root).as_posix()
+        for path in source_files(root, production_only=False)
+        if shadow.search(strip_java_non_code(path.read_text(encoding="utf-8", errors="replace")))
+    ]
+    if hits:
+        fail(f"ExecutionResourceRequirement definition/reference/wrapper/alias found: {hits}")
+
+
+def compatibility_production_files(root: Path) -> list[Path]:
+    compatibility_root = (
+        root / "media-execution-plan-module/src/main/java/com/example/platform/execution/compatibility")
+    files = sorted(compatibility_root.rglob("*.java")) if compatibility_root.is_dir() else []
+    if not files:
+        fail("provider compatibility production universe is empty")
+    return files
+
+
+def validate_provider_compatibility_graph_migration(root: Path) -> None:
+    if (root / PROVIDER_COMPATIBILITY_GRAPH_PATH).exists():
+        fail("ProviderCompatibilityGraph historical member still exists")
+    require_declared_type(
+        root, PROVIDER_FEASIBILITY_VIEW_PATH, "ProviderFeasibilityView",
+        "ephemeral ProviderFeasibilityView")
+    obsolete = re.compile(r"\b[A-Za-z0-9_$]*ProviderCompatibilityGraph[A-Za-z0-9_$]*\b")
+    obsolete_hits: list[str] = []
+    second_graph_hits: list[str] = []
+    graph_declaration = re.compile(
+        r"\b(?:class|record|interface|enum)\s+"
+        r"([A-Za-z0-9_$]*(?:Compatibility|Feasibility|ProviderNeutral)[A-Za-z0-9_$]*Graph"
+        r"[A-Za-z0-9_$]*|[A-Za-z0-9_$]*Graph[A-Za-z0-9_$]*"
+        r"(?:Compatibility|Feasibility|ProviderNeutral)[A-Za-z0-9_$]*)\b")
+    for path in compatibility_production_files(root):
+        code = strip_java_non_code(path.read_text(encoding="utf-8", errors="replace"))
+        relative = path.relative_to(root).as_posix()
+        if obsolete.search(code):
+            obsolete_hits.append(relative)
+        if graph_declaration.search(code):
+            second_graph_hits.append(relative)
+    if obsolete_hits:
+        fail(f"obsolete canonical ProviderCompatibilityGraph authority found: {obsolete_hits}")
+    if second_graph_hits:
+        fail(f"second provider-neutral compatibility graph found: {second_graph_hits}")
+
+
+def validate_provider_compatibility_graph_digest_migration(root: Path) -> None:
+    if (root / PROVIDER_COMPATIBILITY_GRAPH_DIGEST_PATH).exists():
+        fail("ProviderCompatibilityGraphDigest historical member still exists")
+    authority_type = re.compile(
+        r"\b(?:class|record|interface|enum)\s+"
+        r"([A-Za-z0-9_$]*(?:Compatibility|Feasibility)[A-Za-z0-9_$]*"
+        r"(?:Digest|Revision|Persistence|Repository|Store)[A-Za-z0-9_$]*|"
+        r"[A-Za-z0-9_$]*(?:Digest|Revision|Persistence|Repository|Store)[A-Za-z0-9_$]*"
+        r"(?:Compatibility|Feasibility)[A-Za-z0-9_$]*)\b")
+    canonical_authority = re.compile(
+        r"\b(?:ProviderCompatibilityGraphDigest|ProviderFeasibilityViewDigest|"
+        r"CompatibilityViewDigest|CompatibilityViewRevision|CURRENT_SCHEMA_VERSION|"
+        r"canonicalSerialization)\b")
+    persistence_annotation = re.compile(r"@(Entity|Document|Table)\b")
+    hits: list[str] = []
+    for path in compatibility_production_files(root):
+        code = strip_java_non_code(path.read_text(encoding="utf-8", errors="replace"))
+        if (authority_type.search(code) or canonical_authority.search(code)
+                or (path == root / PROVIDER_FEASIBILITY_VIEW_PATH
+                    and persistence_annotation.search(code))):
+            hits.append(path.relative_to(root).as_posix())
+    if hits:
+        fail(f"independent compatibility-view digest/revision/persistence authority found: {hits}")
+
+
+def validate_remotion_runtime_probe_migration(root: Path) -> None:
+    if (root / REMOTION_RUNTIME_PROBE_PATH).exists():
+        fail("RemotionRuntimeProbe historical member still exists")
+    for relative, type_name in (
+        (Path("worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/"
+              "RuntimeDependencyObservation.java"), "RuntimeDependencyObservation"),
+        (Path("worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/"
+              "ProviderHardwareObservation.java"), "ProviderHardwareObservation"),
+        (Path("worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/"
+              "ProviderProbeResult.java"), "ProviderProbeResult"),
+    ):
+        require_declared_type(root, relative, type_name, "canonical worker/provider runtime observation")
+    render_domain = root / "render-module/src/main/java/com/example/platform/render/domain"
+    universe = sorted(render_domain.rglob("*.java")) if render_domain.is_dir() else []
+    if not universe:
+        fail("render-domain runtime-probe production universe is empty")
+    ambient_probe = re.compile(
+        r"\b(?:class|record|interface|enum)\s+[A-Za-z0-9_$]*(?:Runtime|Environment)"
+        r"[A-Za-z0-9_$]*Probe[A-Za-z0-9_$]*\b|"
+        r"\b(?:ProcessBuilder|Runtime\s*\.\s*getRuntime\s*\(\s*\)\s*\.\s*exec|detectTools)\b")
+    hits = [
+        path.relative_to(root).as_posix()
+        for path in universe
+        if ambient_probe.search(strip_java_non_code(
+            path.read_text(encoding="utf-8", errors="replace")))
+    ]
+    if hits:
+        fail(f"render-domain ambient runtime probe found: {hits}")
+
+
+def validate_render_tool_capability_inventory_migration(root: Path) -> None:
+    if (root / RENDER_TOOL_CAPABILITY_INVENTORY_PATH).exists():
+        fail("RenderToolCapabilityInventory historical member still exists")
+    authority_identifier = re.compile(
+        r"\b[A-Za-z0-9_$]*(?:(?:Render|Native)[A-Za-z0-9_$]*Tool[A-Za-z0-9_$]*"
+        r"(?:Capability|Version|Inventory)|Tool[A-Za-z0-9_$]*(?:Capability|Version|Inventory)"
+        r"[A-Za-z0-9_$]*Inventory)[A-Za-z0-9_$]*\b")
+    behavior = re.compile(r"\b(?:detectTools|getAvailabilitySummary|ToolInventoryEntry)\b")
+    hits: list[str] = []
+    for path in source_files(root):
+        relative = path.relative_to(root).as_posix()
+        if not relative.startswith("render-module/src/main/java/"):
+            continue
+        code = strip_java_non_code(path.read_text(encoding="utf-8", errors="replace"))
+        if authority_identifier.search(code) or behavior.search(code):
+            hits.append(relative)
+    if hits:
+        fail(f"render native tool/version/capability inventory authority found: {hits}")
+
+
+def validate_current_tree_clean_forward_lifecycle(root: Path) -> None:
+    validate_execution_resource_requirement_delete_shadow(root)
+    validate_provider_compatibility_graph_migration(root)
+    validate_provider_compatibility_graph_digest_migration(root)
+    validate_remotion_runtime_probe_migration(root)
+    validate_render_tool_capability_inventory_migration(root)
 
 
 def h1_kernel_files(root: Path) -> list[Path]:
@@ -579,6 +746,8 @@ def validate_phase19(root: Path) -> None:
 def validate_scope(root: Path) -> None:
     allowed_exact = {
         CLOSURE_REL.as_posix(),
+        "scripts/phase20-resource-accounting-contract-guard.py",
+        "scripts/test-phase20-resource-accounting-contract-guard.py",
         "scripts/phase20-resource-accounting-implementation-closure-guard.py",
         "scripts/test-phase20-resource-accounting-implementation-closure-guard.py",
         "media-execution-plan-module/src/main/java/com/example/platform/execution/taskgraph/ProviderBoundExecutableTaskGraph.java",
@@ -630,6 +799,7 @@ def main() -> int:
         validate_obsolete_shadow_references(root)
         validate_global_native_tool_authority(root)
         validate_ambient_render_process_discovery(root)
+        validate_current_tree_clean_forward_lifecycle(root)
         validate_h1_authority_isolation(root)
         validate_semantic_digest_exclusion(root)
         validate_identity_separation(root)
@@ -664,6 +834,12 @@ def main() -> int:
     print("MUTABLE_OBSERVATION_SEMANTIC_DIGEST_PARTICIPATION_COUNT=0")
     print("EXACT_IDENTITY_COLLAPSE_PATTERN_COUNT=0")
     print("ROADMAP23_OPTIMIZER_SELECTION_AUTHORITY_COUNT=0")
+    print("EXECUTION_RESOURCE_REQUIREMENT_DELETE_SHADOW_CLOSURE=PASS")
+    print("PROVIDER_COMPATIBILITY_GRAPH_MIGRATION_CLOSURE=PASS")
+    print("PROVIDER_COMPATIBILITY_GRAPH_DIGEST_MIGRATION_CLOSURE=PASS")
+    print("REMOTION_RUNTIME_PROBE_MIGRATION_CLOSURE=PASS")
+    print("RENDER_TOOL_CAPABILITY_INVENTORY_MIGRATION_CLOSURE=PASS")
+    print("CURRENT_TREE_CLEAN_FORWARD_CLOSURE=PASS")
     print("PHASE20_IMPLEMENTATION_CLOSURE_GUARD=PASS")
     return 0
 

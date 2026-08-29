@@ -24,7 +24,13 @@ def run(contract: pathlib.Path, ledger: pathlib.Path, inventory: pathlib.Path) -
     )
 
 
-def expect_red(name: str, contract_text: str, ledger_data: dict, inventory_data: dict, temp: pathlib.Path) -> None:
+def expect_red(
+        name: str,
+        contract_text: str,
+        ledger_data: dict,
+        inventory_data: dict,
+        temp: pathlib.Path,
+        required_error: str | None = None) -> None:
     contract = temp / f"{name}.md"
     ledger = temp / f"{name}-ledger.json"
     inventory = temp / f"{name}-inventory.json"
@@ -34,6 +40,9 @@ def expect_red(name: str, contract_text: str, ledger_data: dict, inventory_data:
     result = run(contract, ledger, inventory)
     if result.returncode == 0:
         raise AssertionError(f"mutation unexpectedly passed: {name}")
+    if required_error is not None and required_error not in result.stderr:
+        raise AssertionError(
+            f"mutation failed through the wrong predicate: {name}: {result.stderr!r}")
     print(f"MUTATION_{name}=PASS")
 
 
@@ -69,15 +78,33 @@ def main() -> int:
 
         missing_path = json.loads(json.dumps(original_ledger))
         missing_path["rows"][0]["member_paths"] = ["does/not/exist/Phase20Missing.java"]
-        missing_path["missing_member_path_count"] = 1
-        cases.append(("09_MISSING_MEMBER_PATH", original_contract, missing_path, original_inventory))
+        missing_path["missing_member_path_count"] = 0
+        cases.append((
+            "09_HISTORICAL_BASE_MISSING_MEMBER_PATH",
+            original_contract,
+            missing_path,
+            original_inventory,
+            "historical-base ledger member paths missing at",
+        ))
 
         unclassified_inventory = json.loads(json.dumps(original_inventory))
         unclassified_inventory["unclassified_finding_count"] = 1
-        cases.append(("10_UNCLASSIFIED_INVENTORY", original_contract, original_ledger, unclassified_inventory))
+        cases.append((
+            "10_UNCLASSIFIED_INVENTORY",
+            original_contract,
+            original_ledger,
+            unclassified_inventory,
+            None,
+        ))
 
-        for name, contract_text, ledger_data, inventory_data in cases:
-            expect_red(name, contract_text, ledger_data, inventory_data, temp)
+        for case in cases:
+            if len(case) == 4:
+                name, contract_text, ledger_data, inventory_data = case
+                required_error = None
+            else:
+                name, contract_text, ledger_data, inventory_data, required_error = case
+            expect_red(
+                name, contract_text, ledger_data, inventory_data, temp, required_error)
 
     print("GUARD_GREEN_BEHAVIOR=PASS")
     print("GUARD_RED_BEHAVIOR=10/10")

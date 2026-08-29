@@ -221,6 +221,33 @@ final class InjectedPlanningLeak { PhysicalPlanUnit unit; }
             ),
         )
         file_mutation(
+            "INJECTED_EXECUTION_RESOURCE_REQUIREMENT_SHADOW",
+            fixture,
+            baseline,
+            Path("media-execution-plan-module/src/main/java/com/example/platform/execution/domain/InjectedExecutionResourceRequirement.java"),
+            """package com.example.platform.execution.domain;
+record ExecutionResourceRequirement(long cpuMillis) {}
+""",
+            (
+                "obsolete shadow executable references found",
+                "InjectedExecutionResourceRequirement.java",
+            ),
+        )
+        file_mutation(
+            "INJECTED_PROVIDER_COMPATIBILITY_GRAPH_AUTHORITY",
+            fixture,
+            baseline,
+            Path("media-execution-plan-module/src/main/java/com/example/platform/execution/compatibility/InjectedProviderCompatibilityAuthority.java"),
+            """package com.example.platform.execution.compatibility;
+final class ProviderCompatibilityGraph {}
+record ProviderCompatibilityGraphDigest(String value) {}
+""",
+            (
+                "obsolete shadow executable references found",
+                "InjectedProviderCompatibilityAuthority.java",
+            ),
+        )
+        file_mutation(
             "INJECTED_AMBIENT_GLOBAL_PROBE",
             fixture,
             baseline,
@@ -292,7 +319,7 @@ final class InjectedIdentityCollapse {
     if status_after != status_before:
         raise AssertionError("mutation suite changed repository worktree scope")
     print("GUARD_GREEN_BEHAVIOR=PASS")
-    print("GUARD_RED_BEHAVIOR=14/14")
+    print("GUARD_RED_BEHAVIOR=16/16")
     print("MUTATION_FIXTURES_REPOSITORY_WRITE_COUNT=0")
     print("PHASE20_IMPLEMENTATION_CLOSURE_GUARD_MUTATION_TESTS=PASS")
     return 0

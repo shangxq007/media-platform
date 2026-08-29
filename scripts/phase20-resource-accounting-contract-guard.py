@@ -12,6 +12,8 @@ from collections import Counter
 
 BASE_SHA = "e02579181ba3049ae65ed81080c93a7212f5833d"
 BASE_TREE = "b67136e3a4b4e08688091bad0c4dad30d841978d"
+DECISION_RECOVERY_SHA = "8786118bc45b33e6750c0f1e6fb425b90b3abde2"
+DECISION_RECOVERY_TREE = "dc542501f9f71fa85769262a1012a24df7d5b4a2"
 CONTRACT_REL = pathlib.Path("docs/architecture/governance/roadmap-22-phase-20-resource-accounting-hardware-provider-conformance-bounded-architecture-contract-v1.md")
 LEDGER_REL = pathlib.Path("docs/architecture/governance/roadmap-22-phase-20-resource-accounting-hardware-provider-conformance-disposition-ledger-v1.json")
 INVENTORY_REL = pathlib.Path("docs/architecture/governance/roadmap-22-phase-20-resource-accounting-hardware-provider-conformance-repository-reality-inventory-v1.json")
@@ -73,6 +75,13 @@ def git(root: pathlib.Path, *args: str) -> str:
         ["git", *args], cwd=root, check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
     )
     return result.stdout.rstrip("\n")
+
+
+def git_succeeds(root: pathlib.Path, *args: str) -> bool:
+    return subprocess.run(
+        ["git", *args], cwd=root, check=False,
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    ).returncode == 0
 
 
 def validate_contract(path: pathlib.Path) -> None:
@@ -142,10 +151,15 @@ def validate_ledger(root: pathlib.Path, path: pathlib.Path) -> None:
         if not row.get("repository_evidence") or not row.get("clean_forward_action"):
             fail(f"ledger row lacks evidence/action: {row.get('id')}")
         for member in members:
-            if not (root / member).is_file():
+            if not isinstance(member, str) or not member:
+                fail(f"ledger row has invalid member path: {row.get('id')}")
+            member_path = pathlib.PurePosixPath(member)
+            if member_path.is_absolute() or ".." in member_path.parts:
+                fail(f"ledger row has unsafe member path: {row.get('id')}:{member}")
+            if not git_succeeds(root, "cat-file", "-e", f"{BASE_SHA}:{member}"):
                 missing.append(member)
     if missing:
-        fail(f"ledger member paths missing: {missing}")
+        fail(f"historical-base ledger member paths missing at {BASE_SHA}: {missing}")
     if data.get("missing_member_path_count") != len(missing):
         fail("ledger declared missing_member_path_count mismatch")
 
@@ -213,28 +227,23 @@ def validate_import_boundaries(root: pathlib.Path) -> None:
         fail(f"forbidden feasibility policy/cost imports: {hits}")
 
 
-def changed_paths(root: pathlib.Path) -> set[str]:
-    head = git(root, "rev-parse", "HEAD")
-    paths = set()
-    if head != BASE_SHA:
-        output = git(root, "diff", "--name-only", BASE_SHA, "HEAD")
-        paths.update(line for line in output.splitlines() if line)
-    status = git(root, "status", "--porcelain=v1", "--untracked-files=all")
-    for line in status.splitlines():
-        if not line:
-            continue
-        raw = line[3:]
-        if " -> " in raw:
-            raw = raw.split(" -> ", 1)[1]
-        paths.add(raw)
-    return paths
-
-
 def validate_scope(root: pathlib.Path) -> None:
-    paths = changed_paths(root)
-    unexpected = sorted(paths - ALLOWED_CHANGE_PATHS)
-    if unexpected:
-        fail(f"Decision Recovery changed forbidden paths: {unexpected}")
+    if git(root, "rev-parse", f"{BASE_SHA}^{{tree}}") != BASE_TREE:
+        fail("frozen repository base tree mismatch")
+    if git(root, "rev-parse", f"{DECISION_RECOVERY_SHA}^{{tree}}") != DECISION_RECOVERY_TREE:
+        fail("accepted Decision Recovery tree mismatch")
+    if not git_succeeds(root, "merge-base", "--is-ancestor", BASE_SHA, DECISION_RECOVERY_SHA):
+        fail("accepted Decision Recovery is not descended from frozen repository base")
+    if not git_succeeds(root, "merge-base", "--is-ancestor", DECISION_RECOVERY_SHA, "HEAD"):
+        fail("current HEAD does not contain accepted Decision Recovery authority")
+    output = git(root, "diff", "--name-only", BASE_SHA, DECISION_RECOVERY_SHA)
+    paths = {line for line in output.splitlines() if line}
+    if paths != ALLOWED_CHANGE_PATHS:
+        fail(
+            "accepted Decision Recovery exact delta mismatch: "
+            f"missing={sorted(ALLOWED_CHANGE_PATHS - paths)} "
+            f"unexpected={sorted(paths - ALLOWED_CHANGE_PATHS)}"
+        )
     production = sorted(
         p for p in paths if "/src/main/" in "/" + p or "/src/test/" in "/" + p or p.endswith((".gradle", ".gradle.kts", ".sql"))
     )
@@ -268,6 +277,7 @@ def main() -> int:
     print("CONTRACT_CLAUSE_COUNT=30")
     print("DISPOSITION_LEDGER_ROW_COUNT=45")
     print("UNCLASSIFIED=0")
+    print("HISTORICAL_BASE_MEMBER_VALIDATION=PASS")
     print("GLOBAL_NATIVE_TOOL_VERSION_AUTHORITY_COUNT=0")
     print("FORBIDDEN_FEASIBILITY_POLICY_COST_IMPORT_COUNT=0")
     print("DECISION_RECOVERY_PRODUCTION_TEST_BUILD_SCHEMA_DELTA=0")
