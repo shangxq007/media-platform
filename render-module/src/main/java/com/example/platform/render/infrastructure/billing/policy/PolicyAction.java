@@ -33,22 +33,6 @@ public record PolicyAction(
     }
 
     /**
-     * Create an APPLY_DISCOUNT action.
-     */
-    public static PolicyAction applyDiscount(double discountPercent, String reason) {
-        return new PolicyAction(ActionType.APPLY_DISCOUNT,
-                Map.of("discountPercent", discountPercent), reason);
-    }
-
-    /**
-     * Create a GRANT_CREDITS action.
-     */
-    public static PolicyAction grantCredits(double amount, String reason) {
-        return new PolicyAction(ActionType.GRANT_CREDITS,
-                Map.of("amount", amount), reason);
-    }
-
-    /**
      * Create a REQUIRE_UPGRADE action.
      */
     public static PolicyAction requireUpgrade(String requiredTier, String reason) {
@@ -65,27 +49,10 @@ public record PolicyAction(
     }
 
     /**
-     * Create an APPLY_MULTIPLIER action.
-     */
-    public static PolicyAction applyMultiplier(double multiplier, String reason) {
-        return new PolicyAction(ActionType.APPLY_MULTIPLIER,
-                Map.of("multiplier", multiplier), reason);
-    }
-
-    /**
      * Get a parameter value.
      */
     public Object getParam(String key) {
         return parameters.get(key);
-    }
-
-    /**
-     * Get a parameter as double.
-     */
-    public double getDoubleParam(String key, double defaultValue) {
-        Object val = parameters.get(key);
-        if (val instanceof Number n) return n.doubleValue();
-        return defaultValue;
     }
 
     /**
@@ -125,16 +92,6 @@ public record PolicyAction(
         THROTTLE,
 
         /**
-         * Apply a discount to the cost.
-         */
-        APPLY_DISCOUNT,
-
-        /**
-         * Grant credits to the account.
-         */
-        GRANT_CREDITS,
-
-        /**
          * Require a tier upgrade.
          */
         REQUIRE_UPGRADE,
@@ -143,11 +100,6 @@ public record PolicyAction(
          * Override quota limits.
          */
         OVERRIDE_QUOTA,
-
-        /**
-         * Apply a cost multiplier.
-         */
-        APPLY_MULTIPLIER,
 
         /**
          * Log the event (no side effect).

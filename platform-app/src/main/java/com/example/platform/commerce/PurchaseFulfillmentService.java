@@ -137,6 +137,7 @@ public class PurchaseFulfillmentService implements PurchaseFulfillmentPort {
                     command.tenantId(), null, command.userId(), "USD");
         }
         creditWalletService.credit(
+                command.tenantId(),
                 wallet.walletId(),
                 amount,
                 "PURCHASE",

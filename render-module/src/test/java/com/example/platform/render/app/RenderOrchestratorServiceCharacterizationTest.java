@@ -142,7 +142,7 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
         });
         RenderJobSubmissionService submissionService = new RenderJobSubmissionService(
                 dsl, renderJobRepository, quotaService,
-                null, null,
+                null,
                 historyRepository,
                 notificationEventPublisher, eventPublisher, timelineScriptParser,
                 effectTimelineInspector, renderProfileResolver,
@@ -156,7 +156,7 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
                 notificationEventPublisher, eventPublisher, historyRepository,
                 timelineScriptParser, mock(TimelineSpecResolver.class),
                 mock(IncrementalRenderOrchestrationService.class),
-                artifactStorageService, null, null,
+                artifactStorageService, null,
                 timelineSnapshotService,
                 editorTimelineConverter, effectTimelineInspector, renderProfileResolver,
                 null, null, null, null,

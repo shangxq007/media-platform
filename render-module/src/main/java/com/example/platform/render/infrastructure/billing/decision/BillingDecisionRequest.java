@@ -19,7 +19,6 @@ public record BillingDecisionRequest(
         Map<String, Long> currentUsage,
         SubscriptionState subscriptionState,
         QuotaState quotaState,
-        double creditBalance,
         boolean dryRun,
         String traceId
 ) {
@@ -42,7 +41,6 @@ public record BillingDecisionRequest(
                 Map.of(),
                 null,
                 null,
-                0,
                 false,
                 null
         );
@@ -67,7 +65,6 @@ public record BillingDecisionRequest(
                 Map.of(),
                 null,
                 null,
-                0,
                 false,
                 null
         );
@@ -92,7 +89,6 @@ public record BillingDecisionRequest(
                 Map.of(),
                 null,
                 null,
-                0,
                 true, // dry run
                 null
         );

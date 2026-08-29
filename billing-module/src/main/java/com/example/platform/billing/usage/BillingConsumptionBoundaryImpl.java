@@ -3,6 +3,8 @@ package com.example.platform.billing.usage;
 import com.example.platform.billing.app.PricingRuleService;
 import com.example.platform.billing.app.RatingEngine;
 import com.example.platform.billing.domain.PricingRule;
+import com.example.platform.billing.domain.RateUsageCommand;
+import java.time.Instant;
 import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,19 +33,14 @@ public class BillingConsumptionBoundaryImpl implements BillingConsumptionBoundar
     @Override
     public void consume(BillableUsage canonical) {
         Objects.requireNonNull(canonical, "billable usage must not be null");
-        PricingRule rule = pricingRuleService.listPricingRules().stream()
-                .filter(r -> canonical.billableMeter().equals(r.meterKey()))
-                .filter(r -> "ACTIVE".equals(r.status()))
-                .findFirst()
-                .orElse(null);
-
-        if (rule != null) {
-            ratingEngine.rateUsage(canonical, rule);
-            log.debug("BillingConsumptionBoundary: consumed canonical record {} dimension={}",
-                    canonical.billableUsageId(), canonical.billableDimension().name());
-        } else {
-            log.debug("BillingConsumptionBoundary: consumed canonical record {} dimension={} (no active rule)",
-                    canonical.billableUsageId(), canonical.billableDimension().name());
-        }
+        Instant ratedAt = Instant.now();
+        PricingRule rule = pricingRuleService.requireEffectiveRuleForMeter(
+                canonical.tenantId(), canonical.billableMeter(), ratedAt);
+        ratingEngine.rate(new RateUsageCommand(canonical, rule.ruleKey(), rule.version(),
+                "rate:" + canonical.tenantId() + ":" + canonical.billableUsageId()
+                        + ":" + rule.ruleId() + ":" + rule.version(),
+                ratedAt, canonical.traceId()));
+        log.debug("BillingConsumptionBoundary: consumed canonical record {} dimension={}",
+                canonical.billableUsageId(), canonical.billableDimension().name());
     }
 }

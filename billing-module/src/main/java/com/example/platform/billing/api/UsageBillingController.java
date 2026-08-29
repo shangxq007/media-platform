@@ -31,12 +31,15 @@ public class UsageBillingController {
     public QuoteResponse quote(@RequestBody QuoteRequest request) {
         String tenantId = resolveTenantId(request.tenantId());
         PricingRuleService.PricingPreviewResult preview = pricingRuleService.previewPricing(
-                tenantId, request.meterKey(), request.quantity(), Map.of());
-        PricingRule rule = findRuleForMeter(request.meterKey());
-        String pricingModel = rule != null ? rule.pricingModel().name() : "USAGE_BASED";
+                new PricingQuoteCommand(tenantId, null, request.meterKey(),
+                        request.quantityBaseUnits(), request.pricingRuleKey(),
+                        request.pricingRuleVersion(), request.pricedAt(), Map.of()));
+        PricingRule rule = pricingRuleService.requireEffectiveRule(tenantId,
+                request.pricingRuleKey(), request.pricingRuleVersion(), request.pricedAt());
         return new QuoteResponse(
-                tenantId, request.meterKey(), request.quantity(),
-                request.unit(), preview.estimatedAmountMinor(), preview.currencyCode(), pricingModel);
+                tenantId, request.meterKey(), request.quantityBaseUnits(),
+                request.unit(), preview.estimatedAmountMinor(), preview.currencyCode(),
+                rule.pricingModel().name(), preview.pricingRuleId(), preview.pricingRuleVersion());
     }
 
     @GetMapping("/usage")
@@ -76,11 +79,4 @@ public class UsageBillingController {
         return contextTenant;
     }
 
-    private PricingRule findRuleForMeter(String meterKey) {
-        return pricingRuleService.listPricingRules().stream()
-                .filter(r -> meterKey.equals(r.meterKey()))
-                .filter(r -> "ACTIVE".equals(r.status()))
-                .findFirst()
-                .orElse(null);
-    }
 }

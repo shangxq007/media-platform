@@ -24,7 +24,6 @@ import com.example.platform.render.infrastructure.RenderJobRepository;
 import com.example.platform.render.infrastructure.RenderProvider;
 import com.example.platform.render.infrastructure.RenderProviderRouter;
 import com.example.platform.render.infrastructure.artifact.ArtifactGraphRepository;
-import com.example.platform.render.infrastructure.billing.BillingEnforcementService;
 import com.example.platform.render.infrastructure.providerruntime.engine.ProviderRuntimeEngine;
 import com.example.platform.render.infrastructure.timeline.EditorTimelineConverter;
 import com.example.platform.shared.events.ArtifactCreatedEvent;
@@ -72,7 +71,6 @@ public class RenderJobExecutionService {
     private final IncrementalRenderOrchestrationService incrementalRenderOrchestrationService;
     private final RenderArtifactStorageService artifactStorageService;
     private final ArtifactGraphRepository artifactGraphRepository;
-    private final BillingEnforcementService billingEnforcementService;
     private final TimelineSnapshotService timelineSnapshotService;
     private final EditorTimelineConverter editorTimelineConverter;
     private final EffectTimelineInspector effectTimelineInspector;
@@ -103,8 +101,6 @@ public class RenderJobExecutionService {
             RenderArtifactStorageService artifactStorageService,
             @org.springframework.beans.factory.annotation.Autowired(required = false)
             ArtifactGraphRepository artifactGraphRepository,
-            @org.springframework.beans.factory.annotation.Autowired(required = false)
-            BillingEnforcementService billingEnforcementService,
             TimelineSnapshotService timelineSnapshotService,
             EditorTimelineConverter editorTimelineConverter,
             EffectTimelineInspector effectTimelineInspector,
@@ -139,7 +135,6 @@ public class RenderJobExecutionService {
         this.incrementalRenderOrchestrationService = incrementalRenderOrchestrationService;
         this.artifactStorageService = artifactStorageService;
         this.artifactGraphRepository = artifactGraphRepository;
-        this.billingEnforcementService = billingEnforcementService;
         this.timelineSnapshotService = timelineSnapshotService;
         this.editorTimelineConverter = editorTimelineConverter;
         this.effectTimelineInspector = effectTimelineInspector;
@@ -352,18 +347,7 @@ public class RenderJobExecutionService {
             updateStatus(jobId, projectId, currentStatus, RenderJobStatus.EXECUTING, null);
         }
 
-        // Billing enforcement: reserve quota before execution
         long startTime = System.currentTimeMillis();
-        if (billingEnforcementService != null && billingEnforcementService.isEnforcementEnabled()) {
-            BillingEnforcementService.ReservationResult reservation = 
-                    billingEnforcementService.reserveQuota(tenantId, jobId, 0.10); // Default estimate
-            if (!reservation.success()) {
-                log.warn("Billing reservation failed for job {}: {}", jobId, reservation.error());
-                failureService.recordDurableFailure(jobId, "Billing reservation failed: " + reservation.error());
-                throw new IllegalStateException("Billing reservation failed: " + reservation.error());
-            }
-            log.info("Reserved quota for job {}: {}", jobId, reservation.reservationId());
-        }
 
         RenderProvider.RenderResult renderResult;
         try {
@@ -374,13 +358,6 @@ public class RenderJobExecutionService {
             log.error("Render failed for job {}", jobId, e);
             failureService.recordDurableFailure(jobId, "Render failed: " + e.getMessage());
             throw new IllegalStateException("Render failed", e);
-        }
-
-        // Billing finalization requires the concrete provider identity selected
-        // by the typed provider host. RenderResult does not carry that identity,
-        // so this legacy path must not persist an invented producer.
-        if (billingEnforcementService != null && billingEnforcementService.isEnforcementEnabled()) {
-            log.warn("Skipping billing finalization for job {}: concrete provider identity unavailable", jobId);
         }
 
         // Transition to COMPLETING

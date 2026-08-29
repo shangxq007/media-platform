@@ -1,17 +1,10 @@
 package com.example.platform.billing.domain;
 
+import com.example.platform.shared.commercial.Money;
 import java.time.Instant;
 
 public record InvoiceLineItem(
-        String lineItemId,
-        String invoiceId,
-        String lineType,
-        String description,
-        double quantity,
-        long unitPriceMinor,
-        long amountMinor,
-        String currencyCode,
-        Instant periodStart,
-        Instant periodEnd,
-        Instant createdAt) {
-}
+        String lineItemId, String tenantId, String invoiceId, String ratedUsageId,
+        String lineType, String description, long quantityBaseUnits,
+        Money unitPrice, Money amount, Instant periodStart, Instant periodEnd,
+        Instant createdAt) {}

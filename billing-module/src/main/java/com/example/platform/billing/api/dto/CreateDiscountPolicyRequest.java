@@ -4,12 +4,8 @@ import java.time.Instant;
 import java.util.Map;
 
 public record CreateDiscountPolicyRequest(
-        String policyKey,
-        String name,
-        String description,
-        String discountType,
-        double discountValue,
-        Map<String, Object> conditions,
-        Instant effectiveFrom,
-        Instant effectiveTo) {
-}
+        String tenantId, String policyKey, long ruleVersion,
+        String meterKey, String currencyCode,
+        String name, String description, String discountType,
+        long discountNumerator, long discountDenominator, long flatAmountMinor,
+        Map<String, String> conditions, Instant effectiveFrom, Instant effectiveTo) {}

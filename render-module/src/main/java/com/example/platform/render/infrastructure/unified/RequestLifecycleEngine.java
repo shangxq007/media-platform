@@ -6,7 +6,6 @@ import com.example.platform.render.infrastructure.billing.decision.BillingDecisi
 import com.example.platform.render.infrastructure.billing.decision.BillingDecisionEngine;
 import com.example.platform.render.infrastructure.billing.decision.BillingDecisionRequest;
 import com.example.platform.render.infrastructure.billing.policy.PolicyEngine;
-import com.example.platform.render.infrastructure.billing.policy.PricingEngine;
 import com.example.platform.render.infrastructure.providerruntime.engine.ProviderRuntimeEngine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,7 +31,6 @@ public class RequestLifecycleEngine {
     private final RenderJobStateMachine stateMachine;
     private final BillingDecisionEngine billingDecisionEngine;
     private final PolicyEngine policyEngine;
-    private final PricingEngine pricingEngine;
     private final ProviderRuntimeEngine providerRuntimeEngine;
 
     public RequestLifecycleEngine(
@@ -41,14 +39,12 @@ public class RequestLifecycleEngine {
             RenderJobStateMachine stateMachine,
             BillingDecisionEngine billingDecisionEngine,
             PolicyEngine policyEngine,
-            PricingEngine pricingEngine,
             ProviderRuntimeEngine providerRuntimeEngine) {
         this.tracer = tracer;
         this.graphRepository = graphRepository;
         this.stateMachine = stateMachine;
         this.billingDecisionEngine = billingDecisionEngine;
         this.policyEngine = policyEngine;
-        this.pricingEngine = pricingEngine;
         this.providerRuntimeEngine = providerRuntimeEngine;
     }
 

@@ -1,204 +1,226 @@
 package com.example.platform.billing.app;
 
-import com.example.platform.billing.domain.*;
+import com.example.platform.billing.domain.CreditReservation;
+import com.example.platform.billing.domain.CreditTransaction;
+import com.example.platform.billing.domain.CreditWallet;
+import com.example.platform.billing.domain.CreditWalletCommand;
+import com.example.platform.billing.domain.CreditWalletCommandResult;
 import com.example.platform.billing.infrastructure.CreditWalletJdbcRepository;
 import com.example.platform.shared.Ids;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
+import com.example.platform.shared.commercial.Money;
+import com.example.platform.shared.commercial.PrincipalRef;
+import com.example.platform.shared.commercial.PrincipalType;
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+/** Sole durable credit wallet command authority. */
 @Service
 public class CreditWalletService {
 
-    private static final Logger log = LoggerFactory.getLogger(CreditWalletService.class);
+    private final CreditWalletJdbcRepository repository;
 
-    private final ConcurrentHashMap<String, CreditWallet> walletCache = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, Long> reservations = new ConcurrentHashMap<>();
-    private final Optional<CreditWalletJdbcRepository> jdbcRepository;
-
-    public CreditWalletService() {
-        this(Optional.empty());
+    public CreditWalletService(CreditWalletJdbcRepository repository) {
+        this.repository = repository;
     }
 
-    @Autowired
-    public CreditWalletService(Optional<CreditWalletJdbcRepository> jdbcRepository) {
-        this.jdbcRepository = jdbcRepository != null ? jdbcRepository : Optional.empty();
+    @Transactional
+    public CreditWalletCommandResult execute(CreditWalletCommand command) {
+        String tenantId = command.principal().tenantId();
+        repository.lockCommand(tenantId, command.idempotencyKey());
+        CreditWalletJdbcRepository.StoredCommand prior = repository
+                .findCommand(tenantId, command.idempotencyKey()).orElse(null);
+        if (prior != null) {
+            if (!prior.fingerprint().equals(command.fingerprint())) {
+                throw new IllegalStateException("Idempotency key reused with different wallet command payload");
+            }
+            return prior.result();
+        }
+
+        CreditWalletCommandResult result = switch (command.commandType()) {
+            case CREATE -> create(command);
+            case CREDIT -> creditCommand(command);
+            case DEBIT -> debitCommand(command);
+            case RESERVE -> reserveCommand(command);
+            case FINALIZE -> finalizeCommand(command);
+            case RELEASE -> releaseCommand(command);
+        };
+        repository.saveCommand(command, result);
+        return result;
     }
 
-    public CreditWallet createWallet(String tenantId, String workspaceId, String userId,
-                                      String currencyCode) {
-        String walletId = Ids.newId("wlt");
-        CreditWallet wallet = new CreditWallet(
-                walletId, tenantId, workspaceId, userId,
-                0L, currencyCode, "ACTIVE", Instant.now(), Instant.now());
-        persistWallet(wallet);
-        log.info("CreditWalletService: created wallet {} tenant={}", walletId, tenantId);
+    private CreditWalletCommandResult create(CreditWalletCommand command) {
+        if (command.expectedVersion() != 0) throw new IllegalStateException("wallet create version must be zero");
+        CreditWallet wallet = repository.insertWallet(command);
+        return new CreditWalletCommandResult(wallet, null, null);
+    }
+
+    private CreditWalletCommandResult creditCommand(CreditWalletCommand command) {
+        CreditWallet wallet = requireWallet(command);
+        requireVersionCurrency(wallet, command);
+        Money next = wallet.balance().add(command.amount());
+        CreditWallet updated = repository.updateWallet(wallet, next, command.expectedVersion(),
+                command.occurredAt());
+        appendTransaction(command, updated, CreditTransaction.TYPE_CREDIT, null, command.amount());
+        return new CreditWalletCommandResult(updated, null, null);
+    }
+
+    private CreditWalletCommandResult debitCommand(CreditWalletCommand command) {
+        CreditWallet wallet = requireWallet(command);
+        requireVersionCurrency(wallet, command);
+        long reserved = repository.activeReservedMinor(wallet.tenantId(), wallet.walletId());
+        long available = Math.subtractExact(wallet.balanceMinor(), reserved);
+        if (available < command.amount().amountMinor()) {
+            throw new IllegalStateException("Insufficient available wallet balance");
+        }
+        Money next = wallet.balance().subtract(command.amount());
+        CreditWallet updated = repository.updateWallet(wallet, next, command.expectedVersion(),
+                command.occurredAt());
+        appendTransaction(command, updated, CreditTransaction.TYPE_DEBIT, null, command.amount());
+        return new CreditWalletCommandResult(updated, null, null);
+    }
+
+    private CreditWalletCommandResult reserveCommand(CreditWalletCommand command) {
+        CreditWallet wallet = requireWallet(command);
+        requireVersionCurrency(wallet, command);
+        long reserved = repository.activeReservedMinor(wallet.tenantId(), wallet.walletId());
+        long available = Math.subtractExact(wallet.balanceMinor(), reserved);
+        if (available < command.amount().amountMinor()) {
+            throw new IllegalStateException("Insufficient available wallet balance for reservation");
+        }
+        CreditReservation reservation = repository.insertReservation(command);
+        CreditWallet updated = repository.updateWallet(wallet, wallet.balance(),
+                command.expectedVersion(), command.occurredAt());
+        appendTransaction(command, updated, CreditTransaction.TYPE_RESERVE,
+                reservation.reservationId(), reservation.amount());
+        return new CreditWalletCommandResult(updated, reservation.reservationId(), reservation.status());
+    }
+
+    private CreditWalletCommandResult finalizeCommand(CreditWalletCommand command) {
+        CreditWallet wallet = requireWallet(command);
+        requireVersionCurrency(wallet, command);
+        CreditReservation reservation = requireActiveReservation(command);
+        if (!reservation.amount().currency().equals(wallet.currencyCode())) {
+            throw new IllegalStateException("Reservation currency mismatch");
+        }
+        if (!reservation.amount().currency().equals(command.amount().currency())) {
+            throw new IllegalStateException("Reservation currency mismatch");
+        }
+        if (command.amount().amountMinor() > reservation.amount().amountMinor()) {
+            throw new IllegalStateException("Final amount exceeds reserved amount");
+        }
+        CreditReservation finalized = repository.transitionReservation(
+                reservation, "FINALIZED", command.occurredAt());
+        Money next = wallet.balance().subtract(command.amount());
+        CreditWallet updated = repository.updateWallet(wallet, next, command.expectedVersion(),
+                command.occurredAt());
+        appendTransaction(command, updated, CreditTransaction.TYPE_FINALIZE,
+                finalized.reservationId(), command.amount());
+        return new CreditWalletCommandResult(updated, finalized.reservationId(), finalized.status());
+    }
+
+    private CreditWalletCommandResult releaseCommand(CreditWalletCommand command) {
+        CreditWallet wallet = requireWallet(command);
+        if (wallet.version() != command.expectedVersion()) throw new IllegalStateException("Wallet CAS rejected");
+        CreditReservation reservation = requireActiveReservation(command);
+        if (!reservation.amount().currency().equals(wallet.currencyCode())) {
+            throw new IllegalStateException("Reservation currency mismatch");
+        }
+        CreditReservation released = repository.transitionReservation(
+                reservation, "RELEASED", command.occurredAt());
+        CreditWallet updated = repository.updateWallet(wallet, wallet.balance(),
+                command.expectedVersion(), command.occurredAt());
+        appendTransaction(command, updated, CreditTransaction.TYPE_RELEASE,
+                released.reservationId(), released.amount());
+        return new CreditWalletCommandResult(updated, released.reservationId(), released.status());
+    }
+
+    private CreditWallet requireWallet(CreditWalletCommand command) {
+        CreditWallet wallet = repository.findWalletForUpdate(
+                        command.principal().tenantId(), command.walletId())
+                .orElseThrow(() -> new IllegalStateException("Wallet not found in tenant"));
+        if (!wallet.principal().equals(command.principal())) {
+            throw new IllegalStateException("Wallet principal mismatch");
+        }
         return wallet;
     }
 
-    public CreditWallet getWallet(String walletId) {
-        CreditWallet cached = walletCache.get(walletId);
-        if (cached != null) return cached;
-
-        if (jdbcRepository.isPresent()) {
-            // Load from DB by iterating tenant wallets (no direct ID query in repo)
-            // This is a fallback — prefer getWalletByTenant
-            return null;
+    private CreditReservation requireActiveReservation(CreditWalletCommand command) {
+        CreditReservation reservation = repository.findReservationForUpdate(
+                        command.principal().tenantId(), command.walletId(), command.reservationId())
+                .orElseThrow(() -> new IllegalStateException("Reservation not found in wallet"));
+        if (!"ACTIVE".equals(reservation.status())) {
+            throw new IllegalStateException("Reservation is not active");
         }
-        return null;
+        return reservation;
     }
 
+    private static void requireVersionCurrency(CreditWallet wallet, CreditWalletCommand command) {
+        if (wallet.version() != command.expectedVersion()) throw new IllegalStateException("Wallet CAS rejected");
+        if (!wallet.currencyCode().equals(command.amount().currency())) {
+            throw new IllegalStateException("Wallet command currency mismatch");
+        }
+    }
+
+    private void appendTransaction(CreditWalletCommand command, CreditWallet wallet,
+                                   String type, String reservationId, Money amount) {
+        repository.appendTransaction(new CreditTransaction(
+                "ctx_" + command.fingerprint().substring(0, 24), command.principal().tenantId(),
+                command.walletId(), reservationId, type, amount, wallet.balance(),
+                command.referenceType(), command.referenceId(), command.description(),
+                command.idempotencyKey(), command.fingerprint(), command.occurredAt()));
+    }
+
+    @Transactional
+    public CreditWallet createWallet(String tenantId, String workspaceId, String userId,
+                                     String currencyCode) {
+        PrincipalRef principal = new PrincipalRef(tenantId, PrincipalType.USER, userId,
+                workspaceId, null);
+        String walletId = Ids.newId("wlt");
+        return execute(CreditWalletCommand.create(principal, walletId, currencyCode,
+                "wallet:create:" + tenantId + ":" + userId + ":"
+                        + (workspaceId == null ? "" : workspaceId) + ":" + currencyCode,
+                "billing", "create wallet", "wallet-create", Instant.now())).wallet();
+    }
+
+    @Transactional(readOnly = true)
     public CreditWallet getWalletByTenant(String tenantId, String userId) {
-        // Check cache first
-        CreditWallet cached = walletCache.values().stream()
-                .filter(w -> tenantId.equals(w.tenantId()) && userId.equals(w.userId()))
-                .findFirst()
-                .orElse(null);
-        if (cached != null) return cached;
-
-        // Query DB
-        return jdbcRepository.flatMap(r -> r.findWalletByTenantAndUser(tenantId, userId))
-                .map(w -> {
-                    walletCache.put(w.walletId(), w);
-                    return w;
-                })
-                .orElse(null);
+        return repository.findWalletByPrincipal(
+                PrincipalRef.tenantScoped(tenantId, PrincipalType.USER, userId), "USD").orElse(null);
     }
 
-    public CreditWallet credit(String walletId, long amountMinor, String referenceType,
-                                String referenceId, String description) {
-        CreditWallet existing = loadWallet(walletId);
-        long newBalance = existing.balanceMinor() + amountMinor;
-        CreditWallet updated = withBalance(existing, newBalance);
-        persistWallet(updated);
-        recordTransaction(walletId, CreditTransaction.TYPE_CREDIT, amountMinor,
-                newBalance, referenceType, referenceId, description);
-        log.info("CreditWalletService: credited wallet {} amount={} newBalance={}",
-                walletId, amountMinor, newBalance);
-        return updated;
+    @Transactional
+    public CreditWallet credit(String tenantId, String walletId, long amountMinor,
+                               String referenceType, String referenceId, String description) {
+        CreditWallet wallet = repository.findWalletForUpdate(tenantId, walletId)
+                .orElseThrow(() -> new IllegalStateException("Wallet not found in tenant"));
+        return execute(CreditWalletCommand.credit(wallet.principal(), walletId,
+                new Money(amountMinor, wallet.currencyCode()), wallet.version(), referenceType,
+                referenceId, description, "wallet:credit:" + tenantId + ":" + referenceType
+                        + ":" + referenceId, "billing", description, "wallet-credit", Instant.now()))
+                .wallet();
     }
 
-    public CreditWallet debit(String walletId, long amountMinor, String referenceType,
-                               String referenceId, String description) {
-        CreditWallet existing = loadWallet(walletId);
-        if (existing.balanceMinor() < amountMinor) {
-            throw new IllegalStateException("Insufficient balance in wallet: " + walletId);
-        }
-        long newBalance = existing.balanceMinor() - amountMinor;
-        CreditWallet updated = withBalance(existing, newBalance);
-        persistWallet(updated);
-        recordTransaction(walletId, CreditTransaction.TYPE_DEBIT, amountMinor,
-                newBalance, referenceType, referenceId, description);
-        log.info("CreditWalletService: debited wallet {} amount={} newBalance={}",
-                walletId, amountMinor, newBalance);
-        return updated;
+    @Transactional
+    public CreditWallet debit(String tenantId, String walletId, long amountMinor,
+                              String referenceType, String referenceId, String description) {
+        CreditWallet wallet = repository.findWalletForUpdate(tenantId, walletId)
+                .orElseThrow(() -> new IllegalStateException("Wallet not found in tenant"));
+        return execute(CreditWalletCommand.debit(wallet.principal(), walletId,
+                new Money(amountMinor, wallet.currencyCode()), wallet.version(), referenceType,
+                referenceId, description, "wallet:debit:" + tenantId + ":" + referenceType
+                        + ":" + referenceId, "billing", description, "wallet-debit", Instant.now()))
+                .wallet();
     }
 
-    public String reserve(String walletId, long amountMinor, String referenceType,
-                           String referenceId, String description) {
-        String reservationId = Ids.newId("res");
-        synchronized (this) {
-            CreditWallet existing = loadWallet(walletId);
-            long reservedTotal = reservations.values().stream().mapToLong(Long::longValue).sum();
-            long available = existing.balanceMinor() - reservedTotal;
-            if (available < amountMinor) {
-                throw new IllegalStateException("Insufficient available balance for reservation");
-            }
-            reservations.put(reservationId, amountMinor);
-        }
-        recordTransaction(walletId, CreditTransaction.TYPE_RESERVE, amountMinor,
-                loadWallet(walletId).balanceMinor(), referenceType, referenceId, description);
-        log.info("CreditWalletService: reserved {} from wallet {} reservation={}",
-                amountMinor, walletId, reservationId);
-        return reservationId;
+    @Transactional(readOnly = true)
+    public List<CreditTransaction> getTransactions(String tenantId, String walletId) {
+        return repository.findTransactions(tenantId, walletId);
     }
 
-    public void finalize(String walletId, String reservationId, long actualAmountMinor,
-                          String referenceType, String referenceId, String description) {
-        Long reservedAmount = reservations.remove(reservationId);
-        if (reservedAmount == null) {
-            throw new IllegalArgumentException("Reservation not found: " + reservationId);
-        }
-        CreditWallet existing = loadWallet(walletId);
-        long newBalance = existing.balanceMinor() - actualAmountMinor;
-        CreditWallet updated = withBalance(existing, newBalance);
-        persistWallet(updated);
-        recordTransaction(walletId, CreditTransaction.TYPE_FINALIZE, actualAmountMinor,
-                newBalance, referenceType, referenceId, description);
-        log.info("CreditWalletService: finalized reservation {} actual={} newBalance={}",
-                reservationId, actualAmountMinor, newBalance);
-    }
-
-    public void release(String walletId, String reservationId, String referenceType,
-                         String referenceId, String description) {
-        Long reservedAmount = reservations.remove(reservationId);
-        if (reservedAmount == null) {
-            throw new IllegalArgumentException("Reservation not found: " + reservationId);
-        }
-        CreditWallet existing = loadWallet(walletId);
-        recordTransaction(walletId, CreditTransaction.TYPE_RELEASE, reservedAmount,
-                existing.balanceMinor(), referenceType, referenceId, description);
-        log.info("CreditWalletService: released reservation {} amount={}",
-                reservationId, reservedAmount);
-    }
-
-    public List<CreditTransaction> getTransactions(String walletId) {
-        if (jdbcRepository.isPresent()) {
-            return jdbcRepository.get().loadAllTransactions().stream()
-                    .filter(t -> walletId.equals(t.walletId()))
-                    .sorted((a, b) -> b.createdAt().compareTo(a.createdAt()))
-                    .toList();
-        }
-        return List.of();
-    }
-
+    @Transactional(readOnly = true)
     public List<CreditWallet> getWalletsByTenant(String tenantId) {
-        if (jdbcRepository.isPresent()) {
-            return jdbcRepository.get().loadAllWallets().stream()
-                    .filter(w -> tenantId.equals(w.tenantId()))
-                    .toList();
-        }
-        return walletCache.values().stream()
-                .filter(w -> tenantId.equals(w.tenantId()))
-                .toList();
-    }
-
-    private CreditWallet loadWallet(String walletId) {
-        CreditWallet cached = walletCache.get(walletId);
-        if (cached != null) return cached;
-        if (jdbcRepository.isPresent()) {
-            return jdbcRepository.get().loadAllWallets().stream()
-                    .filter(w -> walletId.equals(w.walletId()))
-                    .findFirst()
-                    .map(w -> { walletCache.put(w.walletId(), w); return w; })
-                    .orElseThrow(() -> new IllegalArgumentException("Wallet not found: " + walletId));
-        }
-        throw new IllegalArgumentException("Wallet not found: " + walletId);
-    }
-
-    private CreditWallet withBalance(CreditWallet w, long newBalance) {
-        return new CreditWallet(w.walletId(), w.tenantId(), w.workspaceId(),
-                w.userId(), newBalance, w.currencyCode(), w.status(), w.createdAt(), Instant.now());
-    }
-
-    private void recordTransaction(String walletId, String type, long amountMinor,
-                                    long balanceAfterMinor, String referenceType,
-                                    String referenceId, String description) {
-        String txnId = Ids.newId("ctx");
-        CreditTransaction txn = new CreditTransaction(
-                txnId, walletId, type, amountMinor, balanceAfterMinor,
-                referenceType, referenceId, description, Instant.now());
-        jdbcRepository.ifPresent(r -> r.saveTransaction(txn));
-    }
-
-    private void persistWallet(CreditWallet wallet) {
-        walletCache.put(wallet.walletId(), wallet);
-        jdbcRepository.ifPresent(r -> r.saveWallet(wallet));
+        return repository.findWalletsByTenant(tenantId);
     }
 }

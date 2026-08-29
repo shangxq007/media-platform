@@ -153,8 +153,6 @@ public class PolicyEngine {
                                                       PolicyEvaluationContext context) {
         List<PolicyAction> mergedActions = new ArrayList<>();
         List<String> appliedPolicyIds = new ArrayList<>();
-        double totalDiscount = 0;
-        double totalMultiplier = 1.0;
         boolean denied = false;
         String denyReason = null;
 
@@ -171,12 +169,6 @@ public class PolicyEngine {
                         denied = true;
                         denyReason = action.reason();
                     }
-                    case APPLY_DISCOUNT -> {
-                        totalDiscount += action.getDoubleParam("discountPercent", 0);
-                    }
-                    case APPLY_MULTIPLIER -> {
-                        totalMultiplier *= action.getDoubleParam("multiplier", 1.0);
-                    }
                     default -> {}
                 }
             }
@@ -187,8 +179,6 @@ public class PolicyEngine {
                 denyReason,
                 mergedActions,
                 appliedPolicyIds,
-                Math.min(totalDiscount, 100), // Cap at 100%
-                totalMultiplier,
                 Instant.now()
         );
     }
@@ -237,8 +227,6 @@ public class PolicyEngine {
             String denyReason,
             List<PolicyAction> appliedActions,
             List<String> appliedPolicyIds,
-            double totalDiscountPercent,
-            double totalMultiplier,
             Instant evaluatedAt
     ) {
         /**
@@ -255,8 +243,7 @@ public class PolicyEngine {
             if (denied) {
                 return "DENIED: " + denyReason;
             }
-            return String.format("ALLOWED (policies: %s, discount: %.1f%%, multiplier: %.2f)",
-                    appliedPolicyIds, totalDiscountPercent, totalMultiplier);
+            return "ALLOWED (policies: " + appliedPolicyIds + ")";
         }
     }
 }

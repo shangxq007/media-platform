@@ -8,7 +8,6 @@ import com.example.platform.render.app.timeline.SegmentPlanFilter;
 import com.example.platform.render.domain.RenderJobStatus;
 import com.example.platform.render.infrastructure.RenderJobRepository;
 import com.example.platform.render.infrastructure.RenderProviderRouter;
-import com.example.platform.render.infrastructure.billing.BillingEnforcementService;
 import com.example.platform.render.infrastructure.billing.decision.BillingDecision;
 import com.example.platform.render.infrastructure.billing.decision.BillingDecisionEngine;
 import com.example.platform.render.infrastructure.billing.decision.BillingDecisionRequest;
@@ -49,7 +48,6 @@ public class RenderJobSubmissionService {
     private final DSLContext dsl;
     private final RenderJobRepository renderJobRepository;
     private final RenderQuotaService quotaService;
-    private final BillingEnforcementService billingEnforcementService;
     private final BillingDecisionEngine billingDecisionEngine;
     private final RenderJobStatusHistoryRepository historyRepository;
     private final NotificationEventPublisher notificationEventPublisher;
@@ -63,8 +61,6 @@ public class RenderJobSubmissionService {
     public RenderJobSubmissionService(DSLContext dsl,
             RenderJobRepository renderJobRepository,
             RenderQuotaService quotaService,
-            @org.springframework.beans.factory.annotation.Autowired(required = false)
-            BillingEnforcementService billingEnforcementService,
             @org.springframework.beans.factory.annotation.Autowired(required = false)
             BillingDecisionEngine billingDecisionEngine,
             RenderJobStatusHistoryRepository historyRepository,
@@ -80,7 +76,6 @@ public class RenderJobSubmissionService {
         this.dsl = dsl;
         this.renderJobRepository = renderJobRepository;
         this.quotaService = quotaService;
-        this.billingEnforcementService = billingEnforcementService;
         this.billingDecisionEngine = billingDecisionEngine;
         this.historyRepository = historyRepository;
         this.notificationEventPublisher = notificationEventPublisher;
@@ -135,20 +130,6 @@ public class RenderJobSubmissionService {
             }
 
             log.info("Billing decision ALLOWED for job submission: {}", decision.getSummary());
-        } 
-        // Fallback to legacy BillingEnforcementService
-        else if (billingEnforcementService != null) {
-            BillingEnforcementService.ValidationResult subResult = 
-                    billingEnforcementService.validateSubscription(request.tenantId());
-            if (!subResult.success()) {
-                return handleBillingRejected(request, subResult.code(), subResult.reason());
-            }
-
-            BillingEnforcementService.ValidationResult quotaResult = 
-                    billingEnforcementService.validateQuota(request.tenantId(), 60);
-            if (!quotaResult.success()) {
-                return handleBillingRejected(request, quotaResult.code(), quotaResult.reason());
-            }
         }
 
         if (!quotaService.checkQuota(request.tenantId(), "render", 1).allowed()) {

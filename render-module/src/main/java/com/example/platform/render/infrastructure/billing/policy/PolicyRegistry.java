@@ -112,8 +112,7 @@ public class PolicyRegistry {
                         PolicyCondition.equals(PolicyCondition.ConditionType.TIER, "tier", "FREE")
                 ),
                 List.of(
-                        PolicyAction.overrideQuota("render", 50, "Free tier: 50 renders per month"),
-                        PolicyAction.applyDiscount(0, "Free tier: no discount")
+                        PolicyAction.overrideQuota("render", 50, "Free tier: 50 renders per month")
                 )
         ));
 
@@ -127,8 +126,7 @@ public class PolicyRegistry {
                         PolicyCondition.equals(PolicyCondition.ConditionType.TIER, "tier", "PRO")
                 ),
                 List.of(
-                        PolicyAction.overrideQuota("render", 500, "Pro tier: 500 renders per month"),
-                        PolicyAction.applyDiscount(20, "Pro tier: 20% discount")
+                        PolicyAction.overrideQuota("render", 500, "Pro tier: 500 renders per month")
                 )
         ));
 

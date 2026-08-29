@@ -4,6 +4,7 @@ import com.example.platform.billing.domain.BillingDecision;
 import com.example.platform.billing.domain.BillingLedgerEntry;
 import com.example.platform.billing.domain.BillingState;
 import com.example.platform.billing.domain.CreditWallet;
+import com.example.platform.billing.domain.PricingRule;
 import com.example.platform.billing.usage.BillableUsage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,8 +61,12 @@ public class BillingCycleService {
                 continue;
             }
 
-            PricingRuleService.PricingPreviewResult preview =
-                    pricingRuleService.previewPricing(tenantId, meterKey, overage, Map.of());
+            Instant pricedAt = Instant.now();
+            PricingRule rule = pricingRuleService.requireEffectiveRuleForMeter(
+                    tenantId, meterKey, pricedAt);
+            PricingRuleService.PricingPreviewResult preview = pricingRuleService.previewPricing(
+                    new PricingQuoteCommand(tenantId, null, meterKey, overage,
+                            rule.ruleKey(), rule.version(), pricedAt, Map.of()));
             long chargeMinor = preview.estimatedAmountMinor();
             totalChargeMinor += chargeMinor;
             lines.add(new BillingCycleLine(meterKey, totalUsed, includedAmount, overage, chargeMinor, "OVERAGE"));
@@ -80,7 +85,7 @@ public class BillingCycleService {
         if (totalChargeMinor > 0) {
             CreditWallet wallet = creditWalletService.getWalletByTenant(tenantId, userId);
             if (wallet != null && wallet.balanceMinor() >= totalChargeMinor) {
-                creditWalletService.debit(wallet.walletId(), totalChargeMinor,
+                creditWalletService.debit(tenantId, wallet.walletId(), totalChargeMinor,
                         "USAGE_CYCLE", "cycle-" + Instant.now().toEpochMilli(),
                         "Billing cycle usage charge");
                 walletNote = "debited_from_wallet";

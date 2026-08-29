@@ -871,31 +871,65 @@ create index ix_subscription_plan_key on subscription_plan(plan_key);
 create index ix_subscription_plan_status on subscription_plan(status);
 
 create table billing_invoice (
-    id varchar(64) primary key,
+    id varchar(64) not null,
+    tenant_id varchar(64) not null,
+    principal_type varchar(32) not null,
+    principal_id varchar(128) not null,
     contract_id varchar(64),
     provider_code varchar(64),
     external_invoice_ref varchar(255),
-    invoice_status varchar(32) not null,
-    amount_due_minor bigint,
-    amount_paid_minor bigint,
-    currency_code varchar(8),
-    created_at timestamp not null
+    invoice_status varchar(32) not null check (invoice_status in ('OPEN', 'ISSUED', 'PAID', 'VOID')),
+    total_amount_minor bigint not null default 0 check (total_amount_minor >= 0),
+    amount_paid_minor bigint not null default 0 check (amount_paid_minor >= 0),
+    currency_code varchar(3) not null,
+    version bigint not null default 1 check (version > 0),
+    issued_at timestamptz,
+    paid_at timestamptz,
+    created_at timestamptz not null,
+    updated_at timestamptz not null,
+    primary key (tenant_id, id),
+    check (amount_paid_minor <= total_amount_minor)
 );
 
-create index ix_billing_invoice_contract_id on billing_invoice(contract_id);
+create index ix_billing_invoice_contract_id on billing_invoice(tenant_id, contract_id);
+
+create table billing_invoice_command (
+    id varchar(64) primary key,
+    tenant_id varchar(64) not null,
+    invoice_id varchar(64) not null,
+    idempotency_key varchar(255) not null,
+    command_type varchar(32) not null,
+    payload_fingerprint varchar(64) not null,
+    result_version bigint not null,
+    result_status varchar(32) not null,
+    result_total_minor bigint not null,
+    result_currency varchar(3) not null,
+    actor varchar(128) not null,
+    reason varchar(512) not null,
+    trace_id varchar(128) not null,
+    created_at timestamptz not null,
+    unique (tenant_id, idempotency_key)
+);
 
 create table billing_ledger_entry (
     id varchar(64) primary key,
-    tenant_id varchar(64),
+    tenant_id varchar(64) not null,
+    principal_type varchar(32) not null,
+    principal_id varchar(128) not null,
     workspace_id varchar(64),
-    user_id varchar(64),
     entry_type varchar(32) not null,
     amount_minor bigint not null,
-    currency_code varchar(8) not null,
-    reference_type varchar(64),
-    reference_id varchar(64),
-    description text,
-    created_at timestamp not null default now()
+    currency_code varchar(3) not null,
+    reference_type varchar(64) not null,
+    reference_id varchar(128) not null,
+    description text not null,
+    idempotency_key varchar(255) not null,
+    payload_fingerprint varchar(64) not null,
+    created_at timestamptz not null default now(),
+    unique (tenant_id, idempotency_key),
+    unique (tenant_id, reference_type, reference_id, entry_type),
+    check (entry_type in ('CHARGE', 'REFUND', 'ADJUSTMENT', 'CREDIT', 'DEBIT', 'DISCOUNT')),
+    check (entry_type = 'ADJUSTMENT' or amount_minor >= 0)
 );
 
 create index ix_billing_ledger_tenant on billing_ledger_entry(tenant_id);
@@ -904,70 +938,129 @@ create index ix_billing_ledger_ref on billing_ledger_entry(reference_type, refer
 create index ix_billing_ledger_created on billing_ledger_entry(created_at);
 
 create table credit_wallet (
-    id varchar(64) primary key,
-    tenant_id varchar(64),
+    id varchar(64) not null,
+    tenant_id varchar(64) not null,
+    principal_type varchar(32) not null,
+    principal_id varchar(128) not null,
     workspace_id varchar(64),
-    user_id varchar(64),
-    balance_minor bigint not null default 0,
-    currency_code varchar(8) not null,
+    balance_minor bigint not null default 0 check (balance_minor >= 0),
+    currency_code varchar(3) not null,
     status varchar(32) not null default 'ACTIVE',
-    created_at timestamp not null default now(),
-    updated_at timestamp not null default now()
+    version bigint not null default 1 check (version > 0),
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    primary key (tenant_id, id),
+    unique (tenant_id, principal_type, principal_id, workspace_id, currency_code)
 );
 
 create index ix_credit_wallet_tenant on credit_wallet(tenant_id);
 create index ix_credit_wallet_status on credit_wallet(status);
+create unique index uq_credit_wallet_principal on credit_wallet(
+    tenant_id, principal_type, principal_id, coalesce(workspace_id, ''), currency_code);
 
 create table credit_transaction (
     id varchar(64) primary key,
+    tenant_id varchar(64) not null,
     wallet_id varchar(64) not null,
+    reservation_id varchar(64),
     transaction_type varchar(32) not null,
     amount_minor bigint not null,
+    currency_code varchar(3) not null,
     balance_after_minor bigint not null,
-    reference_type varchar(64),
-    reference_id varchar(64),
-    description text,
-    created_at timestamp not null default now()
+    reference_type varchar(64) not null,
+    reference_id varchar(128) not null,
+    description text not null,
+    idempotency_key varchar(255) not null,
+    payload_fingerprint varchar(64) not null,
+    created_at timestamptz not null default now(),
+    unique (tenant_id, idempotency_key)
 );
 
 create index ix_credit_txn_wallet on credit_transaction(wallet_id);
 create index ix_credit_txn_type on credit_transaction(transaction_type);
 create index ix_credit_txn_created on credit_transaction(created_at);
 
-create table invoice_line_item (
-    id varchar(64) primary key,
-    invoice_id varchar(64) not null,
-    line_type varchar(32) not null,
-    description text,
-    quantity double precision,
-    unit_price_minor bigint,
-    amount_minor bigint not null,
-    currency_code varchar(8) not null,
-    period_start timestamp,
-    period_end timestamp,
-    created_at timestamp not null default now()
+create table credit_reservation (
+    id varchar(64) not null,
+    tenant_id varchar(64) not null,
+    wallet_id varchar(64) not null,
+    amount_minor bigint not null check (amount_minor > 0),
+    currency_code varchar(3) not null,
+    status varchar(32) not null check (status in ('ACTIVE', 'FINALIZED', 'RELEASED')),
+    version bigint not null check (version > 0),
+    reference_type varchar(64) not null,
+    reference_id varchar(128) not null,
+    created_at timestamptz not null,
+    updated_at timestamptz not null,
+    primary key (tenant_id, id),
+    foreign key (tenant_id, wallet_id) references credit_wallet(tenant_id, id)
 );
 
-create index ix_invoice_line_item_invoice on invoice_line_item(invoice_id);
+create index ix_credit_reservation_wallet on credit_reservation(tenant_id, wallet_id, status);
+
+create table credit_wallet_command (
+    id varchar(64) primary key,
+    tenant_id varchar(64) not null,
+    wallet_id varchar(64) not null,
+    idempotency_key varchar(255) not null,
+    command_type varchar(32) not null,
+    payload_fingerprint varchar(64) not null,
+    result_balance_minor bigint not null,
+    result_currency varchar(3) not null,
+    result_wallet_version bigint not null,
+    result_reservation_id varchar(64),
+    result_reservation_status varchar(32),
+    actor varchar(128) not null,
+    reason varchar(512) not null,
+    trace_id varchar(128) not null,
+    created_at timestamptz not null,
+    unique (tenant_id, idempotency_key)
+);
+
+create table invoice_line_item (
+    id varchar(64) not null,
+    tenant_id varchar(64) not null,
+    invoice_id varchar(64) not null,
+    rated_usage_id varchar(64),
+    line_type varchar(32) not null,
+    description text not null,
+    quantity_base_units bigint not null check (quantity_base_units >= 0),
+    unit_price_minor bigint not null,
+    amount_minor bigint not null,
+    currency_code varchar(3) not null,
+    period_start timestamptz,
+    period_end timestamptz,
+    created_at timestamptz not null default now(),
+    primary key (tenant_id, id),
+    foreign key (tenant_id, invoice_id) references billing_invoice(tenant_id, id),
+    unique (tenant_id, rated_usage_id)
+);
+
+create index ix_invoice_line_item_invoice on invoice_line_item(tenant_id, invoice_id);
 
 create table pricing_rule (
-    id varchar(64) primary key,
-    rule_key varchar(128) not null unique,
+    id varchar(64) not null,
+    tenant_id varchar(64) not null,
+    rule_key varchar(128) not null,
+    rule_version bigint not null check (rule_version > 0),
     name varchar(255) not null,
     description text,
     pricing_model varchar(32) not null,
-    meter_key varchar(128),
-    unit_price_minor bigint,
-    currency_code varchar(8),
-    tier_config text,
+    meter_key varchar(128) not null,
+    unit_price_minor bigint not null check (unit_price_minor >= 0),
+    currency_code varchar(3) not null,
+    tier_config text not null,
     status varchar(32) not null default 'ACTIVE',
-    effective_from timestamp,
-    effective_to timestamp,
-    created_at timestamp not null default now(),
-    updated_at timestamp not null default now()
+    effective_from timestamptz not null,
+    effective_to timestamptz,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    primary key (tenant_id, id),
+    unique (tenant_id, rule_key, rule_version),
+    check (effective_to is null or effective_to > effective_from)
 );
 
-create index ix_pricing_rule_key on pricing_rule(rule_key);
+create index ix_pricing_rule_key on pricing_rule(tenant_id, rule_key, rule_version);
 create index ix_pricing_rule_model on pricing_rule(pricing_model);
 create index ix_pricing_rule_status on pricing_rule(status);
 
@@ -1093,48 +1186,78 @@ create index ix_provider_cost_observation_operation on provider_cost_observation
 
 create table rated_usage_record (
     id varchar(64) primary key,
+    tenant_id varchar(64) not null,
     billable_usage_id varchar(64) not null references billable_usage(billable_usage_id),
     pricing_rule_id varchar(64) not null,
+    pricing_rule_version bigint not null check (pricing_rule_version > 0),
+    quantity_base_units bigint not null check (quantity_base_units >= 0),
     rated_amount_minor bigint not null,
-    currency_code varchar(8) not null,
-    rating_details text,
-    created_at timestamp not null default now()
+    currency_code varchar(3) not null,
+    rating_details text not null,
+    rated_at timestamptz not null,
+    trace_id varchar(128) not null,
+    idempotency_key varchar(255) not null,
+    payload_fingerprint varchar(64) not null,
+    unique (tenant_id, idempotency_key),
+    unique (tenant_id, billable_usage_id, pricing_rule_id, pricing_rule_version)
 );
 
-create index ix_rated_usage_record_usage on rated_usage_record(billable_usage_id);
-create index ix_rated_usage_record_rule on rated_usage_record(pricing_rule_id);
+create index ix_rated_usage_record_usage on rated_usage_record(tenant_id, billable_usage_id);
+create index ix_rated_usage_record_rule on rated_usage_record(tenant_id, pricing_rule_id, pricing_rule_version);
 
 create table custom_pricing_rule (
-    id varchar(64) primary key,
-    tenant_id varchar(64),
+    id varchar(64) not null,
+    tenant_id varchar(64) not null,
     workspace_id varchar(64),
     meter_key varchar(128) not null,
+    rule_version bigint not null check (rule_version > 0),
     override_price_minor bigint,
-    discount_percent double precision,
-    effective_from timestamp,
-    effective_to timestamp,
+    currency_code varchar(3) not null,
+    discount_numerator bigint,
+    discount_denominator bigint,
+    effective_from timestamptz not null,
+    effective_to timestamptz,
     status varchar(32) not null default 'ACTIVE',
-    created_at timestamp not null default now()
+    created_at timestamptz not null default now(),
+    primary key (tenant_id, id),
+    unique (tenant_id, workspace_id, meter_key, rule_version),
+    check (override_price_minor is null or override_price_minor >= 0),
+    check (discount_numerator is not null and discount_numerator >= 0),
+    check (discount_denominator is not null and discount_denominator > 0),
+    check (discount_numerator <= discount_denominator),
+    check (effective_to is null or effective_to > effective_from)
 );
 
 create index ix_custom_pricing_tenant on custom_pricing_rule(tenant_id);
 create index ix_custom_pricing_meter on custom_pricing_rule(meter_key);
+create unique index uq_custom_pricing_scope on custom_pricing_rule(
+    tenant_id, coalesce(workspace_id, ''), meter_key, rule_version);
 
 create table discount_policy (
-    id varchar(64) primary key,
-    policy_key varchar(128) not null unique,
+    id varchar(64) not null,
+    tenant_id varchar(64) not null,
+    policy_key varchar(128) not null,
+    rule_version bigint not null check (rule_version > 0),
+    meter_key varchar(128) not null,
+    currency_code varchar(3) not null,
     name varchar(255) not null,
     description text,
     discount_type varchar(32) not null,
-    discount_value double precision not null,
+    discount_numerator bigint not null check (discount_numerator >= 0),
+    discount_denominator bigint not null check (discount_denominator > 0),
+    flat_amount_minor bigint not null default 0 check (flat_amount_minor >= 0),
     conditions text,
     status varchar(32) not null default 'ACTIVE',
-    effective_from timestamp,
-    effective_to timestamp,
-    created_at timestamp not null default now()
+    effective_from timestamptz not null,
+    effective_to timestamptz,
+    created_at timestamptz not null default now(),
+    primary key (tenant_id, id),
+    unique (tenant_id, policy_key, rule_version),
+    check (discount_numerator <= discount_denominator),
+    check (effective_to is null or effective_to > effective_from)
 );
 
-create index ix_discount_policy_key on discount_policy(policy_key);
+create index ix_discount_policy_key on discount_policy(tenant_id, policy_key, rule_version);
 create index ix_discount_policy_status on discount_policy(status);
 
 create table commerce_cart (
@@ -2511,29 +2634,6 @@ create table artifact_graph (
 );
 
 create index ix_artifact_graph_job_id on artifact_graph(job_id);
-
--- ============================================================
--- BILLING RECORD TABLE
--- ============================================================
-
-create table render_billing_record (
-    id varchar(128) primary key,
-    job_id varchar(64) not null,
-    tenant_id varchar(64) not null,
-    estimated_cost double precision not null default 0,
-    actual_cost double precision not null default 0,
-    usage_seconds bigint not null default 0,
-    provider_id varchar(64),
-    output_size_bytes bigint not null default 0,
-    status varchar(32) not null default 'ESTIMATED',
-    created_at timestamp not null,
-    completed_at timestamp,
-    constraint fk_billing_job foreign key (job_id) references render_job(id)
-);
-
-create unique index ix_billing_job_id on render_billing_record(job_id);
-create index ix_billing_tenant_id on render_billing_record(tenant_id);
-create index ix_billing_status on render_billing_record(status);
 
 -- ============================================================
 -- UNIFIED EXECUTION GRAPH TABLES

@@ -139,7 +139,7 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
         });
         RenderJobSubmissionService submissionService = new RenderJobSubmissionService(
                 dsl, renderJobRepository, quotaService,
-                null /* billingEnforcementService */, null /* billingDecisionEngine */,
+                null /* billingDecisionEngine */,
                 historyRepository,
                 notificationEventPublisher, eventPublisher, timelineScriptParser,
                 effectTimelineInspector, renderProfileResolver,
@@ -154,7 +154,6 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
                 timelineScriptParser, mock(TimelineSpecResolver.class),
                 mock(IncrementalRenderOrchestrationService.class),
                 artifactStorageService, null /* artifactGraphRepository */,
-                null /* billingEnforcementService */,
                 timelineSnapshotService,
                 editorTimelineConverter, effectTimelineInspector, renderProfileResolver,
                 null, null, null, null,

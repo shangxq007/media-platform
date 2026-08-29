@@ -1,6 +1,7 @@
 package com.example.platform;
 
 import com.example.platform.shared.test.PostgresTestContainerSupport;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.sql.ResultSet;
@@ -43,7 +44,7 @@ class FlywaySchemaIntegrationTest extends PostgresTestContainerSupport {
             assertTrue(artifactNode.next(), "artifact_node table must exist");
 
             ResultSet renderBilling = conn.getMetaData().getColumns(null, null, "render_billing_record", "id");
-            assertTrue(renderBilling.next(), "render_billing_record table must exist");
+            assertFalse(renderBilling.next(), "render_billing_record shadow table must be absent");
         }
     }
 }

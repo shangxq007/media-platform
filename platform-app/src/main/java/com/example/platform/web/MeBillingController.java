@@ -127,7 +127,8 @@ public class MeBillingController {
         CreditWallet wallet = creditWalletService.getWalletByTenant(subject.tenantId(), subject.userId());
         List<Map<String, Object>> txns = List.of();
         if (wallet != null) {
-            List<CreditTransaction> all = creditWalletService.getTransactions(wallet.walletId());
+            List<CreditTransaction> all = creditWalletService.getTransactions(
+                    subject.tenantId(), wallet.walletId());
             int start = Math.min(page * size, all.size());
             int end = Math.min(start + size, all.size());
             txns = all.subList(start, end).stream().map(this::transactionToMap).toList();
@@ -214,10 +215,12 @@ public class MeBillingController {
         if (wallet == null) {
             wallet = creditWalletService.createWallet(subject.tenantId(), null, subject.userId(), "USD");
         }
+        String topupReference = "me-topup-" + Instant.now().toEpochMilli();
         CreditWallet updated = creditWalletService.credit(
-                wallet.walletId(), amountMinor, "TOP_UP", "me-topup", "Manual top-up");
+                subject.tenantId(), wallet.walletId(), amountMinor,
+                "TOP_UP", topupReference, "Manual top-up");
         billingLedgerService.writeEntry(subject.tenantId(), null, subject.userId(),
-                "CREDIT", amountMinor, updated.currencyCode(), "TOP_UP", "me-topup", "Credit top-up");
+                "CREDIT", amountMinor, updated.currencyCode(), "TOP_UP", topupReference, "Credit top-up");
         return ResponseEntity.ok(Map.of(
                 "transactionId", "topup-" + Instant.now().toEpochMilli(),
                 "walletId", updated.walletId(),

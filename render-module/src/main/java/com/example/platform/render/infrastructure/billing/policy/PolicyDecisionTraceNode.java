@@ -16,9 +16,6 @@ public record PolicyDecisionTraceNode(
         String denyReason,
         List<String> appliedPolicyIds,
         List<String> appliedActions,
-        double discountPercent,
-        double multiplier,
-        double finalPrice,
         Instant timestamp,
         Map<String, Object> metadata
 ) {
@@ -29,8 +26,7 @@ public record PolicyDecisionTraceNode(
             String traceId,
             String tenantId,
             String actionType,
-            PolicyEngine.PolicyEvaluationResult evaluation,
-            PricingEngine.PricingResult pricingResult) {
+            PolicyEngine.PolicyEvaluationResult evaluation) {
         return new PolicyDecisionTraceNode(
                 traceId,
                 tenantId,
@@ -41,9 +37,6 @@ public record PolicyDecisionTraceNode(
                 evaluation.appliedActions().stream()
                         .map(a -> a.type().name())
                         .toList(),
-                evaluation.totalDiscountPercent(),
-                evaluation.totalMultiplier(),
-                pricingResult != null ? pricingResult.finalPrice() : 0,
                 Instant.now(),
                 Map.of(
                         "policiesEvaluated", evaluation.appliedPolicyIds().size(),
@@ -60,7 +53,6 @@ public record PolicyDecisionTraceNode(
             return String.format("[%s] DENIED: %s (policies: %s)",
                     traceId, denyReason, appliedPolicyIds);
         }
-        return String.format("[%s] ALLOWED (policies: %s, discount: %.1f%%, final: $%.4f)",
-                traceId, appliedPolicyIds, discountPercent, finalPrice);
+        return String.format("[%s] ALLOWED (policies: %s)", traceId, appliedPolicyIds);
     }
 }

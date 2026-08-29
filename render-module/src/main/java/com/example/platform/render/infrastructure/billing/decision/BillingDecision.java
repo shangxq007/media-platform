@@ -73,25 +73,6 @@ public record BillingDecision(
     }
 
     /**
-     * Create a REQUIRE_CREDITS decision.
-     */
-    public static BillingDecision requireCredits(CostEstimate costEstimate, double currentBalance,
-                                                  String traceId) {
-        return new BillingDecision(
-                DecisionType.REQUIRE_CREDITS,
-                ReasonCode.INSUFFICIENT_CREDITS,
-                String.format("Insufficient credits: need %.2f, have %.2f", 
-                        costEstimate.estimatedCost(), currentBalance),
-                costEstimate,
-                null,
-                null,
-                traceId,
-                Instant.now(),
-                Map.of("currentBalance", currentBalance)
-        );
-    }
-
-    /**
      * Create a REQUIRE_UPGRADE decision.
      */
     public static BillingDecision requireUpgrade(ReasonCode reasonCode, String reasonMessage,

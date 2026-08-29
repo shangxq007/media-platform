@@ -4,10 +4,8 @@ import com.example.platform.billing.app.CostEstimationService;
 import com.example.platform.billing.app.SubscriptionBillingService;
 import com.example.platform.billing.domain.SubscriptionContract;
 import com.example.platform.render.app.RenderQuotaService;
-import com.example.platform.render.infrastructure.billing.policy.CreditSystem;
 import com.example.platform.render.infrastructure.billing.policy.PolicyDecisionTraceNode;
 import com.example.platform.render.infrastructure.billing.policy.PolicyEngine;
-import com.example.platform.render.infrastructure.billing.policy.PricingEngine;
 import com.example.platform.render.infrastructure.providerruntime.trace.ProviderTraceEmitter;
 import com.example.platform.shared.commercial.PrincipalRef;
 import com.example.platform.shared.commercial.PrincipalType;
@@ -47,8 +45,6 @@ public class BillingDecisionEngine {
     private final RenderQuotaService renderQuotaService;
     private final CostEstimationService costEstimationService;
     private final PolicyEngine policyEngine;
-    private final PricingEngine pricingEngine;
-    private final CreditSystem creditSystem;
     private final ProviderTraceEmitter traceEmitter;
 
     @Value("${billing.enforcement.enabled:false}")
@@ -59,15 +55,11 @@ public class BillingDecisionEngine {
             RenderQuotaService renderQuotaService,
             CostEstimationService costEstimationService,
             PolicyEngine policyEngine,
-            PricingEngine pricingEngine,
-            CreditSystem creditSystem,
             ProviderTraceEmitter traceEmitter) {
         this.subscriptionService = subscriptionService;
         this.renderQuotaService = renderQuotaService;
         this.costEstimationService = costEstimationService;
         this.policyEngine = policyEngine;
-        this.pricingEngine = pricingEngine;
-        this.creditSystem = creditSystem;
         this.traceEmitter = traceEmitter;
     }
 
@@ -114,17 +106,9 @@ public class BillingDecisionEngine {
             return finalizeDecision(policyDecision, request, startTime);
         }
 
-        // Step 4: Calculate pricing (NEW)
-        PricingEngine.PricingResult pricingResult = calculatePricing(request, traceId, policyResult);
-
-        // Step 5: Evaluate credits (NEW)
-        BillingDecision creditDecision = evaluateCreditsNew(request, pricingResult, traceId);
-        if (creditDecision != null) {
-            return finalizeDecision(creditDecision, request, startTime);
-        }
-
-        // Step 6: Build final cost estimate
-        BillingDecision.CostEstimate costEstimate = buildCostEstimate(pricingResult, request, traceId);
+        // Technical/provider execution cost remains a projection only. Commercial pricing and
+        // credit authority are owned by Billing and are not calculated or mutated in Render.
+        BillingDecision.CostEstimate costEstimate = estimateCost(request, traceId);
 
         // All checks passed - allow
         BillingDecision.QuotaImpact quotaImpact = calculateQuotaImpact(request, traceId);
@@ -148,7 +132,6 @@ public class BillingDecisionEngine {
                 request.currentUsage(),
                 request.subscriptionState(),
                 request.quotaState(),
-                request.creditBalance(),
                 true, // force dry run
                 request.traceId()
         );
@@ -257,26 +240,6 @@ public class BillingDecisionEngine {
         );
     }
 
-    private BillingDecision evaluateCredits(BillingDecisionRequest request, 
-                                             BillingDecision.CostEstimate costEstimate,
-                                             String traceId) {
-        // Credit evaluation would go here
-        // For now, skip if no credit balance provided
-        if (request.creditBalance() <= 0) {
-            return null;
-        }
-
-        if (costEstimate != null && request.creditBalance() < costEstimate.estimatedCost()) {
-            return BillingDecision.requireCredits(
-                    costEstimate,
-                    request.creditBalance(),
-                    traceId
-            );
-        }
-
-        return null; // Credits OK
-    }
-
     private BillingDecision evaluatePolicies(BillingDecisionRequest request,
                                                BillingDecision.CostEstimate costEstimate,
                                                String traceId) {
@@ -316,84 +279,13 @@ public class BillingDecisionEngine {
         PolicyEngine.PolicyEvaluationResult result = policyEngine.evaluate(context);
 
         // Emit policy trace
-        emitPolicyTrace(traceId, request, result, null);
+        emitPolicyTrace(traceId, request, result);
 
         return result;
     }
 
-    private PricingEngine.PricingResult calculatePricing(BillingDecisionRequest request,
-                                                           String traceId,
-                                                           PolicyEngine.PolicyEvaluationResult policyResult) {
-        if (pricingEngine == null) {
-            return null;
-        }
-
-        long durationSeconds = request.resourceProfile() != null 
-                ? request.resourceProfile().estimatedDurationSeconds() : 60;
-        boolean useGpu = request.resourceProfile() != null && request.resourceProfile().useGpu();
-
-        if (request.providerCandidate() == null || request.providerCandidate().isBlank()) {
-            throw new IllegalStateException("TYPED_PROVIDER_PLUGIN_EXECUTION_REQUIRED");
-        }
-        PricingEngine.PricingRequest pricingRequest = new PricingEngine.PricingRequest(
-                request.providerCandidate(),
-                request.preset() != null ? request.preset() : "default_1080p",
-                request.subscriptionState() != null ? request.subscriptionState().tier() : "FREE",
-                durationSeconds,
-                useGpu,
-                0, // effect count
-                request.resourceProfile() != null ? request.resourceProfile().outputSizeBytes() : 0,
-                null // promo code
-        );
-
-        return pricingEngine.calculate(pricingRequest);
-    }
-
-    private BillingDecision evaluateCreditsNew(BillingDecisionRequest request,
-                                                 PricingEngine.PricingResult pricingResult,
-                                                 String traceId) {
-        if (creditSystem == null || pricingResult == null) {
-            return null;
-        }
-
-        double availableCredits = creditSystem.getAvailableBalance(request.tenantId());
-        if (availableCredits < pricingResult.finalPrice()) {
-            BillingDecision.CostEstimate costEstimate = buildCostEstimate(pricingResult, request, traceId);
-            return BillingDecision.requireCredits(costEstimate, availableCredits, traceId);
-        }
-
-        return null;
-    }
-
-    private BillingDecision.CostEstimate buildCostEstimate(PricingEngine.PricingResult pricingResult,
-                                                             BillingDecisionRequest request,
-                                                             String traceId) {
-        if (pricingResult == null) {
-            return estimateCost(request, traceId);
-        }
-
-        Map<String, Double> breakdown = Map.of(
-                "compute", pricingResult.breakdown().computeCost(),
-                "storage", pricingResult.breakdown().storageCost(),
-                "api", pricingResult.breakdown().apiCost(),
-                "tierDiscount", pricingResult.breakdown().tierDiscount(),
-                "promoDiscount", pricingResult.breakdown().promoDiscount()
-        );
-
-        return new BillingDecision.CostEstimate(
-                pricingResult.finalPrice(),
-                pricingResult.currency(),
-                pricingResult.providerKey(),
-                pricingResult.preset(),
-                request.resourceProfile() != null ? request.resourceProfile().estimatedDurationSeconds() : 0,
-                request.resourceProfile() != null && request.resourceProfile().useGpu(),
-                breakdown
-        );
-    }
-
     private void emitPolicyTrace(String traceId, BillingDecisionRequest request,
-                                   PolicyEngine.PolicyEvaluationResult policyResult,
-                                   PricingEngine.PricingResult pricingResult) {
+                                   PolicyEngine.PolicyEvaluationResult policyResult) {
         if (traceEmitter == null || policyResult == null) {
             return;
         }
@@ -401,7 +293,7 @@ public class BillingDecisionEngine {
         try {
             PolicyDecisionTraceNode traceNode = PolicyDecisionTraceNode.fromEvaluation(
                     traceId, request.tenantId(), request.actionType().name(),
-                    policyResult, pricingResult);
+                    policyResult);
             traceEmitter.emitExecution(
                     traceId,
                     request.tenantId(),
