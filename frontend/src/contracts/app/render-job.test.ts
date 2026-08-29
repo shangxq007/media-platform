@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import {
   ArtifactAccessDescriptor,
   RENDER_JOB_STATUSES,
-  RenderJobArtifactSummary,
   RenderJobSummary,
   RenderWorkspaceScope,
 } from './render-job'
@@ -26,22 +25,6 @@ describe('render application transport projections', () => {
       profile: 'default',
       status: 'PROCESSING',
     }).success).toBe(false)
-  })
-
-  it('strips storage coordinates from artifact list responses', () => {
-    const artifact = RenderJobArtifactSummary.parse({
-      artifactId: 'artifact-1',
-      renderJobId: 'job-1',
-      projectId: 'project-1',
-      storageUri: 'private-bucket/private-key.mp4',
-      format: 'mp4',
-      resolution: '1920x1080',
-      duration: 4,
-      createdAt: '2026-08-29T00:00:00Z',
-    })
-
-    expect(artifact).not.toHaveProperty('storageUri')
-    expect(artifact.artifactId).toBe('artifact-1')
   })
 
   it('accepts only redacted on-demand artifact access descriptors', () => {

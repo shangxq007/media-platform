@@ -23,19 +23,6 @@ export const RenderJobSummary = z.object({
   status: RenderJobStatusSchema,
 })
 
-// ArtifactInfoResponse includes storageUri. Deliberately omitting it here makes
-// Zod strip the storage coordinate at the transport boundary before product UI
-// can consume the response.
-export const RenderJobArtifactSummary = z.object({
-  artifactId: IdString,
-  renderJobId: IdString,
-  projectId: IdString,
-  format: z.string().nullable(),
-  resolution: z.string().nullable(),
-  duration: z.number(),
-  createdAt: z.string(),
-})
-
 export const ArtifactAccessType = z.enum([
   'SIGNED_URL',
   'LOCAL_STREAM',
@@ -71,6 +58,5 @@ export const RenderWorkspaceScope = z.object({
 
 export type RenderJobStatus = z.infer<typeof RenderJobStatusSchema>
 export type RenderJobSummary = z.infer<typeof RenderJobSummary>
-export type RenderJobArtifactSummary = z.infer<typeof RenderJobArtifactSummary>
 export type ArtifactAccessDescriptor = z.infer<typeof ArtifactAccessDescriptor>
 export type RenderWorkspaceScope = z.infer<typeof RenderWorkspaceScope>

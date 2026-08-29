@@ -27,10 +27,15 @@ const mutations = [
   ['FRONTEND_PROVIDER_SELECTION_AUTHORITY_COUNT', 'features/provider.ts', 'function selectProvider() { return candidates[0] }'],
   ['FRONTEND_DIRECT_CANONICAL_MUTATION_BYPASS_COUNT', 'pages/Edit.tsx', "api.post('/timeline/apply', payload)"],
   ['FRONTEND_PROVIDER_INTERNAL_GRAPH_AUTHORITY_COUNT', 'features/graph.ts', 'interface ProviderInternalGraph { nodes: unknown[] }'],
+  ['FRONTEND_SYNTHETIC_WORKSPACE_SCOPE_COUNT', 'routes/app/renders/List.tsx', "const scope = { tenantId: 'default' }", 'tenant synthetic default'],
+  ['FRONTEND_SYNTHETIC_WORKSPACE_SCOPE_COUNT', 'routes/app/renders/Detail.tsx', 'const scope = { projectId: "default" }', 'project synthetic default'],
+  ['FRONTEND_ACTIVE_UNSCOPED_RENDER_API_COUNT', 'api/render-jobs.ts', "api.get(`/render/jobs/${jobId}/artifacts`)", 'nested unscoped artifact endpoint'],
+  ['FRONTEND_ACTIVE_UNSCOPED_RENDER_API_COUNT', 'api/render-jobs.ts', "axios.patch(`/render/jobs/${jobId}/artifacts/${artifactId}`, payload)", 'nested unscoped artifact mutation'],
+  ['FRONTEND_STALE_RENDER_STATUS_SHADOW_COUNT', 'routes/app/renders/List.tsx', 'const renderStatus = "CANCELED"', 'stale render status shadow'],
 ]
 
-for (const [ruleName, relativePath, source] of mutations) {
-  test(`${ruleName} rejects its behavioral mutation and leaves zero residue`, () => {
+for (const [ruleName, relativePath, source, mutationName = ruleName] of mutations) {
+  test(`${ruleName} rejects ${mutationName} and leaves zero residue`, () => {
     const root = mkdtempSync(join(tmpdir(), 'h4-frontend-guard-'))
     try {
       const file = join(root, relativePath)
@@ -45,6 +50,30 @@ for (const [ruleName, relativePath, source] of mutations) {
     console.log(`${ruleName}_NEGATIVE_CONTROL=PASS residue=0`)
   })
 }
+
+test('active product rules exclude explicit admin, developer, and operator surfaces', () => {
+  const root = mkdtempSync(join(tmpdir(), 'h4-frontend-guard-non-product-'))
+  try {
+    const sources = [
+      ['pages/AdminRenderJobsPage.tsx', "const scope = { tenantId: 'default' }"],
+      ['pages/DevConsolePage.tsx', "api.get('/render/jobs/job-1/artifacts')"],
+      ['pages/ObservabilityDashboard.tsx', 'const renderStatus = "CANCELED"'],
+    ]
+    for (const [relativePath, source] of sources) {
+      const file = join(root, relativePath)
+      mkdirSync(join(file, '..'), { recursive: true })
+      writeFileSync(file, source)
+    }
+    const result = scanFrontendArchitecture(root)
+    assert.equal(result.counts.FRONTEND_SYNTHETIC_WORKSPACE_SCOPE_COUNT, 0)
+    assert.equal(result.counts.FRONTEND_ACTIVE_UNSCOPED_RENDER_API_COUNT, 0)
+    assert.equal(result.counts.FRONTEND_STALE_RENDER_STATUS_SHADOW_COUNT, 0)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+  assert.equal(existsSync(root), false)
+  console.log('FRONTEND_EXPLICIT_NON_PRODUCT_SURFACE_EXCLUSION_CONTROL=PASS residue=0')
+})
 
 test('guard fails closed on an empty scan universe', () => {
   const root = mkdtempSync(join(tmpdir(), 'h4-frontend-guard-empty-'))

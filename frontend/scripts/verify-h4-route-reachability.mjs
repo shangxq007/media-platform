@@ -14,13 +14,19 @@ const requiredRoutes = [
   { path: '/capabilities', component: 'CapabilitiesPage' },
   { path: '/smoke-editor', component: 'SmokeEditorPage' },
   { path: '/observability', component: 'ObservabilityDashboard' },
+  { path: '/app/renders', component: 'RenderResultsListPage' },
+  { path: '/app/renders/$productId', component: 'RenderResultDetailPage' },
 ]
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
 
 try {
   for (const route of requiredRoutes) {
     const importPattern = new RegExp(`import\\s+\\{\\s*${route.component}\\s*\\}`)
     const routePattern = new RegExp(
-      `createRoute\\(\\{[\\s\\S]*?path:\\s*['"]${route.path.replace('/', '\\/')}['"][\\s\\S]{0,180}?component:\\s*${route.component}[,\\s]`
+      `createRoute\\(\\{[\\s\\S]*?path:\\s*['"]${escapeRegExp(route.path)}['"][\\s\\S]{0,180}?component:\\s*${route.component}[,\\s]`
     )
     if (!importPattern.test(routeTree)) {
       throw new Error(`missing route component import: ${route.component}`)

@@ -10,6 +10,8 @@ export const defaultSourceRoot = resolve(repositoryRoot, 'frontend/src')
 
 const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx'])
 const EXCLUDED_SEGMENTS = new Set(['dist', 'build', 'node_modules', 'vendor', 'fixtures'])
+const ACTIVE_PRODUCT_PATH_PATTERN = /^(?:api\/render-jobs\.ts|components\/render-jobs\/|editor\/|pages\/(?:RenderJobDashboard|SmokeEditorPage)\.tsx|routes\/app\/renders\/|shared\/CapabilitiesPage\.tsx)/
+const EXPLICIT_NON_PRODUCT_SURFACE_PATTERN = /^(?:api\/(?:admin|dev|operator)\/|components\/(?:admin|dev|operator)\/|pages\/(?:Admin|Dev|Observability|Operator)|routes\/(?:admin|dev|operator)\/|routes\/app\/(?:admin|dev|operator)\/)/i
 
 export const AUTHORITY_RULES = [
   {
@@ -72,6 +74,31 @@ export const AUTHORITY_RULES = [
       /\b(?:UniversalNode|UniversalEdge|UniversalGraph)\b/,
     ],
   },
+  {
+    name: 'FRONTEND_SYNTHETIC_WORKSPACE_SCOPE_COUNT',
+    governedPathPattern: ACTIVE_PRODUCT_PATH_PATTERN,
+    excludedPathPattern: EXPLICIT_NON_PRODUCT_SURFACE_PATTERN,
+    patterns: [
+      /\b(?:tenantId|projectId)\s*:\s*['"]default['"]/,
+    ],
+  },
+  {
+    name: 'FRONTEND_ACTIVE_UNSCOPED_RENDER_API_COUNT',
+    governedPathPattern: ACTIVE_PRODUCT_PATH_PATTERN,
+    excludedPathPattern: EXPLICIT_NON_PRODUCT_SURFACE_PATTERN,
+    patterns: [
+      /\b(?:api|axios)\.(?:get|post|put|patch|delete)\s*\(\s*['"`]\/render\/jobs(?:[/?#][^'"`\n]*)?['"`]/i,
+    ],
+  },
+  {
+    name: 'FRONTEND_STALE_RENDER_STATUS_SHADOW_COUNT',
+    governedPathPattern: ACTIVE_PRODUCT_PATH_PATTERN,
+    excludedPathPattern: EXPLICIT_NON_PRODUCT_SURFACE_PATTERN,
+    patterns: [
+      /\brenderStatus\b/,
+      /\bCANCELED\b/,
+    ],
+  },
 ]
 
 function extension(path) {
@@ -116,6 +143,7 @@ export function scanFrontendArchitecture(sourceRoot = defaultSourceRoot) {
     const text = readFileSync(file, 'utf8')
     for (const rule of AUTHORITY_RULES) {
       if (rule.governedPathPattern && !rule.governedPathPattern.test(path)) continue
+      if (rule.excludedPathPattern?.test(path)) continue
       if (rule.pathPattern?.test(path)) {
         violations[rule.name].push({ path, line: 1, evidence: 'forbidden governed path' })
       }

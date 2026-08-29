@@ -3,12 +3,11 @@ import api from './index'
 import { safeApiCall, type SafeApiResult } from './safeApiCall'
 import {
   ArtifactAccessDescriptor,
-  RenderJobArtifactSummary,
   RenderJobSummary,
   RenderWorkspaceScope,
 } from '../contracts/app/render-job'
 
-export type { RenderJobSummary, RenderJobArtifactSummary, ArtifactAccessDescriptor, RenderWorkspaceScope }
+export type { RenderJobSummary, ArtifactAccessDescriptor, RenderWorkspaceScope }
 
 // --- API ---
 
@@ -43,15 +42,6 @@ export const RenderJobsAPI = {
       RenderJobSummary,
       () => api.get(`/tenants/${tenantId}/projects/${projectId}/render-jobs/${jobId}`).then(r => r.data),
       `RenderJobs.get(${tenantId}, ${projectId}, ${jobId})`
-    )
-    return requireValidated(result)
-  },
-
-  async getArtifacts(jobId: string): Promise<RenderJobArtifactSummary[]> {
-    const result = await safeApiCall(
-      RenderJobArtifactSummary.array(),
-      () => api.get(`/render/jobs/${jobId}/artifacts`).then(r => r.data),
-      `RenderJobs.getArtifacts(${jobId})`
     )
     return requireValidated(result)
   },
@@ -103,13 +93,5 @@ export function useRenderJob(tenantId: string | null, projectId: string | null, 
         ? false
         : 5000
     },
-  })
-}
-
-export function useRenderJobArtifacts(jobId: string | null) {
-  return useQuery({
-    queryKey: ['render-job-artifacts', jobId],
-    queryFn: () => RenderJobsAPI.getArtifacts(jobId!),
-    enabled: !!jobId,
   })
 }

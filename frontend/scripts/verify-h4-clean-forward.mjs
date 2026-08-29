@@ -67,9 +67,10 @@ try {
     'frontend/src/pages/RenderJobDashboard.tsx',
     'frontend/src/pages/SmokeEditorPage.tsx',
     'frontend/src/shared/CapabilitiesPage.tsx',
-    'frontend/src/components/render-jobs/ArtifactView.tsx',
     'frontend/src/components/render-jobs/JobDetail.tsx',
     'frontend/src/components/render-jobs/JobList.tsx',
+    'frontend/src/routes/app/renders/RenderResultsListPage.tsx',
+    'frontend/src/routes/app/renders/RenderResultDetailPage.tsx',
   ].map(path => resolve(repositoryRoot, path))
   const activeRawStorageAssumptions = matches(
     activeProductFiles,
@@ -82,9 +83,17 @@ try {
     ...activeProductFiles,
   ]
   const retiredRenderStatusAliases = matches(renderAlignmentFiles, /\bPROCESSING\b/g)
-  const unscopedRenderQueries = matches(
-    [resolve(repositoryRoot, 'frontend/src/api/render-jobs.ts')],
-    /api\.get\((?:['"]\/render\/jobs['"]|`\/render\/jobs\/\$\{jobId\}`)\)/g
+  const unscopedRenderApiCalls = matches(
+    [resolve(repositoryRoot, 'frontend/src/api/render-jobs.ts'), ...activeProductFiles],
+    /\b(?:api|axios)\.(?:get|post|put|patch|delete)\s*\(\s*['"`]\/render\/jobs(?:[/?#][^'"`\n]*)?['"`]/gi
+  )
+  const syntheticWorkspaceScopes = matches(
+    activeProductFiles,
+    /\b(?:tenantId|projectId)\s*:\s*['"]default['"]/g
+  )
+  const staleRenderStatusShadows = matches(
+    activeProductFiles,
+    /\b(?:renderStatus|CANCELED)\b/g
   )
 
   const defaultApiPath = resolve(repositoryRoot, 'frontend/src/api/index.ts')
@@ -94,7 +103,9 @@ try {
   console.log(`H4_RETIRED_SYMBOL_USAGE_COUNT=${retiredSymbolUsage.length}`)
   console.log(`H4_ACTIVE_RAW_STORAGE_ASSUMPTION_COUNT=${activeRawStorageAssumptions.length}`)
   console.log(`H4_RETIRED_RENDER_STATUS_ALIAS_COUNT=${retiredRenderStatusAliases.length}`)
-  console.log(`H4_UNSCOPED_RENDER_LIST_OR_DETAIL_QUERY_COUNT=${unscopedRenderQueries.length}`)
+  console.log(`FRONTEND_ACTIVE_UNSCOPED_RENDER_API_COUNT=${unscopedRenderApiCalls.length}`)
+  console.log(`FRONTEND_SYNTHETIC_WORKSPACE_SCOPE_COUNT=${syntheticWorkspaceScopes.length}`)
+  console.log(`FRONTEND_STALE_RENDER_STATUS_SHADOW_COUNT=${staleRenderStatusShadows.length}`)
   console.log('H4_DEFAULT_API_COMPATIBILITY_ENTRYPOINT=PRESERVED')
 
   const failures = [
@@ -102,7 +113,9 @@ try {
     ...retiredSymbolUsage,
     ...activeRawStorageAssumptions,
     ...retiredRenderStatusAliases,
-    ...unscopedRenderQueries,
+    ...unscopedRenderApiCalls,
+    ...syntheticWorkspaceScopes,
+    ...staleRenderStatusShadows,
   ]
   if (failures.length > 0) {
     for (const failure of failures) console.error(`H4_CLEAN_FORWARD_EVIDENCE=${failure}`)

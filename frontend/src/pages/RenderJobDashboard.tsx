@@ -1,14 +1,7 @@
 import { useEffect, useState } from 'react'
-import {
-  RenderJobsAPI,
-  useRenderJobs,
-  useRenderJob,
-  useRenderJobArtifacts,
-  useRenderWorkspaceScope,
-} from '../api/render-jobs'
+import { useRenderJobs, useRenderJob, useRenderWorkspaceScope } from '../api/render-jobs'
 import { JobList } from '../components/render-jobs/JobList'
 import { JobDetail } from '../components/render-jobs/JobDetail'
-import { ArtifactView } from '../components/render-jobs/ArtifactView'
 
 export function RenderJobDashboard() {
   const { data: scope, isLoading: scopeLoading, error: scopeError } = useRenderWorkspaceScope()
@@ -24,7 +17,6 @@ export function RenderJobDashboard() {
 
   const { data: jobs, isLoading: jobsLoading, error: jobsError } = useRenderJobs(tenantId, selectedProjectId)
   const { data: selectedJob, error: selectedJobError } = useRenderJob(tenantId, selectedProjectId, selectedJobId)
-  const { data: artifacts, error: artifactsError } = useRenderJobArtifacts(selectedJobId)
 
   const selectProject = (projectId: string) => {
     setSelectedProjectId(projectId || null)
@@ -113,27 +105,13 @@ export function RenderJobDashboard() {
 
           {/* Right: Artifacts */}
           <div>
-            {artifactsError ? (
-              <div className="rounded-lg border border-red-800 bg-red-950 p-4 text-sm text-red-300">
-                Failed to load artifacts: {artifactsError.message}
+            {selectedJobId ? (
+              <div className="rounded-lg border border-amber-800 bg-amber-950 p-4">
+                <h3 className="text-sm font-semibold text-amber-100 mb-2">Artifacts unavailable</h3>
+                <p className="text-sm text-amber-200">
+                  A tenant/project-scoped redacted artifact summary is required before artifacts can be listed.
+                </p>
               </div>
-            ) : selectedJobId ? (
-              <ArtifactView
-                artifacts={artifacts ?? []}
-                jobId={selectedJobId}
-                onAccessRequest={async artifactId => {
-                  if (!tenantId || !selectedProjectId) return null
-                  const access = await RenderJobsAPI.getArtifactAccess(
-                    tenantId,
-                    selectedProjectId,
-                    selectedJobId,
-                    artifactId
-                  )
-                  return access?.url
-                    ? { accessUrl: access.url, expiresAt: access.expiresAt ?? undefined }
-                    : null
-                }}
-              />
             ) : (
               <div className="rounded-lg border border-gray-800 bg-gray-900 p-8 text-center">
                 <div className="text-gray-500 text-sm">Select a job to view artifacts</div>
