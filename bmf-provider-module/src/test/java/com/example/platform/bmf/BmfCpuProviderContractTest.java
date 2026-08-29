@@ -6,6 +6,15 @@ import com.example.platform.execution.compatibility.ProviderStaticCompatibility;
 import com.example.platform.execution.domain.provider.ProviderCapabilityProfileVersion;
 import com.example.platform.execution.domain.provider.ProviderCapabilityProfileVersionOrDigest;
 import com.example.platform.execution.domain.provider.ProviderExecutionContractVersion;
+import com.example.platform.workerfabric.domain.CpuArchitecture;
+import com.example.platform.workerfabric.domain.RuntimeDependencyAbi;
+import com.example.platform.workerfabric.domain.RuntimeDependencyCoordinate;
+import com.example.platform.workerfabric.domain.RuntimeDependencyFingerprint;
+import com.example.platform.workerfabric.domain.RuntimeDependencyRequirement;
+import com.example.platform.workerfabric.domain.RuntimeDependencyVersion;
+import com.example.platform.workerfabric.domain.RuntimeDependencyVersionConstraint;
+import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 class BmfCpuProviderContractTest {
@@ -76,5 +85,61 @@ class BmfCpuProviderContractTest {
         assertThat(BmfCpuProvider.STATIC_COMPATIBILITY.supportedBoundaryContracts()).isEmpty();
         assertThat(BmfCpuProvider.STATIC_COMPATIBILITY.loweringSupport())
                 .isEqualTo(ProviderStaticCompatibility.LoweringSupport.UNSUPPORTED);
+    }
+
+    @Test
+    void declares_the_exact_b0_cpu_runtime_closure_with_h1_types() {
+        assertThat(BmfCpuProvider.RUNTIME_DEPENDENCY_REQUIREMENTS)
+                .extracting(requirement -> requirement.coordinate().value())
+                .containsExactly("bmf", "ffmpeg", "numpy", "python");
+        assertThat(BmfCpuProvider.RUNTIME_DEPENDENCY_REQUIREMENTS)
+                .allSatisfy(requirement -> assertThat(requirement.providerImplementationId())
+                        .isEqualTo(BmfCpuProvider.IMPLEMENTATION_ID));
+
+        assertExactRequirement("bmf", "0.2.0", Optional.empty(),
+                List.of("ffmpeg.enabled", "python.enabled"),
+                List.of("ambient-module-authority.disabled", "cuda.disabled"));
+        assertExactRequirement("ffmpeg", "4.4.8",
+                Optional.of(RuntimeDependencyAbi.of("libavcodec.58")), List.of(), List.of());
+        assertExactRequirement("python", "3.12.8", Optional.empty(), List.of(), List.of());
+        assertExactRequirement("numpy", "1.26.4", Optional.empty(), List.of(), List.of());
+
+        assertThat(BmfCpuProvider.EXPECTED_RUNTIME_DEPENDENCY_FINGERPRINT)
+                .isInstanceOf(RuntimeDependencyFingerprint.class)
+                .isEqualTo(RuntimeDependencyFingerprint.parseSha256(
+                        ACCEPTED_B0_RUNTIME_FINGERPRINT));
+        assertThat(BmfCpuProvider.EXPECTED_RUNTIME_DEPENDENCY_FINGERPRINT.canonicalSha256())
+                .isNotEqualTo(BmfCpuProvider.IMPLEMENTATION_ID.value());
+
+        assertThat(BmfCpuProvider.HARDWARE_REQUIREMENT.providerImplementationId())
+                .isEqualTo(BmfCpuProvider.IMPLEMENTATION_ID);
+        assertThat(BmfCpuProvider.HARDWARE_REQUIREMENT.cpuArchitecture())
+                .isEqualTo(CpuArchitecture.X86_64);
+        assertThat(BmfCpuProvider.HARDWARE_REQUIREMENT.deviceRequirement()).isEmpty();
+        assertThat(BmfCpuProvider.HARDWARE_REQUIREMENT.requiredProviderBuildFeatures())
+                .containsExactly("bmf.cpu.enabled", "bmf.ffmpeg.enabled", "bmf.python.enabled");
+        assertThat(BmfCpuProvider.HARDWARE_REQUIREMENT.requiredCodecOrFilterFeatures()).isEmpty();
+        assertThat(BmfCpuProvider.HARDWARE_REQUIREMENT.requiredSandboxPermissions())
+                .containsExactly("ambient-module-authority.disabled");
+    }
+
+    private static void assertExactRequirement(
+            String coordinate,
+            String version,
+            Optional<RuntimeDependencyAbi> abi,
+            List<String> features,
+            List<String> flags) {
+        RuntimeDependencyRequirement requirement = BmfCpuProvider.RUNTIME_DEPENDENCY_REQUIREMENTS
+                .stream()
+                .filter(candidate -> candidate.coordinate()
+                        .equals(RuntimeDependencyCoordinate.of(coordinate)))
+                .findFirst()
+                .orElseThrow();
+        assertThat(requirement.versionConstraint())
+                .isEqualTo(RuntimeDependencyVersionConstraint.exact(
+                        RuntimeDependencyVersion.of(version)));
+        assertThat(requirement.abiConstraint()).isEqualTo(abi);
+        assertThat(requirement.requiredFeatures()).containsExactlyElementsOf(features);
+        assertThat(requirement.requiredBuildRuntimeFlags()).containsExactlyElementsOf(flags);
     }
 }

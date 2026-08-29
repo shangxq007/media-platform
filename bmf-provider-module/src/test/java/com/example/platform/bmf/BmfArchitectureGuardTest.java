@@ -4,8 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.example.platform.execution.domain.provider.ProviderBindingPin;
 import com.example.platform.execution.taskgraph.ExecutableTaskId;
+import com.example.platform.workerfabric.domain.RuntimeDependencyFingerprint;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.RecordComponent;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -47,14 +49,16 @@ class BmfArchitectureGuardTest {
                 "/usr/local",
                 "/opt/",
                 "/nix/store",
-                "python",
                 "RuntimeProbe",
                 "runtimeProbe",
                 "ExecutablePath",
                 "executablePath",
                 "ProcessInvocationSpec",
                 "shellCommand",
-                "sha256:5ad7e1e40dd3cfa453960b829a6f61de7216c956638d06e7ad2cefe4be96dfd5",
+                "new ExecutionCommand",
+                "new RuntimeExecutionBundle",
+                "ProviderPluginRuntimeContext",
+                ".executable()",
                 "c39146c636c6b2b68ffaf741095ce737bf123254");
         long ambientAuthorityCount = ambientRuntimeAuthorities.stream()
                 .filter(production::contains)
@@ -66,7 +70,12 @@ class BmfArchitectureGuardTest {
         long sharedShadowDeclarationCount = List.of(
                         "RuntimeDependencyRequirement",
                         "RuntimeDependencyObservation",
-                        "RuntimeDependencyFingerprint")
+                        "RuntimeDependencyFingerprint",
+                        "RuntimeDependencyMatcher",
+                        "RuntimeDependencyMatchResult",
+                        "ProviderHardwareRequirement",
+                        "ProviderHardwareObservation",
+                        "WorkerRuntimeId")
                 .stream()
                 .mapToLong(name -> declarationCount(production, name))
                 .sum();
@@ -87,6 +96,59 @@ class BmfArchitectureGuardTest {
                 .doesNotContain("org.pf4j", "pf4j", "provider-plugin-runtime-module");
         assertThat(Files.exists(root.resolve("bmf-provider-module/src/main/resources")))
                 .isFalse();
+    }
+
+    @Test
+    void runtime_evidence_types_claim_no_h1_or_semantic_execution_authority() throws Exception {
+        Path root = repositoryRoot();
+        String production = readJava(root.resolve("bmf-provider-module/src/main/java"));
+
+        List<String> forbiddenClaims = List.of(
+                "ProviderRuntimeBundleId",
+                "RuntimeEligibility",
+                "CAN_RUN",
+                "GaussianBlur",
+                "Gaussian blur",
+                "semantic conformance",
+                "OutputEquivalence",
+                "output equivalence",
+                "BmfGpu",
+                "GPU",
+                "OpenCue");
+        long forbiddenClaimCount = forbiddenClaims.stream().filter(production::contains).count();
+        assertThat(forbiddenClaimCount)
+                .as("forbidden bundle/eligibility/semantic/GPU/OpenCue claim token count")
+                .isZero();
+
+        List<String> forbiddenAssessmentAuthority = List.of(
+                "eligibility",
+                "canrun",
+                "workerruntime",
+                "physicalhost",
+                "device",
+                "capacity",
+                "reservation",
+                "observedusage");
+        for (RecordComponent component :
+                BmfCpuRuntimeDependencyAssessment.class.getRecordComponents()) {
+            String signature = (component.getName() + " " + component.getType().getName())
+                    .toLowerCase();
+            assertThat(signature)
+                    .as("provider-local assessment component authority")
+                    .doesNotContain(forbiddenAssessmentAuthority.toArray(String[]::new));
+        }
+    }
+
+    @Test
+    void authoritative_fingerprint_is_the_h1_type_and_is_separate_from_implementation_identity()
+            throws Exception {
+        Field field = BmfCpuProvider.class.getField("EXPECTED_RUNTIME_DEPENDENCY_FINGERPRINT");
+        assertThat(field.getType()).isEqualTo(RuntimeDependencyFingerprint.class);
+        assertThat(field.get(null)).isSameAs(BmfCpuProvider.EXPECTED_RUNTIME_DEPENDENCY_FINGERPRINT);
+        assertThat(BmfCpuProvider.EXPECTED_RUNTIME_DEPENDENCY_FINGERPRINT.canonicalSha256())
+                .isEqualTo("sha256:5ad7e1e40dd3cfa453960b829a6f61de7216c956638d06e7ad2cefe4be96dfd5")
+                .isNotEqualTo(BmfCpuProvider.IMPLEMENTATION_ID.value());
+        assertThat(field.getType()).isNotEqualTo(String.class);
     }
 
     @Test
@@ -116,6 +178,49 @@ class BmfArchitectureGuardTest {
     }
 
     @Test
+    void canonical_and_h1_modules_have_zero_bmf_private_topology() throws Exception {
+        Path root = repositoryRoot();
+        List<String> canonicalH1SourceRoots = List.of(
+                "timeline-module/src/main/java",
+                "operation-module/src/main/java",
+                "render-module/src/main/java/com/example/platform/render/domain/renderplan",
+                "media-execution-plan-module/src/main/java",
+                "worker-fabric-module/src/main/java",
+                "extension-module/src/main/java");
+        List<String> bmfTopologyTokens = List.of(
+                "BmfGraph",
+                "BmfNode",
+                "BmfEdge",
+                "BmfModule",
+                "bmf.graph",
+                "bmf.node",
+                "bmf.edge",
+                "bmf.module");
+        long topologyCount = 0;
+        for (String sourceRoot : canonicalH1SourceRoots) {
+            String production = readJava(root.resolve(sourceRoot));
+            topologyCount += bmfTopologyTokens.stream().filter(production::contains).count();
+        }
+        assertThat(topologyCount).as("canonical/H1 BMF topology token count").isZero();
+    }
+
+    @Test
+    void clean_forward_ledger_remains_the_frozen_classified_65_path_universe()
+            throws Exception {
+        String ledger = Files.readString(repositoryRoot().resolve(
+                "docs/architecture/governance/h2-bmf-clean-forward-disposition-v1.json"));
+
+        assertThat(ledger)
+                .contains(
+                        "\"targeted_universe_path_count\": 65",
+                        "\"unclassified\": 0",
+                        "\"UNCLASSIFIED\": 0");
+        assertThat(countOccurrences(ledger, "\"disposition\":"))
+                .as("materialized ledger classified row count")
+                .isEqualTo(65);
+    }
+
+    @Test
     void settings_and_module_source_inventory_are_exact() throws Exception {
         Path root = repositoryRoot();
         String settings = Files.readString(root.resolve("settings.gradle.kts"));
@@ -130,12 +235,16 @@ class BmfArchitectureGuardTest {
                         "src/main/java/com/example/platform/bmf/BmfCpuNativePlan.java",
                         "src/main/java/com/example/platform/bmf/BmfCpuUnsupportedLowerer.java",
                         "src/main/java/com/example/platform/bmf/BmfCpuUnsupportedRuntimeAdapter.java",
+                        "src/main/java/com/example/platform/bmf/BmfCpuRuntimeDependencyAssessment.java",
+                        "src/main/java/com/example/platform/bmf/BmfCpuRuntimeEvidenceAssessor.java",
+                        "src/main/java/com/example/platform/bmf/BmfCpuRuntimeEvidenceIssue.java",
                         "src/main/java/com/example/platform/bmf/package-info.java");
         assertThat(relativeJavaFiles(
                         root.resolve("bmf-provider-module/src/test/java"),
                         root.resolve("bmf-provider-module")))
                 .containsExactlyInAnyOrder(
                         "src/test/java/com/example/platform/bmf/BmfCpuProviderContractTest.java",
+                        "src/test/java/com/example/platform/bmf/BmfCpuRuntimeEvidenceAssessmentTest.java",
                         "src/test/java/com/example/platform/bmf/BmfCpuUnsupportedSeamsTest.java",
                         "src/test/java/com/example/platform/bmf/BmfArchitectureGuardTest.java");
     }
