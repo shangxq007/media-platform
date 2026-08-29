@@ -1,16 +1,11 @@
 package com.example.platform.render.app.timeline;
 
 import com.example.platform.timeline.app.TimelineRevisionQueryService;
-import com.example.platform.extension.app.ProcessToolRunner;
-import com.example.platform.extension.domain.ToolExecutionRequest;
-import com.example.platform.extension.domain.ToolExecutionResult;
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.render.app.input.RenderInputMaterializationService;
 import com.example.platform.render.app.output.RenderOutputRegistrationService;
-import com.example.platform.render.app.output.RenderProductProvenance;
 import com.example.platform.render.app.product.ProductRuntimeService;
 import com.example.platform.render.app.storage.StorageRuntimeService;
-import com.example.platform.render.domain.product.Product;
 import com.example.platform.render.domain.interchange.TimelineSpec;
 import com.example.platform.render.app.timeline.InternalTimelineAdapter;
 import com.example.platform.render.domain.interchange.TimelineScriptParser;
@@ -21,8 +16,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -35,15 +28,14 @@ import java.util.List;
  *   <li>Parse to TimelineSpec</li>
  *   <li>Map to SubmitRenderJobRequest via TimelineRenderJobMapper</li>
  *   <li>Materialize input Products through StorageRuntime</li>
- *   <li>Invoke FFmpeg/libass baseline render</li>
- *   <li>Register output through RenderOutputRegistrationService</li>
- *   <li>Return response with outputProductId and provenance</li>
+ *   <li>Require execution through a separately bound typed provider plugin</li>
+ *   <li>Fail closed before output registration while no plugin is bound</li>
  * </ol>
  *
  * <p>Architecture boundaries:
  * <ul>
  *   <li>Does not expose internal provider/backend/environment selection</li>
- *   <li>FFmpeg/libass is the baseline subtitle burn-in path</li>
+ *   <li>Timed-text composition HOW belongs to a typed provider plugin</li>
  *   <li>Remotion production dispatch remains disabled</li>
  *   <li>OpenCue production submit remains disabled</li>
  *   <li>MinIO/S3 are not required</li>
@@ -66,7 +58,6 @@ public class TimelineRevisionRenderService {
     private final ProductRuntimeService productRuntime;
     private final StorageRuntimeService storageRuntime;
     private final TimelineInputProductResolver inputProductResolver;
-    private final ProcessToolRunner processToolRunner;
     private final Path storageRoot;
 
     public TimelineRevisionRenderService(
@@ -80,7 +71,6 @@ public class TimelineRevisionRenderService {
             ProductRuntimeService productRuntime,
             StorageRuntimeService storageRuntime,
             TimelineInputProductResolver inputProductResolver,
-            ProcessToolRunner processToolRunner,
             Path storageRoot) {
         this.revisionQueryService = revisionQueryService;
         this.snapshotService = snapshotService;
@@ -92,7 +82,6 @@ public class TimelineRevisionRenderService {
         this.productRuntime = productRuntime;
         this.storageRuntime = storageRuntime;
         this.inputProductResolver = inputProductResolver;
-        this.processToolRunner = processToolRunner;
         this.storageRoot = storageRoot;
     }
 
@@ -184,61 +173,8 @@ public class TimelineRevisionRenderService {
         }
         log.info("Media resolution: mode={} assetIds={}", mediaResolutionMode, mappingResult.sourceAssetIds());
 
-        // 7. Build provenance with inputProductIds
-        RenderProductProvenance provenance = mappingResult.toProvenanceBuilder()
-                .renderJobId(renderJobId)
-                .baselineRenderer("ffmpeg-libass")
-                .renderMode("timeline-revision-render")
-                .inputProductIds(inputProductIds)
-                .build();
-
-        // 9. Concrete execution is exclusively owned by the typed provider plugin path.
-        Path outputDir = storageRoot.resolve("render-output").resolve(renderJobId);
-        Path outputVideo = outputDir.resolve("output.mp4");
-
-        try {
-            requireTypedProviderPluginExecution();
-        } catch (Exception e) {
-            log.error("Typed provider execution unavailable for revision={}: {}", revisionId, e.getMessage());
-            throw new IllegalStateException("Typed provider plugin execution required", e);
-        }
-
-        // 10. Register output through RenderOutputRegistrationService
-        String relativePath = storageRoot.relativize(outputVideo).toString();
-        Product outputProduct;
-        try {
-            outputProduct = registrationService.registerOutput(
-                    renderJobId, tenantId, projectId, "ffmpeg", relativePath, provenance);
-        } catch (Exception e) {
-            log.error("Output registration failed for revision={}: {}", revisionId, e.getMessage());
-            throw new IllegalStateException("Output registration failed: " + e.getMessage(), e);
-        }
-
-        log.info("Timeline revision render completed: revision={} product={} status={} inputs={}",
-                revisionId, outputProduct.productId(), outputProduct.status(), inputProductIds.size());
-
-        return new RevisionRenderResult(
-                renderJobId,
-                revisionId,
-                snapshotId,
-                outputProduct.productId(),
-                outputProduct.status().name(),
-                outputProduct.storageReferenceId(),
-                outputProduct.mimeType(),
-                mappingResult.outputFormat(),
-                mappingResult.width(),
-                mappingResult.height(),
-                mappingResult.fps(),
-                mappingResult.duration(),
-                mappingResult.hasSubtitles(),
-                "ffmpeg-libass",
-                "timeline-revision-render",
-                inputProductIds,
-                inputProductIds.size());
-    }
-
-    private static void requireTypedProviderPluginExecution() {
-        throw new IllegalStateException("TYPED_PROVIDER_PLUGIN_EXECUTION_REQUIRED");
+        log.error("Typed provider execution unavailable for revision={}", revisionId);
+        throw new IllegalStateException("Typed provider plugin execution required");
     }
 
     /**

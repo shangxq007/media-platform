@@ -11,7 +11,7 @@ import java.util.Map;
  * <ul>
  *   <li>id - unique identifier</li>
  *   <li>type - node type</li>
- *   <li>tool - execution tool (FFmpeg, MLT, Remotion)</li>
+ *   <li>tool - execution tool (Provider, MLT, Remotion)</li>
  *   <li>params - execution parameters</li>
  *   <li>input/output hash - for caching</li>
  *   <li>cacheable flag - whether output can be cached</li>
@@ -148,7 +148,7 @@ public record RenderPlanIr(
             return new RenderNode(
                     id,
                     NodeType.CLIP,
-                    ToolType.FFMPEG,
+                    ToolType.PROVIDER,
                     params,
                     hashInput(sourceUri),
                     null,
@@ -196,7 +196,7 @@ public record RenderPlanIr(
             return new RenderNode(
                     id,
                     NodeType.AUDIO,
-                    ToolType.FFMPEG,
+                    ToolType.PROVIDER,
                     params,
                     hashInput(sourceUri),
                     null,
@@ -212,7 +212,7 @@ public record RenderPlanIr(
             return new RenderNode(
                     id,
                     NodeType.OUTPUT,
-                    ToolType.FFMPEG,
+                    ToolType.PROVIDER,
                     params,
                     inputHash,
                     null,
@@ -256,7 +256,7 @@ public record RenderPlanIr(
     }
 
     public enum ToolType {
-        FFMPEG,
+        PROVIDER,
         MLT,
         REMOTION
     }

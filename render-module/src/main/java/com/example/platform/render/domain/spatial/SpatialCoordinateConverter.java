@@ -50,7 +50,7 @@ public final class SpatialCoordinateConverter {
     }
 
     /**
-     * Convert a full ppm region to pixel crop parameters for ffmpeg crop filter.
+     * Convert a full ppm region to pixel crop parameters for provider crop filter.
      * Uses edge-based nearest rounding: round each edge independently, then compute size.
      *
      * @return int[]{x, y, width, height} in pixels
@@ -67,7 +67,7 @@ public final class SpatialCoordinateConverter {
     }
 
     /**
-     * Convert a ppm position and size to pixel overlay coordinates for ffmpeg overlay filter.
+     * Convert a ppm position and size to pixel overlay coordinates for provider overlay filter.
      *
      * @return int[]{x, y, width, height} in pixels
      */

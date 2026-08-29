@@ -15,7 +15,7 @@ import java.util.List;
  * - fontAsset must be READY or READY_WITH_SUBSETS
  * - output format must be mp4
  * - user cannot specify provider
- * - user cannot pass raw Remotion JS or FFmpeg commands
+ * - user cannot pass raw Remotion JS or Provider commands
  * - caption count, duration, text length must be within limits
  */
 public class SubtitleRenderRequestMapper {

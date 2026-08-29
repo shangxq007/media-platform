@@ -20,7 +20,7 @@ public record TimelineRenderExecutionProperties(
         /**
          * Execution mode for TimelineRevision rendering.
          * Default: PLAN_BASED (compile pipeline + LocalExecutionPlanRunner).
-         * Set to LEGACY for rollback to direct FFmpeg path.
+         * Set to LEGACY for rollback to direct Provider path.
          */
         TimelineRenderExecutionMode executionMode) {
 

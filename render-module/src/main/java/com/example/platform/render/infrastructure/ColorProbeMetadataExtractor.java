@@ -6,7 +6,7 @@ import java.util.Map;
 /**
  * ROADMAP_18 (CI44): one-way provider observation -> raw probe observation.
  * Raw strings remain provider observation INPUT only; canonical semantics live
- * in color-image-module. No silent pix_fmt->color inference; no HDR boolean.
+ * in color-image-module. No silent concrete probe-field-to-color inference; no HDR boolean.
  */
 public final class ColorProbeMetadataExtractor {
 
@@ -28,7 +28,7 @@ public final class ColorProbeMetadataExtractor {
                 "color_range", "colorRange", "chroma_location");
         String pixFmt = pixelFormat != null && !pixelFormat.isBlank()
                 ? pixelFormat.trim()
-                : firstNonBlank(metadata, "pix_fmt", "pixel_format");
+                : firstNonBlank(metadata, "pixel_format", "pixelFormat");
         return new ColorProbeMetadata(
                 nullToEmpty(space),
                 nullToEmpty(primaries),

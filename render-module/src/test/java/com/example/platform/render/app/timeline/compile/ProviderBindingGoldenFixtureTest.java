@@ -27,8 +27,8 @@ import com.example.platform.render.domain.legacy.TimelineTrack;
  * <p>Proves:
  * <ul>
  *   <li>Full pipeline is deterministic for the same inputs</li>
- *   <li>Single video clip → all bound to ffmpeg, all FFMPEG_COMMAND_PLAN drafts</li>
- *   <li>Single clip + caption → subtitle burn-in bound to ffmpeg</li>
+ *   <li>Single video clip → all bound to a typed provider, all opaque request drafts</li>
+ *   <li>Single clip + caption → subtitle burn-in bound to provider</li>
  *   <li>No provider candidates → all nodes fail closed</li>
  *   <li>Mixed production + poc → only production selected in PRODUCTION mode</li>
  *   <li>MANUAL mode → poc providers become eligible</li>
@@ -46,7 +46,7 @@ class ProviderBindingGoldenFixtureTest {
 
     private static final List<ProviderBindingCompiler.ProviderCandidate> FULL_PROVIDER_SET = List.of(
             new ProviderBindingCompiler.ProviderCandidate(
-                    "ffmpeg", ProviderStatus.PRODUCTION, ProviderType.RENDER, "P0",
+                    "provider-a", ProviderStatus.PRODUCTION, ProviderType.RENDER, "P0",
                     true, true, "6.1",
                     List.of("MEDIA_INPUT", "VIDEO_DECODE", "VIDEO_TRIM",
                             "AUDIO_DECODE", "AUDIO_MIX",
@@ -76,7 +76,7 @@ class ProviderBindingGoldenFixtureTest {
     }
 
     @Test
-    @DisplayName("Golden: single video clip → full binding pipeline to ffmpeg")
+    @DisplayName("Golden: single video clip → full binding pipeline to provider")
     void goldenSingleVideoClipFullBinding() {
         TimelineSpec spec = createSingleClipSpec();
 
@@ -95,10 +95,10 @@ class ProviderBindingGoldenFixtureTest {
         assertEquals(capGraph.nodes().size(), plan.nodes().size());
         assertEquals(capGraph.edges().size(), plan.edges().size());
 
-        // All bound to ffmpeg
+        // All bound to provider
         plan.nodes().stream()
                 .filter(n -> !n.requiredCapabilities().isEmpty())
-                .forEach(n -> assertEquals("ffmpeg", n.boundProviderName()));
+                .forEach(n -> assertEquals("provider-a", n.boundProviderName()));
 
         // Verify drafts
         assertFalse(drafts.isEmpty());
@@ -107,10 +107,10 @@ class ProviderBindingGoldenFixtureTest {
                 .count();
         assertEquals(boundWithReqs, drafts.size());
 
-        // All drafts are FFMPEG_COMMAND_PLAN
+        // All generic typed-provider drafts are opaque requests.
         drafts.forEach(d -> {
-            assertEquals("ffmpeg", d.providerName());
-            assertEquals(ProviderExecutionDocumentDraftType.FFMPEG_COMMAND_PLAN, d.documentType());
+            assertEquals("provider-a", d.providerName());
+            assertEquals(ProviderExecutionDocumentDraftType.TYPED_PROVIDER_REQUEST, d.documentType());
             assertFalse(d.isReadyForGeneration());
         });
 
@@ -120,7 +120,7 @@ class ProviderBindingGoldenFixtureTest {
     }
 
     @Test
-    @DisplayName("Golden: single clip + caption → subtitle burn-in bound to ffmpeg")
+    @DisplayName("Golden: single clip + caption → subtitle burn-in bound to provider")
     void goldenCaptionOverlayBound() {
         TimelineTextOverlay overlay = TimelineTextOverlay.of("overlay-1", "Hello World",
                 new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 1.0, 3.0);
@@ -136,14 +136,14 @@ class ProviderBindingGoldenFixtureTest {
 
         assertTrue(plan.allBound());
 
-        // SUBTITLE_BURN_IN node bound to ffmpeg
+        // SUBTITLE_BURN_IN node bound to provider
         assertTrue(plan.nodes().stream()
                 .anyMatch(n -> n.requiredCapabilities().contains("SUBTITLE_BURN_IN")
-                        && "ffmpeg".equals(n.boundProviderName())));
+                        && "provider-a".equals(n.boundProviderName())));
 
-        // FFMPEG_COMMAND_PLAN draft exists for subtitle node
+        // An opaque typed-provider request exists for the subtitle node.
         assertTrue(drafts.stream()
-                .anyMatch(d -> d.documentType() == ProviderExecutionDocumentDraftType.FFMPEG_COMMAND_PLAN));
+                .anyMatch(d -> d.documentType() == ProviderExecutionDocumentDraftType.TYPED_PROVIDER_REQUEST));
     }
 
     @Test
@@ -170,7 +170,7 @@ class ProviderBindingGoldenFixtureTest {
     }
 
     @Test
-    @DisplayName("Golden: PRODUCTION mode selects ffmpeg over mlt poc")
+    @DisplayName("Golden: PRODUCTION mode selects provider over mlt poc")
     void goldenProductionPrefersProduction() {
         TimelineSpec spec = createSingleClipSpec();
 
@@ -182,14 +182,14 @@ class ProviderBindingGoldenFixtureTest {
         assertTrue(plan.allBound());
         plan.nodes().stream()
                 .filter(n -> !n.requiredCapabilities().isEmpty())
-                .forEach(n -> assertEquals("ffmpeg", n.boundProviderName(),
-                        "PRODUCTION should select ffmpeg over POC mlt"));
+                .forEach(n -> assertEquals("provider-a", n.boundProviderName(),
+                        "PRODUCTION should select provider over POC mlt"));
     }
 
     @Test
     @DisplayName("Golden: MANUAL mode makes mlt poc eligible")
     void goldenManualMakesPocEligible() {
-        // Only provide mlt (no ffmpeg) so it must be selected
+        // Only provide mlt (no provider) so it must be selected
         List<ProviderBindingCompiler.ProviderCandidate> mltOnly = List.of(
                 new ProviderBindingCompiler.ProviderCandidate(
                         "mlt", ProviderStatus.POC, ProviderType.RENDER, "P1",

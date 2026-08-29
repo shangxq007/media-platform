@@ -208,12 +208,12 @@ public class OTIOTimelineCompiler {
                         hintsMap.get("outputWidth") instanceof Number n ? n.intValue() : 1920,
                         hintsMap.get("outputHeight") instanceof Number n ? n.intValue() : 1080,
                         hintsMap.get("outputFps") instanceof Number n ? n.intValue() : 30,
-                        hintsMap.get("preferredNormalizeProvider") != null ? hintsMap.get("preferredNormalizeProvider").toString() : "ffmpeg",
+                        hintsMap.get("preferredNormalizeProvider") != null ? hintsMap.get("preferredNormalizeProvider").toString() : null,
                         caps, extra
                 );
             }
         }
-        return new OTIORenderHints("mp4", 1920, 1080, 30, "ffmpeg", List.of(), Map.of());
+        return new OTIORenderHints("mp4", 1920, 1080, 30, null, List.of(), Map.of());
     }
 
     private String buildStyleJson(OTIOTimelineSummary summary) {

@@ -364,10 +364,9 @@ public class RenderJobLeaseService {
      */
     private ProviderStatus resolveProviderStatus(String providerId) {
         return switch (providerId.toLowerCase()) {
-            case "ffmpeg", "remote-ffmpeg", "remote" -> ProviderStatus.PRODUCTION;
+            case "remote" -> ProviderStatus.PRODUCTION;
             case "mlt" -> ProviderStatus.POC;
             case "gpac" -> ProviderStatus.POC;
-            case "libass" -> ProviderStatus.POC;
             case "skia" -> ProviderStatus.POC;
             case "bento4" -> ProviderStatus.POC;
             case "shaka" -> ProviderStatus.POC;
@@ -377,7 +376,6 @@ public class RenderJobLeaseService {
             case "shotstack" -> ProviderStatus.SKELETON;
             case "natron" -> ProviderStatus.SKELETON;
             case "vapoursynth" -> ProviderStatus.SKELETON;
-            case "javacv" -> ProviderStatus.DEPRECATED;
             case "ofx" -> ProviderStatus.DEPRECATED;
             case "mock" -> ProviderStatus.MOCK;
             default -> ProviderStatus.SKELETON; // Unknown providers treated as skeleton

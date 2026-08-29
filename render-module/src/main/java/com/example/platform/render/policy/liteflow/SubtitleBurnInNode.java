@@ -14,12 +14,8 @@ import java.util.Map;
 /**
  * LiteFlow node for subtitle burn-in.
  *
- * <p>This node delegates to {@link SubtitleBurnInService} to build
- * subtitle filter strings for FFmpeg drawtext burn-in.
- *
- * <p>Note: The baseline subtitle burn-in path is via
- * {@code RenderJobExecutionService} → typed provider plugin execution. This LiteFlow node is used
- * when the policy chain explicitly includes subtitle burn-in as a step.
+ * <p>Concrete subtitle execution belongs to a typed provider plugin. This node
+ * accepts only no-op requests and fails closed when burn-in semantics are present.
  */
 @LiteflowComponent("subtitleBurnIn")
 public class SubtitleBurnInNode extends NodeComponent {
@@ -46,16 +42,7 @@ public class SubtitleBurnInNode extends NodeComponent {
                 return;
             }
 
-            String filter = subtitleBurnInService.buildSubtitleFilter(subtitleTracks);
-            if (filter.isEmpty()) {
-                log.info("LiteFlow: No burn-in tracks for job={}, skipping", jobId);
-                return;
-            }
-
-            // Note: The filter result is logged but not stored in context
-            // because LiteFlow context API varies by version.
-            // Concrete subtitle burn-in is resolved by the typed provider plugin path.
-            log.info("LiteFlow: Subtitle burn-in completed for job={}, filter length={}", jobId, filter.length());
+            throw new IllegalStateException("TYPED_PROVIDER_PLUGIN_EXECUTION_REQUIRED");
         } catch (Exception e) {
             throw new PlatformException(
                     new ConfigurableErrorCode("SUBTITLE-400-001", 400201,

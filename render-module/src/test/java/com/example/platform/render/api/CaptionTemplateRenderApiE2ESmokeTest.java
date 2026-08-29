@@ -12,15 +12,11 @@ import com.example.platform.render.app.timeline.compile.audit.*;
 import com.example.platform.render.domain.caption.*;
 import com.example.platform.render.domain.product.*;
 import com.example.platform.storage.contract.*;
-import com.example.platform.render.infrastructure.RenderToolCapabilityInventory;
 import com.example.platform.render.infrastructure.product.ProductDependencyRepository;
 import com.example.platform.render.infrastructure.product.ProductRepository;
 import com.example.platform.render.infrastructure.storage.StorageReferenceRepository;
 import com.example.platform.render.testsupport.TimelineCoreSmokeFixture;
 import com.example.platform.shared.Ids;
-import com.example.platform.extension.app.ProcessToolRunner;
-import com.example.platform.extension.domain.ToolExecutionResult;
-import com.example.platform.extension.domain.ToolExecutionSafetyPolicy;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.http.ResponseEntity;
@@ -39,7 +35,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * API-level E2E smoke test for Caption Template Render.
  *
  * <p>Proves the full API boundary fails closed after removal of the legacy
- * plan-based FFmpeg authority, without product/storage publication or leaks.</p>
+ * plan-based Provider authority, without product/storage publication or leaks.</p>
  *
  * <p>Uses real service wiring (not mock service) to verify the full product loop
  * through the API boundary.</p>
@@ -60,8 +56,6 @@ class CaptionTemplateRenderApiE2ESmokeTest {
     private InMemoryRenderAuditEventSink auditSink;
     private RenderAuditRecorder auditRecorder;
     private InMemoryStorageReferenceRepository storageRepo;
-    private final java.util.concurrent.atomic.AtomicInteger processInvocations =
-            new java.util.concurrent.atomic.AtomicInteger();
 
     @BeforeEach
     void setUp() {
@@ -78,28 +72,8 @@ class CaptionTemplateRenderApiE2ESmokeTest {
         auditSink = new InMemoryRenderAuditEventSink();
         auditRecorder = new RenderAuditRecorder(auditSink);
 
-        ProcessToolRunner toolRunner = new ProcessToolRunner() {
-            @Override public ToolExecutionResult execute(com.example.platform.extension.domain.ToolExecutionRequest r) {
-                processInvocations.incrementAndGet();
-                try {
-                    String outputPath = r.args().get(r.args().size() - 1);
-                    Path output = Path.of(outputPath);
-                    Files.createDirectories(output.getParent());
-                    Files.writeString(output, "fake-caption-rendered-" + UUID.randomUUID());
-                    return ToolExecutionResult.success(0, "ffmpeg", "", Instant.now(), Instant.now());
-                } catch (IOException e) {
-                    return ToolExecutionResult.failed(1, "", e.getMessage(), Instant.now(), Instant.now());
-                }
-            }
-            @Override public ToolExecutionResult execute(com.example.platform.extension.domain.ToolExecutionRequest r, ToolExecutionSafetyPolicy p) { return execute(r); }
-        };
-
-        RenderToolCapabilityInventory toolInv = new RenderToolCapabilityInventory() {
-            @Override public boolean isToolAvailable(String n) { return "ffmpeg".equals(n); }
-        };
-
         RenderExecutionStepExecutor stepExecutor = new RenderExecutionStepExecutor(
-                matService, regService, productRuntime, toolInv, toolRunner, auditRecorder);
+                matService, regService, productRuntime, auditRecorder);
         LocalExecutionPlanRunner planRunner = new LocalExecutionPlanRunner(
                 new RenderPlanPolicyGuard(), stepExecutor);
 
@@ -115,7 +89,7 @@ class CaptionTemplateRenderApiE2ESmokeTest {
                 new RenderExecutionPlanCompiler(),
                 new RenderPlanPolicyGuard(),
                 planRunner, matService, regService,
-                productRuntime, storageRuntime, toolInv,
+                productRuntime, storageRuntime,
                 new TimelineInputProductResolver(productRuntime), tempDir);
 
         controller = new CaptionTemplateRenderController(
@@ -275,7 +249,7 @@ class CaptionTemplateRenderApiE2ESmokeTest {
     }
 
     @Test
-    @DisplayName("API E2E: fail-closed controller calls neither Remotion nor local FFmpeg")
+    @DisplayName("API E2E: fail-closed controller calls neither Remotion nor local Provider")
     void apiE2eNoRemotion() throws Exception {
         registerSourceProduct();
 
@@ -284,7 +258,6 @@ class CaptionTemplateRenderApiE2ESmokeTest {
 
         assertFailClosedResponse(response);
         assertFalse(response.getBody().toString().contains("remotion"));
-        assertEquals(0, processInvocations.get());
     }
 
     @Test
@@ -325,8 +298,7 @@ class CaptionTemplateRenderApiE2ESmokeTest {
         assertNull(body.outputProductId());
         assertNull(body.renderJobId());
         assertTrue(body.validationErrors().isEmpty());
-        assertEquals("One or more steps failed", body.message());
-        assertEquals(0, processInvocations.get(), "Removed local FFmpeg authority must not run");
+        assertEquals("Policy guard rejected plan: Plan has 1 policy violations", body.message());
     }
 
     private void assertNoOutputCommit() {

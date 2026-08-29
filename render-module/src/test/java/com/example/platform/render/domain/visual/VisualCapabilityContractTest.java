@@ -130,7 +130,7 @@ class VisualCapabilityContractTest {
 
     @Test @DisplayName("Forbidden effect capabilities exist")
     void forbiddenEffectCapabilitiesExist() {
-        assertNotNull(EffectCapabilityProfile.arbitraryFfmpegFiltergraph());
+        assertNotNull(EffectCapabilityProfile.arbitraryProviderExpression());
         assertNotNull(EffectCapabilityProfile.arbitraryShader());
         assertNotNull(EffectCapabilityProfile.arbitraryScriptEffect());
         assertNotNull(EffectCapabilityProfile.arbitraryOfxPlugin());
@@ -144,15 +144,15 @@ class VisualCapabilityContractTest {
 
     @Test @DisplayName("Forbidden effects are not production allowed")
     void forbiddenEffectsAreNotProductionAllowed() {
-        assertFalse(EffectCapabilityProfile.arbitraryFfmpegFiltergraph().isProductionAllowed());
+        assertFalse(EffectCapabilityProfile.arbitraryProviderExpression().isProductionAllowed());
         assertFalse(EffectCapabilityProfile.remotionComponentExecution().isProductionAllowed());
         assertFalse(EffectCapabilityProfile.userDefinedRenderDag().isProductionAllowed());
     }
 
-    @Test @DisplayName("Arbitrary FFmpeg filtergraph is FORBIDDEN")
-    void arbitraryFfmpegFiltergraphIsForbidden() {
-        assertEquals(VisualCapabilityStatus.FORBIDDEN, EffectCapabilityProfile.arbitraryFfmpegFiltergraph().status());
-        assertEquals(VisualCapabilitySafetyLevel.FORBIDDEN, EffectCapabilityProfile.arbitraryFfmpegFiltergraph().safetyLevel());
+    @Test @DisplayName("Arbitrary Provider provider expression is FORBIDDEN")
+    void arbitraryProviderExpressionIsForbidden() {
+        assertEquals(VisualCapabilityStatus.FORBIDDEN, EffectCapabilityProfile.arbitraryProviderExpression().status());
+        assertEquals(VisualCapabilitySafetyLevel.FORBIDDEN, EffectCapabilityProfile.arbitraryProviderExpression().safetyLevel());
     }
 
     @Test @DisplayName("Remotion component execution is FORBIDDEN")
@@ -248,10 +248,10 @@ class VisualCapabilityContractTest {
 
     // --- Stage 7: Provider Visual Support ---
 
-    @Test @DisplayName("FFmpeg/libass baseline support can be represented")
-    void ffmpegBaselineSupportCanBeRepresented() {
+    @Test @DisplayName("Typed timed-text composition support can be represented")
+    void providerBaselineSupportCanBeRepresented() {
         ProviderVisualCapabilitySupport support = new ProviderVisualCapabilitySupport(
-                "ffmpeg", new VisualCapabilityId("CAPTION_OVERLAY"),
+                "provider-a", new VisualCapabilityId("CAPTION_OVERLAY"),
                 VisualCapabilityCategory.CAPTION,
                 VisualCapabilityStatus.PRODUCTION,
                 VisualConsistencyLevel.EXACT,
@@ -260,7 +260,7 @@ class VisualCapabilityContractTest {
 
         assertTrue(support.isProductionEligible());
         assertTrue(support.isAutoDispatchEligible());
-        assertEquals("ffmpeg", support.providerId());
+        assertEquals("provider-a", support.providerId());
     }
 
     @Test @DisplayName("Remotion is not production allowed")
@@ -294,7 +294,7 @@ class VisualCapabilityContractTest {
     @Test @DisplayName("FORBIDDEN capability cannot be auto-dispatch allowed")
     void forbiddenCapabilityCannotBeAutoDispatchAllowed() {
         ProviderVisualCapabilitySupport support = new ProviderVisualCapabilitySupport(
-                "test", new VisualCapabilityId("ARBITRARY_FFMPEG_FILTERGRAPH"),
+                "test", new VisualCapabilityId("ARBITRARY_PROVIDER_EXPRESSION"),
                 VisualCapabilityCategory.EFFECT,
                 VisualCapabilityStatus.FORBIDDEN,
                 VisualConsistencyLevel.FORBIDDEN,
@@ -308,7 +308,7 @@ class VisualCapabilityContractTest {
     @Test @DisplayName("Provider consistency level is explicit")
     void providerConsistencyLevelIsExplicit() {
         ProviderVisualCapabilitySupport support = new ProviderVisualCapabilitySupport(
-                "ffmpeg", new VisualCapabilityId("BLUR"),
+                "provider-a", new VisualCapabilityId("BLUR"),
                 VisualCapabilityCategory.EFFECT,
                 VisualCapabilityStatus.POC,
                 VisualConsistencyLevel.APPROX,
@@ -321,7 +321,7 @@ class VisualCapabilityContractTest {
     @Test @DisplayName("Fallback behavior is explicit")
     void fallbackBehaviorIsExplicit() {
         ProviderVisualCapabilitySupport support = new ProviderVisualCapabilitySupport(
-                "ffmpeg", new VisualCapabilityId("CROSSFADE"),
+                "provider-a", new VisualCapabilityId("CROSSFADE"),
                 VisualCapabilityCategory.TRANSITION,
                 VisualCapabilityStatus.PRODUCTION,
                 VisualConsistencyLevel.EXACT,
@@ -336,7 +336,7 @@ class VisualCapabilityContractTest {
     @Test @DisplayName("Provider matrix can find support")
     void providerMatrixCanFindSupport() {
         ProviderVisualCapabilitySupport support = new ProviderVisualCapabilitySupport(
-                "ffmpeg", new VisualCapabilityId("SCALE"),
+                "provider-a", new VisualCapabilityId("SCALE"),
                 VisualCapabilityCategory.TRANSFORM,
                 VisualCapabilityStatus.PRODUCTION,
                 VisualConsistencyLevel.EXACT,
@@ -346,14 +346,14 @@ class VisualCapabilityContractTest {
         ProviderVisualCapabilityMatrix matrix = new ProviderVisualCapabilityMatrix(
                 List.of(support), Map.of());
 
-        assertTrue(matrix.findSupport("ffmpeg", new VisualCapabilityId("SCALE")).isPresent());
-        assertFalse(matrix.findSupport("ffmpeg", new VisualCapabilityId("BLUR")).isPresent());
+        assertTrue(matrix.findSupport("provider-a", new VisualCapabilityId("SCALE")).isPresent());
+        assertFalse(matrix.findSupport("provider-a", new VisualCapabilityId("BLUR")).isPresent());
     }
 
     @Test @DisplayName("Matrix has forbidden capabilities check")
     void matrixHasForbiddenCapabilitiesCheck() {
         ProviderVisualCapabilitySupport forbidden = new ProviderVisualCapabilitySupport(
-                "test", new VisualCapabilityId("ARBITRARY_FFMPEG_FILTERGRAPH"),
+                "test", new VisualCapabilityId("ARBITRARY_PROVIDER_EXPRESSION"),
                 VisualCapabilityCategory.EFFECT,
                 VisualCapabilityStatus.FORBIDDEN,
                 VisualConsistencyLevel.FORBIDDEN,
@@ -370,7 +370,7 @@ class VisualCapabilityContractTest {
 
     @Test @DisplayName("Forbidden capability is rejected by policy")
     void forbiddenCapabilityIsRejectedByPolicy() {
-        VisualCapabilityDefinition cap = EffectCapabilityProfile.arbitraryFfmpegFiltergraph();
+        VisualCapabilityDefinition cap = EffectCapabilityProfile.arbitraryProviderExpression();
         assertTrue(VisualCapabilityPolicy.isForbidden(cap));
         assertFalse(VisualCapabilityPolicy.mayBeProductionEligible(cap));
     }
@@ -418,7 +418,7 @@ class VisualCapabilityContractTest {
     @Test @DisplayName("Safe metadata only")
     void safeMetadataOnly() {
         ProviderVisualCapabilitySupport support = new ProviderVisualCapabilitySupport(
-                "ffmpeg", new VisualCapabilityId("SCALE"),
+                "provider-a", new VisualCapabilityId("SCALE"),
                 VisualCapabilityCategory.TRANSFORM,
                 VisualCapabilityStatus.PRODUCTION,
                 VisualConsistencyLevel.EXACT,
@@ -440,7 +440,7 @@ class VisualCapabilityContractTest {
     @Test @DisplayName("Validator rejects forbidden definition")
     void validatorRejectsForbiddenDefinition() {
         List<VisualCapabilityIssue> issues = VisualCapabilityValidator.validateDefinition(
-                EffectCapabilityProfile.arbitraryFfmpegFiltergraph());
+                EffectCapabilityProfile.arbitraryProviderExpression());
         assertFalse(issues.isEmpty());
         assertTrue(issues.stream().anyMatch(i ->
                 i.code() == VisualCapabilityIssueCode.FORBIDDEN_CAPABILITY));
@@ -477,7 +477,7 @@ class VisualCapabilityContractTest {
     @Test @DisplayName("Validator checks forbidden metadata keywords")
     void validatorChecksForbiddenMetadataKeywords() {
         List<VisualCapabilityIssue> issues = VisualCapabilityValidator.checkForbiddenMetadata(
-                Map.of("filter_complex", "some_value"));
+                Map.of("provider_expression", "some_value"));
         assertFalse(issues.isEmpty());
         assertTrue(issues.stream().anyMatch(i ->
                 i.code() == VisualCapabilityIssueCode.PROVIDER_INTERNAL_LEAK));
@@ -504,7 +504,7 @@ class VisualCapabilityContractTest {
     @Test @DisplayName("No provider/storage fields in support")
     void noProviderStorageFieldsInSupport() {
         ProviderVisualCapabilitySupport support = new ProviderVisualCapabilitySupport(
-                "ffmpeg", new VisualCapabilityId("SCALE"),
+                "provider-a", new VisualCapabilityId("SCALE"),
                 VisualCapabilityCategory.TRANSFORM,
                 VisualCapabilityStatus.PRODUCTION,
                 VisualConsistencyLevel.EXACT,
@@ -542,10 +542,10 @@ class VisualCapabilityContractTest {
                 EffectCapabilityProfile.remotionComponentExecution().defaultFallback());
     }
 
-    @Test @DisplayName("Arbitrary FFmpeg filtergraph fallback is REJECT_REQUEST")
-    void arbitraryFfmpegFiltergraphFallbackIsRejectRequest() {
+    @Test @DisplayName("Arbitrary Provider provider expression fallback is REJECT_REQUEST")
+    void arbitraryProviderExpressionFallbackIsRejectRequest() {
         assertEquals(VisualFallbackBehavior.REJECT_REQUEST,
-                EffectCapabilityProfile.arbitraryFfmpegFiltergraph().defaultFallback());
+                EffectCapabilityProfile.arbitraryProviderExpression().defaultFallback());
     }
 
     @Test @DisplayName("User-defined Render DAG fallback is REJECT_REQUEST")

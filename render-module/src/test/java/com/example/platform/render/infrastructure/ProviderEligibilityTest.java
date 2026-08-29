@@ -109,7 +109,7 @@ class ProviderEligibilityTest {
 
     @Test
     void enabledCapabilitiesMustMatchRequired() {
-        ProviderMetadata meta = productionProvider("ffmpeg", "P0", List.of("trim", "transcode"));
+        ProviderMetadata meta = productionProvider("provider-a", "P0", List.of("trim", "transcode"));
         assertTrue(ProviderEligibility.isEligible(meta, productionJob(List.of("trim"))));
         assertTrue(ProviderEligibility.isEligible(meta, productionJob(List.of("trim", "transcode"))));
         assertFalse(ProviderEligibility.isEligible(meta, productionJob(List.of("3d_render"))));
@@ -130,7 +130,7 @@ class ProviderEligibilityTest {
 
     @Test
     void notForBlocksSelection() {
-        ProviderMetadata meta = new ProviderMetadata("ffmpeg", ProviderStatus.PRODUCTION, "P0",
+        ProviderMetadata meta = new ProviderMetadata("provider-a", ProviderStatus.PRODUCTION, "P0",
                 ProviderType.RENDER,
                 List.of("trim", "transcode"), List.of("trim", "transcode"), List.of(),
                 List.of("3d_render", "template_render"), true, "server", "Test", List.of());
@@ -141,7 +141,7 @@ class ProviderEligibilityTest {
 
     @Test
     void productionPreferredOverPoc() {
-        ProviderMetadata prod = productionProvider("ffmpeg", "P0", List.of("trim"));
+        ProviderMetadata prod = productionProvider("provider-a", "P0", List.of("trim"));
         ProviderMetadata poc = pocProvider("mlt", "P1", List.of("trim"));
         assertTrue(ProviderEligibility.scoreProvider(prod, productionJob(List.of("trim")))
                 < ProviderEligibility.scoreProvider(poc, productionJob(List.of("trim"))));
@@ -149,7 +149,7 @@ class ProviderEligibilityTest {
 
     @Test
     void p0PreferredOverP1() {
-        ProviderMetadata p0 = productionProvider("ffmpeg", "P0", List.of("trim"));
+        ProviderMetadata p0 = productionProvider("provider-a", "P0", List.of("trim"));
         ProviderMetadata p1 = pocProvider("mlt", "P1", List.of("trim"));
         assertTrue(ProviderEligibility.scoreProvider(p0, productionJob(List.of("trim")))
                 < ProviderEligibility.scoreProvider(p1, productionJob(List.of("trim"))));
@@ -193,22 +193,22 @@ class ProviderEligibilityTest {
 
     @Test
     void blockedProviderNotEligible() {
-        ProviderMetadata meta = productionProvider("ffmpeg", "P0", List.of("trim"));
+        ProviderMetadata meta = productionProvider("provider-a", "P0", List.of("trim"));
         RenderJob job = new RenderJob("job-1", "video_export", "production", "1920x1080",
                 List.of(), "{}", "{}", "{}", "mp4", List.of("trim"),
                 new RenderConstraints(3840, 2160, 60, 3600, null, null),
-                true, List.of(), List.of("ffmpeg"), null);
+                true, List.of(), List.of("provider-a"), null);
         assertFalse(ProviderEligibility.isEligible(meta, job));
     }
 
     @Test
     void preferredProviderGetsBetterScore() {
-        ProviderMetadata preferred = productionProvider("ffmpeg", "P0", List.of("trim"));
+        ProviderMetadata preferred = productionProvider("provider-a", "P0", List.of("trim"));
         ProviderMetadata other = productionProvider("mlt", "P0", List.of("trim"));
         RenderJob job = new RenderJob("job-1", "video_export", "production", "1920x1080",
                 List.of(), "{}", "{}", "{}", "mp4", List.of("trim"),
                 new RenderConstraints(3840, 2160, 60, 3600, null, null),
-                true, List.of("ffmpeg"), List.of(), null);
+                true, List.of("provider-a"), List.of(), null);
         assertTrue(ProviderEligibility.scoreProvider(preferred, job)
                 < ProviderEligibility.scoreProvider(other, job));
     }
@@ -262,7 +262,7 @@ class ProviderEligibilityTest {
 
     @Test
     void productionProviderAlwaysEligibleWhenCapabilityMatches() {
-        ProviderMetadata prod = productionProvider("ffmpeg", "P0", List.of("trim", "transcode"));
+        ProviderMetadata prod = productionProvider("provider-a", "P0", List.of("trim", "transcode"));
         assertTrue(ProviderEligibility.isEligible(prod, productionJob(List.of("trim"))));
         assertTrue(ProviderEligibility.isEligible(prod, experimentJob(List.of("trim"))));
         assertTrue(ProviderEligibility.isEligible(prod, manualJob(List.of("trim"))));

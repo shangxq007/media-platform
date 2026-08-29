@@ -16,7 +16,7 @@ import org.slf4j.LoggerFactory;
  * No ProductRuntime mutation. No output file produced.</p>
  *
  * <p>This runner is NOT wired into LocalExecutionPlanRunner.
- * FFmpeg remains the only executable provider.</p>
+ * Provider remains the only executable provider.</p>
  */
 public class RemotionLocalExecutionRunner {
 

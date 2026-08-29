@@ -2,7 +2,7 @@ package com.example.platform.render.domain.template;
 
 /**
  * Type of template operation — provider-neutral Timeline intent.
- * Internal domain model. Does not contain FFmpeg commands or Remotion props.
+ * Internal domain model. Does not contain Provider commands or Remotion props.
  */
 public enum TemplateOperationType {
     ADD_TEXT_OVERLAY,

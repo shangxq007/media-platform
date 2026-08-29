@@ -8,7 +8,7 @@ package com.example.platform.render.app.timeline.compile;
 public enum LocalExecutionPlanFailureReason {
     POLICY_REJECTED,
     NON_EXECUTABLE_PLAN,
-    NON_FFMPEG_PROVIDER,
+    UNSUPPORTED_PROVIDER,
     TOOL_UNAVAILABLE,
     MATERIALIZATION_FAILED,
     EXECUTION_FAILED,

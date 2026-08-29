@@ -37,7 +37,7 @@ class WorkflowDomainTest {
         String str = def.toString();
         assertFalse(str.contains("providerName"));
         assertFalse(str.contains("backendName"));
-        assertFalse(str.contains("ffmpeg"));
+        assertFalse(str.contains("provider-a"));
         assertFalse(str.contains("remotion"));
     }
 

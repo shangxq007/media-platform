@@ -295,7 +295,7 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
 
         RenderProvider provider = mock(RenderProvider.class);
         when(provider.render(anyString(), anyString(), anyString()))
-                .thenThrow(new RuntimeException("FFmpeg crashed"));
+                .thenThrow(new RuntimeException("Provider crashed"));
         when(renderProviderRouter.route("default_1080p")).thenReturn(provider);
         stubProviderResolution(provider);
         when(timelineSnapshotService.findOwnedById(anyString(), anyString(), eq("snap-4")))
@@ -309,7 +309,7 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
                 .where(field("id").eq("rj-4"))
                 .fetchOne();
         assertEquals("FAILED", jobRow.get(field("status"), String.class));
-        assertTrue(jobRow.get(field("error_message"), String.class).contains("FFmpeg crashed"));
+        assertTrue(jobRow.get(field("error_message"), String.class).contains("Provider crashed"));
     }
 
     @Test

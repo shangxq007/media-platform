@@ -9,7 +9,7 @@ import java.util.List;
  * Internal service for generating provider execution documents.
  *
  * <p>v0: Only supports RemotionInputProps generation.
- * FFmpeg/MLT/GPAC/Blender/Natron/GStreamer drafts are skipped.</p>
+ * Provider/MLT/GPAC/Blender/Natron/GStreamer drafts are skipped.</p>
  *
  * <p>Internal only — not exposed in public APIs.</p>
  */

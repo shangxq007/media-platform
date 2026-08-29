@@ -12,7 +12,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 /**
- * Selects render provider tier for effects: lightweight (javacv/ffmpeg) before OFX/GPU.
+ * Selects among explicitly mapped effect providers without inventing a generic
+ * executable provider identity.
  */
 @Component
 public class EffectProviderRouter {
@@ -21,7 +22,7 @@ public class EffectProviderRouter {
 
     /** Providers tried in order when multiple mappings exist. */
     private static final List<String> PROVIDER_PRIORITY = List.of(
-            "ffmpeg", "javacv", "gstreamer", "mlt", "natron", "ofx", "gpac", "bento4", "shotstack");
+            "gstreamer", "mlt", "natron", "ofx", "gpac", "bento4", "shotstack");
 
     private final EffectMappingService effectMapping;
 

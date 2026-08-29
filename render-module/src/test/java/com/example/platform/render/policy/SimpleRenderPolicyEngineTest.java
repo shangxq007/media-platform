@@ -2,6 +2,7 @@ package com.example.platform.render.policy;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,10 +17,10 @@ class SimpleRenderPolicyEngineTest {
     }
 
     @Test
-    void socialProfileUsesFfmpegBackend() {
+    void socialProfileRemainsExplicitlyUnbound() {
         RenderPolicyDecision decision = engine.decide("social_1080p");
         assertNotNull(decision);
-        assertEquals("ffmpeg", decision.primaryBackend());
+        assertNull(decision.primaryBackend());
         assertEquals("NORMAL", decision.notificationPriority());
     }
 
@@ -40,9 +41,9 @@ class SimpleRenderPolicyEngineTest {
     }
 
     @Test
-    void socialProfileWithComplexNameUsesFfmpeg() {
+    void socialProfileWithComplexNameRemainsExplicitlyUnbound() {
         RenderPolicyDecision decision = engine.decide("social_vertical_short");
-        assertEquals("ffmpeg", decision.primaryBackend());
+        assertNull(decision.primaryBackend());
         assertEquals("NORMAL", decision.notificationPriority());
     }
 }

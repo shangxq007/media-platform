@@ -1,7 +1,7 @@
 package com.example.platform.render.domain.caption;
 
 /**
- * Typed ASS subtitle style parameters — safe, bounded output for libass.
+ * Typed timed-text style parameters for provider-neutral composition planning.
  *
  * <p>Maps from {@link CaptionStyleSpec} / {@link FontStyleSpec} domain models
  * to ASS v4+ style fields. All fields are bounded and validated.</p>

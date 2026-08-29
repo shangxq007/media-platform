@@ -19,11 +19,18 @@ class RenderPlannerServiceTest {
             new com.example.platform.render.app.timeline.SegmentTimelinePlanner());
 
     @Test
-    void simpleTimelineUsesFfmpegFinalComposer() {
+    void simpleTimelineRequiresTypedPluginBindingWithoutInventingBackend() {
         TimelineSpec spec = TimelineSpec.create("tl-1", "Simple", TimelineOutputSpec.mp4_1080p30());
         PipelineExecutionPlan plan = planner.generatePlan(spec, "default_1080p", "FREE", "mp4");
-        assertEquals(FinalComposerHint.FFMPEG, plan.finalComposer());
-        assertTrue(plan.tasks().stream().anyMatch(t -> t.type() == PipelineTaskType.FINAL_COMPOSE));
+        assertEquals(FinalComposerHint.TYPED_PROVIDER_PLUGIN, plan.finalComposer());
+        PipelineTask compose = plan.tasks().stream()
+                .filter(t -> t.type() == PipelineTaskType.FINAL_COMPOSE)
+                .findFirst().orElseThrow();
+        PipelineTask transcode = plan.tasks().stream()
+                .filter(t -> t.type() == PipelineTaskType.TRANSCODE)
+                .findFirst().orElseThrow();
+        assertNull(compose.backend());
+        assertNull(transcode.backend());
     }
 
     @Test

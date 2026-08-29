@@ -435,9 +435,9 @@ class PreviewRenderJobServiceTest {
                     new PreviewRenderJobId("j2"), "t1", "p1", "s1", "default_1080p");
 
             PreviewRenderJob executing = job.startExecuting();
-            PreviewRenderJob failed = executing.fail("FFmpeg error");
+            PreviewRenderJob failed = executing.fail("Provider error");
             assertEquals(PreviewRenderJobStatus.FAILED, failed.status());
-            assertEquals("FFmpeg error", failed.errorMessage());
+            assertEquals("Provider error", failed.errorMessage());
             assertTrue(failed.isTerminal());
         }
 
@@ -522,7 +522,7 @@ class PreviewRenderJobServiceTest {
         Product product = new Product(
                 productId, "tenant_1", projectId, null,
                 ProductType.FINAL_RENDER, RepresentationKind.MEDIA_FILE,
-                "ffmpeg", "ffmpeg", null,
+                "provider-a", "provider-a", null,
                 status, "storage_ref_1", "checksum_1", "content_hash_1",
                 mimeType, 1, metadataJson, Instant.now(), Instant.now());
 

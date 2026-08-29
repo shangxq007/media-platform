@@ -82,7 +82,7 @@ class Roadmap21EntryResidualGuardTest {
         }
         assertEquals(1, asr, "ASR_ACTIVE_HANDLER_COUNT must be exactly 1");
         assertEquals(0, probe,
-                "PROBE_ACTIVE_HANDLER_COUNT must be 0 after render-owned ffprobe authority removal");
+                "PROBE_ACTIVE_HANDLER_COUNT must be 0 after render-owned media probe authority removal");
     }
 
     @Test

@@ -29,13 +29,13 @@ import java.util.*;
  *
  * <p>Chains multiple render providers to produce a single artifact:</p>
  * <pre>
- * Input Timeline → [OFX Effects] → [JavaCV Transcode] → [GPAC Packaging] → Output Artifact
+ * Input Timeline → [OFX Effects] → [Typed Provider Plugin] → [GPAC Packaging] → Output Artifact
  * </pre>
  *
  * <p>Pipeline stages:</p>
  * <ol>
  *   <li><strong>Effect Stage</strong> (OFX): Apply filters, transitions, subtitle burn-in</li>
- *   <li><strong>Transcode Stage</strong> (JavaCV/GPU): Encode to target format</li>
+ *   <li><strong>Transcode Stage</strong>: Requires a bound typed provider plugin</li>
  *   <li><strong>Packaging Stage</strong> (GPAC): DASH/HLS packaging if needed</li>
  * </ol>
  */
@@ -48,7 +48,6 @@ public class MultiProviderPipelineService {
     private final RenderProviderRegistry providerRegistry;
     private final ExportPolicyService exportPolicy;
     private final EffectMappingService effectMapping;
-    private final SubtitleRenderService subtitleRender;
     private final TimelineExecutorService timelineExecutor;
     private final SegmentStitchComposeService segmentStitchComposeService;
     private final java.util.Map<String, PackagingProvider> packagingProviders;
@@ -57,7 +56,6 @@ public class MultiProviderPipelineService {
                                          RenderProviderRegistry providerRegistry,
                                          ExportPolicyService exportPolicy,
                                          EffectMappingService effectMapping,
-                                         SubtitleRenderService subtitleRender,
                                          TimelineExecutorService timelineExecutor,
                                          SegmentStitchComposeService segmentStitchComposeService,
                                          java.util.Optional<GPACPackagingProvider> gpacPackagingProvider,
@@ -67,7 +65,6 @@ public class MultiProviderPipelineService {
         this.providerRegistry = providerRegistry;
         this.exportPolicy = exportPolicy;
         this.effectMapping = effectMapping;
-        this.subtitleRender = subtitleRender;
         this.timelineExecutor = timelineExecutor;
         this.segmentStitchComposeService = segmentStitchComposeService;
         java.util.Map<String, PackagingProvider> providers = new java.util.LinkedHashMap<>();
@@ -173,13 +170,20 @@ public class MultiProviderPipelineService {
                                               PipelineExecutionPlan executionPlan) {
         long stageStart = System.currentTimeMillis();
 
+        if (stage.providerKey() == null || "provider".equals(stage.providerKey())) {
+            return new PipelineStageResult(stage.name(), stage.providerKey(), false,
+                    null, null, "TYPED_PROVIDER_PLUGIN_EXECUTION_REQUIRED",
+                    "TYPED_PROVIDER_PLUGIN_EXECUTION_REQUIRED",
+                    System.currentTimeMillis() - stageStart);
+        }
+
         if ("final_compose".equals(stage.name()) && !segmentArtifacts.isEmpty() && !segmentOrder.isEmpty()) {
             try {
                 Map<String, String> ordered = SegmentPipelinePayloadBuilder.orderedSegmentArtifacts(
                         segmentOrder, segmentArtifacts);
                 FinalComposerHint composer = executionPlan != null
                         ? executionPlan.finalComposer()
-                        : FinalComposerHint.FFMPEG;
+                        : FinalComposerHint.TYPED_PROVIDER_PLUGIN;
                 SegmentStitchComposeService.StitchResult stitch =
                         segmentStitchComposeService.stitch(jobId, ordered, profile, composer);
                 long stageDuration = System.currentTimeMillis() - stageStart;
@@ -189,7 +193,7 @@ public class MultiProviderPipelineService {
                         stitch.storageUri(), stitch.storageUri(), null, null, stageDuration);
             } catch (Exception e) {
                 long stageDuration = System.currentTimeMillis() - stageStart;
-                return new PipelineStageResult(stage.name(), "ffmpeg", false,
+                return new PipelineStageResult(stage.name(), stage.providerKey(), false,
                         null, null, "RENDER-500-005", e.getMessage(), stageDuration);
             }
         }
@@ -218,10 +222,6 @@ public class MultiProviderPipelineService {
                     || "mlt_multitrack".equals(stage.name()) || "subtitles".equals(stage.name())
                     || "skia_overlay".equals(stage.name())
                     || "final_compose".equals(stage.name())) {
-                if ("subtitles".equals(stage.name()) && timeline.textOverlays() != null
-                        && !timeline.textOverlays().isEmpty()) {
-                    subtitleRender.prepareLibassStage(jobId, timeline);
-                }
                 RenderProvider.RenderResult result = provider.render(renderJobId, stageInput, profile);
                 long stageDuration = System.currentTimeMillis() - stageStart;
                 String storageUri = result.storageUri() != null ? result.storageUri()
@@ -255,13 +255,10 @@ public class MultiProviderPipelineService {
                 return "ofx";
             }
         }
-        return "javacv";
+        return null;
     }
 
     private String selectTranscodeProvider(String tier, String profile, boolean isGpu, boolean isRemote) {
-        if (isRemote && providerRegistry.getProvider("remote-javacv").isPresent()) {
-            return "remote-javacv";
-        }
         if (isGpu) {
             // Try GPU-capable provider first
             for (RenderProviderCapability cap : providerRegistry.getAllCapabilities()) {
@@ -275,7 +272,7 @@ public class MultiProviderPipelineService {
             // Fallback warning
             log.warn("MultiProviderPipelineService: no healthy GPU provider found, falling back to CPU");
         }
-        return "javacv";
+        return null;
     }
 
     private String buildStageInput(String jobId, PipelineStage stage, TimelineSpec timeline, String previousOutput) {
@@ -357,7 +354,7 @@ public class MultiProviderPipelineService {
         }
         String format = stage.parameters().getOrDefault("format", "dash");
         String inputUri = inputPath != null ? inputPath : buildStageOutput(jobId,
-                new PipelineStage("transcode", "javacv", Map.of()));
+                new PipelineStage("transcode", null, Map.of()));
         String outputBase = "/tmp/platform/artifacts/" + jobId + "/packaged";
         PackagingRequest request = switch (format.toLowerCase()) {
             case "hls" -> PackagingRequest.hls(inputUri, outputBase, 4);

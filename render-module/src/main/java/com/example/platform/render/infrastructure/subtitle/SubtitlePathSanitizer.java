@@ -8,16 +8,16 @@ import java.nio.file.Path;
  *
  * <p>Timeline JSON can contain subtitle paths in {@code metadata.subtitlePath}
  * or {@code subtitle.path}. These paths must be validated before passing to
- * FFmpeg's {@code subtitles=} filter, which interprets the path as a filesystem
- * reference.
+ * a structured timed-text request whose path field is interpreted as a filesystem
+ * reference.</p>
  *
  * <h3>Threat model</h3>
  * <ul>
  *   <li>Absolute paths: {@code /etc/passwd}</li>
  *   <li>Traversal: {@code ../../../secret.srt}</li>
- *   <li>URL schemes: {@code file://}, {@code http://}, {@code ffmpeg protocol}</li>
+ *   <li>URI schemes: {@code file://}, {@code http://}, or data-like schemes</li>
  *   <li>Encoded traversal: {@code %2e%2e/secret.srt}</li>
- *   <li>Filter separator injection: {@code path,force_style=...}</li>
+ *   <li>Structured-field separator injection: {@code path,style=...}</li>
  *   <li>Null byte: {@code path\0.srt}</li>
  * </ul>
  */
@@ -58,7 +58,7 @@ public final class SubtitlePathSanitizer {
             return null;
         }
 
-        // Reject filter separator characters (FFmpeg filter syntax)
+        // Reject structured-field separator characters.
         if (path.contains(",") || path.contains(";") || path.contains("[")) {
             return null;
         }
@@ -127,7 +127,7 @@ public final class SubtitlePathSanitizer {
         if (lower.startsWith("file://") || lower.startsWith("http://") || lower.startsWith("https://")) {
             return true;
         }
-        // Check ffmpeg protocol pseudo-paths
+        // Check non-hierarchical/data-like URI schemes.
         if (lower.startsWith("concat:") || lower.startsWith("subfile:") || lower.startsWith("data:")) {
             return true;
         }

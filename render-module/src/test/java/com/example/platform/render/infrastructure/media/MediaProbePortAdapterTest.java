@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 class MediaProbePortAdapterTest {
 
     @Test
-    void failsClosedWithoutRenderOwnedFfprobeExecution() {
+    void failsClosedWithoutRenderOwnedMediaProbeExecution() {
         var observation = new MediaProbePortAdapter().probe("file:///tmp/media.mp4");
 
         assertEquals("provider-plugin-unavailable", observation.provider());

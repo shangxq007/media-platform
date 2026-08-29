@@ -157,7 +157,7 @@ public class RenderDeduplicationService {
                 existing.mimeType(),
                 outputFormat != null ? outputFormat : "mp4",
                 0, 0, 0, 0.0, false,  // dimensions/duration not in product record
-                "ffmpeg-libass",
+                "typed-provider-plugin",
                 "dedup-reuse",
                 List.of(),  // inputProductIds not reconstructable from product alone
                 0);

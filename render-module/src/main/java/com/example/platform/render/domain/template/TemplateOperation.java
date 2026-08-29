@@ -5,7 +5,7 @@ import java.util.Map;
 
 /**
  * Provider-neutral Timeline operation intent.
- * Internal domain model. Does not contain FFmpeg commands or Remotion props.
+ * Internal domain model. Does not contain Provider commands or Remotion props.
  */
 public record TemplateOperation(
         String operationId,

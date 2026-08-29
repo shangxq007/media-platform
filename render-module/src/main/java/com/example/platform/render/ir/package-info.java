@@ -30,7 +30,7 @@
  * <h2>Extension Policy</h2>
  * Extensions use a reserved namespace with deterministic key ordering.
  * Unknown extensions are rejected by default. Prohibited: shell commands,
- * FFmpeg argv, absolute paths, env vars, credentials, serialized classes.
+ * Provider argv, absolute paths, env vars, credentials, serialized classes.
  *
  * @see MediaProjectIr
  * @see RationalTime

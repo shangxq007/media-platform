@@ -86,9 +86,9 @@ class RemotionCapabilityExtensionTest {
     }
 
     @Test
-    void baselineFfmpegCapabilityRemainsUnchanged() {
-        ProviderMetadata ffmpegMetadata = new ProviderMetadata(
-                "ffmpeg", ProviderStatus.PRODUCTION, "P0", ProviderType.RENDER,
+    void baselineProviderCapabilityRemainsUnchanged() {
+        ProviderMetadata providerMetadata = new ProviderMetadata(
+                "provider-a", ProviderStatus.PRODUCTION, "P0", ProviderType.RENDER,
                 List.of(Capabilities.CAPTION_BURN_IN, Capabilities.TRANSCODE,
                         Capabilities.TRIM, Capabilities.THUMBNAIL,
                         Capabilities.EXTRACT_AUDIO, Capabilities.DEMUX, Capabilities.MUX),
@@ -97,26 +97,26 @@ class RemotionCapabilityExtensionTest {
                         Capabilities.EXTRACT_AUDIO, Capabilities.DEMUX, Capabilities.MUX),
                 List.of(),
                 List.of("render_3d", "media_pipeline"),
-                true, "FFMPEG", "Media processing", List.of()
+                true, "provider-a", "Media processing", List.of()
         );
 
-        assertTrue(ffmpegMetadata.canHandleCapability(Capabilities.CAPTION_BURN_IN),
-                "FFmpeg must handle baseline caption burn-in");
-        assertFalse(ffmpegMetadata.canHandleCapability(Capabilities.CAPTION_EFFECTS),
-                "FFmpeg should not claim advanced caption effects");
-        assertFalse(ffmpegMetadata.canHandleCapability(Capabilities.TEMPLATE_RENDER),
-                "FFmpeg should not claim template render");
+        assertTrue(providerMetadata.canHandleCapability(Capabilities.CAPTION_BURN_IN),
+                "Provider must handle baseline caption burn-in");
+        assertFalse(providerMetadata.canHandleCapability(Capabilities.CAPTION_EFFECTS),
+                "Provider should not claim advanced caption effects");
+        assertFalse(providerMetadata.canHandleCapability(Capabilities.TEMPLATE_RENDER),
+                "Provider should not claim template render");
     }
 
     @Test
-    void capabilitySeparationBetweenFfmpegAndRemotion() {
-        ProviderMetadata ffmpeg = new ProviderMetadata(
-                "ffmpeg", ProviderStatus.PRODUCTION, "P0", ProviderType.RENDER,
+    void capabilitySeparationBetweenProviderAndRemotion() {
+        ProviderMetadata provider = new ProviderMetadata(
+                "provider-a", ProviderStatus.PRODUCTION, "P0", ProviderType.RENDER,
                 List.of(Capabilities.CAPTION_BURN_IN),
                 List.of(Capabilities.CAPTION_BURN_IN),
                 List.of(),
                 List.of(Capabilities.CAPTION_EFFECTS, Capabilities.TEMPLATE_RENDER),
-                true, "FFMPEG", "Media processing", List.of()
+                true, "provider-a", "Media processing", List.of()
         );
         ProviderMetadata remotion = new ProviderMetadata(
                 "remotion", ProviderStatus.STUB, "P1", ProviderType.RENDER,
@@ -127,8 +127,8 @@ class RemotionCapabilityExtensionTest {
                 false, "NODE", "Advanced subtitle", List.of()
         );
 
-        assertTrue(ffmpeg.canHandleCapability(Capabilities.CAPTION_BURN_IN));
-        assertFalse(ffmpeg.canHandleCapability(Capabilities.CAPTION_EFFECTS));
+        assertTrue(provider.canHandleCapability(Capabilities.CAPTION_BURN_IN));
+        assertFalse(provider.canHandleCapability(Capabilities.CAPTION_EFFECTS));
         assertTrue(remotion.canHandleCapability(Capabilities.CAPTION_EFFECTS));
         assertTrue(remotion.canHandleCapability(Capabilities.TEMPLATE_RENDER));
     }

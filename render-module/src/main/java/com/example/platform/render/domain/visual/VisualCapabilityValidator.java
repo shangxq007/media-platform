@@ -12,7 +12,7 @@ import java.util.Set;
 public final class VisualCapabilityValidator {
 
     private static final Set<String> FORBIDDEN_KEYWORDS = Set.of(
-            "filter_complex", "filtergraph", "rawCommand", "shell command",
+            "provider_expression", "provider expression", "rawCommand", "shell command",
             "Runtime.getRuntime", "ProcessBuilder", "npx remotion",
             "remotion render", "npm install", "pnpm", "yarn");
 

@@ -23,8 +23,8 @@ package com.example.platform.render.infrastructure;
 public enum ProviderStatus {
 
     /**
-     * Fully implemented and safe for production dispatch.
-     * Example: FFmpeg, RemoteRenderProvider.
+     * Fully implemented and safe for production dispatch. A concrete provider
+     * identity must still be supplied by the registry and binding layers.
      */
     PRODUCTION(true, true),
 
@@ -32,7 +32,7 @@ public enum ProviderStatus {
      * Implemented as proof-of-concept. Works but may have limitations.
      * Requires explicit configuration (e.g., {@code render.providers.allow-poc=true})
      * or provider-specific {@code @ConditionalOnProperty} to be dispatched.
-     * Example: MLT, GPAC, libass overlay, Skia sticker overlay.
+     * Example: MLT, GPAC, a typed timed-text plugin, or Skia sticker overlay.
      */
     POC(false, true),
 
@@ -70,7 +70,6 @@ public enum ProviderStatus {
 
     /**
      * Was implemented, now superseded by another provider. Not dispatchable.
-     * Example: JavaCV (superseded by FFmpeg), OFX (Java2D simulation).
      */
     DEPRECATED(false, false),
 

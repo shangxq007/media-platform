@@ -20,7 +20,7 @@ public enum PreviewRenderJobStatus {
     /** Job created, waiting for execution. */
     QUEUED(false),
 
-    /** FFmpeg render in progress. */
+    /** Provider render in progress. */
     EXECUTING(false),
 
     /** Job successfully completed; output Product registered. */

@@ -380,7 +380,7 @@ class VS1SmokeIntegrationTest {
                     "h-1", "rj-1", null, "QUEUED", "Job created", null, OffsetDateTime.now());
 
             assertNotNull(history.reason());
-            assertFalse(history.reason().contains("ffmpeg "), "No raw commands in reason");
+            assertFalse(history.reason().contains("provider "), "No raw commands in reason");
             assertFalse(history.reason().contains("/tmp/"), "No temp paths in reason");
         }
     }

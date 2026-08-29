@@ -5,7 +5,7 @@ import com.example.platform.render.infrastructure.ProviderJob;
 
 /**
  * Overlay provider interface.
- * Suitable for: LibassOverlayProvider
+ * Suitable for typed plugins that implement overlay capabilities.
  * Responsibilities: subtitle_overlay, ass_ssa_render, caption_burn_in
  */
 public interface OverlayProvider extends BaseProvider {

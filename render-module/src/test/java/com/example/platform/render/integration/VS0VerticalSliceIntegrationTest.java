@@ -34,12 +34,12 @@ import com.example.platform.render.domain.legacy.TimelineTrack;
  *   <li>Timeline normalization (NormalizedTimeline with caption layers)</li>
  *   <li>Artifact dependency graph (with SUBTITLE_OVERLAY node)</li>
  *   <li>Logical capability graph (with SUBTITLE_BURN_IN capability)</li>
- *   <li>Provider binding (deterministic eligibility + priority, FFmpeg-only)</li>
- *   <li>Execution plan (FFmpeg/libass steps, no Remotion dispatch)</li>
+ *   <li>Provider binding (deterministic eligibility + priority, Provider-only)</li>
+ *   <li>Provider-neutral execution plan with no Remotion dispatch</li>
  *   <li>Policy guard validation (safety, acyclicity, no internals exposure)</li>
  * </ol>
  *
- * <p>Does NOT execute FFmpeg. Does NOT call StorageRuntime or ProductRuntime.
+ * <p>Does NOT execute Provider. Does NOT call StorageRuntime or ProductRuntime.
  * Does NOT dispatch Remotion. Does NOT expose raw commands.</p>
  *
  * <p>Integration package: com.example.platform.render.integration</p>
@@ -56,9 +56,9 @@ class VS0VerticalSliceIntegrationTest {
     private CaptionTemplateTimelineAdapter captionAdapter;
     private CaptionTemplateRenderContractValidator captionValidator;
 
-    private static final ProviderBindingCompiler.ProviderCandidate FFMPEG =
+    private static final ProviderBindingCompiler.ProviderCandidate PROVIDER =
             new ProviderBindingCompiler.ProviderCandidate(
-                    "ffmpeg", ProviderStatus.PRODUCTION, ProviderType.RENDER, "P0",
+                    "provider-a", ProviderStatus.PRODUCTION, ProviderType.RENDER, "P0",
                     true, true, "6.1",
                     List.of("MEDIA_INPUT", "VIDEO_DECODE", "VIDEO_TRIM",
                             "AUDIO_DECODE", "AUDIO_MIX",
@@ -250,12 +250,12 @@ class VS0VerticalSliceIntegrationTest {
     // ========== VS.0-E: Provider binding (deterministic eligibility + priority) ==========
 
     @Nested
-    @DisplayName("VS.0-E: Provider binding is deterministic with FFmpeg-only")
+    @DisplayName("VS.0-E: Provider binding is deterministic with Provider-only")
     class ProviderBinding {
 
         @Test
-        @DisplayName("All capability nodes bound to ffmpeg in PRODUCTION mode")
-        void allNodesBoundToFfmpeg() {
+        @DisplayName("All capability nodes bound to provider in PRODUCTION mode")
+        void allNodesBoundToProvider() {
             ProviderBindingPlan plan = compileBindingPlan();
 
             assertNotNull(plan, "Binding plan must not be null");
@@ -263,7 +263,7 @@ class VS0VerticalSliceIntegrationTest {
             assertFalse(plan.hasFailures(), "Must not have failures");
             assertEquals("PRODUCTION", plan.bindingMode());
 
-            // All nodes with required capabilities should be bound to ffmpeg
+            // All nodes with required capabilities should be bound to provider
             plan.nodes().stream()
                     .filter(n -> !n.requiredCapabilities().isEmpty())
                     .forEach(n -> {
@@ -271,8 +271,8 @@ class VS0VerticalSliceIntegrationTest {
                         assertNotNull(n.decision(), "Node must have a decision");
                         assertNotNull(n.decision().selectedProvider(),
                                 "Node must have a selected provider");
-                        assertEquals("ffmpeg", n.decision().selectedProvider().providerName(),
-                                "Node must be bound to ffmpeg");
+                        assertEquals("provider-a", n.decision().selectedProvider().providerName(),
+                                "Node must be bound to provider");
                     });
         }
 
@@ -313,10 +313,10 @@ class VS0VerticalSliceIntegrationTest {
         }
     }
 
-    // ========== VS.0-F: Render execution plan (FFmpeg/libass only, no Remotion) ==========
+    // ========== VS.0-F: Provider-neutral render plan with no Remotion dispatch ==========
 
     @Nested
-    @DisplayName("VS.0-F: Render execution plan has FFmpeg steps, no Remotion")
+    @DisplayName("VS.0-F: Render execution plan has Provider steps, no Remotion")
     class ExecutionPlan {
 
         @Test
@@ -354,16 +354,16 @@ class VS0VerticalSliceIntegrationTest {
         }
 
         @Test
-        @DisplayName("All EXECUTE_PROVIDER steps target ffmpeg only")
-        void onlyFfmpegProviderSteps() {
+        @DisplayName("All EXECUTE_PROVIDER steps target provider only")
+        void onlyProviderCategorySteps() {
             RenderExecutionPlan plan = compileExecutionPlan();
 
             List<RenderExecutionStep> providerSteps = plan.providerExecutionSteps();
             assertFalse(providerSteps.isEmpty(), "Must have provider execution steps");
 
             providerSteps.forEach(step -> {
-                assertEquals("ffmpeg", step.providerName(),
-                        "EXECUTE_PROVIDER must target ffmpeg: " + step.stepId());
+                assertEquals("provider-a", step.providerName(),
+                        "EXECUTE_PROVIDER must target provider: " + step.stepId());
             });
         }
 
@@ -529,8 +529,8 @@ class VS0VerticalSliceIntegrationTest {
 
             // Step 6: Provider binding
             ProviderBindingPlan bindingPlan = bindingCompiler.compile(
-                    capGraph, List.of(FFMPEG), "PRODUCTION");
-            assertTrue(bindingPlan.allBound(), "All nodes must be bound to ffmpeg");
+                    capGraph, List.of(PROVIDER), "PRODUCTION");
+            assertTrue(bindingPlan.allBound(), "All nodes must be bound to provider");
 
             // Step 7: Compile execution plan
             List<ProviderExecutionDocumentDraft> drafts = draftCompiler.compile(bindingPlan);
@@ -541,9 +541,9 @@ class VS0VerticalSliceIntegrationTest {
             assertFalse(executionPlan.steps().isEmpty());
             assertEquals(ExecutionEnvironmentTarget.LOCAL, executionPlan.environmentTarget());
 
-            // Verify ffmpeg-only provider
+            // Verify provider-only provider
             executionPlan.providerExecutionSteps().forEach(step ->
-                    assertEquals("ffmpeg", step.providerName()));
+                    assertEquals("provider-a", step.providerName()));
 
             // Step 8: Policy guard
             RenderPlanPolicyResult policyResult = policyGuard.evaluate(
@@ -567,7 +567,7 @@ class VS0VerticalSliceIntegrationTest {
 
             LogicalCapabilityGraph capGraph = capabilityCompiler.compile(artifactGraph);
             ProviderBindingPlan bindingPlan = bindingCompiler.compile(
-                    capGraph, List.of(FFMPEG), "PRODUCTION");
+                    capGraph, List.of(PROVIDER), "PRODUCTION");
             assertTrue(bindingPlan.allBound());
 
             List<ProviderExecutionDocumentDraft> drafts = draftCompiler.compile(bindingPlan);
@@ -592,7 +592,7 @@ class VS0VerticalSliceIntegrationTest {
             assertNotNull(summary.planId());
             assertNotNull(summary.bindingPlanId());
             assertNotNull(summary.timelineId());
-            assertTrue(summary.boundProviders().contains("ffmpeg"));
+            assertTrue(summary.boundProviders().contains("provider-a"));
             assertFalse(summary.boundProviders().contains("remotion"));
         }
     }
@@ -604,7 +604,7 @@ class VS0VerticalSliceIntegrationTest {
         NormalizedTimeline timeline = normalizer.normalize(spec, "proj-vs0");
         ArtifactDependencyGraph artifactGraph = artifactCompiler.compile(timeline);
         LogicalCapabilityGraph capGraph = capabilityCompiler.compile(artifactGraph);
-        return bindingCompiler.compile(capGraph, List.of(FFMPEG), "PRODUCTION");
+        return bindingCompiler.compile(capGraph, List.of(PROVIDER), "PRODUCTION");
     }
 
     private RenderExecutionPlan compileExecutionPlan() {
@@ -617,7 +617,7 @@ class VS0VerticalSliceIntegrationTest {
         NormalizedTimeline timeline = normalizer.normalize(spec, spec.metadata().getOrDefault("projectId", "proj-vs0"));
         ArtifactDependencyGraph artifactGraph = artifactCompiler.compile(timeline);
         LogicalCapabilityGraph capGraph = capabilityCompiler.compile(artifactGraph);
-        return bindingCompiler.compile(capGraph, List.of(FFMPEG), "PRODUCTION");
+        return bindingCompiler.compile(capGraph, List.of(PROVIDER), "PRODUCTION");
     }
 
     private RenderExecutionPlan compileExecutionPlanFromSpec(TimelineSpec spec) {

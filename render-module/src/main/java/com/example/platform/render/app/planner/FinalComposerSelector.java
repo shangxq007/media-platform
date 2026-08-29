@@ -9,9 +9,7 @@ import com.example.platform.render.domain.legacy.TimelineTrack;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-/**
- * Chooses MLT vs FFmpeg for final timeline composition.
- */
+/** Chooses the final timeline composition strategy. */
 @Component
 public class FinalComposerSelector {
 
@@ -37,11 +35,11 @@ public class FinalComposerSelector {
         if (hasMultitrackAudioMix(timeline)) {
             return FinalComposerHint.MLT;
         }
-        return FinalComposerHint.FFMPEG;
+        return FinalComposerHint.TYPED_PROVIDER_PLUGIN;
     }
 
     public String backendKey(FinalComposerHint hint) {
-        return hint == FinalComposerHint.MLT ? "mlt" : "ffmpeg";
+        return hint == FinalComposerHint.MLT ? "mlt" : null;
     }
 
     private int countVideoTracks(TimelineSpec timeline) {

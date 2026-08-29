@@ -7,10 +7,6 @@ import com.example.platform.render.app.product.ProductRuntimeService;
 import com.example.platform.render.app.timeline.compile.audit.*;
 import com.example.platform.render.domain.product.Product;
 import com.example.platform.render.domain.compile.executionplan.*;
-import com.example.platform.render.infrastructure.RenderToolCapabilityInventory;
-import com.example.platform.extension.app.ProcessToolRunner;
-import com.example.platform.extension.domain.ToolExecutionRequest;
-import com.example.platform.extension.domain.ToolExecutionResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -34,22 +30,16 @@ public class RenderExecutionStepExecutor {
     private final RenderInputMaterializationService materializationService;
     private final RenderOutputRegistrationService registrationService;
     private final ProductRuntimeService productRuntime;
-    private final RenderToolCapabilityInventory toolInventory;
-    private final ProcessToolRunner processToolRunner;
     private final RenderAuditRecorder auditRecorder;
 
     public RenderExecutionStepExecutor(
             RenderInputMaterializationService materializationService,
             RenderOutputRegistrationService registrationService,
             ProductRuntimeService productRuntime,
-            RenderToolCapabilityInventory toolInventory,
-            ProcessToolRunner processToolRunner,
             RenderAuditRecorder auditRecorder) {
         this.materializationService = materializationService;
         this.registrationService = registrationService;
         this.productRuntime = productRuntime;
-        this.toolInventory = toolInventory;
-        this.processToolRunner = processToolRunner;
         this.auditRecorder = auditRecorder;
     }
 

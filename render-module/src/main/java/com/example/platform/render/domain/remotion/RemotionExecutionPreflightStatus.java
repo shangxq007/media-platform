@@ -4,7 +4,7 @@ package com.example.platform.render.domain.remotion;
  * Status of Remotion execution preflight check.
  *
  * <p>Internal only — Remotion-specific. Not a provider-neutral abstraction.
- * When a second non-FFmpeg provider is introduced, evaluate extracting
+ * When a second non-Provider provider is introduced, evaluate extracting
  * a shared provider-neutral preflight status/result model.</p>
  */
 public enum RemotionExecutionPreflightStatus {

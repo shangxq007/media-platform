@@ -29,10 +29,10 @@ import org.springframework.beans.factory.annotation.Value;
  * React template-based video, brand packaging, title cards.
  * Frontend can preview via Remotion Player, backend outputs via Remotion Renderer.
  * Does NOT handle video trim, transcode, audio extraction, format repair.
- * Does NOT replace FFmpeg/libass for baseline subtitle burn-in.
+ * Does not claim the typed timed-text composition responsibility.
  * Fonts must use unified font asset management, no system font dependency.
  * Subtitle line breaks and timeline must be provided by upstream RenderJob, Remotion only renders.
- * Output passed to FFmpeg for final normalization.</p>
+ * Output passed to Provider for final normalization.</p>
  */
 public class RemotionRenderProvider implements RenderProvider {
 
@@ -215,7 +215,7 @@ public class RemotionRenderProvider implements RenderProvider {
                 "Does NOT handle video trim, transcode, audio extraction, format repair",
                 "Fonts must use unified font asset management, no system font dependency",
                 "Subtitle line breaks and timeline must be provided by upstream RenderJob",
-                "Output should be passed to FFmpeg for final normalization"
+                "Output should be passed to Provider for final normalization"
         );
     }
 

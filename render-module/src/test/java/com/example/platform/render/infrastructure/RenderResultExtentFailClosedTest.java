@@ -34,7 +34,7 @@ class RenderResultExtentFailClosedTest {
         RenderExtent e = extent(10000);
         var r = RenderOrchestrator.RenderResult.success(
                 "job-1", "art-1", "s3://out.mp4", 1000, "video/mp4", "1920x1080",
-                "ffmpeg", "chain-1", "1.0", "ok", e, e, null);
+                "provider-a", "chain-1", "1.0", "ok", e, e, null);
         assertTrue(r.success());
         assertNull(r.failureReason(), "success → typed failure reason absent");
         assertTrue(r.authoritativeSuccess());
@@ -48,7 +48,7 @@ class RenderResultExtentFailClosedTest {
         RenderExtent e = extent(10000);
         var r = RenderOrchestrator.RenderResult.success(
                 "job-1", "art-1", "s3://out.mp4", 1000, "video/mp4", "1920x1080",
-                "ffmpeg", "chain-1", "1.0", "ok", e, null, null);
+                "provider-a", "chain-1", "1.0", "ok", e, null, null);
         assertFalse(r.success(), "requested extent without achieved evidence must fail closed");
         assertEquals(RenderResultFailureReason.RENDER_EXTENT_UNPROVEN, r.failureReason(),
                 "typed semantic failure reason required (not free-text)");
@@ -62,7 +62,7 @@ class RenderResultExtentFailClosedTest {
     void mismatchedEndIsTypedFailure() {
         var r = RenderOrchestrator.RenderResult.success(
                 "job-1", "art-1", "s3://out.mp4", 1000, "video/mp4", "1920x1080",
-                "ffmpeg", "chain-1", "1.0", "ok",
+                "provider-a", "chain-1", "1.0", "ok",
                 extent(10000), extent(5000), null);
         assertFalse(r.success());
         assertEquals(RenderResultFailureReason.RENDER_EXTENT_NOT_ACHIEVED, r.failureReason());
@@ -75,7 +75,7 @@ class RenderResultExtentFailClosedTest {
         var achieved = new RenderExtent(MediaTime.ofMillis(1000), MediaTime.ofMillis(10000), FrameRate.of(25, 1));
         var r = RenderOrchestrator.RenderResult.success(
                 "job-1", "art-1", "s3://out.mp4", 1000, "video/mp4", "1920x1080",
-                "ffmpeg", "chain-1", "1.0", "ok", requested, achieved, null);
+                "provider-a", "chain-1", "1.0", "ok", requested, achieved, null);
         assertFalse(r.success());
         assertEquals(RenderResultFailureReason.RENDER_EXTENT_NOT_ACHIEVED, r.failureReason());
     }
@@ -84,7 +84,7 @@ class RenderResultExtentFailClosedTest {
     void mismatchedFrameRateIsTypedFailure() {
         var r = RenderOrchestrator.RenderResult.success(
                 "job-1", "art-1", "s3://out.mp4", 1000, "video/mp4", "1920x1080",
-                "ffmpeg", "chain-1", "1.0", "ok",
+                "provider-a", "chain-1", "1.0", "ok",
                 extentWithRate(10000, 25, 1), extentWithRate(10000, 30, 1), null);
         assertFalse(r.success());
         assertEquals(RenderResultFailureReason.RENDER_EXTENT_NOT_ACHIEVED, r.failureReason());
@@ -96,7 +96,7 @@ class RenderResultExtentFailClosedTest {
     void ordinarySuccessWithoutExtentIsNotAuthoritative() {
         var r = RenderOrchestrator.RenderResult.success(
                 "job-1", "art-1", "s3://out.mp4", 1000, "video/mp4", "1920x1080",
-                "ffmpeg", "chain-1", "1.0", "ok", null, null, null);
+                "provider-a", "chain-1", "1.0", "ok", null, null, null);
         assertTrue(r.success(), "operationally may succeed");
         assertNull(r.failureReason());
         assertFalse(r.authoritativeSuccess(),
@@ -117,7 +117,7 @@ class RenderResultExtentFailClosedTest {
     void semanticReasonIsAvailableWithoutParsingDetail() {
         var r = RenderOrchestrator.RenderResult.success(
                 "job-1", "art-1", "s3://out.mp4", 1000, "video/mp4", "1920x1080",
-                "ffmpeg", "chain-1", "1.0", "ok", extent(10000), null, null);
+                "provider-a", "chain-1", "1.0", "ok", extent(10000), null, null);
         assertEquals(RenderResultFailureReason.RENDER_EXTENT_UNPROVEN, r.failureReason(),
                 "semantic branching uses typed reason, never String content");
     }
@@ -129,7 +129,7 @@ class RenderResultExtentFailClosedTest {
         RenderExtent e = extent(10000);
         var r = new RenderOrchestrator.RenderResult(
                 "job-1", "art-1", "s3://out.mp4", 1000, "video/mp4", "1920x1080",
-                true, null, "ok", "ffmpeg", "chain-1", "1.0",
+                true, null, "ok", "provider-a", "chain-1", "1.0",
                 e, null, null);
         assertTrue(r.success());
         assertFalse(r.authoritativeSuccess(),

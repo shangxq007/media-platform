@@ -22,7 +22,7 @@ import java.util.Set;
  *
  * <p>Accepts input Products, verifies they are READY file-backed Products
  * with StorageReferences, and delegates to StorageRuntimeService.materialize()
- * to obtain a local file path for FFmpeg/libass command construction.</p>
+ * to obtain a local file path for a typed provider-plugin request.</p>
  *
  * <p>This service is the integration glue between input Products and the
  * render pipeline. It does NOT modify StorageRuntime or ProductRuntime

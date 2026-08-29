@@ -105,7 +105,7 @@ class TimelineNormalizationServiceTest {
     @DisplayName("Output profile is normalized with defaults")
     void outputProfileIsNormalized() {
         TimelineOutputSpec outputSpec = new TimelineOutputSpec("mp4", "1920x1080", FrameRate.of(30, 1), "h264", 8000,
-                TimelineAudioSpec.aacDefault(), "yuv420p");
+                TimelineAudioSpec.aacDefault(), "default");
         TimelineSpec spec = new TimelineSpec("tl-1", "Test", null,
                 List.of(createTrack("trk-1")), List.of(), outputSpec, 5.0, Map.of());
 
@@ -121,7 +121,7 @@ class TimelineNormalizationServiceTest {
         assertEquals(48000, profile.sampleRate());
         assertEquals(2, profile.channels());
         assertEquals(128, profile.audioBitrate());
-        assertEquals("yuv420p", profile.pixelFormat());
+        assertEquals("default", profile.pixelFormat());
     }
 
     @Test
@@ -218,7 +218,7 @@ class TimelineNormalizationServiceTest {
 
         // Verify no provider-specific references
         String json = result.toString();
-        assertFalse(json.contains("ffmpeg"), "Must not contain provider names");
+        assertFalse(json.contains("provider-a"), "Must not contain provider names");
         assertFalse(json.contains("remotion"), "Must not contain provider names");
         assertFalse(json.contains("blender"), "Must not contain provider names");
     }

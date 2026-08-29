@@ -157,7 +157,7 @@ class CaptionTemplateRenderDeliveryContractTest {
         Product product = new Product(productId, TimelineCoreSmokeFixture.TENANT_ID,
                 TimelineCoreSmokeFixture.PROJECT_ID, "asset-1",
                 type, RepresentationKind.MEDIA_FILE,
-                "ffmpeg", "ffmpeg-libass", "rev-1",
+                "provider-a", "provider-a", "rev-1",
                 ProductStatus.REGISTERED, "stor-1",
                 "checksum", "checksum", "video/mp4", 1,
                 "{}", Instant.now(), Instant.now());

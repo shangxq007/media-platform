@@ -44,7 +44,7 @@ class RenderJobLeaseRepositoryTest extends PostgresTestContainerSupport {
     private RenderJobLeaseRecord lease(String leaseId, String jobId, String workerId, int attempt) {
         Instant now = Instant.now();
         return new RenderJobLeaseRecord(
-                leaseId, leaseId, jobId, "tenant-1", workerId, "ffmpeg",
+                leaseId, leaseId, jobId, "tenant-1", workerId, "provider-a",
                 RenderJobLeaseStatus.CLAIMED, 1, now, now.plusSeconds(600),
                 null, null, attempt, 3, null, null, null, "scheduler",
                 now, now);
@@ -134,13 +134,13 @@ class RenderJobLeaseRepositoryTest extends PostgresTestContainerSupport {
         RenderJobLeaseRecord l = lease("lease-1", "job-1", "worker-1", 1);
         repository.create(l);
 
-        boolean failed = repository.fail("lease-1", "worker-1", 1, "FFmpeg crashed", "RENDER_FAILED", Instant.now());
+        boolean failed = repository.fail("lease-1", "worker-1", 1, "Provider crashed", "RENDER_FAILED", Instant.now());
         assertTrue(failed);
 
         Optional<RenderJobLeaseRecord> found = repository.findByLeaseId("lease-1");
         assertTrue(found.isPresent());
         assertEquals(RenderJobLeaseStatus.FAILED, found.get().status());
-        assertEquals("FFmpeg crashed", found.get().failureReason());
+        assertEquals("Provider crashed", found.get().failureReason());
     }
 
     @Test
@@ -148,7 +148,7 @@ class RenderJobLeaseRepositoryTest extends PostgresTestContainerSupport {
         // Create a lease with lease_until in the past
         Instant past = Instant.now().minusSeconds(3600);
         RenderJobLeaseRecord l = new RenderJobLeaseRecord(
-                "lease-1", "lease-1", "job-1", "tenant-1", "worker-1", "ffmpeg",
+                "lease-1", "lease-1", "job-1", "tenant-1", "worker-1", "provider-a",
                 RenderJobLeaseStatus.CLAIMED, 1, past, past.plusSeconds(600),
                 null, null, 1, 3, null, null, null, "scheduler",
                 past, past);

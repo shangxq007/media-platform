@@ -39,11 +39,11 @@ import com.example.platform.render.domain.compile.executionplan.RenderExecutionS
 import com.example.platform.render.domain.compile.executionplan.RenderExecutionStepStatus;
 import com.example.platform.render.domain.compile.executionplan.RenderExecutionStepType;
 import com.example.platform.render.domain.compile.executionplan.RenderExecutionPlanId;
-import com.example.platform.render.domain.plan.FFmpegLibassBasicRenderPlanningRequest;
-import com.example.platform.render.domain.plan.FFmpegLibassBasicRenderPlanningRequestId;
-import com.example.platform.render.domain.plan.FFmpegLibassBasicRenderPlanningResult;
-import com.example.platform.render.domain.plan.FFmpegLibassBasicRenderPlanningResultStatus;
-import com.example.platform.render.domain.plan.FFmpegLibassBasicRenderPolicy;
+import com.example.platform.render.domain.plan.BasicRenderPlanningRequest;
+import com.example.platform.render.domain.plan.BasicRenderPlanningRequestId;
+import com.example.platform.render.domain.plan.BasicRenderPlanningResult;
+import com.example.platform.render.domain.plan.BasicRenderPlanningResultStatus;
+import com.example.platform.render.domain.plan.BasicRenderPolicy;
 import com.example.platform.render.infrastructure.ProviderStatus;
 import com.example.platform.render.infrastructure.ProviderType;
 import com.example.platform.render.testsupport.RenderTestSchemaFixture;
@@ -67,13 +67,13 @@ import java.util.Map;
  * Integration test harness for the VS.0 vertical slice flow.
  *
  * <p>Validates the complete domain pipeline:
- * Timeline edit → Caption template → Provider binding → FFmpeg plan → Product output.
+ * Timeline edit → Caption template → Provider binding → Provider plan → Product output.
  *
  * <p>Uses PostgreSQL Testcontainers + real jOOQ for render_job persistence
  * and pure domain objects for the vertical slice validation.
  * External collaborators are NOT mocked — all domain objects are constructed directly.
  *
- * <p>This test does NOT depend on real FFmpeg/libass/MLT/Remotion.
+ * <p>This test does NOT depend on a typed provider plugin, MLT, or Remotion.
  * It validates domain boundaries, state machines, and compile pipeline contracts.
  */
 class Vs0VerticalSliceIntegrationTest extends PostgresTestContainerSupport {
@@ -160,17 +160,17 @@ class Vs0VerticalSliceIntegrationTest extends PostgresTestContainerSupport {
         }
     }
 
-    // ==================== Stage 3: FFmpeg Plan Generation ====================
+    // ==================== Stage 3: Provider Plan Generation ====================
 
     @Nested
-    @DisplayName("Stage 3: FFmpeg Plan Generation")
-    class FFmpegPlanStage {
+    @DisplayName("Stage 3: Provider Plan Generation")
+    class ProviderPlanStage {
 
         @Test
-        @DisplayName("FFmpeg plan generates valid plan for caption-adapted timeline")
-        void ffmpegPlanGeneratesValidPlan() {
+        @DisplayName("Provider plan generates valid plan for caption-adapted timeline")
+        void providerPlanGeneratesValidPlan() {
             // Given: a timeline from the caption template adapter
-            CaptionSegmentSpec seg = new CaptionSegmentSpec(1000, 4000, "FFmpeg test caption");
+            CaptionSegmentSpec seg = new CaptionSegmentSpec(1000, 4000, "Provider test caption");
             CaptionTemplateRenderRequest captionRequest = new CaptionTemplateRenderRequest(
                     "prj-vs0", "prod-source-003",
                     List.of(seg), new CaptionTemplateSpec("tpl-inline", "inline",
@@ -182,54 +182,54 @@ class Vs0VerticalSliceIntegrationTest extends PostgresTestContainerSupport {
             CaptionTemplateTimelineAdapter adapter = new CaptionTemplateTimelineAdapter();
             TimelineSpec timeline = adapter.adapt(captionRequest);
 
-            // When: we generate an FFmpeg plan
-            FFmpegLibassBasicRenderPlanningRequest planRequest =
-                    new FFmpegLibassBasicRenderPlanningRequest(
-                            new FFmpegLibassBasicRenderPlanningRequestId("plan-req-vs0"),
+            // When: we generate an Provider plan
+            BasicRenderPlanningRequest planRequest =
+                    new BasicRenderPlanningRequest(
+                            new BasicRenderPlanningRequestId("plan-req-vs0"),
                             timeline,
-                            FFmpegLibassBasicRenderPolicy.conservative(),
+                            BasicRenderPolicy.conservative(),
                             Map.of());
 
-            FFmpegLibassBasicRenderPlanningResult planResult =
+            BasicRenderPlanningResult planResult =
                     com.example.platform.render.domain.plan
-                            .FFmpegLibassBasicRenderPlanner.plan(planRequest);
+                            .BasicRenderPlanner.plan(planRequest);
 
             // Then: the plan is successfully generated
             assertNotNull(planResult);
-            assertEquals(FFmpegLibassBasicRenderPlanningResultStatus.PLANNED, planResult.status(),
-                    "FFmpeg plan should be PLANNED for valid caption timeline");
+            assertEquals(BasicRenderPlanningResultStatus.PLANNED, planResult.status(),
+                    "Provider plan should be PLANNED for valid caption timeline");
             assertNotNull(planResult.plan());
             assertFalse(planResult.plan().stages().isEmpty(),
-                    "FFmpeg plan should have at least one stage");
+                    "Provider plan should have at least one stage");
         }
 
         @Test
-        @DisplayName("FFmpeg plan rejects null request")
-        void ffmpegPlanRejectsNullRequest() {
-            FFmpegLibassBasicRenderPlanningResult result =
+        @DisplayName("Provider plan rejects null request")
+        void providerPlanRejectsNullRequest() {
+            BasicRenderPlanningResult result =
                     com.example.platform.render.domain.plan
-                            .FFmpegLibassBasicRenderPlanner.plan(null);
+                            .BasicRenderPlanner.plan(null);
 
-            assertEquals(FFmpegLibassBasicRenderPlanningResultStatus.FAILED, result.status());
+            assertEquals(BasicRenderPlanningResultStatus.FAILED, result.status());
         }
 
         @Test
-        @DisplayName("FFmpeg plan for timeline with video overlay includes overlay stages")
-        void ffmpegPlanIncludesOverlayStages() {
+        @DisplayName("Provider plan for timeline with video overlay includes overlay stages")
+        void providerPlanIncludesOverlayStages() {
             TimelineSpec timeline = TimelineCoreSmokeFixture.createVideoWithSubtitleTimeline();
 
-            FFmpegLibassBasicRenderPlanningRequest request =
-                    new FFmpegLibassBasicRenderPlanningRequest(
-                            new FFmpegLibassBasicRenderPlanningRequestId("plan-req-overlay"),
+            BasicRenderPlanningRequest request =
+                    new BasicRenderPlanningRequest(
+                            new BasicRenderPlanningRequestId("plan-req-overlay"),
                             timeline,
-                            FFmpegLibassBasicRenderPolicy.conservative(),
+                            BasicRenderPolicy.conservative(),
                             Map.of());
 
-            FFmpegLibassBasicRenderPlanningResult result =
+            BasicRenderPlanningResult result =
                     com.example.platform.render.domain.plan
-                            .FFmpegLibassBasicRenderPlanner.plan(request);
+                            .BasicRenderPlanner.plan(request);
 
-            assertEquals(FFmpegLibassBasicRenderPlanningResultStatus.PLANNED, result.status());
+            assertEquals(BasicRenderPlanningResultStatus.PLANNED, result.status());
             assertTrue(result.plan().stages().size() >= 3,
                     "Plan should have validation + prepare + clip stages at minimum");
         }
@@ -298,18 +298,18 @@ class Vs0VerticalSliceIntegrationTest extends PostgresTestContainerSupport {
         @DisplayName("Bound provider ref is production-eligible for PRODUCTION status + autoDispatch")
         void boundProviderRefProductionEligible() {
             BoundProviderRef ref = new BoundProviderRef(
-                    "ffmpeg", ProviderStatus.PRODUCTION, ProviderType.RENDER,
+                    "provider-a", ProviderStatus.PRODUCTION, ProviderType.RENDER,
                     "P0", true, true, "6.0", 0);
 
             assertTrue(ref.isProductionEligible(),
-                    "FFmpeg with PRODUCTION status + autoDispatch should be production-eligible");
+                    "Provider with PRODUCTION status + autoDispatch should be production-eligible");
         }
     }
 
     // ==================== Stage 5: RenderExecutionPlan ====================
 
     @Nested
-    @DisplayName("Stage 5: RenderExecutionPlan (FFmpeg plan → Product output)")
+    @DisplayName("Stage 5: RenderExecutionPlan (Provider plan → Product output)")
     class ExecutionPlanStage {
 
         @Test
@@ -332,13 +332,13 @@ class Vs0VerticalSliceIntegrationTest extends PostgresTestContainerSupport {
                     RenderExecutionStepType.EXECUTE_PROVIDER,
                     RenderExecutionStepStatus.PENDING,
                     "node-final", ArtifactNodeType.FINAL_RENDER,
-                    "ffmpeg",
-                    new BoundProviderRef("ffmpeg", ProviderStatus.PRODUCTION,
+                    "provider-a",
+                    new BoundProviderRef("provider-a", ProviderStatus.PRODUCTION,
                             ProviderType.RENDER, "P0", true, true, "6.0", 0),
                     null,
                     List.of("step-mat-001"), false,
                     ExecutionEnvironmentTarget.LOCAL,
-                    "FFmpeg transcode with caption burn-in",
+                    "Provider transcode with caption burn-in",
                     Map.of("capabilities", "transcode,mux,caption_burn_in"));
 
             RenderExecutionStep registerStep = new RenderExecutionStep(
@@ -371,7 +371,7 @@ class Vs0VerticalSliceIntegrationTest extends PostgresTestContainerSupport {
             // Verify step ordering and dependencies
             List<RenderExecutionStep> providerSteps = plan.providerExecutionSteps();
             assertEquals(1, providerSteps.size());
-            assertEquals("ffmpeg", providerSteps.get(0).providerName());
+            assertEquals("provider-a", providerSteps.get(0).providerName());
 
             List<RenderExecutionStep> materializationSteps = plan.materializationSteps();
             assertEquals(1, materializationSteps.size());
@@ -388,8 +388,8 @@ class Vs0VerticalSliceIntegrationTest extends PostgresTestContainerSupport {
                     "step-p", RenderExecutionStepType.EXECUTE_PROVIDER,
                     RenderExecutionStepStatus.PENDING,
                     "node-final", ArtifactNodeType.FINAL_RENDER,
-                    "ffmpeg", null, null,
-                    List.of(), false, ExecutionEnvironmentTarget.LOCAL, "FFmpeg", Map.of());
+                    "provider-a", null, null,
+                    List.of(), false, ExecutionEnvironmentTarget.LOCAL, "provider-a", Map.of());
 
             RenderExecutionPlan plan = new RenderExecutionPlan(
                     new RenderExecutionPlanId("ep-sum-001"),
@@ -400,7 +400,7 @@ class Vs0VerticalSliceIntegrationTest extends PostgresTestContainerSupport {
             var summary = plan.summary();
             assertNotNull(summary);
             assertEquals(1, summary.totalSteps());
-            assertTrue(summary.boundProviders().contains("ffmpeg"));
+            assertTrue(summary.boundProviders().contains("provider-a"));
         }
 
         @Test
@@ -410,8 +410,8 @@ class Vs0VerticalSliceIntegrationTest extends PostgresTestContainerSupport {
                     "step-fail", RenderExecutionStepType.EXECUTE_PROVIDER,
                     RenderExecutionStepStatus.FAILED,
                     "node-final", ArtifactNodeType.FINAL_RENDER,
-                    "ffmpeg", null, null,
-                    List.of(), false, ExecutionEnvironmentTarget.LOCAL, "FFmpeg (failed)",
+                    "provider-a", null, null,
+                    List.of(), false, ExecutionEnvironmentTarget.LOCAL, "Provider (failed)",
                     Map.of("errorCode", "PROVIDER_TIMEOUT"));
 
             RenderExecutionPlan plan = new RenderExecutionPlan(
@@ -432,7 +432,7 @@ class Vs0VerticalSliceIntegrationTest extends PostgresTestContainerSupport {
     class RenderPlanStateMachineStage {
 
         @Test
-        @DisplayName("Full VS.0 flow: Timeline edit → Caption → FFmpeg plan → RenderJobPlan → Step execution")
+        @DisplayName("Full VS.0 flow: Timeline edit → Caption → Provider plan → RenderJobPlan → Step execution")
         void fullVs0VerticalSliceFlow() {
             // === Step 1: Caption Template (canonical TimelineDocument authoring
             // path; BasicTimelineEditor parallel mutation is DELETED) ===
@@ -449,18 +449,18 @@ class Vs0VerticalSliceIntegrationTest extends PostgresTestContainerSupport {
             assertNotNull(captionTimeline);
             assertFalse(captionTimeline.textOverlays().isEmpty());
 
-            // === Step 3: FFmpeg Plan ===
-            FFmpegLibassBasicRenderPlanningRequest ffmpegRequest =
-                    new FFmpegLibassBasicRenderPlanningRequest(
-                            new FFmpegLibassBasicRenderPlanningRequestId("plan-req-vs0-full"),
+            // === Step 3: Provider Plan ===
+            BasicRenderPlanningRequest providerRequest =
+                    new BasicRenderPlanningRequest(
+                            new BasicRenderPlanningRequestId("plan-req-vs0-full"),
                             captionTimeline,
-                            FFmpegLibassBasicRenderPolicy.conservative(),
+                            BasicRenderPolicy.conservative(),
                             Map.of());
-            FFmpegLibassBasicRenderPlanningResult ffmpegResult =
+            BasicRenderPlanningResult providerResult =
                     com.example.platform.render.domain.plan
-                            .FFmpegLibassBasicRenderPlanner.plan(ffmpegRequest);
-            assertEquals(FFmpegLibassBasicRenderPlanningResultStatus.PLANNED, ffmpegResult.status());
-            assertNotNull(ffmpegResult.plan());
+                            .BasicRenderPlanner.plan(providerRequest);
+            assertEquals(BasicRenderPlanningResultStatus.PLANNED, providerResult.status());
+            assertNotNull(providerResult.plan());
 
             // === Step 4: RenderJobPlan (Product Output) ===
             RenderProfile profile = RenderProfile.social1080p();
@@ -468,7 +468,7 @@ class Vs0VerticalSliceIntegrationTest extends PostgresTestContainerSupport {
                     "rp-vs0-full", "rj-vs0-full", profile,
                     List.of(
                             RenderStep.pending("rs-build", "rp-vs0-full", RenderStepType.BUILD_TIMELINE),
-                            RenderStep.pending("rs-transcode", "rp-vs0-full", RenderStepType.FFMPEG_TRANSCODE),
+                            RenderStep.pending("rs-transcode", "rp-vs0-full", RenderStepType.PROVIDER_TRANSCODE),
                             RenderStep.pending("rs-register", "rp-vs0-full", RenderStepType.REGISTER_ARTIFACT)
                     ));
 
@@ -490,10 +490,10 @@ class Vs0VerticalSliceIntegrationTest extends PostgresTestContainerSupport {
             RenderStep completedBuild = runningBuild.markCompleted(List.of("artifact-timeline-001"));
             renderPlan = renderPlan.withStep(completedBuild);
 
-            // Execute step 2: FFMPEG_TRANSCODE
+            // Execute step 2: PROVIDER_TRANSCODE
             RenderStep transcodeStep = renderPlan.nextPendingStep();
             assertNotNull(transcodeStep);
-            assertEquals(RenderStepType.FFMPEG_TRANSCODE, transcodeStep.type());
+            assertEquals(RenderStepType.PROVIDER_TRANSCODE, transcodeStep.type());
 
             transcodeStep = transcodeStep.markRunning();
             renderPlan = renderPlan.withStep(transcodeStep);
@@ -521,23 +521,23 @@ class Vs0VerticalSliceIntegrationTest extends PostgresTestContainerSupport {
             RenderJobPlan plan = RenderJobPlan.create(
                     "rp-fail", "rj-fail", RenderProfile.social720p(),
                     List.of(
-                            RenderStep.pending("rs-fail-1", "rp-fail", RenderStepType.FFMPEG_TRANSCODE)
+                            RenderStep.pending("rs-fail-1", "rp-fail", RenderStepType.PROVIDER_TRANSCODE)
                     ));
 
             RenderStep step = plan.nextPendingStep().markRunning();
             plan = plan.withStep(step);
-            step = step.markFailed("FFMPEG_ERROR", "Codec not available");
+            step = step.markFailed("PROVIDER_ERROR", "Codec not available");
             plan = plan.withStep(step);
 
             assertTrue(plan.hasFailed());
             assertTrue(plan.isDone());
-            assertEquals("FFMPEG_ERROR", plan.steps().get(0).errorCode());
+            assertEquals("PROVIDER_ERROR", plan.steps().get(0).errorCode());
         }
 
         @Test
         @DisplayName("RenderJobPlan step retry: FAILED → PENDING transition is valid")
         void renderPlanStepRetry() {
-            RenderStep failed = RenderStep.pending("rs-retry", "rp-retry", RenderStepType.FFMPEG_TRANSCODE)
+            RenderStep failed = RenderStep.pending("rs-retry", "rp-retry", RenderStepType.PROVIDER_TRANSCODE)
                     .markRunning()
                     .markFailed("ERR", "fail");
 
@@ -554,8 +554,8 @@ class Vs0VerticalSliceIntegrationTest extends PostgresTestContainerSupport {
     class DomainBoundaryValidation {
 
         @Test
-        @DisplayName("Caption template adapter does not expose raw filtergraphs")
-        void captionAdapterNoRawFiltergraphs() {
+        @DisplayName("Caption template adapter does not expose raw provider expressions")
+        void captionAdapterNoRawProviderExpressions() {
             CaptionSegmentSpec seg = new CaptionSegmentSpec(0, 3000, "Safe test");
             CaptionTemplateRenderRequest request = new CaptionTemplateRenderRequest(
                     "prj-safe", "prod-safe", List.of(seg),
@@ -567,12 +567,12 @@ class Vs0VerticalSliceIntegrationTest extends PostgresTestContainerSupport {
 
             TimelineSpec adapted = new CaptionTemplateTimelineAdapter().adapt(request);
 
-            // Verify no metadata leaks raw filtergraph syntax
+            // Verify no metadata leaks raw provider expression syntax
             adapted.metadata().values().forEach(v -> {
-                assertFalse(v.contains("filter_complex"),
-                        "Adapted timeline metadata should not contain filter_complex");
-                assertFalse(v.contains("filtergraph"),
-                        "Adapted timeline metadata should not contain filtergraph");
+                assertFalse(v.contains("provider_expression"),
+                        "Adapted timeline metadata should not contain provider_expression");
+                assertFalse(v.contains("provider expression"),
+                        "Adapted timeline metadata should not contain provider expression");
             });
         }
 

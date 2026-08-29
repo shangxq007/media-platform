@@ -15,7 +15,7 @@ package com.example.platform.render.domain.compile;
  * @param sampleRate   audio sample rate in Hz
  * @param channels     audio channels (1=mono, 2=stereo)
  * @param audioBitrate audio bitrate in kbps
- * @param pixelFormat  pixel format (e.g., "yuv420p")
+ * @param pixelFormat  pixel format (e.g., "default")
  */
 public record NormalizedOutputProfile(
         String format,
@@ -34,7 +34,7 @@ public record NormalizedOutputProfile(
      */
     public static final NormalizedOutputProfile DEFAULT_MP4_1080P30 = new NormalizedOutputProfile(
             "mp4", "1920x1080", 30.0, "h264", 8000,
-            "aac", 48000, 2, 128, "yuv420p");
+            "aac", 48000, 2, 128, "default");
 
     /**
      * Parses the width from the resolution string.

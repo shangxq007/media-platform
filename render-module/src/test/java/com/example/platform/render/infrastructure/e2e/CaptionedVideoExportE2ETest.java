@@ -99,14 +99,13 @@ class CaptionedVideoExportE2ETest {
         assertTrue(plan.steps().size() >= 2);
 
         boolean hasRemotionStep = plan.steps().stream()
-                .anyMatch(s -> s.providerName().equals("remotion"));
-        boolean hasFFmpegStep = plan.steps().stream()
-                .anyMatch(s -> s.providerName().equals("ffmpeg"));
+                .anyMatch(s -> "remotion".equals(s.providerName()));
+        boolean hasUnboundTypedPluginStep = plan.steps().stream()
+                .anyMatch(s -> s.providerName() == null);
         assertTrue(hasRemotionStep, "Plan should have a remotion step");
-        assertTrue(hasFFmpegStep, "Plan should have an ffmpeg step");
+        assertTrue(hasUnboundTypedPluginStep, "Former concrete steps must remain unbound");
 
         for (RenderStep step : plan.steps()) {
-            assertNotNull(step.providerName());
             assertNotNull(step.providerType());
             assertNotNull(step.requiredCapabilities());
             assertNotNull(step.dependsOn());
@@ -246,7 +245,6 @@ class CaptionedVideoExportE2ETest {
         assertNotNull(plan);
         for (RenderStep step : plan.steps()) {
             assertNotNull(step.id());
-            assertNotNull(step.providerName());
             assertNotNull(step.providerType());
         }
     }

@@ -47,7 +47,7 @@ class RenderStepTest {
 
     @Test
     void shouldTransitionRunningToFailed() {
-        RenderStep step = RenderStep.pending("rs-1", "rp-1", RenderStepType.FFMPEG_TRANSCODE)
+        RenderStep step = RenderStep.pending("rs-1", "rp-1", RenderStepType.PROVIDER_TRANSCODE)
                 .markRunning();
         RenderStep failed = step.markFailed("TRANSCODE_FAILED", "Codec not supported");
 
@@ -107,7 +107,7 @@ class RenderStepTest {
     @Test
     void shouldCreateStepWithParameters() {
         RenderStep step = RenderStep.pending("rs-1", "rp-1",
-                RenderStepType.FFMPEG_TRANSCODE,
+                RenderStepType.PROVIDER_TRANSCODE,
                 Map.of("bitrate", "8000", "codec", "h264"));
         assertEquals("8000", step.parameters().get("bitrate"));
         assertEquals("h264", step.parameters().get("codec"));

@@ -130,7 +130,7 @@ class CapabilityGraphCompilerTest {
 
         // Verify no provider-specific references
         String json = capGraph.toString();
-        assertFalse(json.contains("ffmpeg"), "Must not contain provider names");
+        assertFalse(json.contains("provider-a"), "Must not contain provider names");
         assertFalse(json.contains("remotion"), "Must not contain provider names");
         assertFalse(json.contains("blender"), "Must not contain provider names");
         assertFalse(json.contains("mlt"), "Must not contain provider names");

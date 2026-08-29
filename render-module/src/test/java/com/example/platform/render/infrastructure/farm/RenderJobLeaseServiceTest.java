@@ -69,15 +69,15 @@ class RenderJobLeaseServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void claimQueuedJobWithEligibleProvider() {
-        insertWorker("worker-1", "[\"ffmpeg\"]");
+        insertWorker("worker-1", "[\"remote\"]");
         insertJob("job-1", "QUEUED");
 
         RenderFarmClaimResult result = leaseService.claimNextJob(
-                "worker-1", List.of("ffmpeg"), false, "PRODUCTION");
+                "worker-1", List.of("remote"), false, "PRODUCTION");
 
         assertTrue(result.isClaimed());
         assertEquals("job-1", result.jobId());
-        assertEquals("ffmpeg", result.providerId());
+        assertEquals("remote", result.providerId());
         assertEquals(1, result.attempt());
         assertNotNull(result.leaseId());
         assertNotNull(result.leaseUntil());
@@ -108,11 +108,11 @@ class RenderJobLeaseServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void claimRejectsDeprecatedProvider() {
-        insertWorker("worker-1", "[\"javacv\"]");
+        insertWorker("worker-1", "[\"ofx\"]");
         insertJob("job-1", "QUEUED");
 
         RenderFarmClaimResult result = leaseService.claimNextJob(
-                "worker-1", List.of("javacv"), false, "PRODUCTION");
+                "worker-1", List.of("ofx"), false, "PRODUCTION");
 
         assertFalse(result.isClaimed());
     }
@@ -175,11 +175,11 @@ class RenderJobLeaseServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void claimReturnsJobDetails() {
-        insertWorker("worker-1", "[\"ffmpeg\"]");
+        insertWorker("worker-1", "[\"remote\"]");
         insertJob("job-1", "QUEUED");
 
         RenderFarmClaimResult result = leaseService.claimNextJob(
-                "worker-1", List.of("ffmpeg"), false, "PRODUCTION");
+                "worker-1", List.of("remote"), false, "PRODUCTION");
 
         assertTrue(result.isClaimed());
         assertEquals("default_1080p", result.renderProfile());
@@ -189,10 +189,10 @@ class RenderJobLeaseServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void claimNoQueuedJobsReturnsFailure() {
-        insertWorker("worker-1", "[\"ffmpeg\"]");
+        insertWorker("worker-1", "[\"remote\"]");
 
         RenderFarmClaimResult result = leaseService.claimNextJob(
-                "worker-1", List.of("ffmpeg"), false, "PRODUCTION");
+                "worker-1", List.of("remote"), false, "PRODUCTION");
 
         assertFalse(result.isClaimed());
     }
@@ -202,23 +202,23 @@ class RenderJobLeaseServiceTest extends PostgresTestContainerSupport {
         insertJob("job-1", "QUEUED");
 
         RenderFarmClaimResult result = leaseService.claimNextJob(
-                "unknown-worker", List.of("ffmpeg"), false, "PRODUCTION");
+                "unknown-worker", List.of("remote"), false, "PRODUCTION");
 
         assertFalse(result.isClaimed());
     }
 
     @Test
     void duplicateClaimSameJobPrevented() {
-        insertWorker("worker-1", "[\"ffmpeg\"]");
-        insertWorker("worker-2", "[\"ffmpeg\"]");
+        insertWorker("worker-1", "[\"remote\"]");
+        insertWorker("worker-2", "[\"remote\"]");
         insertJob("job-1", "QUEUED");
 
         RenderFarmClaimResult first = leaseService.claimNextJob(
-                "worker-1", List.of("ffmpeg"), false, "PRODUCTION");
+                "worker-1", List.of("remote"), false, "PRODUCTION");
         assertTrue(first.isClaimed());
 
         RenderFarmClaimResult second = leaseService.claimNextJob(
-                "worker-2", List.of("ffmpeg"), false, "PRODUCTION");
+                "worker-2", List.of("remote"), false, "PRODUCTION");
         assertFalse(second.isClaimed());
     }
 
@@ -226,23 +226,23 @@ class RenderJobLeaseServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void renewByOwnerSucceeds() {
-        insertWorker("worker-1", "[\"ffmpeg\"]");
+        insertWorker("worker-1", "[\"remote\"]");
         insertJob("job-1", "QUEUED");
 
         RenderFarmClaimResult claimed = leaseService.claimNextJob(
-                "worker-1", List.of("ffmpeg"), false, "PRODUCTION");
+                "worker-1", List.of("remote"), false, "PRODUCTION");
         boolean renewed = leaseService.renewLease(claimed.leaseId(), "worker-1");
         assertTrue(renewed);
     }
 
     @Test
     void renewByWrongWorkerRejected() {
-        insertWorker("worker-1", "[\"ffmpeg\"]");
-        insertWorker("worker-2", "[\"ffmpeg\"]");
+        insertWorker("worker-1", "[\"remote\"]");
+        insertWorker("worker-2", "[\"remote\"]");
         insertJob("job-1", "QUEUED");
 
         RenderFarmClaimResult claimed = leaseService.claimNextJob(
-                "worker-1", List.of("ffmpeg"), false, "PRODUCTION");
+                "worker-1", List.of("remote"), false, "PRODUCTION");
         boolean renewed = leaseService.renewLease(claimed.leaseId(), "worker-2");
         assertFalse(renewed);
     }
@@ -251,11 +251,11 @@ class RenderJobLeaseServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void completeLeaseByOwnerSucceeds() {
-        insertWorker("worker-1", "[\"ffmpeg\"]");
+        insertWorker("worker-1", "[\"remote\"]");
         insertJob("job-1", "QUEUED");
 
         RenderFarmClaimResult claimed = leaseService.claimNextJob(
-                "worker-1", List.of("ffmpeg"), false, "PRODUCTION");
+                "worker-1", List.of("remote"), false, "PRODUCTION");
         LeaseReleaseResult released = leaseService.completeLease(
                 claimed.leaseId(), "worker-1", "s3://bucket/output.mp4", "abc123", 5000L);
 
@@ -265,12 +265,12 @@ class RenderJobLeaseServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void completeLeaseByWrongWorkerRejected() {
-        insertWorker("worker-1", "[\"ffmpeg\"]");
-        insertWorker("worker-2", "[\"ffmpeg\"]");
+        insertWorker("worker-1", "[\"remote\"]");
+        insertWorker("worker-2", "[\"remote\"]");
         insertJob("job-1", "QUEUED");
 
         RenderFarmClaimResult claimed = leaseService.claimNextJob(
-                "worker-1", List.of("ffmpeg"), false, "PRODUCTION");
+                "worker-1", List.of("remote"), false, "PRODUCTION");
         LeaseReleaseResult released = leaseService.completeLease(
                 claimed.leaseId(), "worker-2", "s3://bucket/output.mp4", "abc123", 5000L);
 
@@ -279,11 +279,11 @@ class RenderJobLeaseServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void completeLeaseUpdatesArtifactUri() {
-        insertWorker("worker-1", "[\"ffmpeg\"]");
+        insertWorker("worker-1", "[\"remote\"]");
         insertJob("job-1", "QUEUED");
 
         RenderFarmClaimResult claimed = leaseService.claimNextJob(
-                "worker-1", List.of("ffmpeg"), false, "PRODUCTION");
+                "worker-1", List.of("remote"), false, "PRODUCTION");
         leaseService.completeLease(claimed.leaseId(), "worker-1", "s3://bucket/output.mp4", "abc123", 5000L);
 
         var jobRecord = new com.example.platform.render.infrastructure.RenderJobRepository(dsl)
@@ -296,13 +296,13 @@ class RenderJobLeaseServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void failLeaseRetryableRequeuesJob() {
-        insertWorker("worker-1", "[\"ffmpeg\"]");
+        insertWorker("worker-1", "[\"remote\"]");
         insertJob("job-1", "QUEUED");
 
         RenderFarmClaimResult claimed = leaseService.claimNextJob(
-                "worker-1", List.of("ffmpeg"), false, "PRODUCTION");
+                "worker-1", List.of("remote"), false, "PRODUCTION");
         boolean failed = leaseService.failLease(
-                claimed.leaseId(), "worker-1", "FFmpeg crashed", "RENDER_FAILED", true);
+                claimed.leaseId(), "worker-1", "Provider crashed", "RENDER_FAILED", true);
 
         assertTrue(failed);
         var jobRecord = new com.example.platform.render.infrastructure.RenderJobRepository(dsl)
@@ -312,11 +312,11 @@ class RenderJobLeaseServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void failLeaseNonRetryableMarksJobFailed() {
-        insertWorker("worker-1", "[\"ffmpeg\"]");
+        insertWorker("worker-1", "[\"remote\"]");
         insertJob("job-1", "QUEUED");
 
         RenderFarmClaimResult claimed = leaseService.claimNextJob(
-                "worker-1", List.of("ffmpeg"), false, "PRODUCTION");
+                "worker-1", List.of("remote"), false, "PRODUCTION");
         boolean failed = leaseService.failLease(
                 claimed.leaseId(), "worker-1", "Bad input", "VALIDATION_FAILED", false);
 
@@ -328,13 +328,13 @@ class RenderJobLeaseServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void failLeaseMarksFailedWhenMaxAttemptsExhausted() {
-        insertWorker("worker-1", "[\"ffmpeg\"]");
+        insertWorker("worker-1", "[\"remote\"]");
         insertJob("job-1", "QUEUED");
 
         // Claim and fail 3 times (all retryable)
         for (int i = 1; i <= 3; i++) {
             RenderFarmClaimResult claimed = leaseService.claimNextJob(
-                    "worker-1", List.of("ffmpeg"), false, "PRODUCTION");
+                    "worker-1", List.of("remote"), false, "PRODUCTION");
             if (claimed.isClaimed()) {
                 leaseService.failLease(claimed.leaseId(), "worker-1", "Error " + i, "RENDER_FAILED", true);
             }
@@ -349,11 +349,11 @@ class RenderJobLeaseServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void expireStaleLeasesRequeuesJob() {
-        insertWorker("worker-1", "[\"ffmpeg\"]");
+        insertWorker("worker-1", "[\"remote\"]");
         insertJob("job-1", "QUEUED");
 
         RenderFarmClaimResult claimed = leaseService.claimNextJob(
-                "worker-1", List.of("ffmpeg"), false, "PRODUCTION");
+                "worker-1", List.of("remote"), false, "PRODUCTION");
 
         // Set lease_until to past
         dsl.update(DSL.table("render_job_lease"))
@@ -373,10 +373,10 @@ class RenderJobLeaseServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void workerActiveJobCountUpdatedOnClaimAndComplete() {
-        insertWorker("worker-1", "[\"ffmpeg\"]");
+        insertWorker("worker-1", "[\"remote\"]");
         insertJob("job-1", "QUEUED");
 
-        leaseService.claimNextJob("worker-1", List.of("ffmpeg"), false, "PRODUCTION");
+        leaseService.claimNextJob("worker-1", List.of("remote"), false, "PRODUCTION");
 
         var worker = workerRepository.findByWorkerId("worker-1").orElseThrow();
         assertEquals(1, worker.activeJobCount());

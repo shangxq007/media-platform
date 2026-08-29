@@ -31,7 +31,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Retained non-FFmpeg portion of the timeline vertical slice.
+ * Retained non-Provider portion of the timeline vertical slice.
  *
  * <p>Render-command and media-probe assertions moved with the deleted legacy authority;
  * governed timeline save, snapshot payload, and fail-closed invalid-save coverage remain.</p>

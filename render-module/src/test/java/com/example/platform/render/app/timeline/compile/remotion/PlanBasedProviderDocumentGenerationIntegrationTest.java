@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Integration tests for provider execution document generation in plan-based compile.
  * Proves: generation integrated, non-Remotion skipped, Remotion generates, audit emitted,
- * FFmpeg unaffected, policy guard unchanged.
+ * Provider unaffected, policy guard unchanged.
  */
 class PlanBasedProviderDocumentGenerationIntegrationTest {
 
@@ -30,15 +30,15 @@ class PlanBasedProviderDocumentGenerationIntegrationTest {
     }
 
     @Test
-    @DisplayName("FFmpeg draft is skipped by generation service")
-    void ffmpegDraftSkipped() {
-        ProviderExecutionDocumentDraft ffmpegDraft = ProviderExecutionDocumentDraft.forNode(
-                "draft-ffmpeg", "node-1", "ffmpeg",
-                ProviderExecutionDocumentDraftType.FFMPEG_COMMAND_PLAN);
+    @DisplayName("Provider draft is skipped by generation service")
+    void providerDraftSkipped() {
+        ProviderExecutionDocumentDraft providerDraft = ProviderExecutionDocumentDraft.forNode(
+                "draft-provider", "node-1", "provider-a",
+                ProviderExecutionDocumentDraftType.TYPED_PROVIDER_REQUEST);
         NormalizedTimeline timeline = createSimpleTimeline();
 
         List<ProviderExecutionDocumentGenerationResult> results =
-                generationService.generate(List.of(ffmpegDraft), timeline);
+                generationService.generate(List.of(providerDraft), timeline);
 
         assertEquals(1, results.size());
         assertTrue(results.get(0).isSkipped());
@@ -66,21 +66,21 @@ class PlanBasedProviderDocumentGenerationIntegrationTest {
     }
 
     @Test
-    @DisplayName("Mixed drafts: FFmpeg skipped, Remotion generated")
+    @DisplayName("Mixed drafts: Provider skipped, Remotion generated")
     void mixedDraftsHandled() {
-        ProviderExecutionDocumentDraft ffmpegDraft = ProviderExecutionDocumentDraft.forNode(
-                "draft-ffmpeg", "node-1", "ffmpeg",
-                ProviderExecutionDocumentDraftType.FFMPEG_COMMAND_PLAN);
+        ProviderExecutionDocumentDraft providerDraft = ProviderExecutionDocumentDraft.forNode(
+                "draft-provider", "node-1", "provider-a",
+                ProviderExecutionDocumentDraftType.TYPED_PROVIDER_REQUEST);
         ProviderExecutionDocumentDraft remotionDraft = ProviderExecutionDocumentDraft.forNode(
                 "draft-remotion", "node-cap", "remotion",
                 ProviderExecutionDocumentDraftType.REMOTION_INPUT_PROPS_DOCUMENT);
         NormalizedTimeline timeline = createSimpleTimeline();
 
         List<ProviderExecutionDocumentGenerationResult> results =
-                generationService.generate(List.of(ffmpegDraft, remotionDraft), timeline);
+                generationService.generate(List.of(providerDraft, remotionDraft), timeline);
 
         assertEquals(2, results.size());
-        assertTrue(results.get(0).isSkipped());    // FFmpeg
+        assertTrue(results.get(0).isSkipped());    // Provider
         assertTrue(results.get(1).isGenerated());  // Remotion
     }
 
@@ -142,7 +142,7 @@ class PlanBasedProviderDocumentGenerationIntegrationTest {
         assertFalse(json.contains("\"bucket\""));
         assertFalse(json.contains("\"objectKey\""));
         assertFalse(json.contains("\"signedUrl\""));
-        assertFalse(json.contains("ffmpeg "));
+        assertFalse(json.contains("provider "));
         assertFalse(json.contains("password"));
     }
 

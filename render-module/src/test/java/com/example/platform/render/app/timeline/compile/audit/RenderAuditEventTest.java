@@ -15,7 +15,7 @@ class RenderAuditEventTest {
                 .projectId("proj-1").timelineRevisionId("rev-1")
                 .message("Execution completed").build();
         assertNull(event.sanitizedDetails());
-        assertFalse(event.toString().contains("ffmpeg -i"));
+        assertFalse(event.toString().contains("provider -i"));
     }
 
     @Test
@@ -67,7 +67,7 @@ class RenderAuditEventTest {
                 .renderJobId("rj-1").renderRequestFingerprint("rfp-abc")
                 .executionMode("PLAN_BASED").artifactGraphId("ag-1")
                 .capabilityGraphId("cg-1").providerBindingPlanId("pbp-1")
-                .renderExecutionPlanId("rep-1").providerName("ffmpeg")
+                .renderExecutionPlanId("rep-1").providerName("provider-a")
                 .inputProductIds(List.of("input-1")).outputProductId("output-1")
                 .message("Completed").sanitizedDetails("details").build();
         assertEquals("proj-1", event.projectId());
@@ -78,7 +78,7 @@ class RenderAuditEventTest {
         assertEquals("cg-1", event.capabilityGraphId());
         assertEquals("pbp-1", event.providerBindingPlanId());
         assertEquals("rep-1", event.renderExecutionPlanId());
-        assertEquals("ffmpeg", event.providerName());
+        assertEquals("provider-a", event.providerName());
         assertEquals(List.of("input-1"), event.inputProductIds());
         assertEquals("output-1", event.outputProductId());
     }

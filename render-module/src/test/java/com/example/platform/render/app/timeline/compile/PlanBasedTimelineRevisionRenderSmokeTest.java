@@ -4,11 +4,7 @@ import com.example.platform.timeline.adapter.TimelineRevisionRepository;import c
 import com.example.platform.timeline.app.TimelineRevisionDiffQuery;
 import com.example.platform.timeline.app.TimelineImportService;
 import com.example.platform.render.app.timeline.TimelineSpecImportAdapter;
-import com.example.platform.extension.app.ProcessToolRunner;
-import com.example.platform.extension.domain.ToolExecutionRequest;
-import com.example.platform.extension.domain.ToolExecutionResult;
 import com.example.platform.render.app.timeline.compile.audit.*;
-import com.example.platform.extension.domain.ToolExecutionSafetyPolicy;
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.render.app.input.RenderInputMaterializationService;
 import com.example.platform.render.app.output.RenderOutputRegistrationService;
@@ -19,7 +15,6 @@ import com.example.platform.render.domain.product.*;
 import com.example.platform.storage.contract.*;
 
 import com.example.platform.render.domain.compile.*;
-import com.example.platform.render.infrastructure.RenderToolCapabilityInventory;
 import com.example.platform.render.infrastructure.product.ProductDependencyRepository;
 import com.example.platform.render.infrastructure.product.ProductRepository;
 import com.example.platform.render.infrastructure.storage.StorageReferenceRepository;
@@ -45,7 +40,7 @@ import com.example.platform.render.domain.interchange.TimelineSpec;
 
 /**
  * Smoke test proving the legacy plan-based TimelineRevision API fails closed
- * without local FFmpeg execution, output commit, lineage, or internal leaks.
+ * without local Provider execution, output commit, lineage, or internal leaks.
  */
 class PlanBasedTimelineRevisionRenderSmokeTest {
     @SuppressWarnings("unchecked")
@@ -76,14 +71,10 @@ class PlanBasedTimelineRevisionRenderSmokeTest {
     private LocalExecutionPlanRunner planRunner;
     private RenderExecutionStepExecutor stepExecutor;
     private PlanBasedTimelineRevisionRenderService renderService;
-    private RenderToolCapabilityInventory toolInventory;
 
     private InMemoryTimelineRevisionRepository revisionRepo;
     private InMemoryTimelineSnapshotService snapshotService;
-    private boolean ffmpegAvailable = true;
     private InMemoryStorageReferenceRepository storageRepo;
-    private final java.util.concurrent.atomic.AtomicInteger processInvocations =
-            new java.util.concurrent.atomic.AtomicInteger();
 
     @BeforeEach
     void setUp() {
@@ -113,42 +104,9 @@ class PlanBasedTimelineRevisionRenderSmokeTest {
         planCompiler = new RenderExecutionPlanCompiler();
         policyGuard = new RenderPlanPolicyGuard();
 
-        // Mock ProcessToolRunner that simulates FFmpeg output
-        ProcessToolRunner toolRunner = new ProcessToolRunner() {
-            @Override
-            public ToolExecutionResult execute(ToolExecutionRequest request) {
-                processInvocations.incrementAndGet();
-                try {
-                    List<String> args = request.args();
-                    String outputPath = args.get(args.size() - 1);
-                    Path output = Path.of(outputPath);
-                    Files.createDirectories(output.getParent());
-                    Files.writeString(output, "fake-rendered-content-" + UUID.randomUUID());
-                    return ToolExecutionResult.success(0, "ffmpeg", "",
-                            Instant.now(), Instant.now());
-                } catch (IOException e) {
-                    return ToolExecutionResult.failed(1, "", e.getMessage(),
-                            Instant.now(), Instant.now());
-                }
-            }
-
-            @Override
-            public ToolExecutionResult execute(ToolExecutionRequest request, ToolExecutionSafetyPolicy policy) {
-                return execute(request);
-            }
-        };
-
-        // Mock tool inventory
-        toolInventory = new RenderToolCapabilityInventory() {
-            @Override
-            public boolean isToolAvailable(String toolName) {
-                return ffmpegAvailable && "ffmpeg".equals(toolName);
-            }
-        };
-
         RenderAuditRecorder auditRecorder = new RenderAuditRecorder(new NoopRenderAuditEventSink());
         stepExecutor = new RenderExecutionStepExecutor(
-                materializationService, registrationService, productRuntime, toolInventory, toolRunner, auditRecorder);
+                materializationService, registrationService, productRuntime, auditRecorder);
         planRunner = new LocalExecutionPlanRunner(policyGuard, stepExecutor);
 
         renderService = new PlanBasedTimelineRevisionRenderService(
@@ -158,7 +116,7 @@ class PlanBasedTimelineRevisionRenderSmokeTest {
                 bindingCompiler, draftCompiler, planCompiler,
                 policyGuard, planRunner,
                 materializationService, registrationService,
-                productRuntime, storageRuntime, toolInventory, tempDir);
+                productRuntime, storageRuntime, tempDir);
     }
 
     @Test
@@ -230,14 +188,12 @@ class PlanBasedTimelineRevisionRenderSmokeTest {
         assertFalse(failure.getMessage().contains("bucket"));
         assertFalse(failure.getMessage().contains("storageReferenceId"));
         assertFalse(failure.getMessage().contains(tempDir.toString()));
-        assertFalse(failure.getMessage().contains("ffmpeg -i"));
+        assertFalse(failure.getMessage().contains("raw provider execution command"));
     }
 
     @Test
-    @DisplayName("Missing FFmpeg fails closed")
-    void missingFfmpegFailsClosed() throws Exception {
-        ffmpegAvailable = false;
-
+    @DisplayName("Unbound typed provider plugin fails closed")
+    void unboundTypedProviderPluginFailsClosed() throws Exception {
         registerReadyRawMediaProduct(
                 TimelineCoreSmokeFixture.ASSET_ID,
                 TimelineCoreSmokeFixture.TENANT_ID,
@@ -275,8 +231,8 @@ class PlanBasedTimelineRevisionRenderSmokeTest {
         IllegalStateException failure = assertThrows(IllegalStateException.class,
                 () -> renderService.render(
                         TimelineCoreSmokeFixture.PROJECT_ID, revisionId, "default_1080p"));
-        assertEquals("Plan-based render failed: One or more steps failed", failure.getMessage());
-        assertEquals(0, processInvocations.get(), "Removed local FFmpeg authority must not run");
+        assertEquals("Plan-based render failed: Policy guard rejected plan: Plan has 1 policy violations",
+                failure.getMessage());
         assertEquals(1, storageRepo.size(), "Only input storage may be committed");
         assertTrue(productRuntime.findBySourceTimelineRevisionId(revisionId).isEmpty());
         assertTrue(productRuntime.findByProject(TimelineCoreSmokeFixture.PROJECT_ID, 100).stream()

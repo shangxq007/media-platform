@@ -35,7 +35,7 @@ public final class CaptionTemplateProfile {
                 TemplateType.CAPTION,
                 new TemplateDisplayMetadata(
                         "Basic Caption",
-                        "Burn-in caption/subtitle overlay on video using FFmpeg/libass baseline",
+                        "Typed timed-text composition requirement for a bound provider plugin",
                         null),
                 List.of(TemplateTargetRole.MAIN_VIDEO, TemplateTargetRole.CAPTION_TRACK),
                 List.of(), // parameters are passed via request, not declared in definition

@@ -23,23 +23,23 @@ public class ExportPolicyService {
             Map.entry("client_720p_watermarked", new ExportPreset("client_720p_watermarked", "Free 720p (Browser)",
                     "1280x720", 30, "mp4", "h264", "aac", true, "FREE", "client")),
             Map.entry("free_720p_watermarked", new ExportPreset("free_720p_watermarked", "Free 720p (Watermarked)",
-                    "1280x720", 30, "mp4", "h264", "aac", true, "FREE", "javacv")),
+                    "1280x720", 30, "mp4", "h264", "aac", true, "FREE", null)),
             Map.entry("pro_1080p", new ExportPreset("pro_1080p", "Pro 1080p",
-                    "1920x1080", 30, "mp4", "h264", "aac", false, "PRO", "javacv")),
+                    "1920x1080", 30, "mp4", "h264", "aac", false, "PRO", null)),
             Map.entry("team_4k", new ExportPreset("team_4k", "Team 4K",
-                    "3840x2160", 30, "mp4", "h264", "aac", false, "TEAM", "javacv")),
+                    "3840x2160", 30, "mp4", "h264", "aac", false, "TEAM", null)),
             Map.entry("enterprise_4k_ofx", new ExportPreset("enterprise_4k_ofx", "Enterprise 4K OFX",
                     "3840x2160", 30, "mp4", "h264", "aac", false, "ENTERPRISE", "ofx")),
             Map.entry("experimental_all_providers", new ExportPreset("experimental_all_providers", "Experimental (All Providers)",
                     "3840x2160", 60, "mp4", "h264", "aac", false, "EXPERIMENTAL", "ofx")),
             Map.entry("preview_720p", new ExportPreset("preview_720p", "Preview 720p",
-                    "1280x720", 30, "mp4", "h264", "aac", false, "FREE", "javacv")),
+                    "1280x720", 30, "mp4", "h264", "aac", false, "FREE", null)),
             Map.entry("hq_1080p", new ExportPreset("hq_1080p", "HQ 1080p",
-                    "1920x1080", 30, "mp4", "h264", "aac", false, "PRO", "javacv")),
+                    "1920x1080", 30, "mp4", "h264", "aac", false, "PRO", null)),
             Map.entry("h265", new ExportPreset("h265", "H.265 1080p",
-                    "1920x1080", 30, "mp4", "h265", "aac", false, "PRO", "javacv")),
+                    "1920x1080", 30, "mp4", "h265", "aac", false, "PRO", null)),
             Map.entry("vp9", new ExportPreset("vp9", "VP9 1080p",
-                    "1920x1080", 30, "webm", "vp9", "opus", false, "PRO", "javacv"))
+                    "1920x1080", 30, "webm", "vp9", "opus", false, "PRO", null))
     );
 
     /**
@@ -96,12 +96,7 @@ public class ExportPolicyService {
      */
     public String resolveProvider(String presetName, String tierName) {
         ExportPreset preset = getPreset(presetName);
-        if (preset != null && preset.providerKey() != null) {
-            return preset.providerKey();
-        }
-        // Fallback: FREE → javacv, PRO+ → ofx
-        ExportTier tier = getTier(tierName);
-        return tier.level() >= 2 ? "ofx" : "javacv";
+        return preset != null ? preset.providerKey() : null;
     }
 
     /**

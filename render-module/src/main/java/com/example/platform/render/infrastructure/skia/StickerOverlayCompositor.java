@@ -1,8 +1,5 @@
 package com.example.platform.render.infrastructure.skia;
 
-import com.example.platform.extension.app.ProcessToolRunner;
-import com.example.platform.extension.domain.ToolExecutionRequest;
-import com.example.platform.extension.domain.ToolExecutionResult;
 import com.example.platform.render.domain.interchange.TimelineScriptParser;
 import com.example.platform.render.domain.interchange.TimelineSpec;
 import com.example.platform.render.domain.legacy.TimelineSticker;
@@ -21,13 +18,9 @@ public class StickerOverlayCompositor {
 
     private static final Logger log = LoggerFactory.getLogger(StickerOverlayCompositor.class);
 
-    private final ProcessToolRunner processToolRunner;
     private final StickerRasterizer rasterizer;
     private final TimelineStickerReader stickerReader;
     private final TimelineScriptParser timelineScriptParser;
-
-    @Value("${render.providers.ffmpeg.binary:ffmpeg}")
-    private String ffmpegBinary;
 
     @Value("${render.providers.skia.timeout-ms:300000}")
     private long timeoutMs;
@@ -35,11 +28,9 @@ public class StickerOverlayCompositor {
     @Value("${app.storage.local-root:/tmp/platform}")
     private String storageRoot;
 
-    public StickerOverlayCompositor(ProcessToolRunner processToolRunner,
-                                    StickerRasterizer rasterizer,
+    public StickerOverlayCompositor(StickerRasterizer rasterizer,
                                     TimelineStickerReader stickerReader,
                                     TimelineScriptParser timelineScriptParser) {
-        this.processToolRunner = processToolRunner;
         this.rasterizer = rasterizer;
         this.stickerReader = stickerReader;
         this.timelineScriptParser = timelineScriptParser;

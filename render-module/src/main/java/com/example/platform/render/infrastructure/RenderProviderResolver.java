@@ -51,6 +51,9 @@ public class RenderProviderResolver {
     public ResolvedProvider resolve(TimelineSpec timeline, TimelineExtensions extensions,
                                      String profile, List<String> effectKeys) {
         FinalComposerHint hint = selectComposer(timeline, extensions);
+        if (hint == FinalComposerHint.TYPED_PROVIDER_PLUGIN) {
+            throw new IllegalStateException("TYPED_PROVIDER_PLUGIN_EXECUTION_REQUIRED");
+        }
         String preferredBackend = backendKey(hint);
 
         // Step 1: Try preferred provider (timeline-aware selection)
@@ -121,11 +124,11 @@ public class RenderProviderResolver {
         if (hasMultitrackAudioMix(timeline)) {
             return FinalComposerHint.MLT;
         }
-        return FinalComposerHint.FFMPEG;
+        return FinalComposerHint.TYPED_PROVIDER_PLUGIN;
     }
 
     public String backendKey(FinalComposerHint hint) {
-        return hint == FinalComposerHint.MLT ? "mlt" : "ffmpeg";
+        return hint == FinalComposerHint.MLT ? "mlt" : null;
     }
 
     private int countVideoTracks(TimelineSpec timeline) {

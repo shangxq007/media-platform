@@ -20,9 +20,9 @@ class ToolRouterTest {
     }
 
     @Test
-    void legacyFfmpegRoutesFailClosed() {
+    void legacyProviderRoutesFailClosed() {
         assertThrows(IllegalStateException.class,
-                () -> router.getTool(RenderPlanIr.ToolType.FFMPEG));
+                () -> router.getTool(RenderPlanIr.ToolType.PROVIDER));
         assertThrows(IllegalStateException.class,
                 () -> router.getToolForNode(RenderPlanIr.NodeType.CLIP));
         assertThrows(IllegalStateException.class,

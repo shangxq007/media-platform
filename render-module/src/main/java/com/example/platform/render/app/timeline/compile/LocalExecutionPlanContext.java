@@ -15,7 +15,7 @@ import java.util.Map;
  * @param projectId        the project identifier
  * @param timelineRevisionId the timeline revision identifier
  * @param snapshotId       the snapshot identifier
- * @param timelineJson     the raw timeline JSON (for FFmpeg)
+ * @param timelineJson     the raw timeline JSON (for Provider)
  * @param outputProfile    the output profile name
  * @param inputProductIds  resolved input product IDs
  * @param inputProductId   primary input product ID

@@ -20,13 +20,13 @@ class SegmentPlanFilterTest {
         PipelineExecutionPlan plan = new PipelineExecutionPlan(
                 "p1",
                 "tl",
-                FinalComposerHint.FFMPEG,
+                FinalComposerHint.TYPED_PROVIDER_PLUGIN,
                 List.of(
-                        PipelineTask.of("seg_0", "seg_0", PipelineTaskType.SEGMENT_RENDER, "ffmpeg",
+                        PipelineTask.of("seg_0", "seg_0", PipelineTaskType.SEGMENT_RENDER, "provider-a",
                                 List.of(), Map.of()),
-                        PipelineTask.of("seg_1", "seg_1", PipelineTaskType.SEGMENT_RENDER, "ffmpeg",
+                        PipelineTask.of("seg_1", "seg_1", PipelineTaskType.SEGMENT_RENDER, "provider-a",
                                 List.of(), Map.of()),
-                        PipelineTask.of("final_compose", "final_compose", PipelineTaskType.FINAL_COMPOSE, "ffmpeg",
+                        PipelineTask.of("final_compose", "final_compose", PipelineTaskType.FINAL_COMPOSE, "provider-a",
                                 List.of("seg_0", "seg_1"), Map.of())),
                 Map.of());
 

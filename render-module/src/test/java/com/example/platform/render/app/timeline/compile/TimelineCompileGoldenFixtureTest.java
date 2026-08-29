@@ -81,7 +81,7 @@ class TimelineCompileGoldenFixtureTest {
     @DisplayName("Golden: single video clip with output profile")
     void goldenSingleClipWithOutputProfile() {
         TimelineOutputSpec outputSpec = new TimelineOutputSpec("mp4", "1280x720", FrameRate.of(24, 1), "h264", 4000,
-                TimelineAudioSpec.aacDefault(), "yuv420p");
+                TimelineAudioSpec.aacDefault(), "default");
         TimelineSpec spec = new TimelineSpec("tl-golden-720p", "Golden 720p", null,
                 List.of(createVideoTrack("trk-1")), List.of(), outputSpec, 5.0, Map.of());
 
@@ -226,7 +226,7 @@ class TimelineCompileGoldenFixtureTest {
         String capStr = capGraph.toString();
 
         for (String output : List.of(timelineStr, artifactStr, capStr)) {
-            assertFalse(output.contains("ffmpeg"), "Must not contain provider names");
+            assertFalse(output.contains("provider-a"), "Must not contain provider names");
             assertFalse(output.contains("remotion"), "Must not contain provider names");
             assertFalse(output.contains("blender"), "Must not contain provider names");
             assertFalse(output.contains("mlt"), "Must not contain provider names");

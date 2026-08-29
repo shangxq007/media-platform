@@ -25,7 +25,7 @@ import com.example.platform.render.domain.legacy.TimelineValidationResult;
  * <p>These tests verify the baseline timeline creation, validation, effect application,
  * and render pipeline integration path.
  *
- * <p>Tests use mocks/fakes and do NOT depend on real FFmpeg.
+ * <p>Tests use mocks/fakes and do NOT depend on real Provider.
  */
 class TimelineEffectApiProductizationTest {
 

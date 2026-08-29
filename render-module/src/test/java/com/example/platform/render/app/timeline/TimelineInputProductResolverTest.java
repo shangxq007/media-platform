@@ -138,7 +138,7 @@ class TimelineInputProductResolverTest {
         Product product = new Product(
                 productId, "ten_1", "prj_1", "ast_final",
                 ProductType.FINAL_RENDER, RepresentationKind.MEDIA_FILE,
-                "ffmpeg", "ffmpeg", null,
+                "provider-a", "provider-a", null,
                 ProductStatus.REGISTERED, "stor-1",
                 null, null, "video/mp4", 1,
                 "{}", Instant.now(), Instant.now());
@@ -287,7 +287,7 @@ class TimelineInputProductResolverTest {
     @Test
     @DisplayName("Rejects exact-match internal provider hint")
     void rejectsProviderHintSourceAssetId() {
-        var result = resolver.resolve(List.of("ffmpeg"));
+        var result = resolver.resolve(List.of("provider"));
 
         assertFalse(result.valid());
         assertTrue(result.failureReason().contains("provider/backend hint"),
@@ -307,10 +307,10 @@ class TimelineInputProductResolverTest {
     @Test
     @DisplayName("Accepts asset ID containing provider name (not exact match)")
     void acceptsAssetIdContainingProviderName() {
-        // "my-ffmpeg-demo-asset" is NOT equal to "ffmpeg" — exact match only
-        Product input = createReadyRawMediaProduct("my-ffmpeg-demo-asset", "ten_1", "prj_1");
+        // "my-provider-demo-asset" is NOT equal to "provider" — exact match only
+        Product input = createReadyRawMediaProduct("my-provider-demo-asset", "ten_1", "prj_1");
 
-        var result = resolver.resolve(List.of("my-ffmpeg-demo-asset"));
+        var result = resolver.resolve(List.of("my-provider-demo-asset"));
 
         assertTrue(result.valid(), result.failureReason());
         assertEquals(1, result.inputProductIds().size());

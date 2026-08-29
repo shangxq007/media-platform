@@ -8,8 +8,8 @@ package com.example.platform.render.domain.compile.execution;
  */
 public enum ProviderExecutionDocumentDraftType {
 
-    /** FFmpeg command plan with args and filter graph. */
-    FFMPEG_COMMAND_PLAN,
+    /** Opaque typed-provider request; carries no argv, filter graph, or command and is not generation-ready. */
+    TYPED_PROVIDER_REQUEST,
 
     /** MLT project XML document. */
     MLT_PROJECT_DOCUMENT,

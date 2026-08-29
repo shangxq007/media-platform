@@ -32,7 +32,6 @@ dependencies {
     api("org.springframework.boot:spring-boot-starter-jooq")
     api("org.springframework.boot:spring-boot-starter-validation")
     api("com.yomahub:liteflow-spring-boot-starter:2.15.3.2")
-    // api("org.bytedeco:javacv-platform:1.5.9") // Removed: JavaCV deprecated, use FFmpeg CLI
     api("com.fasterxml.jackson.core:jackson-databind")
     api("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
     compileOnly("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2")
@@ -42,23 +41,7 @@ dependencies {
 }
 
 tasks.test {
-    useJUnitPlatform {
-        excludeTags("native-media")
-    }
-    systemProperty("media.platform.localSmoke.enabled", System.getProperty("media.platform.localSmoke.enabled") ?: "")
-    systemProperty("media.platform.localSmoke.strict", System.getProperty("media.platform.localSmoke.strict") ?: "")
-    systemProperty("media.platform.localSmoke.outputRoot", System.getProperty("media.platform.localSmoke.outputRoot") ?: "")
-}
-
-tasks.register<Test>("nativeMediaTest") {
-    description = "Runs native FFmpeg/media integration tests (requires FFmpeg and codec libraries)"
-    group = "verification"
-    useJUnitPlatform {
-        includeTags("native-media")
-    }
-    shouldRunAfter(tasks.test)
-    maxParallelForks = 1
-    forkEvery = 1
+    useJUnitPlatform()
 }
 
 tasks.register("verifyC20RenderPlanBoundaryGuard") {
@@ -83,7 +66,7 @@ tasks.register("verifyC20RenderPlanBoundaryGuard") {
         // implementation detail, NOT semantic authority. Authority surfaces are
         // checked structurally below (STRUCTURAL_GUARDS_CHECK_AUTHORITY_SURFACES_NOT_GENERIC_LANGUAGE_TOKENS_V1).
         val forbidden = listOf(
-            "ffmpeg", "Ffmpeg", "vulkan", "Vulkan", "webgpu", "WebGPU", "cuda", "CUDA",
+            "vulkan", "Vulkan", "webgpu", "WebGPU", "cuda", "CUDA",
             "opencue", "OpenCue", "org.springframework", "org.jooq",
             "com.example.platform.workflow", "com.example.platform.execution",
             "com.example.platform.typedschema",

@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 
 /**
  * Facade that routes TimelineRevision render requests to either the legacy
- * direct FFmpeg path or the plan-based execution path, with deduplication.
+ * direct Provider path or the plan-based execution path, with deduplication.
  *
  * <p>Internal only — not exposed in public APIs.</p>
  */

@@ -74,7 +74,7 @@ class ClientExportServiceTest extends PostgresTestContainerSupport {
     }
 
     @Test
-    void proTierCreates1080pNoWatermark() {
+    void unresolvedServerProviderPresetPlansServerLocationWithoutNpe() {
         var config = service.createSessionWithConfig(
                 "tenant-1", "ws-1", "proj-1", "user-1",
                 "PRO", "pro_1080p", "snap-1");
@@ -82,6 +82,9 @@ class ClientExportServiceTest extends PostgresTestContainerSupport {
         assertEquals("1920x1080", config.resolution());
         assertFalse(config.watermarkEnabled());
         assertEquals("SERVER", config.renderLocation());
+        assertTrue(config.availablePresets().stream()
+                .anyMatch(p -> p.get("name").equals("pro_1080p")
+                        && p.get("renderLocation").equals("SERVER")));
     }
 
     @Test

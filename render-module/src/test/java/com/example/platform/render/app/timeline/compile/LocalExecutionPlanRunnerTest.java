@@ -24,10 +24,10 @@ import static org.junit.jupiter.api.Assertions.*;
  * <ul>
  *   <li>Runner rejects null plan</li>
  *   <li>Runner rejects null context</li>
- *   <li>Runner rejects non-FFmpeg provider steps</li>
+ *   <li>Runner rejects provider steps without a typed identity</li>
  *   <li>Runner rejects non-LOCAL environment target</li>
- *   <li>Runner rejects plans with non-production FFmpeg provider</li>
- *   <li>Runner executes FFmpeg baseline steps</li>
+ *   <li>Runner rejects plans with non-production Provider provider</li>
+ *   <li>Runner executes Provider baseline steps</li>
  *   <li>Failed steps block downstream dependencies</li>
  *   <li>Deterministic plan execution produces stable results</li>
  * </ul>
@@ -60,19 +60,19 @@ class LocalExecutionPlanRunnerTest {
     @Test
     @DisplayName("Runner rejects null context")
     void rejectsNullContext() {
-        RenderExecutionPlan plan = createValidFfmpegPlan();
+        RenderExecutionPlan plan = createValidProviderPlan();
         LocalExecutionPlanRunResult result = runner.run(plan, null);
         assertTrue(result.isFailed());
         assertEquals(LocalExecutionPlanRunStatus.FAILED_CLOSED, result.status());
     }
 
     @Test
-    @DisplayName("Runner rejects non-FFmpeg provider")
-    void rejectsNonFfmpegProvider() {
-        RenderExecutionPlan plan = createPlanWithProvider("mlt");
+    @DisplayName("Runner rejects provider without a typed identity")
+    void rejectsMissingProviderIdentity() {
+        RenderExecutionPlan plan = createValidProviderPlan(null);
         LocalExecutionPlanContext context = createContext();
         LocalExecutionPlanRunResult result = runner.run(plan, context);
-        assertTrue(result.isFailed());
+        assertEquals(LocalExecutionPlanRunStatus.NOT_EXECUTABLE, result.status());
     }
 
     @Test
@@ -85,10 +85,10 @@ class LocalExecutionPlanRunnerTest {
     }
 
     @Test
-    @DisplayName("Runner rejects non-production FFmpeg provider")
-    void rejectsNonProductionFfmpeg() {
+    @DisplayName("Runner rejects non-production Provider provider")
+    void rejectsNonProductionProvider() {
         BoundProviderRef pocRef = new BoundProviderRef(
-                "ffmpeg", ProviderStatus.POC, ProviderType.RENDER, "P0",
+                "provider-a", ProviderStatus.POC, ProviderType.RENDER, "P0",
                 true, true, "6.1", 200);
         RenderExecutionPlan plan = createPlanWithProviderRef(pocRef);
         LocalExecutionPlanContext context = createContext();
@@ -97,9 +97,27 @@ class LocalExecutionPlanRunnerTest {
     }
 
     @Test
-    @DisplayName("Runner executes valid FFmpeg plan")
-    void executesValidFfmpegPlan() {
-        RenderExecutionPlan plan = createValidFfmpegPlan();
+    @DisplayName("Arbitrary production provider identity reaches typed-plugin-required execution failure")
+    void arbitraryProductionProviderIdentityReachesTypedPluginRequiredFailure() {
+        RenderExecutionPlan plan = createValidProviderPlan("provider-a");
+        LocalExecutionPlanContext context = createContext();
+        stepExecutor.setTypedPluginExecutionRequired(true);
+
+        LocalExecutionPlanRunResult result = runner.run(plan, context);
+
+        LocalExecutionPlanStepResult executionResult = result.stepResults().stream()
+                .filter(step -> "EXECUTE_PROVIDER".equals(step.stepType()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(LocalExecutionPlanRunStatus.FAILED, result.status());
+        assertEquals(LocalExecutionPlanRunStatus.FAILED, executionResult.status());
+        assertEquals("TYPED_PROVIDER_PLUGIN_EXECUTION_REQUIRED", executionResult.message());
+    }
+
+    @Test
+    @DisplayName("Runner executes valid Provider plan")
+    void executesValidProviderPlan() {
+        RenderExecutionPlan plan = createValidProviderPlan();
         LocalExecutionPlanContext context = createContext();
         stepExecutor.setSucceedAll(true);
 
@@ -113,7 +131,7 @@ class LocalExecutionPlanRunnerTest {
     @Test
     @DisplayName("Failed step blocks downstream dependency")
     void failedStepBlocksDownstream() {
-        RenderExecutionPlan plan = createValidFfmpegPlan();
+        RenderExecutionPlan plan = createValidProviderPlan();
         LocalExecutionPlanContext context = createContext();
         stepExecutor.setSucceedAll(false);
 
@@ -128,7 +146,7 @@ class LocalExecutionPlanRunnerTest {
     @Test
     @DisplayName("Step results preserve step types")
     void stepResultsPreserveTypes() {
-        RenderExecutionPlan plan = createValidFfmpegPlan();
+        RenderExecutionPlan plan = createValidProviderPlan();
         LocalExecutionPlanContext context = createContext();
         stepExecutor.setSucceedAll(true);
 
@@ -152,9 +170,13 @@ class LocalExecutionPlanRunnerTest {
                 Map.of());
     }
 
-    private RenderExecutionPlan createValidFfmpegPlan() {
-        BoundProviderRef ffmpegRef = new BoundProviderRef(
-                "ffmpeg", ProviderStatus.PRODUCTION, ProviderType.RENDER, "P0",
+    private RenderExecutionPlan createValidProviderPlan() {
+        return createValidProviderPlan("provider-a");
+    }
+
+    private RenderExecutionPlan createValidProviderPlan(String providerName) {
+        BoundProviderRef providerRef = new BoundProviderRef(
+                providerName, ProviderStatus.PRODUCTION, ProviderType.RENDER, "P0",
                 true, true, "6.1", 0);
 
         RenderExecutionStep materialize = new RenderExecutionStep(
@@ -168,21 +190,21 @@ class LocalExecutionPlanRunnerTest {
                 "step-exec", RenderExecutionStepType.EXECUTE_PROVIDER,
                 RenderExecutionStepStatus.PENDING,
                 "node-render", ArtifactNodeType.FINAL_RENDER,
-                "ffmpeg", ffmpegRef, null, List.of("step-mat"), false,
-                ExecutionEnvironmentTarget.LOCAL, "Execute FFmpeg", Map.of());
+                providerName, providerRef, null, List.of("step-mat"), false,
+                ExecutionEnvironmentTarget.LOCAL, "Execute Provider", Map.of());
 
         RenderExecutionStep verify = new RenderExecutionStep(
                 "step-verify", RenderExecutionStepType.VERIFY_OUTPUT,
                 RenderExecutionStepStatus.PENDING,
                 "node-render", ArtifactNodeType.FINAL_RENDER,
-                "ffmpeg", ffmpegRef, null, List.of("step-exec"), false,
+                providerName, providerRef, null, List.of("step-exec"), false,
                 ExecutionEnvironmentTarget.LOCAL, "Verify output", Map.of());
 
         RenderExecutionStep register = new RenderExecutionStep(
                 "step-reg", RenderExecutionStepType.REGISTER_OUTPUT,
                 RenderExecutionStepStatus.PENDING,
                 "node-render", ArtifactNodeType.FINAL_RENDER,
-                "ffmpeg", ffmpegRef, null, List.of("step-verify"), false,
+                providerName, providerRef, null, List.of("step-verify"), false,
                 ExecutionEnvironmentTarget.LOCAL, "Register output", Map.of());
 
         RenderExecutionStep finalize = new RenderExecutionStep(
@@ -202,7 +224,7 @@ class LocalExecutionPlanRunnerTest {
 
     private RenderExecutionPlan createPlanWithProvider(String providerName) {
         BoundProviderRef ref = new BoundProviderRef(
-                providerName, ProviderStatus.POC, ProviderType.RENDER, "P1",
+                providerName, ProviderStatus.PRODUCTION, ProviderType.RENDER, "P1",
                 true, true, "1.0", 200);
 
         RenderExecutionStep execute = new RenderExecutionStep(
@@ -221,16 +243,16 @@ class LocalExecutionPlanRunnerTest {
     }
 
     private RenderExecutionPlan createPlanWithTarget(ExecutionEnvironmentTarget target) {
-        BoundProviderRef ffmpegRef = new BoundProviderRef(
-                "ffmpeg", ProviderStatus.PRODUCTION, ProviderType.RENDER, "P0",
+        BoundProviderRef providerRef = new BoundProviderRef(
+                "provider-a", ProviderStatus.PRODUCTION, ProviderType.RENDER, "P0",
                 true, true, "6.1", 0);
 
         RenderExecutionStep execute = new RenderExecutionStep(
                 "step-exec", RenderExecutionStepType.EXECUTE_PROVIDER,
                 RenderExecutionStepStatus.PENDING,
                 "node-1", ArtifactNodeType.FINAL_RENDER,
-                "ffmpeg", ffmpegRef, null, List.of(), false,
-                target, "Execute FFmpeg", Map.of());
+                "provider-a", providerRef, null, List.of(), false,
+                target, "Execute Provider", Map.of());
 
         return new RenderExecutionPlan(
                 RenderExecutionPlanId.fromBindingPlan("bp-test", "PRODUCTION"),
@@ -245,7 +267,7 @@ class LocalExecutionPlanRunnerTest {
                 RenderExecutionStepStatus.PENDING,
                 "node-1", ArtifactNodeType.FINAL_RENDER,
                 ref.providerName(), ref, null, List.of(), false,
-                ExecutionEnvironmentTarget.LOCAL, "Execute FFmpeg", Map.of());
+                ExecutionEnvironmentTarget.LOCAL, "Execute Provider", Map.of());
 
         return new RenderExecutionPlan(
                 RenderExecutionPlanId.fromBindingPlan("bp-test", "PRODUCTION"),
@@ -260,18 +282,29 @@ class LocalExecutionPlanRunnerTest {
      */
     static class MockStepExecutor extends RenderExecutionStepExecutor {
         private boolean succeedAll = true;
+        private boolean typedPluginExecutionRequired;
 
         MockStepExecutor() {
-            super(null, null, null, null, null, null);
+            super(null, null, null, null);
         }
 
         void setSucceedAll(boolean succeedAll) {
             this.succeedAll = succeedAll;
         }
 
+        void setTypedPluginExecutionRequired(boolean typedPluginExecutionRequired) {
+            this.typedPluginExecutionRequired = typedPluginExecutionRequired;
+        }
+
         @Override
         public LocalExecutionPlanStepResult execute(RenderExecutionStep step,
                                                       LocalExecutionPlanContext context) {
+            if (typedPluginExecutionRequired
+                    && step.type() == RenderExecutionStepType.EXECUTE_PROVIDER) {
+                return LocalExecutionPlanStepResult.failed(
+                        step.stepId(), step.type().name(),
+                        "TYPED_PROVIDER_PLUGIN_EXECUTION_REQUIRED", 10);
+            }
             if (succeedAll) {
                 return LocalExecutionPlanStepResult.succeeded(
                         step.stepId(), step.type().name(), "Mock success", 10);

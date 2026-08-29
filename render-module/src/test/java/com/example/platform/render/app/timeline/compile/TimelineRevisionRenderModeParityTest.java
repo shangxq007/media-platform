@@ -15,15 +15,11 @@ import com.example.platform.render.app.output.RenderOutputRegistrationService;
 import com.example.platform.render.app.product.ProductRuntimeService;
 import com.example.platform.render.app.storage.StorageRuntimeService;
 import com.example.platform.render.app.timeline.*;
-import com.example.platform.render.infrastructure.RenderToolCapabilityInventory;
 import com.example.platform.render.infrastructure.product.ProductDependencyRepository;
 import com.example.platform.render.infrastructure.product.ProductRepository;
 import com.example.platform.render.infrastructure.storage.StorageReferenceRepository;
 import com.example.platform.render.testsupport.TimelineCoreSmokeFixture;
 import com.example.platform.shared.Ids;
-import com.example.platform.extension.app.ProcessToolRunner;
-import com.example.platform.extension.domain.ToolExecutionResult;
-import com.example.platform.extension.domain.ToolExecutionSafetyPolicy;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
 import java.io.IOException;
@@ -41,7 +37,7 @@ import com.example.platform.render.domain.interchange.TimelineSpec;
 
 /**
  * LEGACY vs PLAN_BASED fail-closed parity tests after removal of their local
- * FFmpeg execution authority.
+ * Provider execution authority.
  */
 class TimelineRevisionRenderModeParityTest {
     @SuppressWarnings("unchecked")
@@ -60,8 +56,6 @@ class TimelineRevisionRenderModeParityTest {
     private InMemoryTimelineRevisionRepository revisionRepo;
     private InMemoryTimelineSnapshotService snapshotService;
     private InMemoryStorageReferenceRepository storageRepo;
-    private final java.util.concurrent.atomic.AtomicInteger processInvocations =
-            new java.util.concurrent.atomic.AtomicInteger();
 
     @BeforeEach
     void setUp() {
@@ -151,9 +145,8 @@ class TimelineRevisionRenderModeParityTest {
         registerReadyRawMediaProduct();
         String revId = setupRevision();
         String resultStr = assertLegacyFailClosed(createLegacyService(), revId).getMessage();
-        assertFalse(resultStr.contains("ffmpeg -i"));
-        assertFalse(resultStr.contains("libx264"));
-        assertEquals(0, processInvocations.get());
+        assertFalse(resultStr.contains("provider -i"));
+        assertFalse(resultStr.contains("h264"));
     }
 
     @Test
@@ -168,9 +161,9 @@ class TimelineRevisionRenderModeParityTest {
     }
 
     @Test
-    @DisplayName("PLAN_BASED remains FFmpeg-only executable")
-    void planBasedRemainsFfmpegOnly() {
-        // Verify plan-based policy guard rejects non-FFmpeg
+    @DisplayName("PLAN_BASED remains Provider-only executable")
+    void planBasedRemainsProviderOnly() {
+        // Verify plan-based policy guard rejects non-Provider
         RenderPlanPolicyGuard guard = new RenderPlanPolicyGuard();
         // The guard checks non-production providers - STUB providers are never executable
         // This is verified by existing LocalExecutionPlanRunnerTest
@@ -186,7 +179,7 @@ class TimelineRevisionRenderModeParityTest {
     private IllegalStateException assertPlanFailClosed(
             PlanBasedTimelineRevisionRenderService service, String revisionId) {
         return assertFailClosed(null, service, revisionId,
-                "Plan-based render failed: One or more steps failed");
+                "Plan-based render failed: Policy guard rejected plan: Plan has 1 policy violations");
     }
 
     private IllegalStateException assertFailClosed(
@@ -203,7 +196,6 @@ class TimelineRevisionRenderModeParityTest {
             }
         });
         assertEquals(expectedMessage, failure.getMessage());
-        assertEquals(0, processInvocations.get());
         assertEquals(storageCountBefore, storageRepo.size(), "Render must not commit storage");
         assertTrue(productRuntime.findBySourceTimelineRevisionId(revisionId).isEmpty());
         assertTrue(productRuntime.findByProject(TimelineCoreSmokeFixture.PROJECT_ID, 100).stream()
@@ -222,11 +214,10 @@ class TimelineRevisionRenderModeParityTest {
         TimelineInputProductResolver inputProductResolver = new TimelineInputProductResolver(productRuntime);
         RenderInputMaterializationService matService = new RenderInputMaterializationService(storageRuntime, productRuntime);
         RenderOutputRegistrationService regService = new RenderOutputRegistrationService(storageRuntime, productRuntime, tempDir, mockProvider(null), mockProvider(null));
-        ProcessToolRunner toolRunner = createToolRunner();
         return new TimelineRevisionRenderService(
                 new StubTimelineRevisionService(revisionRepo), snapshotService,
                 mapper, parser, null, matService, regService, productRuntime, storageRuntime,
-                inputProductResolver, toolRunner, tempDir);
+                inputProductResolver, tempDir);
     }
 
     private PlanBasedTimelineRevisionRenderService createPlanBasedService() {
@@ -238,10 +229,6 @@ class TimelineRevisionRenderModeParityTest {
         TimelineInputProductResolver inputProductResolver = new TimelineInputProductResolver(productRuntime);
         RenderInputMaterializationService matService = new RenderInputMaterializationService(storageRuntime, productRuntime);
         RenderOutputRegistrationService regService = new RenderOutputRegistrationService(storageRuntime, productRuntime, tempDir, mockProvider(null), mockProvider(null));
-        ProcessToolRunner toolRunner = createToolRunner();
-        RenderToolCapabilityInventory toolInv = new RenderToolCapabilityInventory() {
-            @Override public boolean isToolAvailable(String n) { return "ffmpeg".equals(n); }
-        };
         TimelineNormalizationService normalizer = new TimelineNormalizationService();
         ArtifactGraphCompiler artifactCompiler = new ArtifactGraphCompiler();
         CapabilityGraphCompiler capCompiler = new CapabilityGraphCompiler();
@@ -250,33 +237,14 @@ class TimelineRevisionRenderModeParityTest {
         RenderExecutionPlanCompiler planCompiler = new RenderExecutionPlanCompiler();
         RenderPlanPolicyGuard policyGuard = new RenderPlanPolicyGuard();
         RenderExecutionStepExecutor stepExecutor = new RenderExecutionStepExecutor(
-                matService, regService, productRuntime, toolInv, toolRunner, auditRecorder);
+                matService, regService, productRuntime, auditRecorder);
         LocalExecutionPlanRunner planRunner = new LocalExecutionPlanRunner(policyGuard, stepExecutor);
         return new PlanBasedTimelineRevisionRenderService(
                 new StubTimelineRevisionService(revisionRepo), snapshotService,
                 mapper, parser, inputProductResolver, normalizer,
                 artifactCompiler, capCompiler, bindingCompiler, draftCompiler,
                 planCompiler, policyGuard, planRunner, matService,
-                regService, productRuntime, storageRuntime, toolInv, tempDir, auditRecorder);
-    }
-
-    private ProcessToolRunner createToolRunner() {
-        return new ProcessToolRunner() {
-            @Override public ToolExecutionResult execute(com.example.platform.extension.domain.ToolExecutionRequest request) {
-                processInvocations.incrementAndGet();
-                try {
-                    String outputPath = request.args().get(request.args().size() - 1);
-                    Path output = Path.of(outputPath);
-                    Files.createDirectories(output.getParent());
-                    Files.writeString(output, "fake-rendered-" + UUID.randomUUID());
-                    return ToolExecutionResult.success(0, "ffmpeg", "", Instant.now(), Instant.now());
-                } catch (IOException e) {
-                    return ToolExecutionResult.failed(1, "", e.getMessage(), Instant.now(), Instant.now());
-                }
-            }
-            @Override public ToolExecutionResult execute(com.example.platform.extension.domain.ToolExecutionRequest r,
-                                                          ToolExecutionSafetyPolicy p) { return execute(r); }
-        };
+                regService, productRuntime, storageRuntime, tempDir, auditRecorder);
     }
 
     private void registerReadyRawMediaProduct() throws Exception {

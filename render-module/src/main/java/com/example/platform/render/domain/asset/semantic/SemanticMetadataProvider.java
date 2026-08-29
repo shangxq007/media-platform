@@ -19,7 +19,7 @@ public interface SemanticMetadataProvider {
     SemanticMetadataResult analyze(SemanticMetadataRequest request);
 
     /**
-     * Human-readable provider name (e.g., "ffprobe", "WhisperProvider").
+     * Human-readable provider name (e.g., "media probe", "WhisperProvider").
      */
     String providerName();
 

@@ -73,7 +73,7 @@ public class RenderExecutionPlanCompiler {
         for (ProviderBindingNode node : bindingPlan.nodes()) {
             if (node.isBound() && node.decision() != null && node.decision().selectedProvider() != null) {
                 BoundProviderRef providerRef = node.decision().selectedProvider();
-                ExecutionEnvironmentTarget target = resolveTarget(providerRef, policy);
+                ExecutionEnvironmentTarget target = resolveTarget(policy);
 
                 // Step 1: MATERIALIZE_INPUT for INPUT_MEDIA nodes
                 String materializeStepId = null;
@@ -227,14 +227,9 @@ public class RenderExecutionPlanCompiler {
     }
 
     /**
-     * Resolve execution environment target based on provider and policy.
+     * Resolve execution environment target from policy.
      */
-    private ExecutionEnvironmentTarget resolveTarget(BoundProviderRef providerRef, ExecutionPolicy policy) {
-        // v0: FFmpeg always gets LOCAL
-        if ("ffmpeg".equalsIgnoreCase(providerRef.providerName())) {
-            return ExecutionEnvironmentTarget.LOCAL;
-        }
-        // OpenCue-eligible providers get OPENCUE if policy allows
+    private ExecutionEnvironmentTarget resolveTarget(ExecutionPolicy policy) {
         if (policy.allowOpenCueSubmit()) {
             return ExecutionEnvironmentTarget.OPENCUE;
         }

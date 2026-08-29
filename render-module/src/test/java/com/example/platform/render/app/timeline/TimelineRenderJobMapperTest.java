@@ -205,7 +205,7 @@ class TimelineRenderJobMapperTest {
         // FrameRate.of rejects zero numerator at the exact-rate domain boundary.
         assertThrows(IllegalArgumentException.class, () -> FrameRate.of(0, 1));
         TimelineOutputSpec output = new TimelineOutputSpec("mp4", "1920x1080", FrameRate.of(30, 1), "h264", 8000,
-                TimelineAudioSpec.aacDefault(), "yuv420p");
+                TimelineAudioSpec.aacDefault(), "default");
         TimelineSpec spec = new TimelineSpec("tl_1", "name", null,
                 List.of(TimelineTrack.of("t1", "V", TimelineTrack.TrackType.VIDEO)),
                 List.of(), output, 10.0, Map.<String,String>of());
@@ -221,7 +221,7 @@ class TimelineRenderJobMapperTest {
         assertThrows(IllegalArgumentException.class, () -> FrameRate.of(-30, 1));
         TimelineOutputSpec output = new TimelineOutputSpec(
                 "mp4", "1920x1080", FrameRate.of(30, 1), "h264", 8000,
-                TimelineAudioSpec.aacDefault(), "yuv420p");
+                TimelineAudioSpec.aacDefault(), "default");
         TimelineSpec spec = new TimelineSpec("tl_1", "name", null,
                 List.of(TimelineTrack.of("t1", "V", TimelineTrack.TrackType.VIDEO)),
                 List.of(), output, 10.0, Map.<String,String>of());
@@ -233,7 +233,7 @@ class TimelineRenderJobMapperTest {
     @Test
     void excessiveFpsThrowsIllegalArgument() {
         TimelineOutputSpec output = new TimelineOutputSpec("mp4", "1920x1080", FrameRate.of(240, 1), "h264", 8000,
-                TimelineAudioSpec.aacDefault(), "yuv420p");
+                TimelineAudioSpec.aacDefault(), "default");
         TimelineSpec spec = new TimelineSpec("tl_1", "name", null,
                 List.of(TimelineTrack.of("t1", "V", TimelineTrack.TrackType.VIDEO)),
                 List.of(), output, 10.0, Map.<String,String>of());
@@ -247,7 +247,7 @@ class TimelineRenderJobMapperTest {
     @Test
     void zeroWidthThrowsIllegalArgument() {
         TimelineOutputSpec output = new TimelineOutputSpec("mp4", "0x1080", FrameRate.of(30, 1), "h264", 8000,
-                TimelineAudioSpec.aacDefault(), "yuv420p");
+                TimelineAudioSpec.aacDefault(), "default");
         TimelineSpec spec = new TimelineSpec("tl_1", "name", null,
                 List.of(TimelineTrack.of("t1", "V", TimelineTrack.TrackType.VIDEO)),
                 List.of(), output, 10.0, Map.<String,String>of());
@@ -259,7 +259,7 @@ class TimelineRenderJobMapperTest {
     @Test
     void zeroHeightThrowsIllegalArgument() {
         TimelineOutputSpec output = new TimelineOutputSpec("mp4", "1920x0", FrameRate.of(30, 1), "h264", 8000,
-                TimelineAudioSpec.aacDefault(), "yuv420p");
+                TimelineAudioSpec.aacDefault(), "default");
         TimelineSpec spec = new TimelineSpec("tl_1", "name", null,
                 List.of(TimelineTrack.of("t1", "V", TimelineTrack.TrackType.VIDEO)),
                 List.of(), output, 10.0, Map.<String,String>of());
@@ -271,7 +271,7 @@ class TimelineRenderJobMapperTest {
     @Test
     void excessiveCanvasThrowsIllegalArgument() {
         TimelineOutputSpec output = new TimelineOutputSpec("mp4", "8192x4320", FrameRate.of(30, 1), "h264", 8000,
-                TimelineAudioSpec.aacDefault(), "yuv420p");
+                TimelineAudioSpec.aacDefault(), "default");
         TimelineSpec spec = new TimelineSpec("tl_1", "name", null,
                 List.of(TimelineTrack.of("t1", "V", TimelineTrack.TrackType.VIDEO)),
                 List.of(), output, 10.0, Map.<String,String>of());
@@ -285,7 +285,7 @@ class TimelineRenderJobMapperTest {
     @Test
     void unsupportedFormatThrowsIllegalArgument() {
         TimelineOutputSpec output = new TimelineOutputSpec("avi", "1920x1080", FrameRate.of(30, 1), "h264", 8000,
-                TimelineAudioSpec.aacDefault(), "yuv420p");
+                TimelineAudioSpec.aacDefault(), "default");
         TimelineSpec spec = new TimelineSpec("tl_1", "name", null,
                 List.of(TimelineTrack.of("t1", "V", TimelineTrack.TrackType.VIDEO)),
                 List.of(), output, 10.0, Map.<String,String>of());
@@ -297,7 +297,7 @@ class TimelineRenderJobMapperTest {
     @Test
     void nullFormatThrowsIllegalArgument() {
         TimelineOutputSpec output = new TimelineOutputSpec(null, "1920x1080", FrameRate.of(30, 1), "h264", 8000,
-                TimelineAudioSpec.aacDefault(), "yuv420p");
+                TimelineAudioSpec.aacDefault(), "default");
         TimelineSpec spec = new TimelineSpec("tl_1", "name", null,
                 List.of(TimelineTrack.of("t1", "V", TimelineTrack.TrackType.VIDEO)),
                 List.of(), output, 10.0, Map.<String,String>of());

@@ -69,13 +69,13 @@ class SubtitlePathSanitizerTest {
     }
 
     @Test
-    void ffmpegProtocolRejected() {
+    void dataLikeUriSchemesRejected() {
         assertNull(SubtitlePathSanitizer.sanitize("concat:file1|file2", null));
         assertNull(SubtitlePathSanitizer.sanitize("data:text/plain;base64,SGVsbG8=", null));
     }
 
     @Test
-    void filterSeparatorRejected() {
+    void structuredFieldSeparatorRejected() {
         assertNull(SubtitlePathSanitizer.sanitize("subs/en.srt,force_style=FontName=Arial", null));
         assertNull(SubtitlePathSanitizer.sanitize("subs/en.srt[0]", null));
     }

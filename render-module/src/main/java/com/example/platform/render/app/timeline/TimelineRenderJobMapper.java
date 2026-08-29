@@ -27,9 +27,8 @@ import com.example.platform.render.domain.legacy.TimelineTrack;
  * <p>The mapper does not enable production dispatch. It produces a request
  * suitable for controlled local smoke testing and the baseline render path.</p>
  *
- * <p>FFmpeg/libass remains the baseline subtitle burn-in path. Remotion
- * remains gated for advanced visual/template rendering only. OpenCue
- * remains disabled by default.</p>
+ * <p>Backend and subtitle-rendering selection remains internal. Advanced
+ * rendering and external execution environments remain gated by policy.</p>
  */
 @Service
 public class TimelineRenderJobMapper {
@@ -48,9 +47,9 @@ public class TimelineRenderJobMapper {
      * or blockedProviders from untrusted input, the request is rejected.
      */
     static final Set<String> INTERNAL_PROVIDER_NAMES = Set.of(
-            "remotion", "ffmpeg", "mlt", "gpac", "bento4", "shaka",
-            "libass", "skia", "blender", "natron", "vapoursynth",
-            "bmf", "shotstack", "javacv", "opencue",
+            "remotion", "provider", "mlt", "gpac", "bento4", "shaka",
+            "skia", "blender", "natron", "vapoursynth",
+            "bmf", "shotstack", "opencue",
             "local-process", "localprocess", "local_fs", "localfs",
             "minio", "s3", "oss", "gcs", "azure"
     );

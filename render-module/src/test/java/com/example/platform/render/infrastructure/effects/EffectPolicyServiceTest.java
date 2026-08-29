@@ -39,7 +39,7 @@ class EffectPolicyServiceTest {
     void validateEffectForProvider_unknownEffect_returnsError() {
         when(effectMapping.getDescriptor("unknown.effect")).thenReturn(Optional.empty());
 
-        var result = policyService.validateEffectForProvider("unknown.effect", "ffmpeg", "FREE");
+        var result = policyService.validateEffectForProvider("unknown.effect", "provider-a", "FREE");
 
         assertFalse(result.valid());
         assertTrue(result.errors().stream().anyMatch(e -> e.contains("Unknown effect")));
@@ -49,7 +49,7 @@ class EffectPolicyServiceTest {
     void validateEffectForProvider_unknownProvider_returnsError() {
         EffectDescriptor descriptor = new EffectDescriptor(
                 "video.blur", "Blur", "video", "Gaussian blur",
-                List.of(), List.of("ffmpeg"), Map.of(), List.of("FREE"), "filter", true);
+                List.of(), List.of("provider-a"), Map.of(), List.of("FREE"), "filter", true);
         when(effectMapping.getDescriptor("video.blur")).thenReturn(Optional.of(descriptor));
         when(providerRegistry.getCapability("unknown")).thenReturn(Optional.empty());
 
@@ -63,7 +63,7 @@ class EffectPolicyServiceTest {
     void validateEffectForProvider_effectNotSupportedByProvider_returnsError() {
         EffectDescriptor descriptor = new EffectDescriptor(
                 "video.blur", "Blur", "video", "Gaussian blur",
-                List.of(), List.of("ffmpeg"), Map.of(), List.of("FREE"), "filter", true);
+                List.of(), List.of("provider-a"), Map.of(), List.of("FREE"), "filter", true);
         when(effectMapping.getDescriptor("video.blur")).thenReturn(Optional.of(descriptor));
 
         RenderProviderCapability capability = new RenderProviderCapability(
@@ -83,17 +83,17 @@ class EffectPolicyServiceTest {
     void validateEffectForProvider_tierNotAllowed_returnsError() {
         EffectDescriptor descriptor = new EffectDescriptor(
                 "video.vignette", "Vignette", "video", "Vignette effect",
-                List.of(), List.of("ffmpeg"), Map.of(), List.of("PRO", "TEAM"), "filter", true);
+                List.of(), List.of("provider-a"), Map.of(), List.of("PRO", "TEAM"), "filter", true);
         when(effectMapping.getDescriptor("video.vignette")).thenReturn(Optional.of(descriptor));
 
         RenderProviderCapability capability = new RenderProviderCapability(
-                "ffmpeg", Set.of(), Set.of(), Set.of("video.vignette"), Set.of(), Set.of(),
+                "provider-a", Set.of(), Set.of(), Set.of("video.vignette"), Set.of(), Set.of(),
                 "4k", false, false, false, Set.of(),
-                ProviderStatus.PRODUCTION, "P0", ProviderType.RENDER, "FFmpeg",
+                ProviderStatus.PRODUCTION, "P0", ProviderType.RENDER, "provider-a",
                 List.of(), true);
-        when(providerRegistry.getCapability("ffmpeg")).thenReturn(Optional.of(capability));
+        when(providerRegistry.getCapability("provider-a")).thenReturn(Optional.of(capability));
 
-        var result = policyService.validateEffectForProvider("video.vignette", "ffmpeg", "FREE");
+        var result = policyService.validateEffectForProvider("video.vignette", "provider-a", "FREE");
 
         assertFalse(result.valid());
         assertTrue(result.errors().stream().anyMatch(e -> e.contains("requires tier")));
@@ -103,17 +103,17 @@ class EffectPolicyServiceTest {
     void validateEffectForProvider_allValid_returnsSuccess() {
         EffectDescriptor descriptor = new EffectDescriptor(
                 "video.blur", "Blur", "video", "Gaussian blur",
-                List.of(), List.of("ffmpeg"), Map.of(), List.of("FREE"), "filter", true);
+                List.of(), List.of("provider-a"), Map.of(), List.of("FREE"), "filter", true);
         when(effectMapping.getDescriptor("video.blur")).thenReturn(Optional.of(descriptor));
 
         RenderProviderCapability capability = new RenderProviderCapability(
-                "ffmpeg", Set.of(), Set.of(), Set.of("video.blur"), Set.of(), Set.of(),
+                "provider-a", Set.of(), Set.of(), Set.of("video.blur"), Set.of(), Set.of(),
                 "4k", false, false, false, Set.of(),
-                ProviderStatus.PRODUCTION, "P0", ProviderType.RENDER, "FFmpeg",
+                ProviderStatus.PRODUCTION, "P0", ProviderType.RENDER, "provider-a",
                 List.of(), true);
-        when(providerRegistry.getCapability("ffmpeg")).thenReturn(Optional.of(capability));
+        when(providerRegistry.getCapability("provider-a")).thenReturn(Optional.of(capability));
 
-        var result = policyService.validateEffectForProvider("video.blur", "ffmpeg", "FREE");
+        var result = policyService.validateEffectForProvider("video.blur", "provider-a", "FREE");
 
         assertTrue(result.valid());
         assertTrue(result.errors().isEmpty());
@@ -124,7 +124,7 @@ class EffectPolicyServiceTest {
         EffectDescriptor descriptor = new EffectDescriptor(
                 "video.blur", "Blur", "video", "Gaussian blur",
                 List.of(new EffectParameterSchema("radius", "float", null, 0.1, 10.0, "Blur radius")),
-                List.of("ffmpeg"), Map.of(), List.of("FREE"), "filter", true);
+                List.of("provider-a"), Map.of(), List.of("FREE"), "filter", true);
         when(effectMapping.getDescriptor("video.blur")).thenReturn(Optional.of(descriptor));
 
         var result = policyService.validateEffectParameters("video.blur", Map.of());
@@ -138,7 +138,7 @@ class EffectPolicyServiceTest {
         EffectDescriptor descriptor = new EffectDescriptor(
                 "video.blur", "Blur", "video", "Gaussian blur",
                 List.of(new EffectParameterSchema("radius", "float", 2.0, 0.1, 10.0, "Blur radius")),
-                List.of("ffmpeg"), Map.of(), List.of("FREE"), "filter", true);
+                List.of("provider-a"), Map.of(), List.of("FREE"), "filter", true);
         when(effectMapping.getDescriptor("video.blur")).thenReturn(Optional.of(descriptor));
 
         var result = policyService.validateEffectParameters("video.blur", Map.of("radius", 15.0));
@@ -152,7 +152,7 @@ class EffectPolicyServiceTest {
         EffectDescriptor descriptor = new EffectDescriptor(
                 "video.blur", "Blur", "video", "Gaussian blur",
                 List.of(new EffectParameterSchema("radius", "float", 2.0, 0.1, 10.0, "Blur radius")),
-                List.of("ffmpeg"), Map.of(), List.of("FREE"), "filter", true);
+                List.of("provider-a"), Map.of(), List.of("FREE"), "filter", true);
         when(effectMapping.getDescriptor("video.blur")).thenReturn(Optional.of(descriptor));
 
         var result = policyService.validateEffectParameters("video.blur", Map.of("radius", 5.0));
@@ -165,18 +165,18 @@ class EffectPolicyServiceTest {
     void getAvailableEffects_returnsMatchingEffects() {
         EffectDescriptor blur = new EffectDescriptor(
                 "video.blur", "Blur", "video", "Gaussian blur",
-                List.of(), List.of("ffmpeg"), Map.of(), List.of("FREE"), "filter", true);
+                List.of(), List.of("provider-a"), Map.of(), List.of("FREE"), "filter", true);
         EffectDescriptor vignette = new EffectDescriptor(
                 "video.vignette", "Vignette", "video", "Vignette effect",
-                List.of(), List.of("ffmpeg"), Map.of(), List.of("PRO"), "filter", true);
+                List.of(), List.of("provider-a"), Map.of(), List.of("PRO"), "filter", true);
         
         when(effectMapping.getAllDescriptors()).thenReturn(List.of(blur, vignette));
 
-        var freeEffects = policyService.getAvailableEffects("ffmpeg", "FREE");
+        var freeEffects = policyService.getAvailableEffects("provider-a", "FREE");
         assertEquals(1, freeEffects.size());
         assertEquals("video.blur", freeEffects.get(0).effectKey());
 
-        var proEffects = policyService.getAvailableEffects("ffmpeg", "PRO");
+        var proEffects = policyService.getAvailableEffects("provider-a", "PRO");
         assertEquals(2, proEffects.size());
     }
 }

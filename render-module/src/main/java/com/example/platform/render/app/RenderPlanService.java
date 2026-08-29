@@ -31,7 +31,7 @@ public class RenderPlanService {
     /**
      * Creates a default render plan for the given job and profile.
      *
-     * <p>The default plan includes: BUILD_TIMELINE → FFMPEG_TRANSCODE → REGISTER_ARTIFACT.</p>
+     * <p>The default plan includes: BUILD_TIMELINE → PROVIDER_TRANSCODE → REGISTER_ARTIFACT.</p>
      *
      * @param renderJobId the render job identifier
      * @param profile     the render profile
@@ -41,7 +41,7 @@ public class RenderPlanService {
         String planId = Ids.newId("rp");
         List<RenderStep> steps = List.of(
                 RenderStep.pending(Ids.newId("rs"), planId, RenderStepType.BUILD_TIMELINE),
-                RenderStep.pending(Ids.newId("rs"), planId, RenderStepType.FFMPEG_TRANSCODE),
+                RenderStep.pending(Ids.newId("rs"), planId, RenderStepType.PROVIDER_TRANSCODE),
                 RenderStep.pending(Ids.newId("rs"), planId, RenderStepType.REGISTER_ARTIFACT)
         );
         RenderJobPlan plan = RenderJobPlan.create(planId, renderJobId, profile, steps);
@@ -105,7 +105,7 @@ public class RenderPlanService {
         String planId = Ids.newId("rp");
         List<RenderStep> steps = new ArrayList<>();
         steps.add(RenderStep.pending(Ids.newId("rs"), planId, RenderStepType.BUILD_TIMELINE));
-        steps.add(RenderStep.pending(Ids.newId("rs"), planId, RenderStepType.FFMPEG_TRANSCODE));
+        steps.add(RenderStep.pending(Ids.newId("rs"), planId, RenderStepType.PROVIDER_TRANSCODE));
         if (packageHls) {
             steps.add(RenderStep.pending(Ids.newId("rs"), planId, RenderStepType.GPAC_PACKAGE_HLS));
         }

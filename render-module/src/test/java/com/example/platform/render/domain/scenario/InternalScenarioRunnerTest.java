@@ -83,13 +83,13 @@ class InternalScenarioRunnerTest {
         assertNotNull(InternalScenarioIssueCode.EXPECTED_OUTCOME_MISMATCH);
         assertNotNull(InternalScenarioIssueCode.FORBIDDEN_EFFECT_NOT_BLOCKED);
         assertNotNull(InternalScenarioIssueCode.FORBIDDEN_TRANSITION_NOT_BLOCKED);
-        assertNotNull(InternalScenarioIssueCode.RAW_FILTERGRAPH_EXPOSED);
+        assertNotNull(InternalScenarioIssueCode.RAW_PROVIDER_EXPRESSION_EXPOSED);
         assertNotNull(InternalScenarioIssueCode.RAW_PROVIDER_COMMAND_EXPOSED);
         assertNotNull(InternalScenarioIssueCode.USER_RENDER_DAG_ALLOWED);
         assertNotNull(InternalScenarioIssueCode.PLUGIN_EXECUTION_NODE_ALLOWED);
         assertNotNull(InternalScenarioIssueCode.REMOTION_EXECUTION_ALLOWED);
         assertNotNull(InternalScenarioIssueCode.ARTIFACT_DAG_USED);
-        assertNotNull(InternalScenarioIssueCode.FFMPEG_EXECUTION_ATTEMPTED);
+        assertNotNull(InternalScenarioIssueCode.PROVIDER_EXECUTION_ATTEMPTED);
         assertNotNull(InternalScenarioIssueCode.OPEN_CUE_CALL_ATTEMPTED);
         assertNotNull(InternalScenarioIssueCode.PRODUCT_RUNTIME_CALL_ATTEMPTED);
         assertNotNull(InternalScenarioIssueCode.STORAGE_RUNTIME_CALL_ATTEMPTED);
@@ -155,7 +155,7 @@ class InternalScenarioRunnerTest {
         assertTrue(ids.contains("scenario-004-effect-plan-scale-crop-opacity"));
         assertTrue(ids.contains("scenario-005-transition-plan-cut-crossfade"));
         assertTrue(ids.contains("scenario-006-basic-render-plan-composition"));
-        assertTrue(ids.contains("scenario-007-invalid-effect-forbidden-filtergraph"));
+        assertTrue(ids.contains("scenario-007-invalid-effect-forbidden-provider expression"));
         assertTrue(ids.contains("scenario-008-invalid-transition-user-defined-graph"));
         assertTrue(ids.contains("scenario-009-output-profile-validation"));
         assertTrue(ids.contains("scenario-010-full-basic-planning-flow"));
@@ -239,12 +239,12 @@ class InternalScenarioRunnerTest {
         assertTrue(((Number) stagesCount).intValue() >= 5, "Expected >= 5 stages");
     }
 
-    @Test @DisplayName("scenario-007: forbidden filtergraph effect is blocked")
-    void scenario007ForbiddenFiltergraph() {
-        InternalScenarioDefinition def = InternalScenarioRegistry.findById("scenario-007-invalid-effect-forbidden-filtergraph").orElseThrow();
+    @Test @DisplayName("scenario-007: forbidden provider expression effect is blocked")
+    void scenario007ForbiddenProviderExpression() {
+        InternalScenarioDefinition def = InternalScenarioRegistry.findById("scenario-007-invalid-effect-forbidden-provider expression").orElseThrow();
         InternalScenarioResult result = InternalScenarioRunner.run(def);
         assertEquals(InternalScenarioResultStatus.BLOCKED, result.status(),
-                "Expected BLOCKED for forbidden filtergraph, got " + result.status() + ". Issues: " + result.issues());
+                "Expected BLOCKED for forbidden provider expression, got " + result.status() + ". Issues: " + result.issues());
     }
 
     @Test @DisplayName("scenario-008: user-defined transition graph is blocked")
@@ -326,13 +326,13 @@ class InternalScenarioRunnerTest {
 
     // ==================== Safety Boundary Tests ====================
 
-    @Test @DisplayName("Runner does not expose filter_complex in results")
-    void noFilterComplexExposed() {
+    @Test @DisplayName("Runner does not expose provider_expression in results")
+    void noProviderExpressionExposed() {
         InternalScenarioReport report = InternalScenarioRunner.runAllRequired();
         for (InternalScenarioResult result : report.results()) {
             for (InternalScenarioIssue issue : result.issues()) {
-                assertFalse(issue.message().contains("filter_complex"),
-                        "Issue message should not contain filter_complex: " + issue.message());
+                assertFalse(issue.message().contains("provider_expression"),
+                        "Issue message should not contain provider_expression: " + issue.message());
             }
         }
     }

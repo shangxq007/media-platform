@@ -12,7 +12,7 @@ import java.util.Map;
  * <p>Internal domain model. Not a WorkflowDefinition.</p>
  *
  * <p>Must not contain provider names, storage internals,
- * FFmpeg commands, or Remotion props.</p>
+ * Provider commands, or Remotion props.</p>
  */
 public record CompositeTemplateDefinition(
         CompositeTemplateDefinitionId id,

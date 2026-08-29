@@ -272,7 +272,7 @@ public class InternalTimelineAdapter {
     private static TimelineOutputSpec outputSpec(String format, int w, int h, int fps) {
         return new TimelineOutputSpec(
                 format, w + "x" + h, FrameRate.of(fps, 1), "h264", 8000,
-                TimelineAudioSpec.aacDefault(), "yuv420p");
+                TimelineAudioSpec.aacDefault(), "default");
     }
 
     private static Object jsonToObject(JsonNode node) {

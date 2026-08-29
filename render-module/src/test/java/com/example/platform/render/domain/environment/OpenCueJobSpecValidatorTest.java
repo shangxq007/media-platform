@@ -29,7 +29,7 @@ class OpenCueJobSpecValidatorTest {
     void blankJobNameFails() {
         OpenCueJobSpec spec = new OpenCueJobSpec("", "platform", 50,
                 List.of(), Map.of(), Map.of("cpu", 1, "memoryMb", 1024),
-                List.of(new OpenCueJobSpec.OpenCueLayerSpec("render", List.of("ffmpeg"), 1, Map.of())));
+                List.of(new OpenCueJobSpec.OpenCueLayerSpec("render", List.of("provider-a"), 1, Map.of())));
         List<String> errors = validator.validate(spec);
         assertTrue(errors.stream().anyMatch(e -> e.contains("jobName")));
     }
@@ -38,7 +38,7 @@ class OpenCueJobSpecValidatorTest {
     void nullOwnerFails() {
         OpenCueJobSpec spec = new OpenCueJobSpec("my-job", null, 50,
                 List.of(), Map.of(), Map.of("cpu", 1),
-                List.of(new OpenCueJobSpec.OpenCueLayerSpec("render", List.of("ffmpeg"), 1, Map.of())));
+                List.of(new OpenCueJobSpec.OpenCueLayerSpec("render", List.of("provider-a"), 1, Map.of())));
         List<String> errors = validator.validate(spec);
         assertTrue(errors.stream().anyMatch(e -> e.contains("owner")));
     }
@@ -47,7 +47,7 @@ class OpenCueJobSpecValidatorTest {
     void priorityOutOfRangeFails() {
         OpenCueJobSpec spec = new OpenCueJobSpec("my-job", "platform", 0,
                 List.of(), Map.of(), Map.of("cpu", 1),
-                List.of(new OpenCueJobSpec.OpenCueLayerSpec("render", List.of("ffmpeg"), 1, Map.of())));
+                List.of(new OpenCueJobSpec.OpenCueLayerSpec("render", List.of("provider-a"), 1, Map.of())));
         List<String> errors = validator.validate(spec);
         assertTrue(errors.stream().anyMatch(e -> e.contains("priority")));
     }
@@ -72,7 +72,7 @@ class OpenCueJobSpecValidatorTest {
     void blankLayerNameFails() {
         OpenCueJobSpec spec = new OpenCueJobSpec("my-job", "platform", 50,
                 List.of(), Map.of(), Map.of("cpu", 1),
-                List.of(new OpenCueJobSpec.OpenCueLayerSpec("", List.of("ffmpeg"), 1, Map.of())));
+                List.of(new OpenCueJobSpec.OpenCueLayerSpec("", List.of("provider-a"), 1, Map.of())));
         List<String> errors = validator.validate(spec);
         assertTrue(errors.stream().anyMatch(e -> e.contains("layerName")));
     }
@@ -109,7 +109,7 @@ class OpenCueJobSpecValidatorTest {
         OpenCueJobSpec spec = new OpenCueJobSpec("my-job", "platform", 50,
                 List.of(), Map.of(), Map.of("cpu", 1),
                 List.of(new OpenCueJobSpec.OpenCueLayerSpec("render",
-                        List.of("ffmpeg -i in.mp4 && rm -rf /"), 1, Map.of())));
+                        List.of("provider -i in.mp4 && rm -rf /"), 1, Map.of())));
         List<String> errors = validator.validate(spec);
         assertTrue(errors.stream().anyMatch(e -> e.contains("shell injection") && e.contains("&&")));
     }
@@ -138,7 +138,7 @@ class OpenCueJobSpecValidatorTest {
     void forbiddenEnvVarFails() {
         OpenCueJobSpec spec = new OpenCueJobSpec("my-job", "platform", 50,
                 List.of(), Map.of("PATH", "/evil/bin"), Map.of("cpu", 1),
-                List.of(new OpenCueJobSpec.OpenCueLayerSpec("render", List.of("ffmpeg"), 1, Map.of())));
+                List.of(new OpenCueJobSpec.OpenCueLayerSpec("render", List.of("provider-a"), 1, Map.of())));
         List<String> errors = validator.validate(spec);
         assertTrue(errors.stream().anyMatch(e -> e.contains("forbidden environment variable")));
     }
@@ -146,10 +146,10 @@ class OpenCueJobSpecValidatorTest {
     @Test
     void validJobSpecPasses() {
         OpenCueJobSpec spec = new OpenCueJobSpec("platform-job-001", "platform", 50,
-                List.of("platform"), Map.of("FFMPEG_LOGLEVEL", "info"),
+                List.of("platform"), Map.of("PROVIDER_LOGLEVEL", "info"),
                 Map.of("cpu", 4, "memoryMb", 4096),
                 List.of(new OpenCueJobSpec.OpenCueLayerSpec("render-layer",
-                        List.of("ffmpeg", "-i", "input.mp4", "-c:v", "libx264", "output.mp4"), 1, Map.of())));
+                        List.of("provider-tool", "--input", "input.asset", "--output", "output.asset"), 1, Map.of())));
         List<String> errors = validator.validate(spec);
         assertTrue(errors.isEmpty(), "valid spec should pass, got: " + errors);
     }

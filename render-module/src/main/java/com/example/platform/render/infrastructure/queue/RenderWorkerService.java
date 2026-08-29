@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * <ul>
  *   <li>Poll queue for jobs</li>
  *   <li>Acquire lease</li>
- *   <li>Execute job via FFmpegProvider</li>
+ *   <li>Execute job via its bound render provider</li>
  *   <li>Update state machine</li>
  *   <li>Persist artifact</li>
  *   <li>Release lease</li>
@@ -31,7 +31,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *
  * <p>Constraints:
  * <ul>
- *   <li>Single provider only (FFmpeg)</li>
+ *   <li>Single provider only (Provider)</li>
  *   <li>No fallback logic</li>
  *   <li>Deterministic execution only</li>
  * </ul>
@@ -44,7 +44,7 @@ public class RenderWorkerService {
     private final RenderJobQueue queue;
     private final JobLeaseRepository leaseRepository;
     private final RenderJobRepository jobRepository;
-    private final RenderProvider ffmpegProvider;
+    private final RenderProvider renderProvider;
     private final RenderJobStateMachine stateMachine;
     private final RenderBillingRecordRepository billingRepository;
 
@@ -63,13 +63,13 @@ public class RenderWorkerService {
             RenderJobQueue queue,
             JobLeaseRepository leaseRepository,
             RenderJobRepository jobRepository,
-            RenderProvider ffmpegProvider,
+            RenderProvider renderProvider,
             RenderJobStateMachine stateMachine,
             RenderBillingRecordRepository billingRepository) {
         this.queue = queue;
         this.leaseRepository = leaseRepository;
         this.jobRepository = jobRepository;
-        this.ffmpegProvider = ffmpegProvider;
+        this.renderProvider = renderProvider;
         this.stateMachine = stateMachine;
         this.billingRepository = billingRepository;
     }
@@ -115,7 +115,7 @@ public class RenderWorkerService {
     }
 
     /**
-     * Execute a job with the FFmpeg provider.
+     * Execute a job with the Provider provider.
      */
     private void executeJob(RenderJobQueue.QueuedJob job, JobLeaseRepository.JobLease lease) {
         String jobId = job.jobId();
@@ -131,8 +131,8 @@ public class RenderWorkerService {
             String profile = jobRecord.get("profile", String.class);
             String aiScript = jobRecord.get("ai_script", String.class);
 
-            // Execute via FFmpeg
-            RenderProvider.RenderResult result = ffmpegProvider.render(jobId, aiScript, profile);
+            // Execute via Provider
+            RenderProvider.RenderResult result = renderProvider.render(jobId, aiScript, profile);
 
             // Calculate duration
             long durationMs = Instant.now().toEpochMilli() - startTime.toEpochMilli();
@@ -190,7 +190,7 @@ public class RenderWorkerService {
         RenderBillingRecord finalized = record.finalize(
                 estimatedCost,
                 durationSeconds,
-                "ffmpeg",
+                null,
                 0 // output size unknown at this point
         );
 

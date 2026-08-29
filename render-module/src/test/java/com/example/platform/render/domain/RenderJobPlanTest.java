@@ -12,7 +12,7 @@ class RenderPlanTest {
         RenderProfile profile = RenderProfile.social1080p();
         List<RenderStep> steps = List.of(
                 RenderStep.pending("rs-1", "rp-1", RenderStepType.BUILD_TIMELINE),
-                RenderStep.pending("rs-2", "rp-1", RenderStepType.FFMPEG_TRANSCODE),
+                RenderStep.pending("rs-2", "rp-1", RenderStepType.PROVIDER_TRANSCODE),
                 RenderStep.pending("rs-3", "rp-1", RenderStepType.REGISTER_ARTIFACT)
         );
         RenderJobPlan plan = RenderJobPlan.create("rp-1", "rj-1", profile, steps);
@@ -30,7 +30,7 @@ class RenderPlanTest {
         RenderProfile profile = RenderProfile.social1080p();
         List<RenderStep> steps = List.of(
                 RenderStep.pending("rs-1", "rp-1", RenderStepType.BUILD_TIMELINE),
-                RenderStep.pending("rs-2", "rp-1", RenderStepType.FFMPEG_TRANSCODE)
+                RenderStep.pending("rs-2", "rp-1", RenderStepType.PROVIDER_TRANSCODE)
         );
         RenderJobPlan plan = RenderJobPlan.create("rp-1", "rj-1", profile, steps);
 
@@ -56,7 +56,7 @@ class RenderPlanTest {
         RenderProfile profile = RenderProfile.social1080p();
         RenderStep s1 = RenderStep.pending("rs-1", "rp-1", RenderStepType.BUILD_TIMELINE)
                 .markRunning().markCompleted(List.of("art-1"));
-        RenderStep s2 = RenderStep.pending("rs-2", "rp-1", RenderStepType.FFMPEG_TRANSCODE)
+        RenderStep s2 = RenderStep.pending("rs-2", "rp-1", RenderStepType.PROVIDER_TRANSCODE)
                 .markRunning().markCompleted(List.of("art-2"));
         RenderStep s3 = RenderStep.pending("rs-3", "rp-1", RenderStepType.REGISTER_ARTIFACT)
                 .markRunning().markCompleted(List.of("art-3"));
@@ -72,7 +72,7 @@ class RenderPlanTest {
         RenderProfile profile = RenderProfile.social1080p();
         RenderStep s1 = RenderStep.pending("rs-1", "rp-1", RenderStepType.BUILD_TIMELINE)
                 .markRunning().markCompleted(List.of("art-1"));
-        RenderStep s2 = RenderStep.pending("rs-2", "rp-1", RenderStepType.FFMPEG_TRANSCODE)
+        RenderStep s2 = RenderStep.pending("rs-2", "rp-1", RenderStepType.PROVIDER_TRANSCODE)
                 .markRunning().markFailed("TRANSCODE_FAILED", "Error");
         RenderJobPlan plan = RenderJobPlan.create("rp-1", "rj-1", profile, List.of(s1, s2));
 
@@ -85,7 +85,7 @@ class RenderPlanTest {
     void shouldUpdateStepInPlan() {
         RenderProfile profile = RenderProfile.social1080p();
         RenderStep s1 = RenderStep.pending("rs-1", "rp-1", RenderStepType.BUILD_TIMELINE);
-        RenderStep s2 = RenderStep.pending("rs-2", "rp-1", RenderStepType.FFMPEG_TRANSCODE);
+        RenderStep s2 = RenderStep.pending("rs-2", "rp-1", RenderStepType.PROVIDER_TRANSCODE);
         RenderJobPlan plan = RenderJobPlan.create("rp-1", "rj-1", profile, List.of(s1, s2));
 
         RenderStep updatedS1 = s1.markRunning();

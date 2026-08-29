@@ -154,7 +154,7 @@ class RenderDeduplicationServiceTest {
         Product product = new Product(
                 productId, "tenant-1", projectId, null,
                 ProductType.FINAL_RENDER, RepresentationKind.MEDIA_FILE,
-                "ffmpeg", "ffmpeg-libass", revisionId,
+                "provider-a", "provider-a", revisionId,
                 ProductStatus.REGISTERED, "stor-" + productId,
                 "checksum", "checksum", "video/mp4", 1,
                 metadataJson, Instant.now(), Instant.now());

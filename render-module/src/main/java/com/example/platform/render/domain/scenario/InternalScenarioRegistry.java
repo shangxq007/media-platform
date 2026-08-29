@@ -66,7 +66,7 @@ public final class InternalScenarioRegistry {
                         List.of(),
                         Map.of("hasVideoTrack", true, "outputFormat", "mp4"),
                         Map.of()),
-                Map.of("noFFmpegExecution", "true", "noOpenCue", "true"),
+                Map.of("noProviderExecution", "true", "noOpenCue", "true"),
                 Map.of());
     }
 
@@ -96,7 +96,7 @@ public final class InternalScenarioRegistry {
                         List.of(),
                         Map.of("hasCaptionSteps", true, "stagesCountMin", 1),
                         Map.of()),
-                Map.of("noFFmpegExecution", "true"),
+                Map.of("noProviderExecution", "true"),
                 Map.of());
     }
 
@@ -127,7 +127,7 @@ public final class InternalScenarioRegistry {
                         List.of(),
                         Map.of("hasWatermarkSteps", true, "stagesCountMin", 1),
                         Map.of()),
-                Map.of("noFFmpegExecution", "true"),
+                Map.of("noProviderExecution", "true"),
                 Map.of());
     }
 
@@ -159,7 +159,7 @@ public final class InternalScenarioRegistry {
                         List.of(),
                         Map.of("effectOperationCount", 3, "hasScale", true, "hasCrop", true, "hasOpacity", true),
                         Map.of()),
-                Map.of("noFFmpegExecution", "true"),
+                Map.of("noProviderExecution", "true"),
                 Map.of());
     }
 
@@ -191,7 +191,7 @@ public final class InternalScenarioRegistry {
                         List.of(),
                         Map.of("transitionOperationCountMin", 1, "hasCrossfade", true),
                         Map.of()),
-                Map.of("noFFmpegExecution", "true"),
+                Map.of("noProviderExecution", "true"),
                 Map.of());
     }
 
@@ -225,29 +225,29 @@ public final class InternalScenarioRegistry {
                         Map.of("stagesCountMin", 5, "hasEffectStage", true, "hasCaptionStage", true,
                                 "hasWatermarkStage", true, "hasOutputEncoding", true),
                         Map.of()),
-                Map.of("noFFmpegExecution", "true", "noOpenCue", "true"),
+                Map.of("noProviderExecution", "true", "noOpenCue", "true"),
                 Map.of());
     }
 
-    // ==================== scenario-007: Invalid Effect Forbidden Filtergraph ====================
+    // ==================== scenario-007: Invalid Effect Forbidden ProviderExpression ====================
 
     static InternalScenarioDefinition scenario007() {
         TimelineAssetRef asset = TimelineAssetRef.of("asset-1", "internal://clip1.mp4");
         List<TimelineClipEffect> effects = List.of(
-                TimelineClipEffect.ofKey("CUSTOM_FILTERGRAPH", Map.of("filter", "some_raw_filter")));
+                TimelineClipEffect.ofKey("CUSTOM_PROVIDER_EXPRESSION", Map.of("filter", "some_raw_filter")));
         TimelineClip clip = new TimelineClip("clip-1", asset, 0.0, 0.0, 10.0, 10.0, effects);
         TimelineTrack track = new TimelineTrack("track-1", "Main Video", TimelineTrack.TrackType.VIDEO, 0,
                 List.of(clip), false, false);
         TimelineSpec timeline = new TimelineSpec(
-                "sc007-tl", "forbidden-effect-timeline", "Forbidden filtergraph test",
+                "sc007-tl", "forbidden-effect-timeline", "Forbidden provider expression test",
                 List.of(track), List.of(),
                 TimelineOutputSpec.mp4_1080p30(), 10.0, Map.of());
 
         return new InternalScenarioDefinition(
-                new InternalScenarioId("scenario-007-invalid-effect-forbidden-filtergraph"),
-                new InternalScenarioName("Invalid Effect Forbidden Filtergraph"),
+                new InternalScenarioId("scenario-007-invalid-effect-forbidden-provider expression"),
+                new InternalScenarioName("Invalid Effect Forbidden ProviderExpression"),
                 InternalScenarioCategory.SAFETY_BOUNDARY,
-                "Validates that arbitrary filtergraph effects are blocked by effect planning.",
+                "Validates that arbitrary provider expression effects are blocked by effect planning.",
                 InternalScenarioStatus.ACTIVE,
                 timeline,
                                 new InternalScenarioExpectedOutcome(
@@ -255,7 +255,7 @@ public final class InternalScenarioRegistry {
                         List.of(InternalScenarioIssueCode.FORBIDDEN_EFFECT_NOT_BLOCKED),
                         Map.of(),
                         Map.of()),
-                Map.of("noFFmpegExecution", "true", "noRawFiltergraph", "true"),
+                Map.of("noProviderExecution", "true", "noRawProviderExpression", "true"),
                 Map.of());
     }
 
@@ -287,7 +287,7 @@ public final class InternalScenarioRegistry {
                         List.of(InternalScenarioIssueCode.FORBIDDEN_TRANSITION_NOT_BLOCKED),
                         Map.of(),
                         Map.of()),
-                Map.of("noFFmpegExecution", "true", "noUserDefinedGraph", "true"),
+                Map.of("noProviderExecution", "true", "noUserDefinedGraph", "true"),
                 Map.of());
     }
 
@@ -300,7 +300,7 @@ public final class InternalScenarioRegistry {
                 List.of(clip), false, false);
         // Use an unsupported container to trigger output profile validation failure
         TimelineOutputSpec badOutput = new TimelineOutputSpec(
-                "avi", "1920x1080", FrameRate.of(30, 1), "h264", 8000, TimelineAudioSpec.aacDefault(), "yuv420p");
+                "avi", "1920x1080", FrameRate.of(30, 1), "h264", 8000, TimelineAudioSpec.aacDefault(), "default");
         TimelineSpec timeline = new TimelineSpec(
                 "sc009-tl", "bad-output-timeline", "Invalid output profile test",
                 List.of(track), List.of(),
@@ -318,7 +318,7 @@ public final class InternalScenarioRegistry {
                         List.of(InternalScenarioIssueCode.OUTPUT_PROFILE_INVALID),
                         Map.of(),
                         Map.of()),
-                Map.of("noFFmpegExecution", "true"),
+                Map.of("noProviderExecution", "true"),
                 Map.of());
     }
 
@@ -360,7 +360,7 @@ public final class InternalScenarioRegistry {
                                 "hasTransitions", true, "hasCaptionSteps", true,
                                 "hasWatermarkSteps", true, "hasOutputEncoding", true),
                         Map.of()),
-                Map.of("noFFmpegExecution", "true", "noOpenCue", "true", "noProductCreation", "true"),
+                Map.of("noProviderExecution", "true", "noOpenCue", "true", "noProductCreation", "true"),
                 Map.of());
     }
 }

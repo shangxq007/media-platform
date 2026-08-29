@@ -201,7 +201,7 @@ public class TimelineNormalizationService {
                 ? spec.videoCodec() : "h264";
         int videoBitrate = spec.videoBitrate() > 0 ? spec.videoBitrate() : 8000;
         String pixelFormat = spec.pixelFormat() != null && !spec.pixelFormat().isBlank()
-                ? spec.pixelFormat() : "yuv420p";
+                ? spec.pixelFormat() : "default";
 
         // Audio spec defaults
         String audioCodec = "aac";

@@ -107,7 +107,7 @@ class RenderJobServiceTest {
             service.create(new CreateRenderJobRequest("proj-1", "snap-1", "social_1080p"));
 
             assertEquals("social_1080p", fakePolicy.lastProfile);
-            assertEquals("ffmpeg", fakePublisher.events.get(0).primaryBackend());
+            assertEquals("provider-a", fakePublisher.events.get(0).primaryBackend());
         }
 
         @Test
@@ -379,7 +379,7 @@ class RenderJobServiceTest {
         @Override
         public RenderPolicyDecision decide(String profile) {
             lastProfile = profile;
-            return new RenderPolicyDecision("ffmpeg", "NORMAL");
+            return new RenderPolicyDecision("provider-a", "NORMAL");
         }
     }
 

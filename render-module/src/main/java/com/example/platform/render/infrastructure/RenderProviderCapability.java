@@ -92,6 +92,6 @@ public record RenderProviderCapability(
                 maxResolution, requiresExternalBinary, requiresGpu, experimental,
                 availableInProfiles,
                 ProviderStatus.POC, "P2", ProviderType.RENDER,
-                "Legacy provider", List.of(), true);
+                "Compatibility metadata for legacy capability registrations", List.of(), true);
     }
 }

@@ -6,14 +6,14 @@ import java.util.Set;
 
 /**
  * Maps {@link CaptionTemplateSpec} typed domain model to ASS subtitle format
- * parameters for libass rendering.
+ * parameters for provider-neutral timed-text composition.
  *
  * <p>Produces bounded, safe {@link AssStyleParams} and {@link AssDialogueEvent}
  * records. Does NOT produce raw ASS style strings.</p>
  *
  * <p>Constraints:
  * <ul>
- *   <li>No raw FFmpeg commands</li>
+ *   <li>No raw Provider commands</li>
  *   <li>No raw ASS style strings</li>
  *   <li>No provider/storage calls</li>
  *   <li>All output is bounded and validated</li>

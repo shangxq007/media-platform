@@ -34,13 +34,12 @@ public class DefaultOpenCueSubmissionClient implements OpenCueSubmissionClient {
     public OpenCueSubmissionResult submit(OpenCueSubmissionRequest request) {
         long start = System.currentTimeMillis();
 
-        // Validate canonical backend before attempting submission
-        if (!request.isCanonicalBackend()) {
+        if (!request.hasBoundBackendIdentity()) {
             long dur = System.currentTimeMillis() - start;
-            log.warn("OpenCue submission rejected: unsupported backend={}", request.backendId());
+            log.warn("OpenCue submission rejected: unbound backend identity={}", request.backendId());
             return OpenCueSubmissionResult.rejected(
                     OpenCueSubmissionError.UNSUPPORTED_BACKEND,
-                    "Unsupported backend: " + request.backendId(),
+                    "Unbound backend identity: " + request.backendId(),
                     dur);
         }
 

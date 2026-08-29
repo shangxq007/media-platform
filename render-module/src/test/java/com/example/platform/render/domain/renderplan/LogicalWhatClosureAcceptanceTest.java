@@ -287,10 +287,10 @@ class LogicalWhatClosureAcceptanceTest {
         RenderPlanner planner = new DefaultRenderPlanner();
         RenderPlanningResult result = planner.plan(TestPlans.canonicalInput());
         for (RenderNode node : result.plan().nodes()) {
-            assertFalse(node.operationKey().toLowerCase().contains("libass"),
-                    "no libass in operation key");
-            assertFalse(node.operationKey().toLowerCase().contains("ffmpeg"),
-                    "no ffmpeg in operation key");
+            assertFalse(node.operationKey().toLowerCase().contains("provider-b"),
+                    "no concrete timed-text renderer in operation key");
+            assertFalse(node.operationKey().toLowerCase().contains("provider-a"),
+                    "no provider in operation key");
         }
     }
 
@@ -435,7 +435,7 @@ class LogicalWhatClosureAcceptanceTest {
     void noProviderIdentityInLogicalCapability() {
         for (CapabilityId id : RenderCapabilityVocabularyIds.all()) {
             String v = id.value().toLowerCase();
-            assertFalse(v.contains("ffmpeg"));
+            assertFalse(v.contains("provider-a"));
             assertFalse(v.contains("plugin"));
             assertFalse(v.contains("worker"));
             assertFalse(v.contains("device"));

@@ -24,7 +24,7 @@ import com.example.platform.render.domain.legacy.TimelineTrack;
  *
  * <p>Proves:
  * <ul>
- *   <li>Single clip → all nodes bound to ffmpeg in PRODUCTION mode</li>
+ *   <li>Single clip → all nodes bound to provider in PRODUCTION mode</li>
  *   <li>Caption overlay → subtitle capability bound</li>
  *   <li>No candidates → all nodes fail with REQUIRED_CAPABILITY_MISSING</li>
  *   <li>POC provider rejected in PRODUCTION mode</li>
@@ -45,9 +45,9 @@ class ProviderBindingCompilerTest {
     private ArtifactGraphCompiler artifactCompiler;
     private TimelineNormalizationService normalizer;
 
-    private static final ProviderBindingCompiler.ProviderCandidate FFMPEG =
+    private static final ProviderBindingCompiler.ProviderCandidate PROVIDER =
             new ProviderBindingCompiler.ProviderCandidate(
-                    "ffmpeg", ProviderStatus.PRODUCTION, ProviderType.RENDER, "P0",
+                    "provider-a", ProviderStatus.PRODUCTION, ProviderType.RENDER, "P0",
                     true, true, "6.1",
                     List.of("MEDIA_INPUT", "VIDEO_DECODE", "VIDEO_TRIM",
                             "AUDIO_DECODE", "AUDIO_MIX",
@@ -80,11 +80,11 @@ class ProviderBindingCompilerTest {
     }
 
     @Test
-    @DisplayName("Single clip → all nodes bound to ffmpeg in PRODUCTION mode")
-    void singleClipAllBoundToFfmpeg() {
+    @DisplayName("Single clip → all nodes bound to provider in PRODUCTION mode")
+    void singleClipAllBoundToProvider() {
         LogicalCapabilityGraph capGraph = compileSingleClipCapGraph();
 
-        ProviderBindingPlan plan = compiler.compile(capGraph, List.of(FFMPEG), "PRODUCTION");
+        ProviderBindingPlan plan = compiler.compile(capGraph, List.of(PROVIDER), "PRODUCTION");
 
         assertNotNull(plan);
         assertTrue(plan.allBound());
@@ -96,7 +96,7 @@ class ProviderBindingCompilerTest {
                 .filter(n -> !n.requiredCapabilities().isEmpty())
                 .forEach(n -> {
                     assertTrue(n.isBound(), "Node " + n.nodeId() + " should be bound");
-                    assertEquals("ffmpeg", n.boundProviderName());
+                    assertEquals("provider-a", n.boundProviderName());
                 });
     }
 
@@ -107,7 +107,7 @@ class ProviderBindingCompilerTest {
                 new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 1.0, 3.0);
         LogicalCapabilityGraph capGraph = compileCapGraphWithOverlays(List.of(overlay));
 
-        ProviderBindingPlan plan = compiler.compile(capGraph, List.of(FFMPEG), "PRODUCTION");
+        ProviderBindingPlan plan = compiler.compile(capGraph, List.of(PROVIDER), "PRODUCTION");
 
         assertTrue(plan.nodes().stream()
                 .anyMatch(n -> n.requiredCapabilities().contains("SUBTITLE_BURN_IN")
@@ -175,12 +175,12 @@ class ProviderBindingCompilerTest {
         LogicalCapabilityGraph capGraph = compileSingleClipCapGraph();
 
         ProviderBindingPlan plan = compiler.compile(
-                capGraph, List.of(MLT_POC, FFMPEG), "MANUAL");
+                capGraph, List.of(MLT_POC, PROVIDER), "MANUAL");
 
         assertTrue(plan.allBound());
         plan.nodes().stream()
                 .filter(n -> !n.requiredCapabilities().isEmpty())
-                .forEach(n -> assertEquals("ffmpeg", n.boundProviderName(),
+                .forEach(n -> assertEquals("provider-a", n.boundProviderName(),
                         "PRODUCTION provider should be preferred over POC"));
     }
 
@@ -189,8 +189,8 @@ class ProviderBindingCompilerTest {
     void deterministicPlanIds() {
         LogicalCapabilityGraph capGraph = compileSingleClipCapGraph();
 
-        ProviderBindingPlan plan1 = compiler.compile(capGraph, List.of(FFMPEG), "PRODUCTION");
-        ProviderBindingPlan plan2 = compiler.compile(capGraph, List.of(FFMPEG), "PRODUCTION");
+        ProviderBindingPlan plan1 = compiler.compile(capGraph, List.of(PROVIDER), "PRODUCTION");
+        ProviderBindingPlan plan2 = compiler.compile(capGraph, List.of(PROVIDER), "PRODUCTION");
 
         assertEquals(plan1.planId(), plan2.planId());
     }
@@ -200,7 +200,7 @@ class ProviderBindingCompilerTest {
     void edgesMirrorTopology() {
         LogicalCapabilityGraph capGraph = compileSingleClipCapGraph();
 
-        ProviderBindingPlan plan = compiler.compile(capGraph, List.of(FFMPEG), "PRODUCTION");
+        ProviderBindingPlan plan = compiler.compile(capGraph, List.of(PROVIDER), "PRODUCTION");
 
         assertEquals(capGraph.edges().size(), plan.edges().size());
         for (int i = 0; i < capGraph.edges().size(); i++) {
@@ -215,7 +215,7 @@ class ProviderBindingCompilerTest {
     void finalRenderNodeIdentifiable() {
         LogicalCapabilityGraph capGraph = compileSingleClipCapGraph();
 
-        ProviderBindingPlan plan = compiler.compile(capGraph, List.of(FFMPEG), "PRODUCTION");
+        ProviderBindingPlan plan = compiler.compile(capGraph, List.of(PROVIDER), "PRODUCTION");
 
         ProviderBindingNode finalRender = plan.finalRenderNode();
         assertNotNull(finalRender);
@@ -228,7 +228,7 @@ class ProviderBindingCompilerTest {
     void decisionContainsCandidates() {
         LogicalCapabilityGraph capGraph = compileSingleClipCapGraph();
 
-        ProviderBindingPlan plan = compiler.compile(capGraph, List.of(FFMPEG), "PRODUCTION");
+        ProviderBindingPlan plan = compiler.compile(capGraph, List.of(PROVIDER), "PRODUCTION");
 
         plan.nodes().stream()
                 .filter(n -> !n.requiredCapabilities().isEmpty())
@@ -241,9 +241,9 @@ class ProviderBindingCompilerTest {
     @Test
     @DisplayName("Provider with notFor exclusion → fails for excluded capability")
     void notForExclusion() {
-        ProviderBindingCompiler.ProviderCandidate ffmpegExcluded =
+        ProviderBindingCompiler.ProviderCandidate providerExcluded =
                 new ProviderBindingCompiler.ProviderCandidate(
-                        "ffmpeg", ProviderStatus.PRODUCTION, ProviderType.RENDER, "P0",
+                        "provider-a", ProviderStatus.PRODUCTION, ProviderType.RENDER, "P0",
                         true, true, "6.1",
                         List.of("VIDEO_DECODE", "VIDEO_ENCODE", "CONTAINER_MUX"),
                         List.of("SUBTITLE_BURN_IN"));
@@ -252,7 +252,7 @@ class ProviderBindingCompilerTest {
                 new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 1.0, 3.0);
         LogicalCapabilityGraph capGraph = compileCapGraphWithOverlays(List.of(overlay));
 
-        ProviderBindingPlan plan = compiler.compile(capGraph, List.of(ffmpegExcluded), "PRODUCTION");
+        ProviderBindingPlan plan = compiler.compile(capGraph, List.of(providerExcluded), "PRODUCTION");
 
         assertTrue(plan.nodes().stream()
                 .anyMatch(n -> n.requiredCapabilities().contains("SUBTITLE_BURN_IN")

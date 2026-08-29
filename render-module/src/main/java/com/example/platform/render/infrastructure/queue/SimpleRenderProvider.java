@@ -3,7 +3,7 @@ package com.example.platform.render.infrastructure.queue;
 /**
  * Simplified render provider interface for production.
  * 
- * <p>Only FFmpeg is supported in production mode.
+ * <p>Only Provider is supported in production mode.
  * No fallback logic, no capability negotiation.
  */
 public interface SimpleRenderProvider {

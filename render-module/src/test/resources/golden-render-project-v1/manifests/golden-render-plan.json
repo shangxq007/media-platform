@@ -10,7 +10,7 @@
       "width": 854,
       "height": 480,
       "frameRate": 30,
-      "videoCodec": "libx264",
+      "videoCodec": "h264",
       "audioCodec": "aac",
       "videoBitrate": "1M",
       "audioBitrate": "128k"
@@ -21,7 +21,7 @@
       "width": 1920,
       "height": 1080,
       "frameRate": 30,
-      "videoCodec": "libx264",
+      "videoCodec": "h264",
       "audioCodec": "aac",
       "videoBitrate": "5M",
       "audioBitrate": "192k"
@@ -32,7 +32,7 @@
       "width": 1920,
       "height": 1080,
       "frameRate": 30,
-      "videoCodec": "libx264",
+      "videoCodec": "h264",
       "audioCodec": "aac",
       "videoBitrate": "8M",
       "audioBitrate": "192k"

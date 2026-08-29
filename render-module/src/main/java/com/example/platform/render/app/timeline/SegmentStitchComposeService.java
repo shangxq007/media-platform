@@ -147,7 +147,7 @@ public class SegmentStitchComposeService {
 
     public record StitchResult(String artifactId, String storageUri, int segmentCount, String backend) {
         public StitchResult(String artifactId, String storageUri, int segmentCount) {
-            this(artifactId, storageUri, segmentCount, "ffmpeg");
+            this(artifactId, storageUri, segmentCount, null);
         }
     }
 }

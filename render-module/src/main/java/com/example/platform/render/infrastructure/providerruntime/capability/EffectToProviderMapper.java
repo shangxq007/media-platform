@@ -44,10 +44,6 @@ public class EffectToProviderMapper {
                 "GStreamerRenderProvider"
         ));
 
-        registerCapabilityProvider("subtitle_processing", Set.of(
-                "LibassSubtitleProvider"
-        ));
-
         registerCapabilityProvider("packaging", Set.of(
                 "GPACRenderProvider",
                 "Bento4PackagingProvider",

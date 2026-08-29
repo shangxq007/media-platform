@@ -1,6 +1,7 @@
 package com.example.platform.render.app;
 
 import com.example.platform.render.app.planner.FinalComposerSelector;
+import com.example.platform.render.app.planner.PipelineTaskType;
 import com.example.platform.render.app.planner.RenderPlannerService;
 
 import org.junit.jupiter.api.Test;
@@ -35,16 +36,20 @@ class TimelineExecutorServiceTest {
     }
 
     @Test
-    void textOverlaysAddLibassStage() {
+    void textOverlaysAddProviderNeutralSubtitleTask() {
         TimelineTextOverlay overlay = TimelineTextOverlay.of("t1", "Hello",
                 new com.example.platform.fonttext.typography.FontFamilyName("DejaVu Sans"), 0, 5);
-        TimelineSpec spec = new TimelineSpec("tl-l", "Libass", null,
+        TimelineSpec spec = new TimelineSpec("tl-l", "Subtitles", null,
                 List.of(TimelineTrack.of("v1", "V", TimelineTrack.TrackType.VIDEO)),
                 List.of(overlay), TimelineOutputSpec.mp4_1080p30(), 5, Map.of());
 
-        var plan = executor.plan(spec, "default_1080p", "FREE", "mp4");
-        assertTrue(plan.stages().stream().anyMatch(s -> "subtitles".equals(s.name())
-                && "libass".equals(s.providerKey())));
+        var plan = executor.planPipeline(spec, "default_1080p", "FREE", "mp4");
+        var subtitlesTask = plan.tasks().stream()
+                .filter(task -> task.type() == PipelineTaskType.SUBTITLES)
+                .findFirst()
+                .orElseThrow();
+        assertNull(subtitlesTask.backend());
+        assertEquals("subtitle.burn-in", subtitlesTask.parameters().get("capability"));
     }
 
     @Test

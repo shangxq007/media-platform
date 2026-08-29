@@ -6,7 +6,7 @@ package com.example.platform.render.domain.template;
  * <p>Compiles a TemplateDefinition + TemplateApplicationRequest into a
  * provider-neutral TemplateApplicationResult.</p>
  *
- * <p>Internal domain interface — does not produce FFmpeg commands
+ * <p>Internal domain interface — does not produce Provider commands
  * or Remotion props.</p>
  */
 public interface TemplateApplicationCompiler {

@@ -15,12 +15,12 @@ import org.springframework.stereotype.Component;
  *
  * <h3>Pipeline Structure (test source)</h3>
  * <pre>
- * gst-launch-1.0 videotestsrc num-frames=150 ! videoconvert ! x264enc bitrate=2500 ! mp4mux ! filesink location=output.mp4
+ * gst-launch-1.0 videotestsrc num-frames=150 ! videoconvert ! video-encoder bitrate=2500 ! mp4mux ! filesink location=output.mp4
  * </pre>
  *
  * <h3>Pipeline Structure (file source)</h3>
  * <pre>
- * gst-launch-1.0 filesrc location=input.mp4 ! decodebin ! videoconvert ! x264enc bitrate=8000 ! mp4mux ! filesink location=output.mp4
+ * gst-launch-1.0 filesrc location=input.mp4 ! decodebin ! videoconvert ! video-encoder bitrate=8000 ! mp4mux ! filesink location=output.mp4
  * </pre>
  */
 @Component
@@ -47,7 +47,7 @@ public class GStreamerCommandFactory {
         args.add("!");
         args.add("videoconvert");
         args.add("!");
-        args.add("x264enc");
+        args.add("video-encoder");
         args.add("bitrate=" + preset.videoBitrateKbps());
         args.add("!");
         args.add("mp4mux");
@@ -78,7 +78,7 @@ public class GStreamerCommandFactory {
         args.add("!");
         args.add("videoconvert");
         args.add("!");
-        args.add("x264enc");
+        args.add("video-encoder");
         args.add("bitrate=" + preset.videoBitrateKbps());
         args.add("!");
         args.add("mp4mux");
@@ -115,7 +115,7 @@ public class GStreamerCommandFactory {
         args.add("valignment=bottom");
         args.add("halignment=center");
         args.add("!");
-        args.add("x264enc");
+        args.add("video-encoder");
         args.add("bitrate=" + preset.videoBitrateKbps());
         args.add("!");
         args.add("mp4mux");

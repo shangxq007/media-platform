@@ -5,7 +5,7 @@ import com.example.platform.render.infrastructure.ProviderJob;
 
 /**
  * Utility provider interface.
- * Suitable for: JavaCVUtilityProvider
+ * Suitable for: ProviderRuntimeUtilityProvider
  * Responsibilities: JVM-internal tool capabilities, metadata read, frame extraction, OpenCV frame processing
  * NOT for top-level scheduling.
  */

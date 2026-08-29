@@ -13,7 +13,6 @@ import com.example.platform.render.domain.compile.*;
 import com.example.platform.render.domain.compile.binding.*;
 import com.example.platform.render.domain.compile.execution.*;
 import com.example.platform.render.domain.compile.executionplan.*;
-import com.example.platform.render.infrastructure.RenderToolCapabilityInventory;
 import com.example.platform.shared.Ids;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,7 +25,7 @@ import java.util.Map;
 /**
  * Internal service for Caption Template Render MVP.
  * Validates, adapts to TimelineSpec, executes through PLAN_BASED pipeline.
- * Does NOT call FFmpeg directly. Internal only.
+ * Does NOT call Provider directly. Internal only.
  */
 @Service
 public class CaptionTemplateRenderService {
@@ -48,7 +47,6 @@ public class CaptionTemplateRenderService {
     private final RenderOutputRegistrationService registrationService;
     private final ProductRuntimeService productRuntime;
     private final StorageRuntimeService storageRuntime;
-    private final RenderToolCapabilityInventory toolInventory;
     private final TimelineInputProductResolver inputProductResolver;
     private final Path storageRoot;
 
@@ -68,7 +66,6 @@ public class CaptionTemplateRenderService {
             RenderOutputRegistrationService registrationService,
             ProductRuntimeService productRuntime,
             StorageRuntimeService storageRuntime,
-            RenderToolCapabilityInventory toolInventory,
             TimelineInputProductResolver inputProductResolver,
             Path storageRoot) {
         this.validator = validator;
@@ -86,7 +83,6 @@ public class CaptionTemplateRenderService {
         this.registrationService = registrationService;
         this.productRuntime = productRuntime;
         this.storageRuntime = storageRuntime;
-        this.toolInventory = toolInventory;
         this.inputProductResolver = inputProductResolver;
         this.storageRoot = storageRoot;
     }
@@ -116,21 +112,8 @@ public class CaptionTemplateRenderService {
         ArtifactDependencyGraph artifactGraph = artifactCompiler.compile(timeline);
         LogicalCapabilityGraph capGraph = capabilityCompiler.compile(artifactGraph);
 
-        var ffmpegCandidate = new ProviderBindingCompiler.ProviderCandidate(
-                "ffmpeg",
-                com.example.platform.render.infrastructure.ProviderStatus.PRODUCTION,
-                com.example.platform.render.infrastructure.ProviderType.RENDER,
-                "P0", true, toolInventory.isToolAvailable("ffmpeg"),
-                toolInventory.isToolAvailable("ffmpeg") ? "available" : null,
-                capGraph.nodes().stream()
-                        .flatMap(n -> n.requirement() != null
-                                ? n.requirement().requiredCapabilities().stream()
-                                : java.util.stream.Stream.empty())
-                        .distinct().toList(),
-                List.of());
-
         ProviderBindingPlan bindingPlan = bindingCompiler.compile(
-                capGraph, List.of(ffmpegCandidate), "PRODUCTION");
+                capGraph, List.of(), "PRODUCTION");
         List<ProviderExecutionDocumentDraft> drafts = draftCompiler.compile(bindingPlan);
         RenderExecutionPlan executionPlan = planCompiler.compile(
                 bindingPlan, drafts, ExecutionPolicy.production());

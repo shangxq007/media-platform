@@ -23,7 +23,7 @@ import org.springframework.stereotype.Service;
  * Service for executing individual {@link RenderStep} instances within a {@link RenderJobPlan}.
  *
  * <p>This service manages step lifecycle: transitioning from PENDING → RUNNING → COMPLETED/FAILED.
- * Actual tool execution is delegated to the appropriate provider (FFmpeg, MLT, GPAC)
+ * Actual tool execution is delegated to the appropriate provider (Provider, MLT, GPAC)
  * through the {@link com.example.platform.extension.app.ProcessToolRunner} port.</p>
  *
  * <p>On step execution it emits a canonical DURATION usage record as an additive side effect,
@@ -94,7 +94,7 @@ public class RenderStepExecutionService {
     /**
      * Executes a single step. This is the extension point for actual tool execution.
      *
-     * <p>Subsequent prompts will wire FFmpeg, MLT, and GPAC providers here.</p>
+     * <p>Subsequent prompts will wire Provider, MLT, and GPAC providers here.</p>
      *
      * @param step the step to execute
      * @return the step with updated status

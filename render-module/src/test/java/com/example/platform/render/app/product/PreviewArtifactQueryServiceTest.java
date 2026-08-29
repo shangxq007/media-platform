@@ -73,8 +73,8 @@ class PreviewArtifactQueryServiceTest {
         assertEquals(1024L, r.fileSize());
         assertEquals("abc123", r.checksum());
         assertEquals("abc123", r.contentHash());
-        assertEquals("ffmpeg", r.producerType());
-        assertEquals("ffmpeg", r.producerId());
+        assertEquals("provider-a", r.producerType());
+        assertEquals("provider-a", r.producerId());
         assertEquals(1, r.version());
         assertTrue(r.isReady());
         assertFalse(r.isFailed());
@@ -364,7 +364,7 @@ class PreviewArtifactQueryServiceTest {
         Product product = new Product(
                 "zero-ver", "t1", "p1", null,
                 ProductType.PREVIEW, RepresentationKind.MEDIA_FILE,
-                "ffmpeg", "ffmpeg", null,
+                "provider-a", "provider-a", null,
                 ProductStatus.READY, null,
                 null, null, "video/mp4", 0,
                 "{}", Instant.now(), Instant.now());
@@ -392,7 +392,7 @@ class PreviewArtifactQueryServiceTest {
         Product product = new Product(
                 productId, tenantId, projectId, null,
                 type, RepresentationKind.MEDIA_FILE,
-                "ffmpeg", "ffmpeg", null,
+                "provider-a", "provider-a", null,
                 ProductStatus.REGISTERED, null,
                 null, null, "video/mp4", 1,
                 "{}", Instant.now(), Instant.now());
@@ -406,7 +406,7 @@ class PreviewArtifactQueryServiceTest {
         Product product = new Product(
                 productId, tenantId, projectId, null,
                 type, RepresentationKind.MEDIA_FILE,
-                "ffmpeg", "ffmpeg", null,
+                "provider-a", "provider-a", null,
                 ProductStatus.REGISTERED, storageRefId,
                 null, null, "video/mp4", 1,
                 "{}", Instant.now(), Instant.now());
@@ -421,7 +421,7 @@ class PreviewArtifactQueryServiceTest {
         Product product = new Product(
                 productId, tenantId, projectId, assetId,
                 type, RepresentationKind.MEDIA_FILE,
-                "ffmpeg", "ffmpeg", null,
+                "provider-a", "provider-a", null,
                 ProductStatus.REGISTERED, storageRefId,
                 null, null, "video/mp4", 1,
                 "{}", Instant.now(), Instant.now());
@@ -437,7 +437,7 @@ class PreviewArtifactQueryServiceTest {
         Product product = new Product(
                 productId, tenantId, projectId, null,
                 type, RepresentationKind.MEDIA_FILE,
-                "ffmpeg", "ffmpeg", timelineRevisionId,
+                "provider-a", "provider-a", timelineRevisionId,
                 ProductStatus.REGISTERED, storageRefId,
                 null, null, "video/mp4", 1,
                 "{}", Instant.now(), Instant.now());
@@ -451,7 +451,7 @@ class PreviewArtifactQueryServiceTest {
         Product product = new Product(
                 productId, tenantId, projectId, null,
                 type, RepresentationKind.MEDIA_FILE,
-                "ffmpeg", "ffmpeg", null,
+                "provider-a", "provider-a", null,
                 ProductStatus.REGISTERED, null,
                 null, null, null, 1,
                 "{\"error\":\"test failure\"}", Instant.now(), Instant.now());

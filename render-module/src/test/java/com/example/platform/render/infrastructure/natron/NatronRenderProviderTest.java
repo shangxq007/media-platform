@@ -76,6 +76,6 @@ class NatronRenderProviderTest {
 
         ArgumentCaptor<ToolExecutionRequest> request = ArgumentCaptor.forClass(ToolExecutionRequest.class);
         verify(toolRunner).execute(request.capture());
-        assertTrue(request.getValue().args().stream().noneMatch("--fallback-ffmpeg"::equals));
+        assertTrue(request.getValue().args().stream().noneMatch("--fallback-provider"::equals));
     }
 }

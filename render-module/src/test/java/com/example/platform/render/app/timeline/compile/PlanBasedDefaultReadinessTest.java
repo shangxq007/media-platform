@@ -42,8 +42,8 @@ class PlanBasedDefaultReadinessTest {
     }
 
     @Test
-    @DisplayName("PLAN_BASED rejects non-FFmpeg provider")
-    void planBasedRejectsNonFfmpeg() {
+    @DisplayName("PLAN_BASED rejects non-Provider provider")
+    void planBasedRejectsNonProvider() {
         LocalExecutionPlanRunner runner = createRunner();
         BoundProviderRef mltRef = new BoundProviderRef(
                 "mlt", ProviderStatus.POC, ProviderType.RENDER, "P1", true, true, "7.22", 200);
@@ -65,13 +65,13 @@ class PlanBasedDefaultReadinessTest {
     @DisplayName("PLAN_BASED rejects non-LOCAL target")
     void planBasedRejectsNonLocal() {
         LocalExecutionPlanRunner runner = createRunner();
-        BoundProviderRef ffmpegRef = new BoundProviderRef(
-                "ffmpeg", ProviderStatus.PRODUCTION, ProviderType.RENDER, "P0", true, true, "6.1", 0);
+        BoundProviderRef providerRef = new BoundProviderRef(
+                "provider-a", ProviderStatus.PRODUCTION, ProviderType.RENDER, "P0", true, true, "6.1", 0);
         RenderExecutionStep exec = new RenderExecutionStep(
                 "step-1", RenderExecutionStepType.EXECUTE_PROVIDER,
                 RenderExecutionStepStatus.PENDING, "n1", ArtifactNodeType.FINAL_RENDER,
-                "ffmpeg", ffmpegRef, null, List.of(), false,
-                ExecutionEnvironmentTarget.OPENCUE, "FFmpeg OpenCue", Map.of());
+                "provider-a", providerRef, null, List.of(), false,
+                ExecutionEnvironmentTarget.OPENCUE, "Provider OpenCue", Map.of());
         RenderExecutionPlan plan = new RenderExecutionPlan(
                 RenderExecutionPlanId.fromBindingPlan("bp-1", "PRODUCTION"),
                 "bp-1", "tl-1", ExecutionPolicy.production(),
@@ -85,23 +85,23 @@ class PlanBasedDefaultReadinessTest {
     @DisplayName("PLAN_BASED respects RenderPlanPolicyGuard")
     void planBasedRespectsPolicyGuard() {
         RenderPlanPolicyGuard guard = new RenderPlanPolicyGuard();
-        BoundProviderRef ffmpegRef = new BoundProviderRef(
-                "ffmpeg", ProviderStatus.PRODUCTION, ProviderType.RENDER, "P0", true, true, "6.1", 0);
+        BoundProviderRef providerRef = new BoundProviderRef(
+                "provider-a", ProviderStatus.PRODUCTION, ProviderType.RENDER, "P0", true, true, "6.1", 0);
         ArtifactNodeType nodeType = ArtifactNodeType.FINAL_RENDER;
         RenderExecutionStep exec = new RenderExecutionStep(
                 "s1", RenderExecutionStepType.EXECUTE_PROVIDER,
                 RenderExecutionStepStatus.PENDING, "n1", nodeType,
-                "ffmpeg", ffmpegRef, null, List.of(), false,
+                "provider-a", providerRef, null, List.of(), false,
                 ExecutionEnvironmentTarget.LOCAL, "Exec", Map.of());
         RenderExecutionStep verify = new RenderExecutionStep(
                 "s2", RenderExecutionStepType.VERIFY_OUTPUT,
                 RenderExecutionStepStatus.PENDING, "n1", nodeType,
-                "ffmpeg", ffmpegRef, null, List.of("s1"), false,
+                "provider-a", providerRef, null, List.of("s1"), false,
                 ExecutionEnvironmentTarget.LOCAL, "Verify", Map.of());
         RenderExecutionStep register = new RenderExecutionStep(
                 "s3", RenderExecutionStepType.REGISTER_OUTPUT,
                 RenderExecutionStepStatus.PENDING, "n1", nodeType,
-                "ffmpeg", ffmpegRef, null, List.of("s2"), false,
+                "provider-a", providerRef, null, List.of("s2"), false,
                 ExecutionEnvironmentTarget.LOCAL, "Register", Map.of());
         RenderExecutionStep link = new RenderExecutionStep(
                 "s4", RenderExecutionStepType.LINK_PRODUCT_DEPENDENCY,
@@ -151,8 +151,8 @@ class PlanBasedDefaultReadinessTest {
 
     private LocalExecutionPlanRunner createRunner() {
         return new LocalExecutionPlanRunner(new RenderPlanPolicyGuard(),
-                new com.example.platform.render.app.timeline.compile.RenderExecutionStepExecutor(
-                        null, null, null, null, null, null));
+                  new com.example.platform.render.app.timeline.compile.RenderExecutionStepExecutor(
+                          null, null, null, null));
     }
 
     private LocalExecutionPlanContext createContext() {

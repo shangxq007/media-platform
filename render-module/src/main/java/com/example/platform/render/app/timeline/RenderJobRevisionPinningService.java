@@ -6,8 +6,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Set;
-
 import static com.example.platform.typedschema.jooq.generated.tables.RenderJob.RENDER_JOB;
 import static com.example.platform.typedschema.jooq.generated.tables.TimelineRevision.TIMELINE_REVISION;
 
@@ -17,10 +15,6 @@ public class RenderJobRevisionPinningService {
     private static final Logger log = LoggerFactory.getLogger(RenderJobRevisionPinningService.class);
     private final DSLContext dsl;
 
-    private static final Set<String> CANONICAL_BACKENDS = Set.of(
-            "ffmpeg", "remotion", "gpac", "blender"
-    );
-
     public RenderJobRevisionPinningService(DSLContext dsl) {
         this.dsl = dsl;
     }
@@ -28,9 +22,8 @@ public class RenderJobRevisionPinningService {
     @Transactional
     public void createRenderJobWithRevision(String renderJobId, String productId,
                                             String timelineRevisionId, String backend) {
-        if (backend == null || !CANONICAL_BACKENDS.contains(backend.toLowerCase())) {
-            throw new IllegalArgumentException(
-                    "Unknown backend: " + backend + ". Canonical backends: " + CANONICAL_BACKENDS);
+        if (!isBoundBackendIdentity(backend)) {
+            throw new IllegalArgumentException("A bound backend identity is required: " + backend);
         }
 
         String revisionId = dsl.select(TIMELINE_REVISION.ID)
@@ -90,7 +83,11 @@ public class RenderJobRevisionPinningService {
                 .fetchOne(RENDER_JOB.TIMELINE_REVISION_ID);
     }
 
-    public static Set<String> getCanonicalBackends() {
-        return CANONICAL_BACKENDS;
+    public static boolean isBoundBackendIdentity(String backend) {
+        if (backend == null) {
+            return false;
+        }
+        String normalized = backend.trim();
+        return !normalized.isEmpty() && !"provider".equalsIgnoreCase(normalized);
     }
 }

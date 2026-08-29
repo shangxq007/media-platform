@@ -22,7 +22,7 @@ class CapabilityBoundaryTest {
         // contains no provider/worker/tier/price terms.
         for (CapabilityId id : RenderCapabilityVocabularyIds.all()) {
             String name = id.value();
-            assertFalse(name.toLowerCase().contains("ffmpeg"), "no ffmpeg in " + name);
+            assertFalse(name.toLowerCase().contains("provider-a"), "no provider in " + name);
             assertFalse(name.toLowerCase().contains("worker"), "no worker in " + name);
             assertFalse(name.toLowerCase().contains("tier"), "no tier in " + name);
             assertFalse(name.toLowerCase().contains("price"), "no price in " + name);

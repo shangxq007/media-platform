@@ -112,7 +112,7 @@ class GStreamerRenderProviderTest {
         assertTrue(args.contains("filesrc"));
         assertTrue(args.contains("location=/tmp/input.mp4"));
         assertTrue(args.contains("decodebin"));
-        assertTrue(args.contains("x264enc"));
+        assertTrue(args.contains("video-encoder"));
         assertTrue(args.contains("filesink"));
         assertTrue(args.contains("location=/tmp/output.mp4"));
     }

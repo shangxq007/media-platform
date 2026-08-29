@@ -73,7 +73,6 @@ public class ProviderExecutionDocumentDraftCompiler {
      */
     private ProviderExecutionDocumentDraftType resolveDocumentType(String providerName) {
         return switch (providerName.toLowerCase()) {
-            case "ffmpeg" -> ProviderExecutionDocumentDraftType.FFMPEG_COMMAND_PLAN;
             case "mlt" -> ProviderExecutionDocumentDraftType.MLT_PROJECT_DOCUMENT;
             case "remotion" -> ProviderExecutionDocumentDraftType.REMOTION_INPUT_PROPS_DOCUMENT;
             case "blender" -> ProviderExecutionDocumentDraftType.BLENDER_SCENE_SPEC;
@@ -81,7 +80,7 @@ public class ProviderExecutionDocumentDraftCompiler {
             case "gpac", "mp4box" -> ProviderExecutionDocumentDraftType.PACKAGING_PLAN;
             case "gstreamer" -> ProviderExecutionDocumentDraftType.GSTREAMER_PIPELINE_SPEC;
             case "openfx" -> ProviderExecutionDocumentDraftType.OPENFX_EFFECT_DESCRIPTOR;
-            default -> ProviderExecutionDocumentDraftType.UNKNOWN;
+            default -> ProviderExecutionDocumentDraftType.TYPED_PROVIDER_REQUEST;
         };
     }
 

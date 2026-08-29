@@ -73,7 +73,7 @@ public record PublicApiError(
 
     public static PublicApiError rawCommandRejected() {
         return new PublicApiError("INVALID_REQUEST",
-                "Raw FFmpeg command is not allowed", List.of());
+                "Raw Provider command is not allowed", List.of());
     }
 
     public static PublicApiError providerSelectionRejected() {

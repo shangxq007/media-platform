@@ -17,7 +17,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
-/** L6 Skia-compatible sticker overlay (Java2D raster + FFmpeg overlay). */
+/** L6 Skia-compatible sticker overlay (Java2D raster + Provider overlay). */
 @Component
 @ConditionalOnProperty(prefix = "render.providers.skia", name = "enabled", havingValue = "true")
 public class SkiaStickerOverlayProvider implements RenderProvider {
@@ -76,10 +76,6 @@ public class SkiaStickerOverlayProvider implements RenderProvider {
         Path transcode = Path.of(storageRoot, "artifacts", jobId, "transcode-output.mp4");
         if (Files.isRegularFile(transcode)) {
             return transcode;
-        }
-        Path libass = Path.of(storageRoot, "artifacts", jobId, "libass-output.mp4");
-        if (Files.isRegularFile(libass)) {
-            return libass;
         }
         for (var track : spec.tracks()) {
             if (track.type() != com.example.platform.render.domain.legacy.TimelineTrack.TrackType.VIDEO) {

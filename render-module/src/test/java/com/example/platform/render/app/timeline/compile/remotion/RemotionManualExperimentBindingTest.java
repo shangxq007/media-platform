@@ -33,9 +33,9 @@ class RemotionManualExperimentBindingTest {
     private ProviderExecutionDocumentDraftCompiler draftCompiler;
     private ProviderExecutionDocumentGenerationService generationService;
 
-    private static final ProviderBindingCompiler.ProviderCandidate FFMPEG =
+    private static final ProviderBindingCompiler.ProviderCandidate PROVIDER =
             new ProviderBindingCompiler.ProviderCandidate(
-                    "ffmpeg", ProviderStatus.PRODUCTION, ProviderType.RENDER, "P0",
+                    "provider-a", ProviderStatus.PRODUCTION, ProviderType.RENDER, "P0",
                     true, true, "6.1",
                     List.of("MEDIA_INPUT", "VIDEO_DECODE", "VIDEO_TRIM",
                             "AUDIO_DECODE", "AUDIO_MIX",
@@ -67,7 +67,7 @@ class RemotionManualExperimentBindingTest {
     void productionDoesNotSelectRemotion() {
         LogicalCapabilityGraph capGraph = compileCapGraph();
         ProviderBindingPlan plan = bindingCompiler.compile(
-                capGraph, List.of(FFMPEG, REMOTION), "PRODUCTION");
+                capGraph, List.of(PROVIDER, REMOTION), "PRODUCTION");
 
         assertTrue(plan.boundNodes().stream()
                 .noneMatch(n -> "remotion".equals(n.boundProviderName())),
@@ -75,15 +75,15 @@ class RemotionManualExperimentBindingTest {
     }
 
     @Test
-    @DisplayName("PRODUCTION binding selects FFmpeg for baseline render")
-    void productionSelectsFfmpeg() {
+    @DisplayName("PRODUCTION binding selects Provider for baseline render")
+    void productionSelectsProvider() {
         LogicalCapabilityGraph capGraph = compileCapGraph();
         ProviderBindingPlan plan = bindingCompiler.compile(
-                capGraph, List.of(FFMPEG, REMOTION), "PRODUCTION");
+                capGraph, List.of(PROVIDER, REMOTION), "PRODUCTION");
 
         assertTrue(plan.boundNodes().stream()
-                .allMatch(n -> "ffmpeg".equals(n.boundProviderName())),
-                "All bound nodes should be FFmpeg in PRODUCTION mode");
+                .allMatch(n -> "provider-a".equals(n.boundProviderName())),
+                "All bound nodes should be Provider in PRODUCTION mode");
     }
 
     // --- MANUAL mode: Remotion may be selected ---
@@ -239,7 +239,7 @@ class RemotionManualExperimentBindingTest {
         assertFalse(json.contains("\"bucket\""));
         assertFalse(json.contains("\"objectKey\""));
         assertFalse(json.contains("\"signedUrl\""));
-        assertFalse(json.contains("ffmpeg "));
+        assertFalse(json.contains("provider "));
         assertFalse(json.contains("password"));
     }
 

@@ -250,8 +250,11 @@ public class BillingDecisionEngine {
                 ? request.resourceProfile().estimatedDurationSeconds() : 60;
         boolean useGpu = request.resourceProfile() != null && request.resourceProfile().useGpu();
 
+        if (request.providerCandidate() == null || request.providerCandidate().isBlank()) {
+            throw new IllegalStateException("TYPED_PROVIDER_PLUGIN_EXECUTION_REQUIRED");
+        }
         CostEstimationService.CostEstimate estimate = costEstimationService.estimate(
-                request.providerCandidate() != null ? request.providerCandidate() : "javacv",
+                request.providerCandidate(),
                 request.preset() != null ? request.preset() : "default_1080p",
                 "mp4",
                 durationSeconds,
@@ -349,8 +352,11 @@ public class BillingDecisionEngine {
                 ? request.resourceProfile().estimatedDurationSeconds() : 60;
         boolean useGpu = request.resourceProfile() != null && request.resourceProfile().useGpu();
 
+        if (request.providerCandidate() == null || request.providerCandidate().isBlank()) {
+            throw new IllegalStateException("TYPED_PROVIDER_PLUGIN_EXECUTION_REQUIRED");
+        }
         PricingEngine.PricingRequest pricingRequest = new PricingEngine.PricingRequest(
-                request.providerCandidate() != null ? request.providerCandidate() : "ffmpeg",
+                request.providerCandidate(),
                 request.preset() != null ? request.preset() : "default_1080p",
                 request.subscriptionState() != null ? request.subscriptionState().tier() : "FREE",
                 durationSeconds,

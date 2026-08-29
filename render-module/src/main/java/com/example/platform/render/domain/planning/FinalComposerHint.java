@@ -1,12 +1,15 @@
 package com.example.platform.render.domain.planning;
 
-/**
- * Final timeline compositor selection (MLT vs FFmpeg).
- */
+/** Final timeline composition strategy. */
 public enum FinalComposerHint {
     AUTO,
     MLT,
-    FFMPEG;
+
+    /**
+     * Requires a later binding to a concrete typed provider plugin. This is a
+     * semantic strategy and never serves as a backend or provider identity.
+     */
+    TYPED_PROVIDER_PLUGIN;
 
     public static FinalComposerHint fromString(String value) {
         if (value == null || value.isBlank()) {
@@ -14,7 +17,7 @@ public enum FinalComposerHint {
         }
         return switch (value.toLowerCase()) {
             case "mlt" -> MLT;
-            case "ffmpeg" -> FFMPEG;
+            case "typed_provider_plugin" -> TYPED_PROVIDER_PLUGIN;
             default -> AUTO;
         };
     }

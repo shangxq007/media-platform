@@ -22,7 +22,6 @@ import com.example.platform.render.domain.compile.execution.ProviderExecutionDoc
 import com.example.platform.render.domain.compile.executionplan.ExecutionEnvironmentTarget;
 import com.example.platform.render.domain.compile.executionplan.ExecutionPolicy;
 import com.example.platform.render.domain.compile.executionplan.RenderExecutionPlan;
-import com.example.platform.render.infrastructure.RenderToolCapabilityInventory;
 import com.example.platform.shared.web.TenantContext;
 import com.example.platform.shared.Ids;
 import org.slf4j.Logger;
@@ -41,7 +40,7 @@ import java.util.Map;
  * <p>Internal only — bridges the existing render API to the plan-based execution path.</p>
  *
  * <p>This service reuses all existing services (StorageRuntime, ProductRuntime,
- * FFmpeg, etc.) but orchestrates them through the execution plan.</p>
+ * Provider, etc.) but orchestrates them through the execution plan.</p>
  */
 @Service
 public class PlanBasedTimelineRevisionRenderService {
@@ -65,7 +64,6 @@ public class PlanBasedTimelineRevisionRenderService {
     private final RenderOutputRegistrationService registrationService;
     private final ProductRuntimeService productRuntime;
     private final StorageRuntimeService storageRuntime;
-    private final RenderToolCapabilityInventory toolInventory;
     private final Path storageRoot;
     private final RenderAuditRecorder auditRecorder;
     private final com.example.platform.render.domain.compile.remotion.ProviderExecutionDocumentGenerationService docGenerationService;
@@ -89,13 +87,12 @@ public class PlanBasedTimelineRevisionRenderService {
             RenderOutputRegistrationService registrationService,
             ProductRuntimeService productRuntime,
             StorageRuntimeService storageRuntime,
-            RenderToolCapabilityInventory toolInventory,
             Path storageRoot) {
         this(revisionQueryService, snapshotService, mapper, parser, inputProductResolver,
                 normalizer, artifactCompiler, capabilityCompiler, bindingCompiler,
                 draftCompiler, planCompiler, policyGuard, planRunner,
                 materializationService, registrationService, productRuntime,
-                storageRuntime, toolInventory, storageRoot, null);
+                storageRuntime, storageRoot, null);
     }
 
     public PlanBasedTimelineRevisionRenderService(
@@ -116,7 +113,6 @@ public class PlanBasedTimelineRevisionRenderService {
             RenderOutputRegistrationService registrationService,
             ProductRuntimeService productRuntime,
             StorageRuntimeService storageRuntime,
-            RenderToolCapabilityInventory toolInventory,
             Path storageRoot,
             RenderAuditRecorder auditRecorder) {
         this.revisionQueryService = revisionQueryService;
@@ -136,7 +132,6 @@ public class PlanBasedTimelineRevisionRenderService {
         this.registrationService = registrationService;
         this.productRuntime = productRuntime;
         this.storageRuntime = storageRuntime;
-        this.toolInventory = toolInventory;
         this.storageRoot = storageRoot;
         this.auditRecorder = auditRecorder;
         this.docGenerationService = new com.example.platform.render.domain.compile.remotion.ProviderExecutionDocumentGenerationService();
@@ -221,22 +216,9 @@ public class PlanBasedTimelineRevisionRenderService {
         emitAudit(RenderAuditEventType.CAPABILITY_GRAPH_COMPILED, corr,
                 "Capability graph compiled: " + capGraph.graphId());
 
-        // 6. Provider binding (PRODUCTION mode, FFmpeg only)
-        var ffmpegCandidate = new ProviderBindingCompiler.ProviderCandidate(
-                "ffmpeg",
-                com.example.platform.render.infrastructure.ProviderStatus.PRODUCTION,
-                com.example.platform.render.infrastructure.ProviderType.RENDER,
-                "P0", true, toolInventory.isToolAvailable("ffmpeg"),
-                toolInventory.isToolAvailable("ffmpeg") ? "available" : null,
-                capGraph.nodes().stream()
-                        .flatMap(n -> n.requirement() != null
-                                ? n.requirement().requiredCapabilities().stream()
-                                : java.util.stream.Stream.empty())
-                        .distinct().toList(),
-                List.of());
-
+        // 6. No typed provider plugin is bound in this render-module path.
         ProviderBindingPlan bindingPlan = bindingCompiler.compile(
-                capGraph, List.of(ffmpegCandidate), "PRODUCTION");
+                capGraph, List.of(), "PRODUCTION");
         corr = corr.withPlanIds(bindingPlan.planId().toString(), null);
         emitAudit(RenderAuditEventType.PROVIDER_BINDING_COMPLETED, corr,
                 "Provider binding completed: " + bindingPlan.planId());
@@ -316,7 +298,7 @@ public class PlanBasedTimelineRevisionRenderService {
                 mappingResult.outputFormat(),
                 mappingResult.width(), mappingResult.height(), mappingResult.fps(),
                 mappingResult.duration(), mappingResult.hasSubtitles(),
-                "ffmpeg-libass", "plan-based-timeline-revision-render",
+                "typed-provider-plugin", "plan-based-timeline-revision-render",
                 inputProductIds, inputProductIds.size());
     }
 

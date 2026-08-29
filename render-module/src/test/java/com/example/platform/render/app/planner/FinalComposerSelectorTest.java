@@ -18,8 +18,9 @@ class FinalComposerSelectorTest {
     void explicitHintOverridesAuto() {
         TimelineSpec spec = TimelineSpec.create("tl", "T", TimelineOutputSpec.mp4_1080p30());
         TimelineExtensions ext = new TimelineExtensions(
-                "2.0", FinalComposerHint.FFMPEG, List.of(), List.of(), List.of(), java.util.Map.of(), false);
-        assertEquals(FinalComposerHint.FFMPEG, selector.resolve(spec, ext));
+                "2.0", FinalComposerHint.TYPED_PROVIDER_PLUGIN, List.of(), List.of(), List.of(), java.util.Map.of(), false);
+        assertEquals(FinalComposerHint.TYPED_PROVIDER_PLUGIN, selector.resolve(spec, ext));
+        assertNull(selector.backendKey(FinalComposerHint.TYPED_PROVIDER_PLUGIN));
     }
 
     @Test
@@ -30,5 +31,11 @@ class FinalComposerSelectorTest {
                         TimelineTrack.of("v2", "V2", TimelineTrack.TrackType.VIDEO)),
                 List.of(), TimelineOutputSpec.mp4_1080p30(), 0, java.util.Map.of());
         assertEquals(FinalComposerHint.MLT, selector.resolve(spec, TimelineExtensions.defaults()));
+    }
+
+    @Test
+    void autoAndUnboundStrategyDoNotInventBackendIdentity() {
+        assertNull(selector.backendKey(FinalComposerHint.AUTO));
+        assertNull(selector.backendKey(FinalComposerHint.TYPED_PROVIDER_PLUGIN));
     }
 }

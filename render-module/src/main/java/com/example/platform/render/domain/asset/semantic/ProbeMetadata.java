@@ -3,7 +3,7 @@ package com.example.platform.render.domain.asset.semantic;
 import java.util.List;
 
 /**
- * Technical probe metadata extracted from media files via ffprobe.
+ * Technical probe metadata extracted from media files via media probe.
  */
 public record ProbeMetadata(
         String format,

@@ -28,7 +28,7 @@ import com.example.platform.render.domain.legacy.TimelineTrack;
  * <p>Proves:
  * <ul>
  *   <li>Full pipeline is deterministic for same inputs</li>
- *   <li>Single video clip FFmpeg → complete execution plan</li>
+ *   <li>Single video clip Provider → complete execution plan</li>
  *   <li>Caption overlay → subtitle processing steps included</li>
  *   <li>Unbound provider → plan has failure reasons</li>
  *   <li>POC in PRODUCTION → policy guard rejects</li>
@@ -51,7 +51,7 @@ class RenderExecutionPlanGoldenFixtureTest {
 
     private static final List<ProviderBindingCompiler.ProviderCandidate> FULL_PROVIDER_SET = List.of(
             new ProviderBindingCompiler.ProviderCandidate(
-                    "ffmpeg", ProviderStatus.PRODUCTION, ProviderType.RENDER, "P0",
+                    "provider-a", ProviderStatus.PRODUCTION, ProviderType.RENDER, "P0",
                     true, true, "6.1",
                     List.of("MEDIA_INPUT", "VIDEO_DECODE", "VIDEO_TRIM",
                             "AUDIO_DECODE", "AUDIO_MIX",
@@ -96,12 +96,12 @@ class RenderExecutionPlanGoldenFixtureTest {
 
         // Policy guard passes for dry-run
         RenderPlanPolicyResult policyResult = policyGuard.evaluate(plan, plan.policy());
-        assertTrue(policyResult.isValid(), "Policy guard should pass for FFmpeg production plan");
+        assertTrue(policyResult.isValid(), "Policy guard should pass for Provider production plan");
 
         // Plan summary is safe
         RenderExecutionPlanSummary summary = plan.summary();
         assertNotNull(summary);
-        assertTrue(summary.boundProviders().contains("ffmpeg"));
+        assertTrue(summary.boundProviders().contains("provider-a"));
         assertFalse(summary.executionReady());
 
         // Verify deterministic
@@ -208,8 +208,8 @@ class RenderExecutionPlanGoldenFixtureTest {
         assertFalse(formatted.contains("storageReferenceId"));
 
         // Should not contain raw commands
-        assertFalse(formatted.contains("ffmpeg -i"));
-        assertFalse(formatted.contains("ffmpeg -f"));
+        assertFalse(formatted.contains("provider -i"));
+        assertFalse(formatted.contains("provider -f"));
     }
 
     @Test

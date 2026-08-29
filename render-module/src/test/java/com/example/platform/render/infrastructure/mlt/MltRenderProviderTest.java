@@ -116,7 +116,7 @@ class MltRenderProviderTest {
         assertNotNull(args);
         assertTrue(args.contains("/tmp/project.xml"));
         assertTrue(args.contains("-consumer"));
-        assertTrue(args.contains("avformat:/tmp/output.mp4"));
+        assertTrue(args.contains("provider-format:/tmp/output.mp4"));
     }
 
     @Test

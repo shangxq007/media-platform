@@ -124,7 +124,7 @@ class EffectTaxonomyMappingServiceTest {
             "video",
             "Applies blur filter to video",
             List.of(new EffectParameterSchema("radius", "float", 5.0, 0.1, 10.0, "Blur Radius")),
-            List.of("ffmpeg", "javacv"),
+            List.of("provider-a", "provider-a"),
             Map.of("radius", 5.0),
             List.of("FREE", "PRO"),
             null, // No taxonomy category originally
@@ -225,7 +225,7 @@ class EffectTaxonomyMappingServiceTest {
         // Create test effects with potential issues
         EffectDescriptor validEffect = new EffectDescriptor("video.blur", "Blur", "video", "Blur effect", List.of(), List.of(), Map.of(), List.of(), "filter", true);
         EffectDescriptor invalidCategory = new EffectDescriptor("video.unknown", "Unknown", "video", "Unknown effect", List.of(), List.of(), Map.of(), List.of(), "invalid_category", true);
-        EffectDescriptor operationWithProviders = new EffectDescriptor("video.dash_drm", "DRM", "video", "DRM packaging", List.of(), List.of("ffmpeg"), Map.of(), List.of(), "packaging", false);
+        EffectDescriptor operationWithProviders = new EffectDescriptor("video.dash_drm", "DRM", "video", "DRM packaging", List.of(), List.of("provider-a"), Map.of(), List.of(), "packaging", false);
         
         // Debug: Check if effects are correctly identified as non-effect operations
         System.out.println("video.dash_drm is non-effect: " + taxonomyService.isNonEffectOperation("video.dash_drm"));

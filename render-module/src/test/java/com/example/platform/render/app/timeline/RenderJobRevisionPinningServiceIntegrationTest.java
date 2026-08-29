@@ -69,14 +69,14 @@ class RenderJobRevisionPinningServiceIntegrationTest extends PostgresTestContain
 
         var revision = revisionSaveService.saveRevision(productId, null, doc, "user-1");
 
-        pinningService.createRenderJobWithRevision(jobId, productId, revision.revisionId(), "ffmpeg");
+        pinningService.createRenderJobWithRevision(jobId, productId, revision.revisionId(), "provider-a");
 
         String pinnedRevision = pinningService.getPinnedRevisionId(jobId);
         assertEquals(revision.revisionId(), pinnedRevision);
     }
 
     @Test
-    void unknownBackend_rejected() {
+    void arbitraryBoundBackend_acceptedStructurally() {
         String productId = "prod-test-" + UUID.randomUUID();
         insertProduct(productId);
         String jobId = "job-test-" + UUID.randomUUID();
@@ -84,8 +84,23 @@ class RenderJobRevisionPinningServiceIntegrationTest extends PostgresTestContain
 
         var revision = revisionSaveService.saveRevision(productId, null, doc, "user-1");
 
-        assertThrows(IllegalArgumentException.class, () ->
+        assertDoesNotThrow(() ->
                 pinningService.createRenderJobWithRevision(jobId, productId, revision.revisionId(), "unknown-backend"));
+    }
+
+    @Test
+    void unboundBackendIdentities_areRejected() {
+        String productId = "prod-test-" + UUID.randomUUID();
+        insertProduct(productId);
+        var revision = revisionSaveService.saveRevision(
+                productId, null, createSampleDocument(), "user-1");
+
+        for (String backend : new String[] {null, "", "   ", "provider", "Provider", " provider "}) {
+            String jobId = "job-test-" + UUID.randomUUID();
+            assertThrows(IllegalArgumentException.class, () ->
+                    pinningService.createRenderJobWithRevision(
+                            jobId, productId, revision.revisionId(), backend));
+        }
     }
 
     @Test
@@ -101,7 +116,7 @@ class RenderJobRevisionPinningServiceIntegrationTest extends PostgresTestContain
 
         // Try to pin job from product2 to product1's revision
         assertThrows(IllegalArgumentException.class, () ->
-                pinningService.createRenderJobWithRevision(jobId, productId2, revision.revisionId(), "ffmpeg"));
+                pinningService.createRenderJobWithRevision(jobId, productId2, revision.revisionId(), "provider-a"));
     }
 
     @Test
@@ -114,7 +129,7 @@ class RenderJobRevisionPinningServiceIntegrationTest extends PostgresTestContain
 
         var revision = revisionSaveService.saveRevision(productId, null, doc, "user-1");
 
-        pinningService.createRenderJobWithRevision(originalJobId, productId, revision.revisionId(), "ffmpeg");
+        pinningService.createRenderJobWithRevision(originalJobId, productId, revision.revisionId(), "provider-a");
 
         // Create retry
         String retryPinned = pinningService.createRetryJob(originalJobId, retryJobId);
@@ -133,7 +148,7 @@ class RenderJobRevisionPinningServiceIntegrationTest extends PostgresTestContain
 
         var rev1 = revisionSaveService.saveRevision(productId, null, doc1, "user-1");
 
-        pinningService.createRenderJobWithRevision(jobId, productId, rev1.revisionId(), "ffmpeg");
+        pinningService.createRenderJobWithRevision(jobId, productId, rev1.revisionId(), "provider-a");
 
         // Save new revision (changes product current)
         var rev2 = revisionSaveService.saveRevision(productId, rev1.revisionId(), doc2, "user-1");
@@ -145,13 +160,15 @@ class RenderJobRevisionPinningServiceIntegrationTest extends PostgresTestContain
     }
 
     @Test
-    void canonicalBackends_allSupported() {
-        var backends = RenderJobRevisionPinningService.getCanonicalBackends();
-        assertTrue(backends.contains("ffmpeg"));
-        assertTrue(backends.contains("remotion"));
-        assertTrue(backends.contains("gpac"));
-        assertTrue(backends.contains("blender"));
-        assertEquals(4, backends.size());
+    void boundIdentityValidationHasNoConcreteAllowlist() {
+        assertTrue(RenderJobRevisionPinningService.isBoundBackendIdentity("provider-a"));
+        assertTrue(RenderJobRevisionPinningService.isBoundBackendIdentity("unknown-backend"));
+        assertFalse(RenderJobRevisionPinningService.isBoundBackendIdentity(null));
+        assertFalse(RenderJobRevisionPinningService.isBoundBackendIdentity(""));
+        assertFalse(RenderJobRevisionPinningService.isBoundBackendIdentity("   "));
+        assertFalse(RenderJobRevisionPinningService.isBoundBackendIdentity("provider"));
+        assertFalse(RenderJobRevisionPinningService.isBoundBackendIdentity("Provider"));
+        assertFalse(RenderJobRevisionPinningService.isBoundBackendIdentity(" provider "));
     }
 
     private void insertProduct(String productId) {

@@ -40,7 +40,7 @@ class RemotionLocalExecutionRunnerTest {
     @DisplayName("Unsupported document is rejected")
     void unsupportedDocumentRejected() {
         var docResult = new com.example.platform.render.domain.compile.remotion.ProviderExecutionDocumentGenerationResult(
-                "doc-1", "draft-1", "ffmpeg", "FFMPEG_COMMAND_PLAN",
+                "doc-1", "draft-1", "provider-a", "TYPED_PROVIDER_REQUEST",
                 com.example.platform.render.domain.compile.remotion.ProviderExecutionDocumentGenerationStatus.REJECTED_UNSUPPORTED,
                 false, false, List.of("Unsupported"), null, Map.of());
         RemotionLocalExecutionRequest request = new RemotionLocalExecutionRequest(
@@ -180,7 +180,7 @@ class RemotionLocalExecutionRunnerTest {
     void resultNoCommandArgs() {
         RemotionLocalExecutionResult result = runner.execute(buildDefaultRequest());
         String str = result.toString();
-        assertFalse(str.contains("ffmpeg "));
+        assertFalse(str.contains("provider "));
         assertFalse(str.contains("remotion "));
         assertFalse(str.contains("npx "));
     }

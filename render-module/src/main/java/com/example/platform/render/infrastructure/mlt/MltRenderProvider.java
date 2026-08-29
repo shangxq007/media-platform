@@ -33,7 +33,7 @@ import java.util.Optional;
  * filters, audio track mixing. Shotcut/Kdenlive-style workflow.
  * Activated when {@code render.providers.mlt.enabled=true}.
  * Does NOT handle complex React subtitle templates or 3D rendering.
- * Output should be passed to FFmpeg for final normalization.
+ * Output should be passed to Provider for final normalization.
  * If there is a common multi-track editing requirement, prioritize MLT over GStreamer.</p>
  */
 @Component
@@ -233,7 +233,7 @@ public class MltRenderProvider implements RenderProvider {
         return List.of(
                 "Does NOT handle complex React subtitle templates",
                 "Does NOT handle 3D rendering",
-                "Output should be passed to FFmpeg for final normalization",
+                "Output should be passed to Provider for final normalization",
                 "If multi-track editing is needed, prioritize MLT over GStreamer"
         );
     }

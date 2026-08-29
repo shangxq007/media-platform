@@ -46,8 +46,8 @@ class CompileDomainBoundaryTest {
         @Test
         @DisplayName("Binding plan with all BOUND nodes reports allBound=true")
         void bindingPlanAllBound() {
-            BoundProviderRef ffmpegRef = new BoundProviderRef(
-                    "ffmpeg", ProviderStatus.PRODUCTION, ProviderType.RENDER,
+            BoundProviderRef providerRef = new BoundProviderRef(
+                    "provider-a", ProviderStatus.PRODUCTION, ProviderType.RENDER,
                     "P0", true, true, "6.0", 0);
 
             ProviderBindingNode inputNode = new ProviderBindingNode(
@@ -55,14 +55,14 @@ class CompileDomainBoundaryTest {
                     List.of("demux"),
                     new ProviderBindingDecision("node-input", "INPUT_MEDIA",
                             List.of("demux"), ProviderBindingStatus.BOUND,
-                            ffmpegRef, List.of(ffmpegRef), null, "FFmpeg selected"));
+                            providerRef, List.of(providerRef), null, "Provider selected"));
 
             ProviderBindingNode finalNode = new ProviderBindingNode(
                     "node-final", ArtifactNodeType.FINAL_RENDER, "Final Render",
                     List.of("transcode", "mux"),
                     new ProviderBindingDecision("node-final", "FINAL_RENDER",
                             List.of("transcode", "mux"), ProviderBindingStatus.BOUND,
-                            ffmpegRef, List.of(ffmpegRef), null, "FFmpeg selected"));
+                            providerRef, List.of(providerRef), null, "Provider selected"));
 
             ProviderBindingPlan plan = new ProviderBindingPlan(
                     ProviderBindingPlanId.fromCapabilityGraphId("graph-all-bound"),
@@ -78,7 +78,7 @@ class CompileDomainBoundaryTest {
             assertEquals(2, plan.boundNodes().size());
             assertEquals(0, plan.failedNodes().size());
             assertNotNull(plan.finalRenderNode());
-            assertEquals("ffmpeg", plan.finalRenderNode().boundProviderName());
+            assertEquals("provider-a", plan.finalRenderNode().boundProviderName());
         }
 
         @Test
@@ -146,8 +146,8 @@ class CompileDomainBoundaryTest {
                     "s3", RenderExecutionStepType.EXECUTE_PROVIDER,
                     RenderExecutionStepStatus.PENDING,
                     "node-final", ArtifactNodeType.FINAL_RENDER,
-                    "ffmpeg", null, null, List.of("s2"), false,
-                    ExecutionEnvironmentTarget.LOCAL, "Execute FFmpeg", Map.of());
+                    "provider-a", null, null, List.of("s2"), false,
+                    ExecutionEnvironmentTarget.LOCAL, "Execute Provider", Map.of());
 
             RenderExecutionStep registerOutput = new RenderExecutionStep(
                     "s4", RenderExecutionStepType.REGISTER_OUTPUT,
@@ -178,29 +178,29 @@ class CompileDomainBoundaryTest {
         @Test
         @DisplayName("Execution plan summary lists unique providers")
         void executionPlanSummaryProviders() {
-            RenderExecutionStep ffmpeg1 = new RenderExecutionStep(
+            RenderExecutionStep providerStep1 = new RenderExecutionStep(
                     "s1", RenderExecutionStepType.EXECUTE_PROVIDER,
                     RenderExecutionStepStatus.PENDING,
                     "node-1", ArtifactNodeType.TRIMMED_MEDIA,
-                    "ffmpeg", null, null, List.of(), false,
+                    "provider-a", null, null, List.of(), false,
                     ExecutionEnvironmentTarget.LOCAL, "Trim", Map.of());
 
-            RenderExecutionStep ffmpeg2 = new RenderExecutionStep(
+            RenderExecutionStep providerStep2 = new RenderExecutionStep(
                     "s2", RenderExecutionStepType.EXECUTE_PROVIDER,
                     RenderExecutionStepStatus.PENDING,
                     "node-2", ArtifactNodeType.FINAL_RENDER,
-                    "ffmpeg", null, null, List.of("s1"), false,
+                    "provider-a", null, null, List.of("s1"), false,
                     ExecutionEnvironmentTarget.LOCAL, "Encode", Map.of());
 
             RenderExecutionPlan plan = new RenderExecutionPlan(
                     new RenderExecutionPlanId("ep-summary"),
                     "pbp-summary", "tl-summary",
                     ExecutionPolicy.production(), ExecutionEnvironmentTarget.LOCAL,
-                    List.of(ffmpeg1, ffmpeg2), false, List.of());
+                    List.of(providerStep1, providerStep2), false, List.of());
 
             var summary = plan.summary();
             assertEquals(1, summary.boundProviders().size(), "Should deduplicate provider names");
-            assertTrue(summary.boundProviders().contains("ffmpeg"));
+            assertTrue(summary.boundProviders().contains("provider-a"));
         }
 
         @Test
@@ -210,8 +210,8 @@ class CompileDomainBoundaryTest {
                     "s-fail", RenderExecutionStepType.EXECUTE_PROVIDER,
                     RenderExecutionStepStatus.FAILED,
                     "node-final", ArtifactNodeType.FINAL_RENDER,
-                    "ffmpeg", null, null, List.of(), false,
-                    ExecutionEnvironmentTarget.LOCAL, "FFmpeg (failed)",
+                    "provider-a", null, null, List.of(), false,
+                    ExecutionEnvironmentTarget.LOCAL, "Provider (failed)",
                     Map.of());
 
             RenderExecutionStep blockedStep = new RenderExecutionStep(

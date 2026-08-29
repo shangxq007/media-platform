@@ -50,7 +50,7 @@ import java.util.Optional;
  * → render job submission → job status verification → artifact output verification.
  *
  * <p>Uses PostgreSQL Testcontainers + real jOOQ for persistence and mocks for external collaborators.
- * Does NOT depend on real FFmpeg/Natron/MLT/Remotion.
+ * Does NOT depend on real Provider/Natron/MLT/Remotion.
  */
 class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport {
 
@@ -686,7 +686,7 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
 
         RenderProvider provider = mock(RenderProvider.class);
         when(provider.render(anyString(), anyString(), anyString()))
-                .thenThrow(new RuntimeException("FFmpeg crashed"));
+                .thenThrow(new RuntimeException("Provider crashed"));
         when(renderProviderRouter.route("default_1080p")).thenReturn(provider);
         stubProviderResolution(provider);
 
@@ -701,7 +701,7 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
                 .where(field("tenant_id").eq("tenant-11"))
                 .fetchOne();
         assertEquals("FAILED", jobRow.get(field("status"), String.class));
-        assertTrue(jobRow.get(field("error_message"), String.class).contains("FFmpeg crashed"));
+        assertTrue(jobRow.get(field("error_message"), String.class).contains("Provider crashed"));
     }
 
     // =========================================================

@@ -36,7 +36,7 @@ import java.util.Optional;
  *   <li>Does not expose storageReferenceId or storage details</li>
  *   <li>ProductRuntime/StorageRuntime boundaries preserved</li>
  *   <li>Fail-closed: returns empty Optional if not found or mismatched</li>
- *   <li>FFmpeg/libass only — no Remotion, no Artifact DAG, no Spring AI</li>
+ *   <li>Provider-neutral planning with typed-plugin binding required — no Remotion, no Artifact DAG, no Spring AI</li>
  * </ul>
  */
 @Service

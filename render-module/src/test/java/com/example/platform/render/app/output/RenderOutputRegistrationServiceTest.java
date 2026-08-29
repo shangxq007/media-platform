@@ -74,7 +74,7 @@ class RenderOutputRegistrationServiceTest {
         Files.writeString(outputFile, "fake-mp4-content-" + UUID.randomUUID());
 
         Product product = service.registerOutput("job-1", "tenant-1", "project-1",
-                "ffmpeg", "artifacts/job-1/output.mp4");
+                "provider-a", "artifacts/job-1/output.mp4");
 
         assertNotNull(product);
         assertEquals(ProductType.FINAL_RENDER, product.productType());
@@ -97,7 +97,7 @@ class RenderOutputRegistrationServiceTest {
         Files.writeString(outputFile, "webm-content");
 
         Product product = service.registerOutput("job-2", "tenant-1", "project-1",
-                "ffmpeg", "artifacts/job-2/out.webm");
+                "provider-a", "artifacts/job-2/out.webm");
 
         Optional<Product> found = productRuntime.find(product.productId());
         assertTrue(found.isPresent());
@@ -109,7 +109,7 @@ class RenderOutputRegistrationServiceTest {
     void nonExistentFileThrowsException() {
         RenderOutputRegistrationException ex = assertThrows(
                 RenderOutputRegistrationException.class, () ->
-                        service.registerOutput("job-1", "t1", "p1", "ffmpeg",
+                        service.registerOutput("job-1", "t1", "p1", "provider-a",
                                 "artifacts/job-1/nonexistent.mp4"));
         assertFalse(ex.isProductRegistered());
         assertTrue(ex.getMessage().contains("not found"));
@@ -119,7 +119,7 @@ class RenderOutputRegistrationServiceTest {
     void pathTraversalIsRejected() {
         RenderOutputRegistrationException ex = assertThrows(
                 RenderOutputRegistrationException.class, () ->
-                        service.registerOutput("job-1", "t1", "p1", "ffmpeg",
+                        service.registerOutput("job-1", "t1", "p1", "provider-a",
                                 "../../etc/passwd"));
         assertTrue(ex.getMessage().contains("traversal"));
     }
@@ -131,7 +131,7 @@ class RenderOutputRegistrationServiceTest {
 
         RenderOutputRegistrationException ex = assertThrows(
                 RenderOutputRegistrationException.class, () ->
-                        service.registerOutput("job-1", "t1", "p1", "ffmpeg",
+                        service.registerOutput("job-1", "t1", "p1", "provider-a",
                                 "artifacts/job-1/subdir"));
         assertTrue(ex.getMessage().contains("not a regular file"));
     }
@@ -144,7 +144,7 @@ class RenderOutputRegistrationServiceTest {
 
         RenderOutputRegistrationException ex = assertThrows(
                 RenderOutputRegistrationException.class, () ->
-                        service.registerOutput("job-1", "t1", "p1", "ffmpeg",
+                        service.registerOutput("job-1", "t1", "p1", "provider-a",
                                 "artifacts/job-1/empty.mp4"));
         assertTrue(ex.getMessage().contains("zero bytes"));
     }
@@ -153,7 +153,7 @@ class RenderOutputRegistrationServiceTest {
     void blankRelativePathIsRejected() {
         RenderOutputRegistrationException ex = assertThrows(
                 RenderOutputRegistrationException.class, () ->
-                        service.registerOutput("job-1", "t1", "p1", "ffmpeg", ""));
+                        service.registerOutput("job-1", "t1", "p1", "provider-a", ""));
         assertTrue(ex.getMessage().contains("must not be null or blank"));
     }
 
@@ -161,14 +161,14 @@ class RenderOutputRegistrationServiceTest {
     void nullRelativePathIsRejected() {
         RenderOutputRegistrationException ex = assertThrows(
                 RenderOutputRegistrationException.class, () ->
-                        service.registerOutput("job-1", "t1", "p1", "ffmpeg", null));
+                        service.registerOutput("job-1", "t1", "p1", "provider-a", null));
         assertTrue(ex.getMessage().contains("must not be null or blank"));
     }
 
     @Test
     void failedOutputProductHasFailedStatus() {
         Product failed = service.registerFailedOutput("job-1", "tenant-1", "project-1",
-                "ffmpeg", "Transcode error");
+                "provider-a", "Transcode error");
 
         assertEquals(ProductStatus.FAILED, failed.status());
         assertEquals(ProductType.FINAL_RENDER, failed.productType());
@@ -184,7 +184,7 @@ class RenderOutputRegistrationServiceTest {
         Files.writeString(outputFile, "good-data");
 
         Product product = service.registerOutput("job-3", "t1", "p1",
-                "ffmpeg", "artifacts/job-3/good.mp4");
+                "provider-a", "artifacts/job-3/good.mp4");
         assertNotNull(product.storageReferenceId());
 
         Optional<Product> ready = productRuntime.find(product.productId());
@@ -214,7 +214,7 @@ class RenderOutputRegistrationServiceTest {
         Files.writeString(outputFile, "checksum-test-data");
 
         Product product = service.registerOutput("job-c", "t1", "p1",
-                "ffmpeg", "artifacts/job-c/out.png");
+                "provider-a", "artifacts/job-c/out.png");
 
         assertTrue(storageRuntime.verifyChecksum(product.storageReferenceId()));
     }
@@ -226,16 +226,16 @@ class RenderOutputRegistrationServiceTest {
         Files.writeString(outputFile, "provenance-test");
 
         Product product = service.registerOutput("job-p", "t1", "p1",
-                "ffmpeg", "artifacts/job-p/out.mp4");
+                "provider-a", "artifacts/job-p/out.mp4");
 
         assertTrue(product.hasProvenance(), "Product must have provenance");
-        assertEquals("ffmpeg", product.producerId());
+        assertEquals("provider-a", product.producerId());
     }
 
     @Test
     void productIsNotReadyAfterWriteFailureDuringRegistration() {
         assertThrows(RenderOutputRegistrationException.class, () ->
-                service.registerOutput("job-1", "t1", "p1", "ffmpeg",
+                service.registerOutput("job-1", "t1", "p1", "provider-a",
                         "artifacts/job-1/nosuch.mp4"));
     }
 
@@ -251,7 +251,7 @@ class RenderOutputRegistrationServiceTest {
         Files.writeString(outputFile, "unsigned-test");
 
         Product product = service.registerOutput("job-u", "t1", "p1",
-                "ffmpeg", "artifacts/job-u/out.mp4");
+                "provider-a", "artifacts/job-u/out.mp4");
 
         assertNotNull(product.storageReferenceId());
         String metadata = product.metadataJson();
@@ -277,7 +277,7 @@ class RenderOutputRegistrationServiceTest {
         Files.writeString(outputFile, "rep-kind-test");
 
         Product product = service.registerOutput("job-r", "t1", "p1",
-                "ffmpeg", "artifacts/job-r/out.mp4");
+                "provider-a", "artifacts/job-r/out.mp4");
 
         assertEquals(RepresentationKind.MEDIA_FILE, product.representationKind());
     }
@@ -303,7 +303,7 @@ class RenderOutputRegistrationServiceTest {
             Files.writeString(file, "test-" + entry.getKey());
 
             Product product = service.registerOutput("job-" + entry.getKey(),
-                    "t1", "p1", "ffmpeg", entry.getKey());
+                    "t1", "p1", "provider-a", entry.getKey());
             assertEquals(entry.getValue(), product.mimeType(),
                     "Wrong mime type for " + entry.getKey());
         }
@@ -347,7 +347,7 @@ class RenderOutputRegistrationServiceTest {
 
         // Register output with provenance
         Product output = service.registerOutput("job-dep", "t1", "p1",
-                "ffmpeg", "artifacts/job-dep/out.mp4", provenance);
+                "provider-a", "artifacts/job-dep/out.mp4", provenance);
 
         // Verify output is READY
         assertEquals(ProductStatus.READY, output.status());
@@ -387,7 +387,7 @@ class RenderOutputRegistrationServiceTest {
                 .build();
 
         Product output = service.registerOutput("job-dup", "t1", "p1",
-                "ffmpeg", "artifacts/job-dup/out.mp4", provenance);
+                "provider-a", "artifacts/job-dup/out.mp4", provenance);
 
         // Verify only 1 dependency edge created (de-duplicated)
         List<ProductDependency> deps = productRuntime.findDependencies(output.productId());
@@ -417,7 +417,7 @@ class RenderOutputRegistrationServiceTest {
                 .build();
 
         Product output = service.registerOutput("job-self", "t1", "p1",
-                "ffmpeg", "artifacts/job-self/out.mp4", provenance);
+                "provider-a", "artifacts/job-self/out.mp4", provenance);
 
         assertEquals(ProductStatus.READY, output.status());
         assertEquals(1, productRuntime.findDependencies(output.productId()).size());
@@ -439,7 +439,7 @@ class RenderOutputRegistrationServiceTest {
         RenderOutputRegistrationException ex = assertThrows(
                 RenderOutputRegistrationException.class, () ->
                         service.registerOutput("job-miss-in", "t1", "p1",
-                                "ffmpeg", "artifacts/job-miss-in/out.mp4", provenance));
+                                "provider-a", "artifacts/job-miss-in/out.mp4", provenance));
 
         assertTrue(ex.getMessage().contains("Input Product not found"),
                 "Error must indicate input Product not found");
@@ -455,7 +455,7 @@ class RenderOutputRegistrationServiceTest {
 
         // Register without provenance (no inputProductIds)
         Product output = service.registerOutput("job-no-dep", "t1", "p1",
-                "ffmpeg", "artifacts/job-no-dep/out.mp4");
+                "provider-a", "artifacts/job-no-dep/out.mp4");
 
         assertEquals(ProductStatus.READY, output.status());
 
@@ -476,7 +476,7 @@ class RenderOutputRegistrationServiceTest {
                 .build();
 
         Product output = service.registerOutput("job-empty-dep", "t1", "p1",
-                "ffmpeg", "artifacts/job-empty-dep/out.mp4", provenance);
+                "provider-a", "artifacts/job-empty-dep/out.mp4", provenance);
 
         assertEquals(ProductStatus.READY, output.status());
 
@@ -498,7 +498,7 @@ class RenderOutputRegistrationServiceTest {
                 .build();
 
         Product output = service.registerOutput("job-upstream", "t1", "p1",
-                "ffmpeg", "artifacts/job-upstream/out.mp4", provenance);
+                "provider-a", "artifacts/job-upstream/out.mp4", provenance);
 
         // Query upstream dependencies of output
         List<String> upstream = productRuntime.findUpstream(output.productId());
@@ -520,7 +520,7 @@ class RenderOutputRegistrationServiceTest {
                 .build();
 
         Product output = service.registerOutput("job-downstream", "t1", "p1",
-                "ffmpeg", "artifacts/job-downstream/out.mp4", provenance);
+                "provider-a", "artifacts/job-downstream/out.mp4", provenance);
 
         // Query downstream dependents of input
         List<String> downstream = productRuntime.findDownstream(input.productId());
@@ -542,7 +542,7 @@ class RenderOutputRegistrationServiceTest {
                 .build();
 
         Product output = service.registerOutput("job-rel", "t1", "p1",
-                "ffmpeg", "artifacts/job-rel/out.mp4", provenance);
+                "provider-a", "artifacts/job-rel/out.mp4", provenance);
 
         List<ProductDependency> deps = productRuntime.findDependencies(output.productId());
         assertEquals(1, deps.size());
@@ -597,7 +597,7 @@ class RenderOutputRegistrationServiceTest {
                 .build();
 
         Product output = service.registerOutput("job-fail-dep", "t1", "p1",
-                "ffmpeg", "artifacts/job-fail-dep/out.mp4", provenance);
+                "provider-a", "artifacts/job-fail-dep/out.mp4", provenance);
 
         // Verify dependency was created
         List<ProductDependency> deps = productRuntime.findDependencies(output.productId());
@@ -618,7 +618,7 @@ class RenderOutputRegistrationServiceTest {
                 .build();
 
         Product output = service.registerOutput("job-tp", "tenant-xyz", "project-abc",
-                "ffmpeg", "artifacts/job-tp/out.mp4", provenance);
+                "provider-a", "artifacts/job-tp/out.mp4", provenance);
 
         List<ProductDependency> deps = productRuntime.findDependencies(output.productId());
         assertEquals(1, deps.size());

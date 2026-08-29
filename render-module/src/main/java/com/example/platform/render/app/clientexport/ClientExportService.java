@@ -78,7 +78,7 @@ public class ClientExportService {
         }
 
         boolean watermark = capability.watermarkRequired() || preset.watermark();
-        String renderLocation = preset.providerKey().equals("client") ? "CLIENT" : "SERVER";
+        String renderLocation = "client".equals(preset.providerKey()) ? "CLIENT" : "SERVER";
 
         String sessionId = Ids.newId("cex");
         Instant now = Instant.now();
@@ -105,7 +105,7 @@ public class ClientExportService {
                         "resolution", p.resolution(),
                         "format", p.format(),
                         "watermark", capability.watermarkRequired() || p.watermark(),
-                        "renderLocation", p.providerKey().equals("client") ? "CLIENT" : "SERVER"))
+                        "renderLocation", "client".equals(p.providerKey()) ? "CLIENT" : "SERVER"))
                 .toList();
 
         log.info("Client export session created id={} tenant={} tier={} preset={} location={}",

@@ -6,7 +6,7 @@ package com.example.platform.render.domain.environment;
  */
 public enum OpenCueSubmissionError {
 
-    /** Backend is not one of the canonical backends (FFmpeg, Remotion, GPAC, Blender). */
+    /** Backend identity is null, blank, or the reserved collapsed sentinel. */
     UNSUPPORTED_BACKEND,
 
     /** OpenCue configuration is missing or incomplete. */

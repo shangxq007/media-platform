@@ -28,7 +28,7 @@ class RenderPlanServiceTest {
         assertEquals("rj-1", plan.renderJobId());
         assertEquals(3, plan.steps().size());
         assertEquals(RenderStepType.BUILD_TIMELINE, plan.steps().get(0).type());
-        assertEquals(RenderStepType.FFMPEG_TRANSCODE, plan.steps().get(1).type());
+        assertEquals(RenderStepType.PROVIDER_TRANSCODE, plan.steps().get(1).type());
         assertEquals(RenderStepType.REGISTER_ARTIFACT, plan.steps().get(2).type());
     }
 
@@ -37,8 +37,8 @@ class RenderPlanServiceTest {
         RenderProfile profile = RenderProfile.social720p();
         List<RenderStepType> types = List.of(
                 RenderStepType.BUILD_TIMELINE,
-                RenderStepType.FFMPEG_PROBE,
-                RenderStepType.FFMPEG_TRANSCODE,
+                RenderStepType.PROVIDER_PROBE,
+                RenderStepType.PROVIDER_TRANSCODE,
                 RenderStepType.QC_PROBE,
                 RenderStepType.REGISTER_ARTIFACT
         );
@@ -46,7 +46,7 @@ class RenderPlanServiceTest {
 
         assertNotNull(plan);
         assertEquals(5, plan.steps().size());
-        assertEquals(RenderStepType.FFMPEG_PROBE, plan.steps().get(1).type());
+        assertEquals(RenderStepType.PROVIDER_PROBE, plan.steps().get(1).type());
         assertEquals(RenderStepType.QC_PROBE, plan.steps().get(3).type());
     }
 
@@ -68,7 +68,7 @@ class RenderPlanServiceTest {
         assertNotNull(plan);
         assertEquals(5, plan.steps().size());
         assertEquals(RenderStepType.BUILD_TIMELINE, plan.steps().get(0).type());
-        assertEquals(RenderStepType.FFMPEG_TRANSCODE, plan.steps().get(1).type());
+        assertEquals(RenderStepType.PROVIDER_TRANSCODE, plan.steps().get(1).type());
         assertEquals(RenderStepType.GPAC_PACKAGE_HLS, plan.steps().get(2).type());
         assertEquals(RenderStepType.GPAC_PACKAGE_DASH, plan.steps().get(3).type());
         assertEquals(RenderStepType.REGISTER_ARTIFACT, plan.steps().get(4).type());
@@ -82,7 +82,7 @@ class RenderPlanServiceTest {
         assertNotNull(plan);
         assertEquals(4, plan.steps().size());
         assertEquals(RenderStepType.BUILD_TIMELINE, plan.steps().get(0).type());
-        assertEquals(RenderStepType.FFMPEG_TRANSCODE, plan.steps().get(1).type());
+        assertEquals(RenderStepType.PROVIDER_TRANSCODE, plan.steps().get(1).type());
         assertEquals(RenderStepType.GPAC_PACKAGE_HLS, plan.steps().get(2).type());
         assertEquals(RenderStepType.REGISTER_ARTIFACT, plan.steps().get(3).type());
     }

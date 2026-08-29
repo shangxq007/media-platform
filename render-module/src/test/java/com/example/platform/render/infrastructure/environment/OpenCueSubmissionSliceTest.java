@@ -17,8 +17,8 @@ import static org.junit.jupiter.api.Assertions.*;
  *
  * <p>Covers all required test scenarios:
  * <ol>
- *   <li>Backend preservation for all 4 canonical backends</li>
- *   <li>Unknown backend explicit failure (client not called)</li>
+ *   <li>Arbitrary bound backend preservation without a concrete allowlist</li>
+ *   <li>Unbound backend explicit failure (client not called)</li>
  *   <li>Missing configuration explicit failure (no fallback)</li>
  *   <li>Accepted/rejected/transport failure acknowledgement</li>
  *   <li>Deterministic submission identity</li>
@@ -59,50 +59,69 @@ class OpenCueSubmissionSliceTest {
                 backendId, backendId + "-producer",
                 List.of(ExecutionInput.of("prod-1", "ref-1")),
                 List.of(ExecutionOutput.of("MEDIA_FILE", "mp4")),
-                "ffmpeg", List.of("-i", "input.mp4", "output.mp4"));
+                "provider-a", List.of("-i", "input.mp4", "output.mp4"));
         ExecutionTask task = ExecutionTask.of(spec);
         return new ExecutionJob(jobId, "opencue", backendId, "local-process", 50,
                 Map.of("cpu", 1, "memoryMb", 1024), Map.of(), List.of(task),
                 ExecutionStatus.CREATED, java.time.Instant.now(), null, null, null);
     }
 
-    // ── Test 1-4: Backend preservation for all 4 canonical backends ──
+    // ── Bound-identity preservation without a concrete backend allowlist ──
 
     @Test
-    void ffmpegBackendPreservedInSubmission() {
-        ExecutionJob job = createJobWithBackend("ffmpeg");
+    void reservedCollapsedProviderBackendIsPreservedButUnbound() {
+        ExecutionJob job = createJobWithBackend("provider");
         OpenCueSubmissionRequest request = OpenCueSubmissionRequest.fromExecutionJob(job, "rev-1");
-        assertEquals("ffmpeg", request.backendId());
-        assertTrue(request.isCanonicalBackend());
+        assertEquals("provider", request.backendId());
+        assertFalse(request.hasBoundBackendIdentity());
     }
 
     @Test
-    void remotionBackendPreservedInSubmission() {
-        ExecutionJob job = createJobWithBackend("remotion");
+    void arbitraryBoundProviderIdentityIsPreservedAndAcceptedStructurally() {
+        ExecutionJob job = createJobWithBackend("provider-a");
         OpenCueSubmissionRequest request = OpenCueSubmissionRequest.fromExecutionJob(job, "rev-1");
-        assertEquals("remotion", request.backendId());
-        assertTrue(request.isCanonicalBackend());
+        assertEquals("provider-a", request.backendId());
+        assertTrue(request.hasBoundBackendIdentity());
+        assertDoesNotThrow(() -> environment.submit(job));
     }
 
     @Test
-    void gpacBackendPreservedInSubmission() {
-        ExecutionJob job = createJobWithBackend("gpac");
-        OpenCueSubmissionRequest request = OpenCueSubmissionRequest.fromExecutionJob(job, "rev-1");
-        assertEquals("gpac", request.backendId());
-        assertTrue(request.isCanonicalBackend());
+    void nullAndBlankBackendIdentitiesFailClosed() {
+        for (String backend : new String[] {null, "", "   ", "Provider", " provider "}) {
+            OpenCueSubmissionRequest request = new OpenCueSubmissionRequest(
+                    "job-1", "rev-1", backend, "local-process", "OPEN_CUE",
+                    List.of(), List.of(), Map.of(), "corr-1", 50, Map.of());
+            assertFalse(request.hasBoundBackendIdentity());
+        }
     }
 
     @Test
-    void blenderBackendPreservedInSubmission() {
-        ExecutionJob job = createJobWithBackend("blender");
+    void arbitraryRendererIdentityPreservedInSubmission() {
+        ExecutionJob job = createJobWithBackend("custom-renderer");
         OpenCueSubmissionRequest request = OpenCueSubmissionRequest.fromExecutionJob(job, "rev-1");
-        assertEquals("blender", request.backendId());
-        assertTrue(request.isCanonicalBackend());
+        assertEquals("custom-renderer", request.backendId());
+        assertTrue(request.hasBoundBackendIdentity());
     }
 
     @Test
-    void allFourBackendsPreservedViaSubmit() {
-        for (String backend : List.of("ffmpeg", "remotion", "gpac", "blender")) {
+    void arbitraryPackagingIdentityPreservedInSubmission() {
+        ExecutionJob job = createJobWithBackend("packager-a");
+        OpenCueSubmissionRequest request = OpenCueSubmissionRequest.fromExecutionJob(job, "rev-1");
+        assertEquals("packager-a", request.backendId());
+        assertTrue(request.hasBoundBackendIdentity());
+    }
+
+    @Test
+    void arbitraryTenantPluginIdentityPreservedInSubmission() {
+        ExecutionJob job = createJobWithBackend("tenant-plugin-42");
+        OpenCueSubmissionRequest request = OpenCueSubmissionRequest.fromExecutionJob(job, "rev-1");
+        assertEquals("tenant-plugin-42", request.backendId());
+        assertTrue(request.hasBoundBackendIdentity());
+    }
+
+    @Test
+    void arbitraryBoundIdentitiesArePreservedViaSubmit() {
+        for (String backend : List.of("provider-a", "custom-renderer", "tenant-plugin-42")) {
             trackingClient.reset();
             ExecutionJob job = createJobWithBackend(backend);
             String execId = environment.submit(job);
@@ -114,24 +133,23 @@ class OpenCueSubmissionSliceTest {
         }
     }
 
-    // ── Test 5: Unknown backend → explicit failure, client not called ──
+    // ── Structural binding only; concrete authority belongs to provider layers ──
 
     @Test
-    void unknownBackendFailsExplicitlyWithoutCallingClient() {
+    void reservedCollapsedBackendFailsExplicitlyWithoutCallingClient() {
         trackingClient.reset();
-        ExecutionJob job = createJobWithBackend("unknown-renderer");
+        ExecutionJob job = createJobWithBackend("provider");
         assertThrows(IllegalStateException.class, () -> environment.submit(job),
-                "Unknown backend must throw IllegalStateException");
+                "Reserved collapsed backend must throw IllegalStateException");
         assertEquals(0, trackingClient.submitCount(),
-                "Client must NOT be called for unknown backend");
+                "Client must NOT be called for an unbound backend");
     }
 
     @Test
-    void unknownBackendNotCanonical() {
+    void arbitraryBackendIsStructurallyBound() {
         ExecutionJob job = createJobWithBackend("unknown-renderer");
         OpenCueSubmissionRequest request = OpenCueSubmissionRequest.fromExecutionJob(job, "rev-1");
-        assertFalse(request.isCanonicalBackend(),
-                "Unknown backend must not be canonical");
+        assertTrue(request.hasBoundBackendIdentity());
     }
 
     // ── Test 6: Missing configuration → explicit failure, no fallback ──
@@ -140,7 +158,7 @@ class OpenCueSubmissionSliceTest {
     void missingConfigurationFailsExplicitly() {
         trackingClient.reset();
         props.setEnabled(false);
-        ExecutionJob job = createJobWithBackend("ffmpeg");
+        ExecutionJob job = createJobWithBackend("provider-a");
         assertThrows(IllegalStateException.class, () -> environment.submit(job),
                 "Disabled OpenCue must throw IllegalStateException");
         assertEquals(0, trackingClient.submitCount(),
@@ -153,7 +171,7 @@ class OpenCueSubmissionSliceTest {
         props.setEnabled(true);
         props.setStubModeEnabled(false);
         props.setProductionSubmitEnabled(false);
-        ExecutionJob job = createJobWithBackend("ffmpeg");
+        ExecutionJob job = createJobWithBackend("provider-a");
         assertThrows(IllegalStateException.class, () -> environment.submit(job),
                 "Missing production submit must throw IllegalStateException");
         assertEquals(0, trackingClient.submitCount(),
@@ -164,7 +182,7 @@ class OpenCueSubmissionSliceTest {
     void noSilentLocalFallback() {
         props.setEnabled(false);
         OpenCueSubmissionRequest request = new OpenCueSubmissionRequest(
-                "job-1", "rev-1", "ffmpeg", "local-process", "OPEN_CUE",
+                "job-1", "rev-1", "provider-a", "local-process", "OPEN_CUE",
                 List.of(), List.of(), Map.of(), "corr-1", 50, Map.of());
         OpenCueSubmissionResult result = environment.submitToOpenCue(request);
         assertFalse(result.isAccepted(), "Disabled environment must not accept");
@@ -177,7 +195,7 @@ class OpenCueSubmissionSliceTest {
     @Test
     void acceptedAcknowledgementReturnedAccurately() {
         trackingClient.setResult(OpenCueSubmissionResult.accepted("oc-ext-123", 42));
-        ExecutionJob job = createJobWithBackend("ffmpeg");
+        ExecutionJob job = createJobWithBackend("provider-a");
         String execId = environment.submit(job);
         assertEquals("oc-ext-123", execId,
                 "Must return the exact external job ID from acknowledgement");
@@ -189,7 +207,7 @@ class OpenCueSubmissionSliceTest {
     void clientRejectionThrowsExplicitException() {
         trackingClient.setResult(OpenCueSubmissionResult.rejected(
                 OpenCueSubmissionError.CLIENT_REJECTED, "Job rejected by OpenCue", 10));
-        ExecutionJob job = createJobWithBackend("ffmpeg");
+        ExecutionJob job = createJobWithBackend("provider-a");
         IllegalStateException ex = assertThrows(IllegalStateException.class,
                 () -> environment.submit(job));
         assertTrue(ex.getMessage().contains("rejected"),
@@ -202,7 +220,7 @@ class OpenCueSubmissionSliceTest {
     void transportFailureThrowsExplicitException() {
         trackingClient.setResult(OpenCueSubmissionResult.failure(
                 OpenCueSubmissionError.TRANSPORT_FAILURE, "Connection refused", 100));
-        ExecutionJob job = createJobWithBackend("ffmpeg");
+        ExecutionJob job = createJobWithBackend("provider-a");
         IllegalStateException ex = assertThrows(IllegalStateException.class,
                 () -> environment.submit(job));
         assertTrue(ex.getMessage().contains("TRANSPORT_FAILURE"),
@@ -213,7 +231,7 @@ class OpenCueSubmissionSliceTest {
     void protocolFailureThrowsExplicitException() {
         trackingClient.setResult(OpenCueSubmissionResult.failure(
                 OpenCueSubmissionError.PROTOCOL_FAILURE, "Serialization error", 50));
-        ExecutionJob job = createJobWithBackend("ffmpeg");
+        ExecutionJob job = createJobWithBackend("provider-a");
         IllegalStateException ex = assertThrows(IllegalStateException.class,
                 () -> environment.submit(job));
         assertTrue(ex.getMessage().contains("PROTOCOL_FAILURE"),
@@ -224,7 +242,7 @@ class OpenCueSubmissionSliceTest {
 
     @Test
     void sameRenderJobMappingIsDeterministic() {
-        ExecutionJob job = createJobWithBackend("ffmpeg");
+        ExecutionJob job = createJobWithBackend("provider-a");
         OpenCueSubmissionRequest req1 = OpenCueSubmissionRequest.fromExecutionJob(job, "rev-1");
         OpenCueSubmissionRequest req2 = OpenCueSubmissionRequest.fromExecutionJob(job, "rev-1");
         assertEquals(req1.renderJobId(), req2.renderJobId());
@@ -240,8 +258,8 @@ class OpenCueSubmissionSliceTest {
     @Test
     void differentRetryRenderJobIdsCreateDifferentSubmissionIdentities() {
         // Use explicit IDs to guarantee different identities
-        ExecutionJob job1 = createJobWithBackendAndId("ffmpeg", "job-attempt-1");
-        ExecutionJob job2 = createJobWithBackendAndId("ffmpeg", "job-attempt-2");
+        ExecutionJob job1 = createJobWithBackendAndId("provider-a", "job-attempt-1");
+        ExecutionJob job2 = createJobWithBackendAndId("provider-a", "job-attempt-2");
 
         assertNotEquals(job1.jobId(), job2.jobId(),
                 "Different execution attempts must have different job IDs");
@@ -259,7 +277,7 @@ class OpenCueSubmissionSliceTest {
 
     @Test
     void submissionRequestDoesNotContainCredentials() {
-        ExecutionJob job = createJobWithBackend("ffmpeg");
+        ExecutionJob job = createJobWithBackend("provider-a");
         OpenCueSubmissionRequest request = OpenCueSubmissionRequest.fromExecutionJob(job, "rev-1");
 
         // Verify no credential-like fields exist
@@ -300,7 +318,7 @@ class OpenCueSubmissionSliceTest {
     void noRealNetworkCallInTests() {
         // The TrackingSubmissionClient is a test double — no network
         trackingClient.reset();
-        ExecutionJob job = createJobWithBackend("ffmpeg");
+        ExecutionJob job = createJobWithBackend("provider-a");
         environment.submit(job);
         assertEquals(1, trackingClient.submitCount(),
                 "Only the test double client was called — no real network");
@@ -310,7 +328,7 @@ class OpenCueSubmissionSliceTest {
 
     @Test
     void submissionRequestIsImmutable() {
-        ExecutionJob job = createJobWithBackend("ffmpeg");
+        ExecutionJob job = createJobWithBackend("provider-a");
         OpenCueSubmissionRequest request = OpenCueSubmissionRequest.fromExecutionJob(job, "rev-1");
 
         // Record fields are final — verify collections are unmodifiable
@@ -332,7 +350,7 @@ class OpenCueSubmissionSliceTest {
 
     @Test
     void submissionIdentityBoundToRenderJob() {
-        ExecutionJob job = createJobWithBackend("ffmpeg");
+        ExecutionJob job = createJobWithBackend("provider-a");
         OpenCueSubmissionRequest request = OpenCueSubmissionRequest.fromExecutionJob(job, "rev-1");
         assertEquals(job.jobId(), request.renderJobId(),
                 "Submission identity must be the RenderJob ID");
@@ -359,7 +377,7 @@ class OpenCueSubmissionSliceTest {
                 OpenCueSubmissionResult.accepted("custom-" + request.renderJobId(), 0);
         OpenCueExecutionEnvironment customEnv =
                 new OpenCueExecutionEnvironment(props, validator, customClient);
-        ExecutionJob job = createJobWithBackend("ffmpeg");
+        ExecutionJob job = createJobWithBackend("provider-a");
         String execId = customEnv.submit(job);
         assertTrue(execId.startsWith("custom-"),
                 "Custom client must be used when injected");
@@ -383,8 +401,8 @@ class OpenCueSubmissionSliceTest {
         OpenCueExecutionEnvironment env2 =
                 new OpenCueExecutionEnvironment(props2, validator, client2);
 
-        ExecutionJob job1 = createJobWithBackend("ffmpeg");
-        ExecutionJob job2 = createJobWithBackend("ffmpeg");
+        ExecutionJob job1 = createJobWithBackend("provider-a");
+        ExecutionJob job2 = createJobWithBackend("provider-a");
 
         String id1 = env1.submit(job1);
         String id2 = env2.submit(job2);
@@ -424,7 +442,7 @@ class OpenCueSubmissionSliceTest {
 
     @Test
     void timelineRevisionRefPreserved() {
-        ExecutionJob job = createJobWithBackend("ffmpeg");
+        ExecutionJob job = createJobWithBackend("provider-a");
         OpenCueSubmissionRequest request = OpenCueSubmissionRequest.fromExecutionJob(job, "rev-abc-123");
         assertEquals("rev-abc-123", request.timelineRevisionRef());
     }
@@ -435,7 +453,7 @@ class OpenCueSubmissionSliceTest {
     void submitToOpenCueReturnsFailureWhenDisabled() {
         props.setEnabled(false);
         OpenCueSubmissionRequest request = new OpenCueSubmissionRequest(
-                "job-1", "rev-1", "ffmpeg", "local-process", "OPEN_CUE",
+                "job-1", "rev-1", "provider-a", "local-process", "OPEN_CUE",
                 List.of(), List.of(), Map.of(), "corr-1", 50, Map.of());
         OpenCueSubmissionResult result = environment.submitToOpenCue(request);
         assertEquals(OpenCueSubmissionResult.OpenCueSubmissionOutcome.FAILURE, result.outcome());
@@ -447,7 +465,7 @@ class OpenCueSubmissionSliceTest {
     @Test
     void idempotentSubmissionDoesNotDoubleSubmit() {
         // First submission should hit the client
-        ExecutionJob job1 = createJobWithBackendAndId("ffmpeg", "job-idempotent-1");
+        ExecutionJob job1 = createJobWithBackendAndId("provider-a", "job-idempotent-1");
         environment.submit(job1);
         assertEquals(1, trackingClient.submitCount());
 
@@ -463,15 +481,15 @@ class OpenCueSubmissionSliceTest {
 
     @Test
     void backendPreservedUnderRetry() {
-        ExecutionJob jobAttempt1 = createJobWithBackendAndId("ffmpeg", "job-retry-1");
-        ExecutionJob jobAttempt2 = createJobWithBackendAndId("ffmpeg", "job-retry-2");
+        ExecutionJob jobAttempt1 = createJobWithBackendAndId("provider-a", "job-retry-1");
+        ExecutionJob jobAttempt2 = createJobWithBackendAndId("provider-a", "job-retry-2");
 
         OpenCueSubmissionRequest req1 = OpenCueSubmissionRequest.fromExecutionJob(jobAttempt1, "rev-1");
         OpenCueSubmissionRequest req2 = OpenCueSubmissionRequest.fromExecutionJob(jobAttempt2, "rev-1");
 
         assertEquals(req1.backendId(), req2.backendId(),
                 "Backend must be preserved across retry attempts");
-        assertEquals("ffmpeg", req1.backendId());
+        assertEquals("provider-a", req1.backendId());
     }
 
     // ── Helper: Tracking submission client for test verification ──

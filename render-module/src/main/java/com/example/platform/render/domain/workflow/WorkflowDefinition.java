@@ -9,7 +9,7 @@ import java.util.Map;
  * <p>Internal domain model. Provider-neutral, storage-neutral, engine-neutral.</p>
  *
  * <p>Must not contain provider names, storage internals,
- * FFmpeg commands, Remotion props, or execution environment IDs.</p>
+ * Provider commands, Remotion props, or execution environment IDs.</p>
  */
 public record WorkflowDefinition(
         WorkflowDefinitionId id,

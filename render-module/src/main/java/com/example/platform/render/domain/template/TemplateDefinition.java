@@ -7,7 +7,7 @@ import java.util.List;
  * Internal domain model.
  *
  * <p>Must not contain provider names, storage internals,
- * FFmpeg commands, or Remotion props.</p>
+ * Provider commands, or Remotion props.</p>
  */
 public record TemplateDefinition(
         TemplateDefinitionId id,

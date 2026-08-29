@@ -1,7 +1,5 @@
 package com.example.platform.render.infrastructure;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -15,8 +13,6 @@ import java.util.Map;
 
 @Service
 public class SubtitleBurnInService {
-    private static final Logger log = LoggerFactory.getLogger(SubtitleBurnInService.class);
-
     private final FontRegistryService fontRegistryService;
 
     @Value("${app.fonts.dir:/tmp/platform/fonts}")
@@ -24,101 +20,6 @@ public class SubtitleBurnInService {
 
     public SubtitleBurnInService(FontRegistryService fontRegistryService) {
         this.fontRegistryService = fontRegistryService;
-    }
-
-    public String buildSubtitleFilter(List<Map<String, Object>> subtitleTracks) {
-        StringBuilder filter = new StringBuilder();
-        int drawtextIdx = 0;
-
-        for (Map<String, Object> track : subtitleTracks) {
-            if (!Boolean.TRUE.equals(track.get("burnIn"))) continue;
-
-            List<Map<String, Object>> cues = (List<Map<String, Object>>) track.getOrDefault("cues", List.of());
-            String fontId = (String) track.getOrDefault("fontId", null);
-            String glyphSubsetFile = (String) track.getOrDefault("glyphSubsetFile", null);
-
-            StringBuilder trackText = new StringBuilder();
-            for (Map<String, Object> cue : cues) {
-                String text = (String) cue.getOrDefault("text", "");
-                if (text != null && !text.isEmpty()) trackText.append(text);
-            }
-
-            String fontFilePath = null;
-            if (glyphSubsetFile != null && Files.exists(Path.of(glyphSubsetFile))) {
-                fontFilePath = glyphSubsetFile;
-            } else if (fontRegistryService != null && fontsDir != null) {
-                @SuppressWarnings("unchecked")
-                List<String> fallbackIds = (List<String>) track.getOrDefault("fallbackFontIds", List.of());
-                fontFilePath = fontRegistryService.resolveFontWithFallback(fontId, fallbackIds, trackText.toString());
-            }
-
-            if (fontFilePath != null && fontRegistryService != null) {
-                List<String> missingGlyphs = fontRegistryService.findMissingGlyphs(fontFilePath, trackText.toString());
-                if (!missingGlyphs.isEmpty()) {
-                    log.warn("Font {} missing {} glyphs", fontFilePath, missingGlyphs.size());
-                }
-            }
-
-            String fontParam = fontFilePath != null ? ":fontfile=" + fontFilePath : "";
-
-            for (Map<String, Object> cue : cues) {
-                String text = (String) cue.getOrDefault("text", "");
-                if (text == null || text.isEmpty()) continue;
-
-                double startTime = ((Number) cue.getOrDefault("startTime", 0.0)).doubleValue();
-                double endTime = ((Number) cue.getOrDefault("endTime", 0.0)).doubleValue();
-                text = text.replace("'", "'\\\\''").replace(":", "\\:").replace("\n", "\\N");
-
-                if (drawtextIdx > 0) filter.append(",");
-                filter.append(String.format(
-                        "drawtext=text='%s':fontsize=24:fontcolor=white:box=1:boxcolor=black@0.5" +
-                        ":x=(w-text_w)/2:y=h-text_h-20:enable='between(t,%.1f,%.1f)'%s",
-                        text, startTime, endTime, fontParam
-                ));
-                drawtextIdx++;
-            }
-        }
-        return filter.toString();
-    }
-
-    public String buildSubtitleFilter(List<Map<String, Object>> subtitleTracks, RenderPreset preset) {
-        StringBuilder filter = new StringBuilder();
-        int cueIndex = 0;
-
-        for (Map<String, Object> subTrack : subtitleTracks) {
-            if (!Boolean.TRUE.equals(subTrack.get("burnIn"))) continue;
-
-            @SuppressWarnings("unchecked")
-            List<Map<String, Object>> cues = (List<Map<String, Object>>) subTrack.getOrDefault("cues", List.of());
-            if (cues.isEmpty()) continue;
-
-            String fontFile = resolveTrackFontFile(subTrack);
-            String fontParam = (fontFile != null && !fontFile.isEmpty()) ? ":fontfile=" + fontFile : "";
-
-            for (Map<String, Object> cue : cues) {
-                String text = (String) cue.getOrDefault("text", "");
-                if (text == null || text.isEmpty()) continue;
-
-                double cueStart = ((Number) cue.getOrDefault("startTime", 0.0)).doubleValue();
-                double cueEnd = ((Number) cue.getOrDefault("endTime", 0.0)).doubleValue();
-
-                text = text.replace("'", "'\\\\''")
-                        .replace(":", "\\:")
-                        .replace(",", "\\,")
-                        .replace("%", "%%");
-
-                if (cueIndex > 0) filter.append(",");
-
-                filter.append(String.format(
-                        "drawtext=text='%s':fontsize=24:fontcolor=white:box=1:boxcolor=black@0.5" +
-                        ":x=(w-text_w)/2:y=h-text_h-20:enable='between(t,%.1f,%.1f)'%s",
-                        text, cueStart, cueEnd, fontParam
-                ));
-                cueIndex++;
-            }
-        }
-
-        return filter.toString();
     }
 
     public BufferedImage burnInFrame(BufferedImage image, int frame, int total,
@@ -203,25 +104,4 @@ public class SubtitleBurnInService {
         return Files.exists(path) ? fontFilePath : null;
     }
 
-    private String resolveTrackFontFile(Map<String, Object> subTrack) {
-        String fontId = (String) subTrack.get("fontId");
-        if (fontId == null) return null;
-
-        @SuppressWarnings("unchecked")
-        List<String> fallbackIds = (List<String>) subTrack.getOrDefault("fallbackFontIds", List.of());
-
-        String fontPath = Path.of(System.getProperty("java.io.tmpdir"), "fonts", fontId + ".ttf").toString();
-        if (Files.exists(Path.of(fontPath))) {
-            return fontPath;
-        }
-
-        for (String fallbackId : fallbackIds) {
-            String fallbackPath = Path.of(System.getProperty("java.io.tmpdir"), "fonts", fallbackId + ".ttf").toString();
-            if (Files.exists(Path.of(fallbackPath))) {
-                return fallbackPath;
-            }
-        }
-
-        return null;
-    }
 }

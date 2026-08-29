@@ -1,7 +1,7 @@
 package com.example.platform.render.infrastructure;
 
 /**
- * Color / HDR fields extracted from container or stream metadata (ffprobe-style keys).
+ * Color / HDR fields extracted from container or stream metadata (media probe-style keys).
  */
 public record ColorProbeMetadata(
         String colorSpace,

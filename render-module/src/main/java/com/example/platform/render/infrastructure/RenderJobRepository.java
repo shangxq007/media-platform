@@ -137,7 +137,7 @@ public class RenderJobRepository {
     }
 
     public int claimJob(String jobId) {
-        return claimJob(jobId, "ffmpeg-worker");
+        return claimJob(jobId, "provider-worker");
     }
 
     public int claimJob(String jobId, String workerId) {

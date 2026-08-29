@@ -21,7 +21,7 @@ import com.example.platform.render.domain.legacy.TimelineTrack;
  * uses {@code asset://} scheme URIs (not filesystem paths) and a controlled
  * output specification.</p>
  *
- * <p>This fixture does NOT invoke real FFmpeg/libass rendering. It is used
+ * <p>This fixture does NOT invoke a typed provider plugin. It is used
  * with controlled local output files to prove the integration chain.</p>
  */
 public final class TimelineCoreSmokeFixture {

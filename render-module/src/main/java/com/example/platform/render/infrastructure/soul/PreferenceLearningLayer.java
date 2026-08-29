@@ -90,8 +90,7 @@ public class PreferenceLearningLayer {
         long highQuality = events.stream()
                 .filter(e -> e.eventType().equals(SystemCanonicalEvent.PROVIDER_DECISION))
                 .filter(e -> {
-                    String provider = e.getStringPayload("selectedProvider", "");
-                    return "ffmpeg".equals(provider); // FFmpeg = high quality
+                    return "HIGH".equals(e.getStringPayload("qualityTier", ""));
                 })
                 .count();
 

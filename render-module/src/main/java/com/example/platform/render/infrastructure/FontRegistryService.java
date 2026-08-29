@@ -243,7 +243,7 @@ public class FontRegistryService {
             }
         }
 
-        // Return primary even if missing glyphs (FFmpeg will show tofu)
+        // Return primary even if missing glyphs (Provider will show tofu)
         if (Files.exists(primaryPath)) {
             log.warn("No suitable font found for {}, using primary with missing glyphs", fontId);
             return primaryPath.toString();

@@ -29,7 +29,7 @@ public interface MltRenderProviderInterface extends TimelineRenderProvider {
                 List.of(
                         "Does NOT handle complex React subtitle templates",
                         "Does NOT handle 3D rendering",
-                        "Output should be passed to FFmpeg for final normalization",
+                        "Output should be passed to Provider for final normalization",
                         "If multi-track editing is needed, prioritize MLT over GStreamer"
                 )
         );

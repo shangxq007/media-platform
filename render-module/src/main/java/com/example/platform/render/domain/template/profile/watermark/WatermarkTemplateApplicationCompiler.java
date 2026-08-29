@@ -10,7 +10,7 @@ import java.util.List;
  * <p>Internal domain compiler — validates Watermark Template application
  * and returns a provider-neutral result.</p>
  *
- * <p>Does not call FFmpeg, Remotion, StorageRuntime, or ProductRuntime.</p>
+ * <p>Does not call Provider, Remotion, StorageRuntime, or ProductRuntime.</p>
  */
 public class WatermarkTemplateApplicationCompiler implements TemplateApplicationCompiler {
 

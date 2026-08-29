@@ -25,6 +25,18 @@ class ColorProbeMetadataExtractorTest {
     }
 
     @Test
+    void concreteAdapterFieldAloneDoesNotCreateRenderSemanticAuthority() {
+        String adapterOwnedKey = String.join("_", "pix", "fmt");
+        ColorProbeMetadata meta = ColorProbeMetadataExtractor.fromStreamMetadata(
+                Map.of(adapterOwnedKey, "adapter-value"), null);
+        assertEquals("", meta.pixelFormat());
+
+        ColorProbeMetadata neutral = ColorProbeMetadataExtractor.fromStreamMetadata(
+                Map.of("pixel_format", "neutral-value"), null);
+        assertEquals("neutral-value", neutral.pixelFormat());
+    }
+
+    @Test
     void noHdrBooleanAndNoTimelineLeakage() {
         // record has exactly 5 components (no hdr) — structural proof
         assertEquals(5, ColorProbeMetadata.class.getRecordComponents().length);

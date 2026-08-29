@@ -18,7 +18,7 @@ public class MLTCommandFactory {
         List<String> args = new ArrayList<>();
         args.add(projectXmlPath);
         args.add("-consumer");
-        args.add("avformat:" + outputUri);
+        args.add("provider-format:" + outputUri);
 
         if (profile != null && !profile.isBlank()) {
             args.add("profile=" + profile);
@@ -33,7 +33,7 @@ public class MLTCommandFactory {
         List<String> args = new ArrayList<>();
         args.add(projectXmlPath);
         args.add("-consumer");
-        args.add("avformat:" + outputUri);
+        args.add("provider-format:" + outputUri);
         args.add("width=" + width);
         args.add("height=" + height);
         args.add("frame_rate_num=" + (int) fps);
@@ -53,10 +53,10 @@ public class MLTCommandFactory {
         List<String> args = new ArrayList<>();
         args.add(projectXmlPath);
         args.add("-consumer");
-        args.add("avformat:" + outputUri);
+        args.add("provider-format:" + outputUri);
         args.add("width=854");
         args.add("height=480");
-        args.add("vcodec=libx264");
+        args.add("vcodec=h264");
         args.add("preset=ultrafast");
         args.add("crf=28");
 

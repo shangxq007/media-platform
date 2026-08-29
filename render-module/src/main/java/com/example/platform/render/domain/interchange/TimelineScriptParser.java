@@ -279,7 +279,7 @@ public class TimelineScriptParser {
                 TimelineAudioSpec audioSpec = output.has("audioSpec")
                         ? MAPPER.treeToValue(output.get("audioSpec"), TimelineAudioSpec.class)
                         : TimelineAudioSpec.aacDefault();
-                String pixelFormat = textOr(output, "pixelFormat", "yuv420p");
+                String pixelFormat = textOr(output, "pixelFormat", "default");
                 return new TimelineOutputSpec(format, resolution, frameRate, videoCodec,
                         videoBitrate, audioSpec, pixelFormat);
             } catch (Exception ignored) {

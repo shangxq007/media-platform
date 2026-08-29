@@ -115,7 +115,7 @@ class RemotionInputPropsGeneratorTest {
         NormalizedTimeline t2 = new NormalizedTimeline(t1.timelineId(), t1.projectId(),
                 t1.tracks(), t1.captionLayers(),
                 new NormalizedOutputProfile("mp4", "1280x720", 24.0, "h264", 5000,
-                        "aac", 44100, 2, 128, "yuv420p"),
+                        "aac", 44100, 2, 128, "default"),
                 t1.totalDuration(), t1.metadata());
         assertNotEquals(serializer.serialize(generator.generate(t1)),
                 serializer.serialize(generator.generate(t2)));
@@ -165,7 +165,7 @@ class RemotionInputPropsGeneratorTest {
     @DisplayName("Props contain no raw commands")
     void noRawCommands() {
         String json = serializer.serialize(generator.generate(createSimpleTimeline()));
-        assertFalse(json.contains("ffmpeg "));
+        assertFalse(json.contains("provider "));
         assertFalse(json.contains("remotion render"));
     }
 

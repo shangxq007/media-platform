@@ -66,8 +66,10 @@ public class RenderJobValidationService {
         }
 
         // Step 2: Estimate cost
-        String providerKey = entitlementResult.providerCandidates().isEmpty()
-                ? "javacv" : entitlementResult.providerCandidates().get(0);
+        if (entitlementResult.providerCandidates().isEmpty()) {
+            throw new IllegalStateException("TYPED_PROVIDER_PLUGIN_EXECUTION_REQUIRED");
+        }
+        String providerKey = entitlementResult.providerCandidates().get(0);
         boolean useGpu = preset.startsWith("gpu_");
         CostEstimationPort.CostEstimate estimate = costEstimationPort.estimate(
                 providerKey, preset, outputFormat, estDuration, useGpu);

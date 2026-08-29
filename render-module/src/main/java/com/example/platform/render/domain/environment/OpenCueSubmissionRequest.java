@@ -11,7 +11,7 @@ import java.util.Map;
  *
  * @param renderJobId              RenderJob identifier (execution attempt identity)
  * @param timelineRevisionRef      immutable timeline revision reference
- * @param backendId                canonical backend identifier (ffmpeg, remotion, gpac, blender)
+ * @param backendId                bound backend identifier
  * @param backendType              backend type from BackendExecutionSpec
  * @param environment              always OPEN_CUE for this request type
  * @param inputProductIds          input product identifiers
@@ -33,11 +33,6 @@ public record OpenCueSubmissionRequest(
         String correlationId,
         int priority,
         Map<String, Object> resourceRequirements) {
-
-    /** Canonical backends that OpenCue can forward to. */
-    public static final java.util.Set<String> CANONICAL_BACKENDS = java.util.Set.of(
-            "ffmpeg", "remotion", "gpac", "blender"
-    );
 
     /**
      * Build a submission request from an ExecutionJob.
@@ -82,10 +77,20 @@ public record OpenCueSubmissionRequest(
         );
     }
 
+    /** Returns true when this request carries a concrete bound backend identity. */
+    public boolean hasBoundBackendIdentity() {
+        return isBoundBackendIdentity(backendId);
+    }
+
     /**
-     * Returns true if the backend is one of the canonical backends.
+     * Validates structural binding only. Concrete identity and capability
+     * authority belong to provider registry layers, not OpenCue.
      */
-    public boolean isCanonicalBackend() {
-        return backendId != null && CANONICAL_BACKENDS.contains(backendId.toLowerCase());
+    public static boolean isBoundBackendIdentity(String backendId) {
+        if (backendId == null) {
+            return false;
+        }
+        String normalized = backendId.trim();
+        return !normalized.isEmpty() && !"provider".equalsIgnoreCase(normalized);
     }
 }

@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Proves that Remotion is NOT dispatch-eligible for baseline subtitle burn-in.
  *
  * <p>Remotion is a STUB provider in the lease/dispatch layer. It can never be
- * dispatched under any condition. FFmpeg/libass is the production baseline
+ * dispatched under any condition. Production timed-text composition requires a typed provider plugin
  * for subtitle burn-in.
  *
  * <p>These tests verify the dispatch exclusion rules codified in:
@@ -55,7 +55,7 @@ class RemotionDispatchExclusionTest {
     }
 
     @Test
-    void remotionCannotDisplaceFfmpegForBaselineBurnIn() {
+    void remotionCannotDisplaceProviderForBaselineBurnIn() {
         ProviderMetadata remotionStubMetadata = new ProviderMetadata(
                 "remotion", ProviderStatus.STUB, "P1", ProviderType.RENDER,
                 List.of(Capabilities.CAPTION_BURN_IN, Capabilities.CAPTION_EFFECTS, Capabilities.TEMPLATE_RENDER),
@@ -63,20 +63,20 @@ class RemotionDispatchExclusionTest {
                 List.of(), List.of(), false,
                 "NODE", "Advanced subtitle rendering", List.of()
         );
-        ProviderMetadata ffmpegMetadata = new ProviderMetadata(
-                "ffmpeg", ProviderStatus.PRODUCTION, "P0", ProviderType.RENDER,
+        ProviderMetadata providerMetadata = new ProviderMetadata(
+                "provider-a", ProviderStatus.PRODUCTION, "P0", ProviderType.RENDER,
                 List.of(Capabilities.CAPTION_BURN_IN, Capabilities.TRANSCODE, Capabilities.TRIM),
                 List.of(Capabilities.CAPTION_BURN_IN, Capabilities.TRANSCODE, Capabilities.TRIM),
                 List.of(), List.of(), true,
-                "FFMPEG", "Media processing", List.of()
+                "provider-a", "Media processing", List.of()
         );
 
         RenderJob baselineSubtitleJob = createBaselineBurnInJob();
 
         assertFalse(ProviderEligibility.isEligible(remotionStubMetadata, baselineSubtitleJob),
                 "Remotion (STUB) must NOT be eligible for baseline subtitle burn-in");
-        assertTrue(ProviderEligibility.isEligible(ffmpegMetadata, baselineSubtitleJob),
-                "FFmpeg (PRODUCTION) must be eligible for baseline subtitle burn-in");
+        assertTrue(ProviderEligibility.isEligible(providerMetadata, baselineSubtitleJob),
+                "Provider (PRODUCTION) must be eligible for baseline subtitle burn-in");
     }
 
     @Test
@@ -104,7 +104,7 @@ class RemotionDispatchExclusionTest {
     }
 
     @Test
-    void remotionBlockedForCaptionBurnInWhenBaselineFfmpegAvailable() {
+    void remotionBlockedForCaptionBurnInWhenBaselineProviderAvailable() {
         ProviderMetadata remotionPocMetadata = new ProviderMetadata(
                 "remotion", ProviderStatus.POC, "P1", ProviderType.RENDER,
                 List.of(Capabilities.CAPTION_BURN_IN, Capabilities.CAPTION_EFFECTS),
@@ -112,12 +112,12 @@ class RemotionDispatchExclusionTest {
                 List.of(), List.of(), false,
                 "NODE", "Advanced subtitles", List.of()
         );
-        ProviderMetadata ffmpegMetadata = new ProviderMetadata(
-                "ffmpeg", ProviderStatus.PRODUCTION, "P0", ProviderType.RENDER,
+        ProviderMetadata providerMetadata = new ProviderMetadata(
+                "provider-a", ProviderStatus.PRODUCTION, "P0", ProviderType.RENDER,
                 List.of(Capabilities.CAPTION_BURN_IN),
                 List.of(Capabilities.CAPTION_BURN_IN),
                 List.of(), List.of(), true,
-                "FFMPEG", "Media processing", List.of()
+                "provider-a", "Media processing", List.of()
         );
 
         RenderJob job = new RenderJob(
@@ -128,8 +128,8 @@ class RemotionDispatchExclusionTest {
                 true, List.of(), List.of("remotion")
         , null);
 
-        assertTrue(ProviderEligibility.isEligible(ffmpegMetadata, job),
-                "FFmpeg must still be eligible when Remotion is blocked");
+        assertTrue(ProviderEligibility.isEligible(providerMetadata, job),
+                "Provider must still be eligible when Remotion is blocked");
         assertFalse(ProviderEligibility.isEligible(remotionPocMetadata, job),
                 "Remotion must be blocked when listed in blockedProviders");
     }
@@ -143,12 +143,12 @@ class RemotionDispatchExclusionTest {
                 List.of(), List.of(), false,
                 "NODE", "Advanced subtitle", List.of()
         );
-        ProviderMetadata ffmpegMetadata = new ProviderMetadata(
-                "ffmpeg", ProviderStatus.PRODUCTION, "P0", ProviderType.RENDER,
+        ProviderMetadata providerMetadata = new ProviderMetadata(
+                "provider-a", ProviderStatus.PRODUCTION, "P0", ProviderType.RENDER,
                 List.of(Capabilities.CAPTION_BURN_IN),
                 List.of(Capabilities.CAPTION_BURN_IN),
                 List.of(), List.of(), true,
-                "FFMPEG", "Media processing", List.of()
+                "provider-a", "Media processing", List.of()
         );
 
         RenderJob baselineBurnInJob = new RenderJob(
@@ -163,8 +163,8 @@ class RemotionDispatchExclusionTest {
 
         assertFalse(ProviderEligibility.isEligible(remotionStubMetadata, baselineBurnInJob),
                 "Remotion (STUB) must NOT be eligible for baseline subtitle burn-in");
-        assertTrue(ProviderEligibility.isEligible(ffmpegMetadata, baselineBurnInJob),
-                "FFmpeg must be eligible for baseline subtitle burn-in even when Remotion is preferred");
+        assertTrue(ProviderEligibility.isEligible(providerMetadata, baselineBurnInJob),
+                "Provider must be eligible for baseline subtitle burn-in even when Remotion is preferred");
     }
 
     @Test

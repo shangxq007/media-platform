@@ -122,7 +122,7 @@ public class RenderJobSubmissionService {
                     request.tenantId(),
                     null, // userId not available in submit request
                     request.projectId(),
-                    "ffmpeg", // default provider
+                    null, // unresolved until a typed provider plugin is bound
                     request.profileOrDefault(),
                     60, // default estimate
                     false
@@ -216,7 +216,7 @@ public class RenderJobSubmissionService {
         historyRepository.record(jobId, null, RenderJobStatus.QUEUED.name(), "Job created", null);
 
         notificationEventPublisher.publish(
-                new RenderJobCreatedEvent(jobId, request.projectId(), snapshotId, profile, "ffmpeg"));
+                new RenderJobCreatedEvent(jobId, request.projectId(), snapshotId, profile, null));
 
         persistInlineScriptIfPresent(jobId, request);
         applyAiEditInstructionIfPresent(jobId, request);

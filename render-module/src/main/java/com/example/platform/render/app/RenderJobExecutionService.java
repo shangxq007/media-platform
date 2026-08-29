@@ -376,17 +376,11 @@ public class RenderJobExecutionService {
             throw new IllegalStateException("Render failed", e);
         }
 
-        // Billing enforcement: finalize cost after execution
+        // Billing finalization requires the concrete provider identity selected
+        // by the typed provider host. RenderResult does not carry that identity,
+        // so this legacy path must not persist an invented producer.
         if (billingEnforcementService != null && billingEnforcementService.isEnforcementEnabled()) {
-            long actualDurationSeconds = (System.currentTimeMillis() - startTime) / 1000;
-            try {
-                billingEnforcementService.finalizeCost(
-                        tenantId, jobId, "ffmpeg", actualDurationSeconds, 0);
-                log.info("Finalized billing for job {} ({} seconds)", jobId, actualDurationSeconds);
-            } catch (Exception e) {
-                log.warn("Failed to finalize billing for job {}: {}", jobId, e.getMessage());
-                // Don't fail the job for billing finalization errors
-            }
+            log.warn("Skipping billing finalization for job {}: concrete provider identity unavailable", jobId);
         }
 
         // Transition to COMPLETING

@@ -6,7 +6,7 @@ package com.example.platform.render.domain.visual;
  *
  * <ul>
  *   <li>PRODUCTION — safe for product path</li>
- *   <li>BASELINE_CANDIDATE — intended for FFmpeg/libass baseline but not yet fully wired</li>
+ *   <li>BASELINE_CANDIDATE — intended for typed provider-plugin support but not yet fully wired</li>
  *   <li>POC — internal validation only</li>
  *   <li>SPIKE — research only</li>
  *   <li>FUTURE — vocabulary only</li>

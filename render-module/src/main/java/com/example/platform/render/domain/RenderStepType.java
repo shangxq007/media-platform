@@ -11,11 +11,11 @@ public enum RenderStepType {
     /** Build the internal timeline model from user input. */
     BUILD_TIMELINE,
 
-    /** Probe source media with FFprobe to extract metadata. */
-    FFMPEG_PROBE,
+    /** Probe source media with MediaProbe to extract metadata. */
+    PROVIDER_PROBE,
 
-    /** Transcode media using FFmpeg. */
-    FFMPEG_TRANSCODE,
+    /** Transcode media using Provider. */
+    PROVIDER_TRANSCODE,
 
     /** Render a multi-track timeline using MLT/melt. */
     MLT_RENDER_TIMELINE,

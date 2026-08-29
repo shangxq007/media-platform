@@ -12,7 +12,7 @@ import com.example.platform.render.domain.legacy.TimelineTrack;
 /**
  * Internal scenario runner. Pure, side-effect-free.
  * Drives the planning flow: timeline editing → validation → effect/transition/render planning.
- * Does not execute FFmpeg, does not call OpenCue, does not create Product,
+ * Does not execute Provider, does not call OpenCue, does not create Product,
  * does not call StorageRuntime/ProductRuntime, does not persist.
  *
  * Internal domain model.
@@ -54,98 +54,98 @@ public final class InternalScenarioRunner {
         actualProperties.put("outputFormat", timeline.outputSpec() != null ? timeline.outputSpec().format() : "none");
 
         // Step 3: Run effect planner if relevant
-        FFmpegBaselineEffectPlanningResult effectResult = null;
+        BaselineEffectPlanningResult effectResult = null;
         if (definition.category() == InternalScenarioCategory.EFFECT_PLANNING
                 || definition.category() == InternalScenarioCategory.BASIC_RENDER_PLANNING
                 || definition.category() == InternalScenarioCategory.SAFETY_BOUNDARY
                 || definition.category() == InternalScenarioCategory.REGRESSION) {
-            FFmpegBaselineEffectPlanningRequest effectRequest = new FFmpegBaselineEffectPlanningRequest(
-                    new FFmpegBaselineEffectPlanningRequestId("effect-" + definition.id().value()),
+            BaselineEffectPlanningRequest effectRequest = new BaselineEffectPlanningRequest(
+                    new BaselineEffectPlanningRequestId("effect-" + definition.id().value()),
                     timeline,
-                    FFmpegBaselineEffectPolicy.conservative(),
+                    BaselineEffectPolicy.conservative(),
                     Map.of());
-            effectResult = FFmpegBaselineEffectPlanner.plan(effectRequest);
+            effectResult = BaselineEffectPlanner.plan(effectRequest);
 
             if (effectResult.plan() != null) {
                 actualProperties.put("effectOperationCount", effectResult.plan().operations().size());
                 actualProperties.put("hasScale", effectResult.plan().operations().stream()
-                        .anyMatch(op -> op.type() == FFmpegBaselineEffectOperationType.SCALE));
+                        .anyMatch(op -> op.type() == BaselineEffectOperationType.SCALE));
                 actualProperties.put("hasCrop", effectResult.plan().operations().stream()
-                        .anyMatch(op -> op.type() == FFmpegBaselineEffectOperationType.CROP));
+                        .anyMatch(op -> op.type() == BaselineEffectOperationType.CROP));
                 actualProperties.put("hasOpacity", effectResult.plan().operations().stream()
-                        .anyMatch(op -> op.type() == FFmpegBaselineEffectOperationType.OPACITY));
+                        .anyMatch(op -> op.type() == BaselineEffectOperationType.OPACITY));
                 actualProperties.put("effectPlanStatus", effectResult.plan().status().name());
             }
 
             if (definition.category() == InternalScenarioCategory.SAFETY_BOUNDARY) {
-                boolean blocked = effectResult.status() == FFmpegBaselineEffectPlanningResultStatus.BLOCKED
+                boolean blocked = effectResult.status() == BaselineEffectPlanningResultStatus.BLOCKED
                         || (effectResult.plan() != null
-                            && effectResult.plan().status() == FFmpegBaselineEffectPlanStatus.BLOCKED);
+                            && effectResult.plan().status() == BaselineEffectPlanStatus.BLOCKED);
                 actualProperties.put("effectBlocked", blocked);
             }
         }
 
         // Step 4: Run transition planner if relevant
-        FFmpegBaselineTransitionPlanningResult transitionResult = null;
+        BaselineTransitionPlanningResult transitionResult = null;
         if (definition.category() == InternalScenarioCategory.TRANSITION_PLANNING
                 || definition.category() == InternalScenarioCategory.BASIC_RENDER_PLANNING
                 || definition.category() == InternalScenarioCategory.SAFETY_BOUNDARY
                 || definition.category() == InternalScenarioCategory.REGRESSION) {
-            FFmpegBaselineTransitionPlanningRequest transitionRequest = new FFmpegBaselineTransitionPlanningRequest(
-                    new FFmpegBaselineTransitionPlanningRequestId("transition-" + definition.id().value()),
+            BaselineTransitionPlanningRequest transitionRequest = new BaselineTransitionPlanningRequest(
+                    new BaselineTransitionPlanningRequestId("transition-" + definition.id().value()),
                     timeline,
-                    FFmpegBaselineTransitionPolicy.conservative(),
+                    BaselineTransitionPolicy.conservative(),
                     Map.of());
-            transitionResult = FFmpegBaselineTransitionPlanner.plan(transitionRequest);
+            transitionResult = BaselineTransitionPlanner.plan(transitionRequest);
 
             if (transitionResult.plan() != null) {
                 actualProperties.put("transitionOperationCount", transitionResult.plan().operations().size());
                 actualProperties.put("transitionOperationCountMin", transitionResult.plan().operations().size());
                 actualProperties.put("hasCrossfade", transitionResult.plan().operations().stream()
-                        .anyMatch(op -> op.type() == FFmpegBaselineTransitionOperationType.CROSSFADE));
+                        .anyMatch(op -> op.type() == BaselineTransitionOperationType.CROSSFADE));
                 actualProperties.put("transitionPlanStatus", transitionResult.plan().status().name());
             }
 
             if (definition.category() == InternalScenarioCategory.SAFETY_BOUNDARY) {
-                boolean blocked = transitionResult.status() == FFmpegBaselineTransitionPlanningResultStatus.BLOCKED
+                boolean blocked = transitionResult.status() == BaselineTransitionPlanningResultStatus.BLOCKED
                         || (transitionResult.plan() != null
-                            && transitionResult.plan().status() == FFmpegBaselineTransitionPlanStatus.BLOCKED);
+                            && transitionResult.plan().status() == BaselineTransitionPlanStatus.BLOCKED);
                 actualProperties.put("transitionBlocked", blocked);
             }
         }
 
         // Step 5: Run full render planner for render/safety/output/regression scenarios
-        FFmpegLibassBasicRenderPlanningResult renderResult = null;
+        BasicRenderPlanningResult renderResult = null;
         if (definition.category() == InternalScenarioCategory.BASIC_RENDER_PLANNING
                 || definition.category() == InternalScenarioCategory.SAFETY_BOUNDARY
                 || definition.category() == InternalScenarioCategory.OUTPUT_PROFILE
                 || definition.category() == InternalScenarioCategory.REGRESSION) {
-            FFmpegLibassBasicRenderPlanningRequest renderRequest = new FFmpegLibassBasicRenderPlanningRequest(
-                    new FFmpegLibassBasicRenderPlanningRequestId("render-" + definition.id().value()),
+            BasicRenderPlanningRequest renderRequest = new BasicRenderPlanningRequest(
+                    new BasicRenderPlanningRequestId("render-" + definition.id().value()),
                     timeline,
-                    FFmpegLibassBasicRenderPolicy.conservative(),
+                    BasicRenderPolicy.conservative(),
                     Map.of());
-            renderResult = FFmpegLibassBasicRenderPlanner.plan(renderRequest);
+            renderResult = BasicRenderPlanner.plan(renderRequest);
 
             if (renderResult.plan() != null) {
-                FFmpegLibassBasicRenderPlan plan = renderResult.plan();
+                BasicRenderPlan plan = renderResult.plan();
                 actualProperties.put("stagesCount", plan.stages().size());
                 actualProperties.put("stagesCountMin", plan.stages().size());
                 actualProperties.put("totalSteps", plan.summary() != null ? plan.summary().totalSteps() : 0);
                 actualProperties.put("hasCaptionSteps", plan.stages().stream()
                         .flatMap(s -> s.steps().stream())
-                        .anyMatch(s -> s.type() == FFmpegLibassBasicRenderStepType.APPLY_CAPTION_OVERLAY));
+                        .anyMatch(s -> s.type() == BasicRenderStepType.APPLY_CAPTION_OVERLAY));
                 actualProperties.put("hasWatermarkSteps", plan.stages().stream()
                         .flatMap(s -> s.steps().stream())
-                        .anyMatch(s -> s.type() == FFmpegLibassBasicRenderStepType.APPLY_WATERMARK_OVERLAY));
+                        .anyMatch(s -> s.type() == BasicRenderStepType.APPLY_WATERMARK_OVERLAY));
                 actualProperties.put("hasOutputEncoding", plan.stages().stream()
-                        .anyMatch(s -> s.type() == FFmpegLibassBasicRenderStageType.PLAN_OUTPUT_ENCODING));
+                        .anyMatch(s -> s.type() == BasicRenderStageType.PLAN_OUTPUT_ENCODING));
                 actualProperties.put("hasEffectStage", plan.stages().stream()
-                        .anyMatch(s -> s.type() == FFmpegLibassBasicRenderStageType.PLAN_EFFECTS));
+                        .anyMatch(s -> s.type() == BasicRenderStageType.PLAN_EFFECTS));
                 actualProperties.put("hasCaptionStage", plan.stages().stream()
-                        .anyMatch(s -> s.type() == FFmpegLibassBasicRenderStageType.PLAN_CAPTION_OVERLAYS));
+                        .anyMatch(s -> s.type() == BasicRenderStageType.PLAN_CAPTION_OVERLAYS));
                 actualProperties.put("hasWatermarkStage", plan.stages().stream()
-                        .anyMatch(s -> s.type() == FFmpegLibassBasicRenderStageType.PLAN_WATERMARK_OVERLAYS));
+                        .anyMatch(s -> s.type() == BasicRenderStageType.PLAN_WATERMARK_OVERLAYS));
                 actualProperties.put("renderPlanStatus", plan.status().name());
                 actualProperties.put("hasEffectOperations", effectResult != null && effectResult.plan() != null
                         && !effectResult.plan().operations().isEmpty());
@@ -153,10 +153,10 @@ public final class InternalScenarioRunner {
                         && !transitionResult.plan().operations().isEmpty());
             }
 
-            if (renderResult.status() == FFmpegLibassBasicRenderPlanningResultStatus.BLOCKED) {
+            if (renderResult.status() == BasicRenderPlanningResultStatus.BLOCKED) {
                 actualProperties.put("renderBlocked", true);
             }
-            if (renderResult.status() == FFmpegLibassBasicRenderPlanningResultStatus.VALIDATION_FAILED) {
+            if (renderResult.status() == BasicRenderPlanningResultStatus.VALIDATION_FAILED) {
                 actualProperties.put("renderValidationFailed", true);
             }
         }
@@ -230,9 +230,9 @@ public final class InternalScenarioRunner {
     private static InternalScenarioResultStatus determineResultStatus(
             InternalScenarioExpectedOutcome expected,
             Map<String, Object> actualProperties,
-            FFmpegBaselineEffectPlanningResult effectResult,
-            FFmpegBaselineTransitionPlanningResult transitionResult,
-            FFmpegLibassBasicRenderPlanningResult renderResult,
+            BaselineEffectPlanningResult effectResult,
+            BaselineTransitionPlanningResult transitionResult,
+            BasicRenderPlanningResult renderResult,
             InternalScenarioDefinition definition) {
 
         boolean isBlocked = Boolean.TRUE.equals(actualProperties.get("effectBlocked"))
@@ -247,47 +247,47 @@ public final class InternalScenarioRunner {
 
         if (definition.category() == InternalScenarioCategory.SAFETY_BOUNDARY) {
             if (effectResult != null
-                    && effectResult.status() == FFmpegBaselineEffectPlanningResultStatus.BLOCKED) {
+                    && effectResult.status() == BaselineEffectPlanningResultStatus.BLOCKED) {
                 return InternalScenarioResultStatus.BLOCKED;
             }
             if (transitionResult != null
-                    && transitionResult.status() == FFmpegBaselineTransitionPlanningResultStatus.BLOCKED) {
+                    && transitionResult.status() == BaselineTransitionPlanningResultStatus.BLOCKED) {
                 return InternalScenarioResultStatus.BLOCKED;
             }
             if (renderResult != null
-                    && renderResult.status() == FFmpegLibassBasicRenderPlanningResultStatus.BLOCKED) {
+                    && renderResult.status() == BasicRenderPlanningResultStatus.BLOCKED) {
                 return InternalScenarioResultStatus.BLOCKED;
             }
         }
 
         if (definition.category() == InternalScenarioCategory.OUTPUT_PROFILE) {
             if (renderResult != null
-                    && (renderResult.status() == FFmpegLibassBasicRenderPlanningResultStatus.BLOCKED
-                    || renderResult.status() == FFmpegLibassBasicRenderPlanningResultStatus.VALIDATION_FAILED)) {
+                    && (renderResult.status() == BasicRenderPlanningResultStatus.BLOCKED
+                    || renderResult.status() == BasicRenderPlanningResultStatus.VALIDATION_FAILED)) {
                 return InternalScenarioResultStatus.BLOCKED;
             }
         }
 
-        if (effectResult != null && effectResult.status() == FFmpegBaselineEffectPlanningResultStatus.FAILED) {
+        if (effectResult != null && effectResult.status() == BaselineEffectPlanningResultStatus.FAILED) {
             return InternalScenarioResultStatus.FAIL;
         }
         if (transitionResult != null
-                && transitionResult.status() == FFmpegBaselineTransitionPlanningResultStatus.FAILED) {
+                && transitionResult.status() == BaselineTransitionPlanningResultStatus.FAILED) {
             return InternalScenarioResultStatus.FAIL;
         }
         if (renderResult != null
-                && renderResult.status() == FFmpegLibassBasicRenderPlanningResultStatus.FAILED) {
+                && renderResult.status() == BasicRenderPlanningResultStatus.FAILED) {
             return InternalScenarioResultStatus.FAIL;
         }
 
         if (expected.expectedStatus() == InternalScenarioResultStatus.PASS) {
             boolean hasWarnings = false;
             if (renderResult != null && renderResult.plan() != null
-                    && renderResult.plan().status() == FFmpegLibassBasicRenderPlanStatus.VALID_WITH_WARNINGS) {
+                    && renderResult.plan().status() == BasicRenderPlanStatus.VALID_WITH_WARNINGS) {
                 hasWarnings = true;
             }
             if (effectResult != null && effectResult.plan() != null
-                    && effectResult.plan().status() == FFmpegBaselineEffectPlanStatus.VALID_WITH_WARNINGS) {
+                    && effectResult.plan().status() == BaselineEffectPlanStatus.VALID_WITH_WARNINGS) {
                 hasWarnings = true;
             }
             return hasWarnings ? InternalScenarioResultStatus.PASS_WITH_WARNINGS : InternalScenarioResultStatus.PASS;
@@ -297,16 +297,16 @@ public final class InternalScenarioRunner {
     }
 
     private static List<InternalScenarioIssueCode> collectIssueCodes(
-            FFmpegBaselineEffectPlanningResult effectResult,
-            FFmpegBaselineTransitionPlanningResult transitionResult,
-            FFmpegLibassBasicRenderPlanningResult renderResult) {
+            BaselineEffectPlanningResult effectResult,
+            BaselineTransitionPlanningResult transitionResult,
+            BasicRenderPlanningResult renderResult) {
 
         List<InternalScenarioIssueCode> codes = new ArrayList<>();
         if (effectResult != null) {
-            for (FFmpegBaselineEffectPlanIssue issue : effectResult.issues()) {
+            for (BaselineEffectPlanIssue issue : effectResult.issues()) {
                 switch (issue.code()) {
                     case EFFECT_CAPABILITY_FORBIDDEN -> codes.add(InternalScenarioIssueCode.FORBIDDEN_EFFECT_NOT_BLOCKED);
-                    case RAW_FILTERGRAPH_FORBIDDEN -> codes.add(InternalScenarioIssueCode.RAW_FILTERGRAPH_EXPOSED);
+                    case RAW_PROVIDER_EXPRESSION_FORBIDDEN -> codes.add(InternalScenarioIssueCode.RAW_PROVIDER_EXPRESSION_EXPOSED);
                     case RAW_PROVIDER_COMMAND_FORBIDDEN -> codes.add(InternalScenarioIssueCode.RAW_PROVIDER_COMMAND_EXPOSED);
                     case PLUGIN_EXECUTION_NODE_FORBIDDEN -> codes.add(InternalScenarioIssueCode.PLUGIN_EXECUTION_NODE_ALLOWED);
                     case USER_RENDER_DAG_FORBIDDEN -> codes.add(InternalScenarioIssueCode.USER_RENDER_DAG_ALLOWED);
@@ -315,11 +315,11 @@ public final class InternalScenarioRunner {
             }
         }
         if (transitionResult != null) {
-            for (FFmpegBaselineTransitionPlanIssue issue : transitionResult.issues()) {
+            for (BaselineTransitionPlanIssue issue : transitionResult.issues()) {
                 switch (issue.code()) {
                     case TRANSITION_CAPABILITY_FORBIDDEN ->
                         codes.add(InternalScenarioIssueCode.FORBIDDEN_TRANSITION_NOT_BLOCKED);
-                    case RAW_FILTERGRAPH_FORBIDDEN -> codes.add(InternalScenarioIssueCode.RAW_FILTERGRAPH_EXPOSED);
+                    case RAW_PROVIDER_EXPRESSION_FORBIDDEN -> codes.add(InternalScenarioIssueCode.RAW_PROVIDER_EXPRESSION_EXPOSED);
                     case RAW_PROVIDER_COMMAND_FORBIDDEN -> codes.add(InternalScenarioIssueCode.RAW_PROVIDER_COMMAND_EXPOSED);
                     case USER_RENDER_DAG_FORBIDDEN -> codes.add(InternalScenarioIssueCode.USER_RENDER_DAG_ALLOWED);
                     default -> {}
@@ -327,11 +327,11 @@ public final class InternalScenarioRunner {
             }
         }
         if (renderResult != null) {
-            for (FFmpegLibassBasicRenderPlanIssue issue : renderResult.issues()) {
+            for (BasicRenderPlanIssue issue : renderResult.issues()) {
                 switch (issue.code()) {
                     case UNSUPPORTED_OUTPUT_CONTAINER, UNSUPPORTED_VIDEO_CODEC, UNSUPPORTED_AUDIO_CODEC ->
                         codes.add(InternalScenarioIssueCode.OUTPUT_PROFILE_INVALID);
-                    case RAW_FILTERGRAPH_FORBIDDEN -> codes.add(InternalScenarioIssueCode.RAW_FILTERGRAPH_EXPOSED);
+                    case RAW_PROVIDER_EXPRESSION_FORBIDDEN -> codes.add(InternalScenarioIssueCode.RAW_PROVIDER_EXPRESSION_EXPOSED);
                     case RAW_PROVIDER_COMMAND_FORBIDDEN -> codes.add(InternalScenarioIssueCode.RAW_PROVIDER_COMMAND_EXPOSED);
                     case ARTIFACT_DAG_NOT_USED -> codes.add(InternalScenarioIssueCode.ARTIFACT_DAG_USED);
                     default -> {}
@@ -345,27 +345,27 @@ public final class InternalScenarioRunner {
             InternalScenarioIssueCode expectedCode,
             List<InternalScenarioIssueCode> actualCodes,
             Map<String, Object> actualProperties,
-            FFmpegBaselineEffectPlanningResult effectResult,
-            FFmpegBaselineTransitionPlanningResult transitionResult,
-            FFmpegLibassBasicRenderPlanningResult renderResult) {
+            BaselineEffectPlanningResult effectResult,
+            BaselineTransitionPlanningResult transitionResult,
+            BasicRenderPlanningResult renderResult) {
 
         if (actualCodes.contains(expectedCode)) return true;
 
         return switch (expectedCode) {
             case FORBIDDEN_EFFECT_NOT_BLOCKED -> {
                 boolean blocked = effectResult != null
-                        && effectResult.status() == FFmpegBaselineEffectPlanningResultStatus.BLOCKED;
+                        && effectResult.status() == BaselineEffectPlanningResultStatus.BLOCKED;
                 yield blocked || Boolean.TRUE.equals(actualProperties.get("effectBlocked"));
             }
             case FORBIDDEN_TRANSITION_NOT_BLOCKED -> {
                 boolean blocked = transitionResult != null
-                        && transitionResult.status() == FFmpegBaselineTransitionPlanningResultStatus.BLOCKED;
+                        && transitionResult.status() == BaselineTransitionPlanningResultStatus.BLOCKED;
                 yield blocked || Boolean.TRUE.equals(actualProperties.get("transitionBlocked"));
             }
             case OUTPUT_PROFILE_INVALID -> {
                 boolean blocked = renderResult != null
-                        && (renderResult.status() == FFmpegLibassBasicRenderPlanningResultStatus.BLOCKED
-                        || renderResult.status() == FFmpegLibassBasicRenderPlanningResultStatus.VALIDATION_FAILED);
+                        && (renderResult.status() == BasicRenderPlanningResultStatus.BLOCKED
+                        || renderResult.status() == BasicRenderPlanningResultStatus.VALIDATION_FAILED);
                 yield blocked || Boolean.TRUE.equals(actualProperties.get("renderBlocked"))
                         || Boolean.TRUE.equals(actualProperties.get("renderValidationFailed"));
             }

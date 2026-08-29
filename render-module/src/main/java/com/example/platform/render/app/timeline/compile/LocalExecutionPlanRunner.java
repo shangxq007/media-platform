@@ -9,12 +9,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Runs a RenderExecutionPlan locally for FFmpeg baseline only.
+ * Runs a RenderExecutionPlan locally for Provider baseline only.
  *
  * <p>Internal only — orchestrates step execution in dependency order.
- * Only FFmpeg PRODUCTION LOCAL steps are executable.</p>
+ * Only Provider PRODUCTION LOCAL steps are executable.</p>
  *
- * <p>v0: Executes FFmpeg baseline steps. Non-FFmpeg steps are skipped.</p>
+ * <p>v0: Executes Provider baseline steps. Non-Provider steps are skipped.</p>
  *
  * <p>This service does NOT expose provider internals, raw commands,
  * storage paths, or environment details in public APIs.</p>
@@ -57,10 +57,10 @@ public class LocalExecutionPlanRunner {
                     "Policy guard rejected plan: " + policyResult.explanation());
         }
 
-        // Step 2: Check execution readiness — only FFmpeg LOCAL PRODUCTION steps are allowed
+        // Step 2: Check execution readiness — only Provider LOCAL PRODUCTION steps are allowed
         if (!isExecutionAllowed(plan)) {
             return LocalExecutionPlanRunResult.notExecutable(
-                    "Plan contains non-executable steps (only FFmpeg LOCAL PRODUCTION is allowed)");
+                    "Plan contains non-executable steps (only Provider LOCAL PRODUCTION is allowed)");
         }
 
         // Step 3: Generate local execution run ID
@@ -108,18 +108,17 @@ public class LocalExecutionPlanRunner {
     }
 
     /**
-     * Check if the plan is allowed to execute (only FFmpeg LOCAL PRODUCTION).
+     * Check if the plan is allowed to execute (only Provider LOCAL PRODUCTION).
      */
     private boolean isExecutionAllowed(RenderExecutionPlan plan) {
         // v0: only allow plans that target LOCAL environment
         if (plan.environmentTarget() != ExecutionEnvironmentTarget.LOCAL) {
             return false;
         }
-        // Check that all EXECUTE_PROVIDER steps are FFmpeg
+        // Check that all EXECUTE_PROVIDER steps have a typed provider identity.
         for (RenderExecutionStep step : plan.providerExecutionSteps()) {
-            if (step.providerName() == null || !"ffmpeg".equals(step.providerName())) {
-                log.warn("Non-FFmpeg provider step not executable: {} provider={}",
-                        step.stepId(), step.providerName());
+            if (step.providerName() == null) {
+                log.warn("Unbound provider step not executable: {}", step.stepId());
                 return false;
             }
             if (step.providerRef() != null

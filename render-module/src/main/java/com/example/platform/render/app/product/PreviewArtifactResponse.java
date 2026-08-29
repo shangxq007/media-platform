@@ -36,7 +36,7 @@ public record PreviewArtifactResponse(
         String checksum,
         /** Content hash for deduplication (null if no storage reference). */
         String contentHash,
-        /** Producer type (e.g., ffmpeg, remotion). */
+        /** Producer type (e.g., provider, remotion). */
         String producerType,
         /** Producer identifier. */
         String producerId,

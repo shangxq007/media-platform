@@ -83,7 +83,7 @@ public class StrategyPlannerEngine {
         List<ExecutionStrategyGraph.ExecutionOption> options = new ArrayList<>();
 
         // Generate options for each provider
-        String[] providers = {"ffmpeg", "gstreamer", "gpac", "mlt"};
+        String[] providers = {"gstreamer", "gpac", "mlt"};
         for (String provider : providers) {
             double cost = estimateCost(provider, preset, durationSeconds, useGpu);
             long duration = estimateDuration(provider, durationSeconds);
@@ -282,16 +282,16 @@ public class StrategyPlannerEngine {
     }
 
     private String getAlternativeProvider(String current) {
-        if ("ffmpeg".equals(current)) return "gstreamer";
-        if ("gstreamer".equals(current)) return "ffmpeg";
+        if ("gstreamer".equals(current)) return "mlt";
+        if ("mlt".equals(current)) return "gstreamer";
         return null;
     }
 
     private String[] getFallbackChain(String provider) {
         return switch (provider) {
-            case "ffmpeg" -> new String[]{"gstreamer", "gpac", "mlt"};
-            case "gstreamer" -> new String[]{"ffmpeg", "gpac"};
-            default -> new String[]{"ffmpeg"};
+            case "gstreamer" -> new String[]{"gpac", "mlt"};
+            case "mlt" -> new String[]{"gstreamer", "gpac"};
+            default -> new String[]{};
         };
     }
 
@@ -313,14 +313,12 @@ public class StrategyPlannerEngine {
 
     private static class ProviderScoringModel {
         private final Map<String, Double> qualityScores = Map.of(
-                "ffmpeg", 0.9,
                 "gstreamer", 0.85,
                 "gpac", 0.8,
                 "mlt", 0.75
         );
 
         private final Map<String, Double> reliabilityScores = Map.of(
-                "ffmpeg", 0.95,
                 "gstreamer", 0.85,
                 "gpac", 0.8,
                 "mlt", 0.75

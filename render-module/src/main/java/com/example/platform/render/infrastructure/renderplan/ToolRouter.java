@@ -11,10 +11,10 @@ import java.util.Map;
  * 
  * <p>Routing rules:
  * <ul>
- *   <li>clip → unavailable (FFmpeg execution is provider-plugin owned)</li>
+ *   <li>clip → unavailable (Provider execution is provider-plugin owned)</li>
  *   <li>transition → MLT</li>
  *   <li>scene → Remotion</li>
- *   <li>audio → unavailable (FFmpeg execution is provider-plugin owned)</li>
+ *   <li>audio → unavailable (Provider execution is provider-plugin owned)</li>
  * </ul>
  * 
  * <p>NO dynamic routing systems.
@@ -37,7 +37,7 @@ public class ToolRouter {
      */
     public RenderTool getTool(RenderPlanIr.ToolType toolType) {
         return switch (toolType) {
-            case FFMPEG -> throw ffmpegToolUnavailable();
+            case PROVIDER -> throw providerToolUnavailable();
             case MLT -> mltTool;
             case REMOTION -> remotionTool;
         };
@@ -48,15 +48,15 @@ public class ToolRouter {
      */
     public RenderTool getToolForNode(RenderPlanIr.NodeType nodeType) {
         return switch (nodeType) {
-            case CLIP, AUDIO, OUTPUT -> throw ffmpegToolUnavailable();
+            case CLIP, AUDIO, OUTPUT -> throw providerToolUnavailable();
             case TRANSITION -> mltTool;
             case SCENE -> remotionTool;
         };
     }
 
-    private IllegalStateException ffmpegToolUnavailable() {
+    private IllegalStateException providerToolUnavailable() {
         return new IllegalStateException(
-                "FFmpeg renderplan execution requires the typed provider-plugin path");
+                "Provider renderplan execution requires the typed provider-plugin path");
     }
 
     // ---------------------------------------------------------------------------

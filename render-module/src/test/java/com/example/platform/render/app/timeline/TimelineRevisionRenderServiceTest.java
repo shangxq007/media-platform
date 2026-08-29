@@ -4,10 +4,6 @@ import com.example.platform.timeline.adapter.TimelineRevisionRepository;import c
 import com.example.platform.timeline.app.TimelineRevisionDiffQuery;
 import com.example.platform.timeline.app.TimelineImportService;
 import com.example.platform.render.app.timeline.TimelineSpecImportAdapter;
-import com.example.platform.extension.app.ProcessToolRunner;
-import com.example.platform.extension.domain.ToolExecutionRequest;
-import com.example.platform.extension.domain.ToolExecutionResult;
-import com.example.platform.extension.domain.ToolExecutionSafetyPolicy;
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.render.app.input.RenderInputMaterializationService;
 import com.example.platform.render.app.output.RenderOutputRegistrationService;
@@ -19,7 +15,6 @@ import com.example.platform.storage.contract.*;
 import com.example.platform.render.infrastructure.product.ProductDependencyRepository;
 import com.example.platform.render.infrastructure.product.ProductRepository;
 import com.example.platform.render.infrastructure.storage.StorageReferenceRepository;
-import com.example.platform.render.testsupport.R2FixtureGenerator;
 import com.example.platform.render.testsupport.TimelineCoreSmokeFixture;
 import com.example.platform.shared.Ids;
 import org.junit.jupiter.api.*;
@@ -49,7 +44,7 @@ import com.example.platform.render.domain.interchange.TimelineSpec;
  *   <li>R6: provenance metadata in output Product</li>
  *   <li>R6: failure path tests (missing revision, wrong project, etc.)</li>
  *   <li>R6.1: input Product resolution from timeline assets</li>
- *   <li>R6.1: FFmpeg uses materialized input (no testsrc/lavfi)</li>
+ *   <li>R6.1: Provider uses materialized input instead of synthetic input</li>
  *   <li>R6.1: formal ProductDependency lineage</li>
  *   <li>R6.1: fail-closed for missing/unready inputs</li>
  *   <li>Architecture boundaries (no provider/backend/environment exposure)</li>
@@ -100,30 +95,6 @@ class TimelineRevisionRenderServiceTest {
 
         inputProductResolver = new TimelineInputProductResolver(productRuntime);
 
-        // Create a mock ProcessToolRunner that succeeds
-        ProcessToolRunner toolRunner = new ProcessToolRunner() {
-            @Override
-            public ToolExecutionResult execute(ToolExecutionRequest request) {
-                try {
-                    // Simulate FFmpeg creating an output file
-                    List<String> args = request.args();
-                    String outputPath = args.get(args.size() - 1);
-                    Path output = Path.of(outputPath);
-                    Files.createDirectories(output.getParent());
-                    Files.writeString(output, "fake-rendered-content-" + UUID.randomUUID());
-                    return ToolExecutionResult.success(0, "ffmpeg", "", Instant.now(), Instant.now());
-                } catch (IOException e) {
-                    return ToolExecutionResult.failed(1, "", e.getMessage(), Instant.now(), Instant.now());
-                }
-            }
-
-            @Override
-            public ToolExecutionResult execute(ToolExecutionRequest request,
-                    ToolExecutionSafetyPolicy policy) {
-                return execute(request);
-            }
-        };
-
         renderService = new TimelineRevisionRenderService(
                 new StubTimelineRevisionService(revisionRepo),
                 snapshotService,
@@ -135,7 +106,6 @@ class TimelineRevisionRenderServiceTest {
                 productRuntime,
                 storageRuntime,
                 inputProductResolver,
-                toolRunner,
                 tempDir);
     }
 
@@ -182,8 +152,6 @@ class TimelineRevisionRenderServiceTest {
     @Test
     @DisplayName("R6.1: legacy render resolves input then fails closed before local execution")
     void r61RenderUsesMaterializedInputNotTestsrc() throws Exception {
-        R2FixtureGenerator.assumeFfmpegAvailable();
-
         // 1. Register a READY RAW_MEDIA Product matching the timeline's asset ID
         Product inputProduct = registerReadyRawMediaProduct(
                 TimelineCoreSmokeFixture.ASSET_ID,
@@ -203,32 +171,17 @@ class TimelineRevisionRenderServiceTest {
                 TimelineCoreSmokeFixture.PROJECT_ID,
                 TimelineCoreSmokeFixture.TENANT_ID, snapshotId));
 
-        // 3. Use a capturing ProcessToolRunner that copies materialized input to output
-        List<List<String>> capturedArgs = new ArrayList<>();
-        ProcessToolRunner capturingRunner = createCapturingAndCopyingToolRunner(capturedArgs);
-
-        TimelineRevisionRenderService serviceWithCapturing = new TimelineRevisionRenderService(
-                new StubTimelineRevisionService(revisionRepo),
-                snapshotService, mapper, parser,
-                null,
-                new RenderInputMaterializationService(storageRuntime, productRuntime),
-                registrationService, productRuntime, storageRuntime,
-                inputProductResolver, capturingRunner, tempDir);
-
         IllegalStateException failure = assertThrows(IllegalStateException.class,
-                () -> serviceWithCapturing.render(
+                () -> renderService.render(
                         TimelineCoreSmokeFixture.PROJECT_ID, revisionId, "default_720p"));
 
         assertEquals("Typed provider plugin execution required", failure.getMessage());
-        assertTrue(capturedArgs.isEmpty(), "Removed local execution authority must not run a command");
         assertNoOutputCommit(revisionId);
     }
 
     @Test
     @DisplayName("R6.1: fail-closed legacy render creates no fabricated ProductDependency edges")
     void r61ResolvesInputProductIdsAndCreatesDependency() throws Exception {
-        R2FixtureGenerator.assumeFfmpegAvailable();
-
         Product inputProduct = registerReadyRawMediaProduct(
                 TimelineCoreSmokeFixture.ASSET_ID,
                 TimelineCoreSmokeFixture.TENANT_ID,
@@ -246,23 +199,11 @@ class TimelineRevisionRenderServiceTest {
                 TimelineCoreSmokeFixture.PROJECT_ID,
                 TimelineCoreSmokeFixture.TENANT_ID, snapshotId));
 
-        List<List<String>> capturedArgs = new ArrayList<>();
-        ProcessToolRunner capturingRunner = createCapturingAndCopyingToolRunner(capturedArgs);
-
-        TimelineRevisionRenderService serviceWithCapturing = new TimelineRevisionRenderService(
-                new StubTimelineRevisionService(revisionRepo),
-                snapshotService, mapper, parser,
-                null,
-                new RenderInputMaterializationService(storageRuntime, productRuntime),
-                registrationService, productRuntime, storageRuntime,
-                inputProductResolver, capturingRunner, tempDir);
-
         IllegalStateException failure = assertThrows(IllegalStateException.class,
-                () -> serviceWithCapturing.render(
+                () -> renderService.render(
                         TimelineCoreSmokeFixture.PROJECT_ID, revisionId, "default_720p"));
 
         assertEquals("Typed provider plugin execution required", failure.getMessage());
-        assertTrue(capturedArgs.isEmpty());
         assertTrue(productRuntime.findDownstream(inputProduct.productId()).isEmpty());
         assertNoOutputCommit(revisionId);
     }
@@ -367,8 +308,6 @@ class TimelineRevisionRenderServiceTest {
     @Test
     @DisplayName("R6.1: typed fail-closed exception excludes sensitive data")
     void r61ResponseExcludesSensitiveData() throws Exception {
-        R2FixtureGenerator.assumeFfmpegAvailable();
-
         registerReadyRawMediaProduct(
                 TimelineCoreSmokeFixture.ASSET_ID,
                 TimelineCoreSmokeFixture.TENANT_ID,
@@ -386,19 +325,8 @@ class TimelineRevisionRenderServiceTest {
                 TimelineCoreSmokeFixture.PROJECT_ID,
                 TimelineCoreSmokeFixture.TENANT_ID, snapshotId));
 
-        List<List<String>> capturedArgs = new ArrayList<>();
-        ProcessToolRunner capturingRunner = createCapturingAndCopyingToolRunner(capturedArgs);
-
-        TimelineRevisionRenderService serviceWithCapturing = new TimelineRevisionRenderService(
-                new StubTimelineRevisionService(revisionRepo),
-                snapshotService, mapper, parser,
-                null,
-                new RenderInputMaterializationService(storageRuntime, productRuntime),
-                registrationService, productRuntime, storageRuntime,
-                inputProductResolver, capturingRunner, tempDir);
-
         IllegalStateException failure = assertThrows(IllegalStateException.class,
-                () -> serviceWithCapturing.render(
+                () -> renderService.render(
                         TimelineCoreSmokeFixture.PROJECT_ID, revisionId, "default_720p"));
 
         assertEquals("Typed provider plugin execution required", failure.getMessage());
@@ -406,8 +334,7 @@ class TimelineRevisionRenderServiceTest {
         assertFalse(publicFailure.contains("signedUrl"));
         assertFalse(publicFailure.contains("storageReferenceId"));
         assertFalse(publicFailure.contains(tempDir.toString()));
-        assertFalse(publicFailure.contains("ffmpeg -i"));
-        assertTrue(capturedArgs.isEmpty());
+        assertFalse(publicFailure.contains("raw provider execution command"));
         assertNoOutputCommit(revisionId);
     }
 
@@ -422,9 +349,9 @@ class TimelineRevisionRenderServiceTest {
 
     private Product registerReadyRawMediaProduct(String assetId, String tenantId, String projectId)
             throws Exception {
-        // Generate tiny real mp4 using FFmpeg testsrc (fixture only, not render input)
-        Path inputVideo = R2FixtureGenerator.generateTestVideo(
-                tempDir.resolve("input-media"), 2.0, 320, 180, 30);
+        Path inputVideo = tempDir.resolve("input-media").resolve("input.mp4");
+        Files.createDirectories(inputVideo.getParent());
+        Files.write(inputVideo, new byte[]{0, 1, 2, 3});
 
         // Copy to storage location
         Path storageInput = tempDir.resolve("storage-inputs").resolve(assetId + ".mp4");
@@ -452,53 +379,6 @@ class TimelineRevisionRenderServiceTest {
         Product ready = productRuntime.markReady(registered.productId());
         assertEquals(ProductStatus.READY, ready.status());
         return ready;
-    }
-
-    // ─── Helper: create capturing and copying ProcessToolRunner ───
-
-    private ProcessToolRunner createCapturingAndCopyingToolRunner(
-            List<List<String>> capturedArgs) {
-        return new ProcessToolRunner() {
-            @Override
-            public ToolExecutionResult execute(ToolExecutionRequest request) {
-                capturedArgs.add(List.copyOf(request.args()));
-                try {
-                    // Find materialized input path (arg after "-i")
-                    String inputPath = null;
-                    List<String> args = request.args();
-                    for (int i = 0; i < args.size() - 1; i++) {
-                        if ("-i".equals(args.get(i))) {
-                            inputPath = args.get(i + 1);
-                            break;
-                        }
-                    }
-                    // Output path is last arg
-                    String outputPath = args.get(args.size() - 1);
-                    Path output = Path.of(outputPath);
-                    Files.createDirectories(output.getParent());
-
-                    if (inputPath != null && Files.exists(Path.of(inputPath))) {
-                        // Copy real mp4 to output path (valid media for registration)
-                        Files.copy(Path.of(inputPath), output,
-                                StandardCopyOption.REPLACE_EXISTING);
-                    } else {
-                        Files.writeString(output, "fallback-content-" + UUID.randomUUID());
-                    }
-
-                    return ToolExecutionResult.success(
-                            0, "ffmpeg", "", Instant.now(), Instant.now());
-                } catch (IOException e) {
-                    return ToolExecutionResult.failed(
-                            1, "", e.getMessage(), Instant.now(), Instant.now());
-                }
-            }
-
-            @Override
-            public ToolExecutionResult execute(ToolExecutionRequest request,
-                    ToolExecutionSafetyPolicy policy) {
-                return execute(request);
-            }
-        };
     }
 
     // ─── Helper: create revision row ───

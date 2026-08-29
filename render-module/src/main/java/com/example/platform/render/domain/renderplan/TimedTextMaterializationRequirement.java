@@ -30,7 +30,7 @@ import java.util.Objects;
  *       authority preserved).</li>
  * </ul>
  *
- * <p>No provider-specific raster command; no FFmpeg/libass; logical
+ * <p>No provider-specific raster command or executable renderer; logical
  * materialization only.
  */
 public record TimedTextMaterializationRequirement(

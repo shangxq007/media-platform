@@ -27,7 +27,7 @@ import com.example.platform.render.domain.legacy.TimelineTrack;
  *
  * <p>Proves:
  * <ul>
- *   <li>Single video clip FFmpeg binding compiles to deterministic execution plan</li>
+ *   <li>Single video clip Provider binding compiles to deterministic execution plan</li>
  *   <li>Caption overlay includes provider document preparation</li>
  *   <li>Unbound provider node produces failure reason</li>
  *   <li>Missing document draft fails closed</li>
@@ -48,9 +48,9 @@ class RenderExecutionPlanCompilerTest {
     private ArtifactGraphCompiler artifactCompiler;
     private TimelineNormalizationService normalizer;
 
-    private static final ProviderBindingCompiler.ProviderCandidate FFMPEG =
+    private static final ProviderBindingCompiler.ProviderCandidate PROVIDER =
             new ProviderBindingCompiler.ProviderCandidate(
-                    "ffmpeg", ProviderStatus.PRODUCTION, ProviderType.RENDER, "P0",
+                    "provider-a", ProviderStatus.PRODUCTION, ProviderType.RENDER, "P0",
                     true, true, "6.1",
                     List.of("MEDIA_INPUT", "VIDEO_DECODE", "VIDEO_TRIM",
                             "AUDIO_DECODE", "AUDIO_MIX",
@@ -69,7 +69,7 @@ class RenderExecutionPlanCompilerTest {
     }
 
     @Test
-    @DisplayName("Single video clip FFmpeg → deterministic execution plan")
+    @DisplayName("Single video clip Provider → deterministic execution plan")
     void singleClipCompilesToDeterministicPlan() {
         RenderExecutionPlan plan = compileSingleClipPlan();
 
@@ -179,8 +179,8 @@ class RenderExecutionPlanCompilerTest {
     @Test
     @DisplayName("Missing document draft produces failure reason")
     void missingDraftProducesFailureReason() {
-        // Create binding plan with ffmpeg but no drafts
-        ProviderBindingPlan bindingPlan = compileBindingPlan(List.of(FFMPEG), "PRODUCTION");
+        // Create binding plan with provider but no drafts
+        ProviderBindingPlan bindingPlan = compileBindingPlan(List.of(PROVIDER), "PRODUCTION");
         ExecutionPolicy policy = ExecutionPolicy.production();
 
         RenderExecutionPlan plan = compiler.compile(bindingPlan, List.of(), policy);
@@ -210,13 +210,35 @@ class RenderExecutionPlanCompilerTest {
     }
 
     @Test
-    @DisplayName("All steps have LOCAL environment target for FFmpeg")
-    void allStepsLocalForFfmpeg() {
+    @DisplayName("Arbitrary typed provider identity defaults to LOCAL target")
+    void arbitraryTypedProviderIdentityDefaultsToLocalTarget() {
         RenderExecutionPlan plan = compileSingleClipPlan();
 
         plan.steps().forEach(step ->
                 assertEquals(ExecutionEnvironmentTarget.LOCAL, step.executionEnvironmentTarget(),
                         "Step " + step.stepId() + " should target LOCAL"));
+    }
+
+    @Test
+    @DisplayName("OpenCue-allowed policy targets node steps independently of provider identity")
+    void openCueAllowedPolicyTargetsNodeStepsIndependentlyOfProviderIdentity() {
+        ExecutionPolicy openCuePolicy = new ExecutionPolicy(
+                "PRODUCTION", false, false, true, false, 0);
+
+        for (String providerName : List.of("provider-a", "provider-b")) {
+            ProviderBindingPlan bindingPlan = compileBindingPlan(
+                    List.of(providerCandidate(providerName)), "PRODUCTION");
+            List<ProviderExecutionDocumentDraft> drafts = draftCompiler.compile(bindingPlan);
+
+            RenderExecutionPlan plan = compiler.compile(bindingPlan, drafts, openCuePolicy);
+
+            plan.steps().stream()
+                    .filter(step -> step.type() != RenderExecutionStepType.FINALIZE_RENDER)
+                    .forEach(step -> assertEquals(
+                            ExecutionEnvironmentTarget.OPENCUE,
+                            step.executionEnvironmentTarget(),
+                            "Provider identity must not override OpenCue policy: " + providerName));
+        }
     }
 
     @Test
@@ -226,7 +248,7 @@ class RenderExecutionPlanCompilerTest {
 
         RenderExecutionPlanSummary summary = plan.summary();
         assertNotNull(summary);
-        assertTrue(summary.boundProviders().contains("ffmpeg"));
+        assertTrue(summary.boundProviders().contains("provider-a"));
         assertFalse(summary.executionReady());
     }
 
@@ -241,7 +263,7 @@ class RenderExecutionPlanCompilerTest {
         NormalizedTimeline timeline = normalizer.normalize(spec, "prj-test");
         ArtifactDependencyGraph artifactGraph = artifactCompiler.compile(timeline);
         LogicalCapabilityGraph capGraph = capCompiler.compile(artifactGraph);
-        ProviderBindingPlan bindingPlan = bindingCompiler.compile(capGraph, List.of(FFMPEG), "PRODUCTION");
+        ProviderBindingPlan bindingPlan = bindingCompiler.compile(capGraph, List.of(PROVIDER), "PRODUCTION");
         List<ProviderExecutionDocumentDraft> drafts = draftCompiler.compile(bindingPlan);
 
         RenderExecutionPlan plan = compiler.compile(bindingPlan, drafts, ExecutionPolicy.production());
@@ -256,7 +278,7 @@ class RenderExecutionPlanCompilerTest {
     // --- Helpers ---
 
     private RenderExecutionPlan compileSingleClipPlan() {
-        ProviderBindingPlan bindingPlan = compileBindingPlan(List.of(FFMPEG), "PRODUCTION");
+        ProviderBindingPlan bindingPlan = compileBindingPlan(List.of(PROVIDER), "PRODUCTION");
         List<ProviderExecutionDocumentDraft> drafts = draftCompiler.compile(bindingPlan);
         return compiler.compile(bindingPlan, drafts, ExecutionPolicy.production());
     }
@@ -272,6 +294,12 @@ class RenderExecutionPlanCompilerTest {
 
     private ProviderBindingPlan compileBindingPlanWithNoCandidates() {
         return compileBindingPlan(List.of(), "PRODUCTION");
+    }
+
+    private ProviderBindingCompiler.ProviderCandidate providerCandidate(String providerName) {
+        return new ProviderBindingCompiler.ProviderCandidate(
+                providerName, ProviderStatus.PRODUCTION, ProviderType.RENDER, "P0",
+                true, true, "6.1", PROVIDER.capabilities(), List.of());
     }
 
     private TimelineSpec createSingleClipTimelineSpec() {

@@ -46,16 +46,16 @@ public class RenderPlanBridgeService {
             case EXTERNAL_RENDER -> switch (task.backend()) {
                 case "remotion" -> null; // future REMOTION_RENDER step
                 case "natron" -> null;
-                default -> RenderStepType.FFMPEG_TRANSCODE;
+                default -> RenderStepType.PROVIDER_TRANSCODE;
             };
             case MLT_MULTITRACK, FINAL_COMPOSE -> RenderStepType.MLT_RENDER_TIMELINE;
-            case SEGMENT_RENDER, EFFECTS, TRANSCODE, ENCODE -> RenderStepType.FFMPEG_TRANSCODE;
+            case SEGMENT_RENDER, EFFECTS, TRANSCODE, ENCODE -> RenderStepType.PROVIDER_TRANSCODE;
             case PACKAGING -> task.parameters() != null
                     && "hls".equalsIgnoreCase(task.parameters().getOrDefault("format", "dash"))
                     ? RenderStepType.GPAC_PACKAGE_HLS
                     : RenderStepType.GPAC_PACKAGE_DASH;
             case QA -> RenderStepType.QC_PROBE;
-            case SUBTITLES, SKIA_OVERLAY -> RenderStepType.FFMPEG_TRANSCODE;
+            case SUBTITLES, SKIA_OVERLAY -> RenderStepType.PROVIDER_TRANSCODE;
         };
     }
 }

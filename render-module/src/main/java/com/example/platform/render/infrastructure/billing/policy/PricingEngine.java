@@ -147,23 +147,6 @@ public class PricingEngine {
     // ---------------------------------------------------------------------------
 
     private void initializeDefaultPricing() {
-        // FFmpeg pricing
-        registerProviderPricing(new ProviderPricing(
-                "ffmpeg",
-                0.05,  // base price per second
-                2.0,   // GPU multiplier
-                0.1,   // effect cost multiplier
-                0.001, // storage cost per GB
-                0.01,  // API call cost
-                "USD",
-                Map.of(
-                        "default_720p", 0.6,
-                        "default_1080p", 1.0,
-                        "4k_2160p", 3.5,
-                        "pro_1080p", 1.2
-                )
-        ));
-
         // GStreamer pricing
         registerProviderPricing(new ProviderPricing(
                 "gstreamer",

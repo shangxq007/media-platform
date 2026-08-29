@@ -91,7 +91,7 @@ class RenderToolCapabilityInventoryTest {
     }
 
     @Test
-    void nonFfmpegToolsRemainInventoryedWithoutConcreteFfmpegExecutionTools() {
+    void nonProviderToolsRemainInventoryedWithoutConcreteProviderExecutionTools() {
         String[] expectedTools = {"melt", "blender", "node", "npm"};
         List<String> toolNames = inventory.detectTools().stream()
                 .map(RenderToolCapabilityInventory.ToolInventoryEntry::name)
@@ -101,10 +101,10 @@ class RenderToolCapabilityInventoryTest {
             assertTrue(toolNames.contains(expected),
                     "Inventory must contain tool: " + expected);
         }
-        assertFalse(toolNames.contains("ffmpeg"),
-                "Render inventory must not retain concrete ffmpeg execution authority");
-        assertFalse(toolNames.contains("ffprobe"),
-                "Render inventory must not retain render-owned ffprobe authority");
+        assertFalse(toolNames.contains("provider-a"),
+                "Render inventory must not retain concrete provider execution authority");
+        assertFalse(toolNames.contains("media probe"),
+                "Render inventory must not retain render-owned media probe authority");
     }
 
     @Test

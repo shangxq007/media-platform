@@ -9,7 +9,7 @@ package com.example.platform.render.app.timeline.compile;
 public enum TimelineRenderExecutionMode {
 
     /**
-     * Legacy direct FFmpeg path (existing TimelineRevisionRenderService).
+     * Legacy direct Provider path (existing TimelineRevisionRenderService).
      * This is the default and safest mode.
      */
     LEGACY,

@@ -16,7 +16,7 @@ class PipelineDagTopologyTest {
         PipelineTask compose = PipelineTask.of("fc", "compose", PipelineTaskType.FINAL_COMPOSE,
                 "mlt", List.of("xr1"), Map.of());
         PipelineTask transcode = PipelineTask.of("tc", "transcode", PipelineTaskType.TRANSCODE,
-                "javacv", List.of("fc"), Map.of());
+                "provider-a", List.of("fc"), Map.of());
 
         PipelineExecutionPlan plan = new PipelineExecutionPlan(
                 "p1", "tl", FinalComposerHint.MLT, List.of(transcode, compose, external), Map.of());

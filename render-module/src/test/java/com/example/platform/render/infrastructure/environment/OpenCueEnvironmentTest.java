@@ -79,10 +79,10 @@ class OpenCueEnvironmentTest {
 
     @Test
     void compilerProducesDeterministicOutput() {
-        BackendExecutionSpec spec1 = createTestSpec("ffmpeg-backend", "ffmpeg-producer",
-                "ffmpeg", List.of("-i", "input.mp4", "output.mp4"));
-        BackendExecutionSpec spec2 = createTestSpec("ffmpeg-backend", "ffmpeg-producer",
-                "ffmpeg", List.of("-i", "input.mp4", "output.mp4"));
+        BackendExecutionSpec spec1 = createTestSpec("provider-backend", "provider-producer",
+                "provider-a", List.of("-i", "input.mp4", "output.mp4"));
+        BackendExecutionSpec spec2 = createTestSpec("provider-backend", "provider-producer",
+                "provider-a", List.of("-i", "input.mp4", "output.mp4"));
 
         ExecutionJob job1 = compiler.compile(spec1);
         ExecutionJob job2 = compiler.compile(spec2);
@@ -97,8 +97,8 @@ class OpenCueEnvironmentTest {
     @Test
     void submitRejectedWhenDisabled() {
         props.setEnabled(false);
-        BackendExecutionSpec spec = createTestSpec("ffmpeg", "producer",
-                "ffmpeg", List.of("-version"));
+        BackendExecutionSpec spec = createTestSpec("provider-a", "producer",
+                "provider-a", List.of("-version"));
         ExecutionJob job = compiler.compile(spec);
         assertThrows(IllegalStateException.class, () -> environment.submit(job));
     }
@@ -107,12 +107,28 @@ class OpenCueEnvironmentTest {
     void submitAllowedInStubMode() {
         props.setEnabled(true);
         props.setStubModeEnabled(true);
-        BackendExecutionSpec spec = createTestSpec("ffmpeg", "producer",
-                "ffmpeg", List.of("-version"));
+        BackendExecutionSpec spec = createTestSpec("provider-a", "producer",
+                "provider-a", List.of("-version"));
         ExecutionJob job = compiler.compile(spec);
         String execId = environment.submit(job);
         assertNotNull(execId);
         assertTrue(execId.startsWith("oc-"));
+    }
+
+    @Test
+    void defaultSubmissionClientUsesBoundIdentitySemantics() {
+        props.setStubModeEnabled(true);
+        OpenCueSubmissionRequest bound = new OpenCueSubmissionRequest(
+                "job-bound", "rev-1", "provider-a", "local-process", "OPEN_CUE",
+                List.of(), List.of(), Map.of(), "corr-bound", 50, Map.of());
+        OpenCueSubmissionRequest collapsed = new OpenCueSubmissionRequest(
+                "job-collapsed", "rev-1", "provider", "local-process", "OPEN_CUE",
+                List.of(), List.of(), Map.of(), "corr-collapsed", 50, Map.of());
+
+        assertTrue(submissionClient.submit(bound).isAccepted());
+        OpenCueSubmissionResult rejected = submissionClient.submit(collapsed);
+        assertTrue(rejected.isRejected());
+        assertEquals(OpenCueSubmissionError.UNSUPPORTED_BACKEND, rejected.error());
     }
 
     @Test
@@ -236,8 +252,8 @@ class OpenCueEnvironmentTest {
     @Test
     void controlServiceSubmitRejectedWhenOpenCueDisabled() {
         props.setEnabled(false);
-        BackendExecutionSpec spec = createTestSpec("ffmpeg", "producer",
-                "ffmpeg", List.of("-version"));
+        BackendExecutionSpec spec = createTestSpec("provider-a", "producer",
+                "provider-a", List.of("-version"));
         ExecutionJob job = compiler.compile(spec);
         assertThrows(IllegalStateException.class, () ->
                 controlService.submit(job));
@@ -265,8 +281,8 @@ class OpenCueEnvironmentTest {
     void doesNotBypassExecutionControlService() {
         assertNotNull(controlService);
 
-        BackendExecutionSpec spec = createTestSpec("ffmpeg", "producer",
-                "ffmpeg", List.of("-version"));
+        BackendExecutionSpec spec = createTestSpec("provider-a", "producer",
+                "provider-a", List.of("-version"));
         ExecutionJob job = compiler.compile(spec);
         assertEquals(ExecutionStatus.CREATED, job.status(),
                 "Compiler must produce CREATED status for control service to transition");
@@ -283,8 +299,8 @@ class OpenCueEnvironmentTest {
         props.setEnabled(true);
         props.setStubModeEnabled(true);
         props.setProductionSubmitEnabled(false);
-        BackendExecutionSpec spec = createTestSpec("ffmpeg", "producer",
-                "ffmpeg", List.of("-version"));
+        BackendExecutionSpec spec = createTestSpec("provider-a", "producer",
+                "provider-a", List.of("-version"));
         ExecutionJob job = compiler.compile(spec);
         String execId = environment.submit(job);
         assertTrue(execId.startsWith("oc-"),
@@ -296,8 +312,8 @@ class OpenCueEnvironmentTest {
         props.setEnabled(true);
         props.setStubModeEnabled(false);
         props.setProductionSubmitEnabled(false);
-        BackendExecutionSpec spec = createTestSpec("ffmpeg", "producer",
-                "ffmpeg", List.of("-version"));
+        BackendExecutionSpec spec = createTestSpec("provider-a", "producer",
+                "provider-a", List.of("-version"));
         ExecutionJob job = compiler.compile(spec);
         assertThrows(IllegalStateException.class, () -> environment.submit(job),
                 "Submit must be rejected when neither stub nor production submit is enabled");
@@ -317,8 +333,8 @@ class OpenCueEnvironmentTest {
     void stubSubmitReturnsOpaqueExecutionId() {
         props.setEnabled(true);
         props.setStubModeEnabled(true);
-        BackendExecutionSpec spec = createTestSpec("ffmpeg", "producer",
-                "ffmpeg", List.of("-version"));
+        BackendExecutionSpec spec = createTestSpec("provider-a", "producer",
+                "provider-a", List.of("-version"));
         ExecutionJob job = compiler.compile(spec);
         String execId = environment.submit(job);
 
@@ -357,8 +373,8 @@ class OpenCueEnvironmentTest {
         props.setStubModeEnabled(false);
         props.setProductionSubmitEnabled(false);
 
-        BackendExecutionSpec spec = createTestSpec("ffmpeg", "producer",
-                "ffmpeg", List.of("-version"));
+        BackendExecutionSpec spec = createTestSpec("provider-a", "producer",
+                "provider-a", List.of("-version"));
         ExecutionJob job = compiler.compile(spec);
 
         assertThrows(IllegalStateException.class, () -> environment.submit(job),

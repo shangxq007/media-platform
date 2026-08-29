@@ -107,7 +107,7 @@ public final class EffectCapabilityProfile {
     public static VisualCapabilityDefinition captionOverlay() {
         return definition("CAPTION_OVERLAY", VisualCapabilityCategory.CAPTION,
                 VisualCapabilityStatus.PRODUCTION, "Caption Overlay",
-                "Burn-in caption/subtitle overlay using FFmpeg/libass",
+                "Typed timed-text composition requirement",
                 VisualConsistencyLevel.EXACT, VisualFallbackBehavior.NO_FALLBACK,
                 VisualCapabilitySafetyLevel.SAFE);
     }
@@ -204,10 +204,10 @@ public final class EffectCapabilityProfile {
 
     // --- Forbidden / Restricted ---
 
-    public static VisualCapabilityDefinition arbitraryFfmpegFiltergraph() {
-        return definition("ARBITRARY_FFMPEG_FILTERGRAPH", VisualCapabilityCategory.EFFECT,
-                VisualCapabilityStatus.FORBIDDEN, "Arbitrary FFmpeg Filtergraph",
-                "Arbitrary FFmpeg filtergraph — FORBIDDEN",
+    public static VisualCapabilityDefinition arbitraryProviderExpression() {
+        return definition("ARBITRARY_PROVIDER_EXPRESSION", VisualCapabilityCategory.EFFECT,
+                VisualCapabilityStatus.FORBIDDEN, "Arbitrary Provider ProviderExpression",
+                "Arbitrary Provider provider expression — FORBIDDEN",
                 VisualConsistencyLevel.FORBIDDEN, VisualFallbackBehavior.REJECT_REQUEST,
                 VisualCapabilitySafetyLevel.FORBIDDEN);
     }
@@ -297,7 +297,7 @@ public final class EffectCapabilityProfile {
                 blur(), colorAdjust(), brightness(), contrast(), saturation(),
                 volumeAdjust(), audioFadeIn(), audioFadeOut(),
                 pictureInPicture(), backgroundBlur(),
-                arbitraryFfmpegFiltergraph(), arbitraryShader(), arbitraryScriptEffect(),
+                arbitraryProviderExpression(), arbitraryShader(), arbitraryScriptEffect(),
                 arbitraryOfxPlugin(), natronNodeGraph(), blenderCompositorGraph(),
                 remotionComponentExecution(), userDefinedRenderDag(),
                 pluginInsertedRenderNode(), providerSpecificRawCommand());

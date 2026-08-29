@@ -5,11 +5,11 @@ package com.example.platform.render.infrastructure;
  */
 public enum RenderPreset {
 
-    DEFAULT("default", "H.264/AAC 1080p", "libx264", "aac", "1920x1080", 30, 8000, 22050, 2, 44100, 128, false),
-    H265("h265", "H.265/AAC 1080p", "libx265", "aac", "1920x1080", 30, 6000, 22050, 2, 44100, 128, false),
-    VP9("vp9", "VP9/Opus 1080p", "libvpx-vp9", "libopus", "1920x1080", 30, 6000, 22050, 2, 48000, 128, false),
-    PREVIEW_720P("preview_720p", "H.264/AAC 720p Preview", "libx264", "aac", "1280x720", 30, 2500, 22050, 2, 44100, 96, false),
-    HQ_1080P("hq_1080p", "H.264/AAC 1080p High Quality", "libx264", "aac", "1920x1080", 30, 12000, 22050, 2, 44100, 192, false),
+    DEFAULT("default", "H.264/AAC 1080p", "h264", "aac", "1920x1080", 30, 8000, 22050, 2, 44100, 128, false),
+    H265("h265", "H.265/AAC 1080p", "h265", "aac", "1920x1080", 30, 6000, 22050, 2, 44100, 128, false),
+    VP9("vp9", "VP9/Opus 1080p", "vp9", "libopus", "1920x1080", 30, 6000, 22050, 2, 48000, 128, false),
+    PREVIEW_720P("preview_720p", "H.264/AAC 720p Preview", "h264", "aac", "1280x720", 30, 2500, 22050, 2, 44100, 96, false),
+    HQ_1080P("hq_1080p", "H.264/AAC 1080p High Quality", "h264", "aac", "1920x1080", 30, 12000, 22050, 2, 44100, 192, false),
     GPU_H264("gpu_h264", "H.264 NVENC GPU 1080p", "h264_nvenc", "aac", "1920x1080", 30, 8000, 22050, 2, 44100, 128, true),
     GPU_H265("gpu_h265", "H.265 NVENC GPU 1080p", "hevc_nvenc", "aac", "1920x1080", 30, 6000, 22050, 2, 44100, 128, true),
     GPU_VP9("gpu_vp9", "VP9 VAAPI GPU 1080p", "vp9_vaapi", "aac", "1920x1080", 30, 6000, 22050, 2, 44100, 128, true);

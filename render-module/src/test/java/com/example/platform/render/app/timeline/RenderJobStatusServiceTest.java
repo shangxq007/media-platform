@@ -215,7 +215,7 @@ class RenderJobStatusServiceTest {
         registerOutputProductWithFullMetadata(renderJobId, "prj_1", "rev_1", "snap_1",
                 ProductStatus.READY, "video/mp4", List.of("input_1"),
                 "timeline-revision-render", "default_1080p", "mp4",
-                1920, 1080, 30, 10.5, true, "ffmpeg-libass");
+                1920, 1080, 30, 10.5, true, "provider-a");
 
         // Act
         Optional<RenderJobStatusResponse> result = statusService.findStatus("prj_1", "rev_1", renderJobId);
@@ -237,7 +237,7 @@ class RenderJobStatusServiceTest {
         registerOutputProductWithFullMetadata(renderJobId, "prj_1", "rev_1", "snap_1",
                 ProductStatus.READY, "video/mp4", List.of("input_1"),
                 "timeline-revision-render", "default_1080p", "mp4",
-                1920, 1080, 30, 10.5, true, "ffmpeg-libass");
+                1920, 1080, 30, 10.5, true, "provider-a");
 
         // Act
         Optional<RenderJobResultResponse> result = statusService.findResult("prj_1", "rev_1", renderJobId);
@@ -257,7 +257,7 @@ class RenderJobStatusServiceTest {
         assertEquals(30, response.fps());
         assertEquals(10.5, response.durationSeconds());
         assertTrue(response.hasSubtitles());
-        assertEquals("ffmpeg-libass", response.baselineRenderer());
+        assertEquals("provider-a", response.baselineRenderer());
         assertEquals("timeline-revision-render", response.renderMode());
         assertEquals(1, response.inputProductIds().size());
         assertEquals("input_1", response.inputProductIds().get(0));
@@ -272,7 +272,7 @@ class RenderJobStatusServiceTest {
         registerOutputProductWithFullMetadata("rj_result_002", "prj_1", "rev_1", "snap_1",
                 ProductStatus.READY, "video/webm", List.of(),
                 "timeline-revision-render", "default_720p", "webm",
-                1280, 720, 24, 5.0, false, "ffmpeg-libass");
+                1280, 720, 24, 5.0, false, "provider-a");
 
         // Act
         Optional<RenderJobResultResponse> result = statusService.findResult("prj_1", "rev_1", "rj_result_002");
@@ -380,7 +380,7 @@ class RenderJobStatusServiceTest {
         Product product = new Product(
                 productId, "tenant_1", projectId, null,
                 ProductType.FINAL_RENDER, RepresentationKind.MEDIA_FILE,
-                "ffmpeg", "ffmpeg", revisionId,
+                "provider-a", "provider-a", revisionId,
                 status, "storage_ref_1", "checksum_1", "content_hash_1",
                 mimeType, 1, metadataJson, Instant.now(), Instant.now());
 
@@ -412,7 +412,7 @@ class RenderJobStatusServiceTest {
         Product product = new Product(
                 productId, "tenant_1", projectId, null,
                 ProductType.FINAL_RENDER, RepresentationKind.MEDIA_FILE,
-                "ffmpeg", "ffmpeg", revisionId,
+                "provider-a", "provider-a", revisionId,
                 status, "storage_ref_1", "checksum_1", "content_hash_1",
                 mimeType, 1, metadataJson, Instant.now(), Instant.now());
 

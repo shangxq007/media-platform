@@ -6,7 +6,7 @@ import java.util.List;
  * Result of template application — provider-neutral.
  * Internal domain model.
  *
- * <p>Does not contain FFmpeg commands, Remotion props, or storage internals.</p>
+ * <p>Does not contain Provider commands, Remotion props, or storage internals.</p>
  */
 public record TemplateApplicationResult(
         TemplateApplicationStatus status,

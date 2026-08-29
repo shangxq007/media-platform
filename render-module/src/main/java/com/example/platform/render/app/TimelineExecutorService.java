@@ -9,7 +9,7 @@ import java.util.Map;
 import org.springframework.stereotype.Service;
 
 /**
- * L2 timeline executor: explicit multi-stage plan (MLT multitrack, OFX effects, libass, transcode, packaging).
+ * L2 timeline executor: explicit multi-stage plan (MLT multitrack, OFX effects, timed-text composition, transcode, packaging).
  */
 @Service
 public class TimelineExecutorService {

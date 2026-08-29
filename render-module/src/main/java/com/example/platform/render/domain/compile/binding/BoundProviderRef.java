@@ -9,7 +9,7 @@ import com.example.platform.render.infrastructure.ProviderType;
  * <p>Internal only — captures the selected provider metadata
  * without exposing it in public APIs.</p>
  *
- * @param providerName    provider name (e.g., "ffmpeg", "remotion")
+ * @param providerName    typed provider identity (e.g., "provider-a", "remotion")
  * @param providerStatus  provider status (PRODUCTION, POC, etc.)
  * @param providerType    provider type (RENDER, PACKAGING, etc.)
  * @param priority        provider priority (P0, P1, etc.)

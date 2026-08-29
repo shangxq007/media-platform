@@ -15,7 +15,6 @@ import com.example.platform.storage.contract.*;
 import com.example.platform.render.infrastructure.product.ProductDependencyRepository;
 import com.example.platform.render.infrastructure.product.ProductRepository;
 import com.example.platform.render.infrastructure.storage.StorageReferenceRepository;
-import com.example.platform.render.testsupport.R2FixtureGenerator;
 import com.example.platform.shared.Ids;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -33,7 +32,7 @@ import org.junit.jupiter.api.io.TempDir;
 /**
  * Multi-provider integration smoke test proving the safe provider integration pattern.
  *
- * <p>This test verifies that non-FFmpeg providers can participate in the
+ * <p>This test verifies that non-Provider providers can participate in the
  * StorageRuntime integration pattern while remaining non-production-eligible:
  * <ol>
  *   <li>StorageRuntime materialized input</li>
@@ -45,7 +44,7 @@ import org.junit.jupiter.api.io.TempDir;
  * </ol>
  *
  * <p>All providers tested here are POC/SPIKE status and NOT production-eligible.
- * FFmpeg remains the only production baseline.</p>
+ * Provider remains the only production baseline.</p>
  */
 class ProviderIntegrationSmokeTest {
     @SuppressWarnings("unchecked")
@@ -77,12 +76,12 @@ class ProviderIntegrationSmokeTest {
     // ── Provider Status Verification ──
 
     @Test
-    @DisplayName("FFmpeg is the only production-eligible provider")
-    void ffmpegIsOnlyProductionProvider() {
-        ProviderMetadata ffmpeg = createProviderMetadata("ffmpeg", ProviderStatus.PRODUCTION, true);
-        assertTrue(ffmpeg.isProduction(), "FFmpeg must be production status");
-        assertTrue(ffmpeg.autoDispatch(), "FFmpeg must auto-dispatch");
-        assertTrue(ffmpeg.participatesInAutoRouting(), "FFmpeg must participate in auto-routing");
+    @DisplayName("Provider is the only production-eligible provider")
+    void providerIsOnlyProductionProvider() {
+        ProviderMetadata provider = createProviderMetadata("provider-a", ProviderStatus.PRODUCTION, true);
+        assertTrue(provider.isProduction(), "Provider must be production status");
+        assertTrue(provider.autoDispatch(), "Provider must auto-dispatch");
+        assertTrue(provider.participatesInAutoRouting(), "Provider must participate in auto-routing");
     }
 
     @Test
@@ -137,8 +136,8 @@ class ProviderIntegrationSmokeTest {
     // ── Provider Eligibility Verification ──
 
     @Test
-    @DisplayName("Non-FFmpeg providers are not eligible for production jobs")
-    void nonFFmpegProvidersNotEligibleForProduction() {
+    @DisplayName("Non-Provider providers are not eligible for production jobs")
+    void nonBaselineProvidersNotEligibleForProduction() {
         RenderJob productionJob = createProductionJob();
 
         ProviderMetadata remotion = createProviderMetadata("remotion", ProviderStatus.POC, false);
@@ -163,8 +162,8 @@ class ProviderIntegrationSmokeTest {
     }
 
     @Test
-    @DisplayName("Non-FFmpeg providers are eligible for manual/experiment jobs")
-    void nonFFmpegProvidersEligibleForManualJobs() {
+    @DisplayName("Non-Provider providers are eligible for manual/experiment jobs")
+    void nonBaselineProvidersEligibleForManualJobs() {
         RenderJob manualJob = createManualJob();
         RenderJob experimentJob = createExperimentJob();
 
@@ -243,13 +242,13 @@ class ProviderIntegrationSmokeTest {
                 .tenantId("tenant-1")
                 .projectId("project-1")
                 .renderJobId("test-job-1")
-                .baselineRenderer("ffmpeg-libass")
+                .baselineRenderer("provider-a")
                 .renderMode("timeline-revision-render")
                 .inputProductIds(List.of(inputProductId))
                 .build();
 
         Product outputProduct = registrationService.registerOutput(
-                "test-job-1", "tenant-1", "project-1", "ffmpeg",
+                "test-job-1", "tenant-1", "project-1", "provider-a",
                 outputRelativePath, provenance);
 
         // Verify output Product
@@ -275,10 +274,10 @@ class ProviderIntegrationSmokeTest {
     @Test
     @DisplayName("All providers have valid capability declarations")
     void allProvidersHaveValidCapabilities() {
-        // Verify FFmpeg capabilities
-        ProviderMetadata ffmpeg = createProviderMetadata("ffmpeg", ProviderStatus.PRODUCTION, true);
-        assertFalse(ffmpeg.declaredCapabilities().isEmpty(), "FFmpeg must have declared capabilities");
-        assertFalse(ffmpeg.enabledCapabilities().isEmpty(), "FFmpeg must have enabled capabilities");
+        // Verify Provider capabilities
+        ProviderMetadata provider = createProviderMetadata("provider-a", ProviderStatus.PRODUCTION, true);
+        assertFalse(provider.declaredCapabilities().isEmpty(), "Provider must have declared capabilities");
+        assertFalse(provider.enabledCapabilities().isEmpty(), "Provider must have enabled capabilities");
 
         // Verify Remotion capabilities
         ProviderMetadata remotion = createProviderMetadata("remotion", ProviderStatus.POC, false);

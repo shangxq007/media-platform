@@ -7,7 +7,6 @@ import com.example.platform.render.infrastructure.bento4.Bento4PackagingProvider
 import com.example.platform.render.infrastructure.natron.NatronRenderProvider;
 import com.example.platform.render.infrastructure.natron.NatronRenderProviderProperties;
 import com.example.platform.render.infrastructure.shotstack.ShotstackRenderProvider;
-import com.example.platform.render.infrastructure.libass.LibassOverlayRenderProvider;
 import com.example.platform.render.infrastructure.remotion.RemotionRenderProvider;
 import com.example.platform.render.infrastructure.blender.BlenderRenderProvider;
 import com.example.platform.render.infrastructure.vapoursynth.VapourSynthRenderProvider;
@@ -43,7 +42,6 @@ public class RenderProviderAutoConfiguration {
                                          Optional<NatronRenderProviderProperties> natronProperties,
                                          Optional<Bento4PackagingProvider> bento4PackagingProvider,
                                          Optional<ShotstackRenderProvider> shotstackProvider,
-                                         Optional<LibassOverlayRenderProvider> libassProvider,
                                          Optional<RemotionRenderProvider> remotionProvider,
                                          Optional<BlenderRenderProvider> blenderProvider,
                                          Optional<ShakaPackagingProvider> shakaPackagingProvider,
@@ -73,11 +71,6 @@ public class RenderProviderAutoConfiguration {
             shotstackProvider.ifPresent(shotstack -> {
                 registry.register("shotstack", shotstack, shotstack.getCapability());
                 log.info("Shotstack cloud render provider registered (OPTIONAL/P2/External Cloud)");
-            });
-
-            libassProvider.ifPresent(libass -> {
-                registry.register("libass", libass, libass.getCapability());
-                log.info("Libass overlay provider registered (POC/P1/ASS-SSA Subtitle)");
             });
 
             remotionProvider.ifPresent(remotion -> {

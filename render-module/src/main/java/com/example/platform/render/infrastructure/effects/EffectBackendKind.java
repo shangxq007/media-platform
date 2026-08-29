@@ -4,12 +4,6 @@ package com.example.platform.render.infrastructure.effects;
  * Backend implementation types for effects.
  */
 public enum EffectBackendKind {
-    /** Native FFmpeg filter */
-    NATIVE_FFMPEG,
-    
-    /** Native libass rendering */
-    NATIVE_LIBASS,
-    
     /** Java2D/AWT rendering */
     JAVA2D,
     

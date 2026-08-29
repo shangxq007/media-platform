@@ -1,0 +1,21 @@
+package com.example.platform.render.domain.plan;
+
+import java.util.Map;
+import java.util.Objects;
+
+/**
+ * Typed parameter for a render step.
+ * Immutable. Internal domain model.
+ */
+public record BasicRenderStepParameter(
+        String name,
+        BasicRenderStepParameterType type,
+        Object value,
+        Map<String, String> safeMetadata
+) {
+    public BasicRenderStepParameter {
+        Objects.requireNonNull(name, "name must not be null");
+        Objects.requireNonNull(type, "type must not be null");
+        safeMetadata = safeMetadata == null ? Map.of() : Map.copyOf(safeMetadata);
+    }
+}

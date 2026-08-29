@@ -27,7 +27,7 @@ public interface BlenderRenderProviderInterface extends ThreeDRenderProvider {
                 List.of(
                         "NOT for ordinary subtitle videos or ordinary editing",
                         "NOT for 2D timeline editing",
-                        "Output should be passed to FFmpeg for final normalization",
+                        "Output should be passed to Provider for final normalization",
                         "Requires Blender binary and Python scripting"
                 )
         );

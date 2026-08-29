@@ -76,11 +76,11 @@ class SubtitleRenderApiMvcTest {
     }
 
     @Test
-    void rawFFmpegCommandRejected() {
+    void rawProviderCommandRejected() {
         PublicApiError error = PublicApiError.rawCommandRejected();
         assertNotNull(error);
         assertEquals("INVALID_REQUEST", error.code());
-        assertTrue(error.message().contains("FFmpeg"));
+        assertTrue(error.message().contains("Provider"));
     }
 
     @Test

@@ -157,7 +157,7 @@ class TimelineRevisionRenderFacadeTest {
     private TimelineRevisionRenderService.RevisionRenderResult createTestResult() {
         return new TimelineRevisionRenderService.RevisionRenderResult(
                 "rj-1", "rev-1", "snap-1", "prod-1", "READY", "stor-1", "video/mp4",
-                "mp4", 1920, 1080, 30, 5.0, false, "ffmpeg-libass", "test", List.of("input-1"), 1);
+                "mp4", 1920, 1080, 30, 5.0, false, "provider-a", "test", List.of("input-1"), 1);
     }
 
     static class MockDedupService extends RenderDeduplicationService {
@@ -178,7 +178,7 @@ class TimelineRevisionRenderFacadeTest {
     static class MockLegacyService extends TimelineRevisionRenderService {
         boolean called = false;
         TimelineRevisionRenderService.RevisionRenderResult result;
-        MockLegacyService() { super(null, null, null, null, null, null, null, null, null, null, null, null); }
+        MockLegacyService() { super(null, null, null, null, null, null, null, null, null, null, null); }
         @Override
         public RevisionRenderResult render(String projectId, String revisionId, String outputProfile) {
             called = true; return result;

@@ -1,0 +1,268 @@
+{
+  "schema_version": 1,
+  "task": "PHASE19_TEST_SURFACE_CHANGE_ACCOUNTING_V1",
+  "historical_report": {
+    "path": "/home/user/ROADMAP_22_PHASE_19_C3_FFMPEG_PLUGIN_MIGRATION_DUAL_DISTRIBUTION_REPORT.txt",
+    "reported_modules": 45,
+    "reported_suites": 999,
+    "reported_tests": 8138,
+    "user_approximate_tests": 8139,
+    "report_minus_fresh_reproduction": 114,
+    "reproducible_from_fresh_same_sha": "NO",
+    "explanation": "historical report aggregated non-hermetic/stale XML; exact XML was not retained. Fresh detached worktree at the same SHA and same Gradle command is authoritative for source-surface comparison. A polluted canonical build directory independently reproduced one stale compatibility-migration-module with 14 tests, proving the mechanism."
+  },
+  "fresh_base_reproduction": {
+    "sha": "923273758810195a22e4109cf145977bb7f3e970",
+    "command": "DOCKER_HOST=unix:///run/user/1000/podman/podman.sock ./gradlew --no-daemon --max-workers=1 test --rerun-tasks",
+    "result": "PASS",
+    "modules": 44,
+    "suites": 964,
+    "tests": 8024,
+    "passed": 7992,
+    "skipped": 32
+  },
+  "candidate_validation": {
+    "base_sha": "923273758810195a22e4109cf145977bb7f3e970",
+    "modules": 44,
+    "suites": 957,
+    "tests": 7929,
+    "passed": 7900,
+    "skipped": 29
+  },
+  "actual_test_surface_delta": -95,
+  "non_render_base_tests": 5098,
+  "non_render_candidate_tests": 5098,
+  "non_render_delta": 0,
+  "module_deltas": {
+    "render-module": {
+      "base": 2926,
+      "candidate": 2831,
+      "delta": -95
+    }
+  },
+  "render_case_multiset": {
+    "base": 2926,
+    "candidate": 2831,
+    "delta": -95,
+    "removed_cases": 312,
+    "added_cases": 217,
+    "renamed_equivalent_removed": 144,
+    "renamed_equivalent_added": 144,
+    "whole_class_deleted": 97,
+    "modified_same_class_removed": 71,
+    "modified_same_class_added": 73,
+    "modified_same_class_net": 2
+  },
+  "renamed_equivalent_test_classes": [
+    {
+      "old_class": "com.example.platform.render.domain.effect.FFmpegBaselineEffectPlannerTest",
+      "new_class": "com.example.platform.render.domain.effect.BaselineEffectPlannerTest",
+      "old_cases": 49,
+      "new_cases": 49,
+      "classification": "REPLACED_BY_EQUIVALENT_ARCHITECTURE_TESTS"
+    },
+    {
+      "old_class": "com.example.platform.render.domain.transition.FFmpegBaselineTransitionPlannerTest",
+      "new_class": "com.example.platform.render.domain.transition.BaselineTransitionPlannerTest",
+      "old_cases": 49,
+      "new_cases": 49,
+      "classification": "REPLACED_BY_EQUIVALENT_ARCHITECTURE_TESTS"
+    },
+    {
+      "old_class": "com.example.platform.render.domain.plan.FFmpegLibassBasicRenderPlannerTest",
+      "new_class": "com.example.platform.render.domain.plan.BasicRenderPlannerTest",
+      "old_cases": 46,
+      "new_cases": 46,
+      "classification": "REPLACED_BY_EQUIVALENT_ARCHITECTURE_TESTS"
+    }
+  ],
+  "deleted_test_class_groups": {
+    "MOVED_TO_PROVIDER_TESTS": {
+      "classes": [
+        "com.example.platform.render.app.timeline.TimelineFfmpegBaselineRenderSmokeTest"
+      ],
+      "count": 16,
+      "capability_keys": [
+        "TRANSCODE_FIXED_H264_VIDEO",
+        "SYNTHETIC_TESTSRC_FIXTURE",
+        "REAL_MEDIA_CLOSED_LOOP"
+      ],
+      "replacement": [
+        "FfmpegProviderContractTest",
+        "FfmpegClosedLoopIntegrationTest"
+      ]
+    },
+    "MOVED_TO_PROVIDER_RUNTIME_CONFORMANCE": {
+      "classes": [
+        "com.example.platform.render.app.input.RenderInputMaterializationSmokeTest"
+      ],
+      "count": 11,
+      "capability_keys": [
+        "INPUT_MATERIALIZATION"
+      ],
+      "replacement": [
+        "FfmpegClosedLoopIntegrationTest",
+        "runtime reuse tests"
+      ]
+    },
+    "MOVED_TO_PROVIDER_CONFORMANCE": {
+      "classes": [
+        "com.example.platform.render.app.timeline.TimelineRevisionRealRenderSmokeTest",
+        "com.example.platform.render.app.timeline.TimelineRevisionS3InputOutputRealRenderSmokeTest",
+        "com.example.platform.render.app.timeline.TimelineRevisionS3OutputRealRenderSmokeTest",
+        "com.example.platform.render.app.timeline.TimelineRevisionS3RealRenderSmokeTest"
+      ],
+      "count": 4,
+      "capability_keys": [
+        "REAL_MEDIA_CLOSED_LOOP",
+        "OUTPUT_STAGING",
+        "ARTIFACT_COMMIT_COMPLETION_REUSE"
+      ],
+      "replacement": [
+        "FfmpegClosedLoopIntegrationTest",
+        "RuntimeClosedLoopConformanceTest"
+      ]
+    },
+    "DELETED_WITH_RETIRED_LEGACY_IMPLEMENTATION": {
+      "classes": [
+        "com.example.platform.render.infrastructure.subtitle.SubtitleBurnInProductizationTest",
+        "com.example.platform.render.infrastructure.libass.AssTextSanitizerTest",
+        "com.example.platform.render.infrastructure.libass.LibassAssFileWriterTest",
+        "com.example.platform.render.infrastructure.libass.LibassSubtitleCompositorTest"
+      ],
+      "count": 48,
+      "capability_keys": [
+        "SUBTITLE_CAPTION_BURN_IN_LOWERING",
+        "CAPTION_TIMED_TEXT_SEMANTICS",
+        "BASIC_RENDER_PLAN_SEMANTICS"
+      ],
+      "replacement": [
+        "TimedText/Text semantic tests",
+        "BasicRenderPlannerTest"
+      ],
+      "note": "concrete burn-in lowering is explicitly deferred and not claimed supported; semantic WHAT remains covered"
+    },
+    "DUPLICATE_TESTS_REMOVED": {
+      "classes": [
+        "com.example.platform.render.domain.render.local.LocalRenderSmokeDomainTest"
+      ],
+      "count": 18,
+      "capability_keys": [
+        "SHADOW_LOCAL_RENDER_RUNNER"
+      ],
+      "replacement": [
+        "current closed-loop conformance"
+      ],
+      "note": "shadow local runner proven duplicate"
+    }
+  },
+  "removed_class_counts": {
+    "com.example.platform.render.api.CaptionTemplateRenderApiE2ESmokeTest": 1,
+    "com.example.platform.render.api.CaptionTemplateRenderApiTest": 1,
+    "com.example.platform.render.app.TimelineExecutorServiceTest": 1,
+    "com.example.platform.render.app.caption.CaptionTemplateRenderE2ESmokeTest": 1,
+    "com.example.platform.render.app.caption.CaptionTemplateRenderServiceTest": 1,
+    "com.example.platform.render.app.clientexport.ClientExportServiceTest": 1,
+    "com.example.platform.render.app.input.RenderInputMaterializationSmokeTest": 11,
+    "com.example.platform.render.app.planner.RenderPlannerServiceTest": 1,
+    "com.example.platform.render.app.timeline.TimelineFfmpegBaselineRenderSmokeTest": 16,
+    "com.example.platform.render.app.timeline.TimelineRevisionRealRenderSmokeTest": 1,
+    "com.example.platform.render.app.timeline.TimelineRevisionS3InputOutputRealRenderSmokeTest": 1,
+    "com.example.platform.render.app.timeline.TimelineRevisionS3OutputRealRenderSmokeTest": 1,
+    "com.example.platform.render.app.timeline.TimelineRevisionS3RealRenderSmokeTest": 1,
+    "com.example.platform.render.app.timeline.compile.LocalExecutionPlanRunnerTest": 3,
+    "com.example.platform.render.app.timeline.compile.PlanBasedDefaultReadinessTest": 1,
+    "com.example.platform.render.app.timeline.compile.PlanBasedPostSwitchStabilizationTest": 1,
+    "com.example.platform.render.app.timeline.compile.PlanBasedTimelineRevisionRenderSmokeTest": 1,
+    "com.example.platform.render.app.timeline.compile.ProviderBindingCompilerTest": 1,
+    "com.example.platform.render.app.timeline.compile.ProviderBindingGoldenFixtureTest": 3,
+    "com.example.platform.render.app.timeline.compile.ProviderExecutionDocumentDraftCompilerTest": 1,
+    "com.example.platform.render.app.timeline.compile.RenderExecutionPlanCompilerTest": 2,
+    "com.example.platform.render.app.timeline.compile.RenderPlanPolicyGuardTest": 1,
+    "com.example.platform.render.app.timeline.compile.TimelineRevisionRenderModeParityTest": 1,
+    "com.example.platform.render.app.timeline.compile.remotion.PlanBasedProviderDocumentGenerationIntegrationTest": 2,
+    "com.example.platform.render.app.timeline.compile.remotion.RemotionManualExperimentBindingTest": 1,
+    "com.example.platform.render.domain.effect.FFmpegBaselineEffectPlannerTest": 49,
+    "com.example.platform.render.domain.plan.FFmpegLibassBasicRenderPlannerTest": 46,
+    "com.example.platform.render.domain.render.local.LocalRenderSmokeDomainTest": 18,
+    "com.example.platform.render.domain.scenario.InternalScenarioRunnerTest": 2,
+    "com.example.platform.render.domain.transition.FFmpegBaselineTransitionPlannerTest": 49,
+    "com.example.platform.render.domain.visual.VisualCapabilityContractTest": 3,
+    "com.example.platform.render.infrastructure.ProviderIntegrationSmokeTest": 3,
+    "com.example.platform.render.infrastructure.ProviderStatusConservatismTest": 3,
+    "com.example.platform.render.infrastructure.RenderToolCapabilityInventoryTest": 1,
+    "com.example.platform.render.infrastructure.SubtitleBurnInServiceTest": 9,
+    "com.example.platform.render.infrastructure.SubtitleRenderServiceTest": 6,
+    "com.example.platform.render.infrastructure.api.SubtitleRenderApiMvcTest": 1,
+    "com.example.platform.render.infrastructure.environment.OpenCueSubmissionSliceTest": 1,
+    "com.example.platform.render.infrastructure.libass.AssTextSanitizerTest": 16,
+    "com.example.platform.render.infrastructure.libass.LibassAssFileWriterTest": 9,
+    "com.example.platform.render.infrastructure.libass.LibassSubtitleCompositorTest": 6,
+    "com.example.platform.render.infrastructure.media.MediaProbePortAdapterTest": 1,
+    "com.example.platform.render.infrastructure.remotion.RemotionCapabilityExtensionTest": 2,
+    "com.example.platform.render.infrastructure.remotion.RemotionDispatchExclusionTest": 2,
+    "com.example.platform.render.infrastructure.renderplan.ToolRouterTest": 1,
+    "com.example.platform.render.infrastructure.subtitle.SubtitleBurnInProductizationTest": 17,
+    "com.example.platform.render.infrastructure.subtitle.SubtitlePathSanitizerTest": 2,
+    "com.example.platform.render.integration.VS0VerticalSliceIntegrationTest$ExecutionPlan": 1,
+    "com.example.platform.render.integration.VS0VerticalSliceIntegrationTest$ProviderBinding": 1,
+    "com.example.platform.render.integration.Vs0VerticalSliceIntegrationTest$DomainBoundaryValidation": 1,
+    "com.example.platform.render.integration.Vs0VerticalSliceIntegrationTest$FFmpegPlanStage": 3,
+    "com.example.platform.render.integration.Vs0VerticalSliceIntegrationTest$RenderPlanStateMachineStage": 1,
+    "com.example.platform.render.policy.SimpleRenderPolicyEngineTest": 2
+  },
+  "added_class_counts": {
+    "com.example.platform.render.api.CaptionTemplateRenderApiE2ESmokeTest": 1,
+    "com.example.platform.render.api.CaptionTemplateRenderApiTest": 1,
+    "com.example.platform.render.app.MultiProviderPipelineIncrementalTest": 2,
+    "com.example.platform.render.app.TimelineExecutorServiceTest": 1,
+    "com.example.platform.render.app.caption.CaptionTemplateRenderE2ESmokeTest": 1,
+    "com.example.platform.render.app.caption.CaptionTemplateRenderServiceTest": 1,
+    "com.example.platform.render.app.clientexport.ClientExportServiceTest": 1,
+    "com.example.platform.render.app.planner.RenderPlannerServiceTest": 1,
+    "com.example.platform.render.app.timeline.compile.LocalExecutionPlanRunnerTest": 4,
+    "com.example.platform.render.app.timeline.compile.PlanBasedDefaultReadinessTest": 1,
+    "com.example.platform.render.app.timeline.compile.PlanBasedPostSwitchStabilizationTest": 1,
+    "com.example.platform.render.app.timeline.compile.PlanBasedTimelineRevisionRenderSmokeTest": 1,
+    "com.example.platform.render.app.timeline.compile.ProviderBindingCompilerTest": 1,
+    "com.example.platform.render.app.timeline.compile.ProviderBindingGoldenFixtureTest": 3,
+    "com.example.platform.render.app.timeline.compile.ProviderExecutionDocumentDraftCompilerTest": 2,
+    "com.example.platform.render.app.timeline.compile.RenderExecutionPlanCompilerTest": 3,
+    "com.example.platform.render.app.timeline.compile.RenderPlanPolicyGuardTest": 1,
+    "com.example.platform.render.app.timeline.compile.TimelineRevisionRenderModeParityTest": 1,
+    "com.example.platform.render.app.timeline.compile.remotion.PlanBasedProviderDocumentGenerationIntegrationTest": 2,
+    "com.example.platform.render.app.timeline.compile.remotion.RemotionManualExperimentBindingTest": 1,
+    "com.example.platform.render.domain.effect.BaselineEffectPlannerTest": 49,
+    "com.example.platform.render.domain.plan.BasicRenderPlannerTest": 46,
+    "com.example.platform.render.domain.scenario.InternalScenarioRunnerTest": 2,
+    "com.example.platform.render.domain.transition.BaselineTransitionPlannerTest": 49,
+    "com.example.platform.render.domain.visual.VisualCapabilityContractTest": 3,
+    "com.example.platform.render.infrastructure.ColorProbeMetadataExtractorTest": 1,
+    "com.example.platform.render.infrastructure.EffectMappingServiceFailClosedTest": 3,
+    "com.example.platform.render.infrastructure.ExportPolicyServiceTest": 3,
+    "com.example.platform.render.infrastructure.ProviderIntegrationSmokeTest": 3,
+    "com.example.platform.render.infrastructure.ProviderStatusConservatismTest": 3,
+    "com.example.platform.render.infrastructure.RenderProviderPropertiesTest": 1,
+    "com.example.platform.render.infrastructure.RenderToolCapabilityInventoryTest": 1,
+    "com.example.platform.render.infrastructure.SubtitleBurnInServiceTest": 2,
+    "com.example.platform.render.infrastructure.SubtitleRenderServiceTest": 1,
+    "com.example.platform.render.infrastructure.api.SubtitleRenderApiMvcTest": 1,
+    "com.example.platform.render.infrastructure.environment.OpenCueSubmissionSliceTest": 1,
+    "com.example.platform.render.infrastructure.media.MediaProbePortAdapterTest": 1,
+    "com.example.platform.render.infrastructure.remotion.RemotionCapabilityExtensionTest": 2,
+    "com.example.platform.render.infrastructure.remotion.RemotionDispatchExclusionTest": 2,
+    "com.example.platform.render.infrastructure.renderplan.ToolRouterTest": 1,
+    "com.example.platform.render.infrastructure.skia.SkiaStickerOverlayProviderTest": 1,
+    "com.example.platform.render.infrastructure.subtitle.SubtitlePathSanitizerTest": 2,
+    "com.example.platform.render.integration.VS0VerticalSliceIntegrationTest$ExecutionPlan": 1,
+    "com.example.platform.render.integration.VS0VerticalSliceIntegrationTest$ProviderBinding": 1,
+    "com.example.platform.render.integration.Vs0VerticalSliceIntegrationTest$DomainBoundaryValidation": 1,
+    "com.example.platform.render.integration.Vs0VerticalSliceIntegrationTest$ProviderPlanStage": 3,
+    "com.example.platform.render.integration.Vs0VerticalSliceIntegrationTest$RenderPlanStateMachineStage": 1,
+    "com.example.platform.render.policy.SimpleRenderPolicyEngineTest": 2
+  },
+  "unexplained_test_count_reduction": 0,
+  "unexplained_behavioral_test_loss": 0,
+  "genuinely_lost_behavioral_coverage_count": 0,
+  "accounting_equation": "8024 fresh base - 97 whole-class deletions + 2 modified-class net + 0 rename net = 7929 candidate"
+}

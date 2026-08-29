@@ -38,10 +38,10 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Smoke test proving Timeline → RenderJob → Storage → Product closure.
  *
- * <p><b>This test uses a controlled local output file — NOT real FFmpeg/libass rendering.</b>
+ * <p><b>This test uses a controlled local output file and does not invoke a typed provider plugin.</b>
  * It proves the integration chain from timeline fixture through {@link TimelineRenderJobMapper}
  * and {@link RenderOutputRegistrationService} to a READY {@link Product}. It does NOT prove
- * real FFmpeg/libass rendering; that requires the baseline FFmpeg integration test.</p>
+ * concrete rendering; that requires a separately bound typed provider plugin.</p>
  *
  * <p>Architecture compliance:
  * <ul>
@@ -53,7 +53,7 @@ import static org.junit.jupiter.api.Assertions.*;
  *   <li>No Artifact Runtime introduced</li>
  *   <li>No signed URLs persisted</li>
  *   <li>No real OpenCue, Remotion production dispatch, MinIO/S3 required</li>
- *   <li>FFmpeg/libass remains baseline subtitle burn-in</li>
+ *   <li>Timed-text composition remains a typed provider-plugin responsibility</li>
  * </ul>
  */
 class TimelineCoreRenderableSmokeTest {
@@ -114,7 +114,7 @@ class TimelineCoreRenderableSmokeTest {
         assertEquals(TimelineCoreSmokeFixture.TIMELINE_ID, mappingResult.timelineId());
 
         // 3. Create controlled local output file (simulating render output)
-        //    This is NOT real FFmpeg output — it is a controlled smoke test artifact.
+        //    This is NOT real Provider output — it is a controlled smoke test artifact.
         String relativePath = "artifacts/rj_smoke_001/output.mp4";
         Path outputFile = tempDir.resolve(relativePath);
         Files.createDirectories(outputFile.getParent());
@@ -126,7 +126,7 @@ class TimelineCoreRenderableSmokeTest {
                 "rj_smoke_001",
                 TimelineCoreSmokeFixture.TENANT_ID,
                 TimelineCoreSmokeFixture.PROJECT_ID,
-                "ffmpeg",
+                "provider-a",
                 relativePath);
 
         // 5. Verify Product is READY
@@ -160,7 +160,7 @@ class TimelineCoreRenderableSmokeTest {
         Files.writeString(outputFile, "query-id-test");
 
         Product product = registrationService.registerOutput(
-                "job-qid", "ten_1", "prj_1", "ffmpeg", "artifacts/job-qid/output.mp4");
+                "job-qid", "ten_1", "prj_1", "provider-a", "artifacts/job-qid/output.mp4");
 
         Optional<Product> found = productRuntime.find(product.productId());
         assertTrue(found.isPresent());
@@ -178,7 +178,7 @@ class TimelineCoreRenderableSmokeTest {
         Files.writeString(outputFile, "query-project-test");
 
         Product product = registrationService.registerOutput(
-                "job-qprj", "ten_1", "prj_query", "ffmpeg", "artifacts/job-qprj/output.mp4");
+                "job-qprj", "ten_1", "prj_query", "provider-a", "artifacts/job-qprj/output.mp4");
 
         List<Product> products = productRuntime.findByProject("prj_query", 50);
         assertTrue(products.stream().anyMatch(p -> p.productId().equals(product.productId())));
@@ -191,7 +191,7 @@ class TimelineCoreRenderableSmokeTest {
         Files.writeString(outputFile, "type-test");
 
         Product product = registrationService.registerOutput(
-                "job-type", "ten_1", "prj_1", "ffmpeg", "artifacts/job-type/output.mp4");
+                "job-type", "ten_1", "prj_1", "provider-a", "artifacts/job-type/output.mp4");
 
         assertEquals(ProductType.FINAL_RENDER, product.productType());
         assertEquals(RepresentationKind.MEDIA_FILE, product.representationKind());
@@ -204,7 +204,7 @@ class TimelineCoreRenderableSmokeTest {
         Files.writeString(outputFile, "storage-test");
 
         Product product = registrationService.registerOutput(
-                "job-stor", "ten_1", "prj_1", "ffmpeg", "artifacts/job-stor/output.mp4");
+                "job-stor", "ten_1", "prj_1", "provider-a", "artifacts/job-stor/output.mp4");
 
         assertNotNull(product.storageReferenceId());
         assertTrue(storageRuntime.find(product.storageReferenceId()).isPresent());
@@ -217,7 +217,7 @@ class TimelineCoreRenderableSmokeTest {
         Files.writeString(outputFile, "checksum-test-content");
 
         Product product = registrationService.registerOutput(
-                "job-chk", "ten_1", "prj_1", "ffmpeg", "artifacts/job-chk/output.mp4");
+                "job-chk", "ten_1", "prj_1", "provider-a", "artifacts/job-chk/output.mp4");
 
         assertNotNull(product.checksum());
         assertTrue(storageRuntime.verifyChecksum(product.storageReferenceId()));
@@ -230,12 +230,12 @@ class TimelineCoreRenderableSmokeTest {
         Files.writeString(outputFile, "provenance-test");
 
         Product product = registrationService.registerOutput(
-                "job-prov", "ten_1", "prj_1", "ffmpeg", "artifacts/job-prov/output.mp4");
+                "job-prov", "ten_1", "prj_1", "provider-a", "artifacts/job-prov/output.mp4");
 
         String metadata = product.metadataJson();
         assertNotNull(metadata);
         assertTrue(metadata.contains("\"jobId\":\"job-prov\""), "Metadata must contain jobId");
-        assertTrue(metadata.contains("\"producerId\":\"ffmpeg\""), "Metadata must contain producerId");
+        assertTrue(metadata.contains("\"producerId\":\"provider-a\""), "Metadata must contain producerId");
         assertTrue(metadata.contains("\"fileSize\":"), "Metadata must contain fileSize");
         assertTrue(metadata.contains("\"mimeType\":\"video/mp4\""), "Metadata must contain mimeType");
         assertTrue(metadata.contains("\"checksum\":"), "Metadata must contain checksum");
@@ -248,7 +248,7 @@ class TimelineCoreRenderableSmokeTest {
         Files.writeString(outputFile, "no-signed-url-test");
 
         Product product = registrationService.registerOutput(
-                "job-nosign", "ten_1", "prj_1", "ffmpeg", "artifacts/job-nosign/output.mp4");
+                "job-nosign", "ten_1", "prj_1", "provider-a", "artifacts/job-nosign/output.mp4");
 
         String metadata = product.metadataJson();
         assertFalse(metadata.contains("signedUrl"), "Metadata must not contain signedUrl");
@@ -263,7 +263,7 @@ class TimelineCoreRenderableSmokeTest {
         Files.writeString(outputFile, "no-path-test");
 
         Product product = registrationService.registerOutput(
-                "job-nopath", "ten_1", "prj_1", "ffmpeg", "artifacts/job-nopath/output.mp4");
+                "job-nopath", "ten_1", "prj_1", "provider-a", "artifacts/job-nopath/output.mp4");
 
         String metadata = product.metadataJson();
         // The metadata should contain the filename but not the absolute directory path
@@ -278,10 +278,10 @@ class TimelineCoreRenderableSmokeTest {
         Files.writeString(outputFile, "provenance-check");
 
         Product product = registrationService.registerOutput(
-                "job-prov2", "ten_1", "prj_1", "ffmpeg", "artifacts/job-prov2/output.mp4");
+                "job-prov2", "ten_1", "prj_1", "provider-a", "artifacts/job-prov2/output.mp4");
 
         assertTrue(product.hasProvenance(), "Product must have provenance");
-        assertEquals("ffmpeg", product.producerId());
+        assertEquals("provider-a", product.producerId());
     }
 
     @Test
@@ -295,7 +295,7 @@ class TimelineCoreRenderableSmokeTest {
         Files.writeString(outputFile, "subtitle-timeline-test");
 
         Product product = registrationService.registerOutput(
-                "job-sub", "ten_1", "prj_1", "ffmpeg", "artifacts/job-sub/output.mp4");
+                "job-sub", "ten_1", "prj_1", "provider-a", "artifacts/job-sub/output.mp4");
 
         assertEquals(ProductStatus.READY, product.status());
         assertEquals(ProductType.FINAL_RENDER, product.productType());
@@ -318,7 +318,7 @@ class TimelineCoreRenderableSmokeTest {
         // FrameRate.of rejects zero numerator at the exact-rate domain boundary.
         assertThrows(IllegalArgumentException.class, () -> FrameRate.of(0, 1));
         TimelineOutputSpec output = new TimelineOutputSpec("mp4", "1920x1080", FrameRate.of(30, 1), "h264", 8000,
-                TimelineAudioSpec.aacDefault(), "yuv420p");
+                TimelineAudioSpec.aacDefault(), "default");
         TimelineSpec spec = new TimelineSpec("tl_bad", "Bad", null,
                 List.of(TimelineTrack.of("t1", "V", TimelineTrack.TrackType.VIDEO)),
                 List.of(), output, 10.0, Map.of());
@@ -330,7 +330,7 @@ class TimelineCoreRenderableSmokeTest {
     @Test
     void invalidCanvasFailsBeforeOutputRegistration() {
         TimelineOutputSpec output = new TimelineOutputSpec("mp4", "0x0", FrameRate.of(30, 1), "h264", 8000,
-                TimelineAudioSpec.aacDefault(), "yuv420p");
+                TimelineAudioSpec.aacDefault(), "default");
         TimelineSpec spec = new TimelineSpec("tl_bad", "Bad", null,
                 List.of(TimelineTrack.of("t1", "V", TimelineTrack.TrackType.VIDEO)),
                 List.of(), output, 10.0, Map.of());
@@ -342,7 +342,7 @@ class TimelineCoreRenderableSmokeTest {
     @Test
     void unsupportedFormatFailsBeforeOutputRegistration() {
         TimelineOutputSpec output = new TimelineOutputSpec("avi", "1920x1080", FrameRate.of(30, 1), "h264", 8000,
-                TimelineAudioSpec.aacDefault(), "yuv420p");
+                TimelineAudioSpec.aacDefault(), "default");
         TimelineSpec spec = new TimelineSpec("tl_bad", "Bad", null,
                 List.of(TimelineTrack.of("t1", "V", TimelineTrack.TrackType.VIDEO)),
                 List.of(), output, 10.0, Map.of());
@@ -372,7 +372,7 @@ class TimelineCoreRenderableSmokeTest {
         RenderOutputRegistrationException ex = assertThrows(
                 RenderOutputRegistrationException.class,
                 () -> registrationService.registerOutput(
-                        "job-miss", "ten_1", "prj_1", "ffmpeg",
+                        "job-miss", "ten_1", "prj_1", "provider-a",
                         "artifacts/job-miss/nonexistent.mp4"));
         assertFalse(ex.isProductRegistered());
         assertTrue(ex.getMessage().contains("not found"));
@@ -386,7 +386,7 @@ class TimelineCoreRenderableSmokeTest {
         RenderOutputRegistrationException ex = assertThrows(
                 RenderOutputRegistrationException.class,
                 () -> registrationService.registerOutput(
-                        "job-dir", "ten_1", "prj_1", "ffmpeg",
+                        "job-dir", "ten_1", "prj_1", "provider-a",
                         "artifacts/job-dir/subdir"));
         assertTrue(ex.getMessage().contains("not a regular file"));
     }
@@ -400,7 +400,7 @@ class TimelineCoreRenderableSmokeTest {
         RenderOutputRegistrationException ex = assertThrows(
                 RenderOutputRegistrationException.class,
                 () -> registrationService.registerOutput(
-                        "job-zero", "ten_1", "prj_1", "ffmpeg",
+                        "job-zero", "ten_1", "prj_1", "provider-a",
                         "artifacts/job-zero/empty.mp4"));
         assertTrue(ex.getMessage().contains("zero bytes"));
     }
@@ -408,7 +408,7 @@ class TimelineCoreRenderableSmokeTest {
     @Test
     void failedOutputRegistersAsFailedProduct() {
         Product failed = registrationService.registerFailedOutput(
-                "job-fail", "ten_1", "prj_1", "ffmpeg", "Transcode error");
+                "job-fail", "ten_1", "prj_1", "provider-a", "Transcode error");
 
         assertEquals(ProductStatus.FAILED, failed.status());
         assertEquals(ProductType.FINAL_RENDER, failed.productType());
@@ -429,7 +429,7 @@ class TimelineCoreRenderableSmokeTest {
         Files.writeString(outputFile, "no-opencue-test");
 
         Product product = registrationService.registerOutput(
-                "job-nocue", "ten_1", "prj_1", "ffmpeg", "artifacts/job-nocue/output.mp4");
+                "job-nocue", "ten_1", "prj_1", "provider-a", "artifacts/job-nocue/output.mp4");
 
         assertEquals(ProductStatus.READY, product.status());
         // No OpenCue classes were loaded or used
@@ -446,7 +446,7 @@ class TimelineCoreRenderableSmokeTest {
         Files.writeString(outputFile, "no-minio-test");
 
         Product product = registrationService.registerOutput(
-                "job-nominio", "ten_1", "prj_1", "ffmpeg", "artifacts/job-nominio/output.mp4");
+                "job-nominio", "ten_1", "prj_1", "provider-a", "artifacts/job-nominio/output.mp4");
 
         assertEquals(ProductStatus.READY, product.status());
         Optional<StorageReference> ref = storageRuntime.find(product.storageReferenceId());

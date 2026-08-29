@@ -31,7 +31,7 @@ public interface RemotionRenderProviderInterface extends CompositionRenderProvid
                         "Does NOT handle video trim, transcode, audio extraction, format repair",
                         "Fonts must use unified font asset management, no system font dependency",
                         "Subtitle line breaks and timeline must be provided by upstream RenderJob",
-                        "Output should be passed to FFmpeg for final normalization"
+                        "Output should be passed to Provider for final normalization"
                 )
         );
     }

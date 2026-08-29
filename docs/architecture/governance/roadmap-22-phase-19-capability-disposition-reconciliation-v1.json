@@ -1,0 +1,242 @@
+{
+  "schema_version": 1,
+  "task": "ROADMAP_22_PHASE19_CAPABILITY_DISPOSITION_RECONCILIATION_V1",
+  "source_ledger": "docs/architecture/governance/roadmap-22-phase-19-legacy-render-ffmpeg-functional-capability-ledger-v1.json",
+  "source_ledger_sha256": "03712563cd09f12ea9d1363587cfeea08401015ba375be40572ef0e5d2d15ed8",
+  "legacy_ffmpeg_capability_total": 45,
+  "primary_disposition_order": [
+    "MIGRATED_TO_FFMPEG_PROVIDER",
+    "MIGRATED_TO_PROVIDER_RUNTIME_INFRASTRUCTURE",
+    "MIGRATED_TO_PROVIDER_CONFORMANCE",
+    "RETAINED_AS_PROVIDER_NEUTRAL_RENDER_SEMANTIC",
+    "REPLACED_BY_NEW_ARCHITECTURE",
+    "DELETED_AS_PROVEN_DEAD",
+    "DELETED_AS_PROVEN_DUPLICATE",
+    "DEFERRED_WITH_EXPLICIT_BOUNDED_JUSTIFICATION",
+    "MISSING"
+  ],
+  "primary_disposition_counts": {
+    "MIGRATED_TO_FFMPEG_PROVIDER": 3,
+    "MIGRATED_TO_PROVIDER_RUNTIME_INFRASTRUCTURE": 7,
+    "MIGRATED_TO_PROVIDER_CONFORMANCE": 3,
+    "RETAINED_AS_PROVIDER_NEUTRAL_RENDER_SEMANTIC": 7,
+    "REPLACED_BY_NEW_ARCHITECTURE": 7,
+    "DELETED_AS_PROVEN_DEAD": 2,
+    "DELETED_AS_PROVEN_DUPLICATE": 2,
+    "DEFERRED_WITH_EXPLICIT_BOUNDED_JUSTIFICATION": 14,
+    "MISSING": 0
+  },
+  "primary_disposition_sum": 45,
+  "capability_disposition_reconciliation": "PASS",
+  "capability_disposition_reconciliation_delta": 0,
+  "duplicate_primary_disposition_count": 0,
+  "unaccounted_capability_count": 0,
+  "unaccounted_capability_keys": [],
+  "currently_claimed_supported_count": 27,
+  "deferred_count": 14,
+  "non_supported_non_deferred_count": 4,
+  "non_supported_non_deferred_capabilities": [
+    {
+      "CapabilityKey": "HARDCODED_DURATION_REPORTING",
+      "Disposition": "DELETED_AS_PROVEN_DEAD",
+      "BehavioralParityStatus": "NOT_APPLICABLE_BY_DISPOSITION"
+    },
+    {
+      "CapabilityKey": "PLACEHOLDER_SIMPLE_PROVIDER_OUTPUT",
+      "Disposition": "DELETED_AS_PROVEN_DEAD",
+      "BehavioralParityStatus": "NOT_APPLICABLE_BY_DISPOSITION"
+    },
+    {
+      "CapabilityKey": "DUPLICATE_RENDER_PROBE_STACK",
+      "Disposition": "DELETED_AS_PROVEN_DUPLICATE",
+      "BehavioralParityStatus": "NOT_APPLICABLE_BY_DISPOSITION"
+    },
+    {
+      "CapabilityKey": "SHADOW_LOCAL_RENDER_RUNNER",
+      "Disposition": "DELETED_AS_PROVEN_DUPLICATE",
+      "BehavioralParityStatus": "NOT_APPLICABLE_BY_DISPOSITION"
+    }
+  ],
+  "capabilities": [
+    {
+      "CapabilityKey": "TRANSCODE_FIXED_H264_VIDEO",
+      "PrimaryDisposition": "MIGRATED_TO_FFMPEG_PROVIDER"
+    },
+    {
+      "CapabilityKey": "FFMPEG_RUNTIME_VERSION_VALIDATION",
+      "PrimaryDisposition": "MIGRATED_TO_FFMPEG_PROVIDER"
+    },
+    {
+      "CapabilityKey": "PROVIDER_IDENTITY_CAPABILITY_DESCRIPTION",
+      "PrimaryDisposition": "MIGRATED_TO_FFMPEG_PROVIDER"
+    },
+    {
+      "CapabilityKey": "PROCESS_EXECUTION",
+      "PrimaryDisposition": "MIGRATED_TO_PROVIDER_RUNTIME_INFRASTRUCTURE"
+    },
+    {
+      "CapabilityKey": "SANDBOX_ISOLATION",
+      "PrimaryDisposition": "MIGRATED_TO_PROVIDER_RUNTIME_INFRASTRUCTURE"
+    },
+    {
+      "CapabilityKey": "TIMEOUT_CANCELLATION_CLEANUP",
+      "PrimaryDisposition": "MIGRATED_TO_PROVIDER_RUNTIME_INFRASTRUCTURE"
+    },
+    {
+      "CapabilityKey": "BOUNDED_STDOUT_STDERR_EXIT_MAPPING",
+      "PrimaryDisposition": "MIGRATED_TO_PROVIDER_RUNTIME_INFRASTRUCTURE"
+    },
+    {
+      "CapabilityKey": "INPUT_MATERIALIZATION",
+      "PrimaryDisposition": "MIGRATED_TO_PROVIDER_RUNTIME_INFRASTRUCTURE"
+    },
+    {
+      "CapabilityKey": "OUTPUT_STAGING",
+      "PrimaryDisposition": "MIGRATED_TO_PROVIDER_RUNTIME_INFRASTRUCTURE"
+    },
+    {
+      "CapabilityKey": "ARTIFACT_COMMIT_COMPLETION_REUSE",
+      "PrimaryDisposition": "MIGRATED_TO_PROVIDER_RUNTIME_INFRASTRUCTURE"
+    },
+    {
+      "CapabilityKey": "SYNTHETIC_TESTSRC_FIXTURE",
+      "PrimaryDisposition": "MIGRATED_TO_PROVIDER_CONFORMANCE"
+    },
+    {
+      "CapabilityKey": "REAL_MEDIA_CLOSED_LOOP",
+      "PrimaryDisposition": "MIGRATED_TO_PROVIDER_CONFORMANCE"
+    },
+    {
+      "CapabilityKey": "PLUGIN_DUAL_DISTRIBUTION_EQUIVALENCE",
+      "PrimaryDisposition": "MIGRATED_TO_PROVIDER_CONFORMANCE"
+    },
+    {
+      "CapabilityKey": "EFFECT_SEMANTICS",
+      "PrimaryDisposition": "RETAINED_AS_PROVIDER_NEUTRAL_RENDER_SEMANTIC"
+    },
+    {
+      "CapabilityKey": "TRANSITION_SEMANTICS",
+      "PrimaryDisposition": "RETAINED_AS_PROVIDER_NEUTRAL_RENDER_SEMANTIC"
+    },
+    {
+      "CapabilityKey": "BASIC_RENDER_PLAN_SEMANTICS",
+      "PrimaryDisposition": "RETAINED_AS_PROVIDER_NEUTRAL_RENDER_SEMANTIC"
+    },
+    {
+      "CapabilityKey": "CAPTION_TIMED_TEXT_SEMANTICS",
+      "PrimaryDisposition": "RETAINED_AS_PROVIDER_NEUTRAL_RENDER_SEMANTIC"
+    },
+    {
+      "CapabilityKey": "SPATIAL_CROP_OVERLAY_SEMANTICS",
+      "PrimaryDisposition": "RETAINED_AS_PROVIDER_NEUTRAL_RENDER_SEMANTIC"
+    },
+    {
+      "CapabilityKey": "AUDIO_MIX_SEMANTICS",
+      "PrimaryDisposition": "RETAINED_AS_PROVIDER_NEUTRAL_RENDER_SEMANTIC"
+    },
+    {
+      "CapabilityKey": "OUTPUT_PROFILE_SEMANTICS",
+      "PrimaryDisposition": "RETAINED_AS_PROVIDER_NEUTRAL_RENDER_SEMANTIC"
+    },
+    {
+      "CapabilityKey": "EXACT_TIMING_SEMANTICS",
+      "PrimaryDisposition": "REPLACED_BY_NEW_ARCHITECTURE"
+    },
+    {
+      "CapabilityKey": "MEDIA_TECHNICAL_METADATA_AUTHORITY",
+      "PrimaryDisposition": "REPLACED_BY_NEW_ARCHITECTURE"
+    },
+    {
+      "CapabilityKey": "COLOR_HDR_DESCRIPTION_AUTHORITY",
+      "PrimaryDisposition": "REPLACED_BY_NEW_ARCHITECTURE"
+    },
+    {
+      "CapabilityKey": "RENDER_QUALITY_VALIDATION",
+      "PrimaryDisposition": "REPLACED_BY_NEW_ARCHITECTURE"
+    },
+    {
+      "CapabilityKey": "WORKER_QUEUE_ONCE_POLL_LIFECYCLE",
+      "PrimaryDisposition": "REPLACED_BY_NEW_ARCHITECTURE"
+    },
+    {
+      "CapabilityKey": "PROVIDER_SELECTION_FALLBACK",
+      "PrimaryDisposition": "REPLACED_BY_NEW_ARCHITECTURE"
+    },
+    {
+      "CapabilityKey": "ERROR_MODEL",
+      "PrimaryDisposition": "REPLACED_BY_NEW_ARCHITECTURE"
+    },
+    {
+      "CapabilityKey": "HARDCODED_DURATION_REPORTING",
+      "PrimaryDisposition": "DELETED_AS_PROVEN_DEAD"
+    },
+    {
+      "CapabilityKey": "PLACEHOLDER_SIMPLE_PROVIDER_OUTPUT",
+      "PrimaryDisposition": "DELETED_AS_PROVEN_DEAD"
+    },
+    {
+      "CapabilityKey": "DUPLICATE_RENDER_PROBE_STACK",
+      "PrimaryDisposition": "DELETED_AS_PROVEN_DUPLICATE"
+    },
+    {
+      "CapabilityKey": "SHADOW_LOCAL_RENDER_RUNNER",
+      "PrimaryDisposition": "DELETED_AS_PROVEN_DUPLICATE"
+    },
+    {
+      "CapabilityKey": "THUMBNAIL_FRAME_EXTRACTION",
+      "PrimaryDisposition": "DEFERRED_WITH_EXPLICIT_BOUNDED_JUSTIFICATION"
+    },
+    {
+      "CapabilityKey": "REMUX_FASTSTART",
+      "PrimaryDisposition": "DEFERRED_WITH_EXPLICIT_BOUNDED_JUSTIFICATION"
+    },
+    {
+      "CapabilityKey": "CLIP_TRIM_SEEK_LOWERING",
+      "PrimaryDisposition": "DEFERRED_WITH_EXPLICIT_BOUNDED_JUSTIFICATION"
+    },
+    {
+      "CapabilityKey": "CONCAT_MULTI_INPUT_VIDEO",
+      "PrimaryDisposition": "DEFERRED_WITH_EXPLICIT_BOUNDED_JUSTIFICATION"
+    },
+    {
+      "CapabilityKey": "TRANSITION_XFADE_LOWERING",
+      "PrimaryDisposition": "DEFERRED_WITH_EXPLICIT_BOUNDED_JUSTIFICATION"
+    },
+    {
+      "CapabilityKey": "VIDEO_EFFECT_FILTER_LOWERING",
+      "PrimaryDisposition": "DEFERRED_WITH_EXPLICIT_BOUNDED_JUSTIFICATION"
+    },
+    {
+      "CapabilityKey": "SUBTITLE_CAPTION_BURN_IN_LOWERING",
+      "PrimaryDisposition": "DEFERRED_WITH_EXPLICIT_BOUNDED_JUSTIFICATION"
+    },
+    {
+      "CapabilityKey": "WATERMARK_STICKER_OVERLAY_LOWERING",
+      "PrimaryDisposition": "DEFERRED_WITH_EXPLICIT_BOUNDED_JUSTIFICATION"
+    },
+    {
+      "CapabilityKey": "SPATIAL_CROP_OVERLAY_LOWERING",
+      "PrimaryDisposition": "DEFERRED_WITH_EXPLICIT_BOUNDED_JUSTIFICATION"
+    },
+    {
+      "CapabilityKey": "MULTITRACK_AUDIO_MIX_LOWERING",
+      "PrimaryDisposition": "DEFERRED_WITH_EXPLICIT_BOUNDED_JUSTIFICATION"
+    },
+    {
+      "CapabilityKey": "AUDIO_ENCODING_MUXING",
+      "PrimaryDisposition": "DEFERRED_WITH_EXPLICIT_BOUNDED_JUSTIFICATION"
+    },
+    {
+      "CapabilityKey": "NON_H264_CODEC_CONTAINER_PROFILES",
+      "PrimaryDisposition": "DEFERRED_WITH_EXPLICIT_BOUNDED_JUSTIFICATION"
+    },
+    {
+      "CapabilityKey": "RENDER_SIDE_MEDIA_PROBE_PROVIDER",
+      "PrimaryDisposition": "DEFERRED_WITH_EXPLICIT_BOUNDED_JUSTIFICATION"
+    },
+    {
+      "CapabilityKey": "FFPROBE_RUNTIME_IDENTITY_DISCOVERY",
+      "PrimaryDisposition": "DEFERRED_WITH_EXPLICIT_BOUNDED_JUSTIFICATION"
+    }
+  ]
+}

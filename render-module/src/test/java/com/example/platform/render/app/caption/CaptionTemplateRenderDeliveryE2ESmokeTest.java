@@ -13,15 +13,11 @@ import com.example.platform.render.app.timeline.compile.audit.*;
 import com.example.platform.render.domain.caption.*;
 import com.example.platform.render.domain.product.*;
 import com.example.platform.storage.contract.*;
-import com.example.platform.render.infrastructure.RenderToolCapabilityInventory;
 import com.example.platform.render.infrastructure.product.ProductDependencyRepository;
 import com.example.platform.render.infrastructure.product.ProductRepository;
 import com.example.platform.render.infrastructure.storage.StorageReferenceRepository;
 import com.example.platform.render.testsupport.TimelineCoreSmokeFixture;
 import com.example.platform.shared.Ids;
-import com.example.platform.extension.app.ProcessToolRunner;
-import com.example.platform.extension.domain.ToolExecutionResult;
-import com.example.platform.extension.domain.ToolExecutionSafetyPolicy;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.http.ResponseEntity;
@@ -37,7 +33,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * E2E fail-closed delivery contract after removal of legacy FFmpeg execution.
+ * E2E fail-closed delivery contract after removal of legacy Provider execution.
  * Proves no fabricated outputProductId, lookup handoff, or storage publication.
  */
 class CaptionTemplateRenderDeliveryE2ESmokeTest {
@@ -55,8 +51,6 @@ class CaptionTemplateRenderDeliveryE2ESmokeTest {
     private CaptionTemplateRenderController controller;
     private InMemoryRenderAuditEventSink auditSink;
     private InMemoryStorageReferenceRepository storageRepo;
-    private final java.util.concurrent.atomic.AtomicInteger processInvocations =
-            new java.util.concurrent.atomic.AtomicInteger();
 
     @BeforeEach
     void setUp() {
@@ -73,25 +67,8 @@ class CaptionTemplateRenderDeliveryE2ESmokeTest {
         auditSink = new InMemoryRenderAuditEventSink();
         RenderAuditRecorder auditRecorder = new RenderAuditRecorder(auditSink);
 
-        ProcessToolRunner toolRunner = new ProcessToolRunner() {
-            @Override public ToolExecutionResult execute(com.example.platform.extension.domain.ToolExecutionRequest r) {
-                processInvocations.incrementAndGet();
-                try {
-                    Path output = Path.of(r.args().get(r.args().size() - 1));
-                    Files.createDirectories(output.getParent());
-                    Files.writeString(output, "fake-rendered-" + UUID.randomUUID());
-                    return ToolExecutionResult.success(0, "ffmpeg", "", Instant.now(), Instant.now());
-                } catch (IOException e) { return ToolExecutionResult.failed(1, "", e.getMessage(), Instant.now(), Instant.now()); }
-            }
-            @Override public ToolExecutionResult execute(com.example.platform.extension.domain.ToolExecutionRequest r, ToolExecutionSafetyPolicy p) { return execute(r); }
-        };
-
-        RenderToolCapabilityInventory toolInv = new RenderToolCapabilityInventory() {
-            @Override public boolean isToolAvailable(String n) { return "ffmpeg".equals(n); }
-        };
-
         RenderExecutionStepExecutor stepExecutor = new RenderExecutionStepExecutor(
-                matService, regService, productRuntime, toolInv, toolRunner, auditRecorder);
+                matService, regService, productRuntime, auditRecorder);
         LocalExecutionPlanRunner planRunner = new LocalExecutionPlanRunner(
                 new RenderPlanPolicyGuard(), stepExecutor);
 
@@ -103,7 +80,7 @@ class CaptionTemplateRenderDeliveryE2ESmokeTest {
                 new CapabilityGraphCompiler(), new ProviderBindingCompiler(),
                 new ProviderExecutionDocumentDraftCompiler(), new RenderExecutionPlanCompiler(),
                 new RenderPlanPolicyGuard(), planRunner, matService, regService,
-                productRuntime, storageRuntime, toolInv,
+                productRuntime, storageRuntime,
                 new TimelineInputProductResolver(productRuntime), tempDir);
 
         CaptionTemplateResultLookupService lookupService =
@@ -236,8 +213,7 @@ class CaptionTemplateRenderDeliveryE2ESmokeTest {
         assertFalse(renderResponse.getBody().ready());
         assertNull(renderResponse.getBody().renderJobId());
         assertNull(renderResponse.getBody().outputProductId());
-        assertEquals("One or more steps failed", renderResponse.getBody().message());
-        assertEquals(0, processInvocations.get());
+        assertEquals("Policy guard rejected plan: Plan has 1 policy violations", renderResponse.getBody().message());
     }
 
     private void assertNoOutputCommit() {

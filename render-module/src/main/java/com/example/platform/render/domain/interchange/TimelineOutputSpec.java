@@ -12,7 +12,7 @@ import com.example.platform.shared.time.FrameRate;
  * @param videoCodec   video codec (e.g., "h264", "h265")
  * @param videoBitrate video bitrate in kbps
  * @param audioSpec    audio output specification
- * @param pixelFormat  pixel format (e.g., "yuv420p")
+ * @param pixelFormat  pixel format (e.g., "default")
  */
 public record TimelineOutputSpec(
         String format,
@@ -29,7 +29,7 @@ public record TimelineOutputSpec(
     public static TimelineOutputSpec mp4_1080p30() {
         return new TimelineOutputSpec(
                 "mp4", "1920x1080", FrameRate.of(30, 1), "h264", 8000,
-                TimelineAudioSpec.aacDefault(), "yuv420p");
+                TimelineAudioSpec.aacDefault(), "default");
     }
 
     /**
@@ -38,7 +38,7 @@ public record TimelineOutputSpec(
     public static TimelineOutputSpec mp4_720p30() {
         return new TimelineOutputSpec(
                 "mp4", "1280x720", FrameRate.of(30, 1), "h264", 4000,
-                TimelineAudioSpec.aacDefault(), "yuv420p");
+                TimelineAudioSpec.aacDefault(), "default");
     }
 
     /**

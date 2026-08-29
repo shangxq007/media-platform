@@ -212,7 +212,7 @@ class RenderUsageEmissionTest {
         String planId = "plan-" + System.nanoTime();
         // Leave the step PENDING: executeNextStep selects the next pending step, marks it
         // RUNNING (recording startedAt), then completes it (computing the duration fact).
-        RenderStep step = RenderStep.pending("step-" + System.nanoTime(), planId, RenderStepType.FFMPEG_TRANSCODE);
+        RenderStep step = RenderStep.pending("step-" + System.nanoTime(), planId, RenderStepType.PROVIDER_TRANSCODE);
         RenderJobPlan plan = RenderJobPlan.create(planId, "job-1", RenderProfile.social1080p(), List.of(step));
         return planService.save(plan);
     }

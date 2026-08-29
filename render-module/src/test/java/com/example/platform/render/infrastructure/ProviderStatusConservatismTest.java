@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.*;
  *
  * <p>These tests ensure the provider registry maintains safe defaults:
  * <ul>
- *   <li>FFmpeg is the only production baseline</li>
+ *   <li>Provider is the only production baseline</li>
  *   <li>Future providers (Remotion, MLT, Blender, etc.) are not auto-dispatch eligible</li>
  *   <li>Provider details are not exposed in public APIs</li>
  * </ul>
@@ -20,16 +20,16 @@ class ProviderStatusConservatismTest {
 
     // ── Provider Metadata Factories ──
 
-    private ProviderMetadata ffmpegMetadata() {
+    private ProviderMetadata providerMetadata() {
         return new ProviderMetadata(
-                "ffmpeg", ProviderStatus.PRODUCTION, "P0", ProviderType.RENDER,
+                "provider-a", ProviderStatus.PRODUCTION, "P0", ProviderType.RENDER,
                 List.of("trim", "transcode", "mux", "demux", "extract_audio",
                         "thumbnail", "caption_burn_in", "output_normalize"),
                 List.of("trim", "transcode", "mux", "demux", "extract_audio",
                         "thumbnail", "output_normalize"),
                 List.of("caption_burn_in"),
                 List.of("caption_effects", "template_render", "timeline_render", "3d_render"),
-                true, "ffmpeg", "FFmpeg baseline render provider", List.of());
+                true, "provider-a", "Provider baseline render provider", List.of());
     }
 
     private ProviderMetadata remotionMetadata() {
@@ -99,30 +99,30 @@ class ProviderStatusConservatismTest {
                 true, List.of(), List.of(), null);
     }
 
-    // ── FFmpeg is the only production baseline ──
+    // ── Provider is the only production baseline ──
 
     @Test
-    void ffmpegIsProductionStatus() {
-        assertEquals(ProviderStatus.PRODUCTION, ffmpegMetadata().status());
-        assertTrue(ffmpegMetadata().isProduction());
-        assertTrue(ffmpegMetadata().autoDispatch());
+    void providerIsProductionStatus() {
+        assertEquals(ProviderStatus.PRODUCTION, providerMetadata().status());
+        assertTrue(providerMetadata().isProduction());
+        assertTrue(providerMetadata().autoDispatch());
     }
 
     @Test
-    void ffmpegIsEligibleForProductionJob() {
-        assertTrue(ProviderEligibility.isEligible(ffmpegMetadata(), productionJob(List.of("trim"))));
-        assertTrue(ProviderEligibility.isEligible(ffmpegMetadata(), productionJob(List.of("transcode"))));
-        assertTrue(ProviderEligibility.isEligible(ffmpegMetadata(), productionJob(List.of("thumbnail"))));
+    void providerIsEligibleForProductionJob() {
+        assertTrue(ProviderEligibility.isEligible(providerMetadata(), productionJob(List.of("trim"))));
+        assertTrue(ProviderEligibility.isEligible(providerMetadata(), productionJob(List.of("transcode"))));
+        assertTrue(ProviderEligibility.isEligible(providerMetadata(), productionJob(List.of("thumbnail"))));
     }
 
     @Test
-    void ffmpegIsLowestScoreForProductionJob() {
-        int ffmpegScore = ProviderEligibility.scoreProvider(ffmpegMetadata(), productionJob(List.of("trim")));
+    void providerIsLowestScoreForProductionJob() {
+        int providerScore = ProviderEligibility.scoreProvider(providerMetadata(), productionJob(List.of("trim")));
         int remotionScore = ProviderEligibility.scoreProvider(remotionMetadata(), productionJob(List.of("caption_burn_in")));
         int mltScore = ProviderEligibility.scoreProvider(mltMetadata(), productionJob(List.of("timeline_render")));
 
-        assertTrue(ffmpegScore < remotionScore, "FFmpeg must score lower (better) than Remotion");
-        assertTrue(ffmpegScore < mltScore, "FFmpeg must score lower (better) than MLT");
+        assertTrue(providerScore < remotionScore, "Provider must score lower (better) than Remotion");
+        assertTrue(providerScore < mltScore, "Provider must score lower (better) than MLT");
     }
 
     // ── Future providers are not production-eligible ──
@@ -222,7 +222,7 @@ class ProviderStatusConservatismTest {
 
     @Test
     void providerMetadataDoesNotExposeSensitiveFields() {
-        ProviderMetadata meta = ffmpegMetadata();
+        ProviderMetadata meta = providerMetadata();
 
         String metaString = meta.toString();
         assertFalse(metaString.contains("secret"), "Metadata must not contain 'secret'");

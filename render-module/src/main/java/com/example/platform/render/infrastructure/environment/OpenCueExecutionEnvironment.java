@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
  * OpenCue execution environment — submits jobs via OpenCue.
  *
  * <p>Uses injectable OpenCueSubmissionClient seam.
- * Validates canonical backend before submission.
+ * Validates that a backend identity is bound before submission.
  * No static mutable state. No silent fallback.
  *
  * <p>Disabled by default (opencue.enabled=false).
@@ -88,12 +88,9 @@ public class OpenCueExecutionEnvironment implements ExecutionEnvironment {
                     + "Cannot submit job " + job.jobId());
         }
 
-        // Validate backend is canonical before submission
-        if (!OpenCueSubmissionRequest.CANONICAL_BACKENDS.contains(
-                job.backendId() != null ? job.backendId().toLowerCase() : "")) {
-            throw new IllegalStateException("Unsupported backend: " + job.backendId()
-                    + ". OpenCue only supports canonical backends: "
-                    + OpenCueSubmissionRequest.CANONICAL_BACKENDS);
+        if (!OpenCueSubmissionRequest.isBoundBackendIdentity(job.backendId())) {
+            throw new IllegalStateException(
+                    "OpenCue requires a bound backend identity: " + job.backendId());
         }
 
         // Delegate to submission client via submission request

@@ -120,7 +120,7 @@ class CaptionTemplateProfileTest {
         assertFalse(str.contains("providerName"));
         assertFalse(str.contains("bucket"));
         assertFalse(str.contains("signedUrl"));
-        assertFalse(str.contains("ffmpeg"));
+        assertFalse(str.contains("provider-a"));
     }
 
     @Test

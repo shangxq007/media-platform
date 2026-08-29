@@ -25,7 +25,6 @@ public class NleLayerCatalogService {
         layers.put("L3_shotstack", layerEntry("shotstack", "Shotstack cloud template API"));
         layers.put("L4_blender", layerEntry("blender", "Blender 3D segment worker"));
         layers.put("L5_natron", layerEntry("natron", "Natron OFX segment worker"));
-        layers.put("L6_libass", layerEntry("libass", "libass ASS subtitle burn-in"));
         layers.put("L6_skia", layerEntry("skia", "Skia-compatible sticker overlay"));
         layers.put("L7_gpac", packagingEntry("gpac"));
         layers.put("L7_bento4", packagingEntry("bento4"));

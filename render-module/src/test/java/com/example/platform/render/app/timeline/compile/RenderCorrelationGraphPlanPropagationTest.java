@@ -9,10 +9,6 @@ import com.example.platform.render.app.timeline.compile.audit.*;
 import com.example.platform.render.domain.compile.*;
 import com.example.platform.render.infrastructure.ProviderStatus;
 import com.example.platform.render.infrastructure.ProviderType;
-import com.example.platform.render.infrastructure.RenderToolCapabilityInventory;
-import com.example.platform.extension.app.ProcessToolRunner;
-import com.example.platform.extension.domain.ToolExecutionResult;
-import com.example.platform.extension.domain.ToolExecutionSafetyPolicy;
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.render.app.input.RenderInputMaterializationService;
 import com.example.platform.render.app.output.RenderOutputRegistrationService;
@@ -62,8 +58,6 @@ class RenderCorrelationGraphPlanPropagationTest {
     private InMemoryTimelineRevisionRepository revisionRepo;
     private InMemoryTimelineSnapshotService snapshotService;
     private InMemoryStorageReferenceRepository storageRepo;
-    private final java.util.concurrent.atomic.AtomicInteger processInvocations =
-            new java.util.concurrent.atomic.AtomicInteger();
 
     @BeforeEach
     void setUp() {
@@ -147,7 +141,7 @@ class RenderCorrelationGraphPlanPropagationTest {
 
         auditSink.findAll().forEach(event -> {
             if (event.message() != null) {
-                assertFalse(event.message().contains("ffmpeg -i"), "No raw command in event message");
+                assertFalse(event.message().contains("provider -i"), "No raw command in event message");
             }
             if (event.sanitizedDetails() != null) {
                 assertFalse(event.sanitizedDetails().contains("bucket"));
@@ -163,8 +157,7 @@ class RenderCorrelationGraphPlanPropagationTest {
         IllegalStateException failure = assertThrows(IllegalStateException.class,
                 () -> service.render(
                         TimelineCoreSmokeFixture.PROJECT_ID, revisionId, "default_1080p"));
-        assertEquals("Plan-based render failed: One or more steps failed", failure.getMessage());
-        assertEquals(0, processInvocations.get());
+        assertEquals("Plan-based render failed: Policy guard rejected plan: Plan has 1 policy violations", failure.getMessage());
         assertEquals(1, storageRepo.size(), "Only input storage may be committed");
         assertTrue(productRuntime.findBySourceTimelineRevisionId(revisionId).isEmpty());
         assertTrue(productRuntime.findByProject(TimelineCoreSmokeFixture.PROJECT_ID, 100).stream()
@@ -182,32 +175,6 @@ class RenderCorrelationGraphPlanPropagationTest {
         TimelineRenderJobMapper mapper = new TimelineRenderJobMapper(parser, importAdapter, importService);
         TimelineInputProductResolver inputProductResolver = new TimelineInputProductResolver(productRuntime);
 
-        ProcessToolRunner toolRunner = new ProcessToolRunner() {
-            @Override
-            public ToolExecutionResult execute(com.example.platform.extension.domain.ToolExecutionRequest request) {
-                processInvocations.incrementAndGet();
-                try {
-                    List<String> args = request.args();
-                    String outputPath = args.get(args.size() - 1);
-                    Path output = Path.of(outputPath);
-                    Files.createDirectories(output.getParent());
-                    Files.writeString(output, "fake-rendered-" + UUID.randomUUID());
-                    return ToolExecutionResult.success(0, "ffmpeg", "", Instant.now(), Instant.now());
-                } catch (IOException e) {
-                    return ToolExecutionResult.failed(1, "", e.getMessage(), Instant.now(), Instant.now());
-                }
-            }
-            @Override
-            public ToolExecutionResult execute(com.example.platform.extension.domain.ToolExecutionRequest request,
-                                                com.example.platform.extension.domain.ToolExecutionSafetyPolicy policy) {
-                return execute(request);
-            }
-        };
-
-        RenderToolCapabilityInventory toolInventory = new RenderToolCapabilityInventory() {
-            @Override public boolean isToolAvailable(String n) { return "ffmpeg".equals(n); }
-        };
-
         RenderInputMaterializationService matService = new RenderInputMaterializationService(storageRuntime, productRuntime);
         RenderOutputRegistrationService regService = new RenderOutputRegistrationService(storageRuntime, productRuntime, tempDir, mockProvider(null), mockProvider(null));
         TimelineNormalizationService normalizer = new TimelineNormalizationService();
@@ -218,7 +185,7 @@ class RenderCorrelationGraphPlanPropagationTest {
         RenderExecutionPlanCompiler planCompiler = new RenderExecutionPlanCompiler();
         RenderPlanPolicyGuard policyGuard = new RenderPlanPolicyGuard();
         RenderExecutionStepExecutor stepExecutor = new RenderExecutionStepExecutor(
-                matService, regService, productRuntime, toolInventory, toolRunner, auditRecorder);
+                matService, regService, productRuntime, auditRecorder);
         LocalExecutionPlanRunner planRunner = new LocalExecutionPlanRunner(policyGuard, stepExecutor);
 
         return new PlanBasedTimelineRevisionRenderService(
@@ -226,49 +193,32 @@ class RenderCorrelationGraphPlanPropagationTest {
                 mapper, parser, inputProductResolver, normalizer,
                 artifactCompiler, capCompiler, bindingCompiler, draftCompiler,
                 planCompiler, policyGuard, planRunner, matService,
-                regService, productRuntime, storageRuntime, toolInventory, tempDir, auditRecorder);
+                regService, productRuntime, storageRuntime, tempDir, auditRecorder);
     }
 
     private LocalExecutionPlanRunner createRunner() {
-        RenderToolCapabilityInventory toolInv = new RenderToolCapabilityInventory() {
-            @Override public boolean isToolAvailable(String n) { return "ffmpeg".equals(n); }
-        };
-        ProcessToolRunner toolRunner = new ProcessToolRunner() {
-            @Override public ToolExecutionResult execute(com.example.platform.extension.domain.ToolExecutionRequest r) {
-                try {
-                    String outputPath = r.args().get(r.args().size() - 1);
-                    Files.createDirectories(Path.of(outputPath).getParent());
-                    Files.writeString(Path.of(outputPath), "fake-output");
-                    return ToolExecutionResult.success(0, "ffmpeg", "", Instant.now(), Instant.now());
-                } catch (Exception e) {
-                    return ToolExecutionResult.failed(1, "", e.getMessage(), Instant.now(), Instant.now());
-                }
-            }
-            @Override public ToolExecutionResult execute(com.example.platform.extension.domain.ToolExecutionRequest r,
-                                                          com.example.platform.extension.domain.ToolExecutionSafetyPolicy p) { return execute(r); }
-        };
         RenderInputMaterializationService matService = new RenderInputMaterializationService(storageRuntime, productRuntime);
         RenderOutputRegistrationService regService = new RenderOutputRegistrationService(storageRuntime, productRuntime, tempDir, mockProvider(null), mockProvider(null));
         RenderExecutionStepExecutor stepExecutor = new RenderExecutionStepExecutor(
-                matService, regService, productRuntime, toolInv, toolRunner, auditRecorder);
+                matService, regService, productRuntime, auditRecorder);
         return new LocalExecutionPlanRunner(new RenderPlanPolicyGuard(), stepExecutor);
     }
 
     private RenderExecutionPlan createSimplePlan() {
-        var ffmpegRef = new com.example.platform.render.domain.compile.binding.BoundProviderRef(
-                "ffmpeg", ProviderStatus.PRODUCTION, ProviderType.RENDER, "P0", true, true, "6.1", 0);
+        var providerRef = new com.example.platform.render.domain.compile.binding.BoundProviderRef(
+                "provider-a", ProviderStatus.PRODUCTION, ProviderType.RENDER, "P0", true, true, "6.1", 0);
         var nodeType = com.example.platform.render.domain.compile.ArtifactNodeType.FINAL_RENDER;
         var exec = new RenderExecutionStep("step-exec", RenderExecutionStepType.EXECUTE_PROVIDER,
                 RenderExecutionStepStatus.PENDING, "node-1", nodeType,
-                "ffmpeg", ffmpegRef, null, List.of(), false,
+                "provider-a", providerRef, null, List.of(), false,
                 ExecutionEnvironmentTarget.LOCAL, "Execute", Map.of());
         var verify = new RenderExecutionStep("step-verify", RenderExecutionStepType.VERIFY_OUTPUT,
                 RenderExecutionStepStatus.PENDING, "node-1", nodeType,
-                "ffmpeg", ffmpegRef, null, List.of("step-exec"), false,
+                "provider-a", providerRef, null, List.of("step-exec"), false,
                 ExecutionEnvironmentTarget.LOCAL, "Verify", Map.of());
         var register = new RenderExecutionStep("step-reg", RenderExecutionStepType.REGISTER_OUTPUT,
                 RenderExecutionStepStatus.PENDING, "node-1", nodeType,
-                "ffmpeg", ffmpegRef, null, List.of("step-verify"), false,
+                "provider-a", providerRef, null, List.of("step-verify"), false,
                 ExecutionEnvironmentTarget.LOCAL, "Register", Map.of());
         var link = new RenderExecutionStep("step-link", RenderExecutionStepType.LINK_PRODUCT_DEPENDENCY,
                 RenderExecutionStepStatus.PENDING, "node-1", nodeType,

@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 /**
  * Fail-closed platform adapter for the media-domain {@link MediaProbePort}.
  *
- * <p>The former implementation invoked render-owned ffprobe authority. C3 keeps
+ * <p>The former implementation invoked render-owned media probe authority. C3 keeps
  * the generic media boundary available to the application context but performs
  * no probing until a typed provider contribution supplies that capability.</p>
  */

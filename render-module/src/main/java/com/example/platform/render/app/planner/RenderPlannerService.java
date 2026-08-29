@@ -26,6 +26,8 @@ import org.springframework.stereotype.Service;
 
 /**
  * Generates {@link PipelineExecutionPlan} (task DAG) from Internal Timeline JSON.
+ * Unbound typed-plugin work carries semantic task data with a null backend and
+ * fails closed until a concrete provider identity is bound.
  */
 @Service
 public class RenderPlannerService {
@@ -36,9 +38,6 @@ public class RenderPlannerService {
     private final FinalComposerSelector finalComposerSelector;
     private final TimelineStickerReader stickerReader;
     private final SegmentTimelinePlanner segmentTimelinePlanner;
-
-    @Value("${render.subtitle.libass.enabled:true}")
-    private boolean libassEnabled = true;
 
     @Value("${render.providers.skia.enabled:false}")
     private boolean skiaEnabled;
@@ -87,7 +86,7 @@ public class RenderPlannerService {
 
         int videoTracks = countVideoTracks(timeline);
         if (videoTracks >= 2
-                && finalComposer != FinalComposerHint.FFMPEG
+                && finalComposer != FinalComposerHint.TYPED_PROVIDER_PLUGIN
                 && !hasTaskType(tasks, PipelineTaskType.MLT_MULTITRACK)) {
             String taskId = "mlt_tracks";
             tasks.add(PipelineTask.of(taskId, "mlt_multitrack", PipelineTaskType.MLT_MULTITRACK, "mlt",
@@ -104,17 +103,17 @@ public class RenderPlannerService {
             segmentTaskIds.add(taskId);
         }
 
-        if (libassEnabled && hasLibassTargets(timeline)) {
+        if (hasSubtitleTargets(timeline)) {
             String taskId = "subtitles";
-            tasks.add(PipelineTask.of(taskId, "subtitles", PipelineTaskType.SUBTITLES, "libass",
-                    List.copyOf(segmentTaskIds), Map.of("engine", "libass")));
+            tasks.add(PipelineTask.of(taskId, "subtitles", PipelineTaskType.SUBTITLES, null,
+                    List.copyOf(segmentTaskIds), Map.of("capability", "subtitle.burn-in")));
             segmentTaskIds.add(taskId);
         }
 
         if (skiaEnabled && stickerReader.requiresSkiaOverlay(timeline)) {
             String taskId = "skia_overlay";
             tasks.add(PipelineTask.of(taskId, "skia_overlay", PipelineTaskType.SKIA_OVERLAY, "skia",
-                    List.copyOf(segmentTaskIds), Map.of("engine", "java2d+ffmpeg")));
+                    List.copyOf(segmentTaskIds), Map.of("engine", "java2d")));
             segmentTaskIds.add(taskId);
         }
 
@@ -126,11 +125,12 @@ public class RenderPlannerService {
                     params.put("startFrame", String.valueOf(segment.startFrame()));
                     params.put("durationFrames", String.valueOf(segment.durationFrames()));
                     params.put("cacheScope", plan.policy().cacheScope());
+                    params.put("capability", "segment.render");
                     tasks.add(new PipelineTask(
                             segment.id(),
                             "segment_" + segment.id(),
                             PipelineTaskType.SEGMENT_RENDER,
-                            "ffmpeg",
+                            null,
                             List.copyOf(segmentTaskIds),
                             segment.cacheKey(),
                             "mp4",
@@ -157,14 +157,9 @@ public class RenderPlannerService {
                 Map.of("finalComposer", finalComposer.name().toLowerCase())));
 
         String transcodeTaskId = "transcode";
-        if (finalComposer == FinalComposerHint.FFMPEG) {
-            // FFmpeg FC often includes encode; still add transcode for provider router compatibility
-            tasks.add(PipelineTask.of(transcodeTaskId, "transcode", PipelineTaskType.TRANSCODE,
-                    selectTranscodeProvider(profile), List.of(composeTaskId), Map.of()));
-        } else {
-            tasks.add(PipelineTask.of(transcodeTaskId, "transcode", PipelineTaskType.TRANSCODE,
-                    selectTranscodeProvider(profile), List.of(composeTaskId), Map.of()));
-        }
+        tasks.add(PipelineTask.of(transcodeTaskId, "transcode", PipelineTaskType.TRANSCODE,
+                selectTranscodeProvider(profile), List.of(composeTaskId),
+                Map.of("capability", "transcode")));
 
         List<String> prePackageDeps = List.of(transcodeTaskId);
         if (isStreamingFormat(outputFormat)) {
@@ -207,7 +202,7 @@ public class RenderPlannerService {
         }
         if (stages.stream().noneMatch(s -> "transcode".equals(s.name()))) {
             stages.add(new MultiProviderPipelineService.PipelineStage(
-                    "transcode", "javacv", Map.of()));
+                    "transcode", null, Map.of("capability", "transcode")));
         }
         return stages;
     }
@@ -229,17 +224,14 @@ public class RenderPlannerService {
                 || "EXPERIMENTAL".equals(tier)) {
             return "ofx";
         }
-        return "javacv";
+        return null;
     }
 
     private String selectTranscodeProvider(String profile) {
         if (profile != null && profile.startsWith("gpu_")) {
             return "gpu-h264";
         }
-        if (profile != null && profile.startsWith("remote_")) {
-            return "remote-javacv";
-        }
-        return "javacv";
+        return null;
     }
 
     private String selectPackagingKey(String outputFormat, TimelineExtensions ext) {
@@ -286,7 +278,7 @@ public class RenderPlannerService {
                 .anyMatch(track -> track.type() == TimelineTrack.TrackType.SUBTITLE);
     }
 
-    private boolean hasLibassTargets(TimelineSpec timeline) {
+    private boolean hasSubtitleTargets(TimelineSpec timeline) {
         return (timeline.textOverlays() != null && !timeline.textOverlays().isEmpty())
                 || hasSubtitleTrack(timeline);
     }

@@ -130,7 +130,7 @@ class RemotionLocalExecutionAuditTest {
         sink.findAll().forEach(event -> {
             // Message field is safe human-readable status, not raw commands
             assertNotNull(event.message());
-            assertFalse(event.message().contains("ffmpeg -i"));
+            assertFalse(event.message().contains("provider -i"));
             assertFalse(event.message().contains("npx remotion"));
         });
     }
@@ -214,7 +214,7 @@ class RemotionLocalExecutionAuditTest {
     private RemotionProviderReadiness createReadiness() {
         return RemotionProviderReadiness.from(
                 new com.example.platform.render.infrastructure.RenderToolCapabilityInventory() {
-                    @Override public boolean isToolAvailable(String n) { return "ffmpeg".equals(n); }
+                    @Override public boolean isToolAvailable(String n) { return "provider-a".equals(n); }
                 }.detectTools().isEmpty()
                 ? RemotionRuntimeAvailability.notChecked()
                 : new RemotionRuntimeProbe(

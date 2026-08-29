@@ -44,7 +44,7 @@ class RenderWorkerRepositoryTest extends PostgresTestContainerSupport {
     private RenderWorkerRegistration reg(String workerId) {
         return new RenderWorkerRegistration(
                 workerId, "RENDER", "1.0.0", "img:latest",
-                "host-1", "zone-a", "[\"ffmpeg\"]", "{}",
+                "host-1", "zone-a", "[\"provider\"]", "{}",
                 4, 8, 16384, 0, null, null);
     }
 
@@ -58,7 +58,7 @@ class RenderWorkerRepositoryTest extends PostgresTestContainerSupport {
         assertEquals("worker-1", found.get().workerId());
         assertEquals(RenderWorkerStatus.STARTING, found.get().status());
         assertEquals("RENDER", found.get().workerType());
-        assertEquals("[\"ffmpeg\"]", found.get().providerIds());
+        assertEquals("[\"provider\"]", found.get().providerIds());
     }
 
     @Test
@@ -69,7 +69,7 @@ class RenderWorkerRepositoryTest extends PostgresTestContainerSupport {
         // Re-register with different version
         var updated = new RenderWorkerRegistration(
                 "worker-1", "RENDER", "2.0.0", "img:v2",
-                "host-2", "zone-b", "[\"ffmpeg\",\"mlt\"]", "{}",
+                "host-2", "zone-b", "[\"provider\",\"mlt\"]", "{}",
                 8, 16, 32768, 1, "nvidia-a100", null);
         repository.register(updated, Instant.now());
 
@@ -77,7 +77,7 @@ class RenderWorkerRepositoryTest extends PostgresTestContainerSupport {
         assertTrue(found.isPresent());
         assertEquals("2.0.0", found.get().version());
         assertEquals("img:v2", found.get().imageTag());
-        assertEquals("[\"ffmpeg\",\"mlt\"]", found.get().providerIds());
+        assertEquals("[\"provider\",\"mlt\"]", found.get().providerIds());
     }
 
     @Test

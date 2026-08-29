@@ -131,7 +131,7 @@ class RenderCorrelationContextTest {
     void noUnsafeFields() {
         RenderCorrelationContext ctx = RenderCorrelationContext.create("proj-1", "rev-1", "LEGACY");
         String s = ctx.toString();
-        assertFalse(s.contains("ffmpeg -i"));
+        assertFalse(s.contains("provider -i"));
         assertFalse(s.contains("bucket"));
         assertFalse(s.contains("objectKey"));
         assertFalse(s.contains("rootPath"));

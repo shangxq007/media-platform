@@ -285,8 +285,8 @@ class CaptionTemplateRenderApiTest {
     }
 
     @Test
-    @DisplayName("Controller does not call FFmpeg directly")
-    void controllerNoDirectFfmpeg() {
+    @DisplayName("Controller does not call Provider directly")
+    void controllerNoDirectProvider() {
         // Verified by code: controller delegates to service, no ProcessToolRunner dependency
         assertNotNull(new CaptionTemplateRenderApiMapper());
     }
@@ -311,7 +311,7 @@ class CaptionTemplateRenderApiTest {
         CaptionTemplateRenderResult result;
         MockCaptionService() {
             super(null, null, null, null, null, null, null, null,
-                    null, null, null, null, null, null, null, null, null, null);
+                    null, null, null, null, null, null, null, null, null);
         }
         @Override
         public CaptionTemplateRenderResult render(CaptionTemplateRenderRequest request) {

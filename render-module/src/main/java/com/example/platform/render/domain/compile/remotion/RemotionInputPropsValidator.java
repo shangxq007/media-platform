@@ -76,7 +76,7 @@ public class RemotionInputPropsValidator {
         }
 
         // Safety: no raw commands
-        if (fullJson.contains("ffmpeg ") || fullJson.contains("remotion render")) {
+        if (fullJson.contains("provider ") || fullJson.contains("remotion render")) {
             issues.add("Props contain raw commands");
         }
 

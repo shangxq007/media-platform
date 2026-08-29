@@ -4,11 +4,7 @@ import com.example.platform.timeline.adapter.TimelineRevisionRepository;import c
 import com.example.platform.timeline.app.TimelineRevisionDiffQuery;
 import com.example.platform.timeline.app.TimelineImportService;
 import com.example.platform.render.app.timeline.TimelineSpecImportAdapter;
-import com.example.platform.extension.app.ProcessToolRunner;
-import com.example.platform.extension.domain.ToolExecutionRequest;
-import com.example.platform.extension.domain.ToolExecutionResult;
 import com.example.platform.render.app.timeline.compile.audit.*;
-import com.example.platform.extension.domain.ToolExecutionSafetyPolicy;
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.render.app.input.RenderInputMaterializationService;
 import com.example.platform.render.app.output.RenderOutputRegistrationService;
@@ -19,7 +15,6 @@ import com.example.platform.render.app.timeline.*;
 import com.example.platform.render.domain.product.*;
 import com.example.platform.storage.contract.*;
 
-import com.example.platform.render.infrastructure.RenderToolCapabilityInventory;
 import com.example.platform.render.infrastructure.product.ProductDependencyRepository;
 import com.example.platform.render.infrastructure.product.ProductRepository;
 import com.example.platform.render.infrastructure.storage.StorageReferenceRepository;
@@ -70,8 +65,6 @@ class TimelineRevisionRenderExecutionModeTest {
     private InMemoryTimelineRevisionRepository revisionRepo;
     private InMemoryTimelineSnapshotService snapshotService;
     private InMemoryStorageReferenceRepository storageRepo;
-    private final java.util.concurrent.atomic.AtomicInteger processInvocations =
-            new java.util.concurrent.atomic.AtomicInteger();
 
     @BeforeEach
     void setUp() {
@@ -142,7 +135,7 @@ class TimelineRevisionRenderExecutionModeTest {
                 facade, revisionId, TimelineRenderExecutionMode.PLAN_BASED);
         assertFalse(failure.getMessage().contains("storageReferenceId"));
         assertFalse(failure.getMessage().contains(tempDir.toString()));
-        assertFalse(failure.getMessage().contains("ffmpeg -i"));
+        assertFalse(failure.getMessage().contains("provider -i"));
     }
 
     @Test
@@ -180,10 +173,9 @@ class TimelineRevisionRenderExecutionModeTest {
                         TimelineCoreSmokeFixture.PROJECT_ID, revisionId, "default_1080p"));
         String expectedMessage = expectedMode == TimelineRenderExecutionMode.LEGACY
                 ? "Typed provider plugin execution required"
-                : "Plan-based render failed: One or more steps failed";
+                : "Plan-based render failed: Policy guard rejected plan: Plan has 1 policy violations";
         assertEquals(expectedMessage, failure.getMessage());
         assertEquals(expectedMode, facade.getExecutionMode());
-        assertEquals(0, processInvocations.get());
         assertEquals(storageCountBefore, storageRepo.size(), "Render must not commit storage");
         assertTrue(productRuntime.findBySourceTimelineRevisionId(revisionId).isEmpty());
         assertTrue(productRuntime.findByProject(TimelineCoreSmokeFixture.PROJECT_ID, 100).stream()
@@ -197,37 +189,6 @@ class TimelineRevisionRenderExecutionModeTest {
         TimelineRenderExecutionProperties props =
                 new TimelineRenderExecutionProperties(mode);
 
-        ProcessToolRunner toolRunner = new ProcessToolRunner() {
-            @Override
-            public ToolExecutionResult execute(ToolExecutionRequest request) {
-                processInvocations.incrementAndGet();
-                try {
-                    List<String> args = request.args();
-                    String outputPath = args.get(args.size() - 1);
-                    Path output = Path.of(outputPath);
-                    Files.createDirectories(output.getParent());
-                    Files.writeString(output, "fake-rendered-content-" + UUID.randomUUID());
-                    return ToolExecutionResult.success(0, "ffmpeg", "",
-                            Instant.now(), Instant.now());
-                } catch (IOException e) {
-                    return ToolExecutionResult.failed(1, "", e.getMessage(),
-                            Instant.now(), Instant.now());
-                }
-            }
-
-            @Override
-            public ToolExecutionResult execute(ToolExecutionRequest request, ToolExecutionSafetyPolicy policy) {
-                return execute(request);
-            }
-        };
-
-        RenderToolCapabilityInventory toolInventory = new RenderToolCapabilityInventory() {
-            @Override
-            public boolean isToolAvailable(String toolName) {
-                return "ffmpeg".equals(toolName);
-            }
-        };
-
         // Legacy service
         TimelineRevisionRenderService legacyService = new TimelineRevisionRenderService(
                 new StubTimelineRevisionService(revisionRepo),
@@ -235,7 +196,7 @@ class TimelineRevisionRenderExecutionModeTest {
                 null,
                 materializationService, registrationService,
                 productRuntime, storageRuntime, inputProductResolver,
-                toolRunner, tempDir);
+                tempDir);
 
         // Plan-based service dependencies
         TimelineNormalizationService normalizer = new TimelineNormalizationService();
@@ -248,7 +209,7 @@ class TimelineRevisionRenderExecutionModeTest {
         RenderAuditRecorder auditRecorder = new RenderAuditRecorder(new NoopRenderAuditEventSink());
         RenderExecutionStepExecutor stepExecutor = new RenderExecutionStepExecutor(
                 materializationService, registrationService, productRuntime,
-                toolInventory, toolRunner, auditRecorder);
+                auditRecorder);
         LocalExecutionPlanRunner planRunner = new LocalExecutionPlanRunner(policyGuard, stepExecutor);
 
         PlanBasedTimelineRevisionRenderService planBasedService =
@@ -259,7 +220,7 @@ class TimelineRevisionRenderExecutionModeTest {
                         bindingCompiler, draftCompiler, planCompiler,
                         policyGuard, planRunner,
                         materializationService, registrationService,
-                        productRuntime, storageRuntime, toolInventory, tempDir);
+                        productRuntime, storageRuntime, tempDir);
 
         RenderDeduplicationService dedupService = new RenderDeduplicationService(productRuntime);
         return new TimelineRevisionRenderFacade(legacyService, planBasedService, dedupService, props, auditRecorder);

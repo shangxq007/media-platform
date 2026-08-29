@@ -28,7 +28,7 @@ import com.example.platform.render.domain.legacy.TimelineTrack;
  *   <li>style/placement → text overlay fontFamily/fontSize/color/position</li>
  * </ul>
  *
- * <p>Does NOT call FFmpeg, libass, StorageRuntime, or ProductRuntime.</p>
+ * <p>Does not call a typed provider plugin, StorageRuntime, or ProductRuntime.</p>
  */
 @Component
 public class CaptionTemplateTimelineAdapter {
@@ -126,7 +126,7 @@ public class CaptionTemplateTimelineAdapter {
                 decimalFpsToFrameRate(profile.fps()),
                 "h264", 8000,
                 TimelineAudioSpec.aacDefault(),
-                "yuv420p");
+                "default");
     }
 
     /**

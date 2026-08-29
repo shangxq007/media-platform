@@ -24,7 +24,7 @@ import com.example.platform.render.domain.legacy.TimelineTrack;
  *
  * <p>Proves:
  * <ul>
- *   <li>FFmpeg bound nodes → FFMPEG_COMMAND_PLAN drafts</li>
+ *   <li>Unrecognized typed providers → opaque TYPED_PROVIDER_REQUEST drafts</li>
  *   <li>MLT bound nodes → MLT_PROJECT_DOCUMENT drafts</li>
  *   <li>Unbound nodes produce no drafts</li>
  *   <li>Mixed bound/unbound → only bound nodes produce drafts</li>
@@ -42,9 +42,9 @@ class ProviderExecutionDocumentDraftCompilerTest {
     private ArtifactGraphCompiler artifactCompiler;
     private TimelineNormalizationService normalizer;
 
-    private static final ProviderBindingCompiler.ProviderCandidate FFMPEG =
+    private static final ProviderBindingCompiler.ProviderCandidate TYPED_PROVIDER =
             new ProviderBindingCompiler.ProviderCandidate(
-                    "ffmpeg", ProviderStatus.PRODUCTION, ProviderType.RENDER, "P0",
+                    "provider-a", ProviderStatus.PRODUCTION, ProviderType.RENDER, "P0",
                     true, true, "6.1",
                     List.of("MEDIA_INPUT", "VIDEO_DECODE", "VIDEO_TRIM",
                             "AUDIO_DECODE", "AUDIO_MIX",
@@ -71,10 +71,10 @@ class ProviderExecutionDocumentDraftCompilerTest {
     }
 
     @Test
-    @DisplayName("FFmpeg bound nodes → FFMPEG_COMMAND_PLAN drafts")
-    void ffmpegProducesCommandPlanDrafts() {
+    @DisplayName("Unrecognized typed provider produces opaque request drafts")
+    void typedProviderProducesOpaqueRequestDrafts() {
         LogicalCapabilityGraph capGraph = compileSingleClipCapGraph();
-        ProviderBindingPlan plan = bindingCompiler.compile(capGraph, List.of(FFMPEG), "PRODUCTION");
+        ProviderBindingPlan plan = bindingCompiler.compile(capGraph, List.of(TYPED_PROVIDER), "PRODUCTION");
 
         List<ProviderExecutionDocumentDraft> drafts = draftCompiler.compile(plan);
 
@@ -87,10 +87,13 @@ class ProviderExecutionDocumentDraftCompilerTest {
         assertEquals(boundWithReqs, drafts.size());
 
         drafts.forEach(d -> {
-                    assertEquals("ffmpeg", d.providerName());
-                    assertEquals(ProviderExecutionDocumentDraftType.FFMPEG_COMMAND_PLAN,
+                    assertEquals("provider-a", d.providerName());
+                    assertEquals(ProviderExecutionDocumentDraftType.TYPED_PROVIDER_REQUEST,
                             d.documentType());
                     assertFalse(d.isReadyForGeneration());
+                    assertTrue(d.metadata().isEmpty());
+                    assertTrue(d.requirement().parameters().isEmpty());
+                    assertTrue(d.requirement().constraints().isEmpty());
                     assertNotNull(d.draftId());
                     assertNotNull(d.bindingNodeId());
                 });
@@ -150,7 +153,7 @@ class ProviderExecutionDocumentDraftCompilerTest {
     @DisplayName("Drafts are never generation-ready in v0")
     void draftsNeverGenerationReady() {
         LogicalCapabilityGraph capGraph = compileSingleClipCapGraph();
-        ProviderBindingPlan plan = bindingCompiler.compile(capGraph, List.of(FFMPEG), "PRODUCTION");
+        ProviderBindingPlan plan = bindingCompiler.compile(capGraph, List.of(TYPED_PROVIDER), "PRODUCTION");
 
         List<ProviderExecutionDocumentDraft> drafts = draftCompiler.compile(plan);
 
@@ -161,7 +164,7 @@ class ProviderExecutionDocumentDraftCompilerTest {
     @DisplayName("Deterministic draft IDs")
     void deterministicDraftIds() {
         LogicalCapabilityGraph capGraph = compileSingleClipCapGraph();
-        ProviderBindingPlan plan = bindingCompiler.compile(capGraph, List.of(FFMPEG), "PRODUCTION");
+        ProviderBindingPlan plan = bindingCompiler.compile(capGraph, List.of(TYPED_PROVIDER), "PRODUCTION");
 
         List<ProviderExecutionDocumentDraft> drafts1 = draftCompiler.compile(plan);
         List<ProviderExecutionDocumentDraft> drafts2 = draftCompiler.compile(plan);
@@ -176,15 +179,28 @@ class ProviderExecutionDocumentDraftCompilerTest {
     @DisplayName("Draft requirement populated with provider name and document type")
     void draftRequirementPopulated() {
         LogicalCapabilityGraph capGraph = compileSingleClipCapGraph();
-        ProviderBindingPlan plan = bindingCompiler.compile(capGraph, List.of(FFMPEG), "PRODUCTION");
+        ProviderBindingPlan plan = bindingCompiler.compile(capGraph, List.of(TYPED_PROVIDER), "PRODUCTION");
 
         List<ProviderExecutionDocumentDraft> drafts = draftCompiler.compile(plan);
 
         drafts.forEach(d -> {
             assertNotNull(d.requirement());
-            assertEquals("ffmpeg", d.requirement().providerName());
+            assertEquals("provider-a", d.requirement().providerName());
             assertEquals(d.documentType(), d.requirement().documentType());
         });
+    }
+
+    @Test
+    @DisplayName("Opaque typed provider request exposes no command-HOW fields")
+    void opaqueRequestHasNoCommandHowFields() {
+        List<String> componentNames = java.util.Arrays.stream(
+                        ProviderExecutionDocumentDraft.class.getRecordComponents())
+                .map(java.lang.reflect.RecordComponent::getName)
+                .map(String::toLowerCase)
+                .toList();
+        assertTrue(componentNames.stream().noneMatch(name ->
+                name.contains("argv") || name.contains("command")
+                        || name.contains("filtergraph") || name.equals("args")));
     }
 
     @Test

@@ -10,15 +10,11 @@ import com.example.platform.render.app.timeline.compile.audit.*;
 import com.example.platform.render.domain.caption.*;
 import com.example.platform.render.domain.product.*;
 import com.example.platform.storage.contract.*;
-import com.example.platform.render.infrastructure.RenderToolCapabilityInventory;
 import com.example.platform.render.infrastructure.product.ProductDependencyRepository;
 import com.example.platform.render.infrastructure.product.ProductRepository;
 import com.example.platform.render.infrastructure.storage.StorageReferenceRepository;
 import com.example.platform.render.testsupport.TimelineCoreSmokeFixture;
 import com.example.platform.shared.Ids;
-import com.example.platform.extension.app.ProcessToolRunner;
-import com.example.platform.extension.domain.ToolExecutionResult;
-import com.example.platform.extension.domain.ToolExecutionSafetyPolicy;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -36,7 +32,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * E2E smoke test for Caption Template Render.
  *
  * <p>Proves the former plan-based product flow fails closed without local
- * FFmpeg execution, output registration, fabricated lineage, or data leaks.</p>
+ * Provider execution, output registration, fabricated lineage, or data leaks.</p>
  */
 class CaptionTemplateRenderE2ESmokeTest {
     @SuppressWarnings("unchecked")
@@ -56,8 +52,6 @@ class CaptionTemplateRenderE2ESmokeTest {
     private InMemoryRenderAuditEventSink auditSink;
     private RenderAuditRecorder auditRecorder;
     private InMemoryStorageReferenceRepository storageRepo;
-    private final java.util.concurrent.atomic.AtomicInteger processInvocations =
-            new java.util.concurrent.atomic.AtomicInteger();
 
     @BeforeEach
     void setUp() {
@@ -74,28 +68,8 @@ class CaptionTemplateRenderE2ESmokeTest {
         auditSink = new InMemoryRenderAuditEventSink();
         auditRecorder = new RenderAuditRecorder(auditSink);
 
-        ProcessToolRunner toolRunner = new ProcessToolRunner() {
-            @Override public ToolExecutionResult execute(com.example.platform.extension.domain.ToolExecutionRequest r) {
-                processInvocations.incrementAndGet();
-                try {
-                    String outputPath = r.args().get(r.args().size() - 1);
-                    Path output = Path.of(outputPath);
-                    Files.createDirectories(output.getParent());
-                    Files.writeString(output, "fake-caption-rendered-" + UUID.randomUUID());
-                    return ToolExecutionResult.success(0, "ffmpeg", "", Instant.now(), Instant.now());
-                } catch (IOException e) {
-                    return ToolExecutionResult.failed(1, "", e.getMessage(), Instant.now(), Instant.now());
-                }
-            }
-            @Override public ToolExecutionResult execute(com.example.platform.extension.domain.ToolExecutionRequest r, ToolExecutionSafetyPolicy p) { return execute(r); }
-        };
-
-        RenderToolCapabilityInventory toolInv = new RenderToolCapabilityInventory() {
-            @Override public boolean isToolAvailable(String n) { return "ffmpeg".equals(n); }
-        };
-
         RenderExecutionStepExecutor stepExecutor = new RenderExecutionStepExecutor(
-                matService, regService, productRuntime, toolInv, toolRunner, auditRecorder);
+                matService, regService, productRuntime, auditRecorder);
         LocalExecutionPlanRunner planRunner = new LocalExecutionPlanRunner(
                 new RenderPlanPolicyGuard(), stepExecutor);
 
@@ -111,7 +85,7 @@ class CaptionTemplateRenderE2ESmokeTest {
                 new RenderExecutionPlanCompiler(),
                 new RenderPlanPolicyGuard(),
                 planRunner, matService, regService,
-                productRuntime, storageRuntime, toolInv,
+                productRuntime, storageRuntime,
                 new TimelineInputProductResolver(productRuntime), tempDir);
     }
 
@@ -151,11 +125,8 @@ class CaptionTemplateRenderE2ESmokeTest {
         String assetId = registerSourceProduct();
         render(assetId);
 
-        // Service-level: compile pipeline emits PROVIDER_BINDING_COMPLETED etc.
-        // API-level audit (REQUESTED/COMPLETED) is emitted by controller in P2C.2
-        // This test verifies service-level pipeline events exist
-        assertFalse(auditSink.findAll().isEmpty(),
-                "Service-level audit events should be emitted during compile pipeline");
+        assertTrue(auditSink.findAll().isEmpty(),
+                "Unbound planning must emit no execution-completion audit event");
     }
 
     @Test
@@ -198,14 +169,13 @@ class CaptionTemplateRenderE2ESmokeTest {
     }
 
     @Test
-    @DisplayName("E2E: plan-based legacy API fails closed without Remotion or local FFmpeg")
+    @DisplayName("E2E: plan-based legacy API fails closed without Remotion or local Provider")
     void e2ePlanBasedModeUsed() throws Exception {
         String sourceProductId = registerSourceProduct();
         CaptionTemplateRenderResult result = render(sourceProductId);
 
         assertFailClosed(result);
         assertFalse(result.toString().contains("remotion"));
-        assertEquals(0, processInvocations.get());
     }
 
     private void assertFailClosed(CaptionTemplateRenderResult result) {
@@ -214,9 +184,8 @@ class CaptionTemplateRenderE2ESmokeTest {
         assertFalse(result.ready());
         assertNotNull(result.renderJobId());
         assertNull(result.outputProductId());
-        assertEquals("One or more steps failed", result.safeMessage());
+        assertEquals("Policy guard rejected plan: Plan has 1 policy violations", result.safeMessage());
         assertTrue(result.validationErrors().isEmpty());
-        assertEquals(0, processInvocations.get());
     }
 
     private void assertNoOutputCommit() {

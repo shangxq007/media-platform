@@ -49,9 +49,9 @@ class RenderPlanPolicyGuardTest {
     private ArtifactGraphCompiler artifactCompiler;
     private TimelineNormalizationService normalizer;
 
-    private static final ProviderBindingCompiler.ProviderCandidate FFMPEG =
+    private static final ProviderBindingCompiler.ProviderCandidate PROVIDER =
             new ProviderBindingCompiler.ProviderCandidate(
-                    "ffmpeg", ProviderStatus.PRODUCTION, ProviderType.RENDER, "P0",
+                    "provider-a", ProviderStatus.PRODUCTION, ProviderType.RENDER, "P0",
                     true, true, "6.1",
                     List.of("MEDIA_INPUT", "VIDEO_DECODE", "VIDEO_TRIM",
                             "AUDIO_DECODE", "AUDIO_MIX",
@@ -87,9 +87,9 @@ class RenderPlanPolicyGuardTest {
     }
 
     @Test
-    @DisplayName("Valid FFmpeg plan passes as VALID_FOR_DRY_RUN")
+    @DisplayName("Valid Provider plan passes as VALID_FOR_DRY_RUN")
     void validPlanPassesAsDryRun() {
-        RenderExecutionPlan plan = compilePlan(List.of(FFMPEG), "PRODUCTION");
+        RenderExecutionPlan plan = compilePlan(List.of(PROVIDER), "PRODUCTION");
 
         RenderPlanPolicyResult result = guard.evaluate(plan, plan.policy());
 
@@ -124,12 +124,12 @@ class RenderPlanPolicyGuardTest {
     @Test
     @DisplayName("OpenCue target rejected unless explicitly allowed")
     void opencueRejectedUnlessAllowed() {
-        RenderExecutionPlan plan = compilePlan(List.of(FFMPEG), "PRODUCTION");
+        RenderExecutionPlan plan = compilePlan(List.of(PROVIDER), "PRODUCTION");
 
         // Policy without OpenCue enabled
         RenderPlanPolicyResult result = guard.evaluate(plan, ExecutionPolicy.production());
 
-        // Should pass since LOCAL is the default target for FFmpeg
+        // Should pass since LOCAL is the default target for Provider
         assertTrue(result.isValid());
     }
 
@@ -155,7 +155,7 @@ class RenderPlanPolicyGuardTest {
     @Test
     @DisplayName("Step with raw command in metadata is rejected")
     void rawCommandRejected() {
-        RenderExecutionPlan plan = compilePlan(List.of(FFMPEG), "PRODUCTION");
+        RenderExecutionPlan plan = compilePlan(List.of(PROVIDER), "PRODUCTION");
 
         // Inject raw command into a step's metadata
         RenderExecutionStep step = plan.steps().get(0);
@@ -165,7 +165,7 @@ class RenderPlanPolicyGuardTest {
                 step.providerName(), step.providerRef(), step.documentDraft(),
                 step.dependencies(), step.executionReady(),
                 step.executionEnvironmentTarget(), step.label(),
-                Map.of("rawCommand", "ffmpeg -i in.mp4 out.mp4"));
+                Map.of("rawCommand", "provider -i in.mp4 out.mp4"));
         RenderExecutionPlan taintedPlan = new RenderExecutionPlan(
                 plan.planId(), plan.bindingPlanId(), plan.timelineId(),
                 plan.policy(), plan.environmentTarget(),
@@ -182,7 +182,7 @@ class RenderPlanPolicyGuardTest {
     @Test
     @DisplayName("Step with storage internals is rejected")
     void storageInternalsRejected() {
-        RenderExecutionPlan plan = compilePlan(List.of(FFMPEG), "PRODUCTION");
+        RenderExecutionPlan plan = compilePlan(List.of(PROVIDER), "PRODUCTION");
 
         // Inject storage internals into a step's metadata
         RenderExecutionStep step = plan.steps().get(0);
@@ -209,7 +209,7 @@ class RenderPlanPolicyGuardTest {
     @Test
     @DisplayName("Final output must have verification and registration steps")
     void finalOutputMustHaveSteps() {
-        RenderExecutionPlan plan = compilePlan(List.of(FFMPEG), "PRODUCTION");
+        RenderExecutionPlan plan = compilePlan(List.of(PROVIDER), "PRODUCTION");
 
         // Remove VERIFY_OUTPUT step to trigger violation
         RenderExecutionPlan strippedPlan = new RenderExecutionPlan(
@@ -230,7 +230,7 @@ class RenderPlanPolicyGuardTest {
     @Test
     @DisplayName("Plan with cycle is rejected")
     void cyclicPlanRejected() {
-        RenderExecutionPlan plan = compilePlan(List.of(FFMPEG), "PRODUCTION");
+        RenderExecutionPlan plan = compilePlan(List.of(PROVIDER), "PRODUCTION");
 
         // Create a cyclic dependency: step A -> step B -> step A
         RenderExecutionStep stepA = plan.steps().get(0);
@@ -263,8 +263,8 @@ class RenderPlanPolicyGuardTest {
     @Test
     @DisplayName("Step IDs are deterministic")
     void stepIdsDeterministic() {
-        RenderExecutionPlan plan1 = compilePlan(List.of(FFMPEG), "PRODUCTION");
-        RenderExecutionPlan plan2 = compilePlan(List.of(FFMPEG), "PRODUCTION");
+        RenderExecutionPlan plan1 = compilePlan(List.of(PROVIDER), "PRODUCTION");
+        RenderExecutionPlan plan2 = compilePlan(List.of(PROVIDER), "PRODUCTION");
 
         for (int i = 0; i < plan1.steps().size(); i++) {
             assertEquals(plan1.steps().get(i).stepId(), plan2.steps().get(i).stepId());
@@ -274,7 +274,7 @@ class RenderPlanPolicyGuardTest {
     @Test
     @DisplayName("Dependency graph must be valid (no dangling deps)")
     void invalidDependencyGraphRejected() {
-        RenderExecutionPlan plan = compilePlan(List.of(FFMPEG), "PRODUCTION");
+        RenderExecutionPlan plan = compilePlan(List.of(PROVIDER), "PRODUCTION");
 
         // Add a step with a dangling dependency
         RenderExecutionStep step = plan.steps().get(0);
@@ -308,7 +308,7 @@ class RenderPlanPolicyGuardTest {
     @Test
     @DisplayName("No storage internals in any step of a clean plan")
     void cleanPlanHasNoStorageInternals() {
-        RenderExecutionPlan plan = compilePlan(List.of(FFMPEG), "PRODUCTION");
+        RenderExecutionPlan plan = compilePlan(List.of(PROVIDER), "PRODUCTION");
 
         RenderPlanPolicyResult result = guard.evaluate(plan, plan.policy());
 

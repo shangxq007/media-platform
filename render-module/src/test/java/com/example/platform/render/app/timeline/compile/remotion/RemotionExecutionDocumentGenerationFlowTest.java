@@ -88,8 +88,8 @@ class RemotionExecutionDocumentGenerationFlowTest {
     @DisplayName("Non-Remotion draft is skipped")
     void nonRemotionDraftSkipped() {
         ProviderExecutionDocumentDraft draft = ProviderExecutionDocumentDraft.forNode(
-                "draft-ffmpeg", "node-1", "ffmpeg",
-                ProviderExecutionDocumentDraftType.FFMPEG_COMMAND_PLAN);
+                "draft-provider", "node-1", "provider-a",
+                ProviderExecutionDocumentDraftType.TYPED_PROVIDER_REQUEST);
 
         ProviderExecutionDocumentGenerationResult result = generationService.generateSingle(draft, createSimpleTimeline());
 
@@ -135,16 +135,16 @@ class RemotionExecutionDocumentGenerationFlowTest {
     @DisplayName("Batch generation returns results for all drafts")
     void batchGeneration() {
         ProviderExecutionDocumentDraft remotionDraft = createRemotionDraft();
-        ProviderExecutionDocumentDraft ffmpegDraft = ProviderExecutionDocumentDraft.forNode(
-                "draft-ffmpeg", "node-1", "ffmpeg",
-                ProviderExecutionDocumentDraftType.FFMPEG_COMMAND_PLAN);
+        ProviderExecutionDocumentDraft providerDraft = ProviderExecutionDocumentDraft.forNode(
+                "draft-provider", "node-1", "provider-a",
+                ProviderExecutionDocumentDraftType.TYPED_PROVIDER_REQUEST);
 
         List<ProviderExecutionDocumentGenerationResult> results =
-                generationService.generate(List.of(remotionDraft, ffmpegDraft), createSimpleTimeline());
+                generationService.generate(List.of(remotionDraft, providerDraft), createSimpleTimeline());
 
         assertEquals(2, results.size());
         assertTrue(results.get(0).isGenerated()); // Remotion
-        assertTrue(results.get(1).isSkipped());    // FFmpeg
+        assertTrue(results.get(1).isSkipped());    // Provider
     }
 
     // --- Safety ---
@@ -180,7 +180,7 @@ class RemotionExecutionDocumentGenerationFlowTest {
                 generationService.generateSingle(createRemotionDraft(), createSimpleTimeline());
         String json = result.serializedDocument();
         assertNotNull(json);
-        assertFalse(json.contains("ffmpeg "));
+        assertFalse(json.contains("provider "));
         assertFalse(json.contains("remotion render"));
     }
 

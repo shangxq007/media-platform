@@ -1,7 +1,7 @@
 package com.example.platform.render.domain.caption;
 
 /**
- * Typed ASS dialogue event — one timed subtitle line for libass rendering.
+ * Typed dialogue event — one timed-text line for provider-neutral composition.
  *
  * <p>Maps from {@link CaptionSegmentSpec} to ASS Dialogue fields.
  * All fields are bounded and text is sanitized.</p>

@@ -1,0 +1,913 @@
+{
+  "schema_version": 1,
+  "task": "ROADMAP_22_PHASE19_SEMGREP_TARGET_DELTA_ACCOUNTING_V1",
+  "semgrep_version": "1.175.0",
+  "config": ".semgrep/media-platform-architecture.yml",
+  "base_sha": "923273758810195a22e4109cf145977bb7f3e970",
+  "base_target_count": 3722,
+  "candidate_target_count": 3697,
+  "target_delta": -25,
+  "base_findings": 0,
+  "candidate_findings": 0,
+  "base_errors": 0,
+  "candidate_errors": 0,
+  "removed_target_count": 92,
+  "added_target_count": 67,
+  "removed_plus_added_net": -25,
+  "classification_counts": {
+    "ADDED_GUARD_TEST_OR_GOVERNANCE_TARGET": 18,
+    "DELETED_CONCRETE_OR_RETIRED_TEST_SURFACE": 43,
+    "RENAMED_PROVIDER_NEUTRAL_SOURCE": 49,
+    "RENAMED_PROVIDER_NEUTRAL_TARGET": 49
+  },
+  "semgrep_target_delta_explained": "YES",
+  "target_changes": [
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/effect/FFmpegBaselineEffectOperation.java",
+      "git_status": "R061-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/effect/BaselineEffectOperation.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/effect/FFmpegBaselineEffectOperationId.java",
+      "git_status": "D",
+      "classification": "DELETED_CONCRETE_OR_RETIRED_TEST_SURFACE",
+      "rename_target": null
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/effect/FFmpegBaselineEffectOperationParameter.java",
+      "git_status": "R067-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/effect/BaselineEffectOperationParameter.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/effect/FFmpegBaselineEffectOperationSource.java",
+      "git_status": "R067-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/effect/BaselineEffectOperationSource.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/effect/FFmpegBaselineEffectOperationTarget.java",
+      "git_status": "R073-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/effect/BaselineEffectOperationTarget.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/effect/FFmpegBaselineEffectOperationTargetType.java",
+      "git_status": "R062-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/effect/BaselineEffectOperationTargetType.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/effect/FFmpegBaselineEffectOperationType.java",
+      "git_status": "R084-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/effect/BaselineEffectOperationType.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/effect/FFmpegBaselineEffectParameterType.java",
+      "git_status": "R069-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/effect/BaselineEffectParameterType.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/effect/FFmpegBaselineEffectPlan.java",
+      "git_status": "R059-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/effect/BaselineEffectPlan.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/effect/FFmpegBaselineEffectPlanId.java",
+      "git_status": "D",
+      "classification": "DELETED_CONCRETE_OR_RETIRED_TEST_SURFACE",
+      "rename_target": null
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/effect/FFmpegBaselineEffectPlanIssue.java",
+      "git_status": "D",
+      "classification": "DELETED_CONCRETE_OR_RETIRED_TEST_SURFACE",
+      "rename_target": null
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/effect/FFmpegBaselineEffectPlanIssueCode.java",
+      "git_status": "R086-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/effect/BaselineEffectPlanIssueCode.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/effect/FFmpegBaselineEffectPlanIssueSeverity.java",
+      "git_status": "R058-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/effect/BaselineEffectPlanIssueSeverity.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/effect/FFmpegBaselineEffectPlanStatus.java",
+      "git_status": "R068-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/effect/BaselineEffectPlanStatus.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/effect/FFmpegBaselineEffectPlanSummary.java",
+      "git_status": "R075-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/effect/BaselineEffectPlanSummary.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/effect/FFmpegBaselineEffectPlanner.java",
+      "git_status": "D",
+      "classification": "DELETED_CONCRETE_OR_RETIRED_TEST_SURFACE",
+      "rename_target": null
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/effect/FFmpegBaselineEffectPlanningRequest.java",
+      "git_status": "R067-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/effect/BaselineEffectPlanningRequest.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/effect/FFmpegBaselineEffectPlanningRequestId.java",
+      "git_status": "D",
+      "classification": "DELETED_CONCRETE_OR_RETIRED_TEST_SURFACE",
+      "rename_target": null
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/effect/FFmpegBaselineEffectPlanningResult.java",
+      "git_status": "D",
+      "classification": "DELETED_CONCRETE_OR_RETIRED_TEST_SURFACE",
+      "rename_target": null
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/effect/FFmpegBaselineEffectPlanningResultStatus.java",
+      "git_status": "R061-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/effect/BaselineEffectPlanningResultStatus.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/effect/FFmpegBaselineEffectPolicy.java",
+      "git_status": "R058-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/effect/BaselineEffectPolicy.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/FFmpegLibassBasicRenderPlan.java",
+      "git_status": "R058-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/plan/BasicRenderPlan.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/FFmpegLibassBasicRenderPlanId.java",
+      "git_status": "D",
+      "classification": "DELETED_CONCRETE_OR_RETIRED_TEST_SURFACE",
+      "rename_target": null
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/FFmpegLibassBasicRenderPlanIssue.java",
+      "git_status": "D",
+      "classification": "DELETED_CONCRETE_OR_RETIRED_TEST_SURFACE",
+      "rename_target": null
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/FFmpegLibassBasicRenderPlanIssueCode.java",
+      "git_status": "R088-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/plan/BasicRenderPlanIssueCode.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/FFmpegLibassBasicRenderPlanIssueSeverity.java",
+      "git_status": "R077-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/plan/BasicRenderPlanIssueSeverity.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/FFmpegLibassBasicRenderPlanStatus.java",
+      "git_status": "R066-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/plan/BasicRenderPlanStatus.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/FFmpegLibassBasicRenderPlanSummary.java",
+      "git_status": "R079-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/plan/BasicRenderPlanSummary.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/FFmpegLibassBasicRenderPlanner.java",
+      "git_status": "D",
+      "classification": "DELETED_CONCRETE_OR_RETIRED_TEST_SURFACE",
+      "rename_target": null
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/FFmpegLibassBasicRenderPlanningRequest.java",
+      "git_status": "R066-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/plan/BasicRenderPlanningRequest.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/FFmpegLibassBasicRenderPlanningRequestId.java",
+      "git_status": "D",
+      "classification": "DELETED_CONCRETE_OR_RETIRED_TEST_SURFACE",
+      "rename_target": null
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/FFmpegLibassBasicRenderPlanningResult.java",
+      "git_status": "D",
+      "classification": "DELETED_CONCRETE_OR_RETIRED_TEST_SURFACE",
+      "rename_target": null
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/FFmpegLibassBasicRenderPlanningResultStatus.java",
+      "git_status": "R078-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/plan/BasicRenderPlanningResultStatus.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/FFmpegLibassBasicRenderPolicy.java",
+      "git_status": "R072-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/plan/BasicRenderPolicy.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/FFmpegLibassBasicRenderStage.java",
+      "git_status": "R068-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/plan/BasicRenderStage.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/FFmpegLibassBasicRenderStageId.java",
+      "git_status": "D",
+      "classification": "DELETED_CONCRETE_OR_RETIRED_TEST_SURFACE",
+      "rename_target": null
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/FFmpegLibassBasicRenderStageStatus.java",
+      "git_status": "R079-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/plan/BasicRenderStageStatus.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/FFmpegLibassBasicRenderStageType.java",
+      "git_status": "R090-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/plan/BasicRenderStageType.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/FFmpegLibassBasicRenderStep.java",
+      "git_status": "R064-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/plan/BasicRenderStep.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/FFmpegLibassBasicRenderStepId.java",
+      "git_status": "D",
+      "classification": "DELETED_CONCRETE_OR_RETIRED_TEST_SURFACE",
+      "rename_target": null
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/FFmpegLibassBasicRenderStepParameter.java",
+      "git_status": "R075-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/plan/BasicRenderStepParameter.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/FFmpegLibassBasicRenderStepParameterType.java",
+      "git_status": "R083-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/plan/BasicRenderStepParameterType.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/FFmpegLibassBasicRenderStepSource.java",
+      "git_status": "R086-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/plan/BasicRenderStepSource.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/FFmpegLibassBasicRenderStepTarget.java",
+      "git_status": "R081-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/plan/BasicRenderStepTarget.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/FFmpegLibassBasicRenderStepTargetType.java",
+      "git_status": "R084-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/plan/BasicRenderStepTargetType.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/FFmpegLibassBasicRenderStepType.java",
+      "git_status": "R091-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/plan/BasicRenderStepType.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/render/local/LocalCaptionOverlaySpec.java",
+      "git_status": "D",
+      "classification": "DELETED_CONCRETE_OR_RETIRED_TEST_SURFACE",
+      "rename_target": null
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/render/local/LocalMediaSourceKind.java",
+      "git_status": "D",
+      "classification": "DELETED_CONCRETE_OR_RETIRED_TEST_SURFACE",
+      "rename_target": null
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/render/local/LocalMediaSourceOrigin.java",
+      "git_status": "D",
+      "classification": "DELETED_CONCRETE_OR_RETIRED_TEST_SURFACE",
+      "rename_target": null
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/render/local/LocalMediaSourceSpec.java",
+      "git_status": "D",
+      "classification": "DELETED_CONCRETE_OR_RETIRED_TEST_SURFACE",
+      "rename_target": null
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/render/local/LocalRenderExecutionId.java",
+      "git_status": "D",
+      "classification": "DELETED_CONCRETE_OR_RETIRED_TEST_SURFACE",
+      "rename_target": null
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/render/local/LocalRenderExecutionReport.java",
+      "git_status": "D",
+      "classification": "DELETED_CONCRETE_OR_RETIRED_TEST_SURFACE",
+      "rename_target": null
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/render/local/LocalRenderExecutionRequest.java",
+      "git_status": "D",
+      "classification": "DELETED_CONCRETE_OR_RETIRED_TEST_SURFACE",
+      "rename_target": null
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/render/local/LocalRenderExecutionResult.java",
+      "git_status": "D",
+      "classification": "DELETED_CONCRETE_OR_RETIRED_TEST_SURFACE",
+      "rename_target": null
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/render/local/LocalRenderExecutionStatus.java",
+      "git_status": "D",
+      "classification": "DELETED_CONCRETE_OR_RETIRED_TEST_SURFACE",
+      "rename_target": null
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/render/local/LocalRenderSmokeId.java",
+      "git_status": "D",
+      "classification": "DELETED_CONCRETE_OR_RETIRED_TEST_SURFACE",
+      "rename_target": null
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/render/local/LocalRenderSmokeIssue.java",
+      "git_status": "D",
+      "classification": "DELETED_CONCRETE_OR_RETIRED_TEST_SURFACE",
+      "rename_target": null
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/render/local/LocalRenderSmokeIssueCode.java",
+      "git_status": "D",
+      "classification": "DELETED_CONCRETE_OR_RETIRED_TEST_SURFACE",
+      "rename_target": null
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/render/local/LocalRenderSmokeIssueSeverity.java",
+      "git_status": "D",
+      "classification": "DELETED_CONCRETE_OR_RETIRED_TEST_SURFACE",
+      "rename_target": null
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/render/local/LocalRenderSmokeName.java",
+      "git_status": "D",
+      "classification": "DELETED_CONCRETE_OR_RETIRED_TEST_SURFACE",
+      "rename_target": null
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/render/local/LocalRenderSmokePolicy.java",
+      "git_status": "D",
+      "classification": "DELETED_CONCRETE_OR_RETIRED_TEST_SURFACE",
+      "rename_target": null
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/render/local/LocalRenderSmokeReport.java",
+      "git_status": "D",
+      "classification": "DELETED_CONCRETE_OR_RETIRED_TEST_SURFACE",
+      "rename_target": null
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/render/local/LocalRenderSmokeRequest.java",
+      "git_status": "D",
+      "classification": "DELETED_CONCRETE_OR_RETIRED_TEST_SURFACE",
+      "rename_target": null
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/render/local/LocalRenderSmokeResult.java",
+      "git_status": "D",
+      "classification": "DELETED_CONCRETE_OR_RETIRED_TEST_SURFACE",
+      "rename_target": null
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/render/local/LocalRenderSmokeStatus.java",
+      "git_status": "D",
+      "classification": "DELETED_CONCRETE_OR_RETIRED_TEST_SURFACE",
+      "rename_target": null
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/transition/FFmpegBaselineTransitionOperation.java",
+      "git_status": "R059-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/transition/BaselineTransitionOperation.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/transition/FFmpegBaselineTransitionOperationId.java",
+      "git_status": "D",
+      "classification": "DELETED_CONCRETE_OR_RETIRED_TEST_SURFACE",
+      "rename_target": null
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/transition/FFmpegBaselineTransitionOperationParameter.java",
+      "git_status": "R066-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/transition/BaselineTransitionOperationParameter.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/transition/FFmpegBaselineTransitionOperationSource.java",
+      "git_status": "R066-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/transition/BaselineTransitionOperationSource.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/transition/FFmpegBaselineTransitionOperationTarget.java",
+      "git_status": "R079-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/transition/BaselineTransitionOperationTarget.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/transition/FFmpegBaselineTransitionOperationTargetType.java",
+      "git_status": "R058-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/transition/BaselineTransitionOperationTargetType.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/transition/FFmpegBaselineTransitionOperationType.java",
+      "git_status": "R082-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/transition/BaselineTransitionOperationType.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/transition/FFmpegBaselineTransitionParameterType.java",
+      "git_status": "R068-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/transition/BaselineTransitionParameterType.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/transition/FFmpegBaselineTransitionPlan.java",
+      "git_status": "R052-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/transition/BaselineTransitionPlan.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/transition/FFmpegBaselineTransitionPlanId.java",
+      "git_status": "D",
+      "classification": "DELETED_CONCRETE_OR_RETIRED_TEST_SURFACE",
+      "rename_target": null
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/transition/FFmpegBaselineTransitionPlanIssue.java",
+      "git_status": "D",
+      "classification": "DELETED_CONCRETE_OR_RETIRED_TEST_SURFACE",
+      "rename_target": null
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/transition/FFmpegBaselineTransitionPlanIssueCode.java",
+      "git_status": "R088-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/transition/BaselineTransitionPlanIssueCode.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/transition/FFmpegBaselineTransitionPlanIssueSeverity.java",
+      "git_status": "R057-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/transition/BaselineTransitionPlanIssueSeverity.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/transition/FFmpegBaselineTransitionPlanStatus.java",
+      "git_status": "R066-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/transition/BaselineTransitionPlanStatus.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/transition/FFmpegBaselineTransitionPlanSummary.java",
+      "git_status": "R073-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/transition/BaselineTransitionPlanSummary.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/transition/FFmpegBaselineTransitionPlanner.java",
+      "git_status": "R056-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/transition/BaselineTransitionPlanner.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/transition/FFmpegBaselineTransitionPlanningRequest.java",
+      "git_status": "R066-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/transition/BaselineTransitionPlanningRequest.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/transition/FFmpegBaselineTransitionPlanningRequestId.java",
+      "git_status": "D",
+      "classification": "DELETED_CONCRETE_OR_RETIRED_TEST_SURFACE",
+      "rename_target": null
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/transition/FFmpegBaselineTransitionPlanningResult.java",
+      "git_status": "D",
+      "classification": "DELETED_CONCRETE_OR_RETIRED_TEST_SURFACE",
+      "rename_target": null
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/transition/FFmpegBaselineTransitionPlanningResultStatus.java",
+      "git_status": "R060-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/transition/BaselineTransitionPlanningResultStatus.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/transition/FFmpegBaselineTransitionPolicy.java",
+      "git_status": "R069-SOURCE",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_SOURCE",
+      "rename_target": "render-module/src/main/java/com/example/platform/render/domain/transition/BaselineTransitionPolicy.java"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/infrastructure/LibassOverlayProviderInterface.java",
+      "git_status": "D",
+      "classification": "DELETED_CONCRETE_OR_RETIRED_TEST_SURFACE",
+      "rename_target": null
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/infrastructure/libass/AssTextSanitizer.java",
+      "git_status": "D",
+      "classification": "DELETED_CONCRETE_OR_RETIRED_TEST_SURFACE",
+      "rename_target": null
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/infrastructure/libass/LibassAssFileWriter.java",
+      "git_status": "D",
+      "classification": "DELETED_CONCRETE_OR_RETIRED_TEST_SURFACE",
+      "rename_target": null
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/infrastructure/libass/LibassOverlayRenderProvider.java",
+      "git_status": "D",
+      "classification": "DELETED_CONCRETE_OR_RETIRED_TEST_SURFACE",
+      "rename_target": null
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/infrastructure/libass/LibassSubtitleCompositor.java",
+      "git_status": "D",
+      "classification": "DELETED_CONCRETE_OR_RETIRED_TEST_SURFACE",
+      "rename_target": null
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/infrastructure/remote/RemoteRenderProvider.java",
+      "git_status": "D",
+      "classification": "DELETED_CONCRETE_OR_RETIRED_TEST_SURFACE",
+      "rename_target": null
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/effect/BaselineEffectOperation.java",
+      "git_status": "R061-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/effect/BaselineEffectOperationId.java",
+      "git_status": "A",
+      "classification": "ADDED_GUARD_TEST_OR_GOVERNANCE_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/effect/BaselineEffectOperationParameter.java",
+      "git_status": "R067-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/effect/BaselineEffectOperationSource.java",
+      "git_status": "R067-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/effect/BaselineEffectOperationTarget.java",
+      "git_status": "R073-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/effect/BaselineEffectOperationTargetType.java",
+      "git_status": "R062-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/effect/BaselineEffectOperationType.java",
+      "git_status": "R084-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/effect/BaselineEffectParameterType.java",
+      "git_status": "R069-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/effect/BaselineEffectPlan.java",
+      "git_status": "R059-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/effect/BaselineEffectPlanId.java",
+      "git_status": "A",
+      "classification": "ADDED_GUARD_TEST_OR_GOVERNANCE_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/effect/BaselineEffectPlanIssue.java",
+      "git_status": "A",
+      "classification": "ADDED_GUARD_TEST_OR_GOVERNANCE_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/effect/BaselineEffectPlanIssueCode.java",
+      "git_status": "R086-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/effect/BaselineEffectPlanIssueSeverity.java",
+      "git_status": "R058-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/effect/BaselineEffectPlanStatus.java",
+      "git_status": "R068-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/effect/BaselineEffectPlanSummary.java",
+      "git_status": "R075-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/effect/BaselineEffectPlanner.java",
+      "git_status": "A",
+      "classification": "ADDED_GUARD_TEST_OR_GOVERNANCE_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/effect/BaselineEffectPlanningRequest.java",
+      "git_status": "R067-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/effect/BaselineEffectPlanningRequestId.java",
+      "git_status": "A",
+      "classification": "ADDED_GUARD_TEST_OR_GOVERNANCE_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/effect/BaselineEffectPlanningResult.java",
+      "git_status": "A",
+      "classification": "ADDED_GUARD_TEST_OR_GOVERNANCE_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/effect/BaselineEffectPlanningResultStatus.java",
+      "git_status": "R061-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/effect/BaselineEffectPolicy.java",
+      "git_status": "R058-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/BasicRenderPlan.java",
+      "git_status": "R058-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/BasicRenderPlanId.java",
+      "git_status": "A",
+      "classification": "ADDED_GUARD_TEST_OR_GOVERNANCE_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/BasicRenderPlanIssue.java",
+      "git_status": "A",
+      "classification": "ADDED_GUARD_TEST_OR_GOVERNANCE_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/BasicRenderPlanIssueCode.java",
+      "git_status": "R088-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/BasicRenderPlanIssueSeverity.java",
+      "git_status": "R077-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/BasicRenderPlanStatus.java",
+      "git_status": "R066-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/BasicRenderPlanSummary.java",
+      "git_status": "R079-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/BasicRenderPlanner.java",
+      "git_status": "A",
+      "classification": "ADDED_GUARD_TEST_OR_GOVERNANCE_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/BasicRenderPlanningRequest.java",
+      "git_status": "R066-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/BasicRenderPlanningRequestId.java",
+      "git_status": "A",
+      "classification": "ADDED_GUARD_TEST_OR_GOVERNANCE_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/BasicRenderPlanningResult.java",
+      "git_status": "A",
+      "classification": "ADDED_GUARD_TEST_OR_GOVERNANCE_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/BasicRenderPlanningResultStatus.java",
+      "git_status": "R078-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/BasicRenderPolicy.java",
+      "git_status": "R072-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/BasicRenderStage.java",
+      "git_status": "R068-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/BasicRenderStageId.java",
+      "git_status": "A",
+      "classification": "ADDED_GUARD_TEST_OR_GOVERNANCE_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/BasicRenderStageStatus.java",
+      "git_status": "R079-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/BasicRenderStageType.java",
+      "git_status": "R090-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/BasicRenderStep.java",
+      "git_status": "R064-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/BasicRenderStepId.java",
+      "git_status": "A",
+      "classification": "ADDED_GUARD_TEST_OR_GOVERNANCE_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/BasicRenderStepParameter.java",
+      "git_status": "R075-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/BasicRenderStepParameterType.java",
+      "git_status": "R083-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/BasicRenderStepSource.java",
+      "git_status": "R086-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/BasicRenderStepTarget.java",
+      "git_status": "R081-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/BasicRenderStepTargetType.java",
+      "git_status": "R084-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/plan/BasicRenderStepType.java",
+      "git_status": "R091-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/transition/BaselineTransitionOperation.java",
+      "git_status": "R059-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/transition/BaselineTransitionOperationId.java",
+      "git_status": "A",
+      "classification": "ADDED_GUARD_TEST_OR_GOVERNANCE_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/transition/BaselineTransitionOperationParameter.java",
+      "git_status": "R066-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/transition/BaselineTransitionOperationSource.java",
+      "git_status": "R066-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/transition/BaselineTransitionOperationTarget.java",
+      "git_status": "R079-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/transition/BaselineTransitionOperationTargetType.java",
+      "git_status": "R058-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/transition/BaselineTransitionOperationType.java",
+      "git_status": "R082-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/transition/BaselineTransitionParameterType.java",
+      "git_status": "R068-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/transition/BaselineTransitionPlan.java",
+      "git_status": "R052-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/transition/BaselineTransitionPlanId.java",
+      "git_status": "A",
+      "classification": "ADDED_GUARD_TEST_OR_GOVERNANCE_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/transition/BaselineTransitionPlanIssue.java",
+      "git_status": "A",
+      "classification": "ADDED_GUARD_TEST_OR_GOVERNANCE_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/transition/BaselineTransitionPlanIssueCode.java",
+      "git_status": "R088-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/transition/BaselineTransitionPlanIssueSeverity.java",
+      "git_status": "R057-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/transition/BaselineTransitionPlanStatus.java",
+      "git_status": "R066-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/transition/BaselineTransitionPlanSummary.java",
+      "git_status": "R073-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/transition/BaselineTransitionPlanner.java",
+      "git_status": "R056-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/transition/BaselineTransitionPlanningRequest.java",
+      "git_status": "R066-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/transition/BaselineTransitionPlanningRequestId.java",
+      "git_status": "A",
+      "classification": "ADDED_GUARD_TEST_OR_GOVERNANCE_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/transition/BaselineTransitionPlanningResult.java",
+      "git_status": "A",
+      "classification": "ADDED_GUARD_TEST_OR_GOVERNANCE_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/transition/BaselineTransitionPlanningResultStatus.java",
+      "git_status": "R060-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/transition/BaselineTransitionPolicy.java",
+      "git_status": "R069-TARGET",
+      "classification": "RENAMED_PROVIDER_NEUTRAL_TARGET"
+    }
+  ]
+}

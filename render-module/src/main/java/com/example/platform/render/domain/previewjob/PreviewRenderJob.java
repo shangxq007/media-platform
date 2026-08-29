@@ -8,7 +8,7 @@ import java.util.Objects;
  *
  * <p>This aggregate root represents a single preview render job with its
  * lifecycle managed through deterministic state transitions. The preview
- * render pipeline uses FFmpeg/libass only; no Remotion, no Artifact DAG,
+ * render pipeline remains provider-neutral and requires typed-plugin binding; no Remotion, no Artifact DAG,
  * no Spring AI.</p>
  *
  * <p>Architecture boundaries:

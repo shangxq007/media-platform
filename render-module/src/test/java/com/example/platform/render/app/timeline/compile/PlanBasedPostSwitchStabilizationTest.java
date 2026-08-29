@@ -69,8 +69,8 @@ class PlanBasedPostSwitchStabilizationTest {
     }
 
     @Test
-    @DisplayName("PLAN_BASED rejects non-FFmpeg provider via policy guard")
-    void planBasedRejectsNonFfmpeg() {
+    @DisplayName("PLAN_BASED rejects non-Provider provider via policy guard")
+    void planBasedRejectsNonProvider() {
         RenderPlanPolicyGuard guard = new RenderPlanPolicyGuard();
         assertNotNull(guard);
         // Verified in detail by LocalExecutionPlanRunnerTest and PlanBasedDefaultReadinessTest
