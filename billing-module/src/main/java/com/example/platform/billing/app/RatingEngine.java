@@ -35,13 +35,37 @@ public class RatingEngine {
         PricingRule rule = pricing.findEffectiveRule(usage.tenantId(), command.pricingRuleKey(),
                         command.pricingRuleVersion(), command.ratedAt())
                 .orElseThrow(() -> new IllegalStateException("Unknown or inactive pricing rule/version"));
+        return rateResolved(usage, rule, command.ratedAt(), command.traceId(),
+                command.idempotencyKey());
+    }
+
+    /**
+     * Typed BillableUsage-only rating boundary retained for callers that already resolved the
+     * exact pricing rule. Its derived identity is stable, so retries remain durable and idempotent.
+     */
+    @Transactional
+    public RatedUsageRecord rateUsage(BillableUsage usage, PricingRule rule) {
+        if (usage == null) {
+            throw new IllegalArgumentException("billableUsage is required");
+        }
+        if (rule == null) {
+            throw new IllegalArgumentException("pricingRule is required");
+        }
+        return rateResolved(usage, rule, usage.meteredAt(), usage.traceId(),
+                "rate:" + usage.tenantId() + ":" + usage.billableUsageId()
+                        + ":" + rule.ruleId() + ":" + rule.version());
+    }
+
+    private RatedUsageRecord rateResolved(BillableUsage usage, PricingRule rule,
+                                           Instant ratedAt, String traceId,
+                                           String idempotencyKey) {
         if (!rule.meterKey().equals(usage.billableMeter())) {
             throw new IllegalStateException("Pricing rule meter does not match BillableUsage meter");
         }
         long quantity = usage.billableQuantity().baseUnits();
         Money amount = calculate(quantity, rule);
         String fingerprint = RatedUsageRecord.fingerprint(usage.tenantId(), usage.billableUsageId(),
-                rule.ruleId(), rule.version(), quantity, amount, command.ratedAt(), command.traceId());
+                rule.ruleId(), rule.version(), quantity, amount, ratedAt, traceId);
         String ratedId = "rat_" + fingerprint.substring(0, 24);
         Map<String, String> details = new LinkedHashMap<>();
         details.put("meterKey", usage.billableMeter());
@@ -54,8 +78,7 @@ public class RatingEngine {
         details.put("meteringRuleVersion", usage.meteringRuleVersion());
         RatedUsageRecord candidate = new RatedUsageRecord(ratedId, usage.tenantId(),
                 usage.billableUsageId(), rule.ruleId(), rule.version(), quantity, amount,
-                Map.copyOf(details), command.ratedAt(), command.traceId(),
-                command.idempotencyKey(), fingerprint);
+                Map.copyOf(details), ratedAt, traceId, idempotencyKey, fingerprint);
         RatedUsageJdbcRepository.AppendResult result = ratedUsage.append(candidate);
         if (result.inserted()) audit.record(result.record());
         return result.record();

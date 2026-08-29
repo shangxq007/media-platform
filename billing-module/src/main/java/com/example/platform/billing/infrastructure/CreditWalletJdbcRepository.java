@@ -11,11 +11,13 @@ import com.example.platform.shared.commercial.PrincipalType;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.sql.Types;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.SqlParameterValue;
 import org.springframework.stereotype.Repository;
 
 /** Sole durable wallet, reservation, transaction, and wallet-command writer. */
@@ -99,7 +101,9 @@ public class CreditWalletJdbcRepository {
                 WHERE tenant_id = ? AND principal_type = ? AND principal_id = ?
                   AND currency_code = ? AND (workspace_id = ? OR (workspace_id IS NULL AND ? IS NULL))
                 """, this::mapWallet, principal.tenantId(), principal.principalType().name(),
-                principal.principalId(), currency, principal.workspaceId(), principal.workspaceId())
+                principal.principalId(), currency,
+                new SqlParameterValue(Types.VARCHAR, principal.workspaceId()),
+                new SqlParameterValue(Types.VARCHAR, principal.workspaceId()))
                 .stream().findFirst();
     }
 

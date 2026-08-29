@@ -3,12 +3,26 @@ package com.example.platform.commerce.app;
 import com.example.platform.commerce.domain.ProductLineType;
 import com.example.platform.commerce.domain.PurchaseMode;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
 
 class CommerceCatalogServiceTest {
 
     private final CommerceCatalogService catalog = CatalogTestFixtures.catalog();
+
+    @Test
+    void springSelectsTheCatalogAuthorityConstructor() {
+        var authority = mock(ProductCatalogAuthority.class);
+        try (var context = new AnnotationConfigApplicationContext()) {
+            context.registerBean(ProductCatalogAuthority.class, () -> authority);
+            context.register(CommerceCatalogService.class);
+            context.refresh();
+
+            assertNotNull(context.getBean(CommerceCatalogService.class));
+        }
+    }
 
     @Test
     void listsBaseAddonAndCreditProducts() {

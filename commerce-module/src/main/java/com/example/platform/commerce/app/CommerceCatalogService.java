@@ -3,6 +3,7 @@ package com.example.platform.commerce.app;
 import com.example.platform.commerce.domain.*;
 import java.time.Clock;
 import java.time.Instant;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -13,6 +14,7 @@ public class CommerceCatalogService {
     private final ProductCatalogAuthority authority;
     private final Clock clock;
 
+    @Autowired
     public CommerceCatalogService(ProductCatalogAuthority authority) { this(authority, Clock.systemUTC()); }
     public CommerceCatalogService(ProductCatalogAuthority authority, Clock clock) { this.authority = authority; this.clock = clock; }
 
