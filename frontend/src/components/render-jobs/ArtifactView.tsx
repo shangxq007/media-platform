@@ -1,11 +1,13 @@
-import type { RenderJobArtifact } from '../../api/render-jobs'
+import type { RenderJobArtifactSummary } from '../../api/render-jobs'
+import { ArtifactAccessAction } from '../../routes/app/renders/ArtifactAccessAction'
 
 interface Props {
-  artifacts: RenderJobArtifact[]
+  artifacts: RenderJobArtifactSummary[]
   jobId: string
+  onAccessRequest: (artifactId: string) => Promise<{ accessUrl: string; expiresAt?: string } | null>
 }
 
-export function ArtifactView({ artifacts, jobId }: Props) {
+export function ArtifactView({ artifacts, jobId, onAccessRequest }: Props) {
   if (artifacts.length === 0) {
     return (
       <div className="rounded-lg border border-gray-800 bg-gray-900 p-4">
@@ -20,48 +22,26 @@ export function ArtifactView({ artifacts, jobId }: Props) {
       <h3 className="text-sm font-semibold text-gray-300 mb-3">Artifacts</h3>
       <div className="space-y-3">
         {artifacts.map(artifact => (
-          <ArtifactCard key={artifact.id} artifact={artifact} />
+          <ArtifactCard key={artifact.artifactId} artifact={artifact} onAccessRequest={onAccessRequest} />
         ))}
       </div>
     </div>
   )
 }
 
-function ArtifactCard({ artifact }: { artifact: RenderJobArtifact }) {
-  const mediaType = guessMediaType(artifact.format)
-  const previewUrl = artifact.storageUri
-
+function ArtifactCard({
+  artifact,
+  onAccessRequest,
+}: {
+  artifact: RenderJobArtifactSummary
+  onAccessRequest: Props['onAccessRequest']
+}) {
   return (
     <div className="rounded border border-gray-700 bg-gray-800 p-3">
-      <div className="rounded overflow-hidden bg-gray-950 mb-2">
-        {mediaType === 'video' && (
-          <video
-            controls
-            src={previewUrl}
-            className="w-full max-h-48 object-contain"
-            preload="metadata"
-          />
-        )}
-
-        {mediaType === 'image' && (
-          <img src={previewUrl} alt={artifact.id} className="w-full max-h-48 object-contain" />
-        )}
-
-        {mediaType === 'audio' && (
-          <audio controls src={previewUrl} className="w-full" />
-        )}
-
-        {mediaType === 'unknown' && (
-          <div className="flex items-center justify-center h-16 text-gray-500 text-sm">
-            No preview available
-          </div>
-        )}
-      </div>
-
       <div className="space-y-1 text-xs">
         <div className="flex justify-between">
           <span className="text-gray-500">ID</span>
-          <span className="font-mono text-gray-200">{artifact.id}</span>
+          <span className="font-mono text-gray-200">{artifact.artifactId}</span>
         </div>
         {artifact.format && (
           <div className="flex justify-between">
@@ -69,27 +49,24 @@ function ArtifactCard({ artifact }: { artifact: RenderJobArtifact }) {
             <span className="text-gray-200">{artifact.format}</span>
           </div>
         )}
-        <div className="flex justify-between">
-          <span className="text-gray-500">URI</span>
-          <a
-            href={previewUrl}
-            target="_blank"
-            rel="noreferrer noopener"
-            className="text-blue-400 hover:text-blue-300 font-mono text-xs truncate max-w-48"
-          >
-            Open ↗
-          </a>
+        <div className="flex items-center justify-between pt-2">
+          <span className="text-gray-500">Access</span>
+          <ArtifactAccessAction
+            artifactId={artifact.artifactId}
+            contentType={contentTypeForFormat(artifact.format)}
+            onAccessRequest={onAccessRequest}
+          />
         </div>
       </div>
     </div>
   )
 }
 
-function guessMediaType(format?: string): 'video' | 'image' | 'audio' | 'unknown' {
-  if (!format) return 'unknown'
+function contentTypeForFormat(format: string | null): string | undefined {
+  if (!format) return undefined
   const f = format.toLowerCase()
-  if (['mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv'].includes(f)) return 'video'
-  if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp'].includes(f)) return 'image'
-  if (['mp3', 'wav', 'ogg', 'aac', 'flac', 'm4a'].includes(f)) return 'audio'
-  return 'unknown'
+  if (['mp4', 'webm', 'ogg', 'mov', 'mkv'].includes(f)) return `video/${f}`
+  if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(f)) return `image/${f === 'jpg' ? 'jpeg' : f}`
+  if (['mp3', 'wav', 'aac', 'flac', 'm4a'].includes(f)) return `audio/${f}`
+  return undefined
 }

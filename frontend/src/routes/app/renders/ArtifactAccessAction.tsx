@@ -46,7 +46,7 @@ export function ArtifactAccessAction({ artifactId, contentType, onAccessRequest 
       switch (kind) {
         case 'preview':
         case 'open':
-          window.open(access.accessUrl, '_blank')
+          window.open(access.accessUrl, '_blank', 'noopener,noreferrer')
           break
         case 'download': {
           const a = document.createElement('a')
@@ -61,7 +61,7 @@ export function ArtifactAccessAction({ artifactId, contentType, onAccessRequest 
 
       // Reset after action
       setTimeout(() => setState('idle'), 1000)
-    } catch (error) {
+    } catch {
       setState('error')
       setTimeout(() => setState('idle'), 3000)
     }

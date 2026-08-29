@@ -1,15 +1,35 @@
-import { useState } from 'react'
-import { useRenderJobs, useRenderJob, useRenderJobArtifacts } from '../api/render-jobs'
+import { useEffect, useState } from 'react'
+import {
+  RenderJobsAPI,
+  useRenderJobs,
+  useRenderJob,
+  useRenderJobArtifacts,
+  useRenderWorkspaceScope,
+} from '../api/render-jobs'
 import { JobList } from '../components/render-jobs/JobList'
 import { JobDetail } from '../components/render-jobs/JobDetail'
 import { ArtifactView } from '../components/render-jobs/ArtifactView'
 
 export function RenderJobDashboard() {
+  const { data: scope, isLoading: scopeLoading, error: scopeError } = useRenderWorkspaceScope()
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
+  const tenantId = scope?.tenantId ?? null
 
-  const { data: jobs, isLoading: jobsLoading, error: jobsError } = useRenderJobs()
-  const { data: selectedJob } = useRenderJob(selectedJobId)
-  const { data: artifacts } = useRenderJobArtifacts(selectedJobId)
+  useEffect(() => {
+    if (!selectedProjectId && scope?.recentProjects[0]) {
+      setSelectedProjectId(scope.recentProjects[0].id)
+    }
+  }, [scope, selectedProjectId])
+
+  const { data: jobs, isLoading: jobsLoading, error: jobsError } = useRenderJobs(tenantId, selectedProjectId)
+  const { data: selectedJob, error: selectedJobError } = useRenderJob(tenantId, selectedProjectId, selectedJobId)
+  const { data: artifacts, error: artifactsError } = useRenderJobArtifacts(selectedJobId)
+
+  const selectProject = (projectId: string) => {
+    setSelectedProjectId(projectId || null)
+    setSelectedJobId(null)
+  }
 
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100 p-6">
@@ -21,13 +41,36 @@ export function RenderJobDashboard() {
               View render job history, status, and artifacts.
             </p>
           </div>
-          <a
-            href="/smoke-editor"
-            className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500"
-          >
-            New Render Job
-          </a>
+          {scope?.recentProjects.length ? (
+            <label className="flex items-center gap-2 text-sm text-gray-400">
+              Project
+              <select
+                aria-label="Project"
+                value={selectedProjectId ?? ''}
+                onChange={event => selectProject(event.target.value)}
+                className="rounded border border-gray-700 bg-gray-900 px-3 py-2 text-gray-100"
+              >
+                {scope.recentProjects.map(project => (
+                  <option key={project.id} value={project.id}>{project.name}</option>
+                ))}
+              </select>
+            </label>
+          ) : null}
         </div>
+
+        {scopeError && (
+          <div className="rounded-lg border border-red-800 bg-red-950 p-4 mb-4">
+            <p className="text-sm text-red-300">Failed to load the authenticated render scope: {scopeError.message}</p>
+          </div>
+        )}
+
+        {!scopeLoading && !scopeError && (!tenantId || scope?.recentProjects.length === 0) && (
+          <div className="rounded-lg border border-amber-800 bg-amber-950 p-4 mb-4">
+            <p className="text-sm text-amber-200">
+              Render history needs an authenticated workspace with at least one project.
+            </p>
+          </div>
+        )}
 
         {jobsError && (
           <div className="rounded-lg border border-red-800 bg-red-950 p-4 mb-4">
@@ -53,7 +96,11 @@ export function RenderJobDashboard() {
 
           {/* Center: Job Detail */}
           <div>
-            {selectedJob ? (
+            {selectedJobError ? (
+              <div className="rounded-lg border border-red-800 bg-red-950 p-4 text-sm text-red-300">
+                Failed to load render job: {selectedJobError.message}
+              </div>
+            ) : selectedJob ? (
               <JobDetail job={selectedJob} />
             ) : (
               <div className="rounded-lg border border-gray-800 bg-gray-900 p-8 text-center">
@@ -66,8 +113,27 @@ export function RenderJobDashboard() {
 
           {/* Right: Artifacts */}
           <div>
-            {selectedJobId ? (
-              <ArtifactView artifacts={artifacts ?? []} jobId={selectedJobId} />
+            {artifactsError ? (
+              <div className="rounded-lg border border-red-800 bg-red-950 p-4 text-sm text-red-300">
+                Failed to load artifacts: {artifactsError.message}
+              </div>
+            ) : selectedJobId ? (
+              <ArtifactView
+                artifacts={artifacts ?? []}
+                jobId={selectedJobId}
+                onAccessRequest={async artifactId => {
+                  if (!tenantId || !selectedProjectId) return null
+                  const access = await RenderJobsAPI.getArtifactAccess(
+                    tenantId,
+                    selectedProjectId,
+                    selectedJobId,
+                    artifactId
+                  )
+                  return access?.url
+                    ? { accessUrl: access.url, expiresAt: access.expiresAt ?? undefined }
+                    : null
+                }}
+              />
             ) : (
               <div className="rounded-lg border border-gray-800 bg-gray-900 p-8 text-center">
                 <div className="text-gray-500 text-sm">Select a job to view artifacts</div>
