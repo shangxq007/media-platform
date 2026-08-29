@@ -9,17 +9,17 @@
   ],
   "base_sha": "e02579181ba3049ae65ed81080c93a7212f5833d",
   "base_tree": "b67136e3a4b4e08688091bad0c4dad30d841978d",
-  "counting_rule": "One row per bounded authority family discovered by the Phase20 repository-reality review. Each row has exact representative authority-bearing paths and exactly one disposition. Closely coupled scalar/value types inherit their listed family disposition; this is not a count of all keyword-bearing Java types.",
+  "counting_rule": "One row per bounded authority family discovered by the Phase20 repository-reality review, including late asynchronous findings independently reverified on the authorized worktree. Each row has exact representative authority-bearing paths and exactly one disposition. Closely coupled scalar/value types inherit their listed family disposition; this is not a count of all keyword-bearing Java types.",
   "disposition_counts": {
-    "DEFER": 3,
+    "DEFER": 5,
     "DELETE_SHADOW": 2,
-    "MIGRATE_REDESIGN": 5,
+    "MIGRATE_REDESIGN": 12,
     "REUSE_AS_CANONICAL": 24,
     "REUSE_MECHANICS_ONLY": 2
   },
   "duplicate_id_count": 0,
   "missing_member_path_count": 0,
-  "row_count": 36,
+  "row_count": 45,
   "rows": [
     {
       "clean_forward_action": "Retain as canonical plan-side requirement; extend only through independently reviewed typed fields, never runtime capacity.",
@@ -408,6 +408,106 @@
         "cloud-resource-module/src/main/java/com/example/platform/cloudresource/domain/CloudResourceProvider.java"
       ],
       "repository_evidence": "Cloud service catalog uses resource/provider vocabulary but does not own worker capacity or provider implementation feasibility."
+    },
+    {
+      "clean_forward_action": "Converge these declarations into the typed ExecutionRequirement/provider-local requirement vocabulary with explicit static-to-runtime mappings; do not import worker-fabric upward or alias identities.",
+      "concept": "Static hardware/runtime/sandbox requirement vocabularies",
+      "disposition": "MIGRATE_REDESIGN",
+      "id": "RA-037",
+      "member_paths": [
+        "media-execution-plan-module/src/main/java/com/example/platform/execution/compatibility/StaticCompatibilityConstraint.java",
+        "media-execution-plan-module/src/main/java/com/example/platform/execution/compatibility/ProviderStaticCompatibility.java"
+      ],
+      "repository_evidence": "ProviderDeviceKind exactly duplicates the four runtime DeviceKind values while ProviderRuntimeClass and SandboxMode overlap adjacent runtime/sandbox axes; the static declarations are real Stage-1 inputs, not observations."
+    },
+    {
+      "clean_forward_action": "Migrate real callers to the appropriate WorkerRuntime or RemoteProviderBackend boundary, then delete the in-memory shadow; no compatibility wrapper authority.",
+      "concept": "Remote-render in-memory worker registry",
+      "disposition": "MIGRATE_REDESIGN",
+      "id": "RA-038",
+      "member_paths": [
+        "remote-render-worker/src/main/java/com/example/platform/remoterender/app/WorkerRegistryService.java",
+        "remote-render-worker/src/main/java/com/example/platform/remoterender/app/RemoteRenderService.java"
+      ],
+      "repository_evidence": "Active Spring/API/service wiring uses String worker IDs, ConcurrentHashMap liveness and independent active-job state outside canonical worker-fabric."
+    },
+    {
+      "clean_forward_action": "Fold any retained evidence into bounded provider-local RuntimeDependencyObservation; keep disabled/non-authoritative until a concrete provider implementation owns it.",
+      "concept": "Remotion process-level runtime diagnostic probe",
+      "disposition": "MIGRATE_REDESIGN",
+      "id": "RA-039",
+      "member_paths": [
+        "render-module/src/main/java/com/example/platform/render/domain/remotion/RemotionRuntimeProbe.java",
+        "render-module/src/main/java/com/example/platform/render/domain/remotion/RemotionRuntimeAvailability.java"
+      ],
+      "repository_evidence": "Diagnostic probe derives node/npm/npx availability from RenderToolCapabilityInventory and explicitly denies execution permission, but duplicates provider-local runtime observation shape."
+    },
+    {
+      "clean_forward_action": "Defer consolidation until provider-plugin host lifecycle evidence exists; prohibit it from becoming worker, capacity, dependency-fingerprint or semantic authority.",
+      "concept": "Provider plugin host runtime context",
+      "disposition": "DEFER",
+      "id": "RA-040",
+      "member_paths": [
+        "provider-plugin-runtime-module/src/main/java/com/example/platform/providerplugin/ProviderPluginRuntimeContext.java",
+        "provider-plugin-runtime-module/src/main/java/com/example/platform/providerplugin/ProviderPluginContribution.java"
+      ],
+      "repository_evidence": "Host-owned executable/workspace/timeout/capture/cancellation input creates provider-native bindings; it is wired and distinct from resource capacity, but exact ownership relative to RuntimeExecutionContext needs lifecycle review."
+    },
+    {
+      "clean_forward_action": "Keep entitlement quota authority, migrate render callers through one canonical consumption boundary, then delete the render writer after exact zero-caller proof.",
+      "concept": "quota_usage dual-writer shadow",
+      "disposition": "MIGRATE_REDESIGN",
+      "id": "RA-041",
+      "member_paths": [
+        "entitlement-module/src/main/java/com/example/platform/entitlement/infrastructure/QuotaUsageJdbcRepository.java",
+        "render-module/src/main/java/com/example/platform/render/app/QuotaUsageRepository.java",
+        "render-module/src/main/java/com/example/platform/render/app/RenderQuotaService.java"
+      ],
+      "repository_evidence": "Entitlement JDBC and render jOOQ repositories both update/insert the same quota_usage tenant_id+feature_code rows; RenderQuotaService actively calls the render writer."
+    },
+    {
+      "clean_forward_action": "Migrate through billing/entitlement ports and retire duplicate render decision/cost types under their owning governance task; Phase20 only enforces that these inputs never redefine technical CAN_RUN.",
+      "concept": "Render-local billing decision and pricing shadow",
+      "disposition": "MIGRATE_REDESIGN",
+      "id": "RA-042",
+      "member_paths": [
+        "render-module/src/main/java/com/example/platform/render/infrastructure/billing/decision/BillingDecisionEngine.java",
+        "render-module/src/main/java/com/example/platform/render/infrastructure/billing/decision/BillingDecision.java",
+        "render-module/src/main/java/com/example/platform/render/infrastructure/billing/policy/PricingEngine.java"
+      ],
+      "repository_evidence": "Active Spring engine composes deprecated QuotaService, RenderQuotaService, billing CostEstimationService and separate render policy/pricing/credit types, duplicating billing decision/cost models."
+    },
+    {
+      "clean_forward_action": "Do not promote to global availability/version authority; migrate each retained observation into an exact provider-implementation probe with explicit executable/bundle identity, or delete unused diagnostics.",
+      "concept": "Legacy PATH-based native tool capability inventory",
+      "disposition": "MIGRATE_REDESIGN",
+      "id": "RA-043",
+      "member_paths": [
+        "render-module/src/main/java/com/example/platform/render/infrastructure/RenderToolCapabilityInventory.java"
+      ],
+      "repository_evidence": "Active component runs bare binary --version probes for melt/blender/natron/gstreamer/MP4Box/node/npm/npx/python3 from ambient PATH; comments deny dispatch/installation/production-ready authority."
+    },
+    {
+      "clean_forward_action": "Migrate real providers to ProviderExecutionContract/ProviderCapabilityProfile/typed runtime probe and backend boundaries, then delete the god interface without a new wrapper.",
+      "concept": "Legacy RenderProvider god interface and string capability surface",
+      "disposition": "MIGRATE_REDESIGN",
+      "id": "RA-044",
+      "member_paths": [
+        "render-module/src/main/java/com/example/platform/render/infrastructure/RenderProvider.java",
+        "render-module/src/main/java/com/example/platform/render/infrastructure/RenderProviderCapability.java"
+      ],
+      "repository_evidence": "Interface combines execution, environment validation, string supports(), capabilities, priority, status and auto-dispatch across many implementations, shadowing typed provider contracts."
+    },
+    {
+      "clean_forward_action": "Defer to owning authority migration; prohibit these raw strings from entering Phase20 ProviderImplementationId/CapabilityImplementationId decisions.",
+      "concept": "Stringly provider and capability identity projections",
+      "disposition": "DEFER",
+      "id": "RA-045",
+      "member_paths": [
+        "render-module/src/main/java/com/example/platform/render/domain/asset/semantic/AiProviderDescriptor.java",
+        "extension-module/src/main/java/com/example/platform/extension/domain/CapabilityDescriptor.java"
+      ],
+      "repository_evidence": "Adjacent descriptors retain raw String providerId/capabilityId fields beside canonical strong types; usage/compatibility obligations were not fully adjudicated in H1."
     }
   ],
   "schema_version": "ROADMAP_22_PHASE20_RESOURCE_AUTHORITY_DISPOSITION_LEDGER_V1",

@@ -35,7 +35,7 @@ Repository-reality authority:
 - `roadmap-22-phase-20-resource-accounting-hardware-provider-conformance-repository-reality-inventory-v1.json`
 - `roadmap-22-phase-20-resource-accounting-hardware-provider-conformance-disposition-ledger-v1.json`
 
-The disposition ledger has 36 bounded authority-family rows and requires `UNCLASSIFIED=0`.
+The disposition ledger has 45 bounded authority-family rows and requires `UNCLASSIFIED=0`. Nine late asynchronous findings were accepted only after direct re-verification on this authorized worktree; claims produced from `/home/user/media-platform` were rejected as wrong-repository evidence.
 
 ## C1 — Phase boundary and decision meaning
 
@@ -101,11 +101,15 @@ Quota is a workspace/user/tenant/business policy limit, owned by entitlement quo
 
 A quota decision may block admission after technical `CAN_RUN` is established, but the result is typed as `POLICY_QUOTA_DENIED`, not hardware incompatibility. Deprecated in-memory quota-billing authority is a CLEAN FORWARD delete-shadow after caller migration.
 
+Repository reality has two active writers to `quota_usage`: entitlement `QuotaUsageJdbcRepository` and render `QuotaUsageRepository`, the latter called by `RenderQuotaService`. Entitlement remains canonical. Phase20 must not consume the render writer; its callers migrate through one canonical quota-consumption boundary before deletion.
+
 ## C8 — Cost authority and lifecycle
 
 Cost is derived accounting, pricing or future optimization input owned by billing/cost authority. It is not feasibility authority and must not alter static compatibility, hardware eligibility, capacity or reservation arithmetic.
 
 A hard budget policy may independently deny an otherwise technically feasible admission. That is a business-policy result, not `CAN_RUN=NO`. Roadmap #23 may compare cost only over the already feasible candidate set.
+
+The active render-local `BillingDecisionEngine`/pricing/policy/credit stack is a shadow around canonical billing and entitlement services. It is a later `MIGRATE_REDESIGN` concern. Its duplicate cost/decision records and deprecated quota dependencies are forbidden as Phase20 technical-feasibility inputs.
 
 ## C9 — Runtime, host, device and implementation identities
 
@@ -160,6 +164,8 @@ The following are forbidden:
 `NO_GLOBAL_NATIVE_TOOL_VERSION_AUTHORITY_V1` and `CONFORMANCE_NOT_VERSION_UNIFICATION_IS_THE_CROSS_PROVIDER_CONTRACT_V1` are frozen.
 
 Cross-provider conformance is expressed through capability/contract compatibility, artifact boundaries and typed provider-local requirement/observation matching, never global version equality.
+
+`LEGACY_PROCESS_LEVEL_NATIVE_TOOL_PROBES_ARE_NOT_GLOBAL_AUTHORITY_V1` is also frozen. Repository diagnostics such as `RenderToolCapabilityInventory` run ambient-PATH `--version` commands and explicitly deny dispatch/production-ready authority. They are `MIGRATE_REDESIGN`: a retained observation must move behind an exact ProviderImplementation probe with explicit executable/bundle identity; otherwise it is deleted. Their existence does not make a global version authority valid.
 
 ## C14 — Hardware/provider eligibility requirement dimensions
 
@@ -345,13 +351,13 @@ H2 must consume the frozen H1 types. If H2 needs to change any H1 authority, it 
 
 ## C28 — CLEAN FORWARD decisions
 
-The 36-row disposition ledger is authoritative for this bounded recovery:
+The 45-row disposition ledger is authoritative for this bounded recovery:
 
 - `REUSE_AS_CANONICAL=24`
-- `MIGRATE_REDESIGN=5`
+- `MIGRATE_REDESIGN=12`
 - `DELETE_SHADOW=2`
 - `REUSE_MECHANICS_ONLY=2`
-- `DEFER=3`
+- `DEFER=5`
 - `UNCLASSIFIED=0`
 
 No compatibility wrapper is permitted merely to preserve unshipped shadow authority. Real callers migrate first; exact zero-use and persistence/external-compatibility proof precede deletion.
@@ -363,7 +369,15 @@ Priority conflicts:
 3. ProviderCompatibilityGraph -> ephemeral derived view;
 4. PhysicalExecutionPlan -> later collapse/downgrade migration decision;
 5. legacy render-farm worker/lease -> migrate real callers then delete shadow;
-6. deprecated quota-billing -> existing retirement path, no Phase20 dependency.
+6. deprecated quota-billing -> existing retirement path, no Phase20 dependency;
+7. static device/runtime/sandbox requirement vocabularies -> converge through explicit declaration-to-observation mappings;
+8. remote-render in-memory worker registry -> migrate real callers to WorkerRuntime/RemoteProviderBackend;
+9. Remotion and ambient-PATH tool probes -> exact implementation-local observations or deletion;
+10. provider-plugin runtime context -> defer pending lifecycle proof, never resource authority;
+11. `quota_usage` double writer -> entitlement single-writer convergence;
+12. render-local billing/pricing stack -> owning billing/entitlement migration, never CAN_RUN authority;
+13. legacy RenderProvider god interface -> typed provider contract/runtime/backend migration;
+14. raw provider/capability string projections -> defer to owning authority and prohibit in Phase20 identity decisions.
 
 ## C29 — Implementation phase plan and GO/NO-GO
 

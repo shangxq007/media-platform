@@ -1,7 +1,7 @@
 {
   "base_sha": "e02579181ba3049ae65ed81080c93a7212f5833d",
   "base_tree": "b67136e3a4b4e08688091bad0c4dad30d841978d",
-  "bounded_authority_family_count": 36,
+  "bounded_authority_family_count": 45,
   "core_symbol_count": 29,
   "counting_dimensions": {
     "authority_families": "adjudicated ledger denominator",
@@ -115,10 +115,94 @@
         "scripts/phase19-render-zero-awareness-guard.py"
       ],
       "id": "RI-12"
+    },
+    {
+      "decision": "STATIC_HARDWARE_REQUIREMENT_VOCABULARY_REQUIRES_CONVERGENCE",
+      "detail": "Static ProviderDeviceKind duplicates runtime DeviceKind values while runtime-class and sandbox-mode vocabularies overlap adjacent axes; preserve declaration-vs-observation separation and add explicit mapping.",
+      "evidence": [
+        "media-execution-plan-module/src/main/java/com/example/platform/execution/compatibility/StaticCompatibilityConstraint.java",
+        "media-execution-plan-module/src/main/java/com/example/platform/execution/compatibility/ProviderStaticCompatibility.java"
+      ],
+      "id": "RI-13"
+    },
+    {
+      "decision": "REMOTE_RENDER_WORKER_REGISTRY_SHADOW_IS_ACTIVE",
+      "detail": "Active Spring/API wiring uses string IDs and in-memory worker/job state outside canonical worker-fabric.",
+      "evidence": [
+        "remote-render-worker/src/main/java/com/example/platform/remoterender/app/WorkerRegistryService.java",
+        "remote-render-worker/src/main/java/com/example/platform/remoterender/app/RemoteRenderService.java"
+      ],
+      "id": "RI-14"
+    },
+    {
+      "decision": "REMOTION_RUNTIME_PROBE_IS_NON_AUTHORITATIVE_SHADOW",
+      "detail": "The diagnostic probe explicitly denies execution permission but duplicates provider-local runtime observation shape.",
+      "evidence": [
+        "render-module/src/main/java/com/example/platform/render/domain/remotion/RemotionRuntimeProbe.java"
+      ],
+      "id": "RI-15"
+    },
+    {
+      "decision": "PROVIDER_PLUGIN_RUNTIME_CONTEXT_NEEDS_LIFECYCLE_REVIEW",
+      "detail": "Host-owned binding inputs are real and wired but must remain separate from worker/resource/dependency authority pending lifecycle evidence.",
+      "evidence": [
+        "provider-plugin-runtime-module/src/main/java/com/example/platform/providerplugin/ProviderPluginRuntimeContext.java"
+      ],
+      "id": "RI-16"
+    },
+    {
+      "decision": "QUOTA_USAGE_TABLE_HAS_TWO_ACTIVE_WRITERS",
+      "detail": "Both repositories update/insert the same tenant_id+feature_code rows; render caller migration to entitlement authority is required.",
+      "evidence": [
+        "entitlement-module/src/main/java/com/example/platform/entitlement/infrastructure/QuotaUsageJdbcRepository.java",
+        "render-module/src/main/java/com/example/platform/render/app/QuotaUsageRepository.java",
+        "render-module/src/main/java/com/example/platform/render/app/RenderQuotaService.java"
+      ],
+      "id": "RI-17"
+    },
+    {
+      "decision": "RENDER_BILLING_DECISION_STACK_SHADOWS_BILLING_ENTITLEMENT",
+      "detail": "Active engine composes deprecated quota plus separate render pricing/policy/credit models beside canonical billing and entitlement authorities.",
+      "evidence": [
+        "render-module/src/main/java/com/example/platform/render/infrastructure/billing/decision/BillingDecisionEngine.java"
+      ],
+      "id": "RI-18"
+    },
+    {
+      "decision": "LEGACY_PATH_NATIVE_TOOL_PROBES_EXIST_BUT_ARE_NOT_GLOBAL_AUTHORITY",
+      "detail": "Ambient-PATH version probes exist as diagnostics and explicitly deny dispatch/production-ready authority; they must migrate to exact implementation-local probes or be deleted.",
+      "evidence": [
+        "render-module/src/main/java/com/example/platform/render/infrastructure/RenderToolCapabilityInventory.java"
+      ],
+      "id": "RI-19"
+    },
+    {
+      "decision": "LEGACY_RENDER_PROVIDER_GOD_INTERFACE_SHADOWS_TYPED_PROVIDER_CONTRACT",
+      "detail": "Interface combines execution, validation, string capability, priority, status and dispatch concerns across multiple providers.",
+      "evidence": [
+        "render-module/src/main/java/com/example/platform/render/infrastructure/RenderProvider.java"
+      ],
+      "id": "RI-20"
+    },
+    {
+      "decision": "STRINGLY_PROVIDER_CAPABILITY_IDENTITIES_REMAIN_ADJACENT",
+      "detail": "Raw providerId/capabilityId projections remain outside canonical strong identity types and are deferred to owning authority migration.",
+      "evidence": [
+        "render-module/src/main/java/com/example/platform/render/domain/asset/semantic/AiProviderDescriptor.java",
+        "extension-module/src/main/java/com/example/platform/extension/domain/CapabilityDescriptor.java"
+      ],
+      "id": "RI-21"
     }
   ],
   "forbidden_feasibility_policy_cost_import_hit_count": 0,
   "global_native_version_authority_hit_count": 0,
+  "late_async_review": {
+    "task_0": "PARTIALLY_ACCEPTED_AFTER_DIRECT_REVERIFICATION",
+    "task_1": "PARTIALLY_ACCEPTED_AFTER_DIRECT_REVERIFICATION",
+    "task_2": "ONLY_TARGET_WORKTREE_FACTS_ELIGIBLE; WRONG_REPOSITORY_CANONICAL_STALENESS_CLAIM_REJECTED",
+    "task_3": "REJECTED_WRONG_REPOSITORY_/home/user/media-platform"
+  },
+  "legacy_process_level_native_tool_probe_family_count": 1,
   "migration_keyword_hit_count": 92,
   "production_java_file_count": 3368,
   "raw_keyword_candidate_boundary": "top-level class/interface/record/enum at column 0 under paths containing /src/main/java/; excludes build/bin/generated/.git/.worktrees",

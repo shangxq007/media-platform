@@ -28,10 +28,10 @@ ALLOWED_DISPOSITIONS = {
 }
 EXPECTED_COUNTS = {
     "REUSE_AS_CANONICAL": 24,
-    "MIGRATE_REDESIGN": 5,
+    "MIGRATE_REDESIGN": 12,
     "DELETE_SHADOW": 2,
     "REUSE_MECHANICS_ONLY": 2,
-    "DEFER": 3,
+    "DEFER": 5,
 }
 REQUIRED_TOKENS = (
     "ROADMAP_22_PHASE20_RESOURCE_ACCOUNTING_AND_HARDWARE_PROVIDER_CONFORMANCE_BOUNDED_ARCHITECTURE_CONTRACT_V1",
@@ -41,6 +41,7 @@ REQUIRED_TOKENS = (
     "CapabilityId != CapabilityImplementationId",
     "PROVIDER_RUNTIME_DEPENDENCY_SET_IS_IMPLEMENTATION_LOCAL_V1",
     "NO_GLOBAL_NATIVE_TOOL_VERSION_AUTHORITY_V1",
+    "LEGACY_PROCESS_LEVEL_NATIVE_TOOL_PROBES_ARE_NOT_GLOBAL_AUTHORITY_V1",
     "CONFORMANCE_NOT_VERSION_UNIFICATION_IS_THE_CROSS_PROVIDER_CONTRACT_V1",
     "PROVIDER_COMPOSITION_IS_CONSTRAINT_SOLVING_NOT_UNIVERSAL_INTEROPERABILITY_V1",
     "PARTIAL_PROVIDER_COMPOSABILITY_IS_NORMAL_V1",
@@ -114,7 +115,7 @@ def validate_ledger(root: pathlib.Path, path: pathlib.Path) -> None:
     if not isinstance(rows, list) or not rows:
         fail("ledger rows missing or empty")
     ids = [row.get("id") for row in rows]
-    expected_ids = [f"RA-{i:03d}" for i in range(1, 37)]
+    expected_ids = [f"RA-{i:03d}" for i in range(1, 46)]
     if ids != expected_ids:
         fail(f"ledger exact id set/order mismatch: {ids}")
     dispositions = [row.get("disposition") for row in rows]
@@ -161,14 +162,14 @@ def validate_inventory(path: pathlib.Path) -> None:
         fail("inventory raw candidate count mismatch")
     if data.get("raw_keyword_candidate_duplicate_count") != 0:
         fail("inventory raw candidate duplicates are nonzero")
-    if data.get("bounded_authority_family_count") != 36:
+    if data.get("bounded_authority_family_count") != 45:
         fail("inventory authority family count mismatch")
     if data.get("global_native_version_authority_hit_count") != 0:
         fail("inventory global native version authority count nonzero")
     if data.get("forbidden_feasibility_policy_cost_import_hit_count") != 0:
         fail("inventory forbidden import count nonzero")
     findings = data.get("findings")
-    if not isinstance(findings, list) or len(findings) != 12:
+    if not isinstance(findings, list) or len(findings) != 21:
         fail("inventory finding denominator mismatch")
     if data.get("unclassified_finding_count") != 0:
         fail("inventory unclassified findings nonzero")
@@ -265,7 +266,7 @@ def main() -> int:
         print(f"PHASE20_RESOURCE_ACCOUNTING_CONTRACT_GUARD=FAIL: {exc}", file=sys.stderr)
         return 1
     print("CONTRACT_CLAUSE_COUNT=30")
-    print("DISPOSITION_LEDGER_ROW_COUNT=36")
+    print("DISPOSITION_LEDGER_ROW_COUNT=45")
     print("UNCLASSIFIED=0")
     print("GLOBAL_NATIVE_TOOL_VERSION_AUTHORITY_COUNT=0")
     print("FORBIDDEN_FEASIBILITY_POLICY_COST_IMPORT_COUNT=0")
