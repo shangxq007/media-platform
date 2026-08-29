@@ -1,0 +1,135 @@
+{
+  "base_sha": "e02579181ba3049ae65ed81080c93a7212f5833d",
+  "base_tree": "b67136e3a4b4e08688091bad0c4dad30d841978d",
+  "bounded_authority_family_count": 36,
+  "core_symbol_count": 29,
+  "counting_dimensions": {
+    "authority_families": "adjudicated ledger denominator",
+    "migration_hits": "raw exact line occurrences; not table count",
+    "raw_keyword_types": "broad discovery only; not authority count"
+  },
+  "findings": [
+    {
+      "decision": "RESOURCE_TAXONOMY_ALREADY_PARTIALLY_IMPLEMENTED",
+      "detail": "Capacity, reservation and observed usage are separate types and persisted resource/assignment tables exist.",
+      "evidence": [
+        "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/CapacitySnapshot.java",
+        "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/Reservation.java",
+        "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/ObservedUsage.java"
+      ],
+      "id": "RI-01"
+    },
+    {
+      "decision": "REQUIREMENT_SHADOW_EXISTS",
+      "detail": "Planning ExecutionRequirement has production consumers; ExecutionResourceRequirement has zero external production occurrences.",
+      "evidence": [
+        "media-execution-plan-module/src/main/java/com/example/platform/execution/planning/ExecutionRequirement.java",
+        "media-execution-plan-module/src/main/java/com/example/platform/execution/domain/ExecutionResourceRequirement.java"
+      ],
+      "id": "RI-02"
+    },
+    {
+      "decision": "IDENTITIES_ALREADY_SEPARATE",
+      "detail": "Strong types and local/remote host-binding rules prevent universal worker/provider/device identity.",
+      "evidence": [
+        "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/WorkerRuntimeDescriptor.java",
+        "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/PhysicalHostDescriptor.java",
+        "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/DeviceDescriptor.java",
+        "media-execution-plan-module/src/main/java/com/example/platform/execution/domain/provider/ProviderImplementationId.java"
+      ],
+      "id": "RI-03"
+    },
+    {
+      "decision": "PROBE_IS_BOUNDED_BUT_DEPENDENCY_PAYLOAD_UNDERTYPED",
+      "detail": "Current statuses/support identifiers bind exact provider but cannot mechanically express ABI/version/features as a set.",
+      "evidence": [
+        "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/ProviderProbeResult.java",
+        "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/WorkerRuntimeSupportRequirement.java",
+        "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/RuntimeSupportEvidence.java"
+      ],
+      "id": "RI-04"
+    },
+    {
+      "decision": "NO_GLOBAL_NATIVE_VERSION_AUTHORITY_FOUND",
+      "detail": "Bounded exact-pattern scan found zero GLOBAL_FFMPEG/CUDA/GSTREAMER/BMF version authorities.",
+      "evidence": [
+        "02-global-native-version-authority-scan-v1.json"
+      ],
+      "id": "RI-05"
+    },
+    {
+      "decision": "POLICY_COST_NOT_IMPORTED_INTO_FEASIBILITY",
+      "detail": "All six forbidden production import directions are zero.",
+      "evidence": [
+        "04-feasibility-policy-cost-import-boundary-v1.json"
+      ],
+      "id": "RI-06"
+    },
+    {
+      "decision": "QUOTA_SHADOW_REMAINS_ACTIVE",
+      "detail": "Deprecated merged authority remains an active in-memory Spring service and requires later caller migration/retirement.",
+      "evidence": [
+        "quota-billing-module/src/main/java/com/example/platform/quota/app/QuotaService.java"
+      ],
+      "id": "RI-07"
+    },
+    {
+      "decision": "SANDBOX_IS_ENFORCEMENT_NOT_CAPACITY",
+      "detail": "Source contracts explicitly deny capacity/reservation and device discovery/identity authority.",
+      "evidence": [
+        "sandbox-isolation-module/src/main/java/com/example/platform/sandbox/ResourceEnforcementLimits.java",
+        "sandbox-isolation-module/src/main/java/com/example/platform/sandbox/DeviceExposurePolicy.java"
+      ],
+      "id": "RI-08"
+    },
+    {
+      "decision": "COMPATIBILITY_GRAPH_LONG_LIVED_AUTHORITY_CONFLICT",
+      "detail": "Current schema/canonical digest conflicts with V2 ephemeral solver-derived compatibility view requirement.",
+      "evidence": [
+        "media-execution-plan-module/src/main/java/com/example/platform/execution/compatibility/ProviderCompatibilityGraph.java",
+        "media-execution-plan-module/src/main/java/com/example/platform/execution/compatibility/ProviderCompatibilityGraphDigest.java"
+      ],
+      "id": "RI-09"
+    },
+    {
+      "decision": "PHYSICAL_PLAN_COLLAPSE_OR_DOWNGRADE_CANDIDATE",
+      "detail": "Current 1:1 provider-neutral projection has no independent runtime binding; 43 external production occurrences require a later migration, not deletion here.",
+      "evidence": [
+        "media-execution-plan-module/src/main/java/com/example/platform/execution/planning/PhysicalExecutionPlan.java",
+        "media-execution-plan-module/src/main/java/com/example/platform/execution/planning/PhysicalPlannerV1.java"
+      ],
+      "id": "RI-10"
+    },
+    {
+      "decision": "ETG_IS_CROSS_RUNTIME_BOUNDARY",
+      "detail": "Provider-bound ETG is runtime/host/device unbound and participates in backend execution; provider-private graph mirroring remains forbidden.",
+      "evidence": [
+        "media-execution-plan-module/src/main/java/com/example/platform/execution/taskgraph/ProviderBoundExecutableTaskGraph.java"
+      ],
+      "id": "RI-11"
+    },
+    {
+      "decision": "PHASE19_ZERO_AWARENESS_PRESERVED",
+      "detail": "Phase20 contract keeps render-module concrete FFmpeg awareness at zero and does not reopen the 45-capability historical ledger.",
+      "evidence": [
+        "scripts/phase19-render-zero-awareness-guard.py"
+      ],
+      "id": "RI-12"
+    }
+  ],
+  "forbidden_feasibility_policy_cost_import_hit_count": 0,
+  "global_native_version_authority_hit_count": 0,
+  "migration_keyword_hit_count": 92,
+  "production_java_file_count": 3368,
+  "raw_keyword_candidate_boundary": "top-level class/interface/record/enum at column 0 under paths containing /src/main/java/; excludes build/bin/generated/.git/.worktrees",
+  "raw_keyword_candidate_duplicate_count": 0,
+  "raw_keyword_candidate_type_count": 867,
+  "schema_version": "ROADMAP_22_PHASE20_RESOURCE_ACCOUNTING_REPOSITORY_REALITY_INVENTORY_V1",
+  "source_evidence_sha256": {
+    "01-production-type-keyword-candidates-v1.json": "3f1a9c0c15a035a1b4ce7315363085283bc188f28d073ea5402e7839f28b1e90",
+    "02-global-native-version-authority-scan-v1.json": "090953ade0b203ae163f3e7fd9da63873106af18a56eecb85bb3e09ad63e9ebb",
+    "03-core-symbol-wiring-and-persistence-v1.json": "ff694022c34439c91f209ee993594db4bc9e359d632a9b362e36aeb8f3f69b9c",
+    "04-feasibility-policy-cost-import-boundary-v1.json": "bb7597323463ce749b896fc7e22fe0b81ecea126b806afcc861211c1f95a57c8"
+  },
+  "unclassified_finding_count": 0
+}

@@ -1,0 +1,415 @@
+{
+  "allowed_dispositions": [
+    "REUSE_AS_CANONICAL",
+    "REUSE_MECHANICS_ONLY",
+    "MIGRATE_REDESIGN",
+    "DELETE_SHADOW",
+    "DEFER",
+    "UNCLASSIFIED"
+  ],
+  "base_sha": "e02579181ba3049ae65ed81080c93a7212f5833d",
+  "base_tree": "b67136e3a4b4e08688091bad0c4dad30d841978d",
+  "counting_rule": "One row per bounded authority family discovered by the Phase20 repository-reality review. Each row has exact representative authority-bearing paths and exactly one disposition. Closely coupled scalar/value types inherit their listed family disposition; this is not a count of all keyword-bearing Java types.",
+  "disposition_counts": {
+    "DEFER": 3,
+    "DELETE_SHADOW": 2,
+    "MIGRATE_REDESIGN": 5,
+    "REUSE_AS_CANONICAL": 24,
+    "REUSE_MECHANICS_ONLY": 2
+  },
+  "duplicate_id_count": 0,
+  "missing_member_path_count": 0,
+  "row_count": 36,
+  "rows": [
+    {
+      "clean_forward_action": "Retain as canonical plan-side requirement; extend only through independently reviewed typed fields, never runtime capacity.",
+      "concept": "Planning ExecutionRequirement",
+      "disposition": "REUSE_AS_CANONICAL",
+      "id": "RA-001",
+      "member_paths": [
+        "media-execution-plan-module/src/main/java/com/example/platform/execution/planning/ExecutionRequirement.java"
+      ],
+      "repository_evidence": "Provider-neutral normalized requirement consumed by LogicalPhysicalPlanner; immutable declaration, not observation."
+    },
+    {
+      "clean_forward_action": "Delete in implementation after exact zero production/test/persistence compatibility proof; do not wrap.",
+      "concept": "Unused ExecutionResourceRequirement shadow",
+      "disposition": "DELETE_SHADOW",
+      "id": "RA-002",
+      "member_paths": [
+        "media-execution-plan-module/src/main/java/com/example/platform/execution/domain/ExecutionResourceRequirement.java"
+      ],
+      "repository_evidence": "Zero production references outside its own definition in mechanical symbol scan."
+    },
+    {
+      "clean_forward_action": "Retain as runtime projection derived from ExecutionRequirement; forbid it from becoming semantic requirement authority.",
+      "concept": "RuntimeResourceDemand",
+      "disposition": "REUSE_AS_CANONICAL",
+      "id": "RA-003",
+      "member_paths": [
+        "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/RuntimeResourceDemand.java"
+      ],
+      "repository_evidence": "Derived runtime demand has six production consumers across eligibility, matching and assignment persistence."
+    },
+    {
+      "clean_forward_action": "Retain host/accounting-domain capacity authority; capacity is theoretical exposure, not free capacity.",
+      "concept": "Static capacity model",
+      "disposition": "REUSE_AS_CANONICAL",
+      "id": "RA-004",
+      "member_paths": [
+        "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/CapacitySnapshot.java",
+        "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/DeviceResourceCapacity.java"
+      ],
+      "repository_evidence": "Typed CPU/memory/temp/device capacity, produced by HostResourceAgent and consumed by schedulable-capacity arithmetic."
+    },
+    {
+      "clean_forward_action": "Retain as derived admission view, not an independent capacity authority.",
+      "concept": "SchedulableCapacity derived view",
+      "disposition": "REUSE_AS_CANONICAL",
+      "id": "RA-005",
+      "member_paths": [
+        "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/SchedulableCapacity.java"
+      ],
+      "repository_evidence": "Implements capacity minus active/recovery-hold/resident reservations and safety headroom; observation only vetoes contradictions."
+    },
+    {
+      "clean_forward_action": "Retain bounded temporary claim authority; keep distinct from billing CostReservation and observed usage.",
+      "concept": "Worker-fabric Reservation ledger model",
+      "disposition": "REUSE_AS_CANONICAL",
+      "id": "RA-006",
+      "member_paths": [
+        "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/Reservation.java",
+        "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/ReservedResources.java"
+      ],
+      "repository_evidence": "Typed reservation state is persisted by atomic assignment boundary and referenced by leases."
+    },
+    {
+      "clean_forward_action": "Retain mutable telemetry evidence; never derive unreserved free capacity or semantic identity from it.",
+      "concept": "Host ObservedUsage telemetry",
+      "disposition": "REUSE_AS_CANONICAL",
+      "id": "RA-007",
+      "member_paths": [
+        "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/ObservedUsage.java"
+      ],
+      "repository_evidence": "Host/device measurement carried by resource snapshots; no billing/entitlement imports."
+    },
+    {
+      "clean_forward_action": "Retain producer boundary; heartbeat/liveness remains separate and cannot mint capacity.",
+      "concept": "HostResourceAgent and snapshot",
+      "disposition": "REUSE_AS_CANONICAL",
+      "id": "RA-008",
+      "member_paths": [
+        "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/HostResourceAgent.java",
+        "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/HostResourceSnapshot.java"
+      ],
+      "repository_evidence": "Bounded probe/evidence publisher with generation, freshness and physical-host scope."
+    },
+    {
+      "clean_forward_action": "Retain distinct host identity; default resource-accounting domain is one physical host until a proven isolated subdomain exists.",
+      "concept": "PhysicalHost identity",
+      "disposition": "REUSE_AS_CANONICAL",
+      "id": "RA-009",
+      "member_paths": [
+        "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/PhysicalHostDescriptor.java",
+        "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/PhysicalHostId.java"
+      ],
+      "repository_evidence": "Owns static host/device inventory and capacity scope; persisted host incarnation tables exist."
+    },
+    {
+      "clean_forward_action": "Retain distinct endpoint identity; multiple runtimes may share one host accounting domain.",
+      "concept": "WorkerRuntime identity",
+      "disposition": "REUSE_AS_CANONICAL",
+      "id": "RA-010",
+      "member_paths": [
+        "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/WorkerRuntimeDescriptor.java",
+        "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/WorkerRuntimeId.java"
+      ],
+      "repository_evidence": "Executable endpoint identity optionally binds a local host; remote runtime forbids fake host identity."
+    },
+    {
+      "clean_forward_action": "Retain identity; extend observations/requirements rather than overloading provider or runtime identity.",
+      "concept": "Device identity and inventory",
+      "disposition": "REUSE_AS_CANONICAL",
+      "id": "RA-011",
+      "member_paths": [
+        "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/DeviceDescriptor.java",
+        "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/DeviceId.java"
+      ],
+      "repository_evidence": "Provider-neutral physical device identity bound to host inventory and resource snapshots."
+    },
+    {
+      "clean_forward_action": "Retain mutable availability evidence; exclude from semantic digests.",
+      "concept": "Runtime/host incarnation and availability",
+      "disposition": "REUSE_AS_CANONICAL",
+      "id": "RA-012",
+      "member_paths": [
+        "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/WorkerRuntimeAvailability.java",
+        "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/PhysicalHostAvailability.java",
+        "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/LocalWorkerRuntimeIncarnationBinding.java"
+      ],
+      "repository_evidence": "Generation-bound mutable liveness and exact local runtime-host binding."
+    },
+    {
+      "clean_forward_action": "Retain CAN_RUN decision authority and extend typed dependency/hardware reasons; never evolve into optimizer.",
+      "concept": "RuntimeEligibilityEvaluator",
+      "disposition": "REUSE_AS_CANONICAL",
+      "id": "RA-013",
+      "member_paths": [
+        "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/RuntimeEligibilityEvaluator.java",
+        "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/NativeRuntimeEligibilityRequest.java",
+        "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/RuntimeEligibilityDecision.java"
+      ],
+      "repository_evidence": "Production-wired Stage-2 evaluator combines exact task/provider proof with mutable host/runtime/device/sandbox/resource evidence."
+    },
+    {
+      "clean_forward_action": "Migrate to typed implementation-local RuntimeDependencyRequirement/Observation/Fingerprint while preserving fail-closed matching mechanics.",
+      "concept": "Runtime support advertisement",
+      "disposition": "MIGRATE_REDESIGN",
+      "id": "RA-014",
+      "member_paths": [
+        "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/WorkerRuntimeSupportRequirement.java",
+        "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/WorkerRuntimeSupportAdvertisement.java",
+        "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/RuntimeSupportIdentifier.java",
+        "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/RuntimeSupportEvidence.java"
+      ],
+      "repository_evidence": "Current model binds provider pin and stable support id but evidenceType/value cannot mechanically express dependency constraints, ABI and build-feature sets."
+    },
+    {
+      "clean_forward_action": "Retain bounded probe role; redesign payload as typed observations, not canonical availability or package authority.",
+      "concept": "Provider runtime probe",
+      "disposition": "MIGRATE_REDESIGN",
+      "id": "RA-015",
+      "member_paths": [
+        "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/ProviderProbeResult.java",
+        "ffmpeg-provider-module/src/main/java/com/example/platform/ffmpeg/FfmpegRuntimeProbe.java"
+      ],
+      "repository_evidence": "Probe binds ProviderBindingPin and freshness status but generic result lacks full typed dependency/feature observations."
+    },
+    {
+      "clean_forward_action": "Retain exact separation.",
+      "concept": "Provider family and implementation identities",
+      "disposition": "REUSE_AS_CANONICAL",
+      "id": "RA-016",
+      "member_paths": [
+        "media-execution-plan-module/src/main/java/com/example/platform/execution/domain/provider/ProviderId.java",
+        "media-execution-plan-module/src/main/java/com/example/platform/execution/domain/provider/ProviderImplementationId.java"
+      ],
+      "repository_evidence": "Separate strong types; implementation Javadoc explicitly excludes worker/device/installation/capability identities."
+    },
+    {
+      "clean_forward_action": "Retain; Phase20 consumes but never redefines.",
+      "concept": "Capability and implementation identities",
+      "disposition": "REUSE_AS_CANONICAL",
+      "id": "RA-017",
+      "member_paths": [
+        "extension-module/src/main/java/com/example/platform/extension/domain/CapabilityId.java",
+        "extension-module/src/main/java/com/example/platform/extension/domain/CapabilityImplementationId.java"
+      ],
+      "repository_evidence": "CapabilityRegistry owns provider-neutral contract identity and independent concrete realization identity."
+    },
+    {
+      "clean_forward_action": "Retain; mutable probe/runtime dependency observation must not enter the pin unless an immutable provider bundle identity is explicitly frozen.",
+      "concept": "ProviderBindingPin",
+      "disposition": "REUSE_AS_CANONICAL",
+      "id": "RA-018",
+      "member_paths": [
+        "media-execution-plan-module/src/main/java/com/example/platform/execution/domain/provider/ProviderBindingPin.java"
+      ],
+      "repository_evidence": "Single immutable provider executable binding includes provider/implementation/version/profile and sorted capability implementation pins."
+    },
+    {
+      "clean_forward_action": "Retain; add implementation-local runtime dependency requirements without creating capability authority.",
+      "concept": "Provider descriptor/profile/contract",
+      "disposition": "REUSE_AS_CANONICAL",
+      "id": "RA-019",
+      "member_paths": [
+        "media-execution-plan-module/src/main/java/com/example/platform/execution/domain/provider/ProviderDescriptor.java",
+        "media-execution-plan-module/src/main/java/com/example/platform/execution/domain/provider/ProviderCapabilityProfile.java",
+        "media-execution-plan-module/src/main/java/com/example/platform/execution/domain/provider/ProviderExecutionContract.java"
+      ],
+      "repository_evidence": "Static provider metadata and typed support projection are production-wired, separate from runtime observation."
+    },
+    {
+      "clean_forward_action": "Retain semantic/static compatibility half; runtime resource/dependency observations remain Stage 2.",
+      "concept": "Static CompatibilityKernel",
+      "disposition": "REUSE_AS_CANONICAL",
+      "id": "RA-020",
+      "member_paths": [
+        "media-execution-plan-module/src/main/java/com/example/platform/execution/compatibility/CompatibilityKernel.java",
+        "media-execution-plan-module/src/main/java/com/example/platform/execution/compatibility/CompatibilityDecision.java",
+        "media-execution-plan-module/src/main/java/com/example/platform/execution/compatibility/StaticCompatibilityFailure.java"
+      ],
+      "repository_evidence": "Pure deterministic Stage-1 feasibility over frozen plan/provider inputs with typed failure."
+    },
+    {
+      "clean_forward_action": "Downgrade to ephemeral derived feasibility result/view; remove independent long-lived canonical graph identity/digest after consumer migration.",
+      "concept": "ProviderCompatibilityGraph canonical authority",
+      "disposition": "MIGRATE_REDESIGN",
+      "id": "RA-021",
+      "member_paths": [
+        "media-execution-plan-module/src/main/java/com/example/platform/execution/compatibility/ProviderCompatibilityGraph.java",
+        "media-execution-plan-module/src/main/java/com/example/platform/execution/compatibility/ProviderCompatibilityGraphDigest.java"
+      ],
+      "repository_evidence": "Current type has schema version, canonical serialization and digest and is embedded into downstream graph proof. New V2 requires solver-derived ephemeral compatibility graph, not long-lived canonical authority."
+    },
+    {
+      "clean_forward_action": "Retain as last provider-neutral execution graph.",
+      "concept": "LogicalExecutionGraph",
+      "disposition": "REUSE_AS_CANONICAL",
+      "id": "RA-022",
+      "member_paths": [
+        "media-execution-plan-module/src/main/java/com/example/platform/execution/planning/LogicalExecutionGraph.java"
+      ],
+      "repository_evidence": "Last provider-neutral execution/dependency graph preserving exact RenderGraph semantics."
+    },
+    {
+      "clean_forward_action": "Classify PHYSICAL_EXECUTION_PLAN_COLLAPSE_OR_DOWNGRADE_CANDIDATE; perform separate migration after consumer/invariant review, without rewriting Roadmap #21 history.",
+      "concept": "PhysicalExecutionPlan",
+      "disposition": "MIGRATE_REDESIGN",
+      "id": "RA-023",
+      "member_paths": [
+        "media-execution-plan-module/src/main/java/com/example/platform/execution/planning/PhysicalExecutionPlan.java",
+        "media-execution-plan-module/src/main/java/com/example/platform/execution/planning/PhysicalPlannerV1.java"
+      ],
+      "repository_evidence": "Current plan is deterministic 1:1 projection of LogicalExecutionGraph with no provider/runtime/device binding; 43 external production occurrences mean it cannot be deleted in Decision Recovery."
+    },
+    {
+      "clean_forward_action": "Retain only as coarse cross-runtime dispatch/materialization/retry/observability boundary; prohibit provider-private DAG mirroring.",
+      "concept": "ProviderBound ExecutableTaskGraph",
+      "disposition": "REUSE_AS_CANONICAL",
+      "id": "RA-024",
+      "member_paths": [
+        "media-execution-plan-module/src/main/java/com/example/platform/execution/taskgraph/ProviderBoundExecutableTaskGraph.java",
+        "media-execution-plan-module/src/main/java/com/example/platform/execution/taskgraph/ExecutableTask.java"
+      ],
+      "repository_evidence": "Provider-bound but runtime/host/device-unbound graph is used by backend selection and execution."
+    },
+    {
+      "clean_forward_action": "Keep only traceability/mechanics; forbid interpreting it as FFmpeg/BMF/GStreamer/CUDA provider-private scheduler graph.",
+      "concept": "Provider-local dependency trace",
+      "disposition": "REUSE_MECHANICS_ONLY",
+      "id": "RA-025",
+      "member_paths": [
+        "media-execution-plan-module/src/main/java/com/example/platform/execution/taskgraph/ProviderLocalTaskDependency.java"
+      ],
+      "repository_evidence": "Preserves original logical dependency attribution inside a coalesced task; it is not itself an executable provider graph."
+    },
+    {
+      "clean_forward_action": "Retain as implementation-private lowering/runtime mechanics; no node-for-node promotion into canonical graphs.",
+      "concept": "Provider-private native execution plan/runtime adapter",
+      "disposition": "REUSE_AS_CANONICAL",
+      "id": "RA-026",
+      "member_paths": [
+        "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/providernative/ProviderNativeExecutionPlan.java",
+        "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/providernative/RuntimeAdapter.java"
+      ],
+      "repository_evidence": "Provider-native command/spec execution boundary already isolated downstream of ETG."
+    },
+    {
+      "clean_forward_action": "Retain as enforcement projection after eligibility/reservation decision.",
+      "concept": "Sandbox resource enforcement",
+      "disposition": "REUSE_AS_CANONICAL",
+      "id": "RA-027",
+      "member_paths": [
+        "sandbox-isolation-module/src/main/java/com/example/platform/sandbox/ResourceEnforcementLimits.java"
+      ],
+      "repository_evidence": "Javadoc explicitly states enforcement projection only and no capacity/reservation authority."
+    },
+    {
+      "clean_forward_action": "Retain; worker/device authority selects exact device, sandbox only proves/enforces exposure permission.",
+      "concept": "Sandbox device exposure",
+      "disposition": "REUSE_AS_CANONICAL",
+      "id": "RA-028",
+      "member_paths": [
+        "sandbox-isolation-module/src/main/java/com/example/platform/sandbox/DeviceExposurePolicy.java"
+      ],
+      "repository_evidence": "Opaque pre-authorized device references only; no discovery or identity authority."
+    },
+    {
+      "clean_forward_action": "Retain billing/metering authority; never substitute for host ObservedUsage or resource reservation.",
+      "concept": "Billing canonical UsageRecord",
+      "disposition": "REUSE_AS_CANONICAL",
+      "id": "RA-029",
+      "member_paths": [
+        "billing-module/src/main/java/com/example/platform/billing/usage/UsageRecord.java"
+      ],
+      "repository_evidence": "Append-only typed business consumption fact with provenance; separate module imports into feasibility are zero."
+    },
+    {
+      "clean_forward_action": "Retain quota authority; quota may gate admission by policy but never becomes physical capacity.",
+      "concept": "Entitlement quota authority",
+      "disposition": "REUSE_AS_CANONICAL",
+      "id": "RA-030",
+      "member_paths": [
+        "entitlement-module/src/main/java/com/example/platform/entitlement/app/QuotaDecisionService.java",
+        "entitlement-module/src/main/java/com/example/platform/entitlement/domain/QuotaPolicy.java"
+      ],
+      "repository_evidence": "Durable policy/business limit authority; no worker-fabric or compatibility imports."
+    },
+    {
+      "clean_forward_action": "Defer cost-model debt to billing governance; prohibit cost from redefining feasibility or entering #22 optimizer.",
+      "concept": "Billing CostReservation and cost models",
+      "disposition": "DEFER",
+      "id": "RA-031",
+      "member_paths": [
+        "billing-module/src/main/java/com/example/platform/billing/domain/CostReservation.java",
+        "billing-module/src/main/java/com/example/platform/billing/domain/ProviderCostProfile.java"
+      ],
+      "repository_evidence": "Business monetary reservation/cost authority is distinct from worker resource reservation; current CostReservation uses double and is outside bounded H1 repair."
+    },
+    {
+      "clean_forward_action": "Retire after real consumer migration under existing authority; no compatibility wrapper or new Phase20 dependency.",
+      "concept": "Deprecated quota-billing shadow",
+      "disposition": "DELETE_SHADOW",
+      "id": "RA-032",
+      "member_paths": [
+        "quota-billing-module/src/main/java/com/example/platform/quota/app/QuotaService.java",
+        "quota-billing-module/src/main/java/com/example/platform/quota/domain/UsageRecord.java"
+      ],
+      "repository_evidence": "Types self-declare semantic authority merged into entitlement and physical retirement deferred; service remains active in-memory Spring bean."
+    },
+    {
+      "clean_forward_action": "Reuse projection mechanics only; never quota, billing, cost or resource authority.",
+      "concept": "Observability ProviderUsageMetric",
+      "disposition": "REUSE_MECHANICS_ONLY",
+      "id": "RA-033",
+      "member_paths": [
+        "observability-module/src/main/java/com/example/platform/observability/domain/ProviderUsageMetric.java"
+      ],
+      "repository_evidence": "Aggregates request, estimated cost, quota and measurement for observability; not imported by compatibility."
+    },
+    {
+      "clean_forward_action": "Migrate real callers to worker-fabric, then delete shadow; do not preserve a second worker/resource authority.",
+      "concept": "Legacy render-farm worker/lease stack",
+      "disposition": "MIGRATE_REDESIGN",
+      "id": "RA-034",
+      "member_paths": [
+        "render-module/src/main/java/com/example/platform/render/infrastructure/farm/RenderWorkerRegistryService.java",
+        "render-module/src/main/java/com/example/platform/render/infrastructure/farm/RenderJobLeaseService.java"
+      ],
+      "repository_evidence": "Historical worker pull/heartbeat/lease mechanics coexist with canonical worker-fabric authority and have real migration obligations."
+    },
+    {
+      "clean_forward_action": "Defer a new identity/type until VM/cgroup/MIG/SR-IOV isolation proves independent capacity/reservation lifecycle; use PhysicalHostId now.",
+      "concept": "ResourceAccountingDomain abstraction",
+      "disposition": "DEFER",
+      "id": "RA-035",
+      "member_paths": [
+        "docs/architecture/governance/roadmap-22-worker-runtime-backend-resource-accounting-amendment-1.md"
+      ],
+      "repository_evidence": "Prior docs define smallest count-once domain with PhysicalHost default; no production type is required while host is the only proven domain."
+    },
+    {
+      "clean_forward_action": "Out of bounded authority; defer and enforce no import into Phase20 kernel.",
+      "concept": "Cloud-resource catalog naming collision",
+      "disposition": "DEFER",
+      "id": "RA-036",
+      "member_paths": [
+        "cloud-resource-module/src/main/java/com/example/platform/cloudresource/domain/CloudResourceProvider.java"
+      ],
+      "repository_evidence": "Cloud service catalog uses resource/provider vocabulary but does not own worker capacity or provider implementation feasibility."
+    }
+  ],
+  "schema_version": "ROADMAP_22_PHASE20_RESOURCE_AUTHORITY_DISPOSITION_LEDGER_V1",
+  "unclassified_count": 0
+}
