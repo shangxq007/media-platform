@@ -6,7 +6,7 @@ import static org.mockito.Mockito.when;
 import com.example.platform.execution.compatibility.CompatibilityKernel;
 import com.example.platform.execution.compatibility.CompatibilityRequest;
 import com.example.platform.execution.compatibility.ProviderCandidate;
-import com.example.platform.execution.compatibility.ProviderCompatibilityGraph;
+import com.example.platform.execution.compatibility.ProviderFeasibilityView;
 import com.example.platform.execution.compatibility.ProviderStaticCompatibility;
 import com.example.platform.execution.compatibility.StaticProviderCompatibilityProof;
 import com.example.platform.execution.composition.ExecutableTaskMembership;
@@ -56,9 +56,9 @@ final class I4TestFixture {
                 .evaluate(compatibilityRequest, provider)
                 .staticCompatibilityProof()
                 .orElseThrow();
-        ProviderCompatibilityGraph compatibilityGraph =
-                mock(ProviderCompatibilityGraph.class, unitName + "-compatibility-graph");
-        when(compatibilityGraph.requireStaticallyFeasible(unit, provider)).thenReturn(proof);
+        ProviderFeasibilityView feasibilityView =
+                mock(ProviderFeasibilityView.class, unitName + "-feasibility-view");
+        when(feasibilityView.requireStaticallyFeasible(unit, provider)).thenReturn(proof);
 
         ExecutableTaskMembership membership =
                 mock(ExecutableTaskMembership.class, unitName + "-membership");
@@ -72,7 +72,7 @@ final class I4TestFixture {
                 mock(ProviderBoundExecutableTaskGraph.class, unitName + "-task-graph");
         when(graph.tasks()).thenReturn(List.of(task));
         when(graph.digest()).thenReturn(new ExecutableTaskGraphDigest("2".repeat(64)));
-        when(graph.providerCompatibilityGraph()).thenReturn(compatibilityGraph);
+        when(graph.providerFeasibilityView()).thenReturn(feasibilityView);
         return new StageOneScenario(graph, task, provider, List.of(proof));
     }
 

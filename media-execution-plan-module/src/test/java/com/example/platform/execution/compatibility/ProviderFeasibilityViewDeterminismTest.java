@@ -23,33 +23,31 @@ import com.example.platform.render.domain.renderplan.RenderNodeKind;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-class ProviderCompatibilityGraphDeterminismTest {
+class ProviderFeasibilityViewDeterminismTest {
 
     @Test
-    void inputPermutationsHaveSemanticEqualitySameSerializationAndSameDigest() {
+    void inputPermutationsProduceTheSameDerivedFeasibility() {
         CompatibilityRequest firstUnit = CompatibilityRequest.forUnit(unit("unit-a"));
         CompatibilityRequest secondUnit = CompatibilityRequest.forUnit(unit("unit-b"));
         ProviderCandidate ffmpeg = candidate("ffmpeg", CompatibilityKernelTest.fullySupported());
         ProviderCandidate blender = candidate("blender", CompatibilityKernelTest.fullySupported());
         PhysicalExecutionPlan plan = plan(firstUnit.physicalPlanUnit(), secondUnit.physicalPlanUnit());
 
-        ProviderCompatibilityGraph first = ProviderCompatibilityGraph.build(
+        ProviderFeasibilityView first = ProviderFeasibilityView.build(
                 plan, List.of(secondUnit, firstUnit), List.of(ffmpeg, blender), List.of());
-        ProviderCompatibilityGraph permuted = ProviderCompatibilityGraph.build(
+        ProviderFeasibilityView permuted = ProviderFeasibilityView.build(
                 plan, List.of(firstUnit, secondUnit), List.of(blender, ffmpeg), List.of());
 
-        assertEquals(first, permuted);
-        assertEquals(first.hashCode(), permuted.hashCode());
-        assertArrayEquals(first.canonicalSerialization(), permuted.canonicalSerialization());
-        assertEquals(first.digest(), permuted.digest());
+        assertEquals(first.sourcePlanSemanticDigest(), permuted.sourcePlanSemanticDigest());
+        assertEquals(first.unitCandidates(), permuted.unitCandidates());
+        assertEquals(first.transitions(), permuted.transitions());
         assertEquals(List.of(new ExecutionStepId("unit-a"), new ExecutionStepId("unit-b")),
                 first.unitCandidates().stream()
-                        .map(ProviderCompatibilityGraph.UnitCandidates::physicalPlanUnitId).toList());
+                        .map(ProviderFeasibilityView.UnitCandidates::physicalPlanUnitId).toList());
     }
 
     @Test
@@ -62,16 +60,16 @@ class ProviderCompatibilityGraphDeterminismTest {
                 ProviderStaticCompatibility.LoweringSupport.UNSUPPORTED);
         ProviderCandidate incompatible = candidate("incompatible", cannotLower);
 
-        ProviderCompatibilityGraph graph = ProviderCompatibilityGraph.build(
+        ProviderFeasibilityView view = ProviderFeasibilityView.build(
                 plan(unit("unit-a")),
                 List.of(CompatibilityRequest.forUnit(unit("unit-a"))),
                 List.of(unknown, incompatible, compatible),
                 List.of());
 
-        assertEquals(1, graph.unitCandidates().getFirst().feasibleProviderBindings().size());
+        assertEquals(1, view.unitCandidates().getFirst().feasibleProviderBindings().size());
         assertEquals(ProviderId.of("ffmpeg"),
-                graph.unitCandidates().getFirst().feasibleProviderBindings().getFirst().providerId());
-        assertFalse(graph.canonicalSerialization().length == 0);
+                view.unitCandidates().getFirst().feasibleProviderBindings().getFirst().providerId());
+        assertFalse(view.unitCandidates().isEmpty());
     }
 
     @Test
@@ -81,10 +79,10 @@ class ProviderCompatibilityGraphDeterminismTest {
         PhysicalExecutionPlan plan = plan(request.physicalPlanUnit());
 
         assertThrows(IllegalArgumentException.class,
-                () -> ProviderCompatibilityGraph.build(
+                () -> ProviderFeasibilityView.build(
                         plan, List.of(request, request), List.of(candidate), List.of()));
         assertThrows(IllegalArgumentException.class,
-                () -> ProviderCompatibilityGraph.build(
+                () -> ProviderFeasibilityView.build(
                         plan, List.of(request), List.of(candidate, candidate), List.of()));
     }
 

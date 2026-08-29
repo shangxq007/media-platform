@@ -12,7 +12,8 @@ import java.util.Optional;
 /**
  * Mutable Stage-2 evidence for one Native Pull runtime candidate.
  *
- * <p>Construction proves the exact task/provider candidate was admitted by the Stage-1 graph and
+ * <p>Construction proves the exact task/provider candidate was admitted by the Stage-1 feasibility
+ * view and
  * that Native Pull was already selected. OpenCue and remote-provider evaluation intentionally use
  * no nullable fake host/worker context.
  */
@@ -110,7 +111,7 @@ public record NativeRuntimeEligibilityRequest(
             var membership = executableTask.memberships().get(index);
             StaticProviderCompatibilityProof proof = staticCompatibilityProofs.get(index);
             StaticProviderCompatibilityProof authoritativeProof = providerBoundGraph
-                    .providerCompatibilityGraph()
+                    .providerFeasibilityView()
                     .requireStaticallyFeasible(
                             membership.physicalPlanUnit(),
                             staticallyCompatibleProviderCandidate);

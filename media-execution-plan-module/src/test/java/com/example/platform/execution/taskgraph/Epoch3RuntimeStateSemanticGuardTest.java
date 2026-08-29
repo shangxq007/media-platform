@@ -19,7 +19,7 @@ import org.junit.jupiter.api.Test;
  * module, rather than one named ETG/plan/compatibility source file. The same zero-result source scan
  * manifests {@code ETG_RUNTIME_STATE_FIELD_COUNT=0},
  * {@code PHYSICAL_EXECUTION_PLAN_RUNTIME_STATE_FIELD_COUNT=0}, and
- * {@code PROVIDER_COMPATIBILITY_GRAPH_RUNTIME_STATE_FIELD_COUNT=0}.
+ * {@code PROVIDER_FEASIBILITY_VIEW_RUNTIME_STATE_FIELD_COUNT=0}.
  */
 class Epoch3RuntimeStateSemanticGuardTest {
 
@@ -48,8 +48,8 @@ class Epoch3RuntimeStateSemanticGuardTest {
     }
 
     @Test
-    void providerCompatibilityGraphRuntimeStateFieldCountIsZeroAcrossStaticProductionModule() {
-        assertRuntimeStateCountIsZero("PROVIDER_COMPATIBILITY_GRAPH_RUNTIME_STATE_FIELD_COUNT=0");
+    void providerFeasibilityViewRuntimeStateFieldCountIsZeroAcrossStaticProductionModule() {
+        assertRuntimeStateCountIsZero("PROVIDER_FEASIBILITY_VIEW_RUNTIME_STATE_FIELD_COUNT=0");
     }
 
     private static void assertRuntimeStateCountIsZero(String manifestedCount) {

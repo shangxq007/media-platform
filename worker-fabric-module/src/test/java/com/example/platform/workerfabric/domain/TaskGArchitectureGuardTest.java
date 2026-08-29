@@ -415,9 +415,9 @@ class TaskGArchitectureGuardTest {
     }
 
     @Test
-    void providerCompatibilityGraphRuntimeStateFieldCountIsZero() {
+    void providerFeasibilityViewRuntimeStateFieldCountIsZero() {
         assertStaticTypeHasNoRuntimeState(
-                "com/example/platform/execution/compatibility/ProviderCompatibilityGraph.java");
+                "com/example/platform/execution/compatibility/ProviderFeasibilityView.java");
     }
 
     @Test

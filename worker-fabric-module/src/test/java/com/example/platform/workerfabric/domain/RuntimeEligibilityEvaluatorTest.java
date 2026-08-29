@@ -422,7 +422,7 @@ class RuntimeEligibilityEvaluatorTest {
     }
 
     @Test
-    void runtimeEligibilityRequiresOneExactGraphAuthorizedProofPerMembership() {
+    void runtimeEligibilityRequiresOneExactFeasibilityViewAuthorizedProofPerMembership() {
         RequestBuilder missing = new RequestBuilder();
         missing.staticProofs = List.of();
 
@@ -432,7 +432,7 @@ class RuntimeEligibilityEvaluatorTest {
         RequestBuilder mismatched = new RequestBuilder();
         var otherUnit = TaskBTestFixture.scenario("provider-a", "unit-foreign");
         mismatched.staticProofs = otherUnit.task().memberships().stream()
-                .map(membership -> otherUnit.graph().providerCompatibilityGraph()
+                .map(membership -> otherUnit.graph().providerFeasibilityView()
                         .requireStaticallyFeasible(
                                 membership.physicalPlanUnit(), otherUnit.provider()))
                 .toList();
@@ -524,7 +524,7 @@ class RuntimeEligibilityEvaluatorTest {
             ProviderImplementationId providerImplementationId =
                     provider.descriptor().providerImplementationId();
             staticProofs = scenario.task().memberships().stream()
-                    .map(membership -> scenario.graph().providerCompatibilityGraph()
+                    .map(membership -> scenario.graph().providerFeasibilityView()
                             .requireStaticallyFeasible(
                                     membership.physicalPlanUnit(), provider))
                     .toList();

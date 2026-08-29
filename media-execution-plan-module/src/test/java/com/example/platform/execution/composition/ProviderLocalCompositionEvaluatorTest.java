@@ -2,7 +2,7 @@ package com.example.platform.execution.composition;
 
 import com.example.platform.execution.compatibility.CompatibilityRequest;
 import com.example.platform.execution.compatibility.ProviderCandidate;
-import com.example.platform.execution.compatibility.ProviderCompatibilityGraph;
+import com.example.platform.execution.compatibility.ProviderFeasibilityView;
 import com.example.platform.execution.compatibility.ProviderStaticCompatibility;
 import com.example.platform.execution.composition.CompositionDecision.Status;
 import com.example.platform.execution.composition.FailureAttribution.UnknownMemberAttribution;
@@ -223,7 +223,7 @@ class ProviderLocalCompositionEvaluatorTest {
                 List.of(),
                 evaluated.memberFailureAttributions(),
                 new Object(),
-                evaluated.provenCompatibilityGraph(),
+                evaluated.provenFeasibilityView(),
                 evaluated.provenProviderCandidate(),
                 evaluated.staticCompatibilityProofs()));
 
@@ -284,7 +284,7 @@ class ProviderLocalCompositionEvaluatorTest {
         ProviderCandidate candidate = new ProviderCandidate(
                 binding, descriptor, contract, profile, staticCompatibility);
         PhysicalExecutionPlan sourcePlan = plan(pair);
-        ProviderCompatibilityGraph compatibilityGraph = ProviderCompatibilityGraph.build(
+        ProviderFeasibilityView feasibilityView = ProviderFeasibilityView.build(
                 sourcePlan,
                 sourcePlan.units().stream().map(CompatibilityRequest::forUnit).toList(),
                 List.of(candidate),
@@ -292,7 +292,7 @@ class ProviderLocalCompositionEvaluatorTest {
         return ProviderLocalCompositionRequest.of(
                 ExecutableTaskMembership.canonicalForUnits(
                         List.of(pair.consumer(), pair.producer())),
-                compatibilityGraph,
+                feasibilityView,
                 candidate,
                 new ProviderCompositionDeclaration(binding, support),
                 constraints);

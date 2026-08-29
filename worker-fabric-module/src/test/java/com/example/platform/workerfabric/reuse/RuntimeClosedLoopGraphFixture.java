@@ -2,7 +2,7 @@ package com.example.platform.workerfabric.reuse;
 
 import com.example.platform.execution.compatibility.CompatibilityRequest;
 import com.example.platform.execution.compatibility.ProviderCandidate;
-import com.example.platform.execution.compatibility.ProviderCompatibilityGraph;
+import com.example.platform.execution.compatibility.ProviderFeasibilityView;
 import com.example.platform.execution.compatibility.ProviderStaticCompatibility;
 import com.example.platform.execution.compatibility.StaticCompatibilityConstraint.BoundaryContractId;
 import com.example.platform.execution.composition.ExecutableTaskMembership;
@@ -66,7 +66,7 @@ final class RuntimeClosedLoopGraphFixture {
         PhysicalExecutionPlan plan = plan(List.of(unit));
         Context context = context(plan, provider);
         return ProviderBoundExecutableTaskGraph.derive(
-                plan, context.graph(), List.of(task(context, provider, unit)), List.of());
+                plan, context.feasibilityView(), List.of(task(context, provider, unit)), List.of());
     }
 
     static ProviderBoundExecutableTaskGraph authoritativeOutputCardinality(
@@ -94,7 +94,7 @@ final class RuntimeClosedLoopGraphFixture {
                 .toList();
         return ProviderBoundExecutableTaskGraph.derive(
                 plan,
-                context.graph(),
+                context.feasibilityView(),
                 List.of(task(context, provider, unit, actions)),
                 List.of());
     }
@@ -127,7 +127,7 @@ final class RuntimeClosedLoopGraphFixture {
         ProviderCandidate candidate = context.candidate();
         return ProviderBoundExecutableTaskGraph.derive(
                 plan,
-                context.graph(),
+                context.feasibilityView(),
                 List.of(taskA, taskB, taskC),
                 List.of(
                         boundary(edgeAB, unitA, unitB, candidate.bindingPin()),
@@ -148,7 +148,7 @@ final class RuntimeClosedLoopGraphFixture {
         PhysicalExecutionPlan plan = plan(List.of(unit));
         Context context = context(plan, provider);
         return ProviderBoundExecutableTaskGraph.derive(
-                plan, context.graph(), List.of(task(context, provider, unit)), List.of());
+                plan, context.feasibilityView(), List.of(task(context, provider, unit)), List.of());
     }
 
     static ProviderBoundExecutableTaskGraph sameSourceForTwoRoles(
@@ -165,7 +165,7 @@ final class RuntimeClosedLoopGraphFixture {
         PhysicalExecutionPlan plan = plan(List.of(unit));
         Context context = context(plan, provider);
         return ProviderBoundExecutableTaskGraph.derive(
-                plan, context.graph(), List.of(task(context, provider, unit)), List.of());
+                plan, context.feasibilityView(), List.of(task(context, provider, unit)), List.of());
     }
 
     static ProviderBoundExecutableTaskGraph twoComputedInputs(
@@ -198,7 +198,7 @@ final class RuntimeClosedLoopGraphFixture {
         ExecutableTask taskC = task(context, provider, unitC);
         return ProviderBoundExecutableTaskGraph.derive(
                 plan,
-                context.graph(),
+                context.feasibilityView(),
                 List.of(taskA, taskB, taskC),
                 List.of(
                         boundary(edgeAC, unitA, unitC, context.candidate().bindingPin()),
@@ -240,7 +240,7 @@ final class RuntimeClosedLoopGraphFixture {
         var memberships = ExecutableTaskMembership.canonicalForUnits(List.of(unit));
         var request = ProviderLocalCompositionRequest.of(
                 memberships,
-                context.graph(),
+                context.feasibilityView(),
                 context.candidate(),
                 new ProviderCompositionDeclaration(
                         context.candidate().bindingPin(), NativePipelineSupport.SUPPORTED),
@@ -265,12 +265,12 @@ final class RuntimeClosedLoopGraphFixture {
 
     private static Context context(PhysicalExecutionPlan plan, String provider) {
         ProviderCandidate candidate = candidate(provider);
-        ProviderCompatibilityGraph graph = ProviderCompatibilityGraph.build(
+        ProviderFeasibilityView feasibilityView = ProviderFeasibilityView.build(
                 plan,
                 plan.units().stream().map(CompatibilityRequest::forUnit).toList(),
                 List.of(candidate),
                 List.of());
-        return new Context(graph, candidate);
+        return new Context(feasibilityView, candidate);
     }
 
     private static ProviderCandidate candidate(String provider) {
@@ -422,6 +422,6 @@ final class RuntimeClosedLoopGraphFixture {
     }
 
     private record Context(
-            ProviderCompatibilityGraph graph,
+            ProviderFeasibilityView feasibilityView,
             ProviderCandidate candidate) {}
 }

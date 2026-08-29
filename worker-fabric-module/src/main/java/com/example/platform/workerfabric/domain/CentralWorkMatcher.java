@@ -177,7 +177,7 @@ public final class CentralWorkMatcher {
                 Optional.ofNullable(requestWork.deviceAvailability().get(descriptor.id())));
         List<StaticProviderCompatibilityProof> staticCompatibilityProofs = candidate
                 .executableTask().memberships().stream()
-                .map(membership -> candidate.providerBoundGraph().providerCompatibilityGraph()
+                .map(membership -> candidate.providerBoundGraph().providerFeasibilityView()
                         .requireStaticallyFeasible(
                                 membership.physicalPlanUnit(),
                                 candidate.staticallyCompatibleProviderCandidate()))

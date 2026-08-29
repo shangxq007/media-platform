@@ -34,7 +34,6 @@ import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -70,24 +69,24 @@ class Correction1CompatibilityProofAndTransitionTest {
     }
 
     @Test
-    void graphConstructionIsPrivateAndSourcePlanSemanticMismatchFailsClosed() {
+    void feasibilityViewConstructionIsPrivateAndSourcePlanSemanticMismatchFailsClosed() {
         PhysicalPlanUnit semanticsA = isolatedUnit("unit-a", "decode");
         PhysicalPlanUnit semanticsB = isolatedUnit("unit-a", "encode");
         ProviderCandidate candidate = candidate("provider-a");
         PhysicalExecutionPlan sourceA = plan(semanticsA);
         PhysicalExecutionPlan sourceB = plan(semanticsB);
-        ProviderCompatibilityGraph graph = graph(sourceA, List.of(candidate), List.of());
+        ProviderFeasibilityView view = view(sourceA, List.of(candidate), List.of());
 
-        assertTrue(Modifier.isFinal(ProviderCompatibilityGraph.class.getModifiers()));
-        assertFalse(ProviderCompatibilityGraph.class.isRecord());
-        assertEquals(0, Arrays.stream(ProviderCompatibilityGraph.class.getConstructors()).count(),
+        assertTrue(Modifier.isFinal(ProviderFeasibilityView.class.getModifiers()));
+        assertFalse(ProviderFeasibilityView.class.isRecord());
+        assertEquals(0, Arrays.stream(ProviderFeasibilityView.class.getConstructors()).count(),
                 "FORGEABLE_FEASIBLE_GRAPH_CONSTRUCTION_COUNT=0");
-        assertTrue(graph.bindsExactSourcePlan(sourceA));
-        assertFalse(graph.bindsExactSourcePlan(sourceB),
-                "COMPATIBILITY_GRAPH_SOURCE_PLAN_MISMATCH_ACCEPTANCE_COUNT=0");
-        assertFalse(graph.isStaticallyFeasible(semanticsB, candidate.bindingPin()));
+        assertTrue(view.bindsExactSourcePlan(sourceA));
+        assertFalse(view.bindsExactSourcePlan(sourceB),
+                "FEASIBILITY_VIEW_SOURCE_PLAN_MISMATCH_ACCEPTANCE_COUNT=0");
+        assertFalse(view.isStaticallyFeasible(semanticsB, candidate.bindingPin()));
         assertThrows(IllegalArgumentException.class,
-                () -> graph.requireStaticallyFeasible(semanticsB, candidate),
+                () -> view.requireStaticallyFeasible(semanticsB, candidate),
                 "COMPATIBILITY_PROOF_UNIT_SEMANTIC_MISMATCH_ACCEPTANCE_COUNT=0");
     }
 
@@ -96,10 +95,10 @@ class Correction1CompatibilityProofAndTransitionTest {
         PhysicalPlanUnit unit = isolatedUnit("unit-a", "decode");
         ProviderCandidate providerA = candidate("provider-a");
         ProviderCandidate providerB = candidate("provider-b");
-        ProviderCompatibilityGraph graph = graph(plan(unit), List.of(providerA), List.of());
+        ProviderFeasibilityView view = view(plan(unit), List.of(providerA), List.of());
 
         assertThrows(IllegalArgumentException.class,
-                () -> graph.requireStaticallyFeasible(unit, providerB),
+                () -> view.requireStaticallyFeasible(unit, providerB),
                 "COMPATIBILITY_PROOF_PROVIDER_MISMATCH_ACCEPTANCE_COUNT=0");
     }
 
@@ -110,7 +109,7 @@ class Correction1CompatibilityProofAndTransitionTest {
         ProviderCandidate providerA = candidate("provider-a");
         ProviderCandidate providerB = candidate("provider-b");
 
-        ProviderCompatibilityGraph defaults = graph(
+        ProviderFeasibilityView defaults = view(
                 plan, List.of(providerA, providerB), List.of());
         assertEquals(ProviderCompatibilityTransitionDecision.ARTIFACT_MATERIALIZATION_REQUIRED,
                 transition(defaults, pair, providerA, providerA).decision());
@@ -119,16 +118,16 @@ class Correction1CompatibilityProofAndTransitionTest {
                 "CROSS_PROVIDER_DIRECT_WITHOUT_TYPED_INTEROP_PROOF_COUNT=0");
 
         assertEquals(ProviderCompatibilityTransitionDecision.DIRECT_COMPATIBLE,
-                transition(graph(plan, List.of(providerA, providerB), List.of(declaration(
+                transition(view(plan, List.of(providerA, providerB), List.of(declaration(
                                 pair, providerA, providerB,
                                 Declaration.DIRECT_INTEROPERABILITY_ALLOWED))),
                         pair, providerA, providerB).decision());
         assertEquals(ProviderCompatibilityTransitionDecision.INCOMPATIBLE,
-                transition(graph(plan, List.of(providerA, providerB), List.of(declaration(
+                transition(view(plan, List.of(providerA, providerB), List.of(declaration(
                                 pair, providerA, providerB, Declaration.INCOMPATIBLE))),
                         pair, providerA, providerB).decision());
         assertEquals(ProviderCompatibilityTransitionDecision.UNKNOWN_FAIL_CLOSED,
-                transition(graph(plan, List.of(providerA, providerB), List.of(declaration(
+                transition(view(plan, List.of(providerA, providerB), List.of(declaration(
                                 pair, providerA, providerB, Declaration.UNKNOWN_FAIL_CLOSED))),
                         pair, providerA, providerB).decision());
     }
@@ -145,14 +144,14 @@ class Correction1CompatibilityProofAndTransitionTest {
                 declaration(pair, providerB, providerA, Declaration.UNKNOWN_FAIL_CLOSED),
                 declaration(pair, providerB, providerB, Declaration.ARTIFACT_MATERIALIZATION_REQUIRED));
 
-        ProviderCompatibilityGraph first = ProviderCompatibilityGraph.build(
+        ProviderFeasibilityView first = ProviderFeasibilityView.build(
                 plan,
                 List.of(
                         CompatibilityRequest.forUnit(pair.consumer()),
                         CompatibilityRequest.forUnit(pair.producer())),
                 List.of(providerA, providerB),
                 declarations);
-        ProviderCompatibilityGraph permuted = ProviderCompatibilityGraph.build(
+        ProviderFeasibilityView permuted = ProviderFeasibilityView.build(
                 plan,
                 List.of(
                         CompatibilityRequest.forUnit(pair.producer()),
@@ -163,18 +162,18 @@ class Correction1CompatibilityProofAndTransitionTest {
                         declarations.get(0), declarations.get(2)));
 
         assertEquals(4, first.transitions().size(),
-                "PROVIDER_COMPATIBILITY_GRAPH_TRANSITION_MISSING_COUNT=0");
-        assertEquals(first, permuted);
-        assertArrayEquals(first.canonicalSerialization(), permuted.canonicalSerialization());
-        assertEquals(first.digest(), permuted.digest());
+                "PROVIDER_FEASIBILITY_VIEW_TRANSITION_MISSING_COUNT=0");
+        assertEquals(first.sourcePlanSemanticDigest(), permuted.sourcePlanSemanticDigest());
+        assertEquals(first.unitCandidates(), permuted.unitCandidates());
+        assertEquals(first.transitions(), permuted.transitions());
     }
 
     private static ProviderCompatibilityTransition transition(
-            ProviderCompatibilityGraph graph,
+            ProviderFeasibilityView view,
             UnitPair pair,
             ProviderCandidate producer,
             ProviderCandidate consumer) {
-        return graph.requireTransition(
+        return view.requireTransition(
                 pair.edge(), pair.producer(), producer.bindingPin(),
                 pair.consumer(), consumer.bindingPin());
     }
@@ -192,11 +191,11 @@ class Correction1CompatibilityProofAndTransitionTest {
                 declaration);
     }
 
-    private static ProviderCompatibilityGraph graph(
+    private static ProviderFeasibilityView view(
             PhysicalExecutionPlan plan,
             List<ProviderCandidate> candidates,
             List<ProviderBoundaryCompatibilityDeclaration> declarations) {
-        return ProviderCompatibilityGraph.build(
+        return ProviderFeasibilityView.build(
                 plan,
                 plan.units().stream().map(CompatibilityRequest::forUnit).toList(),
                 candidates,

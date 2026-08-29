@@ -43,17 +43,44 @@ class Phase4CompatibilityArchitectureTest {
     }
 
     @Test
-    void providerCompatibilityGraphContainsNoRuntimeFieldsOrOrderingEscapeHatches() throws IOException {
-        String graph = stripComments(Files.readString(
-                compatibilitySourceRoot().resolve("ProviderCompatibilityGraph.java")));
+    void providerFeasibilityViewContainsNoRuntimeFieldsOrOrderingEscapeHatches() throws IOException {
+        String view = stripComments(Files.readString(
+                compatibilitySourceRoot().resolve("ProviderFeasibilityView.java")));
 
-        assertEquals(0, GRAPH_RUNTIME_FIELD.matcher(graph).results().count(),
-                "PROVIDER_COMPATIBILITY_GRAPH_RUNTIME_FIELD_COUNT=0");
-        assertFalse(graph.contains("HashMap"), "graph must not derive semantics from HashMap traversal");
-        assertFalse(graph.contains("System.currentTimeMillis"));
-        assertFalse(graph.contains("Instant.now"));
-        assertFalse(graph.contains("UUID.randomUUID"));
-        assertFalse(graph.contains("Math.random"));
+        assertEquals(0, GRAPH_RUNTIME_FIELD.matcher(view).results().count(),
+                "PROVIDER_FEASIBILITY_VIEW_RUNTIME_FIELD_COUNT=0");
+        assertFalse(view.contains("HashMap"),
+                "view must not derive semantics from HashMap traversal");
+        assertFalse(view.contains("System.currentTimeMillis"));
+        assertFalse(view.contains("Instant.now"));
+        assertFalse(view.contains("UUID.randomUUID"));
+        assertFalse(view.contains("Math.random"));
+    }
+
+    @Test
+    void providerFeasibilityViewHasNoIndependentCanonicalIdentity() throws IOException {
+        Path compatibilityRoot = compatibilitySourceRoot();
+        String view = stripComments(Files.readString(
+                compatibilityRoot.resolve("ProviderFeasibilityView.java")));
+
+        assertFalse(view.contains("CURRENT_SCHEMA_VERSION"),
+                "ephemeral feasibility view must not expose a schema version");
+        assertFalse(view.contains("canonicalSerialization("),
+                "ephemeral feasibility view must not expose canonical serialization");
+        assertFalse(view.contains("CanonicalWriter"),
+                "ephemeral feasibility view must not encode itself canonically");
+        assertFalse(view.contains("ProviderFeasibilityViewDigest"),
+                "ephemeral feasibility view must not expose an independent digest");
+        assertFalse(view.contains(" digest()"),
+                "ephemeral feasibility view must not expose a digest accessor");
+        assertFalse(Files.exists(compatibilityRoot.resolve("ProviderFeasibilityViewDigest.java")),
+                "independent feasibility-view digest type must be absent");
+        assertFalse(Files.exists(compatibilityRoot.resolve("ProviderCompatibilityGraph.java")),
+                "old graph production type must be absent");
+        assertFalse(Files.exists(compatibilityRoot.resolve("ProviderCompatibilityGraphDigest.java")),
+                "old graph digest production type must be absent");
+        assertFalse(Files.notExists(compatibilityRoot.resolve("ProviderFeasibilityView.java")),
+                "ProviderFeasibilityView must be the production type");
     }
 
     @Test
