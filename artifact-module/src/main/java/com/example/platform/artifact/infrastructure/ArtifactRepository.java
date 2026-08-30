@@ -164,6 +164,23 @@ public class ArtifactRepository {
         return dsl.fetchCount(ARTIFACT_REPLICA.where(ARTIFACT_REPLICA.ARTIFACT_ID.eq(artifactId)));
     }
 
+    /** Internal storage-maintenance projection; never returned by an Artifact API. */
+    public List<StorageMaintenanceRecord> scanStorageMaintenanceRecords() {
+        return dsl.select(
+                        ARTIFACT.ID,
+                        ARTIFACT.PROJECT_ID,
+                        ARTIFACT.STATE,
+                        ARTIFACT_REPLICA.STORAGE_OBJECT_ID)
+                .from(ARTIFACT)
+                .join(ARTIFACT_REPLICA).on(ARTIFACT_REPLICA.ARTIFACT_ID.eq(ARTIFACT.ID))
+                .where(ARTIFACT_REPLICA.STATE.eq("ACTIVE"))
+                .fetch(record -> new StorageMaintenanceRecord(
+                        record.get(ARTIFACT.ID),
+                        record.get(ARTIFACT.PROJECT_ID),
+                        ArtifactState.valueOf(record.get(ARTIFACT.STATE)),
+                        record.get(ARTIFACT_REPLICA.STORAGE_OBJECT_ID)));
+    }
+
     public void deleteReplica(String artifactId, String replicaId) {
         dsl.deleteFrom(ARTIFACT_REPLICA)
                 .where(ARTIFACT_REPLICA.ARTIFACT_ID.eq(artifactId)
@@ -221,4 +238,10 @@ public class ArtifactRepository {
     private static java.time.Instant toInstant(LocalDateTime ts) {
         return ts == null ? null : ts.toInstant(ZoneOffset.UTC);
     }
+
+    public record StorageMaintenanceRecord(
+            String artifactId,
+            String projectId,
+            ArtifactState state,
+            String storageObjectId) {}
 }

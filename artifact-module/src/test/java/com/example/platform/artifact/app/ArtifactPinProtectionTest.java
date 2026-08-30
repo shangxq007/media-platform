@@ -80,10 +80,10 @@ class ArtifactPinProtectionTest extends PostgresTestContainerSupport {
         com.example.platform.artifact.infrastructure.JooqArtifactCommitService commitService =
                 new com.example.platform.artifact.infrastructure.JooqArtifactCommitService(
                         artifactRepository, relationRepo, dsl);
-        ArtifactCatalogService catalog = new ArtifactCatalogService(catalogRepo, relationRepo, commitService, registry);
+        ArtifactCatalogService catalog = new ArtifactCatalogService(catalogRepo, relationRepo, registry);
         ApplicationEventPublisher events = mock(ApplicationEventPublisher.class);
         lifecycleService = new ArtifactLifecycleService(
-                catalogRepo, catalog, artifactRepository, pinRepository, dsl, registry, events, java.util.List.of());
+                catalog, artifactRepository, pinRepository, registry);
     }
 
     private void seedPinnedArtifactWithReplica(String replicaId) {
@@ -149,10 +149,9 @@ class ArtifactPinProtectionTest extends PostgresTestContainerSupport {
 
         // Projection read reflects canonical truth; no canonical mutation via catalog.
         var catalog = new ArtifactCatalogRepository(dsl);
-        var entries = catalog.findAll();
-        assertEquals(1, entries.size());
-        assertEquals(ARTIFACT_ID, entries.get(0).id());
-        assertEquals(DIGEST.canonicalValue(), entries.get(0).checksum());
+        var entry = catalog.findById(ARTIFACT_ID).orElseThrow();
+        assertEquals(ARTIFACT_ID, entry.id());
+        assertEquals(DIGEST.canonicalValue(), entry.checksum());
 
         // Canonical record unchanged after projection reads.
         var canonical = artifactRepository.findById(TENANT, new ArtifactId(ARTIFACT_ID)).orElseThrow();

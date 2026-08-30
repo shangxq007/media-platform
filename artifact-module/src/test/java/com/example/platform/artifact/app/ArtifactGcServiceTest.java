@@ -87,10 +87,10 @@ class ArtifactGcServiceTest extends PostgresTestContainerSupport {
                 new com.example.platform.artifact.infrastructure.JooqArtifactCommitService(
                         artifactRepository, relationRepo, dsl);
         ArtifactCatalogService catalog =
-                new ArtifactCatalogService(catalogRepo, relationRepo, commitService, registry);
+                new ArtifactCatalogService(catalogRepo, relationRepo, registry);
         ApplicationEventPublisher events = mock(ApplicationEventPublisher.class);
         ArtifactLifecycleService lifecycle = new ArtifactLifecycleService(
-                catalogRepo, catalog, artifactRepository, pinRepository, dsl, registry, events, java.util.List.of());
+                catalog, artifactRepository, pinRepository, registry);
         blobStorage = mock(BlobStorage.class);
         AuditPort auditPort = mock(AuditPort.class);
         ArtifactGcProperties props = new ArtifactGcProperties();

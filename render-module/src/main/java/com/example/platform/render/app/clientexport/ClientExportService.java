@@ -1,13 +1,22 @@
 package com.example.platform.render.app.clientexport;
 
+import com.example.platform.artifact.domain.ArtifactCommitRequest;
+import com.example.platform.artifact.domain.ArtifactCommitService;
+import com.example.platform.artifact.domain.ArtifactKind;
+import com.example.platform.artifact.domain.ArtifactMediaType;
+import com.example.platform.artifact.domain.ReplicaRole;
 import com.example.platform.entitlement.domain.ExportCapabilityPolicy;
-import com.example.platform.render.api.port.ClientExportArtifactPort;
 import com.example.platform.render.domain.clientexport.ClientExportSession;
 import com.example.platform.render.infrastructure.ExportPolicyService;
 import com.example.platform.render.infrastructure.ExportPolicyService.ExportPreset;
 import com.example.platform.render.infrastructure.clientexport.ClientExportSessionRepository;
 import com.example.platform.shared.Ids;
+import com.example.platform.shared.digest.ContentDigest;
+import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.storage.contract.ChecksummingInputStream;
+import com.example.platform.storage.contract.StorageObjectId;
+import com.example.platform.storage.contract.StorageProviderId;
+import com.example.platform.storage.contract.StorageReplicaId;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -33,17 +42,17 @@ public class ClientExportService {
     private final Path storageRoot;
     private final ClientExportSessionRepository repository;
     private final ExportPolicyService exportPolicy;
-    private final Optional<ClientExportArtifactPort> artifactPort;
+    private final Optional<ArtifactCommitService> artifactCommitService;
 
     public ClientExportService(
             @Value("${app.storage.local-root:/tmp/platform}") String storageRoot,
             ClientExportSessionRepository repository,
             ExportPolicyService exportPolicy,
-            @Autowired(required = false) ClientExportArtifactPort artifactPort) {
+            @Autowired(required = false) ArtifactCommitService artifactCommitService) {
         this.storageRoot = Path.of(storageRoot);
         this.repository = repository;
         this.exportPolicy = exportPolicy;
-        this.artifactPort = Optional.ofNullable(artifactPort);
+        this.artifactCommitService = Optional.ofNullable(artifactCommitService);
     }
 
     public record ExportConfig(
@@ -200,17 +209,29 @@ public class ClientExportService {
         String artifactId = null;
         String downloadPath = "/api/render/client-exports/" + sessionId + "/download";
 
-        if (registerArtifact && artifactPort.isPresent()) {
-            var registered = artifactPort.get().register(
-                    sessionId, session.projectId(), storageUri,
-                    session.format(), session.resolution(),
-                    durationSeconds != null ? durationSeconds : 0L,
+        if (registerArtifact && artifactCommitService.isPresent()) {
+            ArtifactId id = new ArtifactId(Ids.newId("art"));
+            Instant committedAt = Instant.now();
+            artifactCommitService.get().commit(new ArtifactCommitRequest(
+                    id,
+                    session.tenantId(),
+                    ContentDigest.sha256(finalChecksum.substring("sha256:".length())),
                     computedSizeBytes,
-                    finalChecksum);
-            artifactId = registered.artifactId();
-            if (registered.downloadPath() != null) {
-                downloadPath = registered.downloadPath();
-            }
+                    mediaType(session.format()),
+                    ArtifactKind.RENDER_MASTER,
+                    1,
+                    new StorageObjectId(storageUri),
+                    new StorageReplicaId("client-export-primary"),
+                    new StorageProviderId("local"),
+                    ReplicaRole.PRIMARY,
+                    "local",
+                    "client-export:" + sessionId,
+                    List.of(),
+                    committedAt,
+                    committedAt,
+                    sessionId,
+                    session.projectId()));
+            artifactId = id.value();
         }
 
         repository.updateStatus(sessionId, ClientExportSession.STATUS_COMPLETED, 100,
@@ -267,5 +288,16 @@ public class ClientExportService {
 
     private static int estimateAudioBitrate(ExportPreset preset) {
         return preset.audioCodec().equals("opus") ? 128_000 : 192_000;
+    }
+
+    private static ArtifactMediaType mediaType(String format) {
+        if (format == null) {
+            return ArtifactMediaType.VIDEO;
+        }
+        return switch (format.toLowerCase()) {
+            case "wav", "mp3", "aac", "flac" -> ArtifactMediaType.AUDIO;
+            case "png", "jpg", "jpeg", "webp" -> ArtifactMediaType.IMAGE;
+            default -> ArtifactMediaType.VIDEO;
+        };
     }
 }

@@ -30,7 +30,7 @@ class JsonsJavaTimeSerializationTest {
     void artifactCreatedEventWithInstantRoundTripsThroughJsons() {
         Instant createdAt = Instant.parse("2026-08-13T03:16:09Z");
         ArtifactCreatedEvent event =
-                new ArtifactCreatedEvent("art-1", "job-1", "proj-1", "s3://bucket/key", createdAt);
+                new ArtifactCreatedEvent("art-1", "job-1", "proj-1", createdAt);
 
         String json = Jsons.toJson(event); // must NOT throw on the reachable payload
 

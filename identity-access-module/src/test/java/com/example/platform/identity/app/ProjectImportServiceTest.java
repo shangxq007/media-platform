@@ -1,8 +1,7 @@
 package com.example.platform.identity.app;
 
-import com.example.platform.artifact.app.ArtifactCatalogService;
-import com.example.platform.artifact.domain.ArtifactCatalogEntry;
-import com.example.platform.artifact.domain.ArtifactStatus;
+import com.example.platform.artifact.domain.ArtifactCommitRequest;
+import com.example.platform.artifact.domain.ArtifactCommitService;
 import com.example.platform.identity.api.dto.*;
 import com.example.platform.shared.audit.AuditPort;
 import com.example.platform.identity.imports.DownloadedAsset;
@@ -38,7 +37,7 @@ class ProjectImportServiceTest {
     private TenantProjectService tenantProjectService;
 
     @Mock
-    private ArtifactCatalogService artifactCatalogService;
+    private ArtifactCommitService artifactCommitService;
 
     @Mock
     private BlobStorage blobStorage;
@@ -53,7 +52,7 @@ class ProjectImportServiceTest {
 
     @BeforeEach
     void setUp() {
-        importService = new ProjectImportService(tenantProjectService, artifactCatalogService,
+        importService = new ProjectImportService(tenantProjectService, artifactCommitService,
                 null, auditPort, assetDownloader, blobStorage);
     }
 
@@ -103,12 +102,6 @@ class ProjectImportServiceTest {
                 new ProjectExportProjectDto("src-prj-1", "src-tenant", "Source", "desc",
                         null, null, "ACTIVE"),
                 assets, null, null);
-    }
-
-    private ArtifactCatalogEntry mockRegisteredArtifact(String id) {
-        return new ArtifactCatalogEntry(id, "import:imp-1", "prj-1", "imported://prj-1/src",
-                "mp4", "1920x1080", 5L, 1024L, VALID_CHECKSUM,
-                ArtifactStatus.ACTIVE, null, Instant.now());
     }
 
     private DownloadedAsset createDownloadedAsset(String name, long size, String checksum) {
@@ -162,10 +155,6 @@ class ProjectImportServiceTest {
                 .thenReturn(new StorageObjectRef("local", "imports", "key2"));
         lenient().when(blobStorage.deleteStorageUri(anyString())).thenReturn(true);
 
-        ArtifactCatalogEntry art1 = mockRegisteredArtifact("target-art-1");
-        ArtifactCatalogEntry art2 = mockRegisteredArtifact("target-art-2");
-        lenient().when(artifactCatalogService.registerArtifact(anyString(), anyString(), anyString(),
-                anyString(), any(), anyLong(), any(), anyString())).thenReturn(art1, art2);
 
         ProjectImportRequest request = new ProjectImportRequest(
                 buildTwoAssetPayload(), "linked_assets", null,
@@ -197,9 +186,6 @@ class ProjectImportServiceTest {
         lenient().when(blobStorage.put(any(PutObjectCommand.class)))
                 .thenReturn(new StorageObjectRef("local", "imports", "key1"));
         lenient().when(blobStorage.deleteStorageUri(anyString())).thenReturn(true);
-        ArtifactCatalogEntry art1 = mockRegisteredArtifact("target-art-1");
-        lenient().when(artifactCatalogService.registerArtifact(anyString(), eq("new-prj-1"), anyString(),
-                anyString(), any(), anyLong(), eq(1024L), eq(VALID_CHECKSUM))).thenReturn(art1);
 
         // Asset 2: download fails
         lenient().when(assetDownloader.download("https://signed.example.com/video2.mp4"))
@@ -249,8 +235,7 @@ class ProjectImportServiceTest {
         });
 
         // No artifact registration should happen
-        verify(artifactCatalogService, never()).registerArtifact(anyString(), anyString(),
-                anyString(), anyString(), any(), anyLong(), any(), anyString());
+        verify(artifactCommitService, never()).commit(any(ArtifactCommitRequest.class));
 
         // Verify audit was called (failure recorded)
         verify(auditPort, atLeastOnce()).record(anyString(), anyString(), anyString(),
@@ -303,9 +288,8 @@ class ProjectImportServiceTest {
                 .thenReturn(new StorageObjectRef("local", "imports", "key1"));
         lenient().when(blobStorage.deleteStorageUri(anyString())).thenReturn(true);
 
-        lenient().when(artifactCatalogService.registerArtifact(anyString(), anyString(), anyString(),
-                anyString(), any(), anyLong(), any(), anyString()))
-                .thenThrow(new RuntimeException("DB error"));
+        lenient().doThrow(new RuntimeException("DB error"))
+                .when(artifactCommitService).commit(any(ArtifactCommitRequest.class));
 
         ProjectImportRequest request = new ProjectImportRequest(
                 buildLinkedAssetsPayload(), "linked_assets", null,
@@ -477,9 +461,6 @@ class ProjectImportServiceTest {
         lenient().when(blobStorage.put(any(PutObjectCommand.class)))
                 .thenReturn(new StorageObjectRef("local", "imports", "key"));
 
-        ArtifactCatalogEntry art = mockRegisteredArtifact("target-art-1");
-        lenient().when(artifactCatalogService.registerArtifact(anyString(), anyString(), anyString(),
-                anyString(), any(), anyLong(), any(), anyString())).thenReturn(art);
 
         ProjectImportRequest request = new ProjectImportRequest(
                 payload, "linked_assets", null,
@@ -505,7 +486,7 @@ class ProjectImportServiceTest {
                 "Test", "desc", "ACTIVE", Instant.now());
         when(tenantProjectService.createProject(eq("tenant-1"), any())).thenReturn(created);
 
-        ProjectImportService serviceNoStorage = new ProjectImportService(tenantProjectService, artifactCatalogService,
+        ProjectImportService serviceNoStorage = new ProjectImportService(tenantProjectService, artifactCommitService,
                 null, auditPort, assetDownloader, null);
         // blobStorage NOT set
 

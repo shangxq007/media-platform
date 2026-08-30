@@ -3,7 +3,6 @@ package com.example.platform.render.integration;
 import com.example.platform.render.api.RenderController;
 import com.example.platform.render.api.dto.SubmitRenderJobRequest;
 import com.example.platform.render.app.RenderJobService;
-import com.example.platform.render.app.dto.ArtifactInfoResponse;
 import com.example.platform.render.app.dto.CreateRenderJobRequest;
 import com.example.platform.render.app.dto.RenderJobResponse;
 import com.example.platform.render.app.dto.StatusHistoryResponse;
@@ -86,7 +85,7 @@ class VS1SmokeIntegrationTest {
 
         fakeOrchestrator = new FakeRenderOrchestratorPort();
         controller = new RenderController(fakeJobService, fakeOrchestrator, java.util.List.<com.example.platform.storage.domain.BlobStorage>of(),
-                null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null);
         stateMachine = new RenderJobStateMachine();
     }
 
@@ -314,7 +313,7 @@ class VS1SmokeIntegrationTest {
         @DisplayName("Missing orchestrator on submit throws IllegalStateException")
         void missingOrchestratorFallback() {
             RenderController controllerNoOrch = new RenderController(fakeJobService, null, java.util.List.of(),
-                    null, null, null, null, null, null, null, null, null);
+                    null, null, null, null, null, null, null, null);
             SubmitRenderJobRequest req = new SubmitRenderJobRequest(
                     "t-1", "proj-1", "test", "default_1080p", "snap-1");
 
@@ -359,18 +358,6 @@ class VS1SmokeIntegrationTest {
             assertFalse(str.contains("bucket"), "No bucket references");
             assertFalse(str.contains("s3://"), "No S3 URIs");
             assertFalse(str.contains("signedUrl"), "No signed URLs");
-        }
-
-        @Test
-        @DisplayName("ArtifactInfoResponse uses API download path")
-        void artifactResponseUsesApiPath() {
-            ArtifactInfoResponse artifact = new ArtifactInfoResponse(
-                    "art-1", "rj-1", "proj-1", "/api/downloads/art-1",
-                    "video/mp4", "1920x1080", 10485760L, Instant.now());
-
-            assertNotNull(artifact.storageUri());
-            assertTrue(artifact.storageUri().startsWith("/api/"),
-                    "Must use API path: " + artifact.storageUri());
         }
 
         @Test

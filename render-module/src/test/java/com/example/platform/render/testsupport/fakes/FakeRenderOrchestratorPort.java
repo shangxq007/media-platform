@@ -2,7 +2,6 @@ package com.example.platform.render.testsupport.fakes;
 
 import com.example.platform.render.api.dto.SubmitRenderJobRequest;
 import com.example.platform.render.api.port.RenderOrchestratorPort;
-import com.example.platform.render.app.dto.ArtifactInfoResponse;
 import com.example.platform.shared.Ids;
 
 import java.util.*;
@@ -59,18 +58,8 @@ public class FakeRenderOrchestratorPort implements RenderOrchestratorPort {
     }
 
     @Override
-    public List<ArtifactInfoResponse> getArtifactsByJob(String jobId) {
-        return List.of();
-    }
-
-    @Override
     public String loadJobTimelineJson(String tenantId, String jobId) {
         return jobTimelines.getOrDefault(jobId, "{}");
-    }
-
-    @Override
-    public byte[] getArtifactContent(String artifactId) {
-        return new byte[0];
     }
 
 }

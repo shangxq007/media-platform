@@ -10,7 +10,6 @@ import java.time.Instant;
  * @param id          unique artifact identifier (prefixed {@code art_})
  * @param renderJobId the render job that produced this artifact
  * @param projectId   the project this artifact belongs to
- * @param storageUri  URI where the artifact content is stored
  * @param format      media format (e.g., {@code mp4}, {@code mov})
  * @param resolution  resolution string (e.g., {@code 1920x1080})
  * @param duration     media duration in seconds
@@ -22,7 +21,6 @@ public record ArtifactCatalogEntry(
         String id,
         String renderJobId,
         String projectId,
-        String storageUri,
         String format,
         String resolution,
         Long duration,
@@ -43,12 +41,12 @@ public record ArtifactCatalogEntry(
     }
 
     public ArtifactCatalogEntry withSizeBytes(Long sizeBytes) {
-        return new ArtifactCatalogEntry(id, renderJobId, projectId, storageUri, format, resolution,
+        return new ArtifactCatalogEntry(id, renderJobId, projectId, format, resolution,
                 duration, sizeBytes, checksum, status, tombstonedAt, createdAt);
     }
 
     public ArtifactCatalogEntry withChecksum(String checksum) {
-        return new ArtifactCatalogEntry(id, renderJobId, projectId, storageUri, format, resolution,
+        return new ArtifactCatalogEntry(id, renderJobId, projectId, format, resolution,
                 duration, sizeBytes, checksum, status, tombstonedAt, createdAt);
     }
 }

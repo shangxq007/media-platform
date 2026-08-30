@@ -10,13 +10,10 @@
 # ── OPTIONAL_CONSTRUCTOR_OR_PARAMETER ──────────────────────────────────────────
 artifact-module.ArtifactCatalogService.artifactRepository|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: ArtifactCatalogRepository may not be configured
 artifact-module.ArtifactCatalogService.relationRepository|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: ArtifactRelationRepository may not be configured
-artifact-module.ArtifactGcService.artifactRepository|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: ArtifactCatalogRepository may not be configured
+artifact-module.ArtifactGcService.artifactRepository|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: canonical ArtifactRepository may not be configured
 artifact-module.ArtifactGcService.blobStorage|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: BlobStorage may not be configured
 artifact-module.ArtifactGcService.auditPort|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: AuditPort may not be configured
-artifact-module.ArtifactLifecycleService.artifactRepository|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: ArtifactCatalogRepository may not be configured
-artifact-module.ArtifactLifecycleService.dsl|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: DSLContext may not be configured
-artifact-module.ArtifactLifecycleService.referenceContributors|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: List<StorageUriReferenceContributor> may be empty
-artifact-module.ArtifactStorageIntegrityScanner.artifactRepository|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: ArtifactCatalogRepository may not be configured
+artifact-module.ArtifactStorageIntegrityScanner.artifactRepository|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: canonical ArtifactRepository may not be configured
 artifact-module.ArtifactStorageIntegrityScanner.blobStorage|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: BlobStorage may not be configured
 artifact-module.AssetIntegrityMetrics.meterRegistry|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: MeterRegistry may not be configured
 audit-compliance-module.AuditAlertService.properties|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: AuditAlertProperties may not be configured
@@ -53,14 +50,14 @@ platform-app.PlatformGracefulShutdownCoordinator.sandboxExecutionService|OPTIONA
 platform-app.PlatformGracefulShutdownCoordinator.sandboxRuntimeService|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: SandboxRuntimeService may not be configured
 platform-app.PlatformDeploymentReadinessController.temporalProperties|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: AppTemporalProperties may not be configured
 platform-app.KnownStorageUriIndexService.dsl|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: DSLContext may not be configured
-platform-app.KnownStorageUriIndexService.artifactRepository|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: ArtifactCatalogRepository may not be configured
+platform-app.KnownStorageUriIndexService.artifactRepository|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: canonical ArtifactRepository may not be configured
 platform-app.KnownStorageUriIndexService.destinationUriIndex|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: DeliveryDestinationUriIndexService may not be configured
 platform-app.TimelineRevisionController.renderService|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: TimelineRevisionRenderService may not be configured
 platform-app.TimelineRevisionController.renderJobStatusService|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: RenderJobStatusService may not be configured
 platform-app.AssetGovernanceController.entitlementService|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: may not be configured
 policy-governance-module.LocalFeatureFlagProvider.jdbcStore|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: FeatureFlagJdbcStore may not be configured
 prompt-module.PromptTemplateService.auditPort|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: AuditPort may not be configured
-render-module.ClientExportService.artifactPort|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: ClientExportArtifactPort may not be configured
+render-module.ClientExportService.artifactCommitService|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: canonical ArtifactCommitService may not be configured
 render-module.RenderJobValidationService.entitlementPort|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: EntitlementPort may not be configured
 render-module.RenderJobValidationService.costEstimationPort|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: CostEstimationPort may not be configured
 render-module.RenderJobValidationService.budgetGuardPort|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: BudgetGuardPort may not be configured

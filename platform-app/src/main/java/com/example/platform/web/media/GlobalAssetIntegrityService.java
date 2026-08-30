@@ -66,8 +66,7 @@ public class GlobalAssetIntegrityService {
         for (ArtifactStorageIntegrityScanner.StorageFinding f : storageScanner.scanCatalog()) {
             findings.add(findingMap(f.ruleId(), f.artifactId(), f.message(), Map.of(
                     "projectId", f.projectId(),
-                    "artifactId", f.artifactId(),
-                    "storageUri", f.storageUri())));
+                    "artifactId", f.artifactId())));
             if ("AST-002".equals(f.ruleId())) {
                 orphanBlobs++;
             } else if ("AST-004".equals(f.ruleId())) {

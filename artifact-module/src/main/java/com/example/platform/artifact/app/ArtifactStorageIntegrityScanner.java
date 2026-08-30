@@ -1,7 +1,6 @@
 package com.example.platform.artifact.app;
 
-import com.example.platform.artifact.domain.ArtifactCatalogEntry;
-import com.example.platform.artifact.domain.ArtifactStatus;
+import com.example.platform.artifact.domain.ArtifactState;
 import com.example.platform.storage.domain.BlobStorage;
 import com.example.platform.storage.domain.StorageObjectRef;
 import java.util.ArrayList;
@@ -16,27 +15,28 @@ import org.springframework.stereotype.Service;
 @Service
 public class ArtifactStorageIntegrityScanner {
 
-    private final ArtifactCatalogRepository artifactRepository;
+    private final ArtifactStorageMaintenanceQuery storageMaintenanceQuery;
     private final Optional<BlobStorage> blobStorage;
 
     public ArtifactStorageIntegrityScanner(
-            @Autowired(required = false) ArtifactCatalogRepository artifactRepository,
+            @Autowired(required = false) ArtifactStorageMaintenanceQuery storageMaintenanceQuery,
             @Autowired(required = false) BlobStorage blobStorage) {
-        this.artifactRepository = artifactRepository;
+        this.storageMaintenanceQuery = storageMaintenanceQuery;
         this.blobStorage = Optional.ofNullable(blobStorage);
     }
 
     public List<StorageFinding> scanCatalog() {
         List<StorageFinding> findings = new ArrayList<>();
-        if (artifactRepository == null) {
+        if (storageMaintenanceQuery == null) {
             return findings;
         }
-        for (ArtifactCatalogEntry artifact : artifactRepository.findAll()) {
-            String uri = artifact.storageUri();
-            if (uri == null || uri.isBlank()) {
+        for (ArtifactStorageMaintenanceEntry artifact
+                : storageMaintenanceQuery.scanStorageMaintenanceEntries()) {
+            String location = artifact.storageObjectId();
+            if (location == null || location.isBlank()) {
                 continue;
             }
-            Optional<StorageObjectRef> ref = BlobStorage.parseUri(uri);
+            Optional<StorageObjectRef> ref = toStorageObjectRef(location);
             if (ref.isEmpty() || blobStorage.isEmpty()) {
                 continue;
             }
@@ -44,20 +44,31 @@ public class ArtifactStorageIntegrityScanner {
             boolean exists = blobStorage.get()
                     .get(objectRef.bucket(), objectRef.objectKey())
                     .isPresent();
-            if (artifact.status() == ArtifactStatus.TOMBSTONED && exists) {
+            if ((artifact.state() == ArtifactState.DELETING || artifact.state() == ArtifactState.DELETED) && exists) {
                 findings.add(new StorageFinding(
-                        "AST-002", artifact.id(), artifact.projectId(), uri,
+                        "AST-002", artifact.artifactId(), artifact.projectId(),
                         "Tombstoned artifact still has blob in storage"));
             }
-            if (artifact.status() == ArtifactStatus.ACTIVE && !exists) {
+            if (artifact.state() == ArtifactState.AVAILABLE && !exists) {
                 findings.add(new StorageFinding(
-                        "AST-004", artifact.id(), artifact.projectId(), uri,
+                        "AST-004", artifact.artifactId(), artifact.projectId(),
                         "Active artifact storage object not found"));
             }
         }
         return findings;
     }
 
+    private static Optional<StorageObjectRef> toStorageObjectRef(String location) {
+        Optional<StorageObjectRef> parsed = BlobStorage.parseUri(location);
+        if (parsed.isPresent()) {
+            return parsed;
+        }
+        String[] parts = location.split("/", 2);
+        return parts.length == 2 && !parts[0].isBlank() && !parts[1].isBlank()
+                ? Optional.of(new StorageObjectRef("internal", parts[0], parts[1]))
+                : Optional.empty();
+    }
+
     public record StorageFinding(String ruleId, String artifactId, String projectId,
-                                 String storageUri, String message) {}
+                                 String message) {}
 }

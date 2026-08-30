@@ -54,7 +54,7 @@ public class AssetWorkbenchController {
         var searchProj = searchProjectionRepo.findByAssetId(assetId);
 
         var dto = new AssetWorkbenchDto(
-                r.assetId(), r.assetType(), r.storageUri(), r.checksum(),
+                r.assetId(), r.assetType(), r.checksum(),
                 r.createdAt() != null ? r.createdAt().toString() : null,
                 r.updatedAt() != null ? r.updatedAt().toString() : null,
                 pubStatus.map(Enum::name).orElse("DRAFT"),
@@ -122,7 +122,7 @@ public class AssetWorkbenchController {
                 .orElse(ResponseEntity.ok(new SearchWsDto(false, 0)));
     }
 
-    public record AssetWorkbenchDto(String assetId, String assetType, String storageUri,
+    public record AssetWorkbenchDto(String assetId, String assetType,
             String checksum, String createdAt, String updatedAt,
             String publishStatus, String semanticStatus, String marketplaceStatus,
             boolean searchIndexed, String classification, String license, String version) {}

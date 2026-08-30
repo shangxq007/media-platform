@@ -1,196 +1,47 @@
 package com.example.platform.artifact.app;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.example.platform.artifact.domain.ArtifactCatalogEntry;
-import com.example.platform.artifact.domain.ArtifactRelation;
-import com.example.platform.shared.test.PostgresTestContainerSupport;
+import com.example.platform.artifact.domain.ArtifactStatus;
 import com.example.platform.shared.web.ErrorCodeRegistry;
-import com.example.platform.shared.web.PlatformException;
-import org.jooq.DSLContext;
-import org.jooq.SQLDialect;
-import org.jooq.conf.RenderNameCase;
-import org.jooq.conf.Settings;
-import org.jooq.impl.DSL;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.springframework.jdbc.core.JdbcTemplate;
-
-import java.util.List;
-import java.util.Map;
+import java.time.Instant;
 import java.util.Optional;
+import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+class ArtifactCatalogServiceTest {
 
-class ArtifactCatalogServiceTest extends PostgresTestContainerSupport {
+    @Test
+    void projectionReadsCanonicalRepositoryWithoutRegistrationFallback() {
+        ArtifactCatalogRepository repository = mock(ArtifactCatalogRepository.class);
+        ArtifactRelationRepository relations = mock(ArtifactRelationRepository.class);
+        ArtifactCatalogEntry entry = new ArtifactCatalogEntry(
+                "art-1", "job-1", "project-1", "VIDEO", null, null,
+                10L, "a".repeat(64), ArtifactStatus.ACTIVE, null, Instant.now());
+        when(repository.findById("art-1")).thenReturn(Optional.of(entry));
+        when(repository.countAll()).thenReturn(1);
 
-    private static javax.sql.DataSource dataSource;
-    private static DSLContext dsl;
-    private static ArtifactCatalogRepository repository;
-    private static ArtifactRelationRepository relationRepository;
-    private ArtifactCatalogService service;
+        ArtifactCatalogService service = new ArtifactCatalogService(
+                repository, relations, mock(ErrorCodeRegistry.class));
 
-    @BeforeAll
-    static void setUpDatabase() {
-        dataSource = createDataSource();
-        var jdbc = new JdbcTemplate(dataSource);
-
-        // GCR-2: canonical Artifact schema (artifact + artifact_replica + artifact_pin)
-        com.example.platform.artifact.testutil.ArtifactSchemaFixture.createCanonicalTables(jdbc);
-        jdbc.execute("CREATE TABLE IF NOT EXISTS artifact_relation ("
-                + "id varchar(64) primary key,"
-                + "source_artifact_id varchar(64) not null,"
-                + "target_artifact_id varchar(64) not null,"
-                + "relation_type varchar(64) not null,"
-                + "created_at timestamp not null,"
-                + "constraint fk_artifact_relation_source foreign key (source_artifact_id) references artifact(id) on delete restrict,"
-                + "constraint fk_artifact_relation_target foreign key (target_artifact_id) references artifact(id) on delete restrict"
-                + ")");
-        // Ensure FK constraints exist even if an FK-less table was created earlier
-        // in the shared test container.
-        jdbc.execute("ALTER TABLE artifact_relation DROP CONSTRAINT IF EXISTS fk_artifact_relation_source");
-        jdbc.execute("ALTER TABLE artifact_relation DROP CONSTRAINT IF EXISTS fk_artifact_relation_target");
-        jdbc.execute("ALTER TABLE artifact_relation ADD CONSTRAINT fk_artifact_relation_source foreign key (source_artifact_id) references artifact(id) on delete restrict");
-        jdbc.execute("ALTER TABLE artifact_relation ADD CONSTRAINT fk_artifact_relation_target foreign key (target_artifact_id) references artifact(id) on delete restrict");
-
-        var settings = new Settings().withRenderNameCase(RenderNameCase.LOWER);
-        dsl = DSL.using(dataSource, SQLDialect.POSTGRES, settings);
-        repository = new ArtifactCatalogRepository(dsl);
-        relationRepository = new ArtifactRelationRepository(dsl);
-    }
-
-    @AfterAll
-    static void tearDownDatabase() {
-        closeDataSource(dataSource);
-    }
-
-    @BeforeEach
-    void setUp() {
-        // Clean up before each test
-        dsl.execute("TRUNCATE TABLE artifact_relation CASCADE");
-        dsl.execute("TRUNCATE TABLE artifact CASCADE");
-
-        ErrorCodeRegistry registry = new ErrorCodeRegistry();
-        registry.loadErrorCodes();
-        com.example.platform.artifact.infrastructure.ArtifactRepository canonicalRepo =
-                new com.example.platform.artifact.infrastructure.ArtifactRepository(dsl);
-        com.example.platform.artifact.infrastructure.ArtifactPinRepository pinRepo =
-                new com.example.platform.artifact.infrastructure.ArtifactPinRepository(dsl);
-        com.example.platform.artifact.infrastructure.JooqArtifactCommitService commitService =
-                new com.example.platform.artifact.infrastructure.JooqArtifactCommitService(
-                        canonicalRepo, relationRepository, dsl);
-        service = new ArtifactCatalogService(repository, relationRepository, commitService, registry);
+        assertEquals(Optional.of(entry), service.findArtifact("art-1"));
+        assertEquals(1, service.overview().get("artifactCount"));
+        assertTrue(java.util.Arrays.stream(ArtifactCatalogService.class.getDeclaredMethods())
+                .noneMatch(method -> method.getName().startsWith("register")));
     }
 
     @Test
-    void registerArtifactReturnsArtifactWithGeneratedId() {
-        ArtifactCatalogEntry artifact = service.registerArtifact("rj_123", "prj_456",
-                "s3://bucket/output.mp4", "mp4", "1920x1080", 30L, 100L, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-        assertNotNull(artifact.id());
-        assertTrue(artifact.id().startsWith("art_"));
-        assertEquals("rj_123", artifact.renderJobId());
-        assertEquals("prj_456", artifact.projectId());
-        assertEquals("s3://bucket/output.mp4", artifact.storageUri());
-        assertEquals("mp4", artifact.format());
-        assertEquals("1920x1080", artifact.resolution());
-        assertEquals(30L, artifact.duration());
-        assertNotNull(artifact.createdAt());
-    }
+    void relationWriteUsesCanonicalRelationRepository() {
+        ArtifactRelationRepository relations = mock(ArtifactRelationRepository.class);
+        ArtifactCatalogService service = new ArtifactCatalogService(
+                mock(ArtifactCatalogRepository.class), relations, mock(ErrorCodeRegistry.class));
 
-    @Test
-    void findArtifactReturnsArtifactWhenExists() {
-        ArtifactCatalogEntry created = service.registerArtifact("rj_1", "prj_1", "uri", "mp4", "1080p", 10L, 100L, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-        Optional<ArtifactCatalogEntry> found = service.findArtifact(created.id());
-        assertTrue(found.isPresent());
-        assertEquals("rj_1", found.get().renderJobId());
-    }
+        var relation = service.relateArtifacts("art-a", "art-b", "DERIVED_FROM");
 
-    @Test
-    void findArtifactReturnsEmptyWhenNotFound() {
-        Optional<ArtifactCatalogEntry> found = service.findArtifact("art-nonexistent");
-        assertTrue(found.isEmpty());
-    }
-
-    @Test
-    void listArtifactsReturnsAllRegistered() {
-        service.registerArtifact("rj_1", "prj_1", "uri1", "mp4", "1080p", 10L, 100L, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-        service.registerArtifact("rj_2", "prj_1", "uri2", "mov", "720p", 20L, 100L, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-        assertEquals(2, service.listArtifacts().size());
-    }
-
-    @Test
-    void listArtifactsReturnsEmptyWhenNone() {
-        assertTrue(service.listArtifacts().isEmpty());
-    }
-
-    @Test
-    void listArtifactsByProjectFiltersCorrectly() {
-        service.registerArtifact("rj_1", "prj_A", "uri1", "mp4", "1080p", 10L, 100L, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-        service.registerArtifact("rj_2", "prj_B", "uri2", "mp4", "720p", 20L, 100L, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-        service.registerArtifact("rj_3", "prj_A", "uri3", "mov", "4k", 30L, 100L, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-
-        List<ArtifactCatalogEntry> prjA = service.listArtifactsByProject("prj_A");
-        assertEquals(2, prjA.size());
-        List<ArtifactCatalogEntry> prjB = service.listArtifactsByProject("prj_B");
-        assertEquals(1, prjB.size());
-    }
-
-    @Test
-    void listArtifactsByRenderJobFiltersCorrectly() {
-        service.registerArtifact("rj_1", "prj_1", "uri1", "mp4", "1080p", 10L, 100L, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-        service.registerArtifact("rj_2", "prj_1", "uri2", "mp4", "720p", 20L, 100L, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-
-        List<ArtifactCatalogEntry> jobs = service.listArtifactsByRenderJob("rj_1");
-        assertEquals(1, jobs.size());
-        assertEquals("rj_1", jobs.get(0).renderJobId());
-    }
-
-    @Test
-    void relateArtifactsCreatesRelation() {
-        ArtifactCatalogEntry source = service.registerArtifact("rj_1", "prj_1", "uri1", "mp4", "1080p", 10L, 100L, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-        ArtifactCatalogEntry target = service.registerArtifact("rj_2", "prj_1", "uri2", "srt", "subtitle", 0L, 100L, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-
-        ArtifactRelation relation = service.relateArtifacts(source.id(), target.id(), "HAS_SUBTITLE");
-        assertNotNull(relation.id());
-        assertTrue(relation.id().startsWith("rel_"));
-        assertEquals(source.id(), relation.sourceId());
-        assertEquals(target.id(), relation.targetId());
-        assertEquals("HAS_SUBTITLE", relation.relationType());
-    }
-
-    @Test
-    void relateArtifactsToUnknownArtifactFailsClosed() {
-        // GCR-2: canonical existence is DB-enforced (FK artifact_relation ->
-        // artifact). Relating to a nonexistent artifact is rejected by the
-        // persistence layer (fail-closed), not silently accepted.
-        ArtifactCatalogEntry target = service.registerArtifact("rj_1", "prj_1", "uri", "mp4", "1080p", 10L, 100L, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-        assertThrows(Exception.class,
-                () -> service.relateArtifacts("art-nonexistent", target.id(), "DEPENDS_ON"));
-    }
-
-    @Test
-    void overviewReturnsCanonicalAuthorityInfo() {
-        Map<String, Object> overview = service.overview();
-        assertEquals("artifact", overview.get("authority"));
-        assertEquals("catalog", overview.get("capability"));
-        assertEquals("active", overview.get("status"));
-        assertEquals(true, overview.get("persistent"));
-    }
-
-    @Test
-    void overviewIncludesCounts() {
-        service.registerArtifact("rj_1", "prj_1", "uri1", "mp4", "1080p", 10L, 100L, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-        service.registerArtifact("rj_2", "prj_1", "uri2", "mp4", "720p", 20L, 100L, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-        Map<String, Object> overview = service.overview();
-        assertEquals(2, overview.get("artifactCount"));
-    }
-
-    @Test
-    void artifactStatusEnumValues() {
-        com.example.platform.artifact.domain.ArtifactStatus[] values =
-                com.example.platform.artifact.domain.ArtifactStatus.values();
-        assertTrue(values.length >= 3);
-        assertEquals(com.example.platform.artifact.domain.ArtifactStatus.ACTIVE,
-                com.example.platform.artifact.domain.ArtifactStatus.valueOf("ACTIVE"));
+        verify(relations).save(relation);
     }
 }

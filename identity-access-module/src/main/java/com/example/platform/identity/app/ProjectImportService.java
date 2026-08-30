@@ -1,12 +1,20 @@
 package com.example.platform.identity.app;
 
-import com.example.platform.artifact.app.ArtifactCatalogService;
 import com.example.platform.artifact.app.ArtifactLifecycleService;
-import com.example.platform.artifact.domain.ArtifactCatalogEntry;
+import com.example.platform.artifact.domain.ArtifactCommitRequest;
+import com.example.platform.artifact.domain.ArtifactCommitService;
+import com.example.platform.artifact.domain.ArtifactKind;
+import com.example.platform.artifact.domain.ArtifactMediaType;
+import com.example.platform.artifact.domain.ReplicaRole;
 import com.example.platform.identity.api.dto.*;
 import com.example.platform.shared.Ids;
 import com.example.platform.shared.audit.AuditPort;
+import com.example.platform.shared.digest.ContentDigest;
+import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.storage.contract.ChecksumFormat;
+import com.example.platform.storage.contract.StorageObjectId;
+import com.example.platform.storage.contract.StorageProviderId;
+import com.example.platform.storage.contract.StorageReplicaId;
 import com.example.platform.identity.imports.AssetDownloadException;
 import com.example.platform.identity.imports.DownloadedAsset;
 import com.example.platform.identity.imports.ImportAssetDownloader;
@@ -51,20 +59,20 @@ public class ProjectImportService {
     public static final String STATUS_ROLLED_BACK = "ROLLED_BACK";
 
     private final TenantProjectService tenantProjectService;
-    private final ArtifactCatalogService artifactCatalogService;
+    private final ArtifactCommitService artifactCommitService;
     private final ArtifactLifecycleService artifactLifecycleService;
     private final AuditPort auditPort;
     private final ImportAssetDownloader assetDownloader;
     private final BlobStorage blobStorage;
 
     public ProjectImportService(TenantProjectService tenantProjectService,
-                                 ArtifactCatalogService artifactCatalogService,
+                                 ArtifactCommitService artifactCommitService,
                                  @Autowired(required = false) ArtifactLifecycleService artifactLifecycleService,
                                  @Autowired(required = false) AuditPort auditPort,
                                  @Autowired(required = false) ImportAssetDownloader assetDownloader,
                                  @Autowired(required = false) BlobStorage blobStorage) {
         this.tenantProjectService = tenantProjectService;
-        this.artifactCatalogService = artifactCatalogService;
+        this.artifactCommitService = artifactCommitService;
         this.artifactLifecycleService = artifactLifecycleService != null
                 ? artifactLifecycleService
                 : new NoopArtifactLifecycle();
@@ -248,28 +256,38 @@ public class ProjectImportService {
                 }
                 tracker.trackStoredBlob(storageUri);
 
-                // Register artifact with real storageUri
-                ArtifactCatalogEntry registered;
+                ArtifactId registeredId = new ArtifactId(Ids.newId("art"));
                 try {
-                    registered = artifactCatalogService.registerArtifact(
-                            "import:" + importId,
-                            projectId,
-                            storageUri,
-                            format,
-                            resolution,
-                            durationSeconds,
+                    java.time.Instant committedAt = java.time.Instant.now();
+                    artifactCommitService.commit(new ArtifactCommitRequest(
+                            registeredId,
+                            tenantId,
+                            ContentDigest.sha256(ChecksumFormat.normalizeSha256(
+                                    downloaded.checksum()).substring("sha256:".length())),
                             downloaded.sizeBytes(),
-                            downloaded.checksum()
-                    );
+                            mediaType(format),
+                            ArtifactKind.SOURCE_MEDIA,
+                            1,
+                            new StorageObjectId(storedRef.bucket() + "/" + storedRef.objectKey()),
+                            new StorageReplicaId("import-primary"),
+                            new StorageProviderId(storedRef.provider()),
+                            ReplicaRole.PRIMARY,
+                            "default",
+                            "project-import:" + importId + ":" + sourceId,
+                            List.of(),
+                            committedAt,
+                            committedAt,
+                            "import:" + importId,
+                            projectId));
                 } catch (Exception e) {
                     throw new ImportFailureException(REASON_ARTIFACT_REGISTER_FAILED,
                             "Failed to register artifact for asset " + sourceId + ": " + e.getMessage());
                 }
 
-                tracker.trackRegisteredArtifact(registered.id());
-                mappings.put(sourceId, registered.id());
+                tracker.trackRegisteredArtifact(registeredId.value());
+                mappings.put(sourceId, registeredId.value());
                 log.info("Downloaded and registered: source={} target={} size={} checksum={}",
-                        sourceId, registered.id(), downloaded.sizeBytes(), downloaded.checksum());
+                        sourceId, registeredId.value(), downloaded.sizeBytes(), downloaded.checksum());
 
             } catch (ImportFailureException e) {
                 // Rollback all previously registered artifacts and blobs
@@ -358,6 +376,19 @@ public class ProjectImportService {
             if (msg != null && msg.contains("downloadUrl")) return REASON_MISSING_DOWNLOAD_URL;
         }
         return REASON_UNEXPECTED_ERROR;
+    }
+
+    private static ArtifactMediaType mediaType(String format) {
+        if (format == null) {
+            return ArtifactMediaType.BINARY;
+        }
+        return switch (format.toLowerCase()) {
+            case "mp4", "mov", "mkv", "webm" -> ArtifactMediaType.VIDEO;
+            case "wav", "mp3", "aac", "flac" -> ArtifactMediaType.AUDIO;
+            case "png", "jpg", "jpeg", "gif", "webp" -> ArtifactMediaType.IMAGE;
+            case "srt", "vtt", "txt" -> ArtifactMediaType.TEXT;
+            default -> ArtifactMediaType.BINARY;
+        };
     }
 
     private void validateSchemaVersion(ProjectExportPackageDto payload) {
@@ -530,11 +561,11 @@ public class ProjectImportService {
     /** Fallback used when the artifact lifecycle bean is not present (tests/embedded). */
     private static final class NoopArtifactLifecycle extends com.example.platform.artifact.app.ArtifactLifecycleService {
         NoopArtifactLifecycle() {
-            super(null, null, null, null, null, null, null, java.util.List.of());
+            super(null, null, null, null);
         }
 
         @Override
-        public ArtifactCatalogEntry tombstone(String artifactId) {
+        public com.example.platform.artifact.domain.ArtifactCatalogEntry tombstone(String artifactId) {
             return null;
         }
     }

@@ -1,8 +1,8 @@
 package com.example.platform.web.media;
 
-import com.example.platform.artifact.app.ArtifactCatalogRepository;
-import com.example.platform.artifact.domain.ArtifactCatalogEntry;
-import com.example.platform.artifact.domain.ArtifactStatus;
+import com.example.platform.artifact.app.ArtifactStorageMaintenanceEntry;
+import com.example.platform.artifact.app.ArtifactStorageMaintenanceQuery;
+import com.example.platform.artifact.domain.ArtifactState;
 import com.example.platform.delivery.app.DeliveryDestinationUriIndexService;
 import com.example.platform.timeline.app.InternalTimelineJson;
 import com.example.platform.storage.domain.BlobStorage;
@@ -28,19 +28,19 @@ public class KnownStorageUriIndexService {
     private static final Logger log = LoggerFactory.getLogger(KnownStorageUriIndexService.class);
 
     private final Optional<DSLContext> dsl;
-    private final Optional<ArtifactCatalogRepository> artifactRepository;
+    private final Optional<ArtifactStorageMaintenanceQuery> storageMaintenanceQuery;
     private final Optional<DeliveryDestinationUriIndexService> destinationUriIndex;
     private final com.example.platform.timeline.app.SystemMaintenanceReader systemMaintenanceReader;
     private final BlobStorage blobStorage;
 
     public KnownStorageUriIndexService(
             @Autowired(required = false) DSLContext dsl,
-            @Autowired(required = false) ArtifactCatalogRepository artifactRepository,
+            @Autowired(required = false) ArtifactStorageMaintenanceQuery storageMaintenanceQuery,
             @Autowired(required = false) DeliveryDestinationUriIndexService destinationUriIndex,
             com.example.platform.timeline.app.SystemMaintenanceReader systemMaintenanceReader,
             BlobStorage blobStorage) {
         this.dsl = Optional.ofNullable(dsl);
-        this.artifactRepository = Optional.ofNullable(artifactRepository);
+        this.storageMaintenanceQuery = Optional.ofNullable(storageMaintenanceQuery);
         this.destinationUriIndex = Optional.ofNullable(destinationUriIndex);
         this.systemMaintenanceReader = systemMaintenanceReader;
         this.blobStorage = blobStorage;
@@ -56,14 +56,15 @@ public class KnownStorageUriIndexService {
     }
 
     private void indexFromArtifacts(Set<String> index) {
-        if (artifactRepository.isEmpty()) {
+        if (storageMaintenanceQuery.isEmpty()) {
             return;
         }
-        for (ArtifactCatalogEntry artifact : artifactRepository.get().findAll()) {
-            if (artifact.status() == ArtifactStatus.PURGED) {
+        for (ArtifactStorageMaintenanceEntry artifact
+                : storageMaintenanceQuery.get().scanStorageMaintenanceEntries()) {
+            if (artifact.state() == ArtifactState.DELETED) {
                 continue;
             }
-            addUri(index, artifact.storageUri());
+            addUri(index, artifact.storageObjectId());
         }
     }
 

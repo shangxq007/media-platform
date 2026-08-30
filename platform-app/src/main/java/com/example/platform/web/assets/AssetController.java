@@ -5,8 +5,6 @@ import com.example.platform.render.domain.asset.AssetGovernanceMetadata;
 import com.example.platform.render.infrastructure.asset.AssetService;
 import com.example.platform.render.app.asset.AssetRegistryService;
 import com.example.platform.render.app.asset.AssetJsonLdExporter;
-import com.example.platform.render.app.event.TimelineReviewEventPublisher;
-import com.example.platform.shared.events.AssetRegisteredEvent;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -21,8 +19,7 @@ import org.springframework.web.bind.annotation.*;
 /**
  * REST API for project assets.
  *
- * <p>All endpoints enforce tenant + project scoping.
- * Storage keys are validated via {@link com.example.platform.storage.contract.StorageKeyPolicy}.
+ * <p>All endpoints enforce tenant + project scoping and return redacted metadata.
  */
 @RestController
 @RequestMapping("/api/projects/{projectId}/assets")
@@ -31,43 +28,23 @@ public class AssetController {
 
     private final AssetService assetService;
     private final AssetRegistryService assetRegistryService;
-    private final TimelineReviewEventPublisher eventPublisher;
 
-    public AssetController(AssetService assetService, AssetRegistryService assetRegistryService,
-                            TimelineReviewEventPublisher eventPublisher) {
+    public AssetController(AssetService assetService, AssetRegistryService assetRegistryService) {
         this.assetService = assetService;
         this.assetRegistryService = assetRegistryService;
-        this.eventPublisher = eventPublisher;
     }
 
     @GetMapping
     @Operation(summary = "List project assets")
-    public ResponseEntity<List<Asset>> listAssets(@PathVariable String projectId) {
-        return ResponseEntity.ok(assetService.listByProject(projectId));
+    public ResponseEntity<List<AssetResponse>> listAssets(@PathVariable String projectId) {
+        return ResponseEntity.ok(assetService.listByProject(projectId).stream()
+                .map(AssetController::toAssetResponse).toList());
     }
 
     @GetMapping("/{assetId}")
     @Operation(summary = "Get asset by ID")
-    public ResponseEntity<Asset> getAsset(@PathVariable String projectId, @PathVariable String assetId) {
-        return ResponseEntity.ok(assetService.getById(projectId, assetId));
-    }
-
-    @PostMapping("/register")
-    @Operation(summary = "Register a new asset")
-    public ResponseEntity<Asset> registerAsset(
-            @PathVariable String projectId,
-            @Valid @RequestBody RegisterAssetRequest request) {
-        Asset asset = assetService.register(
-                projectId,
-                request.storageKey(),
-                request.mediaType(),
-                request.filename(),
-                request.sizeBytes(),
-                request.checksum()
-        );
-        eventPublisher.publish(new AssetRegisteredEvent(asset.id(), "v1", asset.mediaType(),
-                projectId, asset.tenantId(), asset.storageKey()));
-        return ResponseEntity.status(HttpStatus.CREATED).body(asset);
+    public ResponseEntity<AssetResponse> getAsset(@PathVariable String projectId, @PathVariable String assetId) {
+        return ResponseEntity.ok(toAssetResponse(assetService.getById(projectId, assetId)));
     }
 
     @GetMapping("/{assetId}/preview-url")
@@ -118,19 +95,12 @@ public class AssetController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    /**
-     * Request body for asset registration.
-     */
-    public record RegisterAssetRequest(
-            @NotBlank String storageKey,
-            @NotBlank String mediaType,
-            String filename,
-            Long sizeBytes,
-            String checksum,
-            Long durationMs,
-            Integer width,
-            Integer height
-    ) {}
+    public record AssetResponse(
+            String id, String tenantId, String projectId, String mediaType, String filename,
+            Long sizeBytes, String checksum, String assetVersion, String ownerId,
+            String classification, String license, String retentionPolicy, String securityLevel,
+            boolean containsPii, boolean aiGenerated, String publishStatus,
+            java.time.Instant createdAt, java.time.Instant updatedAt) {}
 
     public record AssetVersionResponse(
             String assetId,
@@ -139,7 +109,6 @@ public class AssetController {
             String ownerId,
             String projectId,
             String entityRef,
-            String storageUri,
             String checksum,
             String createdAt,
             String updatedAt,
@@ -164,7 +133,6 @@ public class AssetController {
                 r.ownerId(),
                 r.projectId(),
                 r.entityRef(),
-                r.storageUri(),
                 r.checksum(),
                 r.createdAt() != null ? r.createdAt().toString() : null,
                 r.updatedAt() != null ? r.updatedAt().toString() : null,
@@ -183,5 +151,14 @@ public class AssetController {
                 g != null ? g.securityLevel() : null,
                 g != null && g.containsPii(),
                 g != null && g.aiGenerated());
+    }
+
+    private static AssetResponse toAssetResponse(Asset asset) {
+        return new AssetResponse(
+                asset.id(), asset.tenantId(), asset.projectId(), asset.mediaType(), asset.filename(),
+                asset.sizeBytes(), asset.checksum(), asset.assetVersion(), asset.ownerId(),
+                asset.classification(), asset.license(), asset.retentionPolicy(), asset.securityLevel(),
+                asset.containsPii(), asset.aiGenerated(), asset.publishStatus(),
+                asset.createdAt(), asset.updatedAt());
     }
 }

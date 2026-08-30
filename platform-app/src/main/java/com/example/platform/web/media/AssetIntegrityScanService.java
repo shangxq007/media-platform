@@ -46,8 +46,7 @@ public class AssetIntegrityScanService {
             }
             findings.add(findingMap(f.ruleId(), f.artifactId(), f.message(), Map.of(
                     "projectId", f.projectId(),
-                    "artifactId", f.artifactId(),
-                    "storageUri", f.storageUri())));
+                    "artifactId", f.artifactId())));
         }
 
         List<ProblematicDataRecord> records =

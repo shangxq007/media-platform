@@ -22,7 +22,7 @@ class RenderControllerTest {
     void setUp() {
         service = mock(RenderJobService.class);
         controller = new RenderController(service, null, java.util.List.of(),
-                null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null);
     }
 
     @Test

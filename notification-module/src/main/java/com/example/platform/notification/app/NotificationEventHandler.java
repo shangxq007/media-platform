@@ -138,7 +138,7 @@ public class NotificationEventHandler {
                 "artifact.created",
                 event.artifactId(),
                 Map.of("artifactId", event.artifactId(), "renderJobId", event.renderJobId(),
-                        "projectId", event.projectId(), "storageUri", event.storageUri())
+                        "projectId", event.projectId())
         ));
     }
 

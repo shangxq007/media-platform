@@ -36,7 +36,6 @@ public class ArtifactCatalogRepository {
                 r.get(ARTIFACT.ID),
                 r.get(ARTIFACT.RENDER_JOB_ID),
                 r.get(ARTIFACT.PROJECT_ID),
-                null,
                 r.get(ARTIFACT.MEDIA_TYPE),
                 null,
                 null,
@@ -47,13 +46,6 @@ public class ArtifactCatalogRepository {
                 toInstant(r.get(ARTIFACT.CREATED_AT)));
     }
 
-    public List<ArtifactCatalogEntry> findAll() {
-        return dsl.selectFrom(ARTIFACT)
-                .orderBy(ARTIFACT.CREATED_AT)
-                .fetch()
-                .map(this::toEntry);
-    }
-
     public Optional<ArtifactCatalogEntry> findById(String id) {
         return dsl.selectFrom(ARTIFACT)
                 .where(ARTIFACT.ID.eq(id))
@@ -61,12 +53,8 @@ public class ArtifactCatalogRepository {
                 .map(this::toEntry);
     }
 
-    public List<ArtifactCatalogEntry> findByProjectId(String projectId) {
-        return dsl.selectFrom(ARTIFACT)
-                .where(ARTIFACT.PROJECT_ID.eq(projectId))
-                .orderBy(ARTIFACT.CREATED_AT)
-                .fetch()
-                .map(this::toEntry);
+    public int countAll() {
+        return dsl.fetchCount(ARTIFACT);
     }
 
     private static ArtifactStatus statusFrom(String state) {
