@@ -1,102 +1,84 @@
 package com.example.platform.render.app.plan;
 
-import com.example.platform.operation.plan.ApplyContext;
-import com.example.platform.operation.plan.ApplyResult;
-import com.example.platform.operation.plan.AuthorizationDecision;
-import com.example.platform.operation.plan.OperationPlan;
-import com.example.platform.operation.plan.OperationPlanner;
-import com.example.platform.operation.plan.PlanErrorCode;
-import com.example.platform.operation.plan.PlanException;
-import com.example.platform.operation.plan.TargetRevisionRef;
 import com.example.platform.operation.operation.OperationDefinition;
+import com.example.platform.operation.operation.OperationDefinitionVersion;
 import com.example.platform.operation.operation.OperationInstance;
 import com.example.platform.operation.operation.OperationParameters;
 import com.example.platform.operation.operation.OperationTarget;
-import com.example.platform.timeline.canonical.TimelineClip;
-import com.example.platform.timeline.canonical.TimelineClipId;
+import com.example.platform.operation.plan.ApplyContext;
+import com.example.platform.operation.plan.AuthorizationDecision;
+import com.example.platform.operation.plan.OperationPlanner;
+import com.example.platform.operation.plan.TargetRevisionRef;
+import com.example.platform.render.testsupport.RenderTestSchemaFixture;
+import com.example.platform.shared.time.MediaTime;
+import com.example.platform.shared.test.PostgresTestContainerSupport;
+import com.example.platform.timeline.adapter.JdbcEffectDefinitionVersionRegistry;
+import com.example.platform.timeline.adapter.JdbcEffectSemanticSnapshotStore;
+import com.example.platform.timeline.adapter.JdbcTimelineRevisionSemanticContextStore;
+import com.example.platform.timeline.adapter.RevisionCommandApplyService;
+import com.example.platform.timeline.adapter.TimelineSnapshotService;
+import com.example.platform.timeline.app.DefaultTimelineRevisionPersistence;
+import com.example.platform.timeline.app.ProductCurrentRevisionHeadUpdateAdapter;
+import com.example.platform.timeline.app.ProductCurrentRevisionService;
+import com.example.platform.timeline.app.TimelineRevisionCommandConflictException;
+import com.example.platform.timeline.app.TimelineRevisionSaveService;
 import com.example.platform.timeline.canonical.TimelineContentDigester;
 import com.example.platform.timeline.canonical.TimelineDocument;
+import com.example.platform.timeline.canonical.TimelineClip;
+import com.example.platform.timeline.canonical.TimelineClipId;
 import com.example.platform.timeline.canonical.TimelineMetadata;
 import com.example.platform.timeline.canonical.TimelineTrack;
 import com.example.platform.timeline.canonical.TrackType;
+import com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotAuthority;
 import com.example.platform.timeline.semantics.selection.ResolvedScope;
 import com.example.platform.timeline.semantics.selection.SelectionSpec;
-import com.example.platform.operation.operation.OperationDefinitionVersion;
-import com.example.platform.shared.time.MediaTime;
+import com.example.platform.timeline.version.TimelineConflictException;
+import com.example.platform.timeline.revisioncommand.RevisionRef;
+import com.example.platform.timeline.revisioncommand.RevisionCommandException;
+import com.example.platform.timeline.revisioncommand.RevisionCommandPlan;
+import com.example.platform.timeline.revisioncommand.RevisionCommandPlanDigest;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
+import javax.sql.DataSource;
 import org.jooq.DSLContext;
 import org.jooq.impl.DSL;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
-import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import static org.junit.jupiter.api.Assertions.*;
+import static com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT;
+import static com.example.platform.typedschema.jooq.generated.tables.TimelineRevision.TIMELINE_REVISION;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * OPERATION_PLAN_TRANSACTION_MODEL_V1 (OPI1/OPI3 — FCV absolute gates):
- * REAL database-backed concurrent writer test + durable idempotency retry.
- * Two writers with the same expected head MUST yield exactly one SUCCESS and
- * one STALE_TARGET_REF (database-enforced CAS, never Java check-then-act).
+ * Port of the Operation transaction controls to Timeline's canonical writer.
+ * The retired Render-side revision SQL path is not reconstructed: concurrency,
+ * durable replay, immutable command context, stale-base handling, no-op rules,
+ * canonical ref publication and rollback integrity are exercised through the
+ * Timeline-owned command transaction.
  */
-@Testcontainers
-class OperationPlanConcurrencyIT {
+class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
 
-    @Container
-    static final PostgreSQLContainer<?> PG = new PostgreSQLContainer<>("postgres:16-alpine");
-
+    private static final String TENANT = "tenant-operation-it";
+    private static DataSource dataSource;
     private static DSLContext dsl;
-    private static OperationPlanApplyService service;
-    private static final String PROJECT = "project-1";
 
     @BeforeAll
-    static void setup() {
-        PG.start();
-        dsl = DSL.using(PG.getJdbcUrl(), PG.getUsername(), PG.getPassword());
+    static void setUpDatabase() {
+        dataSource = createDataSource();
+        dsl = DSL.using(dataSource, org.jooq.SQLDialect.POSTGRES);
+        RenderTestSchemaFixture.createSchema(dsl);
         dsl.execute("""
-                create table timeline_revision (
-                    id varchar(64) primary key,
-                    project_id varchar(64) not null,
-                    tenant_id varchar(64),
-                    parent_revision_id varchar(64),
-                    revision_number int not null,
-                    snapshot_id varchar(64),
-                    internal_revision int not null default 0,
-                    content_hash varchar(64) not null,
-                    schema_version varchar(32),
-                    source varchar(32),
-                    author_user_id varchar(64),
-                    edit_session_id varchar(64),
-                    message varchar(512),
-                    change_summary_json text,
-                    created_at timestamp not null,
-                    patch_ops_json text,
-                    labels_json varchar(512),
-                    is_merge boolean not null default false
-                )""");
-        dsl.execute("""
-                create table timeline_revision_ref (
-                    project_id varchar(64) not null,
-                    ref_id varchar(64) not null,
-                    head_revision_id varchar(64),
-                    version bigint not null default 0,
-                    updated_at timestamp not null default current_timestamp,
-                    primary key (project_id, ref_id),
-                    constraint fk_timeline_revision_ref_head
-                        foreign key (head_revision_id) references timeline_revision(id)
-                        deferrable initially deferred
-                )""");
-        dsl.execute("""
-                create table apply_command (
+                create table if not exists apply_command (
                     apply_command_id varchar(64) primary key,
                     plan_digest varchar(64) not null,
                     fingerprint varchar(64) not null,
@@ -105,327 +87,614 @@ class OperationPlanConcurrencyIT {
                     result_content_hash varchar(64),
                     result_status varchar(16),
                     project_id varchar(64),
+                    command_domain varchar(32) not null,
                     created_at timestamp not null default current_timestamp,
-                    completed_at timestamp,
-                    command_domain varchar(32) not null default 'OPERATION_PLAN'
-                )""");
-        dsl.execute("create unique index ux_timeline_revision_project_id on timeline_revision(project_id, id)");
-        dsl.execute("""
-                create table timeline_revision_parent (
-                    project_id varchar(64) not null,
-                    revision_id varchar(64) not null,
-                    parent_revision_id varchar(64) not null,
-                    parent_order int not null,
-                    primary key (revision_id, parent_order),
-                    constraint ux_timeline_revision_parent_pair unique (revision_id, parent_revision_id),
-                    constraint ck_timeline_revision_parent_order_nonnegative check (parent_order >= 0),
-                    constraint ck_timeline_revision_parent_no_self check (revision_id <> parent_revision_id),
-                    constraint fk_timeline_revision_parent_revision
-                        foreign key (revision_id) references timeline_revision(id),
-                    constraint fk_timeline_revision_parent_parent
-                        foreign key (project_id, parent_revision_id)
-                        references timeline_revision(project_id, id)
-                )""");
-        dsl.execute("create table project_revision_counter (project_id varchar(64) primary key, next_revision_number bigint not null)");
-        dsl.execute("create table timeline_snapshot (id varchar(64) primary key, payload text)");
-        service = new OperationPlanApplyService(dsl);
-        // seed base revision R100 + head row + counter
-        dsl.execute("insert into project_revision_counter (project_id, next_revision_number) values (?, 2)", PROJECT);
-        dsl.execute("insert into timeline_revision (id, project_id, revision_number, content_hash, source, created_at) "
-                + "values ('trevR100', ?, 1, 'h-base', 'seed', current_timestamp)", PROJECT);
-        dsl.execute("insert into timeline_revision_ref (project_id, ref_id, head_revision_id) values (?, 'main', 'trevR100')",
-                PROJECT);
-    }
-
-    @BeforeEach
-    void resetState() {
-        // isolate tests from each other: reset head + remove child revisions/commands
-        dsl.execute("delete from apply_command");
-        dsl.execute("update timeline_revision_ref set head_revision_id = 'trevR100', version = 0 "
-                + "where project_id = ? and ref_id = 'main'", PROJECT);
-        dsl.execute("delete from timeline_revision_parent");
-        dsl.execute("delete from timeline_revision where id <> 'trevR100'");
-        dsl.execute("update project_revision_counter set next_revision_number = 2 where project_id = ?", PROJECT);
+                    completed_at timestamp)
+                """);
     }
 
     @AfterAll
-    static void teardown() {
-        if (PG != null) {
-            PG.stop();
-        }
+    static void tearDownDatabase() {
+        closeDataSource(dataSource);
     }
 
-    private static TimelineClip clip(String id) {
-        return new TimelineClip(id, "asset-1", "stream-1", "artifact-1", "digest-1",
-                MediaTime.ofRational(0, 1), MediaTime.ofRational(4, 1),
-                MediaTime.ZERO, MediaTime.ZERO, "MEDIA_STREAM");
+    @BeforeEach
+    void reset() {
+        RenderTestSchemaFixture.truncate(dsl);
+        dsl.execute("delete from apply_command");
+        com.example.platform.shared.web.TenantContext.set(TENANT);
     }
 
-    private static TimelineDocument baseDoc() {
-        return new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
-                List.of(new TimelineTrack("t1", "main", TrackType.VIDEO, List.of(clip("clip-a")))),
-                TimelineMetadata.empty());
-    }
-
-    private static OperationInstance instance(String baseHash, MediaTime delta) {
-        return new OperationInstance(OperationDefinition.V1.MOVE.definitionId(), OperationDefinitionVersion.of(1, 0),
-                "trevR100", baseHash,
-                new OperationTarget.ResolvedClipScopeTarget(new ResolvedScope("trevR100", baseHash,
-                        List.of(TimelineClipId.of("clip-a")), SelectionSpec.ExpansionPolicy.EXACT)),
-                new OperationParameters.MoveParameters(delta, false), "pd", null);
-    }
-
-    private static AuthorizationDecision auth(OperationPlan plan, String principal, String refId) {
-        return AuthorizationDecision.allow(plan.planDigest(), principal, PROJECT, refId, "policy-v1");
+    @AfterEach
+    void clearTenant() {
+        com.example.platform.shared.web.TenantContext.clear();
     }
 
     @Test
-    void concurrentWritersSameExpectedHeadExactlyOneWinner() throws Exception {
-        TimelineDocument base = baseDoc();
-        String baseHash = new TimelineContentDigester().digest(base);
-        OperationPlanner planner = new OperationPlanner();
-        OperationPlan planA = planner.plan(instance(baseHash, MediaTime.ofRational(1, 1)), base);
-        OperationPlan planB = planner.plan(instance(baseHash, MediaTime.ofRational(2, 1)), base);
+    void concurrentCommandsWithSameBaseYieldOneRevisionAndOneStaleBase() throws Exception {
+        String productId = "operation-concurrency-" + java.util.UUID.randomUUID();
+        insertProduct(productId);
+        TimelineRevisionSaveService seedWriter = writer(dsl);
+        TimelineDocument base = document("base");
+        var root = seedRoot(seedWriter, productId, base);
 
-        CountDownLatch ready = new CountDownLatch(2);
-        CountDownLatch go = new CountDownLatch(1);
-        AtomicInteger success = new AtomicInteger();
-        AtomicInteger stale = new AtomicInteger();
-        ExecutorService pool = Executors.newFixedThreadPool(2);
-        try {
-            Future<?> f1 = pool.submit(() -> {
-                OperationPlanApplyService svc = new OperationPlanApplyService(
-                        DSL.using(PG.getJdbcUrl(), PG.getUsername(), PG.getPassword()));
-                ready.countDown();
-                go.await();
-                try {
-                    svc.apply(planA, new ApplyContext("cmd-A", new TargetRevisionRef("main"),
-                            "trevR100", "p-a", auth(planA, "p-a", "main")), PROJECT);
-                    success.incrementAndGet();
-                } catch (PlanException e) {
-                    if (e.code() == PlanErrorCode.STALE_TARGET_REF) {
-                        stale.incrementAndGet();
-                    } else {
-                        throw e;
-                    }
-                }
-                return null;
-            });
-            Future<?> f2 = pool.submit(() -> {
-                OperationPlanApplyService svc = new OperationPlanApplyService(
-                        DSL.using(PG.getJdbcUrl(), PG.getUsername(), PG.getPassword()));
-                ready.countDown();
-                go.await();
-                try {
-                    svc.apply(planB, new ApplyContext("cmd-B", new TargetRevisionRef("main"),
-                            "trevR100", "p-b", auth(planB, "p-b", "main")), PROJECT);
-                    success.incrementAndGet();
-                } catch (PlanException e) {
-                    if (e.code() == PlanErrorCode.STALE_TARGET_REF) {
-                        stale.incrementAndGet();
-                    } else {
-                        throw e;
-                    }
-                }
-                return null;
-            });
+        var ready = new CountDownLatch(2);
+        var go = new CountDownLatch(1);
+        var applied = new AtomicInteger();
+        var stale = new AtomicInteger();
+        try (var pool = Executors.newFixedThreadPool(2)) {
+            var first = pool.submit(() -> runWriter(
+                    productId, root.revisionId(), document("candidate-a"),
+                    "command-a", ready, go, applied, stale));
+            var second = pool.submit(() -> runWriter(
+                    productId, root.revisionId(), document("candidate-b"),
+                    "command-b", ready, go, applied, stale));
             ready.await();
             go.countDown();
-            f1.get();
-            f2.get();
-        } finally {
-            pool.shutdown();
+            first.get();
+            second.get();
         }
-        assertEquals(1, success.get(), "exactly one writer must succeed");
-        assertEquals(1, stale.get(), "exactly one writer must observe STALE_TARGET_REF");
-        // exactly one authoritative child revision
-        Integer children = dsl.fetchOne("select count(*) from timeline_revision where parent_revision_id = 'trevR100'")
-                .get(0, Integer.class);
-        assertEquals(1, children, "exactly one successful child revision");
+
+        assertEquals(1, applied.get());
+        assertEquals(1, stale.get());
+        assertEquals(1L, dsl.selectCount().from(TIMELINE_REVISION)
+                .where(TIMELINE_REVISION.PROJECT_ID.eq(productId))
+                .and(TIMELINE_REVISION.PARENT_REVISION_ID.eq(root.revisionId()))
+                .fetchOne(0, Long.class));
+        assertEquals(1, dsl.fetchOne("select count(*) from timeline_revision_parent "
+                + "where project_id = ? and parent_revision_id = ? and parent_order = 0",
+                productId, root.revisionId()).get(0, Integer.class));
+        assertEquals(1, dsl.fetchOne(
+                "select count(*) from apply_command where project_id = ? and status = 'COMPLETED'",
+                productId).get(0, Integer.class));
+    }
+
+    @Test
+    void operationPlanCoordinatorPersistsCanonicalParentExactlyEqualToPlanBase() {
+        String productId = "operation-plan-parent-" + java.util.UUID.randomUUID();
+        insertProduct(productId);
+        TimelineRevisionSaveService service = writer(dsl);
+        TimelineDocument base = editableDocument();
+        var root = seedRoot(service, productId, base);
+        String baseHash = new TimelineContentDigester().digest(base);
+        var instance = new OperationInstance(OperationDefinition.V1.MOVE.definitionId(),
+                OperationDefinitionVersion.of(1, 0), root.revisionId(), baseHash,
+                new OperationTarget.ResolvedClipScopeTarget(new ResolvedScope(
+                        root.revisionId(), baseHash, List.of(TimelineClipId.of("clip-1")),
+                        SelectionSpec.ExpansionPolicy.EXACT)),
+                new OperationParameters.MoveParameters(MediaTime.ofRational(1, 1), false),
+                "parameters", null);
+        var plan = new OperationPlanner().plan(instance, base);
+        var authorization = AuthorizationDecision.allow(plan.planDigest(), "alice", productId,
+                TENANT, RevisionRef.MAIN_REF, "policy-v1");
+        var context = new ApplyContext("coordinator-parent-edge",
+                new TargetRevisionRef(RevisionRef.MAIN_REF), root.revisionId(), TENANT,
+                "alice", authorization);
+
+        var result = new OperationPlanApplyService(service)
+                .apply(plan, context, productId, base);
+
+        assertEquals(root.revisionId(), result.parentRevisionId());
+        assertEquals(root.revisionId(), dsl.fetchOne(
+                "select parent_revision_id from timeline_revision_parent "
+                        + "where project_id = ? and revision_id = ? and parent_order = 0",
+                productId, result.newRevisionId()).get(0, String.class));
     }
 
     @Test
     void durableIdempotencyReplaysOriginalResult() {
-        TimelineDocument base = baseDoc();
-        String baseHash = new TimelineContentDigester().digest(base);
-        OperationPlanner planner = new OperationPlanner();
-        OperationPlan plan = planner.plan(instance(baseHash, MediaTime.ofRational(1, 1)), base);
-        ApplyContext ctx = new ApplyContext("cmd-idem-1", new TargetRevisionRef("main"),
-                "trevR100", "p-x", auth(plan, "p-x", "main"));
-        ApplyResult first = service.apply(plan, ctx, PROJECT);
-        assertEquals(ApplyResult.APPLIED, first.status());
-        ApplyResult replay = service.apply(plan, ctx, PROJECT);
-        assertEquals(first.newRevisionId(), replay.newRevisionId(), "retry must replay original result");
-        Integer count = dsl.fetchOne("select count(*) from apply_command where apply_command_id = 'cmd-idem-1'")
-                .get(0, Integer.class);
-        assertEquals(1, count);
+        String productId = "operation-replay-" + java.util.UUID.randomUUID();
+        insertProduct(productId);
+        TimelineRevisionSaveService service = writer(dsl);
+        var root = seedRoot(service, productId, document("base"));
+        var command = command("command-replay", "plan-a", "fingerprint-a");
+
+        var first = service.saveRevisionForCommand(
+                ref(productId), root.revisionId(), document("candidate"), "editor", command);
+        var replay = service.saveRevisionForCommand(
+                ref(productId), root.revisionId(), document("candidate"), "editor", command);
+
+        assertFalse(first.replayed());
+        assertTrue(replay.replayed());
+        assertEquals(first.revisionId(), replay.revisionId());
+        assertEquals(1, commandRows("command-replay"));
+        assertEquals(2L, revisionRows(productId));
     }
 
     @Test
     void idempotencyKeyConflictOnDifferentPlan() {
-        TimelineDocument base = baseDoc();
-        String baseHash = new TimelineContentDigester().digest(base);
-        OperationPlanner planner = new OperationPlanner();
-        OperationPlan plan1 = planner.plan(instance(baseHash, MediaTime.ofRational(1, 1)), base);
-        OperationPlan plan2 = planner.plan(instance(baseHash, MediaTime.ofRational(2, 1)), base);
-        service.apply(plan1, new ApplyContext("cmd-conflict-1", new TargetRevisionRef("main"),
-                "trevR100", "p-x", auth(plan1, "p-x", "main")), PROJECT);
-        PlanException ex = assertThrows(PlanException.class, () ->
-                service.apply(plan2, new ApplyContext("cmd-conflict-1", new TargetRevisionRef("main"),
-                        "trevR100", "p-x", auth(plan2, "p-x", "main")), PROJECT));
-        assertEquals(PlanErrorCode.IDEMPOTENCY_KEY_CONFLICT, ex.code());
+        String productId = "operation-plan-conflict-" + java.util.UUID.randomUUID();
+        insertProduct(productId);
+        TimelineRevisionSaveService service = writer(dsl);
+        var root = seedRoot(service, productId, document("base"));
+        service.saveRevisionForCommand(ref(productId), root.revisionId(), document("candidate-a"),
+                "editor", command("command-plan-conflict", "plan-a", "fingerprint-a"));
+
+        assertThrows(TimelineRevisionCommandConflictException.class, () ->
+                service.saveRevisionForCommand(ref(productId), root.revisionId(), document("candidate-b"),
+                        "editor", command("command-plan-conflict", "plan-b", "fingerprint-b")));
+        assertEquals(2L, revisionRows(productId));
     }
 
     @Test
     void staleTargetRefRejected() {
-        TimelineDocument base = baseDoc();
-        String baseHash = new TimelineContentDigester().digest(base);
-        OperationPlanner planner = new OperationPlanner();
-        OperationPlan plan = planner.plan(instance(baseHash, MediaTime.ofRational(1, 1)), base);
-        PlanException ex = assertThrows(PlanException.class, () ->
-                service.apply(plan, new ApplyContext("cmd-stale-1", new TargetRevisionRef("main"),
-                        "trevNOPE", "p-x", auth(plan, "p-x", "main")), PROJECT));
-        assertEquals(PlanErrorCode.STALE_TARGET_REF, ex.code());
+        String productId = "operation-stale-" + java.util.UUID.randomUUID();
+        insertProduct(productId);
+        TimelineRevisionSaveService service = writer(dsl);
+        var root = seedRoot(service, productId, document("base"));
+        service.saveRevisionForCommand(ref(productId), root.revisionId(), document("candidate-a"),
+                "editor", command("command-advance", "plan-a", "fingerprint-a"));
+
+        assertThrows(TimelineConflictException.class, () ->
+                service.saveRevisionForCommand(ref(productId), root.revisionId(), document("candidate-b"),
+                        "editor", command("command-stale", "plan-b", "fingerprint-b")));
+        assertEquals(0, commandRows("command-stale"), "stale command claim must roll back");
+        assertEquals(2L, revisionRows(productId));
     }
 
     @Test
     void noOpStaleHeadRejected_firstExecution() {
-        // OPC1 CASE B: plan is no-op vs R100 but head moved to R101 before first apply
-        TimelineDocument base = baseDoc();
+        String productId = "operation-noop-stale-" + java.util.UUID.randomUUID();
+        insertProduct(productId);
+        TimelineRevisionSaveService service = writer(dsl);
+        TimelineDocument base = document("base");
+        var root = seedRoot(service, productId, base);
         String baseHash = new TimelineContentDigester().digest(base);
-        OperationPlanner planner = new OperationPlanner();
-        OperationPlan noOpPlan = planner.plan(instance(baseHash, MediaTime.ZERO), base); // move delta 0 => no-op
-        assertTrue(noOpPlan.noOp());
-        // head still R100 -> NO_OP success (CASE A)
-        ApplyResult ok = service.apply(noOpPlan, new ApplyContext("cmd-noop-ok", new TargetRevisionRef("main"),
-                "trevR100", "p-x", auth(noOpPlan, "p-x", "main")), PROJECT);
-        assertEquals(ApplyResult.NO_OP, ok.status());
-        // move head to R101
-        TimelineDocument base2 = baseDoc();
-        String baseHash2 = new TimelineContentDigester().digest(base2);
-        OperationPlan movePlan = planner.plan(instance(baseHash2, MediaTime.ofRational(1, 1)), base2);
-        service.apply(movePlan, new ApplyContext("cmd-move-1", new TargetRevisionRef("main"),
-                "trevR100", "p-x", auth(movePlan, "p-x", "main")), PROJECT);
-        // new NO_OP command, expected head R100, current R101 -> STALE_TARGET_REF
-        OperationPlan noOp2 = planner.plan(instance(baseHash2, MediaTime.ZERO), base2);
-        assertTrue(noOp2.noOp());
-        PlanException ex = assertThrows(PlanException.class, () ->
-                service.apply(noOp2, new ApplyContext("cmd-noop-stale", new TargetRevisionRef("main"),
-                        "trevR100", "p-x", auth(noOp2, "p-x", "main")), PROJECT));
-        assertEquals(PlanErrorCode.STALE_TARGET_REF, ex.code());
+        var firstNoOp = service.recordNoOpCommand(ref(productId), root.revisionId(), baseHash,
+                command("command-noop-ok", "plan-noop", "fingerprint-noop-ok"));
+        assertFalse(firstNoOp.replayed());
+        assertNull(firstNoOp.revisionId());
+
+        service.saveRevisionForCommand(ref(productId), root.revisionId(), document("candidate"),
+                "editor", command("command-move", "plan-move", "fingerprint-move"));
+        assertThrows(TimelineConflictException.class, () ->
+                service.recordNoOpCommand(ref(productId), root.revisionId(), baseHash,
+                        command("command-noop-stale", "plan-noop", "fingerprint-noop-stale")));
+        assertEquals(0, commandRows("command-noop-stale"), "stale no-op claim must roll back");
+        assertEquals(2L, revisionRows(productId), "stale no-op creates no revision");
+        assertEquals(1, dsl.fetchOne("select count(*) from timeline_revision_parent "
+                + "where project_id = ?", productId).get(0, Integer.class),
+                "stale no-op creates no parent edge");
     }
 
     @Test
     void completedNoOpReplayAfterHeadMove_returnsOriginalResult() {
-        // OPC1 CASE C: completed durable no-op replays original NO_OP after head moves
-        TimelineDocument base = baseDoc();
+        String productId = "operation-noop-replay-" + java.util.UUID.randomUUID();
+        insertProduct(productId);
+        TimelineRevisionSaveService service = writer(dsl);
+        TimelineDocument base = document("base");
+        var root = seedRoot(service, productId, base);
         String baseHash = new TimelineContentDigester().digest(base);
-        OperationPlanner planner = new OperationPlanner();
-        OperationPlan noOpPlan = planner.plan(instance(baseHash, MediaTime.ZERO), base);
-        ApplyContext ctx = new ApplyContext("cmd-noop-done", new TargetRevisionRef("main"),
-                "trevR100", "p-x", auth(noOpPlan, "p-x", "main"));
-        ApplyResult first = service.apply(noOpPlan, ctx, PROJECT);
-        assertEquals(ApplyResult.NO_OP, first.status());
-        // move head
-        OperationPlan movePlan = planner.plan(instance(baseHash, MediaTime.ofRational(1, 1)), base);
-        service.apply(movePlan, new ApplyContext("cmd-move-2", new TargetRevisionRef("main"),
-                "trevR100", "p-x", auth(movePlan, "p-x", "main")), PROJECT);
-        // replay completed command -> original NO_OP, NOT stale
-        ApplyResult replay = service.apply(noOpPlan, ctx, PROJECT);
-        assertEquals(ApplyResult.NO_OP, replay.status());
+        var command = command("command-noop-replay", "plan-noop", "fingerprint-noop");
+        var first = service.recordNoOpCommand(ref(productId), root.revisionId(), baseHash, command);
+        service.saveRevisionForCommand(ref(productId), root.revisionId(), document("candidate"),
+                "editor", command("command-move-after-noop", "plan-move", "fingerprint-move"));
+
+        var replay = service.recordNoOpCommand(ref(productId), root.revisionId(), baseHash, command);
+        assertFalse(first.replayed());
+        assertTrue(replay.replayed());
+        assertNull(replay.revisionId());
+        assertEquals(baseHash, replay.timelineContentHash());
     }
 
     @Test
     void idempotencyReplayRejectsDifferentPrincipal() {
-        // OPC2 CASE B: Bob cannot replay Alice's completed command
-        TimelineDocument base = baseDoc();
-        String baseHash = new TimelineContentDigester().digest(base);
-        OperationPlanner planner = new OperationPlanner();
-        OperationPlan plan = planner.plan(instance(baseHash, MediaTime.ofRational(1, 1)), base);
-        ApplyContext alice = new ApplyContext("cmd-alice-1", new TargetRevisionRef("main"),
-                "trevR100", "alice", auth(plan, "alice", "main"));
-        ApplyResult first = service.apply(plan, alice, PROJECT);
-        assertEquals(ApplyResult.APPLIED, first.status());
-        PlanException ex = assertThrows(PlanException.class, () ->
-                service.apply(plan, new ApplyContext("cmd-alice-1", new TargetRevisionRef("main"),
-                        "trevR100", "bob", auth(plan, "bob", "main")), PROJECT));
-        assertEquals(PlanErrorCode.IDEMPOTENCY_KEY_CONFLICT, ex.code());
+        assertImmutableCommandContextConflict("principal", "alice", "bob");
     }
 
     @Test
     void idempotencyReplayRejectsDifferentTargetRef() {
-        // OPC2 CASE C: same plan/principal, different target ref -> conflict
-        TimelineDocument base = baseDoc();
-        String baseHash = new TimelineContentDigester().digest(base);
-        OperationPlanner planner = new OperationPlanner();
-        OperationPlan plan = planner.plan(instance(baseHash, MediaTime.ofRational(1, 1)), base);
-        ApplyContext ctx = new ApplyContext("cmd-ref-1", new TargetRevisionRef("main"),
-                "trevR100", "alice", auth(plan, "alice", "main"));
-        service.apply(plan, ctx, PROJECT);
-        PlanException ex = assertThrows(PlanException.class, () ->
-                service.apply(plan, new ApplyContext("cmd-ref-1", new TargetRevisionRef("other"),
-                        "trevR100", "alice", auth(plan, "alice", "other")), PROJECT));
-        assertEquals(PlanErrorCode.IDEMPOTENCY_KEY_CONFLICT, ex.code());
+        assertImmutableCommandContextConflict("target-ref", "current", "other");
     }
 
     @Test
     void headAdvancesToNewRevisionOnApply() {
-        // regression: CAS must set head to the new revision (not null)
-        TimelineDocument base = baseDoc();
-        String baseHash = new TimelineContentDigester().digest(base);
-        OperationPlanner planner = new OperationPlanner();
-        OperationPlan plan = planner.plan(instance(baseHash, MediaTime.ofRational(1, 1)), base);
-        ApplyResult result = service.apply(plan, new ApplyContext("cmd-head-1", new TargetRevisionRef("main"),
-                "trevR100", "alice", auth(plan, "alice", "main")), PROJECT);
-        String head = dsl.fetchOne("select head_revision_id from timeline_revision_ref "
-                + "where project_id = ? and ref_id = 'main'", PROJECT).get(0, String.class);
-        assertEquals(result.newRevisionId(), head, "head must advance to the new revision");
+        String productId = "operation-head-" + java.util.UUID.randomUUID();
+        insertProduct(productId);
+        TimelineRevisionSaveService service = writer(dsl);
+        var root = seedRoot(service, productId, document("base"));
+        var result = service.saveRevisionForCommand(
+                ref(productId), root.revisionId(), document("candidate"), "editor",
+                command("command-head", "plan-head", "fingerprint-head"));
+
+        assertEquals(result.revisionId(), canonicalHead(productId));
+        assertEquals(root.revisionId(), currentRevision(productId),
+                "product pointer is a non-authoritative projection for H7");
+        assertEquals(1L, dsl.selectCount().from(TIMELINE_REVISION)
+                .where(TIMELINE_REVISION.ID.eq(result.revisionId())).fetchOne(0, Long.class));
     }
 
+    @Test
+    void staleCanonicalRefAfterPersistenceRollsBackCounterGraphAndCommand() {
+        String productId = "operation-rollback-" + java.util.UUID.randomUUID();
+        insertProduct(productId);
+        TimelineRevisionSaveService seed = writer(dsl);
+        var root = seedRoot(seed, productId, document("base"));
+        long counterBefore = counterValue(productId);
+        dsl.execute("delete from timeline_revision_ref where project_id = ? and ref_id = ?",
+                productId, RevisionRef.MAIN_REF);
+
+        assertThrows(TimelineConflictException.class, () -> seed.saveRevisionForCommand(
+                ref(productId), root.revisionId(), document("candidate"), "editor",
+                command("command-rollback", "plan-rollback", "fingerprint-rollback")));
+        assertEquals(root.revisionId(), currentRevision(productId));
+        assertEquals(1L, revisionRows(productId));
+        assertEquals(0, dsl.fetchOne("select count(*) from timeline_revision_parent "
+                + "where project_id = ?", productId).get(0, Integer.class));
+        assertEquals(0, commandRows("command-rollback"));
+        assertEquals(counterBefore, counterValue(productId));
+    }
 
     @Test
-    void headFkIsActiveDeferredConstraint_commitCatchesMissingRevision() {
-        // EV1: FK is DEFERRABLE INITIALLY DEFERRED — CAS may write a not-yet-inserted
-        // revision id inside the transaction, but COMMIT MUST fail if the revision
-        // INSERT is omitted (constraint proven active, not absent).
-        org.jooq.exception.DataAccessException ex = assertThrows(
-                org.jooq.exception.DataAccessException.class, () -> dsl.transaction(tx -> {
-                    tx.dsl().execute("update timeline_revision_ref set head_revision_id = 'trevGHOST', version = version + 1 "
-                            + "where project_id = ? and ref_id = 'main'", PROJECT);
-                }));
-        Throwable cause = ex;
-        boolean fkViolation = false;
-        while (cause != null) {
-            String m = cause.getMessage() == null ? "" : cause.getMessage();
-            if (m.contains("fk_timeline_revision_ref_head") || m.contains("foreign key")) {
-                fkViolation = true;
-                break;
-            }
-            cause = cause.getCause();
+    void genesisCommandCreatesUniqueCanonicalRefWithZeroParentEdges() {
+        String productId = "operation-genesis-" + java.util.UUID.randomUUID();
+        insertProduct(productId);
+        TimelineRevisionSaveService service = writer(dsl);
+
+        var genesis = service.saveRevisionForCommand(
+                ref(productId), null, document("genesis"), "editor",
+                command("command-genesis", "plan-genesis", "fingerprint-genesis"));
+
+        assertEquals(genesis.revisionId(), canonicalHead(productId));
+        assertEquals(0, dsl.fetchOne("select count(*) from timeline_revision_parent "
+                + "where project_id = ?", productId).get(0, Integer.class));
+        assertNull(currentRevision(productId),
+                "genesis does not need a product-pointer authority row transition");
+    }
+
+    @Test
+    void canonicalRefAllowsApplyWhenProductPointerMismatches() {
+        String productId = "operation-product-mismatch-" + java.util.UUID.randomUUID();
+        insertProduct(productId);
+        TimelineRevisionSaveService service = writer(dsl);
+        var root = seedRoot(service, productId, document("base"));
+        dsl.update(PRODUCT).set(PRODUCT.CURRENT_REVISION_ID, (String) null)
+                .where(PRODUCT.PRODUCT_ID.eq(productId)).execute();
+
+        var applied = service.saveRevisionForCommand(
+                ref(productId), root.revisionId(), document("candidate"), "editor",
+                command("command-product-mismatch", "plan-product-mismatch",
+                        "fingerprint-product-mismatch"));
+
+        assertEquals(applied.revisionId(), canonicalHead(productId));
+        assertNull(currentRevision(productId));
+    }
+
+    @Test
+    void canonicalRefAllowsNoOpWhenProductPointerMismatches() {
+        String productId = "operation-noop-product-mismatch-" + java.util.UUID.randomUUID().toString().replace("-", "");
+        insertProduct(productId);
+        TimelineRevisionSaveService service = writer(dsl);
+        TimelineDocument base = document("base");
+        var root = seedRoot(service, productId, base);
+        dsl.update(PRODUCT).set(PRODUCT.CURRENT_REVISION_ID, (String) null)
+                .where(PRODUCT.PRODUCT_ID.eq(productId)).execute();
+
+        var noOp = service.recordNoOpCommand(ref(productId), root.revisionId(),
+                new TimelineContentDigester().digest(base),
+                command("noop-product-mismatch", "plan-noop-product", "fp-noop-product"));
+
+        assertFalse(noOp.replayed());
+        assertEquals(root.revisionId(), canonicalHead(productId));
+        assertNull(currentRevision(productId));
+    }
+
+    @Test
+    void concurrentGenesisWritersPublishExactlyOneRoot() throws Exception {
+        String productId = "operation-genesis-race-" + java.util.UUID.randomUUID();
+        insertProduct(productId);
+        CountDownLatch go = new CountDownLatch(1);
+        AtomicInteger applied = new AtomicInteger();
+        AtomicInteger stale = new AtomicInteger();
+        try (var pool = Executors.newFixedThreadPool(2)) {
+            var first = pool.submit(() -> runGenesisWriter(
+                    productId, "genesis-a", go, applied, stale));
+            var second = pool.submit(() -> runGenesisWriter(
+                    productId, "genesis-b", go, applied, stale));
+            go.countDown();
+            first.get();
+            second.get();
         }
-        assertTrue(fkViolation, "commit must fail with the head FK violation (cause chain): " + ex.getMessage());
-        // rolled back: head still points at R100
-        String head = dsl.fetchOne("select head_revision_id from timeline_revision_ref "
-                + "where project_id = ? and ref_id = 'main'", PROJECT).get(0, String.class);
-        assertEquals("trevR100", head, "rollback must restore original head");
+
+        assertEquals(1, applied.get());
+        assertEquals(1, stale.get());
+        assertEquals(1L, revisionRows(productId));
+        assertEquals(0, dsl.fetchOne("select count(*) from timeline_revision_parent "
+                + "where project_id = ?", productId).get(0, Integer.class));
+        assertEquals(1, dsl.fetchOne("select count(*) from timeline_revision_ref "
+                + "where project_id = ? and ref_id = ?", productId, RevisionRef.MAIN_REF)
+                .get(0, Integer.class));
     }
 
     @Test
-    void headFkDeferred_allowsCasBeforeInsert_thenInsert() {
-        // EV1: valid apply order inside one transaction — CAS writes new id, INSERT
-        // follows, COMMIT validates FK successfully.
-        String revId = "trevFKOK" + java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 16);
-        dsl.transaction(tx -> {
-            tx.dsl().execute("update timeline_revision_ref set head_revision_id = ?, version = version + 1 "
-                    + "where project_id = ? and ref_id = 'main' and head_revision_id = 'trevR100'", revId, PROJECT);
-            tx.dsl().execute("insert into timeline_revision (id, project_id, revision_number, content_hash, source, created_at) "
-                    + "values (?, ?, 2, 'h', 'ev1-probe', current_timestamp)", revId, PROJECT);
-        });
-        String head = dsl.fetchOne("select head_revision_id from timeline_revision_ref "
-                + "where project_id = ? and ref_id = 'main'", PROJECT).get(0, String.class);
-        assertEquals(revId, head, "head must point at the inserted revision");
-        Integer revs = dsl.fetchOne("select count(*) from timeline_revision where id = ?", revId).get(0, Integer.class);
-        assertEquals(1, revs);
+    void failureImmediatelyAfterCommandClaimRollsBackClaim() {
+        String productId = "operation-claim-failure-" + java.util.UUID.randomUUID();
+        insertProduct(productId);
+        TimelineRevisionSaveService service = writer(dsl);
+        var root = seedRoot(service, productId, document("base"));
+        dsl.execute("create function h7_reject_counter_update() returns trigger language plpgsql as $$ "
+                + "begin raise exception 'counter rejected'; end $$");
+        dsl.execute("create trigger h7_reject_counter before update on project_revision_counter "
+                + "for each row when (old.project_id = '" + productId + "') "
+                + "execute function h7_reject_counter_update()");
+        try {
+            assertThrows(RuntimeException.class, () -> service.saveRevisionForCommand(
+                    ref(productId), root.revisionId(), document("candidate"), "editor",
+                    command("claim-failure", "plan-claim-failure", "fp-claim-failure")));
+        } finally {
+            dsl.execute("drop trigger h7_reject_counter on project_revision_counter");
+            dsl.execute("drop function h7_reject_counter_update()");
+        }
+        assertEquals(0, commandRows("claim-failure"));
+        assertEquals(1L, revisionRows(productId));
+        assertEquals(root.revisionId(), canonicalHead(productId));
     }
 
+    @Test
+    void failureAfterRefPublicationStatementRollsBackEverything() {
+        String productId = "operation-publication-failure-" + java.util.UUID.randomUUID().toString().replace("-", "");
+        insertProduct(productId);
+        TimelineRevisionSaveService service = writer(dsl);
+        var root = seedRoot(service, productId, document("base"));
+        long counterBefore = counterValue(productId);
+        dsl.execute("create function h7_reject_ref_publication() returns trigger language plpgsql as $$ "
+                + "begin raise exception 'ref publication rejected'; end $$");
+        dsl.execute("create trigger h7_reject_ref after update on timeline_revision_ref "
+                + "for each row when (old.project_id = '" + productId + "') "
+                + "execute function h7_reject_ref_publication()");
+        try {
+            assertThrows(RuntimeException.class, () -> service.saveRevisionForCommand(
+                    ref(productId), root.revisionId(), document("candidate"), "editor",
+                    command("publication-failure", "plan-publication-failure",
+                            "fp-publication-failure")));
+        } finally {
+            dsl.execute("drop trigger h7_reject_ref on timeline_revision_ref");
+            dsl.execute("drop function h7_reject_ref_publication()");
+        }
+        assertEquals(0, commandRows("publication-failure"));
+        assertEquals(1L, revisionRows(productId));
+        assertEquals(0, dsl.fetchOne("select count(*) from timeline_revision_parent "
+                + "where project_id = ?", productId).get(0, Integer.class));
+        assertEquals(root.revisionId(), canonicalHead(productId));
+        assertEquals(counterBefore, counterValue(productId));
+    }
+
+    @Test
+    void revisionCommandHeadMoveMakesH7StaleAndH7MoveMakesRevisionCommandStale() {
+        String projectA = "cross-head-rc-first-" + java.util.UUID.randomUUID();
+        insertProduct(projectA);
+        TimelineRevisionSaveService serviceA = writer(dsl);
+        var rootA = seedRoot(serviceA, projectA, document("base-a"));
+        var childA = serviceA.saveRevision(
+                projectA, rootA.revisionId(), document("detached-child"), "seed");
+        RevisionCommandApplyService revisionCommands = new RevisionCommandApplyService(dsl);
+        var deleteMain = new RevisionCommandPlan.DeleteRefPlan(projectA, ref(projectA),
+                rootA.revisionId(), RevisionCommandPlanDigest.deleteRef(
+                        projectA, RevisionRef.MAIN_REF, rootA.revisionId()));
+        revisionCommands.deleteRef(deleteMain, "rc-delete-main", "alice", projectA);
+        var recreateMain = new RevisionCommandPlan.CreateRefPlan(projectA, ref(projectA),
+                childA.revisionId(), RevisionCommandPlanDigest.createRef(
+                        projectA, RevisionRef.MAIN_REF, childA.revisionId()));
+        revisionCommands.createRef(recreateMain, "rc-recreate-main", "alice", projectA);
+
+        assertThrows(TimelineConflictException.class, () -> serviceA.saveRevisionForCommand(
+                ref(projectA), rootA.revisionId(), document("stale-h7"), "editor",
+                command("stale-h7-after-rc", "plan-stale-h7", "fp-stale-h7")));
+
+        String projectB = "cross-head-h7-first-" + java.util.UUID.randomUUID();
+        insertProduct(projectB);
+        TimelineRevisionSaveService serviceB = writer(dsl);
+        var rootB = seedRoot(serviceB, projectB, document("base-b"));
+        serviceB.saveRevisionForCommand(ref(projectB), rootB.revisionId(),
+                document("h7-move"), "editor",
+                command("h7-move-before-rc", "plan-h7-move", "fp-h7-move"));
+        var staleDelete = new RevisionCommandPlan.DeleteRefPlan(projectB, ref(projectB),
+                rootB.revisionId(), RevisionCommandPlanDigest.deleteRef(
+                        projectB, RevisionRef.MAIN_REF, rootB.revisionId()));
+        assertThrows(RevisionCommandException.class, () ->
+                revisionCommands.deleteRef(staleDelete, "rc-stale-delete", "alice", projectB));
+    }
+
+    @Test
+    void h7AndRevisionCommandShareFirstCounterBootstrapWithoutDuplicateNumbers() throws Exception {
+        String productId = "cross-counter-" + java.util.UUID.randomUUID();
+        insertProduct(productId);
+        TimelineRevisionSaveService seed = writer(dsl);
+        var root = seedRoot(seed, productId, document("base"));
+        RevisionRef feature = new RevisionRef(productId, "feature");
+        RevisionCommandApplyService setupCommands = new RevisionCommandApplyService(dsl);
+        setupCommands.createRef(new RevisionCommandPlan.CreateRefPlan(productId, feature,
+                        root.revisionId(), RevisionCommandPlanDigest.createRef(
+                                productId, feature.refId(), root.revisionId())),
+                "counter-feature-create", "alice", productId);
+        dsl.execute("delete from project_revision_counter where project_id = ?", productId);
+        dsl.execute("update timeline_revision set revision_number = 1, internal_revision = 1 "
+                + "where project_id = ? and id = ?", productId, root.revisionId());
+
+        var restorePlan = new RevisionCommandPlan.RestoreRevisionPlan(productId,
+                root.revisionId(), feature, root.revisionId(), "restore-content-hash",
+                RevisionCommandPlanDigest.restore(productId, root.revisionId(), feature.refId(),
+                        root.revisionId(), "restore-content-hash"));
+        CountDownLatch go = new CountDownLatch(1);
+        try (var pool = Executors.newFixedThreadPool(2)) {
+            var h7 = pool.submit(() -> {
+                go.await();
+                return writer(DSL.using(dataSource, org.jooq.SQLDialect.POSTGRES))
+                        .saveRevisionForCommand(ref(productId), root.revisionId(),
+                                document("h7-candidate"), "editor",
+                                command("cross-counter-h7", "plan-counter-h7", "fp-counter-h7"));
+            });
+            var rc = pool.submit(() -> {
+                go.await();
+                return new RevisionCommandApplyService(
+                        DSL.using(dataSource, org.jooq.SQLDialect.POSTGRES))
+                        .restore(restorePlan, "cross-counter-rc", "alice", productId);
+            });
+            go.countDown();
+            assertFalse(h7.get().replayed());
+            assertTrue(rc.get().startsWith("APPLIED:"));
+        }
+
+        assertEquals(0, dsl.fetchOne("select count(*) from (select revision_number "
+                + "from timeline_revision where project_id = ? group by revision_number "
+                + "having count(*) > 1) duplicates", productId).get(0, Integer.class));
+        assertEquals(1, dsl.fetchOne("select count(*) from project_revision_counter "
+                + "where project_id = ?", productId).get(0, Integer.class));
+    }
+
+    private static Void runWriter(
+            String productId, String baseRevisionId, TimelineDocument candidate,
+            String commandId, CountDownLatch ready, CountDownLatch go,
+            AtomicInteger applied, AtomicInteger stale) throws Exception {
+        TimelineRevisionSaveService service = writer(DSL.using(dataSource, org.jooq.SQLDialect.POSTGRES));
+        ready.countDown();
+        go.await();
+        try {
+            service.saveRevisionForCommand(ref(productId), baseRevisionId, candidate, "editor",
+                    new TimelineRevisionSaveService.RevisionWriteCommand(
+                            commandId, "plan-" + commandId, "fingerprint-" + commandId,
+                            "OPERATION_PLAN", TENANT));
+            applied.incrementAndGet();
+        } catch (TimelineConflictException conflict) {
+            stale.incrementAndGet();
+        }
+        return null;
+    }
+
+    private static Void runGenesisWriter(
+            String productId, String commandId, CountDownLatch go,
+            AtomicInteger applied, AtomicInteger stale) throws Exception {
+        TimelineRevisionSaveService service = writer(
+                DSL.using(dataSource, org.jooq.SQLDialect.POSTGRES));
+        go.await();
+        try {
+            service.saveRevisionForCommand(ref(productId), null, document(commandId), "editor",
+                    command(commandId, "plan-" + commandId, "fingerprint-" + commandId));
+            applied.incrementAndGet();
+        } catch (TimelineConflictException conflict) {
+            stale.incrementAndGet();
+        }
+        return null;
+    }
+
+    private static TimelineRevisionSaveService writer(DSLContext context) {
+        var current = new ProductCurrentRevisionService(context);
+        var pinValidator = org.mockito.Mockito.mock(
+                com.example.platform.timeline.app.TimelineArtifactPinValidator.class);
+        org.mockito.Mockito.when(pinValidator.validate(
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.anyList()))
+                .thenReturn(new com.example.platform.timeline.app.TimelineArtifactPinValidator
+                        .ValidationResult(true, List.of()));
+        return new TimelineRevisionSaveService(
+                context, current, new TimelineContentDigester(), new TimelineSnapshotService(context),
+                pinValidator,
+                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class),
+                new EffectSemanticSnapshotAuthority(
+                        new JdbcEffectDefinitionVersionRegistry(context),
+                        new JdbcEffectSemanticSnapshotStore(context)),
+                new JdbcTimelineRevisionSemanticContextStore(context),
+                new DefaultTimelineRevisionPersistence(),
+                new ProductCurrentRevisionHeadUpdateAdapter(current));
+    }
+
+    private static TimelineRevisionSaveService.RevisionWriteCommand command(
+            String id, String planDigest, String fingerprint) {
+        return new TimelineRevisionSaveService.RevisionWriteCommand(
+                id, planDigest, fingerprint, "OPERATION_PLAN", TENANT);
+    }
+
+    private static void assertImmutableCommandContextConflict(
+            String discriminator, String original, String changed) {
+        String productId = "operation-" + discriminator + "-" + java.util.UUID.randomUUID();
+        insertProduct(productId);
+        TimelineRevisionSaveService service = writer(dsl);
+        var root = seedRoot(service, productId, document("base"));
+        String commandId = "command-" + discriminator;
+        service.saveRevisionForCommand(ref(productId), root.revisionId(), document("candidate"),
+                "editor", command(commandId, "plan", discriminator + "=" + original));
+
+        assertThrows(TimelineRevisionCommandConflictException.class, () ->
+                service.saveRevisionForCommand(ref(productId), root.revisionId(), document("candidate"),
+                        "editor", command(commandId, "plan", discriminator + "=" + changed)));
+        assertEquals(2L, revisionRows(productId));
+    }
+
+    private static long revisionRows(String productId) {
+        return dsl.selectCount().from(TIMELINE_REVISION)
+                .where(TIMELINE_REVISION.PROJECT_ID.eq(productId)).fetchOne(0, Long.class);
+    }
+
+    private static RevisionRef ref(String productId) {
+        return RevisionRef.main(productId);
+    }
+
+    private static com.example.platform.timeline.version.TimelineRevision seedRoot(
+            TimelineRevisionSaveService service, String productId, TimelineDocument document) {
+        var root = service.saveRevision(productId, null, document, "seed");
+        dsl.insertInto(com.example.platform.typedschema.jooq.generated.tables.TimelineRevisionRef
+                        .TIMELINE_REVISION_REF)
+                .set(com.example.platform.typedschema.jooq.generated.tables.TimelineRevisionRef
+                        .TIMELINE_REVISION_REF.PROJECT_ID, productId)
+                .set(com.example.platform.typedschema.jooq.generated.tables.TimelineRevisionRef
+                        .TIMELINE_REVISION_REF.REF_ID, RevisionRef.MAIN_REF)
+                .set(com.example.platform.typedschema.jooq.generated.tables.TimelineRevisionRef
+                        .TIMELINE_REVISION_REF.HEAD_REVISION_ID, root.revisionId())
+                .execute();
+        return root;
+    }
+
+    private static int commandRows(String commandId) {
+        return dsl.fetchOne("select count(*) from apply_command where apply_command_id = ?", commandId)
+                .get(0, Integer.class);
+    }
+
+    private static String currentRevision(String productId) {
+        return dsl.select(PRODUCT.CURRENT_REVISION_ID).from(PRODUCT)
+                .where(PRODUCT.PRODUCT_ID.eq(productId)).fetchOne(PRODUCT.CURRENT_REVISION_ID);
+    }
+
+    private static String canonicalHead(String productId) {
+        return dsl.fetchOne("select head_revision_id from timeline_revision_ref "
+                        + "where project_id = ? and ref_id = ?", productId, RevisionRef.MAIN_REF)
+                .get(0, String.class);
+    }
+
+    private static long counterValue(String productId) {
+        return dsl.fetchOne("select next_revision_number from project_revision_counter "
+                        + "where project_id = ?", productId)
+                .get(0, Long.class);
+    }
+
+    private static TimelineDocument document(String title) {
+        return new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
+                List.of(new TimelineTrack("video-1", "Main", TrackType.VIDEO, List.of())),
+                new TimelineMetadata(title, "", Map.of()));
+    }
+
+    private static TimelineDocument editableDocument() {
+        TimelineClip clip = new TimelineClip(
+                "clip-1", "asset", "stream", "artifact",
+                "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                MediaTime.ZERO, MediaTime.ofRational(10, 1), MediaTime.ZERO,
+                MediaTime.ofRational(10, 1), "MEDIA_STREAM");
+        return new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
+                List.of(new TimelineTrack("video-1", "Main", TrackType.VIDEO, List.of(clip))),
+                new TimelineMetadata("editable", "", Map.of()));
+    }
+
+    private static void insertProduct(String productId) {
+        if (productId.length() > 64) {
+            throw new IllegalArgumentException("productId exceeds varchar(64): " + productId.length());
+        }
+        dsl.insertInto(PRODUCT)
+                .set(PRODUCT.PRODUCT_ID, productId)
+                .set(PRODUCT.PRODUCT_TYPE, "video")
+                .set(PRODUCT.REPRESENTATION_KIND, "master")
+                .set(PRODUCT.STATUS, "REGISTERED")
+                .set(PRODUCT.TENANT_ID, TENANT)
+                .set(PRODUCT.CREATED_AT, java.time.LocalDateTime.now())
+                .set(PRODUCT.UPDATED_AT, java.time.LocalDateTime.now())
+                .execute();
+    }
 }

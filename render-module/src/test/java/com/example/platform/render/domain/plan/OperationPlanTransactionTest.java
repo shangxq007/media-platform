@@ -220,12 +220,12 @@ class OperationPlanTransactionTest {
                 new OperationParameters.MoveParameters(MediaTime.ofRational(1, 1), false),
                 clipTarget(TimelineClipId.of("clip-a")), baseHash), base);
         AuthorizationDecision decision = AuthorizationDecision.allow(plan.planDigest(),
-                "principal-a", "project-1", "main", "policy-v1");
+                "principal-a", "project-1", "tenant-1", "main", "policy-v1");
         assertTrue(decision.allowed());
         assertEquals(plan.planDigest(), decision.planDigest());
         // different target ref is NOT authorized by same decision
         AuthorizationDecision other = AuthorizationDecision.allow(plan.planDigest(),
-                "principal-a", "project-1", "protected-main", "policy-v1");
+                "principal-a", "project-1", "tenant-1", "protected-main", "policy-v1");
         assertNotEquals(decision.targetRefId(), other.targetRefId());
     }
 

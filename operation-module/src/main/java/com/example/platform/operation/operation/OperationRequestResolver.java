@@ -28,10 +28,19 @@ public final class OperationRequestResolver {
     public record OperationBaseContext(
             String baseRevisionId,
             String baseContentHash,
-            TimelineDocument timeline) {
+            TimelineDocument timeline,
+            String timelineId) {
         public OperationBaseContext {
             Objects.requireNonNull(baseRevisionId, "baseRevisionId");
             Objects.requireNonNull(timeline, "timeline");
+            if (timelineId == null || timelineId.isBlank()) {
+                throw new IllegalArgumentException("timelineId required");
+            }
+        }
+
+        public OperationBaseContext(String baseRevisionId, String baseContentHash,
+                                    TimelineDocument timeline) {
+            this(baseRevisionId, baseContentHash, timeline, baseRevisionId);
         }
     }
 
@@ -92,6 +101,18 @@ public final class OperationRequestResolver {
                                                  OperationBaseContext base)
             throws OperationResolutionException {
         switch (def.targetKind()) {
+            case TIMELINE -> {
+                if (!(target instanceof OperationTargetRequest.TimelineTargetRequest timelineReq)) {
+                    throw new OperationResolutionException(OperationErrorCode.INVALID_SCOPE,
+                            "definition " + def.definitionId() + " requires Timeline target");
+                }
+                if (!timelineReq.timelineId().equals(base.timelineId())) {
+                    throw new OperationResolutionException(OperationErrorCode.INVALID_SCOPE,
+                            "target Timeline " + timelineReq.timelineId()
+                                    + " != resolved Timeline " + base.timelineId());
+                }
+                return new OperationTarget.TimelineTarget(base.timelineId());
+            }
             case CLIP_SCOPE -> {
                 if (!(target instanceof OperationTargetRequest.ClipSelectionTargetRequest clipReq)) {
                     throw new OperationResolutionException(OperationErrorCode.INVALID_SCOPE,
@@ -156,6 +177,7 @@ public final class OperationRequestResolver {
     private static void enforceCardinality(OperationDefinition def, OperationTarget target)
             throws OperationResolutionException {
         int size = switch (target) {
+            case OperationTarget.TimelineTarget t -> 1;
             case OperationTarget.ResolvedClipScopeTarget r -> r.resolvedScope().resolvedClipIds().size();
             case OperationTarget.GroupTarget g -> 1;
             case OperationTarget.SyncTarget s -> 1;

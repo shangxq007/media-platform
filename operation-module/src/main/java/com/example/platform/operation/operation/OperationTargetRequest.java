@@ -11,11 +11,21 @@ import com.example.platform.timeline.semantics.selection.SelectionSpec;
  * ExpansionPolicy (resolved by the existing ScopeResolver).
  */
 public sealed interface OperationTargetRequest permits
+        OperationTargetRequest.TimelineTargetRequest,
         OperationTargetRequest.ClipSelectionTargetRequest,
         OperationTargetRequest.GroupTargetRequest,
         OperationTargetRequest.SyncTargetRequest,
         OperationTargetRequest.AudioTargetRequest,
         OperationTargetRequest.TextElementTargetRequest {
+
+    /** Exact Timeline aggregate target; never a mutable-latest alias. */
+    record TimelineTargetRequest(String timelineId) implements OperationTargetRequest {
+        public TimelineTargetRequest {
+            if (timelineId == null || timelineId.isBlank()) {
+                throw new IllegalArgumentException("timelineId required");
+            }
+        }
+    }
 
     record ClipSelectionTargetRequest(SelectionSpec selectionSpec,
                                       SelectionSpec.ExpansionPolicy expansionPolicy)

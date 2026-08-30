@@ -9,6 +9,7 @@ import com.example.platform.media.domain.stream.MediaStream;
 import com.example.platform.media.domain.stream.MediaStreamId;
 import com.example.platform.media.domain.stream.StreamKind;
 import com.example.platform.timeline.app.TimelineSourceReferenceValidator.ValidationResult;
+import com.example.platform.timeline.canonical.TrackType;
 import com.example.platform.timeline.semantics.clip.MediaClip.TimeRange;
 import com.example.platform.timeline.semantics.clip.MediaStreamSourceBinding;
 import com.example.platform.shared.identity.ArtifactId;
@@ -88,5 +89,23 @@ class TimelineSourceReferenceValidatorTest {
         ValidationResult r = validator.validate(b);
         assertFalse(r.valid());
         assertTrue(r.violations().get(0).contains("does not belong"));
+    }
+
+    @Test
+    void contextBoundResolutionProvesOwnershipAndVideoCompatibility() {
+        ValidationResult valid = validator.validate(binding(), "t", "p", TrackType.VIDEO);
+        assertTrue(valid.valid(), valid.violations().toString());
+
+        ValidationResult wrongProject = validator.validate(
+                binding(), "t", "other-project", TrackType.VIDEO);
+        assertFalse(wrongProject.valid());
+        assertTrue(wrongProject.violations().stream()
+                .anyMatch(v -> v.contains("outside target project")));
+
+        ValidationResult wrongTrackKind = validator.validate(
+                binding(), "t", "p", TrackType.AUDIO);
+        assertFalse(wrongTrackKind.valid());
+        assertTrue(wrongTrackKind.violations().stream()
+                .anyMatch(v -> v.contains("incompatible")));
     }
 }

@@ -17,9 +17,11 @@ import com.example.platform.render.domain.interchange.TimelineScriptParser;
 import com.example.platform.timeline.version.TimelineConflictException;
 import com.example.platform.render.testsupport.RenderTestSchemaFixture;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
+import com.example.platform.shared.web.TenantContext;
 import org.jooq.DSLContext;
 import org.jooq.impl.DSL;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -43,6 +45,7 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class TimelineRevisionSaveServiceSnapshotIntegrationTest extends PostgresTestContainerSupport {
 
+    private static final String TENANT = "tenant-timeline-snapshot-it";
     private static DataSource dataSource;
     private static DSLContext dsl;
     private TimelineRevisionSaveService saveService;
@@ -65,12 +68,18 @@ class TimelineRevisionSaveServiceSnapshotIntegrationTest extends PostgresTestCon
     @BeforeEach
     void setUp() {
         RenderTestSchemaFixture.truncate(dsl);
+        TenantContext.set(TENANT);
         digester = new TimelineContentDigester();
         currentRevisionService = new ProductCurrentRevisionService(dsl);
         snapshotService = new TimelineSnapshotService(dsl);
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService, digester, snapshotService,
                 org.mockito.Mockito.mock(com.example.platform.timeline.app.TimelineArtifactPinValidator.class),
                 org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class), effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new ProductCurrentRevisionHeadUpdateAdapter(currentRevisionService));
+    }
+
+    @AfterEach
+    void clearTenant() {
+        TenantContext.clear();
     }
 
     @Test
@@ -119,6 +128,19 @@ class TimelineRevisionSaveServiceSnapshotIntegrationTest extends PostgresTestCon
                 .where(TIMELINE_REVISION.PROJECT_ID.eq(productId)).fetchOne(0, Long.class);
         assertEquals(0L, snapshotRows, "canonical rejection must write zero snapshot rows");
         assertEquals(0L, revisionRows, "canonical rejection must write zero revision rows");
+    }
+
+    @Test
+    void canonicalSave_withoutAuthenticatedTenantContext_isRejected() {
+        String productId = "prod-no-tenant-" + java.util.UUID.randomUUID();
+        insertProduct(productId);
+        TenantContext.clear();
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> saveService.saveRevision(productId, null, createSampleDocument(), "snap-user"));
+
+        assertEquals("authenticated tenant context required for canonical Timeline revision save",
+                exception.getMessage());
     }
 
     @Test

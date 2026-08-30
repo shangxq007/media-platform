@@ -22,6 +22,23 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
  */
 public class TimelineClip {
 
+    /**
+     * Timeline-owned projection from the typed semantic clip into the canonical
+     * revision representation. Callers do not need to reach through the source
+     * binding into Media-owned identity implementation types.
+     */
+    public static TimelineClip fromSemanticClip(
+            com.example.platform.timeline.semantics.clip.MediaClip clip) {
+        var binding = clip.sourceBinding();
+        return new TimelineClip(
+                clip.clipId(), binding.mediaAssetId().value(),
+                binding.mediaStreamId().value(), binding.artifactId().value(),
+                binding.contentDigest().canonicalValue(), clip.timelineRange().start(),
+                clip.timelineRange().end(), clip.sourceRange().start(),
+                clip.sourceRange().end(), binding.sourceKind().name(),
+                clip.temporalMapping());
+    }
+
     @JsonProperty("clipId")
     private final TimelineClipId clipId;
 

@@ -19,6 +19,7 @@ import java.util.TreeSet;
  * SetDirection has direction ONLY; Freeze has sourcePosition ONLY.
  */
 public sealed interface OperationParameters permits
+        OperationParameters.AddOrTrimMediaClipParameters,
         OperationParameters.NoParameters,
         OperationParameters.MoveParameters,
         OperationParameters.TrimParameters,
@@ -41,6 +42,34 @@ public sealed interface OperationParameters permits
         OperationParameters.SetFontFallbackPolicyParameters,
         OperationParameters.SetVariableFontAxisParameters,
         OperationParameters.SetTextLayoutParameters {
+
+    /**
+     * ADD_OR_TRIM_MEDIA_CLIP_V1. The first supported variant adds exactly one
+     * recorded-media clip to an existing Timeline track. The immutable source
+     * pin owns the exact source range; placement owns the exact Timeline range;
+     * TemporalMapping owns only the mapping between them.
+     */
+    record AddOrTrimMediaClipParameters(
+            String trackId,
+            com.example.platform.timeline.canonical.TimelineClipId clipId,
+            com.example.platform.timeline.semantics.clip.MediaStreamSourceBinding sourceBinding,
+            com.example.platform.timeline.semantics.clip.MediaClip.TimeRange placement,
+            com.example.platform.timeline.semantics.temporal.TemporalMapping temporalMapping)
+            implements OperationParameters {
+        public AddOrTrimMediaClipParameters {
+            if (trackId == null || trackId.isBlank()) {
+                throw new IllegalArgumentException("trackId required");
+            }
+            if (clipId == null || sourceBinding == null || placement == null || temporalMapping == null) {
+                throw new IllegalArgumentException(
+                        "clipId, sourceBinding, placement and temporalMapping required");
+            }
+            // Exact duration/mapping validity is a canonical MediaClip invariant.
+            new com.example.platform.timeline.semantics.clip.MediaClip(
+                    clipId.value(), trackId, placement, sourceBinding.sourceRange(),
+                    temporalMapping, sourceBinding);
+        }
+    }
 
     record NoParameters() implements OperationParameters {
     }
