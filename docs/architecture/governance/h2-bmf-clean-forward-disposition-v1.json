@@ -1,0 +1,521 @@
+{
+  "schema_version": 1,
+  "task": "H2_BMF_CLEAN_FORWARD_DISPOSITION_V1",
+  "scope": "Inventory and future disposition only. This lane does not edit or delete inventoried production, test, build, configuration, workflow, or runtime paths.",
+  "allowed_dispositions": [
+    "REUSE_AS_CANONICAL",
+    "REUSE_MECHANICS_ONLY",
+    "MIGRATE_REDESIGN",
+    "DELETE_SHADOW",
+    "DEFER"
+  ],
+  "materialized_discovery": {
+    "base_sha": "e02579181ba3049ae65ed81080c93a7212f5833d",
+    "scanned_roots": [
+      "docs (target inclusion is live docs/architecture/**/*.md and docs/render/*.md; archives, generated exports, review packets, and governance receipts are outside this bounded universe)",
+      "render-module/src/main/java",
+      "the exact already-adopted media-execution-plan-module, ffmpeg-provider-module, worker-fabric-module, sandbox-isolation-module, artifact-module, timeline-module, outbox-event-module, and test-conformance-support paths listed in adopted_explicit_paths"
+    ],
+    "pattern_families": [
+      {
+        "id": "DIRECT_BMF_FFMPEG_FILTERGRAPH_AWARENESS",
+        "scope": "live architecture/render documentation and render-module/src/main/java",
+        "matcher": "case-insensitive content match for BmfExecutionBackend, BMF Backend Compiler, BMF/FFmpeg adjacent to ExecutionBackend, BackendExecutionSpec adjacent to BMF, BmfExecutionSpec, BMF Graph Optimizer, graph specification, or filtergraph compiler; plus whole-word bmf, ffmpeg, or filtergraph in Render Java",
+        "matched_path_count": 17
+      },
+      {
+        "id": "RENDER_LOCAL_BACKEND_COMPILER_EXECUTION_SPEC",
+        "scope": "render-module/src/main/java",
+        "matcher": "exact basename set BackendCompilerRuntimeService.java, BackendCompiler.java, BackendExecutionSpec.java, BmfExecutionSpec.java, LocalProcessExecutionSpec.java, RemotionExecutionSpec.java, BmfBackendCompiler.java, LocalProcessBackendCompiler.java, RemotionBackendCompiler.java",
+        "matched_path_count": 9
+      },
+      {
+        "id": "LOCAL_EXECUTION_RUNNERS_MODES",
+        "scope": "render-module/src/main/java",
+        "matcher": "exact basename set LocalExecutionPlanRunner.java, RemotionLocalExecutionRunner.java, TimelineRenderExecutionMode.java, TimelineRenderExecutionProperties.java, ExecutionMode.java",
+        "matched_path_count": 5
+      },
+      {
+        "id": "OLD_PROVIDER_PIPELINE_DEFINITIONS",
+        "scope": "render-module/src/main/java",
+        "matcher": "exact basename MediaPipelineProvider.java",
+        "matched_path_count": 1
+      },
+      {
+        "id": "OLD_EFFECT_BACKEND_ENUMS_DESCRIPTORS",
+        "scope": "render-module/src/main/java",
+        "matcher": "exact basename set EffectBackendKind.java, EnhancedEffectDescriptor.java",
+        "matched_path_count": 2
+      },
+      {
+        "id": "OLD_RENDER_LOCAL_COMPILE_DAGS_PLANS",
+        "scope": "render-module/src/main/java",
+        "matcher": "exact basename set ArtifactDependencyGraph.java, LogicalCapabilityGraph.java, ProviderBindingPlan.java, RenderExecutionPlan.java, PlanBasedTimelineRevisionRenderService.java, CaptionTemplateRenderService.java",
+        "matched_path_count": 6
+      }
+    ],
+    "pattern_union_path_count": 38,
+    "adopted_explicit_paths": [
+      "outbox-event-module/src/main/java/com/example/platform/outbox/coordination/BmfExecutionBackend.java",
+      "render-module/src/main/java/com/example/platform/render/infrastructure/smoke/LocalProcessRunner.java",
+      "render-module/src/main/java/com/example/platform/render/infrastructure/media/MediaProbePortAdapter.java",
+      "render-module/src/main/java/com/example/platform/render/domain/effect/BaselineEffectOperationType.java",
+      "timeline-module/src/main/java/com/example/platform/timeline/semantics/effect/VideoEffectSemantics.java",
+      "render-module/src/main/java/com/example/platform/render/domain/renderplan/RenderGraph.java",
+      "media-execution-plan-module/src/main/java/com/example/platform/execution/planning/LogicalExecutionGraph.java",
+      "media-execution-plan-module/src/main/java/com/example/platform/execution/planning/PhysicalExecutionPlan.java",
+      "media-execution-plan-module/src/main/java/com/example/platform/execution/taskgraph/ProviderBoundExecutableTaskGraph.java",
+      "media-execution-plan-module/src/main/java/com/example/platform/execution/composition/ProviderLocalCompositionEvaluator.java",
+      "media-execution-plan-module/src/main/java/com/example/platform/execution/taskgraph/ExecutionArtifactBoundary.java",
+      "media-execution-plan-module/src/main/java/com/example/platform/execution/domain/provider/ProviderId.java",
+      "media-execution-plan-module/src/main/java/com/example/platform/execution/domain/provider/ProviderImplementationId.java",
+      "media-execution-plan-module/src/main/java/com/example/platform/execution/domain/provider/ProviderBindingPin.java",
+      "ffmpeg-provider-module/src/main/java/com/example/platform/ffmpeg/FfmpegCpuProvider.java",
+      "ffmpeg-provider-module/src/main/java/com/example/platform/ffmpeg/FfmpegCpuTranscodeLowerer.java",
+      "ffmpeg-provider-module/src/main/java/com/example/platform/ffmpeg/FfmpegRuntimeProbe.java",
+      "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/WorkerRuntimeDescriptor.java",
+      "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/WorkerRuntimeSupportAdvertisement.java",
+      "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/WorkerRuntimeSupportRequirement.java",
+      "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/RuntimeEligibilityEvaluator.java",
+      "sandbox-isolation-module/src/main/java/com/example/platform/sandbox/SandboxExecutionRequirement.java",
+      "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/providernative/SandboxRuntimeCommandExecutor.java",
+      "worker-fabric-module/src/main/java/com/example/platform/workerfabric/reuse/DirectStorageArtifactMaterializer.java",
+      "artifact-module/src/main/java/com/example/platform/artifact/domain/Artifact.java",
+      "docs/architecture/governance/roadmap-22-phase-19-legacy-render-ffmpeg-functional-capability-ledger-v1.json",
+      "test-conformance-support/src/test/java/com/example/platform/testsupport/Phase17SandboxConformance.java"
+    ],
+    "adopted_explicit_path_count": 27,
+    "coverage_rule": "Every path in the union of the defined pattern families and adopted_explicit_paths is represented exactly once either by an inventory row or by an explicit excluded row with a reason. UNCLASSIFIED=0 applies to this materialized targeted universe, not to author-selected examples.",
+    "excluded_rows": [],
+    "excluded_row_count": 0,
+    "targeted_universe_path_count": 65,
+    "unclassified": 0,
+    "exhaustiveness_limit": "This proves complete disposition only for the explicitly declared targeted universe at base_sha. It does not claim semantic exhaustiveness for every repository path or every incidental BMF/FFmpeg mention."
+  },
+  "inventory": [
+    {
+      "path": "docs/architecture/bmf-integration.md",
+      "symbols": ["BMF Integration Architecture"],
+      "disposition": "MIGRATE_REDESIGN",
+      "reason": "Historical target document conflates BMF provider-local HOW with ExecutionBackend WHERE/WHEN and proposes a graph-spec task payload. It is not current authority and must be reconciled append-forward, not used by the POC."
+    },
+    {
+      "path": "docs/architecture/adr/ADR-006-bmf-integration.md",
+      "symbols": ["ADR-006: BMF Integration Architecture"],
+      "disposition": "MIGRATE_REDESIGN",
+      "reason": "Historical target ADR makes BMF both provider and execution location. That conflicts with the provider/backend authority split and remains untouched in this lane."
+    },
+    {
+      "path": "docs/architecture/adr/ADR-005-extension-decision-guide.md",
+      "symbols": [
+        "ADR-005 extension decision guide"
+      ],
+      "disposition": "MIGRATE_REDESIGN",
+      "reason": "The live ADR assigns BMF execution to ExecutionBackend. Reconcile that legacy backend identity with the frozen provider-local HOW versus backend WHERE/WHEN split."
+    },
+    {
+      "path": "docs/architecture/current/current-system-state.md",
+      "symbols": [
+        "FFmpeg Filtergraph Compiler current-state entry"
+      ],
+      "disposition": "MIGRATE_REDESIGN",
+      "reason": "The current-state document points at the legacy Render-local filtergraph compiler. Preserve its historical status evidence while redesigning authority references around typed provider lowering."
+    },
+    {
+      "path": "docs/architecture/execution-environment.md",
+      "symbols": [
+        "ExecutionBackend capability table"
+      ],
+      "disposition": "MIGRATE_REDESIGN",
+      "reason": "It lists FFmpeg, BMF, and Remotion as ExecutionBackend capabilities and therefore needs append-forward reconciliation with provider implementation identity and execution environment authority."
+    },
+    {
+      "path": "docs/architecture/extension-decision-guide.md",
+      "symbols": [
+        "BMF execution extension decision"
+      ],
+      "disposition": "MIGRATE_REDESIGN",
+      "reason": "It explicitly places BMF beside LocalProcessExecutionBackend while also treating BMF media processing as a provider extension; redesign the conflicting dual identity."
+    },
+    {
+      "path": "docs/architecture/platform-roadmap.md",
+      "symbols": [
+        "BMF Backend Compiler",
+        "BMF Graph Optimizer"
+      ],
+      "disposition": "MIGRATE_REDESIGN",
+      "reason": "Roadmap entries claim a BMF backend compiler/optimizer and describe BMF/FFmpeg as ExecutionBackend. Reconcile them with private provider lowering and shared backend authority."
+    },
+    {
+      "path": "docs/architecture/platform-kernel.md",
+      "symbols": [
+        "BackendCompiler",
+        "BackendExecutionSpec",
+        "BmfExecutionSpec"
+      ],
+      "disposition": "MIGRATE_REDESIGN",
+      "reason": "The kernel document makes BMF an ExecutionBackend and exposes a BMF graph-bearing execution spec. It must be redesigned without provider topology in platform contracts."
+    },
+    {
+      "path": "docs/architecture/eventing/outbox-module-separation.md",
+      "symbols": [
+        "BmfExecutionBackend coordination row"
+      ],
+      "disposition": "MIGRATE_REDESIGN",
+      "reason": "Its outbox coordination table preserves BmfExecutionBackend as a backend authority; update the architecture description after the separately authorized shadow retirement."
+    },
+    {
+      "path": "docs/architecture/runtime-governance.md",
+      "symbols": [
+        "BMF ExecutionBackend entries"
+      ],
+      "disposition": "MIGRATE_REDESIGN",
+      "reason": "It models BMF as both ProviderExtensionSPI and ExecutionBackend. Reconcile runtime governance to the single provider identity plus WorkerRuntime/backend authority split."
+    },
+    {
+      "path": "docs/render/basic-effects-dsl.md",
+      "symbols": [
+        "FFmpeg filtergraph compiler reference"
+      ],
+      "disposition": "MIGRATE_REDESIGN",
+      "reason": "The DSL document points at the legacy filtergraph compiler surface. Retain typed effect intent while removing any implication that a filtergraph is canonical effect semantics."
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/asset/BmfGraphDefinition.java",
+      "symbols": ["BmfGraphDefinition"],
+      "disposition": "DELETE_SHADOW",
+      "reason": "Render-owned BMF graph state violates private provider topology and Render zero-awareness. Preserve now; retire only in a separately authorized migration."
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/execution/BmfExecutionSpec.java",
+      "symbols": ["BmfExecutionSpec"],
+      "disposition": "DELETE_SHADOW",
+      "reason": "The graphDefinition/options payload is a provider-specific shadow execution contract inside Render."
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/infrastructure/execution/BmfBackendCompiler.java",
+      "symbols": ["BmfBackendCompiler"],
+      "disposition": "DELETE_SHADOW",
+      "reason": "It maps legacy execution plans directly to BMF backend graph types and bypasses the canonical provider-bound ETG/lowering boundary."
+    },
+    {
+      "path": "outbox-event-module/src/main/java/com/example/platform/outbox/coordination/BmfExecutionBackend.java",
+      "symbols": ["BmfExecutionBackend"],
+      "disposition": "DELETE_SHADOW",
+      "reason": "It claims BMF as ExecutionBackend and currently simulates success; BMF is provider implementation HOW, not backend WHERE/WHEN."
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/execution/ExecutionCommand.java",
+      "symbols": ["ExecutionCommand", "bmfGraph"],
+      "disposition": "MIGRATE_REDESIGN",
+      "reason": "The BMF_GRAPH variant exposes provider graph payload in a Render execution union; migrate consumers to typed canonical operations and provider-private lowering."
+    },
+    {
+      "path": "docs/render/ffmpeg-filtergraph-compiler.md",
+      "symbols": ["FFmpeg filtergraph compiler documentation"],
+      "disposition": "REUSE_MECHANICS_ONLY",
+      "reason": "Historical filtergraph knowledge can inform private provider lowering but cannot define canonical effect semantics."
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/app/timeline/compile/LocalExecutionPlanRunner.java",
+      "symbols": ["LocalExecutionPlanRunner"],
+      "disposition": "DELETE_SHADOW",
+      "reason": "It is a parallel Render-local provider execution/scheduling surface; workflow/ETG/Worker Fabric own process and runtime dispatch."
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/infrastructure/smoke/LocalProcessRunner.java",
+      "symbols": ["LocalProcessRunner"],
+      "disposition": "REUSE_MECHANICS_ONLY",
+      "reason": "Bounded timeout/process capture patterns are informative, but its ambient PATH includes /usr/bin and is not an authorized BMF runtime dependency boundary."
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/infrastructure/media/MediaProbePortAdapter.java",
+      "symbols": ["MediaProbePortAdapter", "TYPED_PROVIDER_PLUGIN_MEDIA_PROBE_REQUIRED"],
+      "disposition": "REUSE_AS_CANONICAL",
+      "reason": "Current fail-closed media boundary prevents revival of Render-owned ffprobe authority until a typed provider contribution exists."
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/effect/BaselineEffectOperationType.java",
+      "symbols": ["BaselineEffectOperationType", "BLUR"],
+      "disposition": "MIGRATE_REDESIGN",
+      "reason": "The enum proves retained blur intent but is not sufficiently precise for the frozen BlurEffect semantic, color, precision, and conformance contract."
+    },
+    {
+      "path": "timeline-module/src/main/java/com/example/platform/timeline/semantics/effect/VideoEffectSemantics.java",
+      "symbols": ["VideoEffectSemantics", "GaussianBlurEffect"],
+      "disposition": "REUSE_AS_CANONICAL",
+      "reason": "Timeline owns typed video-effect WHAT; the POC refines Gaussian blur contract semantics append-forward without adding provider names."
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/renderplan/RenderGraph.java",
+      "symbols": ["RenderGraph"],
+      "disposition": "REUSE_AS_CANONICAL",
+      "reason": "Provider-neutral render WHAT graph. It must never mirror BMF nodes or carry BMF/FFmpeg commands."
+    },
+    {
+      "path": "media-execution-plan-module/src/main/java/com/example/platform/execution/planning/LogicalExecutionGraph.java",
+      "symbols": ["LogicalExecutionGraph", "LogicalExecutionNode", "LogicalDependencyEdge"],
+      "disposition": "REUSE_AS_CANONICAL",
+      "reason": "Final provider-neutral typed operation/dependency graph and preferred BMF lowering input."
+    },
+    {
+      "path": "media-execution-plan-module/src/main/java/com/example/platform/execution/planning/PhysicalExecutionPlan.java",
+      "symbols": ["PhysicalExecutionPlan", "PhysicalPlanUnit"],
+      "disposition": "DEFER",
+      "reason": "Current code freezes one logical node to one physical unit and adds a typed IO projection. It is a collapse/downgrade candidate as evidence only; H1/H2 later reconciles and this lane does not redesign Roadmap #21."
+    },
+    {
+      "path": "media-execution-plan-module/src/main/java/com/example/platform/execution/taskgraph/ProviderBoundExecutableTaskGraph.java",
+      "symbols": ["ProviderBoundExecutableTaskGraph", "ExecutableTask"],
+      "disposition": "REUSE_AS_CANONICAL",
+      "reason": "Canonical coarse provider dispatch and cross-runtime boundary aggregate; BMF node topology stays below it."
+    },
+    {
+      "path": "media-execution-plan-module/src/main/java/com/example/platform/execution/composition/ProviderLocalCompositionEvaluator.java",
+      "symbols": ["ProviderLocalCompositionEvaluator"],
+      "disposition": "REUSE_AS_CANONICAL",
+      "reason": "Existing pure legality boundary supports provider-local composition while failing closed on unknown semantics and mandatory Artifact boundaries."
+    },
+    {
+      "path": "media-execution-plan-module/src/main/java/com/example/platform/execution/taskgraph/ExecutionArtifactBoundary.java",
+      "symbols": ["ExecutionArtifactBoundary", "IMMUTABLE_ARTIFACT_AUTHORITY_V1"],
+      "disposition": "REUSE_AS_CANONICAL",
+      "reason": "Typed immutable cross-task/provider/runtime materialization boundary."
+    },
+    {
+      "path": "media-execution-plan-module/src/main/java/com/example/platform/execution/domain/provider/ProviderId.java",
+      "symbols": ["ProviderId"],
+      "disposition": "REUSE_AS_CANONICAL",
+      "reason": "Stable provider-family identity; use bmf."
+    },
+    {
+      "path": "media-execution-plan-module/src/main/java/com/example/platform/execution/domain/provider/ProviderImplementationId.java",
+      "symbols": ["ProviderImplementationId"],
+      "disposition": "REUSE_AS_CANONICAL",
+      "reason": "Separate stable runtime/adapter implementation identity; use distinct CPU and GPU identities."
+    },
+    {
+      "path": "media-execution-plan-module/src/main/java/com/example/platform/execution/domain/provider/ProviderBindingPin.java",
+      "symbols": ["ProviderBindingPin"],
+      "disposition": "REUSE_AS_CANONICAL",
+      "reason": "Single immutable executable provider-binding authority; runtime fingerprints remain provenance/compatibility evidence rather than media semantics."
+    },
+    {
+      "path": "ffmpeg-provider-module/src/main/java/com/example/platform/ffmpeg/FfmpegCpuProvider.java",
+      "symbols": ["FfmpegCpuProvider"],
+      "disposition": "REUSE_MECHANICS_ONLY",
+      "reason": "Provides the repository pattern for family/implementation split, binding, capability profile, and exact WorkerRuntime support requirement."
+    },
+    {
+      "path": "ffmpeg-provider-module/src/main/java/com/example/platform/ffmpeg/FfmpegCpuTranscodeLowerer.java",
+      "symbols": ["FfmpegCpuTranscodeLowerer"],
+      "disposition": "REUSE_MECHANICS_ONLY",
+      "reason": "Provides a fail-closed provider lowerer pattern, but its single PhysicalPlanUnit input is not new canonical BMF architecture."
+    },
+    {
+      "path": "ffmpeg-provider-module/src/main/java/com/example/platform/ffmpeg/FfmpegRuntimeProbe.java",
+      "symbols": ["FfmpegRuntimeProbe"],
+      "disposition": "REUSE_MECHANICS_ONLY",
+      "reason": "Bounded sandboxed probe mechanics are reusable; BMF requires a richer typed image/lock/linkage/module/device fingerprint."
+    },
+    {
+      "path": "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/WorkerRuntimeDescriptor.java",
+      "symbols": ["WorkerRuntimeDescriptor"],
+      "disposition": "REUSE_AS_CANONICAL",
+      "reason": "H1-owned runtime endpoint identity/lifecycle/host relation; H2 must not create a competing model."
+    },
+    {
+      "path": "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/WorkerRuntimeSupportAdvertisement.java",
+      "symbols": ["WorkerRuntimeSupportAdvertisement"],
+      "disposition": "REUSE_AS_CANONICAL",
+      "reason": "Carries immutable candidate evidence for installed runtime support without granting placement or execution authority."
+    },
+    {
+      "path": "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/WorkerRuntimeSupportRequirement.java",
+      "symbols": ["WorkerRuntimeSupportRequirement"],
+      "disposition": "REUSE_AS_CANONICAL",
+      "reason": "Exact server-owned provider/runtime support requirement tied to ProviderBindingPin."
+    },
+    {
+      "path": "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/RuntimeEligibilityEvaluator.java",
+      "symbols": ["RuntimeEligibilityEvaluator", "UNKNOWN_FAIL_CLOSED"],
+      "disposition": "REUSE_AS_CANONICAL",
+      "reason": "Existing central fail-closed matching evaluates probe, runtime, device, reservation, resource, and sandbox evidence."
+    },
+    {
+      "path": "sandbox-isolation-module/src/main/java/com/example/platform/sandbox/SandboxExecutionRequirement.java",
+      "symbols": ["SandboxExecutionRequirement"],
+      "disposition": "REUSE_AS_CANONICAL",
+      "reason": "Canonical bounded process isolation contract; the BMF OCI/runtime path must compose with it."
+    },
+    {
+      "path": "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/providernative/SandboxRuntimeCommandExecutor.java",
+      "symbols": ["SandboxRuntimeCommandExecutor"],
+      "disposition": "REUSE_AS_CANONICAL",
+      "reason": "Worker Fabric execution path prevents provider-owned shell/process authority and preserves runtime failure typing."
+    },
+    {
+      "path": "worker-fabric-module/src/main/java/com/example/platform/workerfabric/reuse/DirectStorageArtifactMaterializer.java",
+      "symbols": ["DirectStorageArtifactMaterializer"],
+      "disposition": "REUSE_AS_CANONICAL",
+      "reason": "Backend-neutral immutable Artifact materialization and digest verification boundary."
+    },
+    {
+      "path": "artifact-module/src/main/java/com/example/platform/artifact/domain/Artifact.java",
+      "symbols": ["Artifact"],
+      "disposition": "REUSE_AS_CANONICAL",
+      "reason": "Immutable content-digest media artifact authority for cross-provider/runtime boundaries and conformance outputs."
+    },
+    {
+      "path": "docs/architecture/governance/roadmap-22-phase-19-legacy-render-ffmpeg-functional-capability-ledger-v1.json",
+      "symbols": ["LEGACY_RENDER_FFMPEG_FUNCTIONAL_CAPABILITY_LEDGER_V1"],
+      "disposition": "REUSE_AS_CANONICAL",
+      "reason": "Historical capability accounting remains immutable source evidence for the exact 14-row reassessment."
+    },
+    {
+      "path": "test-conformance-support/src/test/java/com/example/platform/testsupport/Phase17SandboxConformance.java",
+      "symbols": ["Phase17SandboxConformance"],
+      "disposition": "REUSE_MECHANICS_ONLY",
+      "reason": "Shows shared conformance-test support patterns, but the repository has no existing cross-runtime effect equivalence/tolerance model to reuse as authority."
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/app/execution/BackendCompilerRuntimeService.java",
+      "symbols": ["BackendCompilerRuntimeService"],
+      "disposition": "DELETE_SHADOW",
+      "reason": "This Render-local registry selects backend compilers and translates a legacy ExecutionPlan into BackendExecutionSpec, duplicating provider binding/lowering authority now owned by canonical Provider/ETG boundaries."
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/execution/BackendCompiler.java",
+      "symbols": ["BackendCompiler"],
+      "disposition": "DELETE_SHADOW",
+      "reason": "The Render-owned SPI binds legacy ExecutionPlan directly to backend-specific execution documents and competes with canonical provider lowering."
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/execution/BackendExecutionSpec.java",
+      "symbols": ["BackendExecutionSpec"],
+      "disposition": "DELETE_SHADOW",
+      "reason": "This Render-local common execution-spec authority carries backend identity and execution hints outside the canonical provider-bound ETG and Worker Fabric handoff."
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/execution/LocalProcessExecutionSpec.java",
+      "symbols": ["LocalProcessExecutionSpec"],
+      "disposition": "DELETE_SHADOW",
+      "reason": "It embeds executable, arguments, working directory, and environment in a Render-domain execution spec, duplicating sandboxed Worker Fabric runtime command authority."
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/execution/RemotionExecutionSpec.java",
+      "symbols": ["RemotionExecutionSpec"],
+      "disposition": "DELETE_SHADOW",
+      "reason": "It places provider-specific Remotion entry files, props, frame range, and render options in Render's execution domain instead of a private provider implementation."
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/infrastructure/execution/LocalProcessBackendCompiler.java",
+      "symbols": ["LocalProcessBackendCompiler"],
+      "disposition": "DELETE_SHADOW",
+      "reason": "It lowers the legacy Render ExecutionPlan to a local executable/argument spec, bypassing canonical provider binding, ETG, sandbox, and Worker Fabric execution."
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/infrastructure/exection/RemotionBackendCompiler.java",
+      "symbols": ["RemotionBackendCompiler"],
+      "disposition": "DELETE_SHADOW",
+      "reason": "It compiles a legacy Render plan directly into a provider-specific Remotion document and is a duplicate provider-lowering authority."
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/compile/ArtifactDependencyGraph.java",
+      "symbols": ["ArtifactDependencyGraph"],
+      "disposition": "DELETE_SHADOW",
+      "reason": "This Render-local planning DAG duplicates canonical RenderGraph/LogicalExecutionGraph dependency and Artifact-boundary authorities."
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/compile/LogicalCapabilityGraph.java",
+      "symbols": ["LogicalCapabilityGraph"],
+      "disposition": "DELETE_SHADOW",
+      "reason": "This second Render-local logical graph copies the artifact topology and capability requirements instead of reusing canonical RenderGraph and LogicalExecutionGraph authority."
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/compile/binding/ProviderBindingPlan.java",
+      "symbols": ["ProviderBindingPlan"],
+      "disposition": "DELETE_SHADOW",
+      "reason": "It creates a Render-owned provider-selection graph beside canonical provider identity, binding pins, planning, and ETG authority."
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/compile/executionplan/RenderExecutionPlan.java",
+      "symbols": ["RenderExecutionPlan"],
+      "disposition": "DELETE_SHADOW",
+      "reason": "The Render-local executable-step plan duplicates canonical planning/ETG/Worker Fabric execution authority, including environment targets and provider execution steps."
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/app/timeline/compile/TimelineRenderExecutionMode.java",
+      "symbols": ["TimelineRenderExecutionMode"],
+      "disposition": "DELETE_SHADOW",
+      "reason": "Its LEGACY versus PLAN_BASED switch selects between duplicate Render-local execution pipelines; retirement belongs with migration to the canonical execution path."
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/app/timeline/compile/TimelineRenderExecutionProperties.java",
+      "symbols": ["TimelineRenderExecutionProperties"],
+      "disposition": "DELETE_SHADOW",
+      "reason": "This configuration surface controls the duplicate Render-local plan runner and has no role after canonical provider/ETG execution migration."
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/app/timeline/compile/PlanBasedTimelineRevisionRenderService.java",
+      "symbols": ["PlanBasedTimelineRevisionRenderService"],
+      "disposition": "DELETE_SHADOW",
+      "reason": "It orchestrates the parallel Render-local artifact/capability/binding/execution graph chain and local runner rather than the canonical RenderGraph/LEG/ETG path."
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/app/caption/CaptionTemplateRenderService.java",
+      "symbols": ["CaptionTemplateRenderService"],
+      "disposition": "DELETE_SHADOW",
+      "reason": "Its execution path directly constructs the duplicate Render-local graph/binding/plan chain and invokes LocalExecutionPlanRunner; preserve caption semantics but retire this execution shadow separately."
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/domain/remotion/RemotionLocalExecutionRunner.java",
+      "symbols": ["RemotionLocalExecutionRunner"],
+      "disposition": "DELETE_SHADOW",
+      "reason": "Even though the skeleton fails closed, it establishes a provider-specific Render-local process execution surface parallel to Worker Fabric and sandbox authority."
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/infrastructure/types/MediaPipelineProvider.java",
+      "symbols": ["MediaPipelineProvider", "pipelineDefinition"],
+      "disposition": "DELETE_SHADOW",
+      "reason": "The old provider interface names BMF suitability and accepts an opaque pipelineDefinition/paramsJson contract, conflicting with typed canonical operations and private provider graph lowering."
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/infrastructure/effects/EffectBackendKind.java",
+      "symbols": ["EffectBackendKind"],
+      "disposition": "MIGRATE_REDESIGN",
+      "reason": "The enum embeds implementation/backend families directly in Render effect classification. Preserve effect meaning while moving implementation selection to typed capability/provider binding."
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/infrastructure/effects/EnhancedEffectDescriptor.java",
+      "symbols": ["EnhancedEffectDescriptor", "backendKind"],
+      "disposition": "MIGRATE_REDESIGN",
+      "reason": "The descriptor mixes effect taxonomy and entitlement semantics with EffectBackendKind implementation identity; split canonical effect semantics from provider selection."
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/app/timeline/TimelineRenderJobMapper.java",
+      "symbols": ["TimelineRenderJobMapper", "INTERNAL_PROVIDER_NAMES"],
+      "disposition": "MIGRATE_REDESIGN",
+      "reason": "The mapper correctly blocks external provider selection but contains a literal bmf provider name in Render. Replace the hard-coded implementation list with provider-neutral policy while preserving fail-closed input validation."
+    },
+    {
+      "path": "render-module/src/main/java/com/example/platform/render/infrastructure/ExecutionMode.java",
+      "symbols": ["ExecutionMode"],
+      "disposition": "DELETE_SHADOW",
+      "reason": "The Render-local MOCK/LOCAL/REMOTE runtime mode is a competing execution-location abstraction beside ExecutionBackend and WorkerRuntime authority."
+    }
+  ],
+  "observed_gap": {
+    "cross_runtime_effect_conformance_model_present": false,
+    "evidence": "A repository Java-symbol scan found no Effect Semantic Contract, ToleranceEnvelope, EquivalenceClass ladder, or ConformanceDecision model; B5 must add the bounded foundation under separate implementation authorization."
+  },
+  "summary": {
+    "TOTAL": 65,
+    "REUSE_AS_CANONICAL": 19,
+    "REUSE_MECHANICS_ONLY": 6,
+    "MIGRATE_REDESIGN": 16,
+    "DELETE_SHADOW": 23,
+    "DEFER": 1,
+    "UNCLASSIFIED": 0
+  }
+}

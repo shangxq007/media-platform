@@ -1,0 +1,243 @@
+{
+  "nodes": {
+    "backwardCpp": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1637728661,
+        "narHash": "sha256-wQ+gDhNPS3woSMh1Uutlwg1eQAzKq+3NUpfxR0HdnrU=",
+        "owner": "bombela",
+        "repo": "backward-cpp",
+        "rev": "872350775655ad610f66aea325c319950daa7c95",
+        "type": "github"
+      },
+      "original": {
+        "owner": "bombela",
+        "repo": "backward-cpp",
+        "rev": "872350775655ad610f66aea325c319950daa7c95",
+        "type": "github"
+      }
+    },
+    "benchmarkSource": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1723802895,
+        "narHash": "sha256-5cl1PIjhXaL58kSyWZXRWLq6BITS2BwEovPhwvk2e18=",
+        "owner": "google",
+        "repo": "benchmark",
+        "rev": "12235e24652fc7f809373e7c11a5f73c5763fc4c",
+        "type": "github"
+      },
+      "original": {
+        "owner": "google",
+        "ref": "v1.9.0",
+        "repo": "benchmark",
+        "type": "github"
+      }
+    },
+    "bmf": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1751004732,
+        "narHash": "sha256-Ed7Ny4PO+2ZN/uDmea4fe00WYnQvRAGIj9w0UyoXmiE=",
+        "owner": "BabitMF",
+        "repo": "bmf",
+        "rev": "c39146c636c6b2b68ffaf741095ce737bf123254",
+        "type": "github"
+      },
+      "original": {
+        "owner": "BabitMF",
+        "repo": "bmf",
+        "rev": "c39146c636c6b2b68ffaf741095ce737bf123254",
+        "type": "github"
+      }
+    },
+    "dlpackSource": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1674569409,
+        "narHash": "sha256-5XOMDb0r9N2hO9JJzRHHu4wZKP1xwajIoO6GQf3KqIA=",
+        "owner": "dmlc",
+        "repo": "dlpack",
+        "rev": "ca4d00ad3e2e0f410eeab3264d21b8a39397f362",
+        "type": "github"
+      },
+      "original": {
+        "owner": "dmlc",
+        "repo": "dlpack",
+        "rev": "ca4d00ad3e2e0f410eeab3264d21b8a39397f362",
+        "type": "github"
+      }
+    },
+    "fmtSource": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1616091943,
+        "narHash": "sha256-gZR21hz/L7DGvsdYapgFBNZ2bF0+0U0mD8hMhudkjXw=",
+        "owner": "fmtlib",
+        "repo": "fmt",
+        "rev": "6ae402fd0bf4e6491dc7b228401d531057dbb094",
+        "type": "github"
+      },
+      "original": {
+        "owner": "fmtlib",
+        "repo": "fmt",
+        "rev": "6ae402fd0bf4e6491dc7b228401d531057dbb094",
+        "type": "github"
+      }
+    },
+    "googletestSource": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1616082957,
+        "narHash": "sha256-T/3PSHJN6M7UzD7SVTAL+RX/1LeXQ0lXozlLXob3LTI=",
+        "owner": "google",
+        "repo": "googletest",
+        "rev": "3ff1e8b98a3d1d3abc24a5bacb7651c9b32faedd",
+        "type": "github"
+      },
+      "original": {
+        "owner": "google",
+        "repo": "googletest",
+        "rev": "3ff1e8b98a3d1d3abc24a5bacb7651c9b32faedd",
+        "type": "github"
+      }
+    },
+    "libuuidCmake": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1687886724,
+        "narHash": "sha256-owmD8Uy0I4wYs6cNvyivtgruaLDwl/25v3uDMF+ZUcI=",
+        "owner": "gershnik",
+        "repo": "libuuid-cmake",
+        "rev": "5c57db19ba3fcd41e08c4be2bfc2ad06f6d52066",
+        "type": "github"
+      },
+      "original": {
+        "owner": "gershnik",
+        "ref": "v2.39.1",
+        "repo": "libuuid-cmake",
+        "type": "github"
+      }
+    },
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1751274312,
+        "narHash": "sha256-/bVBlRpECLVzjV19t5KMdMFWSwKLtb5RyXdjz3LJT+g=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "50ab793786d9de88ee30ec4e4c24fb4236fc2674",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "50ab793786d9de88ee30ec4e4c24fb4236fc2674",
+        "type": "github"
+      }
+    },
+    "nlohmannJson": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1660309566,
+        "narHash": "sha256-SUdhIV7tjtacf5DkoWk9cnkfyMlrkg8ZU7XnPZd22Tw=",
+        "owner": "nlohmann",
+        "repo": "json",
+        "rev": "bc889afb4c5bf1c0d8ee29ef35eaaf4c8bef8a5d",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nlohmann",
+        "ref": "v3.11.2",
+        "repo": "json",
+        "type": "github"
+      }
+    },
+    "pybind11Source": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1726265832,
+        "narHash": "sha256-jOWMo47Ka0vqITa8od1hD0KQ2Rx03YEaPtnhrlG00Ak=",
+        "owner": "pybind",
+        "repo": "pybind11",
+        "rev": "2e0815278cb899b20870a67ca8205996ef47e70f",
+        "type": "github"
+      },
+      "original": {
+        "owner": "pybind",
+        "repo": "pybind11",
+        "rev": "2e0815278cb899b20870a67ca8205996ef47e70f",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "backwardCpp": "backwardCpp",
+        "benchmarkSource": "benchmarkSource",
+        "bmf": "bmf",
+        "dlpackSource": "dlpackSource",
+        "fmtSource": "fmtSource",
+        "googletestSource": "googletestSource",
+        "libuuidCmake": "libuuidCmake",
+        "nixpkgs": "nixpkgs",
+        "nlohmannJson": "nlohmannJson",
+        "pybind11Source": "pybind11Source",
+        "spdlogSource": "spdlogSource",
+        "stduuid": "stduuid",
+        "utilLinux": "utilLinux"
+      }
+    },
+    "spdlogSource": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1616703312,
+        "narHash": "sha256-HM1q2UDJrZRuqfWOYB14OvnhN+4kqSsKCfBTssk4eYA=",
+        "owner": "gabime",
+        "repo": "spdlog",
+        "rev": "be14e60d9e8be31735dd9d2d132d8a4cd3482165",
+        "type": "github"
+      },
+      "original": {
+        "owner": "gabime",
+        "repo": "spdlog",
+        "rev": "be14e60d9e8be31735dd9d2d132d8a4cd3482165",
+        "type": "github"
+      }
+    },
+    "stduuid": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1655371305,
+        "narHash": "sha256-MhpKv+gH3QxiaQMx5ImiQjDGrbKUFaaoBLj5Voh78vg=",
+        "owner": "mariusbancila",
+        "repo": "stduuid",
+        "rev": "3afe7193facd5d674de709fccc44d5055e144d7a",
+        "type": "github"
+      },
+      "original": {
+        "owner": "mariusbancila",
+        "ref": "v1.2.3",
+        "repo": "stduuid",
+        "type": "github"
+      }
+    },
+    "utilLinux": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1687869073,
+        "narHash": "sha256-XajQ6AZtpYrKa8xi0BDR/EESXuV5ozZVM7sdXC8M2us=",
+        "owner": "util-linux",
+        "repo": "util-linux",
+        "rev": "e98ef85a8f934bccac2b984422a40f92955ac97d",
+        "type": "github"
+      },
+      "original": {
+        "owner": "util-linux",
+        "ref": "v2.39.1",
+        "repo": "util-linux",
+        "type": "github"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}
