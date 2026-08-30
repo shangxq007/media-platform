@@ -50,6 +50,16 @@ CI_SCRIPT_NAMES = {
     "verify-pfirr1-jooq-authority-fail-closed.sh",
 }
 
+JOOQ_CI_INFRASTRUCTURE_PATHS = {
+    "scripts/test_verify_jooq_generated_schema_parity.py",
+    "scripts/verify-jooq-generated-schema-parity.py",
+    "typed-schema-module/regenerate-jooq-schema.sh",
+}
+
+JOOQ_BUILD_GRAPH_PATHS = {
+    "typed-schema-module/jooq-codegen.xml",
+}
+
 
 def _under(path: str, prefix: str) -> bool:
     return path == prefix.rstrip("/") or path.startswith(prefix)
@@ -110,6 +120,7 @@ def classify_path(raw_path: str) -> tuple[str, ...]:
 
     if not _under(path, "frontend/") and (
         path in {"settings.gradle.kts", "settings.gradle", "build.gradle.kts", "build.gradle", "gradle.properties", "gradlew", "gradlew.bat"}
+        or path in JOOQ_BUILD_GRAPH_PATHS
         or _under(path, "gradle/")
         or basename in {"build.gradle.kts", "build.gradle"}
     ):
@@ -140,6 +151,7 @@ def classify_path(raw_path: str) -> tuple[str, ...]:
         _under(path, "scripts/ci/")
         or _under(path, ".github/actions/")
         or (_under(path, "scripts/") and basename in CI_SCRIPT_NAMES)
+        or path in JOOQ_CI_INFRASTRUCTURE_PATHS
         or path in {".github/CODEOWNERS", ".pre-commit-config.yaml"}
     ):
         categories.add("ci_infrastructure")

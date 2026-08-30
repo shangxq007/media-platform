@@ -136,8 +136,8 @@ import com.example.platform.typedschema.jooq.generated.tables.StorageLogicalObje
 import com.example.platform.typedschema.jooq.generated.tables.StorageObject;
 import com.example.platform.typedschema.jooq.generated.tables.StorageObjectPlacement;
 import com.example.platform.typedschema.jooq.generated.tables.StoragePlacementReceipt;
-import com.example.platform.typedschema.jooq.generated.tables.StorageWriteIntent;
 import com.example.platform.typedschema.jooq.generated.tables.StorageReference;
+import com.example.platform.typedschema.jooq.generated.tables.StorageWriteIntent;
 import com.example.platform.typedschema.jooq.generated.tables.SubscriptionCommand;
 import com.example.platform.typedschema.jooq.generated.tables.SubscriptionContract;
 import com.example.platform.typedschema.jooq.generated.tables.SubscriptionPlan;
@@ -867,14 +867,14 @@ public class Tables {
     public static final StoragePlacementReceipt STORAGE_PLACEMENT_RECEIPT = StoragePlacementReceipt.STORAGE_PLACEMENT_RECEIPT;
 
     /**
-     * The table <code>public.storage_write_intent</code>.
-     */
-    public static final StorageWriteIntent STORAGE_WRITE_INTENT = StorageWriteIntent.STORAGE_WRITE_INTENT;
-
-    /**
      * The table <code>public.storage_reference</code>.
      */
     public static final StorageReference STORAGE_REFERENCE = StorageReference.STORAGE_REFERENCE;
+
+    /**
+     * The table <code>public.storage_write_intent</code>.
+     */
+    public static final StorageWriteIntent STORAGE_WRITE_INTENT = StorageWriteIntent.STORAGE_WRITE_INTENT;
 
     /**
      * The table <code>public.subscription_command</code>.

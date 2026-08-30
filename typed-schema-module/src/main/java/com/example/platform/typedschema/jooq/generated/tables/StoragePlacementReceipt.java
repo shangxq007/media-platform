@@ -79,7 +79,9 @@ public class StoragePlacementReceipt extends TableImpl<StoragePlacementReceiptRe
      */
     public final TableField<StoragePlacementReceiptRecord, String> SEMANTIC_FINGERPRINT = createField(DSL.name("semantic_fingerprint"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
-    /** The column <code>public.storage_placement_receipt.receipt_purpose</code>. */
+    /**
+     * The column <code>public.storage_placement_receipt.receipt_purpose</code>.
+     */
     public final TableField<StoragePlacementReceiptRecord, String> RECEIPT_PURPOSE = createField(DSL.name("receipt_purpose"), SQLDataType.VARCHAR(32).nullable(false), this, "");
 
     /**
@@ -136,7 +138,9 @@ public class StoragePlacementReceipt extends TableImpl<StoragePlacementReceiptRe
      */
     public final TableField<StoragePlacementReceiptRecord, String> PROVIDER_VERSION_TOKEN = createField(DSL.name("provider_version_token"), SQLDataType.VARCHAR(255), this, "");
 
-    /** The column <code>public.storage_placement_receipt.placement_state</code>. */
+    /**
+     * The column <code>public.storage_placement_receipt.placement_state</code>.
+     */
     public final TableField<StoragePlacementReceiptRecord, String> PLACEMENT_STATE = createField(DSL.name("placement_state"), SQLDataType.VARCHAR(32).nullable(false), this, "");
 
     /**
@@ -294,8 +298,8 @@ public class StoragePlacementReceipt extends TableImpl<StoragePlacementReceiptRe
             Internal.createCheck(this, DSL.name("ck_storage_placement_receipt_digest"), "((((committed_digest_algorithm)::text = 'SHA_256'::text) AND ((committed_digest)::text ~ '^[0-9a-f]{64}$'::text)))", true),
             Internal.createCheck(this, DSL.name("ck_storage_placement_receipt_fingerprint"), "(((semantic_fingerprint)::text ~ '^[0-9a-f]{64}$'::text))", true),
             Internal.createCheck(this, DSL.name("ck_storage_placement_receipt_length"), "((committed_length >= 0))", true),
-            Internal.createCheck(this, DSL.name("ck_storage_placement_receipt_purpose"), "(((receipt_purpose)::text = ANY ((ARRAY['ORIGINAL_ISSUANCE', 'ADDITIONAL_PLACEMENT'])::text[])))", true),
-            Internal.createCheck(this, DSL.name("ck_storage_placement_receipt_state"), "(((placement_state)::text = ANY ((ARRAY['PENDING', 'UPLOADING', 'VERIFYING', 'AVAILABLE', 'QUARANTINED', 'DELETING', 'DELETED', 'FAILED'])::text[])))", true)
+            Internal.createCheck(this, DSL.name("ck_storage_placement_receipt_purpose"), "(((receipt_purpose)::text = ANY ((ARRAY['ORIGINAL_ISSUANCE'::character varying, 'ADDITIONAL_PLACEMENT'::character varying])::text[])))", true),
+            Internal.createCheck(this, DSL.name("ck_storage_placement_receipt_state"), "(((placement_state)::text = ANY ((ARRAY['PENDING'::character varying, 'UPLOADING'::character varying, 'VERIFYING'::character varying, 'AVAILABLE'::character varying, 'QUARANTINED'::character varying, 'DELETING'::character varying, 'DELETED'::character varying, 'FAILED'::character varying])::text[])))", true)
         );
     }
 

@@ -28,6 +28,27 @@ REACTIVE_STREAMS_JAR="$SCRIPT_DIR/lib/reactive-streams.jar"
 R2DBC_SPI_JAR="$SCRIPT_DIR/lib/r2dbc-spi.jar"
 POSTGRES_JDBC_JAR="$SCRIPT_DIR/lib/postgresql-42.7.1.jar"
 
+REQUIRED_GENERATOR_JARS=(
+    "$JOOQ_JAR"
+    "$JOOQ_META_JAR"
+    "$JOOQ_CORE_JAR"
+    "$JAXB_API_JAR"
+    "$REACTIVE_STREAMS_JAR"
+    "$R2DBC_SPI_JAR"
+    "$POSTGRES_JDBC_JAR"
+)
+MISSING_GENERATOR_JARS=()
+for jar in "${REQUIRED_GENERATOR_JARS[@]}"; do
+    if [ ! -f "$jar" ]; then
+        MISSING_GENERATOR_JARS+=("$jar")
+    fi
+done
+if [ "${#MISSING_GENERATOR_JARS[@]}" -ne 0 ]; then
+    echo "FAIL: Required jOOQ generator JARs are missing:" >&2
+    printf '  %s\n' "${MISSING_GENERATOR_JARS[@]}" >&2
+    exit 1
+fi
+
 cleanup() {
     echo "Cleaning up PostgreSQL container..."
     podman stop "$CONTAINER_NAME" 2>/dev/null || true
@@ -65,61 +86,14 @@ podman exec -i "$CONTAINER_NAME" \
 echo "Schema applied successfully."
 
 echo "Running jOOQ codegen..."
-# Generate codegen config with current paths
 CODEGEN_CONFIG="$SCRIPT_DIR/jooq-codegen.xml"
-cat > "$CODEGEN_CONFIG" << EOF
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<configuration xmlns="http://www.jooq.org/xsd/jooq-codegen-3.19.0.xsd">
-  <jdbc>
-    <driver>org.postgresql.Driver</driver>
-    <url>jdbc:postgresql://localhost:$DB_PORT/$DB_NAME</url>
-    <user>$DB_USER</user>
-    <password>$DB_PASS</password>
-  </jdbc>
-  <generator>
-    <name>org.jooq.codegen.JavaGenerator</name>
-    <database>
-      <name>org.jooq.meta.postgres.PostgresDatabase</name>
-      <includes>.*</includes>
-      <excludes></excludes>
-      <inputSchema>public</inputSchema>
-      <forcedTypes>
-        <!-- TIMESTAMPTZ → Instant via InstantConverter -->
-        <forcedType>
-          <userType>java.time.Instant</userType>
-          <converter>com.example.platform.typedschema.contract.InstantConverter</converter>
-          <includeTypes>.*TIMESTAMPTZ.*</includeTypes>
-        </forcedType>
-        <!-- TSVECTOR → TsvectorValue via TsvectorBinding -->
-        <forcedType>
-          <userType>com.example.platform.typedschema.contract.TsvectorValue</userType>
-          <binding>com.example.platform.typedschema.contract.TsvectorBinding</binding>
-          <includeTypes>.*tsvector.*</includeTypes>
-        </forcedType>
-      </forcedTypes>
-    </database>
-    <target>
-      <packageName>com.example.platform.typedschema.jooq.generated</packageName>
-      <directory>$OUTPUT_DIR</directory>
-    </target>
-  </generator>
-</configuration>
-EOF
-
-if [ -f "$JOOQ_JAR" ] && [ -f "$JOOQ_META_JAR" ] && [ -f "$JOOQ_CORE_JAR" ] && [ -f "$JAXB_API_JAR" ] && [ -f "$REACTIVE_STREAMS_JAR" ] && [ -f "$R2DBC_SPI_JAR" ] && [ -f "$POSTGRES_JDBC_JAR" ]; then
+(
+    cd "$SCRIPT_DIR"
     java -cp "$JOOQ_JAR:$JOOQ_META_JAR:$JOOQ_CORE_JAR:$JAXB_API_JAR:$REACTIVE_STREAMS_JAR:$R2DBC_SPI_JAR:$POSTGRES_JDBC_JAR" \
         org.jooq.codegen.GenerationTool \
         "$CODEGEN_CONFIG"
-    echo "jOOQ codegen complete."
-else
-    echo "WARN: jOOQ codegen JARs not found at $SCRIPT_DIR/lib/"
-    echo "Expected: $JOOQ_JAR, $JOOQ_META_JAR, $JOOQ_CORE_JAR, $JAXB_API_JAR, $POSTGRES_JDBC_JAR"
-    echo "Download from Maven Central or run via Gradle."
-    echo ""
-    echo "To run codegen via Gradle:"
-    echo "  ./gradlew :typed-schema-module:dependencies"
-    echo "  Then use the resolved classpath to run GenerationTool."
-fi
+)
+echo "jOOQ codegen complete."
 
 # Count generated files
 TABLE_COUNT=$(find "$OUTPUT_DIR" -name "*Table.java" -type f | wc -l)

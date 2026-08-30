@@ -18,14 +18,10 @@ import java.util.List;
 import org.jooq.Check;
 import org.jooq.Condition;
 import org.jooq.Field;
-import org.jooq.ForeignKey;
 import org.jooq.Index;
-import org.jooq.InverseForeignKey;
 import org.jooq.Name;
-import org.jooq.Path;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
-import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
 import org.jooq.Select;
@@ -71,10 +67,14 @@ public class StorageDatabaseBinding extends TableImpl<StorageDatabaseBindingReco
      */
     public final TableField<StorageDatabaseBindingRecord, String> DATABASE_KIND = createField(DSL.name("database_kind"), SQLDataType.VARCHAR(32).nullable(false), this, "");
 
-    /** The column <code>public.storage_database_binding.database_oid</code>. */
+    /**
+     * The column <code>public.storage_database_binding.database_oid</code>.
+     */
     public final TableField<StorageDatabaseBindingRecord, Long> DATABASE_OID = createField(DSL.name("database_oid"), SQLDataType.BIGINT.nullable(false), this, "");
 
-    /** The column <code>public.storage_database_binding.database_name</code>. */
+    /**
+     * The column <code>public.storage_database_binding.database_name</code>.
+     */
     public final TableField<StorageDatabaseBindingRecord, String> DATABASE_NAME = createField(DSL.name("database_name"), SQLDataType.VARCHAR(128).nullable(false), this, "");
 
     /**
@@ -127,7 +127,9 @@ public class StorageDatabaseBinding extends TableImpl<StorageDatabaseBindingReco
      */
     public final TableField<StorageDatabaseBindingRecord, Instant> FIRST_SEEN_AT = createField(DSL.name("first_seen_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false), this, "", new InstantConverter());
 
-    /** The column <code>public.storage_database_binding.last_observed_at</code>. */
+    /**
+     * The column <code>public.storage_database_binding.last_observed_at</code>.
+     */
     public final TableField<StorageDatabaseBindingRecord, Instant> LAST_OBSERVED_AT = createField(DSL.name("last_observed_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false), this, "", new InstantConverter());
 
     private StorageDatabaseBinding(Name alias, Table<StorageDatabaseBindingRecord> aliased) {
@@ -159,39 +161,6 @@ public class StorageDatabaseBinding extends TableImpl<StorageDatabaseBindingReco
      */
     public StorageDatabaseBinding() {
         this(DSL.name("storage_database_binding"), null);
-    }
-
-    public <O extends Record> StorageDatabaseBinding(Table<O> path, ForeignKey<O, StorageDatabaseBindingRecord> childPath, InverseForeignKey<O, StorageDatabaseBindingRecord> parentPath) {
-        super(path, childPath, parentPath, STORAGE_DATABASE_BINDING);
-    }
-
-    /**
-     * A subtype implementing {@link Path} for simplified path-based joins.
-     */
-    public static class StorageDatabaseBindingPath extends StorageDatabaseBinding implements Path<StorageDatabaseBindingRecord> {
-
-        private static final long serialVersionUID = 1L;
-        public <O extends Record> StorageDatabaseBindingPath(Table<O> path, ForeignKey<O, StorageDatabaseBindingRecord> childPath, InverseForeignKey<O, StorageDatabaseBindingRecord> parentPath) {
-            super(path, childPath, parentPath);
-        }
-        private StorageDatabaseBindingPath(Name alias, Table<StorageDatabaseBindingRecord> aliased) {
-            super(alias, aliased);
-        }
-
-        @Override
-        public StorageDatabaseBindingPath as(String alias) {
-            return new StorageDatabaseBindingPath(DSL.name(alias), this);
-        }
-
-        @Override
-        public StorageDatabaseBindingPath as(Name alias) {
-            return new StorageDatabaseBindingPath(alias, this);
-        }
-
-        @Override
-        public StorageDatabaseBindingPath as(Table<?> alias) {
-            return new StorageDatabaseBindingPath(alias.getQualifiedName(), this);
-        }
     }
 
     @Override

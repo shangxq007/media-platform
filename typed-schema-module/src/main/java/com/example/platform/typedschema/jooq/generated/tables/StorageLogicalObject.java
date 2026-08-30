@@ -67,10 +67,14 @@ public class StorageLogicalObject extends TableImpl<StorageLogicalObjectRecord> 
      */
     public final TableField<StorageLogicalObjectRecord, String> OBJECT_ID = createField(DSL.name("object_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
-    /** The column <code>public.storage_logical_object.tenant_id</code>. */
+    /**
+     * The column <code>public.storage_logical_object.tenant_id</code>.
+     */
     public final TableField<StorageLogicalObjectRecord, String> TENANT_ID = createField(DSL.name("tenant_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
-    /** The column <code>public.storage_logical_object.project_id</code>. */
+    /**
+     * The column <code>public.storage_logical_object.project_id</code>.
+     */
     public final TableField<StorageLogicalObjectRecord, String> PROJECT_ID = createField(DSL.name("project_id"), SQLDataType.VARCHAR(64), this, "");
 
     /**
@@ -197,9 +201,14 @@ public class StorageLogicalObject extends TableImpl<StorageLogicalObjectRecord> 
 
     private transient StorageWriteIntentPath _storageWriteIntent;
 
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.storage_write_intent</code> table
+     */
     public StorageWriteIntentPath storageWriteIntent() {
         if (_storageWriteIntent == null)
             _storageWriteIntent = new StorageWriteIntentPath(this, null, Keys.STORAGE_WRITE_INTENT__FK_STORAGE_WRITE_INTENT_OBJECT.getInverseKey());
+
         return _storageWriteIntent;
     }
 
@@ -207,7 +216,7 @@ public class StorageLogicalObject extends TableImpl<StorageLogicalObjectRecord> 
     public List<Check<StorageLogicalObjectRecord>> getChecks() {
         return Arrays.asList(
             Internal.createCheck(this, DSL.name("ck_storage_logical_object_fingerprint"), "(((semantic_fingerprint)::text ~ '^[0-9a-f]{64}$'::text))", true),
-            Internal.createCheck(this, DSL.name("ck_storage_logical_object_owner"), "((length(TRIM(BOTH FROM tenant_id)) > 0))", true)
+            Internal.createCheck(this, DSL.name("ck_storage_logical_object_owner"), "(((length(TRIM(BOTH FROM tenant_id)) > 0) AND ((project_id IS NULL) OR (length(TRIM(BOTH FROM project_id)) > 0))))", true)
         );
     }
 

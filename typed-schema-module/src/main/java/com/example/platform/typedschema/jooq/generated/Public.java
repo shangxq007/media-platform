@@ -136,8 +136,8 @@ import com.example.platform.typedschema.jooq.generated.tables.StorageLogicalObje
 import com.example.platform.typedschema.jooq.generated.tables.StorageObject;
 import com.example.platform.typedschema.jooq.generated.tables.StorageObjectPlacement;
 import com.example.platform.typedschema.jooq.generated.tables.StoragePlacementReceipt;
-import com.example.platform.typedschema.jooq.generated.tables.StorageWriteIntent;
 import com.example.platform.typedschema.jooq.generated.tables.StorageReference;
+import com.example.platform.typedschema.jooq.generated.tables.StorageWriteIntent;
 import com.example.platform.typedschema.jooq.generated.tables.SubscriptionCommand;
 import com.example.platform.typedschema.jooq.generated.tables.SubscriptionContract;
 import com.example.platform.typedschema.jooq.generated.tables.SubscriptionPlan;
@@ -881,14 +881,14 @@ public class Public extends SchemaImpl {
     public final StoragePlacementReceipt STORAGE_PLACEMENT_RECEIPT = StoragePlacementReceipt.STORAGE_PLACEMENT_RECEIPT;
 
     /**
-     * The table <code>public.storage_write_intent</code>.
-     */
-    public final StorageWriteIntent STORAGE_WRITE_INTENT = StorageWriteIntent.STORAGE_WRITE_INTENT;
-
-    /**
      * The table <code>public.storage_reference</code>.
      */
     public final StorageReference STORAGE_REFERENCE = StorageReference.STORAGE_REFERENCE;
+
+    /**
+     * The table <code>public.storage_write_intent</code>.
+     */
+    public final StorageWriteIntent STORAGE_WRITE_INTENT = StorageWriteIntent.STORAGE_WRITE_INTENT;
 
     /**
      * The table <code>public.subscription_command</code>.
@@ -1338,8 +1338,8 @@ public class Public extends SchemaImpl {
             StorageObject.STORAGE_OBJECT,
             StorageObjectPlacement.STORAGE_OBJECT_PLACEMENT,
             StoragePlacementReceipt.STORAGE_PLACEMENT_RECEIPT,
-            StorageWriteIntent.STORAGE_WRITE_INTENT,
             StorageReference.STORAGE_REFERENCE,
+            StorageWriteIntent.STORAGE_WRITE_INTENT,
             SubscriptionCommand.SUBSCRIPTION_COMMAND,
             SubscriptionContract.SUBSCRIPTION_CONTRACT,
             SubscriptionPlan.SUBSCRIPTION_PLAN,

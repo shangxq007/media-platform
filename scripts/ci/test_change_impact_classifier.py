@@ -43,6 +43,28 @@ STABLE_POLICY_IDS = (
     "CLASSIFIER_DEPENDENT_CHECKOUTS_USE_COMPLETE_CREDENTIAL_FREE_HISTORY_V1",
 )
 
+FULL_VALIDATION_WITHOUT_IMAGE = {
+    "full_ci",
+    "backend_ci",
+    "frontend_ci",
+    "architecture_drift",
+    "gitops_validation",
+    "semgrep_validation",
+    "formal_verification",
+}
+BUILD_GRAPH_POLICY = {
+    "backend_ci",
+    "architecture_drift",
+    "semgrep_validation",
+    "runtime_image_publish",
+}
+JOOQ_CI_INFRASTRUCTURE_PATHS = (
+    "scripts/test_verify_jooq_generated_schema_parity.py",
+    "scripts/verify-jooq-generated-schema-parity.py",
+    "typed-schema-module/regenerate-jooq-schema.sh",
+)
+JOOQ_BUILD_GRAPH_PATH = "typed-schema-module/jooq-codegen.xml"
+
 spec = importlib.util.spec_from_file_location("change_impact_classifier", CLASSIFIER_PATH)
 assert spec and spec.loader
 classifier = importlib.util.module_from_spec(spec)
@@ -67,6 +89,10 @@ CASES = (
     ("ci-infrastructure", "scripts/ci/setup-test-runtime.sh", {"ci_infrastructure"}, {"full_ci", "backend_ci", "frontend_ci", "architecture_drift", "gitops_validation", "semgrep_validation", "formal_verification"}),
     ("storage-identity-placement-guard", "scripts/check-storage-identity-placement-m0-m1.py", {"ci_infrastructure"}, {"full_ci", "backend_ci", "frontend_ci", "architecture_drift", "gitops_validation", "semgrep_validation", "formal_verification"}),
     ("storage-identity-placement-guard-test", "scripts/test-check-storage-identity-placement-m0-m1.py", {"ci_infrastructure"}, {"full_ci", "backend_ci", "frontend_ci", "architecture_drift", "gitops_validation", "semgrep_validation", "formal_verification"}),
+    ("jooq-schema-parity-test", JOOQ_CI_INFRASTRUCTURE_PATHS[0], {"ci_infrastructure"}, FULL_VALIDATION_WITHOUT_IMAGE),
+    ("jooq-schema-parity-verifier", JOOQ_CI_INFRASTRUCTURE_PATHS[1], {"ci_infrastructure"}, FULL_VALIDATION_WITHOUT_IMAGE),
+    ("jooq-schema-regeneration", JOOQ_CI_INFRASTRUCTURE_PATHS[2], {"ci_infrastructure"}, FULL_VALIDATION_WITHOUT_IMAGE),
+    ("jooq-codegen-build-graph", JOOQ_BUILD_GRAPH_PATH, {"build_graph"}, BUILD_GRAPH_POLICY),
     ("unknown", "unowned/new-surface.xyz", {"unknown"}, {"full_ci", "backend_ci", "frontend_ci", "architecture_drift", "gitops_validation", "semgrep_validation", "formal_verification"}),
 )
 
@@ -324,6 +350,20 @@ def main() -> None:
         if set(result.categories) != {"ci_infrastructure"}:
             raise AssertionError(f"{path}: Storage authority guard classification is not exact")
 
+    for path in JOOQ_CI_INFRASTRUCTURE_PATHS:
+        result = classifier.Classification.from_paths([path], "jooq_owner_key_parity_matrix")
+        if set(result.categories) != {"ci_infrastructure"}:
+            raise AssertionError(f"{path}: jOOQ parity CI classification is not exact")
+        if not result.policy()["full_ci"] or result.policy()["runtime_image_publish"]:
+            raise AssertionError(f"{path}: jOOQ parity CI policy is not full validation without image")
+    jooq_build_graph = classifier.Classification.from_paths(
+        [JOOQ_BUILD_GRAPH_PATH], "jooq_owner_key_parity_matrix"
+    )
+    if set(jooq_build_graph.categories) != {"build_graph"}:
+        raise AssertionError(f"{JOOQ_BUILD_GRAPH_PATH}: jOOQ codegen classification is not exact")
+    if jooq_build_graph.policy()["full_ci"] or not jooq_build_graph.policy()["runtime_image_publish"]:
+        raise AssertionError(f"{JOOQ_BUILD_GRAPH_PATH}: build graph policy did not include runtime image")
+
     empty = classifier.Classification.from_paths([], "matrix")
     if set(empty.categories) != {"unknown"} or not empty.policy()["full_ci"] or empty.policy()["runtime_image_publish"]:
         raise AssertionError("empty change set did not fail closed without image publication")
@@ -456,10 +496,43 @@ def main() -> None:
         finally:
             classifier.CI_SCRIPT_NAMES.add(script_name)
 
+    for path in JOOQ_CI_INFRASTRUCTURE_PATHS:
+        classifier.JOOQ_CI_INFRASTRUCTURE_PATHS.remove(path)
+        try:
+            try:
+                assert_case(
+                    f"{Path(path).name}-rule-removal",
+                    path,
+                    {"ci_infrastructure"},
+                    FULL_VALIDATION_WITHOUT_IMAGE,
+                )
+            except AssertionError:
+                pass
+            else:
+                raise AssertionError(f"RED mutation passed: {Path(path).name}-rule-removal")
+        finally:
+            classifier.JOOQ_CI_INFRASTRUCTURE_PATHS.add(path)
+
+    classifier.JOOQ_BUILD_GRAPH_PATHS.remove(JOOQ_BUILD_GRAPH_PATH)
+    try:
+        try:
+            assert_case(
+                "jooq-codegen-build-graph-rule-removal",
+                JOOQ_BUILD_GRAPH_PATH,
+                {"build_graph"},
+                BUILD_GRAPH_POLICY,
+            )
+        except AssertionError:
+            pass
+        else:
+            raise AssertionError("RED mutation passed: jooq-codegen-build-graph-rule-removal")
+    finally:
+        classifier.JOOQ_BUILD_GRAPH_PATHS.add(JOOQ_BUILD_GRAPH_PATH)
+
     print(
         f"CHANGE_IMPACT_CLASSIFIER_RED_MATRIX=PASS cases={len(CASES) + 4} "
         f"workflow_mutations={len(mutations)} governance_mutations={len(governance_mutations)} "
-        f"classifier_mutations={1 + len(storage_guard_paths)}"
+        f"classifier_mutations={2 + len(storage_guard_paths) + len(JOOQ_CI_INFRASTRUCTURE_PATHS)}"
     )
 
 
