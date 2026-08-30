@@ -28,6 +28,11 @@ EXPECTED = {
     "CALLER_CANONICAL_BOOLEAN_AUTHORITY_COUNT": 0,
     "ENDPOINT_STABLE_IDENTITY_AUTHORITY_COUNT": 0,
     "OBSERVATION_TIME_STABLE_IDENTITY_AUTHORITY_COUNT": 0,
+    "TENANT_ONLY_STORAGE_LOGICAL_OBJECT_UNIQUENESS_COUNT": 0,
+    "TENANT_ONLY_STORAGE_WRITE_INTENT_UNIQUENESS_COUNT": 0,
+    "OWNER_LOCK_PROJECT_DOMAIN_OMISSION_COUNT": 0,
+    "OWNER_LOOKUP_PROJECT_PREDICATE_OMISSION_COUNT": 0,
+    "ORIGINAL_REPLAY_MUTABLE_PLACEMENT_FACT_SELECTION_COUNT": 0,
     "UNCLASSIFIED": 0,
 }
 
@@ -56,6 +61,35 @@ def target_storage_ddl(schema: str) -> str:
         re.IGNORECASE | re.DOTALL,
     )
     return "\n".join(body for _, body in blocks)
+
+
+def table_ddl(schema: str, table: str) -> str:
+    match = re.search(
+        rf"create table {re.escape(table)}\s*\((.*?)\)\s*;",
+        schema,
+        re.IGNORECASE | re.DOTALL,
+    )
+    return match.group(1) if match else ""
+
+
+def method_body(source: str, method: str) -> str:
+    match = re.search(
+        rf"\b{re.escape(method)}\s*\([^)]*\)\s*\{{(.*?)\n\s*\}}",
+        source,
+        re.DOTALL,
+    )
+    return match.group(1) if match else ""
+
+
+def missing_full_owner_uniqueness(schema: str, table: str) -> int:
+    ddl = table_ddl(schema, table)
+    full_owner = re.search(
+        r"\bunique\s+nulls\s+not\s+distinct\s*\(\s*tenant_id\s*,\s*"
+        r"project_id\s*,\s*issuance_idempotency_key\s*\)",
+        ddl,
+        re.IGNORECASE | re.DOTALL,
+    )
+    return 0 if full_owner else 1
 
 
 def unclassified_count(root: Path) -> int:
@@ -119,6 +153,17 @@ def compute(root: Path) -> dict[str, int]:
     )
 
     schema = read(root / "platform-app/src/main/resources/db/migration/V1__initial_schema.sql")
+    write_intent_repository = read(
+        root / "storage-module/src/main/java/com/example/platform/storage/"
+        "infrastructure/identity/JdbcStorageWriteIntentRepository.java"
+    )
+    object_authority_repository = read(
+        root / "storage-module/src/main/java/com/example/platform/storage/"
+        "infrastructure/identity/JdbcStorageObjectAuthorityRepository.java"
+    )
+    owner_lock = method_body(write_intent_repository, "lockOwnerKey")
+    owner_lookup = method_body(write_intent_repository, "findByOwnerKey")
+    original_replay = method_body(object_authority_repository, "findOriginalIssuance")
     target_ddl = target_storage_ddl(schema)
     artifact_text = "\n".join(
         read(path) for path in java_sources(root, "artifact-module/src/main/java")
@@ -211,6 +256,40 @@ def compute(root: Path) -> dict[str, int]:
             endpoint_identity_pattern.findall(new_authority_text)),
         "OBSERVATION_TIME_STABLE_IDENTITY_AUTHORITY_COUNT": len(
             observation_time_identity_pattern.findall(new_authority_text)),
+        "TENANT_ONLY_STORAGE_LOGICAL_OBJECT_UNIQUENESS_COUNT": (
+            missing_full_owner_uniqueness(schema, "storage_logical_object")
+        ),
+        "TENANT_ONLY_STORAGE_WRITE_INTENT_UNIQUENESS_COUNT": (
+            missing_full_owner_uniqueness(schema, "storage_write_intent")
+        ),
+        "OWNER_LOCK_PROJECT_DOMAIN_OMISSION_COUNT": int(not (
+            "storage-write-intent-owner-key-v1" in owner_lock
+            and "tenant:value:" in owner_lock
+            and "project:null" in owner_lock
+            and "project:value:" in owner_lock
+            and "key:value:" in owner_lock
+            and "owner.projectId()" in owner_lock
+            and owner_lock.count(".length()") >= 2
+        )),
+        "OWNER_LOOKUP_PROJECT_PREDICATE_OMISSION_COUNT": int(not (
+            re.search(
+                r"project_id\s+is\s+not\s+distinct\s+from\s+\?",
+                owner_lookup,
+                re.IGNORECASE,
+            )
+            and "owner.projectId()" in owner_lookup
+        )),
+        "ORIGINAL_REPLAY_MUTABLE_PLACEMENT_FACT_SELECTION_COUNT": int(bool(
+            re.search(
+                r"\bselect\b.*?\bp\.(?:replica_id|provider_id|namespace_tenant_id|"
+                r"namespace_project_id|namespace_class|region_policy|data_classification|"
+                r"opaque_locator|provider_version_token|region|placement_state|"
+                r"committed_digest_algorithm|committed_digest|committed_length|"
+                r"provider_correlation_id)\b.*?\bfrom\b",
+                original_replay,
+                re.IGNORECASE | re.DOTALL,
+            )
+        )),
         "UNCLASSIFIED": unclassified_count(root),
     }
 

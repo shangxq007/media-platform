@@ -140,7 +140,7 @@ public class CanonicalStorageWriteIntentRecoveryService implements StorageWriteI
                 || !existing.semanticFingerprint().equals(command.semanticFingerprint())
                 || !Objects.equals(existing.providerRequestId(), command.providerRequestId())) {
             throw new StorageIssuanceConflictException(
-                    "tenant-scoped issuance key was already used with different semantic input");
+                    "full-owner issuance key was already used with different semantic input");
         }
         return existing;
     }

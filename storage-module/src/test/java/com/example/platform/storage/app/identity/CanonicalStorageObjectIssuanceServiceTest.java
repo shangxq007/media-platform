@@ -47,7 +47,7 @@ class CanonicalStorageObjectIssuanceServiceTest {
             new CanonicalStorageObjectIssuanceService(recovery);
 
     @Test
-    void sameTenantKeyAndInputReturnsSameObjectAndOriginalReceipt() {
+    void sameFullOwnerKeyAndInputReturnsSameObjectAndOriginalReceipt() {
         IssuanceCommand command = command(owner("tenant-1", "project-1"), "issue-1",
                 placement("replica-1", "namespace-is-not-owner"));
         IssuanceResult first = service.issue(command);
@@ -62,23 +62,29 @@ class CanonicalStorageObjectIssuanceServiceTest {
     }
 
     @Test
-    void tenantOwnsIdempotencyScopeAndProjectIsOptionalSemanticInput() {
-        IssuanceResult tenantA = service.issue(command(
+    void fullOwnerScopeSeparatesProjectsTenantOnlyAndDifferentTenants() {
+        IssuanceResult projectA = service.issue(command(
+                owner("tenant-a", "project-a"), "shared-key",
+                placement("replica-project-a", "placement-tenant")));
+        IssuanceResult projectB = service.issue(command(
+                owner("tenant-a", "project-b"), "shared-key",
+                placement("replica-project-b", "placement-tenant")));
+        IssuanceResult tenantOnly = service.issue(command(
                 StorageOwnershipScope.tenant("tenant-a"), "shared-key",
-                placement("replica-a", "placement-tenant")));
-        IssuanceResult tenantB = service.issue(command(
-                owner("tenant-b", "project-b"), "shared-key",
-                placement("replica-b", "placement-tenant")));
+                placement("replica-tenant-only", "placement-tenant")));
+        IssuanceResult otherTenant = service.issue(command(
+                owner("tenant-b", "project-a"), "shared-key",
+                placement("replica-other-tenant", "placement-tenant")));
 
-        assertNotEquals(tenantA.objectId(), tenantB.objectId());
-        assertNull(tenantA.owner().projectId());
-        assertThrows(StorageIssuanceConflictException.class, () -> service.issue(command(
-                owner("tenant-a", "different-project"), "shared-key",
-                placement("replica-a", "placement-tenant"))));
+        assertNotEquals(projectA.objectId(), projectB.objectId());
+        assertNotEquals(projectA.objectId(), tenantOnly.objectId());
+        assertNotEquals(projectB.objectId(), tenantOnly.objectId());
+        assertNotEquals(projectA.objectId(), otherTenant.objectId());
+        assertNull(tenantOnly.owner().projectId());
     }
 
     @Test
-    void sameTenantKeyWithDifferentSemanticInputFailsClosed() {
+    void sameFullOwnerKeyWithDifferentSemanticInputFailsClosed() {
         IssuanceCommand first = command(owner("tenant-1", "project-1"), "issue-2",
                 placement("replica-2", "tenant-1"));
         service.issue(first);
@@ -88,7 +94,7 @@ class CanonicalStorageObjectIssuanceServiceTest {
     }
 
     @Test
-    void sameTenantKeyWithDifferentPlacementFailsClosed() {
+    void sameFullOwnerKeyWithDifferentProviderInputFailsClosed() {
         StorageOwnershipScope owner = owner("tenant-placement", "project-placement");
         service.issue(command(owner, "placement-key",
                 placement("replica-placement-a", "namespace-a")));
@@ -252,7 +258,13 @@ class CanonicalStorageObjectIssuanceServiceTest {
 
         private static String mapKey(
                 StorageOwnershipScope owner, IssuanceIdempotencyKey key) {
-            return owner.tenantId() + "\u0000" + key.value();
+            String project = owner.projectId();
+            String projectComponent = project == null
+                    ? "project:null"
+                    : "project:value:" + project.length() + ":" + project;
+            return "tenant:value:" + owner.tenantId().length() + ":" + owner.tenantId()
+                    + "\u0000" + projectComponent
+                    + "\u0000key:value:" + key.value().length() + ":" + key.value();
         }
     }
 }

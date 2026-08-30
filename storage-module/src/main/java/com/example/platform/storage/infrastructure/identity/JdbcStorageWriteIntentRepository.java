@@ -18,7 +18,7 @@ import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
-/** PostgreSQL persistence for one durable write intent per tenant-scoped issuance key. */
+/** PostgreSQL persistence for one durable write intent per full-owner issuance key. */
 @Repository
 public class JdbcStorageWriteIntentRepository implements StorageWriteIntentRepository {
 
@@ -32,9 +32,14 @@ public class JdbcStorageWriteIntentRepository implements StorageWriteIntentRepos
 
     @Override
     public void lockOwnerKey(StorageOwnershipScope owner, IssuanceIdempotencyKey key) {
-        String lockInput = "storage-write-intent-owner-key|"
+        String project = owner.projectId();
+        String projectComponent = project == null
+                ? "project:null"
+                : "project:value:" + project.length() + ":" + project;
+        String lockInput = "storage-write-intent-owner-key-v1|tenant:value:"
                 + owner.tenantId().length() + ":" + owner.tenantId()
-                + "|" + key.value().length() + ":" + key.value();
+                + "|" + projectComponent
+                + "|key:value:" + key.value().length() + ":" + key.value();
         advisoryLock(lockInput);
     }
 
@@ -58,8 +63,9 @@ public class JdbcStorageWriteIntentRepository implements StorageWriteIntentRepos
     @Override
     public Optional<StorageWriteIntent> findByOwnerKey(
             StorageOwnershipScope owner, IssuanceIdempotencyKey key) {
-        return query("where tenant_id = ? and issuance_idempotency_key = ?",
-                owner.tenantId(), key.value());
+        return query("where tenant_id = ? and project_id is not distinct from ? "
+                        + "and issuance_idempotency_key = ?",
+                owner.tenantId(), owner.projectId(), key.value());
     }
 
     @Override

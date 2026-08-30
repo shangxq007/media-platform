@@ -224,7 +224,7 @@ create table storage_logical_object (
     semantic_fingerprint varchar(64) not null,
     created_at timestamptz not null,
     constraint uq_storage_logical_object_owner_idempotency
-        unique (tenant_id, issuance_idempotency_key),
+        unique nulls not distinct (tenant_id, project_id, issuance_idempotency_key),
     constraint ck_storage_logical_object_owner check (
         length(trim(tenant_id)) > 0
         and (project_id is null or length(trim(project_id)) > 0)
@@ -430,7 +430,7 @@ create table storage_write_intent (
     constraint fk_storage_write_intent_object foreign key (object_id)
         references storage_logical_object(object_id) on delete restrict,
     constraint uq_storage_write_intent_owner_idempotency
-        unique (tenant_id, issuance_idempotency_key),
+        unique nulls not distinct (tenant_id, project_id, issuance_idempotency_key),
     constraint uq_storage_write_intent_object unique (object_id),
     constraint ck_storage_write_intent_owner check (
         length(trim(tenant_id)) > 0

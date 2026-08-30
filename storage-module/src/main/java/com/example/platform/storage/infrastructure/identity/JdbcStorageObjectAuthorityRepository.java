@@ -40,18 +40,16 @@ public class JdbcStorageObjectAuthorityRepository implements StorageObjectAuthor
         List<IssuanceResult> results = jdbc.query("""
                 select o.object_id, o.tenant_id, o.project_id,
                        o.issuance_idempotency_key, o.semantic_fingerprint,
-                       p.replica_id, p.provider_id, p.namespace_tenant_id,
-                       p.namespace_project_id, p.namespace_class, p.region_policy,
-                       p.data_classification, p.opaque_locator, p.provider_version_token,
-                       p.region, p.placement_state, p.committed_digest_algorithm,
-                       p.committed_digest, p.committed_length, p.provider_correlation_id,
+                       r.replica_id, r.provider_id, r.namespace_tenant_id,
+                       r.namespace_project_id, r.namespace_class, r.region_policy,
+                       r.data_classification, r.opaque_locator, r.provider_version_token,
+                       r.region, r.placement_state, r.committed_digest_algorithm,
+                       r.committed_digest, r.committed_length, r.provider_correlation_id,
                        r.receipt_id, r.issued_at
                   from storage_logical_object o
                   join storage_placement_receipt r
                     on r.object_id = o.object_id
                    and r.receipt_purpose = 'ORIGINAL_ISSUANCE'
-                  join storage_object_placement p
-                    on p.object_id = r.object_id and p.replica_id = r.replica_id
                  where o.tenant_id = ?
                    and o.project_id is not distinct from ?
                    and o.issuance_idempotency_key = ?

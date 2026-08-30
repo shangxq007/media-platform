@@ -54,6 +54,11 @@ import java.sql.Statement;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import javax.sql.DataSource;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterAll;
@@ -162,15 +167,24 @@ class StorageIdentityPlacementV1PostgresTest extends PostgresTestContainerSuppor
     }
 
     @Test
-    void ownerScopedIssuanceSupportsOptionalProjectAndNamespaceHasNoAuthority() {
+    void fullOwnerScopeSeparatesProjectsTenantOnlyAndDifferentTenants() {
+        IssuanceResult projectA = issuance.issue(command(
+                new StorageOwnershipScope("tenant-owner-a", "project-a"), "owner-key",
+                "replica-owner-project-a", "unrelated-placement-tenant"));
+        IssuanceResult projectB = issuance.issue(command(
+                new StorageOwnershipScope("tenant-owner-a", "project-b"), "owner-key",
+                "replica-owner-project-b", "unrelated-placement-tenant"));
         IssuanceResult noProject = issuance.issue(command(
                 StorageOwnershipScope.tenant("tenant-owner-a"), "owner-key",
-                "replica-owner-a", "unrelated-placement-tenant"));
+                "replica-owner-tenant-only", "unrelated-placement-tenant"));
         IssuanceResult otherTenant = issuance.issue(command(
-                new StorageOwnershipScope("tenant-owner-b", "project-b"), "owner-key",
-                "replica-owner-b", "unrelated-placement-tenant"));
+                new StorageOwnershipScope("tenant-owner-b", "project-a"), "owner-key",
+                "replica-owner-other-tenant", "unrelated-placement-tenant"));
 
-        assertNotEquals(noProject.objectId(), otherTenant.objectId());
+        assertNotEquals(projectA.objectId(), projectB.objectId());
+        assertNotEquals(projectA.objectId(), noProject.objectId());
+        assertNotEquals(projectB.objectId(), noProject.objectId());
+        assertNotEquals(projectA.objectId(), otherTenant.objectId());
         assertEquals("tenant-owner-a", jdbc.queryForObject("""
                 select o.tenant_id from storage_placement_receipt r
                   join storage_logical_object o on o.object_id = r.object_id
@@ -179,9 +193,57 @@ class StorageIdentityPlacementV1PostgresTest extends PostgresTestContainerSuppor
         assertEquals("unrelated-placement-tenant", jdbc.queryForObject("""
                 select namespace_tenant_id from storage_object_placement where replica_id = ?
                 """, String.class, noProject.placement().replicaId().value()));
-        assertThrows(StorageIssuanceConflictException.class, () -> issuance.issue(command(
-                new StorageOwnershipScope("tenant-owner-a", "other-project"), "owner-key",
-                "replica-owner-other", "tenant-owner-a")));
+    }
+
+    @Test
+    void concurrentNullProjectReplayCreatesOneObjectWithNullSafeOwnerUniqueness()
+            throws Exception {
+        IssuanceCommand command = command(
+                StorageOwnershipScope.tenant("tenant-concurrent-null"),
+                "concurrent-null-key", "replica-concurrent-null", "namespace-concurrent");
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            Future<IssuanceResult> first = executor.submit(() -> issueAfterBarrier(
+                    command, ready, start));
+            Future<IssuanceResult> second = executor.submit(() -> issueAfterBarrier(
+                    command, ready, start));
+            ready.await();
+            start.countDown();
+
+            IssuanceResult firstResult = get(first);
+            IssuanceResult secondResult = get(second);
+            assertEquals(firstResult, secondResult);
+            assertEquals(1, jdbc.queryForObject("""
+                    select count(*) from storage_logical_object
+                     where tenant_id = 'tenant-concurrent-null'
+                       and project_id is null
+                       and issuance_idempotency_key = 'concurrent-null-key'
+                    """, Integer.class));
+            assertEquals(1, jdbc.queryForObject("""
+                    select count(*) from storage_write_intent
+                     where tenant_id = 'tenant-concurrent-null'
+                       and project_id is null
+                       and issuance_idempotency_key = 'concurrent-null-key'
+                    """, Integer.class));
+            assertEquals(1, jdbc.queryForObject("""
+                    select count(*) from storage_placement_receipt
+                     where object_id = ? and receipt_purpose = 'ORIGINAL_ISSUANCE'
+                    """, Integer.class, firstResult.objectId().value()));
+        } finally {
+            executor.shutdownNow();
+        }
+
+        assertOwnerUniquenessIsNullSafe("uq_storage_logical_object_owner_idempotency");
+        assertOwnerUniquenessIsNullSafe("uq_storage_write_intent_owner_idempotency");
+        assertThrows(DataIntegrityViolationException.class, () -> jdbc.update("""
+                insert into storage_logical_object (
+                    object_id, tenant_id, project_id, issuance_idempotency_key,
+                    semantic_fingerprint, created_at
+                ) values ('so-duplicate-null-owner', 'tenant-concurrent-null', null,
+                          'concurrent-null-key', ?, now())
+                """, FINGERPRINT));
     }
 
     @Test
@@ -202,17 +264,53 @@ class StorageIdentityPlacementV1PostgresTest extends PostgresTestContainerSuppor
                         "correlation-multi-b", "ORIGINAL_ISSUANCE"));
         assertSqlState23514(impersonation);
 
+        jdbc.update("""
+                update storage_object_placement
+                   set placement_state = 'QUARANTINED'
+                 where replica_id = 'replica-multi-a'
+                """);
+        assertEquals("QUARANTINED", jdbc.queryForObject("""
+                select placement_state from storage_object_placement
+                 where replica_id = 'replica-multi-a'
+                """, String.class));
+        assertEquals("AVAILABLE", jdbc.queryForObject("""
+                select placement_state from storage_placement_receipt
+                 where receipt_id = ?
+                """, String.class, original.receipt().receiptId()));
+
         IssuanceResult replay = issuance.issue(command);
-        assertEquals(original, replay);
+        assertEquals(original.objectId(), replay.objectId());
+        assertEquals(original.placement(), replay.placement());
+        assertEquals(original.receipt(), replay.receipt());
+        assertEquals(original.receipt().location(), replay.receipt().location());
+        assertEquals(original.receipt().state(), replay.receipt().state());
+        assertEquals(original.receipt().committedDigest(), replay.receipt().committedDigest());
+        assertEquals(original.receipt().committedLength(), replay.receipt().committedLength());
+        assertEquals(original.receipt().providerCorrelationId(),
+                replay.receipt().providerCorrelationId());
+        assertEquals(original.receipt().issuedAt(), replay.receipt().issuedAt());
         assertEquals("replica-multi-a", replay.placement().replicaId().value());
+        assertEquals(1, jdbc.queryForObject("""
+                select count(*) from storage_logical_object
+                 where tenant_id = 'tenant-multi' and project_id = 'project-multi'
+                   and issuance_idempotency_key = 'multi-key'
+                """, Integer.class));
         assertEquals(2, jdbc.queryForObject(
                 "select count(*) from storage_object_placement where object_id = ?",
                 Integer.class, original.objectId().value()));
         assertEquals(1, jdbc.queryForObject("""
                 select count(*) from storage_placement_receipt
+                 where object_id = ? and receipt_purpose = 'ORIGINAL_ISSUANCE'
+                """, Integer.class, original.objectId().value()));
+        assertEquals(1, jdbc.queryForObject("""
+                select count(*) from storage_placement_receipt
                  where receipt_id = 'receipt-multi-b'
                    and receipt_purpose = 'ADDITIONAL_PLACEMENT'
                 """, Integer.class));
+        assertEquals("AVAILABLE", jdbc.queryForObject("""
+                select placement_state from storage_object_placement
+                 where replica_id = 'replica-multi-b'
+                """, String.class));
     }
 
     @Test
@@ -353,6 +451,38 @@ class StorageIdentityPlacementV1PostgresTest extends PostgresTestContainerSuppor
         return State.valueOf(jdbc.queryForObject("""
                 select intent_state from storage_write_intent where write_intent_id = ?
                 """, String.class, writeIntentId));
+    }
+
+    private static IssuanceResult issueAfterBarrier(
+            IssuanceCommand command, CountDownLatch ready, CountDownLatch start)
+            throws InterruptedException {
+        ready.countDown();
+        start.await();
+        return issuance.issue(command);
+    }
+
+    private static IssuanceResult get(Future<IssuanceResult> result) throws Exception {
+        try {
+            return result.get();
+        } catch (ExecutionException failure) {
+            if (failure.getCause() instanceof Exception cause) {
+                throw cause;
+            }
+            throw failure;
+        }
+    }
+
+    private static void assertOwnerUniquenessIsNullSafe(String constraintName) {
+        String definition = jdbc.queryForObject("""
+                select pg_get_constraintdef(oid)
+                  from pg_constraint
+                 where connamespace = ?::regnamespace and conname = ?
+                """, String.class, SCHEMA, constraintName);
+        assertNotNull(definition);
+        String normalized = definition.replaceAll("\\s+", " ").toLowerCase();
+        assertTrue(normalized.contains(
+                "unique nulls not distinct (tenant_id, project_id, issuance_idempotency_key)"),
+                () -> constraintName + " must use the full null-safe owner scope: " + definition);
     }
 
     private static void assertSqlState23514(Throwable failure) {
