@@ -27,7 +27,7 @@ After all setup checks succeed, `GITHUB_ENV` receives `DOCKER_HOST`, bounded bub
 
 ## Authoritative runtime manifest
 
-The dedicated runtime script runs exactly `./gradlew --no-daemon --max-workers=1 test --rerun-tasks`, then `stageModularDistribution`, `modularDistribution`, `allInOneJar`, and `verifyDualDistributionPluginDigest`. It then runs the Phase 19 clean-forward repository guard and mutation tests and verifies fresh JUnit XML created after a SHA-bound runtime start marker.
+The dedicated runtime script runs exactly `./gradlew --no-daemon --max-workers=1 test --rerun-tasks`, then `allInOneJar` and `verifyBundledDistributionPluginDigest`. Phase 0 subsequently removed the modular external-directory distribution. The script then runs the Phase 19 clean-forward repository guard and mutation tests and verifies fresh JUnit XML created after a SHA-bound runtime start marker.
 
 Required fresh module XML roots are:
 
@@ -44,7 +44,7 @@ The verifier requires aggregate failures and errors to remain zero and requires 
 - `bounded_probe_returns_exact_version_build_evidence_without_eligibility_authority()`
 - `real_ffmpeg_stdout_flows_through_staging_platform_artifact_commit_and_completion()`
 
-Producer, modular, and embedded plugin bytes must each equal SHA-256 `df496276e7a087431d9e5ded07163d92d2ccacaede2c0250fb9f8d9ea0319c30`. Embedded bytes are streamed from the all-in-one archive through `unzip` to SHA-256 without modifying the artifact. Runtime-security, plugin-distribution, and artifact/cancellation-equivalence PASS markers are printed only after every command, verifier, and digest comparison succeeds.
+Producer and embedded plugin bytes must each equal SHA-256 `df496276e7a087431d9e5ded07163d92d2ccacaede2c0250fb9f8d9ea0319c30`. Embedded bytes are streamed from the all-in-one archive through `unzip` to SHA-256 without modifying the artifact. Runtime-security, plugin-distribution, and artifact/cancellation-equivalence PASS markers are printed only after every command, verifier, and digest comparison succeeds.
 
 ## Lifecycle boundary
 

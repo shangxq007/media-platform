@@ -268,8 +268,9 @@ app:
         args: ["-i", "{input}", "-ss", "00:00:01", "-vframes", "1", "{output}"]
         timeoutMillis: 10000
   extensions:
-    plugins-dir: ./plugins
-    enabled: true
+    # Phase 0: external directory loading is disabled. Production uses only
+    # the build-time embedded platform bundle.
+    enabled: false
 ```
 
 ### ToolSandboxPolicy

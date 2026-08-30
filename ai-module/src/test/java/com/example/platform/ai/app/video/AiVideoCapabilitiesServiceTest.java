@@ -7,13 +7,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.example.platform.ai.api.video.HighlightDetectionPort;
 import com.example.platform.ai.api.video.SilenceDetectionPort;
 import com.example.platform.ai.api.video.SpeechToTextPort;
+import com.example.platform.ai.api.video.SpeechToTextUnavailableException;
 import com.example.platform.ai.api.video.SubtitleTranslationPort;
 import com.example.platform.ai.api.video.VideoUnderstandingPort;
 import com.example.platform.ai.infrastructure.video.NoopHighlightDetectionProvider;
 import com.example.platform.ai.infrastructure.video.NoopSilenceDetectionProvider;
-import com.example.platform.ai.infrastructure.video.NoopSpeechToTextProvider;
 import com.example.platform.ai.infrastructure.video.NoopSubtitleTranslationProvider;
 import com.example.platform.ai.infrastructure.video.NoopVideoUnderstandingProvider;
+import com.example.platform.ai.infrastructure.video.UnavailableSpeechToTextProvider;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,7 +26,7 @@ class AiVideoCapabilitiesServiceTest {
     @BeforeEach
     void setUp() {
         service = new AiVideoCapabilitiesService(
-                new NoopSpeechToTextProvider(),
+                new UnavailableSpeechToTextProvider(),
                 new NoopSubtitleTranslationProvider(),
                 new NoopSilenceDetectionProvider(),
                 new NoopHighlightDetectionProvider(),
@@ -33,14 +34,15 @@ class AiVideoCapabilitiesServiceTest {
     }
 
     @Test
-    void transcribeReturnsStubResult() {
+    void transcribeFailsClosedWhenNoRealProviderExists() {
         var request = new SpeechToTextPort.TranscribeRequest(
                 "tenant/t1/project/p1/assets/a1/audio.wav", "en", true, 10000);
-        var result = service.transcribe(request);
 
-        assertNotNull(result);
-        assertEquals("en", result.language());
-        assertFalse(result.segments().isEmpty());
+        var failure = org.junit.jupiter.api.Assertions.assertThrows(
+                SpeechToTextUnavailableException.class,
+                () -> service.transcribe(request));
+
+        assertEquals("AI-503-001", failure.getErrorCode().code());
     }
 
     @Test

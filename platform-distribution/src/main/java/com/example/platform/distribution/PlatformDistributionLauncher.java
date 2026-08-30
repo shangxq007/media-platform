@@ -10,7 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
 
-/** Executable modular/all-in-one launcher that always converges on the same PF4J host. */
+/** Executable launcher for the controlled platform-bundled PF4J distribution. */
 public final class PlatformDistributionLauncher {
 
     private PlatformDistributionLauncher() {}

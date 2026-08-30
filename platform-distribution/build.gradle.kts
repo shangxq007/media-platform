@@ -91,49 +91,24 @@ val allInOneJar = tasks.register("allInOneJar") {
     }
 }
 
-val stageModularDistribution = tasks.register<Sync>("stageModularDistribution") {
-    group = "distribution"
-    description = "Stages the application artifact plus plugins/exact-provider-plugin.jar."
-    into(layout.buildDirectory.dir("distributions/modular"))
-    from(tasks.named("bootJar"))
-    from(providerJar) {
-        into("plugins")
-    }
-    dependsOn(providerJar)
-}
-
-tasks.register<Zip>("modularDistribution") {
-    group = "distribution"
-    description = "Produces the modular application-plus-plugins distribution archive."
-    archiveFileName.set("media-platform-modular.zip")
-    destinationDirectory.set(layout.buildDirectory.dir("distributions"))
-    from(stageModularDistribution)
-    dependsOn(stageModularDistribution)
-    isPreserveFileTimestamps = false
-    isReproducibleFileOrder = true
-}
-
-tasks.register("verifyDualDistributionPluginDigest") {
+tasks.register("verifyBundledDistributionPluginDigest") {
     group = "verification"
-    description = "Verifies producer, modular, and embedded provider plugin bytes have the same SHA-256."
-    dependsOn(providerJar, stageModularDistribution, allInOneJar)
+    description = "Verifies producer and platform-bundled provider plugin bytes have the same SHA-256."
+    dependsOn(providerJar, allInOneJar)
     doLast {
         val producer = providerJar.get().asFile.toPath()
-        val modular = layout.buildDirectory.file(
-            "distributions/modular/plugins/${producer.fileName}").get().asFile.toPath()
         val outer = allInOneFile.get().asFile
         val entryName = "embedded-plugins/${producer.fileName}"
         val digest = MessageDigest.getInstance("SHA-256")
         fun sha(bytes: ByteArray): String = digest.digest(bytes).joinToString("") { "%02x".format(it) }
         val producerDigest = sha(Files.readAllBytes(producer))
-        val modularDigest = sha(Files.readAllBytes(modular))
         val embeddedBytes = ZipFile(outer).use { zip ->
             val entry = zip.getEntry(entryName) ?: error("missing $entryName")
             zip.getInputStream(entry).readAllBytes()
         }
         val embeddedDigest = sha(embeddedBytes)
-        check(producerDigest == modularDigest && producerDigest == embeddedDigest) {
-            "plugin digest mismatch producer=$producerDigest modular=$modularDigest embedded=$embeddedDigest"
+        check(producerDigest == embeddedDigest) {
+            "plugin digest mismatch producer=$producerDigest embedded=$embeddedDigest"
         }
         println("FFMPEG_PROVIDER_PLUGIN_SHA256=$producerDigest")
     }
@@ -141,10 +116,8 @@ tasks.register("verifyDualDistributionPluginDigest") {
 
 tasks.test {
     useJUnitPlatform()
-    dependsOn(providerJar, stageModularDistribution, allInOneJar)
-    systemProperty("distribution.modular.plugin",
-        layout.buildDirectory.file("distributions/modular/plugins/ffmpeg-provider-plugin-1.0.0.jar")
-            .get().asFile.absolutePath)
+    dependsOn(providerJar, allInOneJar)
+    systemProperty("distribution.provider.jar", providerJar.get().asFile.absolutePath)
     systemProperty("distribution.allinone.jar",
         layout.buildDirectory.file("libs/media-platform-all-in-one.jar").get().asFile.absolutePath)
 }

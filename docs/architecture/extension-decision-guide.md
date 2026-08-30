@@ -47,7 +47,7 @@ ExtensionRegistryService.executeProvider(key, inputJson, tenantId, traceId)
 ### External Plugin Loading (Future)
 
 ```
-PF4J PluginManager → scans plugins-dir/ → loads .jar files
+platform build → embeds approved plugin JAR → controlled extraction → PF4J PluginManager
     ↓
 ExtensionRegistryService.registerProviderExtension(key, plugin, trustLevel, "pf4j")
     ↓

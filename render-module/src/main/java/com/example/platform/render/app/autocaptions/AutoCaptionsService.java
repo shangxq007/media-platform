@@ -1,6 +1,7 @@
 package com.example.platform.render.app.autocaptions;
 
 import com.example.platform.ai.api.video.SpeechToTextPort;
+import com.example.platform.ai.api.video.SpeechToTextUnavailableException;
 import com.example.platform.render.domain.interchange.TimelineTextOverlay;
 import com.example.platform.shared.Ids;
 import java.util.ArrayList;
@@ -33,11 +34,16 @@ public class AutoCaptionsService {
         SpeechToTextPort.SpeechToTextResult sttResult;
         try {
             sttResult = speechToText.transcribe(transcribeRequest);
+        } catch (SpeechToTextUnavailableException e) {
+            log.error("Auto Captions: transcription failed for project={}: {}",
+                    request.projectId(), e.getMessage());
+            return new AutoCaptionsResult(
+                    request.projectId(), List.of(), 0, e.getErrorCode().code(), e.getMessage());
         } catch (Exception e) {
             log.error("Auto Captions: transcription failed for project={}: {}",
                     request.projectId(), e.getMessage());
             return new AutoCaptionsResult(
-                    request.projectId(), List.of(), 0, e.getMessage());
+                    request.projectId(), List.of(), 0, "AUTO_CAPTIONS_PROVIDER_FAILED", e.getMessage());
         }
 
         com.example.platform.fonttext.typography.FontFamilyName fontFamily =
@@ -67,7 +73,7 @@ public class AutoCaptionsService {
                 overlays.size(), request.projectId());
 
         return new AutoCaptionsResult(
-                request.projectId(), overlays, sttResult.segments().size(), null);
+                request.projectId(), overlays, sttResult.segments().size(), null, null);
     }
 
     public record AutoCaptionsRequest(
@@ -87,10 +93,11 @@ public class AutoCaptionsService {
             String projectId,
             List<TimelineTextOverlay> overlays,
             int segmentCount,
+            String errorCode,
             String error) {
 
         public boolean success() {
-            return error == null;
+            return errorCode == null;
         }
     }
 }

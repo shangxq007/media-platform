@@ -5,7 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.example.platform.ai.infrastructure.video.NoopSpeechToTextProvider;
+import com.example.platform.ai.api.video.SpeechToTextPort;
+import com.example.platform.ai.infrastructure.video.UnavailableSpeechToTextProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -15,7 +16,7 @@ class AutoCaptionsServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new AutoCaptionsService(new NoopSpeechToTextProvider());
+        service = new AutoCaptionsService(successfulSpeechToText());
     }
 
     @Test
@@ -44,7 +45,8 @@ class AutoCaptionsServiceTest {
     }
 
     @Test
-    void noopProviderReturnsStubSegment() {
+    void missingProviderReturnsTypedUnavailableWithoutGeneratedContent() {
+        service = new AutoCaptionsService(new UnavailableSpeechToTextProvider());
         var request = new AutoCaptionsService.AutoCaptionsRequest(
                 "tenant-1", "proj-1", "asset-1",
                 "audio.wav", "en", 10000,
@@ -52,8 +54,10 @@ class AutoCaptionsServiceTest {
 
         AutoCaptionsService.AutoCaptionsResult result = service.generateCaptions(request);
 
-        assertTrue(result.success());
-        assertEquals(1, result.segmentCount());
+        assertFalse(result.success());
+        assertEquals("AI-503-001", result.errorCode());
+        assertEquals(0, result.segmentCount());
+        assertTrue(result.overlays().isEmpty());
     }
 
     @Test
@@ -68,5 +72,13 @@ class AutoCaptionsServiceTest {
         var overlay = result.overlays().get(0);
         assertEquals("center", overlay.positionX());
         assertEquals("bottom", overlay.positionY());
+    }
+
+    private static SpeechToTextPort successfulSpeechToText() {
+        return request -> new SpeechToTextPort.SpeechToTextResult(
+                request.language(), 5.0,
+                java.util.List.of(new SpeechToTextPort.SubtitleSegment(
+                        0, 0, 5000, "Test caption", request.language(), 1.0,
+                        java.util.List.of())));
     }
 }

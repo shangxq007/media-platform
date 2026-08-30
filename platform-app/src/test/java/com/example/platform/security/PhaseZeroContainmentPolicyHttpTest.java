@@ -50,6 +50,12 @@ class PhaseZeroContainmentPolicyHttpTest {
             mutation(HttpMethod.POST, "/api/extensions/tool-run", "/api/extensions/tool-run"),
             mutation(HttpMethod.POST, "/api/extensions/cli-tools/*/run", "/api/extensions/cli-tools/demo/run"),
             mutation(HttpMethod.POST, "/api/extensions/*/routing-rules", "/api/extensions/demo/routing-rules"),
+            mutation(HttpMethod.POST, "/api/render/auto-captions", "/api/render/auto-captions"),
+            mutation(HttpMethod.POST, "/api/social/platforms/*/connect", "/api/social/platforms/TWITTER/connect"),
+            mutation(HttpMethod.POST, "/api/social/posts/*/publish", "/api/social/posts/post-1/publish"),
+            mutation(HttpMethod.POST, "/api/social/posts/*/schedule", "/api/social/posts/post-1/schedule"),
+            mutation(HttpMethod.POST, "/api/social/posts/*/retry", "/api/social/posts/post-1/retry"),
+            mutation(HttpMethod.POST, "/api/notifications/events", "/api/notifications/events"),
             mutation(HttpMethod.POST, "/api/analytics/internal/rebuild-profiles", "/api/analytics/internal/rebuild-profiles"),
             mutation(HttpMethod.POST, "/api/analytics/internal/rebuild-segments", "/api/analytics/internal/rebuild-segments"),
             mutation(HttpMethod.POST, "/api/billing/cycles/process-due", "/api/billing/cycles/process-due"),
@@ -85,7 +91,8 @@ class PhaseZeroContainmentPolicyHttpTest {
             read("/api/notifications/deliveries", "/api/notifications/deliveries"),
             read("/api/notifications/mock-sent", "/api/notifications/mock-sent"),
             read("/api/admin/notifications/deliveries", "/api/admin/notifications/deliveries"),
-            read("/api/admin/notifications/provider-status", "/api/admin/notifications/provider-status"));
+            read("/api/admin/notifications/provider-status", "/api/admin/notifications/provider-status"),
+            read("/api/social/analytics/posts/*", "/api/social/analytics/posts/post-1"));
 
     @Test
     void fixturesRemainExcludedFromProductionComponentScanning() {
@@ -134,6 +141,25 @@ class PhaseZeroContainmentPolicyHttpTest {
     @Test
     void securityDisabledStillRejectsEntireMatcherMatrixBeforeDispatch() throws Exception {
         assertEntireMatrixDenied(SecurityDisabled.class, false);
+    }
+
+    @Test
+    void fakeAuthorityAndLegacyIngressRoutesCannotPersistOrExecuteProviders() throws Exception {
+        try (TestHttpContext test = context(SecurityDisabled.class)) {
+            for (String path : List.of(
+                    "/api/render/auto-captions",
+                    "/api/social/platforms/TWITTER/connect",
+                    "/api/social/posts/post-1/publish",
+                    "/api/social/posts/post-1/schedule",
+                    "/api/social/posts/post-1/retry",
+                    "/api/notifications/events")) {
+                test.mvc().perform(post(path)).andExpect(status().isForbidden());
+            }
+            test.mvc().perform(get("/api/social/analytics/posts/post-1"))
+                    .andExpect(status().isForbidden());
+
+            verifyNoInteractions(test.downstream());
+        }
     }
 
     @Test
@@ -203,6 +229,8 @@ class PhaseZeroContainmentPolicyHttpTest {
 
     interface Downstream {
         void invoke();
+        void persistFakeSuccess();
+        void executeProvider();
     }
 
     @TestConfiguration(proxyBeanMethods = false)
@@ -238,6 +266,30 @@ class PhaseZeroContainmentPolicyHttpTest {
         })
         void contained() {
             downstream.invoke();
+        }
+
+        @PostMapping({
+            "/api/render/auto-captions",
+            "/api/social/platforms/{platform}/connect",
+            "/api/social/posts/{postId}/publish",
+            "/api/social/posts/{postId}/schedule",
+            "/api/social/posts/{postId}/retry"
+        })
+        void fakeProviderAuthority() {
+            downstream.executeProvider();
+            downstream.persistFakeSuccess();
+        }
+
+        @PostMapping("/api/notifications/events")
+        void legacyNotificationIngress() {
+            downstream.persistFakeSuccess();
+            downstream.executeProvider();
+        }
+
+        @GetMapping("/api/social/analytics/posts/{postId}")
+        void fakeProviderAnalytics() {
+            downstream.executeProvider();
+            downstream.persistFakeSuccess();
         }
 
         @GetMapping("/api/extensions/{key}")

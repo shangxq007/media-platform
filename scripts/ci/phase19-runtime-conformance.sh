@@ -84,10 +84,8 @@ PY
 ./gradlew --no-daemon --max-workers=1 test --rerun-tasks
 
 ./gradlew --no-daemon --max-workers=1 \
-    :platform-distribution:stageModularDistribution \
-    :platform-distribution:modularDistribution \
     :platform-distribution:allInOneJar \
-    :platform-distribution:verifyDualDistributionPluginDigest
+    :platform-distribution:verifyBundledDistributionPluginDigest
 
 python3 scripts/phase19-clean-forward-guards.py
 python3 scripts/test_phase19_clean_forward_guards.py
@@ -95,23 +93,18 @@ python3 scripts/ci/verify_phase19_runtime_conformance_results.py
 
 expected_plugin_digest="df496276e7a087431d9e5ded07163d92d2ccacaede2c0250fb9f8d9ea0319c30"
 producer_plugin="ffmpeg-provider-module/build/libs/ffmpeg-provider-plugin-1.0.0.jar"
-modular_plugin="platform-distribution/build/distributions/modular/plugins/ffmpeg-provider-plugin-1.0.0.jar"
 all_in_one="platform-distribution/build/libs/media-platform-all-in-one.jar"
 embedded_entry="embedded-plugins/ffmpeg-provider-plugin-1.0.0.jar"
-for artifact in "$producer_plugin" "$modular_plugin" "$all_in_one"; do
+for artifact in "$producer_plugin" "$all_in_one"; do
     [[ -f "$artifact" ]] || fail "required distribution artifact is missing: ${artifact}"
 done
 producer_digest="$(sha256sum -- "$producer_plugin")"
 producer_digest="${producer_digest%% *}"
-modular_digest="$(sha256sum -- "$modular_plugin")"
-modular_digest="${modular_digest%% *}"
 embedded_digest="$(unzip -p "$all_in_one" "$embedded_entry" | sha256sum)"
 embedded_digest="${embedded_digest%% *}"
 [[ "$producer_digest" == "$expected_plugin_digest" ]] || fail "producer plugin digest differs from the expected digest"
-[[ "$modular_digest" == "$expected_plugin_digest" ]] || fail "modular plugin digest differs from the expected digest"
 [[ "$embedded_digest" == "$expected_plugin_digest" ]] || fail "embedded plugin digest differs from the expected digest"
 printf 'PHASE19_PLUGIN_PRODUCER_SHA256=%s\n' "$producer_digest"
-printf 'PHASE19_PLUGIN_MODULAR_SHA256=%s\n' "$modular_digest"
 printf 'PHASE19_PLUGIN_EMBEDDED_SHA256=%s\n' "$embedded_digest"
 
 printf 'PHASE19_RUNTIME_SECURITY_CONFORMANCE=PASS\n'

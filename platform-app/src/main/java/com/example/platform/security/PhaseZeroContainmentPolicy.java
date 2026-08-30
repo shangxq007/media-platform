@@ -24,6 +24,12 @@ public final class PhaseZeroContainmentPolicy {
             route(HttpMethod.POST, "/api/extensions/tool-run"),
             route(HttpMethod.POST, "/api/extensions/cli-tools/*/run"),
             route(HttpMethod.POST, "/api/extensions/*/routing-rules"),
+            route(HttpMethod.POST, "/api/render/auto-captions"),
+            route(HttpMethod.POST, "/api/social/platforms/*/connect"),
+            route(HttpMethod.POST, "/api/social/posts/*/publish"),
+            route(HttpMethod.POST, "/api/social/posts/*/schedule"),
+            route(HttpMethod.POST, "/api/social/posts/*/retry"),
+            route(HttpMethod.POST, "/api/notifications/events"),
             route(HttpMethod.POST, "/api/analytics/internal/rebuild-profiles"),
             route(HttpMethod.POST, "/api/analytics/internal/rebuild-segments"),
             route(HttpMethod.POST, "/api/billing/cycles/process-due"),
@@ -59,7 +65,8 @@ public final class PhaseZeroContainmentPolicy {
             "/api/notifications/deliveries",
             "/api/notifications/mock-sent",
             "/api/admin/notifications/deliveries",
-            "/api/admin/notifications/provider-status");
+            "/api/admin/notifications/provider-status",
+            "/api/social/analytics/posts/*");
 
     private PhaseZeroContainmentPolicy() {}
 

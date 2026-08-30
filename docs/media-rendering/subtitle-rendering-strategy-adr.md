@@ -74,7 +74,7 @@ The platform needs a clear strategy for subtitle rendering to avoid:
 | Brand templates | Remotion (future) | STUB/PLANNED | Not production baseline |
 | Soft subtitle mux | Packaging provider | PLANNED | Needs GPAC/Bento4/Shaka integration |
 | Multi-language packaging | Packaging provider | PLANNED | Needs mux + HLS/DASH support |
-| Auto captions STT | AI/STT provider | PLANNED | `NoopSpeechToTextProvider` only |
+| Auto captions STT | AI/STT provider | PLANNED | Typed unavailable; no production STT configured |
 | Font validation | Backend (render-module) | IMPLEMENTED | `BasicFontValidator` |
 | Font fallback | Backend (render-module) | IMPLEMENTED | `BasicFontStackResolver` |
 | Font security | Backend (render-module) | IMPLEMENTED | `BasicFontSecurityScanner` |

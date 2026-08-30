@@ -21,7 +21,7 @@ owner: platform
 |-----------|--------|-------|
 | `extension-module` | ✅ Implemented | CLI tool execution (Commons Exec) + ToolRegistry |
 | `sandbox-runtime-module` | ⚠️ Stub | Wasm/Container sandbox (not yet implemented) |
-| Plugin directory config | ✅ Configured | `app.extensions.plugins-dir: ./plugins` |
+| Plugin distribution | ⚠️ Phase 0 contained | External directories disabled; controlled embedded platform bundle only |
 | CLI tool recipes | ✅ Working | Template-based argument construction |
 | `ToolSandboxPolicy` | ✅ Designed | Resource limits, timeouts, output size |
 | Process isolation | ⚠️ Partial | Linux namespaces (planned, not implemented) |

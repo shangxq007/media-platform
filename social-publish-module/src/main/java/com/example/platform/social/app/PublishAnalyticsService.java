@@ -45,6 +45,10 @@ public class PublishAnalyticsService {
 
         PlatformType platformType = post.platformType();
         PlatformAdapter adapter = adapters.get(platformType);
+        if (adapter == null) {
+            throw new com.example.platform.social.domain.SocialPlatformProviderUnavailableException(
+                    platformType.name());
+        }
         ConnectedPlatform connected = platformRepository.findByTenantUserAndPlatform(
                 tenantId, userId, platformType.name()).orElse(null);
 

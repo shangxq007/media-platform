@@ -183,7 +183,6 @@ Failed deliveries show a "Retry" action button. Failed rows are highlighted with
 | GET | `/tenants/{tenantId}/notifications/{id}` | Get notification detail |
 | GET | `/tenants/{tenantId}/notifications/{id}/deliveries` | Get deliveries |
 | POST | `/tenants/{tenantId}/notifications/{id}/retry` | Retry notification |
-| POST | `/notifications/events` | Publish event |
 | GET | `/notifications/deliveries` | List all deliveries |
 | GET | `/notifications/mock-sent` | List mock-sent notifications |
 | GET | `/admin/notifications/events` | List event definitions |

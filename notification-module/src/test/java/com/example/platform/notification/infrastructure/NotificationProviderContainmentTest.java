@@ -3,6 +3,7 @@ package com.example.platform.notification.infrastructure;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
+import com.example.platform.notification.app.NotificationEventHandler;
 import com.example.platform.notification.domain.DeliveryCommand;
 import java.util.List;
 import java.util.Map;
@@ -30,5 +31,11 @@ class NotificationProviderContainmentTest {
     void mockProviderDoesNotExistInProductionSourceSet() {
         assertFalse(java.nio.file.Files.exists(java.nio.file.Path.of(
                 "src/main/java/com/example/platform/notification/infrastructure/MockNotificationProvider.java")));
+    }
+
+    @Test
+    void legacyGlobalEventHandlerIsNotRuntimeWired() {
+        assertFalse(NotificationEventHandler.class.isAnnotationPresent(
+                org.springframework.stereotype.Component.class));
     }
 }

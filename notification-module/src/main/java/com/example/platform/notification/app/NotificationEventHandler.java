@@ -31,9 +31,8 @@ import org.jooq.DSLContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
-import org.springframework.stereotype.Component;
 
-@Component
+/** Legacy global-table handler retained only for direct characterization tests; not runtime-wired. */
 public class NotificationEventHandler {
     private static final Logger log = LoggerFactory.getLogger(NotificationEventHandler.class);
 

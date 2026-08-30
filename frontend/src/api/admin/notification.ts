@@ -75,14 +75,6 @@ export const NotificationAPI = {
   async retryNotification(tenantId: string, notificationId: string): Promise<void> {
     await api.post(`/tenants/${tenantId}/notifications/${notificationId}/retry`)
   },
-  async publishEvent(event: {
-    type: string
-    tenantId?: string
-    payload?: Record<string, unknown>
-  }): Promise<void> {
-    await api.post('/notifications/events', event)
-  },
-
   // Event definitions
   async getEventDefinitions(): Promise<NotificationEventDefinition[]> {
     const { data } = await api.get('/admin/notifications/event-definitions')

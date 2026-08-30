@@ -107,10 +107,8 @@ def assert_runtime(source: str) -> None:
         '[[ "${MEDIA_RUNTIME_PRIVILEGED_PATH_USED:-}" == "0" ]] || fail',
         "PHASE19_RUNTIME_START_MARKER",
         "./gradlew --no-daemon --max-workers=1 test --rerun-tasks",
-        ":platform-distribution:stageModularDistribution",
-        ":platform-distribution:modularDistribution",
         ":platform-distribution:allInOneJar",
-        ":platform-distribution:verifyDualDistributionPluginDigest",
+        ":platform-distribution:verifyBundledDistributionPluginDigest",
         "python3 scripts/phase19-clean-forward-guards.py",
         "python3 scripts/test_phase19_clean_forward_guards.py",
         "python3 scripts/ci/verify_phase19_runtime_conformance_results.py",
@@ -127,6 +125,14 @@ def assert_runtime(source: str) -> None:
         raise AssertionError("full authoritative test suite command is not exact")
     if "sudo" in source or "--privileged" in source or "continue-on-error" in source:
         raise AssertionError("runtime conformance contains a privileged or weakening path")
+    retired_distribution_tokens = (
+        ":platform-distribution:stageModularDistribution",
+        ":platform-distribution:modularDistribution",
+        ":platform-distribution:verifyDualDistributionPluginDigest",
+        "PHASE19_PLUGIN_MODULAR_SHA256",
+    )
+    if any(item in source for item in retired_distribution_tokens):
+        raise AssertionError("runtime conformance resurrects the retired external-directory distribution")
     verifier_pos = source.index("python3 scripts/ci/verify_phase19_runtime_conformance_results.py")
     digest_pos = source.index(DIGEST)
     first_pass = min(source.index(marker) for marker in (

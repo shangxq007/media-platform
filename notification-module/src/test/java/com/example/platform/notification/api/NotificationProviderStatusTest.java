@@ -5,7 +5,6 @@ import static org.mockito.Mockito.mock;
 
 import com.example.platform.notification.app.NotificationChannelBindingService;
 import com.example.platform.notification.app.NotificationEventCatalogService;
-import com.example.platform.notification.app.NotificationEventPublisher;
 import com.example.platform.notification.app.NotificationInboxService;
 import com.example.platform.notification.app.NotificationPreferenceService;
 import com.example.platform.notification.app.NotificationQueryService;
@@ -18,7 +17,7 @@ class NotificationProviderStatusTest {
     @Test
     void localProviderIsDisabledWhenNoRealProviderExists() {
         NotificationController controller = new NotificationController(
-                mock(NotificationEventPublisher.class), mock(NotificationQueryService.class),
+                mock(NotificationQueryService.class),
                 mock(NotificationEventCatalogService.class), mock(NotificationChannelBindingService.class),
                 mock(NotificationSubscriptionService.class), mock(NotificationPreferenceService.class),
                 mock(NotificationInboxService.class), null);

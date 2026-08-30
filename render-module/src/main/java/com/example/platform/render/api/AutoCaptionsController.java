@@ -4,6 +4,8 @@ import com.example.platform.render.app.autocaptions.AutoCaptionsService;
 import com.example.platform.render.app.autocaptions.AutoCaptionsService.AutoCaptionsRequest;
 import com.example.platform.render.app.autocaptions.AutoCaptionsService.AutoCaptionsResult;
 import java.util.Map;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,7 +22,7 @@ public class AutoCaptionsController {
     }
 
     @PostMapping
-    public Map<String, Object> generateCaptions(
+    public ResponseEntity<Map<String, Object>> generateCaptions(
             @RequestBody GenerateCaptionsRequest request) {
         String effectiveTenant = com.example.platform.shared.web.TenantContext.get();
         if (effectiveTenant == null || effectiveTenant.isBlank()) {
@@ -41,13 +43,14 @@ public class AutoCaptionsController {
                 request.positionY()));
 
         if (!result.success()) {
-            return Map.of(
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(Map.of(
                     "projectId", result.projectId(),
                     "success", false,
-                    "error", result.error());
+                    "errorCode", result.errorCode(),
+                    "error", result.error()));
         }
 
-        return Map.of(
+        return ResponseEntity.ok(Map.of(
                 "projectId", result.projectId(),
                 "success", true,
                 "segmentCount", result.segmentCount(),
@@ -60,7 +63,7 @@ public class AutoCaptionsController {
                                 "fontFamily", o.fontFamily().value(),
                                 "fontSize", o.fontSize(),
                                 "color", o.color()))
-                        .toList());
+                        .toList()));
     }
 
     public record GenerateCaptionsRequest(

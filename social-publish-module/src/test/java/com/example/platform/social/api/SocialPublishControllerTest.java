@@ -168,14 +168,17 @@ class SocialPublishControllerTest {
     }
 
     @Test
-    void connectPlatformUsesTenantContext() {
+    void connectPlatformPropagatesTypedUnavailableWithoutFabricatedConnection() {
         TenantContext.set("tenant-a");
         when(platformAuthService.connectPlatform("tenant-a", "user-1", "twitter", null))
-                .thenReturn(new ConnectedPlatformResponse("twitter", "tenant-a", "user-1",
-                        "twitter", null, null, "CONNECTED", Instant.now(), Instant.now()));
+                .thenThrow(new com.example.platform.social.domain.SocialPlatformProviderUnavailableException(
+                        "twitter"));
 
-        controller.connectPlatform("user-1", "twitter", null);
+        var failure = org.junit.jupiter.api.Assertions.assertThrows(
+                com.example.platform.social.domain.SocialPlatformProviderUnavailableException.class,
+                () -> controller.connectPlatform("user-1", "twitter", null));
 
+        assertEquals("SOCIAL-501-001", failure.getErrorCode().code());
         verify(platformAuthService).connectPlatform("tenant-a", "user-1", "twitter", null);
     }
 

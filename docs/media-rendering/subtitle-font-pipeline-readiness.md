@@ -41,7 +41,7 @@
 | **Positioning** | PARTIAL | ASS `\pos()` tags in `LibassAssFileWriter` | libass | 0 tests | Medium | Basic positioning, no user control |
 | **Outline/shadow** | PARTIAL | ASS style parameters | libass | 0 tests | Low | Default ASS styles include outline |
 | **Karaoke/animated** | PLANNED | `RemotionCaptionWord` record | Remotion | 0 tests | High | DTO exists, no render path |
-| **Auto captions** | IMPLEMENTED (noop backend) | `AutoCaptionsService` | `SpeechToTextPort` | 3 tests (noop) | High | Only `NoopSpeechToTextProvider` — no real STT |
+| **Auto captions** | CONTAINED / UNAVAILABLE | `AutoCaptionsService` | `SpeechToTextPort` | typed-unavailable tests | High | No real STT; HTTP generation is Phase 0 denied |
 | **Subtitle preview** | **NOT IMPLEMENTED** | No preview service | — | — | Medium | No browser-side subtitle preview |
 | **Subtitle artifact export** | IMPLEMENTED | `SrtSubtitleAdapter.toSrt()` | None | 0 tests | Low | Can export SRT from timeline |
 | **ASS override sanitization** | **MISSING** | No sanitization | — | — | **HIGH** | User text written directly to ASS — injection risk |
@@ -111,7 +111,7 @@ Font Upload → FontSecurityScanner → FontValidator → FontSubsetter → Font
 | `NoopFontSubsetter` | **NOOP (active)** | Returns failure, no subsetting | Font subsetting documented |
 | `NoopFontStackResolver` | **NOOP (deprecated)** | Returns empty stack, `sans-serif` fallback | Replaced by `BasicFontStackResolver` |
 | `NoopMissingGlyphDetector` | **NOOP (deprecated)** | Returns zero missing glyphs | Replaced by `BasicMissingGlyphDetector` |
-| `NoopSpeechToTextProvider` | **NOOP (active)** | Returns `"[Auto captions unavailable]"` | Auto captions documented |
+| `UnavailableSpeechToTextProvider` | **FAIL-CLOSED (active)** | Throws typed `AI-503-001`; generates no caption | Auto captions unavailable |
 | `NoopSubtitleTranslationProvider` | **NOOP (active)** | Returns `"[translated] " + original` | Translation documented |
 | `FontBakeryValidator` | **STUB** | `enabled()=false`, returns `DISABLED` | Fontbakery validation documented |
 | `OTSFontSecurityScanner` | **SKELETON** | Disabled, no OTS CLI call when enabled | OTS sanitization documented |

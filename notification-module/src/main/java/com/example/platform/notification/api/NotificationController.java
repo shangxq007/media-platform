@@ -4,8 +4,6 @@ import com.example.platform.notification.api.dto.*;
 import com.example.platform.notification.app.*;
 import com.example.platform.notification.domain.NotificationEventDefinition;
 import com.example.platform.notification.infrastructure.NovuNotificationProvider;
-import com.example.platform.notification.app.NotificationEventPublisher;
-import com.example.platform.notification.domain.NotificationInboundEvent;
 import com.example.platform.shared.web.TenantGuard;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -22,7 +20,6 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api")
 @Tag(name = "Notifications", description = "Notification subscriptions, delivery, preferences, and inbox")
 public class NotificationController {
-    private final NotificationEventPublisher publisher;
     private final NotificationQueryService queryService;
     private final NotificationEventCatalogService catalogService;
     private final NotificationChannelBindingService channelBindingService;
@@ -31,15 +28,13 @@ public class NotificationController {
     private final NotificationInboxService inboxService;
     private final NovuNotificationProvider novuProvider;
 
-    public NotificationController(NotificationEventPublisher publisher,
-            NotificationQueryService queryService,
+    public NotificationController(NotificationQueryService queryService,
             NotificationEventCatalogService catalogService,
             NotificationChannelBindingService channelBindingService,
             NotificationSubscriptionService subscriptionService,
             NotificationPreferenceService preferenceService,
             NotificationInboxService inboxService,
             @Autowired(required = false) NovuNotificationProvider novuProvider) {
-        this.publisher = publisher;
         this.queryService = queryService;
         this.catalogService = catalogService;
         this.channelBindingService = channelBindingService;
@@ -103,21 +98,6 @@ public class NotificationController {
     public Map<String, Object> retry(@PathVariable String tenantId, @PathVariable String notificationId) {
         TenantGuard.assertSameTenant(tenantId);
         return Map.of("notificationId", notificationId, "status", "RETRY_QUEUED");
-    }
-
-    // -------------------------------------------------------------------------
-    // Legacy endpoints (kept for backward compatibility)
-    // -------------------------------------------------------------------------
-
-    @PostMapping("/notifications/events")
-    @Operation(summary = "Publish notification event",
-               description = "Publish a new notification event to the system")
-    @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Event published successfully"),
-        @ApiResponse(responseCode = "400", description = "Invalid request body")
-    })
-    public void publish(@Valid @RequestBody CreateNotificationEventRequest request) {
-        publisher.publish(new NotificationInboundEvent(request.eventType(), request.subjectId(), request.payload()));
     }
 
     @GetMapping("/notifications/deliveries")

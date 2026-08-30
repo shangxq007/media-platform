@@ -1,5 +1,9 @@
 # Roadmap 22 Phase 19 C3 FFmpeg Plugin Migration and Dual Distribution Correction
 
+> Historical Phase 19 evidence. Phase 0 later removed the modular external-directory
+> distribution clean-forward. Current production distribution is the controlled embedded
+> bundle only; the task names and dual-mode evidence below describe the frozen Phase 19 state.
+
 TASK=ROADMAP_22_PHASE_19_C3_FFMPEG_PLUGIN_MIGRATION_AND_DUAL_DISTRIBUTION_CORRECTION_V1
 
 BASE_SHA=c058e187cfbb2fdb8037aca21ae333a7df27a4bb

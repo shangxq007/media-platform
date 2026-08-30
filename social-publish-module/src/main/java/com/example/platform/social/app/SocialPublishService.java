@@ -70,7 +70,7 @@ public class SocialPublishService {
         PlatformType platformType = post.platformType();
         PlatformAdapter adapter = adapters.get(platformType);
         if (adapter == null) {
-            throw new IllegalStateException("No adapter for platform: " + platformType);
+            throw new SocialPlatformProviderUnavailableException(platformType.name());
         }
 
         ConnectedPlatform connected = platformRepository.findByTenantUserAndPlatform(
