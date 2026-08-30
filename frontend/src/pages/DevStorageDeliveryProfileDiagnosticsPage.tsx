@@ -1,61 +1,19 @@
-import React, { useState, useEffect } from 'react'
-
-interface StorageDeliveryProfileDiagnosticsResponse {
-  diagnosticsMode: string
-  runtimeSwitchingImplemented: boolean
-  artifactAccessUsesRegistry: boolean
-  providerSelectionUsesRegistry: boolean
-  remoteCallsPerformed: boolean
-  defaultProfileId: string
-  profileCount: number
-  profileIds: string[]
-  enabledProfileIds: string[]
-  runtimeSelectableProfileIds: string[]
-  profiles: StorageDeliveryProfileDiagnosticsItem[]
-  validation: StorageDeliveryProfileValidationDiagnostics
-  generatedAt: string
-}
-
-interface StorageDeliveryProfileDiagnosticsItem {
-  profileId: string
-  status: string
-  accessMode: string
-  backendType: string
-  providerType: string
-  enabled: boolean
-  runtimeSelectable: boolean
-  userFacingAllowed: boolean
-  capabilities: Record<string, boolean>
-  securityPolicy: Record<string, boolean>
-  validationStatus: string
-}
-
-interface StorageDeliveryProfileValidationDiagnostics {
-  valid: boolean
-  errorCount: number
-  warningCount: number
-  errorCodes: string[]
-  warningCodes: string[]
-}
+import React from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { devDiagnosticsClient } from '../api/dev'
 
 export function DevStorageDeliveryProfileDiagnosticsPage() {
-  const [data, setData] = useState<StorageDeliveryProfileDiagnosticsResponse | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['dev', 'storage-delivery-profile-diagnostics'],
+    queryFn: async () => {
+      const result = await devDiagnosticsClient.getStorageDeliveryProfiles()
+      if (!result.success) throw new Error(result.error.message)
+      return result.data
+    },
+  })
 
-  useEffect(() => {
-    fetch('/dev/storage-delivery-profiles')
-      .then(res => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        return res.json()
-      })
-      .then(setData)
-      .catch(err => setError(err.message))
-      .finally(() => setLoading(false))
-  }, [])
-
-  if (loading) return <div style={{ padding: '20px', color: '#8b949e' }}>Loading...</div>
-  if (error) return <div style={{ padding: '20px', color: '#f85149' }}>Error: {error}</div>
+  if (isLoading) return <div style={{ padding: '20px', color: '#8b949e' }}>Loading...</div>
+  if (error) return <div style={{ padding: '20px', color: '#f85149' }}>Error: {error.message}</div>
   if (!data) return <div style={{ padding: '20px', color: '#8b949e' }}>No data</div>
 
   return (
@@ -78,7 +36,7 @@ export function DevStorageDeliveryProfileDiagnosticsPage() {
         <h2 style={{ color: '#bc8cff', marginTop: 0 }}>Registry Summary</h2>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
           <div>
-            <p style={{ color: '#8b949e', margin: '4px 0' }}><strong>Default Profile:</strong> <code>{data.defaultProfileId}</code></p>
+            <p style={{ color: '#8b949e', margin: '4px 0' }}><strong>Default Profile:</strong> <code>{data.defaultProfileId.value}</code></p>
             <p style={{ color: '#8b949e', margin: '4px 0' }}><strong>Profile Count:</strong> {data.profileCount}</p>
             <p style={{ color: '#8b949e', margin: '4px 0' }}><strong>Enabled:</strong> {data.enabledProfileIds.length}</p>
             <p style={{ color: '#8b949e', margin: '4px 0' }}><strong>Runtime Selectable:</strong> {data.runtimeSelectableProfileIds.length}</p>
@@ -106,8 +64,8 @@ export function DevStorageDeliveryProfileDiagnosticsPage() {
           </thead>
           <tbody>
             {data.profiles.map(profile => (
-              <tr key={profile.profileId} style={{ borderBottom: '1px solid #21262d' }}>
-                <td style={{ padding: '8px' }}><code>{profile.profileId}</code></td>
+              <tr key={profile.profileId.value} style={{ borderBottom: '1px solid #21262d' }}>
+                <td style={{ padding: '8px' }}><code>{profile.profileId.value}</code></td>
                 <td style={{ padding: '8px' }}>{profile.status}</td>
                 <td style={{ padding: '8px' }}>{profile.accessMode}</td>
                 <td style={{ padding: '8px', textAlign: 'center' }}>{profile.enabled ? '✅' : '❌'}</td>

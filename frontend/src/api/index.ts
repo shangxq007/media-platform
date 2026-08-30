@@ -254,4 +254,15 @@ export const UsageAlertAPI = {
 
 export { PromptAPI } from './prompt'
 
+// Additive typed application boundary. The default Axios export remains
+// compatible for established consumers while new product surfaces depend on
+// the intentionally projected platform client.
+export { platformClient } from '../foundation/platformClient'
+export type {
+  PlatformClient,
+  ProjectSummary as PlatformProjectSummary,
+  WorkspaceHomeProjection,
+  WorkspaceSummary,
+} from '../foundation/platformClient'
+
 export default api

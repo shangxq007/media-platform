@@ -1,11 +1,15 @@
 import assert from 'node:assert/strict'
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, relative } from 'node:path'
 import test from 'node:test'
 import {
   AUTHORITY_RULES,
+  BOUNDED_RULES,
+  architectureGuardPassed,
   defaultSourceRoot,
+  reconcileFrontendPathLedger,
+  repositoryRoot,
   scanFrontendArchitecture,
 } from './frontend-architecture-guard.mjs'
 
@@ -15,7 +19,84 @@ test('governed frontend passes with all authority counts at zero', () => {
   for (const rule of AUTHORITY_RULES) {
     assert.equal(result.counts[rule.name], 0, rule.name)
   }
+  for (const rule of BOUNDED_RULES) {
+    assert.ok(result.boundedCounts[rule.name] <= rule.maximum, rule.name)
+  }
+  assert.equal(architectureGuardPassed(result), true)
+  assert.equal(result.cleanForwardCounts.OLD_IMPORT_COUNT, 0)
+  assert.equal(result.cleanForwardCounts.OLD_COMPONENT_USAGE_COUNT, 0)
+  assert.equal(result.cleanForwardCounts.OLD_SCHEMA_USAGE_COUNT, 0)
+  assert.equal(result.cleanForwardCounts.UNCLASSIFIED_FRONTEND_PATHS, 0)
+  assert.equal(result.cleanForwardCounts.DELETE_SHADOW_PATH_RESIDUE_COUNT, 0)
+  assert.equal(result.cleanForwardCounts.PATH_LEDGER_STALE_PATH_COUNT, 0)
+  assert.equal(result.cleanForwardCounts.PATH_LEDGER_DUPLICATE_PATH_COUNT, 0)
   console.log(`FRONTEND_ARCHITECTURE_POSITIVE_CONTROL=PASS files=${result.scannedFileCount}`)
+})
+
+const cleanForwardMutations = [
+  ['OLD_IMPORT_COUNT', "import '../config/navigation.js'"],
+  ['OLD_COMPONENT_USAGE_COUNT', 'const obsolete = <RenderJobsPage />'],
+  ['OLD_SCHEMA_USAGE_COUNT', 'const schema = RenderJobSummarySchema'],
+]
+
+for (const [field, source] of cleanForwardMutations) {
+  test(`${field} rejects reintroduced legacy usage`, () => {
+    const root = mkdtempSync(join(tmpdir(), 'frontend-foundation-clean-forward-'))
+    try {
+      writeFileSync(join(root, 'consumer.tsx'), source)
+      const result = scanFrontendArchitecture(root)
+      assert.ok(result.cleanForwardCounts[field] > 0, `${field} did not detect mutation`)
+      assert.equal(architectureGuardPassed(result), false)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+}
+
+test('OLD_ROUTE_COUNT rejects an increase above the preserved compatibility ceiling', () => {
+  const root = mkdtempSync(join(tmpdir(), 'frontend-foundation-old-routes-'))
+  try {
+    mkdirSync(join(root, 'app'))
+    const paths = [
+      '/legacy/editor', '/render-jobs', '/capabilities', '/smoke-editor', '/observability',
+      '/dev/timeline-git', '/app/renders/$productId', '/admin/storage-health', '/app/renders',
+      '/admin/render-jobs', '/dev/preview', '/dev/diagnostics', '/dev/storage-delivery-profiles',
+      '/dev/ingest/preflight-policy', '/render-jobs',
+    ]
+    writeFileSync(join(root, 'app/routeTree.tsx'), paths.map(path => `route('${path}', Component)`).join('\n'))
+    const result = scanFrontendArchitecture(root)
+    assert.equal(result.cleanForwardCounts.OLD_ROUTE_COUNT, 15)
+    assert.equal(architectureGuardPassed(result), false)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('path ledger reconciliation detects unclassified, stale, and duplicate paths', () => {
+  const root = mkdtempSync(join(tmpdir(), 'frontend-foundation-path-ledger-'))
+  try {
+    const frontendRoot = join(root, 'frontend')
+    mkdirSync(frontendRoot)
+    const classifiedFile = join(frontendRoot, 'classified.ts')
+    const unclassifiedFile = join(frontendRoot, 'unclassified.ts')
+    writeFileSync(classifiedFile, 'export {}')
+    writeFileSync(unclassifiedFile, 'export {}')
+    const classifiedPath = relative(repositoryRoot, classifiedFile).replaceAll('\\', '/')
+    const stalePath = `${relative(repositoryRoot, frontendRoot).replaceAll('\\', '/')}/stale.ts`
+    const ledgerPath = join(root, 'ledger.tsv')
+    writeFileSync(ledgerPath, [
+      'path\tclassification\trationale',
+      `${classifiedPath}\tREUSE\tTEST`,
+      `${classifiedPath}\tREUSE\tTEST_DUPLICATE`,
+      `${stalePath}\tREUSE\tTEST_STALE`,
+    ].join('\n'))
+    const result = reconcileFrontendPathLedger(frontendRoot, ledgerPath)
+    assert.equal(result.unclassifiedPaths.length, 1)
+    assert.equal(result.stalePaths.length, 1)
+    assert.equal(result.duplicatePaths.length, 1)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
 })
 
 const mutations = [
@@ -48,6 +129,61 @@ for (const [ruleName, relativePath, source, mutationName = ruleName] of mutation
     }
     assert.equal(existsSync(root), false)
     console.log(`${ruleName}_NEGATIVE_CONTROL=PASS residue=0`)
+  })
+}
+
+const rawStorageProductFieldLexemes = [
+  'sourceUrl',
+  'storageUri',
+  'storageKey',
+  'objectKey',
+  'bucket',
+  'assetUri',
+]
+
+for (const lexeme of rawStorageProductFieldLexemes) {
+  test(`FRONTEND_RAW_STORAGE_PRODUCT_FIELD_COUNT rejects ${lexeme} and leaves zero residue`, () => {
+    const root = mkdtempSync(join(tmpdir(), 'frontend-foundation-raw-storage-'))
+    try {
+      const file = join(root, 'types/product.ts')
+      mkdirSync(join(file, '..'), { recursive: true })
+      writeFileSync(file, `export interface GovernedProductClip { ${lexeme}?: string }`)
+      const result = scanFrontendArchitecture(root)
+      assert.equal(result.boundedCounts.FRONTEND_RAW_STORAGE_PRODUCT_FIELD_COUNT, 1)
+      assert.equal(architectureGuardPassed(result), false)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+    assert.equal(existsSync(root), false)
+    console.log(`FRONTEND_RAW_STORAGE_PRODUCT_FIELD_COUNT_${lexeme}_NEGATIVE_CONTROL=PASS residue=0`)
+  })
+}
+
+const boundedMutations = [
+  ['FRONTEND_DIRECT_STORAGE_URI_USE_COUNT', 'features/storage.ts', "const location = 's3://private/object'"],
+  ['FRONTEND_SCATTERED_NATIVE_FETCH_COUNT', 'pages/Fetch.tsx', Array.from({ length: 4 }, () => "fetch('/api/value')").join('\n')],
+  ['FRONTEND_DUPLICATE_CANONICAL_DTO_AUTHORITY_COUNT', 'features/model.ts', 'interface FrontendArtifactDto { id: string }'],
+  ['FRONTEND_UNCLASSIFIED_DOMAIN_MODEL_COUNT', 'domain/project.ts', 'interface ProjectRecord { id: string }'],
+  ['FRONTEND_COMMERCIAL_AUTHORITY_COUNT', 'features/access.ts', 'const isEntitled = credits > 0'],
+  ['FRONTEND_RUNTIME_ELIGIBILITY_AUTHORITY_COUNT', 'features/runtime.ts', 'const workerEligible = capacity > 0'],
+]
+
+for (const [ruleName, relativePath, source] of boundedMutations) {
+  test(`${ruleName} rejects a baseline increase`, () => {
+    const root = mkdtempSync(join(tmpdir(), 'frontend-foundation-bounded-guard-'))
+    try {
+      const file = join(root, relativePath)
+      mkdirSync(join(file, '..'), { recursive: true })
+      writeFileSync(file, source)
+      const result = scanFrontendArchitecture(root)
+      const rule = BOUNDED_RULES.find(candidate => candidate.name === ruleName)
+      assert.ok(rule)
+      assert.ok(result.boundedCounts[ruleName] > rule.maximum, `${ruleName} did not exceed its baseline`)
+      assert.equal(architectureGuardPassed(result), false)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+    assert.equal(existsSync(root), false)
   })
 }
 
