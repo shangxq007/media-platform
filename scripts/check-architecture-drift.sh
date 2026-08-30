@@ -797,35 +797,14 @@ else
     fail "candidate hash authority wrong"
 fi
 
-# OPTG-11: parent = plan.baseRevisionId (single parent)
-if grep -q 'plan.baseRevisionId()' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java && grep -q 'parent_revision_id' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java; then
-    pass "normal edit parent = plan base"
+# OPTG-11/14-17/21-23, OPCG-1/2/10/11, RCG-34/36/37 and RCFG-7/8/9:
+# one invariant-oriented source guard owns H7 authorization, idempotency,
+# allocation, parent-edge, NO_OP, genesis and shared ref-mutation verification.
+# It strips comments before proof evaluation and fails closed on missing inputs.
+if python3 scripts/guards/h7-architecture-guard.py; then
+    pass "H7 canonical transaction authorities and zero-count laws"
 else
-    fail "parent semantics wrong"
-fi
-
-# OPTG-14/15: database-enforced CAS (conditional update affected rows)
-if grep -q 'where project_id = ? and ref_id = ? and head_revision_id = ?' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java; then
-    pass "database-enforced CAS conditional update"
-else
-    fail "CAS mechanism missing"
-fi
-if grep -q 'select head' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java; then
-    fail "check-then-act CAS"
-else
-    pass "no check-then-act CAS"
-fi
-
-# OPTG-16/17: authorization binds plan digest + apply context
-if grep -q 'authorization().planDigest().equals(plan.planDigest())' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java; then
-    pass "authorization binds exact PlanDigest"
-else
-    fail "authorization plan binding missing"
-fi
-if grep -q 'AUTHORIZATION_CONTEXT_MISMATCH' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java; then
-    pass "authorization binds exact apply context"
-else
-    fail "authorization context binding missing"
+    fail "H7 canonical transaction authority drift"
 fi
 
 # OPTG-18: AuthorizationDecision immutable record
@@ -833,25 +812,6 @@ if grep -q 'record AuthorizationDecision(' operation-module/src/main/java/com/ex
     pass "immutable AuthorizationDecision"
 else
     fail "authorization not immutable"
-fi
-
-# OPTG-21/22: durable ApplyCommandId, not canonical semantics
-if grep -q 'apply_command' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java; then
-    pass "durable ApplyCommandId authority"
-else
-    fail "durable idempotency missing"
-fi
-if grep -q 'apply_command' timeline-module/src/main/java/com/example/platform/timeline/canonical/TimelineDocument.java 2>/dev/null; then
-    fail "ApplyCommandId in canonical model"
-else
-    pass "ApplyCommandId not canonical Timeline semantics"
-fi
-
-# OPTG-23: semantic no-op creates no revision
-if grep -q 'noOp()' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java && grep -q 'ApplyResult.NO_OP' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java; then
-    pass "semantic NO_OP no revision"
-else
-    fail "NO_OP handling missing"
 fi
 
 # OPTG-24: no independent generic JSON patch canonical write endpoints
@@ -903,13 +863,6 @@ else
     fail "same-plan binding missing"
 fi
 
-# OPCG-1/2: first-time NO_OP apply validates expected head; stale => STALE_TARGET_REF
-if grep -q 'no-op still requires exact head' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java; then
-    pass "no-op first apply validates expected head"
-else
-    fail "no-op head validation missing"
-fi
-
 # OPCG-4/5/6: fingerprint binds principal + project scope + target ref
 if grep -q 'principalRef' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java && grep -q 'projectId + "|" + ref.refId()' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java; then
     pass "apply command fingerprint binds principal + context"
@@ -927,13 +880,6 @@ if grep -q 'org.jooq\|PGobject\|postgres' operation-module/src/main/java/com/exa
     fail "postgres/jooq leakage into domain plan model"
 else
     pass "zero postgres/jooq leakage into domain plan model"
-fi
-
-# OPCG-10/11: CAS remains database-enforced, no check-then-act
-if grep -q 'where project_id = ? and ref_id = ? and head_revision_id = ?' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java; then
-    pass "CAS database-enforced conditional update"
-else
-    fail "CAS mechanism missing"
 fi
 
 # OPCG-13/14: no JGit, no alternative backend
@@ -1010,25 +956,6 @@ else
     fail "RCI4 composite FK missing"
 fi
 
-# RCG-34: no MAX+1 production allocator
-if grep -rn 'max(revision_number)' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java render-module/src/main/java/com/example/platform/render/app/revisioncommand/ 2>/dev/null | grep -v '^\s*\*' | grep -q .; then
-    fail "MAX+1 allocator remains"
-else
-    pass "DB-safe revision-number allocator (counter, RCI2)"
-fi
-
-# RCG-36/37: apply_command domain separation, OperationPlan semantics preserved
-if grep -q 'command_domain' platform-app/src/main/resources/db/migration/V1__initial_schema.sql && grep -q "'OPERATION_PLAN'" platform-app/src/main/resources/db/migration/V1__initial_schema.sql; then
-    pass "apply_command domain separation (OP maps OPERATION_PLAN)"
-else
-    fail "command domain missing"
-fi
-if grep -q 'parent_order = 0\|parent_order)' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java; then
-    pass "normal edit writes single parent edge order 0"
-else
-    fail "normal edit parent edge missing"
-fi
-
 # RCG-38/39: no JGit, no new backend
 if grep -rq 'org.eclipse.jgit' render-module/src/main platform-app/src/main 2>/dev/null; then
     fail "JGit introduced"
@@ -1067,20 +994,6 @@ if grep -q 'plan.sourceRevisionId()' timeline-module/src/main/java/com/example/p
     pass "frozen source revision is apply authority (zero source-ref reread)"
 else
     fail "RCP2 source pin violation"
-fi
-
-# RCFG-7/8/9: counter table exists in canonical V1; bootstrap is ON CONFLICT
-# DO NOTHING. The V4-era backfill formula (coalesce(max(revision_number),0)+1)
-# was a historical data migration — irrelevant for greenfield single-V1.
-if grep -q 'create table project_revision_counter' platform-app/src/main/resources/db/migration/V1__initial_schema.sql; then
-    pass "counter table defined in canonical V1"
-else
-    fail "RCP3 migration formula missing"
-fi
-if grep -q 'on conflict (project_id) do nothing' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java; then
-    pass "counter bootstrap atomic (ON CONFLICT DO NOTHING)"
-else
-    fail "RCP3 bootstrap not atomic"
 fi
 
 # RCFG-12: parent edge remains graph authority

@@ -11,6 +11,10 @@ public final class RenderTestSchemaFixture {
         dsl.execute("""
             DROP TABLE IF EXISTS
                 flyway_schema_history,
+                apply_command,
+                timeline_revision_ref,
+                timeline_revision_parent,
+                project_revision_counter,
                 timeline_revision,
                 timeline_snapshot,
                 media_probe_observation,
@@ -354,11 +358,66 @@ public final class RenderTestSchemaFixture {
                 created_at timestamp not null
             )
         """);
+
+        dsl.execute("create unique index if not exists ux_timeline_revision_project_num "
+                + "on timeline_revision(project_id, revision_number)");
+        dsl.execute("create unique index if not exists ux_timeline_revision_project_id "
+                + "on timeline_revision(project_id, id)");
+        dsl.execute("""
+            CREATE TABLE IF NOT EXISTS project_revision_counter (
+                project_id varchar(64) primary key,
+                next_revision_number bigint not null
+            )
+        """);
+        dsl.execute("""
+            CREATE TABLE IF NOT EXISTS timeline_revision_parent (
+                project_id varchar(64) not null,
+                revision_id varchar(64) not null,
+                parent_revision_id varchar(64) not null,
+                parent_order int not null,
+                primary key (revision_id, parent_order),
+                unique (revision_id, parent_revision_id),
+                foreign key (revision_id) references timeline_revision(id),
+                foreign key (project_id, parent_revision_id)
+                    references timeline_revision(project_id, id)
+            )
+        """);
+        dsl.execute("""
+            CREATE TABLE IF NOT EXISTS timeline_revision_ref (
+                project_id varchar(64) not null,
+                ref_id varchar(64) not null,
+                head_revision_id varchar(64),
+                version bigint not null default 0,
+                updated_at timestamp not null default current_timestamp,
+                primary key (project_id, ref_id),
+                foreign key (head_revision_id) references timeline_revision(id)
+                    deferrable initially deferred
+            )
+        """);
+        dsl.execute("""
+            CREATE TABLE IF NOT EXISTS apply_command (
+                apply_command_id varchar(64) primary key,
+                plan_digest varchar(64) not null,
+                fingerprint varchar(64) not null,
+                status varchar(16) not null,
+                result_revision_id varchar(64),
+                result_content_hash varchar(64),
+                result_status varchar(16),
+                project_id varchar(64),
+                command_domain varchar(32) not null default 'OPERATION_PLAN',
+                created_at timestamp not null default current_timestamp,
+                completed_at timestamp
+            )
+        """);
     }
 
     public static void truncate(DSLContext dsl) {
         dsl.execute("""
             TRUNCATE TABLE
+                apply_command,
+                timeline_revision_ref,
+                timeline_revision_parent,
+                project_revision_counter,
                 timeline_revision,
                 timeline_snapshot,
                 media_probe_observation,

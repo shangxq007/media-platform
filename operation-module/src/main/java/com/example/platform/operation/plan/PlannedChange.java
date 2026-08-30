@@ -14,6 +14,7 @@ import java.util.Set;
  * JsonNode, no Map<String,Object>.
  */
 public sealed interface PlannedChange permits
+        PlannedChange.ClipAdded,
         PlannedChange.ClipRemoved,
         PlannedChange.ClipReplaced,
         PlannedChange.RelationshipRemoved,
@@ -25,6 +26,19 @@ public sealed interface PlannedChange permits
         PlannedChange.TextElementReplaced {
 
     boolean primary();
+
+    /** ADD_OR_TRIM_MEDIA_CLIP_V1: add one fully typed canonical clip. */
+    record ClipAdded(String trackId, TimelineClip newClip) implements PlannedChange {
+        public ClipAdded {
+            if (trackId == null || trackId.isBlank() || newClip == null) {
+                throw new IllegalArgumentException("trackId and newClip required");
+            }
+        }
+
+        public boolean primary() {
+            return true;
+        }
+    }
 
     /** DELETE: remove clip. */
     record ClipRemoved(TimelineClipId clipId) implements PlannedChange {

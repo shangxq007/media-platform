@@ -66,6 +66,8 @@ public final class OperationPlanDigest {
     /** Deterministic key for one planned change (sorted by construction order — planner emits deterministic order). */
     public static String changeKey(PlannedChange c) {
         return switch (c) {
+            case PlannedChange.ClipAdded a -> "add(" + a.trackId() + ","
+                    + a.newClip().getClipId().value() + ")";
             case PlannedChange.ClipRemoved r -> "remove(" + r.clipId().value() + ")";
             case PlannedChange.ClipReplaced r -> "replace(" + r.clipId().value() + "," + r.newClip().getEndTime() + ")";
             case PlannedChange.RelationshipRemoved r -> "rel-remove(" + r.relationshipIdentity() + ")";
