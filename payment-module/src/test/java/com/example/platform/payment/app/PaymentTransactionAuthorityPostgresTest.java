@@ -165,6 +165,26 @@ class PaymentTransactionAuthorityPostgresTest extends PostgresTestContainerSuppo
     }
 
     @Test
+    void durableCheckoutReplayPrecedesCurrentProviderAvailability() {
+        InitiateCheckoutCommand command = checkout(
+                "tenant-a", "txn-durable-replay", "checkout-durable-replay",
+                "durable-replay-key", 1000);
+        PaymentTransaction first = authority.initiateCheckout(command);
+        PaymentTransactionAuthority withoutProviders = new PaymentTransactionAuthority(
+                java.util.List.of(), new PaymentTransactionJdbcRepository(jdbc),
+                context.getBean(PlatformTransactionManager.class));
+
+        PaymentTransaction replay = withoutProviders.initiateCheckout(command);
+
+        assertEquals(first, replay);
+        assertEquals(1, provider.checkoutCalls.get(), "exact replay must not execute again");
+        assertThrows(IllegalStateException.class, () -> withoutProviders.initiateCheckout(
+                checkout("tenant-a", "txn-different", "checkout-different",
+                        "durable-replay-key", 999)));
+        assertEquals(1, provider.checkoutCalls.get(), "conflicting replay must not execute");
+    }
+
+    @Test
     void concurrentCheckoutReplayClaimsOneProviderSideEffect() throws Exception {
         InitiateCheckoutCommand command = checkout(
                 "tenant-a", "txn-checkout-duplicate", "checkout-duplicate", "checkout-duplicate-key", 1000);

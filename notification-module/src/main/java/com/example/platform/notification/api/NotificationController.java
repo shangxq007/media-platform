@@ -525,7 +525,7 @@ public class NotificationController {
         boolean novuEnabled = novuProvider != null && novuProvider.isEnabled();
         return Map.of(
                 "novu", Map.of("enabled", novuEnabled),
-                "local", Map.of("enabled", true)
+                "local", Map.of("enabled", false)
         );
     }
 

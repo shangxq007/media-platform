@@ -4,7 +4,6 @@ import static com.example.platform.typedschema.jooq.generated.tables.Notificatio
 import static com.example.platform.typedschema.jooq.generated.tables.NotificationEvent.NOTIFICATION_EVENT;
 
 import com.example.platform.notification.domain.*;
-import com.example.platform.notification.infrastructure.MockNotificationProvider;
 import com.example.platform.shared.events.ArtifactCreatedEvent;
 import com.example.platform.shared.events.RenderCacheHashInvalidatedEvent;
 import com.example.platform.shared.events.RenderDeliveryCompletedEvent;
@@ -31,7 +30,6 @@ import java.util.Map;
 import org.jooq.DSLContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
@@ -42,15 +40,12 @@ public class NotificationEventHandler {
     private final DSLContext dsl;
     private final List<NotificationProvider> providers;
     private final NotificationRenderingService renderingService;
-    private final MockNotificationProvider mockProvider;
 
     public NotificationEventHandler(DSLContext dsl, List<NotificationProvider> providers,
-            NotificationRenderingService renderingService,
-            @Autowired(required = false) MockNotificationProvider mockProvider) {
+            NotificationRenderingService renderingService) {
         this.dsl = dsl;
         this.providers = providers;
         this.renderingService = renderingService;
-        this.mockProvider = mockProvider;
     }
 
     @EventListener

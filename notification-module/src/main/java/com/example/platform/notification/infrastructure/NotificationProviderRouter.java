@@ -20,15 +20,12 @@ public class NotificationProviderRouter {
 
     private final Map<String, NotificationProvider> providerByCode;
     private final NovuNotificationProvider novuProvider;
-    private final MockNotificationProvider localProvider;
 
     public NotificationProviderRouter(List<NotificationProvider> providers,
-            ObjectProvider<NovuNotificationProvider> novuProvider,
-            ObjectProvider<MockNotificationProvider> localProvider) {
+            ObjectProvider<NovuNotificationProvider> novuProvider) {
         this.providerByCode = providers.stream()
                 .collect(Collectors.toMap(NotificationProvider::providerCode, Function.identity()));
         this.novuProvider = novuProvider.getIfAvailable();
-        this.localProvider = localProvider.getIfAvailable();
     }
 
     public Optional<NotificationProvider> findByCode(String providerCode) {
@@ -49,11 +46,6 @@ public class NotificationProviderRouter {
             return provider.send(command);
         }
         
-        // Fallback to local provider
-        if (localProvider != null) {
-            log.debug("NotificationProviderRouter: using test-only local provider for channel={}", channel);
-            return localProvider.send(command);
-        }
         log.warn("NotificationProviderRouter: no accepting provider is configured for channel={}", channel);
         return new DeliveryResult("FAILED", "{\"error\":\"NOTIFICATION_PROVIDER_UNAVAILABLE\"}");
     }

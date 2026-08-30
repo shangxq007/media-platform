@@ -1,5 +1,6 @@
 package com.example.platform.security;
 
+import java.util.List;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AuthorizeHttpRequestsConfigurer;
@@ -15,55 +16,70 @@ import org.springframework.security.config.annotation.web.configurers.AuthorizeH
  */
 public final class PhaseZeroContainmentPolicy {
 
+    private static final List<ContainedRoute> MUTATIONS = List.of(
+            route(HttpMethod.POST, "/api/extensions/*/execute"),
+            route(HttpMethod.DELETE, "/api/extensions/*"),
+            route(HttpMethod.POST, "/api/extensions/*/rollback"),
+            route(HttpMethod.POST, "/api/extensions/*/rollback-point"),
+            route(HttpMethod.POST, "/api/extensions/tool-run"),
+            route(HttpMethod.POST, "/api/extensions/cli-tools/*/run"),
+            route(HttpMethod.POST, "/api/extensions/*/routing-rules"),
+            route(HttpMethod.POST, "/api/analytics/internal/rebuild-profiles"),
+            route(HttpMethod.POST, "/api/analytics/internal/rebuild-segments"),
+            route(HttpMethod.POST, "/api/billing/cycles/process-due"),
+            route(HttpMethod.POST, "/api/asset-governance/integrity/scan-global"),
+            route(HttpMethod.POST, "/api/asset-governance/segment-cache/cleanup"),
+            route(HttpMethod.POST, "/api/asset-governance/storage-orphans/purge"),
+            route(HttpMethod.POST, "/api/media/assets/integrity/scan-global"),
+            route(HttpMethod.POST, "/api/render/jobs/*/cancel"),
+            route(HttpMethod.POST, "/api/preview/media"),
+            route(HttpMethod.POST, "/api/remote-worker/register"),
+            route(HttpMethod.POST, "/api/remote-worker/deregister/*"),
+            route(HttpMethod.POST, "/api/remote-worker/heartbeat/*"),
+            route(HttpMethod.POST, "/api/remote-worker/jobs/*/callback"),
+            route(HttpMethod.POST, "/api/products/*/dependencies"),
+            route(HttpMethod.DELETE, "/api/products/*/dependencies/*"),
+            route(HttpMethod.POST, "/api/tenants/*/notifications/*/retry"),
+            route(HttpMethod.POST, "/api/me/notification-channels/*/verify"),
+            route(HttpMethod.POST, "/api/me/notification-channels/*/test"),
+            route(HttpMethod.POST, "/api/admin/notifications/deliveries/*/retry"),
+            route(HttpMethod.POST, "/api/artifacts/*/tombstone"),
+            route(HttpMethod.POST, "/api/artifacts/gc/run"),
+            route(HttpMethod.POST, "/api/media/assets/*/tombstone"),
+            route(HttpMethod.POST, "/api/media/assets/gc/run"));
+
+    private static final List<String> READS = List.of(
+            "/api/render/jobs/*/artifacts",
+            "/api/render/jobs/*/status-history",
+            "/api/render/jobs/*/artifacts/*/content",
+            "/api/render/jobs/*/artifacts/*/access",
+            "/api/tenants/*/notifications",
+            "/api/tenants/*/notifications/*",
+            "/api/tenants/*/notifications/*/deliveries",
+            "/api/notifications/deliveries",
+            "/api/notifications/mock-sent",
+            "/api/admin/notifications/deliveries",
+            "/api/admin/notifications/provider-status");
+
     private PhaseZeroContainmentPolicy() {}
 
     public static void apply(
             AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry auth) {
-        // Extension execution, lifecycle, arbitrary tools, and routing mutation.
-        auth.requestMatchers(HttpMethod.POST, "/api/extensions/*/execute").denyAll()
-                .requestMatchers(HttpMethod.DELETE, "/api/extensions/*").denyAll()
-                .requestMatchers(HttpMethod.POST, "/api/extensions/*/rollback").denyAll()
-                .requestMatchers(HttpMethod.POST, "/api/extensions/*/rollback-point").denyAll()
-                .requestMatchers(HttpMethod.POST, "/api/extensions/tool-run").denyAll()
-                .requestMatchers(HttpMethod.POST, "/api/extensions/cli-tools/*/run").denyAll()
-                .requestMatchers(HttpMethod.POST, "/api/extensions/*/routing-rules").denyAll()
-
-                // Global analytics, billing, and asset-governance mutations.
-                .requestMatchers(HttpMethod.POST, "/api/analytics/internal/rebuild-profiles").denyAll()
-                .requestMatchers(HttpMethod.POST, "/api/analytics/internal/rebuild-segments").denyAll()
-                .requestMatchers(HttpMethod.POST, "/api/billing/cycles/process-due").denyAll()
-                .requestMatchers(HttpMethod.POST, "/api/asset-governance/integrity/scan-global").denyAll()
-                .requestMatchers(HttpMethod.POST, "/api/asset-governance/segment-cache/cleanup").denyAll()
-                .requestMatchers(HttpMethod.POST, "/api/asset-governance/storage-orphans/purge").denyAll()
-                .requestMatchers(HttpMethod.POST, "/api/media/assets/integrity/scan-global").denyAll()
-
-                // Render routes without tenant/project ownership and the development upload.
-                .requestMatchers(HttpMethod.GET, "/api/render/jobs/*/artifacts").denyAll()
-                .requestMatchers(HttpMethod.POST, "/api/render/jobs/*/cancel").denyAll()
-                .requestMatchers(HttpMethod.GET, "/api/render/jobs/*/status-history").denyAll()
-                .requestMatchers(HttpMethod.GET, "/api/render/jobs/*/artifacts/*/content").denyAll()
-                .requestMatchers(HttpMethod.GET, "/api/render/jobs/*/artifacts/*/access").denyAll()
-                .requestMatchers(HttpMethod.POST, "/api/preview/media").denyAll()
-
-                // Legacy in-memory worker authority.
-                .requestMatchers(HttpMethod.POST, "/api/remote-worker/register").denyAll()
-                .requestMatchers(HttpMethod.POST, "/api/remote-worker/deregister/*").denyAll()
-                .requestMatchers(HttpMethod.POST, "/api/remote-worker/heartbeat/*").denyAll()
-                .requestMatchers(HttpMethod.POST, "/api/remote-worker/jobs/*/callback").denyAll()
-
-                // Product dependencies currently use a literal system tenant and unscoped delete.
-                .requestMatchers(HttpMethod.POST, "/api/products/*/dependencies").denyAll()
-                .requestMatchers(HttpMethod.DELETE, "/api/products/*/dependencies/*").denyAll()
-
-                // Notification fake operations, mock history, and unscoped/global delivery reads.
-                .requestMatchers(HttpMethod.GET, "/api/tenants/*/notifications/*").denyAll()
-                .requestMatchers(HttpMethod.GET, "/api/tenants/*/notifications/*/deliveries").denyAll()
-                .requestMatchers(HttpMethod.POST, "/api/tenants/*/notifications/*/retry").denyAll()
-                .requestMatchers(HttpMethod.GET, "/api/notifications/deliveries").denyAll()
-                .requestMatchers(HttpMethod.GET, "/api/notifications/mock-sent").denyAll()
-                .requestMatchers(HttpMethod.POST, "/api/me/notification-channels/*/verify").denyAll()
-                .requestMatchers(HttpMethod.POST, "/api/me/notification-channels/*/test").denyAll()
-                .requestMatchers(HttpMethod.GET, "/api/admin/notifications/deliveries").denyAll()
-                .requestMatchers(HttpMethod.POST, "/api/admin/notifications/deliveries/*/retry").denyAll();
+        containedRoutes().forEach(contained -> auth
+                .requestMatchers(contained.method(), contained.pattern()).denyAll());
     }
+
+    static List<ContainedRoute> containedRoutes() {
+        return java.util.stream.Stream.concat(
+                        MUTATIONS.stream(),
+                        READS.stream().flatMap(pattern -> java.util.stream.Stream.of(
+                                route(HttpMethod.GET, pattern), route(HttpMethod.HEAD, pattern))))
+                .toList();
+    }
+
+    private static ContainedRoute route(HttpMethod method, String pattern) {
+        return new ContainedRoute(method, pattern);
+    }
+
+    record ContainedRoute(HttpMethod method, String pattern) {}
 }

@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import jakarta.servlet.Filter;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -19,6 +20,7 @@ import org.springframework.boot.test.context.TestComponent;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Profile;
 import org.springframework.mock.web.MockServletContext;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -28,6 +30,7 @@ import org.springframework.security.core.context.SecurityContextImpl;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -38,6 +41,51 @@ class PhaseZeroContainmentPolicyHttpTest {
 
     // PlatformApplication's explicit component scan does not inherit Boot's test-component filter.
     private static final String TEST_FIXTURE_PROFILE = "phase-zero-containment-policy-http-test";
+
+    private static final List<RouteCase> MUTATION_CASES = List.of(
+            mutation(HttpMethod.POST, "/api/extensions/*/execute", "/api/extensions/demo/execute"),
+            mutation(HttpMethod.DELETE, "/api/extensions/*", "/api/extensions/demo"),
+            mutation(HttpMethod.POST, "/api/extensions/*/rollback", "/api/extensions/demo/rollback"),
+            mutation(HttpMethod.POST, "/api/extensions/*/rollback-point", "/api/extensions/demo/rollback-point"),
+            mutation(HttpMethod.POST, "/api/extensions/tool-run", "/api/extensions/tool-run"),
+            mutation(HttpMethod.POST, "/api/extensions/cli-tools/*/run", "/api/extensions/cli-tools/demo/run"),
+            mutation(HttpMethod.POST, "/api/extensions/*/routing-rules", "/api/extensions/demo/routing-rules"),
+            mutation(HttpMethod.POST, "/api/analytics/internal/rebuild-profiles", "/api/analytics/internal/rebuild-profiles"),
+            mutation(HttpMethod.POST, "/api/analytics/internal/rebuild-segments", "/api/analytics/internal/rebuild-segments"),
+            mutation(HttpMethod.POST, "/api/billing/cycles/process-due", "/api/billing/cycles/process-due"),
+            mutation(HttpMethod.POST, "/api/asset-governance/integrity/scan-global", "/api/asset-governance/integrity/scan-global"),
+            mutation(HttpMethod.POST, "/api/asset-governance/segment-cache/cleanup", "/api/asset-governance/segment-cache/cleanup"),
+            mutation(HttpMethod.POST, "/api/asset-governance/storage-orphans/purge", "/api/asset-governance/storage-orphans/purge"),
+            mutation(HttpMethod.POST, "/api/media/assets/integrity/scan-global", "/api/media/assets/integrity/scan-global"),
+            mutation(HttpMethod.POST, "/api/render/jobs/*/cancel", "/api/render/jobs/job-1/cancel"),
+            mutation(HttpMethod.POST, "/api/preview/media", "/api/preview/media"),
+            mutation(HttpMethod.POST, "/api/remote-worker/register", "/api/remote-worker/register"),
+            mutation(HttpMethod.POST, "/api/remote-worker/deregister/*", "/api/remote-worker/deregister/worker-1"),
+            mutation(HttpMethod.POST, "/api/remote-worker/heartbeat/*", "/api/remote-worker/heartbeat/worker-1"),
+            mutation(HttpMethod.POST, "/api/remote-worker/jobs/*/callback", "/api/remote-worker/jobs/job-1/callback"),
+            mutation(HttpMethod.POST, "/api/products/*/dependencies", "/api/products/product-1/dependencies"),
+            mutation(HttpMethod.DELETE, "/api/products/*/dependencies/*", "/api/products/product-1/dependencies/dependency-1"),
+            mutation(HttpMethod.POST, "/api/tenants/*/notifications/*/retry", "/api/tenants/tenant-1/notifications/notification-1/retry"),
+            mutation(HttpMethod.POST, "/api/me/notification-channels/*/verify", "/api/me/notification-channels/binding-1/verify"),
+            mutation(HttpMethod.POST, "/api/me/notification-channels/*/test", "/api/me/notification-channels/binding-1/test"),
+            mutation(HttpMethod.POST, "/api/admin/notifications/deliveries/*/retry", "/api/admin/notifications/deliveries/delivery-1/retry"),
+            mutation(HttpMethod.POST, "/api/artifacts/*/tombstone", "/api/artifacts/artifact-1/tombstone"),
+            mutation(HttpMethod.POST, "/api/artifacts/gc/run", "/api/artifacts/gc/run"),
+            mutation(HttpMethod.POST, "/api/media/assets/*/tombstone", "/api/media/assets/asset-1/tombstone"),
+            mutation(HttpMethod.POST, "/api/media/assets/gc/run", "/api/media/assets/gc/run"));
+
+    private static final List<ReadCase> READ_CASES = List.of(
+            read("/api/render/jobs/*/artifacts", "/api/render/jobs/job-1/artifacts"),
+            read("/api/render/jobs/*/status-history", "/api/render/jobs/job-1/status-history"),
+            read("/api/render/jobs/*/artifacts/*/content", "/api/render/jobs/job-1/artifacts/artifact-1/content"),
+            read("/api/render/jobs/*/artifacts/*/access", "/api/render/jobs/job-1/artifacts/artifact-1/access"),
+            read("/api/tenants/*/notifications", "/api/tenants/tenant-1/notifications"),
+            read("/api/tenants/*/notifications/*", "/api/tenants/tenant-1/notifications/notification-1"),
+            read("/api/tenants/*/notifications/*/deliveries", "/api/tenants/tenant-1/notifications/notification-1/deliveries"),
+            read("/api/notifications/deliveries", "/api/notifications/deliveries"),
+            read("/api/notifications/mock-sent", "/api/notifications/mock-sent"),
+            read("/api/admin/notifications/deliveries", "/api/admin/notifications/deliveries"),
+            read("/api/admin/notifications/provider-status", "/api/admin/notifications/provider-status"));
 
     @Test
     void fixturesRemainExcludedFromProductionComponentScanning() {
@@ -69,28 +117,23 @@ class PhaseZeroContainmentPolicyHttpTest {
     }
 
     @Test
-    void securityDisabledStillRejectsEveryRepresentativeFamilyBeforeDispatch() throws Exception {
-        try (TestHttpContext test = context(SecurityDisabled.class)) {
-            List<String> paths = List.of(
-                    "/api/extensions/demo/execute",
-                    "/api/analytics/internal/rebuild-profiles",
-                    "/api/billing/cycles/process-due",
-                    "/api/asset-governance/integrity/scan-global",
-                    "/api/preview/media",
-                    "/api/remote-worker/register",
-                    "/api/products/product-1/dependencies",
-                    "/api/me/notification-channels/binding-1/verify");
+    void executableMatrixExactlyMatchesPolicyIncludingEveryHeadRead() {
+        List<String> expected = allRouteCases().stream().map(RouteCase::matcherKey).toList();
+        List<String> actual = PhaseZeroContainmentPolicy.containedRoutes().stream()
+                .map(route -> route.method() + " " + route.pattern())
+                .toList();
 
-            for (String path : paths) {
-                test.mvc().perform(post(path)).andExpect(status().isForbidden());
-            }
-            test.mvc().perform(get("/api/render/jobs/job-1/artifacts"))
-                    .andExpect(status().isForbidden());
-            test.mvc().perform(get("/api/notifications/deliveries"))
-                    .andExpect(status().isForbidden());
+        assertEquals(expected, actual);
+    }
 
-            verifyNoInteractions(test.downstream());
-        }
+    @Test
+    void enabledSecurityRejectsEntireMatcherMatrixBeforeDispatch() throws Exception {
+        assertEntireMatrixDenied(EnabledSecurity.class, true);
+    }
+
+    @Test
+    void securityDisabledStillRejectsEntireMatcherMatrixBeforeDispatch() throws Exception {
+        assertEntireMatrixDenied(SecurityDisabled.class, false);
     }
 
     @Test
@@ -112,6 +155,39 @@ class PhaseZeroContainmentPolicyHttpTest {
         Filter security = context.getBean("springSecurityFilterChain", Filter.class);
         MockMvc mvc = MockMvcBuilders.webAppContextSetup(context).addFilters(security).build();
         return new TestHttpContext(context, mvc, downstream);
+    }
+
+    private static void assertEntireMatrixDenied(Class<?> configuration, boolean authenticated)
+            throws Exception {
+        try (TestHttpContext test = context(configuration)) {
+            for (RouteCase route : allRouteCases()) {
+                var request = MockMvcRequestBuilders.request(route.method(), route.path());
+                if (authenticated) {
+                    request.sessionAttr(
+                            HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY,
+                            ordinaryUserContext());
+                }
+                test.mvc().perform(request).andExpect(status().isForbidden());
+            }
+            verifyNoInteractions(test.downstream());
+        }
+    }
+
+    private static List<RouteCase> allRouteCases() {
+        List<RouteCase> cases = new ArrayList<>(MUTATION_CASES);
+        READ_CASES.forEach(read -> {
+            cases.add(new RouteCase(HttpMethod.GET, read.pattern(), read.path()));
+            cases.add(new RouteCase(HttpMethod.HEAD, read.pattern(), read.path()));
+        });
+        return List.copyOf(cases);
+    }
+
+    private static RouteCase mutation(HttpMethod method, String pattern, String path) {
+        return new RouteCase(method, pattern, path);
+    }
+
+    private static ReadCase read(String pattern, String path) {
+        return new ReadCase(pattern, path);
     }
 
     private static SecurityContextImpl ordinaryUserContext() {
@@ -216,4 +292,12 @@ class PhaseZeroContainmentPolicyHttpTest {
             context.close();
         }
     }
+
+    private record RouteCase(HttpMethod method, String pattern, String path) {
+        String matcherKey() {
+            return method + " " + pattern;
+        }
+    }
+
+    private record ReadCase(String pattern, String path) {}
 }

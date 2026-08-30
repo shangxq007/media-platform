@@ -78,7 +78,7 @@ class NotificationEventHandlerTest extends PostgresTestContainerSupport {
         };
 
         handler = new NotificationEventHandler(
-                dsl, List.of(emailProvider, webhookProvider), renderingService, null);
+                dsl, List.of(emailProvider, webhookProvider), renderingService);
     }
 
     @Test
@@ -148,7 +148,7 @@ class NotificationEventHandlerTest extends PostgresTestContainerSupport {
                         return new DeliveryResult("SENT", "{\"channel\":\"SMS\"}");
                     }
                 }),
-                renderingService, null);
+                renderingService);
 
         singleHandler.handle(new NotificationInboundEvent(
                 "test.event", "sub-1", Map.of("key", "value")));
@@ -163,7 +163,7 @@ class NotificationEventHandlerTest extends PostgresTestContainerSupport {
     @Test
     void handleWithNoProviders() {
         NotificationEventHandler emptyHandler = new NotificationEventHandler(
-                dsl, List.of(), renderingService, null);
+                dsl, List.of(), renderingService);
 
         emptyHandler.handle(new NotificationInboundEvent(
                 "test.event", "sub-1", Map.of("key", "value")));

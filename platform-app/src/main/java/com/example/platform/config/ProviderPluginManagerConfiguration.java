@@ -1,22 +1,19 @@
 package com.example.platform.config;
 
-import com.example.platform.extension.app.PluginRegistryImpl;
-import com.example.platform.providerplugin.ProviderPluginHost;
-import java.nio.file.Path;
-import org.springframework.beans.factory.annotation.Value;
+import com.example.platform.providerplugin.ProviderPluginCatalog;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-/** Starts the canonical typed PF4J provider host without concrete provider dependencies. */
+/** Phase-0 provider-plugin composition with external directory execution disabled fail-closed. */
 @Configuration
 public class ProviderPluginManagerConfiguration {
 
-    @Bean(destroyMethod = "close")
-    ProviderPluginHost providerPluginHost(
-            PluginRegistryImpl pluginRegistry,
-            @Value("${app.extensions.plugins-dir:./plugins}") String pluginsDirectory) {
-        ProviderPluginHost host = new ProviderPluginHost(Path.of(pluginsDirectory), pluginRegistry);
-        host.loadAndStart();
-        return host;
+    /**
+     * Exposes only the empty typed catalog used by explicitly bundled platform mechanics.
+     * Directory-backed PF4J loading remains unavailable until an immutable digest authority exists.
+     */
+    @Bean
+    ProviderPluginCatalog providerPluginCatalog() {
+        return new ProviderPluginCatalog();
     }
 }

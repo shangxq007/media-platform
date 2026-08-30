@@ -2,10 +2,8 @@ package com.example.platform;
 
 import com.example.platform.identity.api.TenantProjectController;
 import com.example.platform.identity.api.dto.*;
-import com.example.platform.notification.infrastructure.MockNotificationProvider;
 import com.example.platform.render.api.RenderController;
 import com.example.platform.render.app.RenderOrchestratorService;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,14 +44,7 @@ class RenderFlowIntegrationTest extends PostgresTestContainerSupport {
     @Autowired
     private com.example.platform.entitlement.app.EntitlementService entitlementService;
 
-    @Autowired
-    private MockNotificationProvider mockNotificationProvider;
     private String currentTenantId;
-
-    @BeforeEach
-    void setUp() {
-        mockNotificationProvider.clear();
-    }
 
     private String createTestProject(String name) {
         TenantResponse tenant = tenantProjectController.createTenant(
@@ -72,7 +63,6 @@ class RenderFlowIntegrationTest extends PostgresTestContainerSupport {
         assertThat(context.containsBean("tenantProjectController")).isTrue();
         assertThat(context.containsBean("renderController")).isTrue();
         assertThat(context.containsBean("renderOrchestratorService")).isTrue();
-        assertThat(context.containsBean("mockNotificationProvider")).isTrue();
     }
 
     @Test

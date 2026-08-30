@@ -23,6 +23,12 @@ public class SandboxWorkerApiKeyFilter implements Filter {
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
             throws IOException, ServletException {
+        HttpServletRequest httpRequest = (HttpServletRequest) request;
+        if (isHealthProbe(httpRequest)) {
+            chain.doFilter(request, response);
+            return;
+        }
+
         HttpServletResponse httpResponse = (HttpServletResponse) response;
         if (configuredApiKey == null || configuredApiKey.isBlank()) {
             reject(httpResponse, HttpServletResponse.SC_SERVICE_UNAVAILABLE,
@@ -30,13 +36,17 @@ public class SandboxWorkerApiKeyFilter implements Filter {
             return;
         }
 
-        HttpServletRequest httpRequest = (HttpServletRequest) request;
         if (!configuredApiKey.equals(httpRequest.getHeader(API_KEY_HEADER))) {
             reject(httpResponse, HttpServletResponse.SC_UNAUTHORIZED,
                     "Invalid or missing sandbox worker API key");
             return;
         }
         chain.doFilter(request, response);
+    }
+
+    private static boolean isHealthProbe(HttpServletRequest request) {
+        return "/v1/sandbox/healthz".equals(request.getRequestURI())
+                && ("GET".equals(request.getMethod()) || "HEAD".equals(request.getMethod()));
     }
 
     private static void reject(HttpServletResponse response, int status, String error) throws IOException {

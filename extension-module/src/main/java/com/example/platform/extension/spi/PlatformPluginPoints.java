@@ -3,7 +3,8 @@ package com.example.platform.extension.spi;
 /**
  * Catalog of extension points that SHOULD be implemented as PF4J plugins when
  * vendor-specific or frequently changing. Core platform modules register built-in
- * defaults; optional JARs under {@code app.extensions.plugins-dir} override or extend.
+ * defaults. Phase 0 permits only explicitly bundled plugins; external directory loading
+ * remains disabled until an immutable digest and registration authority is accepted.
  *
  * <p>Keep in core (not plugins): domain aggregates, REST/GraphQL APIs, Flyway schema,
  * entitlement/billing policy engine, outbox, audit, identity.</p>

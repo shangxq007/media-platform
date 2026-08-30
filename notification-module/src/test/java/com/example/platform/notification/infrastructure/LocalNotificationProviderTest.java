@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import com.example.platform.notification.app.NotificationDeliveryRepository;
+import com.example.platform.notification.app.NotificationDeliveryRepository.DeliveryRecord;
 import com.example.platform.notification.domain.DeliveryCommand;
 import com.example.platform.notification.domain.DeliveryResult;
 import java.time.Instant;
@@ -91,7 +92,7 @@ class LocalNotificationProviderTest extends PostgresTestContainerSupport {
 
         mockProvider.send(command);
 
-        List<MockNotificationProvider.SentNotification> sent = mockProvider.getSentNotifications();
+        List<DeliveryRecord> sent = mockProvider.getSentNotifications();
         assertTrue(sent.stream().anyMatch(n -> n.eventId().equals("evt-2")),
                 "Delivery record should be persisted for SMS channel");
     }
@@ -103,7 +104,7 @@ class LocalNotificationProviderTest extends PostgresTestContainerSupport {
 
         mockProvider.send(command);
 
-        List<MockNotificationProvider.SentNotification> sent = mockProvider.getSentNotifications();
+        List<DeliveryRecord> sent = mockProvider.getSentNotifications();
         assertTrue(sent.stream().anyMatch(n -> n.eventId().equals("evt-email") && n.channel().equals("EMAIL")),
                 "Delivery record should be persisted for EMAIL channel");
     }
@@ -115,8 +116,8 @@ class LocalNotificationProviderTest extends PostgresTestContainerSupport {
 
         mockProvider.send(command);
 
-        List<MockNotificationProvider.SentNotification> sent = mockProvider.getSentNotifications();
-        MockNotificationProvider.SentNotification notification = sent.stream()
+        List<DeliveryRecord> sent = mockProvider.getSentNotifications();
+        DeliveryRecord notification = sent.stream()
                 .filter(n -> n.eventId().equals("evt-all"))
                 .findFirst()
                 .orElseThrow();
@@ -133,7 +134,7 @@ class LocalNotificationProviderTest extends PostgresTestContainerSupport {
 
         mockProvider.send(command);
 
-        List<MockNotificationProvider.SentNotification> sent = mockProvider.getSentNotifications();
+        List<DeliveryRecord> sent = mockProvider.getSentNotifications();
         assertTrue(sent.stream().anyMatch(n -> n.eventId().equals("evt-sms") && n.channel().equals("SMS")));
     }
 

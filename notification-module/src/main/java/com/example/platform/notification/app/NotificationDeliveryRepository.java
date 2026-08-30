@@ -2,7 +2,7 @@ package com.example.platform.notification.app;
 
 import static com.example.platform.typedschema.jooq.generated.tables.NotificationRecord.NOTIFICATION_RECORD;
 
-import com.example.platform.notification.infrastructure.MockNotificationProvider.SentNotification;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -19,22 +19,22 @@ public class NotificationDeliveryRepository {
         this.dsl = dsl;
     }
 
-    public String recordDelivery(SentNotification sent) {
+    public String recordDelivery(DeliveryRecord delivery) {
         String id = com.example.platform.shared.Ids.newId("ndr");
         dsl.insertInto(NOTIFICATION_RECORD)
                 .columns(NOTIFICATION_RECORD.ID, NOTIFICATION_RECORD.EVENT_ID, NOTIFICATION_RECORD.CHANNEL,
                         NOTIFICATION_RECORD.PROVIDER_CODE, NOTIFICATION_RECORD.STATUS, NOTIFICATION_RECORD.SUBJECT,
                         NOTIFICATION_RECORD.BODY, NOTIFICATION_RECORD.METADATA_JSON, NOTIFICATION_RECORD.ATTEMPT_COUNT,
                         NOTIFICATION_RECORD.CREATED_AT)
-                .values(id, sent.eventId(), sent.channel(),
-                        "mock-notification", "SENT", sent.subject(),
-                        sent.body(), null, 1,
+                .values(id, delivery.eventId(), delivery.channel(),
+                        delivery.providerCode(), delivery.status(), delivery.subject(),
+                        delivery.body(), null, 1,
                         LocalDateTime.now(ZoneOffset.UTC))
                 .execute();
         return id;
     }
 
-    public List<SentNotification> recentDeliveries(int limit) {
+    public List<DeliveryRecord> recentDeliveries(int limit) {
         return dsl.select()
                 .from(NOTIFICATION_RECORD)
                 .orderBy(NOTIFICATION_RECORD.CREATED_AT.desc())
@@ -42,13 +42,24 @@ public class NotificationDeliveryRepository {
                 .fetch(this::mapRecord);
     }
 
-    private SentNotification mapRecord(Record record) {
-        return new SentNotification(
+    private DeliveryRecord mapRecord(Record record) {
+        return new DeliveryRecord(
                 record.get(NOTIFICATION_RECORD.EVENT_ID),
                 record.get(NOTIFICATION_RECORD.CHANNEL),
+                record.get(NOTIFICATION_RECORD.PROVIDER_CODE),
+                record.get(NOTIFICATION_RECORD.STATUS),
                 record.get(NOTIFICATION_RECORD.SUBJECT),
                 record.get(NOTIFICATION_RECORD.BODY),
                 record.get(NOTIFICATION_RECORD.CREATED_AT).toInstant(ZoneOffset.UTC)
         );
     }
+
+    public record DeliveryRecord(
+            String eventId,
+            String channel,
+            String providerCode,
+            String status,
+            String subject,
+            String body,
+            Instant sentAt) {}
 }

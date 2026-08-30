@@ -20,15 +20,15 @@ public final class PlatformDistributionLauncher {
             PluginRegistryImpl registry = new PluginRegistryImpl(
                     new PluginDescriptorValidator(), new PluginHealthRegistry());
             try (ProviderPluginHost host = new ProviderPluginHost(resolution.pluginDirectory(), registry)) {
-            var contributions = host.loadAndStart().contributions();
-            if (contributions.isEmpty()) {
-                throw new IllegalStateException("No typed provider plugin contribution loaded");
-            }
-            contributions.forEach(contribution -> System.out.println(
-                    "PROVIDER_PLUGIN=" + contribution.pluginId() + "@" + contribution.pluginVersion()
-                            + " PROVIDER=" + contribution.providerBindingPin().providerId().value()
-                            + " IMPLEMENTATION="
-                            + contribution.providerBindingPin().providerImplementationId().value()));
+                var contributions = host.loadAndStart().contributions();
+                if (contributions.isEmpty()) {
+                    throw new IllegalStateException("No typed provider plugin contribution loaded");
+                }
+                contributions.forEach(contribution -> System.out.println(
+                        "PROVIDER_PLUGIN=" + contribution.pluginId() + "@" + contribution.pluginVersion()
+                                + " PROVIDER=" + contribution.providerBindingPin().providerId().value()
+                                + " IMPLEMENTATION="
+                                + contribution.providerBindingPin().providerImplementationId().value()));
             }
         }
     }
@@ -36,12 +36,8 @@ public final class PlatformDistributionLauncher {
     private static PluginDirectoryResolution resolvePluginDirectory(String[] args) throws Exception {
         for (String arg : args) {
             if (arg.startsWith("--plugins-dir=")) {
-                Path directory = Path.of(arg.substring("--plugins-dir=".length()))
-                        .toAbsolutePath().normalize();
-                if (!Files.isDirectory(directory)) {
-                    throw new IllegalArgumentException("plugins directory does not exist: " + directory);
-                }
-                return new PluginDirectoryResolution(directory, null);
+                throw new IllegalArgumentException(
+                        "external plugin directory loading is disabled until immutable digest authority exists");
             }
         }
         Path outer = launcherPath();

@@ -43,6 +43,16 @@ public class PaymentTransactionAuthority {
     }
 
     public PaymentTransaction initiateCheckout(InitiateCheckoutCommand command) {
+        PaymentTransaction replay = transactions.execute(status -> {
+            repository.lockIdentity(command.principal().tenantId(), command.idempotencyKey());
+            PaymentTransactionJdbcRepository.StoredCommand prior = repository
+                    .findCommand(command.principal(), command.idempotencyKey()).orElse(null);
+            if (prior == null) return null;
+            requireFingerprint(prior.fingerprint(), command.fingerprint(), "checkout");
+            return repository.find(command.principal(), prior.transactionId()).orElseThrow();
+        });
+        if (replay != null && replay.state() != PaymentState.INITIATED) return replay;
+
         PaymentProvider provider = requireProvider(command.providerCode());
         PaymentTransaction intent = required(transactions.execute(status -> {
             repository.lockIdentity(command.principal().tenantId(), command.idempotencyKey());

@@ -14,29 +14,55 @@ import org.springframework.test.util.ReflectionTestUtils;
 class SandboxWorkerApiKeyFilterTest {
 
     @Test
-    void blankConfiguredKeyRejectsExecutionAndHealth() throws Exception {
+    void kubernetesHealthProbeRemainsUnauthenticatedWhenKeyIsBlank() throws Exception {
         SandboxWorkerApiKeyFilter filter = new SandboxWorkerApiKeyFilter();
         ReflectionTestUtils.setField(filter, "configuredApiKey", "");
 
-        for (String path : new String[] {"/v1/sandbox/execute", "/v1/sandbox/healthz"}) {
+        for (String method : new String[] {"GET", "HEAD"}) {
             FilterChain chain = mock(FilterChain.class);
             MockHttpServletResponse response = new MockHttpServletResponse();
-            filter.doFilter(new MockHttpServletRequest("POST", path), response, chain);
-            assertEquals(503, response.getStatus());
-            verifyNoInteractions(chain);
+            MockHttpServletRequest request = new MockHttpServletRequest(
+                    method, "/v1/sandbox/healthz");
+            filter.doFilter(request, response, chain);
+            verify(chain).doFilter(request, response);
         }
     }
 
     @Test
-    void configuredKeyRejectsMissingKeyAndAllowsExactMatch() throws Exception {
+    void blankConfiguredKeyRejectsExecutionFailClosed() throws Exception {
+        SandboxWorkerApiKeyFilter filter = new SandboxWorkerApiKeyFilter();
+        ReflectionTestUtils.setField(filter, "configuredApiKey", "");
+
+        FilterChain chain = mock(FilterChain.class);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        filter.doFilter(new MockHttpServletRequest("POST", "/v1/sandbox/execute"), response, chain);
+
+        assertEquals(503, response.getStatus());
+        verifyNoInteractions(chain);
+    }
+
+    @Test
+    void configuredKeyLeavesProbeOpenButRejectsMissingExecutionKey() throws Exception {
         SandboxWorkerApiKeyFilter filter = new SandboxWorkerApiKeyFilter();
         ReflectionTestUtils.setField(filter, "configuredApiKey", "sandbox-secret");
+
+        MockHttpServletRequest probe = new MockHttpServletRequest("GET", "/v1/sandbox/healthz");
+        MockHttpServletResponse probeResponse = new MockHttpServletResponse();
+        FilterChain probeChain = mock(FilterChain.class);
+        filter.doFilter(probe, probeResponse, probeChain);
+        verify(probeChain).doFilter(probe, probeResponse);
 
         MockHttpServletResponse rejected = new MockHttpServletResponse();
         FilterChain rejectedChain = mock(FilterChain.class);
         filter.doFilter(new MockHttpServletRequest("POST", "/v1/sandbox/execute"), rejected, rejectedChain);
         assertEquals(401, rejected.getStatus());
         verifyNoInteractions(rejectedChain);
+    }
+
+    @Test
+    void configuredKeyAllowsExactExecutionKey() throws Exception {
+        SandboxWorkerApiKeyFilter filter = new SandboxWorkerApiKeyFilter();
+        ReflectionTestUtils.setField(filter, "configuredApiKey", "sandbox-secret");
 
         MockHttpServletRequest accepted = new MockHttpServletRequest("POST", "/v1/sandbox/execute");
         accepted.addHeader(SandboxWorkerApiKeyFilter.API_KEY_HEADER, "sandbox-secret");
