@@ -1,0 +1,3 @@
+owner_id	semantic	authority_owner	persistence_owner	allowed_writers	non_owner_rule	permanent_dual_authority
+O01	STORAGE_OBJECT_LOGICAL_IDENTITY	STORAGE	STORAGE	StorageProvider and migration-only Storage adoption operation	Non-Storage modules may retain and compare issued IDs but must not manufacture them from provider bucket objectKey path URI locator or backend values	NO
+O02	PHYSICAL_PLACEMENT	STORAGE	STORAGE	Storage placement repository behind Storage-owned ports	Artifact Web Render Identity and Worker modules may request placement or consume redacted receipts but may not persist or interpret authoritative provider namespace opaqueLocator version token or region tuples	NO
