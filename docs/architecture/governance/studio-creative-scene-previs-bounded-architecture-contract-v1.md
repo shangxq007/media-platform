@@ -493,10 +493,27 @@ submission, and command previews; it may not mint canonical IDs as accepted
 truth, choose mutable latest silently, reconstruct provider graphs, store signed
 URLs durably, or treat local undo/redo as canonical version history.
 
-All absent APIs remain gaps in the companion ledger. H6/H7 interfaces not
-present at the exact base are classified `DEPENDENCY_PENDING_CANONICALIZATION`;
-Studio may not create local candidates, adapters to private implementation, or
-temporary bypasses.
+All absent APIs remain gaps in the companion ledger. Owner-specific facts come
+from each owning domain's lawful application/read boundary:
+
+- Media facts come from the Media owner;
+- Artifact facts come from the Artifact owner;
+- Identity, Workspace, and Project scope come from the Identity owner;
+- capability and effective-access facts come from the owning application
+  composition;
+- Render facts come from the Render owner;
+- Runtime, Worker, and Device facts come from the Worker Fabric/runtime owner;
+- Timeline composition and revision facts come from the Timeline owner.
+
+The governing correction laws are
+`H7_IS_NOT_GENERIC_CROSS_OWNER_READ_AUTHORITY_V1`,
+`STUDIO_CROSS_OWNER_READS_USE_THE_ACTUAL_DOMAIN_OWNER_V1`, and
+`H7_RELEVANCE_TO_STUDIO_IS_CANONICAL_OPERATION_TIMELINE_APPLICATION_BOUNDARY_V1`.
+H6 may remain `DEPENDENCY_PENDING_CANONICALIZATION` only for genuine
+Artifact/Storage owner work. H7 may remain pending only for canonical
+Operation/Timeline application behavior; it is not a generic cross-owner read
+facade. Studio may not use private repository access, direct table reads,
+invented local owner projections, or interfaces guessed from another worktree.
 
 ## 17. Current repository compatibility disposition
 

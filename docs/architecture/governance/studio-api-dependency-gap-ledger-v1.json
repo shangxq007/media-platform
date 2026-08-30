@@ -205,16 +205,16 @@
     },
     {
       "gap_id": "STUDIO-GAP-015",
-      "required_capability": "H7 canonical upstream read-authority interfaces required by Studio",
+      "required_capability": "Typed owner-provided cross-domain read contracts required by Studio commands and projections",
       "studio_consumer": "Exact cross-owner reads for Studio application commands and projections",
-      "canonical_owner": "H7 upstream-owner lane",
+      "canonical_owner": "Each canonical source-domain owner through its application/read boundary",
       "classification": "PENDING_OTHER_LANE",
       "gap_kind": "DEPENDENCY_PENDING_CANONICALIZATION",
       "current_evidence_path": "settings.gradle.kts; docs/architecture/governance/frontend-backend-application-api-gap-ledger-v1.md",
-      "current_evidence": "No accepted interface identified as H7 exists in the exact base or task packet; current cross-owner frontend/application read gaps remain explicit.",
-      "blocking_stage": "Any S1/S2/S3 feature requiring a not-yet-canonical H7 read",
-      "no_bypass_behavior": "Do not create local candidate interfaces, reach into owner repositories/tables, or guess the H7 contract from another worktree.",
-      "no_fake_behavior": "Classify each concrete consumer as dependency-pending and keep it unavailable until the canonical owner publishes the exact interface."
+      "current_evidence": "Studio requires owner-specific reads from Media, Artifact, Identity, capability/effective-access composition, Render, Worker Fabric/runtime, Timeline, and Operation boundaries. H7 is relevant only to a genuinely canonical Operation/Timeline application path and is not a generic upstream read owner.",
+      "blocking_stage": "Any S1/S2/S3 feature whose actual source-domain owner has not canonicalized the required application/read contract; H7 applies only to pending canonical Operation/Timeline application behavior",
+      "no_bypass_behavior": "Do not use private repository access, direct table reads, invented local owner projections, or interfaces guessed from another worktree. H7-specific dependencies are limited to the canonical Operation/Timeline application path, never Media, Artifact, Identity, Render, or Runtime reads.",
+      "no_fake_behavior": "Classify each concrete consumer against its actual source-domain owner, keep unresolved reads unavailable, and never present H7 as a generic cross-owner read facade."
     },
     {
       "gap_id": "STUDIO-GAP-016",
