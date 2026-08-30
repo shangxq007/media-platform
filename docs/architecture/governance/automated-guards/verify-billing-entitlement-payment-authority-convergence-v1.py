@@ -27,10 +27,25 @@ FRONTEND_MONEY_PATH = (
     "federation-query-module/src/main/java/com/example/platform/federation/graphql/dto/MoneyDto.java"
 )
 FRONTEND_CLASSIFICATION = "NON_AUTHORITATIVE_FRONTEND_PROJECTION_OUT_OF_SCOPE"
-SOURCE_ROOTS = (
-    "shared-kernel", "billing-module", "entitlement-module", "payment-module",
-    "commerce-module", "render-module", "platform-app", "worker-fabric-module",
-    "media-execution-plan-module", "federation-query-module",
+GENERATED_PRODUCTION_ROOT = Path("typed-schema-module/src/main/java")
+GENERATED_SCHEMA_ROOT = (
+    GENERATED_PRODUCTION_ROOT
+    / "com/example/platform/typedschema/jooq/generated"
+)
+RETIRED_GENERATED_SCHEMA_FORMS = (
+    "render_usage_record",
+    "render_billing_record",
+    "RenderUsageRecord",
+    "RenderBillingRecord",
+)
+RETIRED_GENERATED_SCHEMA_DEFINITION_PATTERNS = (
+    re.compile(
+        r"\b(?:class|interface|record|enum)\s+"
+        r"(?:RenderUsageRecord|RenderBillingRecord)(?:Record)?\b"
+    ),
+    re.compile(
+        r'\bDSL\.name\s*\(\s*"(?:render_usage_record|render_billing_record)"\s*\)'
+    ),
 )
 
 REQUIRED_CONTRACT_TOKENS = {
@@ -138,16 +153,33 @@ def git(*args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
+class ProductionSourceDiscoveryError(RuntimeError):
+    """Raised when the current candidate's generated production corpus is unavailable."""
+
+
 def load_production_sources(repo: Path) -> dict[str, str]:
+    repo = repo.resolve()
+    generated_production_root = repo / GENERATED_PRODUCTION_ROOT
+    generated_schema_root = repo / GENERATED_SCHEMA_ROOT
+    if not generated_production_root.is_dir():
+        raise ProductionSourceDiscoveryError(
+            f"GENERATED_PRODUCTION_ROOT_MISSING:{GENERATED_PRODUCTION_ROOT.as_posix()}"
+        )
+    if not generated_schema_root.is_dir():
+        raise ProductionSourceDiscoveryError(
+            f"GENERATED_SCHEMA_ROOT_MISSING:{GENERATED_SCHEMA_ROOT.as_posix()}"
+        )
+    if not any(generated_schema_root.rglob("*.java")):
+        raise ProductionSourceDiscoveryError(
+            f"GENERATED_SCHEMA_CORPUS_EMPTY:{GENERATED_SCHEMA_ROOT.as_posix()}"
+        )
+
     files: dict[str, str] = {}
-    for root_name in SOURCE_ROOTS:
-        root = repo / root_name / "src" / "main"
-        if not root.is_dir():
-            continue
+    production_roots = sorted(path for path in repo.rglob("src/main/java") if path.is_dir())
+    for root in production_roots:
         for path in sorted(root.rglob("*.java")):
             relative = path.relative_to(repo).as_posix()
-            if "/build/" not in relative:
-                files[relative] = path.read_text(encoding="utf-8", errors="replace")
+            files[relative] = path.read_text(encoding="utf-8", errors="replace")
     return files
 
 
@@ -176,9 +208,69 @@ def _strip_java_comments(source: str) -> str:
     return re.sub(r"//[^\n]*", "", source)
 
 
+def validate_generated_schema_residue(
+    files: dict[str, str],
+) -> tuple[list[str], dict[str, int]]:
+    generated_prefix = GENERATED_SCHEMA_ROOT.as_posix() + "/"
+    generated_files = {
+        path: source for path, source in files.items() if path.startswith(generated_prefix)
+    }
+    metrics = {
+        "H5_GENERATED_SCHEMA_CORPUS_FILE_COUNT": len(generated_files),
+        "H5_STALE_GENERATED_SCHEMA_FILE_COUNT": 0,
+        "H5_STALE_GENERATED_SCHEMA_REFERENCE_COUNT": 0,
+        "H5_STALE_GENERATED_SCHEMA_DEFINITION_COUNT": 0,
+    }
+    errors: list[str] = []
+    if not generated_files:
+        errors.append("H5_GENERATED_SCHEMA_CORPUS_FILE_COUNT=0 expected>0")
+        return errors, metrics
+
+    stale_files: set[str] = set()
+    definition_count = 0
+    reference_count = 0
+    camel_forms = ("RenderUsageRecord", "RenderBillingRecord")
+    for path, source in generated_files.items():
+        path_has_definition = any(form in Path(path).name for form in camel_forms)
+        definition_spans = [
+            match.span()
+            for pattern in RETIRED_GENERATED_SCHEMA_DEFINITION_PATTERNS
+            for match in pattern.finditer(source)
+        ]
+        if path_has_definition or definition_spans:
+            definition_count += max(1, len(definition_spans))
+
+        source_hits: list[tuple[int, int]] = []
+        for form in RETIRED_GENERATED_SCHEMA_FORMS:
+            source_hits.extend(match.span() for match in re.finditer(re.escape(form), source))
+        reference_count += sum(
+            not any(start >= definition_start and end <= definition_end
+                    for definition_start, definition_end in definition_spans)
+            for start, end in source_hits
+        )
+        if path_has_definition or source_hits:
+            stale_files.add(path)
+
+    metrics["H5_STALE_GENERATED_SCHEMA_FILE_COUNT"] = len(stale_files)
+    metrics["H5_STALE_GENERATED_SCHEMA_REFERENCE_COUNT"] = reference_count
+    metrics["H5_STALE_GENERATED_SCHEMA_DEFINITION_COUNT"] = definition_count
+    for metric in (
+        "H5_STALE_GENERATED_SCHEMA_FILE_COUNT",
+        "H5_STALE_GENERATED_SCHEMA_REFERENCE_COUNT",
+        "H5_STALE_GENERATED_SCHEMA_DEFINITION_COUNT",
+    ):
+        if metrics[metric]:
+            errors.append(f"{metric}={metrics[metric]} expected=0")
+    return errors, metrics
+
+
 def validate_implementation(files: dict[str, str]) -> tuple[list[str], dict[str, int]]:
     errors: list[str] = []
     metrics: dict[str, int] = {}
+
+    generated_errors, generated_metrics = validate_generated_schema_residue(files)
+    errors.extend(generated_errors)
+    metrics.update(generated_metrics)
 
     missing = sorted(REQUIRED_PRODUCTION_PATHS - set(files))
     metrics["REQUIRED_CANONICAL_PATH_MISSING_COUNT"] = len(missing)
@@ -474,6 +566,14 @@ def mutation_self_test(files: dict[str, str]) -> list[str]:
         "billing-module/src/main/java/com/example/platform/usage/infrastructure/InjectedObservationMutation.java",
         'class X { String sql="UPDATE observed_runtime_usage SET quantity=0"; }'),
         "OBSERVED_RUNTIME_USAGE_MUTATION_WRITER_COUNT"))
+    controls.append(("stale_generated_definition", mutated(
+        GENERATED_SCHEMA_ROOT.as_posix() + "/tables/InjectedDefinition.java",
+        'class RenderUsageRecord { Object name = DSL.name("render_usage_record"); }'),
+        "H5_STALE_GENERATED_SCHEMA_DEFINITION_COUNT"))
+    controls.append(("stale_generated_reference", mutated(
+        GENERATED_SCHEMA_ROOT.as_posix() + "/tables/InjectedReference.java",
+        'class X { RenderBillingRecord reference; String name="render_billing_record"; }'),
+        "H5_STALE_GENERATED_SCHEMA_REFERENCE_COUNT"))
 
     failures: list[str] = []
     for name, candidate, code in controls:
@@ -520,7 +620,12 @@ def main() -> int:
         print(f"ERROR=INVENTORY_INVALID:{error}")
         return 2
 
-    files = load_production_sources(REPO)
+    try:
+        files = load_production_sources(REPO)
+    except ProductionSourceDiscoveryError as error:
+        print("COMMERCIAL_AUTHORITY_GUARD=FAIL")
+        print(f"ERROR={error}")
+        return 2
     contract_errors = validate_contract(CONTRACT.read_text(encoding="utf-8"))
     inventory_errors, inventory_metrics = validate_inventory(inventory, files)
     implementation_errors, implementation_metrics = validate_implementation(files)

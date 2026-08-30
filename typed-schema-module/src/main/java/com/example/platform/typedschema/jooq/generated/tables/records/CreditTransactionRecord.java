@@ -6,7 +6,7 @@ package com.example.platform.typedschema.jooq.generated.tables.records;
 
 import com.example.platform.typedschema.jooq.generated.tables.CreditTransaction;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
@@ -35,115 +35,185 @@ public class CreditTransactionRecord extends UpdatableRecordImpl<CreditTransacti
     }
 
     /**
+     * Setter for <code>public.credit_transaction.tenant_id</code>.
+     */
+    public void setTenantId(String value) {
+        set(1, value);
+    }
+
+    /**
+     * Getter for <code>public.credit_transaction.tenant_id</code>.
+     */
+    public String getTenantId() {
+        return (String) get(1);
+    }
+
+    /**
      * Setter for <code>public.credit_transaction.wallet_id</code>.
      */
     public void setWalletId(String value) {
-        set(1, value);
+        set(2, value);
     }
 
     /**
      * Getter for <code>public.credit_transaction.wallet_id</code>.
      */
     public String getWalletId() {
-        return (String) get(1);
+        return (String) get(2);
+    }
+
+    /**
+     * Setter for <code>public.credit_transaction.reservation_id</code>.
+     */
+    public void setReservationId(String value) {
+        set(3, value);
+    }
+
+    /**
+     * Getter for <code>public.credit_transaction.reservation_id</code>.
+     */
+    public String getReservationId() {
+        return (String) get(3);
     }
 
     /**
      * Setter for <code>public.credit_transaction.transaction_type</code>.
      */
     public void setTransactionType(String value) {
-        set(2, value);
+        set(4, value);
     }
 
     /**
      * Getter for <code>public.credit_transaction.transaction_type</code>.
      */
     public String getTransactionType() {
-        return (String) get(2);
+        return (String) get(4);
     }
 
     /**
      * Setter for <code>public.credit_transaction.amount_minor</code>.
      */
     public void setAmountMinor(Long value) {
-        set(3, value);
+        set(5, value);
     }
 
     /**
      * Getter for <code>public.credit_transaction.amount_minor</code>.
      */
     public Long getAmountMinor() {
-        return (Long) get(3);
+        return (Long) get(5);
+    }
+
+    /**
+     * Setter for <code>public.credit_transaction.currency_code</code>.
+     */
+    public void setCurrencyCode(String value) {
+        set(6, value);
+    }
+
+    /**
+     * Getter for <code>public.credit_transaction.currency_code</code>.
+     */
+    public String getCurrencyCode() {
+        return (String) get(6);
     }
 
     /**
      * Setter for <code>public.credit_transaction.balance_after_minor</code>.
      */
     public void setBalanceAfterMinor(Long value) {
-        set(4, value);
+        set(7, value);
     }
 
     /**
      * Getter for <code>public.credit_transaction.balance_after_minor</code>.
      */
     public Long getBalanceAfterMinor() {
-        return (Long) get(4);
+        return (Long) get(7);
     }
 
     /**
      * Setter for <code>public.credit_transaction.reference_type</code>.
      */
     public void setReferenceType(String value) {
-        set(5, value);
+        set(8, value);
     }
 
     /**
      * Getter for <code>public.credit_transaction.reference_type</code>.
      */
     public String getReferenceType() {
-        return (String) get(5);
+        return (String) get(8);
     }
 
     /**
      * Setter for <code>public.credit_transaction.reference_id</code>.
      */
     public void setReferenceId(String value) {
-        set(6, value);
+        set(9, value);
     }
 
     /**
      * Getter for <code>public.credit_transaction.reference_id</code>.
      */
     public String getReferenceId() {
-        return (String) get(6);
+        return (String) get(9);
     }
 
     /**
      * Setter for <code>public.credit_transaction.description</code>.
      */
     public void setDescription(String value) {
-        set(7, value);
+        set(10, value);
     }
 
     /**
      * Getter for <code>public.credit_transaction.description</code>.
      */
     public String getDescription() {
-        return (String) get(7);
+        return (String) get(10);
+    }
+
+    /**
+     * Setter for <code>public.credit_transaction.idempotency_key</code>.
+     */
+    public void setIdempotencyKey(String value) {
+        set(11, value);
+    }
+
+    /**
+     * Getter for <code>public.credit_transaction.idempotency_key</code>.
+     */
+    public String getIdempotencyKey() {
+        return (String) get(11);
+    }
+
+    /**
+     * Setter for <code>public.credit_transaction.payload_fingerprint</code>.
+     */
+    public void setPayloadFingerprint(String value) {
+        set(12, value);
+    }
+
+    /**
+     * Getter for <code>public.credit_transaction.payload_fingerprint</code>.
+     */
+    public String getPayloadFingerprint() {
+        return (String) get(12);
     }
 
     /**
      * Setter for <code>public.credit_transaction.created_at</code>.
      */
-    public void setCreatedAt(LocalDateTime value) {
-        set(8, value);
+    public void setCreatedAt(Instant value) {
+        set(13, value);
     }
 
     /**
      * Getter for <code>public.credit_transaction.created_at</code>.
      */
-    public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(8);
+    public Instant getCreatedAt() {
+        return (Instant) get(13);
     }
 
     // -------------------------------------------------------------------------
@@ -169,17 +239,22 @@ public class CreditTransactionRecord extends UpdatableRecordImpl<CreditTransacti
     /**
      * Create a detached, initialised CreditTransactionRecord
      */
-    public CreditTransactionRecord(String id, String walletId, String transactionType, Long amountMinor, Long balanceAfterMinor, String referenceType, String referenceId, String description, LocalDateTime createdAt) {
+    public CreditTransactionRecord(String id, String tenantId, String walletId, String reservationId, String transactionType, Long amountMinor, String currencyCode, Long balanceAfterMinor, String referenceType, String referenceId, String description, String idempotencyKey, String payloadFingerprint, Instant createdAt) {
         super(CreditTransaction.CREDIT_TRANSACTION);
 
         setId(id);
+        setTenantId(tenantId);
         setWalletId(walletId);
+        setReservationId(reservationId);
         setTransactionType(transactionType);
         setAmountMinor(amountMinor);
+        setCurrencyCode(currencyCode);
         setBalanceAfterMinor(balanceAfterMinor);
         setReferenceType(referenceType);
         setReferenceId(referenceId);
         setDescription(description);
+        setIdempotencyKey(idempotencyKey);
+        setPayloadFingerprint(payloadFingerprint);
         setCreatedAt(createdAt);
         resetChangedOnNotNull();
     }

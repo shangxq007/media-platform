@@ -4,22 +4,29 @@
 package com.example.platform.typedschema.jooq.generated.tables;
 
 
+import com.example.platform.typedschema.contract.InstantConverter;
 import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
+import com.example.platform.typedschema.jooq.generated.tables.BillingInvoice.BillingInvoicePath;
 import com.example.platform.typedschema.jooq.generated.tables.records.InvoiceLineItemRecord;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
+import org.jooq.Check;
 import org.jooq.Condition;
 import org.jooq.Field;
+import org.jooq.ForeignKey;
 import org.jooq.Index;
+import org.jooq.InverseForeignKey;
 import org.jooq.Name;
+import org.jooq.Path;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
+import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
 import org.jooq.Select;
@@ -29,6 +36,7 @@ import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
@@ -60,9 +68,19 @@ public class InvoiceLineItem extends TableImpl<InvoiceLineItemRecord> {
     public final TableField<InvoiceLineItemRecord, String> ID = createField(DSL.name("id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
     /**
+     * The column <code>public.invoice_line_item.tenant_id</code>.
+     */
+    public final TableField<InvoiceLineItemRecord, String> TENANT_ID = createField(DSL.name("tenant_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
+
+    /**
      * The column <code>public.invoice_line_item.invoice_id</code>.
      */
     public final TableField<InvoiceLineItemRecord, String> INVOICE_ID = createField(DSL.name("invoice_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
+
+    /**
+     * The column <code>public.invoice_line_item.rated_usage_id</code>.
+     */
+    public final TableField<InvoiceLineItemRecord, String> RATED_USAGE_ID = createField(DSL.name("rated_usage_id"), SQLDataType.VARCHAR(64), this, "");
 
     /**
      * The column <code>public.invoice_line_item.line_type</code>.
@@ -72,17 +90,17 @@ public class InvoiceLineItem extends TableImpl<InvoiceLineItemRecord> {
     /**
      * The column <code>public.invoice_line_item.description</code>.
      */
-    public final TableField<InvoiceLineItemRecord, String> DESCRIPTION = createField(DSL.name("description"), SQLDataType.CLOB, this, "");
+    public final TableField<InvoiceLineItemRecord, String> DESCRIPTION = createField(DSL.name("description"), SQLDataType.CLOB.nullable(false), this, "");
 
     /**
-     * The column <code>public.invoice_line_item.quantity</code>.
+     * The column <code>public.invoice_line_item.quantity_base_units</code>.
      */
-    public final TableField<InvoiceLineItemRecord, Double> QUANTITY = createField(DSL.name("quantity"), SQLDataType.DOUBLE, this, "");
+    public final TableField<InvoiceLineItemRecord, Long> QUANTITY_BASE_UNITS = createField(DSL.name("quantity_base_units"), SQLDataType.BIGINT.nullable(false), this, "");
 
     /**
      * The column <code>public.invoice_line_item.unit_price_minor</code>.
      */
-    public final TableField<InvoiceLineItemRecord, Long> UNIT_PRICE_MINOR = createField(DSL.name("unit_price_minor"), SQLDataType.BIGINT, this, "");
+    public final TableField<InvoiceLineItemRecord, Long> UNIT_PRICE_MINOR = createField(DSL.name("unit_price_minor"), SQLDataType.BIGINT.nullable(false), this, "");
 
     /**
      * The column <code>public.invoice_line_item.amount_minor</code>.
@@ -92,22 +110,22 @@ public class InvoiceLineItem extends TableImpl<InvoiceLineItemRecord> {
     /**
      * The column <code>public.invoice_line_item.currency_code</code>.
      */
-    public final TableField<InvoiceLineItemRecord, String> CURRENCY_CODE = createField(DSL.name("currency_code"), SQLDataType.VARCHAR(8).nullable(false), this, "");
+    public final TableField<InvoiceLineItemRecord, String> CURRENCY_CODE = createField(DSL.name("currency_code"), SQLDataType.VARCHAR(3).nullable(false), this, "");
 
     /**
      * The column <code>public.invoice_line_item.period_start</code>.
      */
-    public final TableField<InvoiceLineItemRecord, LocalDateTime> PERIOD_START = createField(DSL.name("period_start"), SQLDataType.LOCALDATETIME(6), this, "");
+    public final TableField<InvoiceLineItemRecord, Instant> PERIOD_START = createField(DSL.name("period_start"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "", new InstantConverter());
 
     /**
      * The column <code>public.invoice_line_item.period_end</code>.
      */
-    public final TableField<InvoiceLineItemRecord, LocalDateTime> PERIOD_END = createField(DSL.name("period_end"), SQLDataType.LOCALDATETIME(6), this, "");
+    public final TableField<InvoiceLineItemRecord, Instant> PERIOD_END = createField(DSL.name("period_end"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "", new InstantConverter());
 
     /**
      * The column <code>public.invoice_line_item.created_at</code>.
      */
-    public final TableField<InvoiceLineItemRecord, LocalDateTime> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.LOCALDATETIME(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.LOCALDATETIME)), this, "");
+    public final TableField<InvoiceLineItemRecord, Instant> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "", new InstantConverter());
 
     private InvoiceLineItem(Name alias, Table<InvoiceLineItemRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
@@ -138,6 +156,39 @@ public class InvoiceLineItem extends TableImpl<InvoiceLineItemRecord> {
         this(DSL.name("invoice_line_item"), null);
     }
 
+    public <O extends Record> InvoiceLineItem(Table<O> path, ForeignKey<O, InvoiceLineItemRecord> childPath, InverseForeignKey<O, InvoiceLineItemRecord> parentPath) {
+        super(path, childPath, parentPath, INVOICE_LINE_ITEM);
+    }
+
+    /**
+     * A subtype implementing {@link Path} for simplified path-based joins.
+     */
+    public static class InvoiceLineItemPath extends InvoiceLineItem implements Path<InvoiceLineItemRecord> {
+
+        private static final long serialVersionUID = 1L;
+        public <O extends Record> InvoiceLineItemPath(Table<O> path, ForeignKey<O, InvoiceLineItemRecord> childPath, InverseForeignKey<O, InvoiceLineItemRecord> parentPath) {
+            super(path, childPath, parentPath);
+        }
+        private InvoiceLineItemPath(Name alias, Table<InvoiceLineItemRecord> aliased) {
+            super(alias, aliased);
+        }
+
+        @Override
+        public InvoiceLineItemPath as(String alias) {
+            return new InvoiceLineItemPath(DSL.name(alias), this);
+        }
+
+        @Override
+        public InvoiceLineItemPath as(Name alias) {
+            return new InvoiceLineItemPath(alias, this);
+        }
+
+        @Override
+        public InvoiceLineItemPath as(Table<?> alias) {
+            return new InvoiceLineItemPath(alias.getQualifiedName(), this);
+        }
+    }
+
     @Override
     public Schema getSchema() {
         return aliased() ? null : Public.PUBLIC;
@@ -151,6 +202,36 @@ public class InvoiceLineItem extends TableImpl<InvoiceLineItemRecord> {
     @Override
     public UniqueKey<InvoiceLineItemRecord> getPrimaryKey() {
         return Keys.INVOICE_LINE_ITEM_PKEY;
+    }
+
+    @Override
+    public List<UniqueKey<InvoiceLineItemRecord>> getUniqueKeys() {
+        return Arrays.asList(Keys.INVOICE_LINE_ITEM_TENANT_ID_RATED_USAGE_ID_KEY);
+    }
+
+    @Override
+    public List<ForeignKey<InvoiceLineItemRecord, ?>> getReferences() {
+        return Arrays.asList(Keys.INVOICE_LINE_ITEM__INVOICE_LINE_ITEM_TENANT_ID_INVOICE_ID_FKEY);
+    }
+
+    private transient BillingInvoicePath _billingInvoice;
+
+    /**
+     * Get the implicit join path to the <code>public.billing_invoice</code>
+     * table.
+     */
+    public BillingInvoicePath billingInvoice() {
+        if (_billingInvoice == null)
+            _billingInvoice = new BillingInvoicePath(this, Keys.INVOICE_LINE_ITEM__INVOICE_LINE_ITEM_TENANT_ID_INVOICE_ID_FKEY, null);
+
+        return _billingInvoice;
+    }
+
+    @Override
+    public List<Check<InvoiceLineItemRecord>> getChecks() {
+        return Arrays.asList(
+            Internal.createCheck(this, DSL.name("invoice_line_item_quantity_base_units_check"), "((quantity_base_units >= 0))", true)
+        );
     }
 
     @Override

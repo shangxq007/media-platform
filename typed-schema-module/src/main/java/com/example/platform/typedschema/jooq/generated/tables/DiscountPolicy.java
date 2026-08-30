@@ -4,16 +4,18 @@
 package com.example.platform.typedschema.jooq.generated.tables;
 
 
+import com.example.platform.typedschema.contract.InstantConverter;
 import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
 import com.example.platform.typedschema.jooq.generated.tables.records.DiscountPolicyRecord;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
+import org.jooq.Check;
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.Index;
@@ -29,6 +31,7 @@ import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
@@ -60,9 +63,29 @@ public class DiscountPolicy extends TableImpl<DiscountPolicyRecord> {
     public final TableField<DiscountPolicyRecord, String> ID = createField(DSL.name("id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
     /**
+     * The column <code>public.discount_policy.tenant_id</code>.
+     */
+    public final TableField<DiscountPolicyRecord, String> TENANT_ID = createField(DSL.name("tenant_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
+
+    /**
      * The column <code>public.discount_policy.policy_key</code>.
      */
     public final TableField<DiscountPolicyRecord, String> POLICY_KEY = createField(DSL.name("policy_key"), SQLDataType.VARCHAR(128).nullable(false), this, "");
+
+    /**
+     * The column <code>public.discount_policy.rule_version</code>.
+     */
+    public final TableField<DiscountPolicyRecord, Long> RULE_VERSION = createField(DSL.name("rule_version"), SQLDataType.BIGINT.nullable(false), this, "");
+
+    /**
+     * The column <code>public.discount_policy.meter_key</code>.
+     */
+    public final TableField<DiscountPolicyRecord, String> METER_KEY = createField(DSL.name("meter_key"), SQLDataType.VARCHAR(128).nullable(false), this, "");
+
+    /**
+     * The column <code>public.discount_policy.currency_code</code>.
+     */
+    public final TableField<DiscountPolicyRecord, String> CURRENCY_CODE = createField(DSL.name("currency_code"), SQLDataType.VARCHAR(3).nullable(false), this, "");
 
     /**
      * The column <code>public.discount_policy.name</code>.
@@ -80,9 +103,19 @@ public class DiscountPolicy extends TableImpl<DiscountPolicyRecord> {
     public final TableField<DiscountPolicyRecord, String> DISCOUNT_TYPE = createField(DSL.name("discount_type"), SQLDataType.VARCHAR(32).nullable(false), this, "");
 
     /**
-     * The column <code>public.discount_policy.discount_value</code>.
+     * The column <code>public.discount_policy.discount_numerator</code>.
      */
-    public final TableField<DiscountPolicyRecord, Double> DISCOUNT_VALUE = createField(DSL.name("discount_value"), SQLDataType.DOUBLE.nullable(false), this, "");
+    public final TableField<DiscountPolicyRecord, Long> DISCOUNT_NUMERATOR = createField(DSL.name("discount_numerator"), SQLDataType.BIGINT.nullable(false), this, "");
+
+    /**
+     * The column <code>public.discount_policy.discount_denominator</code>.
+     */
+    public final TableField<DiscountPolicyRecord, Long> DISCOUNT_DENOMINATOR = createField(DSL.name("discount_denominator"), SQLDataType.BIGINT.nullable(false), this, "");
+
+    /**
+     * The column <code>public.discount_policy.flat_amount_minor</code>.
+     */
+    public final TableField<DiscountPolicyRecord, Long> FLAT_AMOUNT_MINOR = createField(DSL.name("flat_amount_minor"), SQLDataType.BIGINT.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.BIGINT)), this, "");
 
     /**
      * The column <code>public.discount_policy.conditions</code>.
@@ -97,17 +130,17 @@ public class DiscountPolicy extends TableImpl<DiscountPolicyRecord> {
     /**
      * The column <code>public.discount_policy.effective_from</code>.
      */
-    public final TableField<DiscountPolicyRecord, LocalDateTime> EFFECTIVE_FROM = createField(DSL.name("effective_from"), SQLDataType.LOCALDATETIME(6), this, "");
+    public final TableField<DiscountPolicyRecord, Instant> EFFECTIVE_FROM = createField(DSL.name("effective_from"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false), this, "", new InstantConverter());
 
     /**
      * The column <code>public.discount_policy.effective_to</code>.
      */
-    public final TableField<DiscountPolicyRecord, LocalDateTime> EFFECTIVE_TO = createField(DSL.name("effective_to"), SQLDataType.LOCALDATETIME(6), this, "");
+    public final TableField<DiscountPolicyRecord, Instant> EFFECTIVE_TO = createField(DSL.name("effective_to"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "", new InstantConverter());
 
     /**
      * The column <code>public.discount_policy.created_at</code>.
      */
-    public final TableField<DiscountPolicyRecord, LocalDateTime> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.LOCALDATETIME(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.LOCALDATETIME)), this, "");
+    public final TableField<DiscountPolicyRecord, Instant> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "", new InstantConverter());
 
     private DiscountPolicy(Name alias, Table<DiscountPolicyRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
@@ -155,7 +188,19 @@ public class DiscountPolicy extends TableImpl<DiscountPolicyRecord> {
 
     @Override
     public List<UniqueKey<DiscountPolicyRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.DISCOUNT_POLICY_POLICY_KEY_KEY);
+        return Arrays.asList(Keys.DISCOUNT_POLICY_TENANT_ID_POLICY_KEY_RULE_VERSION_KEY);
+    }
+
+    @Override
+    public List<Check<DiscountPolicyRecord>> getChecks() {
+        return Arrays.asList(
+            Internal.createCheck(this, DSL.name("discount_policy_check"), "((discount_numerator <= discount_denominator))", true),
+            Internal.createCheck(this, DSL.name("discount_policy_check1"), "(((effective_to IS NULL) OR (effective_to > effective_from)))", true),
+            Internal.createCheck(this, DSL.name("discount_policy_discount_denominator_check"), "((discount_denominator > 0))", true),
+            Internal.createCheck(this, DSL.name("discount_policy_discount_numerator_check"), "((discount_numerator >= 0))", true),
+            Internal.createCheck(this, DSL.name("discount_policy_flat_amount_minor_check"), "((flat_amount_minor >= 0))", true),
+            Internal.createCheck(this, DSL.name("discount_policy_rule_version_check"), "((rule_version > 0))", true)
+        );
     }
 
     @Override

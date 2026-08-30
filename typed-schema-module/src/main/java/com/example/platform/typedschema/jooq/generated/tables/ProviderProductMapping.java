@@ -4,22 +4,30 @@
 package com.example.platform.typedschema.jooq.generated.tables;
 
 
+import com.example.platform.typedschema.contract.InstantConverter;
 import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
+import com.example.platform.typedschema.jooq.generated.tables.CommerceProduct.CommerceProductPath;
+import com.example.platform.typedschema.jooq.generated.tables.CommercialOffering.CommercialOfferingPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.ProviderProductMappingRecord;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
+import org.jooq.Check;
 import org.jooq.Condition;
 import org.jooq.Field;
+import org.jooq.ForeignKey;
 import org.jooq.Index;
+import org.jooq.InverseForeignKey;
 import org.jooq.Name;
+import org.jooq.Path;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
+import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
 import org.jooq.Select;
@@ -29,6 +37,7 @@ import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
@@ -82,9 +91,29 @@ public class ProviderProductMapping extends TableImpl<ProviderProductMappingReco
     public final TableField<ProviderProductMappingRecord, String> PRODUCT_ID = createField(DSL.name("product_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
     /**
+     * The column <code>public.provider_product_mapping.offering_id</code>.
+     */
+    public final TableField<ProviderProductMappingRecord, String> OFFERING_ID = createField(DSL.name("offering_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
+
+    /**
+     * The column <code>public.provider_product_mapping.offering_version</code>.
+     */
+    public final TableField<ProviderProductMappingRecord, Long> OFFERING_VERSION = createField(DSL.name("offering_version"), SQLDataType.BIGINT.nullable(false), this, "");
+
+    /**
+     * The column <code>public.provider_product_mapping.version</code>.
+     */
+    public final TableField<ProviderProductMappingRecord, Long> VERSION = createField(DSL.name("version"), SQLDataType.BIGINT.nullable(false), this, "");
+
+    /**
      * The column <code>public.provider_product_mapping.created_at</code>.
      */
-    public final TableField<ProviderProductMappingRecord, LocalDateTime> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.LOCALDATETIME(6).nullable(false), this, "");
+    public final TableField<ProviderProductMappingRecord, Instant> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false), this, "", new InstantConverter());
+
+    /**
+     * The column <code>public.provider_product_mapping.updated_at</code>.
+     */
+    public final TableField<ProviderProductMappingRecord, Instant> UPDATED_AT = createField(DSL.name("updated_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false), this, "", new InstantConverter());
 
     private ProviderProductMapping(Name alias, Table<ProviderProductMappingRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
@@ -117,6 +146,39 @@ public class ProviderProductMapping extends TableImpl<ProviderProductMappingReco
         this(DSL.name("provider_product_mapping"), null);
     }
 
+    public <O extends Record> ProviderProductMapping(Table<O> path, ForeignKey<O, ProviderProductMappingRecord> childPath, InverseForeignKey<O, ProviderProductMappingRecord> parentPath) {
+        super(path, childPath, parentPath, PROVIDER_PRODUCT_MAPPING);
+    }
+
+    /**
+     * A subtype implementing {@link Path} for simplified path-based joins.
+     */
+    public static class ProviderProductMappingPath extends ProviderProductMapping implements Path<ProviderProductMappingRecord> {
+
+        private static final long serialVersionUID = 1L;
+        public <O extends Record> ProviderProductMappingPath(Table<O> path, ForeignKey<O, ProviderProductMappingRecord> childPath, InverseForeignKey<O, ProviderProductMappingRecord> parentPath) {
+            super(path, childPath, parentPath);
+        }
+        private ProviderProductMappingPath(Name alias, Table<ProviderProductMappingRecord> aliased) {
+            super(alias, aliased);
+        }
+
+        @Override
+        public ProviderProductMappingPath as(String alias) {
+            return new ProviderProductMappingPath(DSL.name(alias), this);
+        }
+
+        @Override
+        public ProviderProductMappingPath as(Name alias) {
+            return new ProviderProductMappingPath(alias, this);
+        }
+
+        @Override
+        public ProviderProductMappingPath as(Table<?> alias) {
+            return new ProviderProductMappingPath(alias.getQualifiedName(), this);
+        }
+    }
+
     @Override
     public Schema getSchema() {
         return aliased() ? null : Public.PUBLIC;
@@ -130,6 +192,49 @@ public class ProviderProductMapping extends TableImpl<ProviderProductMappingReco
     @Override
     public UniqueKey<ProviderProductMappingRecord> getPrimaryKey() {
         return Keys.PROVIDER_PRODUCT_MAPPING_PKEY;
+    }
+
+    @Override
+    public List<UniqueKey<ProviderProductMappingRecord>> getUniqueKeys() {
+        return Arrays.asList(Keys.PROVIDER_PRODUCT_MAPPING_PROVIDER_CODE_EXTERNAL_PRODUCT_REF_KEY, Keys.PROVIDER_PRODUCT_MAPPING_PROVIDER_CODE_PRODUCT_ID_OFFERING__KEY);
+    }
+
+    @Override
+    public List<ForeignKey<ProviderProductMappingRecord, ?>> getReferences() {
+        return Arrays.asList(Keys.PROVIDER_PRODUCT_MAPPING__PROVIDER_PRODUCT_MAPPING_OFFERING_ID_FKEY, Keys.PROVIDER_PRODUCT_MAPPING__PROVIDER_PRODUCT_MAPPING_PRODUCT_ID_FKEY);
+    }
+
+    private transient CommercialOfferingPath _commercialOffering;
+
+    /**
+     * Get the implicit join path to the <code>public.commercial_offering</code>
+     * table.
+     */
+    public CommercialOfferingPath commercialOffering() {
+        if (_commercialOffering == null)
+            _commercialOffering = new CommercialOfferingPath(this, Keys.PROVIDER_PRODUCT_MAPPING__PROVIDER_PRODUCT_MAPPING_OFFERING_ID_FKEY, null);
+
+        return _commercialOffering;
+    }
+
+    private transient CommerceProductPath _commerceProduct;
+
+    /**
+     * Get the implicit join path to the <code>public.commerce_product</code>
+     * table.
+     */
+    public CommerceProductPath commerceProduct() {
+        if (_commerceProduct == null)
+            _commerceProduct = new CommerceProductPath(this, Keys.PROVIDER_PRODUCT_MAPPING__PROVIDER_PRODUCT_MAPPING_PRODUCT_ID_FKEY, null);
+
+        return _commerceProduct;
+    }
+
+    @Override
+    public List<Check<ProviderProductMappingRecord>> getChecks() {
+        return Arrays.asList(
+            Internal.createCheck(this, DSL.name("provider_product_mapping_version_check"), "((version > 0))", true)
+        );
     }
 
     @Override

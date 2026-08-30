@@ -16,18 +16,22 @@ import com.example.platform.typedschema.jooq.generated.tables.ArtifactRelation;
 import com.example.platform.typedschema.jooq.generated.tables.ArtifactReplica;
 import com.example.platform.typedschema.jooq.generated.tables.AssetSemanticMetadata;
 import com.example.platform.typedschema.jooq.generated.tables.AuditRecords;
+import com.example.platform.typedschema.jooq.generated.tables.BillableUsage;
 import com.example.platform.typedschema.jooq.generated.tables.BillingInvoice;
+import com.example.platform.typedschema.jooq.generated.tables.BillingInvoiceCommand;
 import com.example.platform.typedschema.jooq.generated.tables.BillingLedgerEntry;
 import com.example.platform.typedschema.jooq.generated.tables.CheckoutSession;
 import com.example.platform.typedschema.jooq.generated.tables.ClientExportSession;
 import com.example.platform.typedschema.jooq.generated.tables.CloudResourceDefinition;
 import com.example.platform.typedschema.jooq.generated.tables.CommerceCart;
 import com.example.platform.typedschema.jooq.generated.tables.CommerceCartLine;
-import com.example.platform.typedschema.jooq.generated.tables.CommercePrice;
 import com.example.platform.typedschema.jooq.generated.tables.CommerceProduct;
+import com.example.platform.typedschema.jooq.generated.tables.CommercialOffering;
 import com.example.platform.typedschema.jooq.generated.tables.ConfigItem;
+import com.example.platform.typedschema.jooq.generated.tables.CreditReservation;
 import com.example.platform.typedschema.jooq.generated.tables.CreditTransaction;
 import com.example.platform.typedschema.jooq.generated.tables.CreditWallet;
+import com.example.platform.typedschema.jooq.generated.tables.CreditWalletCommand;
 import com.example.platform.typedschema.jooq.generated.tables.CustomPricingRule;
 import com.example.platform.typedschema.jooq.generated.tables.DeliveryDestination;
 import com.example.platform.typedschema.jooq.generated.tables.DeliveryJob;
@@ -36,6 +40,7 @@ import com.example.platform.typedschema.jooq.generated.tables.DiscountPolicy;
 import com.example.platform.typedschema.jooq.generated.tables.EffectPack;
 import com.example.platform.typedschema.jooq.generated.tables.EffectPackEffect;
 import com.example.platform.typedschema.jooq.generated.tables.EntitlementBundle;
+import com.example.platform.typedschema.jooq.generated.tables.EntitlementCommandAudit;
 import com.example.platform.typedschema.jooq.generated.tables.EntitlementGrant;
 import com.example.platform.typedschema.jooq.generated.tables.EntitlementOverride;
 import com.example.platform.typedschema.jooq.generated.tables.ExtensionAuditEvent;
@@ -72,8 +77,12 @@ import com.example.platform.typedschema.jooq.generated.tables.NotificationRecord
 import com.example.platform.typedschema.jooq.generated.tables.NotificationSubscription;
 import com.example.platform.typedschema.jooq.generated.tables.NotificationTemplate;
 import com.example.platform.typedschema.jooq.generated.tables.NotificationUserInbox;
+import com.example.platform.typedschema.jooq.generated.tables.ObservedRuntimeUsage;
 import com.example.platform.typedschema.jooq.generated.tables.OutboxEvents;
-import com.example.platform.typedschema.jooq.generated.tables.PaymentAttempt;
+import com.example.platform.typedschema.jooq.generated.tables.PaymentCommand;
+import com.example.platform.typedschema.jooq.generated.tables.PaymentOutbox;
+import com.example.platform.typedschema.jooq.generated.tables.PaymentRefund;
+import com.example.platform.typedschema.jooq.generated.tables.PaymentTransaction;
 import com.example.platform.typedschema.jooq.generated.tables.Permission;
 import com.example.platform.typedschema.jooq.generated.tables.PlatformJob;
 import com.example.platform.typedschema.jooq.generated.tables.PlatformTask;
@@ -81,6 +90,7 @@ import com.example.platform.typedschema.jooq.generated.tables.PricingRule;
 import com.example.platform.typedschema.jooq.generated.tables.ProblematicDataRecord;
 import com.example.platform.typedschema.jooq.generated.tables.ProblematicDataRuleConfig;
 import com.example.platform.typedschema.jooq.generated.tables.Product;
+import com.example.platform.typedschema.jooq.generated.tables.ProductCatalogCommand;
 import com.example.platform.typedschema.jooq.generated.tables.ProductDependency;
 import com.example.platform.typedschema.jooq.generated.tables.Project;
 import com.example.platform.typedschema.jooq.generated.tables.ProjectImportMetadata;
@@ -91,7 +101,7 @@ import com.example.platform.typedschema.jooq.generated.tables.PromptTemplate;
 import com.example.platform.typedschema.jooq.generated.tables.PromptTemplateVersion;
 import com.example.platform.typedschema.jooq.generated.tables.ProviderCostObservation;
 import com.example.platform.typedschema.jooq.generated.tables.ProviderProductMapping;
-import com.example.platform.typedschema.jooq.generated.tables.ProviderWebhookEvent;
+import com.example.platform.typedschema.jooq.generated.tables.ProviderWebhookReceipt;
 import com.example.platform.typedschema.jooq.generated.tables.PurchaseOrder;
 import com.example.platform.typedschema.jooq.generated.tables.QuarantinedPromptExecutions;
 import com.example.platform.typedschema.jooq.generated.tables.QuarantinedProviderWorkers;
@@ -99,14 +109,13 @@ import com.example.platform.typedschema.jooq.generated.tables.QuarantinedRenderJ
 import com.example.platform.typedschema.jooq.generated.tables.QuotaDefinitions;
 import com.example.platform.typedschema.jooq.generated.tables.QuotaProfile;
 import com.example.platform.typedschema.jooq.generated.tables.QuotaUsage;
+import com.example.platform.typedschema.jooq.generated.tables.QuotaUsageOperation;
 import com.example.platform.typedschema.jooq.generated.tables.RatedUsageRecord;
-import com.example.platform.typedschema.jooq.generated.tables.RenderBillingRecord;
 import com.example.platform.typedschema.jooq.generated.tables.RenderJob;
 import com.example.platform.typedschema.jooq.generated.tables.RenderJobLease;
 import com.example.platform.typedschema.jooq.generated.tables.RenderJobLifecycleEvents;
 import com.example.platform.typedschema.jooq.generated.tables.RenderJobQueue;
 import com.example.platform.typedschema.jooq.generated.tables.RenderJobStatusHistory;
-import com.example.platform.typedschema.jooq.generated.tables.RenderUsageRecord;
 import com.example.platform.typedschema.jooq.generated.tables.RenderWorker;
 import com.example.platform.typedschema.jooq.generated.tables.ReviewDecision;
 import com.example.platform.typedschema.jooq.generated.tables.ReviewThread;
@@ -124,6 +133,7 @@ import com.example.platform.typedschema.jooq.generated.tables.SocialPostAnalytic
 import com.example.platform.typedschema.jooq.generated.tables.SourceVisualDescriptionSnapshot;
 import com.example.platform.typedschema.jooq.generated.tables.StorageObject;
 import com.example.platform.typedschema.jooq.generated.tables.StorageReference;
+import com.example.platform.typedschema.jooq.generated.tables.SubscriptionCommand;
 import com.example.platform.typedschema.jooq.generated.tables.SubscriptionContract;
 import com.example.platform.typedschema.jooq.generated.tables.SubscriptionPlan;
 import com.example.platform.typedschema.jooq.generated.tables.SystemCanonicalEdge;
@@ -142,7 +152,6 @@ import com.example.platform.typedschema.jooq.generated.tables.UnifiedGraphEdge;
 import com.example.platform.typedschema.jooq.generated.tables.UnifiedGraphNode;
 import com.example.platform.typedschema.jooq.generated.tables.UnifiedRequestGraph;
 import com.example.platform.typedschema.jooq.generated.tables.UsageMeter;
-import com.example.platform.typedschema.jooq.generated.tables.UsageRecord;
 import com.example.platform.typedschema.jooq.generated.tables.User;
 import com.example.platform.typedschema.jooq.generated.tables.UserBehaviorEvent;
 import com.example.platform.typedschema.jooq.generated.tables.UserHabits;
@@ -153,6 +162,29 @@ import com.example.platform.typedschema.jooq.generated.tables.UserWorkflowDefini
 import com.example.platform.typedschema.jooq.generated.tables.UserWorkflowDefinitionEdge;
 import com.example.platform.typedschema.jooq.generated.tables.UserWorkflowDefinitionNode;
 import com.example.platform.typedschema.jooq.generated.tables.UserWorkflowDefinitionVersion;
+import com.example.platform.typedschema.jooq.generated.tables.WfArtifactReuseIndex;
+import com.example.platform.typedschema.jooq.generated.tables.WfCompletionEvent;
+import com.example.platform.typedschema.jooq.generated.tables.WfExecutionAssignment;
+import com.example.platform.typedschema.jooq.generated.tables.WfExecutionAssignmentDevice;
+import com.example.platform.typedschema.jooq.generated.tables.WfExecutionAttempt;
+import com.example.platform.typedschema.jooq.generated.tables.WfExecutionBackendSelection;
+import com.example.platform.typedschema.jooq.generated.tables.WfExecutionObservation;
+import com.example.platform.typedschema.jooq.generated.tables.WfExecutionOwnershipGeneration;
+import com.example.platform.typedschema.jooq.generated.tables.WfHostRegistration;
+import com.example.platform.typedschema.jooq.generated.tables.WfHostResourceSnapshot;
+import com.example.platform.typedschema.jooq.generated.tables.WfHostResourceSnapshotDevice;
+import com.example.platform.typedschema.jooq.generated.tables.WfHostSnapshotGenerationAuthority;
+import com.example.platform.typedschema.jooq.generated.tables.WfLocalAdmission;
+import com.example.platform.typedschema.jooq.generated.tables.WfPhysicalHostConnection;
+import com.example.platform.typedschema.jooq.generated.tables.WfPhysicalReleaseConfirmation;
+import com.example.platform.typedschema.jooq.generated.tables.WfRequestWorkResolution;
+import com.example.platform.typedschema.jooq.generated.tables.WfReservation;
+import com.example.platform.typedschema.jooq.generated.tables.WfReservationDevice;
+import com.example.platform.typedschema.jooq.generated.tables.WfRuntimeRegistration;
+import com.example.platform.typedschema.jooq.generated.tables.WfTaskLease;
+import com.example.platform.typedschema.jooq.generated.tables.WfTaskLeaseReservation;
+import com.example.platform.typedschema.jooq.generated.tables.WfTaskOwnership;
+import com.example.platform.typedschema.jooq.generated.tables.WfWorkerRuntimeConnection;
 import com.example.platform.typedschema.jooq.generated.tables.WorkflowExecution;
 import com.example.platform.typedschema.jooq.generated.tables.Workspace;
 import com.example.platform.typedschema.jooq.generated.tables.WorkspaceEntitlementPool;
@@ -244,9 +276,19 @@ public class Public extends SchemaImpl {
     public final AuditRecords AUDIT_RECORDS = AuditRecords.AUDIT_RECORDS;
 
     /**
+     * The table <code>public.billable_usage</code>.
+     */
+    public final BillableUsage BILLABLE_USAGE = BillableUsage.BILLABLE_USAGE;
+
+    /**
      * The table <code>public.billing_invoice</code>.
      */
     public final BillingInvoice BILLING_INVOICE = BillingInvoice.BILLING_INVOICE;
+
+    /**
+     * The table <code>public.billing_invoice_command</code>.
+     */
+    public final BillingInvoiceCommand BILLING_INVOICE_COMMAND = BillingInvoiceCommand.BILLING_INVOICE_COMMAND;
 
     /**
      * The table <code>public.billing_ledger_entry</code>.
@@ -279,19 +321,24 @@ public class Public extends SchemaImpl {
     public final CommerceCartLine COMMERCE_CART_LINE = CommerceCartLine.COMMERCE_CART_LINE;
 
     /**
-     * The table <code>public.commerce_price</code>.
-     */
-    public final CommercePrice COMMERCE_PRICE = CommercePrice.COMMERCE_PRICE;
-
-    /**
      * The table <code>public.commerce_product</code>.
      */
     public final CommerceProduct COMMERCE_PRODUCT = CommerceProduct.COMMERCE_PRODUCT;
 
     /**
+     * The table <code>public.commercial_offering</code>.
+     */
+    public final CommercialOffering COMMERCIAL_OFFERING = CommercialOffering.COMMERCIAL_OFFERING;
+
+    /**
      * The table <code>public.config_item</code>.
      */
     public final ConfigItem CONFIG_ITEM = ConfigItem.CONFIG_ITEM;
+
+    /**
+     * The table <code>public.credit_reservation</code>.
+     */
+    public final CreditReservation CREDIT_RESERVATION = CreditReservation.CREDIT_RESERVATION;
 
     /**
      * The table <code>public.credit_transaction</code>.
@@ -302,6 +349,11 @@ public class Public extends SchemaImpl {
      * The table <code>public.credit_wallet</code>.
      */
     public final CreditWallet CREDIT_WALLET = CreditWallet.CREDIT_WALLET;
+
+    /**
+     * The table <code>public.credit_wallet_command</code>.
+     */
+    public final CreditWalletCommand CREDIT_WALLET_COMMAND = CreditWalletCommand.CREDIT_WALLET_COMMAND;
 
     /**
      * The table <code>public.custom_pricing_rule</code>.
@@ -342,6 +394,11 @@ public class Public extends SchemaImpl {
      * The table <code>public.entitlement_bundle</code>.
      */
     public final EntitlementBundle ENTITLEMENT_BUNDLE = EntitlementBundle.ENTITLEMENT_BUNDLE;
+
+    /**
+     * The table <code>public.entitlement_command_audit</code>.
+     */
+    public final EntitlementCommandAudit ENTITLEMENT_COMMAND_AUDIT = EntitlementCommandAudit.ENTITLEMENT_COMMAND_AUDIT;
 
     /**
      * The table <code>public.entitlement_grant</code>.
@@ -524,14 +581,34 @@ public class Public extends SchemaImpl {
     public final NotificationUserInbox NOTIFICATION_USER_INBOX = NotificationUserInbox.NOTIFICATION_USER_INBOX;
 
     /**
+     * The table <code>public.observed_runtime_usage</code>.
+     */
+    public final ObservedRuntimeUsage OBSERVED_RUNTIME_USAGE = ObservedRuntimeUsage.OBSERVED_RUNTIME_USAGE;
+
+    /**
      * The table <code>public.outbox_events</code>.
      */
     public final OutboxEvents OUTBOX_EVENTS = OutboxEvents.OUTBOX_EVENTS;
 
     /**
-     * The table <code>public.payment_attempt</code>.
+     * The table <code>public.payment_command</code>.
      */
-    public final PaymentAttempt PAYMENT_ATTEMPT = PaymentAttempt.PAYMENT_ATTEMPT;
+    public final PaymentCommand PAYMENT_COMMAND = PaymentCommand.PAYMENT_COMMAND;
+
+    /**
+     * The table <code>public.payment_outbox</code>.
+     */
+    public final PaymentOutbox PAYMENT_OUTBOX = PaymentOutbox.PAYMENT_OUTBOX;
+
+    /**
+     * The table <code>public.payment_refund</code>.
+     */
+    public final PaymentRefund PAYMENT_REFUND = PaymentRefund.PAYMENT_REFUND;
+
+    /**
+     * The table <code>public.payment_transaction</code>.
+     */
+    public final PaymentTransaction PAYMENT_TRANSACTION = PaymentTransaction.PAYMENT_TRANSACTION;
 
     /**
      * The table <code>public.permission</code>.
@@ -567,6 +644,11 @@ public class Public extends SchemaImpl {
      * The table <code>public.product</code>.
      */
     public final Product PRODUCT = Product.PRODUCT;
+
+    /**
+     * The table <code>public.product_catalog_command</code>.
+     */
+    public final ProductCatalogCommand PRODUCT_CATALOG_COMMAND = ProductCatalogCommand.PRODUCT_CATALOG_COMMAND;
 
     /**
      * The table <code>public.product_dependency</code>.
@@ -619,9 +701,9 @@ public class Public extends SchemaImpl {
     public final ProviderProductMapping PROVIDER_PRODUCT_MAPPING = ProviderProductMapping.PROVIDER_PRODUCT_MAPPING;
 
     /**
-     * The table <code>public.provider_webhook_event</code>.
+     * The table <code>public.provider_webhook_receipt</code>.
      */
-    public final ProviderWebhookEvent PROVIDER_WEBHOOK_EVENT = ProviderWebhookEvent.PROVIDER_WEBHOOK_EVENT;
+    public final ProviderWebhookReceipt PROVIDER_WEBHOOK_RECEIPT = ProviderWebhookReceipt.PROVIDER_WEBHOOK_RECEIPT;
 
     /**
      * The table <code>public.purchase_order</code>.
@@ -659,14 +741,14 @@ public class Public extends SchemaImpl {
     public final QuotaUsage QUOTA_USAGE = QuotaUsage.QUOTA_USAGE;
 
     /**
+     * The table <code>public.quota_usage_operation</code>.
+     */
+    public final QuotaUsageOperation QUOTA_USAGE_OPERATION = QuotaUsageOperation.QUOTA_USAGE_OPERATION;
+
+    /**
      * The table <code>public.rated_usage_record</code>.
      */
     public final RatedUsageRecord RATED_USAGE_RECORD = RatedUsageRecord.RATED_USAGE_RECORD;
-
-    /**
-     * The table <code>public.render_billing_record</code>.
-     */
-    public final RenderBillingRecord RENDER_BILLING_RECORD = RenderBillingRecord.RENDER_BILLING_RECORD;
 
     /**
      * The table <code>public.render_job</code>.
@@ -692,11 +774,6 @@ public class Public extends SchemaImpl {
      * The table <code>public.render_job_status_history</code>.
      */
     public final RenderJobStatusHistory RENDER_JOB_STATUS_HISTORY = RenderJobStatusHistory.RENDER_JOB_STATUS_HISTORY;
-
-    /**
-     * The table <code>public.render_usage_record</code>.
-     */
-    public final RenderUsageRecord RENDER_USAGE_RECORD = RenderUsageRecord.RENDER_USAGE_RECORD;
 
     /**
      * The table <code>public.render_worker</code>.
@@ -782,6 +859,11 @@ public class Public extends SchemaImpl {
      * The table <code>public.storage_reference</code>.
      */
     public final StorageReference STORAGE_REFERENCE = StorageReference.STORAGE_REFERENCE;
+
+    /**
+     * The table <code>public.subscription_command</code>.
+     */
+    public final SubscriptionCommand SUBSCRIPTION_COMMAND = SubscriptionCommand.SUBSCRIPTION_COMMAND;
 
     /**
      * The table <code>public.subscription_contract</code>.
@@ -874,11 +956,6 @@ public class Public extends SchemaImpl {
     public final UsageMeter USAGE_METER = UsageMeter.USAGE_METER;
 
     /**
-     * The table <code>public.usage_record</code>.
-     */
-    public final UsageRecord USAGE_RECORD = UsageRecord.USAGE_RECORD;
-
-    /**
      * The table <code>public.user</code>.
      */
     public final User USER = User.USER;
@@ -927,6 +1004,121 @@ public class Public extends SchemaImpl {
      * The table <code>public.user_workflow_definition_version</code>.
      */
     public final UserWorkflowDefinitionVersion USER_WORKFLOW_DEFINITION_VERSION = UserWorkflowDefinitionVersion.USER_WORKFLOW_DEFINITION_VERSION;
+
+    /**
+     * The table <code>public.wf_artifact_reuse_index</code>.
+     */
+    public final WfArtifactReuseIndex WF_ARTIFACT_REUSE_INDEX = WfArtifactReuseIndex.WF_ARTIFACT_REUSE_INDEX;
+
+    /**
+     * The table <code>public.wf_completion_event</code>.
+     */
+    public final WfCompletionEvent WF_COMPLETION_EVENT = WfCompletionEvent.WF_COMPLETION_EVENT;
+
+    /**
+     * The table <code>public.wf_execution_assignment</code>.
+     */
+    public final WfExecutionAssignment WF_EXECUTION_ASSIGNMENT = WfExecutionAssignment.WF_EXECUTION_ASSIGNMENT;
+
+    /**
+     * The table <code>public.wf_execution_assignment_device</code>.
+     */
+    public final WfExecutionAssignmentDevice WF_EXECUTION_ASSIGNMENT_DEVICE = WfExecutionAssignmentDevice.WF_EXECUTION_ASSIGNMENT_DEVICE;
+
+    /**
+     * The table <code>public.wf_execution_attempt</code>.
+     */
+    public final WfExecutionAttempt WF_EXECUTION_ATTEMPT = WfExecutionAttempt.WF_EXECUTION_ATTEMPT;
+
+    /**
+     * The table <code>public.wf_execution_backend_selection</code>.
+     */
+    public final WfExecutionBackendSelection WF_EXECUTION_BACKEND_SELECTION = WfExecutionBackendSelection.WF_EXECUTION_BACKEND_SELECTION;
+
+    /**
+     * The table <code>public.wf_execution_observation</code>.
+     */
+    public final WfExecutionObservation WF_EXECUTION_OBSERVATION = WfExecutionObservation.WF_EXECUTION_OBSERVATION;
+
+    /**
+     * The table <code>public.wf_execution_ownership_generation</code>.
+     */
+    public final WfExecutionOwnershipGeneration WF_EXECUTION_OWNERSHIP_GENERATION = WfExecutionOwnershipGeneration.WF_EXECUTION_OWNERSHIP_GENERATION;
+
+    /**
+     * The table <code>public.wf_host_registration</code>.
+     */
+    public final WfHostRegistration WF_HOST_REGISTRATION = WfHostRegistration.WF_HOST_REGISTRATION;
+
+    /**
+     * The table <code>public.wf_host_resource_snapshot</code>.
+     */
+    public final WfHostResourceSnapshot WF_HOST_RESOURCE_SNAPSHOT = WfHostResourceSnapshot.WF_HOST_RESOURCE_SNAPSHOT;
+
+    /**
+     * The table <code>public.wf_host_resource_snapshot_device</code>.
+     */
+    public final WfHostResourceSnapshotDevice WF_HOST_RESOURCE_SNAPSHOT_DEVICE = WfHostResourceSnapshotDevice.WF_HOST_RESOURCE_SNAPSHOT_DEVICE;
+
+    /**
+     * The table <code>public.wf_host_snapshot_generation_authority</code>.
+     */
+    public final WfHostSnapshotGenerationAuthority WF_HOST_SNAPSHOT_GENERATION_AUTHORITY = WfHostSnapshotGenerationAuthority.WF_HOST_SNAPSHOT_GENERATION_AUTHORITY;
+
+    /**
+     * The table <code>public.wf_local_admission</code>.
+     */
+    public final WfLocalAdmission WF_LOCAL_ADMISSION = WfLocalAdmission.WF_LOCAL_ADMISSION;
+
+    /**
+     * The table <code>public.wf_physical_host_connection</code>.
+     */
+    public final WfPhysicalHostConnection WF_PHYSICAL_HOST_CONNECTION = WfPhysicalHostConnection.WF_PHYSICAL_HOST_CONNECTION;
+
+    /**
+     * The table <code>public.wf_physical_release_confirmation</code>.
+     */
+    public final WfPhysicalReleaseConfirmation WF_PHYSICAL_RELEASE_CONFIRMATION = WfPhysicalReleaseConfirmation.WF_PHYSICAL_RELEASE_CONFIRMATION;
+
+    /**
+     * The table <code>public.wf_request_work_resolution</code>.
+     */
+    public final WfRequestWorkResolution WF_REQUEST_WORK_RESOLUTION = WfRequestWorkResolution.WF_REQUEST_WORK_RESOLUTION;
+
+    /**
+     * The table <code>public.wf_reservation</code>.
+     */
+    public final WfReservation WF_RESERVATION = WfReservation.WF_RESERVATION;
+
+    /**
+     * The table <code>public.wf_reservation_device</code>.
+     */
+    public final WfReservationDevice WF_RESERVATION_DEVICE = WfReservationDevice.WF_RESERVATION_DEVICE;
+
+    /**
+     * The table <code>public.wf_runtime_registration</code>.
+     */
+    public final WfRuntimeRegistration WF_RUNTIME_REGISTRATION = WfRuntimeRegistration.WF_RUNTIME_REGISTRATION;
+
+    /**
+     * The table <code>public.wf_task_lease</code>.
+     */
+    public final WfTaskLease WF_TASK_LEASE = WfTaskLease.WF_TASK_LEASE;
+
+    /**
+     * The table <code>public.wf_task_lease_reservation</code>.
+     */
+    public final WfTaskLeaseReservation WF_TASK_LEASE_RESERVATION = WfTaskLeaseReservation.WF_TASK_LEASE_RESERVATION;
+
+    /**
+     * The table <code>public.wf_task_ownership</code>.
+     */
+    public final WfTaskOwnership WF_TASK_OWNERSHIP = WfTaskOwnership.WF_TASK_OWNERSHIP;
+
+    /**
+     * The table <code>public.wf_worker_runtime_connection</code>.
+     */
+    public final WfWorkerRuntimeConnection WF_WORKER_RUNTIME_CONNECTION = WfWorkerRuntimeConnection.WF_WORKER_RUNTIME_CONNECTION;
 
     /**
      * The table <code>public.workflow_execution</code>.
@@ -996,18 +1188,22 @@ public class Public extends SchemaImpl {
             ArtifactReplica.ARTIFACT_REPLICA,
             AssetSemanticMetadata.ASSET_SEMANTIC_METADATA,
             AuditRecords.AUDIT_RECORDS,
+            BillableUsage.BILLABLE_USAGE,
             BillingInvoice.BILLING_INVOICE,
+            BillingInvoiceCommand.BILLING_INVOICE_COMMAND,
             BillingLedgerEntry.BILLING_LEDGER_ENTRY,
             CheckoutSession.CHECKOUT_SESSION,
             ClientExportSession.CLIENT_EXPORT_SESSION,
             CloudResourceDefinition.CLOUD_RESOURCE_DEFINITION,
             CommerceCart.COMMERCE_CART,
             CommerceCartLine.COMMERCE_CART_LINE,
-            CommercePrice.COMMERCE_PRICE,
             CommerceProduct.COMMERCE_PRODUCT,
+            CommercialOffering.COMMERCIAL_OFFERING,
             ConfigItem.CONFIG_ITEM,
+            CreditReservation.CREDIT_RESERVATION,
             CreditTransaction.CREDIT_TRANSACTION,
             CreditWallet.CREDIT_WALLET,
+            CreditWalletCommand.CREDIT_WALLET_COMMAND,
             CustomPricingRule.CUSTOM_PRICING_RULE,
             DeliveryDestination.DELIVERY_DESTINATION,
             DeliveryJob.DELIVERY_JOB,
@@ -1016,6 +1212,7 @@ public class Public extends SchemaImpl {
             EffectPack.EFFECT_PACK,
             EffectPackEffect.EFFECT_PACK_EFFECT,
             EntitlementBundle.ENTITLEMENT_BUNDLE,
+            EntitlementCommandAudit.ENTITLEMENT_COMMAND_AUDIT,
             EntitlementGrant.ENTITLEMENT_GRANT,
             EntitlementOverride.ENTITLEMENT_OVERRIDE,
             ExtensionAuditEvent.EXTENSION_AUDIT_EVENT,
@@ -1052,8 +1249,12 @@ public class Public extends SchemaImpl {
             NotificationSubscription.NOTIFICATION_SUBSCRIPTION,
             NotificationTemplate.NOTIFICATION_TEMPLATE,
             NotificationUserInbox.NOTIFICATION_USER_INBOX,
+            ObservedRuntimeUsage.OBSERVED_RUNTIME_USAGE,
             OutboxEvents.OUTBOX_EVENTS,
-            PaymentAttempt.PAYMENT_ATTEMPT,
+            PaymentCommand.PAYMENT_COMMAND,
+            PaymentOutbox.PAYMENT_OUTBOX,
+            PaymentRefund.PAYMENT_REFUND,
+            PaymentTransaction.PAYMENT_TRANSACTION,
             Permission.PERMISSION,
             PlatformJob.PLATFORM_JOB,
             PlatformTask.PLATFORM_TASK,
@@ -1061,6 +1262,7 @@ public class Public extends SchemaImpl {
             ProblematicDataRecord.PROBLEMATIC_DATA_RECORD,
             ProblematicDataRuleConfig.PROBLEMATIC_DATA_RULE_CONFIG,
             Product.PRODUCT,
+            ProductCatalogCommand.PRODUCT_CATALOG_COMMAND,
             ProductDependency.PRODUCT_DEPENDENCY,
             Project.PROJECT,
             ProjectImportMetadata.PROJECT_IMPORT_METADATA,
@@ -1071,7 +1273,7 @@ public class Public extends SchemaImpl {
             PromptTemplateVersion.PROMPT_TEMPLATE_VERSION,
             ProviderCostObservation.PROVIDER_COST_OBSERVATION,
             ProviderProductMapping.PROVIDER_PRODUCT_MAPPING,
-            ProviderWebhookEvent.PROVIDER_WEBHOOK_EVENT,
+            ProviderWebhookReceipt.PROVIDER_WEBHOOK_RECEIPT,
             PurchaseOrder.PURCHASE_ORDER,
             QuarantinedPromptExecutions.QUARANTINED_PROMPT_EXECUTIONS,
             QuarantinedProviderWorkers.QUARANTINED_PROVIDER_WORKERS,
@@ -1079,14 +1281,13 @@ public class Public extends SchemaImpl {
             QuotaDefinitions.QUOTA_DEFINITIONS,
             QuotaProfile.QUOTA_PROFILE,
             QuotaUsage.QUOTA_USAGE,
+            QuotaUsageOperation.QUOTA_USAGE_OPERATION,
             RatedUsageRecord.RATED_USAGE_RECORD,
-            RenderBillingRecord.RENDER_BILLING_RECORD,
             RenderJob.RENDER_JOB,
             RenderJobLease.RENDER_JOB_LEASE,
             RenderJobLifecycleEvents.RENDER_JOB_LIFECYCLE_EVENTS,
             RenderJobQueue.RENDER_JOB_QUEUE,
             RenderJobStatusHistory.RENDER_JOB_STATUS_HISTORY,
-            RenderUsageRecord.RENDER_USAGE_RECORD,
             RenderWorker.RENDER_WORKER,
             ReviewDecision.REVIEW_DECISION,
             ReviewThread.REVIEW_THREAD,
@@ -1104,6 +1305,7 @@ public class Public extends SchemaImpl {
             SourceVisualDescriptionSnapshot.SOURCE_VISUAL_DESCRIPTION_SNAPSHOT,
             StorageObject.STORAGE_OBJECT,
             StorageReference.STORAGE_REFERENCE,
+            SubscriptionCommand.SUBSCRIPTION_COMMAND,
             SubscriptionContract.SUBSCRIPTION_CONTRACT,
             SubscriptionPlan.SUBSCRIPTION_PLAN,
             SystemCanonicalEdge.SYSTEM_CANONICAL_EDGE,
@@ -1122,7 +1324,6 @@ public class Public extends SchemaImpl {
             UnifiedGraphNode.UNIFIED_GRAPH_NODE,
             UnifiedRequestGraph.UNIFIED_REQUEST_GRAPH,
             UsageMeter.USAGE_METER,
-            UsageRecord.USAGE_RECORD,
             User.USER,
             UserBehaviorEvent.USER_BEHAVIOR_EVENT,
             UserHabits.USER_HABITS,
@@ -1133,6 +1334,29 @@ public class Public extends SchemaImpl {
             UserWorkflowDefinitionEdge.USER_WORKFLOW_DEFINITION_EDGE,
             UserWorkflowDefinitionNode.USER_WORKFLOW_DEFINITION_NODE,
             UserWorkflowDefinitionVersion.USER_WORKFLOW_DEFINITION_VERSION,
+            WfArtifactReuseIndex.WF_ARTIFACT_REUSE_INDEX,
+            WfCompletionEvent.WF_COMPLETION_EVENT,
+            WfExecutionAssignment.WF_EXECUTION_ASSIGNMENT,
+            WfExecutionAssignmentDevice.WF_EXECUTION_ASSIGNMENT_DEVICE,
+            WfExecutionAttempt.WF_EXECUTION_ATTEMPT,
+            WfExecutionBackendSelection.WF_EXECUTION_BACKEND_SELECTION,
+            WfExecutionObservation.WF_EXECUTION_OBSERVATION,
+            WfExecutionOwnershipGeneration.WF_EXECUTION_OWNERSHIP_GENERATION,
+            WfHostRegistration.WF_HOST_REGISTRATION,
+            WfHostResourceSnapshot.WF_HOST_RESOURCE_SNAPSHOT,
+            WfHostResourceSnapshotDevice.WF_HOST_RESOURCE_SNAPSHOT_DEVICE,
+            WfHostSnapshotGenerationAuthority.WF_HOST_SNAPSHOT_GENERATION_AUTHORITY,
+            WfLocalAdmission.WF_LOCAL_ADMISSION,
+            WfPhysicalHostConnection.WF_PHYSICAL_HOST_CONNECTION,
+            WfPhysicalReleaseConfirmation.WF_PHYSICAL_RELEASE_CONFIRMATION,
+            WfRequestWorkResolution.WF_REQUEST_WORK_RESOLUTION,
+            WfReservation.WF_RESERVATION,
+            WfReservationDevice.WF_RESERVATION_DEVICE,
+            WfRuntimeRegistration.WF_RUNTIME_REGISTRATION,
+            WfTaskLease.WF_TASK_LEASE,
+            WfTaskLeaseReservation.WF_TASK_LEASE_RESERVATION,
+            WfTaskOwnership.WF_TASK_OWNERSHIP,
+            WfWorkerRuntimeConnection.WF_WORKER_RUNTIME_CONNECTION,
             WorkflowExecution.WORKFLOW_EXECUTION,
             Workspace.WORKSPACE,
             WorkspaceEntitlementPool.WORKSPACE_ENTITLEMENT_POOL,

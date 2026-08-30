@@ -14,6 +14,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
+import org.jooq.Check;
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.Index;
@@ -29,6 +30,7 @@ import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
@@ -58,6 +60,11 @@ public class SubscriptionContract extends TableImpl<SubscriptionContractRecord> 
      * The column <code>public.subscription_contract.id</code>.
      */
     public final TableField<SubscriptionContractRecord, String> ID = createField(DSL.name("id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
+
+    /**
+     * The column <code>public.subscription_contract.tenant_id</code>.
+     */
+    public final TableField<SubscriptionContractRecord, String> TENANT_ID = createField(DSL.name("tenant_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
     /**
      * The column <code>public.subscription_contract.subject_type</code>.
@@ -92,6 +99,11 @@ public class SubscriptionContract extends TableImpl<SubscriptionContractRecord> 
     public final TableField<SubscriptionContractRecord, String> CONTRACT_STATE = createField(DSL.name("contract_state"), SQLDataType.VARCHAR(32).nullable(false), this, "");
 
     /**
+     * The column <code>public.subscription_contract.contract_role</code>.
+     */
+    public final TableField<SubscriptionContractRecord, String> CONTRACT_ROLE = createField(DSL.name("contract_role"), SQLDataType.VARCHAR(32).nullable(false).defaultValue(DSL.field(DSL.raw("'BASE'::character varying"), SQLDataType.VARCHAR)), this, "");
+
+    /**
      * The column <code>public.subscription_contract.period_start_at</code>.
      */
     public final TableField<SubscriptionContractRecord, LocalDateTime> PERIOD_START_AT = createField(DSL.name("period_start_at"), SQLDataType.LOCALDATETIME(6), this, "");
@@ -107,6 +119,11 @@ public class SubscriptionContract extends TableImpl<SubscriptionContractRecord> 
     public final TableField<SubscriptionContractRecord, LocalDateTime> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.LOCALDATETIME(6).nullable(false), this, "");
 
     /**
+     * The column <code>public.subscription_contract.updated_at</code>.
+     */
+    public final TableField<SubscriptionContractRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("updated_at"), SQLDataType.LOCALDATETIME(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.LOCALDATETIME)), this, "");
+
+    /**
      * The column <code>public.subscription_contract.plan_key</code>.
      */
     public final TableField<SubscriptionContractRecord, String> PLAN_KEY = createField(DSL.name("plan_key"), SQLDataType.VARCHAR(128), this, "");
@@ -117,9 +134,9 @@ public class SubscriptionContract extends TableImpl<SubscriptionContractRecord> 
     public final TableField<SubscriptionContractRecord, String> INCLUDED_QUOTA_USED = createField(DSL.name("included_quota_used"), SQLDataType.CLOB, this, "");
 
     /**
-     * The column <code>public.subscription_contract.tenant_id</code>.
+     * The column <code>public.subscription_contract.version</code>.
      */
-    public final TableField<SubscriptionContractRecord, String> TENANT_ID = createField(DSL.name("tenant_id"), SQLDataType.VARCHAR(64), this, "");
+    public final TableField<SubscriptionContractRecord, Long> VERSION = createField(DSL.name("version"), SQLDataType.BIGINT.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.BIGINT)), this, "");
 
     private SubscriptionContract(Name alias, Table<SubscriptionContractRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
@@ -159,12 +176,20 @@ public class SubscriptionContract extends TableImpl<SubscriptionContractRecord> 
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.IX_SUBSCRIPTION_CONTRACT_SUBJECT, Indexes.IX_SUBSCRIPTION_CONTRACT_TENANT);
+        return Arrays.asList(Indexes.IX_SUBSCRIPTION_CONTRACT_SUBJECT, Indexes.IX_SUBSCRIPTION_CONTRACT_TENANT, Indexes.UQ_SUBSCRIPTION_CONTRACT_ACTIVE_BASE);
     }
 
     @Override
     public UniqueKey<SubscriptionContractRecord> getPrimaryKey() {
         return Keys.SUBSCRIPTION_CONTRACT_PKEY;
+    }
+
+    @Override
+    public List<Check<SubscriptionContractRecord>> getChecks() {
+        return Arrays.asList(
+            Internal.createCheck(this, DSL.name("subscription_contract_contract_role_check"), "(((contract_role)::text = ANY ((ARRAY['BASE'::character varying, 'ADD_ON'::character varying, 'SEAT_PACK'::character varying])::text[])))", true),
+            Internal.createCheck(this, DSL.name("subscription_contract_contract_state_check"), "(((contract_state)::text = ANY ((ARRAY['ACTIVE'::character varying, 'CANCELLED'::character varying])::text[])))", true)
+        );
     }
 
     @Override

@@ -4,22 +4,29 @@
 package com.example.platform.typedschema.jooq.generated.tables;
 
 
+import com.example.platform.typedschema.contract.InstantConverter;
 import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
+import com.example.platform.typedschema.jooq.generated.tables.CreditReservation.CreditReservationPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.CreditWalletRecord;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
+import org.jooq.Check;
 import org.jooq.Condition;
 import org.jooq.Field;
+import org.jooq.ForeignKey;
 import org.jooq.Index;
+import org.jooq.InverseForeignKey;
 import org.jooq.Name;
+import org.jooq.Path;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
+import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
 import org.jooq.Select;
@@ -29,6 +36,7 @@ import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
@@ -62,17 +70,22 @@ public class CreditWallet extends TableImpl<CreditWalletRecord> {
     /**
      * The column <code>public.credit_wallet.tenant_id</code>.
      */
-    public final TableField<CreditWalletRecord, String> TENANT_ID = createField(DSL.name("tenant_id"), SQLDataType.VARCHAR(64), this, "");
+    public final TableField<CreditWalletRecord, String> TENANT_ID = createField(DSL.name("tenant_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
+
+    /**
+     * The column <code>public.credit_wallet.principal_type</code>.
+     */
+    public final TableField<CreditWalletRecord, String> PRINCIPAL_TYPE = createField(DSL.name("principal_type"), SQLDataType.VARCHAR(32).nullable(false), this, "");
+
+    /**
+     * The column <code>public.credit_wallet.principal_id</code>.
+     */
+    public final TableField<CreditWalletRecord, String> PRINCIPAL_ID = createField(DSL.name("principal_id"), SQLDataType.VARCHAR(128).nullable(false), this, "");
 
     /**
      * The column <code>public.credit_wallet.workspace_id</code>.
      */
     public final TableField<CreditWalletRecord, String> WORKSPACE_ID = createField(DSL.name("workspace_id"), SQLDataType.VARCHAR(64), this, "");
-
-    /**
-     * The column <code>public.credit_wallet.user_id</code>.
-     */
-    public final TableField<CreditWalletRecord, String> USER_ID = createField(DSL.name("user_id"), SQLDataType.VARCHAR(64), this, "");
 
     /**
      * The column <code>public.credit_wallet.balance_minor</code>.
@@ -82,7 +95,7 @@ public class CreditWallet extends TableImpl<CreditWalletRecord> {
     /**
      * The column <code>public.credit_wallet.currency_code</code>.
      */
-    public final TableField<CreditWalletRecord, String> CURRENCY_CODE = createField(DSL.name("currency_code"), SQLDataType.VARCHAR(8).nullable(false), this, "");
+    public final TableField<CreditWalletRecord, String> CURRENCY_CODE = createField(DSL.name("currency_code"), SQLDataType.VARCHAR(3).nullable(false), this, "");
 
     /**
      * The column <code>public.credit_wallet.status</code>.
@@ -90,14 +103,19 @@ public class CreditWallet extends TableImpl<CreditWalletRecord> {
     public final TableField<CreditWalletRecord, String> STATUS = createField(DSL.name("status"), SQLDataType.VARCHAR(32).nullable(false).defaultValue(DSL.field(DSL.raw("'ACTIVE'::character varying"), SQLDataType.VARCHAR)), this, "");
 
     /**
+     * The column <code>public.credit_wallet.version</code>.
+     */
+    public final TableField<CreditWalletRecord, Long> VERSION = createField(DSL.name("version"), SQLDataType.BIGINT.nullable(false).defaultValue(DSL.field(DSL.raw("1"), SQLDataType.BIGINT)), this, "");
+
+    /**
      * The column <code>public.credit_wallet.created_at</code>.
      */
-    public final TableField<CreditWalletRecord, LocalDateTime> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.LOCALDATETIME(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.LOCALDATETIME)), this, "");
+    public final TableField<CreditWalletRecord, Instant> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "", new InstantConverter());
 
     /**
      * The column <code>public.credit_wallet.updated_at</code>.
      */
-    public final TableField<CreditWalletRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("updated_at"), SQLDataType.LOCALDATETIME(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.LOCALDATETIME)), this, "");
+    public final TableField<CreditWalletRecord, Instant> UPDATED_AT = createField(DSL.name("updated_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "", new InstantConverter());
 
     private CreditWallet(Name alias, Table<CreditWalletRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
@@ -128,6 +146,39 @@ public class CreditWallet extends TableImpl<CreditWalletRecord> {
         this(DSL.name("credit_wallet"), null);
     }
 
+    public <O extends Record> CreditWallet(Table<O> path, ForeignKey<O, CreditWalletRecord> childPath, InverseForeignKey<O, CreditWalletRecord> parentPath) {
+        super(path, childPath, parentPath, CREDIT_WALLET);
+    }
+
+    /**
+     * A subtype implementing {@link Path} for simplified path-based joins.
+     */
+    public static class CreditWalletPath extends CreditWallet implements Path<CreditWalletRecord> {
+
+        private static final long serialVersionUID = 1L;
+        public <O extends Record> CreditWalletPath(Table<O> path, ForeignKey<O, CreditWalletRecord> childPath, InverseForeignKey<O, CreditWalletRecord> parentPath) {
+            super(path, childPath, parentPath);
+        }
+        private CreditWalletPath(Name alias, Table<CreditWalletRecord> aliased) {
+            super(alias, aliased);
+        }
+
+        @Override
+        public CreditWalletPath as(String alias) {
+            return new CreditWalletPath(DSL.name(alias), this);
+        }
+
+        @Override
+        public CreditWalletPath as(Name alias) {
+            return new CreditWalletPath(alias, this);
+        }
+
+        @Override
+        public CreditWalletPath as(Table<?> alias) {
+            return new CreditWalletPath(alias.getQualifiedName(), this);
+        }
+    }
+
     @Override
     public Schema getSchema() {
         return aliased() ? null : Public.PUBLIC;
@@ -141,6 +192,32 @@ public class CreditWallet extends TableImpl<CreditWalletRecord> {
     @Override
     public UniqueKey<CreditWalletRecord> getPrimaryKey() {
         return Keys.CREDIT_WALLET_PKEY;
+    }
+
+    @Override
+    public List<UniqueKey<CreditWalletRecord>> getUniqueKeys() {
+        return Arrays.asList(Keys.CREDIT_WALLET_TENANT_ID_PRINCIPAL_TYPE_PRINCIPAL_ID_WORKSPA_KEY);
+    }
+
+    private transient CreditReservationPath _creditReservation;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.credit_reservation</code> table
+     */
+    public CreditReservationPath creditReservation() {
+        if (_creditReservation == null)
+            _creditReservation = new CreditReservationPath(this, null, Keys.CREDIT_RESERVATION__CREDIT_RESERVATION_TENANT_ID_WALLET_ID_FKEY.getInverseKey());
+
+        return _creditReservation;
+    }
+
+    @Override
+    public List<Check<CreditWalletRecord>> getChecks() {
+        return Arrays.asList(
+            Internal.createCheck(this, DSL.name("credit_wallet_balance_minor_check"), "((balance_minor >= 0))", true),
+            Internal.createCheck(this, DSL.name("credit_wallet_version_check"), "((version > 0))", true)
+        );
     }
 
     @Override

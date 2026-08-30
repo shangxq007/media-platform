@@ -165,45 +165,31 @@ tasks.register("regenerateJooqSchema") {
 
 tasks.register("verifyJooqGeneratedSources") {
     group = "verification"
-    description = "Verify committed jOOQ sources match expected counts"
+    description = "Verify canonical V1 table identities exactly match committed jOOQ tables and records"
     doLast {
+        val schemaFile = file("platform-app/src/main/resources/db/migration/V1__initial_schema.sql")
         val committedDir = file("typed-schema-module/src/main/java/com/example/platform/typedschema/jooq/generated")
-        require(committedDir.exists()) {
-            "FAIL: Committed generated sources not found at ${'$'}{committedDir.absolutePath}"
+        val verifier = file("scripts/verify-jooq-generated-schema-parity.py")
+
+        // CANONICAL_SCHEMA_DEFINES_GENERATED_SCHEMA_EXPECTATION_V1: the verifier
+        // deterministically derives expected identities from complete CREATE TABLE
+        // declarations, table identities from jOOQ DSL.name constructors, and record
+        // identities from their table singleton bindings. No count/list baseline exists.
+        val process = ProcessBuilder(
+            "python3",
+            verifier.absolutePath,
+            "--schema",
+            schemaFile.absolutePath,
+            "--generated",
+            committedDir.absolutePath,
+        )
+            .directory(rootDir)
+            .inheritIO()
+            .start()
+        val exitCode = process.waitFor()
+        require(exitCode == 0) {
+            "FAIL: jOOQ canonical/generated identity parity verifier exited with code $exitCode"
         }
-
-        // Table classes = all *.java directly under tables/ (jOOQ 3.19 names the table class
-        // after the table, e.g. UsageRecord.java; records/ holds the *Record.java companions).
-        val tableCount = committedDir.walkTopDown()
-            .filter { it.isFile && it.parentFile?.name == "tables" && it.name.endsWith(".java") }
-            .count()
-        val recordCount = committedDir.walkTopDown()
-            .filter { it.isFile && it.parentFile?.name == "records" && it.name.endsWith(".java") }
-            .count()
-        val totalFiles = committedDir.walkTopDown()
-            .filter { it.isFile && it.name.endsWith(".java") }
-            .count()
-
-        println("Generated source inventory:")
-        println("  Table classes: " + tableCount)
-        println("  Record classes: " + recordCount)
-        println("  Total Java files: " + totalFiles)
-
-        // P1-IMPL1: corrected expectations to the V1-synchronized generated state.
-        // (P1 retired 5 ownerless Product tables from V1: timeline_template, render_preset,
-        // asset_library, render_history, ai_suggestion -> generated 153 -> 148; parity 148/148 EXACT.)
-        // MCMV2-C (C3): canonical media schema rewrite — asset -> media_asset,
-        // media_asset_artifact + media_stream + media_probe_observation added,
-        // media_asset_metadata (double authority) removed -> 148 -> 150; parity 150/150 EXACT.
-        // GCR-2 single-V1 consolidation: former V2-V7 tables folded into canonical V1
-        // (timeline_revision_ref, apply_command, timeline_revision_parent,
-        // project_revision_counter, source_visual_description_snapshot) +
-        // artifact_replica + artifact_pin -> 150 -> 157; parity 157/157 EXACT.
-        require(tableCount == 157) { "FAIL: Expected 157 Table classes but found " + tableCount }
-        require(recordCount == 157) { "FAIL: Expected 157 Record classes but found " + recordCount }
-        require(totalFiles >= 300) { "FAIL: Expected at least 300 total Java files but found " + totalFiles }
-
-        println("OK: Generated source verification passed")
     }
 }
 

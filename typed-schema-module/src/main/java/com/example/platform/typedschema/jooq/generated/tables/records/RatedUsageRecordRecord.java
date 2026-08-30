@@ -6,7 +6,7 @@ package com.example.platform.typedschema.jooq.generated.tables.records;
 
 import com.example.platform.typedschema.jooq.generated.tables.RatedUsageRecord;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
@@ -35,87 +35,171 @@ public class RatedUsageRecordRecord extends UpdatableRecordImpl<RatedUsageRecord
     }
 
     /**
-     * Setter for <code>public.rated_usage_record.usage_record_id</code>.
+     * Setter for <code>public.rated_usage_record.tenant_id</code>.
      */
-    public void setUsageRecordId(String value) {
+    public void setTenantId(String value) {
         set(1, value);
     }
 
     /**
-     * Getter for <code>public.rated_usage_record.usage_record_id</code>.
+     * Getter for <code>public.rated_usage_record.tenant_id</code>.
      */
-    public String getUsageRecordId() {
+    public String getTenantId() {
         return (String) get(1);
+    }
+
+    /**
+     * Setter for <code>public.rated_usage_record.billable_usage_id</code>.
+     */
+    public void setBillableUsageId(String value) {
+        set(2, value);
+    }
+
+    /**
+     * Getter for <code>public.rated_usage_record.billable_usage_id</code>.
+     */
+    public String getBillableUsageId() {
+        return (String) get(2);
     }
 
     /**
      * Setter for <code>public.rated_usage_record.pricing_rule_id</code>.
      */
     public void setPricingRuleId(String value) {
-        set(2, value);
+        set(3, value);
     }
 
     /**
      * Getter for <code>public.rated_usage_record.pricing_rule_id</code>.
      */
     public String getPricingRuleId() {
-        return (String) get(2);
+        return (String) get(3);
+    }
+
+    /**
+     * Setter for <code>public.rated_usage_record.pricing_rule_version</code>.
+     */
+    public void setPricingRuleVersion(Long value) {
+        set(4, value);
+    }
+
+    /**
+     * Getter for <code>public.rated_usage_record.pricing_rule_version</code>.
+     */
+    public Long getPricingRuleVersion() {
+        return (Long) get(4);
+    }
+
+    /**
+     * Setter for <code>public.rated_usage_record.quantity_base_units</code>.
+     */
+    public void setQuantityBaseUnits(Long value) {
+        set(5, value);
+    }
+
+    /**
+     * Getter for <code>public.rated_usage_record.quantity_base_units</code>.
+     */
+    public Long getQuantityBaseUnits() {
+        return (Long) get(5);
     }
 
     /**
      * Setter for <code>public.rated_usage_record.rated_amount_minor</code>.
      */
     public void setRatedAmountMinor(Long value) {
-        set(3, value);
+        set(6, value);
     }
 
     /**
      * Getter for <code>public.rated_usage_record.rated_amount_minor</code>.
      */
     public Long getRatedAmountMinor() {
-        return (Long) get(3);
+        return (Long) get(6);
     }
 
     /**
      * Setter for <code>public.rated_usage_record.currency_code</code>.
      */
     public void setCurrencyCode(String value) {
-        set(4, value);
+        set(7, value);
     }
 
     /**
      * Getter for <code>public.rated_usage_record.currency_code</code>.
      */
     public String getCurrencyCode() {
-        return (String) get(4);
+        return (String) get(7);
     }
 
     /**
      * Setter for <code>public.rated_usage_record.rating_details</code>.
      */
     public void setRatingDetails(String value) {
-        set(5, value);
+        set(8, value);
     }
 
     /**
      * Getter for <code>public.rated_usage_record.rating_details</code>.
      */
     public String getRatingDetails() {
-        return (String) get(5);
+        return (String) get(8);
     }
 
     /**
-     * Setter for <code>public.rated_usage_record.created_at</code>.
+     * Setter for <code>public.rated_usage_record.rated_at</code>.
      */
-    public void setCreatedAt(LocalDateTime value) {
-        set(6, value);
+    public void setRatedAt(Instant value) {
+        set(9, value);
     }
 
     /**
-     * Getter for <code>public.rated_usage_record.created_at</code>.
+     * Getter for <code>public.rated_usage_record.rated_at</code>.
      */
-    public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(6);
+    public Instant getRatedAt() {
+        return (Instant) get(9);
+    }
+
+    /**
+     * Setter for <code>public.rated_usage_record.trace_id</code>.
+     */
+    public void setTraceId(String value) {
+        set(10, value);
+    }
+
+    /**
+     * Getter for <code>public.rated_usage_record.trace_id</code>.
+     */
+    public String getTraceId() {
+        return (String) get(10);
+    }
+
+    /**
+     * Setter for <code>public.rated_usage_record.idempotency_key</code>.
+     */
+    public void setIdempotencyKey(String value) {
+        set(11, value);
+    }
+
+    /**
+     * Getter for <code>public.rated_usage_record.idempotency_key</code>.
+     */
+    public String getIdempotencyKey() {
+        return (String) get(11);
+    }
+
+    /**
+     * Setter for <code>public.rated_usage_record.payload_fingerprint</code>.
+     */
+    public void setPayloadFingerprint(String value) {
+        set(12, value);
+    }
+
+    /**
+     * Getter for <code>public.rated_usage_record.payload_fingerprint</code>.
+     */
+    public String getPayloadFingerprint() {
+        return (String) get(12);
     }
 
     // -------------------------------------------------------------------------
@@ -141,16 +225,22 @@ public class RatedUsageRecordRecord extends UpdatableRecordImpl<RatedUsageRecord
     /**
      * Create a detached, initialised RatedUsageRecordRecord
      */
-    public RatedUsageRecordRecord(String id, String usageRecordId, String pricingRuleId, Long ratedAmountMinor, String currencyCode, String ratingDetails, LocalDateTime createdAt) {
+    public RatedUsageRecordRecord(String id, String tenantId, String billableUsageId, String pricingRuleId, Long pricingRuleVersion, Long quantityBaseUnits, Long ratedAmountMinor, String currencyCode, String ratingDetails, Instant ratedAt, String traceId, String idempotencyKey, String payloadFingerprint) {
         super(RatedUsageRecord.RATED_USAGE_RECORD);
 
         setId(id);
-        setUsageRecordId(usageRecordId);
+        setTenantId(tenantId);
+        setBillableUsageId(billableUsageId);
         setPricingRuleId(pricingRuleId);
+        setPricingRuleVersion(pricingRuleVersion);
+        setQuantityBaseUnits(quantityBaseUnits);
         setRatedAmountMinor(ratedAmountMinor);
         setCurrencyCode(currencyCode);
         setRatingDetails(ratingDetails);
-        setCreatedAt(createdAt);
+        setRatedAt(ratedAt);
+        setTraceId(traceId);
+        setIdempotencyKey(idempotencyKey);
+        setPayloadFingerprint(payloadFingerprint);
         resetChangedOnNotNull();
     }
 }

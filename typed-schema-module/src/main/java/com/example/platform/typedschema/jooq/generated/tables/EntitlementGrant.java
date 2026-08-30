@@ -14,6 +14,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
+import org.jooq.Check;
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.Index;
@@ -29,6 +30,7 @@ import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
@@ -60,6 +62,11 @@ public class EntitlementGrant extends TableImpl<EntitlementGrantRecord> {
     public final TableField<EntitlementGrantRecord, String> ID = createField(DSL.name("id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
     /**
+     * The column <code>public.entitlement_grant.tenant_id</code>.
+     */
+    public final TableField<EntitlementGrantRecord, String> TENANT_ID = createField(DSL.name("tenant_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
+
+    /**
      * The column <code>public.entitlement_grant.subject_type</code>.
      */
     public final TableField<EntitlementGrantRecord, String> SUBJECT_TYPE = createField(DSL.name("subject_type"), SQLDataType.VARCHAR(32).nullable(false), this, "");
@@ -87,7 +94,7 @@ public class EntitlementGrant extends TableImpl<EntitlementGrantRecord> {
     /**
      * The column <code>public.entitlement_grant.source_ref</code>.
      */
-    public final TableField<EntitlementGrantRecord, String> SOURCE_REF = createField(DSL.name("source_ref"), SQLDataType.VARCHAR(255), this, "");
+    public final TableField<EntitlementGrantRecord, String> SOURCE_REF = createField(DSL.name("source_ref"), SQLDataType.VARCHAR(255).nullable(false), this, "");
 
     /**
      * The column <code>public.entitlement_grant.grant_status</code>.
@@ -103,6 +110,21 @@ public class EntitlementGrant extends TableImpl<EntitlementGrantRecord> {
      * The column <code>public.entitlement_grant.expires_at</code>.
      */
     public final TableField<EntitlementGrantRecord, LocalDateTime> EXPIRES_AT = createField(DSL.name("expires_at"), SQLDataType.LOCALDATETIME(6), this, "");
+
+    /**
+     * The column <code>public.entitlement_grant.version</code>.
+     */
+    public final TableField<EntitlementGrantRecord, Long> VERSION = createField(DSL.name("version"), SQLDataType.BIGINT.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.BIGINT)), this, "");
+
+    /**
+     * The column <code>public.entitlement_grant.created_at</code>.
+     */
+    public final TableField<EntitlementGrantRecord, LocalDateTime> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.LOCALDATETIME(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.LOCALDATETIME)), this, "");
+
+    /**
+     * The column <code>public.entitlement_grant.updated_at</code>.
+     */
+    public final TableField<EntitlementGrantRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("updated_at"), SQLDataType.LOCALDATETIME(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.LOCALDATETIME)), this, "");
 
     private EntitlementGrant(Name alias, Table<EntitlementGrantRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
@@ -146,6 +168,18 @@ public class EntitlementGrant extends TableImpl<EntitlementGrantRecord> {
     @Override
     public UniqueKey<EntitlementGrantRecord> getPrimaryKey() {
         return Keys.ENTITLEMENT_GRANT_PKEY;
+    }
+
+    @Override
+    public List<UniqueKey<EntitlementGrantRecord>> getUniqueKeys() {
+        return Arrays.asList(Keys.UQ_ENTITLEMENT_GRANT_LOGICAL_SOURCE);
+    }
+
+    @Override
+    public List<Check<EntitlementGrantRecord>> getChecks() {
+        return Arrays.asList(
+            Internal.createCheck(this, DSL.name("entitlement_grant_grant_status_check"), "(((grant_status)::text = ANY ((ARRAY['ACTIVE'::character varying, 'REVOKED'::character varying])::text[])))", true)
+        );
     }
 
     @Override

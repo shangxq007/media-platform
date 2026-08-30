@@ -6,7 +6,7 @@ package com.example.platform.typedschema.jooq.generated.tables.records;
 
 import com.example.platform.typedschema.jooq.generated.tables.BillingLedgerEntry;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
@@ -49,129 +49,171 @@ public class BillingLedgerEntryRecord extends UpdatableRecordImpl<BillingLedgerE
     }
 
     /**
+     * Setter for <code>public.billing_ledger_entry.principal_type</code>.
+     */
+    public void setPrincipalType(String value) {
+        set(2, value);
+    }
+
+    /**
+     * Getter for <code>public.billing_ledger_entry.principal_type</code>.
+     */
+    public String getPrincipalType() {
+        return (String) get(2);
+    }
+
+    /**
+     * Setter for <code>public.billing_ledger_entry.principal_id</code>.
+     */
+    public void setPrincipalId(String value) {
+        set(3, value);
+    }
+
+    /**
+     * Getter for <code>public.billing_ledger_entry.principal_id</code>.
+     */
+    public String getPrincipalId() {
+        return (String) get(3);
+    }
+
+    /**
      * Setter for <code>public.billing_ledger_entry.workspace_id</code>.
      */
     public void setWorkspaceId(String value) {
-        set(2, value);
+        set(4, value);
     }
 
     /**
      * Getter for <code>public.billing_ledger_entry.workspace_id</code>.
      */
     public String getWorkspaceId() {
-        return (String) get(2);
-    }
-
-    /**
-     * Setter for <code>public.billing_ledger_entry.user_id</code>.
-     */
-    public void setUserId(String value) {
-        set(3, value);
-    }
-
-    /**
-     * Getter for <code>public.billing_ledger_entry.user_id</code>.
-     */
-    public String getUserId() {
-        return (String) get(3);
+        return (String) get(4);
     }
 
     /**
      * Setter for <code>public.billing_ledger_entry.entry_type</code>.
      */
     public void setEntryType(String value) {
-        set(4, value);
+        set(5, value);
     }
 
     /**
      * Getter for <code>public.billing_ledger_entry.entry_type</code>.
      */
     public String getEntryType() {
-        return (String) get(4);
+        return (String) get(5);
     }
 
     /**
      * Setter for <code>public.billing_ledger_entry.amount_minor</code>.
      */
     public void setAmountMinor(Long value) {
-        set(5, value);
+        set(6, value);
     }
 
     /**
      * Getter for <code>public.billing_ledger_entry.amount_minor</code>.
      */
     public Long getAmountMinor() {
-        return (Long) get(5);
+        return (Long) get(6);
     }
 
     /**
      * Setter for <code>public.billing_ledger_entry.currency_code</code>.
      */
     public void setCurrencyCode(String value) {
-        set(6, value);
+        set(7, value);
     }
 
     /**
      * Getter for <code>public.billing_ledger_entry.currency_code</code>.
      */
     public String getCurrencyCode() {
-        return (String) get(6);
+        return (String) get(7);
     }
 
     /**
      * Setter for <code>public.billing_ledger_entry.reference_type</code>.
      */
     public void setReferenceType(String value) {
-        set(7, value);
+        set(8, value);
     }
 
     /**
      * Getter for <code>public.billing_ledger_entry.reference_type</code>.
      */
     public String getReferenceType() {
-        return (String) get(7);
+        return (String) get(8);
     }
 
     /**
      * Setter for <code>public.billing_ledger_entry.reference_id</code>.
      */
     public void setReferenceId(String value) {
-        set(8, value);
+        set(9, value);
     }
 
     /**
      * Getter for <code>public.billing_ledger_entry.reference_id</code>.
      */
     public String getReferenceId() {
-        return (String) get(8);
+        return (String) get(9);
     }
 
     /**
      * Setter for <code>public.billing_ledger_entry.description</code>.
      */
     public void setDescription(String value) {
-        set(9, value);
+        set(10, value);
     }
 
     /**
      * Getter for <code>public.billing_ledger_entry.description</code>.
      */
     public String getDescription() {
-        return (String) get(9);
+        return (String) get(10);
+    }
+
+    /**
+     * Setter for <code>public.billing_ledger_entry.idempotency_key</code>.
+     */
+    public void setIdempotencyKey(String value) {
+        set(11, value);
+    }
+
+    /**
+     * Getter for <code>public.billing_ledger_entry.idempotency_key</code>.
+     */
+    public String getIdempotencyKey() {
+        return (String) get(11);
+    }
+
+    /**
+     * Setter for <code>public.billing_ledger_entry.payload_fingerprint</code>.
+     */
+    public void setPayloadFingerprint(String value) {
+        set(12, value);
+    }
+
+    /**
+     * Getter for <code>public.billing_ledger_entry.payload_fingerprint</code>.
+     */
+    public String getPayloadFingerprint() {
+        return (String) get(12);
     }
 
     /**
      * Setter for <code>public.billing_ledger_entry.created_at</code>.
      */
-    public void setCreatedAt(LocalDateTime value) {
-        set(10, value);
+    public void setCreatedAt(Instant value) {
+        set(13, value);
     }
 
     /**
      * Getter for <code>public.billing_ledger_entry.created_at</code>.
      */
-    public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(10);
+    public Instant getCreatedAt() {
+        return (Instant) get(13);
     }
 
     // -------------------------------------------------------------------------
@@ -197,19 +239,22 @@ public class BillingLedgerEntryRecord extends UpdatableRecordImpl<BillingLedgerE
     /**
      * Create a detached, initialised BillingLedgerEntryRecord
      */
-    public BillingLedgerEntryRecord(String id, String tenantId, String workspaceId, String userId, String entryType, Long amountMinor, String currencyCode, String referenceType, String referenceId, String description, LocalDateTime createdAt) {
+    public BillingLedgerEntryRecord(String id, String tenantId, String principalType, String principalId, String workspaceId, String entryType, Long amountMinor, String currencyCode, String referenceType, String referenceId, String description, String idempotencyKey, String payloadFingerprint, Instant createdAt) {
         super(BillingLedgerEntry.BILLING_LEDGER_ENTRY);
 
         setId(id);
         setTenantId(tenantId);
+        setPrincipalType(principalType);
+        setPrincipalId(principalId);
         setWorkspaceId(workspaceId);
-        setUserId(userId);
         setEntryType(entryType);
         setAmountMinor(amountMinor);
         setCurrencyCode(currencyCode);
         setReferenceType(referenceType);
         setReferenceId(referenceId);
         setDescription(description);
+        setIdempotencyKey(idempotencyKey);
+        setPayloadFingerprint(payloadFingerprint);
         setCreatedAt(createdAt);
         resetChangedOnNotNull();
     }

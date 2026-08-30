@@ -6,9 +6,9 @@ package com.example.platform.typedschema.jooq.generated.tables.records;
 
 import com.example.platform.typedschema.jooq.generated.tables.PricingRule;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
-import org.jooq.Record1;
+import org.jooq.Record2;
 import org.jooq.impl.UpdatableRecordImpl;
 
 
@@ -35,185 +35,213 @@ public class PricingRuleRecord extends UpdatableRecordImpl<PricingRuleRecord> {
     }
 
     /**
+     * Setter for <code>public.pricing_rule.tenant_id</code>.
+     */
+    public void setTenantId(String value) {
+        set(1, value);
+    }
+
+    /**
+     * Getter for <code>public.pricing_rule.tenant_id</code>.
+     */
+    public String getTenantId() {
+        return (String) get(1);
+    }
+
+    /**
      * Setter for <code>public.pricing_rule.rule_key</code>.
      */
     public void setRuleKey(String value) {
-        set(1, value);
+        set(2, value);
     }
 
     /**
      * Getter for <code>public.pricing_rule.rule_key</code>.
      */
     public String getRuleKey() {
-        return (String) get(1);
+        return (String) get(2);
+    }
+
+    /**
+     * Setter for <code>public.pricing_rule.rule_version</code>.
+     */
+    public void setRuleVersion(Long value) {
+        set(3, value);
+    }
+
+    /**
+     * Getter for <code>public.pricing_rule.rule_version</code>.
+     */
+    public Long getRuleVersion() {
+        return (Long) get(3);
     }
 
     /**
      * Setter for <code>public.pricing_rule.name</code>.
      */
     public void setName(String value) {
-        set(2, value);
+        set(4, value);
     }
 
     /**
      * Getter for <code>public.pricing_rule.name</code>.
      */
     public String getName() {
-        return (String) get(2);
+        return (String) get(4);
     }
 
     /**
      * Setter for <code>public.pricing_rule.description</code>.
      */
     public void setDescription(String value) {
-        set(3, value);
+        set(5, value);
     }
 
     /**
      * Getter for <code>public.pricing_rule.description</code>.
      */
     public String getDescription() {
-        return (String) get(3);
+        return (String) get(5);
     }
 
     /**
      * Setter for <code>public.pricing_rule.pricing_model</code>.
      */
     public void setPricingModel(String value) {
-        set(4, value);
+        set(6, value);
     }
 
     /**
      * Getter for <code>public.pricing_rule.pricing_model</code>.
      */
     public String getPricingModel() {
-        return (String) get(4);
+        return (String) get(6);
     }
 
     /**
      * Setter for <code>public.pricing_rule.meter_key</code>.
      */
     public void setMeterKey(String value) {
-        set(5, value);
+        set(7, value);
     }
 
     /**
      * Getter for <code>public.pricing_rule.meter_key</code>.
      */
     public String getMeterKey() {
-        return (String) get(5);
+        return (String) get(7);
     }
 
     /**
      * Setter for <code>public.pricing_rule.unit_price_minor</code>.
      */
     public void setUnitPriceMinor(Long value) {
-        set(6, value);
+        set(8, value);
     }
 
     /**
      * Getter for <code>public.pricing_rule.unit_price_minor</code>.
      */
     public Long getUnitPriceMinor() {
-        return (Long) get(6);
+        return (Long) get(8);
     }
 
     /**
      * Setter for <code>public.pricing_rule.currency_code</code>.
      */
     public void setCurrencyCode(String value) {
-        set(7, value);
+        set(9, value);
     }
 
     /**
      * Getter for <code>public.pricing_rule.currency_code</code>.
      */
     public String getCurrencyCode() {
-        return (String) get(7);
+        return (String) get(9);
     }
 
     /**
      * Setter for <code>public.pricing_rule.tier_config</code>.
      */
     public void setTierConfig(String value) {
-        set(8, value);
+        set(10, value);
     }
 
     /**
      * Getter for <code>public.pricing_rule.tier_config</code>.
      */
     public String getTierConfig() {
-        return (String) get(8);
+        return (String) get(10);
     }
 
     /**
      * Setter for <code>public.pricing_rule.status</code>.
      */
     public void setStatus(String value) {
-        set(9, value);
+        set(11, value);
     }
 
     /**
      * Getter for <code>public.pricing_rule.status</code>.
      */
     public String getStatus() {
-        return (String) get(9);
+        return (String) get(11);
     }
 
     /**
      * Setter for <code>public.pricing_rule.effective_from</code>.
      */
-    public void setEffectiveFrom(LocalDateTime value) {
-        set(10, value);
+    public void setEffectiveFrom(Instant value) {
+        set(12, value);
     }
 
     /**
      * Getter for <code>public.pricing_rule.effective_from</code>.
      */
-    public LocalDateTime getEffectiveFrom() {
-        return (LocalDateTime) get(10);
+    public Instant getEffectiveFrom() {
+        return (Instant) get(12);
     }
 
     /**
      * Setter for <code>public.pricing_rule.effective_to</code>.
      */
-    public void setEffectiveTo(LocalDateTime value) {
-        set(11, value);
+    public void setEffectiveTo(Instant value) {
+        set(13, value);
     }
 
     /**
      * Getter for <code>public.pricing_rule.effective_to</code>.
      */
-    public LocalDateTime getEffectiveTo() {
-        return (LocalDateTime) get(11);
+    public Instant getEffectiveTo() {
+        return (Instant) get(13);
     }
 
     /**
      * Setter for <code>public.pricing_rule.created_at</code>.
      */
-    public void setCreatedAt(LocalDateTime value) {
-        set(12, value);
+    public void setCreatedAt(Instant value) {
+        set(14, value);
     }
 
     /**
      * Getter for <code>public.pricing_rule.created_at</code>.
      */
-    public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(12);
+    public Instant getCreatedAt() {
+        return (Instant) get(14);
     }
 
     /**
      * Setter for <code>public.pricing_rule.updated_at</code>.
      */
-    public void setUpdatedAt(LocalDateTime value) {
-        set(13, value);
+    public void setUpdatedAt(Instant value) {
+        set(15, value);
     }
 
     /**
      * Getter for <code>public.pricing_rule.updated_at</code>.
      */
-    public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(13);
+    public Instant getUpdatedAt() {
+        return (Instant) get(15);
     }
 
     // -------------------------------------------------------------------------
@@ -221,8 +249,8 @@ public class PricingRuleRecord extends UpdatableRecordImpl<PricingRuleRecord> {
     // -------------------------------------------------------------------------
 
     @Override
-    public Record1<String> key() {
-        return (Record1) super.key();
+    public Record2<String, String> key() {
+        return (Record2) super.key();
     }
 
     // -------------------------------------------------------------------------
@@ -239,11 +267,13 @@ public class PricingRuleRecord extends UpdatableRecordImpl<PricingRuleRecord> {
     /**
      * Create a detached, initialised PricingRuleRecord
      */
-    public PricingRuleRecord(String id, String ruleKey, String name, String description, String pricingModel, String meterKey, Long unitPriceMinor, String currencyCode, String tierConfig, String status, LocalDateTime effectiveFrom, LocalDateTime effectiveTo, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public PricingRuleRecord(String id, String tenantId, String ruleKey, Long ruleVersion, String name, String description, String pricingModel, String meterKey, Long unitPriceMinor, String currencyCode, String tierConfig, String status, Instant effectiveFrom, Instant effectiveTo, Instant createdAt, Instant updatedAt) {
         super(PricingRule.PRICING_RULE);
 
         setId(id);
+        setTenantId(tenantId);
         setRuleKey(ruleKey);
+        setRuleVersion(ruleVersion);
         setName(name);
         setDescription(description);
         setPricingModel(pricingModel);

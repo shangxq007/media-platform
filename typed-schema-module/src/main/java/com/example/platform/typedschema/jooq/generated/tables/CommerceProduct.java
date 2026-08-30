@@ -4,20 +4,31 @@
 package com.example.platform.typedschema.jooq.generated.tables;
 
 
+import com.example.platform.typedschema.contract.InstantConverter;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
+import com.example.platform.typedschema.jooq.generated.tables.CheckoutSession.CheckoutSessionPath;
+import com.example.platform.typedschema.jooq.generated.tables.CommerceCartLine.CommerceCartLinePath;
+import com.example.platform.typedschema.jooq.generated.tables.CommercialOffering.CommercialOfferingPath;
+import com.example.platform.typedschema.jooq.generated.tables.ProviderProductMapping.ProviderProductMappingPath;
+import com.example.platform.typedschema.jooq.generated.tables.PurchaseOrder.PurchaseOrderPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.CommerceProductRecord;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
+import org.jooq.Check;
 import org.jooq.Condition;
 import org.jooq.Field;
+import org.jooq.ForeignKey;
+import org.jooq.InverseForeignKey;
 import org.jooq.Name;
+import org.jooq.Path;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
+import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
 import org.jooq.Select;
@@ -27,6 +38,7 @@ import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
@@ -63,29 +75,34 @@ public class CommerceProduct extends TableImpl<CommerceProductRecord> {
     public final TableField<CommerceProductRecord, String> PRODUCT_CODE = createField(DSL.name("product_code"), SQLDataType.VARCHAR(128).nullable(false), this, "");
 
     /**
-     * The column <code>public.commerce_product.purchase_mode</code>.
+     * The column <code>public.commerce_product.product_line_type</code>.
      */
-    public final TableField<CommerceProductRecord, String> PURCHASE_MODE = createField(DSL.name("purchase_mode"), SQLDataType.VARCHAR(64).nullable(false), this, "");
+    public final TableField<CommerceProductRecord, String> PRODUCT_LINE_TYPE = createField(DSL.name("product_line_type"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
     /**
-     * The column <code>public.commerce_product.feature_bundle_code</code>.
+     * The column <code>public.commerce_product.display_name</code>.
      */
-    public final TableField<CommerceProductRecord, String> FEATURE_BUNDLE_CODE = createField(DSL.name("feature_bundle_code"), SQLDataType.VARCHAR(128).nullable(false), this, "");
+    public final TableField<CommerceProductRecord, String> DISPLAY_NAME = createField(DSL.name("display_name"), SQLDataType.VARCHAR(255).nullable(false), this, "");
 
     /**
-     * The column <code>public.commerce_product.quota_profile_code</code>.
+     * The column <code>public.commerce_product.lifecycle_state</code>.
      */
-    public final TableField<CommerceProductRecord, String> QUOTA_PROFILE_CODE = createField(DSL.name("quota_profile_code"), SQLDataType.VARCHAR(128), this, "");
+    public final TableField<CommerceProductRecord, String> LIFECYCLE_STATE = createField(DSL.name("lifecycle_state"), SQLDataType.VARCHAR(16).nullable(false), this, "");
 
     /**
-     * The column <code>public.commerce_product.status</code>.
+     * The column <code>public.commerce_product.version</code>.
      */
-    public final TableField<CommerceProductRecord, String> STATUS = createField(DSL.name("status"), SQLDataType.VARCHAR(32).nullable(false), this, "");
+    public final TableField<CommerceProductRecord, Long> VERSION = createField(DSL.name("version"), SQLDataType.BIGINT.nullable(false), this, "");
 
     /**
      * The column <code>public.commerce_product.created_at</code>.
      */
-    public final TableField<CommerceProductRecord, LocalDateTime> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.LOCALDATETIME(6).nullable(false), this, "");
+    public final TableField<CommerceProductRecord, Instant> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false), this, "", new InstantConverter());
+
+    /**
+     * The column <code>public.commerce_product.updated_at</code>.
+     */
+    public final TableField<CommerceProductRecord, Instant> UPDATED_AT = createField(DSL.name("updated_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false), this, "", new InstantConverter());
 
     private CommerceProduct(Name alias, Table<CommerceProductRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
@@ -116,6 +133,39 @@ public class CommerceProduct extends TableImpl<CommerceProductRecord> {
         this(DSL.name("commerce_product"), null);
     }
 
+    public <O extends Record> CommerceProduct(Table<O> path, ForeignKey<O, CommerceProductRecord> childPath, InverseForeignKey<O, CommerceProductRecord> parentPath) {
+        super(path, childPath, parentPath, COMMERCE_PRODUCT);
+    }
+
+    /**
+     * A subtype implementing {@link Path} for simplified path-based joins.
+     */
+    public static class CommerceProductPath extends CommerceProduct implements Path<CommerceProductRecord> {
+
+        private static final long serialVersionUID = 1L;
+        public <O extends Record> CommerceProductPath(Table<O> path, ForeignKey<O, CommerceProductRecord> childPath, InverseForeignKey<O, CommerceProductRecord> parentPath) {
+            super(path, childPath, parentPath);
+        }
+        private CommerceProductPath(Name alias, Table<CommerceProductRecord> aliased) {
+            super(alias, aliased);
+        }
+
+        @Override
+        public CommerceProductPath as(String alias) {
+            return new CommerceProductPath(DSL.name(alias), this);
+        }
+
+        @Override
+        public CommerceProductPath as(Name alias) {
+            return new CommerceProductPath(alias, this);
+        }
+
+        @Override
+        public CommerceProductPath as(Table<?> alias) {
+            return new CommerceProductPath(alias.getQualifiedName(), this);
+        }
+    }
+
     @Override
     public Schema getSchema() {
         return aliased() ? null : Public.PUBLIC;
@@ -129,6 +179,79 @@ public class CommerceProduct extends TableImpl<CommerceProductRecord> {
     @Override
     public List<UniqueKey<CommerceProductRecord>> getUniqueKeys() {
         return Arrays.asList(Keys.COMMERCE_PRODUCT_PRODUCT_CODE_KEY);
+    }
+
+    private transient CheckoutSessionPath _checkoutSession;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.checkout_session</code> table
+     */
+    public CheckoutSessionPath checkoutSession() {
+        if (_checkoutSession == null)
+            _checkoutSession = new CheckoutSessionPath(this, null, Keys.CHECKOUT_SESSION__CHECKOUT_SESSION_PRODUCT_ID_FKEY.getInverseKey());
+
+        return _checkoutSession;
+    }
+
+    private transient CommerceCartLinePath _commerceCartLine;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.commerce_cart_line</code> table
+     */
+    public CommerceCartLinePath commerceCartLine() {
+        if (_commerceCartLine == null)
+            _commerceCartLine = new CommerceCartLinePath(this, null, Keys.COMMERCE_CART_LINE__COMMERCE_CART_LINE_PRODUCT_ID_FKEY.getInverseKey());
+
+        return _commerceCartLine;
+    }
+
+    private transient CommercialOfferingPath _commercialOffering;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.commercial_offering</code> table
+     */
+    public CommercialOfferingPath commercialOffering() {
+        if (_commercialOffering == null)
+            _commercialOffering = new CommercialOfferingPath(this, null, Keys.COMMERCIAL_OFFERING__COMMERCIAL_OFFERING_PRODUCT_ID_FKEY.getInverseKey());
+
+        return _commercialOffering;
+    }
+
+    private transient ProviderProductMappingPath _providerProductMapping;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.provider_product_mapping</code> table
+     */
+    public ProviderProductMappingPath providerProductMapping() {
+        if (_providerProductMapping == null)
+            _providerProductMapping = new ProviderProductMappingPath(this, null, Keys.PROVIDER_PRODUCT_MAPPING__PROVIDER_PRODUCT_MAPPING_PRODUCT_ID_FKEY.getInverseKey());
+
+        return _providerProductMapping;
+    }
+
+    private transient PurchaseOrderPath _purchaseOrder;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.purchase_order</code> table
+     */
+    public PurchaseOrderPath purchaseOrder() {
+        if (_purchaseOrder == null)
+            _purchaseOrder = new PurchaseOrderPath(this, null, Keys.PURCHASE_ORDER__PURCHASE_ORDER_PRODUCT_ID_FKEY.getInverseKey());
+
+        return _purchaseOrder;
+    }
+
+    @Override
+    public List<Check<CommerceProductRecord>> getChecks() {
+        return Arrays.asList(
+            Internal.createCheck(this, DSL.name("commerce_product_lifecycle_state_check"), "(((lifecycle_state)::text = ANY ((ARRAY['DRAFT'::character varying, 'ACTIVE'::character varying, 'RETIRED'::character varying])::text[])))", true),
+            Internal.createCheck(this, DSL.name("commerce_product_version_check"), "((version > 0))", true)
+        );
     }
 
     @Override

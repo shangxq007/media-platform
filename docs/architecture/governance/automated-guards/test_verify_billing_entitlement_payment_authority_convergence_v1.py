@@ -4,6 +4,7 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 import sys
+import tempfile
 import unittest
 
 sys.dont_write_bytecode = True
@@ -85,6 +86,106 @@ class ImplementationGuardMutationTest(unittest.TestCase):
                             for error in guard.validate_accepted_ancestor(False, False)))
         self.assertTrue(any("ACCEPTED_ANCESTOR_NOT_IN_HISTORY" in error
                             for error in guard.validate_accepted_ancestor(True, False)))
+
+
+class GeneratedSchemaResidueGuardTest(unittest.TestCase):
+    def load_fixture(
+        self, filename: str = "CleanGenerated.java", source: str = "class CleanGenerated {}"
+    ) -> dict[str, str]:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            repo = Path(temporary_directory)
+            generated_root = repo / guard.GENERATED_SCHEMA_ROOT
+            generated_root.mkdir(parents=True)
+            (generated_root / filename).write_text(source, encoding="utf-8")
+            return guard.load_production_sources(repo)
+
+    def assert_generated_residue_rejected(
+        self, filename: str, source: str, metric: str
+    ) -> None:
+        files = self.load_fixture(filename, source)
+        errors, metrics = guard.validate_generated_schema_residue(files)
+        self.assertGreater(metrics[metric], 0, metrics)
+        self.assertTrue(any(metric in error for error in errors), errors)
+
+    def test_clean_generated_fixture_has_machine_readable_zero_counts(self) -> None:
+        files = self.load_fixture()
+        errors, metrics = guard.validate_generated_schema_residue(files)
+        self.assertEqual([], errors)
+        self.assertEqual(0, metrics["H5_STALE_GENERATED_SCHEMA_FILE_COUNT"])
+        self.assertEqual(0, metrics["H5_STALE_GENERATED_SCHEMA_REFERENCE_COUNT"])
+        self.assertEqual(0, metrics["H5_STALE_GENERATED_SCHEMA_DEFINITION_COUNT"])
+
+    def test_each_exact_generated_definition_form_is_rejected(self) -> None:
+        fixtures = {
+            "render_usage_record": 'class Injected { Object name = DSL.name("render_usage_record"); }',
+            "render_billing_record": 'class Injected { Object name = DSL.name("render_billing_record"); }',
+            "RenderUsageRecord": "class RenderUsageRecord {}",
+            "RenderBillingRecord": "class RenderBillingRecord {}",
+        }
+        for form, source in fixtures.items():
+            with self.subTest(form=form):
+                self.assert_generated_residue_rejected(
+                    "InjectedDefinition.java",
+                    source,
+                    "H5_STALE_GENERATED_SCHEMA_DEFINITION_COUNT",
+                )
+
+    def test_each_exact_generated_reference_form_is_rejected(self) -> None:
+        fixtures = {
+            "render_usage_record": 'class Injected { String name = "render_usage_record"; }',
+            "render_billing_record": 'class Injected { String name = "render_billing_record"; }',
+            "RenderUsageRecord": "class Injected { RenderUsageRecord reference; }",
+            "RenderBillingRecord": "class Injected { RenderBillingRecord reference; }",
+        }
+        for form, source in fixtures.items():
+            with self.subTest(form=form):
+                self.assert_generated_residue_rejected(
+                    "InjectedReference.java",
+                    source,
+                    "H5_STALE_GENERATED_SCHEMA_REFERENCE_COUNT",
+                )
+
+    def test_stale_generated_definition_filename_is_rejected(self) -> None:
+        self.assert_generated_residue_rejected(
+            "RenderUsageRecord.java",
+            "class InjectedWithoutLegacySymbol {}",
+            "H5_STALE_GENERATED_SCHEMA_DEFINITION_COUNT",
+        )
+
+    def test_generated_production_root_missing_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            with self.assertRaisesRegex(
+                guard.ProductionSourceDiscoveryError,
+                "GENERATED_PRODUCTION_ROOT_MISSING",
+            ):
+                guard.load_production_sources(Path(temporary_directory))
+
+    def test_generated_schema_corpus_empty_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            repo = Path(temporary_directory)
+            (repo / guard.GENERATED_SCHEMA_ROOT).mkdir(parents=True)
+            with self.assertRaisesRegex(
+                guard.ProductionSourceDiscoveryError,
+                "GENERATED_SCHEMA_CORPUS_EMPTY",
+            ):
+                guard.load_production_sources(repo)
+
+    def test_repository_anchored_discovery_includes_future_modules(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            repo = Path(temporary_directory)
+            generated_root = repo / guard.GENERATED_SCHEMA_ROOT
+            generated_root.mkdir(parents=True)
+            (generated_root / "CleanGenerated.java").write_text(
+                "class CleanGenerated {}", encoding="utf-8"
+            )
+            future_source = repo / "future-module/src/main/java/example/FutureSource.java"
+            future_source.parent.mkdir(parents=True)
+            future_source.write_text("class FutureSource {}", encoding="utf-8")
+            files = guard.load_production_sources(repo)
+        self.assertIn(
+            "future-module/src/main/java/example/FutureSource.java",
+            files,
+        )
 
 
 if __name__ == "__main__":

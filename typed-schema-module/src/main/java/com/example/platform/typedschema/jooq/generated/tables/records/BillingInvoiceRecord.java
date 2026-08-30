@@ -6,9 +6,9 @@ package com.example.platform.typedschema.jooq.generated.tables.records;
 
 import com.example.platform.typedschema.jooq.generated.tables.BillingInvoice;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
-import org.jooq.Record1;
+import org.jooq.Record2;
 import org.jooq.impl.UpdatableRecordImpl;
 
 
@@ -35,115 +35,213 @@ public class BillingInvoiceRecord extends UpdatableRecordImpl<BillingInvoiceReco
     }
 
     /**
+     * Setter for <code>public.billing_invoice.tenant_id</code>.
+     */
+    public void setTenantId(String value) {
+        set(1, value);
+    }
+
+    /**
+     * Getter for <code>public.billing_invoice.tenant_id</code>.
+     */
+    public String getTenantId() {
+        return (String) get(1);
+    }
+
+    /**
+     * Setter for <code>public.billing_invoice.principal_type</code>.
+     */
+    public void setPrincipalType(String value) {
+        set(2, value);
+    }
+
+    /**
+     * Getter for <code>public.billing_invoice.principal_type</code>.
+     */
+    public String getPrincipalType() {
+        return (String) get(2);
+    }
+
+    /**
+     * Setter for <code>public.billing_invoice.principal_id</code>.
+     */
+    public void setPrincipalId(String value) {
+        set(3, value);
+    }
+
+    /**
+     * Getter for <code>public.billing_invoice.principal_id</code>.
+     */
+    public String getPrincipalId() {
+        return (String) get(3);
+    }
+
+    /**
      * Setter for <code>public.billing_invoice.contract_id</code>.
      */
     public void setContractId(String value) {
-        set(1, value);
+        set(4, value);
     }
 
     /**
      * Getter for <code>public.billing_invoice.contract_id</code>.
      */
     public String getContractId() {
-        return (String) get(1);
+        return (String) get(4);
     }
 
     /**
      * Setter for <code>public.billing_invoice.provider_code</code>.
      */
     public void setProviderCode(String value) {
-        set(2, value);
+        set(5, value);
     }
 
     /**
      * Getter for <code>public.billing_invoice.provider_code</code>.
      */
     public String getProviderCode() {
-        return (String) get(2);
+        return (String) get(5);
     }
 
     /**
      * Setter for <code>public.billing_invoice.external_invoice_ref</code>.
      */
     public void setExternalInvoiceRef(String value) {
-        set(3, value);
+        set(6, value);
     }
 
     /**
      * Getter for <code>public.billing_invoice.external_invoice_ref</code>.
      */
     public String getExternalInvoiceRef() {
-        return (String) get(3);
+        return (String) get(6);
     }
 
     /**
      * Setter for <code>public.billing_invoice.invoice_status</code>.
      */
     public void setInvoiceStatus(String value) {
-        set(4, value);
+        set(7, value);
     }
 
     /**
      * Getter for <code>public.billing_invoice.invoice_status</code>.
      */
     public String getInvoiceStatus() {
-        return (String) get(4);
+        return (String) get(7);
     }
 
     /**
-     * Setter for <code>public.billing_invoice.amount_due_minor</code>.
+     * Setter for <code>public.billing_invoice.total_amount_minor</code>.
      */
-    public void setAmountDueMinor(Long value) {
-        set(5, value);
+    public void setTotalAmountMinor(Long value) {
+        set(8, value);
     }
 
     /**
-     * Getter for <code>public.billing_invoice.amount_due_minor</code>.
+     * Getter for <code>public.billing_invoice.total_amount_minor</code>.
      */
-    public Long getAmountDueMinor() {
-        return (Long) get(5);
+    public Long getTotalAmountMinor() {
+        return (Long) get(8);
     }
 
     /**
      * Setter for <code>public.billing_invoice.amount_paid_minor</code>.
      */
     public void setAmountPaidMinor(Long value) {
-        set(6, value);
+        set(9, value);
     }
 
     /**
      * Getter for <code>public.billing_invoice.amount_paid_minor</code>.
      */
     public Long getAmountPaidMinor() {
-        return (Long) get(6);
+        return (Long) get(9);
     }
 
     /**
      * Setter for <code>public.billing_invoice.currency_code</code>.
      */
     public void setCurrencyCode(String value) {
-        set(7, value);
+        set(10, value);
     }
 
     /**
      * Getter for <code>public.billing_invoice.currency_code</code>.
      */
     public String getCurrencyCode() {
-        return (String) get(7);
+        return (String) get(10);
+    }
+
+    /**
+     * Setter for <code>public.billing_invoice.version</code>.
+     */
+    public void setVersion(Long value) {
+        set(11, value);
+    }
+
+    /**
+     * Getter for <code>public.billing_invoice.version</code>.
+     */
+    public Long getVersion() {
+        return (Long) get(11);
+    }
+
+    /**
+     * Setter for <code>public.billing_invoice.issued_at</code>.
+     */
+    public void setIssuedAt(Instant value) {
+        set(12, value);
+    }
+
+    /**
+     * Getter for <code>public.billing_invoice.issued_at</code>.
+     */
+    public Instant getIssuedAt() {
+        return (Instant) get(12);
+    }
+
+    /**
+     * Setter for <code>public.billing_invoice.paid_at</code>.
+     */
+    public void setPaidAt(Instant value) {
+        set(13, value);
+    }
+
+    /**
+     * Getter for <code>public.billing_invoice.paid_at</code>.
+     */
+    public Instant getPaidAt() {
+        return (Instant) get(13);
     }
 
     /**
      * Setter for <code>public.billing_invoice.created_at</code>.
      */
-    public void setCreatedAt(LocalDateTime value) {
-        set(8, value);
+    public void setCreatedAt(Instant value) {
+        set(14, value);
     }
 
     /**
      * Getter for <code>public.billing_invoice.created_at</code>.
      */
-    public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(8);
+    public Instant getCreatedAt() {
+        return (Instant) get(14);
+    }
+
+    /**
+     * Setter for <code>public.billing_invoice.updated_at</code>.
+     */
+    public void setUpdatedAt(Instant value) {
+        set(15, value);
+    }
+
+    /**
+     * Getter for <code>public.billing_invoice.updated_at</code>.
+     */
+    public Instant getUpdatedAt() {
+        return (Instant) get(15);
     }
 
     // -------------------------------------------------------------------------
@@ -151,8 +249,8 @@ public class BillingInvoiceRecord extends UpdatableRecordImpl<BillingInvoiceReco
     // -------------------------------------------------------------------------
 
     @Override
-    public Record1<String> key() {
-        return (Record1) super.key();
+    public Record2<String, String> key() {
+        return (Record2) super.key();
     }
 
     // -------------------------------------------------------------------------
@@ -169,18 +267,25 @@ public class BillingInvoiceRecord extends UpdatableRecordImpl<BillingInvoiceReco
     /**
      * Create a detached, initialised BillingInvoiceRecord
      */
-    public BillingInvoiceRecord(String id, String contractId, String providerCode, String externalInvoiceRef, String invoiceStatus, Long amountDueMinor, Long amountPaidMinor, String currencyCode, LocalDateTime createdAt) {
+    public BillingInvoiceRecord(String id, String tenantId, String principalType, String principalId, String contractId, String providerCode, String externalInvoiceRef, String invoiceStatus, Long totalAmountMinor, Long amountPaidMinor, String currencyCode, Long version, Instant issuedAt, Instant paidAt, Instant createdAt, Instant updatedAt) {
         super(BillingInvoice.BILLING_INVOICE);
 
         setId(id);
+        setTenantId(tenantId);
+        setPrincipalType(principalType);
+        setPrincipalId(principalId);
         setContractId(contractId);
         setProviderCode(providerCode);
         setExternalInvoiceRef(externalInvoiceRef);
         setInvoiceStatus(invoiceStatus);
-        setAmountDueMinor(amountDueMinor);
+        setTotalAmountMinor(totalAmountMinor);
         setAmountPaidMinor(amountPaidMinor);
         setCurrencyCode(currencyCode);
+        setVersion(version);
+        setIssuedAt(issuedAt);
+        setPaidAt(paidAt);
         setCreatedAt(createdAt);
+        setUpdatedAt(updatedAt);
         resetChangedOnNotNull();
     }
 }

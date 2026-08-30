@@ -14,6 +14,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
+import org.jooq.Check;
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.Index;
@@ -29,6 +30,7 @@ import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
@@ -62,15 +64,27 @@ public class WorkspaceMemberEntitlementGrant extends TableImpl<WorkspaceMemberEn
 
     /**
      * The column
+     * <code>public.workspace_member_entitlement_grant.tenant_id</code>.
+     */
+    public final TableField<WorkspaceMemberEntitlementGrantRecord, String> TENANT_ID = createField(DSL.name("tenant_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
+
+    /**
+     * The column
      * <code>public.workspace_member_entitlement_grant.workspace_id</code>.
      */
     public final TableField<WorkspaceMemberEntitlementGrantRecord, String> WORKSPACE_ID = createField(DSL.name("workspace_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
     /**
      * The column
+     * <code>public.workspace_member_entitlement_grant.principal_type</code>.
+     */
+    public final TableField<WorkspaceMemberEntitlementGrantRecord, String> PRINCIPAL_TYPE = createField(DSL.name("principal_type"), SQLDataType.VARCHAR(32).nullable(false), this, "");
+
+    /**
+     * The column
      * <code>public.workspace_member_entitlement_grant.member_id</code>.
      */
-    public final TableField<WorkspaceMemberEntitlementGrantRecord, String> MEMBER_ID = createField(DSL.name("member_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
+    public final TableField<WorkspaceMemberEntitlementGrantRecord, String> MEMBER_ID = createField(DSL.name("member_id"), SQLDataType.VARCHAR(128).nullable(false), this, "");
 
     /**
      * The column
@@ -83,6 +97,18 @@ public class WorkspaceMemberEntitlementGrant extends TableImpl<WorkspaceMemberEn
      * <code>public.workspace_member_entitlement_grant.quota_amount</code>.
      */
     public final TableField<WorkspaceMemberEntitlementGrantRecord, Long> QUOTA_AMOUNT = createField(DSL.name("quota_amount"), SQLDataType.BIGINT.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.BIGINT)), this, "");
+
+    /**
+     * The column
+     * <code>public.workspace_member_entitlement_grant.source_type</code>.
+     */
+    public final TableField<WorkspaceMemberEntitlementGrantRecord, String> SOURCE_TYPE = createField(DSL.name("source_type"), SQLDataType.VARCHAR(32).nullable(false), this, "");
+
+    /**
+     * The column
+     * <code>public.workspace_member_entitlement_grant.source_ref</code>.
+     */
+    public final TableField<WorkspaceMemberEntitlementGrantRecord, String> SOURCE_REF = createField(DSL.name("source_ref"), SQLDataType.VARCHAR(255).nullable(false), this, "");
 
     /**
      * The column
@@ -103,9 +129,15 @@ public class WorkspaceMemberEntitlementGrant extends TableImpl<WorkspaceMemberEn
 
     /**
      * The column
+     * <code>public.workspace_member_entitlement_grant.version</code>.
+     */
+    public final TableField<WorkspaceMemberEntitlementGrantRecord, Long> VERSION = createField(DSL.name("version"), SQLDataType.BIGINT.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.BIGINT)), this, "");
+
+    /**
+     * The column
      * <code>public.workspace_member_entitlement_grant.granted_by</code>.
      */
-    public final TableField<WorkspaceMemberEntitlementGrantRecord, String> GRANTED_BY = createField(DSL.name("granted_by"), SQLDataType.VARCHAR(64), this, "");
+    public final TableField<WorkspaceMemberEntitlementGrantRecord, String> GRANTED_BY = createField(DSL.name("granted_by"), SQLDataType.VARCHAR(128).nullable(false), this, "");
 
     /**
      * The column
@@ -164,6 +196,18 @@ public class WorkspaceMemberEntitlementGrant extends TableImpl<WorkspaceMemberEn
     @Override
     public UniqueKey<WorkspaceMemberEntitlementGrantRecord> getPrimaryKey() {
         return Keys.WORKSPACE_MEMBER_ENTITLEMENT_GRANT_PKEY;
+    }
+
+    @Override
+    public List<UniqueKey<WorkspaceMemberEntitlementGrantRecord>> getUniqueKeys() {
+        return Arrays.asList(Keys.UQ_WORKSPACE_MEMBER_GRANT_LOGICAL_SOURCE);
+    }
+
+    @Override
+    public List<Check<WorkspaceMemberEntitlementGrantRecord>> getChecks() {
+        return Arrays.asList(
+            Internal.createCheck(this, DSL.name("workspace_member_entitlement_grant_status_check"), "(((status)::text = ANY ((ARRAY['ACTIVE'::character varying, 'REVOKED'::character varying])::text[])))", true)
+        );
     }
 
     @Override

@@ -7,6 +7,8 @@ package com.example.platform.typedschema.jooq.generated.tables;
 import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
+import com.example.platform.typedschema.jooq.generated.tables.CommerceProduct.CommerceProductPath;
+import com.example.platform.typedschema.jooq.generated.tables.CommercialOffering.CommercialOfferingPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.PurchaseOrderRecord;
 
 import java.time.LocalDateTime;
@@ -16,10 +18,14 @@ import java.util.List;
 
 import org.jooq.Condition;
 import org.jooq.Field;
+import org.jooq.ForeignKey;
 import org.jooq.Index;
+import org.jooq.InverseForeignKey;
 import org.jooq.Name;
+import org.jooq.Path;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
+import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
 import org.jooq.Select;
@@ -70,6 +76,41 @@ public class PurchaseOrder extends TableImpl<PurchaseOrderRecord> {
     public final TableField<PurchaseOrderRecord, String> CANONICAL_PRODUCT_CODE = createField(DSL.name("canonical_product_code"), SQLDataType.VARCHAR(128).nullable(false), this, "");
 
     /**
+     * The column <code>public.purchase_order.product_id</code>.
+     */
+    public final TableField<PurchaseOrderRecord, String> PRODUCT_ID = createField(DSL.name("product_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
+
+    /**
+     * The column <code>public.purchase_order.offering_id</code>.
+     */
+    public final TableField<PurchaseOrderRecord, String> OFFERING_ID = createField(DSL.name("offering_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
+
+    /**
+     * The column <code>public.purchase_order.offering_version</code>.
+     */
+    public final TableField<PurchaseOrderRecord, Long> OFFERING_VERSION = createField(DSL.name("offering_version"), SQLDataType.BIGINT.nullable(false), this, "");
+
+    /**
+     * The column <code>public.purchase_order.commercial_price_ref</code>.
+     */
+    public final TableField<PurchaseOrderRecord, String> COMMERCIAL_PRICE_REF = createField(DSL.name("commercial_price_ref"), SQLDataType.VARCHAR(128).nullable(false), this, "");
+
+    /**
+     * The column <code>public.purchase_order.commercial_price_version</code>.
+     */
+    public final TableField<PurchaseOrderRecord, Long> COMMERCIAL_PRICE_VERSION = createField(DSL.name("commercial_price_version"), SQLDataType.BIGINT.nullable(false), this, "");
+
+    /**
+     * The column <code>public.purchase_order.amount_minor_snapshot</code>.
+     */
+    public final TableField<PurchaseOrderRecord, Long> AMOUNT_MINOR_SNAPSHOT = createField(DSL.name("amount_minor_snapshot"), SQLDataType.BIGINT.nullable(false), this, "");
+
+    /**
+     * The column <code>public.purchase_order.currency_code_snapshot</code>.
+     */
+    public final TableField<PurchaseOrderRecord, String> CURRENCY_CODE_SNAPSHOT = createField(DSL.name("currency_code_snapshot"), SQLDataType.VARCHAR(3).nullable(false), this, "");
+
+    /**
      * The column <code>public.purchase_order.order_status</code>.
      */
     public final TableField<PurchaseOrderRecord, String> ORDER_STATUS = createField(DSL.name("order_status"), SQLDataType.VARCHAR(32).nullable(false), this, "");
@@ -92,7 +133,7 @@ public class PurchaseOrder extends TableImpl<PurchaseOrderRecord> {
     /**
      * The column <code>public.purchase_order.tenant_id</code>.
      */
-    public final TableField<PurchaseOrderRecord, String> TENANT_ID = createField(DSL.name("tenant_id"), SQLDataType.VARCHAR(64), this, "");
+    public final TableField<PurchaseOrderRecord, String> TENANT_ID = createField(DSL.name("tenant_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
     private PurchaseOrder(Name alias, Table<PurchaseOrderRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
@@ -123,6 +164,39 @@ public class PurchaseOrder extends TableImpl<PurchaseOrderRecord> {
         this(DSL.name("purchase_order"), null);
     }
 
+    public <O extends Record> PurchaseOrder(Table<O> path, ForeignKey<O, PurchaseOrderRecord> childPath, InverseForeignKey<O, PurchaseOrderRecord> parentPath) {
+        super(path, childPath, parentPath, PURCHASE_ORDER);
+    }
+
+    /**
+     * A subtype implementing {@link Path} for simplified path-based joins.
+     */
+    public static class PurchaseOrderPath extends PurchaseOrder implements Path<PurchaseOrderRecord> {
+
+        private static final long serialVersionUID = 1L;
+        public <O extends Record> PurchaseOrderPath(Table<O> path, ForeignKey<O, PurchaseOrderRecord> childPath, InverseForeignKey<O, PurchaseOrderRecord> parentPath) {
+            super(path, childPath, parentPath);
+        }
+        private PurchaseOrderPath(Name alias, Table<PurchaseOrderRecord> aliased) {
+            super(alias, aliased);
+        }
+
+        @Override
+        public PurchaseOrderPath as(String alias) {
+            return new PurchaseOrderPath(DSL.name(alias), this);
+        }
+
+        @Override
+        public PurchaseOrderPath as(Name alias) {
+            return new PurchaseOrderPath(alias, this);
+        }
+
+        @Override
+        public PurchaseOrderPath as(Table<?> alias) {
+            return new PurchaseOrderPath(alias.getQualifiedName(), this);
+        }
+    }
+
     @Override
     public Schema getSchema() {
         return aliased() ? null : Public.PUBLIC;
@@ -136,6 +210,37 @@ public class PurchaseOrder extends TableImpl<PurchaseOrderRecord> {
     @Override
     public UniqueKey<PurchaseOrderRecord> getPrimaryKey() {
         return Keys.PURCHASE_ORDER_PKEY;
+    }
+
+    @Override
+    public List<ForeignKey<PurchaseOrderRecord, ?>> getReferences() {
+        return Arrays.asList(Keys.PURCHASE_ORDER__PURCHASE_ORDER_OFFERING_ID_FKEY, Keys.PURCHASE_ORDER__PURCHASE_ORDER_PRODUCT_ID_FKEY);
+    }
+
+    private transient CommercialOfferingPath _commercialOffering;
+
+    /**
+     * Get the implicit join path to the <code>public.commercial_offering</code>
+     * table.
+     */
+    public CommercialOfferingPath commercialOffering() {
+        if (_commercialOffering == null)
+            _commercialOffering = new CommercialOfferingPath(this, Keys.PURCHASE_ORDER__PURCHASE_ORDER_OFFERING_ID_FKEY, null);
+
+        return _commercialOffering;
+    }
+
+    private transient CommerceProductPath _commerceProduct;
+
+    /**
+     * Get the implicit join path to the <code>public.commerce_product</code>
+     * table.
+     */
+    public CommerceProductPath commerceProduct() {
+        if (_commerceProduct == null)
+            _commerceProduct = new CommerceProductPath(this, Keys.PURCHASE_ORDER__PURCHASE_ORDER_PRODUCT_ID_FKEY, null);
+
+        return _commerceProduct;
     }
 
     @Override

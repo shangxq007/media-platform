@@ -4,16 +4,18 @@
 package com.example.platform.typedschema.jooq.generated.tables;
 
 
+import com.example.platform.typedschema.contract.InstantConverter;
 import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
 import com.example.platform.typedschema.jooq.generated.tables.records.QuotaUsageRecord;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
+import org.jooq.Check;
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.Index;
@@ -29,6 +31,7 @@ import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
@@ -65,24 +68,54 @@ public class QuotaUsage extends TableImpl<QuotaUsageRecord> {
     public final TableField<QuotaUsageRecord, String> TENANT_ID = createField(DSL.name("tenant_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
     /**
-     * The column <code>public.quota_usage.feature_code</code>.
+     * The column <code>public.quota_usage.principal_type</code>.
      */
-    public final TableField<QuotaUsageRecord, String> FEATURE_CODE = createField(DSL.name("feature_code"), SQLDataType.VARCHAR(80).nullable(false), this, "");
+    public final TableField<QuotaUsageRecord, String> PRINCIPAL_TYPE = createField(DSL.name("principal_type"), SQLDataType.VARCHAR(32).nullable(false), this, "");
+
+    /**
+     * The column <code>public.quota_usage.principal_id</code>.
+     */
+    public final TableField<QuotaUsageRecord, String> PRINCIPAL_ID = createField(DSL.name("principal_id"), SQLDataType.VARCHAR(128).nullable(false), this, "");
+
+    /**
+     * The column <code>public.quota_usage.workspace_scope</code>.
+     */
+    public final TableField<QuotaUsageRecord, String> WORKSPACE_SCOPE = createField(DSL.name("workspace_scope"), SQLDataType.VARCHAR(64).nullable(false).defaultValue(DSL.field(DSL.raw("''::character varying"), SQLDataType.VARCHAR)), this, "");
+
+    /**
+     * The column <code>public.quota_usage.organization_scope</code>.
+     */
+    public final TableField<QuotaUsageRecord, String> ORGANIZATION_SCOPE = createField(DSL.name("organization_scope"), SQLDataType.VARCHAR(64).nullable(false).defaultValue(DSL.field(DSL.raw("''::character varying"), SQLDataType.VARCHAR)), this, "");
+
+    /**
+     * The column <code>public.quota_usage.quota_key</code>.
+     */
+    public final TableField<QuotaUsageRecord, String> QUOTA_KEY = createField(DSL.name("quota_key"), SQLDataType.VARCHAR(128).nullable(false), this, "");
+
+    /**
+     * The column <code>public.quota_usage.period_start</code>.
+     */
+    public final TableField<QuotaUsageRecord, Instant> PERIOD_START = createField(DSL.name("period_start"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false), this, "", new InstantConverter());
+
+    /**
+     * The column <code>public.quota_usage.period_end</code>.
+     */
+    public final TableField<QuotaUsageRecord, Instant> PERIOD_END = createField(DSL.name("period_end"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false), this, "", new InstantConverter());
 
     /**
      * The column <code>public.quota_usage.usage_value</code>.
      */
-    public final TableField<QuotaUsageRecord, Integer> USAGE_VALUE = createField(DSL.name("usage_value"), SQLDataType.INTEGER.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.INTEGER)), this, "");
+    public final TableField<QuotaUsageRecord, Long> USAGE_VALUE = createField(DSL.name("usage_value"), SQLDataType.BIGINT.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.BIGINT)), this, "");
 
     /**
      * The column <code>public.quota_usage.created_at</code>.
      */
-    public final TableField<QuotaUsageRecord, LocalDateTime> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.LOCALDATETIME(6).nullable(false), this, "");
+    public final TableField<QuotaUsageRecord, Instant> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false), this, "", new InstantConverter());
 
     /**
      * The column <code>public.quota_usage.updated_at</code>.
      */
-    public final TableField<QuotaUsageRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("updated_at"), SQLDataType.LOCALDATETIME(6).nullable(false), this, "");
+    public final TableField<QuotaUsageRecord, Instant> UPDATED_AT = createField(DSL.name("updated_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false), this, "", new InstantConverter());
 
     private QuotaUsage(Name alias, Table<QuotaUsageRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
@@ -120,12 +153,24 @@ public class QuotaUsage extends TableImpl<QuotaUsageRecord> {
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.IX_QUOTA_USAGE_TENANT_FEATURE, Indexes.IX_QUOTA_USAGE_TENANT_ID);
+        return Arrays.asList(Indexes.IX_QUOTA_USAGE_PRINCIPAL_PERIOD, Indexes.IX_QUOTA_USAGE_TENANT_ID);
     }
 
     @Override
     public UniqueKey<QuotaUsageRecord> getPrimaryKey() {
         return Keys.QUOTA_USAGE_PKEY;
+    }
+
+    @Override
+    public List<UniqueKey<QuotaUsageRecord>> getUniqueKeys() {
+        return Arrays.asList(Keys.UQ_QUOTA_USAGE_LOGICAL_PERIOD);
+    }
+
+    @Override
+    public List<Check<QuotaUsageRecord>> getChecks() {
+        return Arrays.asList(
+            Internal.createCheck(this, DSL.name("quota_usage_usage_value_check"), "((usage_value >= 0))", true)
+        );
     }
 
     @Override

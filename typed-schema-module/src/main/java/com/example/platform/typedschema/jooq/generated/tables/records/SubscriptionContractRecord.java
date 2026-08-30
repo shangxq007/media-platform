@@ -35,31 +35,45 @@ public class SubscriptionContractRecord extends UpdatableRecordImpl<Subscription
     }
 
     /**
+     * Setter for <code>public.subscription_contract.tenant_id</code>.
+     */
+    public void setTenantId(String value) {
+        set(1, value);
+    }
+
+    /**
+     * Getter for <code>public.subscription_contract.tenant_id</code>.
+     */
+    public String getTenantId() {
+        return (String) get(1);
+    }
+
+    /**
      * Setter for <code>public.subscription_contract.subject_type</code>.
      */
     public void setSubjectType(String value) {
-        set(1, value);
+        set(2, value);
     }
 
     /**
      * Getter for <code>public.subscription_contract.subject_type</code>.
      */
     public String getSubjectType() {
-        return (String) get(1);
+        return (String) get(2);
     }
 
     /**
      * Setter for <code>public.subscription_contract.subject_id</code>.
      */
     public void setSubjectId(String value) {
-        set(2, value);
+        set(3, value);
     }
 
     /**
      * Getter for <code>public.subscription_contract.subject_id</code>.
      */
     public String getSubjectId() {
-        return (String) get(2);
+        return (String) get(3);
     }
 
     /**
@@ -67,7 +81,7 @@ public class SubscriptionContractRecord extends UpdatableRecordImpl<Subscription
      * <code>public.subscription_contract.canonical_product_code</code>.
      */
     public void setCanonicalProductCode(String value) {
-        set(3, value);
+        set(4, value);
     }
 
     /**
@@ -75,21 +89,21 @@ public class SubscriptionContractRecord extends UpdatableRecordImpl<Subscription
      * <code>public.subscription_contract.canonical_product_code</code>.
      */
     public String getCanonicalProductCode() {
-        return (String) get(3);
+        return (String) get(4);
     }
 
     /**
      * Setter for <code>public.subscription_contract.provider_code</code>.
      */
     public void setProviderCode(String value) {
-        set(4, value);
+        set(5, value);
     }
 
     /**
      * Getter for <code>public.subscription_contract.provider_code</code>.
      */
     public String getProviderCode() {
-        return (String) get(4);
+        return (String) get(5);
     }
 
     /**
@@ -97,7 +111,7 @@ public class SubscriptionContractRecord extends UpdatableRecordImpl<Subscription
      * <code>public.subscription_contract.external_contract_ref</code>.
      */
     public void setExternalContractRef(String value) {
-        set(5, value);
+        set(6, value);
     }
 
     /**
@@ -105,105 +119,133 @@ public class SubscriptionContractRecord extends UpdatableRecordImpl<Subscription
      * <code>public.subscription_contract.external_contract_ref</code>.
      */
     public String getExternalContractRef() {
-        return (String) get(5);
+        return (String) get(6);
     }
 
     /**
      * Setter for <code>public.subscription_contract.contract_state</code>.
      */
     public void setContractState(String value) {
-        set(6, value);
+        set(7, value);
     }
 
     /**
      * Getter for <code>public.subscription_contract.contract_state</code>.
      */
     public String getContractState() {
-        return (String) get(6);
+        return (String) get(7);
+    }
+
+    /**
+     * Setter for <code>public.subscription_contract.contract_role</code>.
+     */
+    public void setContractRole(String value) {
+        set(8, value);
+    }
+
+    /**
+     * Getter for <code>public.subscription_contract.contract_role</code>.
+     */
+    public String getContractRole() {
+        return (String) get(8);
     }
 
     /**
      * Setter for <code>public.subscription_contract.period_start_at</code>.
      */
     public void setPeriodStartAt(LocalDateTime value) {
-        set(7, value);
+        set(9, value);
     }
 
     /**
      * Getter for <code>public.subscription_contract.period_start_at</code>.
      */
     public LocalDateTime getPeriodStartAt() {
-        return (LocalDateTime) get(7);
+        return (LocalDateTime) get(9);
     }
 
     /**
      * Setter for <code>public.subscription_contract.period_end_at</code>.
      */
     public void setPeriodEndAt(LocalDateTime value) {
-        set(8, value);
+        set(10, value);
     }
 
     /**
      * Getter for <code>public.subscription_contract.period_end_at</code>.
      */
     public LocalDateTime getPeriodEndAt() {
-        return (LocalDateTime) get(8);
+        return (LocalDateTime) get(10);
     }
 
     /**
      * Setter for <code>public.subscription_contract.created_at</code>.
      */
     public void setCreatedAt(LocalDateTime value) {
-        set(9, value);
+        set(11, value);
     }
 
     /**
      * Getter for <code>public.subscription_contract.created_at</code>.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(9);
+        return (LocalDateTime) get(11);
+    }
+
+    /**
+     * Setter for <code>public.subscription_contract.updated_at</code>.
+     */
+    public void setUpdatedAt(LocalDateTime value) {
+        set(12, value);
+    }
+
+    /**
+     * Getter for <code>public.subscription_contract.updated_at</code>.
+     */
+    public LocalDateTime getUpdatedAt() {
+        return (LocalDateTime) get(12);
     }
 
     /**
      * Setter for <code>public.subscription_contract.plan_key</code>.
      */
     public void setPlanKey(String value) {
-        set(10, value);
+        set(13, value);
     }
 
     /**
      * Getter for <code>public.subscription_contract.plan_key</code>.
      */
     public String getPlanKey() {
-        return (String) get(10);
+        return (String) get(13);
     }
 
     /**
      * Setter for <code>public.subscription_contract.included_quota_used</code>.
      */
     public void setIncludedQuotaUsed(String value) {
-        set(11, value);
+        set(14, value);
     }
 
     /**
      * Getter for <code>public.subscription_contract.included_quota_used</code>.
      */
     public String getIncludedQuotaUsed() {
-        return (String) get(11);
+        return (String) get(14);
     }
 
     /**
-     * Setter for <code>public.subscription_contract.tenant_id</code>.
+     * Setter for <code>public.subscription_contract.version</code>.
      */
-    public void setTenantId(String value) {
-        set(12, value);
+    public void setVersion(Long value) {
+        set(15, value);
     }
 
     /**
-     * Getter for <code>public.subscription_contract.tenant_id</code>.
+     * Getter for <code>public.subscription_contract.version</code>.
      */
-    public String getTenantId() {
-        return (String) get(12);
+    public Long getVersion() {
+        return (Long) get(15);
     }
 
     // -------------------------------------------------------------------------
@@ -229,22 +271,25 @@ public class SubscriptionContractRecord extends UpdatableRecordImpl<Subscription
     /**
      * Create a detached, initialised SubscriptionContractRecord
      */
-    public SubscriptionContractRecord(String id, String subjectType, String subjectId, String canonicalProductCode, String providerCode, String externalContractRef, String contractState, LocalDateTime periodStartAt, LocalDateTime periodEndAt, LocalDateTime createdAt, String planKey, String includedQuotaUsed, String tenantId) {
+    public SubscriptionContractRecord(String id, String tenantId, String subjectType, String subjectId, String canonicalProductCode, String providerCode, String externalContractRef, String contractState, String contractRole, LocalDateTime periodStartAt, LocalDateTime periodEndAt, LocalDateTime createdAt, LocalDateTime updatedAt, String planKey, String includedQuotaUsed, Long version) {
         super(SubscriptionContract.SUBSCRIPTION_CONTRACT);
 
         setId(id);
+        setTenantId(tenantId);
         setSubjectType(subjectType);
         setSubjectId(subjectId);
         setCanonicalProductCode(canonicalProductCode);
         setProviderCode(providerCode);
         setExternalContractRef(externalContractRef);
         setContractState(contractState);
+        setContractRole(contractRole);
         setPeriodStartAt(periodStartAt);
         setPeriodEndAt(periodEndAt);
         setCreatedAt(createdAt);
+        setUpdatedAt(updatedAt);
         setPlanKey(planKey);
         setIncludedQuotaUsed(includedQuotaUsed);
-        setTenantId(tenantId);
+        setVersion(version);
         resetChangedOnNotNull();
     }
 }
