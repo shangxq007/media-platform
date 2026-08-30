@@ -3,7 +3,6 @@ package com.example.platform.notification.api;
 import com.example.platform.notification.api.dto.*;
 import com.example.platform.notification.app.*;
 import com.example.platform.notification.domain.NotificationEventDefinition;
-import com.example.platform.notification.infrastructure.MockNotificationProvider;
 import com.example.platform.notification.infrastructure.NovuNotificationProvider;
 import com.example.platform.notification.app.NotificationEventPublisher;
 import com.example.platform.notification.domain.NotificationInboundEvent;
@@ -25,7 +24,6 @@ import org.springframework.web.bind.annotation.*;
 public class NotificationController {
     private final NotificationEventPublisher publisher;
     private final NotificationQueryService queryService;
-    private final MockNotificationProvider mockProvider;
     private final NotificationEventCatalogService catalogService;
     private final NotificationChannelBindingService channelBindingService;
     private final NotificationSubscriptionService subscriptionService;
@@ -34,7 +32,7 @@ public class NotificationController {
     private final NovuNotificationProvider novuProvider;
 
     public NotificationController(NotificationEventPublisher publisher,
-            NotificationQueryService queryService, MockNotificationProvider mockProvider,
+            NotificationQueryService queryService,
             NotificationEventCatalogService catalogService,
             NotificationChannelBindingService channelBindingService,
             NotificationSubscriptionService subscriptionService,
@@ -43,7 +41,6 @@ public class NotificationController {
             @Autowired(required = false) NovuNotificationProvider novuProvider) {
         this.publisher = publisher;
         this.queryService = queryService;
-        this.mockProvider = mockProvider;
         this.catalogService = catalogService;
         this.channelBindingService = channelBindingService;
         this.subscriptionService = subscriptionService;
@@ -129,14 +126,6 @@ public class NotificationController {
     @ApiResponse(responseCode = "200", description = "Successfully retrieved deliveries")
     public List<?> deliveries() {
         return queryService.listDeliveries();
-    }
-
-    @GetMapping("/notifications/mock-sent")
-    @Operation(summary = "Get mock sent notifications",
-               description = "Retrieve notifications sent via the mock provider (testing only)")
-    @ApiResponse(responseCode = "200", description = "Successfully retrieved mock notifications")
-    public List<MockNotificationProvider.SentNotification> mockSent() {
-        return mockProvider.getSentNotifications();
     }
 
     // -------------------------------------------------------------------------

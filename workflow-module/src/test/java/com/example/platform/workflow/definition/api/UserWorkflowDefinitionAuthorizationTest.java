@@ -9,6 +9,8 @@ import com.example.platform.shared.authorization.AuthorizationRequest;
 import com.example.platform.shared.authorization.AuthorizationDeniedException;
 import com.example.platform.shared.authorization.CanonicalActor;
 import com.example.platform.shared.authorization.CanonicalActorResolver;
+import com.example.platform.shared.web.CommonErrorCode;
+import com.example.platform.shared.web.PlatformException;
 import com.example.platform.workflow.definition.api.dto.UserWorkflowDefinitionCreateRequest;
 import com.example.platform.workflow.definition.api.dto.UserWorkflowDefinitionDto;
 import com.example.platform.workflow.definition.api.dto.UserWorkflowDefinitionPublishRequest;
@@ -41,7 +43,7 @@ import static org.junit.jupiter.api.Assertions.*;
  *
  * <p>Covers: tenant owner/editor authorized; member without permission denied;
  * cross-tenant denied (surfaced as 404, no existence leak); publish requires
- * authorization; unauthenticated (no actor) proceeds (dev/test behavior).</p>
+ * authorization; unauthenticated requests fail closed.</p>
  */
 class UserWorkflowDefinitionAuthorizationTest {
 
@@ -125,17 +127,18 @@ class UserWorkflowDefinitionAuthorizationTest {
     }
 
     @Test
-    void noAuthenticatedActor_Proceeds_Unguarded() {
+    void noAuthenticatedActorFailsClosedBeforeAuthorizationOrMutation() {
         UserWorkflowDefinitionController c = new UserWorkflowDefinitionController(
                 service,
                 () -> Optional.empty(),
                 req -> {
-                    fail("authorization must not be invoked when no actor is present");
+                    fail("authorization port must not be invoked when authentication is absent");
                     return AuthorizationDecision.allow("RBAC");
                 });
 
-        var response = c.create("tenant-a", createRequest("wf"));
-        assertEquals(201, response.getStatusCode().value());
+        PlatformException failure = assertThrows(PlatformException.class,
+                () -> c.create("tenant-a", createRequest("wf")));
+        assertEquals(CommonErrorCode.AUTHENTICATION_REQUIRED, failure.getErrorCode());
     }
 
     private ControllerWithService controllerWith(CanonicalActor actor,

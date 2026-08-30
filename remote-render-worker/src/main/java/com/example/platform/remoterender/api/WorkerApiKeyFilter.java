@@ -18,7 +18,10 @@ public class WorkerApiKeyFilter implements Filter {
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
             throws IOException, ServletException {
         if (configuredApiKey == null || configuredApiKey.isBlank()) {
-            chain.doFilter(request, response);
+            HttpServletResponse httpResponse = (HttpServletResponse) response;
+            httpResponse.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
+            httpResponse.setContentType("application/json");
+            httpResponse.getWriter().write("{\"error\":\"Worker API key is not configured\"}");
             return;
         }
 

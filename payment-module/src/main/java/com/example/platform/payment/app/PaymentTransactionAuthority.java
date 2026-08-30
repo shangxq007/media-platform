@@ -5,6 +5,7 @@ import com.example.platform.payment.domain.BindProviderResultCommand;
 import com.example.platform.payment.domain.CheckoutResult;
 import com.example.platform.payment.domain.InitiateCheckoutCommand;
 import com.example.platform.payment.domain.PaymentProvider;
+import com.example.platform.payment.domain.PaymentProviderUnavailableException;
 import com.example.platform.payment.domain.PaymentState;
 import com.example.platform.payment.domain.PaymentTransaction;
 import com.example.platform.payment.domain.PaymentVerificationResult;
@@ -222,7 +223,7 @@ public class PaymentTransactionAuthority {
 
     private PaymentProvider requireProvider(String providerCode) {
         PaymentProvider provider = providers.get(providerCode);
-        if (provider == null) throw new IllegalArgumentException("Unknown payment provider: " + providerCode);
+        if (provider == null) throw new PaymentProviderUnavailableException(providerCode);
         return provider;
     }
 

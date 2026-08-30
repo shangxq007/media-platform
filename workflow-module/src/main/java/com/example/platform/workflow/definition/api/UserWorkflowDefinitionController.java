@@ -8,6 +8,8 @@ import com.example.platform.shared.authorization.AuthorizationRequest;
 import com.example.platform.shared.authorization.AuthorizationResourceType;
 import com.example.platform.shared.authorization.CanonicalActor;
 import com.example.platform.shared.authorization.CanonicalActorResolver;
+import com.example.platform.shared.web.CommonErrorCode;
+import com.example.platform.shared.web.PlatformException;
 import com.example.platform.shared.authorization.AuthorizableResourceRef;
 import com.example.platform.workflow.definition.api.dto.UserWorkflowDefinitionArchiveRequest;
 import com.example.platform.workflow.definition.api.dto.UserWorkflowDefinitionCreateRequest;
@@ -44,7 +46,6 @@ import org.springframework.web.bind.annotation.RestController;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 /**
  * W2 V1 public API — exactly the 9 frozen routes under /api
@@ -66,10 +67,8 @@ import java.util.Optional;
  * denial is surfaced as 404 (no existence leak), consistent with the service +
  * repository tenant scoping underneath.</p>
  *
- * <p>When no authenticated actor is present (e.g. the platform security filter
- * layer is disabled in dev/test profiles), authorization is skipped so the
- * existing unauthenticated behavior is preserved — an absent actor is never
- * treated as SYSTEM.</p>
+ * <p>Missing canonical actor context fails closed. Security-disabled HTTP mode
+ * does not grant workflow authority.</p>
  */
 @RestController
 @RequestMapping("/api")
@@ -98,22 +97,18 @@ public class UserWorkflowDefinitionController {
     /**
      * Enforce authorization for {@code action} on the given resource scope.
      *
-     * <p>If no authenticated actor resolves (security filter disabled), the call
-     * proceeds unguarded — preserving dev/test behavior. If an actor is present but
-     * denied, a {@link AuthorizationDeniedException} is thrown: a tenant-boundary
+     * <p>If no authenticated actor resolves, a typed authentication failure is thrown.
+     * If an actor is present but denied, an {@link AuthorizationDeniedException} is thrown: a tenant-boundary
      * (cross-tenant) denial is translated to the existing 404
      * {@code DEFINITION_NOT_FOUND} so existence is never leaked across tenants;
      * any other denial surfaces as 403.</p>
      */
     private void authorize(String tenantId, AuthorizationActions action, String resourceId) {
-        Optional<CanonicalActor> actor = actorResolver.resolveCurrentActor();
-        if (actor.isEmpty()) {
-            return;
-        }
+        CanonicalActor actor = requireActor();
         AuthorizableResourceRef resource = new AuthorizableResourceRef(
                 AuthorizationResourceType.WORKFLOW_DEFINITION, resourceId, tenantId);
         AuthorizationRequest request = new AuthorizationRequest(
-                actor.get(), action.action(), resource,
+                actor, action.action(), resource,
                 new AuthorizationContext("web"));
         try {
             authorizationPort.requireAuthorized(request);
@@ -339,11 +334,11 @@ public class UserWorkflowDefinitionController {
     }
 
     private String principalId() {
-        // Platform convention (audit-compliance-module AuditPortAdapter):
-        // actor priority = MDC principal > "system". The platform security
-        // filters (OAuth2RequestContextFilter / ApiKeyAuthFilter) populate MDC
-        // TraceKeys.PRINCIPAL with the authenticated subject on every request.
-        String principal = org.slf4j.MDC.get(com.example.platform.observability.app.TraceKeys.PRINCIPAL);
-        return principal != null && !principal.isBlank() ? principal : "system";
+        return requireActor().actorId();
+    }
+
+    private CanonicalActor requireActor() {
+        return actorResolver.resolveCurrentActor().orElseThrow(() ->
+                new PlatformException(CommonErrorCode.AUTHENTICATION_REQUIRED));
     }
 }

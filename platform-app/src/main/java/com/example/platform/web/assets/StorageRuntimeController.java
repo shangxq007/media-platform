@@ -19,7 +19,6 @@ public class StorageRuntimeController {
                 Map<String, Object> m = new java.util.LinkedHashMap<>();
                 m.put("storageReferenceId", r.storageReferenceId());
                 m.put("providerType", r.providerType());
-                m.put("path", r.absolutePath());
                 m.put("checksum", r.checksum() != null ? r.checksum() : "");
                 m.put("contentHash", r.contentHash() != null ? r.contentHash() : "");
                 m.put("fileSize", r.fileSize());

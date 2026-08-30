@@ -37,6 +37,24 @@ class EnabledAdminSecurityTest extends PostgresTestContainerSupport {
     @MockitoBean
     private JwtDecoder jwtDecoder;
 
+    @MockitoBean
+    private com.example.platform.analytics.scheduler.AnalyticsRebuildJob analyticsRebuildJob;
+
+    @MockitoBean
+    private com.example.platform.extension.runtime.PluginRuntime pluginRuntime;
+
+    @MockitoBean
+    private com.example.platform.billing.app.SubscriptionBillingService subscriptionBillingService;
+
+    @MockitoBean
+    private com.example.platform.render.infrastructure.remote.RemoteRenderDispatcher remoteRenderDispatcher;
+
+    @MockitoBean
+    private com.example.platform.render.app.product.ProductRuntimeService productRuntimeService;
+
+    @MockitoBean
+    private com.example.platform.notification.app.NotificationChannelBindingService notificationChannelBindingService;
+
     @Autowired
     private JwtProperties jwtProperties;
 
@@ -139,6 +157,41 @@ class EnabledAdminSecurityTest extends PostgresTestContainerSupport {
         HttpResponse<String> response = httpGet("/actuator/health", null);
         evidence.append(String.format("HEALTH: %d%n", response.statusCode()));
         Assertions.assertEquals(200, response.statusCode(), "Health should return 200");
+    }
+
+    @Test
+    void phaseZeroContainedRoutesRejectAnonymousAndOrdinaryUsersWithoutDispatch() throws Exception {
+        String[] paths = {
+            "/api/extensions/demo/execute",
+            "/api/analytics/internal/rebuild-profiles",
+            "/api/billing/cycles/process-due",
+            "/api/remote-worker/register",
+            "/api/products/product-1/dependencies",
+            "/api/me/notification-channels/binding-1/verify",
+        };
+
+        for (String path : paths) {
+            int anonymousStatus = httpPost(path, null, "{}").statusCode();
+            Assertions.assertTrue(anonymousStatus == 401 || anonymousStatus == 403,
+                    "Contained anonymous request must be rejected: " + path + " got " + anonymousStatus);
+
+            int userStatus = httpPost(path, jwtHelper.nonAdminToken(), "{}").statusCode();
+            Assertions.assertEquals(403, userStatus,
+                    "Contained ordinary-user request must be denied: " + path);
+        }
+
+        org.mockito.Mockito.verifyNoInteractions(analyticsRebuildJob, pluginRuntime,
+                subscriptionBillingService, remoteRenderDispatcher, productRuntimeService,
+                notificationChannelBindingService);
+    }
+
+    @Test
+    void removedFakeSchedulerAndNonMcpAliasReturn404ForAuthenticatedUser() throws Exception {
+        String token = jwtHelper.nonAdminToken();
+        Assertions.assertEquals(404,
+                httpPost("/api/internal/scheduler/run/demo", token, "{}").statusCode());
+        Assertions.assertEquals(404,
+                httpPost("/api/media/tools/render_timeline", token, "{}").statusCode());
     }
 
     // ========== Removed routes under security ==========

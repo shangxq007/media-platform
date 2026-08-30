@@ -5,10 +5,12 @@ import com.example.platform.notification.domain.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.context.annotation.Profile;
 
 import java.util.List;
 
 @Component
+@Profile("test")
 public class MockNotificationProvider implements NotificationProvider {
     private static final Logger log = LoggerFactory.getLogger(MockNotificationProvider.class);
 

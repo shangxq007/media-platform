@@ -3,6 +3,7 @@ package com.example.platform.payment.infrastructure;
 import com.example.platform.payment.app.PaymentTransactionAuthority;
 import com.example.platform.payment.domain.ApplyWebhookCommand;
 import com.example.platform.payment.domain.PaymentProvider;
+import com.example.platform.payment.domain.PaymentProviderUnavailableException;
 import com.example.platform.payment.domain.PaymentTransaction;
 import com.example.platform.payment.domain.WebhookParseResult;
 import java.nio.charset.StandardCharsets;
@@ -38,7 +39,7 @@ public class PaymentWebhookAdapter {
 
     public PaymentTransaction handle(String providerCode, Map<String, String> headers, String body) {
         PaymentProvider provider = providers.get(providerCode);
-        if (provider == null) throw new IllegalArgumentException("Unknown payment provider: " + providerCode);
+        if (provider == null) throw new PaymentProviderUnavailableException(providerCode);
         if (!webhookProperties.isAllowUnsigned() && !verifySignature(providerCode, headers, body)) {
             throw new IllegalArgumentException("Webhook signature validation failed for provider " + providerCode);
         }

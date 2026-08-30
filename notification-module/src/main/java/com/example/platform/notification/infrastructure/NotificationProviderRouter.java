@@ -5,7 +5,7 @@ import com.example.platform.notification.domain.DeliveryResult;
 import com.example.platform.notification.domain.NotificationProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -23,12 +23,12 @@ public class NotificationProviderRouter {
     private final MockNotificationProvider localProvider;
 
     public NotificationProviderRouter(List<NotificationProvider> providers,
-            @Autowired(required = false) NovuNotificationProvider novuProvider,
-            MockNotificationProvider localProvider) {
+            ObjectProvider<NovuNotificationProvider> novuProvider,
+            ObjectProvider<MockNotificationProvider> localProvider) {
         this.providerByCode = providers.stream()
                 .collect(Collectors.toMap(NotificationProvider::providerCode, Function.identity()));
-        this.novuProvider = novuProvider;
-        this.localProvider = localProvider;
+        this.novuProvider = novuProvider.getIfAvailable();
+        this.localProvider = localProvider.getIfAvailable();
     }
 
     public Optional<NotificationProvider> findByCode(String providerCode) {
@@ -50,8 +50,12 @@ public class NotificationProviderRouter {
         }
         
         // Fallback to local provider
-        log.debug("NotificationProviderRouter: falling back to local provider for channel={}", channel);
-        return localProvider.send(command);
+        if (localProvider != null) {
+            log.debug("NotificationProviderRouter: using test-only local provider for channel={}", channel);
+            return localProvider.send(command);
+        }
+        log.warn("NotificationProviderRouter: no accepting provider is configured for channel={}", channel);
+        return new DeliveryResult("FAILED", "{\"error\":\"NOTIFICATION_PROVIDER_UNAVAILABLE\"}");
     }
 
     private NotificationProvider findByChannel(String channel) {

@@ -27,6 +27,24 @@ import org.springframework.test.context.TestPropertySource;
 })
 class RealHttpSecurityBoundaryTest extends PostgresTestContainerSupport {
 
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private com.example.platform.analytics.scheduler.AnalyticsRebuildJob analyticsRebuildJob;
+
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private com.example.platform.extension.runtime.PluginRuntime pluginRuntime;
+
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private com.example.platform.billing.app.SubscriptionBillingService subscriptionBillingService;
+
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private com.example.platform.render.infrastructure.remote.RemoteRenderDispatcher remoteRenderDispatcher;
+
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private com.example.platform.render.app.product.ProductRuntimeService productRuntimeService;
+
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private com.example.platform.notification.app.NotificationChannelBindingService notificationChannelBindingService;
+
     @LocalServerPort
     private int port;
 
@@ -108,41 +126,77 @@ class RealHttpSecurityBoundaryTest extends PostgresTestContainerSupport {
     // ========== Cancel route ==========
 
     @Test
-    void cancelRoute_isRegistered() throws Exception {
+    void unscopedCancelRoute_isContained() throws Exception {
         HttpRequest request = HttpRequest.newBuilder()
             .uri(URI.create(baseUrl + "/api/render/jobs/nonexistent/cancel?tenantId=t1"))
             .POST(HttpRequest.BodyPublishers.noBody())
             .build();
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
         evidence.append(String.format("CANCEL: %d%n", response.statusCode()));
+        Assertions.assertEquals(403, response.statusCode());
     }
 
     // ========== Status-history route ==========
 
     @Test
-    void statusHistory_isRegistered() throws Exception {
+    void unscopedStatusHistory_isContained() throws Exception {
         HttpResponse<String> response = httpGetReq("/api/render/jobs/nonexistent/status-history?tenantId=t1");
         evidence.append(String.format("STATUS_HISTORY: %d%n", response.statusCode()));
+        Assertions.assertEquals(403, response.statusCode());
     }
 
     // ========== Job-scoped Artifact routes ==========
 
     @Test
-    void jobArtifacts_isRegistered() throws Exception {
+    void unscopedJobArtifacts_isContained() throws Exception {
         HttpResponse<String> response = httpGetReq("/api/render/jobs/nonexistent/artifacts");
         evidence.append(String.format("JOB_ARTIFACTS: %d%n", response.statusCode()));
+        Assertions.assertEquals(403, response.statusCode());
     }
 
     @Test
-    void jobArtifactContent_isRegistered() throws Exception {
+    void unscopedJobArtifactContent_isContained() throws Exception {
         HttpResponse<String> response = httpGetReq("/api/render/jobs/nonexistent/artifacts/aid1/content");
         evidence.append(String.format("JOB_ARTIFACT_CONTENT: %d%n", response.statusCode()));
+        Assertions.assertEquals(403, response.statusCode());
     }
 
     @Test
-    void jobArtifactAccess_isRegistered() throws Exception {
+    void unscopedJobArtifactAccess_isContained() throws Exception {
         HttpResponse<String> response = httpGetReq("/api/render/jobs/nonexistent/artifacts/aid1/access");
         evidence.append(String.format("JOB_ARTIFACT_ACCESS: %d%n", response.statusCode()));
+        Assertions.assertEquals(403, response.statusCode());
+    }
+
+    @Test
+    void phaseZeroContainedRoutesRemainDeniedWhenSecurityDisabledWithoutDispatch() throws Exception {
+        String[] paths = {
+            "/api/extensions/demo/execute",
+            "/api/analytics/internal/rebuild-profiles",
+            "/api/billing/cycles/process-due",
+            "/api/remote-worker/register",
+            "/api/products/product-1/dependencies",
+            "/api/me/notification-channels/binding-1/verify",
+        };
+        for (String path : paths) {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(baseUrl + path))
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString("{}"))
+                    .build();
+            Assertions.assertEquals(403,
+                    client.send(request, HttpResponse.BodyHandlers.ofString()).statusCode(), path);
+        }
+
+        org.mockito.Mockito.verifyNoInteractions(analyticsRebuildJob, pluginRuntime,
+                subscriptionBillingService, remoteRenderDispatcher, productRuntimeService,
+                notificationChannelBindingService);
+    }
+
+    @Test
+    void removedSchedulerAndNonMcpAliasStayAbsentWhenSecurityDisabled() throws Exception {
+        assertRemovedRoute("POST", "/api/internal/scheduler/run/demo");
+        assertRemovedRoute("POST", "/api/media/tools/render_timeline");
     }
 
     // ========== Dev routes — should be absent under test/preview ==========

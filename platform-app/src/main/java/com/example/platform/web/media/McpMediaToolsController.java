@@ -62,7 +62,7 @@ import org.springframework.web.bind.annotation.RestController;
  * MCP+ fine-grained media tools (whitelist; no arbitrary shell).
  */
 @RestController
-@RequestMapping({"/api/media/tools", "/api/mcp/media/tools"})
+@RequestMapping("/api/mcp/media/tools")
 @Tag(name = "MCP Media Tools", description = "细粒度 MCP 媒体工具")
 public class McpMediaToolsController {
 

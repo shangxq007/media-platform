@@ -14,11 +14,6 @@ public class SchedulerController {
         this.service = service;
     }
 
-    @PostMapping("/internal/scheduler/run/{jobKey}")
-    public Map<String, String> runJob(@PathVariable String jobKey) {
-        return Map.of("jobKey", jobKey, "status", "TRIGGERED");
-    }
-
     @GetMapping("/scheduler/overview")
     public Map<String, Object> overview() {
         return service.overview();

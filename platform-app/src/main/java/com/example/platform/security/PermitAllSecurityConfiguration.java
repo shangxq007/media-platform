@@ -11,8 +11,8 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfigurationSource;
 
 /**
- * When JWT security is disabled ({@code app.security.enabled=false}), still register an
- * explicit permit-all chain so Spring Boot does not fall back to HTTP Basic (401 on API calls).
+ * When JWT security is disabled ({@code app.security.enabled=false}), register an explicit
+ * local-development chain. Phase-0 contained routes remain denied in this mode.
  */
 @Configuration
 @EnableWebSecurity
@@ -31,7 +31,10 @@ public class PermitAllSecurityConfiguration {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .csrf(AbstractHttpConfigurer::disable)
-                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
+                .authorizeHttpRequests(auth -> {
+                    PhaseZeroContainmentPolicy.apply(auth);
+                    auth.anyRequest().permitAll();
+                });
         return http.build();
     }
 }
