@@ -26,6 +26,28 @@ import org.springframework.stereotype.Service;
 @Service
 public class InternalTimelineValidationService {
 
+    /**
+     * Typed application-layer validation entry point for an already-hydrated
+     * canonical document. This keeps canonical acceptance authority inside
+     * Timeline while allowing Operation application coordination to preview
+     * the exact candidate without a JSON round trip.
+     */
+    public TimelineValidationResult validateDocument(
+            String timelineId,
+            com.example.platform.timeline.canonical.TimelineDocument document) {
+        TimelineCandidate candidate = TimelineDocumentCandidateMapper.map(timelineId, document);
+        TimelineValidationResult validation = TimelineCanonicalValidator.validate(candidate);
+        if (!validation.hasFatalErrors()
+                && TimelineCanonicalNormalizer.normalize(candidate).isEmpty()) {
+            return TimelineValidationResult.of(List.of(TimelineDiagnostic.error(
+                    com.example.platform.timeline.canonicalmodel.TimelineDiagnosticCode
+                            .TIMELINE_CONSTRUCT_UNSUPPORTED,
+                    com.example.platform.timeline.canonicalmodel.TimelineModelPath.root(),
+                    timelineId, "Timeline candidate is not canonical-normalizable")));
+        }
+        return validation;
+    }
+
     /** Timeline-owned validation result (endpoint-friendly shape). */
     public record InternalTimelineValidationResult(
             boolean valid,

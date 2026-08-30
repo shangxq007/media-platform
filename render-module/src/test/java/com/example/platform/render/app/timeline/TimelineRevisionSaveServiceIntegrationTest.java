@@ -14,6 +14,7 @@ import com.example.platform.timeline.canonical.TrackType;
 import com.example.platform.timeline.canonicalmodel.TimelineDiagnosticCode;
 import com.example.platform.timeline.version.TimelineRevision;
 import com.example.platform.timeline.version.TimelineConflictException;
+import com.example.platform.timeline.revisioncommand.RevisionRef;
 import com.example.platform.render.testsupport.RenderTestSchemaFixture;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import java.time.Duration;
@@ -23,6 +24,7 @@ import javax.sql.DataSource;
 import org.jooq.DSLContext;
 import org.jooq.impl.DSL;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,6 +35,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSupport {
 
+    private static final String TENANT = "tenant-timeline-save-it";
     private static DataSource dataSource;
     private static DSLContext dsl;
     private TimelineRevisionSaveService saveService;
@@ -43,6 +46,20 @@ class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSu
         dataSource = createDataSource();
         dsl = DSL.using(dataSource, org.jooq.SQLDialect.POSTGRES);
         RenderTestSchemaFixture.createSchema(dsl);
+        dsl.execute("""
+                create table if not exists apply_command (
+                    apply_command_id varchar(64) primary key,
+                    plan_digest varchar(64) not null,
+                    fingerprint varchar(64) not null,
+                    status varchar(16) not null,
+                    result_revision_id varchar(64),
+                    result_content_hash varchar(64),
+                    result_status varchar(16),
+                    project_id varchar(64),
+                    command_domain varchar(32) not null,
+                    created_at timestamp not null default current_timestamp,
+                    completed_at timestamp)
+                """);
     }
 
     @AfterAll
@@ -53,11 +70,18 @@ class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSu
     @BeforeEach
     void setUp() {
         RenderTestSchemaFixture.truncate(dsl);
+        dsl.execute("delete from apply_command");
+        com.example.platform.shared.web.TenantContext.set(TENANT);
         currentRevisionService = new ProductCurrentRevisionService(dsl);
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService, new TimelineContentDigester(),
                 new com.example.platform.timeline.adapter.TimelineSnapshotService(dsl),
                 org.mockito.Mockito.mock(com.example.platform.timeline.app.TimelineArtifactPinValidator.class),
                 org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class), effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new ProductCurrentRevisionHeadUpdateAdapter(currentRevisionService));
+    }
+
+    @AfterEach
+    void clearTenant() {
+        com.example.platform.shared.web.TenantContext.clear();
     }
 
     @Test
@@ -151,6 +175,75 @@ class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSu
         // Same content should produce same digest
         assertNotNull(rev1.contentDigest());
         assertNotNull(rev2.contentDigest());
+    }
+
+    @Test
+    void operationCommandIsAtomicDurableAndReplaysExactlyOneCanonicalRevision() {
+        String productId = "prod-operation-" + java.util.UUID.randomUUID();
+        insertProduct(productId);
+        TimelineDocument base = new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
+                List.of(new TimelineTrack("video-1", "Main", TrackType.VIDEO, List.of())),
+                TimelineMetadata.empty());
+        TimelineRevision root = saveService.saveRevision(productId, null, base, "editor");
+        dsl.execute("insert into timeline_revision_ref (project_id, ref_id, head_revision_id) "
+                + "values (?, ?, ?)", productId, RevisionRef.MAIN_REF, root.revisionId());
+        // Operation execution may move to a worker without request ThreadLocal
+        // propagation. Its immutable command must carry the authorized tenant.
+        com.example.platform.shared.web.TenantContext.clear();
+
+        String digest = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+        TimelineClip added = new TimelineClip(
+                "clip-S-10-20", "media-S", "stream-S-video", "artifact-S-v1", digest,
+                MediaTime.ZERO, MediaTime.ofRational(10, 1),
+                MediaTime.ofRational(10, 1), MediaTime.ofRational(20, 1),
+                "MEDIA_STREAM",
+                com.example.platform.timeline.semantics.temporal.ConstantRateTemporalMapping.of(
+                        1, 1,
+                        com.example.platform.timeline.semantics.temporal.PlaybackDirection.FORWARD));
+        TimelineDocument candidate = new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
+                List.of(new TimelineTrack("video-1", "Main", TrackType.VIDEO, List.of(added))),
+                TimelineMetadata.empty());
+
+        var pinValidator = org.mockito.Mockito.mock(
+                com.example.platform.timeline.app.TimelineArtifactPinValidator.class);
+        org.mockito.Mockito.when(pinValidator.validate(
+                        org.mockito.ArgumentMatchers.eq(TENANT),
+                        org.mockito.ArgumentMatchers.anyList()))
+                .thenReturn(new com.example.platform.timeline.app.TimelineArtifactPinValidator
+                        .ValidationResult(true, List.of()));
+        var commandSave = new TimelineRevisionSaveService(
+                dsl, currentRevisionService, new TimelineContentDigester(),
+                new com.example.platform.timeline.adapter.TimelineSnapshotService(dsl),
+                pinValidator,
+                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class),
+                effectAuthority(), revisionSemanticContextStore(),
+                new DefaultTimelineRevisionPersistence(),
+                new ProductCurrentRevisionHeadUpdateAdapter(currentRevisionService));
+        var command = new TimelineRevisionSaveService.RevisionWriteCommand(
+                "apply-H7-durable", "plan-digest-H7", "fingerprint-H7", "OPERATION_PLAN", TENANT);
+
+        var first = commandSave.saveRevisionForCommand(
+                RevisionRef.main(productId), root.revisionId(), candidate, "editor", command);
+        var replay = commandSave.saveRevisionForCommand(
+                RevisionRef.main(productId), root.revisionId(), candidate, "editor", command);
+
+        assertFalse(first.replayed());
+        assertTrue(replay.replayed());
+        assertEquals(first.revisionId(), replay.revisionId());
+        assertEquals(new TimelineContentDigester().digest(candidate), first.timelineContentHash());
+        assertEquals(2L, dsl.selectCount().from(TIMELINE_REVISION)
+                .where(TIMELINE_REVISION.PROJECT_ID.eq(productId)).fetchOne(0, Long.class));
+        assertEquals(1, dsl.fetchOne(
+                "select count(*) from apply_command where apply_command_id = 'apply-H7-durable'")
+                .get(0, Integer.class));
+
+        var conflict = new TimelineRevisionSaveService.RevisionWriteCommand(
+                "apply-H7-durable", "different-plan", "different-fingerprint", "OPERATION_PLAN", TENANT);
+        assertThrows(com.example.platform.timeline.app.TimelineRevisionCommandConflictException.class,
+                () -> commandSave.saveRevisionForCommand(
+                        RevisionRef.main(productId), root.revisionId(), candidate, "editor", conflict));
+        assertEquals(2L, dsl.selectCount().from(TIMELINE_REVISION)
+                .where(TIMELINE_REVISION.PROJECT_ID.eq(productId)).fetchOne(0, Long.class));
     }
 
     // ---- NDSF-SCOPE-E1 canonical save gate extension (allowlist #6) ----
@@ -285,6 +378,7 @@ class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSu
                 .set(PRODUCT.PRODUCT_TYPE, "video")
                 .set(PRODUCT.REPRESENTATION_KIND, "master")
                 .set(PRODUCT.STATUS, "REGISTERED")
+                .set(PRODUCT.TENANT_ID, TENANT)
                 .set(PRODUCT.CREATED_AT, java.time.LocalDateTime.now())
                 .set(PRODUCT.UPDATED_AT, java.time.LocalDateTime.now())
                 .execute();

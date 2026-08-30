@@ -3,6 +3,7 @@ package com.example.platform.render.app.revisioncommand;
 import com.example.platform.timeline.adapter.RevisionCommandApplyService;
 import com.example.platform.timeline.adapter.RevisionGraphService;
 import com.example.platform.timeline.app.RevisionCommandPlanner;
+import com.example.platform.timeline.app.ProjectRevisionNumberAllocator;
 import com.example.platform.timeline.revisioncommand.RevisionCommandErrorCode;
 import com.example.platform.timeline.revisioncommand.RevisionCommandException;
 import com.example.platform.timeline.revisioncommand.RevisionCommandPlan;
@@ -116,11 +117,11 @@ class RevisionCommandConcurrencyIT {
                         references timeline_revision(project_id, id)
                 )""");
         dsl.execute("create table project_revision_counter (project_id varchar(64) primary key, next_revision_number bigint not null)");
-        dsl.execute("create table timeline_snapshot (id varchar(64) primary key, payload text)");
-        dsl.execute("insert into timeline_snapshot (id, payload) values ('snap_trevR100', '{\"id\":\"R100\"}')");
-        dsl.execute("insert into timeline_snapshot (id, payload) values ('snap_trevR90', '{\"id\":\"R90\"}')");
-        dsl.execute("insert into timeline_snapshot (id, payload) values ('snap_trevR50', '{\"id\":\"R50\"}')");
-        dsl.execute("insert into timeline_snapshot (id, payload) values ('snap_trevR7', '{\"id\":\"R7\"}')");
+        dsl.execute("create table timeline_snapshot (id varchar(64) primary key, payload_json text)");
+        dsl.execute("insert into timeline_snapshot (id, payload_json) values ('snap_trevR100', '{\"id\":\"R100\"}')");
+        dsl.execute("insert into timeline_snapshot (id, payload_json) values ('snap_trevR90', '{\"id\":\"R90\"}')");
+        dsl.execute("insert into timeline_snapshot (id, payload_json) values ('snap_trevR50', '{\"id\":\"R50\"}')");
+        dsl.execute("insert into timeline_snapshot (id, payload_json) values ('snap_trevR7', '{\"id\":\"R7\"}')");
         // seed revisions R100 (project-1), R90 (project-1), R50 (project-1), R7 (project-2)
         seedRevision("trevR100", P1, null, 100, "h100");
         seedRevision("trevR90", P1, null, 90, "h90");
@@ -499,26 +500,16 @@ class RevisionCommandConcurrencyIT {
             Future<?> f1 = pool.submit(() -> {
                 go.await();
                 var d = DSL.using(PG.getJdbcUrl(), PG.getUsername(), PG.getPassword());
-                Long n = d.transactionResult(tx -> {
-                    tx.dsl().execute("insert into project_revision_counter (project_id, next_revision_number) "
-                            + "values ('p3', 1) on conflict (project_id) do nothing");
-                    return tx.dsl().fetchOne("update project_revision_counter set next_revision_number = "
-                            + "next_revision_number + 1 where project_id = 'p3' returning next_revision_number")
-                            .get(0, Long.class);
-                });
+                Long n = d.transactionResult(tx ->
+                        new ProjectRevisionNumberAllocator().allocate(tx.dsl(), "p3"));
                 allocated.add(n);
                 return null;
             });
             Future<?> f2 = pool.submit(() -> {
                 go.await();
                 var d = DSL.using(PG.getJdbcUrl(), PG.getUsername(), PG.getPassword());
-                Long n = d.transactionResult(tx -> {
-                    tx.dsl().execute("insert into project_revision_counter (project_id, next_revision_number) "
-                            + "values ('p3', 1) on conflict (project_id) do nothing");
-                    return tx.dsl().fetchOne("update project_revision_counter set next_revision_number = "
-                            + "next_revision_number + 1 where project_id = 'p3' returning next_revision_number")
-                            .get(0, Long.class);
-                });
+                Long n = d.transactionResult(tx ->
+                        new ProjectRevisionNumberAllocator().allocate(tx.dsl(), "p3"));
                 allocated.add(n);
                 return null;
             });

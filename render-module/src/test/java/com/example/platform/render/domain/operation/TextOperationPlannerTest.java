@@ -139,15 +139,80 @@ class TextOperationPlannerTest {
 
     @Test
     void allNineDefinitionsExistAndAreTyped() {
-        for (OperationDefinition def : List.of(
+        List<OperationDefinition> textDefinitions = List.of(
                 OperationDefinition.V1.ADD_TEXT_ELEMENT, OperationDefinition.V1.REMOVE_TEXT_ELEMENT,
                 OperationDefinition.V1.REPLACE_TEXT_CONTENT, OperationDefinition.V1.SET_TEXT_STYLE_RANGE,
                 OperationDefinition.V1.SET_PARAGRAPH_STYLE, OperationDefinition.V1.SET_FONT_SELECTION,
                 OperationDefinition.V1.SET_FONT_FALLBACK_POLICY, OperationDefinition.V1.SET_VARIABLE_FONT_AXIS,
-                OperationDefinition.V1.SET_TEXT_LAYOUT)) {
+                OperationDefinition.V1.SET_TEXT_LAYOUT);
+        Set<String> expectedTextKeys = Set.of(
+                "timeline.text.add@1.0",
+                "timeline.text.remove@1.0",
+                "timeline.text.replace-content@1.0",
+                "timeline.text.set-style-range@1.0",
+                "timeline.text.set-paragraph-style@1.0",
+                "timeline.text.set-font-selection@1.0",
+                "timeline.text.set-fallback-policy@1.0",
+                "timeline.text.set-variable-axis@1.0",
+                "timeline.text.set-layout@1.0");
+        Set<String> expectedRegistryKeys = Set.of(
+                "timeline.media-clip.add-or-trim@1.0",
+                "timeline.move@1.0",
+                "timeline.delete@1.0",
+                "timeline.trim@1.0",
+                "timeline.temporal.set-rate@1.0",
+                "timeline.temporal.set-direction@1.0",
+                "timeline.temporal.freeze@1.0",
+                "audio.gain.set@1.0",
+                "audio.mute.set@1.0",
+                "audio.balance.set@1.0",
+                "timeline.group.create@1.0",
+                "timeline.group.update-members@1.0",
+                "timeline.group.remove@1.0",
+                "timeline.sync.create@1.0",
+                "timeline.sync.update-anchor@1.0",
+                "timeline.sync.remove@1.0",
+                "timeline.text.add@1.0",
+                "timeline.text.remove@1.0",
+                "timeline.text.replace-content@1.0",
+                "timeline.text.set-style-range@1.0",
+                "timeline.text.set-paragraph-style@1.0",
+                "timeline.text.set-font-selection@1.0",
+                "timeline.text.set-fallback-policy@1.0",
+                "timeline.text.set-variable-axis@1.0",
+                "timeline.text.set-layout@1.0");
+
+        Set<String> actualTextKeys = new java.util.HashSet<>();
+        for (OperationDefinition def : textDefinitions) {
             assertEquals(OperationDefinition.TargetKind.TEXT, def.targetKind());
+            assertNotNull(def.parameterType());
+            actualTextKeys.add(def.definitionId().value() + "@" + def.version());
         }
-        assertEquals(24, OperationDefinition.V1.ALL.size(), "15 frozen + 9 text = 24");
+        assertEquals(expectedTextKeys, actualTextKeys);
+
+        List<String> actualRegistryKeys = OperationDefinition.V1.ALL.stream()
+                .map(def -> def.definitionId().value() + "@" + def.version())
+                .toList();
+        Set<String> uniqueRegistryKeys = new java.util.HashSet<>(actualRegistryKeys);
+        assertEquals(actualRegistryKeys.size(), uniqueRegistryKeys.size(),
+                "operation registry must not contain duplicate stable keys");
+        assertEquals(expectedRegistryKeys, uniqueRegistryKeys,
+                "operation registry must match the exact accepted stable-key inventory");
+        assertTrue(uniqueRegistryKeys.contains("timeline.media-clip.add-or-trim@1.0"),
+                "accepted H7 operation must remain registered");
+
+        long unclassifiedDefinitions = OperationDefinition.V1.ALL.stream()
+                .filter(def -> def.parameterType() == null || def.targetKind() == null || def.lifecycle() == null)
+                .count();
+        assertEquals(0L, unclassifiedDefinitions,
+                "every operation definition must be typed and classifiable");
+        for (OperationDefinition def : OperationDefinition.V1.ALL) {
+            assertNotNull(def.parameterType(), "every operation definition must have a parameter type");
+            assertNotNull(def.targetKind(), "every operation definition must have a target kind");
+            assertNotNull(def.lifecycle(), "every operation definition must have a lifecycle");
+        }
+        assertEquals(25, OperationDefinition.V1.ALL.size(),
+                "15 previous frozen non-text + 9 text + 1 accepted H7 = 25");
     }
 
     @Test
