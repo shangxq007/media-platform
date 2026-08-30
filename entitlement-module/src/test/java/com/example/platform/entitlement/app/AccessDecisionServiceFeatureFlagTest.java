@@ -4,7 +4,9 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import com.example.platform.entitlement.domain.*;
+import com.example.platform.entitlement.domain.QuotaUsageQuery;
 import com.example.platform.policy.featureflag.domain.*;
+import com.example.platform.shared.commercial.CommercialDecisionReason;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -21,13 +23,25 @@ class AccessDecisionServiceFeatureFlagTest {
 
     @BeforeEach
     void setUp() {
-        EntitlementPolicyService policyService = new EntitlementPolicyService(java.util.Optional.empty(), java.util.Optional.empty());
+        EntitlementPolicyService policyService = new EntitlementPolicyService(java.util.Optional.empty());
+        EntitlementService entitlements = mock(EntitlementService.class);
+        when(entitlements.listGrants(any())).thenReturn(List.of(
+                grant("export.preset.default_1080p"), grant("render.job.create")));
         entitlementDecisionService = new EntitlementDecisionService(
-                policyService, java.util.Optional.empty(), java.util.Optional.empty(),
-                java.util.Optional.empty(), java.util.Optional.empty(), java.util.Optional.empty());
+                policyService, entitlements, java.util.Optional.empty(),
+                java.util.Optional.empty(), java.util.Optional.empty());
         QuotaPolicyService quotaPolicyService = new QuotaPolicyService();
-        QuotaUsageService quotaUsageService = new QuotaUsageService(java.util.Optional.empty());
-        quotaDecisionService = new QuotaDecisionService(quotaPolicyService, quotaUsageService);
+        QuotaUsageAuthority quotaUsageAuthority = mock(QuotaUsageAuthority.class);
+        when(quotaUsageAuthority.decide(any(QuotaUsageQuery.class))).thenAnswer(invocation -> {
+            QuotaUsageQuery query = invocation.getArgument(0);
+            boolean allowed = query.requestedUnits() <= query.limitUnits();
+            return new com.example.platform.shared.commercial.QuotaDecision(
+                    query.principal(), query.quotaKey(), query.requestedUnits(),
+                    query.limitUnits(), 0, allowed,
+                    allowed ? CommercialDecisionReason.ALLOWED : CommercialDecisionReason.QUOTA_EXCEEDED,
+                    java.util.List.of(), "quota-usage-v1", query.traceId(), query.decidedAt());
+        });
+        quotaDecisionService = new QuotaDecisionService(quotaPolicyService, quotaUsageAuthority);
         featureFlagService = mock(AccessDecisionFeatureFlagService.class);
         accessDecisionService = new AccessDecisionService(
                 entitlementDecisionService, quotaDecisionService, featureFlagService);
@@ -39,7 +53,7 @@ class AccessDecisionServiceFeatureFlagTest {
                 "tenant-enterprise", null, "user-1",
                 "TENANT", "tenant-enterprise",
                 "export", "export", null,
-                "default_1080p", "default_1080p", null,
+                "export.preset.default_1080p", "default_1080p", null,
                 "api", null, Map.of());
 
         FeatureFlagDecision ffDecision = new FeatureFlagDecision(
@@ -67,7 +81,7 @@ class AccessDecisionServiceFeatureFlagTest {
                 "tenant-1", null, "user-1",
                 "TENANT", "tenant-1",
                 "export", "export", null,
-                "gpu_h264", "gpu_h264", null,
+                "export.preset.gpu_h264", "gpu_h264", null,
                 "api", null, Map.of());
 
         FeatureFlagDecision ffDecision = new FeatureFlagDecision(
@@ -110,7 +124,7 @@ class AccessDecisionServiceFeatureFlagTest {
                 "tenant-enterprise", null, "user-1",
                 "TENANT", "tenant-enterprise",
                 "render", "render", null,
-                "default_1080p", "render.job.create", null,
+                "render.job.create", null, null,
                 "api", 100L, Map.of());
 
         AccessDecisionFeatureFlagService.FeatureFlagAccessResult ffResult =
@@ -131,7 +145,7 @@ class AccessDecisionServiceFeatureFlagTest {
                 "tenant-1", null, "user-1",
                 "TENANT", "tenant-1",
                 "export", "export", null,
-                "free_720p_watermarked", "free_720p_watermarked", null,
+                "export.preset.free_720p_watermarked", "free_720p_watermarked", null,
                 "api", null, Map.of());
 
         AccessDecisionFeatureFlagService.FeatureFlagAccessResult ffResult =
@@ -142,5 +156,10 @@ class AccessDecisionServiceFeatureFlagTest {
         EntitlementDecision decision = accessDecisionService.evaluateEntitlement(request);
         assertNotNull(decision);
         assertNotNull(decision.currentTier());
+    }
+
+    private static EntitlementGrantView grant(String key) {
+        return new EntitlementGrantView("grant-" + key, null, key, null,
+                "TEST", "test", "ACTIVE", null, null, 1, false);
     }
 }

@@ -15,18 +15,23 @@ public class NoopStripePaymentProvider implements PaymentProvider {
     }
 
     @Override
-    public CheckoutResult createCheckout(CheckoutCommand command) {
+    public CheckoutResult createCheckout(InitiateCheckoutCommand command) {
         String reference = "stripe-" + command.checkoutSessionId();
         return new CheckoutResult(reference, command.successUrl() != null ? command.successUrl() : "/checkout/success");
     }
 
     @Override
-    public PaymentVerificationResult verifyPayment(VerifyPaymentCommand command) {
-        return new PaymentVerificationResult(true, "succeeded", "paid");
+    public PaymentVerificationResult verifyPayment(ProviderVerificationRequest command) {
+        return new PaymentVerificationResult(true, "succeeded", PaymentState.SETTLED);
+    }
+
+    @Override
+    public ProviderRefundResult refund(ProviderRefundRequest command) {
+        return new ProviderRefundResult(true, "stripe-refund-" + command.idempotencyKey(), "succeeded");
     }
 
     @Override
     public WebhookParseResult parseWebhook(Map<String, String> headers, String body) {
-        return WebhookPayloadSupport.parseCommerceWebhook(body, "stripe-demo");
+        return WebhookPayloadSupport.parseCommerceWebhook(body);
     }
 }

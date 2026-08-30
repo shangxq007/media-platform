@@ -63,31 +63,131 @@ public class CommerceCartLineRecord extends UpdatableRecordImpl<CommerceCartLine
     }
 
     /**
+     * Setter for <code>public.commerce_cart_line.product_id</code>.
+     */
+    public void setProductId(String value) {
+        set(3, value);
+    }
+
+    /**
+     * Getter for <code>public.commerce_cart_line.product_id</code>.
+     */
+    public String getProductId() {
+        return (String) get(3);
+    }
+
+    /**
+     * Setter for <code>public.commerce_cart_line.offering_id</code>.
+     */
+    public void setOfferingId(String value) {
+        set(4, value);
+    }
+
+    /**
+     * Getter for <code>public.commerce_cart_line.offering_id</code>.
+     */
+    public String getOfferingId() {
+        return (String) get(4);
+    }
+
+    /**
+     * Setter for <code>public.commerce_cart_line.offering_version</code>.
+     */
+    public void setOfferingVersion(Long value) {
+        set(5, value);
+    }
+
+    /**
+     * Getter for <code>public.commerce_cart_line.offering_version</code>.
+     */
+    public Long getOfferingVersion() {
+        return (Long) get(5);
+    }
+
+    /**
+     * Setter for <code>public.commerce_cart_line.commercial_price_ref</code>.
+     */
+    public void setCommercialPriceRef(String value) {
+        set(6, value);
+    }
+
+    /**
+     * Getter for <code>public.commerce_cart_line.commercial_price_ref</code>.
+     */
+    public String getCommercialPriceRef() {
+        return (String) get(6);
+    }
+
+    /**
+     * Setter for
+     * <code>public.commerce_cart_line.commercial_price_version</code>.
+     */
+    public void setCommercialPriceVersion(Long value) {
+        set(7, value);
+    }
+
+    /**
+     * Getter for
+     * <code>public.commerce_cart_line.commercial_price_version</code>.
+     */
+    public Long getCommercialPriceVersion() {
+        return (Long) get(7);
+    }
+
+    /**
+     * Setter for <code>public.commerce_cart_line.amount_minor_snapshot</code>.
+     */
+    public void setAmountMinorSnapshot(Long value) {
+        set(8, value);
+    }
+
+    /**
+     * Getter for <code>public.commerce_cart_line.amount_minor_snapshot</code>.
+     */
+    public Long getAmountMinorSnapshot() {
+        return (Long) get(8);
+    }
+
+    /**
+     * Setter for <code>public.commerce_cart_line.currency_code_snapshot</code>.
+     */
+    public void setCurrencyCodeSnapshot(String value) {
+        set(9, value);
+    }
+
+    /**
+     * Getter for <code>public.commerce_cart_line.currency_code_snapshot</code>.
+     */
+    public String getCurrencyCodeSnapshot() {
+        return (String) get(9);
+    }
+
+    /**
      * Setter for <code>public.commerce_cart_line.quantity</code>.
      */
     public void setQuantity(Integer value) {
-        set(3, value);
+        set(10, value);
     }
 
     /**
      * Getter for <code>public.commerce_cart_line.quantity</code>.
      */
     public Integer getQuantity() {
-        return (Integer) get(3);
+        return (Integer) get(10);
     }
 
     /**
      * Setter for <code>public.commerce_cart_line.created_at</code>.
      */
     public void setCreatedAt(LocalDateTime value) {
-        set(4, value);
+        set(11, value);
     }
 
     /**
      * Getter for <code>public.commerce_cart_line.created_at</code>.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(4);
+        return (LocalDateTime) get(11);
     }
 
     // -------------------------------------------------------------------------
@@ -113,12 +213,19 @@ public class CommerceCartLineRecord extends UpdatableRecordImpl<CommerceCartLine
     /**
      * Create a detached, initialised CommerceCartLineRecord
      */
-    public CommerceCartLineRecord(String id, String cartId, String productCode, Integer quantity, LocalDateTime createdAt) {
+    public CommerceCartLineRecord(String id, String cartId, String productCode, String productId, String offeringId, Long offeringVersion, String commercialPriceRef, Long commercialPriceVersion, Long amountMinorSnapshot, String currencyCodeSnapshot, Integer quantity, LocalDateTime createdAt) {
         super(CommerceCartLine.COMMERCE_CART_LINE);
 
         setId(id);
         setCartId(cartId);
         setProductCode(productCode);
+        setProductId(productId);
+        setOfferingId(offeringId);
+        setOfferingVersion(offeringVersion);
+        setCommercialPriceRef(commercialPriceRef);
+        setCommercialPriceVersion(commercialPriceVersion);
+        setAmountMinorSnapshot(amountMinorSnapshot);
+        setCurrencyCodeSnapshot(currencyCodeSnapshot);
         setQuantity(quantity);
         setCreatedAt(createdAt);
         resetChangedOnNotNull();

@@ -1,10 +1,13 @@
 package com.example.platform.federation.graphql.dataloader;
 
 import com.example.platform.billing.app.UsageMeteringService;
-import com.example.platform.billing.usage.UsageDimension;
-import com.example.platform.billing.usage.UsageQuantity;
+import com.example.platform.billing.usage.BillableUsage;
+import com.example.platform.billing.usage.MeteringTransformationKind;
+import com.example.platform.shared.usage.CanonicalActorRef;
+import com.example.platform.shared.usage.UsageDimension;
+import com.example.platform.shared.usage.UsageQuantity;
 import com.example.platform.billing.usage.UsageRecord;
-import com.example.platform.billing.usage.UsageUnit;
+import com.example.platform.shared.usage.UsageUnit;
 import com.example.platform.shared.web.TenantContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -40,10 +43,13 @@ class BillingUsageDataLoaderTest {
             case BYTE -> UsageDimension.BYTE_STORED;
             default -> UsageDimension.REQUEST;
         };
-        return new UsageRecord(
-                recordId, tenantId, null, null, null, null, null, null,
-                dimension, new UsageQuantity(quantity, canonicalUnit),
-                NOW, NOW, NOW, null, "REPORTED", "test");
+        UsageQuantity typedQuantity = new UsageQuantity(quantity, canonicalUnit);
+        return new BillableUsage(
+                recordId, tenantId, new CanonicalActorRef("user-1", "USER"),
+                "observed-" + recordId, dimension, typedQuantity, meterKey, dimension,
+                typedQuantity, "meter-rule", "v1", MeteringTransformationKind.IDENTITY,
+                "identity", NOW, NOW, "idem-" + recordId, "trace-1",
+                "observed-" + recordId);
     }
 
     @BeforeEach

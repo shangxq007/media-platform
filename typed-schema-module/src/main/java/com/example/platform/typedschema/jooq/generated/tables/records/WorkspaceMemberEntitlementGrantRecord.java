@@ -36,10 +36,26 @@ public class WorkspaceMemberEntitlementGrantRecord extends UpdatableRecordImpl<W
 
     /**
      * Setter for
+     * <code>public.workspace_member_entitlement_grant.tenant_id</code>.
+     */
+    public void setTenantId(String value) {
+        set(1, value);
+    }
+
+    /**
+     * Getter for
+     * <code>public.workspace_member_entitlement_grant.tenant_id</code>.
+     */
+    public String getTenantId() {
+        return (String) get(1);
+    }
+
+    /**
+     * Setter for
      * <code>public.workspace_member_entitlement_grant.workspace_id</code>.
      */
     public void setWorkspaceId(String value) {
-        set(1, value);
+        set(2, value);
     }
 
     /**
@@ -47,7 +63,23 @@ public class WorkspaceMemberEntitlementGrantRecord extends UpdatableRecordImpl<W
      * <code>public.workspace_member_entitlement_grant.workspace_id</code>.
      */
     public String getWorkspaceId() {
-        return (String) get(1);
+        return (String) get(2);
+    }
+
+    /**
+     * Setter for
+     * <code>public.workspace_member_entitlement_grant.principal_type</code>.
+     */
+    public void setPrincipalType(String value) {
+        set(3, value);
+    }
+
+    /**
+     * Getter for
+     * <code>public.workspace_member_entitlement_grant.principal_type</code>.
+     */
+    public String getPrincipalType() {
+        return (String) get(3);
     }
 
     /**
@@ -55,7 +87,7 @@ public class WorkspaceMemberEntitlementGrantRecord extends UpdatableRecordImpl<W
      * <code>public.workspace_member_entitlement_grant.member_id</code>.
      */
     public void setMemberId(String value) {
-        set(2, value);
+        set(4, value);
     }
 
     /**
@@ -63,7 +95,7 @@ public class WorkspaceMemberEntitlementGrantRecord extends UpdatableRecordImpl<W
      * <code>public.workspace_member_entitlement_grant.member_id</code>.
      */
     public String getMemberId() {
-        return (String) get(2);
+        return (String) get(4);
     }
 
     /**
@@ -71,7 +103,7 @@ public class WorkspaceMemberEntitlementGrantRecord extends UpdatableRecordImpl<W
      * <code>public.workspace_member_entitlement_grant.feature_key</code>.
      */
     public void setFeatureKey(String value) {
-        set(3, value);
+        set(5, value);
     }
 
     /**
@@ -79,7 +111,7 @@ public class WorkspaceMemberEntitlementGrantRecord extends UpdatableRecordImpl<W
      * <code>public.workspace_member_entitlement_grant.feature_key</code>.
      */
     public String getFeatureKey() {
-        return (String) get(3);
+        return (String) get(5);
     }
 
     /**
@@ -87,7 +119,7 @@ public class WorkspaceMemberEntitlementGrantRecord extends UpdatableRecordImpl<W
      * <code>public.workspace_member_entitlement_grant.quota_amount</code>.
      */
     public void setQuotaAmount(Long value) {
-        set(4, value);
+        set(6, value);
     }
 
     /**
@@ -95,7 +127,39 @@ public class WorkspaceMemberEntitlementGrantRecord extends UpdatableRecordImpl<W
      * <code>public.workspace_member_entitlement_grant.quota_amount</code>.
      */
     public Long getQuotaAmount() {
-        return (Long) get(4);
+        return (Long) get(6);
+    }
+
+    /**
+     * Setter for
+     * <code>public.workspace_member_entitlement_grant.source_type</code>.
+     */
+    public void setSourceType(String value) {
+        set(7, value);
+    }
+
+    /**
+     * Getter for
+     * <code>public.workspace_member_entitlement_grant.source_type</code>.
+     */
+    public String getSourceType() {
+        return (String) get(7);
+    }
+
+    /**
+     * Setter for
+     * <code>public.workspace_member_entitlement_grant.source_ref</code>.
+     */
+    public void setSourceRef(String value) {
+        set(8, value);
+    }
+
+    /**
+     * Getter for
+     * <code>public.workspace_member_entitlement_grant.source_ref</code>.
+     */
+    public String getSourceRef() {
+        return (String) get(8);
     }
 
     /**
@@ -103,7 +167,7 @@ public class WorkspaceMemberEntitlementGrantRecord extends UpdatableRecordImpl<W
      * <code>public.workspace_member_entitlement_grant.starts_at</code>.
      */
     public void setStartsAt(LocalDateTime value) {
-        set(5, value);
+        set(9, value);
     }
 
     /**
@@ -111,7 +175,7 @@ public class WorkspaceMemberEntitlementGrantRecord extends UpdatableRecordImpl<W
      * <code>public.workspace_member_entitlement_grant.starts_at</code>.
      */
     public LocalDateTime getStartsAt() {
-        return (LocalDateTime) get(5);
+        return (LocalDateTime) get(9);
     }
 
     /**
@@ -119,7 +183,7 @@ public class WorkspaceMemberEntitlementGrantRecord extends UpdatableRecordImpl<W
      * <code>public.workspace_member_entitlement_grant.expires_at</code>.
      */
     public void setExpiresAt(LocalDateTime value) {
-        set(6, value);
+        set(10, value);
     }
 
     /**
@@ -127,21 +191,37 @@ public class WorkspaceMemberEntitlementGrantRecord extends UpdatableRecordImpl<W
      * <code>public.workspace_member_entitlement_grant.expires_at</code>.
      */
     public LocalDateTime getExpiresAt() {
-        return (LocalDateTime) get(6);
+        return (LocalDateTime) get(10);
     }
 
     /**
      * Setter for <code>public.workspace_member_entitlement_grant.status</code>.
      */
     public void setStatus(String value) {
-        set(7, value);
+        set(11, value);
     }
 
     /**
      * Getter for <code>public.workspace_member_entitlement_grant.status</code>.
      */
     public String getStatus() {
-        return (String) get(7);
+        return (String) get(11);
+    }
+
+    /**
+     * Setter for
+     * <code>public.workspace_member_entitlement_grant.version</code>.
+     */
+    public void setVersion(Long value) {
+        set(12, value);
+    }
+
+    /**
+     * Getter for
+     * <code>public.workspace_member_entitlement_grant.version</code>.
+     */
+    public Long getVersion() {
+        return (Long) get(12);
     }
 
     /**
@@ -149,7 +229,7 @@ public class WorkspaceMemberEntitlementGrantRecord extends UpdatableRecordImpl<W
      * <code>public.workspace_member_entitlement_grant.granted_by</code>.
      */
     public void setGrantedBy(String value) {
-        set(8, value);
+        set(13, value);
     }
 
     /**
@@ -157,7 +237,7 @@ public class WorkspaceMemberEntitlementGrantRecord extends UpdatableRecordImpl<W
      * <code>public.workspace_member_entitlement_grant.granted_by</code>.
      */
     public String getGrantedBy() {
-        return (String) get(8);
+        return (String) get(13);
     }
 
     /**
@@ -165,7 +245,7 @@ public class WorkspaceMemberEntitlementGrantRecord extends UpdatableRecordImpl<W
      * <code>public.workspace_member_entitlement_grant.created_at</code>.
      */
     public void setCreatedAt(LocalDateTime value) {
-        set(9, value);
+        set(14, value);
     }
 
     /**
@@ -173,7 +253,7 @@ public class WorkspaceMemberEntitlementGrantRecord extends UpdatableRecordImpl<W
      * <code>public.workspace_member_entitlement_grant.created_at</code>.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(9);
+        return (LocalDateTime) get(14);
     }
 
     /**
@@ -181,7 +261,7 @@ public class WorkspaceMemberEntitlementGrantRecord extends UpdatableRecordImpl<W
      * <code>public.workspace_member_entitlement_grant.updated_at</code>.
      */
     public void setUpdatedAt(LocalDateTime value) {
-        set(10, value);
+        set(15, value);
     }
 
     /**
@@ -189,7 +269,7 @@ public class WorkspaceMemberEntitlementGrantRecord extends UpdatableRecordImpl<W
      * <code>public.workspace_member_entitlement_grant.updated_at</code>.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(10);
+        return (LocalDateTime) get(15);
     }
 
     // -------------------------------------------------------------------------
@@ -215,17 +295,22 @@ public class WorkspaceMemberEntitlementGrantRecord extends UpdatableRecordImpl<W
     /**
      * Create a detached, initialised WorkspaceMemberEntitlementGrantRecord
      */
-    public WorkspaceMemberEntitlementGrantRecord(String id, String workspaceId, String memberId, String featureKey, Long quotaAmount, LocalDateTime startsAt, LocalDateTime expiresAt, String status, String grantedBy, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public WorkspaceMemberEntitlementGrantRecord(String id, String tenantId, String workspaceId, String principalType, String memberId, String featureKey, Long quotaAmount, String sourceType, String sourceRef, LocalDateTime startsAt, LocalDateTime expiresAt, String status, Long version, String grantedBy, LocalDateTime createdAt, LocalDateTime updatedAt) {
         super(WorkspaceMemberEntitlementGrant.WORKSPACE_MEMBER_ENTITLEMENT_GRANT);
 
         setId(id);
+        setTenantId(tenantId);
         setWorkspaceId(workspaceId);
+        setPrincipalType(principalType);
         setMemberId(memberId);
         setFeatureKey(featureKey);
         setQuotaAmount(quotaAmount);
+        setSourceType(sourceType);
+        setSourceRef(sourceRef);
         setStartsAt(startsAt);
         setExpiresAt(expiresAt);
         setStatus(status);
+        setVersion(version);
         setGrantedBy(grantedBy);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);

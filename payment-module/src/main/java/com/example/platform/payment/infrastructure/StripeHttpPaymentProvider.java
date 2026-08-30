@@ -44,8 +44,8 @@ public class StripeHttpPaymentProvider implements PaymentProvider {
     }
 
     @Override
-    public CheckoutResult createCheckout(CheckoutCommand command) {
-        long amount = command.amountMinor() != null ? command.amountMinor() : 0L;
+    public CheckoutResult createCheckout(InitiateCheckoutCommand command) {
+        long amount = command.amount().amountMinor();
         String success = command.successUrl() != null ? command.successUrl() : properties.getSuccessUrl();
         String cancel = command.cancelUrl() != null ? command.cancelUrl() : properties.getCancelUrl();
 
@@ -55,12 +55,12 @@ public class StripeHttpPaymentProvider implements PaymentProvider {
         form.put("cancel_url", cancel);
         form.put("client_reference_id", command.checkoutSessionId());
         form.put("metadata[checkout_session_id]", command.checkoutSessionId());
-        form.put("metadata[tenant_id]", command.tenantId() != null ? command.tenantId() : "");
-        form.put("metadata[user_id]", command.userId() != null ? command.userId() : "");
+        form.put("metadata[tenant_id]", command.principal().tenantId());
+        form.put("metadata[user_id]", command.principal().principalId());
         form.put("line_items[0][price_data][currency]",
-                command.currencyCode() != null ? command.currencyCode().toLowerCase() : "usd");
+                command.amount().currency().toLowerCase());
         form.put("line_items[0][price_data][unit_amount]", String.valueOf(Math.max(amount, 1L)));
-        form.put("line_items[0][price_data][product_data][name]", command.canonicalProductCode());
+        form.put("line_items[0][price_data][product_data][name]", command.productReference());
         form.put("line_items[0][quantity]", "1");
 
         try {
@@ -71,6 +71,7 @@ public class StripeHttpPaymentProvider implements PaymentProvider {
                     .uri(URI.create("https://api.stripe.com/v1/checkout/sessions"))
                     .header("Authorization", "Bearer " + properties.getSecretKey())
                     .header("Content-Type", "application/x-www-form-urlencoded")
+                    .header("Idempotency-Key", command.idempotencyKey())
                     .POST(HttpRequest.BodyPublishers.ofString(encoded))
                     .build();
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
@@ -89,11 +90,11 @@ public class StripeHttpPaymentProvider implements PaymentProvider {
     }
 
     @Override
-    public PaymentVerificationResult verifyPayment(VerifyPaymentCommand command) {
+    public PaymentVerificationResult verifyPayment(ProviderVerificationRequest command) {
         String ref = command.providerReference();
         if (ref == null || ref.isBlank()) {
             log.warn("Stripe verifyPayment called with blank providerReference");
-            return new PaymentVerificationResult(false, "missing_reference", "unknown");
+            throw new IllegalArgumentException("providerReference is required");
         }
         try {
             HttpRequest request = HttpRequest.newBuilder()
@@ -104,42 +105,51 @@ public class StripeHttpPaymentProvider implements PaymentProvider {
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() >= 400) {
                 log.warn("Stripe verifyPayment HTTP {} for ref={}", response.statusCode(), ref);
-                return new PaymentVerificationResult(false, "http_" + response.statusCode(), "unknown");
+                return new PaymentVerificationResult(false, "http_" + response.statusCode(), PaymentState.PENDING);
             }
             String body = response.body();
             String paymentStatus = extractJsonField(body, "payment_status");
             String sessionStatus = extractJsonField(body, "status");
             boolean paid = "paid".equalsIgnoreCase(paymentStatus)
                     && "complete".equalsIgnoreCase(sessionStatus);
-            String canonical = paid ? "paid" : "pending";
             log.info("Stripe verifyPayment ref={} payment_status={} status={} verified={}",
                     ref, paymentStatus, sessionStatus, paid);
             return new PaymentVerificationResult(paid,
                     paymentStatus != null ? paymentStatus : "unknown",
-                    canonical);
+                    paid ? PaymentState.SETTLED : PaymentState.PENDING);
         } catch (Exception e) {
             log.warn("Stripe verifyPayment failed for ref={}: {}", ref, e.getMessage());
-            return new PaymentVerificationResult(false, "error", "unknown");
+            return new PaymentVerificationResult(false, "error", PaymentState.PENDING);
+        }
+    }
+
+    @Override
+    public ProviderRefundResult refund(ProviderRefundRequest command) {
+        Map<String, String> form = new java.util.LinkedHashMap<>();
+        form.put("payment_intent", command.originalCaptureReference());
+        form.put("amount", Long.toString(command.amount().amountMinor()));
+        try {
+            String encoded = form.entrySet().stream()
+                    .map(e -> encode(e.getKey()) + "=" + encode(e.getValue()))
+                    .collect(Collectors.joining("&"));
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create("https://api.stripe.com/v1/refunds"))
+                    .header("Authorization", "Bearer " + properties.getSecretKey())
+                    .header("Content-Type", "application/x-www-form-urlencoded")
+                    .header("Idempotency-Key", command.idempotencyKey())
+                    .POST(HttpRequest.BodyPublishers.ofString(encoded)).build();
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() >= 400) return new ProviderRefundResult(false, null, "http_" + response.statusCode());
+            return new ProviderRefundResult(true, extractJsonField(response.body(), "id"),
+                    extractJsonField(response.body(), "status"));
+        } catch (Exception failure) {
+            throw new IllegalStateException("Stripe refund failed", failure);
         }
     }
 
     @Override
     public WebhookParseResult parseWebhook(Map<String, String> headers, String body) {
-        WebhookParseResult parsed = WebhookPayloadSupport.parseCommerceWebhook(body, "stripe-webhook");
-        if (parsed.checkoutSessionId() != null) {
-            return parsed;
-        }
-        String sessionId = extractMetadata(body, "checkout_session_id");
-        String tenantId = extractMetadata(body, "tenant_id");
-        String userId = extractMetadata(body, "user_id");
-        String ref = extractJsonField(body, "id");
-        if (body != null && body.contains("checkout.session.completed")) {
-            return new WebhookParseResult(
-                    "payment.succeeded", 1,
-                    ref != null ? ref : "stripe-event",
-                    true, "paid", sessionId, tenantId, userId);
-        }
-        return parsed;
+        return WebhookPayloadSupport.parseCommerceWebhook(body);
     }
 
     private static String extractJsonField(String json, String field) {

@@ -6,7 +6,7 @@ package com.example.platform.typedschema.jooq.generated.tables.records;
 
 import com.example.platform.typedschema.jooq.generated.tables.ProviderProductMapping;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
@@ -95,17 +95,73 @@ public class ProviderProductMappingRecord extends UpdatableRecordImpl<ProviderPr
     }
 
     /**
+     * Setter for <code>public.provider_product_mapping.offering_id</code>.
+     */
+    public void setOfferingId(String value) {
+        set(5, value);
+    }
+
+    /**
+     * Getter for <code>public.provider_product_mapping.offering_id</code>.
+     */
+    public String getOfferingId() {
+        return (String) get(5);
+    }
+
+    /**
+     * Setter for <code>public.provider_product_mapping.offering_version</code>.
+     */
+    public void setOfferingVersion(Long value) {
+        set(6, value);
+    }
+
+    /**
+     * Getter for <code>public.provider_product_mapping.offering_version</code>.
+     */
+    public Long getOfferingVersion() {
+        return (Long) get(6);
+    }
+
+    /**
+     * Setter for <code>public.provider_product_mapping.version</code>.
+     */
+    public void setVersion(Long value) {
+        set(7, value);
+    }
+
+    /**
+     * Getter for <code>public.provider_product_mapping.version</code>.
+     */
+    public Long getVersion() {
+        return (Long) get(7);
+    }
+
+    /**
      * Setter for <code>public.provider_product_mapping.created_at</code>.
      */
-    public void setCreatedAt(LocalDateTime value) {
-        set(5, value);
+    public void setCreatedAt(Instant value) {
+        set(8, value);
     }
 
     /**
      * Getter for <code>public.provider_product_mapping.created_at</code>.
      */
-    public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(5);
+    public Instant getCreatedAt() {
+        return (Instant) get(8);
+    }
+
+    /**
+     * Setter for <code>public.provider_product_mapping.updated_at</code>.
+     */
+    public void setUpdatedAt(Instant value) {
+        set(9, value);
+    }
+
+    /**
+     * Getter for <code>public.provider_product_mapping.updated_at</code>.
+     */
+    public Instant getUpdatedAt() {
+        return (Instant) get(9);
     }
 
     // -------------------------------------------------------------------------
@@ -131,7 +187,7 @@ public class ProviderProductMappingRecord extends UpdatableRecordImpl<ProviderPr
     /**
      * Create a detached, initialised ProviderProductMappingRecord
      */
-    public ProviderProductMappingRecord(String id, String providerCode, String externalProductRef, String externalPriceRef, String productId, LocalDateTime createdAt) {
+    public ProviderProductMappingRecord(String id, String providerCode, String externalProductRef, String externalPriceRef, String productId, String offeringId, Long offeringVersion, Long version, Instant createdAt, Instant updatedAt) {
         super(ProviderProductMapping.PROVIDER_PRODUCT_MAPPING);
 
         setId(id);
@@ -139,7 +195,11 @@ public class ProviderProductMappingRecord extends UpdatableRecordImpl<ProviderPr
         setExternalProductRef(externalProductRef);
         setExternalPriceRef(externalPriceRef);
         setProductId(productId);
+        setOfferingId(offeringId);
+        setOfferingVersion(offeringVersion);
+        setVersion(version);
         setCreatedAt(createdAt);
+        setUpdatedAt(updatedAt);
         resetChangedOnNotNull();
     }
 }

@@ -2,9 +2,6 @@ package com.example.platform.entitlement.app;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.example.platform.entitlement.domain.EntitlementPolicy;
-import com.example.platform.entitlement.domain.ExportCapabilityPolicy;
-import com.example.platform.entitlement.domain.ProviderAccessPolicy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -14,7 +11,7 @@ class EntitlementPolicyServiceTenantTest {
 
     @BeforeEach
     void setUp() {
-        service = new EntitlementPolicyService(java.util.Optional.empty(), java.util.Optional.empty());
+        service = new EntitlementPolicyService(java.util.Optional.empty());
     }
 
     @Test
@@ -36,10 +33,9 @@ class EntitlementPolicyServiceTenantTest {
     }
 
     @Test
-    void getPolicyReturnsDefaultForUnknownTenant() {
-        EntitlementPolicy policy = service.getPolicy("brand-new-tenant");
-        assertNotNull(policy);
+    void unknownTenantMetadataDoesNotCreateAuthorityEvidence() {
         assertEquals("FREE", service.getTier("brand-new-tenant"));
+        assertNull(service.getDecisionSource("brand-new-tenant"));
     }
 
     @Test
@@ -72,17 +68,4 @@ class EntitlementPolicyServiceTenantTest {
         }
     }
 
-    @Test
-    void getExportCapabilitiesForUnknownTenant() {
-        var caps = service.getExportCapabilities("nonexistent-tenant");
-        assertNotNull(caps);
-        assertFalse(caps.gpuExportAllowed());
-    }
-
-    @Test
-    void getProviderAccessForUnknownTenant() {
-        var access = service.getProviderAccess("nonexistent-tenant");
-        assertNotNull(access);
-        assertFalse(access.gpuAllowed());
-    }
 }

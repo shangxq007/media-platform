@@ -175,8 +175,8 @@ public record SystemCanonicalEvent(
 
     // Source Systems
     public static final String SOURCE_STATE_MACHINE = "StateMachine";
-    public static final String SOURCE_BILLING_ENGINE = "BillingDecisionEngine";
-    public static final String SOURCE_POLICY_ENGINE = "PolicyEngine";
+    public static final String SOURCE_COMMERCIAL_ADMISSION = "CommercialAdmission";
+    public static final String SOURCE_ROLE_WORKSPACE_POLICY = "RoleWorkspacePolicy";
     public static final String SOURCE_PROVIDER_RUNTIME = "ProviderRuntimeEngine";
     public static final String SOURCE_ARTIFACT_GRAPH = "ArtifactGraph";
     public static final String SOURCE_COLLABORATION = "CollaborationEngine";

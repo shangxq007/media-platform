@@ -4,16 +4,18 @@
 package com.example.platform.typedschema.jooq.generated.tables;
 
 
+import com.example.platform.typedschema.contract.InstantConverter;
 import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
 import com.example.platform.typedschema.jooq.generated.tables.records.PricingRuleRecord;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
+import org.jooq.Check;
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.Index;
@@ -29,6 +31,7 @@ import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
@@ -60,9 +63,19 @@ public class PricingRule extends TableImpl<PricingRuleRecord> {
     public final TableField<PricingRuleRecord, String> ID = createField(DSL.name("id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
     /**
+     * The column <code>public.pricing_rule.tenant_id</code>.
+     */
+    public final TableField<PricingRuleRecord, String> TENANT_ID = createField(DSL.name("tenant_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
+
+    /**
      * The column <code>public.pricing_rule.rule_key</code>.
      */
     public final TableField<PricingRuleRecord, String> RULE_KEY = createField(DSL.name("rule_key"), SQLDataType.VARCHAR(128).nullable(false), this, "");
+
+    /**
+     * The column <code>public.pricing_rule.rule_version</code>.
+     */
+    public final TableField<PricingRuleRecord, Long> RULE_VERSION = createField(DSL.name("rule_version"), SQLDataType.BIGINT.nullable(false), this, "");
 
     /**
      * The column <code>public.pricing_rule.name</code>.
@@ -82,22 +95,22 @@ public class PricingRule extends TableImpl<PricingRuleRecord> {
     /**
      * The column <code>public.pricing_rule.meter_key</code>.
      */
-    public final TableField<PricingRuleRecord, String> METER_KEY = createField(DSL.name("meter_key"), SQLDataType.VARCHAR(128), this, "");
+    public final TableField<PricingRuleRecord, String> METER_KEY = createField(DSL.name("meter_key"), SQLDataType.VARCHAR(128).nullable(false), this, "");
 
     /**
      * The column <code>public.pricing_rule.unit_price_minor</code>.
      */
-    public final TableField<PricingRuleRecord, Long> UNIT_PRICE_MINOR = createField(DSL.name("unit_price_minor"), SQLDataType.BIGINT, this, "");
+    public final TableField<PricingRuleRecord, Long> UNIT_PRICE_MINOR = createField(DSL.name("unit_price_minor"), SQLDataType.BIGINT.nullable(false), this, "");
 
     /**
      * The column <code>public.pricing_rule.currency_code</code>.
      */
-    public final TableField<PricingRuleRecord, String> CURRENCY_CODE = createField(DSL.name("currency_code"), SQLDataType.VARCHAR(8), this, "");
+    public final TableField<PricingRuleRecord, String> CURRENCY_CODE = createField(DSL.name("currency_code"), SQLDataType.VARCHAR(3).nullable(false), this, "");
 
     /**
      * The column <code>public.pricing_rule.tier_config</code>.
      */
-    public final TableField<PricingRuleRecord, String> TIER_CONFIG = createField(DSL.name("tier_config"), SQLDataType.CLOB, this, "");
+    public final TableField<PricingRuleRecord, String> TIER_CONFIG = createField(DSL.name("tier_config"), SQLDataType.CLOB.nullable(false), this, "");
 
     /**
      * The column <code>public.pricing_rule.status</code>.
@@ -107,22 +120,22 @@ public class PricingRule extends TableImpl<PricingRuleRecord> {
     /**
      * The column <code>public.pricing_rule.effective_from</code>.
      */
-    public final TableField<PricingRuleRecord, LocalDateTime> EFFECTIVE_FROM = createField(DSL.name("effective_from"), SQLDataType.LOCALDATETIME(6), this, "");
+    public final TableField<PricingRuleRecord, Instant> EFFECTIVE_FROM = createField(DSL.name("effective_from"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false), this, "", new InstantConverter());
 
     /**
      * The column <code>public.pricing_rule.effective_to</code>.
      */
-    public final TableField<PricingRuleRecord, LocalDateTime> EFFECTIVE_TO = createField(DSL.name("effective_to"), SQLDataType.LOCALDATETIME(6), this, "");
+    public final TableField<PricingRuleRecord, Instant> EFFECTIVE_TO = createField(DSL.name("effective_to"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "", new InstantConverter());
 
     /**
      * The column <code>public.pricing_rule.created_at</code>.
      */
-    public final TableField<PricingRuleRecord, LocalDateTime> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.LOCALDATETIME(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.LOCALDATETIME)), this, "");
+    public final TableField<PricingRuleRecord, Instant> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "", new InstantConverter());
 
     /**
      * The column <code>public.pricing_rule.updated_at</code>.
      */
-    public final TableField<PricingRuleRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("updated_at"), SQLDataType.LOCALDATETIME(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.LOCALDATETIME)), this, "");
+    public final TableField<PricingRuleRecord, Instant> UPDATED_AT = createField(DSL.name("updated_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "", new InstantConverter());
 
     private PricingRule(Name alias, Table<PricingRuleRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
@@ -170,7 +183,16 @@ public class PricingRule extends TableImpl<PricingRuleRecord> {
 
     @Override
     public List<UniqueKey<PricingRuleRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.PRICING_RULE_RULE_KEY_KEY);
+        return Arrays.asList(Keys.PRICING_RULE_TENANT_ID_RULE_KEY_RULE_VERSION_KEY);
+    }
+
+    @Override
+    public List<Check<PricingRuleRecord>> getChecks() {
+        return Arrays.asList(
+            Internal.createCheck(this, DSL.name("pricing_rule_check"), "(((effective_to IS NULL) OR (effective_to > effective_from)))", true),
+            Internal.createCheck(this, DSL.name("pricing_rule_rule_version_check"), "((rule_version > 0))", true),
+            Internal.createCheck(this, DSL.name("pricing_rule_unit_price_minor_check"), "((unit_price_minor >= 0))", true)
+        );
     }
 
     @Override

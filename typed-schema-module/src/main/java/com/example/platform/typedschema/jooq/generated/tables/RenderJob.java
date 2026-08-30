@@ -11,7 +11,6 @@ import com.example.platform.typedschema.jooq.generated.Public;
 import com.example.platform.typedschema.jooq.generated.tables.ArtifactGraph.ArtifactGraphPath;
 import com.example.platform.typedschema.jooq.generated.tables.ArtifactNode.ArtifactNodePath;
 import com.example.platform.typedschema.jooq.generated.tables.Project.ProjectPath;
-import com.example.platform.typedschema.jooq.generated.tables.RenderBillingRecord.RenderBillingRecordPath;
 import com.example.platform.typedschema.jooq.generated.tables.SystemCanonicalGraph.SystemCanonicalGraphPath;
 import com.example.platform.typedschema.jooq.generated.tables.UnifiedRequestGraph.UnifiedRequestGraphPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.RenderJobRecord;
@@ -269,19 +268,6 @@ public class RenderJob extends TableImpl<RenderJobRecord> {
             _artifactNode = new ArtifactNodePath(this, null, Keys.ARTIFACT_NODE__FK_ARTIFACT_NODE_JOB.getInverseKey());
 
         return _artifactNode;
-    }
-
-    private transient RenderBillingRecordPath _renderBillingRecord;
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>public.render_billing_record</code> table
-     */
-    public RenderBillingRecordPath renderBillingRecord() {
-        if (_renderBillingRecord == null)
-            _renderBillingRecord = new RenderBillingRecordPath(this, null, Keys.RENDER_BILLING_RECORD__FK_BILLING_JOB.getInverseKey());
-
-        return _renderBillingRecord;
     }
 
     private transient SystemCanonicalGraphPath _systemCanonicalGraph;

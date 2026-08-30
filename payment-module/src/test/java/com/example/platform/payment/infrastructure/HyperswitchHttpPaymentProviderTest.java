@@ -2,7 +2,8 @@ package com.example.platform.payment.infrastructure;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.example.platform.payment.domain.VerifyPaymentCommand;
+import com.example.platform.payment.domain.PaymentState;
+import com.example.platform.payment.domain.ProviderVerificationRequest;
 import com.example.platform.payment.domain.WebhookParseResult;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -27,6 +28,8 @@ class HyperswitchHttpPaymentProviderTest {
 
         String body = """
                 {
+                  "event_id": "evt_abc123",
+                  "type": "payment_succeeded",
                   "payment_id": "pay_abc123",
                   "status": "succeeded",
                   "metadata": {
@@ -38,8 +41,8 @@ class HyperswitchHttpPaymentProviderTest {
                 """;
         WebhookParseResult result = provider.parseWebhook(Map.of(), body);
 
-        assertEquals("payment.succeeded", result.eventType());
-        assertTrue(result.paymentSucceeded());
+        assertEquals("payment_succeeded", result.eventType());
+        assertEquals(PaymentState.SETTLED, result.canonicalState());
         assertEquals("chk_99", result.checkoutSessionId());
         assertEquals("ten_1", result.tenantId());
     }
@@ -51,8 +54,7 @@ class HyperswitchHttpPaymentProviderTest {
         props.setApiKey("test");
         HyperswitchHttpPaymentProvider provider = new HyperswitchHttpPaymentProvider(props);
 
-        var result = provider.verifyPayment(new VerifyPaymentCommand("", "{}"));
-
-        assertFalse(result.verified());
+        assertThrows(IllegalArgumentException.class, () -> provider.verifyPayment(
+                new ProviderVerificationRequest("", "verify-key", "trace")));
     }
 }

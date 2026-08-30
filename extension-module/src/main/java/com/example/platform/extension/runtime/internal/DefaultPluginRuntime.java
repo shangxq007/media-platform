@@ -15,6 +15,7 @@ import com.example.platform.extension.runtime.PluginRuntimeError;
 import com.example.platform.extension.runtime.PluginRuntimeProviderBinding;
 import com.example.platform.extension.runtime.PluginRuntimeErrorCategory;
 import com.example.platform.extension.runtime.PluginRuntimeExecutionException;
+import com.example.platform.shared.usage.RuntimeOutcome;
 
 import java.time.Instant;
 import java.util.Map;
@@ -79,13 +80,7 @@ public final class DefaultPluginRuntime implements PluginRuntime {
 
             PluginExecutionResult result = executeViaBinding(request);
 
-            // GAP-002 closure: every canonical runtime execution emits base usage facts
-            if (usageEmitter != null && result.status() == PluginExecutionStatus.SUCCEEDED) {
-                long durationMs = (System.nanoTime() - started) / 1_000_000;
-                usageEmitter.emitBaseFacts(
-                        request.tenantId(), request.actorRef(), request.operationRef(),
-                        request.providerRef(), request.capability(), durationMs);
-            }
+            emitObservedUsage(request, result, started);
 
             progressListener.accept(new PluginExecutionProgress(
                     "FINALIZING", 1, 1, null, Instant.now()));
@@ -104,6 +99,36 @@ public final class DefaultPluginRuntime implements PluginRuntime {
                     "Runtime execution failed: " + safeMessage(e));
             record(request, result, started);
             return result;
+        }
+    }
+
+    private void emitObservedUsage(
+            PluginExecutionRequest request, PluginExecutionResult result, long startedNanos) {
+        if (usageEmitter == null) {
+            return;
+        }
+        if (result.error() != null && switch (result.error().category()) {
+            case VALIDATION, CAPABILITY_UNSUPPORTED, SECURITY_DENIED, RESOURCE_UNAVAILABLE -> true;
+            default -> false;
+        }) {
+            return;
+        }
+        long durationMs = Math.max(0L, (System.nanoTime() - startedNanos) / 1_000_000);
+        RuntimeOutcome outcome = switch (result.status()) {
+            case SUCCEEDED -> RuntimeOutcome.SUCCEEDED;
+            case FAILED -> RuntimeOutcome.FAILED;
+            case TIMED_OUT -> RuntimeOutcome.TIMED_OUT;
+            case CANCELLED -> RuntimeOutcome.CANCELLED;
+        };
+        Instant occurredAt = Instant.now();
+        try {
+            usageEmitter.emitBaseFacts(
+                    request.tenantId(), request.actorRef(), request.operationRef(),
+                    request.providerRef(), request.capability(), durationMs, outcome,
+                    occurredAt, "prv2-" + request.operationRef().operationId());
+        } catch (RuntimeException emissionFailure) {
+            // Observation persistence is independently retryable and cannot rewrite the
+            // already-known runtime outcome.
         }
     }
 

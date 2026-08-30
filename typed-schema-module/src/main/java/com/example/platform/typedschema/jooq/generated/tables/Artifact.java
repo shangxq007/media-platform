@@ -13,6 +13,7 @@ import com.example.platform.typedschema.jooq.generated.tables.ArtifactReplica.Ar
 import com.example.platform.typedschema.jooq.generated.tables.MediaAsset.MediaAssetPath;
 import com.example.platform.typedschema.jooq.generated.tables.MediaAssetArtifact.MediaAssetArtifactPath;
 import com.example.platform.typedschema.jooq.generated.tables.TimelineRevision.TimelineRevisionPath;
+import com.example.platform.typedschema.jooq.generated.tables.WfArtifactReuseIndex.WfArtifactReuseIndexPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.ArtifactRecord;
 
 import java.time.LocalDateTime;
@@ -271,6 +272,19 @@ public class Artifact extends TableImpl<ArtifactRecord> {
             _mediaAssetArtifact = new MediaAssetArtifactPath(this, null, Keys.MEDIA_ASSET_ARTIFACT__FK_MAA_ARTIFACT.getInverseKey());
 
         return _mediaAssetArtifact;
+    }
+
+    private transient WfArtifactReuseIndexPath _wfArtifactReuseIndex;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.wf_artifact_reuse_index</code> table
+     */
+    public WfArtifactReuseIndexPath wfArtifactReuseIndex() {
+        if (_wfArtifactReuseIndex == null)
+            _wfArtifactReuseIndex = new WfArtifactReuseIndexPath(this, null, Keys.WF_ARTIFACT_REUSE_INDEX__WF_ARTIFACT_REUSE_INDEX_ARTIFACT_ID_FKEY.getInverseKey());
+
+        return _wfArtifactReuseIndex;
     }
 
     /**

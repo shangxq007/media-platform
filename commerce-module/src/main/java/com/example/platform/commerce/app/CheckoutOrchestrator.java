@@ -87,13 +87,11 @@ public class CheckoutOrchestrator {
     public CheckoutSessionResponse createSession(CreateCheckoutSessionRequest request, String cartId) {
         validateCheckoutRequest(request);
         String tenantId = TenantGuard.tenantOrDefault(request.tenantId());
-        CanonicalProduct product = catalogService.requireProduct(request.productCode());
+        CommercialOffering offering = catalogService.requireOffering(CatalogReadScope.tenant(tenantId), "GLOBAL", request.productCode(), java.time.Instant.now());
+        CanonicalProduct product = CommerceCatalogService.project(offering);
 
         if (product.purchaseMode() == PurchaseMode.SUBSCRIPTION && request.successUrl() == null) {
             throw new IllegalArgumentException("Subscription products require a success URL");
-        }
-        if (!catalogService.isAvailableForTenant(product, tenantId)) {
-            throw new IllegalArgumentException("Product '" + request.productCode() + "' is not available for this tenant");
         }
 
         String purchaseMode = request.purchaseMode() != null ? request.purchaseMode() : product.purchaseModeName();
@@ -105,7 +103,7 @@ public class CheckoutOrchestrator {
         CheckoutSession session = createCheckoutSession(intent, userId, cartId);
         sessionCreatedCounter.increment();
 
-        long amountMinor = cartId != null ? commerceCartService.cartTotalMinor(cartId) : product.priceMinor();
+        long amountMinor = cartId != null ? commerceCartService.cartTotalMinor(cartId) : session.amountSnapshot().amountMinor();
         String redirectUrl = session.redirectUrl();
         String providerHint = session.providerHint();
         if (checkoutPaymentPort.isPresent()) {
@@ -115,10 +113,13 @@ public class CheckoutOrchestrator {
                     userId,
                     product.productCode(),
                     amountMinor,
-                    product.currencyCode(),
+                    session.amountSnapshot().currency(),
                     request.successUrl(),
                     request.cancelUrl(),
-                    cartId);
+                    cartId,
+                    "checkout:" + session.checkoutSessionId(),
+                    "checkout:" + session.checkoutSessionId(),
+                    java.time.Instant.now());
             CheckoutPaymentPort.CheckoutPaymentSession payment =
                     checkoutPaymentPort.get().createPaymentForCheckout(paymentRequest);
             redirectUrl = payment.redirectUrl();
@@ -136,14 +137,12 @@ public class CheckoutOrchestrator {
 
     public CheckoutSession createCheckoutSession(CheckoutIntent intent, String userId, String cartId) {
         String tenantId = TenantGuard.tenantOrDefault(intent.tenantId());
-        CanonicalProduct product = catalogService.requireProduct(intent.canonicalProductCode());
-        if (!catalogService.isAvailableForTenant(product, tenantId)) {
-            throw new IllegalArgumentException("Product not available: " + intent.canonicalProductCode());
-        }
+        CommercialOffering offering = catalogService.requireOffering(CatalogReadScope.tenant(tenantId), "GLOBAL", intent.canonicalProductCode(), java.time.Instant.now());
 
         String sessionId = Ids.newId("chk");
-        CheckoutSession session = new CheckoutSession(
-                sessionId, tenantId, intent.canonicalProductCode(), intent.successUrl(), "internal");
+        CheckoutSession session = new CheckoutSession(sessionId, tenantId, intent.canonicalProductCode(),
+                offering.productId(), offering.offeringId(), offering.offeringVersion(), offering.commercialPriceReference(),
+                offering.priceSnapshot(), intent.successUrl(), "internal");
 
         if (dbBacked()) {
             checkoutSessionRepository.get().save(session, userId, cartId);
@@ -168,16 +167,18 @@ public class CheckoutOrchestrator {
         try {
             CheckoutSession session = requireSession(sessionId);
             TenantGuard.assertSameTenantIfContextPresent(session.tenantId());
-            CanonicalProduct product = catalogService.requireProduct(session.canonicalProductCode());
+            CanonicalProduct product = CommerceCatalogService.project(catalogService.requireHistorical(
+                    CatalogReadScope.tenant(session.tenantId()), session.offeringId(), session.offeringVersion()));
             String userId = resolveUserId(session, userIdOverride);
 
             String orderId = Ids.newId("ord");
-            long orderValue = product.priceMinor();
+            long orderValue = session.amountSnapshot().amountMinor();
 
-            PurchaseOrderCreatedEvent event = new PurchaseOrderCreatedEvent(
-                    orderId, session.tenantId(), session.canonicalProductCode(), "CONFIRMED");
+            PurchaseOrderCreatedEvent event = new PurchaseOrderCreatedEvent(orderId, session.tenantId(),
+                    session.canonicalProductCode(), "CONFIRMED", session.offeringId(), session.offeringVersion(),
+                    session.commercialPriceReference(), session.amountSnapshot().amountMinor(), session.amountSnapshot().currency());
 
-            persistOrder(orderId, session, orderValue, product.currencyCode());
+            persistOrder(orderId, session, orderValue, session.amountSnapshot().currency());
             completeSession(sessionId);
             if (!dbBacked()) {
                 inMemoryPublishedEvents.put(orderId, event);
@@ -225,15 +226,16 @@ public class CheckoutOrchestrator {
         return requireSession(sessionId);
     }
 
-    public List<CanonicalProduct> listCatalogProducts() {
-        return catalogService.listProducts();
+    public List<CanonicalProduct> listCatalogProducts(String tenantId, String market) {
+        return catalogService.listProducts(CatalogReadScope.tenant(tenantId), market);
     }
 
     public PurchaseOrderCreatedEvent cancelCheckout(String sessionId) {
         CheckoutSession session = requireSession(sessionId);
         TenantGuard.assertSameTenantIfContextPresent(session.tenantId());
-        PurchaseOrderCreatedEvent cancelledEvent = new PurchaseOrderCreatedEvent(
-                Ids.newId("ord"), session.tenantId(), session.canonicalProductCode(), "CANCELLED");
+        PurchaseOrderCreatedEvent cancelledEvent = new PurchaseOrderCreatedEvent(Ids.newId("ord"), session.tenantId(),
+                session.canonicalProductCode(), "CANCELLED", session.offeringId(), session.offeringVersion(),
+                session.commercialPriceReference(), 0, session.amountSnapshot().currency());
         persistCancelledOrder(cancelledEvent, session);
         if (!dbBacked()) {
             inMemoryPublishedEvents.put(cancelledEvent.orderId(), cancelledEvent);
@@ -247,8 +249,9 @@ public class CheckoutOrchestrator {
         String effectiveTenant = TenantGuard.tenantOrDefault(tenantId);
         if (purchaseOrderRepository.isPresent()) {
             return purchaseOrderRepository.get().findRecentByTenant(effectiveTenant, limit).stream()
-                    .map(r -> new PurchaseOrderCreatedEvent(
-                            r.id(), effectiveTenant, r.canonicalProductCode(), r.orderStatus()))
+                    .map(r -> new PurchaseOrderCreatedEvent(r.id(), effectiveTenant, r.canonicalProductCode(), r.orderStatus(),
+                            r.offeringId(), r.offeringVersion(), new AuthorityReference(r.commercialPriceRef(), r.commercialPriceVersion()),
+                            r.totalAmountMinor(), r.currencyCode()))
                     .toList();
         }
         return inMemoryPublishedEvents.values().stream()
@@ -257,20 +260,18 @@ public class CheckoutOrchestrator {
                 .toList();
     }
 
-    public double getTotalRevenueForTenant(String tenantId) {
+    public long getTotalRevenueForTenant(String tenantId) {
         Timer.Sample sample = Timer.start();
         try {
             String effectiveTenant = TenantGuard.tenantOrDefault(tenantId);
             if (purchaseOrderRepository.isPresent()) {
-                return purchaseOrderRepository.get().sumConfirmedRevenueMinor(effectiveTenant) / 100.0;
+                return purchaseOrderRepository.get().sumConfirmedRevenueMinor(effectiveTenant);
             }
             return inMemoryPublishedEvents.values().stream()
                     .filter(event -> event.tenantId().equals(effectiveTenant))
                     .filter(event -> !"CANCELLED".equals(event.orderStatus()))
-                    .mapToLong(event -> catalogService.findProduct(event.canonicalProductCode())
-                            .map(CanonicalProduct::priceMinor)
-                            .orElse(0L))
-                    .sum() / 100.0;
+                    .mapToLong(PurchaseOrderCreatedEvent::amountMinorSnapshot)
+                    .sum();
         } finally {
             sample.stop(revenueCalculationTimer);
         }
@@ -296,7 +297,7 @@ public class CheckoutOrchestrator {
 
     private CheckoutSession requireSession(String sessionId) {
         if (dbBacked()) {
-            return checkoutSessionRepository.get().findByIdUnchecked(sessionId)
+            return checkoutSessionRepository.get().findById(sessionId)
                     .orElseThrow(() -> new IllegalArgumentException("Checkout session not found: " + sessionId));
         }
         CheckoutSession session = inMemorySessions.get(sessionId);
@@ -351,7 +352,8 @@ public class CheckoutOrchestrator {
                 product.creditAmountMinor(),
                 product.includedSeats(),
                 product.seatFeatureKey(),
-                30);
+                30,
+                java.time.Instant.now());
     }
 
     private void persistOrder(String orderId, CheckoutSession session, long orderValueMinor, String currencyCode) {
@@ -363,7 +365,8 @@ public class CheckoutOrchestrator {
                     session.canonicalProductCode(),
                     "CONFIRMED",
                     orderValueMinor,
-                    currencyCode);
+                    currencyCode, session.productId(), session.offeringId(), session.offeringVersion(),
+                    session.commercialPriceReference().key(), session.commercialPriceReference().version());
         }
         if (checkoutSessionRepository.isPresent()) {
             checkoutSessionRepository.get().updateStatus(session.checkoutSessionId(), "COMPLETED");
@@ -379,7 +382,8 @@ public class CheckoutOrchestrator {
                     event.canonicalProductCode(),
                     "CANCELLED",
                     0L,
-                    null);
+                    session.amountSnapshot().currency(), session.productId(), session.offeringId(), session.offeringVersion(),
+                    session.commercialPriceReference().key(), session.commercialPriceReference().version());
         }
     }
 

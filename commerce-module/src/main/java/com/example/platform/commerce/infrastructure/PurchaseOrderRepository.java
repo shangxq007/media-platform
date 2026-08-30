@@ -37,7 +37,9 @@ public class PurchaseOrderRepository {
             String canonicalProductCode,
             String orderStatus,
             Long amountMinor,
-            String currencyCode) {
+            String currencyCode,
+            String productId, String offeringId, long offeringVersion,
+            String commercialPriceRef, long commercialPriceVersion) {
         String effectiveTenant = TenantGuard.tenantOrDefault(tenantId);
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
         dsl.insertInto(PURCHASE_ORDER)
@@ -46,11 +48,17 @@ public class PurchaseOrderRepository {
                         PURCHASE_ORDER.TENANT_ID,
                         PURCHASE_ORDER.CHECKOUT_SESSION_ID,
                         PURCHASE_ORDER.CANONICAL_PRODUCT_CODE,
+                        DSL.field("product_id", String.class), DSL.field("offering_id", String.class),
+                        DSL.field("offering_version", Long.class), DSL.field("commercial_price_ref", String.class),
+                        DSL.field("commercial_price_version", Long.class), DSL.field("amount_minor_snapshot", Long.class),
+                        DSL.field("currency_code_snapshot", String.class),
                         PURCHASE_ORDER.ORDER_STATUS,
                         PURCHASE_ORDER.TOTAL_AMOUNT_MINOR,
                         PURCHASE_ORDER.CURRENCY_CODE,
                         PURCHASE_ORDER.CREATED_AT)
-                .values(orderId, effectiveTenant, checkoutSessionId, canonicalProductCode, orderStatus, amountMinor, currencyCode, now)
+                .values(orderId, effectiveTenant, checkoutSessionId, canonicalProductCode, productId, offeringId,
+                        offeringVersion, commercialPriceRef, commercialPriceVersion, amountMinor, currencyCode,
+                        orderStatus, amountMinor, currencyCode, now)
                 .execute();
     }
 
@@ -99,7 +107,9 @@ public class PurchaseOrderRepository {
                 r.get(PURCHASE_ORDER.CANONICAL_PRODUCT_CODE, String.class),
                 r.get(PURCHASE_ORDER.ORDER_STATUS, String.class),
                 r.get(PURCHASE_ORDER.TOTAL_AMOUNT_MINOR, Long.class),
-                r.get(PURCHASE_ORDER.CURRENCY_CODE, String.class));
+                r.get(PURCHASE_ORDER.CURRENCY_CODE, String.class), r.get("offering_id", String.class),
+                r.get("offering_version", Long.class), r.get("commercial_price_ref", String.class),
+                r.get("commercial_price_version", Long.class));
     }
 
     private static Condition tenantPredicate() {
@@ -115,6 +125,7 @@ public class PurchaseOrderRepository {
             String canonicalProductCode,
             String orderStatus,
             Long totalAmountMinor,
-            String currencyCode
+            String currencyCode,
+            String offeringId, long offeringVersion, String commercialPriceRef, long commercialPriceVersion
     ) {}
 }

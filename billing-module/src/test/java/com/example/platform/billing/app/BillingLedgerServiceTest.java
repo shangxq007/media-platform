@@ -27,15 +27,20 @@ class BillingLedgerServiceTest extends PostgresTestContainerSupport {
             CREATE TABLE IF NOT EXISTS billing_ledger_entry (
                 id varchar(64) primary key,
                 tenant_id varchar(64) not null,
+                principal_type varchar(32) not null,
+                principal_id varchar(128) not null,
                 workspace_id varchar(64),
-                user_id varchar(128),
                 entry_type varchar(32) not null,
                 amount_minor bigint not null,
-                currency_code varchar(8) not null,
-                reference_type varchar(64),
-                reference_id varchar(128),
-                description text,
-                created_at timestamp not null
+                currency_code varchar(3) not null,
+                reference_type varchar(64) not null,
+                reference_id varchar(128) not null,
+                description text not null,
+                idempotency_key varchar(255) not null,
+                payload_fingerprint varchar(64) not null,
+                created_at timestamptz not null,
+                unique (tenant_id, idempotency_key),
+                unique (tenant_id, reference_type, reference_id, entry_type)
             )
         """);
     }
@@ -66,7 +71,7 @@ class BillingLedgerServiceTest extends PostgresTestContainerSupport {
         BillingLedgerEntry entry = service.writeEntry(
                 "t1", "ws-1", "u1", BillingLedgerEntry.TYPE_CHARGE,
                 500, "USD", "render", "job-1", "Test");
-        BillingLedgerEntry found = service.getEntry(entry.entryId());
+        BillingLedgerEntry found = service.getEntry("t1", entry.entryId());
         assertNotNull(found);
         assertEquals(entry.entryId(), found.entryId());
     }

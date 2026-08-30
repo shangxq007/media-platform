@@ -2,10 +2,14 @@ package com.example.platform.entitlement.app;
 
 import com.example.platform.entitlement.domain.WorkspaceEntitlementPool;
 import com.example.platform.entitlement.domain.WorkspaceMemberEntitlementGrant;
+import com.example.platform.entitlement.domain.EntitlementCommandType;
+import com.example.platform.entitlement.domain.EntitlementCommandResult;
+import com.example.platform.entitlement.domain.EntitlementGrantCommand;
 import com.example.platform.entitlement.infrastructure.WorkspaceEntitlementPoolRepository;
-import com.example.platform.entitlement.infrastructure.WorkspaceMemberEntitlementGrantRepository;
 import com.example.platform.shared.Ids;
 import com.example.platform.shared.audit.AuditPort;
+import com.example.platform.shared.commercial.PrincipalRef;
+import com.example.platform.shared.commercial.PrincipalType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,15 +25,15 @@ public class WorkspaceEntitlementPoolService {
     private static final Logger log = LoggerFactory.getLogger(WorkspaceEntitlementPoolService.class);
 
     private final WorkspaceEntitlementPoolRepository poolRepository;
-    private final WorkspaceMemberEntitlementGrantRepository memberGrantRepository;
+    private final EntitlementService entitlementService;
     private final AuditPort auditPort;
 
     public WorkspaceEntitlementPoolService(
             @Autowired(required = false) WorkspaceEntitlementPoolRepository poolRepository,
-            @Autowired(required = false) WorkspaceMemberEntitlementGrantRepository memberGrantRepository,
+            EntitlementService entitlementService,
             AuditPort auditPort) {
         this.poolRepository = poolRepository;
-        this.memberGrantRepository = memberGrantRepository;
+        this.entitlementService = entitlementService;
         this.auditPort = auditPort;
     }
 
@@ -80,8 +84,10 @@ public class WorkspaceEntitlementPoolService {
         return pool;
     }
 
-    public WorkspaceMemberEntitlementGrant allocateToMember(String workspaceId, String featureKey,
-            String memberId, long quotaAmount, Instant startsAt, Instant expiresAt, String actor) {
+    public WorkspaceMemberEntitlementGrant allocateToMember(
+            String tenantId, String workspaceId, String featureKey,
+            String memberId, long quotaAmount, Instant startsAt, Instant expiresAt, String actor,
+            String sourceRef, String idempotencyKey, String reason, String traceId) {
         WorkspaceEntitlementPool pool = getPoolForFeature(workspaceId, featureKey);
         long available = pool.totalQuota() - pool.usedQuota();
         if (quotaAmount > available) {
@@ -93,9 +99,12 @@ public class WorkspaceEntitlementPoolService {
         WorkspaceMemberEntitlementGrant grant = new WorkspaceMemberEntitlementGrant(
                 grantId, workspaceId, memberId, featureKey, quotaAmount,
                 startsAt, expiresAt, "ACTIVE", actor, now, now);
-        if (memberGrantRepository != null) {
-            memberGrantRepository.save(grant);
-        }
+        PrincipalRef member = new PrincipalRef(
+                tenantId, PrincipalType.USER, memberId, workspaceId, null);
+        entitlementService.execute(new EntitlementGrantCommand(
+                EntitlementCommandType.WORKSPACE_GRANT, member, grantId, featureKey, null,
+                "ADMIN", sourceRef, idempotencyKey, actor, reason, traceId,
+                startsAt, expiresAt, 0));
         if (poolRepository != null) {
             poolRepository.updateUsage(pool.id(), pool.usedQuota() + quotaAmount);
         }
@@ -104,6 +113,18 @@ public class WorkspaceEntitlementPoolService {
                 "featureKey", featureKey, "quotaAmount", quotaAmount));
         log.info("Allocated {} quota of {} to member {} in workspace {}", quotaAmount, featureKey, memberId, workspaceId);
         return grant;
+    }
+
+    public EntitlementCommandResult revokeFromMember(
+            String tenantId, String workspaceId, String grantId, String memberId,
+            long expectedVersion, String actor, String sourceRef, String idempotencyKey,
+            String reason, String traceId) {
+        PrincipalRef member = new PrincipalRef(
+                tenantId, PrincipalType.USER, memberId, workspaceId, null);
+        return entitlementService.execute(new EntitlementGrantCommand(
+                EntitlementCommandType.WORKSPACE_REVOKE, member, grantId, null, null,
+                "ADMIN", sourceRef, idempotencyKey, actor, reason, traceId,
+                Instant.now(), null, expectedVersion));
     }
 
     public void reclaimFromMember(String workspaceId, String memberId, String featureKey,
@@ -121,12 +142,11 @@ public class WorkspaceEntitlementPoolService {
         log.info("Reclaimed {} quota of {} from member {} in workspace {}", toReclaim, featureKey, memberId, workspaceId);
     }
 
-    public List<WorkspaceMemberEntitlementGrant> getMemberGrants(String workspaceId) {
-        if (memberGrantRepository != null) {
-            return memberGrantRepository.findByWorkspaceId(workspaceId);
-        }
-        return List.of();
+    public List<WorkspaceMemberEntitlementGrant> getMemberGrants(String tenantId, String workspaceId) {
+        return entitlementService.listWorkspaceGrants(tenantId, workspaceId);
     }
+
+    public List<WorkspaceMemberEntitlementGrant> getMemberGrants(String workspaceId) { return List.of(); }
 
     private void audit(String action, String actor, Map<String, Object> payload) {
         if (auditPort != null) {

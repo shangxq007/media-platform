@@ -1,8 +1,8 @@
 package com.example.platform.extension.runtime.conformance;
 
-import com.example.platform.billing.usage.CanonicalActorRef;
-import com.example.platform.billing.usage.OperationRef;
-import com.example.platform.billing.usage.ProviderRef;
+import com.example.platform.shared.usage.CanonicalActorRef;
+import com.example.platform.shared.usage.OperationRef;
+import com.example.platform.shared.usage.ProviderRef;
 import com.example.platform.extension.domain.ExtensionTrustLevel;
 import com.example.platform.extension.runtime.CredentialRef;
 import com.example.platform.extension.runtime.ExecutionMode;
@@ -20,6 +20,7 @@ import com.example.platform.extension.runtime.internal.TrustPolicyEnforcer;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 
@@ -116,8 +117,12 @@ class PluginRuntimeRedMatrixTest {
         var port = new FakePort();
         RuntimeUsageEmitter emitter = new RuntimeUsageEmitter(port);
         var op = OperationRef.of("op-1", "attempt-1");
-        emitter.emitBaseFacts("tenant-1", ACTOR, op, PROVIDER, "cap-1", 100);
-        emitter.emitBaseFacts("tenant-1", ACTOR, op, PROVIDER, "cap-1", 100);
+        emitter.emitBaseFacts("tenant-1", ACTOR, op, PROVIDER, "cap-1", 100,
+                com.example.platform.shared.usage.RuntimeOutcome.SUCCEEDED,
+                Instant.EPOCH, "trace-1");
+        emitter.emitBaseFacts("tenant-1", ACTOR, op, PROVIDER, "cap-1", 100,
+                com.example.platform.shared.usage.RuntimeOutcome.SUCCEEDED,
+                Instant.EPOCH, "trace-1");
         // replay of the same attempt still emits facts (idempotency is enforced by
         // the persistence layer via the key) — keys must be identical across replay
         assertTrue(port.keys.size() == 4); // REQUEST+DURATION per emission
@@ -129,8 +134,14 @@ class PluginRuntimeRedMatrixTest {
     void red009_newAttemptDistinctFact() {
         var port = new FakePort();
         RuntimeUsageEmitter emitter = new RuntimeUsageEmitter(port);
-        emitter.emitBaseFacts("tenant-1", ACTOR, OperationRef.of("op-1", "attempt-1"), PROVIDER, "cap-1", 100);
-        emitter.emitBaseFacts("tenant-1", ACTOR, OperationRef.of("op-1", "attempt-2"), PROVIDER, "cap-1", 100);
+        emitter.emitBaseFacts("tenant-1", ACTOR, OperationRef.of("op-1", "attempt-1"),
+                PROVIDER, "cap-1", 100,
+                com.example.platform.shared.usage.RuntimeOutcome.SUCCEEDED,
+                Instant.EPOCH, "trace-1");
+        emitter.emitBaseFacts("tenant-1", ACTOR, OperationRef.of("op-1", "attempt-2"),
+                PROVIDER, "cap-1", 100,
+                com.example.platform.shared.usage.RuntimeOutcome.SUCCEEDED,
+                Instant.EPOCH, "trace-1");
         // new attempt => distinct keys (all four distinct)
         assertEquals(4, port.keys.size());
         assertTrue(port.keys.stream().distinct().count() == 4);
@@ -142,19 +153,21 @@ class PluginRuntimeRedMatrixTest {
         var port = new FakePort();
         RuntimeUsageEmitter emitter = new RuntimeUsageEmitter(port);
         emitter.emitBaseFacts("tenant-1", ACTOR, OperationRef.of("op-fail", "attempt-1"),
-                PROVIDER, "cap-1", 400);
+                PROVIDER, "cap-1", 400,
+                com.example.platform.shared.usage.RuntimeOutcome.FAILED,
+                Instant.EPOCH, "trace-failed");
         assertTrue(port.dimensions.contains(
-                com.example.platform.billing.usage.UsageDimension.DURATION));
+                com.example.platform.shared.usage.UsageDimension.DURATION));
     }
 
     /** Local fake emission port capturing keys + dimensions. */
-    static final class FakePort implements com.example.platform.billing.usage.UsageRecordEmissionPort {
+    static final class FakePort implements com.example.platform.shared.usage.ObservedRuntimeUsageEmissionPort {
         final List<String> keys = new java.util.ArrayList<>();
-        final List<com.example.platform.billing.usage.UsageDimension> dimensions = new java.util.ArrayList<>();
+        final List<com.example.platform.shared.usage.UsageDimension> dimensions = new java.util.ArrayList<>();
 
         @Override
-        public com.example.platform.billing.usage.UsageRecord emit(
-                com.example.platform.billing.usage.UsageRecord record) {
+        public com.example.platform.shared.usage.ObservedRuntimeUsage emit(
+                com.example.platform.shared.usage.ObservedRuntimeUsage record) {
             keys.add(record.idempotencyKey());
             dimensions.add(record.dimension());
             return record;

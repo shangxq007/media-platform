@@ -4,12 +4,13 @@
 package com.example.platform.typedschema.jooq.generated.tables;
 
 
+import com.example.platform.typedschema.contract.InstantConverter;
 import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
 import com.example.platform.typedschema.jooq.generated.tables.records.CreditTransactionRecord;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -60,9 +61,19 @@ public class CreditTransaction extends TableImpl<CreditTransactionRecord> {
     public final TableField<CreditTransactionRecord, String> ID = createField(DSL.name("id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
     /**
+     * The column <code>public.credit_transaction.tenant_id</code>.
+     */
+    public final TableField<CreditTransactionRecord, String> TENANT_ID = createField(DSL.name("tenant_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
+
+    /**
      * The column <code>public.credit_transaction.wallet_id</code>.
      */
     public final TableField<CreditTransactionRecord, String> WALLET_ID = createField(DSL.name("wallet_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
+
+    /**
+     * The column <code>public.credit_transaction.reservation_id</code>.
+     */
+    public final TableField<CreditTransactionRecord, String> RESERVATION_ID = createField(DSL.name("reservation_id"), SQLDataType.VARCHAR(64), this, "");
 
     /**
      * The column <code>public.credit_transaction.transaction_type</code>.
@@ -75,6 +86,11 @@ public class CreditTransaction extends TableImpl<CreditTransactionRecord> {
     public final TableField<CreditTransactionRecord, Long> AMOUNT_MINOR = createField(DSL.name("amount_minor"), SQLDataType.BIGINT.nullable(false), this, "");
 
     /**
+     * The column <code>public.credit_transaction.currency_code</code>.
+     */
+    public final TableField<CreditTransactionRecord, String> CURRENCY_CODE = createField(DSL.name("currency_code"), SQLDataType.VARCHAR(3).nullable(false), this, "");
+
+    /**
      * The column <code>public.credit_transaction.balance_after_minor</code>.
      */
     public final TableField<CreditTransactionRecord, Long> BALANCE_AFTER_MINOR = createField(DSL.name("balance_after_minor"), SQLDataType.BIGINT.nullable(false), this, "");
@@ -82,22 +98,32 @@ public class CreditTransaction extends TableImpl<CreditTransactionRecord> {
     /**
      * The column <code>public.credit_transaction.reference_type</code>.
      */
-    public final TableField<CreditTransactionRecord, String> REFERENCE_TYPE = createField(DSL.name("reference_type"), SQLDataType.VARCHAR(64), this, "");
+    public final TableField<CreditTransactionRecord, String> REFERENCE_TYPE = createField(DSL.name("reference_type"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
     /**
      * The column <code>public.credit_transaction.reference_id</code>.
      */
-    public final TableField<CreditTransactionRecord, String> REFERENCE_ID = createField(DSL.name("reference_id"), SQLDataType.VARCHAR(64), this, "");
+    public final TableField<CreditTransactionRecord, String> REFERENCE_ID = createField(DSL.name("reference_id"), SQLDataType.VARCHAR(128).nullable(false), this, "");
 
     /**
      * The column <code>public.credit_transaction.description</code>.
      */
-    public final TableField<CreditTransactionRecord, String> DESCRIPTION = createField(DSL.name("description"), SQLDataType.CLOB, this, "");
+    public final TableField<CreditTransactionRecord, String> DESCRIPTION = createField(DSL.name("description"), SQLDataType.CLOB.nullable(false), this, "");
+
+    /**
+     * The column <code>public.credit_transaction.idempotency_key</code>.
+     */
+    public final TableField<CreditTransactionRecord, String> IDEMPOTENCY_KEY = createField(DSL.name("idempotency_key"), SQLDataType.VARCHAR(255).nullable(false), this, "");
+
+    /**
+     * The column <code>public.credit_transaction.payload_fingerprint</code>.
+     */
+    public final TableField<CreditTransactionRecord, String> PAYLOAD_FINGERPRINT = createField(DSL.name("payload_fingerprint"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
     /**
      * The column <code>public.credit_transaction.created_at</code>.
      */
-    public final TableField<CreditTransactionRecord, LocalDateTime> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.LOCALDATETIME(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.LOCALDATETIME)), this, "");
+    public final TableField<CreditTransactionRecord, Instant> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "", new InstantConverter());
 
     private CreditTransaction(Name alias, Table<CreditTransactionRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
@@ -141,6 +167,11 @@ public class CreditTransaction extends TableImpl<CreditTransactionRecord> {
     @Override
     public UniqueKey<CreditTransactionRecord> getPrimaryKey() {
         return Keys.CREDIT_TRANSACTION_PKEY;
+    }
+
+    @Override
+    public List<UniqueKey<CreditTransactionRecord>> getUniqueKeys() {
+        return Arrays.asList(Keys.CREDIT_TRANSACTION_TENANT_ID_IDEMPOTENCY_KEY_KEY);
     }
 
     @Override

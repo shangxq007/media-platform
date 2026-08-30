@@ -4,22 +4,29 @@
 package com.example.platform.typedschema.jooq.generated.tables;
 
 
+import com.example.platform.typedschema.contract.InstantConverter;
 import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
+import com.example.platform.typedschema.jooq.generated.tables.InvoiceLineItem.InvoiceLineItemPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.BillingInvoiceRecord;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
+import org.jooq.Check;
 import org.jooq.Condition;
 import org.jooq.Field;
+import org.jooq.ForeignKey;
 import org.jooq.Index;
+import org.jooq.InverseForeignKey;
 import org.jooq.Name;
+import org.jooq.Path;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
+import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
 import org.jooq.Select;
@@ -29,6 +36,7 @@ import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
@@ -60,6 +68,21 @@ public class BillingInvoice extends TableImpl<BillingInvoiceRecord> {
     public final TableField<BillingInvoiceRecord, String> ID = createField(DSL.name("id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
     /**
+     * The column <code>public.billing_invoice.tenant_id</code>.
+     */
+    public final TableField<BillingInvoiceRecord, String> TENANT_ID = createField(DSL.name("tenant_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
+
+    /**
+     * The column <code>public.billing_invoice.principal_type</code>.
+     */
+    public final TableField<BillingInvoiceRecord, String> PRINCIPAL_TYPE = createField(DSL.name("principal_type"), SQLDataType.VARCHAR(32).nullable(false), this, "");
+
+    /**
+     * The column <code>public.billing_invoice.principal_id</code>.
+     */
+    public final TableField<BillingInvoiceRecord, String> PRINCIPAL_ID = createField(DSL.name("principal_id"), SQLDataType.VARCHAR(128).nullable(false), this, "");
+
+    /**
      * The column <code>public.billing_invoice.contract_id</code>.
      */
     public final TableField<BillingInvoiceRecord, String> CONTRACT_ID = createField(DSL.name("contract_id"), SQLDataType.VARCHAR(64), this, "");
@@ -80,24 +103,44 @@ public class BillingInvoice extends TableImpl<BillingInvoiceRecord> {
     public final TableField<BillingInvoiceRecord, String> INVOICE_STATUS = createField(DSL.name("invoice_status"), SQLDataType.VARCHAR(32).nullable(false), this, "");
 
     /**
-     * The column <code>public.billing_invoice.amount_due_minor</code>.
+     * The column <code>public.billing_invoice.total_amount_minor</code>.
      */
-    public final TableField<BillingInvoiceRecord, Long> AMOUNT_DUE_MINOR = createField(DSL.name("amount_due_minor"), SQLDataType.BIGINT, this, "");
+    public final TableField<BillingInvoiceRecord, Long> TOTAL_AMOUNT_MINOR = createField(DSL.name("total_amount_minor"), SQLDataType.BIGINT.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.BIGINT)), this, "");
 
     /**
      * The column <code>public.billing_invoice.amount_paid_minor</code>.
      */
-    public final TableField<BillingInvoiceRecord, Long> AMOUNT_PAID_MINOR = createField(DSL.name("amount_paid_minor"), SQLDataType.BIGINT, this, "");
+    public final TableField<BillingInvoiceRecord, Long> AMOUNT_PAID_MINOR = createField(DSL.name("amount_paid_minor"), SQLDataType.BIGINT.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.BIGINT)), this, "");
 
     /**
      * The column <code>public.billing_invoice.currency_code</code>.
      */
-    public final TableField<BillingInvoiceRecord, String> CURRENCY_CODE = createField(DSL.name("currency_code"), SQLDataType.VARCHAR(8), this, "");
+    public final TableField<BillingInvoiceRecord, String> CURRENCY_CODE = createField(DSL.name("currency_code"), SQLDataType.VARCHAR(3).nullable(false), this, "");
+
+    /**
+     * The column <code>public.billing_invoice.version</code>.
+     */
+    public final TableField<BillingInvoiceRecord, Long> VERSION = createField(DSL.name("version"), SQLDataType.BIGINT.nullable(false).defaultValue(DSL.field(DSL.raw("1"), SQLDataType.BIGINT)), this, "");
+
+    /**
+     * The column <code>public.billing_invoice.issued_at</code>.
+     */
+    public final TableField<BillingInvoiceRecord, Instant> ISSUED_AT = createField(DSL.name("issued_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "", new InstantConverter());
+
+    /**
+     * The column <code>public.billing_invoice.paid_at</code>.
+     */
+    public final TableField<BillingInvoiceRecord, Instant> PAID_AT = createField(DSL.name("paid_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "", new InstantConverter());
 
     /**
      * The column <code>public.billing_invoice.created_at</code>.
      */
-    public final TableField<BillingInvoiceRecord, LocalDateTime> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.LOCALDATETIME(6).nullable(false), this, "");
+    public final TableField<BillingInvoiceRecord, Instant> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false), this, "", new InstantConverter());
+
+    /**
+     * The column <code>public.billing_invoice.updated_at</code>.
+     */
+    public final TableField<BillingInvoiceRecord, Instant> UPDATED_AT = createField(DSL.name("updated_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false), this, "", new InstantConverter());
 
     private BillingInvoice(Name alias, Table<BillingInvoiceRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
@@ -128,6 +171,39 @@ public class BillingInvoice extends TableImpl<BillingInvoiceRecord> {
         this(DSL.name("billing_invoice"), null);
     }
 
+    public <O extends Record> BillingInvoice(Table<O> path, ForeignKey<O, BillingInvoiceRecord> childPath, InverseForeignKey<O, BillingInvoiceRecord> parentPath) {
+        super(path, childPath, parentPath, BILLING_INVOICE);
+    }
+
+    /**
+     * A subtype implementing {@link Path} for simplified path-based joins.
+     */
+    public static class BillingInvoicePath extends BillingInvoice implements Path<BillingInvoiceRecord> {
+
+        private static final long serialVersionUID = 1L;
+        public <O extends Record> BillingInvoicePath(Table<O> path, ForeignKey<O, BillingInvoiceRecord> childPath, InverseForeignKey<O, BillingInvoiceRecord> parentPath) {
+            super(path, childPath, parentPath);
+        }
+        private BillingInvoicePath(Name alias, Table<BillingInvoiceRecord> aliased) {
+            super(alias, aliased);
+        }
+
+        @Override
+        public BillingInvoicePath as(String alias) {
+            return new BillingInvoicePath(DSL.name(alias), this);
+        }
+
+        @Override
+        public BillingInvoicePath as(Name alias) {
+            return new BillingInvoicePath(alias, this);
+        }
+
+        @Override
+        public BillingInvoicePath as(Table<?> alias) {
+            return new BillingInvoicePath(alias.getQualifiedName(), this);
+        }
+    }
+
     @Override
     public Schema getSchema() {
         return aliased() ? null : Public.PUBLIC;
@@ -141,6 +217,30 @@ public class BillingInvoice extends TableImpl<BillingInvoiceRecord> {
     @Override
     public UniqueKey<BillingInvoiceRecord> getPrimaryKey() {
         return Keys.BILLING_INVOICE_PKEY;
+    }
+
+    private transient InvoiceLineItemPath _invoiceLineItem;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.invoice_line_item</code> table
+     */
+    public InvoiceLineItemPath invoiceLineItem() {
+        if (_invoiceLineItem == null)
+            _invoiceLineItem = new InvoiceLineItemPath(this, null, Keys.INVOICE_LINE_ITEM__INVOICE_LINE_ITEM_TENANT_ID_INVOICE_ID_FKEY.getInverseKey());
+
+        return _invoiceLineItem;
+    }
+
+    @Override
+    public List<Check<BillingInvoiceRecord>> getChecks() {
+        return Arrays.asList(
+            Internal.createCheck(this, DSL.name("billing_invoice_amount_paid_minor_check"), "((amount_paid_minor >= 0))", true),
+            Internal.createCheck(this, DSL.name("billing_invoice_check"), "((amount_paid_minor <= total_amount_minor))", true),
+            Internal.createCheck(this, DSL.name("billing_invoice_invoice_status_check"), "(((invoice_status)::text = ANY ((ARRAY['OPEN'::character varying, 'ISSUED'::character varying, 'PAID'::character varying, 'VOID'::character varying])::text[])))", true),
+            Internal.createCheck(this, DSL.name("billing_invoice_total_amount_minor_check"), "((total_amount_minor >= 0))", true),
+            Internal.createCheck(this, DSL.name("billing_invoice_version_check"), "((version > 0))", true)
+        );
     }
 
     @Override

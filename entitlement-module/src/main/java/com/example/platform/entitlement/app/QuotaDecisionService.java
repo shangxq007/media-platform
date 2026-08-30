@@ -1,7 +1,10 @@
 package com.example.platform.entitlement.app;
 
-import com.example.platform.entitlement.domain.QuotaDecision;
 import com.example.platform.entitlement.domain.QuotaProfile;
+import com.example.platform.entitlement.domain.QuotaUsageQuery;
+import com.example.platform.shared.commercial.PrincipalRef;
+import com.example.platform.shared.commercial.QuotaDecision;
+import java.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -12,46 +15,43 @@ public class QuotaDecisionService {
     private static final Logger log = LoggerFactory.getLogger(QuotaDecisionService.class);
 
     private final QuotaPolicyService quotaPolicyService;
-    private final QuotaUsageService quotaUsageService;
+    private final QuotaUsageAuthority quotaUsageAuthority;
 
-    public QuotaDecisionService(QuotaPolicyService quotaPolicyService, QuotaUsageService quotaUsageService) {
+    public QuotaDecisionService(
+            QuotaPolicyService quotaPolicyService, QuotaUsageAuthority quotaUsageAuthority) {
         this.quotaPolicyService = quotaPolicyService;
-        this.quotaUsageService = quotaUsageService;
+        this.quotaUsageAuthority = quotaUsageAuthority;
     }
 
-    public QuotaDecision evaluate(String subjectId, String featureCode, long requestedAmount) {
-        long currentUsage = quotaUsageService.getUsage(subjectId, featureCode);
-        long remaining = quotaPolicyService.remaining(featureCode, currentUsage);
-        long afterRequest = remaining - requestedAmount;
-        boolean allowed = afterRequest >= 0;
-        log.debug("Quota evaluation for {} / {}: usage={}, remaining={}, requested={}, allowed={}",
-                subjectId, featureCode, currentUsage, remaining, requestedAmount, allowed);
-        return new QuotaDecision(subjectId, featureCode, allowed, remaining, currentUsage);
+    public QuotaDecision evaluate(
+            PrincipalRef principal,
+            String quotaKey,
+            Instant periodStart,
+            Instant periodEnd,
+            long requestedAmount,
+            String traceId,
+            Instant decidedAt) {
+        long limit = quotaPolicyService.getQuotaPolicy(quotaKey).limitValue();
+        QuotaDecision decision = quotaUsageAuthority.decide(new QuotaUsageQuery(
+                principal, quotaKey, periodStart, periodEnd, requestedAmount,
+                limit, traceId, decidedAt));
+        log.debug("Quota evaluation for {} / {}: usage={}, limit={}, requested={}, allowed={}",
+                principal, quotaKey, decision.usedUnits(), limit, requestedAmount, decision.allowed());
+        return decision;
     }
 
-    public QuotaDecision evaluateWithProfile(String subjectId, String featureCode,
-            QuotaProfile profile, long requestedAmount) {
-        long limit = quotaPolicyService.resolveLimitFromProfile(profile, featureCode);
-        long currentUsage = quotaUsageService.getUsage(subjectId, featureCode);
-        long remaining = Math.max(0, limit - currentUsage);
-        boolean allowed = requestedAmount <= remaining;
-        log.debug("Quota evaluation (profile) for {} / {}: limit={}, usage={}, requested={}, allowed={}",
-                subjectId, featureCode, limit, currentUsage, requestedAmount, allowed);
-        return new QuotaDecision(subjectId, featureCode, allowed, remaining, currentUsage);
-    }
-
-    public void recordUsage(String subjectId, String featureCode, long amount) {
-        quotaUsageService.incrementUsage(subjectId, featureCode, amount);
-    }
-
-    public long getRemaining(String subjectId, String featureCode) {
-        long currentUsage = quotaUsageService.getUsage(subjectId, featureCode);
-        return quotaPolicyService.remaining(featureCode, currentUsage);
-    }
-
-    public long getRemainingWithProfile(String subjectId, String featureCode, QuotaProfile profile) {
-        long limit = quotaPolicyService.resolveLimitFromProfile(profile, featureCode);
-        long currentUsage = quotaUsageService.getUsage(subjectId, featureCode);
-        return Math.max(0, limit - currentUsage);
+    public QuotaDecision evaluateWithProfile(
+            PrincipalRef principal,
+            String quotaKey,
+            QuotaProfile profile,
+            Instant periodStart,
+            Instant periodEnd,
+            long requestedAmount,
+            String traceId,
+            Instant decidedAt) {
+        long limit = quotaPolicyService.resolveLimitFromProfile(profile, quotaKey);
+        return quotaUsageAuthority.decide(new QuotaUsageQuery(
+                principal, quotaKey, periodStart, periodEnd, requestedAmount,
+                limit, traceId, decidedAt));
     }
 }

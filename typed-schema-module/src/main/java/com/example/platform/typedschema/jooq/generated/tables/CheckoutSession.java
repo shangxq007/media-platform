@@ -7,6 +7,8 @@ package com.example.platform.typedschema.jooq.generated.tables;
 import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
+import com.example.platform.typedschema.jooq.generated.tables.CommerceProduct.CommerceProductPath;
+import com.example.platform.typedschema.jooq.generated.tables.CommercialOffering.CommercialOfferingPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.CheckoutSessionRecord;
 
 import java.time.LocalDateTime;
@@ -16,10 +18,14 @@ import java.util.List;
 
 import org.jooq.Condition;
 import org.jooq.Field;
+import org.jooq.ForeignKey;
 import org.jooq.Index;
+import org.jooq.InverseForeignKey;
 import org.jooq.Name;
+import org.jooq.Path;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
+import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
 import org.jooq.Select;
@@ -70,6 +76,41 @@ public class CheckoutSession extends TableImpl<CheckoutSessionRecord> {
     public final TableField<CheckoutSessionRecord, String> PRODUCT_ID = createField(DSL.name("product_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
     /**
+     * The column <code>public.checkout_session.canonical_product_code</code>.
+     */
+    public final TableField<CheckoutSessionRecord, String> CANONICAL_PRODUCT_CODE = createField(DSL.name("canonical_product_code"), SQLDataType.VARCHAR(128).nullable(false), this, "");
+
+    /**
+     * The column <code>public.checkout_session.offering_id</code>.
+     */
+    public final TableField<CheckoutSessionRecord, String> OFFERING_ID = createField(DSL.name("offering_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
+
+    /**
+     * The column <code>public.checkout_session.offering_version</code>.
+     */
+    public final TableField<CheckoutSessionRecord, Long> OFFERING_VERSION = createField(DSL.name("offering_version"), SQLDataType.BIGINT.nullable(false), this, "");
+
+    /**
+     * The column <code>public.checkout_session.commercial_price_ref</code>.
+     */
+    public final TableField<CheckoutSessionRecord, String> COMMERCIAL_PRICE_REF = createField(DSL.name("commercial_price_ref"), SQLDataType.VARCHAR(128).nullable(false), this, "");
+
+    /**
+     * The column <code>public.checkout_session.commercial_price_version</code>.
+     */
+    public final TableField<CheckoutSessionRecord, Long> COMMERCIAL_PRICE_VERSION = createField(DSL.name("commercial_price_version"), SQLDataType.BIGINT.nullable(false), this, "");
+
+    /**
+     * The column <code>public.checkout_session.amount_minor_snapshot</code>.
+     */
+    public final TableField<CheckoutSessionRecord, Long> AMOUNT_MINOR_SNAPSHOT = createField(DSL.name("amount_minor_snapshot"), SQLDataType.BIGINT.nullable(false), this, "");
+
+    /**
+     * The column <code>public.checkout_session.currency_code_snapshot</code>.
+     */
+    public final TableField<CheckoutSessionRecord, String> CURRENCY_CODE_SNAPSHOT = createField(DSL.name("currency_code_snapshot"), SQLDataType.VARCHAR(3).nullable(false), this, "");
+
+    /**
      * The column <code>public.checkout_session.provider_code</code>.
      */
     public final TableField<CheckoutSessionRecord, String> PROVIDER_CODE = createField(DSL.name("provider_code"), SQLDataType.VARCHAR(64), this, "");
@@ -97,7 +138,7 @@ public class CheckoutSession extends TableImpl<CheckoutSessionRecord> {
     /**
      * The column <code>public.checkout_session.tenant_id</code>.
      */
-    public final TableField<CheckoutSessionRecord, String> TENANT_ID = createField(DSL.name("tenant_id"), SQLDataType.VARCHAR(64), this, "");
+    public final TableField<CheckoutSessionRecord, String> TENANT_ID = createField(DSL.name("tenant_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
     /**
      * The column <code>public.checkout_session.user_id</code>.
@@ -138,6 +179,39 @@ public class CheckoutSession extends TableImpl<CheckoutSessionRecord> {
         this(DSL.name("checkout_session"), null);
     }
 
+    public <O extends Record> CheckoutSession(Table<O> path, ForeignKey<O, CheckoutSessionRecord> childPath, InverseForeignKey<O, CheckoutSessionRecord> parentPath) {
+        super(path, childPath, parentPath, CHECKOUT_SESSION);
+    }
+
+    /**
+     * A subtype implementing {@link Path} for simplified path-based joins.
+     */
+    public static class CheckoutSessionPath extends CheckoutSession implements Path<CheckoutSessionRecord> {
+
+        private static final long serialVersionUID = 1L;
+        public <O extends Record> CheckoutSessionPath(Table<O> path, ForeignKey<O, CheckoutSessionRecord> childPath, InverseForeignKey<O, CheckoutSessionRecord> parentPath) {
+            super(path, childPath, parentPath);
+        }
+        private CheckoutSessionPath(Name alias, Table<CheckoutSessionRecord> aliased) {
+            super(alias, aliased);
+        }
+
+        @Override
+        public CheckoutSessionPath as(String alias) {
+            return new CheckoutSessionPath(DSL.name(alias), this);
+        }
+
+        @Override
+        public CheckoutSessionPath as(Name alias) {
+            return new CheckoutSessionPath(alias, this);
+        }
+
+        @Override
+        public CheckoutSessionPath as(Table<?> alias) {
+            return new CheckoutSessionPath(alias.getQualifiedName(), this);
+        }
+    }
+
     @Override
     public Schema getSchema() {
         return aliased() ? null : Public.PUBLIC;
@@ -156,6 +230,37 @@ public class CheckoutSession extends TableImpl<CheckoutSessionRecord> {
     @Override
     public List<UniqueKey<CheckoutSessionRecord>> getUniqueKeys() {
         return Arrays.asList(Keys.CHECKOUT_SESSION_CHECKOUT_SESSION_CODE_KEY);
+    }
+
+    @Override
+    public List<ForeignKey<CheckoutSessionRecord, ?>> getReferences() {
+        return Arrays.asList(Keys.CHECKOUT_SESSION__CHECKOUT_SESSION_OFFERING_ID_FKEY, Keys.CHECKOUT_SESSION__CHECKOUT_SESSION_PRODUCT_ID_FKEY);
+    }
+
+    private transient CommercialOfferingPath _commercialOffering;
+
+    /**
+     * Get the implicit join path to the <code>public.commercial_offering</code>
+     * table.
+     */
+    public CommercialOfferingPath commercialOffering() {
+        if (_commercialOffering == null)
+            _commercialOffering = new CommercialOfferingPath(this, Keys.CHECKOUT_SESSION__CHECKOUT_SESSION_OFFERING_ID_FKEY, null);
+
+        return _commercialOffering;
+    }
+
+    private transient CommerceProductPath _commerceProduct;
+
+    /**
+     * Get the implicit join path to the <code>public.commerce_product</code>
+     * table.
+     */
+    public CommerceProductPath commerceProduct() {
+        if (_commerceProduct == null)
+            _commerceProduct = new CommerceProductPath(this, Keys.CHECKOUT_SESSION__CHECKOUT_SESSION_PRODUCT_ID_FKEY, null);
+
+        return _commerceProduct;
     }
 
     @Override

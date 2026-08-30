@@ -1,11 +1,11 @@
 package com.example.platform.entitlement.app;
 
 import com.example.platform.entitlement.domain.*;
-import com.example.platform.entitlement.infrastructure.EntitlementGrantRepository;
 import com.example.platform.entitlement.infrastructure.EntitlementOverrideRepository;
 import com.example.platform.entitlement.infrastructure.WorkspaceEntitlementPoolRepository;
-import com.example.platform.entitlement.infrastructure.WorkspaceMemberEntitlementGrantRepository;
 import com.example.platform.shared.collaboration.CollaborationAccessPort;
+import com.example.platform.shared.commercial.PrincipalRef;
+import com.example.platform.shared.commercial.PrincipalType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -21,24 +21,21 @@ public class EntitlementDecisionService {
     private static final Logger log = LoggerFactory.getLogger(EntitlementDecisionService.class);
 
     private final EntitlementPolicyService policyService;
-    private final EntitlementGrantRepository grantRepository;
+    private final EntitlementService entitlementService;
     private final EntitlementOverrideRepository overrideRepository;
     private final WorkspaceEntitlementPoolRepository poolRepository;
-    private final WorkspaceMemberEntitlementGrantRepository memberGrantRepository;
     private final CollaborationAccessPort collaborationAccessPort;
 
     public EntitlementDecisionService(
             EntitlementPolicyService policyService,
-            Optional<EntitlementGrantRepository> grantRepository,
+            EntitlementService entitlementService,
             Optional<EntitlementOverrideRepository> overrideRepository,
             Optional<WorkspaceEntitlementPoolRepository> poolRepository,
-            Optional<WorkspaceMemberEntitlementGrantRepository> memberGrantRepository,
             Optional<CollaborationAccessPort> collaborationAccessPort) {
         this.policyService = policyService;
-        this.grantRepository = grantRepository.orElse(null);
+        this.entitlementService = entitlementService;
         this.overrideRepository = overrideRepository.orElse(null);
         this.poolRepository = poolRepository.orElse(null);
-        this.memberGrantRepository = memberGrantRepository.orElse(null);
         this.collaborationAccessPort = collaborationAccessPort.orElse(null);
     }
 
@@ -47,7 +44,6 @@ public class EntitlementDecisionService {
         Instant now = Instant.now();
 
         String tier = policyService.getTier(request.tenantId());
-        EntitlementPolicy tierPolicy = policyService.getPolicy(request.tenantId());
 
         if (collaborationAccessPort != null && isSharedResourceCheck(request)) {
             String userId = request.userId() != null ? request.userId() : request.subjectId();
@@ -79,22 +75,26 @@ public class EntitlementDecisionService {
             }
         }
 
-        if (memberGrantRepository != null && request.workspaceId() != null && request.userId() != null) {
+        if (request.subjectId() != null) {
             try {
-                List<WorkspaceMemberEntitlementGrant> memberGrants =
-                        memberGrantRepository.findActiveByMemberId(request.workspaceId(), request.userId());
-                for (WorkspaceMemberEntitlementGrant g : memberGrants) {
-                    if (g.featureKey().equals(request.featureKey()) && !isGrantExpired(g, now)) {
-                        matchedPolicies.add("workspace-member-grant:" + g.id());
+                PrincipalRef principal = new PrincipalRef(request.tenantId(),
+                        principalType(request.subjectType()), request.subjectId(), request.workspaceId(), null);
+                for (EntitlementGrantView g : entitlementService.listGrants(principal)) {
+                    if (g.bundleCode().equals(request.featureKey())) {
+                        matchedPolicies.add((g.workspaceGrant() ? "workspace-member-grant:" : "grant:")
+                                + g.grantId());
                         return new EntitlementDecision(
-                                true, "ALLOW", EntitlementDecisionReason.WORKSPACE_MEMBER_GRANT.name(),
-                                "Access granted by workspace member grant", tier,
-                                matchedPolicies, g.id(), null, null, null,
+                                true, "ALLOW", (g.workspaceGrant()
+                                        ? EntitlementDecisionReason.WORKSPACE_MEMBER_GRANT
+                                        : EntitlementDecisionReason.USER_GRANT).name(),
+                                "Access granted by entitlement grant", tier,
+                                matchedPolicies, g.grantId(), null, null, null,
                                 null, List.of(), g.expiresAt(), false);
                     }
                 }
             } catch (Exception e) {
                 log.warn("Member grant check failed: {}", e.getMessage());
+                return persistenceDenied(tier, matchedPolicies, "grant persistence unavailable");
             }
         }
 
@@ -112,39 +112,10 @@ public class EntitlementDecisionService {
             }
         }
 
-        if (grantRepository != null && request.subjectId() != null) {
-            try {
-                List<EntitlementGrantRepository.EntitlementGrantRecord> grants =
-                        grantRepository.findActiveBySubjectId(request.subjectId());
-                for (EntitlementGrantRepository.EntitlementGrantRecord g : grants) {
-                    if (g.bundleCode().equals(request.featureKey()) && !isRecordExpired(g, now)) {
-                        matchedPolicies.add("grant:" + g.id());
-                        return new EntitlementDecision(
-                                true, "ALLOW", EntitlementDecisionReason.USER_GRANT.name(),
-                                "Access granted by entitlement grant", tier,
-                                matchedPolicies, g.id(), null, null, null,
-                                null, List.of(), g.expiresAt(), false);
-                    }
-                }
-            } catch (Exception e) {
-                log.warn("Grant check failed: {}", e.getMessage());
-            }
-        }
-
-        boolean tierAllowed = checkTierPolicy(tierPolicy, request);
-        if (tierAllowed) {
-            matchedPolicies.add("tier:" + tier);
-            return new EntitlementDecision(
-                    true, "ALLOW", EntitlementDecisionReason.TIER.name(),
-                    "Access granted by tier policy", tier,
-                    matchedPolicies, null, null, null, null,
-                    null, List.of(), null, false);
-        }
-
         matchedPolicies.add("default-deny");
         return new EntitlementDecision(
                 false, "DENY", EntitlementDecisionReason.DEFAULT_DENY.name(),
-                "Access denied: feature not available for current tier", tier,
+                "Access denied: no active entitlement grant", tier,
                 matchedPolicies, null, null, null, null,
                 null, buildUpgradeOptions(tier), null, false);
     }
@@ -153,12 +124,11 @@ public class EntitlementDecisionService {
         return o.expiresAt() != null && o.expiresAt().isBefore(now);
     }
 
-    private boolean isGrantExpired(WorkspaceMemberEntitlementGrant g, Instant now) {
-        return g.expiresAt() != null && g.expiresAt().isBefore(now);
-    }
-
-    private boolean isRecordExpired(EntitlementGrantRepository.EntitlementGrantRecord g, Instant now) {
-        return g.expiresAt() != null && g.expiresAt().isBefore(now);
+    private static PrincipalType principalType(String subjectType) {
+        if (subjectType == null || subjectType.isBlank() || "TENANT".equalsIgnoreCase(subjectType)) {
+            return PrincipalType.ORGANIZATION;
+        }
+        return PrincipalType.valueOf(subjectType.toUpperCase());
     }
 
     private static boolean isSharedResourceCheck(AccessCheckRequest request) {
@@ -169,23 +139,15 @@ public class EntitlementDecisionService {
         return "project".equals(type) || "export".equals(type);
     }
 
-    private boolean checkTierPolicy(EntitlementPolicy policy, AccessCheckRequest request) {
-        if (request.featureKey() == null) return false;
-        if (request.providerKey() != null && !policy.isProviderAllowed(request.providerKey())) return false;
-        if (request.requestedPreset() != null) {
-            if (request.requestedPreset().startsWith("gpu_") && !policy.gpuAllowed()) return false;
-            boolean is4k = request.requestedPreset().contains("4k") || request.requestedPreset().contains("2160p");
-            if (is4k && policy.maxResolutionHeight() < 2160) return false;
-        }
-        return true;
+    private List<String> buildUpgradeOptions(String currentTier) {
+        return List.of("Review available commercial offerings");
     }
 
-    private List<String> buildUpgradeOptions(String currentTier) {
-        return switch (currentTier.toUpperCase()) {
-            case "FREE" -> List.of("Upgrade to PRO for more features", "Upgrade to TEAM for GPU rendering");
-            case "PRO" -> List.of("Upgrade to TEAM for GPU rendering", "Upgrade to ENTERPRISE for priority queue");
-            case "TEAM" -> List.of("Upgrade to ENTERPRISE for priority rendering and more capacity");
-            default -> List.of();
-        };
+    private EntitlementDecision persistenceDenied(
+            String tier, List<String> matchedPolicies, String detail) {
+        matchedPolicies.add("persistence-deny");
+        return new EntitlementDecision(false, "DENY", EntitlementDecisionReason.DEFAULT_DENY.name(),
+                "Access denied: " + detail, tier, matchedPolicies, null, null, null, null,
+                null, List.of(), null, false);
     }
 }

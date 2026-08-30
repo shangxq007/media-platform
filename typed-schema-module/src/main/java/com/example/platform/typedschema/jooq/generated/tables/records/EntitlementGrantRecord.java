@@ -35,129 +35,185 @@ public class EntitlementGrantRecord extends UpdatableRecordImpl<EntitlementGrant
     }
 
     /**
+     * Setter for <code>public.entitlement_grant.tenant_id</code>.
+     */
+    public void setTenantId(String value) {
+        set(1, value);
+    }
+
+    /**
+     * Getter for <code>public.entitlement_grant.tenant_id</code>.
+     */
+    public String getTenantId() {
+        return (String) get(1);
+    }
+
+    /**
      * Setter for <code>public.entitlement_grant.subject_type</code>.
      */
     public void setSubjectType(String value) {
-        set(1, value);
+        set(2, value);
     }
 
     /**
      * Getter for <code>public.entitlement_grant.subject_type</code>.
      */
     public String getSubjectType() {
-        return (String) get(1);
+        return (String) get(2);
     }
 
     /**
      * Setter for <code>public.entitlement_grant.subject_id</code>.
      */
     public void setSubjectId(String value) {
-        set(2, value);
+        set(3, value);
     }
 
     /**
      * Getter for <code>public.entitlement_grant.subject_id</code>.
      */
     public String getSubjectId() {
-        return (String) get(2);
+        return (String) get(3);
     }
 
     /**
      * Setter for <code>public.entitlement_grant.bundle_code</code>.
      */
     public void setBundleCode(String value) {
-        set(3, value);
+        set(4, value);
     }
 
     /**
      * Getter for <code>public.entitlement_grant.bundle_code</code>.
      */
     public String getBundleCode() {
-        return (String) get(3);
+        return (String) get(4);
     }
 
     /**
      * Setter for <code>public.entitlement_grant.quota_profile_code</code>.
      */
     public void setQuotaProfileCode(String value) {
-        set(4, value);
+        set(5, value);
     }
 
     /**
      * Getter for <code>public.entitlement_grant.quota_profile_code</code>.
      */
     public String getQuotaProfileCode() {
-        return (String) get(4);
+        return (String) get(5);
     }
 
     /**
      * Setter for <code>public.entitlement_grant.source_type</code>.
      */
     public void setSourceType(String value) {
-        set(5, value);
+        set(6, value);
     }
 
     /**
      * Getter for <code>public.entitlement_grant.source_type</code>.
      */
     public String getSourceType() {
-        return (String) get(5);
+        return (String) get(6);
     }
 
     /**
      * Setter for <code>public.entitlement_grant.source_ref</code>.
      */
     public void setSourceRef(String value) {
-        set(6, value);
+        set(7, value);
     }
 
     /**
      * Getter for <code>public.entitlement_grant.source_ref</code>.
      */
     public String getSourceRef() {
-        return (String) get(6);
+        return (String) get(7);
     }
 
     /**
      * Setter for <code>public.entitlement_grant.grant_status</code>.
      */
     public void setGrantStatus(String value) {
-        set(7, value);
+        set(8, value);
     }
 
     /**
      * Getter for <code>public.entitlement_grant.grant_status</code>.
      */
     public String getGrantStatus() {
-        return (String) get(7);
+        return (String) get(8);
     }
 
     /**
      * Setter for <code>public.entitlement_grant.effective_at</code>.
      */
     public void setEffectiveAt(LocalDateTime value) {
-        set(8, value);
+        set(9, value);
     }
 
     /**
      * Getter for <code>public.entitlement_grant.effective_at</code>.
      */
     public LocalDateTime getEffectiveAt() {
-        return (LocalDateTime) get(8);
+        return (LocalDateTime) get(9);
     }
 
     /**
      * Setter for <code>public.entitlement_grant.expires_at</code>.
      */
     public void setExpiresAt(LocalDateTime value) {
-        set(9, value);
+        set(10, value);
     }
 
     /**
      * Getter for <code>public.entitlement_grant.expires_at</code>.
      */
     public LocalDateTime getExpiresAt() {
-        return (LocalDateTime) get(9);
+        return (LocalDateTime) get(10);
+    }
+
+    /**
+     * Setter for <code>public.entitlement_grant.version</code>.
+     */
+    public void setVersion(Long value) {
+        set(11, value);
+    }
+
+    /**
+     * Getter for <code>public.entitlement_grant.version</code>.
+     */
+    public Long getVersion() {
+        return (Long) get(11);
+    }
+
+    /**
+     * Setter for <code>public.entitlement_grant.created_at</code>.
+     */
+    public void setCreatedAt(LocalDateTime value) {
+        set(12, value);
+    }
+
+    /**
+     * Getter for <code>public.entitlement_grant.created_at</code>.
+     */
+    public LocalDateTime getCreatedAt() {
+        return (LocalDateTime) get(12);
+    }
+
+    /**
+     * Setter for <code>public.entitlement_grant.updated_at</code>.
+     */
+    public void setUpdatedAt(LocalDateTime value) {
+        set(13, value);
+    }
+
+    /**
+     * Getter for <code>public.entitlement_grant.updated_at</code>.
+     */
+    public LocalDateTime getUpdatedAt() {
+        return (LocalDateTime) get(13);
     }
 
     // -------------------------------------------------------------------------
@@ -183,10 +239,11 @@ public class EntitlementGrantRecord extends UpdatableRecordImpl<EntitlementGrant
     /**
      * Create a detached, initialised EntitlementGrantRecord
      */
-    public EntitlementGrantRecord(String id, String subjectType, String subjectId, String bundleCode, String quotaProfileCode, String sourceType, String sourceRef, String grantStatus, LocalDateTime effectiveAt, LocalDateTime expiresAt) {
+    public EntitlementGrantRecord(String id, String tenantId, String subjectType, String subjectId, String bundleCode, String quotaProfileCode, String sourceType, String sourceRef, String grantStatus, LocalDateTime effectiveAt, LocalDateTime expiresAt, Long version, LocalDateTime createdAt, LocalDateTime updatedAt) {
         super(EntitlementGrant.ENTITLEMENT_GRANT);
 
         setId(id);
+        setTenantId(tenantId);
         setSubjectType(subjectType);
         setSubjectId(subjectId);
         setBundleCode(bundleCode);
@@ -196,6 +253,9 @@ public class EntitlementGrantRecord extends UpdatableRecordImpl<EntitlementGrant
         setGrantStatus(grantStatus);
         setEffectiveAt(effectiveAt);
         setExpiresAt(expiresAt);
+        setVersion(version);
+        setCreatedAt(createdAt);
+        setUpdatedAt(updatedAt);
         resetChangedOnNotNull();
     }
 }

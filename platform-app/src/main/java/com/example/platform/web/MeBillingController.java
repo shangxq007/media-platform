@@ -11,6 +11,8 @@ import com.example.platform.commerce.app.CommerceCatalogService;
 import com.example.platform.commerce.domain.CanonicalProduct;
 import com.example.platform.commerce.domain.ProductLineType;
 import com.example.platform.entitlement.app.EntitlementPolicyService;
+import com.example.platform.shared.commercial.PrincipalRef;
+import com.example.platform.shared.commercial.PrincipalType;
 import com.example.platform.shared.web.TenantContext;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
@@ -45,7 +47,7 @@ public class MeBillingController {
     public ResponseEntity<Map<String, Object>> getCurrentPlan(HttpServletRequest req) {
         BillingSubject subject = resolveSubject(req);
         SubscriptionContract base = subscriptionBillingService.getCurrentSubscription(
-                subject.tenantId(), subject.userId());
+                PrincipalRef.tenantScoped(subject.tenantId(), PrincipalType.USER, subject.userId()));
         String tier = entitlementPolicyService.getTier(subject.tenantId());
 
         Map<String, Object> plan = new LinkedHashMap<>();
@@ -82,7 +84,8 @@ public class MeBillingController {
     public ResponseEntity<List<Map<String, Object>>> listSubscriptions(HttpServletRequest req) {
         BillingSubject subject = resolveSubject(req);
         List<Map<String, Object>> items = subscriptionBillingService
-                .listActiveSubscriptions(subject.tenantId(), subject.userId()).stream()
+                .listActiveSubscriptions(PrincipalRef.tenantScoped(
+                        subject.tenantId(), PrincipalType.USER, subject.userId())).stream()
                 .map(this::subscriptionToMap)
                 .toList();
         return ResponseEntity.ok(items);
@@ -124,7 +127,8 @@ public class MeBillingController {
         CreditWallet wallet = creditWalletService.getWalletByTenant(subject.tenantId(), subject.userId());
         List<Map<String, Object>> txns = List.of();
         if (wallet != null) {
-            List<CreditTransaction> all = creditWalletService.getTransactions(wallet.walletId());
+            List<CreditTransaction> all = creditWalletService.getTransactions(
+                    subject.tenantId(), wallet.walletId());
             int start = Math.min(page * size, all.size());
             int end = Math.min(start + size, all.size());
             txns = all.subList(start, end).stream().map(this::transactionToMap).toList();
@@ -175,7 +179,8 @@ public class MeBillingController {
     public ResponseEntity<List<Map<String, Object>>> upgrades(HttpServletRequest req) {
         BillingSubject subject = resolveSubject(req);
         String currentTier = entitlementPolicyService.getTier(subject.tenantId());
-        List<Map<String, Object>> options = commerceCatalogService.listProducts().stream()
+        List<Map<String, Object>> options = commerceCatalogService.listProducts(
+                        com.example.platform.commerce.domain.CatalogReadScope.tenant(subject.tenantId()), "GLOBAL").stream()
                 .filter(p -> p.lineType() == ProductLineType.BASE_SUBSCRIPTION)
                 .filter(p -> p.tierKey() != null && tierRank(p.tierKey()) > tierRank(currentTier))
                 .map(p -> {
@@ -211,10 +216,12 @@ public class MeBillingController {
         if (wallet == null) {
             wallet = creditWalletService.createWallet(subject.tenantId(), null, subject.userId(), "USD");
         }
+        String topupReference = "me-topup-" + Instant.now().toEpochMilli();
         CreditWallet updated = creditWalletService.credit(
-                wallet.walletId(), amountMinor, "TOP_UP", "me-topup", "Manual top-up");
+                subject.tenantId(), wallet.walletId(), amountMinor,
+                "TOP_UP", topupReference, "Manual top-up");
         billingLedgerService.writeEntry(subject.tenantId(), null, subject.userId(),
-                "CREDIT", amountMinor, updated.currencyCode(), "TOP_UP", "me-topup", "Credit top-up");
+                "CREDIT", amountMinor, updated.currencyCode(), "TOP_UP", topupReference, "Credit top-up");
         return ResponseEntity.ok(Map.of(
                 "transactionId", "topup-" + Instant.now().toEpochMilli(),
                 "walletId", updated.walletId(),

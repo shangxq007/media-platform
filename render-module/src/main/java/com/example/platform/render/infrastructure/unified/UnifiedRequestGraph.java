@@ -9,8 +9,8 @@ import java.util.*;
  * <p>This graph unifies all subsystem traces into a single immutable structure:
  * <ul>
  *   <li>StateMachine (execution state)</li>
- *   <li>BillingDecisionEngine (economic decision)</li>
- *   <li>PolicyEngine (rules)</li>
+ *   <li>CommercialAdmission (precomputed neutral decision)</li>
+ *   <li>RoleWorkspacePolicy (precomputed policy projection)</li>
  *   <li>ProviderRuntimeEngine (execution routing)</li>
  *   <li>ArtifactGraph (outputs)</li>
  * </ul>
@@ -146,10 +146,10 @@ public record UnifiedRequestGraph(
     }
 
     /**
-     * Get the billing decision node.
+     * Get the neutral commercial decision node.
      */
-    public Optional<GraphNode> getBillingDecisionNode() {
-        return getNodesByType(NodeType.BILLING_DECISION_NODE).stream().findFirst();
+    public Optional<GraphNode> getCommercialDecisionNode() {
+        return getNodesByType(NodeType.COMMERCIAL_DECISION_NODE).stream().findFirst();
     }
 
     /**
@@ -268,7 +268,7 @@ public record UnifiedRequestGraph(
 
     public enum NodeType {
         EXECUTION_STATE_NODE,
-        BILLING_DECISION_NODE,
+        COMMERCIAL_DECISION_NODE,
         POLICY_DECISION_NODE,
         PROVIDER_DECISION_NODE,
         ARTIFACT_NODE

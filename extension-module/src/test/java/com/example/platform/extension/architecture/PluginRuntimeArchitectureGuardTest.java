@@ -166,8 +166,10 @@ class PluginRuntimeArchitectureGuardTest {
     void arPrv2_09_usageBoundaryExists() throws IOException {
         Path emitter = RUNTIME_INTERNAL.resolve("RuntimeUsageEmitter.java");
         assertTrue(Files.exists(emitter), "AR-PRV2-09 RuntimeUsageEmitter missing");
-        assertTrue(read(emitter).contains("UsageRecordEmissionPort"),
-                "AR-PRV2-09 must use UsageRecordEmissionPort");
+        assertTrue(read(emitter).contains("ObservedRuntimeUsageEmissionPort"),
+                "AR-PRV2-09 must use the neutral ObservedRuntimeUsageEmissionPort");
+        assertFalse(read(emitter).contains("com.example.platform.billing"),
+                "AR-PRV2-09 runtime usage producer must not import Billing");
     }
 
     // --- AR-PRV2-10: Provider cost preserves provenance ---

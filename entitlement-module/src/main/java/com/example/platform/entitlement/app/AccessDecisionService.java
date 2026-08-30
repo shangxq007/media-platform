@@ -2,12 +2,16 @@ package com.example.platform.entitlement.app;
 
 import com.example.platform.entitlement.domain.*;
 import com.example.platform.policy.featureflag.domain.FeatureFlagDecision;
+import com.example.platform.shared.commercial.PrincipalRef;
+import com.example.platform.shared.commercial.PrincipalType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
+import java.time.Instant;
+import java.time.YearMonth;
+import java.time.ZoneOffset;
 import java.util.List;
 
 @Service
@@ -65,9 +69,17 @@ public class AccessDecisionService {
         }
 
         if (request.requestedQuota() != null && request.requestedQuota() > 0) {
-            String quotaSubject = request.subjectId() != null ? request.subjectId() : request.tenantId();
-            QuotaDecision quotaDecision = quotaDecisionService.evaluate(
-                    quotaSubject, request.featureKey(), request.requestedQuota());
+            Instant decidedAt = Instant.now();
+            YearMonth month = YearMonth.from(decidedAt.atZone(ZoneOffset.UTC));
+            Instant periodStart = month.atDay(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+            Instant periodEnd = month.plusMonths(1).atDay(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+            PrincipalRef principal = principal(request);
+            com.example.platform.shared.commercial.QuotaDecision quotaDecision =
+                    quotaDecisionService.evaluate(
+                            principal, request.featureKey(), periodStart, periodEnd,
+                            request.requestedQuota(),
+                            "access-check:" + request.tenantId() + ":" + request.featureKey(),
+                            decidedAt);
             if (!quotaDecision.allowed()) {
                 return new AccessDecision(
                         false, "QUOTA_EXCEEDED", "QUOTA_POLICY",
@@ -77,7 +89,7 @@ public class AccessDecisionService {
                         entitlementDecision.matchedGrantId(),
                         entitlementDecision.matchedOverrideId(),
                         entitlementDecision.matchedWorkspacePoolId(),
-                        (long) (quotaDecision.limitValue() - quotaDecision.usedValue()),
+                        quotaDecision.limitUnits() - quotaDecision.usedUnits(),
                         null,
                         List.of("Request a quota increase or reduce usage"),
                         entitlementDecision.expiresAt(),
@@ -95,7 +107,7 @@ public class AccessDecisionService {
                     entitlementDecision.matchedGrantId(),
                     entitlementDecision.matchedOverrideId(),
                     entitlementDecision.matchedWorkspacePoolId(),
-                    (long) (quotaDecision.limitValue() - quotaDecision.usedValue()),
+                    quotaDecision.limitUnits() - quotaDecision.usedUnits(),
                     null,
                     List.of(),
                     entitlementDecision.expiresAt(),
@@ -127,5 +139,22 @@ public class AccessDecisionService {
 
     public EntitlementDecision evaluateEntitlement(AccessCheckRequest request) {
         return entitlementDecisionService.evaluate(request);
+    }
+
+    private static PrincipalRef principal(AccessCheckRequest request) {
+        String principalId = request.subjectId() != null && !request.subjectId().isBlank()
+                ? request.subjectId()
+                : request.tenantId();
+        PrincipalType type = switch (
+                request.subjectType() == null ? "USER" : request.subjectType().toUpperCase()) {
+            case "USER" -> PrincipalType.USER;
+            case "SERVICE_ACCOUNT" -> PrincipalType.SERVICE_ACCOUNT;
+            case "WORKSPACE" -> PrincipalType.WORKSPACE;
+            case "ORGANIZATION", "TENANT" -> PrincipalType.ORGANIZATION;
+            default -> throw new IllegalArgumentException(
+                    "Unsupported quota principal type: " + request.subjectType());
+        };
+        return new PrincipalRef(
+                request.tenantId(), type, principalId, request.workspaceId(), null);
     }
 }

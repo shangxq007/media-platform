@@ -20,11 +20,11 @@ class EntitlementDecisionServiceCollaborationTest {
 
     @BeforeEach
     void setUp() {
-        policyService = new EntitlementPolicyService(java.util.Optional.empty(), java.util.Optional.empty());
+        policyService = new EntitlementPolicyService(java.util.Optional.empty());
         collaborationAccessPort = mock(CollaborationAccessPort.class);
         decisionService = new EntitlementDecisionService(
-                policyService, java.util.Optional.empty(), java.util.Optional.empty(),
-                java.util.Optional.empty(), java.util.Optional.empty(),
+                policyService, mock(EntitlementService.class), java.util.Optional.empty(),
+                java.util.Optional.empty(),
                 java.util.Optional.of(collaborationAccessPort));
     }
 

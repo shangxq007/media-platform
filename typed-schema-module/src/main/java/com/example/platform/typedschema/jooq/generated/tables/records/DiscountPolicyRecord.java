@@ -6,9 +6,9 @@ package com.example.platform.typedschema.jooq.generated.tables.records;
 
 import com.example.platform.typedschema.jooq.generated.tables.DiscountPolicy;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
-import org.jooq.Record1;
+import org.jooq.Record2;
 import org.jooq.impl.UpdatableRecordImpl;
 
 
@@ -35,143 +35,227 @@ public class DiscountPolicyRecord extends UpdatableRecordImpl<DiscountPolicyReco
     }
 
     /**
+     * Setter for <code>public.discount_policy.tenant_id</code>.
+     */
+    public void setTenantId(String value) {
+        set(1, value);
+    }
+
+    /**
+     * Getter for <code>public.discount_policy.tenant_id</code>.
+     */
+    public String getTenantId() {
+        return (String) get(1);
+    }
+
+    /**
      * Setter for <code>public.discount_policy.policy_key</code>.
      */
     public void setPolicyKey(String value) {
-        set(1, value);
+        set(2, value);
     }
 
     /**
      * Getter for <code>public.discount_policy.policy_key</code>.
      */
     public String getPolicyKey() {
-        return (String) get(1);
+        return (String) get(2);
+    }
+
+    /**
+     * Setter for <code>public.discount_policy.rule_version</code>.
+     */
+    public void setRuleVersion(Long value) {
+        set(3, value);
+    }
+
+    /**
+     * Getter for <code>public.discount_policy.rule_version</code>.
+     */
+    public Long getRuleVersion() {
+        return (Long) get(3);
+    }
+
+    /**
+     * Setter for <code>public.discount_policy.meter_key</code>.
+     */
+    public void setMeterKey(String value) {
+        set(4, value);
+    }
+
+    /**
+     * Getter for <code>public.discount_policy.meter_key</code>.
+     */
+    public String getMeterKey() {
+        return (String) get(4);
+    }
+
+    /**
+     * Setter for <code>public.discount_policy.currency_code</code>.
+     */
+    public void setCurrencyCode(String value) {
+        set(5, value);
+    }
+
+    /**
+     * Getter for <code>public.discount_policy.currency_code</code>.
+     */
+    public String getCurrencyCode() {
+        return (String) get(5);
     }
 
     /**
      * Setter for <code>public.discount_policy.name</code>.
      */
     public void setName(String value) {
-        set(2, value);
+        set(6, value);
     }
 
     /**
      * Getter for <code>public.discount_policy.name</code>.
      */
     public String getName() {
-        return (String) get(2);
+        return (String) get(6);
     }
 
     /**
      * Setter for <code>public.discount_policy.description</code>.
      */
     public void setDescription(String value) {
-        set(3, value);
+        set(7, value);
     }
 
     /**
      * Getter for <code>public.discount_policy.description</code>.
      */
     public String getDescription() {
-        return (String) get(3);
+        return (String) get(7);
     }
 
     /**
      * Setter for <code>public.discount_policy.discount_type</code>.
      */
     public void setDiscountType(String value) {
-        set(4, value);
+        set(8, value);
     }
 
     /**
      * Getter for <code>public.discount_policy.discount_type</code>.
      */
     public String getDiscountType() {
-        return (String) get(4);
+        return (String) get(8);
     }
 
     /**
-     * Setter for <code>public.discount_policy.discount_value</code>.
+     * Setter for <code>public.discount_policy.discount_numerator</code>.
      */
-    public void setDiscountValue(Double value) {
-        set(5, value);
+    public void setDiscountNumerator(Long value) {
+        set(9, value);
     }
 
     /**
-     * Getter for <code>public.discount_policy.discount_value</code>.
+     * Getter for <code>public.discount_policy.discount_numerator</code>.
      */
-    public Double getDiscountValue() {
-        return (Double) get(5);
+    public Long getDiscountNumerator() {
+        return (Long) get(9);
+    }
+
+    /**
+     * Setter for <code>public.discount_policy.discount_denominator</code>.
+     */
+    public void setDiscountDenominator(Long value) {
+        set(10, value);
+    }
+
+    /**
+     * Getter for <code>public.discount_policy.discount_denominator</code>.
+     */
+    public Long getDiscountDenominator() {
+        return (Long) get(10);
+    }
+
+    /**
+     * Setter for <code>public.discount_policy.flat_amount_minor</code>.
+     */
+    public void setFlatAmountMinor(Long value) {
+        set(11, value);
+    }
+
+    /**
+     * Getter for <code>public.discount_policy.flat_amount_minor</code>.
+     */
+    public Long getFlatAmountMinor() {
+        return (Long) get(11);
     }
 
     /**
      * Setter for <code>public.discount_policy.conditions</code>.
      */
     public void setConditions(String value) {
-        set(6, value);
+        set(12, value);
     }
 
     /**
      * Getter for <code>public.discount_policy.conditions</code>.
      */
     public String getConditions() {
-        return (String) get(6);
+        return (String) get(12);
     }
 
     /**
      * Setter for <code>public.discount_policy.status</code>.
      */
     public void setStatus(String value) {
-        set(7, value);
+        set(13, value);
     }
 
     /**
      * Getter for <code>public.discount_policy.status</code>.
      */
     public String getStatus() {
-        return (String) get(7);
+        return (String) get(13);
     }
 
     /**
      * Setter for <code>public.discount_policy.effective_from</code>.
      */
-    public void setEffectiveFrom(LocalDateTime value) {
-        set(8, value);
+    public void setEffectiveFrom(Instant value) {
+        set(14, value);
     }
 
     /**
      * Getter for <code>public.discount_policy.effective_from</code>.
      */
-    public LocalDateTime getEffectiveFrom() {
-        return (LocalDateTime) get(8);
+    public Instant getEffectiveFrom() {
+        return (Instant) get(14);
     }
 
     /**
      * Setter for <code>public.discount_policy.effective_to</code>.
      */
-    public void setEffectiveTo(LocalDateTime value) {
-        set(9, value);
+    public void setEffectiveTo(Instant value) {
+        set(15, value);
     }
 
     /**
      * Getter for <code>public.discount_policy.effective_to</code>.
      */
-    public LocalDateTime getEffectiveTo() {
-        return (LocalDateTime) get(9);
+    public Instant getEffectiveTo() {
+        return (Instant) get(15);
     }
 
     /**
      * Setter for <code>public.discount_policy.created_at</code>.
      */
-    public void setCreatedAt(LocalDateTime value) {
-        set(10, value);
+    public void setCreatedAt(Instant value) {
+        set(16, value);
     }
 
     /**
      * Getter for <code>public.discount_policy.created_at</code>.
      */
-    public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(10);
+    public Instant getCreatedAt() {
+        return (Instant) get(16);
     }
 
     // -------------------------------------------------------------------------
@@ -179,8 +263,8 @@ public class DiscountPolicyRecord extends UpdatableRecordImpl<DiscountPolicyReco
     // -------------------------------------------------------------------------
 
     @Override
-    public Record1<String> key() {
-        return (Record1) super.key();
+    public Record2<String, String> key() {
+        return (Record2) super.key();
     }
 
     // -------------------------------------------------------------------------
@@ -197,15 +281,21 @@ public class DiscountPolicyRecord extends UpdatableRecordImpl<DiscountPolicyReco
     /**
      * Create a detached, initialised DiscountPolicyRecord
      */
-    public DiscountPolicyRecord(String id, String policyKey, String name, String description, String discountType, Double discountValue, String conditions, String status, LocalDateTime effectiveFrom, LocalDateTime effectiveTo, LocalDateTime createdAt) {
+    public DiscountPolicyRecord(String id, String tenantId, String policyKey, Long ruleVersion, String meterKey, String currencyCode, String name, String description, String discountType, Long discountNumerator, Long discountDenominator, Long flatAmountMinor, String conditions, String status, Instant effectiveFrom, Instant effectiveTo, Instant createdAt) {
         super(DiscountPolicy.DISCOUNT_POLICY);
 
         setId(id);
+        setTenantId(tenantId);
         setPolicyKey(policyKey);
+        setRuleVersion(ruleVersion);
+        setMeterKey(meterKey);
+        setCurrencyCode(currencyCode);
         setName(name);
         setDescription(description);
         setDiscountType(discountType);
-        setDiscountValue(discountValue);
+        setDiscountNumerator(discountNumerator);
+        setDiscountDenominator(discountDenominator);
+        setFlatAmountMinor(flatAmountMinor);
         setConditions(conditions);
         setStatus(status);
         setEffectiveFrom(effectiveFrom);

@@ -2,32 +2,24 @@ package com.example.platform.entitlement.app;
 
 import com.example.platform.entitlement.domain.QuotaPolicy;
 import com.example.platform.entitlement.domain.QuotaProfile;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class QuotaPolicyService {
 
-    private static final Logger log = LoggerFactory.getLogger(QuotaPolicyService.class);
-
-    private final Map<String, QuotaPolicy> quotaPolicies = new ConcurrentHashMap<>();
-
-    public QuotaPolicyService() {
-        quotaPolicies.put("render.job.create", new QuotaPolicy("qp-render", "default", "render.job.create", 10000, "MONTHLY", 80));
-        quotaPolicies.put("ai.model.standard", new QuotaPolicy("qp-ai-std", "default", "ai.model.standard", 1000, "MONTHLY", 80));
-        quotaPolicies.put("ai.model.premium", new QuotaPolicy("qp-ai-prem", "default", "ai.model.premium", 100, "MONTHLY", 80));
-        quotaPolicies.put("export.gpu", new QuotaPolicy("qp-gpu", "default", "export.gpu", 500, "MONTHLY", 80));
-        quotaPolicies.put("extension.execute", new QuotaPolicy("qp-ext", "default", "extension.execute", 50, "MONTHLY", 80));
-        quotaPolicies.put("prompt.execute", new QuotaPolicy("qp-prompt", "default", "prompt.execute", 10000, "MONTHLY", 80));
-    }
-
     public QuotaPolicy getQuotaPolicy(String featureCode) {
-        return quotaPolicies.getOrDefault(featureCode,
-                new QuotaPolicy("qp-default", "default", featureCode, 100, "MONTHLY", 80));
+        if (featureCode == null || featureCode.isBlank()) {
+            throw new IllegalArgumentException("quota key is required");
+        }
+        return switch (featureCode) {
+            case "render.job.create" -> policy("qp-render", featureCode, 10000);
+            case "ai.model.standard" -> policy("qp-ai-std", featureCode, 1000);
+            case "ai.model.premium" -> policy("qp-ai-prem", featureCode, 100);
+            case "export.gpu" -> policy("qp-gpu", featureCode, 500);
+            case "extension.execute" -> policy("qp-ext", featureCode, 50);
+            case "prompt.execute" -> policy("qp-prompt", featureCode, 10000);
+            default -> throw new IllegalArgumentException("Unknown canonical quota key: " + featureCode);
+        };
     }
 
     public boolean isExceeded(String featureCode, long currentUsage) {
@@ -52,10 +44,10 @@ public class QuotaPolicyService {
         if (featureCode.startsWith("extension")) return profile.extensionExecutions();
         if (featureCode.startsWith("api")) return profile.apiCallsPerMinute();
         if (featureCode.startsWith("mcp")) return profile.mcpCallsPerMinute();
-        return profile.monthlyRenderMinutes();
+        throw new IllegalArgumentException("Unknown quota profile dimension: " + featureCode);
     }
 
-    public void registerPolicy(QuotaPolicy policy) {
-        quotaPolicies.put(policy.featureCode(), policy);
+    private static QuotaPolicy policy(String id, String key, long limit) {
+        return new QuotaPolicy(id, "default", key, limit, "MONTHLY", 80);
     }
 }

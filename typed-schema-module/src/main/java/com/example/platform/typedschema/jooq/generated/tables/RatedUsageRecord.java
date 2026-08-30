@@ -4,22 +4,29 @@
 package com.example.platform.typedschema.jooq.generated.tables;
 
 
+import com.example.platform.typedschema.contract.InstantConverter;
 import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
+import com.example.platform.typedschema.jooq.generated.tables.BillableUsage.BillableUsagePath;
 import com.example.platform.typedschema.jooq.generated.tables.records.RatedUsageRecordRecord;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
+import org.jooq.Check;
 import org.jooq.Condition;
 import org.jooq.Field;
+import org.jooq.ForeignKey;
 import org.jooq.Index;
+import org.jooq.InverseForeignKey;
 import org.jooq.Name;
+import org.jooq.Path;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
+import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
 import org.jooq.Select;
@@ -29,6 +36,7 @@ import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
@@ -60,14 +68,29 @@ public class RatedUsageRecord extends TableImpl<RatedUsageRecordRecord> {
     public final TableField<RatedUsageRecordRecord, String> ID = createField(DSL.name("id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
     /**
-     * The column <code>public.rated_usage_record.usage_record_id</code>.
+     * The column <code>public.rated_usage_record.tenant_id</code>.
      */
-    public final TableField<RatedUsageRecordRecord, String> USAGE_RECORD_ID = createField(DSL.name("usage_record_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
+    public final TableField<RatedUsageRecordRecord, String> TENANT_ID = createField(DSL.name("tenant_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
+
+    /**
+     * The column <code>public.rated_usage_record.billable_usage_id</code>.
+     */
+    public final TableField<RatedUsageRecordRecord, String> BILLABLE_USAGE_ID = createField(DSL.name("billable_usage_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
     /**
      * The column <code>public.rated_usage_record.pricing_rule_id</code>.
      */
     public final TableField<RatedUsageRecordRecord, String> PRICING_RULE_ID = createField(DSL.name("pricing_rule_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
+
+    /**
+     * The column <code>public.rated_usage_record.pricing_rule_version</code>.
+     */
+    public final TableField<RatedUsageRecordRecord, Long> PRICING_RULE_VERSION = createField(DSL.name("pricing_rule_version"), SQLDataType.BIGINT.nullable(false), this, "");
+
+    /**
+     * The column <code>public.rated_usage_record.quantity_base_units</code>.
+     */
+    public final TableField<RatedUsageRecordRecord, Long> QUANTITY_BASE_UNITS = createField(DSL.name("quantity_base_units"), SQLDataType.BIGINT.nullable(false), this, "");
 
     /**
      * The column <code>public.rated_usage_record.rated_amount_minor</code>.
@@ -77,17 +100,32 @@ public class RatedUsageRecord extends TableImpl<RatedUsageRecordRecord> {
     /**
      * The column <code>public.rated_usage_record.currency_code</code>.
      */
-    public final TableField<RatedUsageRecordRecord, String> CURRENCY_CODE = createField(DSL.name("currency_code"), SQLDataType.VARCHAR(8).nullable(false), this, "");
+    public final TableField<RatedUsageRecordRecord, String> CURRENCY_CODE = createField(DSL.name("currency_code"), SQLDataType.VARCHAR(3).nullable(false), this, "");
 
     /**
      * The column <code>public.rated_usage_record.rating_details</code>.
      */
-    public final TableField<RatedUsageRecordRecord, String> RATING_DETAILS = createField(DSL.name("rating_details"), SQLDataType.CLOB, this, "");
+    public final TableField<RatedUsageRecordRecord, String> RATING_DETAILS = createField(DSL.name("rating_details"), SQLDataType.CLOB.nullable(false), this, "");
 
     /**
-     * The column <code>public.rated_usage_record.created_at</code>.
+     * The column <code>public.rated_usage_record.rated_at</code>.
      */
-    public final TableField<RatedUsageRecordRecord, LocalDateTime> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.LOCALDATETIME(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.LOCALDATETIME)), this, "");
+    public final TableField<RatedUsageRecordRecord, Instant> RATED_AT = createField(DSL.name("rated_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false), this, "", new InstantConverter());
+
+    /**
+     * The column <code>public.rated_usage_record.trace_id</code>.
+     */
+    public final TableField<RatedUsageRecordRecord, String> TRACE_ID = createField(DSL.name("trace_id"), SQLDataType.VARCHAR(128).nullable(false), this, "");
+
+    /**
+     * The column <code>public.rated_usage_record.idempotency_key</code>.
+     */
+    public final TableField<RatedUsageRecordRecord, String> IDEMPOTENCY_KEY = createField(DSL.name("idempotency_key"), SQLDataType.VARCHAR(255).nullable(false), this, "");
+
+    /**
+     * The column <code>public.rated_usage_record.payload_fingerprint</code>.
+     */
+    public final TableField<RatedUsageRecordRecord, String> PAYLOAD_FINGERPRINT = createField(DSL.name("payload_fingerprint"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
     private RatedUsageRecord(Name alias, Table<RatedUsageRecordRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
@@ -118,6 +156,39 @@ public class RatedUsageRecord extends TableImpl<RatedUsageRecordRecord> {
         this(DSL.name("rated_usage_record"), null);
     }
 
+    public <O extends Record> RatedUsageRecord(Table<O> path, ForeignKey<O, RatedUsageRecordRecord> childPath, InverseForeignKey<O, RatedUsageRecordRecord> parentPath) {
+        super(path, childPath, parentPath, RATED_USAGE_RECORD);
+    }
+
+    /**
+     * A subtype implementing {@link Path} for simplified path-based joins.
+     */
+    public static class RatedUsageRecordPath extends RatedUsageRecord implements Path<RatedUsageRecordRecord> {
+
+        private static final long serialVersionUID = 1L;
+        public <O extends Record> RatedUsageRecordPath(Table<O> path, ForeignKey<O, RatedUsageRecordRecord> childPath, InverseForeignKey<O, RatedUsageRecordRecord> parentPath) {
+            super(path, childPath, parentPath);
+        }
+        private RatedUsageRecordPath(Name alias, Table<RatedUsageRecordRecord> aliased) {
+            super(alias, aliased);
+        }
+
+        @Override
+        public RatedUsageRecordPath as(String alias) {
+            return new RatedUsageRecordPath(DSL.name(alias), this);
+        }
+
+        @Override
+        public RatedUsageRecordPath as(Name alias) {
+            return new RatedUsageRecordPath(alias, this);
+        }
+
+        @Override
+        public RatedUsageRecordPath as(Table<?> alias) {
+            return new RatedUsageRecordPath(alias.getQualifiedName(), this);
+        }
+    }
+
     @Override
     public Schema getSchema() {
         return aliased() ? null : Public.PUBLIC;
@@ -131,6 +202,37 @@ public class RatedUsageRecord extends TableImpl<RatedUsageRecordRecord> {
     @Override
     public UniqueKey<RatedUsageRecordRecord> getPrimaryKey() {
         return Keys.RATED_USAGE_RECORD_PKEY;
+    }
+
+    @Override
+    public List<UniqueKey<RatedUsageRecordRecord>> getUniqueKeys() {
+        return Arrays.asList(Keys.RATED_USAGE_RECORD_TENANT_ID_BILLABLE_USAGE_ID_PRICING_RULE_KEY, Keys.RATED_USAGE_RECORD_TENANT_ID_IDEMPOTENCY_KEY_KEY);
+    }
+
+    @Override
+    public List<ForeignKey<RatedUsageRecordRecord, ?>> getReferences() {
+        return Arrays.asList(Keys.RATED_USAGE_RECORD__RATED_USAGE_RECORD_BILLABLE_USAGE_ID_FKEY);
+    }
+
+    private transient BillableUsagePath _billableUsage;
+
+    /**
+     * Get the implicit join path to the <code>public.billable_usage</code>
+     * table.
+     */
+    public BillableUsagePath billableUsage() {
+        if (_billableUsage == null)
+            _billableUsage = new BillableUsagePath(this, Keys.RATED_USAGE_RECORD__RATED_USAGE_RECORD_BILLABLE_USAGE_ID_FKEY, null);
+
+        return _billableUsage;
+    }
+
+    @Override
+    public List<Check<RatedUsageRecordRecord>> getChecks() {
+        return Arrays.asList(
+            Internal.createCheck(this, DSL.name("rated_usage_record_pricing_rule_version_check"), "((pricing_rule_version > 0))", true),
+            Internal.createCheck(this, DSL.name("rated_usage_record_quantity_base_units_check"), "((quantity_base_units >= 0))", true)
+        );
     }
 
     @Override

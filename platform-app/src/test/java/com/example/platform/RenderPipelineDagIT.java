@@ -1,6 +1,11 @@
 package com.example.platform;
 
-import com.example.platform.entitlement.app.EntitlementPolicyService;
+import com.example.platform.entitlement.app.EntitlementService;
+import com.example.platform.entitlement.domain.EntitlementCommandType;
+import com.example.platform.entitlement.domain.EntitlementGrantCommand;
+import com.example.platform.shared.commercial.PrincipalRef;
+import com.example.platform.shared.commercial.PrincipalType;
+import java.time.Instant;
 import com.example.platform.identity.api.TenantProjectController;
 import com.example.platform.identity.api.dto.CreateProjectRequest;
 import com.example.platform.identity.api.dto.CreateTenantRequest;
@@ -50,7 +55,7 @@ class RenderPipelineDagIT extends PostgresTestContainerSupport {
     @Autowired
     private TimelineSnapshotService timelineSnapshotService;
     @Autowired
-    private EntitlementPolicyService entitlementPolicyService;
+    private EntitlementService entitlementService;
     @Autowired
     private PipelinePlanPersistenceService pipelinePlanPersistence;
 
@@ -85,7 +90,7 @@ class RenderPipelineDagIT extends PostgresTestContainerSupport {
     @EnabledIf("ffmpegAvailable")
     void multiTrackTimeline_executesDagAndPersistsPlan() throws Exception {
         var tenant = tenantProjectController.createTenant(new CreateTenantRequest("DAG E2E Tenant"));
-        entitlementPolicyService.setTier(tenant.id(), "TEAM");
+        grant(tenant.id(), "render.job.create");
         var project = tenantProjectController.createProject(tenant.id(),
                 new CreateProjectRequest("DAG Project", "E2E"));
 
@@ -127,5 +132,17 @@ class RenderPipelineDagIT extends PostgresTestContainerSupport {
         var execution = pipelinePlanPersistence.loadExecutionState(job.id());
         assertThat(execution).isPresent();
         assertThat(execution.get()).containsKey("pipelineSuccess");
+    }
+
+    private void grant(String tenantId, String entitlementKey) {
+        Instant now = Instant.now();
+        entitlementService.execute(new EntitlementGrantCommand(
+                EntitlementCommandType.GRANT,
+                PrincipalRef.tenantScoped(tenantId, PrincipalType.ORGANIZATION, tenantId),
+                "grant-" + tenantId + "-" + entitlementKey,
+                entitlementKey, null, "TEST", "render-dag-it",
+                "grant:" + tenantId + ":" + entitlementKey,
+                "test", "integration entitlement", "trace-" + tenantId,
+                now, now.plusSeconds(3600), 0));
     }
 }

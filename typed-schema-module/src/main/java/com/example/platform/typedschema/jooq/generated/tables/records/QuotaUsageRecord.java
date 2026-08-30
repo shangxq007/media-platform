@@ -6,7 +6,7 @@ package com.example.platform.typedschema.jooq.generated.tables.records;
 
 import com.example.platform.typedschema.jooq.generated.tables.QuotaUsage;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
@@ -49,59 +49,143 @@ public class QuotaUsageRecord extends UpdatableRecordImpl<QuotaUsageRecord> {
     }
 
     /**
-     * Setter for <code>public.quota_usage.feature_code</code>.
+     * Setter for <code>public.quota_usage.principal_type</code>.
      */
-    public void setFeatureCode(String value) {
+    public void setPrincipalType(String value) {
         set(2, value);
     }
 
     /**
-     * Getter for <code>public.quota_usage.feature_code</code>.
+     * Getter for <code>public.quota_usage.principal_type</code>.
      */
-    public String getFeatureCode() {
+    public String getPrincipalType() {
         return (String) get(2);
+    }
+
+    /**
+     * Setter for <code>public.quota_usage.principal_id</code>.
+     */
+    public void setPrincipalId(String value) {
+        set(3, value);
+    }
+
+    /**
+     * Getter for <code>public.quota_usage.principal_id</code>.
+     */
+    public String getPrincipalId() {
+        return (String) get(3);
+    }
+
+    /**
+     * Setter for <code>public.quota_usage.workspace_scope</code>.
+     */
+    public void setWorkspaceScope(String value) {
+        set(4, value);
+    }
+
+    /**
+     * Getter for <code>public.quota_usage.workspace_scope</code>.
+     */
+    public String getWorkspaceScope() {
+        return (String) get(4);
+    }
+
+    /**
+     * Setter for <code>public.quota_usage.organization_scope</code>.
+     */
+    public void setOrganizationScope(String value) {
+        set(5, value);
+    }
+
+    /**
+     * Getter for <code>public.quota_usage.organization_scope</code>.
+     */
+    public String getOrganizationScope() {
+        return (String) get(5);
+    }
+
+    /**
+     * Setter for <code>public.quota_usage.quota_key</code>.
+     */
+    public void setQuotaKey(String value) {
+        set(6, value);
+    }
+
+    /**
+     * Getter for <code>public.quota_usage.quota_key</code>.
+     */
+    public String getQuotaKey() {
+        return (String) get(6);
+    }
+
+    /**
+     * Setter for <code>public.quota_usage.period_start</code>.
+     */
+    public void setPeriodStart(Instant value) {
+        set(7, value);
+    }
+
+    /**
+     * Getter for <code>public.quota_usage.period_start</code>.
+     */
+    public Instant getPeriodStart() {
+        return (Instant) get(7);
+    }
+
+    /**
+     * Setter for <code>public.quota_usage.period_end</code>.
+     */
+    public void setPeriodEnd(Instant value) {
+        set(8, value);
+    }
+
+    /**
+     * Getter for <code>public.quota_usage.period_end</code>.
+     */
+    public Instant getPeriodEnd() {
+        return (Instant) get(8);
     }
 
     /**
      * Setter for <code>public.quota_usage.usage_value</code>.
      */
-    public void setUsageValue(Integer value) {
-        set(3, value);
+    public void setUsageValue(Long value) {
+        set(9, value);
     }
 
     /**
      * Getter for <code>public.quota_usage.usage_value</code>.
      */
-    public Integer getUsageValue() {
-        return (Integer) get(3);
+    public Long getUsageValue() {
+        return (Long) get(9);
     }
 
     /**
      * Setter for <code>public.quota_usage.created_at</code>.
      */
-    public void setCreatedAt(LocalDateTime value) {
-        set(4, value);
+    public void setCreatedAt(Instant value) {
+        set(10, value);
     }
 
     /**
      * Getter for <code>public.quota_usage.created_at</code>.
      */
-    public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(4);
+    public Instant getCreatedAt() {
+        return (Instant) get(10);
     }
 
     /**
      * Setter for <code>public.quota_usage.updated_at</code>.
      */
-    public void setUpdatedAt(LocalDateTime value) {
-        set(5, value);
+    public void setUpdatedAt(Instant value) {
+        set(11, value);
     }
 
     /**
      * Getter for <code>public.quota_usage.updated_at</code>.
      */
-    public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(5);
+    public Instant getUpdatedAt() {
+        return (Instant) get(11);
     }
 
     // -------------------------------------------------------------------------
@@ -127,12 +211,18 @@ public class QuotaUsageRecord extends UpdatableRecordImpl<QuotaUsageRecord> {
     /**
      * Create a detached, initialised QuotaUsageRecord
      */
-    public QuotaUsageRecord(String id, String tenantId, String featureCode, Integer usageValue, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public QuotaUsageRecord(String id, String tenantId, String principalType, String principalId, String workspaceScope, String organizationScope, String quotaKey, Instant periodStart, Instant periodEnd, Long usageValue, Instant createdAt, Instant updatedAt) {
         super(QuotaUsage.QUOTA_USAGE);
 
         setId(id);
         setTenantId(tenantId);
-        setFeatureCode(featureCode);
+        setPrincipalType(principalType);
+        setPrincipalId(principalId);
+        setWorkspaceScope(workspaceScope);
+        setOrganizationScope(organizationScope);
+        setQuotaKey(quotaKey);
+        setPeriodStart(periodStart);
+        setPeriodEnd(periodEnd);
         setUsageValue(usageValue);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);

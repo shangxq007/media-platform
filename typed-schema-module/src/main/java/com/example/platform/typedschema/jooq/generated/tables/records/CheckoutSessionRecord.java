@@ -63,115 +63,213 @@ public class CheckoutSessionRecord extends UpdatableRecordImpl<CheckoutSessionRe
     }
 
     /**
+     * Setter for <code>public.checkout_session.canonical_product_code</code>.
+     */
+    public void setCanonicalProductCode(String value) {
+        set(3, value);
+    }
+
+    /**
+     * Getter for <code>public.checkout_session.canonical_product_code</code>.
+     */
+    public String getCanonicalProductCode() {
+        return (String) get(3);
+    }
+
+    /**
+     * Setter for <code>public.checkout_session.offering_id</code>.
+     */
+    public void setOfferingId(String value) {
+        set(4, value);
+    }
+
+    /**
+     * Getter for <code>public.checkout_session.offering_id</code>.
+     */
+    public String getOfferingId() {
+        return (String) get(4);
+    }
+
+    /**
+     * Setter for <code>public.checkout_session.offering_version</code>.
+     */
+    public void setOfferingVersion(Long value) {
+        set(5, value);
+    }
+
+    /**
+     * Getter for <code>public.checkout_session.offering_version</code>.
+     */
+    public Long getOfferingVersion() {
+        return (Long) get(5);
+    }
+
+    /**
+     * Setter for <code>public.checkout_session.commercial_price_ref</code>.
+     */
+    public void setCommercialPriceRef(String value) {
+        set(6, value);
+    }
+
+    /**
+     * Getter for <code>public.checkout_session.commercial_price_ref</code>.
+     */
+    public String getCommercialPriceRef() {
+        return (String) get(6);
+    }
+
+    /**
+     * Setter for <code>public.checkout_session.commercial_price_version</code>.
+     */
+    public void setCommercialPriceVersion(Long value) {
+        set(7, value);
+    }
+
+    /**
+     * Getter for <code>public.checkout_session.commercial_price_version</code>.
+     */
+    public Long getCommercialPriceVersion() {
+        return (Long) get(7);
+    }
+
+    /**
+     * Setter for <code>public.checkout_session.amount_minor_snapshot</code>.
+     */
+    public void setAmountMinorSnapshot(Long value) {
+        set(8, value);
+    }
+
+    /**
+     * Getter for <code>public.checkout_session.amount_minor_snapshot</code>.
+     */
+    public Long getAmountMinorSnapshot() {
+        return (Long) get(8);
+    }
+
+    /**
+     * Setter for <code>public.checkout_session.currency_code_snapshot</code>.
+     */
+    public void setCurrencyCodeSnapshot(String value) {
+        set(9, value);
+    }
+
+    /**
+     * Getter for <code>public.checkout_session.currency_code_snapshot</code>.
+     */
+    public String getCurrencyCodeSnapshot() {
+        return (String) get(9);
+    }
+
+    /**
      * Setter for <code>public.checkout_session.provider_code</code>.
      */
     public void setProviderCode(String value) {
-        set(3, value);
+        set(10, value);
     }
 
     /**
      * Getter for <code>public.checkout_session.provider_code</code>.
      */
     public String getProviderCode() {
-        return (String) get(3);
+        return (String) get(10);
     }
 
     /**
      * Setter for <code>public.checkout_session.session_status</code>.
      */
     public void setSessionStatus(String value) {
-        set(4, value);
+        set(11, value);
     }
 
     /**
      * Getter for <code>public.checkout_session.session_status</code>.
      */
     public String getSessionStatus() {
-        return (String) get(4);
+        return (String) get(11);
     }
 
     /**
      * Setter for <code>public.checkout_session.success_url</code>.
      */
     public void setSuccessUrl(String value) {
-        set(5, value);
+        set(12, value);
     }
 
     /**
      * Getter for <code>public.checkout_session.success_url</code>.
      */
     public String getSuccessUrl() {
-        return (String) get(5);
+        return (String) get(12);
     }
 
     /**
      * Setter for <code>public.checkout_session.cancel_url</code>.
      */
     public void setCancelUrl(String value) {
-        set(6, value);
+        set(13, value);
     }
 
     /**
      * Getter for <code>public.checkout_session.cancel_url</code>.
      */
     public String getCancelUrl() {
-        return (String) get(6);
+        return (String) get(13);
     }
 
     /**
      * Setter for <code>public.checkout_session.created_at</code>.
      */
     public void setCreatedAt(LocalDateTime value) {
-        set(7, value);
+        set(14, value);
     }
 
     /**
      * Getter for <code>public.checkout_session.created_at</code>.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(7);
+        return (LocalDateTime) get(14);
     }
 
     /**
      * Setter for <code>public.checkout_session.tenant_id</code>.
      */
     public void setTenantId(String value) {
-        set(8, value);
+        set(15, value);
     }
 
     /**
      * Getter for <code>public.checkout_session.tenant_id</code>.
      */
     public String getTenantId() {
-        return (String) get(8);
+        return (String) get(15);
     }
 
     /**
      * Setter for <code>public.checkout_session.user_id</code>.
      */
     public void setUserId(String value) {
-        set(9, value);
+        set(16, value);
     }
 
     /**
      * Getter for <code>public.checkout_session.user_id</code>.
      */
     public String getUserId() {
-        return (String) get(9);
+        return (String) get(16);
     }
 
     /**
      * Setter for <code>public.checkout_session.cart_id</code>.
      */
     public void setCartId(String value) {
-        set(10, value);
+        set(17, value);
     }
 
     /**
      * Getter for <code>public.checkout_session.cart_id</code>.
      */
     public String getCartId() {
-        return (String) get(10);
+        return (String) get(17);
     }
 
     // -------------------------------------------------------------------------
@@ -197,12 +295,19 @@ public class CheckoutSessionRecord extends UpdatableRecordImpl<CheckoutSessionRe
     /**
      * Create a detached, initialised CheckoutSessionRecord
      */
-    public CheckoutSessionRecord(String id, String checkoutSessionCode, String productId, String providerCode, String sessionStatus, String successUrl, String cancelUrl, LocalDateTime createdAt, String tenantId, String userId, String cartId) {
+    public CheckoutSessionRecord(String id, String checkoutSessionCode, String productId, String canonicalProductCode, String offeringId, Long offeringVersion, String commercialPriceRef, Long commercialPriceVersion, Long amountMinorSnapshot, String currencyCodeSnapshot, String providerCode, String sessionStatus, String successUrl, String cancelUrl, LocalDateTime createdAt, String tenantId, String userId, String cartId) {
         super(CheckoutSession.CHECKOUT_SESSION);
 
         setId(id);
         setCheckoutSessionCode(checkoutSessionCode);
         setProductId(productId);
+        setCanonicalProductCode(canonicalProductCode);
+        setOfferingId(offeringId);
+        setOfferingVersion(offeringVersion);
+        setCommercialPriceRef(commercialPriceRef);
+        setCommercialPriceVersion(commercialPriceVersion);
+        setAmountMinorSnapshot(amountMinorSnapshot);
+        setCurrencyCodeSnapshot(currencyCodeSnapshot);
         setProviderCode(providerCode);
         setSessionStatus(sessionStatus);
         setSuccessUrl(successUrl);

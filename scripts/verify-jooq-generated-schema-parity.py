@@ -1,0 +1,432 @@
+#!/usr/bin/env python3
+"""Verify canonical V1 table identities against tracked jOOQ tables and records.
+
+CANONICAL_SCHEMA_DEFINES_GENERATED_SCHEMA_EXPECTATION_V1:
+
+* expected identities come only from complete ``CREATE TABLE name (...) ;``
+  declarations in the canonical migration;
+* generated table identities come from the no-argument table constructors'
+  ``DSL.name("name")`` values; and
+* generated record identities come from ``super(TableClass.CONSTANT)`` and are
+  resolved through those parsed table classes.
+
+This intentionally maintains no expected count, identity list, or baseline.
+"""
+
+from __future__ import annotations
+
+import argparse
+from collections import Counter
+from dataclasses import dataclass
+from pathlib import Path
+import re
+import sys
+from typing import Iterable, Sequence
+
+
+class VerificationError(ValueError):
+    """A fail-closed schema or generated-source verification failure."""
+
+
+@dataclass(frozen=True)
+class SqlToken:
+    kind: str
+    value: str
+    offset: int
+
+
+@dataclass(frozen=True)
+class GeneratedTable:
+    identity: str
+    class_name: str
+    singleton_name: str
+    record_class_name: str
+    path: Path
+
+
+@dataclass(frozen=True)
+class GeneratedRecord:
+    identity: str
+    class_name: str
+    table_class_name: str
+    path: Path
+
+
+_JAVA_IDENTIFIER = r"[A-Za-z_$][A-Za-z0-9_$]*"
+_SQL_IDENTITY = re.compile(r"[A-Za-z_][A-Za-z0-9_$]*\Z")
+
+
+def _sql_error(message: str, offset: int) -> VerificationError:
+    return VerificationError(f"CANONICAL_SQL_UNRECOGNIZED offset={offset}: {message}")
+
+
+def lex_sql(sql: str) -> list[SqlToken]:
+    """Lex enough PostgreSQL to find declarations without trusting raw regexes."""
+    tokens: list[SqlToken] = []
+    index = 0
+    length = len(sql)
+    while index < length:
+        char = sql[index]
+        if char.isspace():
+            index += 1
+            continue
+        if sql.startswith("--", index):
+            newline = sql.find("\n", index + 2)
+            index = length if newline < 0 else newline + 1
+            continue
+        if sql.startswith("/*", index):
+            start = index
+            index += 2
+            depth = 1
+            while depth:
+                if index >= length:
+                    raise _sql_error("unterminated block comment", start)
+                if sql.startswith("/*", index):
+                    depth += 1
+                    index += 2
+                elif sql.startswith("*/", index):
+                    depth -= 1
+                    index += 2
+                else:
+                    index += 1
+            continue
+        if char == "'":
+            start = index
+            index += 1
+            while True:
+                if index >= length:
+                    raise _sql_error("unterminated string literal", start)
+                if sql[index] == "'":
+                    if index + 1 < length and sql[index + 1] == "'":
+                        index += 2
+                    else:
+                        index += 1
+                        break
+                else:
+                    index += 1
+            continue
+        if char == '"':
+            start = index
+            index += 1
+            value: list[str] = []
+            while True:
+                if index >= length:
+                    raise _sql_error("unterminated quoted identifier", start)
+                if sql[index] == '"':
+                    if index + 1 < length and sql[index + 1] == '"':
+                        value.append('"')
+                        index += 2
+                    else:
+                        index += 1
+                        break
+                else:
+                    value.append(sql[index])
+                    index += 1
+            identity = "".join(value)
+            if not identity:
+                raise _sql_error("empty quoted identifier", start)
+            tokens.append(SqlToken("IDENT", identity, start))
+            continue
+        if char == "$":
+            tag_match = re.match(r"\$[A-Za-z_][A-Za-z0-9_]*\$|\$\$", sql[index:])
+            if tag_match:
+                start = index
+                tag = tag_match.group(0)
+                index += len(tag)
+                end = sql.find(tag, index)
+                if end < 0:
+                    raise _sql_error("unterminated dollar-quoted string", start)
+                index = end + len(tag)
+                continue
+        if char.isalpha() or char == "_":
+            start = index
+            index += 1
+            while index < length and (sql[index].isalnum() or sql[index] in "_$"):
+                index += 1
+            tokens.append(SqlToken("WORD", sql[start:index], start))
+            continue
+        tokens.append(SqlToken(char, char, index))
+        index += 1
+    return tokens
+
+
+def _is_word(token: SqlToken, expected: str) -> bool:
+    return token.kind == "WORD" and token.value.casefold() == expected
+
+
+def _parse_create_table_statement(tokens: Sequence[SqlToken], terminated: bool) -> str:
+    start = tokens[0].offset
+    if not terminated:
+        raise _sql_error("CREATE TABLE declaration is not semicolon-terminated", start)
+    if len(tokens) < 5 or not _is_word(tokens[0], "create") or not _is_word(tokens[1], "table"):
+        raise _sql_error(
+            "only CREATE TABLE <identifier> (...) declarations are recognized", start
+        )
+    name = tokens[2]
+    if name.kind not in {"WORD", "IDENT"}:
+        raise _sql_error("CREATE TABLE is missing a valid table identifier", name.offset)
+    if name.kind == "WORD" and not _SQL_IDENTITY.fullmatch(name.value):
+        raise _sql_error("invalid unquoted table identifier", name.offset)
+    identity = name.value.casefold() if name.kind == "WORD" else name.value
+    if tokens[3].kind != "(":
+        raise _sql_error("CREATE TABLE identifier must be followed by '('", tokens[3].offset)
+
+    depth = 0
+    closing_index: int | None = None
+    for token_index, token in enumerate(tokens[3:], start=3):
+        if token.kind == "(":
+            depth += 1
+        elif token.kind == ")":
+            depth -= 1
+            if depth < 0:
+                raise _sql_error("unmatched ')' in CREATE TABLE", token.offset)
+            if depth == 0:
+                closing_index = token_index
+                break
+    if closing_index is None:
+        raise _sql_error("CREATE TABLE has no matching closing ')'", start)
+    if closing_index != len(tokens) - 1:
+        raise _sql_error("tokens after CREATE TABLE closing ')' are not recognized", tokens[closing_index + 1].offset)
+    return identity
+
+
+def parse_canonical_table_identities(sql: str) -> list[str]:
+    """Parse all and only the canonical migration's bounded CREATE TABLE grammar."""
+    statements: list[tuple[list[SqlToken], bool]] = []
+    current: list[SqlToken] = []
+    for token in lex_sql(sql):
+        if token.kind == ";":
+            if current:
+                statements.append((current, True))
+                current = []
+        else:
+            current.append(token)
+    if current:
+        statements.append((current, False))
+
+    identities: list[str] = []
+    for tokens, terminated in statements:
+        create_positions = [
+            index
+            for index in range(len(tokens) - 1)
+            if _is_word(tokens[index], "create") and _is_word(tokens[index + 1], "table")
+        ]
+        starts_with_create = bool(tokens) and _is_word(tokens[0], "create")
+        contains_table = any(_is_word(token, "table") for token in tokens)
+        if create_positions:
+            if create_positions != [0]:
+                raise _sql_error("CREATE TABLE must begin its own statement", tokens[create_positions[0]].offset)
+            identities.append(_parse_create_table_statement(tokens, terminated))
+        elif starts_with_create and contains_table:
+            raise _sql_error(
+                "unrecognized CREATE ... TABLE declaration; canonical grammar is CREATE TABLE <identifier> (...) ;",
+                tokens[0].offset,
+            )
+
+    _reject_duplicates_or_empty("CANONICAL_TABLE", identities)
+    return identities
+
+
+def _exactly_one(pattern: str, source: str, code: str, path: Path, flags: int = 0) -> re.Match[str]:
+    matches = list(re.finditer(pattern, source, flags))
+    if len(matches) != 1:
+        raise VerificationError(f"{code} path={path}: expected exactly one match, found {len(matches)}")
+    return matches[0]
+
+
+def parse_generated_table(path: Path) -> GeneratedTable:
+    source = path.read_text(encoding="utf-8")
+    declaration = _exactly_one(
+        rf"public\s+class\s+({_JAVA_IDENTIFIER})\s+extends\s+TableImpl<({_JAVA_IDENTIFIER})>",
+        source,
+        "GENERATED_TABLE_DECLARATION_UNRECOGNIZED",
+        path,
+    )
+    class_name, declared_record = declaration.groups()
+    if path.stem != class_name:
+        raise VerificationError(
+            f"GENERATED_TABLE_FILENAME_MISMATCH path={path}: class={class_name}"
+        )
+
+    record_type = _exactly_one(
+        rf"public\s+Class<({_JAVA_IDENTIFIER})>\s+getRecordType\s*\(\s*\)\s*\{{\s*"
+        rf"return\s+({_JAVA_IDENTIFIER})\.class\s*;\s*\}}",
+        source,
+        "GENERATED_TABLE_RECORD_TYPE_UNRECOGNIZED",
+        path,
+        re.DOTALL,
+    )
+    if record_type.group(1) != declared_record or record_type.group(2) != declared_record:
+        raise VerificationError(
+            f"GENERATED_TABLE_RECORD_TYPE_MISMATCH path={path}: declared={declared_record} returned={record_type.groups()}"
+        )
+
+    constructor = _exactly_one(
+        rf"public\s+{re.escape(class_name)}\s*\(\s*\)\s*\{{\s*"
+        r'this\s*\(\s*DSL\.name\s*\(\s*"([A-Za-z_][A-Za-z0-9_$]*)"\s*\)\s*,\s*null\s*\)\s*;\s*\}',
+        source,
+        "GENERATED_TABLE_IDENTITY_UNRECOGNIZED",
+        path,
+        re.DOTALL,
+    )
+    singleton = _exactly_one(
+        rf"public\s+static\s+final\s+{re.escape(class_name)}\s+({_JAVA_IDENTIFIER})\s*=\s*"
+        rf"new\s+{re.escape(class_name)}\s*\(\s*\)\s*;",
+        source,
+        "GENERATED_TABLE_SINGLETON_UNRECOGNIZED",
+        path,
+    )
+    return GeneratedTable(
+        identity=constructor.group(1),
+        class_name=class_name,
+        singleton_name=singleton.group(1),
+        record_class_name=declared_record,
+        path=path,
+    )
+
+
+def parse_generated_record(
+    path: Path, tables_by_binding: dict[tuple[str, str], GeneratedTable]
+) -> GeneratedRecord:
+    source = path.read_text(encoding="utf-8")
+    declaration = _exactly_one(
+        rf"public\s+class\s+({_JAVA_IDENTIFIER})\s+extends\s+"
+        rf"(?:UpdatableRecordImpl|TableRecordImpl)<({_JAVA_IDENTIFIER})>",
+        source,
+        "GENERATED_RECORD_DECLARATION_UNRECOGNIZED",
+        path,
+    )
+    class_name, generic_record = declaration.groups()
+    if path.stem != class_name or generic_record != class_name:
+        raise VerificationError(
+            f"GENERATED_RECORD_CLASS_MISMATCH path={path}: class={class_name} generic={generic_record}"
+        )
+
+    bindings = set(
+        re.findall(rf"\bsuper\s*\(\s*({_JAVA_IDENTIFIER})\.({_JAVA_IDENTIFIER})\s*\)\s*;", source)
+    )
+    if len(bindings) != 1:
+        raise VerificationError(
+            f"GENERATED_RECORD_BINDING_UNRECOGNIZED path={path}: distinct_bindings={sorted(bindings)}"
+        )
+    binding = next(iter(bindings))
+    table = tables_by_binding.get(binding)
+    if table is None:
+        raise VerificationError(
+            f"GENERATED_RECORD_UNEXPECTED_TABLE_BINDING path={path}: binding={binding[0]}.{binding[1]}"
+        )
+    if table.record_class_name != class_name:
+        raise VerificationError(
+            f"GENERATED_RECORD_TABLE_TYPE_MISMATCH path={path}: table={table.class_name} expects={table.record_class_name} found={class_name}"
+        )
+    return GeneratedRecord(table.identity, class_name, table.class_name, path)
+
+
+def load_generated_identities(generated_root: Path) -> tuple[list[str], list[str], int]:
+    tables_directory = generated_root / "tables"
+    records_directory = tables_directory / "records"
+    if not tables_directory.is_dir() or not records_directory.is_dir():
+        raise VerificationError(
+            f"GENERATED_SOURCE_DIRECTORY_MISSING root={generated_root}"
+        )
+
+    table_paths = sorted(tables_directory.glob("*.java"))
+    record_paths = sorted(records_directory.glob("*.java"))
+    if not table_paths:
+        raise VerificationError("GENERATED_TABLE_UNIVERSE_EMPTY")
+    if not record_paths:
+        raise VerificationError("GENERATED_RECORD_UNIVERSE_EMPTY")
+
+    tables = [parse_generated_table(path) for path in table_paths]
+    _reject_duplicates_or_empty("GENERATED_TABLE", [table.identity for table in tables])
+    class_names = Counter(table.class_name for table in tables)
+    duplicate_classes = sorted(name for name, count in class_names.items() if count > 1)
+    if duplicate_classes:
+        raise VerificationError(f"GENERATED_TABLE_CLASS_DUPLICATE identities={duplicate_classes}")
+    bindings = Counter((table.class_name, table.singleton_name) for table in tables)
+    duplicate_bindings = sorted(binding for binding, count in bindings.items() if count > 1)
+    if duplicate_bindings:
+        raise VerificationError(f"GENERATED_TABLE_BINDING_DUPLICATE identities={duplicate_bindings}")
+    tables_by_binding = {
+        (table.class_name, table.singleton_name): table for table in tables
+    }
+
+    records = [parse_generated_record(path, tables_by_binding) for path in record_paths]
+    _reject_duplicates_or_empty("GENERATED_RECORD", [record.identity for record in records])
+    java_file_count = sum(1 for path in generated_root.rglob("*.java") if path.is_file())
+    return (
+        [table.identity for table in tables],
+        [record.identity for record in records],
+        java_file_count,
+    )
+
+
+def _reject_duplicates_or_empty(label: str, identities: Sequence[str]) -> None:
+    if not identities:
+        raise VerificationError(f"{label}_UNIVERSE_EMPTY")
+    counts = Counter(identities)
+    duplicates = sorted(identity for identity, count in counts.items() if count > 1)
+    if duplicates:
+        raise VerificationError(f"{label}_IDENTITY_DUPLICATE identities={duplicates}")
+
+
+def verify_identity_parity(
+    canonical_identities: Iterable[str],
+    generated_table_identities: Iterable[str],
+    generated_record_identities: Iterable[str],
+) -> None:
+    canonical = list(canonical_identities)
+    tables = list(generated_table_identities)
+    records = list(generated_record_identities)
+    _reject_duplicates_or_empty("CANONICAL_TABLE", canonical)
+    _reject_duplicates_or_empty("GENERATED_TABLE", tables)
+    _reject_duplicates_or_empty("GENERATED_RECORD", records)
+
+    expected = set(canonical)
+    actual_tables = set(tables)
+    actual_records = set(records)
+    errors: list[str] = []
+    for code, values in (
+        ("MISSING_GENERATED_TABLE", expected - actual_tables),
+        ("UNEXPECTED_GENERATED_TABLE", actual_tables - expected),
+        ("MISSING_GENERATED_RECORD", expected - actual_records),
+        ("UNEXPECTED_GENERATED_RECORD", actual_records - expected),
+    ):
+        if values:
+            errors.append(f"{code} identities={sorted(values)}")
+    if errors:
+        raise VerificationError("; ".join(errors))
+
+
+def verify(schema_path: Path, generated_root: Path) -> tuple[int, int, int, int]:
+    if not schema_path.is_file():
+        raise VerificationError(f"CANONICAL_SCHEMA_MISSING path={schema_path}")
+    canonical = parse_canonical_table_identities(schema_path.read_text(encoding="utf-8"))
+    tables, records, java_files = load_generated_identities(generated_root)
+    verify_identity_parity(canonical, tables, records)
+    return len(canonical), len(tables), len(records), java_files
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--schema", required=True, type=Path)
+    parser.add_argument("--generated", required=True, type=Path)
+    args = parser.parse_args(argv)
+    try:
+        canonical_count, table_count, record_count, java_file_count = verify(
+            args.schema, args.generated
+        )
+    except (OSError, UnicodeError, VerificationError) as error:
+        print(f"FAIL: {error}", file=sys.stderr)
+        return 1
+    print("Generated source inventory:")
+    print(f"  Canonical tables: {canonical_count}")
+    print(f"  Generated table identities: {table_count}")
+    print(f"  Generated record identities: {record_count}")
+    print(f"  Total Java files: {java_file_count}")
+    print("OK: CANONICAL_SCHEMA_DEFINES_GENERATED_SCHEMA_EXPECTATION_V1")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

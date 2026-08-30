@@ -4,16 +4,18 @@
 package com.example.platform.typedschema.jooq.generated.tables;
 
 
+import com.example.platform.typedschema.contract.InstantConverter;
 import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
 import com.example.platform.typedschema.jooq.generated.tables.records.BillingLedgerEntryRecord;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
+import org.jooq.Check;
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.Index;
@@ -29,6 +31,7 @@ import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
@@ -62,17 +65,22 @@ public class BillingLedgerEntry extends TableImpl<BillingLedgerEntryRecord> {
     /**
      * The column <code>public.billing_ledger_entry.tenant_id</code>.
      */
-    public final TableField<BillingLedgerEntryRecord, String> TENANT_ID = createField(DSL.name("tenant_id"), SQLDataType.VARCHAR(64), this, "");
+    public final TableField<BillingLedgerEntryRecord, String> TENANT_ID = createField(DSL.name("tenant_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
+
+    /**
+     * The column <code>public.billing_ledger_entry.principal_type</code>.
+     */
+    public final TableField<BillingLedgerEntryRecord, String> PRINCIPAL_TYPE = createField(DSL.name("principal_type"), SQLDataType.VARCHAR(32).nullable(false), this, "");
+
+    /**
+     * The column <code>public.billing_ledger_entry.principal_id</code>.
+     */
+    public final TableField<BillingLedgerEntryRecord, String> PRINCIPAL_ID = createField(DSL.name("principal_id"), SQLDataType.VARCHAR(128).nullable(false), this, "");
 
     /**
      * The column <code>public.billing_ledger_entry.workspace_id</code>.
      */
     public final TableField<BillingLedgerEntryRecord, String> WORKSPACE_ID = createField(DSL.name("workspace_id"), SQLDataType.VARCHAR(64), this, "");
-
-    /**
-     * The column <code>public.billing_ledger_entry.user_id</code>.
-     */
-    public final TableField<BillingLedgerEntryRecord, String> USER_ID = createField(DSL.name("user_id"), SQLDataType.VARCHAR(64), this, "");
 
     /**
      * The column <code>public.billing_ledger_entry.entry_type</code>.
@@ -87,27 +95,37 @@ public class BillingLedgerEntry extends TableImpl<BillingLedgerEntryRecord> {
     /**
      * The column <code>public.billing_ledger_entry.currency_code</code>.
      */
-    public final TableField<BillingLedgerEntryRecord, String> CURRENCY_CODE = createField(DSL.name("currency_code"), SQLDataType.VARCHAR(8).nullable(false), this, "");
+    public final TableField<BillingLedgerEntryRecord, String> CURRENCY_CODE = createField(DSL.name("currency_code"), SQLDataType.VARCHAR(3).nullable(false), this, "");
 
     /**
      * The column <code>public.billing_ledger_entry.reference_type</code>.
      */
-    public final TableField<BillingLedgerEntryRecord, String> REFERENCE_TYPE = createField(DSL.name("reference_type"), SQLDataType.VARCHAR(64), this, "");
+    public final TableField<BillingLedgerEntryRecord, String> REFERENCE_TYPE = createField(DSL.name("reference_type"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
     /**
      * The column <code>public.billing_ledger_entry.reference_id</code>.
      */
-    public final TableField<BillingLedgerEntryRecord, String> REFERENCE_ID = createField(DSL.name("reference_id"), SQLDataType.VARCHAR(64), this, "");
+    public final TableField<BillingLedgerEntryRecord, String> REFERENCE_ID = createField(DSL.name("reference_id"), SQLDataType.VARCHAR(128).nullable(false), this, "");
 
     /**
      * The column <code>public.billing_ledger_entry.description</code>.
      */
-    public final TableField<BillingLedgerEntryRecord, String> DESCRIPTION = createField(DSL.name("description"), SQLDataType.CLOB, this, "");
+    public final TableField<BillingLedgerEntryRecord, String> DESCRIPTION = createField(DSL.name("description"), SQLDataType.CLOB.nullable(false), this, "");
+
+    /**
+     * The column <code>public.billing_ledger_entry.idempotency_key</code>.
+     */
+    public final TableField<BillingLedgerEntryRecord, String> IDEMPOTENCY_KEY = createField(DSL.name("idempotency_key"), SQLDataType.VARCHAR(255).nullable(false), this, "");
+
+    /**
+     * The column <code>public.billing_ledger_entry.payload_fingerprint</code>.
+     */
+    public final TableField<BillingLedgerEntryRecord, String> PAYLOAD_FINGERPRINT = createField(DSL.name("payload_fingerprint"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
     /**
      * The column <code>public.billing_ledger_entry.created_at</code>.
      */
-    public final TableField<BillingLedgerEntryRecord, LocalDateTime> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.LOCALDATETIME(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.LOCALDATETIME)), this, "");
+    public final TableField<BillingLedgerEntryRecord, Instant> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "", new InstantConverter());
 
     private BillingLedgerEntry(Name alias, Table<BillingLedgerEntryRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
@@ -153,6 +171,19 @@ public class BillingLedgerEntry extends TableImpl<BillingLedgerEntryRecord> {
     @Override
     public UniqueKey<BillingLedgerEntryRecord> getPrimaryKey() {
         return Keys.BILLING_LEDGER_ENTRY_PKEY;
+    }
+
+    @Override
+    public List<UniqueKey<BillingLedgerEntryRecord>> getUniqueKeys() {
+        return Arrays.asList(Keys.BILLING_LEDGER_ENTRY_TENANT_ID_IDEMPOTENCY_KEY_KEY, Keys.BILLING_LEDGER_ENTRY_TENANT_ID_REFERENCE_TYPE_REFERENCE_ID__KEY);
+    }
+
+    @Override
+    public List<Check<BillingLedgerEntryRecord>> getChecks() {
+        return Arrays.asList(
+            Internal.createCheck(this, DSL.name("billing_ledger_entry_check"), "((((entry_type)::text = 'ADJUSTMENT'::text) OR (amount_minor >= 0)))", true),
+            Internal.createCheck(this, DSL.name("billing_ledger_entry_entry_type_check"), "(((entry_type)::text = ANY ((ARRAY['CHARGE'::character varying, 'REFUND'::character varying, 'ADJUSTMENT'::character varying, 'CREDIT'::character varying, 'DEBIT'::character varying, 'DISCOUNT'::character varying])::text[])))", true)
+        );
     }
 
     @Override

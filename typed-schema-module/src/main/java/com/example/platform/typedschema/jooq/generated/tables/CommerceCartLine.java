@@ -7,6 +7,8 @@ package com.example.platform.typedschema.jooq.generated.tables;
 import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
+import com.example.platform.typedschema.jooq.generated.tables.CommerceProduct.CommerceProductPath;
+import com.example.platform.typedschema.jooq.generated.tables.CommercialOffering.CommercialOfferingPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.CommerceCartLineRecord;
 
 import java.time.LocalDateTime;
@@ -16,10 +18,14 @@ import java.util.List;
 
 import org.jooq.Condition;
 import org.jooq.Field;
+import org.jooq.ForeignKey;
 import org.jooq.Index;
+import org.jooq.InverseForeignKey;
 import org.jooq.Name;
+import org.jooq.Path;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
+import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
 import org.jooq.Select;
@@ -70,6 +76,42 @@ public class CommerceCartLine extends TableImpl<CommerceCartLineRecord> {
     public final TableField<CommerceCartLineRecord, String> PRODUCT_CODE = createField(DSL.name("product_code"), SQLDataType.VARCHAR(128).nullable(false), this, "");
 
     /**
+     * The column <code>public.commerce_cart_line.product_id</code>.
+     */
+    public final TableField<CommerceCartLineRecord, String> PRODUCT_ID = createField(DSL.name("product_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
+
+    /**
+     * The column <code>public.commerce_cart_line.offering_id</code>.
+     */
+    public final TableField<CommerceCartLineRecord, String> OFFERING_ID = createField(DSL.name("offering_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
+
+    /**
+     * The column <code>public.commerce_cart_line.offering_version</code>.
+     */
+    public final TableField<CommerceCartLineRecord, Long> OFFERING_VERSION = createField(DSL.name("offering_version"), SQLDataType.BIGINT.nullable(false), this, "");
+
+    /**
+     * The column <code>public.commerce_cart_line.commercial_price_ref</code>.
+     */
+    public final TableField<CommerceCartLineRecord, String> COMMERCIAL_PRICE_REF = createField(DSL.name("commercial_price_ref"), SQLDataType.VARCHAR(128).nullable(false), this, "");
+
+    /**
+     * The column
+     * <code>public.commerce_cart_line.commercial_price_version</code>.
+     */
+    public final TableField<CommerceCartLineRecord, Long> COMMERCIAL_PRICE_VERSION = createField(DSL.name("commercial_price_version"), SQLDataType.BIGINT.nullable(false), this, "");
+
+    /**
+     * The column <code>public.commerce_cart_line.amount_minor_snapshot</code>.
+     */
+    public final TableField<CommerceCartLineRecord, Long> AMOUNT_MINOR_SNAPSHOT = createField(DSL.name("amount_minor_snapshot"), SQLDataType.BIGINT.nullable(false), this, "");
+
+    /**
+     * The column <code>public.commerce_cart_line.currency_code_snapshot</code>.
+     */
+    public final TableField<CommerceCartLineRecord, String> CURRENCY_CODE_SNAPSHOT = createField(DSL.name("currency_code_snapshot"), SQLDataType.VARCHAR(3).nullable(false), this, "");
+
+    /**
      * The column <code>public.commerce_cart_line.quantity</code>.
      */
     public final TableField<CommerceCartLineRecord, Integer> QUANTITY = createField(DSL.name("quantity"), SQLDataType.INTEGER.nullable(false), this, "");
@@ -108,6 +150,39 @@ public class CommerceCartLine extends TableImpl<CommerceCartLineRecord> {
         this(DSL.name("commerce_cart_line"), null);
     }
 
+    public <O extends Record> CommerceCartLine(Table<O> path, ForeignKey<O, CommerceCartLineRecord> childPath, InverseForeignKey<O, CommerceCartLineRecord> parentPath) {
+        super(path, childPath, parentPath, COMMERCE_CART_LINE);
+    }
+
+    /**
+     * A subtype implementing {@link Path} for simplified path-based joins.
+     */
+    public static class CommerceCartLinePath extends CommerceCartLine implements Path<CommerceCartLineRecord> {
+
+        private static final long serialVersionUID = 1L;
+        public <O extends Record> CommerceCartLinePath(Table<O> path, ForeignKey<O, CommerceCartLineRecord> childPath, InverseForeignKey<O, CommerceCartLineRecord> parentPath) {
+            super(path, childPath, parentPath);
+        }
+        private CommerceCartLinePath(Name alias, Table<CommerceCartLineRecord> aliased) {
+            super(alias, aliased);
+        }
+
+        @Override
+        public CommerceCartLinePath as(String alias) {
+            return new CommerceCartLinePath(DSL.name(alias), this);
+        }
+
+        @Override
+        public CommerceCartLinePath as(Name alias) {
+            return new CommerceCartLinePath(alias, this);
+        }
+
+        @Override
+        public CommerceCartLinePath as(Table<?> alias) {
+            return new CommerceCartLinePath(alias.getQualifiedName(), this);
+        }
+    }
+
     @Override
     public Schema getSchema() {
         return aliased() ? null : Public.PUBLIC;
@@ -126,6 +201,37 @@ public class CommerceCartLine extends TableImpl<CommerceCartLineRecord> {
     @Override
     public List<UniqueKey<CommerceCartLineRecord>> getUniqueKeys() {
         return Arrays.asList(Keys.COMMERCE_CART_LINE_CART_ID_PRODUCT_CODE_KEY);
+    }
+
+    @Override
+    public List<ForeignKey<CommerceCartLineRecord, ?>> getReferences() {
+        return Arrays.asList(Keys.COMMERCE_CART_LINE__COMMERCE_CART_LINE_OFFERING_ID_FKEY, Keys.COMMERCE_CART_LINE__COMMERCE_CART_LINE_PRODUCT_ID_FKEY);
+    }
+
+    private transient CommercialOfferingPath _commercialOffering;
+
+    /**
+     * Get the implicit join path to the <code>public.commercial_offering</code>
+     * table.
+     */
+    public CommercialOfferingPath commercialOffering() {
+        if (_commercialOffering == null)
+            _commercialOffering = new CommercialOfferingPath(this, Keys.COMMERCE_CART_LINE__COMMERCE_CART_LINE_OFFERING_ID_FKEY, null);
+
+        return _commercialOffering;
+    }
+
+    private transient CommerceProductPath _commerceProduct;
+
+    /**
+     * Get the implicit join path to the <code>public.commerce_product</code>
+     * table.
+     */
+    public CommerceProductPath commerceProduct() {
+        if (_commerceProduct == null)
+            _commerceProduct = new CommerceProductPath(this, Keys.COMMERCE_CART_LINE__COMMERCE_CART_LINE_PRODUCT_ID_FKEY, null);
+
+        return _commerceProduct;
     }
 
     @Override

@@ -63,73 +63,171 @@ public class PurchaseOrderRecord extends UpdatableRecordImpl<PurchaseOrderRecord
     }
 
     /**
+     * Setter for <code>public.purchase_order.product_id</code>.
+     */
+    public void setProductId(String value) {
+        set(3, value);
+    }
+
+    /**
+     * Getter for <code>public.purchase_order.product_id</code>.
+     */
+    public String getProductId() {
+        return (String) get(3);
+    }
+
+    /**
+     * Setter for <code>public.purchase_order.offering_id</code>.
+     */
+    public void setOfferingId(String value) {
+        set(4, value);
+    }
+
+    /**
+     * Getter for <code>public.purchase_order.offering_id</code>.
+     */
+    public String getOfferingId() {
+        return (String) get(4);
+    }
+
+    /**
+     * Setter for <code>public.purchase_order.offering_version</code>.
+     */
+    public void setOfferingVersion(Long value) {
+        set(5, value);
+    }
+
+    /**
+     * Getter for <code>public.purchase_order.offering_version</code>.
+     */
+    public Long getOfferingVersion() {
+        return (Long) get(5);
+    }
+
+    /**
+     * Setter for <code>public.purchase_order.commercial_price_ref</code>.
+     */
+    public void setCommercialPriceRef(String value) {
+        set(6, value);
+    }
+
+    /**
+     * Getter for <code>public.purchase_order.commercial_price_ref</code>.
+     */
+    public String getCommercialPriceRef() {
+        return (String) get(6);
+    }
+
+    /**
+     * Setter for <code>public.purchase_order.commercial_price_version</code>.
+     */
+    public void setCommercialPriceVersion(Long value) {
+        set(7, value);
+    }
+
+    /**
+     * Getter for <code>public.purchase_order.commercial_price_version</code>.
+     */
+    public Long getCommercialPriceVersion() {
+        return (Long) get(7);
+    }
+
+    /**
+     * Setter for <code>public.purchase_order.amount_minor_snapshot</code>.
+     */
+    public void setAmountMinorSnapshot(Long value) {
+        set(8, value);
+    }
+
+    /**
+     * Getter for <code>public.purchase_order.amount_minor_snapshot</code>.
+     */
+    public Long getAmountMinorSnapshot() {
+        return (Long) get(8);
+    }
+
+    /**
+     * Setter for <code>public.purchase_order.currency_code_snapshot</code>.
+     */
+    public void setCurrencyCodeSnapshot(String value) {
+        set(9, value);
+    }
+
+    /**
+     * Getter for <code>public.purchase_order.currency_code_snapshot</code>.
+     */
+    public String getCurrencyCodeSnapshot() {
+        return (String) get(9);
+    }
+
+    /**
      * Setter for <code>public.purchase_order.order_status</code>.
      */
     public void setOrderStatus(String value) {
-        set(3, value);
+        set(10, value);
     }
 
     /**
      * Getter for <code>public.purchase_order.order_status</code>.
      */
     public String getOrderStatus() {
-        return (String) get(3);
+        return (String) get(10);
     }
 
     /**
      * Setter for <code>public.purchase_order.total_amount_minor</code>.
      */
     public void setTotalAmountMinor(Long value) {
-        set(4, value);
+        set(11, value);
     }
 
     /**
      * Getter for <code>public.purchase_order.total_amount_minor</code>.
      */
     public Long getTotalAmountMinor() {
-        return (Long) get(4);
+        return (Long) get(11);
     }
 
     /**
      * Setter for <code>public.purchase_order.currency_code</code>.
      */
     public void setCurrencyCode(String value) {
-        set(5, value);
+        set(12, value);
     }
 
     /**
      * Getter for <code>public.purchase_order.currency_code</code>.
      */
     public String getCurrencyCode() {
-        return (String) get(5);
+        return (String) get(12);
     }
 
     /**
      * Setter for <code>public.purchase_order.created_at</code>.
      */
     public void setCreatedAt(LocalDateTime value) {
-        set(6, value);
+        set(13, value);
     }
 
     /**
      * Getter for <code>public.purchase_order.created_at</code>.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(6);
+        return (LocalDateTime) get(13);
     }
 
     /**
      * Setter for <code>public.purchase_order.tenant_id</code>.
      */
     public void setTenantId(String value) {
-        set(7, value);
+        set(14, value);
     }
 
     /**
      * Getter for <code>public.purchase_order.tenant_id</code>.
      */
     public String getTenantId() {
-        return (String) get(7);
+        return (String) get(14);
     }
 
     // -------------------------------------------------------------------------
@@ -155,12 +253,19 @@ public class PurchaseOrderRecord extends UpdatableRecordImpl<PurchaseOrderRecord
     /**
      * Create a detached, initialised PurchaseOrderRecord
      */
-    public PurchaseOrderRecord(String id, String checkoutSessionId, String canonicalProductCode, String orderStatus, Long totalAmountMinor, String currencyCode, LocalDateTime createdAt, String tenantId) {
+    public PurchaseOrderRecord(String id, String checkoutSessionId, String canonicalProductCode, String productId, String offeringId, Long offeringVersion, String commercialPriceRef, Long commercialPriceVersion, Long amountMinorSnapshot, String currencyCodeSnapshot, String orderStatus, Long totalAmountMinor, String currencyCode, LocalDateTime createdAt, String tenantId) {
         super(PurchaseOrder.PURCHASE_ORDER);
 
         setId(id);
         setCheckoutSessionId(checkoutSessionId);
         setCanonicalProductCode(canonicalProductCode);
+        setProductId(productId);
+        setOfferingId(offeringId);
+        setOfferingVersion(offeringVersion);
+        setCommercialPriceRef(commercialPriceRef);
+        setCommercialPriceVersion(commercialPriceVersion);
+        setAmountMinorSnapshot(amountMinorSnapshot);
+        setCurrencyCodeSnapshot(currencyCodeSnapshot);
         setOrderStatus(orderStatus);
         setTotalAmountMinor(totalAmountMinor);
         setCurrencyCode(currencyCode);

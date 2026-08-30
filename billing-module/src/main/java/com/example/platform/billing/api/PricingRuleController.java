@@ -2,11 +2,15 @@ package com.example.platform.billing.api;
 
 import com.example.platform.billing.api.dto.*;
 import com.example.platform.billing.app.PricingRuleService;
+import com.example.platform.billing.app.PricingQuoteCommand;
 import com.example.platform.billing.domain.*;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import com.example.platform.shared.commercial.Money;
 
 @RestController
 @RequestMapping("/api/admin/billing")
@@ -26,18 +30,13 @@ public class PricingRuleController {
                         .toList()
                 : List.of();
 
-        PricingModel model;
-        try {
-            model = PricingModel.valueOf(request.pricingModel());
-        } catch (IllegalArgumentException e) {
-            model = PricingModel.USAGE_BASED;
-        }
-
-        PricingRule rule = pricingRuleService.createPricingRule(
-                request.ruleKey(), request.name(), request.description(),
-                model, request.meterKey(), request.unitPriceMinor(),
-                request.currencyCode(), tiers,
-                request.effectiveFrom(), request.effectiveTo());
+        PricingModel model = PricingModel.valueOf(request.pricingModel());
+        Instant now = Instant.now().truncatedTo(ChronoUnit.MICROS);
+        PricingRule rule = pricingRuleService.saveRule(new PricingRule(
+                request.ruleId(), request.tenantId(), request.ruleKey(), request.ruleVersion(),
+                request.name(), request.description(), model, request.meterKey(),
+                new Money(request.unitPriceMinor(), request.currencyCode()), tiers, "ACTIVE",
+                request.effectiveFrom(), request.effectiveTo(), now, now));
         return toPricingRuleResponse(rule);
     }
 
@@ -57,11 +56,13 @@ public class PricingRuleController {
     @PostMapping("/pricing-preview")
     public PricingPreviewResponse previewPricing(@RequestBody PricingPreviewRequest request) {
         PricingRuleService.PricingPreviewResult result = pricingRuleService.previewPricing(
-                request.tenantId(), request.meterKey(), request.quantity(),
-                request.context());
+                new PricingQuoteCommand(request.tenantId(), request.workspaceId(),
+                        request.meterKey(), request.quantityBaseUnits(), request.pricingRuleKey(),
+                        request.pricingRuleVersion(), request.pricedAt(), request.context()));
         return new PricingPreviewResponse(
-                result.tenantId(), result.meterKey(), result.quantity(),
+                result.tenantId(), result.meterKey(), result.quantityBaseUnits(),
                 result.estimatedAmountMinor(), result.currencyCode(),
+                result.pricingRuleId(), result.pricingRuleVersion(), result.overrideRuleId(),
                 result.breakdown());
     }
 
@@ -69,11 +70,13 @@ public class PricingRuleController {
     public CustomPricingResponse createCustomPricing(@RequestBody CreateCustomPricingRequest request) {
         CustomPricingRule rule = pricingRuleService.createCustomPricing(
                 request.tenantId(), request.workspaceId(), request.meterKey(),
-                request.overridePriceMinor(), request.discountPercent(),
+                request.overridePriceMinor(), request.currencyCode(),
+                request.discountNumerator(), request.discountDenominator(),
                 request.effectiveFrom(), request.effectiveTo());
         return new CustomPricingResponse(
                 rule.ruleId(), rule.tenantId(), rule.workspaceId(),
-                rule.meterKey(), rule.overridePriceMinor(), rule.discountPercent(),
+                rule.meterKey(), rule.version(), rule.overridePriceMinor(), rule.currencyCode(),
+                rule.discountNumerator(), rule.discountDenominator(),
                 rule.effectiveFrom(), rule.effectiveTo(), rule.status(),
                 rule.createdAt());
     }
@@ -81,12 +84,16 @@ public class PricingRuleController {
     @PostMapping("/discount-policies")
     public DiscountPolicyResponse createDiscountPolicy(@RequestBody CreateDiscountPolicyRequest request) {
         DiscountPolicy policy = pricingRuleService.createDiscountPolicy(
-                request.policyKey(), request.name(), request.description(),
-                request.discountType(), request.discountValue(),
+                request.tenantId(), request.policyKey(), request.ruleVersion(),
+                request.meterKey(), request.currencyCode(), request.name(), request.description(),
+                request.discountType(), request.discountNumerator(), request.discountDenominator(),
+                request.flatAmountMinor(),
                 request.conditions(), request.effectiveFrom(), request.effectiveTo());
         return new DiscountPolicyResponse(
-                policy.policyId(), policy.policyKey(), policy.name(),
-                policy.description(), policy.discountType(), policy.discountValue(),
+                policy.policyId(), policy.tenantId(), policy.policyKey(), policy.version(),
+                policy.meterKey(), policy.currencyCode(), policy.name(),
+                policy.description(), policy.discountType(), policy.discountNumerator(),
+                policy.discountDenominator(), policy.flatAmountMinor(),
                 policy.conditions(), policy.status(), policy.effectiveFrom(),
                 policy.effectiveTo(), policy.createdAt());
     }
@@ -95,8 +102,10 @@ public class PricingRuleController {
     public List<DiscountPolicyResponse> listDiscountPolicies() {
         return pricingRuleService.listDiscountPolicies().stream()
                 .map(p -> new DiscountPolicyResponse(
-                        p.policyId(), p.policyKey(), p.name(),
-                        p.description(), p.discountType(), p.discountValue(),
+                        p.policyId(), p.tenantId(), p.policyKey(), p.version(),
+                        p.meterKey(), p.currencyCode(), p.name(),
+                        p.description(), p.discountType(), p.discountNumerator(),
+                        p.discountDenominator(), p.flatAmountMinor(),
                         p.conditions(), p.status(), p.effectiveFrom(),
                         p.effectiveTo(), p.createdAt()))
                 .toList();
@@ -109,7 +118,8 @@ public class PricingRuleController {
                         .toList()
                 : List.of();
         return new PricingRuleResponse(
-                rule.ruleId(), rule.ruleKey(), rule.name(), rule.description(),
+                rule.ruleId(), rule.tenantId(), rule.ruleKey(), rule.version(),
+                rule.name(), rule.description(),
                 rule.pricingModel().name(), rule.meterKey(), rule.unitPriceMinor(),
                 rule.currencyCode(), tierDtos, rule.status(),
                 rule.effectiveFrom(), rule.effectiveTo(), rule.createdAt());

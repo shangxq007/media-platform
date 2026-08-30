@@ -1,76 +1,75 @@
 package com.example.platform.billing.usage;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.example.platform.billing.app.PricingRuleService;
 import com.example.platform.billing.app.RatingEngine;
 import com.example.platform.billing.domain.PricingModel;
+import com.example.platform.billing.domain.PricingRule;
+import com.example.platform.shared.commercial.Money;
+import com.example.platform.shared.usage.CanonicalActorRef;
+import com.example.platform.shared.usage.UsageDimension;
+import com.example.platform.shared.usage.UsageQuantity;
+import com.example.platform.shared.usage.UsageUnit;
+import java.time.Instant;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
-
-import java.time.Instant;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
 
 class BillingConsumptionBoundaryTest {
 
-    private RatingEngine ratingEngine;
-    private PricingRuleService pricingRuleService;
+    private RatingEngine rating;
+    private PricingRuleService pricing;
     private BillingConsumptionBoundaryImpl boundary;
 
     @BeforeEach
     void setUp() {
-        ratingEngine = new RatingEngine();
-        pricingRuleService = new PricingRuleService();
-        boundary = new BillingConsumptionBoundaryImpl(ratingEngine, pricingRuleService);
-    }
-
-    private static UsageRecord canonical(
-            UsageDimension dimension, UsageQuantity quantity, String idempotencyKey) {
-        return UsageRecord.record(
-                "tenant-1", null, null,
-                OperationRef.of("op-" + idempotencyKey), null, null, null,
-                dimension, quantity,
-                null, Instant.now(), Instant.now(), idempotencyKey, "REPORTED", "render-step");
+        rating = mock(RatingEngine.class);
+        pricing = mock(PricingRuleService.class);
+        boundary = new BillingConsumptionBoundaryImpl(rating, pricing);
     }
 
     @Test
-    void consumeRoutesCanonicalToRatingEngine() {
-        UsageRecord canonical =
-                canonical(UsageDimension.DURATION, UsageQuantity.fromBaseUnits(150_000L, UsageUnit.MILLISECONDS), "idem-1");
+    void consumeRoutesOnlyCanonicalBillableUsageWithExplicitRuleVersion() {
+        BillableUsage usage = canonical(UsageDimension.REQUEST,
+                UsageQuantity.fromBaseUnits(10, UsageUnit.COUNT), "idem");
+        PricingRule rule = new PricingRule("rule-api", "GLOBAL", "api-rule", 7,
+                "API", "", PricingModel.USAGE_BASED, "REQUEST", new Money(5, "USD"),
+                List.of(), "ACTIVE", Instant.EPOCH, null, Instant.EPOCH, Instant.EPOCH);
+        when(pricing.requireEffectiveRuleForMeter(
+                org.mockito.ArgumentMatchers.eq("tenant-1"),
+                org.mockito.ArgumentMatchers.eq("REQUEST"), any())).thenReturn(rule);
 
-        // No active rule for DURATION — consume must not fail and must not invent usage.
-        boundary.consume(canonical);
+        boundary.consume(usage);
 
-        // The canonical record itself is untouched (boundary never constructs/replaces it).
-        assertEquals("DURATION", canonical.dimension().name());
-        assertEquals(150_000L, canonical.quantity().baseUnits());
+        verify(rating).rate(org.mockito.ArgumentMatchers.argThat(command ->
+                command.billableUsage() == usage && command.pricingRuleVersion() == 7));
+        assertEquals("billable-idem", usage.billableUsageId());
     }
 
     @Test
-    void consumeDoesNotInventUsage() {
-        // No pricing rule configured for BYTE_STORED — the boundary must not fabricate a rated record.
-        UsageRecord canonical =
-                canonical(UsageDimension.BYTE_STORED, UsageQuantity.fromBaseUnits(1024L, UsageUnit.BYTE), "idem-2");
+    void unknownMeterFailsClosedAndNeverInventsDefaultPricing() {
+        BillableUsage usage = canonical(UsageDimension.BYTE_STORED,
+                UsageQuantity.fromBaseUnits(1_024, UsageUnit.BYTE), "unknown");
+        when(pricing.requireEffectiveRuleForMeter(any(), any(), any()))
+                .thenThrow(new IllegalStateException("unknown meter"));
 
-        boundary.consume(canonical);
-
-        assertEquals("BYTE_STORED", canonical.dimension().name());
-        assertEquals(1024L, canonical.quantity().baseUnits());
+        assertThrows(IllegalStateException.class, () -> boundary.consume(usage));
+        org.mockito.Mockito.verifyNoInteractions(rating);
     }
 
-    @Test
-    void consumePreservesCanonicalRecordIdentity() {
-        pricingRuleService.createPricingRule(
-                "api_calls", "API", "", PricingModel.USAGE_BASED,
-                "REQUEST", 5L, "USD", null, null, null);
-
-        UsageRecord canonical =
-                canonical(UsageDimension.REQUEST, UsageQuantity.fromBaseUnits(10L, UsageUnit.COUNT), "idem-3");
-
-        String recordIdBefore = canonical.recordId();
-        boundary.consume(canonical);
-        assertEquals(recordIdBefore, canonical.recordId());
-        assertEquals(10L, canonical.quantity().baseUnits());
+    private static BillableUsage canonical(
+            UsageDimension dimension, UsageQuantity quantity, String key) {
+        Instant now = Instant.now();
+        return new BillableUsage("billable-" + key, "tenant-1",
+                new CanonicalActorRef("user-1", "USER"), "observed-" + key,
+                dimension, quantity, dimension.name(), dimension, quantity,
+                "meter-rule", "v1", MeteringTransformationKind.IDENTITY, "identity",
+                now, now, key, "trace-1", "observed-" + key);
     }
 }

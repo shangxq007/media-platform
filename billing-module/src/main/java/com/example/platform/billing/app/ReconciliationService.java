@@ -2,6 +2,7 @@ package com.example.platform.billing.app;
 
 import com.example.platform.billing.domain.*;
 import com.example.platform.shared.events.ReconciliationCompletedEvent;
+import com.example.platform.shared.commercial.Money;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
@@ -23,7 +24,6 @@ public class ReconciliationService {
     private final ConcurrentHashMap<String, ThirdPartyInvoiceImport> importedInvoices = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, ReconciliationDifference> differences = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, CostLedgerEntry> costLedger = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, PaymentLedgerEntry> paymentLedger = new ConcurrentHashMap<>();
 
     private final ApplicationEventPublisher eventPublisher;
 
@@ -35,14 +35,14 @@ public class ReconciliationService {
      * Import a third-party invoice (CSV/JSON simulation).
      */
     public ThirdPartyInvoiceImport importInvoice(String providerCode, String invoiceId,
-            String tenantId, double amount, String currency, String description,
+            String tenantId, Money amount, String description,
             OffsetDateTime periodStart, OffsetDateTime periodEnd, String rawData) {
         ThirdPartyInvoiceImport importRecord = ThirdPartyInvoiceImport.create(
-                providerCode, invoiceId, tenantId, amount, currency,
+                providerCode, invoiceId, tenantId, amount,
                 description, periodStart, periodEnd, rawData);
         importedInvoices.put(importRecord.importId(), importRecord);
         log.info("ReconciliationService: imported invoice {} from provider={} amount={} {}",
-                invoiceId, providerCode, amount, currency);
+                invoiceId, providerCode, amount.amountMinor(), amount.currency());
         return importRecord;
     }
 
@@ -74,7 +74,7 @@ public class ReconciliationService {
         for (ThirdPartyInvoiceImport external : externalRecords) {
             Optional<CostLedgerEntry> match = internalRecords.stream()
                     .filter(i -> i.tenantId().equals(external.tenantId()))
-                    .filter(i -> Math.abs(i.actualCost() - external.amount()) < 0.01)
+                    .filter(i -> i.actualCost().equals(external.amount()))
                     .findFirst();
 
             if (match.isPresent()) {
@@ -85,8 +85,8 @@ public class ReconciliationService {
                         java.util.UUID.randomUUID().toString(),
                         run.runId(), external.tenantId(), "INVOICE",
                         null, external.importId(),
-                        0.0, external.amount(), external.amount(),
-                        external.currency(), ReconciliationDifference.STATUS_NEEDS_REVIEW,
+                        new Money(0, external.currency()), external.amount(), external.amount(),
+                        ReconciliationDifference.STATUS_NEEDS_REVIEW,
                         "No matching internal record found",
                         OffsetDateTime.now(), null);
                 differences.put(diff.differenceId(), diff);
@@ -98,14 +98,14 @@ public class ReconciliationService {
         for (CostLedgerEntry internal : internalRecords) {
             boolean hasExternalMatch = externalRecords.stream()
                     .anyMatch(e -> e.tenantId().equals(internal.tenantId())
-                            && Math.abs(e.amount() - internal.actualCost()) < 0.01);
+                            && e.amount().equals(internal.actualCost()));
             if (!hasExternalMatch) {
                 ReconciliationDifference diff = new ReconciliationDifference(
                         java.util.UUID.randomUUID().toString(),
                         run.runId(), internal.tenantId(), "COST_RECORD",
                         internal.entryId(), null,
-                        internal.actualCost(), 0.0, internal.actualCost(),
-                        internal.currency(), ReconciliationDifference.STATUS_NEEDS_REVIEW,
+                        internal.actualCost(), new Money(0, internal.currency()), internal.actualCost(),
+                        ReconciliationDifference.STATUS_NEEDS_REVIEW,
                         "No matching external invoice found",
                         OffsetDateTime.now(), null);
                 differences.put(diff.differenceId(), diff);
@@ -140,13 +140,6 @@ public class ReconciliationService {
      */
     public void addCostEntry(CostLedgerEntry entry) {
         costLedger.put(entry.entryId(), entry);
-    }
-
-    /**
-     * Add a payment ledger entry.
-     */
-    public void addPaymentEntry(PaymentLedgerEntry entry) {
-        paymentLedger.put(entry.entryId(), entry);
     }
 
     /**

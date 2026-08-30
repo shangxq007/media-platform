@@ -10,6 +10,9 @@ import java.util.Optional;
 import org.jooq.Condition;
 import org.jooq.DSLContext;
 import org.jooq.Record;
+import org.jooq.impl.DSL;
+import com.example.platform.commerce.domain.AuthorityReference;
+import com.example.platform.shared.commercial.Money;
 
 import org.springframework.stereotype.Repository;
 import static com.example.platform.typedschema.jooq.generated.tables.CheckoutSession.CHECKOUT_SESSION;
@@ -34,6 +37,10 @@ public class CheckoutSessionRepository {
                         CHECKOUT_SESSION.CHECKOUT_SESSION_CODE,
                         CHECKOUT_SESSION.TENANT_ID,
                         CHECKOUT_SESSION.PRODUCT_ID,
+                        DSL.field("canonical_product_code", String.class),
+                        DSL.field("offering_id", String.class), DSL.field("offering_version", Long.class),
+                        DSL.field("commercial_price_ref", String.class), DSL.field("commercial_price_version", Long.class),
+                        DSL.field("amount_minor_snapshot", Long.class), DSL.field("currency_code_snapshot", String.class),
                         CHECKOUT_SESSION.PROVIDER_CODE,
                         CHECKOUT_SESSION.SESSION_STATUS,
                         CHECKOUT_SESSION.SUCCESS_URL,
@@ -45,7 +52,9 @@ public class CheckoutSessionRepository {
                         session.checkoutSessionId(),
                         session.checkoutSessionId(),
                         session.tenantId(),
-                        session.canonicalProductCode(),
+                        session.productId(), session.canonicalProductCode(),
+                        session.offeringId(), session.offeringVersion(), session.commercialPriceReference().key(),
+                        session.commercialPriceReference().version(), session.amountSnapshot().amountMinor(), session.amountSnapshot().currency(),
                         session.providerHint(),
                         "PENDING",
                         session.redirectUrl(),
@@ -64,23 +73,6 @@ public class CheckoutSessionRepository {
                 .and(tenantPredicate())
                 .fetchOne();
         return Optional.ofNullable(record).map(this::mapRecord);
-    }
-
-    /** Loads by id; enforces tenant match when {@link com.example.platform.shared.web.TenantContext} is set. */
-    public Optional<CheckoutSession> findByIdUnchecked(String id) {
-        Record record = dsl.select()
-                .from(CHECKOUT_SESSION)
-                .where(CHECKOUT_SESSION.ID.eq(id))
-                .fetchOne();
-        if (record == null) {
-            return Optional.empty();
-        }
-        String resourceTenant = record.get(CHECKOUT_SESSION.TENANT_ID, String.class);
-        String currentTenant = TenantContext.get();
-        if (currentTenant != null && !currentTenant.isBlank()) {
-            TenantGuard.assertSameTenant(resourceTenant);
-        }
-        return Optional.of(mapRecord(record));
     }
 
     public Optional<CheckoutSession> findByIdForTenant(String id, String tenantId) {
@@ -137,7 +129,11 @@ public class CheckoutSessionRepository {
         return new CheckoutSession(
                 record.get(CHECKOUT_SESSION.ID, String.class),
                 record.get(CHECKOUT_SESSION.TENANT_ID, String.class),
-                record.get(CHECKOUT_SESSION.PRODUCT_ID, String.class),
+                record.get("canonical_product_code", String.class),
+                record.get("product_id", String.class), record.get("offering_id", String.class),
+                record.get("offering_version", Long.class),
+                new AuthorityReference(record.get("commercial_price_ref", String.class), record.get("commercial_price_version", Long.class)),
+                new Money(record.get("amount_minor_snapshot", Long.class), record.get("currency_code_snapshot", String.class)),
                 record.get(CHECKOUT_SESSION.SUCCESS_URL, String.class),
                 record.get(CHECKOUT_SESSION.PROVIDER_CODE, String.class));
     }

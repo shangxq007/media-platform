@@ -6,9 +6,9 @@ package com.example.platform.typedschema.jooq.generated.tables.records;
 
 import com.example.platform.typedschema.jooq.generated.tables.CreditWallet;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
-import org.jooq.Record1;
+import org.jooq.Record2;
 import org.jooq.impl.UpdatableRecordImpl;
 
 
@@ -49,101 +49,129 @@ public class CreditWalletRecord extends UpdatableRecordImpl<CreditWalletRecord> 
     }
 
     /**
+     * Setter for <code>public.credit_wallet.principal_type</code>.
+     */
+    public void setPrincipalType(String value) {
+        set(2, value);
+    }
+
+    /**
+     * Getter for <code>public.credit_wallet.principal_type</code>.
+     */
+    public String getPrincipalType() {
+        return (String) get(2);
+    }
+
+    /**
+     * Setter for <code>public.credit_wallet.principal_id</code>.
+     */
+    public void setPrincipalId(String value) {
+        set(3, value);
+    }
+
+    /**
+     * Getter for <code>public.credit_wallet.principal_id</code>.
+     */
+    public String getPrincipalId() {
+        return (String) get(3);
+    }
+
+    /**
      * Setter for <code>public.credit_wallet.workspace_id</code>.
      */
     public void setWorkspaceId(String value) {
-        set(2, value);
+        set(4, value);
     }
 
     /**
      * Getter for <code>public.credit_wallet.workspace_id</code>.
      */
     public String getWorkspaceId() {
-        return (String) get(2);
-    }
-
-    /**
-     * Setter for <code>public.credit_wallet.user_id</code>.
-     */
-    public void setUserId(String value) {
-        set(3, value);
-    }
-
-    /**
-     * Getter for <code>public.credit_wallet.user_id</code>.
-     */
-    public String getUserId() {
-        return (String) get(3);
+        return (String) get(4);
     }
 
     /**
      * Setter for <code>public.credit_wallet.balance_minor</code>.
      */
     public void setBalanceMinor(Long value) {
-        set(4, value);
+        set(5, value);
     }
 
     /**
      * Getter for <code>public.credit_wallet.balance_minor</code>.
      */
     public Long getBalanceMinor() {
-        return (Long) get(4);
+        return (Long) get(5);
     }
 
     /**
      * Setter for <code>public.credit_wallet.currency_code</code>.
      */
     public void setCurrencyCode(String value) {
-        set(5, value);
+        set(6, value);
     }
 
     /**
      * Getter for <code>public.credit_wallet.currency_code</code>.
      */
     public String getCurrencyCode() {
-        return (String) get(5);
+        return (String) get(6);
     }
 
     /**
      * Setter for <code>public.credit_wallet.status</code>.
      */
     public void setStatus(String value) {
-        set(6, value);
+        set(7, value);
     }
 
     /**
      * Getter for <code>public.credit_wallet.status</code>.
      */
     public String getStatus() {
-        return (String) get(6);
+        return (String) get(7);
+    }
+
+    /**
+     * Setter for <code>public.credit_wallet.version</code>.
+     */
+    public void setVersion(Long value) {
+        set(8, value);
+    }
+
+    /**
+     * Getter for <code>public.credit_wallet.version</code>.
+     */
+    public Long getVersion() {
+        return (Long) get(8);
     }
 
     /**
      * Setter for <code>public.credit_wallet.created_at</code>.
      */
-    public void setCreatedAt(LocalDateTime value) {
-        set(7, value);
+    public void setCreatedAt(Instant value) {
+        set(9, value);
     }
 
     /**
      * Getter for <code>public.credit_wallet.created_at</code>.
      */
-    public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(7);
+    public Instant getCreatedAt() {
+        return (Instant) get(9);
     }
 
     /**
      * Setter for <code>public.credit_wallet.updated_at</code>.
      */
-    public void setUpdatedAt(LocalDateTime value) {
-        set(8, value);
+    public void setUpdatedAt(Instant value) {
+        set(10, value);
     }
 
     /**
      * Getter for <code>public.credit_wallet.updated_at</code>.
      */
-    public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(8);
+    public Instant getUpdatedAt() {
+        return (Instant) get(10);
     }
 
     // -------------------------------------------------------------------------
@@ -151,8 +179,8 @@ public class CreditWalletRecord extends UpdatableRecordImpl<CreditWalletRecord> 
     // -------------------------------------------------------------------------
 
     @Override
-    public Record1<String> key() {
-        return (Record1) super.key();
+    public Record2<String, String> key() {
+        return (Record2) super.key();
     }
 
     // -------------------------------------------------------------------------
@@ -169,16 +197,18 @@ public class CreditWalletRecord extends UpdatableRecordImpl<CreditWalletRecord> 
     /**
      * Create a detached, initialised CreditWalletRecord
      */
-    public CreditWalletRecord(String id, String tenantId, String workspaceId, String userId, Long balanceMinor, String currencyCode, String status, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public CreditWalletRecord(String id, String tenantId, String principalType, String principalId, String workspaceId, Long balanceMinor, String currencyCode, String status, Long version, Instant createdAt, Instant updatedAt) {
         super(CreditWallet.CREDIT_WALLET);
 
         setId(id);
         setTenantId(tenantId);
+        setPrincipalType(principalType);
+        setPrincipalId(principalId);
         setWorkspaceId(workspaceId);
-        setUserId(userId);
         setBalanceMinor(balanceMinor);
         setCurrencyCode(currencyCode);
         setStatus(status);
+        setVersion(version);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
         resetChangedOnNotNull();

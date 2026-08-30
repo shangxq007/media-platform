@@ -1,6 +1,6 @@
 package com.example.platform.workflow.execution.app;
 
-import com.example.platform.billing.usage.CanonicalActorRef;
+import com.example.platform.shared.usage.CanonicalActorRef;
 import com.example.platform.workflow.execution.domain.WorkflowExecutionTrigger;
 
 import java.util.Objects;

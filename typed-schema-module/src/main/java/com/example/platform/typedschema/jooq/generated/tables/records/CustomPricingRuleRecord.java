@@ -6,9 +6,9 @@ package com.example.platform.typedschema.jooq.generated.tables.records;
 
 import com.example.platform.typedschema.jooq.generated.tables.CustomPricingRule;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
-import org.jooq.Record1;
+import org.jooq.Record2;
 import org.jooq.impl.UpdatableRecordImpl;
 
 
@@ -77,87 +77,129 @@ public class CustomPricingRuleRecord extends UpdatableRecordImpl<CustomPricingRu
     }
 
     /**
+     * Setter for <code>public.custom_pricing_rule.rule_version</code>.
+     */
+    public void setRuleVersion(Long value) {
+        set(4, value);
+    }
+
+    /**
+     * Getter for <code>public.custom_pricing_rule.rule_version</code>.
+     */
+    public Long getRuleVersion() {
+        return (Long) get(4);
+    }
+
+    /**
      * Setter for <code>public.custom_pricing_rule.override_price_minor</code>.
      */
     public void setOverridePriceMinor(Long value) {
-        set(4, value);
+        set(5, value);
     }
 
     /**
      * Getter for <code>public.custom_pricing_rule.override_price_minor</code>.
      */
     public Long getOverridePriceMinor() {
-        return (Long) get(4);
+        return (Long) get(5);
     }
 
     /**
-     * Setter for <code>public.custom_pricing_rule.discount_percent</code>.
+     * Setter for <code>public.custom_pricing_rule.currency_code</code>.
      */
-    public void setDiscountPercent(Double value) {
-        set(5, value);
+    public void setCurrencyCode(String value) {
+        set(6, value);
     }
 
     /**
-     * Getter for <code>public.custom_pricing_rule.discount_percent</code>.
+     * Getter for <code>public.custom_pricing_rule.currency_code</code>.
      */
-    public Double getDiscountPercent() {
-        return (Double) get(5);
+    public String getCurrencyCode() {
+        return (String) get(6);
+    }
+
+    /**
+     * Setter for <code>public.custom_pricing_rule.discount_numerator</code>.
+     */
+    public void setDiscountNumerator(Long value) {
+        set(7, value);
+    }
+
+    /**
+     * Getter for <code>public.custom_pricing_rule.discount_numerator</code>.
+     */
+    public Long getDiscountNumerator() {
+        return (Long) get(7);
+    }
+
+    /**
+     * Setter for <code>public.custom_pricing_rule.discount_denominator</code>.
+     */
+    public void setDiscountDenominator(Long value) {
+        set(8, value);
+    }
+
+    /**
+     * Getter for <code>public.custom_pricing_rule.discount_denominator</code>.
+     */
+    public Long getDiscountDenominator() {
+        return (Long) get(8);
     }
 
     /**
      * Setter for <code>public.custom_pricing_rule.effective_from</code>.
      */
-    public void setEffectiveFrom(LocalDateTime value) {
-        set(6, value);
+    public void setEffectiveFrom(Instant value) {
+        set(9, value);
     }
 
     /**
      * Getter for <code>public.custom_pricing_rule.effective_from</code>.
      */
-    public LocalDateTime getEffectiveFrom() {
-        return (LocalDateTime) get(6);
+    public Instant getEffectiveFrom() {
+        return (Instant) get(9);
     }
 
     /**
      * Setter for <code>public.custom_pricing_rule.effective_to</code>.
      */
-    public void setEffectiveTo(LocalDateTime value) {
-        set(7, value);
+    public void setEffectiveTo(Instant value) {
+        set(10, value);
     }
 
     /**
      * Getter for <code>public.custom_pricing_rule.effective_to</code>.
      */
-    public LocalDateTime getEffectiveTo() {
-        return (LocalDateTime) get(7);
+    public Instant getEffectiveTo() {
+        return (Instant) get(10);
     }
 
     /**
      * Setter for <code>public.custom_pricing_rule.status</code>.
      */
     public void setStatus(String value) {
-        set(8, value);
+        set(11, value);
     }
 
     /**
      * Getter for <code>public.custom_pricing_rule.status</code>.
      */
     public String getStatus() {
-        return (String) get(8);
+        return (String) get(11);
     }
 
     /**
      * Setter for <code>public.custom_pricing_rule.created_at</code>.
      */
-    public void setCreatedAt(LocalDateTime value) {
-        set(9, value);
+    public void setCreatedAt(Instant value) {
+        set(12, value);
     }
 
     /**
      * Getter for <code>public.custom_pricing_rule.created_at</code>.
      */
-    public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(9);
+    public Instant getCreatedAt() {
+        return (Instant) get(12);
     }
 
     // -------------------------------------------------------------------------
@@ -165,8 +207,8 @@ public class CustomPricingRuleRecord extends UpdatableRecordImpl<CustomPricingRu
     // -------------------------------------------------------------------------
 
     @Override
-    public Record1<String> key() {
-        return (Record1) super.key();
+    public Record2<String, String> key() {
+        return (Record2) super.key();
     }
 
     // -------------------------------------------------------------------------
@@ -183,15 +225,18 @@ public class CustomPricingRuleRecord extends UpdatableRecordImpl<CustomPricingRu
     /**
      * Create a detached, initialised CustomPricingRuleRecord
      */
-    public CustomPricingRuleRecord(String id, String tenantId, String workspaceId, String meterKey, Long overridePriceMinor, Double discountPercent, LocalDateTime effectiveFrom, LocalDateTime effectiveTo, String status, LocalDateTime createdAt) {
+    public CustomPricingRuleRecord(String id, String tenantId, String workspaceId, String meterKey, Long ruleVersion, Long overridePriceMinor, String currencyCode, Long discountNumerator, Long discountDenominator, Instant effectiveFrom, Instant effectiveTo, String status, Instant createdAt) {
         super(CustomPricingRule.CUSTOM_PRICING_RULE);
 
         setId(id);
         setTenantId(tenantId);
         setWorkspaceId(workspaceId);
         setMeterKey(meterKey);
+        setRuleVersion(ruleVersion);
         setOverridePriceMinor(overridePriceMinor);
-        setDiscountPercent(discountPercent);
+        setCurrencyCode(currencyCode);
+        setDiscountNumerator(discountNumerator);
+        setDiscountDenominator(discountDenominator);
         setEffectiveFrom(effectiveFrom);
         setEffectiveTo(effectiveTo);
         setStatus(status);

@@ -6,9 +6,9 @@ package com.example.platform.typedschema.jooq.generated.tables.records;
 
 import com.example.platform.typedschema.jooq.generated.tables.InvoiceLineItem;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
-import org.jooq.Record1;
+import org.jooq.Record2;
 import org.jooq.impl.UpdatableRecordImpl;
 
 
@@ -35,143 +35,171 @@ public class InvoiceLineItemRecord extends UpdatableRecordImpl<InvoiceLineItemRe
     }
 
     /**
+     * Setter for <code>public.invoice_line_item.tenant_id</code>.
+     */
+    public void setTenantId(String value) {
+        set(1, value);
+    }
+
+    /**
+     * Getter for <code>public.invoice_line_item.tenant_id</code>.
+     */
+    public String getTenantId() {
+        return (String) get(1);
+    }
+
+    /**
      * Setter for <code>public.invoice_line_item.invoice_id</code>.
      */
     public void setInvoiceId(String value) {
-        set(1, value);
+        set(2, value);
     }
 
     /**
      * Getter for <code>public.invoice_line_item.invoice_id</code>.
      */
     public String getInvoiceId() {
-        return (String) get(1);
+        return (String) get(2);
+    }
+
+    /**
+     * Setter for <code>public.invoice_line_item.rated_usage_id</code>.
+     */
+    public void setRatedUsageId(String value) {
+        set(3, value);
+    }
+
+    /**
+     * Getter for <code>public.invoice_line_item.rated_usage_id</code>.
+     */
+    public String getRatedUsageId() {
+        return (String) get(3);
     }
 
     /**
      * Setter for <code>public.invoice_line_item.line_type</code>.
      */
     public void setLineType(String value) {
-        set(2, value);
+        set(4, value);
     }
 
     /**
      * Getter for <code>public.invoice_line_item.line_type</code>.
      */
     public String getLineType() {
-        return (String) get(2);
+        return (String) get(4);
     }
 
     /**
      * Setter for <code>public.invoice_line_item.description</code>.
      */
     public void setDescription(String value) {
-        set(3, value);
+        set(5, value);
     }
 
     /**
      * Getter for <code>public.invoice_line_item.description</code>.
      */
     public String getDescription() {
-        return (String) get(3);
+        return (String) get(5);
     }
 
     /**
-     * Setter for <code>public.invoice_line_item.quantity</code>.
+     * Setter for <code>public.invoice_line_item.quantity_base_units</code>.
      */
-    public void setQuantity(Double value) {
-        set(4, value);
+    public void setQuantityBaseUnits(Long value) {
+        set(6, value);
     }
 
     /**
-     * Getter for <code>public.invoice_line_item.quantity</code>.
+     * Getter for <code>public.invoice_line_item.quantity_base_units</code>.
      */
-    public Double getQuantity() {
-        return (Double) get(4);
+    public Long getQuantityBaseUnits() {
+        return (Long) get(6);
     }
 
     /**
      * Setter for <code>public.invoice_line_item.unit_price_minor</code>.
      */
     public void setUnitPriceMinor(Long value) {
-        set(5, value);
+        set(7, value);
     }
 
     /**
      * Getter for <code>public.invoice_line_item.unit_price_minor</code>.
      */
     public Long getUnitPriceMinor() {
-        return (Long) get(5);
+        return (Long) get(7);
     }
 
     /**
      * Setter for <code>public.invoice_line_item.amount_minor</code>.
      */
     public void setAmountMinor(Long value) {
-        set(6, value);
+        set(8, value);
     }
 
     /**
      * Getter for <code>public.invoice_line_item.amount_minor</code>.
      */
     public Long getAmountMinor() {
-        return (Long) get(6);
+        return (Long) get(8);
     }
 
     /**
      * Setter for <code>public.invoice_line_item.currency_code</code>.
      */
     public void setCurrencyCode(String value) {
-        set(7, value);
+        set(9, value);
     }
 
     /**
      * Getter for <code>public.invoice_line_item.currency_code</code>.
      */
     public String getCurrencyCode() {
-        return (String) get(7);
+        return (String) get(9);
     }
 
     /**
      * Setter for <code>public.invoice_line_item.period_start</code>.
      */
-    public void setPeriodStart(LocalDateTime value) {
-        set(8, value);
+    public void setPeriodStart(Instant value) {
+        set(10, value);
     }
 
     /**
      * Getter for <code>public.invoice_line_item.period_start</code>.
      */
-    public LocalDateTime getPeriodStart() {
-        return (LocalDateTime) get(8);
+    public Instant getPeriodStart() {
+        return (Instant) get(10);
     }
 
     /**
      * Setter for <code>public.invoice_line_item.period_end</code>.
      */
-    public void setPeriodEnd(LocalDateTime value) {
-        set(9, value);
+    public void setPeriodEnd(Instant value) {
+        set(11, value);
     }
 
     /**
      * Getter for <code>public.invoice_line_item.period_end</code>.
      */
-    public LocalDateTime getPeriodEnd() {
-        return (LocalDateTime) get(9);
+    public Instant getPeriodEnd() {
+        return (Instant) get(11);
     }
 
     /**
      * Setter for <code>public.invoice_line_item.created_at</code>.
      */
-    public void setCreatedAt(LocalDateTime value) {
-        set(10, value);
+    public void setCreatedAt(Instant value) {
+        set(12, value);
     }
 
     /**
      * Getter for <code>public.invoice_line_item.created_at</code>.
      */
-    public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(10);
+    public Instant getCreatedAt() {
+        return (Instant) get(12);
     }
 
     // -------------------------------------------------------------------------
@@ -179,8 +207,8 @@ public class InvoiceLineItemRecord extends UpdatableRecordImpl<InvoiceLineItemRe
     // -------------------------------------------------------------------------
 
     @Override
-    public Record1<String> key() {
-        return (Record1) super.key();
+    public Record2<String, String> key() {
+        return (Record2) super.key();
     }
 
     // -------------------------------------------------------------------------
@@ -197,14 +225,16 @@ public class InvoiceLineItemRecord extends UpdatableRecordImpl<InvoiceLineItemRe
     /**
      * Create a detached, initialised InvoiceLineItemRecord
      */
-    public InvoiceLineItemRecord(String id, String invoiceId, String lineType, String description, Double quantity, Long unitPriceMinor, Long amountMinor, String currencyCode, LocalDateTime periodStart, LocalDateTime periodEnd, LocalDateTime createdAt) {
+    public InvoiceLineItemRecord(String id, String tenantId, String invoiceId, String ratedUsageId, String lineType, String description, Long quantityBaseUnits, Long unitPriceMinor, Long amountMinor, String currencyCode, Instant periodStart, Instant periodEnd, Instant createdAt) {
         super(InvoiceLineItem.INVOICE_LINE_ITEM);
 
         setId(id);
+        setTenantId(tenantId);
         setInvoiceId(invoiceId);
+        setRatedUsageId(ratedUsageId);
         setLineType(lineType);
         setDescription(description);
-        setQuantity(quantity);
+        setQuantityBaseUnits(quantityBaseUnits);
         setUnitPriceMinor(unitPriceMinor);
         setAmountMinor(amountMinor);
         setCurrencyCode(currencyCode);

@@ -4,16 +4,18 @@
 package com.example.platform.typedschema.jooq.generated.tables;
 
 
+import com.example.platform.typedschema.contract.InstantConverter;
 import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
 import com.example.platform.typedschema.jooq.generated.tables.records.CustomPricingRuleRecord;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
+import org.jooq.Check;
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.Index;
@@ -29,6 +31,7 @@ import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
@@ -62,7 +65,7 @@ public class CustomPricingRule extends TableImpl<CustomPricingRuleRecord> {
     /**
      * The column <code>public.custom_pricing_rule.tenant_id</code>.
      */
-    public final TableField<CustomPricingRuleRecord, String> TENANT_ID = createField(DSL.name("tenant_id"), SQLDataType.VARCHAR(64), this, "");
+    public final TableField<CustomPricingRuleRecord, String> TENANT_ID = createField(DSL.name("tenant_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
     /**
      * The column <code>public.custom_pricing_rule.workspace_id</code>.
@@ -75,24 +78,39 @@ public class CustomPricingRule extends TableImpl<CustomPricingRuleRecord> {
     public final TableField<CustomPricingRuleRecord, String> METER_KEY = createField(DSL.name("meter_key"), SQLDataType.VARCHAR(128).nullable(false), this, "");
 
     /**
+     * The column <code>public.custom_pricing_rule.rule_version</code>.
+     */
+    public final TableField<CustomPricingRuleRecord, Long> RULE_VERSION = createField(DSL.name("rule_version"), SQLDataType.BIGINT.nullable(false), this, "");
+
+    /**
      * The column <code>public.custom_pricing_rule.override_price_minor</code>.
      */
     public final TableField<CustomPricingRuleRecord, Long> OVERRIDE_PRICE_MINOR = createField(DSL.name("override_price_minor"), SQLDataType.BIGINT, this, "");
 
     /**
-     * The column <code>public.custom_pricing_rule.discount_percent</code>.
+     * The column <code>public.custom_pricing_rule.currency_code</code>.
      */
-    public final TableField<CustomPricingRuleRecord, Double> DISCOUNT_PERCENT = createField(DSL.name("discount_percent"), SQLDataType.DOUBLE, this, "");
+    public final TableField<CustomPricingRuleRecord, String> CURRENCY_CODE = createField(DSL.name("currency_code"), SQLDataType.VARCHAR(3).nullable(false), this, "");
+
+    /**
+     * The column <code>public.custom_pricing_rule.discount_numerator</code>.
+     */
+    public final TableField<CustomPricingRuleRecord, Long> DISCOUNT_NUMERATOR = createField(DSL.name("discount_numerator"), SQLDataType.BIGINT, this, "");
+
+    /**
+     * The column <code>public.custom_pricing_rule.discount_denominator</code>.
+     */
+    public final TableField<CustomPricingRuleRecord, Long> DISCOUNT_DENOMINATOR = createField(DSL.name("discount_denominator"), SQLDataType.BIGINT, this, "");
 
     /**
      * The column <code>public.custom_pricing_rule.effective_from</code>.
      */
-    public final TableField<CustomPricingRuleRecord, LocalDateTime> EFFECTIVE_FROM = createField(DSL.name("effective_from"), SQLDataType.LOCALDATETIME(6), this, "");
+    public final TableField<CustomPricingRuleRecord, Instant> EFFECTIVE_FROM = createField(DSL.name("effective_from"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false), this, "", new InstantConverter());
 
     /**
      * The column <code>public.custom_pricing_rule.effective_to</code>.
      */
-    public final TableField<CustomPricingRuleRecord, LocalDateTime> EFFECTIVE_TO = createField(DSL.name("effective_to"), SQLDataType.LOCALDATETIME(6), this, "");
+    public final TableField<CustomPricingRuleRecord, Instant> EFFECTIVE_TO = createField(DSL.name("effective_to"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "", new InstantConverter());
 
     /**
      * The column <code>public.custom_pricing_rule.status</code>.
@@ -102,7 +120,7 @@ public class CustomPricingRule extends TableImpl<CustomPricingRuleRecord> {
     /**
      * The column <code>public.custom_pricing_rule.created_at</code>.
      */
-    public final TableField<CustomPricingRuleRecord, LocalDateTime> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.LOCALDATETIME(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.LOCALDATETIME)), this, "");
+    public final TableField<CustomPricingRuleRecord, Instant> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "", new InstantConverter());
 
     private CustomPricingRule(Name alias, Table<CustomPricingRuleRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
@@ -146,6 +164,23 @@ public class CustomPricingRule extends TableImpl<CustomPricingRuleRecord> {
     @Override
     public UniqueKey<CustomPricingRuleRecord> getPrimaryKey() {
         return Keys.CUSTOM_PRICING_RULE_PKEY;
+    }
+
+    @Override
+    public List<UniqueKey<CustomPricingRuleRecord>> getUniqueKeys() {
+        return Arrays.asList(Keys.CUSTOM_PRICING_RULE_TENANT_ID_WORKSPACE_ID_METER_KEY_RULE_V_KEY);
+    }
+
+    @Override
+    public List<Check<CustomPricingRuleRecord>> getChecks() {
+        return Arrays.asList(
+            Internal.createCheck(this, DSL.name("custom_pricing_rule_check"), "((discount_numerator <= discount_denominator))", true),
+            Internal.createCheck(this, DSL.name("custom_pricing_rule_check1"), "(((effective_to IS NULL) OR (effective_to > effective_from)))", true),
+            Internal.createCheck(this, DSL.name("custom_pricing_rule_discount_denominator_check"), "(((discount_denominator IS NOT NULL) AND (discount_denominator > 0)))", true),
+            Internal.createCheck(this, DSL.name("custom_pricing_rule_discount_numerator_check"), "(((discount_numerator IS NOT NULL) AND (discount_numerator >= 0)))", true),
+            Internal.createCheck(this, DSL.name("custom_pricing_rule_override_price_minor_check"), "(((override_price_minor IS NULL) OR (override_price_minor >= 0)))", true),
+            Internal.createCheck(this, DSL.name("custom_pricing_rule_rule_version_check"), "((rule_version > 0))", true)
+        );
     }
 
     @Override

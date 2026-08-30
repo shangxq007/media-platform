@@ -83,27 +83,8 @@ public class MeController {
                 throw new IllegalArgumentException("Tenant context is required");
             }
             String tier = entitlementPolicyService.getTier(tenantId);
-            capabilities.put("tier", tier);
-            var policy = entitlementPolicyService.getPolicy(tenantId);
-            if (policy != null) {
-                capabilities.put("monthlyRenderMinutes", policy.monthlyRenderMinutes());
-                capabilities.put("maxConcurrentJobs", policy.maxConcurrentJobs());
-                capabilities.put("gpuAllowed", policy.gpuAllowed());
-                capabilities.put("remoteWorkerAllowed", policy.remoteWorkerAllowed());
-                capabilities.put("customFontsAllowed", policy.customFontsAllowed());
-                capabilities.put("watermark", policy.watermark());
-                capabilities.put("allowedExportFormats", policy.exportFormats());
-                capabilities.put("allowedPresets", List.of("720p", "1080p", "4k"));
-            }
-            var exportCaps = entitlementPolicyService.getExportCapabilities(tenantId);
-            if (exportCaps != null) {
-                capabilities.put("exportFormats", exportCaps.allowedFormats());
-                capabilities.put("exportPresets", exportCaps.allowedPresets());
-                capabilities.put("maxExportResolutionWidth", exportCaps.maxResolutionWidth());
-                capabilities.put("maxExportResolutionHeight", exportCaps.maxResolutionHeight());
-                capabilities.put("gpuExportAllowed", exportCaps.gpuExportAllowed());
-                capabilities.put("maxConcurrentExports", exportCaps.maxConcurrentExports());
-            }
+            capabilities.put("commercialTierMetadata", tier);
+            capabilities.put("authority", "EffectiveCapabilityView");
         } catch (Exception e) {
             log.warn("Failed to resolve capabilities: {}", e.getMessage());
             capabilities.put("tier", "UNKNOWN");
@@ -141,23 +122,7 @@ public class MeController {
 
         Map<String, Object> usage = new LinkedHashMap<>();
         usage.put("period", java.time.YearMonth.now().toString());
-        try {
-            if (tenantId != null && !tenantId.isBlank()) {
-                var policy = entitlementPolicyService.getPolicy(tenantId);
-                if (policy != null) {
-                    usage.put("renderMinutesUsed", 0);
-                    usage.put("renderMinutesLimit", policy.monthlyRenderMinutes());
-                    usage.put("storageGbUsed", 0);
-                    usage.put("storageGbLimit", 10);
-                    usage.put("apiCallsUsed", 0);
-                    usage.put("apiCallsLimit", 10000);
-                    usage.put("exportsUsed", 0);
-                    usage.put("exportsLimit", policy.maxConcurrentJobs() * 10);
-                }
-            }
-        } catch (Exception e) {
-            log.warn("Failed to resolve usage: {}", e.getMessage());
-        }
+        usage.put("authority", "QuotaDecisionProjection");
         dashboard.put("usage", usage);
 
         Map<String, Object> onboarding = new LinkedHashMap<>();

@@ -10,7 +10,6 @@
             "billing :: usage",
             "entitlement",
             "entitlement :: domain",
-            "quota :: app",
             "shared",
             "storage",
             "storage :: API",

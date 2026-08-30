@@ -54,6 +54,9 @@ class RenderNativeToolsIT extends PostgresTestContainerSupport {
     private RenderOrchestratorService orchestratorService;
 
     @Autowired
+    private com.example.platform.entitlement.app.EntitlementService entitlementService;
+
+    @Autowired
     private TimelineSnapshotService timelineSnapshotService;
 
     @Value("${app.storage.local-root:/tmp/platform}")
@@ -98,6 +101,8 @@ class RenderNativeToolsIT extends PostgresTestContainerSupport {
     @EnabledIf("ffmpegAvailable")
     void ffmpegRenderJob_withTimelineSnapshot_completes() throws Exception {
         var tenant = tenantProjectController.createTenant(new CreateTenantRequest("Native FFmpeg Tenant"));
+        TestEntitlementGrantSupport.grant(
+                entitlementService, tenant.id(), "render.job.create");
         var project = tenantProjectController.createProject(tenant.id(),
                 new CreateProjectRequest("Native Project", "E2E"));
 
@@ -140,6 +145,8 @@ class RenderNativeToolsIT extends PostgresTestContainerSupport {
             return;
         }
         var tenant = tenantProjectController.createTenant(new CreateTenantRequest("Native MLT Tenant"));
+        TestEntitlementGrantSupport.grant(
+                entitlementService, tenant.id(), "render.job.create");
         var project = tenantProjectController.createProject(tenant.id(),
                 new CreateProjectRequest("MLT Project", "E2E"));
 

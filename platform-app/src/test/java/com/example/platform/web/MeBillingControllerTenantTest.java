@@ -8,6 +8,8 @@ import com.example.platform.billing.app.CreditWalletService;
 import com.example.platform.billing.app.SubscriptionBillingService;
 import com.example.platform.commerce.app.CommerceCatalogService;
 import com.example.platform.entitlement.app.EntitlementPolicyService;
+import com.example.platform.shared.commercial.PrincipalRef;
+import com.example.platform.shared.commercial.PrincipalType;
 import com.example.platform.shared.web.TenantContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -65,15 +67,17 @@ class MeBillingControllerTenantTest {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setAttribute("jwt.subject", "user-1");
         request.setAttribute("jwt.tenantId", "tenant-a");
+        PrincipalRef principal = PrincipalRef.tenantScoped("tenant-a", PrincipalType.USER, "user-1");
 
-        when(subscriptionBillingService.getCurrentSubscription("tenant-a", "user-1")).thenReturn(null);
+        when(subscriptionBillingService.getCurrentSubscription(principal)).thenReturn(null);
         when(entitlementPolicyService.getTier("tenant-a")).thenReturn("FREE");
 
         var response = controller.getCurrentPlan(request);
 
         assertTrue(response.getStatusCode().is2xxSuccessful());
-        verify(subscriptionBillingService).getCurrentSubscription("tenant-a", "user-1");
-        verify(subscriptionBillingService, never()).getCurrentSubscription(eq("tenant-1"), any());
+        verify(subscriptionBillingService).getCurrentSubscription(principal);
+        verify(subscriptionBillingService, never()).getCurrentSubscription(
+                PrincipalRef.tenantScoped("tenant-1", PrincipalType.USER, "user-1"));
     }
 
     @Test
@@ -81,14 +85,15 @@ class MeBillingControllerTenantTest {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setAttribute("jwt.subject", "user-1");
         request.setAttribute("jwt.tenantId", "tenant-b");
+        PrincipalRef principal = PrincipalRef.tenantScoped("tenant-b", PrincipalType.USER, "user-1");
 
-        when(subscriptionBillingService.getCurrentSubscription("tenant-b", "user-1")).thenReturn(null);
+        when(subscriptionBillingService.getCurrentSubscription(principal)).thenReturn(null);
         when(entitlementPolicyService.getTier("tenant-b")).thenReturn("FREE");
 
         var response = controller.getCurrentPlan(request);
 
         assertTrue(response.getStatusCode().is2xxSuccessful());
-        verify(subscriptionBillingService).getCurrentSubscription("tenant-b", "user-1");
+        verify(subscriptionBillingService).getCurrentSubscription(principal);
     }
 
     @Test
@@ -116,7 +121,8 @@ class MeBillingControllerTenantTest {
         assertThrows(IllegalArgumentException.class,
                 () -> controller.getCurrentPlan(request));
 
-        verify(subscriptionBillingService, never()).getCurrentSubscription(eq("tenant-1"), any());
+        verify(subscriptionBillingService, never()).getCurrentSubscription(
+                PrincipalRef.tenantScoped("tenant-1", PrincipalType.USER, "user-1"));
     }
 
     @Test
@@ -125,14 +131,16 @@ class MeBillingControllerTenantTest {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setAttribute("jwt.subject", "user-1");
         request.setAttribute("jwt.tenantId", "real-tenant");
+        PrincipalRef principal = PrincipalRef.tenantScoped("real-tenant", PrincipalType.USER, "user-1");
 
-        when(subscriptionBillingService.getCurrentSubscription("real-tenant", "user-1")).thenReturn(null);
+        when(subscriptionBillingService.getCurrentSubscription(principal)).thenReturn(null);
         when(entitlementPolicyService.getTier("real-tenant")).thenReturn("FREE");
 
         var response = controller.getCurrentPlan(request);
 
         assertTrue(response.getStatusCode().is2xxSuccessful());
-        verify(subscriptionBillingService).getCurrentSubscription("real-tenant", "user-1");
-        verify(subscriptionBillingService, never()).getCurrentSubscription(eq("fake-tenant"), any());
+        verify(subscriptionBillingService).getCurrentSubscription(principal);
+        verify(subscriptionBillingService, never()).getCurrentSubscription(
+                PrincipalRef.tenantScoped("fake-tenant", PrincipalType.USER, "user-1"));
     }
 }

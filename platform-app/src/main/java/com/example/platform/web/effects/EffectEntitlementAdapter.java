@@ -1,9 +1,9 @@
 package com.example.platform.web.effects;
 
-import com.example.platform.entitlement.app.EntitlementPolicyService;
-import com.example.platform.entitlement.domain.EntitlementPolicy;
+import com.example.platform.entitlement.app.EntitlementService;
+import com.example.platform.shared.commercial.PrincipalRef;
+import com.example.platform.shared.commercial.PrincipalType;
 import com.example.platform.render.api.port.EffectEntitlementPort;
-import com.example.platform.render.infrastructure.EffectDescriptor;
 import com.example.platform.render.infrastructure.EffectMappingService;
 import com.example.platform.render.infrastructure.effects.EffectProviderRouter;
 import java.util.List;
@@ -13,14 +13,14 @@ import org.springframework.stereotype.Component;
 @Component
 public class EffectEntitlementAdapter implements EffectEntitlementPort {
 
-    private final EntitlementPolicyService policyService;
+    private final EntitlementService entitlementService;
     private final EffectMappingService effectMapping;
     private final EffectProviderRouter effectProviderRouter;
 
-    public EffectEntitlementAdapter(EntitlementPolicyService policyService,
+    public EffectEntitlementAdapter(EntitlementService entitlementService,
                                     EffectMappingService effectMapping,
                                     EffectProviderRouter effectProviderRouter) {
-        this.policyService = policyService;
+        this.entitlementService = entitlementService;
         this.effectMapping = effectMapping;
         this.effectProviderRouter = effectProviderRouter;
     }
@@ -28,41 +28,26 @@ public class EffectEntitlementAdapter implements EffectEntitlementPort {
     @Override
     public void validateEffectAccess(String tenantId, String tier, List<String> effectKeys,
                                        List<String> packIds) {
-        EntitlementPolicy policy = policyService.getPolicy(tenantId);
-        String effectiveTier = tier != null && !tier.isBlank() ? tier.toUpperCase() : policy.tier();
+        PrincipalRef principal = PrincipalRef.tenantScoped(
+                tenantId, PrincipalType.ORGANIZATION, tenantId);
 
         if (packIds != null) {
             for (String packId : packIds) {
-                if (packId != null && !packId.isBlank() && !policy.isEffectPackAllowed(packId)) {
-                    throw new IllegalArgumentException("当前等级不可用特效包: " + packId);
+                if (packId != null && !packId.isBlank()
+                        && !entitlementService.checkFeature(principal, "effect.pack." + packId).allowed()) {
+                    throw new IllegalArgumentException("未授予特效包权限: " + packId);
                 }
             }
         }
 
-        Set<String> allowedProviders = policy.allowedProviders() != null
-                ? policy.allowedProviders()
-                : Set.of();
-
         if (effectKeys != null) {
             for (String effectKey : effectKeys) {
-                EffectDescriptor descriptor = effectMapping.getDescriptor(effectKey)
+                effectMapping.getDescriptor(effectKey)
                         .orElseThrow(() -> new IllegalArgumentException("未知特效: " + effectKey));
-                if (descriptor.allowedTiers() != null
-                        && !descriptor.allowedTiers().isEmpty()
-                        && !descriptor.allowedTiers().contains(effectiveTier)) {
-                    throw new IllegalArgumentException("当前等级不可用特效: " + effectKey);
+                if (!entitlementService.checkFeature(principal, "effect." + effectKey).allowed()) {
+                    throw new IllegalArgumentException("未授予特效权限: " + effectKey);
                 }
-                effectProviderRouter.resolveProviderForEffect(effectKey, allowedProviders)
-                        .ifPresent(providerKey -> {
-                            if (!policy.isProviderAllowed(providerKey)) {
-                                throw new IllegalArgumentException(
-                                        "当前等级不可用渲染引擎: " + providerKey + " (特效: " + effectKey + ")");
-                            }
-                        });
-            }
-            if (effectProviderRouter.requiresNatronPipeline(effectKeys, allowedProviders)
-                    && !policy.isProviderAllowed("natron")) {
-                throw new IllegalArgumentException("当前等级不可用 Natron 合成 Worker");
+                effectProviderRouter.resolveProviderForEffect(effectKey, Set.of());
             }
         }
     }

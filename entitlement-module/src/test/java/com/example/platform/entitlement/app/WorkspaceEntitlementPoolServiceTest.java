@@ -6,7 +6,6 @@ import com.example.platform.entitlement.domain.WorkspaceEntitlementPool;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.time.Instant;
 import java.util.List;
 
 class WorkspaceEntitlementPoolServiceTest {
@@ -39,13 +38,6 @@ class WorkspaceEntitlementPoolServiceTest {
         assertEquals("ws-1", result.workspaceId());
         assertEquals("render", result.featureKey());
         assertEquals(1000, result.totalQuota());
-    }
-
-    @Test
-    void allocateToMemberThrowsWithoutRepository() {
-        assertThrows(IllegalStateException.class, () ->
-                service.allocateToMember("ws-1", "render", "member-1",
-                        100, Instant.now(), null, "admin"));
     }
 
     @Test

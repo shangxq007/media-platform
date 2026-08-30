@@ -4,7 +4,12 @@ import com.example.platform.identity.api.TenantProjectController;
 import com.example.platform.identity.api.dto.CreateProjectRequest;
 import com.example.platform.identity.api.dto.CreateTenantRequest;
 import com.example.platform.render.api.RenderController;
-import com.example.platform.entitlement.app.EntitlementPolicyService;
+import com.example.platform.entitlement.app.EntitlementService;
+import com.example.platform.entitlement.domain.EntitlementCommandType;
+import com.example.platform.entitlement.domain.EntitlementGrantCommand;
+import com.example.platform.shared.commercial.PrincipalRef;
+import com.example.platform.shared.commercial.PrincipalType;
+import java.time.Instant;
 import com.example.platform.render.app.RenderOrchestratorService;
 import com.example.platform.render.app.RenderProfileResolver;
 import com.example.platform.render.app.RenderWorkerQueueService;
@@ -62,7 +67,7 @@ class RenderNatronEffectsIT extends PostgresTestContainerSupport {
     private RenderWorkerQueueService renderWorkerQueueService;
 
     @Autowired
-    private EntitlementPolicyService entitlementPolicyService;
+    private EntitlementService entitlementService;
 
     @Value("${app.storage.local-root:/tmp/platform}")
     private String storageRoot;
@@ -98,7 +103,8 @@ class RenderNatronEffectsIT extends PostgresTestContainerSupport {
     @EnabledIf("ffmpegAvailable")
     void natronVignetteEffect_autoProfileAndRender_completes() throws Exception {
         var tenant = tenantProjectController.createTenant(new CreateTenantRequest("Natron E2E Tenant"));
-        entitlementPolicyService.setTier(tenant.id(), "PRO");
+        grant(tenant.id(), "render.job.create");
+        grant(tenant.id(), "effect.video.natron_vignette");
         var project = tenantProjectController.createProject(tenant.id(),
                 new CreateProjectRequest("Natron Project", "E2E"));
 
@@ -137,5 +143,17 @@ class RenderNatronEffectsIT extends PostgresTestContainerSupport {
         if (renderWorkerQueueService != null) {
             assertThat(renderWorkerQueueService.natronDepth()).isGreaterThanOrEqualTo(0);
         }
+    }
+
+    private void grant(String tenantId, String entitlementKey) {
+        Instant now = Instant.now();
+        entitlementService.execute(new EntitlementGrantCommand(
+                EntitlementCommandType.GRANT,
+                PrincipalRef.tenantScoped(tenantId, PrincipalType.ORGANIZATION, tenantId),
+                "grant-" + tenantId + "-" + entitlementKey,
+                entitlementKey, null, "TEST", "render-natron-it",
+                "grant:" + tenantId + ":" + entitlementKey,
+                "test", "integration entitlement", "trace-" + tenantId,
+                now, now.plusSeconds(3600), 0));
     }
 }

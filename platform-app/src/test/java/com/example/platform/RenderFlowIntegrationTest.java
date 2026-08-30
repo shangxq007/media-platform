@@ -44,6 +44,9 @@ class RenderFlowIntegrationTest extends PostgresTestContainerSupport {
     private RenderOrchestratorService orchestratorService;
 
     @Autowired
+    private com.example.platform.entitlement.app.EntitlementService entitlementService;
+
+    @Autowired
     private MockNotificationProvider mockNotificationProvider;
     private String currentTenantId;
 
@@ -56,6 +59,8 @@ class RenderFlowIntegrationTest extends PostgresTestContainerSupport {
         TenantResponse tenant = tenantProjectController.createTenant(
                 new CreateTenantRequest(name + " Tenant"));
         this.currentTenantId = tenant.id();
+        TestEntitlementGrantSupport.grant(
+                entitlementService, tenant.id(), "render.job.create");
         ProjectResponse project = tenantProjectController.createProject(tenant.id(),
                 new CreateProjectRequest(name, "Test project for " + name));
         return project.id();
@@ -182,6 +187,8 @@ class RenderFlowIntegrationTest extends PostgresTestContainerSupport {
         TenantResponse tenant = tenantProjectController.createTenant(
                 new CreateTenantRequest("E2E Flow Tenant"));
         assertThat(tenant.status()).isEqualTo("ACTIVE");
+        TestEntitlementGrantSupport.grant(
+                entitlementService, tenant.id(), "render.job.create");
 
         // Step 2: Create project
         ProjectResponse project = tenantProjectController.createProject(tenant.id(),
@@ -196,7 +203,7 @@ class RenderFlowIntegrationTest extends PostgresTestContainerSupport {
         // Step 4: Create render job
         var renderRequest = new com.example.platform.render.app.dto.CreateRenderJobRequest(
                 project.id(), "snap_e2e", "default_1080p");
-        var renderJob = renderController.createRenderJob(currentTenantId, project.id(), renderRequest);
+        var renderJob = renderController.createRenderJob(tenant.id(), project.id(), renderRequest);
         assertThat(renderJob.status()).isEqualTo("QUEUED");
 
         // Step 5: Query render job

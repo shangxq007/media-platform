@@ -6,7 +6,7 @@ package com.example.platform.typedschema.jooq.generated.tables.records;
 
 import com.example.platform.typedschema.jooq.generated.tables.CommerceProduct;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
@@ -49,73 +49,87 @@ public class CommerceProductRecord extends UpdatableRecordImpl<CommerceProductRe
     }
 
     /**
-     * Setter for <code>public.commerce_product.purchase_mode</code>.
+     * Setter for <code>public.commerce_product.product_line_type</code>.
      */
-    public void setPurchaseMode(String value) {
+    public void setProductLineType(String value) {
         set(2, value);
     }
 
     /**
-     * Getter for <code>public.commerce_product.purchase_mode</code>.
+     * Getter for <code>public.commerce_product.product_line_type</code>.
      */
-    public String getPurchaseMode() {
+    public String getProductLineType() {
         return (String) get(2);
     }
 
     /**
-     * Setter for <code>public.commerce_product.feature_bundle_code</code>.
+     * Setter for <code>public.commerce_product.display_name</code>.
      */
-    public void setFeatureBundleCode(String value) {
+    public void setDisplayName(String value) {
         set(3, value);
     }
 
     /**
-     * Getter for <code>public.commerce_product.feature_bundle_code</code>.
+     * Getter for <code>public.commerce_product.display_name</code>.
      */
-    public String getFeatureBundleCode() {
+    public String getDisplayName() {
         return (String) get(3);
     }
 
     /**
-     * Setter for <code>public.commerce_product.quota_profile_code</code>.
+     * Setter for <code>public.commerce_product.lifecycle_state</code>.
      */
-    public void setQuotaProfileCode(String value) {
+    public void setLifecycleState(String value) {
         set(4, value);
     }
 
     /**
-     * Getter for <code>public.commerce_product.quota_profile_code</code>.
+     * Getter for <code>public.commerce_product.lifecycle_state</code>.
      */
-    public String getQuotaProfileCode() {
+    public String getLifecycleState() {
         return (String) get(4);
     }
 
     /**
-     * Setter for <code>public.commerce_product.status</code>.
+     * Setter for <code>public.commerce_product.version</code>.
      */
-    public void setStatus(String value) {
+    public void setVersion(Long value) {
         set(5, value);
     }
 
     /**
-     * Getter for <code>public.commerce_product.status</code>.
+     * Getter for <code>public.commerce_product.version</code>.
      */
-    public String getStatus() {
-        return (String) get(5);
+    public Long getVersion() {
+        return (Long) get(5);
     }
 
     /**
      * Setter for <code>public.commerce_product.created_at</code>.
      */
-    public void setCreatedAt(LocalDateTime value) {
+    public void setCreatedAt(Instant value) {
         set(6, value);
     }
 
     /**
      * Getter for <code>public.commerce_product.created_at</code>.
      */
-    public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(6);
+    public Instant getCreatedAt() {
+        return (Instant) get(6);
+    }
+
+    /**
+     * Setter for <code>public.commerce_product.updated_at</code>.
+     */
+    public void setUpdatedAt(Instant value) {
+        set(7, value);
+    }
+
+    /**
+     * Getter for <code>public.commerce_product.updated_at</code>.
+     */
+    public Instant getUpdatedAt() {
+        return (Instant) get(7);
     }
 
     // -------------------------------------------------------------------------
@@ -141,16 +155,17 @@ public class CommerceProductRecord extends UpdatableRecordImpl<CommerceProductRe
     /**
      * Create a detached, initialised CommerceProductRecord
      */
-    public CommerceProductRecord(String id, String productCode, String purchaseMode, String featureBundleCode, String quotaProfileCode, String status, LocalDateTime createdAt) {
+    public CommerceProductRecord(String id, String productCode, String productLineType, String displayName, String lifecycleState, Long version, Instant createdAt, Instant updatedAt) {
         super(CommerceProduct.COMMERCE_PRODUCT);
 
         setId(id);
         setProductCode(productCode);
-        setPurchaseMode(purchaseMode);
-        setFeatureBundleCode(featureBundleCode);
-        setQuotaProfileCode(quotaProfileCode);
-        setStatus(status);
+        setProductLineType(productLineType);
+        setDisplayName(displayName);
+        setLifecycleState(lifecycleState);
+        setVersion(version);
         setCreatedAt(createdAt);
+        setUpdatedAt(updatedAt);
         resetChangedOnNotNull();
     }
 }
