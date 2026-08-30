@@ -1407,6 +1407,18 @@ else
     fail "Phase 17 sandbox boundary or authority guard failed"
 fi
 
+echo "--- STORAGE_IDENTITY_PLACEMENT_M0_M1 Guards ---"
+if python3 scripts/test-check-storage-identity-placement-m0-m1.py; then
+    pass "Storage identity/placement M0/M1 guard RED matrix rejects every mutation"
+else
+    fail "Storage identity/placement M0/M1 guard RED matrix failed"
+fi
+if python3 scripts/check-storage-identity-placement-m0-m1.py; then
+    pass "Storage identity/placement M0/M1 authority counters match the frozen laws"
+else
+    fail "Storage identity/placement M0/M1 authority counters drifted"
+fi
+
 if [ $FAILED -eq 0 ]; then
     echo "✅ All architecture drift checks passed"
     exit 0

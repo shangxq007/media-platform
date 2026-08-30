@@ -131,7 +131,14 @@ import com.example.platform.typedschema.jooq.generated.tables.SocialConnectedPla
 import com.example.platform.typedschema.jooq.generated.tables.SocialPost;
 import com.example.platform.typedschema.jooq.generated.tables.SocialPostAnalytics;
 import com.example.platform.typedschema.jooq.generated.tables.SourceVisualDescriptionSnapshot;
+import com.example.platform.typedschema.jooq.generated.tables.StorageDatabaseBinding;
+import com.example.platform.typedschema.jooq.generated.tables.StorageIdentityClassification;
+import com.example.platform.typedschema.jooq.generated.tables.StorageIdentityClassificationEvidence;
+import com.example.platform.typedschema.jooq.generated.tables.StorageIdentityMigrationJournal;
+import com.example.platform.typedschema.jooq.generated.tables.StorageLogicalObject;
 import com.example.platform.typedschema.jooq.generated.tables.StorageObject;
+import com.example.platform.typedschema.jooq.generated.tables.StorageObjectPlacement;
+import com.example.platform.typedschema.jooq.generated.tables.StoragePlacementReceipt;
 import com.example.platform.typedschema.jooq.generated.tables.StorageReference;
 import com.example.platform.typedschema.jooq.generated.tables.SubscriptionCommand;
 import com.example.platform.typedschema.jooq.generated.tables.SubscriptionContract;
@@ -851,9 +858,44 @@ public class Public extends SchemaImpl {
     public final SourceVisualDescriptionSnapshot SOURCE_VISUAL_DESCRIPTION_SNAPSHOT = SourceVisualDescriptionSnapshot.SOURCE_VISUAL_DESCRIPTION_SNAPSHOT;
 
     /**
+     * The table <code>public.storage_database_binding</code>.
+     */
+    public final StorageDatabaseBinding STORAGE_DATABASE_BINDING = StorageDatabaseBinding.STORAGE_DATABASE_BINDING;
+
+    /**
+     * The table <code>public.storage_identity_classification</code>.
+     */
+    public final StorageIdentityClassification STORAGE_IDENTITY_CLASSIFICATION = StorageIdentityClassification.STORAGE_IDENTITY_CLASSIFICATION;
+
+    /**
+     * The table <code>public.storage_identity_classification_evidence</code>.
+     */
+    public final StorageIdentityClassificationEvidence STORAGE_IDENTITY_CLASSIFICATION_EVIDENCE = StorageIdentityClassificationEvidence.STORAGE_IDENTITY_CLASSIFICATION_EVIDENCE;
+
+    /**
+     * The table <code>public.storage_identity_migration_journal</code>.
+     */
+    public final StorageIdentityMigrationJournal STORAGE_IDENTITY_MIGRATION_JOURNAL = StorageIdentityMigrationJournal.STORAGE_IDENTITY_MIGRATION_JOURNAL;
+
+    /**
+     * The table <code>public.storage_logical_object</code>.
+     */
+    public final StorageLogicalObject STORAGE_LOGICAL_OBJECT = StorageLogicalObject.STORAGE_LOGICAL_OBJECT;
+
+    /**
      * The table <code>public.storage_object</code>.
      */
     public final StorageObject STORAGE_OBJECT = StorageObject.STORAGE_OBJECT;
+
+    /**
+     * The table <code>public.storage_object_placement</code>.
+     */
+    public final StorageObjectPlacement STORAGE_OBJECT_PLACEMENT = StorageObjectPlacement.STORAGE_OBJECT_PLACEMENT;
+
+    /**
+     * The table <code>public.storage_placement_receipt</code>.
+     */
+    public final StoragePlacementReceipt STORAGE_PLACEMENT_RECEIPT = StoragePlacementReceipt.STORAGE_PLACEMENT_RECEIPT;
 
     /**
      * The table <code>public.storage_reference</code>.
@@ -1303,7 +1345,14 @@ public class Public extends SchemaImpl {
             SocialPost.SOCIAL_POST,
             SocialPostAnalytics.SOCIAL_POST_ANALYTICS,
             SourceVisualDescriptionSnapshot.SOURCE_VISUAL_DESCRIPTION_SNAPSHOT,
+            StorageDatabaseBinding.STORAGE_DATABASE_BINDING,
+            StorageIdentityClassification.STORAGE_IDENTITY_CLASSIFICATION,
+            StorageIdentityClassificationEvidence.STORAGE_IDENTITY_CLASSIFICATION_EVIDENCE,
+            StorageIdentityMigrationJournal.STORAGE_IDENTITY_MIGRATION_JOURNAL,
+            StorageLogicalObject.STORAGE_LOGICAL_OBJECT,
             StorageObject.STORAGE_OBJECT,
+            StorageObjectPlacement.STORAGE_OBJECT_PLACEMENT,
+            StoragePlacementReceipt.STORAGE_PLACEMENT_RECEIPT,
             StorageReference.STORAGE_REFERENCE,
             SubscriptionCommand.SUBSCRIPTION_COMMAND,
             SubscriptionContract.SUBSCRIPTION_CONTRACT,
