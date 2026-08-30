@@ -9,7 +9,7 @@
 | `RenderProvider` | FFmpeg、GStreamer、GPAC、MLT、JavaCV、OFX | `noop` / `mock`（test） |
 | `PaymentProvider` | Stripe、Hyperswitch 等 | 未配置时返回 typed unavailable |
 | `NotificationDeliveryProvider` | Novu、邮件、短信、Webhook | 未配置时失败关闭 |
-| `AiChatProvider` | OpenAI、Anthropic、本地模型 | `StubChatProvider` |
+| `AiChatProvider` | OpenAI、Anthropic、本地模型 | `UnavailableChatProvider`（fail-closed） |
 | `SocialPlatformPublisher` | YouTube、TikTok、Instagram | 未配置时返回 typed unsupported |
 | `StorageBackend` | S3、GCS、MinIO | 目录/catalog 模式 |
 | `CloudResourceProvisioner` | 云资源开通钩子 | 空操作 |

@@ -107,7 +107,7 @@ def assert_runtime(source: str) -> None:
         '[[ "${MEDIA_RUNTIME_PRIVILEGED_PATH_USED:-}" == "0" ]] || fail',
         "PHASE19_RUNTIME_START_MARKER",
         "./gradlew --no-daemon --max-workers=1 test --rerun-tasks",
-        ":platform-distribution:allInOneJar",
+        ":platform-distribution:bootJar",
         ":platform-distribution:verifyBundledDistributionPluginDigest",
         "python3 scripts/phase19-clean-forward-guards.py",
         "python3 scripts/test_phase19_clean_forward_guards.py",

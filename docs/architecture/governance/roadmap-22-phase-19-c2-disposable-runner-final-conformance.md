@@ -27,7 +27,7 @@ After all setup checks succeed, `GITHUB_ENV` receives `DOCKER_HOST`, bounded bub
 
 ## Authoritative runtime manifest
 
-The dedicated runtime script runs exactly `./gradlew --no-daemon --max-workers=1 test --rerun-tasks`, then `allInOneJar` and `verifyBundledDistributionPluginDigest`. Phase 0 subsequently removed the modular external-directory distribution. The script then runs the Phase 19 clean-forward repository guard and mutation tests and verifies fresh JUnit XML created after a SHA-bound runtime start marker.
+The dedicated runtime script runs exactly `./gradlew --no-daemon --max-workers=1 test --rerun-tasks`, then the sole executable `bootJar` and `verifyBundledDistributionPluginDigest`. Phase 0 subsequently removed the modular external-directory distribution and the separate plain launcher artifact. The script then runs the Phase 19 clean-forward repository guard and mutation tests and verifies fresh JUnit XML created after a SHA-bound runtime start marker.
 
 Required fresh module XML roots are:
 

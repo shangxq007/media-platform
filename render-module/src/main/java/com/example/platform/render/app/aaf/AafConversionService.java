@@ -20,7 +20,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 /**
- * Queues and processes AAF binary conversion via external CLI (aaf2) or stub manifest generation.
+ * Queues and processes AAF binary conversion via an explicitly configured external CLI.
  */
 @Service
 public class AafConversionService {
@@ -30,7 +30,7 @@ public class AafConversionService {
     private final ConcurrentLinkedQueue<AafConversionJob> queue = new ConcurrentLinkedQueue<>();
     private final ConcurrentHashMap<String, AafConversionResult> results = new ConcurrentHashMap<>();
 
-    @Value("${render.aaf.converter-enabled:true}")
+    @Value("${render.aaf.converter-enabled:false}")
     private boolean converterEnabled;
 
     @Value("${render.aaf.converter-command:}")
@@ -40,6 +40,9 @@ public class AafConversionService {
     private int maxDepth;
 
     public String enqueue(String aafPath, String defaultMediaUri, String tenantId) {
+        if (!converterAvailable()) {
+            throw new AafConversionUnavailableException();
+        }
         String conversionId = Ids.newId("aaf");
         queue.offer(new AafConversionJob(conversionId, aafPath, defaultMediaUri, tenantId, Instant.now()));
         log.info("Enqueued AAF conversion {} path={} depth={}", conversionId, aafPath, queue.size());
@@ -71,50 +74,36 @@ public class AafConversionService {
     }
 
     private AafConversionResult runConversion(AafConversionJob job) throws Exception {
+        if (!converterAvailable()) {
+            return AafConversionResult.failed(job.conversionId(),
+                    "AAF converter is disabled or converter-command is absent");
+        }
         Path aafPath = Path.of(job.aafPath());
         if (!Files.exists(aafPath)) {
             return AafConversionResult.failed(job.conversionId(), "AAF file not found: " + job.aafPath());
         }
 
-        if (converterEnabled && converterCommand != null && !converterCommand.isBlank()) {
-            Path outManifest = Files.createTempFile("aaf-manifest-", ".json");
-            List<String> command = parseCommand(converterCommand, job.aafPath(), outManifest.toString());
-            Path workspace = outManifest.toAbsolutePath().normalize().getParent();
-            var process = LocalSandboxProcess.execute(command, workspace, workspace,
-                    Set.of(aafPath.toAbsolutePath().normalize()),
-                    Map.of("PATH", "/usr/bin:/bin", "LANG", "C"),
-                    java.time.Duration.ofMinutes(1), 1L << 20, SandboxCancellation.never());
-            if (process.failure().isPresent()) {
-                return AafConversionResult.failed(job.conversionId(),
-                        process.failure().orElseThrow().code() + ": "
-                                + process.failure().orElseThrow().message());
-            }
-            String manifest = Files.readString(outManifest);
-            TimelineSpec spec = AafTimelineAdapter.importFromSource(
-                    job.aafPath(), manifest, job.defaultMediaUri());
-            return AafConversionResult.success(job.conversionId(), manifest,
-                    spec.metadata().getOrDefault("platform.import.status", "CONVERTED"));
+        Path outManifest = Files.createTempFile("aaf-manifest-", ".json");
+        List<String> command = parseCommand(converterCommand, job.aafPath(), outManifest.toString());
+        Path workspace = outManifest.toAbsolutePath().normalize().getParent();
+        var process = LocalSandboxProcess.execute(command, workspace, workspace,
+                Set.of(aafPath.toAbsolutePath().normalize()),
+                Map.of("PATH", "/usr/bin:/bin", "LANG", "C"),
+                java.time.Duration.ofMinutes(1), 1L << 20, SandboxCancellation.never());
+        if (process.failure().isPresent()) {
+            return AafConversionResult.failed(job.conversionId(),
+                    process.failure().orElseThrow().code() + ": "
+                            + process.failure().orElseThrow().message());
         }
-
-        String stubManifest = buildStubManifest(job);
-        TimelineSpec spec = AafTimelineAdapter.parseJsonManifest(stubManifest, job.defaultMediaUri());
-        return AafConversionResult.success(job.conversionId(), stubManifest,
-                spec.metadata().getOrDefault("platform.import.status", "STUB_MANIFEST"));
+        String manifest = Files.readString(outManifest);
+        TimelineSpec spec = AafTimelineAdapter.importFromSource(
+                job.aafPath(), manifest, job.defaultMediaUri());
+        return AafConversionResult.success(job.conversionId(), manifest,
+                spec.metadata().getOrDefault("platform.import.status", "CONVERTED"));
     }
 
-    private static String buildStubManifest(AafConversionJob job) {
-        String media = job.defaultMediaUri() != null && !job.defaultMediaUri().isBlank()
-                ? job.defaultMediaUri()
-                : "file://" + job.aafPath();
-        return """
-                {
-                  "id": "aaf-stub-%s",
-                  "name": "AAF Stub Import",
-                  "slots": [
-                    {"id":"s1","mediaUri":"%s","duration":10,"timelineStart":0}
-                  ]
-                }
-                """.formatted(job.conversionId(), media.replace("\"", "\\\""));
+    private boolean converterAvailable() {
+        return converterEnabled && converterCommand != null && !converterCommand.isBlank();
     }
 
     private static List<String> parseCommand(String template, String input, String output) {

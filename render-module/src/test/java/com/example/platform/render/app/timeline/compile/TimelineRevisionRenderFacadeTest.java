@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class TimelineRevisionRenderFacadeTest {
 
     private final RenderAuditRecorder auditRecorder =
-            new RenderAuditRecorder(new NoopRenderAuditEventSink());
+            new RenderAuditRecorder(new InMemoryRenderAuditEventSink());
 
     @Test
     @DisplayName("Default properties use PLAN_BASED mode")

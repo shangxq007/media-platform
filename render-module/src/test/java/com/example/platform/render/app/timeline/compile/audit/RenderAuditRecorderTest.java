@@ -44,8 +44,8 @@ class RenderAuditRecorderTest {
     }
 
     @Test
-    @DisplayName("Recorder never fails render on sink error")
-    void neverFailsRender() {
+    @DisplayName("Recorder fails closed on sink error")
+    void failsClosedOnSinkError() {
         RenderAuditEventSink failingSink = new RenderAuditEventSink() {
             @Override public void record(RenderAuditEvent event) { throw new RuntimeException("Sink error"); }
             @Override public List<RenderAuditEvent> findAll() { return List.of(); }
@@ -54,18 +54,18 @@ class RenderAuditRecorderTest {
             @Override public void clear() {}
         };
         RenderAuditRecorder failingRecorder = new RenderAuditRecorder(failingSink);
-        assertDoesNotThrow(() -> failingRecorder.record(RenderAuditEvent.of(
+        assertThrows(RuntimeException.class, () -> failingRecorder.record(RenderAuditEvent.of(
                 RenderAuditEventType.RENDER_COMPLETED, RenderAuditEventSeverity.INFO,
                 "proj-1", "rev-1", "Should not fail")));
     }
 
     @Test
-    @DisplayName("Noop sink discards events")
-    void noopSinkDiscards() {
-        NoopRenderAuditEventSink noop = new NoopRenderAuditEventSink();
-        noop.record(RenderAuditEvent.of(RenderAuditEventType.RENDER_COMPLETED,
-                RenderAuditEventSeverity.INFO, "proj-1", "rev-1", "Discarded"));
-        assertTrue(noop.findAll().isEmpty());
+    @DisplayName("Production fallback fails closed when durable audit is unavailable")
+    void unavailableSinkRejectsEvents() {
+        FailClosedRenderAuditEventSink sink = new FailClosedRenderAuditEventSink();
+        assertThrows(RenderAuditUnavailableException.class, () -> sink.record(
+                RenderAuditEvent.of(RenderAuditEventType.RENDER_COMPLETED,
+                        RenderAuditEventSeverity.INFO, "proj-1", "rev-1", "Rejected")));
     }
 
     @Test

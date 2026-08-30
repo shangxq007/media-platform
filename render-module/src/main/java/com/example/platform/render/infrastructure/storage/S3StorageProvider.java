@@ -4,13 +4,11 @@ import com.example.platform.storage.contract.StorageProvider;
 import java.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
 
 /**
  * S3 storage provider — architecture validation stub.
  * Validates that StorageProvider SPI supports Amazon S3 without kernel changes.
  */
-@Component
 public class S3StorageProvider implements StorageProvider {
 
     private static final Logger log = LoggerFactory.getLogger(S3StorageProvider.class);

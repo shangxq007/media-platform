@@ -33,8 +33,8 @@ class OpenCuePropertiesTest {
     }
 
     @Test
-    void stubModeEnabledByDefault() {
-        assertTrue(props.isStubModeEnabled(), "stub mode must be enabled by default");
+    void stubModeDisabledByDefault() {
+        assertFalse(props.isStubModeEnabled(), "stub mode must be disabled by default");
     }
 
     @Test

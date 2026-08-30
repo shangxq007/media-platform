@@ -9,7 +9,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class AiRoutingProperties {
 
     /** Spring bean name used when no capability route matches. */
-    private String defaultProvider = "stubChatProvider";
+    private String defaultProvider = "unavailableChatProvider";
 
     private Map<String, CapabilityRouting> routing = new LinkedHashMap<>();
 

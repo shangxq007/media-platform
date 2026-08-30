@@ -18,7 +18,7 @@ class PlatformDistributionLauncherContainmentTest {
         Files.writeString(arbitraryJar, "not a platform-bundled plugin");
 
         Path externalDirectory = Files.createDirectories(temp.resolve("external-plugins"));
-        Path allInOne = Path.of(System.getProperty("distribution.allinone.jar"));
+        Path allInOne = Path.of(System.getProperty("distribution.executable.jar"));
         Path unlistedBundledBytes = EmbeddedPluginExtractor.extractSingle(
                 allInOne, "embedded-plugins/", temp.resolve("unlisted-bundled-bytes"))
                 .pluginJar().getParent();

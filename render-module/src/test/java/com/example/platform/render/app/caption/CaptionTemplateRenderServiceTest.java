@@ -60,7 +60,7 @@ class CaptionTemplateRenderServiceTest {
         RenderInputMaterializationService matService =
                 new RenderInputMaterializationService(storageRuntime, productRuntime);
 
-        RenderAuditRecorder auditRecorder = new RenderAuditRecorder(new NoopRenderAuditEventSink());
+        RenderAuditRecorder auditRecorder = new RenderAuditRecorder(new InMemoryRenderAuditEventSink());
         RenderExecutionStepExecutor stepExecutor = new RenderExecutionStepExecutor(
                 matService, regService, productRuntime, auditRecorder);
         LocalExecutionPlanRunner planRunner = new LocalExecutionPlanRunner(

@@ -84,7 +84,7 @@ PY
 ./gradlew --no-daemon --max-workers=1 test --rerun-tasks
 
 ./gradlew --no-daemon --max-workers=1 \
-    :platform-distribution:allInOneJar \
+    :platform-distribution:bootJar \
     :platform-distribution:verifyBundledDistributionPluginDigest
 
 python3 scripts/phase19-clean-forward-guards.py

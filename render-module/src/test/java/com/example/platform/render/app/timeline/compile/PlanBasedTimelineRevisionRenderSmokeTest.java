@@ -104,7 +104,7 @@ class PlanBasedTimelineRevisionRenderSmokeTest {
         planCompiler = new RenderExecutionPlanCompiler();
         policyGuard = new RenderPlanPolicyGuard();
 
-        RenderAuditRecorder auditRecorder = new RenderAuditRecorder(new NoopRenderAuditEventSink());
+        RenderAuditRecorder auditRecorder = new RenderAuditRecorder(new InMemoryRenderAuditEventSink());
         stepExecutor = new RenderExecutionStepExecutor(
                 materializationService, registrationService, productRuntime, auditRecorder);
         planRunner = new LocalExecutionPlanRunner(policyGuard, stepExecutor);

@@ -8,7 +8,6 @@ public class ShakaPackagingProviderProperties {
     private boolean enabled;
     private String packagerBin = "packager";
     private long timeoutMillis = 600_000;
-    private boolean stubOnMissingBinary = false;
 
     public boolean isEnabled() {
         return enabled;
@@ -34,11 +33,4 @@ public class ShakaPackagingProviderProperties {
         this.timeoutMillis = timeoutMillis;
     }
 
-    public boolean isStubOnMissingBinary() {
-        return stubOnMissingBinary;
-    }
-
-    public void setStubOnMissingBinary(boolean stubOnMissingBinary) {
-        this.stubOnMissingBinary = stubOnMissingBinary;
-    }
 }

@@ -13,6 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.util.List;
+import java.util.jar.JarFile;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -21,9 +22,23 @@ class BundledDistributionPluginConformanceTest {
     @TempDir Path temp;
 
     @Test
+    void solePublishedExecutableIsTheTestedBundledBootJar() throws Exception {
+        Path executable = Path.of(System.getProperty("distribution.executable.jar"));
+        assertThat(executable.getFileName().toString()).isEqualTo("media-platform-all-in-one.jar");
+        try (JarFile jar = new JarFile(executable.toFile())) {
+            assertThat(jar.getManifest().getMainAttributes().getValue("Start-Class"))
+                    .isEqualTo(PlatformDistributionLauncher.class.getName());
+            assertThat(jar.stream()
+                    .filter(entry -> entry.getName().startsWith("embedded-plugins/")
+                            && entry.getName().endsWith(".jar"))
+                    .count()).isEqualTo(1);
+        }
+    }
+
+    @Test
     void bundled_mode_uses_exact_producer_bytes_and_pf4j_contracts() throws Exception {
         Path producerPlugin = Path.of(System.getProperty("distribution.provider.jar"));
-        Path allInOne = Path.of(System.getProperty("distribution.allinone.jar"));
+        Path allInOne = Path.of(System.getProperty("distribution.executable.jar"));
         EmbeddedPluginExtractor.ExtractedPlugin embedded = EmbeddedPluginExtractor.extractSingle(
                 allInOne, "embedded-plugins/", temp.resolve("embedded-host"));
 
@@ -74,7 +89,7 @@ class BundledDistributionPluginConformanceTest {
 
     @Test
     void executable_all_in_one_launcher_uses_the_bundled_pf4j_host() throws Exception {
-        Path allInOne = Path.of(System.getProperty("distribution.allinone.jar"));
+        Path allInOne = Path.of(System.getProperty("distribution.executable.jar"));
 
         ProcessResult embedded = launch(allInOne);
 
@@ -87,7 +102,7 @@ class BundledDistributionPluginConformanceTest {
     @Test
     void embedded_launcher_removes_its_controlled_extraction_directory_after_host_close()
             throws Exception {
-        Path allInOne = Path.of(System.getProperty("distribution.allinone.jar"));
+        Path allInOne = Path.of(System.getProperty("distribution.executable.jar"));
         Path controlledJavaTmp = Files.createDirectories(temp.resolve("launcher-java-tmp"));
 
         ProcessResult embedded = launchWithJavaTmp(allInOne, controlledJavaTmp);

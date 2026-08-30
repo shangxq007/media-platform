@@ -13,7 +13,6 @@ import org.springframework.context.annotation.Configuration;
  * {@code audit.alerts.publisher.type} configuration:
  * <ul>
  *   <li>{@code slf4j} (default) — publish to SLF4J structured logs</li>
- *   <li>{@code noop} — discard all alerts</li>
  *   <li>{@code webhook} — HTTP POST to configured URL with SSRF protection</li>
  * </ul>
  *
@@ -34,10 +33,6 @@ public class AuditAlertConfiguration {
             case "slf4j" -> {
                 log.info("Security alert publisher: SLF4J (structured logs)");
                 yield new Slf4jSecurityAlertAdapter();
-            }
-            case "noop" -> {
-                log.info("Security alert publisher: NOOP (alerts discarded)");
-                yield new NoopSecurityAlertAdapter();
             }
             case "webhook" -> {
                 AuditAlertProperties.Webhook wh = properties.publisher().webhook();
@@ -62,7 +57,7 @@ public class AuditAlertConfiguration {
             default -> {
                 throw new IllegalStateException(
                         "Unknown audit.alerts.publisher.type: '" + type + "'. " +
-                        "Supported: slf4j, noop, webhook");
+                            "Supported: slf4j, webhook");
             }
         };
     }

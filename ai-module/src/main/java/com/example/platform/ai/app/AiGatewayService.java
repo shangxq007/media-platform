@@ -1,6 +1,7 @@
 package com.example.platform.ai.app;
 
 import com.example.platform.ai.api.AiGatewayPort;
+import com.example.platform.ai.api.AiProviderUnavailableException;
 import com.example.platform.shared.usage.CanonicalActorRef;
 import com.example.platform.shared.usage.ObservedRuntimeUsage;
 import com.example.platform.shared.usage.ObservedRuntimeUsageEmissionPort;
@@ -130,7 +131,7 @@ public class AiGatewayService implements AiGatewayPort {
         for (RouteTarget target : plan.targets()) {
             ChatProvider provider = providers.get(target.providerId());
             if (provider == null) {
-                lastFailure = new IllegalStateException("No ChatProvider bean: " + target.providerId());
+                lastFailure = new AiProviderUnavailableException(capability);
                 attempted.add(target.providerId() + "(missing)");
                 continue;
             }
@@ -145,8 +146,6 @@ public class AiGatewayService implements AiGatewayPort {
                         target.providerId(), capability, ex.getMessage());
             }
         }
-        throw new IllegalStateException(
-                "All providers failed for capability=" + capability + " attempted=" + attempted,
-                lastFailure);
+        throw new AiProviderUnavailableException(capability, lastFailure);
     }
 }

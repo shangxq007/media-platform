@@ -11,7 +11,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 class AafConversionServiceTest {
 
     @Test
-    void stubManifestFromBinaryAaf(@TempDir Path tempDir) throws Exception {
+    void missingConverterNeverQueuesOrManufacturesManifest(@TempDir Path tempDir) throws Exception {
         Path aaf = tempDir.resolve("edit.aaf");
         Files.writeString(aaf, "AAF-PLACEHOLDER");
 
@@ -19,13 +19,17 @@ class AafConversionServiceTest {
         ReflectionTestUtils.setField(service, "converterEnabled", true);
         ReflectionTestUtils.setField(service, "converterCommand", "");
 
-        String conversionId = service.enqueue(aaf.toString(), "file:///tmp/fallback.mp4", "tenant-1");
-        AafConversionJob job = service.poll().orElseThrow();
-        assertEquals(conversionId, job.conversionId());
+        assertThrows(AafConversionUnavailableException.class,
+                () -> service.enqueue(aaf.toString(), "file:///tmp/fallback.mp4", "tenant-1"));
+        assertTrue(service.poll().isEmpty());
 
+        AafConversionJob job = new AafConversionJob(
+                "aaf-test", aaf.toString(), "file:///tmp/fallback.mp4", "tenant-1",
+                java.time.Instant.now());
         AafConversionResult result = service.process(job);
-        assertTrue(result.success());
-        assertTrue(result.manifestJson().contains("aaf-stub"));
-        assertEquals("MANIFEST_JSON", result.status());
+        assertFalse(result.success());
+        assertNull(result.manifestJson());
+        assertEquals("FAILED", result.status());
+        assertTrue(result.errorMessage().contains("converter-command"));
     }
 }

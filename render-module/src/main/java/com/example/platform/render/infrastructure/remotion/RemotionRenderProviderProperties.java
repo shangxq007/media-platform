@@ -10,7 +10,6 @@ public class RemotionRenderProviderProperties {
     private String remotionArgs = "remotion";
     private String compositionId = "Main";
     private long timeoutMillis = 900_000;
-    private boolean stubOnMissingCli = false;
     private String projectDir = "";
 
     public boolean isEnabled() {
@@ -51,14 +50,6 @@ public class RemotionRenderProviderProperties {
 
     public void setTimeoutMillis(long timeoutMillis) {
         this.timeoutMillis = timeoutMillis;
-    }
-
-    public boolean isStubOnMissingCli() {
-        return stubOnMissingCli;
-    }
-
-    public void setStubOnMissingCli(boolean stubOnMissingCli) {
-        this.stubOnMissingCli = stubOnMissingCli;
     }
 
     public String getProjectDir() {

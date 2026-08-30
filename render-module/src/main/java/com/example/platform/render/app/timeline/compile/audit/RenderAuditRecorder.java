@@ -6,7 +6,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * Internal render audit recorder — records lifecycle events to a sink.
- * Never fails the render because audit recording failed.
+ * Fails the audited operation when recording fails; success without required audit is forbidden.
  * Internal only — not exposed in public APIs.
  */
 @Component
@@ -21,18 +21,12 @@ public class RenderAuditRecorder {
     }
 
     /**
-     * Record an audit event. Never throws.
+     * Record an audit event. Sink failures propagate fail-closed.
      */
     public void record(RenderAuditEvent event) {
-        try {
-            sink.record(event);
-            log.debug("Audit event recorded: type={} project={} revision={}",
-                    event.eventType(), event.projectId(), event.timelineRevisionId());
-        } catch (Exception e) {
-            log.warn("Failed to record audit event: type={} error={}",
-                    event.eventType(), e.getMessage());
-            // Never fail the render because of audit
-        }
+        sink.record(event);
+        log.debug("Audit event recorded: type={} project={} revision={}",
+                event.eventType(), event.projectId(), event.timelineRevisionId());
     }
 
     /**

@@ -3,7 +3,7 @@
 
 app:
   ai:
-    default-provider: stubChatProvider
+    default-provider: unavailableChatProvider
     providers:
       openai:
         enabled: true
@@ -14,7 +14,7 @@ app:
           provider: openAiChatProvider
           model: gpt-4o-mini
         fallback:
-          - provider: stubChatProvider
+          - provider: unavailableChatProvider
       nlq-sql-generation:
         primary:
           provider: openAiChatProvider

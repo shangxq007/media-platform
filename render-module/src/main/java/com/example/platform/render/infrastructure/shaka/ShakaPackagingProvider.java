@@ -46,15 +46,14 @@ public class ShakaPackagingProvider implements PackagingProvider {
             ToolExecutionResult result = processToolRunner.execute(
                     ToolExecutionRequest.withTimeout("shaka-packager", args, properties.getTimeoutMillis()));
             if (!result.isSuccess()) {
-                if (properties.isStubOnMissingBinary()) {
-                    Path manifestPath = outputDir.resolve("stream.mpd");
-                    Files.writeString(manifestPath, "<?xml version=\"1.0\"?><MPD xmlns=\"urn:mpeg:dash:schema:mpd:2011\"/>");
-                    return PackagingResult.success(manifestPath.toString(), List.of(), "dash", 0);
-                }
                 return PackagingResult.failed("Shaka packager failed: " + result.stderr());
             }
-            String manifest = outputDir.resolve("stream.mpd").toString();
-            return PackagingResult.success(manifest, List.of(), "dash", 0);
+            Path manifest = outputDir.resolve("stream.mpd");
+            if (!Files.isRegularFile(manifest) || Files.size(manifest) == 0) {
+                return PackagingResult.failed(
+                        "Shaka packager completed without a non-empty manifest");
+            }
+            return PackagingResult.success(manifest.toString(), List.of(), "dash", 0);
         } catch (Exception e) {
             log.error("Shaka packaging failed", e);
             return PackagingResult.failed(e.getMessage());

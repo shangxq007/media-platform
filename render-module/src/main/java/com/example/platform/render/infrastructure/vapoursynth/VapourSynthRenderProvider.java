@@ -113,13 +113,10 @@ public class VapourSynthRenderProvider implements RenderProvider {
                     ToolExecutionRequest.withTimeout("vapoursynth", args, properties.getTimeoutMillis()));
 
             if (!vsResult.isSuccess()) {
-                if (properties.isStubOnMissingBinary()) {
-                    Files.write(output, new byte[] {0, 0, 0, 8});
-                } else {
-                    throw new IllegalStateException("VapourSynth failed: " + vsResult.stderr());
-                }
+                throw new IllegalStateException("VapourSynth failed: " + vsResult.stderr());
             } else if (!Files.isRegularFile(output) || Files.size(output) == 0) {
-                Files.write(output, new byte[] {0, 0, 0, 8});
+                throw new IllegalStateException(
+                        "VapourSynth completed without a non-empty output artifact");
             }
 
             return new RenderResult(
@@ -163,9 +160,6 @@ public class VapourSynthRenderProvider implements RenderProvider {
         ToolExecutionResult r = processToolRunner.execute(
                 ToolExecutionRequest.withTimeout("vapoursynth", List.of(properties.getBinary(), "--version"), 5000));
         if (r.isSuccess()) {
-            return EnvironmentValidationResult.ok();
-        }
-        if (properties.isStubOnMissingBinary()) {
             return EnvironmentValidationResult.ok();
         }
         return EnvironmentValidationResult.failed("vspipe not available: " + r.stderr());

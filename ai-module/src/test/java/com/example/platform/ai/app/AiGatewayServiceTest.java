@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.example.platform.ai.domain.ChatProvider;
+import com.example.platform.ai.api.AiProviderUnavailableException;
 import com.example.platform.ai.domain.ChatRequest;
 import com.example.platform.ai.domain.ChatResult;
 import com.example.platform.ai.domain.ModelRouter;
@@ -47,7 +48,7 @@ class AiGatewayServiceTest {
         Map<String, ChatProvider> providers = new HashMap<>();
         AiGatewayService svc = new AiGatewayService(router, providers, null);
 
-        assertThrows(IllegalStateException.class, () -> svc.chat("cap", "prompt"));
+        assertThrows(AiProviderUnavailableException.class, () -> svc.chat("cap", "prompt"));
     }
 
     @Test
@@ -59,7 +60,7 @@ class AiGatewayServiceTest {
         });
         AiGatewayService svc = new AiGatewayService(router, providers, null);
 
-        assertThrows(RuntimeException.class, () -> svc.chat("cap", "prompt"));
+        assertThrows(AiProviderUnavailableException.class, () -> svc.chat("cap", "prompt"));
     }
 
     @Test

@@ -10,7 +10,7 @@ import org.springframework.validation.annotation.Validated;
  * Production dispatch requires explicit configuration. Network submit
  * is disabled unless explicitly enabled for a controlled environment.
  *
- * <p>Phase 1: Stub submit/cancel/status. No real REST/gRPC client.
+ * <p>No real REST/gRPC client is composed; submit/cancel/status fail truthfully.
  */
 @Validated
 @ConfigurationProperties(prefix = "opencue")
@@ -32,7 +32,7 @@ public class OpenCueProperties {
     private String defaultOwner = "platform";
     private int defaultPriority = 50;
     private boolean allowNetworkSubmit = false;
-    private boolean stubModeEnabled = true;
+    private boolean stubModeEnabled = false;
     private boolean productionSubmitEnabled = false;
 
     public String getServer() {

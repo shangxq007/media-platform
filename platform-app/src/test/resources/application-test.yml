@@ -10,7 +10,7 @@ app:
   temporal:
     enabled: false
   ai:
-    default-provider: stubChatProvider
+    default-provider: unavailableChatProvider
 
 platform:
   payment:

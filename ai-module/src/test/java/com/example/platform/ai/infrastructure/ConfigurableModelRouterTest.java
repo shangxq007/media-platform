@@ -19,7 +19,7 @@ class ConfigurableModelRouterTest {
         primary.setModel("gpt-4o-mini");
         routing.setPrimary(primary);
         AiRoutingProperties.RouteEndpoint fallback = new AiRoutingProperties.RouteEndpoint();
-        fallback.setProvider("stubChatProvider");
+        fallback.setProvider("backupProvider");
         routing.setFallback(List.of(fallback));
         props.setRouting(Map.of("script-generation", routing));
 
@@ -28,18 +28,18 @@ class ConfigurableModelRouterTest {
 
         assertEquals(2, plan.targets().size());
         assertEquals(new RouteTarget("openAiChatProvider", "gpt-4o-mini"), plan.targets().get(0));
-        assertEquals(new RouteTarget("stubChatProvider"), plan.targets().get(1));
+        assertEquals(new RouteTarget("backupProvider"), plan.targets().get(1));
     }
 
     @Test
     void fallsBackToDefaultProviderForUnknownCapability() {
         AiRoutingProperties props = new AiRoutingProperties();
-        props.setDefaultProvider("stubChatProvider");
+        props.setDefaultProvider("configuredProvider");
 
         ConfigurableModelRouter router = new ConfigurableModelRouter(props);
         RoutePlan plan = router.routePlan("unknown-cap");
 
         assertEquals(1, plan.targets().size());
-        assertEquals("stubChatProvider", plan.primary().providerId());
+        assertEquals("configuredProvider", plan.primary().providerId());
     }
 }

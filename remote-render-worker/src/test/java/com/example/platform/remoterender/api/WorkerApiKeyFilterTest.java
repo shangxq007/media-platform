@@ -14,6 +14,20 @@ import org.springframework.test.util.ReflectionTestUtils;
 class WorkerApiKeyFilterTest {
 
     @Test
+    void getAndHeadHealthBypassAuthenticationEvenWhenKeyIsBlank() throws Exception {
+        WorkerApiKeyFilter filter = new WorkerApiKeyFilter();
+        ReflectionTestUtils.setField(filter, "configuredApiKey", "  ");
+
+        for (String method : java.util.List.of("GET", "HEAD")) {
+            MockHttpServletRequest request = new MockHttpServletRequest(method, "/healthz");
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            FilterChain chain = mock(FilterChain.class);
+            filter.doFilter(request, response, chain);
+            verify(chain).doFilter(request, response);
+        }
+    }
+
+    @Test
     void blankConfiguredKeyRejectsAllRequests() throws Exception {
         WorkerApiKeyFilter filter = new WorkerApiKeyFilter();
         ReflectionTestUtils.setField(filter, "configuredApiKey", "  ");

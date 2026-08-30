@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * OpenCue Environment integration tests: lifecycle mapping, architecture boundaries,
  * compiler determinism, and production safety.
  *
- * <p>No real OpenCue cluster dependency. Uses safe defaults (disabled, stub mode).
+ * <p>No real OpenCue cluster dependency. Uses fail-closed defaults.
  */
 class OpenCueEnvironmentTest {
 
@@ -104,15 +104,13 @@ class OpenCueEnvironmentTest {
     }
 
     @Test
-    void submitAllowedInStubMode() {
+    void legacyStubModeCannotManufactureAcceptedSubmission() {
         props.setEnabled(true);
         props.setStubModeEnabled(true);
         BackendExecutionSpec spec = createTestSpec("provider-a", "producer",
                 "provider-a", List.of("-version"));
         ExecutionJob job = compiler.compile(spec);
-        String execId = environment.submit(job);
-        assertNotNull(execId);
-        assertTrue(execId.startsWith("oc-"));
+        assertThrows(IllegalStateException.class, () -> environment.submit(job));
     }
 
     @Test
@@ -125,7 +123,9 @@ class OpenCueEnvironmentTest {
                 "job-collapsed", "rev-1", "provider", "local-process", "OPEN_CUE",
                 List.of(), List.of(), Map.of(), "corr-collapsed", 50, Map.of());
 
-        assertTrue(submissionClient.submit(bound).isAccepted());
+        OpenCueSubmissionResult unavailable = submissionClient.submit(bound);
+        assertTrue(unavailable.isFailure());
+        assertEquals(OpenCueSubmissionError.MISSING_CONFIGURATION, unavailable.error());
         OpenCueSubmissionResult rejected = submissionClient.submit(collapsed);
         assertTrue(rejected.isRejected());
         assertEquals(OpenCueSubmissionError.UNSUPPORTED_BACKEND, rejected.error());
@@ -138,9 +138,9 @@ class OpenCueEnvironmentTest {
     }
 
     @Test
-    void cancelSucceedsWhenEnabled() {
+    void cancelFailsTruthfullyWhenEnabledWithoutProvider() {
         props.setEnabled(true);
-        assertTrue(environment.cancel("oc-123"));
+        assertFalse(environment.cancel("oc-123"));
     }
 
     @Test
@@ -150,9 +150,9 @@ class OpenCueEnvironmentTest {
     }
 
     @Test
-    void statusReturnsQueuedInStubMode() {
+    void statusReturnsDeadWhenProviderIsUnavailable() {
         props.setEnabled(true);
-        assertEquals("queued", environment.status("oc-123"));
+        assertEquals("dead", environment.status("oc-123"));
     }
 
     @Test
@@ -237,10 +237,10 @@ class OpenCueEnvironmentTest {
     }
 
     @Test
-    void supportsReturnsTrueWhenEnabledAndMatching() {
+    void supportsReturnsFalseUntilRealProviderExists() {
         props.setEnabled(true);
-        assertTrue(environment.supports(List.of("MEDIA_PIPELINE")));
-        assertTrue(environment.supports(List.of("TRANSCODE")));
+        assertFalse(environment.supports(List.of("MEDIA_PIPELINE")));
+        assertFalse(environment.supports(List.of("TRANSCODE")));
     }
 
     @Test
@@ -295,16 +295,14 @@ class OpenCueEnvironmentTest {
     }
 
     @Test
-    void stubSubmitDoNotRequireProductionSubmit() {
+    void legacyStubSubmitFailsWithoutProductionProvider() {
         props.setEnabled(true);
         props.setStubModeEnabled(true);
         props.setProductionSubmitEnabled(false);
         BackendExecutionSpec spec = createTestSpec("provider-a", "producer",
                 "provider-a", List.of("-version"));
         ExecutionJob job = compiler.compile(spec);
-        String execId = environment.submit(job);
-        assertTrue(execId.startsWith("oc-"),
-                "stub submit must work even when production submit is disabled");
+        assertThrows(IllegalStateException.class, () -> environment.submit(job));
     }
 
     @Test
@@ -330,19 +328,13 @@ class OpenCueEnvironmentTest {
     // ── Public API Safety Tests ──
 
     @Test
-    void stubSubmitReturnsOpaqueExecutionId() {
+    void legacyStubSubmitReturnsNoExecutionId() {
         props.setEnabled(true);
         props.setStubModeEnabled(true);
         BackendExecutionSpec spec = createTestSpec("provider-a", "producer",
                 "provider-a", List.of("-version"));
         ExecutionJob job = compiler.compile(spec);
-        String execId = environment.submit(job);
-
-        assertNotNull(execId, "Execution ID must not be null");
-        assertFalse(execId.contains("/"), "Execution ID must not contain path separators");
-        assertFalse(execId.contains("\\"), "Execution ID must not contain backslashes");
-        assertFalse(execId.contains(":"), "Execution ID must not contain colons");
-        assertTrue(execId.startsWith("oc-"), "Execution ID must start with oc- prefix");
+        assertThrows(IllegalStateException.class, () -> environment.submit(job));
     }
 
     @Test

@@ -4,15 +4,14 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Configuration for render audit event trail.
- * Default: no-op sink (events discarded in production unless overridden).
+ * Fail-closed render audit composition until Phase 3 supplies durable authority.
  */
 @Configuration
 public class RenderAuditConfiguration {
 
     @Bean
     public RenderAuditEventSink renderAuditEventSink() {
-        return new NoopRenderAuditEventSink();
+        return new FailClosedRenderAuditEventSink();
     }
 
     @Bean

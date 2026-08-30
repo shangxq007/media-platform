@@ -113,7 +113,7 @@ class RenderCorrelationPropagationTest {
         TimelineRevisionRenderFacade facade = new TimelineRevisionRenderFacade(
                 legacy, new MockPlanBasedService(), dedup,
                 new TimelineRenderExecutionProperties(TimelineRenderExecutionMode.LEGACY),
-                new RenderAuditRecorder(new NoopRenderAuditEventSink()));
+                new RenderAuditRecorder(new InMemoryRenderAuditEventSink()));
 
         TimelineRevisionRenderService.RevisionRenderResult result =
                 facade.render("proj-1", "rev-1", "default_1080p");
@@ -128,8 +128,8 @@ class RenderCorrelationPropagationTest {
     }
 
     @Test
-    @DisplayName("Recorder failure does not break correlation propagation")
-    void recorderFailureDoesNotBreak() {
+    @DisplayName("Recorder failure prevents render success")
+    void recorderFailureFailsClosed() {
         RenderAuditEventSink failingSink = new RenderAuditEventSink() {
             @Override public void record(RenderAuditEvent event) { throw new RuntimeException("fail"); }
             @Override public java.util.List<RenderAuditEvent> findAll() { return List.of(); }
@@ -145,10 +145,8 @@ class RenderCorrelationPropagationTest {
                 new TimelineRenderExecutionProperties(TimelineRenderExecutionMode.LEGACY),
                 new RenderAuditRecorder(failingSink));
 
-        // Should not throw
-        TimelineRevisionRenderService.RevisionRenderResult result =
-                facade.render("proj-1", "rev-1", "default_1080p");
-        assertNotNull(result.outputProductId());
+        assertThrows(RuntimeException.class,
+                () -> facade.render("proj-1", "rev-1", "default_1080p"));
     }
 
     private TimelineRevisionRenderService.RevisionRenderResult createTestResult() {

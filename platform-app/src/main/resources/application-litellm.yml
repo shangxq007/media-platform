@@ -4,7 +4,7 @@
 
 app:
   ai:
-    default-provider: stubChatProvider
+    default-provider: unavailableChatProvider
     providers:
       openai:
         enabled: true
@@ -19,7 +19,7 @@ app:
           # LiteLLM model alias — must exist in LiteLLM config (e.g. gemini/gemini-2.0-flash)
           model: ${LITELLM_MODEL_SCRIPT:gemini/gemini-2.0-flash}
         fallback:
-          - provider: stubChatProvider
+          - provider: unavailableChatProvider
       nlq-sql-generation:
         primary:
           provider: openAiChatProvider

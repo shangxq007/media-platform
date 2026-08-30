@@ -7,7 +7,6 @@ public class VapourSynthRenderProviderProperties {
 
     private boolean enabled = true;
     private String binary = "vspipe";
-    private boolean stubOnMissingBinary = false;
     private long timeoutMillis = 600_000L;
 
     public boolean isEnabled() {
@@ -24,14 +23,6 @@ public class VapourSynthRenderProviderProperties {
 
     public void setBinary(String binary) {
         this.binary = binary;
-    }
-
-    public boolean isStubOnMissingBinary() {
-        return stubOnMissingBinary;
-    }
-
-    public void setStubOnMissingBinary(boolean stubOnMissingBinary) {
-        this.stubOnMissingBinary = stubOnMissingBinary;
     }
 
     public long getTimeoutMillis() {

@@ -245,8 +245,8 @@ class CaptionTemplateRenderApiTest {
     }
 
     @Test
-    @DisplayName("Audit failures do not break response")
-    void auditFailuresDoNotBreakResponse() {
+    @DisplayName("Audit failures prevent a successful response")
+    void auditFailuresFailClosed() {
         RenderAuditRecorder failingRecorder = new RenderAuditRecorder(new RenderAuditEventSink() {
             @Override public void record(RenderAuditEvent e) { throw new RuntimeException("fail"); }
             @Override public java.util.List<RenderAuditEvent> findAll() { return List.of(); }
@@ -262,10 +262,8 @@ class CaptionTemplateRenderApiTest {
         CaptionTemplateRenderController controller = new CaptionTemplateRenderController(
                 mockService, null, new CaptionTemplateRenderApiMapper(), failingRecorder);
 
-        ResponseEntity<CaptionTemplateRenderApiResponse> response = controller.render(
-                "tenant-1", "proj-1", validApiRequest());
-
-        assertEquals(200, response.getStatusCode().value());
+        assertThrows(RuntimeException.class, () -> controller.render(
+                "tenant-1", "proj-1", validApiRequest()));
     }
 
     // --- Public API safety ---

@@ -104,9 +104,10 @@ public class ProductionSafetyValidator {
             }
         }
 
-        String aiProvider = environment.getProperty("app.ai.default-provider", "stubChatProvider");
-        if (aiProvider == null || aiProvider.isBlank() || aiProvider.contains("stub")) {
-            errors.add("app.ai.default-provider must not be a stub provider in production");
+        String aiProvider = environment.getProperty("app.ai.default-provider", "unavailableChatProvider");
+        if (aiProvider == null || aiProvider.isBlank()
+                || aiProvider.contains("stub") || aiProvider.contains("unavailable")) {
+            errors.add("app.ai.default-provider must identify a real provider in production");
         }
 
         if (featureFlagStore.getIfAvailable() == null) {

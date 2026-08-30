@@ -59,12 +59,11 @@ public record AuditAlertProperties(
      * <p>Supported types:
      * <ul>
      *   <li>{@code slf4j} (default) — publish to SLF4J structured logs</li>
-     *   <li>{@code noop} — discard all alerts</li>
      *   <li>{@code webhook} — HTTP POST to configured URL</li>
      * </ul>
      */
     public record Publisher(
-        /** Publisher type: slf4j, noop, or webhook. */
+        /** Publisher type: slf4j or webhook. */
         String type,
         /** Webhook configuration (only used when type=webhook). */
         Webhook webhook

@@ -7,7 +7,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 @Component
-@ConditionalOnProperty(prefix = "render.aaf", name = "worker-enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(prefix = "render.aaf", name = "worker-enabled", havingValue = "true")
 public class AafConversionWorkerProcessor {
 
     private static final Logger log = LoggerFactory.getLogger(AafConversionWorkerProcessor.class);

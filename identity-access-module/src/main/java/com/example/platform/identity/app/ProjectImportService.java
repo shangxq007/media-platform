@@ -59,15 +59,14 @@ public class ProjectImportService {
 
     public ProjectImportService(TenantProjectService tenantProjectService,
                                  ArtifactCatalogService artifactCatalogService,
-                                 @Autowired(required = false) ArtifactLifecycleService artifactLifecycleService,
+                                 ArtifactLifecycleService artifactLifecycleService,
                                  @Autowired(required = false) AuditPort auditPort,
                                  @Autowired(required = false) ImportAssetDownloader assetDownloader,
                                  @Autowired(required = false) BlobStorage blobStorage) {
         this.tenantProjectService = tenantProjectService;
         this.artifactCatalogService = artifactCatalogService;
-        this.artifactLifecycleService = artifactLifecycleService != null
-                ? artifactLifecycleService
-                : new NoopArtifactLifecycle();
+        this.artifactLifecycleService = java.util.Objects.requireNonNull(
+                artifactLifecycleService, "artifactLifecycleService is required");
         this.auditPort = auditPort;
         this.assetDownloader = assetDownloader;
         this.blobStorage = blobStorage;
@@ -527,15 +526,4 @@ public class ProjectImportService {
         }
     }
 
-    /** Fallback used when the artifact lifecycle bean is not present (tests/embedded). */
-    private static final class NoopArtifactLifecycle extends com.example.platform.artifact.app.ArtifactLifecycleService {
-        NoopArtifactLifecycle() {
-            super(null, null, null, null, null, null, null, java.util.List.of());
-        }
-
-        @Override
-        public ArtifactCatalogEntry tombstone(String artifactId) {
-            return null;
-        }
-    }
 }

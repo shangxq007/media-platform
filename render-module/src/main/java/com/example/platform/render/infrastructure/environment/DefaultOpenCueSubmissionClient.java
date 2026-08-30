@@ -11,8 +11,7 @@ import org.springframework.stereotype.Component;
 /**
  * Default OpenCue submission client.
  *
- * <p>Phase 1: Stub implementation. No real gRPC/REST connection.
- * Disabled by default (opencue.enabled=false).
+ * <p>No real gRPC/REST connection exists yet, so every submission fails truthfully.
  *
  * <p>Thread-safe. No static mutable state.
  * Tracks submission attempts for idempotency.
@@ -52,14 +51,13 @@ public class DefaultOpenCueSubmissionClient implements OpenCueSubmissionClient {
             return OpenCueSubmissionResult.accepted(existing, dur);
         }
 
-        // Stub mode: simulate acceptance
+        // A legacy stub-mode flag may still be present in old configuration, but it
+        // must never manufacture an accepted acknowledgement.
         if (props.isStubModeEnabled()) {
-            String externalId = "oc-stub-" + System.currentTimeMillis();
-            submissionIdempotency.put(request.renderJobId(), externalId);
-            long dur = System.currentTimeMillis() - start;
-            log.info("OpenCue stub submission: renderJobId={} backend={} externalId={} dur={}ms",
-                    request.renderJobId(), request.backendId(), externalId, dur);
-            return OpenCueSubmissionResult.accepted(externalId, dur);
+            return OpenCueSubmissionResult.failure(
+                    OpenCueSubmissionError.MISSING_CONFIGURATION,
+                    "OpenCue stub submission is disabled pending a real provider",
+                    System.currentTimeMillis() - start);
         }
 
         // Production submit (Phase 1: not implemented — explicit failure)

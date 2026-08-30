@@ -25,12 +25,11 @@ class ShakaPackagingProviderTest {
     void setUp() {
         mockRunner = mock(ProcessToolRunner.class);
         ShakaPackagingProviderProperties props = new ShakaPackagingProviderProperties();
-        props.setStubOnMissingBinary(true);
         provider = new ShakaPackagingProvider(mockRunner, new ShakaCommandFactory(), props);
     }
 
     @Test
-    void stubManifestWhenPackagerFails(@TempDir Path tempDir) throws Exception {
+    void missingPackagerFailsWithoutManufacturingManifest(@TempDir Path tempDir) throws Exception {
         Path input = tempDir.resolve("input.mp4");
         Files.write(input, new byte[] {0, 0, 0, 8});
         Path outBase = tempDir.resolve("packaged");
@@ -40,7 +39,7 @@ class ShakaPackagingProviderTest {
 
         var result = provider.packageMedia(PackagingRequest.dash(input.toString(), outBase.toString(), 4));
 
-        assertTrue(result.success());
-        assertTrue(Files.exists(outBase.resolve("stream.mpd")));
+        assertFalse(result.success());
+        assertFalse(Files.exists(outBase.resolve("stream.mpd")));
     }
 }

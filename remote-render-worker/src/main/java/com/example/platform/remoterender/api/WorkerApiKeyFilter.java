@@ -17,6 +17,12 @@ public class WorkerApiKeyFilter implements Filter {
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
             throws IOException, ServletException {
+        HttpServletRequest httpRequest = (HttpServletRequest) request;
+        if (isHealthProbe(httpRequest)) {
+            chain.doFilter(request, response);
+            return;
+        }
+
         if (configuredApiKey == null || configuredApiKey.isBlank()) {
             HttpServletResponse httpResponse = (HttpServletResponse) response;
             httpResponse.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
@@ -25,7 +31,6 @@ public class WorkerApiKeyFilter implements Filter {
             return;
         }
 
-        HttpServletRequest httpRequest = (HttpServletRequest) request;
         String providedKey = httpRequest.getHeader("X-Worker-Api-Key");
 
         if (configuredApiKey.equals(providedKey)) {
@@ -36,5 +41,10 @@ public class WorkerApiKeyFilter implements Filter {
             httpResponse.setContentType("application/json");
             httpResponse.getWriter().write("{\"error\":\"Invalid or missing worker API key\"}");
         }
+    }
+
+    private static boolean isHealthProbe(HttpServletRequest request) {
+        return "/healthz".equals(request.getRequestURI())
+                && ("GET".equals(request.getMethod()) || "HEAD".equals(request.getMethod()));
     }
 }

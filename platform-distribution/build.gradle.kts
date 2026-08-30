@@ -1,10 +1,7 @@
 import org.springframework.boot.gradle.tasks.bundling.BootJar
 import java.nio.file.Files
-import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
 import java.util.zip.ZipFile
-import java.util.zip.ZipEntry
-import java.util.zip.ZipOutputStream
 
 plugins {
     id("java")
@@ -36,68 +33,25 @@ evaluationDependsOn(providerProject.path)
 val providerJar = providerProject.tasks.named<Jar>("jar").flatMap { it.archiveFile }
 
 tasks.named<BootJar>("bootJar") {
-    archiveFileName.set("media-platform-launcher.jar")
+    archiveFileName.set("media-platform-all-in-one.jar")
     mainClass.set("com.example.platform.distribution.PlatformDistributionLauncher")
     isPreserveFileTimestamps = false
     isReproducibleFileOrder = true
-}
-
-val allInOneFile = layout.buildDirectory.file("libs/media-platform-all-in-one.jar")
-val allInOneJar = tasks.register("allInOneJar") {
-    group = "distribution"
-    description = "Builds the executable host with the unchanged provider plugin nested under embedded-plugins/."
-    dependsOn(providerJar, tasks.named("bootJar"))
-    inputs.file(tasks.named<BootJar>("bootJar").flatMap { it.archiveFile })
-    inputs.file(providerJar)
-    outputs.file(allInOneFile)
-    doLast {
-        val launcher = tasks.named<BootJar>("bootJar").get().archiveFile.get().asFile
-        val plugin = providerJar.get().asFile
-        val output = allInOneFile.get().asFile
-        val temporary = layout.buildDirectory.file("tmp/allInOneJar/media-platform-all-in-one.jar").get().asFile
-        temporary.parentFile.mkdirs()
-        val fixedTime = 315532800000L
-        ZipOutputStream(temporary.outputStream().buffered()).use { target ->
-            ZipFile(launcher).use { source ->
-                source.entries().asSequence().forEach { original ->
-                    val entry = ZipEntry(original.name)
-                    entry.time = fixedTime
-                    entry.method = original.method
-                    if (original.method == ZipEntry.STORED) {
-                        entry.size = original.size
-                        entry.compressedSize = original.size
-                        entry.crc = original.crc
-                    }
-                    target.putNextEntry(entry)
-                    if (!original.isDirectory) {
-                        source.getInputStream(original).use { it.copyTo(target) }
-                    }
-                    target.closeEntry()
-                }
-            }
-            val directory = ZipEntry("embedded-plugins/")
-            directory.time = fixedTime
-            target.putNextEntry(directory)
-            target.closeEntry()
-            val bytes = plugin.readBytes()
-            val embedded = ZipEntry("embedded-plugins/${plugin.name}")
-            embedded.time = fixedTime
-            target.putNextEntry(embedded)
-            target.write(bytes)
-            target.closeEntry()
-        }
-        output.parentFile.mkdirs()
-        Files.move(temporary.toPath(), output.toPath(), StandardCopyOption.REPLACE_EXISTING)
+    dependsOn(providerJar)
+    from(providerJar) {
+        into("embedded-plugins")
     }
 }
+
+val executableJar = tasks.named<BootJar>("bootJar").flatMap { it.archiveFile }
 
 tasks.register("verifyBundledDistributionPluginDigest") {
     group = "verification"
     description = "Verifies producer and platform-bundled provider plugin bytes have the same SHA-256."
-    dependsOn(providerJar, allInOneJar)
+    dependsOn(providerJar, tasks.named("bootJar"))
     doLast {
         val producer = providerJar.get().asFile.toPath()
-        val outer = allInOneFile.get().asFile
+        val outer = executableJar.get().asFile
         val entryName = "embedded-plugins/${producer.fileName}"
         val digest = MessageDigest.getInstance("SHA-256")
         fun sha(bytes: ByteArray): String = digest.digest(bytes).joinToString("") { "%02x".format(it) }
@@ -116,10 +70,9 @@ tasks.register("verifyBundledDistributionPluginDigest") {
 
 tasks.test {
     useJUnitPlatform()
-    dependsOn(providerJar, allInOneJar)
+    dependsOn(providerJar, tasks.named("bootJar"))
     systemProperty("distribution.provider.jar", providerJar.get().asFile.absolutePath)
-    systemProperty("distribution.allinone.jar",
-        layout.buildDirectory.file("libs/media-platform-all-in-one.jar").get().asFile.absolutePath)
+    systemProperty("distribution.executable.jar", executableJar.get().asFile.absolutePath)
 }
 
 tasks.withType<AbstractArchiveTask>().configureEach {

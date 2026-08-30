@@ -1,6 +1,7 @@
 package com.example.platform.identity.app;
 
 import com.example.platform.artifact.app.ArtifactCatalogService;
+import com.example.platform.artifact.app.ArtifactLifecycleService;
 import com.example.platform.artifact.domain.ArtifactCatalogEntry;
 import com.example.platform.artifact.domain.ArtifactStatus;
 import com.example.platform.identity.api.dto.*;
@@ -49,12 +50,15 @@ class ProjectImportServiceTest {
     @Mock
     private ImportAssetDownloader assetDownloader;
 
+    @Mock
+    private ArtifactLifecycleService artifactLifecycleService;
+
     private ProjectImportService importService;
 
     @BeforeEach
     void setUp() {
         importService = new ProjectImportService(tenantProjectService, artifactCatalogService,
-                null, auditPort, assetDownloader, blobStorage);
+                artifactLifecycleService, auditPort, assetDownloader, blobStorage);
     }
 
     @AfterEach
@@ -506,7 +510,7 @@ class ProjectImportServiceTest {
         when(tenantProjectService.createProject(eq("tenant-1"), any())).thenReturn(created);
 
         ProjectImportService serviceNoStorage = new ProjectImportService(tenantProjectService, artifactCatalogService,
-                null, auditPort, assetDownloader, null);
+                artifactLifecycleService, auditPort, assetDownloader, null);
         // blobStorage NOT set
 
         ProjectImportRequest request = new ProjectImportRequest(

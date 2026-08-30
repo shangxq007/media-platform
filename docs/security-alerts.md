@@ -138,6 +138,5 @@ The following keys are automatically redacted to `[REDACTED]` in alert attribute
 
 The `SecurityAlertPort` interface supports pluggable adapters:
 - `Slf4jSecurityAlertAdapter` (default)
-- `NoopSecurityAlertAdapter`
 - `WebhookSecurityAlertAdapter` (this document)
 - Future: Slack, email, PagerDuty, SIEM adapters

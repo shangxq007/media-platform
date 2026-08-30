@@ -222,27 +222,23 @@ app:
       connect-timeout-ms: ${SANDBOX_WORKER_CONNECT_TIMEOUT_MS:1000}
       read-timeout-ms: ${SANDBOX_WORKER_READ_TIMEOUT_MS:5000}
   ai:
-    default-provider: stubChatProvider
+    default-provider: unavailableChatProvider
     providers:
       openai:
         enabled: false
     routing:
       script-generation:
         primary:
-          provider: stubChatProvider
+          provider: unavailableChatProvider
       nlq-sql-generation:
         primary:
-          provider: stubChatProvider
+          provider: unavailableChatProvider
       nlq-result-summary:
         primary:
-          provider: stubChatProvider
+          provider: unavailableChatProvider
       timeline-edit:
         primary:
-          provider: stubChatProvider
-  ai.stub.enable-failures: false
-  ai.stub.failure-rate: 0.0
-  ai.stub.max-retries: 3
-  ai.stub.retry-delay-ms: 1000
+          provider: unavailableChatProvider
 
 render:
   execution:
@@ -259,8 +255,8 @@ render:
       enabled: true
       parallel-external: true
   aaf:
-    converter-enabled: true
-    worker-enabled: true
+    converter-enabled: false
+    worker-enabled: false
     poll-interval-ms: 3000
     queue-max-depth: 32
     converter-command: ""
@@ -298,19 +294,15 @@ render:
       cli: npx
       remotion-args: remotion
       composition-id: Main
-      stub-on-missing-cli: true
     blender:
       enabled: true
       binary: blender
-      stub-on-missing-binary: true
     vapoursynth:
       enabled: true
       binary: vspipe
-      stub-on-missing-binary: true
     shaka:
       enabled: true
       packager-bin: packager
-      stub-on-missing-binary: true
     skia:
       enabled: true
       timeout-ms: 300000

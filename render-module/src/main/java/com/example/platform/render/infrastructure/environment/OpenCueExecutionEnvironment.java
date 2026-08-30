@@ -71,8 +71,7 @@ public class OpenCueExecutionEnvironment implements ExecutionEnvironment {
 
     @Override
     public boolean supports(List<String> capabilities) {
-        return props.isEnabled() && (capabilities.contains("MEDIA_PIPELINE")
-                || capabilities.contains("TRANSCODE"));
+        return false;
     }
 
     @Override
@@ -129,22 +128,14 @@ public class OpenCueExecutionEnvironment implements ExecutionEnvironment {
 
     @Override
     public boolean cancel(String executionId) {
-        if (!props.isEnabled()) {
-            log.warn("OpenCue cancel rejected: disabled. executionId={}", executionId);
-            return false;
-        }
-        log.info("OpenCue cancel: executionId={} (Phase 1 stub)", executionId);
-        return true;
+        log.warn("OpenCue cancel unavailable pending real provider. executionId={}", executionId);
+        return false;
     }
 
     @Override
     public String status(String executionId) {
-        if (!props.isEnabled()) {
-            log.warn("OpenCue status rejected: disabled. executionId={}", executionId);
-            return "dead";
-        }
-        log.debug("OpenCue status: executionId={} (Phase 1 stub, returns QUEUED)", executionId);
-        return "queued";
+        log.warn("OpenCue status unavailable pending real provider. executionId={}", executionId);
+        return "dead";
     }
 
     public ExecutionStatus mapOpenCueStatusToPlatform(String opencueState) {

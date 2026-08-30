@@ -92,12 +92,11 @@ public class RemotionRenderProvider implements RenderProvider {
                     ToolExecutionRequest.withTimeout("remotion", args, properties.getTimeoutMillis()));
 
             if (!result.isSuccess()) {
-                if (properties.isStubOnMissingCli()) {
-                    Files.write(output, new byte[] {0, 0, 0, 8});
-                    log.warn("Remotion CLI failed; stub output written for job={}", jobId);
-                } else {
-                    throw new IllegalStateException("Remotion failed: " + result.stderr());
-                }
+                throw new IllegalStateException("Remotion failed: " + result.stderr());
+            }
+            if (!Files.isRegularFile(output) || Files.size(output) == 0) {
+                throw new IllegalStateException(
+                        "Remotion completed without a non-empty output artifact");
             }
 
             long duration = timelineScriptParser.parse(aiScript)

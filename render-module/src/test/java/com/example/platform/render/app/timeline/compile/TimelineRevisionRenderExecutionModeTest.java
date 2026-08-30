@@ -206,7 +206,7 @@ class TimelineRevisionRenderExecutionModeTest {
         ProviderExecutionDocumentDraftCompiler draftCompiler = new ProviderExecutionDocumentDraftCompiler();
         RenderExecutionPlanCompiler planCompiler = new RenderExecutionPlanCompiler();
         RenderPlanPolicyGuard policyGuard = new RenderPlanPolicyGuard();
-        RenderAuditRecorder auditRecorder = new RenderAuditRecorder(new NoopRenderAuditEventSink());
+        RenderAuditRecorder auditRecorder = new RenderAuditRecorder(new InMemoryRenderAuditEventSink());
         RenderExecutionStepExecutor stepExecutor = new RenderExecutionStepExecutor(
                 materializationService, registrationService, productRuntime,
                 auditRecorder);

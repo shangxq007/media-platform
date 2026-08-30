@@ -69,13 +69,11 @@ public class BlenderRenderProvider implements RenderProvider {
             ToolExecutionResult result = processToolRunner.execute(
                     ToolExecutionRequest.withTimeout("blender", args, properties.getTimeoutMillis()));
 
-            if (!result.isSuccess() && properties.isStubOnMissingBinary()) {
-                Files.write(output, new byte[] {0, 0, 0, 8});
-                log.warn("Blender render failed; stub for job={}", jobId);
-            } else if (!result.isSuccess()) {
+            if (!result.isSuccess()) {
                 throw new IllegalStateException("Blender failed: " + result.stderr());
-            } else if (!Files.isRegularFile(output)) {
-                Files.write(output, new byte[] {0, 0, 0, 8});
+            }
+            if (!Files.isRegularFile(output) || Files.size(output) == 0) {
+                throw new IllegalStateException("Blender completed without a non-empty output artifact");
             }
 
             return new RenderResult(

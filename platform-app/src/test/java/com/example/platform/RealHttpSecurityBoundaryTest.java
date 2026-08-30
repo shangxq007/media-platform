@@ -169,10 +169,49 @@ class RealHttpSecurityBoundaryTest extends PostgresTestContainerSupport {
     }
 
     @Test
+    void hostileReviewDangerFamiliesAreContainedOverRealTcpWhenSecurityIsDisabled() throws Exception {
+        String[][] requests = {
+            {"GET", "/api/mcp/render/status"},
+            {"HEAD", "/api/mcp/render/status"},
+            {"GET", "/api/product/workspace/workspace-1"},
+            {"POST", "/api/product/workspace"},
+            {"GET", "/api/social/posts"},
+            {"POST", "/api/social/posts/post-1/publish"},
+            {"GET", "/api/remote-worker/workers"},
+            {"POST", "/api/remote-worker/register"},
+            {"POST", "/api/ai/chat"},
+            {"POST", "/api/analytics/nlq/preview"},
+            {"GET", "/api/federation/query/overview"},
+            {"GET", "/api/policy/governance/overview"},
+            {"GET", "/api/me/notifications"},
+            {"HEAD", "/api/me/notifications"},
+            {"POST", "/api/me/notifications/notification-1/read"},
+            {"GET", "/api/me/exports"},
+            {"GET", "/api/me/reports"},
+            {"GET", "/api/me/feedback"},
+            {"POST", "/api/me/feedback"},
+            {"GET", "/api/billing/me/invoices"},
+            {"GET", "/api/billing/me/invoices/invoice-1"},
+            {"GET", "/api/tenants/t1/projects/p1/render-jobs/j1/artifacts/a1/access"},
+            {"HEAD", "/api/tenants/t1/projects/p1/render-jobs/j1/artifacts/a1/access"},
+            {"POST", "/api/tenants/t1/projects/p1/timeline/ai-edit"},
+            {"POST", "/api/tenants/t1/projects/p1/render-jobs/incremental/submit"},
+            {"POST", "/api/tenants/t1/projects/p1/render-jobs/j1/start"},
+            {"POST", "/api/tenants/t1/projects/p1/caption-template/render"},
+            {"GET", "/api/tenants/t1/projects/p1/caption-template/results/product-1"},
+            {"HEAD", "/api/tenants/t1/projects/p1/caption-template/results/product-1"},
+            {"POST", "/api/render/projects/p1/timeline/revisions/revision-1/render"}
+        };
+        for (String[] request : requests) {
+            Assertions.assertEquals(403, send(request[0], request[1]).statusCode(),
+                    request[0] + " " + request[1]);
+        }
+    }
+
+    @Test
     void phaseZeroContainedRoutesRemainDeniedWhenSecurityDisabledWithoutDispatch() throws Exception {
         String[] paths = {
             "/api/extensions/demo/execute",
-            "/api/analytics/internal/rebuild-profiles",
             "/api/billing/cycles/process-due",
             "/api/remote-worker/register",
             "/api/products/product-1/dependencies",
@@ -298,6 +337,15 @@ class RealHttpSecurityBoundaryTest extends PostgresTestContainerSupport {
             .uri(URI.create(baseUrl + path))
             .GET()
             .build();
+        return client.send(request, HttpResponse.BodyHandlers.ofString());
+    }
+
+    private HttpResponse<String> send(String method, String path) throws Exception {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + path))
+                .header("Content-Type", "application/json")
+                .method(method, HttpRequest.BodyPublishers.ofString("{}"))
+                .build();
         return client.send(request, HttpResponse.BodyHandlers.ofString());
     }
 }

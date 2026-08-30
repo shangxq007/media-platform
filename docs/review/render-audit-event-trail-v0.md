@@ -50,8 +50,8 @@ Immutable record of a render lifecycle moment:
 ### RenderAuditRecorder
 
 - Records events to a sink
-- **Never fails the render** because audit recording failed
-- Swallows sink exceptions with warning log
+- Fails the audited render operation when recording fails
+- Propagates sink exceptions so required audit is never silently discarded
 - Exposes sink for testing via `getSink()`
 
 ### RenderAuditEventSink (interface)
@@ -59,7 +59,7 @@ Immutable record of a render lifecycle moment:
 Pluggable sink:
 
 - `InMemoryRenderAuditEventSink` — thread-safe, for testing
-- `NoopRenderAuditEventSink` — discards events, safe production default
+- `FailClosedRenderAuditEventSink` — typed 503 until durable storage exists
 
 ### RenderAuditTrail
 
@@ -104,7 +104,7 @@ Error messages are sanitized (path patterns replaced with `[path]`).
 
 ## Configuration
 
-Default: `NoopRenderAuditEventSink` (events discarded).
+Default: `FailClosedRenderAuditEventSink` (audited operations fail until durable authority exists).
 
 Override in tests: inject `InMemoryRenderAuditEventSink` via Spring context.
 
