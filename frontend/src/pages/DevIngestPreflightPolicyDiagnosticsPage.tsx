@@ -1,67 +1,19 @@
-import React, { useState, useEffect } from 'react'
-
-interface IngestPreflightPolicyDiagnosticsResponse {
-  diagnosticsMode: string
-  reportOnlyEvaluatorImplemented: boolean
-  hookIntegrationImplemented: boolean
-  configBindingImplemented: boolean
-  reportOnlyMode: boolean
-  failOpenRequired: boolean
-  enforceModeEnabled: boolean
-  uploadRejectionImplemented: boolean
-  runtimePolicyGateImplemented: boolean
-  policyEvaluationPersistenceImplemented: boolean
-  preflightReportPersistenceImplemented: boolean
-  publicUploadResponseChanged: boolean
-  rawMetadataExposureAllowed: boolean
-  ocrEnabled: boolean
-  fullTextExtractionEnabled: boolean
-  config: IngestPreflightPolicyConfigDiagnostics
-  decisionSemantics: IngestPreflightPolicyDecisionSemanticsDiagnostics
-  generatedAt: string
-}
-
-interface IngestPreflightPolicyConfigDiagnostics {
-  enabled: boolean
-  mode: string
-  profile: string
-  failOpen: boolean
-  maxFindings: number
-  logResult: boolean
-  includeWarningFindings: boolean
-  includeMediaTechnicalFindings: boolean
-  includeRejectCandidates: boolean
-  validationStatus: string
-  validationErrorCount: number
-  validationWarningCount: number
-}
-
-interface IngestPreflightPolicyDecisionSemanticsDiagnostics {
-  accept: string
-  acceptWithWarnings: string
-  rejectCandidate: string
-  reject: string
-  errorFailOpen: string
-}
+import React from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { devDiagnosticsClient } from '../api/dev'
 
 export function DevIngestPreflightPolicyDiagnosticsPage() {
-  const [data, setData] = useState<IngestPreflightPolicyDiagnosticsResponse | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['dev', 'ingest-preflight-policy-diagnostics'],
+    queryFn: async () => {
+      const result = await devDiagnosticsClient.getIngestPreflightPolicy()
+      if (!result.success) throw new Error(result.error.message)
+      return result.data
+    },
+  })
 
-  useEffect(() => {
-    fetch('/dev/ingest/preflight-policy')
-      .then(res => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        return res.json()
-      })
-      .then(setData)
-      .catch(err => setError(err.message))
-      .finally(() => setLoading(false))
-  }, [])
-
-  if (loading) return <div style={{ padding: '20px', color: '#8b949e' }}>Loading...</div>
-  if (error) return <div style={{ padding: '20px', color: '#f85149' }}>Error: {error}</div>
+  if (isLoading) return <div style={{ padding: '20px', color: '#8b949e' }}>Loading...</div>
+  if (error) return <div style={{ padding: '20px', color: '#f85149' }}>Error: {error.message}</div>
   if (!data) return <div style={{ padding: '20px', color: '#8b949e' }}>No data</div>
 
   return (
