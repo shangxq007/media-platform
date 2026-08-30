@@ -14,6 +14,13 @@ Contract token: `STORAGE_OBJECT_IDENTITY_AND_PHYSICAL_PLACEMENT_AUTHORITY_MIGRAT
 
 This contract freezes `STORAGE_OBJECT_ID_IS_LOGICAL_STABLE_IDENTITY_V1`. A `StorageObjectId` is a stable logical identity issued and owned by Storage. It is independent of provider, bucket, object key, filesystem path, URI, region, locator, and backend. A physical value never becomes a logical ID by being wrapped in the type or copied into a column named `storage_object_id`.
 
+It also freezes these factual-authority laws:
+
+- `CURRENT_RAW_STRING_STORAGE_PROVIDER_IS_NOT_PROOF_OF_CANONICAL_LOGICAL_ID_ISSUANCE_V1`
+- `PHYSICAL_PROVIDER_SPI_IS_NOT_LOGICAL_IDENTITY_AUTHORITY_V1`
+- `STORAGE_APPLICATION_BOUNDARY_OWNS_LOGICAL_ID_ISSUANCE_V1`
+- `PROVIDER_BACKEND_MAY_OWN_PLACEMENT_MECHANICS_NOT_LOGICAL_ID_SEMANTICS_V1`
+
 Storage owns both logical object identity and physical placement authority. Other modules may retain, transport, compare, and reference a Storage-issued ID. They must not manufacture one from physical values, parse one as a physical location, or maintain a competing placement registry. Artifact remains authority for Artifact identity, integrity, lifecycle, and its reference to a Storage object; that reference does not make Artifact a Storage identity or placement owner.
 
 This is a decision and migration contract. It authorizes no production, test, build, configuration, schema, migration, or runtime change. The implementation phases below require separately authorized tasks.
@@ -33,19 +40,22 @@ This is a decision and migration contract. It authorizes no production, test, bu
 
 ## 3. Mechanical current-state facts
 
-The canonical `StorageObjectId` Javadoc says: “Logical identity is independent of physical location, provider, or storage backend.” The typed `StorageObjectLocation` and `StorageValidationModel.StorageReplicaRecord` already separate object identity from placement and replica semantics.
+Every claim below is normatively classified in [current-vs-target-fact-classification.tsv](storage-object-identity-placement-migration-v1/current-vs-target-fact-classification.tsv). The only allowed classifications are `CURRENT_CANONICAL_FACT`, `FROZEN_H6_FACT`, `TARGET_MODEL`, and `NOT_PRESENT`.
 
-The canonical provider SPI owns begin/write/complete/abort, `openRead`, `stat`, `copy`, and `delete`. `completeWrite` returns a `WriteSessionResult` containing `StorageObjectId`; read, stat, copy, and delete accept typed IDs. The in-memory provider and `AbstractOpenDalProvider` generate `obj-<writeSessionId>`. OpenDAL keeps the physical mapping internal through `objects/<id>`. These facts prove that the target model is compatible with the existing Storage contract.
-
-The V1 `storage_object` table has `id`, `provider_code`, `bucket`, and `object_key` in one row. A mechanical production scan found no repository that owns or uses this table as authority. It is therefore migration input only until each row is classified; its name and string shape prove nothing.
-
-The V1 `artifact_replica` table contains `artifact_id`, `replica_id`, `provider_id`, `storage_object_id`, `region`, `role`, `state`, and `created_at`. It has an Artifact FK, but no FK to `storage_object` and no semantic discriminator for its overloaded value. It cannot prove logical-versus-physical meaning.
-
-No PostgreSQL instance was proven bound to canonical main. No running test container or unrelated database may be treated as production evidence. Consequently all persisted row counts remain `UNKNOWN` until M0 binds a database identity and an authorized observation reads it.
+- **`CURRENT_CANONICAL_FACT`:** the canonical `StorageObjectId` Javadoc says logical identity is independent of physical location, provider, or storage backend. The typed `com.example.platform.storage.contract.identity.StorageObjectLocation` and `com.example.platform.storage.contract.validation.StorageValidationModel.StorageReplicaRecord` exist and separate typed placement and replica mechanics from object identity.
+- **`CURRENT_CANONICAL_FACT`:** the raw current SPI is `com.example.platform.storage.contract.StorageProvider`. It exposes `String providerId()`, `String providerType()`, and `store`, `fetch`, `delete`, `exists`, and `metadata` over `String storageReferenceId`. Render's `com.example.platform.render.infrastructure.storage.S3StorageProvider` architecture-validation stub implements it. This is a physical/raw-string provider SPI and is not proof of canonical logical ID issuance.
+- **`CURRENT_CANONICAL_FACT`:** the distinct typed current foundation/backend SPI is `com.example.platform.storage.contract.provider.StorageProvider`. It exposes typed `beginWrite`, `write`, `completeWrite`, `abortWrite`, `openRead`, `stat`, `copy`, and `delete`. `completeWrite` returns `com.example.platform.storage.contract.write.WriteSessionResult`, which contains a `StorageObjectId`; worker-fabric uses this SPI. These are current typed mechanics, not a materialized Storage application issuance boundary.
+- **`CURRENT_CANONICAL_FACT`:** `InMemoryStorageProvider` and `AbstractOpenDalProvider` implement the typed SPI. Both generate `obj-<writeSessionId>` on completion, and OpenDAL keeps its physical mapping behind the backend. A backend-generated typed completion ID proves the current mechanic and target compatibility; it does not prove that canonical Storage application logical-identity issuance authority already exists.
+- **`FROZEN_H6_FACT`:** the raw SPI, typed SPI, raw S3 stub, typed InMemory/OpenDAL providers, and worker-fabric orchestrator have identical blobs in canonical base `bd919f958bea79e57fe7fcb1cf1396eca96a0e9d` and frozen H6 `c91b90f4127163d0b6d6f4f84e4190a3a083c652`.
+- **`CURRENT_CANONICAL_FACT`:** the V1 `storage_object` table has `id`, `provider_code`, `bucket`, and `object_key` in one row. A mechanical production scan found no repository that owns or uses this table as authority. It is migration input only until each row is classified; its name and string shape prove nothing.
+- **`CURRENT_CANONICAL_FACT`:** the V1 `artifact_replica` table contains `artifact_id`, `replica_id`, `provider_id`, `storage_object_id`, `region`, `role`, `state`, and `created_at`. It has an Artifact FK, but no FK to `storage_object` and no semantic discriminator for its overloaded value. It cannot prove logical-versus-physical meaning.
+- **`CURRENT_CANONICAL_FACT`:** no PostgreSQL instance was proven bound to canonical main. No running test container or unrelated database may be treated as production evidence. Consequently all persisted row counts remain `UNKNOWN` until M0 binds a database identity and an authorized observation reads it.
+- **`TARGET_MODEL`:** a Storage-owned logical identity issuance/application boundary, a migration-only Storage adoption operation, and normalized Storage-owned identity/placement/replica/receipt/journal persistence are required.
+- **`NOT_PRESENT`:** none of those three target authority materializations exists in either current snapshot. The current raw SPI, typed SPI, typed value/foundation records, provider implementations, backend-generated `obj-<writeSessionId>`, and worker-fabric use must not be promoted into evidence of that absent authority.
 
 ## 4. Writer and reader reality
 
-The complete writer union is [writer-inventory.tsv](storage-object-identity-placement-migration-v1/writer-inventory.tsv). It proves three physical-to-logical constructors (`ProjectImportService`, `RenderArtifactStorageService`, `ClientExportService`), one canonical Storage-issued writer (`ArtifactOutputCommitOrchestrator`), and one ambiguous canonical-base writer (`ArtifactCatalogService`). H6's planned retirement of the catalog path does not erase the canonical-base fact.
+The complete writer union is [writer-inventory.tsv](storage-object-identity-placement-migration-v1/writer-inventory.tsv). It proves three physical-to-logical constructors (`ProjectImportService`, `RenderArtifactStorageService`, `ClientExportService`) and two ambiguous writers (`ArtifactOutputCommitOrchestrator`, `ArtifactCatalogService`). `ArtifactOutputCommitOrchestrator` preserves the typed provider completion object ID, but that backend completion is not provenance for the absent Storage application issuance authority. H6's planned retirement of the catalog path does not erase the canonical-base fact.
 
 The complete reader union is [reader-inventory.tsv](storage-object-identity-placement-migration-v1/reader-inventory.tsv). It proves four physical interpreters, two canonical consumers, two ambiguous persisted-value mappers, and three Storage-owner resolvers. An entry is classified by semantics, not merely by whether its class name says reader or whether it accepts a typed value.
 
@@ -55,11 +65,11 @@ The inventories are union evidence across the canonical base and frozen H6 objec
 
 The authoritative mapping is [owner-matrix.tsv](storage-object-identity-placement-migration-v1/owner-matrix.tsv). Exactly one owner exists for each semantic:
 
-1. Storage owns issuance, adoption, resolution, and persistence of logical `StorageObjectId` values.
+1. The target Storage-owned logical identity issuance/application boundary owns issuance, adoption, resolution, and persistence of logical `StorageObjectId` values; the migration-only adoption operation is its only legacy-placement exception.
 2. Storage owns persistence and lifecycle of physical placements and replicas.
 3. Artifact owns its reference to a Storage-issued ID, never the referenced identity or its placement.
-4. Web, Render, Identity, Worker, and other modules use Storage application/provider ports. They do not interpret opaque IDs or project raw placement authority.
-5. OpenDAL and other backends are implementation mechanics behind Storage, not semantic owners.
+4. Web, Render, Identity, Worker, and other modules use the Storage application boundary. They do not interpret opaque IDs or project raw placement authority.
+5. Provider and backend implementations, including OpenDAL, may own placement/write mechanics and submit placement results or receipts through Storage-owned ports. They are not logical identity semantic owners or issuance authorities.
 
 The target reuses `StorageObjectLocation` and `StorageReplicaRecord`. Storage persistence must represent logical objects independently of zero-to-many normalized placements/replicas, preserve typed provider/namespace/locator/version/region fields, enforce reference integrity, and retain digest/length/state needed for reconciliation. A generic JSON placement column is forbidden because it would discard typed constraints and obscure authority.
 
@@ -87,7 +97,7 @@ Classification uses a deterministic evidence precedence:
 1. collision-free writer provenance tied to the row and producer operation;
 2. provider and replica facts tied to the same row;
 3. a `storage_object` relation only when its relationship and semantics are mechanically proven;
-4. StorageProvider `stat` or an equivalent Storage-owned lookup for the candidate logical ID;
+4. typed provider `stat` or equivalent backend lookup only as corroborating mechanics; it cannot establish logical identity authority without Storage-owned issuance/adoption and persistence evidence;
 5. Storage-owned physical existence and integrity facts for a candidate placement;
 6. producer/job evidence only when its mapping is mechanically collision-free.
 
@@ -109,7 +119,7 @@ adoptLegacyPlacement(
 ) -> { StorageObjectId, StorageReplicaId, StorageObjectLocation, placementReceipt, outcome }
 ```
 
-This is the only boundary allowed to accept a legacy physical placement for identity migration. Storage validates ownership and existence, imports/registers/copies as required, creates normalized authority, and returns a canonical ID plus receipt. Repeating the same key with the same inputs returns the same result. Reusing the key with different inputs fails closed. Normal production writers must use begin/complete write or another canonical Storage operation; they cannot call the migration operation after its removal gate.
+This is the only boundary allowed to accept a legacy physical placement for identity migration. Storage validates ownership and existence, imports/registers/copies as required, creates normalized authority, and returns a canonical ID plus receipt. Repeating the same key with the same inputs returns the same result. Reusing the key with different inputs fails closed. Normal production writers must use the Storage-owned logical identity issuance/application boundary, which may orchestrate typed provider write mechanics; they cannot treat provider completion as semantic authority or call the migration operation after its removal gate.
 
 Adoption is not renaming. The original physical string is never copied into the logical ID as the migration result. If provider limitations require a byte copy, the copy must complete and reconcile before the receipt is terminal.
 
@@ -181,7 +191,7 @@ H6's Artifact identity, lifecycle, integrity, scoped access, redacted summary/ev
 
 - **Phase A — schema and observation (M0–M1):** separately authorize DDL, repository, classifier, journal, database binding, and observe-only metrics.
 - **Phase B — reader safety (M2):** separately authorize Storage resolver ports and removal of non-Storage ID parsing, with compatibility bounded by the ledger.
-- **Phase C — writer cutover (M3):** separately authorize each inventoried writer migration and new-write rejection.
+- **Phase C — writer cutover (M3):** separately authorize each inventoried writer migration to the Storage application issuance boundary and new-write rejection.
 - **Phase D — backfill and switch (M4–M5):** separately authorize the Storage adoption operation, worker, CAS, reconciliation, quarantine, and production execution plan.
 - **Phase E — closure (M6–M7):** separately authorize compatibility deletion, permanent guards, evidence closure, retention, and Storage-owned cleanup.
 
@@ -211,9 +221,14 @@ DUAL_AUTHORITY_CONTRACT_COUNT=0
 STORAGE_OBJECT_ID_MODEL=STORAGE_OBJECT_ID_IS_LOGICAL_STABLE_IDENTITY_V1
 STORAGE_OBJECT_ID_OWNER=STORAGE
 PHYSICAL_PLACEMENT_OWNER=STORAGE
+CURRENT_RAW_STRING_STORAGE_PROVIDER_TREATED_AS_LOGICAL_ID_ISSUER_COUNT=0
+PHYSICAL_REFERENCE_TO_LOGICAL_ID_AUTHORITY_COUNT=0
+PROVIDER_BACKEND_LOGICAL_ID_AUTHORITY_COUNT=0
+DUAL_STORAGE_IDENTITY_AUTHORITY_COUNT=0
+UNCLASSIFIED_CURRENT_VS_TARGET_FACT_COUNT=0
 PHYSICAL_TO_LOGICAL_ID_WRITER_COUNT=3
-CANONICAL_LOGICAL_ID_WRITER_COUNT=1
-AMBIGUOUS_WRITER_COUNT=1
+CANONICAL_LOGICAL_ID_WRITER_COUNT=0
+AMBIGUOUS_WRITER_COUNT=2
 WRITER_INVENTORY_TOTAL=5
 WRITER_UNCLASSIFIED_COUNT=0
 LOGICAL_ID_TO_PHYSICAL_READER_COUNT=4
@@ -242,4 +257,4 @@ H6_SOURCE_EDIT_COUNT=0
 H6_FOLLOWUP_ENCAPSULATION_HARDENING=REQUIRED
 ```
 
-The eight ledgers and the non-production validator are part of this frozen contract. Prose cannot override a ledger row or final token; an inconsistency fails validation and requires a new governed decision.
+The nine ledgers and the non-production validator are part of this frozen contract. Prose cannot override a ledger row or final token; an inconsistency fails validation and requires a new governed decision.

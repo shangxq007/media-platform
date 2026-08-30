@@ -25,6 +25,10 @@ CONTRACT_TOKEN = (
 )
 
 SCHEMAS = {
+    "current-vs-target-fact-classification.tsv": [
+        "fact_id", "subject", "claim", "classification", "revision_scope",
+        "logical_identity_authority", "evidence", "status",
+    ],
     "writer-inventory.tsv": [
         "writer_id", "revision", "module", "path", "symbol", "classification",
         "input_semantics", "output_sink", "evidence", "status",
@@ -61,8 +65,8 @@ SCHEMAS = {
 
 WRITER_COUNTS = {
     "LEGACY_PHYSICAL_VALUE_WRITER": ("PHYSICAL_TO_LOGICAL_ID_WRITER_COUNT", 3),
-    "CANONICAL_LOGICAL_ID_WRITER": ("CANONICAL_LOGICAL_ID_WRITER_COUNT", 1),
-    "AMBIGUOUS_WRITER": ("AMBIGUOUS_WRITER_COUNT", 1),
+    "CANONICAL_LOGICAL_ID_WRITER": ("CANONICAL_LOGICAL_ID_WRITER_COUNT", 0),
+    "AMBIGUOUS_WRITER": ("AMBIGUOUS_WRITER_COUNT", 2),
 }
 READER_COUNTS = {
     "LOGICAL_ID_TO_PHYSICAL_READER": ("LOGICAL_ID_TO_PHYSICAL_READER_COUNT", 4),
@@ -75,6 +79,58 @@ PERSISTED_CLASSES = {
     "LEGACY_PHYSICAL_ENCODED",
     "AMBIGUOUS",
 }
+FACT_CLASSIFICATIONS = {
+    "CURRENT_CANONICAL_FACT",
+    "FROZEN_H6_FACT",
+    "TARGET_MODEL",
+    "NOT_PRESENT",
+}
+FACT_EXPECTATIONS = {
+    "F01": ("STORAGE_OBJECT_ID_VALUE_SEMANTICS", "CURRENT_CANONICAL_FACT", "BASE_AND_FROZEN_H6", "NO"),
+    "F02": ("RAW_STORAGE_PROVIDER_INTERFACE", "CURRENT_CANONICAL_FACT", "BASE_AND_FROZEN_H6", "NO"),
+    "F03": ("RAW_STORAGE_PROVIDER_METHODS", "CURRENT_CANONICAL_FACT", "BASE_AND_FROZEN_H6", "NO"),
+    "F04": ("RAW_STORAGE_PROVIDER_IMPLEMENTATION", "CURRENT_CANONICAL_FACT", "BASE_AND_FROZEN_H6", "NO"),
+    "F05": ("TYPED_STORAGE_PROVIDER_INTERFACE", "CURRENT_CANONICAL_FACT", "BASE_AND_FROZEN_H6", "NO"),
+    "F06": ("TYPED_STORAGE_PROVIDER_OPERATIONS", "CURRENT_CANONICAL_FACT", "BASE_AND_FROZEN_H6", "NO"),
+    "F07": ("WRITE_SESSION_RESULT", "CURRENT_CANONICAL_FACT", "BASE_AND_FROZEN_H6", "NO"),
+    "F08": ("TYPED_COMPLETION_OBJECT_ID", "CURRENT_CANONICAL_FACT", "BASE_AND_FROZEN_H6", "NO"),
+    "F09": ("IN_MEMORY_TYPED_PROVIDER", "CURRENT_CANONICAL_FACT", "BASE_AND_FROZEN_H6", "NO"),
+    "F10": ("ABSTRACT_OPEN_DAL_PROVIDER", "CURRENT_CANONICAL_FACT", "BASE_AND_FROZEN_H6", "NO"),
+    "F11": ("OPEN_DAL_OBJECT_ID_GENERATION", "CURRENT_CANONICAL_FACT", "BASE_AND_FROZEN_H6", "NO"),
+    "F12": ("WORKER_FABRIC_TYPED_PROVIDER_USE", "CURRENT_CANONICAL_FACT", "BASE_AND_FROZEN_H6", "NO"),
+    "F13": ("STORAGE_OBJECT_LOCATION", "CURRENT_CANONICAL_FACT", "BASE_AND_FROZEN_H6", "NO"),
+    "F14": ("STORAGE_REPLICA_RECORD", "CURRENT_CANONICAL_FACT", "BASE_AND_FROZEN_H6", "NO"),
+    "F15": ("FROZEN_H6_STORAGE_SPI_PARITY", "FROZEN_H6_FACT", "FROZEN_H6", "NO"),
+    "F16": ("V1_STORAGE_OBJECT_TABLE", "CURRENT_CANONICAL_FACT", "BASE_AND_FROZEN_H6", "NO"),
+    "F17": ("V1_STORAGE_OBJECT_AUTHORITY_OWNER", "CURRENT_CANONICAL_FACT", "BASE_AND_FROZEN_H6", "NO"),
+    "F18": ("V1_ARTIFACT_REPLICA_TABLE", "CURRENT_CANONICAL_FACT", "BASE_AND_FROZEN_H6", "NO"),
+    "F19": ("CANONICAL_DATABASE_BINDING", "CURRENT_CANONICAL_FACT", "BASE_AND_FROZEN_H6", "NO"),
+    "F20": ("PERSISTED_ROW_COUNTS", "CURRENT_CANONICAL_FACT", "BASE_AND_FROZEN_H6", "NO"),
+    "F21": ("LOGICAL_ISSUANCE_APPLICATION_BOUNDARY_TARGET", "TARGET_MODEL", "TARGET_V1", "TARGET_ONLY"),
+    "F22": ("LOGICAL_ISSUANCE_APPLICATION_BOUNDARY_MATERIALIZATION", "NOT_PRESENT", "BASE_AND_FROZEN_H6", "NOT_PRESENT"),
+    "F23": ("MIGRATION_ADOPTION_OPERATION_TARGET", "TARGET_MODEL", "TARGET_V1", "TARGET_ONLY"),
+    "F24": ("MIGRATION_ADOPTION_OPERATION_MATERIALIZATION", "NOT_PRESENT", "BASE_AND_FROZEN_H6", "NOT_PRESENT"),
+    "F25": ("NORMALIZED_STORAGE_AUTHORITY_TARGET", "TARGET_MODEL", "TARGET_V1", "TARGET_ONLY"),
+    "F26": ("NORMALIZED_STORAGE_AUTHORITY_MATERIALIZATION", "NOT_PRESENT", "BASE_AND_FROZEN_H6", "NOT_PRESENT"),
+}
+RAW_PROVIDER_FACT_IDS = {"F02", "F03", "F04"}
+PROVIDER_BACKEND_FACT_IDS = {"F05", "F06", "F07", "F08", "F09", "F10", "F11", "F12"}
+REQUIRED_CONTRACT_FRAGMENTS = {
+    "CURRENT_RAW_STRING_STORAGE_PROVIDER_IS_NOT_PROOF_OF_CANONICAL_LOGICAL_ID_ISSUANCE_V1",
+    "PHYSICAL_PROVIDER_SPI_IS_NOT_LOGICAL_IDENTITY_AUTHORITY_V1",
+    "STORAGE_APPLICATION_BOUNDARY_OWNS_LOGICAL_ID_ISSUANCE_V1",
+    "PROVIDER_BACKEND_MAY_OWN_PLACEMENT_MECHANICS_NOT_LOGICAL_ID_SEMANTICS_V1",
+    "com.example.platform.storage.contract.StorageProvider",
+    "com.example.platform.storage.contract.provider.StorageProvider",
+}
+O01_ALLOWED_WRITERS = (
+    "Storage-owned logical identity issuance/application boundary plus migration-only "
+    "Storage adoption operation"
+)
+O02_ALLOWED_WRITERS = (
+    "Storage-owned placement persistence/application boundary; provider backends may perform "
+    "placement/write mechanics and submit placement results or receipts through Storage-owned ports"
+)
 FUTURE_GUARDS = {
     "BAN_PHYSICAL_VALUE_STORAGE_OBJECT_ID_CONSTRUCTION_OUTSIDE_STORAGE",
     "BAN_STORAGE_OBJECT_ID_URI_PARSING_OUTSIDE_MIGRATION_BOUNDARY",
@@ -92,6 +148,11 @@ REQUIRED_TOKENS = {
     "STORAGE_OBJECT_ID_MODEL": "STORAGE_OBJECT_ID_IS_LOGICAL_STABLE_IDENTITY_V1",
     "STORAGE_OBJECT_ID_OWNER": "STORAGE",
     "PHYSICAL_PLACEMENT_OWNER": "STORAGE",
+    "CURRENT_RAW_STRING_STORAGE_PROVIDER_TREATED_AS_LOGICAL_ID_ISSUER_COUNT": "0",
+    "PHYSICAL_REFERENCE_TO_LOGICAL_ID_AUTHORITY_COUNT": "0",
+    "PROVIDER_BACKEND_LOGICAL_ID_AUTHORITY_COUNT": "0",
+    "DUAL_STORAGE_IDENTITY_AUTHORITY_COUNT": "0",
+    "UNCLASSIFIED_CURRENT_VS_TARGET_FACT_COUNT": "0",
     "WRITER_INVENTORY_TOTAL": "5",
     "WRITER_UNCLASSIFIED_COUNT": "0",
     "READER_INVENTORY_TOTAL": "11",
@@ -177,6 +238,9 @@ def validate(root: Path) -> None:
         raise ValidationFailure(f"missing canonical contract: {contract_path}")
     contract_text = contract_path.read_text(encoding="utf-8")
     tokens = contract_tokens(contract_text, errors)
+    for fragment in sorted(REQUIRED_CONTRACT_FRAGMENTS):
+        if fragment not in contract_text:
+            errors.append(f"missing frozen factual-authority contract fragment: {fragment}")
 
     governance = root / "docs/architecture/governance"
     token_files = []
@@ -204,6 +268,40 @@ def validate(root: Path) -> None:
     duplicated_ids = sorted(value for value, count in Counter(all_ids).items() if count > 1)
     if duplicated_ids:
         errors.append(f"duplicate ledger IDs: {duplicated_ids}")
+
+    facts = ledgers["current-vs-target-fact-classification.tsv"]
+    fact_ids = [row.get("fact_id") for row in facts]
+    if set(fact_ids) != set(FACT_EXPECTATIONS) or len(facts) != len(FACT_EXPECTATIONS):
+        errors.append(f"current-vs-target fact completeness: {sorted(fact_ids)}")
+    for field in ("subject", "claim"):
+        duplicates = duplicate_values(facts, field)
+        if duplicates:
+            errors.append(f"duplicate current-vs-target fact {field}s: {duplicates}")
+    unclassified_facts = [
+        row for row in facts
+        if row.get("classification") not in FACT_CLASSIFICATIONS
+        or row.get("status") != "CLASSIFIED"
+    ]
+    if unclassified_facts:
+        errors.append(
+            "UNCLASSIFIED_CURRENT_VS_TARGET_FACT_COUNT="
+            f"{len(unclassified_facts)}"
+        )
+    facts_by_id = {row.get("fact_id"): row for row in facts}
+    for fact_id, expected in FACT_EXPECTATIONS.items():
+        row = facts_by_id.get(fact_id)
+        if row is None:
+            continue
+        actual = (
+            row.get("subject"),
+            row.get("classification"),
+            row.get("revision_scope"),
+            row.get("logical_identity_authority"),
+        )
+        if actual != expected:
+            errors.append(
+                f"current-vs-target fact contract {fact_id}: expected={expected}, actual={actual}"
+            )
 
     writers = ledgers["writer-inventory.tsv"]
     readers = ledgers["reader-inventory.tsv"]
@@ -256,6 +354,73 @@ def validate(root: Path) -> None:
             or row.get("permanent_dual_authority") != "NO"
         ):
             errors.append(f"invalid owner or dual authority flag: {row.get('owner_id')}")
+    owners_by_id = {row.get("owner_id"): row for row in owners}
+    o01 = owners_by_id.get("O01", {})
+    o02 = owners_by_id.get("O02", {})
+    if o01.get("allowed_writers") != O01_ALLOWED_WRITERS:
+        errors.append(
+            "owner matrix O01 target writer wording: expected "
+            f"{O01_ALLOWED_WRITERS!r}, got {o01.get('allowed_writers')!r}"
+        )
+    o01_non_owner = o01.get("non_owner_rule", "")
+    for fragment in (
+        "com.example.platform.storage.contract.StorageProvider",
+        "com.example.platform.storage.contract.provider.StorageProvider",
+        "provider/backend implementations are non-authority for logical ID semantics",
+        "must not manufacture them from physical references",
+    ):
+        if fragment not in o01_non_owner:
+            errors.append(f"owner matrix O01 non-authority wording missing: {fragment}")
+    if o02.get("allowed_writers") != O02_ALLOWED_WRITERS:
+        errors.append(
+            "owner matrix O02 placement mechanics wording: expected "
+            f"{O02_ALLOWED_WRITERS!r}, got {o02.get('allowed_writers')!r}"
+        )
+    if "Provider/backend placement mechanics do not confer logical identity semantics" not in o02.get(
+        "non_owner_rule", ""
+    ):
+        errors.append("owner matrix O02 must deny provider/backend logical identity semantics")
+
+    raw_provider_authority_count = sum(
+        facts_by_id.get(fact_id, {}).get("logical_identity_authority") != "NO"
+        for fact_id in RAW_PROVIDER_FACT_IDS
+    )
+    if "com.example.platform.storage.contract.StorageProvider" in o01.get("allowed_writers", ""):
+        raw_provider_authority_count += 1
+    if raw_provider_authority_count:
+        errors.append(
+            "CURRENT_RAW_STRING_STORAGE_PROVIDER_TREATED_AS_LOGICAL_ID_ISSUER_COUNT="
+            f"{raw_provider_authority_count}"
+        )
+
+    provider_backend_authority_count = sum(
+        facts_by_id.get(fact_id, {}).get("logical_identity_authority") != "NO"
+        for fact_id in PROVIDER_BACKEND_FACT_IDS
+    )
+    if re.search(r"\b(provider|backend)\b", o01.get("allowed_writers", ""), re.IGNORECASE):
+        provider_backend_authority_count += 1
+    if provider_backend_authority_count:
+        errors.append(
+            f"PROVIDER_BACKEND_LOGICAL_ID_AUTHORITY_COUNT={provider_backend_authority_count}"
+        )
+
+    physical_reference_authority_count = int(bool(re.search(
+        r"storageprovider|provider|backend|bucket|objectkey|path|uri|locator|physical reference",
+        o01.get("allowed_writers", ""),
+        re.IGNORECASE,
+    )))
+    if physical_reference_authority_count:
+        errors.append(
+            f"PHYSICAL_REFERENCE_TO_LOGICAL_ID_AUTHORITY_COUNT={physical_reference_authority_count}"
+        )
+
+    dual_storage_identity_authority_count = max(
+        0, semantic_counts.get("STORAGE_OBJECT_LOGICAL_IDENTITY", 0) - 1
+    )
+    if dual_storage_identity_authority_count:
+        errors.append(
+            f"DUAL_STORAGE_IDENTITY_AUTHORITY_COUNT={dual_storage_identity_authority_count}"
+        )
 
     persisted = ledgers["persisted-row-classification-feasibility.tsv"]
     actual_classes = {row.get("class_id") for row in persisted}
@@ -405,6 +570,39 @@ def self_test(root: Path) -> None:
         ),
         "future guard completeness",
     )
+
+    def provider_backend_authority(temp: Path) -> None:
+        path = temp / LEDGER_REL / "owner-matrix.tsv"
+        lines = path.read_text(encoding="utf-8").splitlines()
+        fields = lines[1].split("\t")
+        fields[4] = (
+            "Storage-owned logical identity issuance/application boundary plus typed "
+            "provider/backend logical identity authority plus migration-only Storage adoption operation"
+        )
+        lines[1] = "\t".join(fields)
+        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    expect_rejection(
+        root,
+        "provider_backend_authority",
+        provider_backend_authority,
+        "PROVIDER_BACKEND_LOGICAL_ID_AUTHORITY_COUNT=1",
+    )
+
+    def unclassified_current_vs_target_fact(temp: Path) -> None:
+        path = temp / LEDGER_REL / "current-vs-target-fact-classification.tsv"
+        lines = path.read_text(encoding="utf-8").splitlines()
+        fields = lines[1].split("\t")
+        fields[3] = "UNCLASSIFIED"
+        lines[1] = "\t".join(fields)
+        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    expect_rejection(
+        root,
+        "unclassified_current_vs_target_fact",
+        unclassified_current_vs_target_fact,
+        "UNCLASSIFIED_CURRENT_VS_TARGET_FACT_COUNT=1",
+    )
     print("SELF_TEST_RESULT=PASS")
 
 
@@ -417,7 +615,7 @@ def main() -> int:
     parser.add_argument(
         "--self-test",
         action="store_true",
-        help="prove rejection of five required forbidden mutations",
+        help="prove rejection of seven required forbidden mutations",
     )
     args = parser.parse_args()
     root = repository_root()
