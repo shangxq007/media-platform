@@ -137,7 +137,7 @@ export const AUTHORITY_RULES = [
 export const BOUNDED_RULES = [
   {
     name: 'FRONTEND_RAW_STORAGE_PRODUCT_FIELD_COUNT',
-    maximum: 1,
+    maximum: 0,
     patterns: [
       /\b(?:storageUri|storageURI|storageKey|objectKey|bucket|sourceUrl|assetUri)\b/,
     ],

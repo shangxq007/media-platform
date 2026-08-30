@@ -18,7 +18,6 @@ export interface Clip {
   id: string
   name: string
   type: 'video' | 'audio' | 'text' | 'image' | 'subtitle'
-  sourceUrl?: string
   thumbnailUrl?: string
   duration: number
   startTime: number

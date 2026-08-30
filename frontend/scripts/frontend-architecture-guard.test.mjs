@@ -132,8 +132,34 @@ for (const [ruleName, relativePath, source, mutationName = ruleName] of mutation
   })
 }
 
+const rawStorageProductFieldLexemes = [
+  'sourceUrl',
+  'storageUri',
+  'storageKey',
+  'objectKey',
+  'bucket',
+  'assetUri',
+]
+
+for (const lexeme of rawStorageProductFieldLexemes) {
+  test(`FRONTEND_RAW_STORAGE_PRODUCT_FIELD_COUNT rejects ${lexeme} and leaves zero residue`, () => {
+    const root = mkdtempSync(join(tmpdir(), 'frontend-foundation-raw-storage-'))
+    try {
+      const file = join(root, 'types/product.ts')
+      mkdirSync(join(file, '..'), { recursive: true })
+      writeFileSync(file, `export interface GovernedProductClip { ${lexeme}?: string }`)
+      const result = scanFrontendArchitecture(root)
+      assert.equal(result.boundedCounts.FRONTEND_RAW_STORAGE_PRODUCT_FIELD_COUNT, 1)
+      assert.equal(architectureGuardPassed(result), false)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+    assert.equal(existsSync(root), false)
+    console.log(`FRONTEND_RAW_STORAGE_PRODUCT_FIELD_COUNT_${lexeme}_NEGATIVE_CONTROL=PASS residue=0`)
+  })
+}
+
 const boundedMutations = [
-  ['FRONTEND_RAW_STORAGE_PRODUCT_FIELD_COUNT', 'types/raw.ts', Array.from({ length: 5 }, () => "const value = { sourceUrl: '' }").join('\n')],
   ['FRONTEND_DIRECT_STORAGE_URI_USE_COUNT', 'features/storage.ts', "const location = 's3://private/object'"],
   ['FRONTEND_SCATTERED_NATIVE_FETCH_COUNT', 'pages/Fetch.tsx', Array.from({ length: 4 }, () => "fetch('/api/value')").join('\n')],
   ['FRONTEND_DUPLICATE_CANONICAL_DTO_AUTHORITY_COUNT', 'features/model.ts', 'interface FrontendArtifactDto { id: string }'],
