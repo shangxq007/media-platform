@@ -21,6 +21,8 @@ def write(root: Path, relative: str, content: str) -> None:
 def baseline(root: Path) -> None:
     write(root, "storage-module/src/main/java/com/example/platform/storage/contract/StorageProvider.java", "interface StorageProvider {}\n")
     write(root, "storage-module/src/main/java/com/example/platform/storage/contract/provider/StorageProvider.java", "interface StorageProvider {}\n")
+    write(root, "storage-module/src/main/java/com/example/platform/storage/api/StorageObjectIssuance.java", "// CANONICAL_STORAGE_OBJECT_ISSUANCE_AUTHORITY\n")
+    write(root, "storage-module/src/main/java/com/example/platform/storage/api/StorageWriteIntentRecovery.java", "// STORAGE_WRITE_INTENT_RECOVERY_AUTHORITY\n")
     write(root, "storage-module/src/main/java/com/example/platform/storage/domain/identity/Allocator.java", "// CANONICAL_STORAGE_OBJECT_ID_ALLOCATOR_AUTHORITY\n")
     write(root, "platform-app/src/main/resources/db/migration/V1__initial_schema.sql", "create table storage_logical_object (object_id varchar(64));\ncreate table storage_object_placement (replica_id varchar(64));\n")
     ledger = "id\tclassification\tstatus\nX1\tCURRENT_CANONICAL_FACT\tCLASSIFIED\n"
@@ -48,6 +50,15 @@ def main() -> int:
             return 1
 
         mutations = {
+            "CANONICAL_STORAGE_OBJECT_ISSUANCE_AUTHORITY_COUNT": (
+                "storage-module/src/main/java/com/example/platform/storage/app/identity/SecondIssuance.java",
+                "// CANONICAL_STORAGE_OBJECT_ISSUANCE_AUTHORITY\n"),
+            "CANONICAL_STORAGE_OBJECT_ID_ALLOCATOR_AUTHORITY_COUNT": (
+                "storage-module/src/main/java/com/example/platform/storage/domain/identity/Second.java",
+                "// CANONICAL_STORAGE_OBJECT_ID_ALLOCATOR_AUTHORITY\n"),
+            "STORAGE_WRITE_INTENT_RECOVERY_AUTHORITY_COUNT": (
+                "storage-module/src/main/java/com/example/platform/storage/app/identity/SecondRecovery.java",
+                "// STORAGE_WRITE_INTENT_RECOVERY_AUTHORITY\n"),
             "RAW_STORAGE_PROVIDER_LOGICAL_ID_AUTHORITY_COUNT": (
                 "storage-module/src/main/java/com/example/platform/storage/contract/StorageProvider.java",
                 "interface StorageProvider { StorageObjectId allocateLogicalStorageObjectId(); }\n"),
@@ -60,9 +71,9 @@ def main() -> int:
             "PHYSICAL_REFERENCE_TO_LOGICAL_ID_CONSTRUCTION_NEW_CODE_COUNT": (
                 "storage-module/src/main/java/com/example/platform/storage/app/identity/Bad.java",
                 "class Bad { Object x(Object placement) { return new StorageObjectId(placement.opaqueLocator()); } }\n"),
-            "CANONICAL_STORAGE_OBJECT_ID_ALLOCATOR_AUTHORITY_COUNT": (
-                "storage-module/src/main/java/com/example/platform/storage/domain/identity/Second.java",
-                "// CANONICAL_STORAGE_OBJECT_ID_ALLOCATOR_AUTHORITY\n"),
+            "PLACEMENT_NAMESPACE_OWNER_AUTHORITY_COUNT": (
+                "storage-module/src/main/java/com/example/platform/storage/app/identity/BadOwner.java",
+                "class BadOwner { Object x(Object placement) { return new StorageOwnershipScope(placement.namespace().tenantId(), null); } }\n"),
             "GENERIC_JSON_PLACEMENT_AUTHORITY_COUNT": (
                 "platform-app/src/main/resources/db/migration/V1__initial_schema.sql",
                 "create table storage_object_placement (replica_id varchar(64), placement_json jsonb);\n"),
@@ -81,6 +92,15 @@ def main() -> int:
             "M2_PLUS_RUNTIME_ACTIVATION_COUNT": (
                 "storage-module/src/main/java/com/example/platform/storage/app/migration/Adopt.java",
                 "class Adopt { void adoptLegacyPlacement() {} }\n"),
+            "CALLER_CANONICAL_BOOLEAN_AUTHORITY_COUNT": (
+                "storage-module/src/main/java/com/example/platform/storage/app/migration/CallerTrust.java",
+                "record CallerTrust(boolean canonicalRequested) {}\n"),
+            "ENDPOINT_STABLE_IDENTITY_AUTHORITY_COUNT": (
+                "storage-module/src/main/java/com/example/platform/storage/app/migration/EndpointIdentity.java",
+                "class EndpointIdentity { Object x(Object endpoint) { return fingerprint(endpoint); } }\n"),
+            "OBSERVATION_TIME_STABLE_IDENTITY_AUTHORITY_COUNT": (
+                "storage-module/src/main/java/com/example/platform/storage/app/migration/TimeIdentity.java",
+                "class TimeIdentity { Object x(Object observedAt) { return fingerprint(observedAt); } }\n"),
             "UNCLASSIFIED": (
                 "docs/architecture/governance/storage-object-identity-placement-migration-v1/writer-inventory.tsv",
                 "id\tclassification\tstatus\nX1\t\tUNCLASSIFIED\n"),

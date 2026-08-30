@@ -8,8 +8,6 @@ import com.example.platform.typedschema.contract.InstantConverter;
 import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
-import com.example.platform.typedschema.jooq.generated.tables.StorageIdentityClassification.StorageIdentityClassificationPath;
-import com.example.platform.typedschema.jooq.generated.tables.StorageIdentityMigrationJournal.StorageIdentityMigrationJournalPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.StorageDatabaseBindingRecord;
 
 import java.time.Instant;
@@ -73,6 +71,12 @@ public class StorageDatabaseBinding extends TableImpl<StorageDatabaseBindingReco
      */
     public final TableField<StorageDatabaseBindingRecord, String> DATABASE_KIND = createField(DSL.name("database_kind"), SQLDataType.VARCHAR(32).nullable(false), this, "");
 
+    /** The column <code>public.storage_database_binding.database_oid</code>. */
+    public final TableField<StorageDatabaseBindingRecord, Long> DATABASE_OID = createField(DSL.name("database_oid"), SQLDataType.BIGINT.nullable(false), this, "");
+
+    /** The column <code>public.storage_database_binding.database_name</code>. */
+    public final TableField<StorageDatabaseBindingRecord, String> DATABASE_NAME = createField(DSL.name("database_name"), SQLDataType.VARCHAR(128).nullable(false), this, "");
+
     /**
      * The column
      * <code>public.storage_database_binding.database_identity</code>.
@@ -119,9 +123,12 @@ public class StorageDatabaseBinding extends TableImpl<StorageDatabaseBindingReco
     public final TableField<StorageDatabaseBindingRecord, Boolean> IS_CANONICAL = createField(DSL.name("is_canonical"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.field(DSL.raw("false"), SQLDataType.BOOLEAN)), this, "");
 
     /**
-     * The column <code>public.storage_database_binding.observed_at</code>.
+     * The column <code>public.storage_database_binding.first_seen_at</code>.
      */
-    public final TableField<StorageDatabaseBindingRecord, Instant> OBSERVED_AT = createField(DSL.name("observed_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false), this, "", new InstantConverter());
+    public final TableField<StorageDatabaseBindingRecord, Instant> FIRST_SEEN_AT = createField(DSL.name("first_seen_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false), this, "", new InstantConverter());
+
+    /** The column <code>public.storage_database_binding.last_observed_at</code>. */
+    public final TableField<StorageDatabaseBindingRecord, Instant> LAST_OBSERVED_AT = createField(DSL.name("last_observed_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false), this, "", new InstantConverter());
 
     private StorageDatabaseBinding(Name alias, Table<StorageDatabaseBindingRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
@@ -207,38 +214,14 @@ public class StorageDatabaseBinding extends TableImpl<StorageDatabaseBindingReco
         return Arrays.asList(Keys.UQ_STORAGE_DATABASE_BINDING_IDENTITY);
     }
 
-    private transient StorageIdentityClassificationPath _storageIdentityClassification;
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>public.storage_identity_classification</code> table
-     */
-    public StorageIdentityClassificationPath storageIdentityClassification() {
-        if (_storageIdentityClassification == null)
-            _storageIdentityClassification = new StorageIdentityClassificationPath(this, null, Keys.STORAGE_IDENTITY_CLASSIFICATION__FK_STORAGE_IDENTITY_CLASSIFICATION_BINDING.getInverseKey());
-
-        return _storageIdentityClassification;
-    }
-
-    private transient StorageIdentityMigrationJournalPath _storageIdentityMigrationJournal;
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>public.storage_identity_migration_journal</code> table
-     */
-    public StorageIdentityMigrationJournalPath storageIdentityMigrationJournal() {
-        if (_storageIdentityMigrationJournal == null)
-            _storageIdentityMigrationJournal = new StorageIdentityMigrationJournalPath(this, null, Keys.STORAGE_IDENTITY_MIGRATION_JOURNAL__FK_STORAGE_IDENTITY_MIGRATION_JOURNAL_BINDING.getInverseKey());
-
-        return _storageIdentityMigrationJournal;
-    }
-
     @Override
     public List<Check<StorageDatabaseBindingRecord>> getChecks() {
         return Arrays.asList(
             Internal.createCheck(this, DSL.name("ck_storage_database_binding_environment"), "(((environment_identity)::text = ANY ((ARRAY['UNCONFIGURED'::character varying, 'TESTCONTAINERS'::character varying, 'DEV'::character varying, 'STAGING'::character varying, 'PROD'::character varying])::text[])))", true),
-            Internal.createCheck(this, DSL.name("ck_storage_database_binding_explicit_canonical"), "(((is_canonical = false) OR (((database_kind)::text = 'EXPLICIT'::text) AND (length(TRIM(BOTH FROM database_identity)) > 0) AND (length(TRIM(BOTH FROM deployment_identity)) > 0) AND (length(TRIM(BOTH FROM environment_identity)) > 0) AND (length(TRIM(BOTH FROM schema_identity)) > 0) AND (length(TRIM(BOTH FROM schema_version)) > 0) AND (length(TRIM(BOTH FROM query_evidence_version)) > 0) AND (binding_evidence_ref IS NOT NULL) AND (length(TRIM(BOTH FROM binding_evidence_ref)) > 0))))", true),
-            Internal.createCheck(this, DSL.name("ck_storage_database_binding_kind"), "(((database_kind)::text = ANY ((ARRAY['UNCONFIGURED'::character varying, 'TESTCONTAINERS'::character varying, 'EXPLICIT'::character varying])::text[])))", true),
+            Internal.createCheck(this, DSL.name("ck_storage_database_binding_explicit_canonical"), "(((is_canonical = false) OR (((database_kind)::text = 'EXPLICIT'::text) AND (database_oid > 0) AND (length(TRIM(BOTH FROM database_name)) > 0) AND (length(TRIM(BOTH FROM database_identity)) > 0) AND (length(TRIM(BOTH FROM deployment_identity)) > 0) AND (length(TRIM(BOTH FROM environment_identity)) > 0) AND (length(TRIM(BOTH FROM schema_identity)) > 0) AND (length(TRIM(BOTH FROM schema_version)) > 0) AND (length(TRIM(BOTH FROM query_evidence_version)) > 0) AND (binding_evidence_ref IS NOT NULL) AND (length(TRIM(BOTH FROM binding_evidence_ref)) > 0))))", true),
+            Internal.createCheck(this, DSL.name("ck_storage_database_binding_kind"), "(((database_kind)::text = ANY ((ARRAY['TESTCONTAINERS'::character varying, 'EXPLICIT'::character varying])::text[])))", true),
+            Internal.createCheck(this, DSL.name("ck_storage_database_binding_observation_order"), "((last_observed_at >= first_seen_at))", true),
+            Internal.createCheck(this, DSL.name("ck_storage_database_binding_oid"), "((database_oid > 0))", true),
             Internal.createCheck(this, DSL.name("ck_storage_database_binding_testcontainers_noncanonical"), "((((database_kind)::text <> 'TESTCONTAINERS'::text) OR (is_canonical = false)))", true)
         );
     }

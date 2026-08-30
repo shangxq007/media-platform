@@ -5,10 +5,12 @@ import java.time.temporal.ChronoUnit;
 import java.util.Locale;
 import java.util.Objects;
 
-/** Explicit identity of the database and deployment observed by M0/M1 evidence. */
+/** Trusted deployment binding to stable observed PostgreSQL and schema facts. */
 public record StorageDatabaseBinding(
         String bindingId,
         DatabaseKind databaseKind,
+        long databaseOid,
+        String databaseName,
         String databaseIdentity,
         String deploymentIdentity,
         DeploymentEnvironment environmentIdentity,
@@ -17,13 +19,18 @@ public record StorageDatabaseBinding(
         String queryEvidenceVersion,
         String bindingEvidenceRef,
         boolean canonical,
-        Instant observedAt) {
+        Instant firstSeenAt,
+        Instant lastObservedAt) {
 
     public static final String TESTCONTAINERS_DATABASE_IS_CANONICAL_MIGRATION_DATABASE = "NO";
 
     public StorageDatabaseBinding {
         requireText(bindingId, "bindingId");
         Objects.requireNonNull(databaseKind, "databaseKind");
+        if (databaseOid <= 0) {
+            throw new IllegalArgumentException("databaseOid must be positive");
+        }
+        requireText(databaseName, "databaseName");
         requireText(databaseIdentity, "databaseIdentity");
         requireText(deploymentIdentity, "deploymentIdentity");
         Objects.requireNonNull(environmentIdentity, "environmentIdentity");
@@ -31,8 +38,13 @@ public record StorageDatabaseBinding(
         requireText(schemaVersion, "schemaVersion");
         requireText(queryEvidenceVersion, "queryEvidenceVersion");
         rejectConnectionMaterial(bindingEvidenceRef);
-        Objects.requireNonNull(observedAt, "observedAt");
-        observedAt = observedAt.truncatedTo(ChronoUnit.MICROS);
+        Objects.requireNonNull(firstSeenAt, "firstSeenAt");
+        Objects.requireNonNull(lastObservedAt, "lastObservedAt");
+        firstSeenAt = firstSeenAt.truncatedTo(ChronoUnit.MICROS);
+        lastObservedAt = lastObservedAt.truncatedTo(ChronoUnit.MICROS);
+        if (lastObservedAt.isBefore(firstSeenAt)) {
+            throw new IllegalArgumentException("lastObservedAt must not precede firstSeenAt");
+        }
         if (databaseKind == DatabaseKind.TESTCONTAINERS && canonical) {
             throw new IllegalArgumentException("Testcontainers database binding cannot be canonical");
         }
@@ -40,71 +52,11 @@ public record StorageDatabaseBinding(
             if (databaseKind != DatabaseKind.EXPLICIT
                     || environmentIdentity == DeploymentEnvironment.UNCONFIGURED
                     || environmentIdentity == DeploymentEnvironment.TESTCONTAINERS) {
-                throw new IllegalArgumentException("canonical binding must name an explicit deployment environment");
+                throw new IllegalArgumentException(
+                        "canonical binding must name an explicit trusted deployment");
             }
             requireText(bindingEvidenceRef, "bindingEvidenceRef");
         }
-    }
-
-    public static StorageDatabaseBinding testcontainers(
-            String bindingId,
-            String databaseIdentity,
-            String deploymentIdentity,
-            String schemaIdentity,
-            String schemaVersion,
-            String queryEvidenceVersion,
-            Instant observedAt) {
-        return new StorageDatabaseBinding(
-                bindingId,
-                DatabaseKind.TESTCONTAINERS,
-                databaseIdentity,
-                deploymentIdentity,
-                DeploymentEnvironment.TESTCONTAINERS,
-                schemaIdentity,
-                schemaVersion,
-                queryEvidenceVersion,
-                null,
-                false,
-                observedAt);
-    }
-
-    public static StorageDatabaseBinding unconfigured(String bindingId, Instant observedAt) {
-        return new StorageDatabaseBinding(
-                bindingId,
-                DatabaseKind.UNCONFIGURED,
-                "UNCONFIGURED",
-                "UNCONFIGURED",
-                DeploymentEnvironment.UNCONFIGURED,
-                "UNCONFIGURED",
-                "UNCONFIGURED",
-                "UNCONFIGURED",
-                null,
-                false,
-                observedAt);
-    }
-
-    public static StorageDatabaseBinding explicitCanonical(
-            String bindingId,
-            String databaseIdentity,
-            String deploymentIdentity,
-            DeploymentEnvironment environmentIdentity,
-            String schemaIdentity,
-            String schemaVersion,
-            String queryEvidenceVersion,
-            String bindingEvidenceRef,
-            Instant observedAt) {
-        return new StorageDatabaseBinding(
-                bindingId,
-                DatabaseKind.EXPLICIT,
-                databaseIdentity,
-                deploymentIdentity,
-                environmentIdentity,
-                schemaIdentity,
-                schemaVersion,
-                queryEvidenceVersion,
-                bindingEvidenceRef,
-                true,
-                observedAt);
     }
 
     public RowCountObservation observeCounts(long canonicalLogical, long legacyPhysical, long ambiguous) {
@@ -114,19 +66,29 @@ public record StorageDatabaseBinding(
         return RowCountObservation.known(canonicalLogical, legacyPhysical, ambiguous);
     }
 
-    public enum DatabaseKind {
-        UNCONFIGURED,
-        TESTCONTAINERS,
-        EXPLICIT
+    public boolean hasSameStableFacts(StorageDatabaseBinding other) {
+        return other != null
+                && bindingId.equals(other.bindingId)
+                && databaseKind == other.databaseKind
+                && databaseOid == other.databaseOid
+                && databaseName.equals(other.databaseName)
+                && databaseIdentity.equals(other.databaseIdentity)
+                && deploymentIdentity.equals(other.deploymentIdentity)
+                && environmentIdentity == other.environmentIdentity
+                && schemaIdentity.equals(other.schemaIdentity)
+                && schemaVersion.equals(other.schemaVersion)
+                && queryEvidenceVersion.equals(other.queryEvidenceVersion)
+                && Objects.equals(bindingEvidenceRef, other.bindingEvidenceRef)
+                && canonical == other.canonical;
     }
 
+    public enum DatabaseKind { TESTCONTAINERS, EXPLICIT }
+
     public enum DeploymentEnvironment {
-        UNCONFIGURED,
-        TESTCONTAINERS,
-        DEV,
-        STAGING,
-        PROD
+        UNCONFIGURED, TESTCONTAINERS, DEV, STAGING, PROD
     }
+
+    public enum CountStatus { UNKNOWN, KNOWN }
 
     public record RowCountObservation(
             CountStatus status,
@@ -146,8 +108,10 @@ public record StorageDatabaseBinding(
                 requireNonNegative(canonicalLogical, "canonicalLogical");
                 requireNonNegative(legacyPhysicalEncoded, "legacyPhysicalEncoded");
                 requireNonNegative(ambiguous, "ambiguous");
-                if (!Long.valueOf(canonicalLogical + legacyPhysicalEncoded + ambiguous).equals(total)) {
-                    throw new IllegalArgumentException("row-count total must equal the three outcomes");
+                if (!Long.valueOf(canonicalLogical + legacyPhysicalEncoded + ambiguous)
+                        .equals(total)) {
+                    throw new IllegalArgumentException(
+                            "row-count total must equal the three outcomes");
                 }
             }
         }
@@ -158,7 +122,8 @@ public record StorageDatabaseBinding(
 
         public static RowCountObservation known(long canonical, long legacy, long ambiguous) {
             return new RowCountObservation(
-                    CountStatus.KNOWN, canonical, legacy, ambiguous, canonical + legacy + ambiguous);
+                    CountStatus.KNOWN, canonical, legacy, ambiguous,
+                    canonical + legacy + ambiguous);
         }
 
         private static void requireNonNegative(Long value, String field) {
@@ -168,18 +133,13 @@ public record StorageDatabaseBinding(
         }
     }
 
-    public enum CountStatus {
-        UNKNOWN,
-        KNOWN
-    }
-
     private static void requireText(String value, String field) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(field + " must not be blank");
         }
     }
 
-    private static void rejectConnectionMaterial(String evidenceRef) {
+    public static void rejectConnectionMaterial(String evidenceRef) {
         if (evidenceRef == null) {
             return;
         }
@@ -194,7 +154,7 @@ public record StorageDatabaseBinding(
                 || normalized.contains("username=")
                 || normalized.matches(".*://[^/\\s]*@.*")) {
             throw new IllegalArgumentException(
-                    "bindingEvidenceRef must not contain a JDBC URL or credentials");
+                    "binding evidence must not contain a database URL or credentials");
         }
     }
 }

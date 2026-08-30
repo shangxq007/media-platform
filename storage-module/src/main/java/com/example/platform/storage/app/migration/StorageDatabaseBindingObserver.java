@@ -1,9 +1,9 @@
 package com.example.platform.storage.app.migration;
 
-import com.example.platform.storage.domain.migration.StorageDatabaseBinding;
+import com.example.platform.storage.domain.migration.StorageDatabaseObservation;
 
-/** Observes the database connection in use and verifies it against declared expectations. */
+/** Reports connected database facts and has no authority to declare them canonical. */
 public interface StorageDatabaseBindingObserver {
 
-    StorageDatabaseBinding observe(StorageDatabaseBindingExpectation expectation);
+    StorageDatabaseObservation observe();
 }

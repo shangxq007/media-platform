@@ -8,7 +8,6 @@ import com.example.platform.typedschema.contract.InstantConverter;
 import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
-import com.example.platform.typedschema.jooq.generated.tables.StorageIdentityMigrationJournal.StorageIdentityMigrationJournalPath;
 import com.example.platform.typedschema.jooq.generated.tables.StorageLogicalObject.StorageLogicalObjectPath;
 import com.example.platform.typedschema.jooq.generated.tables.StoragePlacementReceipt.StoragePlacementReceiptPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.StorageObjectPlacementRecord;
@@ -255,19 +254,6 @@ public class StorageObjectPlacement extends TableImpl<StorageObjectPlacementReco
             _storageLogicalObject = new StorageLogicalObjectPath(this, Keys.STORAGE_OBJECT_PLACEMENT__FK_STORAGE_OBJECT_PLACEMENT_OBJECT, null);
 
         return _storageLogicalObject;
-    }
-
-    private transient StorageIdentityMigrationJournalPath _storageIdentityMigrationJournal;
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>public.storage_identity_migration_journal</code> table
-     */
-    public StorageIdentityMigrationJournalPath storageIdentityMigrationJournal() {
-        if (_storageIdentityMigrationJournal == null)
-            _storageIdentityMigrationJournal = new StorageIdentityMigrationJournalPath(this, null, Keys.STORAGE_IDENTITY_MIGRATION_JOURNAL__FK_STORAGE_IDENTITY_MIGRATION_JOURNAL_REPLICA.getInverseKey());
-
-        return _storageIdentityMigrationJournal;
     }
 
     private transient StoragePlacementReceiptPath _storagePlacementReceipt;

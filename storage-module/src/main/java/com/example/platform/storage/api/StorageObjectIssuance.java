@@ -11,21 +11,25 @@ import java.util.Objects;
 /**
  * Storage-owned application boundary for canonical logical object issuance.
  *
- * <p>A backend completion is typed placement mechanics only. This boundary allocates the
- * logical {@link StorageObjectId} and atomically records the object, its initial placement,
- * and an immutable receipt. It is intentionally not wired into current production writers.
+ * <p>A backend completion is typed placement mechanics only. This boundary delegates logical
+ * identity allocation to the durable write-intent recovery authority, then transactionally
+ * records the initial placement and immutable receipt. It never implies provider/database
+ * atomicity and is intentionally not wired into current production writers.
  */
 public interface StorageObjectIssuance {
 
+    // CANONICAL_STORAGE_OBJECT_ISSUANCE_AUTHORITY
     IssuanceResult issue(IssuanceCommand command);
 
     record IssuanceCommand(
-            String idempotencyKey,
+            StorageOwnershipScope owner,
+            IssuanceIdempotencyKey idempotencyKey,
             String semanticFingerprint,
             BackendPlacementResult backendPlacement) {
 
         public IssuanceCommand {
-            requireText(idempotencyKey, "idempotencyKey");
+            Objects.requireNonNull(owner, "owner");
+            Objects.requireNonNull(idempotencyKey, "idempotencyKey");
             requireSha256(semanticFingerprint, "semanticFingerprint");
             Objects.requireNonNull(backendPlacement, "backendPlacement");
         }
@@ -54,11 +58,13 @@ public interface StorageObjectIssuance {
 
     record PlacementReceipt(
             String receiptId,
-            String idempotencyKey,
+            IssuanceIdempotencyKey idempotencyKey,
             String semanticFingerprint,
+            ReceiptPurpose purpose,
             StorageObjectId objectId,
             StorageReplicaId replicaId,
             StorageObjectLocation location,
+            ReplicaState state,
             ContentDigest committedDigest,
             long committedLength,
             String providerCorrelationId,
@@ -66,11 +72,13 @@ public interface StorageObjectIssuance {
 
         public PlacementReceipt {
             requireText(receiptId, "receiptId");
-            requireText(idempotencyKey, "idempotencyKey");
+            Objects.requireNonNull(idempotencyKey, "idempotencyKey");
             requireSha256(semanticFingerprint, "semanticFingerprint");
+            Objects.requireNonNull(purpose, "purpose");
             Objects.requireNonNull(objectId, "objectId");
             Objects.requireNonNull(replicaId, "replicaId");
             Objects.requireNonNull(location, "location");
+            Objects.requireNonNull(state, "state");
             Objects.requireNonNull(committedDigest, "committedDigest");
             if (committedLength < 0) {
                 throw new IllegalArgumentException("committedLength must be non-negative");
@@ -81,23 +89,31 @@ public interface StorageObjectIssuance {
     }
 
     record IssuanceResult(
+            StorageOwnershipScope owner,
             StorageObjectId objectId,
             BackendPlacementResult placement,
             PlacementReceipt receipt) {
 
         public IssuanceResult {
+            Objects.requireNonNull(owner, "owner");
             Objects.requireNonNull(objectId, "objectId");
             Objects.requireNonNull(placement, "placement");
             Objects.requireNonNull(receipt, "receipt");
             if (!objectId.equals(receipt.objectId())
                     || !placement.replicaId().equals(receipt.replicaId())
                     || !placement.location().equals(receipt.location())
+                    || placement.state() != receipt.state()
                     || !placement.committedDigest().equals(receipt.committedDigest())
                     || placement.committedLength() != receipt.committedLength()
                     || !placement.providerCorrelationId().equals(receipt.providerCorrelationId())) {
                 throw new IllegalArgumentException("receipt must describe the issued placement exactly");
             }
         }
+    }
+
+    enum ReceiptPurpose {
+        ORIGINAL_ISSUANCE,
+        ADDITIONAL_PLACEMENT
     }
 
     private static void requireText(String value, String field) {

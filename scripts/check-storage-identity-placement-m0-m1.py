@@ -11,17 +11,23 @@ from pathlib import Path
 
 
 EXPECTED = {
+    "CANONICAL_STORAGE_OBJECT_ISSUANCE_AUTHORITY_COUNT": 1,
+    "CANONICAL_STORAGE_OBJECT_ID_ALLOCATOR_AUTHORITY_COUNT": 1,
+    "STORAGE_WRITE_INTENT_RECOVERY_AUTHORITY_COUNT": 1,
     "RAW_STORAGE_PROVIDER_LOGICAL_ID_AUTHORITY_COUNT": 0,
     "TYPED_PROVIDER_LOGICAL_ID_AUTHORITY_COUNT": 0,
     "PROVIDER_BACKEND_LOGICAL_ID_AUTHORITY_COUNT": 0,
     "PHYSICAL_REFERENCE_TO_LOGICAL_ID_CONSTRUCTION_NEW_CODE_COUNT": 0,
-    "CANONICAL_STORAGE_OBJECT_ID_ALLOCATOR_AUTHORITY_COUNT": 1,
+    "PLACEMENT_NAMESPACE_OWNER_AUTHORITY_COUNT": 0,
     "GENERIC_JSON_PLACEMENT_AUTHORITY_COUNT": 0,
     "ARTIFACT_PHYSICAL_PLACEMENT_AUTHORITY_COUNT": 0,
     "NON_STORAGE_STORAGE_INFRASTRUCTURE_REPOSITORY_IMPORT_COUNT": 0,
     "DUAL_STORAGE_IDENTITY_AUTHORITY_COUNT": 0,
     "PERMANENT_STORAGE_FALLBACK_COUNT": 0,
     "M2_PLUS_RUNTIME_ACTIVATION_COUNT": 0,
+    "CALLER_CANONICAL_BOOLEAN_AUTHORITY_COUNT": 0,
+    "ENDPOINT_STABLE_IDENTITY_AUTHORITY_COUNT": 0,
+    "OBSERVATION_TIME_STABLE_IDENTITY_AUTHORITY_COUNT": 0,
     "UNCLASSIFIED": 0,
 }
 
@@ -44,7 +50,7 @@ def occurrences(pattern: str, text: str, flags: int = 0) -> int:
 def target_storage_ddl(schema: str) -> str:
     blocks = re.findall(
         r"create table (storage_(?:database_binding|logical_object|object_placement|"
-        r"placement_receipt|identity_classification(?:_evidence)?|identity_migration_journal))\s*"
+        r"placement_receipt|write_intent))\s*"
         r"\((.*?)\)\s*;",
         schema,
         re.IGNORECASE | re.DOTALL,
@@ -97,6 +103,7 @@ def compute(root: Path) -> dict[str, int]:
 
     new_authority_paths = [
         "storage-module/src/main/java/com/example/platform/storage/api/StorageObjectIssuance.java",
+        "storage-module/src/main/java/com/example/platform/storage/api/StorageWriteIntentRecovery.java",
         "storage-module/src/main/java/com/example/platform/storage/app/identity",
         "storage-module/src/main/java/com/example/platform/storage/domain/identity",
         "storage-module/src/main/java/com/example/platform/storage/infrastructure/identity",
@@ -148,8 +155,31 @@ def compute(root: Path) -> dict[str, int]:
         r"update\s+artifact_replica\b",
         re.IGNORECASE,
     )
+    placement_owner_pattern = re.compile(
+        r"(?:new\s+StorageOwnershipScope|StorageOwnershipScope\.tenant)\s*\("
+        r"[^;\n]*(?:namespace|location|placement|provider|bucket|objectKey|uri)",
+        re.IGNORECASE,
+    )
+    endpoint_identity_pattern = re.compile(
+        r"(?:sha256|fingerprint|databaseIdentity)[^;\n]*(?:endpoint|serverAddress|"
+        r"serverPort|inet_server_addr|inet_server_port)|"
+        r"(?:endpoint|serverAddress|serverPort|inet_server_addr|inet_server_port)"
+        r"[^;\n]*(?:sha256|fingerprint|databaseIdentity)",
+        re.IGNORECASE,
+    )
+    observation_time_identity_pattern = re.compile(
+        r"(?:sha256|fingerprint|databaseIdentity)[^;\n]*(?:observedAt|observed_at)|"
+        r"(?:observedAt|observed_at)[^;\n]*(?:sha256|fingerprint|databaseIdentity)",
+        re.IGNORECASE,
+    )
 
     return {
+        "CANONICAL_STORAGE_OBJECT_ISSUANCE_AUTHORITY_COUNT": occurrences(
+            r"\bCANONICAL_STORAGE_OBJECT_ISSUANCE_AUTHORITY\b", new_authority_text),
+        "CANONICAL_STORAGE_OBJECT_ID_ALLOCATOR_AUTHORITY_COUNT": occurrences(
+            r"\bCANONICAL_STORAGE_OBJECT_ID_ALLOCATOR_AUTHORITY\b", new_authority_text),
+        "STORAGE_WRITE_INTENT_RECOVERY_AUTHORITY_COUNT": occurrences(
+            r"\bSTORAGE_WRITE_INTENT_RECOVERY_AUTHORITY\b", new_authority_text),
         "RAW_STORAGE_PROVIDER_LOGICAL_ID_AUTHORITY_COUNT": occurrences(
             authority_signature, raw_spi, re.IGNORECASE),
         "TYPED_PROVIDER_LOGICAL_ID_AUTHORITY_COUNT": occurrences(
@@ -158,8 +188,8 @@ def compute(root: Path) -> dict[str, int]:
             authority_signature, backend_text, re.IGNORECASE),
         "PHYSICAL_REFERENCE_TO_LOGICAL_ID_CONSTRUCTION_NEW_CODE_COUNT": len(
             physical_constructor.findall(new_authority_text)),
-        "CANONICAL_STORAGE_OBJECT_ID_ALLOCATOR_AUTHORITY_COUNT": occurrences(
-            r"\bCANONICAL_STORAGE_OBJECT_ID_ALLOCATOR_AUTHORITY\b", new_authority_text),
+        "PLACEMENT_NAMESPACE_OWNER_AUTHORITY_COUNT": len(
+            placement_owner_pattern.findall(new_authority_text)),
         "GENERIC_JSON_PLACEMENT_AUTHORITY_COUNT": occurrences(
             r"\b(?:json|jsonb)\b|\w+_json\b", target_ddl, re.IGNORECASE),
         "ARTIFACT_PHYSICAL_PLACEMENT_AUTHORITY_COUNT": (
@@ -175,6 +205,12 @@ def compute(root: Path) -> dict[str, int]:
         "DUAL_STORAGE_IDENTITY_AUTHORITY_COUNT": len(dual_pattern.findall(new_authority_text)),
         "PERMANENT_STORAGE_FALLBACK_COUNT": len(fallback_pattern.findall(new_authority_text)),
         "M2_PLUS_RUNTIME_ACTIVATION_COUNT": len(m2_pattern.findall(new_authority_text)),
+        "CALLER_CANONICAL_BOOLEAN_AUTHORITY_COUNT": occurrences(
+            r"\bcanonicalRequested\b", new_authority_text),
+        "ENDPOINT_STABLE_IDENTITY_AUTHORITY_COUNT": len(
+            endpoint_identity_pattern.findall(new_authority_text)),
+        "OBSERVATION_TIME_STABLE_IDENTITY_AUTHORITY_COUNT": len(
+            observation_time_identity_pattern.findall(new_authority_text)),
         "UNCLASSIFIED": unclassified_count(root),
     }
 

@@ -167,6 +167,8 @@ create index ix_storage_object_bucket on storage_object(bucket);
 create table storage_database_binding (
     binding_id varchar(64) primary key,
     database_kind varchar(32) not null,
+    database_oid bigint not null,
+    database_name varchar(128) not null,
     database_identity varchar(255) not null,
     deployment_identity varchar(255) not null,
     environment_identity varchar(64) not null,
@@ -175,9 +177,10 @@ create table storage_database_binding (
     query_evidence_version varchar(64) not null,
     binding_evidence_ref varchar(255),
     is_canonical boolean not null default false,
-    observed_at timestamptz not null,
+    first_seen_at timestamptz not null,
+    last_observed_at timestamptz not null,
     constraint ck_storage_database_binding_kind check (
-        database_kind in ('UNCONFIGURED', 'TESTCONTAINERS', 'EXPLICIT')
+        database_kind in ('TESTCONTAINERS', 'EXPLICIT')
     ),
     constraint ck_storage_database_binding_environment check (
         environment_identity in ('UNCONFIGURED', 'TESTCONTAINERS', 'DEV', 'STAGING', 'PROD')
@@ -188,6 +191,8 @@ create table storage_database_binding (
     constraint ck_storage_database_binding_explicit_canonical check (
         is_canonical = false or (
             database_kind = 'EXPLICIT'
+            and database_oid > 0
+            and length(trim(database_name)) > 0
             and length(trim(database_identity)) > 0
             and length(trim(deployment_identity)) > 0
             and length(trim(environment_identity)) > 0
@@ -199,20 +204,31 @@ create table storage_database_binding (
         )
     ),
     constraint uq_storage_database_binding_identity unique (
-        database_identity, deployment_identity, environment_identity,
+        database_oid, database_name, deployment_identity, environment_identity,
         schema_identity, schema_version, query_evidence_version
+    ),
+    constraint ck_storage_database_binding_oid check (database_oid > 0),
+    constraint ck_storage_database_binding_observation_order check (
+        last_observed_at >= first_seen_at
     )
 );
 
 create index ix_storage_database_binding_canonical
-    on storage_database_binding(is_canonical, observed_at);
+    on storage_database_binding(is_canonical, last_observed_at);
 
 create table storage_logical_object (
     object_id varchar(64) primary key,
+    tenant_id varchar(64) not null,
+    project_id varchar(64),
     issuance_idempotency_key varchar(255) not null,
     semantic_fingerprint varchar(64) not null,
     created_at timestamptz not null,
-    constraint uq_storage_logical_object_idempotency unique (issuance_idempotency_key),
+    constraint uq_storage_logical_object_owner_idempotency
+        unique (tenant_id, issuance_idempotency_key),
+    constraint ck_storage_logical_object_owner check (
+        length(trim(tenant_id)) > 0
+        and (project_id is null or length(trim(project_id)) > 0)
+    ),
     constraint ck_storage_logical_object_fingerprint check (
         semantic_fingerprint ~ '^[0-9a-f]{64}$'
     )
@@ -284,6 +300,7 @@ create table storage_placement_receipt (
     receipt_id varchar(64) primary key,
     idempotency_key varchar(255) not null,
     semantic_fingerprint varchar(64) not null,
+    receipt_purpose varchar(32) not null,
     object_id varchar(64) not null,
     replica_id varchar(64) not null,
     provider_id varchar(128) not null,
@@ -294,13 +311,15 @@ create table storage_placement_receipt (
     data_classification varchar(32) not null,
     opaque_locator text not null,
     provider_version_token varchar(255),
+    placement_state varchar(32) not null,
     region varchar(64),
     committed_digest_algorithm varchar(32) not null,
     committed_digest varchar(128) not null,
     committed_length bigint not null,
     provider_correlation_id varchar(255) not null,
     issued_at timestamptz not null,
-    constraint uq_storage_placement_receipt_idempotency unique (idempotency_key),
+    constraint uq_storage_placement_receipt_object_idempotency
+        unique (object_id, idempotency_key),
     constraint fk_storage_placement_receipt_object foreign key (object_id)
         references storage_logical_object(object_id) on delete restrict,
     constraint fk_storage_placement_receipt_placement foreign key (object_id, replica_id)
@@ -312,13 +331,25 @@ create table storage_placement_receipt (
         committed_digest_algorithm = 'SHA_256'
         and committed_digest ~ '^[0-9a-f]{64}$'
     ),
-    constraint ck_storage_placement_receipt_length check (committed_length >= 0)
+    constraint ck_storage_placement_receipt_length check (committed_length >= 0),
+    constraint ck_storage_placement_receipt_purpose check (
+        receipt_purpose in ('ORIGINAL_ISSUANCE', 'ADDITIONAL_PLACEMENT')
+    ),
+    constraint ck_storage_placement_receipt_state check (
+        placement_state in (
+            'PENDING', 'UPLOADING', 'VERIFYING', 'AVAILABLE',
+            'QUARANTINED', 'DELETING', 'DELETED', 'FAILED'
+        )
+    )
 );
 
 create index ix_storage_placement_receipt_object
     on storage_placement_receipt(object_id);
 create index ix_storage_placement_receipt_replica
     on storage_placement_receipt(replica_id);
+create unique index uq_storage_placement_receipt_original_issuance
+    on storage_placement_receipt(object_id)
+    where receipt_purpose = 'ORIGINAL_ISSUANCE';
 
 create or replace function enforce_storage_placement_receipt_match()
 returns trigger
@@ -328,6 +359,7 @@ begin
     if not exists (
         select 1
           from storage_object_placement p
+          join storage_logical_object o on o.object_id = p.object_id
          where p.object_id = new.object_id
            and p.replica_id = new.replica_id
            and p.provider_id = new.provider_id
@@ -338,13 +370,23 @@ begin
            and p.data_classification = new.data_classification
            and p.opaque_locator = new.opaque_locator
            and p.provider_version_token is not distinct from new.provider_version_token
+           and p.placement_state = new.placement_state
            and p.region is not distinct from new.region
            and p.committed_digest_algorithm = new.committed_digest_algorithm
            and p.committed_digest = new.committed_digest
            and p.committed_length = new.committed_length
            and p.provider_correlation_id = new.provider_correlation_id
+           and (
+               new.receipt_purpose <> 'ORIGINAL_ISSUANCE'
+               or (
+                   new.idempotency_key = o.issuance_idempotency_key
+                   and new.semantic_fingerprint = o.semantic_fingerprint
+               )
+           )
     ) then
-        raise exception 'storage placement receipt must exactly match its placement';
+        raise exception using
+            errcode = '23514',
+            message = 'storage placement receipt must exactly match its placement';
     end if;
     return new;
 end;
@@ -369,125 +411,91 @@ create trigger storage_placement_receipt_immutable
 before update or delete on storage_placement_receipt
 for each row execute function reject_storage_placement_receipt_mutation();
 
-create table storage_identity_classification (
-    classification_id varchar(64) primary key,
-    database_binding_id varchar(64) not null,
-    source_table varchar(128) not null,
-    source_primary_identity varchar(255) not null,
-    original_persisted_value text not null,
-    classifier_version varchar(64) not null,
-    evidence_version varchar(64) not null,
-    evidence_fingerprint varchar(64) not null,
-    outcome varchar(32) not null,
-    observed_at timestamptz not null,
-    constraint fk_storage_identity_classification_binding foreign key (database_binding_id)
-        references storage_database_binding(binding_id) on delete restrict,
-    constraint uq_storage_identity_classification_observation unique (
-        database_binding_id, source_table, source_primary_identity,
-        original_persisted_value, classifier_version, evidence_version
-    ),
-    constraint ck_storage_identity_classification_outcome check (
-        outcome in ('CANONICAL_LOGICAL', 'LEGACY_PHYSICAL_ENCODED', 'AMBIGUOUS')
-    ),
-    constraint ck_storage_identity_classification_fingerprint check (
-        evidence_fingerprint ~ '^[0-9a-f]{64}$'
-    )
-);
-
-create index ix_storage_identity_classification_source
-    on storage_identity_classification(source_table, source_primary_identity);
-create index ix_storage_identity_classification_outcome
-    on storage_identity_classification(database_binding_id, outcome);
-
-create table storage_identity_classification_evidence (
-    classification_id varchar(64) not null,
-    evidence_ordinal int not null,
-    evidence_type varchar(64) not null,
-    evidence_ref varchar(255) not null,
-    constraint pk_storage_identity_classification_evidence
-        primary key (classification_id, evidence_ordinal),
-    constraint fk_storage_identity_classification_evidence_classification
-        foreign key (classification_id) references storage_identity_classification(classification_id)
-        on delete restrict,
-    constraint uq_storage_identity_classification_evidence_ref
-        unique (classification_id, evidence_type, evidence_ref),
-    constraint ck_storage_identity_classification_evidence_ordinal
-        check (evidence_ordinal >= 0),
-    constraint ck_storage_identity_classification_evidence_nonblank check (
-        length(trim(evidence_type)) > 0 and length(trim(evidence_ref)) > 0
-    )
-);
-
-create table storage_identity_migration_journal (
-    migration_key varchar(64) primary key,
+create table storage_write_intent (
+    write_intent_id varchar(64) primary key,
+    object_id varchar(64) not null,
+    tenant_id varchar(64) not null,
+    project_id varchar(64),
+    issuance_idempotency_key varchar(255) not null,
     semantic_fingerprint varchar(64) not null,
-    database_binding_id varchar(64) not null,
-    source_table varchar(128) not null,
-    source_primary_identity varchar(255) not null,
-    expected_original_value text not null,
-    classifier_version varchar(64) not null,
-    evidence_version varchar(64) not null,
-    journal_state varchar(32) not null,
-    classification_outcome varchar(32),
-    classification_id varchar(64),
-    canonical_object_id varchar(64),
-    canonical_replica_id varchar(64),
-    placement_receipt_id varchar(64),
-    reconciliation_status varchar(32) not null default 'NOT_STARTED',
-    source_reference_switch_status varchar(32) not null default 'NOT_STARTED',
+    provider_request_id varchar(255),
+    provider_correlation_id varchar(255),
+    provider_completion_fingerprint varchar(64),
+    intent_state varchar(32) not null,
     last_error_code varchar(128),
-    version bigint not null default 0,
+    reconciliation_detail varchar(512),
     created_at timestamptz not null,
     updated_at timestamptz not null,
-    terminal_at timestamptz,
-    constraint fk_storage_identity_migration_journal_binding foreign key (database_binding_id)
-        references storage_database_binding(binding_id) on delete restrict,
-    constraint fk_storage_identity_migration_journal_classification foreign key (classification_id)
-        references storage_identity_classification(classification_id) on delete restrict,
-    constraint fk_storage_identity_migration_journal_object foreign key (canonical_object_id)
+    completed_at timestamptz,
+    constraint fk_storage_write_intent_object foreign key (object_id)
         references storage_logical_object(object_id) on delete restrict,
-    constraint fk_storage_identity_migration_journal_replica foreign key (canonical_replica_id)
-        references storage_object_placement(replica_id) on delete restrict,
-    constraint fk_storage_identity_migration_journal_receipt foreign key (placement_receipt_id)
-        references storage_placement_receipt(receipt_id) on delete restrict,
-    constraint uq_storage_identity_migration_journal_source unique (
-        database_binding_id, source_table, source_primary_identity,
-        expected_original_value, classifier_version, evidence_version
+    constraint uq_storage_write_intent_owner_idempotency
+        unique (tenant_id, issuance_idempotency_key),
+    constraint uq_storage_write_intent_object unique (object_id),
+    constraint ck_storage_write_intent_owner check (
+        length(trim(tenant_id)) > 0
+        and (project_id is null or length(trim(project_id)) > 0)
     ),
-    constraint ck_storage_identity_migration_journal_fingerprints check (
-        migration_key ~ '^[0-9a-f]{64}$'
-        and semantic_fingerprint ~ '^[0-9a-f]{64}$'
-    ),
-    constraint ck_storage_identity_migration_journal_state check (
-        journal_state in (
-            'PENDING_CLASSIFICATION', 'CLASSIFIED_CANONICAL', 'CLASSIFIED_LEGACY',
-            'QUARANTINED_AMBIGUOUS', 'ADOPTION_PENDING', 'ADOPTED',
-            'RECEIPT_RECORDED', 'RECONCILED', 'CAS_PENDING', 'CAS_APPLIED',
-            'TERMINAL', 'FAILED_REVIEW_REQUIRED'
+    constraint ck_storage_write_intent_fingerprint check (
+        semantic_fingerprint ~ '^[0-9a-f]{64}$'
+        and (
+            provider_completion_fingerprint is null
+            or provider_completion_fingerprint ~ '^[0-9a-f]{64}$'
         )
     ),
-    constraint ck_storage_identity_migration_journal_outcome check (
-        classification_outcome is null or classification_outcome in (
-            'CANONICAL_LOGICAL', 'LEGACY_PHYSICAL_ENCODED', 'AMBIGUOUS'
+    constraint ck_storage_write_intent_state check (
+        intent_state in (
+            'PENDING_PROVIDER', 'PROVIDER_COMPLETED', 'CANONICAL_COMMITTED',
+            'RECONCILIATION_REQUIRED', 'FAILED_REVIEW_REQUIRED'
         )
     ),
-    constraint ck_storage_identity_migration_journal_reconciliation check (
-        reconciliation_status in ('NOT_STARTED', 'PENDING', 'VERIFIED', 'MISMATCH', 'FAILED')
+    constraint ck_storage_write_intent_completion check (
+        (intent_state = 'CANONICAL_COMMITTED' and completed_at is not null)
+        or (intent_state <> 'CANONICAL_COMMITTED' and completed_at is null)
     ),
-    constraint ck_storage_identity_migration_journal_source_switch check (
-        source_reference_switch_status in ('NOT_STARTED', 'PENDING', 'APPLIED', 'CAS_MISS', 'FAILED')
-    ),
-    constraint ck_storage_identity_migration_journal_version check (version >= 0),
-    constraint ck_storage_identity_migration_journal_terminal check (
-        (journal_state = 'TERMINAL' and terminal_at is not null)
-        or (journal_state <> 'TERMINAL' and terminal_at is null)
+    constraint ck_storage_write_intent_provider_completion check (
+        (
+            intent_state = 'PENDING_PROVIDER'
+            and provider_correlation_id is null
+            and provider_completion_fingerprint is null
+        )
+        or (
+            intent_state in ('PROVIDER_COMPLETED', 'CANONICAL_COMMITTED')
+            and provider_correlation_id is not null
+            and provider_completion_fingerprint is not null
+        )
+        or intent_state in ('RECONCILIATION_REQUIRED', 'FAILED_REVIEW_REQUIRED')
     )
 );
 
-create index ix_storage_identity_migration_journal_state
-    on storage_identity_migration_journal(database_binding_id, journal_state);
-create index ix_storage_identity_migration_journal_source
-    on storage_identity_migration_journal(source_table, source_primary_identity);
+create index ix_storage_write_intent_state
+    on storage_write_intent(intent_state, updated_at);
+
+create or replace function enforce_storage_write_intent_object_match()
+returns trigger
+language plpgsql
+as $$
+begin
+    if not exists (
+        select 1
+          from storage_logical_object o
+         where o.object_id = new.object_id
+           and o.tenant_id = new.tenant_id
+           and o.project_id is not distinct from new.project_id
+           and o.issuance_idempotency_key = new.issuance_idempotency_key
+           and o.semantic_fingerprint = new.semantic_fingerprint
+    ) then
+        raise exception using
+            errcode = '23514',
+            message = 'storage write intent must exactly match its logical object';
+    end if;
+    return new;
+end;
+$$;
+
+create trigger storage_write_intent_object_match
+before insert or update on storage_write_intent
+for each row execute function enforce_storage_write_intent_object_match();
 
 create table cloud_resource_definition (
     id varchar(64) primary key,

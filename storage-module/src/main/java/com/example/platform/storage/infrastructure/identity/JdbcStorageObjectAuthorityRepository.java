@@ -4,6 +4,9 @@ import com.example.platform.shared.digest.ContentDigest;
 import com.example.platform.storage.api.StorageObjectIssuance.BackendPlacementResult;
 import com.example.platform.storage.api.StorageObjectIssuance.IssuanceResult;
 import com.example.platform.storage.api.StorageObjectIssuance.PlacementReceipt;
+import com.example.platform.storage.api.StorageObjectIssuance.ReceiptPurpose;
+import com.example.platform.storage.api.IssuanceIdempotencyKey;
+import com.example.platform.storage.api.StorageOwnershipScope;
 import com.example.platform.storage.app.identity.StorageObjectAuthorityRepository;
 import com.example.platform.storage.contract.StorageObjectId;
 import com.example.platform.storage.contract.StorageProviderId;
@@ -14,12 +17,10 @@ import com.example.platform.storage.contract.namespace.NamespaceClass;
 import com.example.platform.storage.contract.namespace.RegionPolicy;
 import com.example.platform.storage.contract.namespace.StorageNamespace;
 import com.example.platform.storage.contract.replica.ReplicaState;
-import java.sql.PreparedStatement;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
-import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -34,21 +35,11 @@ public class JdbcStorageObjectAuthorityRepository implements StorageObjectAuthor
     }
 
     @Override
-    public void lockIdempotencyKey(String idempotencyKey) {
-        jdbc.execute((ConnectionCallback<Void>) connection -> {
-            try (PreparedStatement statement = connection.prepareStatement(
-                    "select pg_advisory_xact_lock(hashtextextended(?, 0))")) {
-                statement.setString(1, idempotencyKey);
-                statement.execute();
-            }
-            return null;
-        });
-    }
-
-    @Override
-    public Optional<IssuanceResult> findByIdempotencyKey(String idempotencyKey) {
+    public Optional<IssuanceResult> findOriginalIssuance(
+            StorageOwnershipScope owner, IssuanceIdempotencyKey idempotencyKey) {
         List<IssuanceResult> results = jdbc.query("""
-                select o.object_id, o.issuance_idempotency_key, o.semantic_fingerprint,
+                select o.object_id, o.tenant_id, o.project_id,
+                       o.issuance_idempotency_key, o.semantic_fingerprint,
                        p.replica_id, p.provider_id, p.namespace_tenant_id,
                        p.namespace_project_id, p.namespace_class, p.region_policy,
                        p.data_classification, p.opaque_locator, p.provider_version_token,
@@ -56,11 +47,17 @@ public class JdbcStorageObjectAuthorityRepository implements StorageObjectAuthor
                        p.committed_digest, p.committed_length, p.provider_correlation_id,
                        r.receipt_id, r.issued_at
                   from storage_logical_object o
-                  join storage_object_placement p on p.object_id = o.object_id
                   join storage_placement_receipt r
-                    on r.object_id = p.object_id and r.replica_id = p.replica_id
-                 where o.issuance_idempotency_key = ?
+                    on r.object_id = o.object_id
+                   and r.receipt_purpose = 'ORIGINAL_ISSUANCE'
+                  join storage_object_placement p
+                    on p.object_id = r.object_id and p.replica_id = r.replica_id
+                 where o.tenant_id = ?
+                   and o.project_id is not distinct from ?
+                   and o.issuance_idempotency_key = ?
                 """, (rs, rowNumber) -> {
+            StorageOwnershipScope resolvedOwner = new StorageOwnershipScope(
+                    rs.getString("tenant_id"), rs.getString("project_id"));
             StorageObjectId objectId = new StorageObjectId(rs.getString("object_id"));
             StorageReplicaId replicaId = new StorageReplicaId(rs.getString("replica_id"));
             StorageObjectLocation location = new StorageObjectLocation(
@@ -89,17 +86,19 @@ public class JdbcStorageObjectAuthorityRepository implements StorageObjectAuthor
                     correlationId);
             PlacementReceipt receipt = new PlacementReceipt(
                     rs.getString("receipt_id"),
-                    rs.getString("issuance_idempotency_key"),
+                    new IssuanceIdempotencyKey(rs.getString("issuance_idempotency_key")),
                     fingerprint,
+                    ReceiptPurpose.ORIGINAL_ISSUANCE,
                     objectId,
                     replicaId,
                     location,
+                    ReplicaState.valueOf(rs.getString("placement_state")),
                     digest,
                     length,
                     correlationId,
                     rs.getObject("issued_at", OffsetDateTime.class).toInstant());
-            return new IssuanceResult(objectId, placement, receipt);
-        }, idempotencyKey);
+            return new IssuanceResult(resolvedOwner, objectId, placement, receipt);
+        }, owner.tenantId(), owner.projectId(), idempotencyKey.value());
         if (results.size() > 1) {
             throw new IllegalStateException("one issuance key resolved to multiple placement receipts");
         }
@@ -107,20 +106,12 @@ public class JdbcStorageObjectAuthorityRepository implements StorageObjectAuthor
     }
 
     @Override
-    public void save(IssuanceResult result) {
+    public void saveInitialPlacementAndReceipt(IssuanceResult result) {
         PlacementReceipt receipt = result.receipt();
         BackendPlacementResult placement = result.placement();
         StorageObjectLocation location = placement.location();
         StorageNamespace namespace = location.namespace();
         OffsetDateTime issuedAt = OffsetDateTime.ofInstant(receipt.issuedAt(), ZoneOffset.UTC);
-
-        jdbc.update("""
-                insert into storage_logical_object (
-                    object_id, issuance_idempotency_key, semantic_fingerprint, created_at
-                ) values (?, ?, ?, ?)
-                """,
-                result.objectId().value(), receipt.idempotencyKey(),
-                receipt.semanticFingerprint(), issuedAt);
 
         jdbc.update("""
                 insert into storage_object_placement (
@@ -142,14 +133,17 @@ public class JdbcStorageObjectAuthorityRepository implements StorageObjectAuthor
 
         jdbc.update("""
                 insert into storage_placement_receipt (
-                    receipt_id, idempotency_key, semantic_fingerprint, object_id, replica_id,
+                    receipt_id, idempotency_key, semantic_fingerprint, receipt_purpose,
+                    object_id, replica_id,
                     provider_id, namespace_tenant_id, namespace_project_id, namespace_class,
                     region_policy, data_classification, opaque_locator, provider_version_token,
+                    placement_state,
                     region, committed_digest_algorithm, committed_digest, committed_length,
                     provider_correlation_id, issued_at
-                ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                receipt.receiptId(), receipt.idempotencyKey(), receipt.semanticFingerprint(),
+                receipt.receiptId(), receipt.idempotencyKey().value(),
+                receipt.semanticFingerprint(), receipt.purpose().name(),
                 receipt.objectId().value(), receipt.replicaId().value(),
                 receipt.location().providerId().value(), receipt.location().namespace().tenantId(),
                 receipt.location().namespace().projectId(),
@@ -157,7 +151,8 @@ public class JdbcStorageObjectAuthorityRepository implements StorageObjectAuthor
                 receipt.location().namespace().regionPolicy().name(),
                 receipt.location().namespace().dataClassification().name(),
                 receipt.location().opaqueLocator(), receipt.location().providerVersionToken(),
-                receipt.location().region(), receipt.committedDigest().algorithm().name(),
+                receipt.state().name(), receipt.location().region(),
+                receipt.committedDigest().algorithm().name(),
                 receipt.committedDigest().canonicalValue(), receipt.committedLength(),
                 receipt.providerCorrelationId(), issuedAt);
     }

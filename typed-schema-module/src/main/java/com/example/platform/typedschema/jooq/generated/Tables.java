@@ -132,13 +132,11 @@ import com.example.platform.typedschema.jooq.generated.tables.SocialPost;
 import com.example.platform.typedschema.jooq.generated.tables.SocialPostAnalytics;
 import com.example.platform.typedschema.jooq.generated.tables.SourceVisualDescriptionSnapshot;
 import com.example.platform.typedschema.jooq.generated.tables.StorageDatabaseBinding;
-import com.example.platform.typedschema.jooq.generated.tables.StorageIdentityClassification;
-import com.example.platform.typedschema.jooq.generated.tables.StorageIdentityClassificationEvidence;
-import com.example.platform.typedschema.jooq.generated.tables.StorageIdentityMigrationJournal;
 import com.example.platform.typedschema.jooq.generated.tables.StorageLogicalObject;
 import com.example.platform.typedschema.jooq.generated.tables.StorageObject;
 import com.example.platform.typedschema.jooq.generated.tables.StorageObjectPlacement;
 import com.example.platform.typedschema.jooq.generated.tables.StoragePlacementReceipt;
+import com.example.platform.typedschema.jooq.generated.tables.StorageWriteIntent;
 import com.example.platform.typedschema.jooq.generated.tables.StorageReference;
 import com.example.platform.typedschema.jooq.generated.tables.SubscriptionCommand;
 import com.example.platform.typedschema.jooq.generated.tables.SubscriptionContract;
@@ -849,21 +847,6 @@ public class Tables {
     public static final StorageDatabaseBinding STORAGE_DATABASE_BINDING = StorageDatabaseBinding.STORAGE_DATABASE_BINDING;
 
     /**
-     * The table <code>public.storage_identity_classification</code>.
-     */
-    public static final StorageIdentityClassification STORAGE_IDENTITY_CLASSIFICATION = StorageIdentityClassification.STORAGE_IDENTITY_CLASSIFICATION;
-
-    /**
-     * The table <code>public.storage_identity_classification_evidence</code>.
-     */
-    public static final StorageIdentityClassificationEvidence STORAGE_IDENTITY_CLASSIFICATION_EVIDENCE = StorageIdentityClassificationEvidence.STORAGE_IDENTITY_CLASSIFICATION_EVIDENCE;
-
-    /**
-     * The table <code>public.storage_identity_migration_journal</code>.
-     */
-    public static final StorageIdentityMigrationJournal STORAGE_IDENTITY_MIGRATION_JOURNAL = StorageIdentityMigrationJournal.STORAGE_IDENTITY_MIGRATION_JOURNAL;
-
-    /**
      * The table <code>public.storage_logical_object</code>.
      */
     public static final StorageLogicalObject STORAGE_LOGICAL_OBJECT = StorageLogicalObject.STORAGE_LOGICAL_OBJECT;
@@ -882,6 +865,11 @@ public class Tables {
      * The table <code>public.storage_placement_receipt</code>.
      */
     public static final StoragePlacementReceipt STORAGE_PLACEMENT_RECEIPT = StoragePlacementReceipt.STORAGE_PLACEMENT_RECEIPT;
+
+    /**
+     * The table <code>public.storage_write_intent</code>.
+     */
+    public static final StorageWriteIntent STORAGE_WRITE_INTENT = StorageWriteIntent.STORAGE_WRITE_INTENT;
 
     /**
      * The table <code>public.storage_reference</code>.

@@ -1,4 +1,4 @@
-package com.example.platform.storage.domain.migration;
+package com.example.platform.storage.domain.identity;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -7,10 +7,10 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.List;
 
-/** Length-delimited SHA-256 derivation for deterministic migration keys and fingerprints. */
-public final class StableStorageMigrationFingerprint {
+/** Length-delimited SHA-256 derivation for stable Storage semantic identities. */
+public final class StableStorageFingerprint {
 
-    private StableStorageMigrationFingerprint() {}
+    private StableStorageFingerprint() {}
 
     public static String sha256(List<String> parts) {
         try {

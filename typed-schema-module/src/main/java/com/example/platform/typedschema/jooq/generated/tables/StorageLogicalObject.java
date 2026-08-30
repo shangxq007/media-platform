@@ -7,9 +7,9 @@ package com.example.platform.typedschema.jooq.generated.tables;
 import com.example.platform.typedschema.contract.InstantConverter;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
-import com.example.platform.typedschema.jooq.generated.tables.StorageIdentityMigrationJournal.StorageIdentityMigrationJournalPath;
 import com.example.platform.typedschema.jooq.generated.tables.StorageObjectPlacement.StorageObjectPlacementPath;
 import com.example.platform.typedschema.jooq.generated.tables.StoragePlacementReceipt.StoragePlacementReceiptPath;
+import com.example.platform.typedschema.jooq.generated.tables.StorageWriteIntent.StorageWriteIntentPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.StorageLogicalObjectRecord;
 
 import java.time.Instant;
@@ -66,6 +66,12 @@ public class StorageLogicalObject extends TableImpl<StorageLogicalObjectRecord> 
      * The column <code>public.storage_logical_object.object_id</code>.
      */
     public final TableField<StorageLogicalObjectRecord, String> OBJECT_ID = createField(DSL.name("object_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
+
+    /** The column <code>public.storage_logical_object.tenant_id</code>. */
+    public final TableField<StorageLogicalObjectRecord, String> TENANT_ID = createField(DSL.name("tenant_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
+
+    /** The column <code>public.storage_logical_object.project_id</code>. */
+    public final TableField<StorageLogicalObjectRecord, String> PROJECT_ID = createField(DSL.name("project_id"), SQLDataType.VARCHAR(64), this, "");
 
     /**
      * The column
@@ -160,20 +166,7 @@ public class StorageLogicalObject extends TableImpl<StorageLogicalObjectRecord> 
 
     @Override
     public List<UniqueKey<StorageLogicalObjectRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.UQ_STORAGE_LOGICAL_OBJECT_IDEMPOTENCY);
-    }
-
-    private transient StorageIdentityMigrationJournalPath _storageIdentityMigrationJournal;
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>public.storage_identity_migration_journal</code> table
-     */
-    public StorageIdentityMigrationJournalPath storageIdentityMigrationJournal() {
-        if (_storageIdentityMigrationJournal == null)
-            _storageIdentityMigrationJournal = new StorageIdentityMigrationJournalPath(this, null, Keys.STORAGE_IDENTITY_MIGRATION_JOURNAL__FK_STORAGE_IDENTITY_MIGRATION_JOURNAL_OBJECT.getInverseKey());
-
-        return _storageIdentityMigrationJournal;
+        return Arrays.asList(Keys.UQ_STORAGE_LOGICAL_OBJECT_OWNER_IDEMPOTENCY);
     }
 
     private transient StorageObjectPlacementPath _storageObjectPlacement;
@@ -202,10 +195,19 @@ public class StorageLogicalObject extends TableImpl<StorageLogicalObjectRecord> 
         return _storagePlacementReceipt;
     }
 
+    private transient StorageWriteIntentPath _storageWriteIntent;
+
+    public StorageWriteIntentPath storageWriteIntent() {
+        if (_storageWriteIntent == null)
+            _storageWriteIntent = new StorageWriteIntentPath(this, null, Keys.STORAGE_WRITE_INTENT__FK_STORAGE_WRITE_INTENT_OBJECT.getInverseKey());
+        return _storageWriteIntent;
+    }
+
     @Override
     public List<Check<StorageLogicalObjectRecord>> getChecks() {
         return Arrays.asList(
-            Internal.createCheck(this, DSL.name("ck_storage_logical_object_fingerprint"), "(((semantic_fingerprint)::text ~ '^[0-9a-f]{64}$'::text))", true)
+            Internal.createCheck(this, DSL.name("ck_storage_logical_object_fingerprint"), "(((semantic_fingerprint)::text ~ '^[0-9a-f]{64}$'::text))", true),
+            Internal.createCheck(this, DSL.name("ck_storage_logical_object_owner"), "((length(TRIM(BOTH FROM tenant_id)) > 0))", true)
         );
     }
 

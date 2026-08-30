@@ -8,7 +8,6 @@ import com.example.platform.typedschema.contract.InstantConverter;
 import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
-import com.example.platform.typedschema.jooq.generated.tables.StorageIdentityMigrationJournal.StorageIdentityMigrationJournalPath;
 import com.example.platform.typedschema.jooq.generated.tables.StorageLogicalObject.StorageLogicalObjectPath;
 import com.example.platform.typedschema.jooq.generated.tables.StorageObjectPlacement.StorageObjectPlacementPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.StoragePlacementReceiptRecord;
@@ -80,6 +79,9 @@ public class StoragePlacementReceipt extends TableImpl<StoragePlacementReceiptRe
      */
     public final TableField<StoragePlacementReceiptRecord, String> SEMANTIC_FINGERPRINT = createField(DSL.name("semantic_fingerprint"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
+    /** The column <code>public.storage_placement_receipt.receipt_purpose</code>. */
+    public final TableField<StoragePlacementReceiptRecord, String> RECEIPT_PURPOSE = createField(DSL.name("receipt_purpose"), SQLDataType.VARCHAR(32).nullable(false), this, "");
+
     /**
      * The column <code>public.storage_placement_receipt.object_id</code>.
      */
@@ -133,6 +135,9 @@ public class StoragePlacementReceipt extends TableImpl<StoragePlacementReceiptRe
      * <code>public.storage_placement_receipt.provider_version_token</code>.
      */
     public final TableField<StoragePlacementReceiptRecord, String> PROVIDER_VERSION_TOKEN = createField(DSL.name("provider_version_token"), SQLDataType.VARCHAR(255), this, "");
+
+    /** The column <code>public.storage_placement_receipt.placement_state</code>. */
+    public final TableField<StoragePlacementReceiptRecord, String> PLACEMENT_STATE = createField(DSL.name("placement_state"), SQLDataType.VARCHAR(32).nullable(false), this, "");
 
     /**
      * The column <code>public.storage_placement_receipt.region</code>.
@@ -239,7 +244,7 @@ public class StoragePlacementReceipt extends TableImpl<StoragePlacementReceiptRe
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.IX_STORAGE_PLACEMENT_RECEIPT_OBJECT, Indexes.IX_STORAGE_PLACEMENT_RECEIPT_REPLICA);
+        return Arrays.asList(Indexes.IX_STORAGE_PLACEMENT_RECEIPT_OBJECT, Indexes.IX_STORAGE_PLACEMENT_RECEIPT_REPLICA, Indexes.UQ_STORAGE_PLACEMENT_RECEIPT_ORIGINAL_ISSUANCE);
     }
 
     @Override
@@ -249,7 +254,7 @@ public class StoragePlacementReceipt extends TableImpl<StoragePlacementReceiptRe
 
     @Override
     public List<UniqueKey<StoragePlacementReceiptRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.UQ_STORAGE_PLACEMENT_RECEIPT_IDEMPOTENCY);
+        return Arrays.asList(Keys.UQ_STORAGE_PLACEMENT_RECEIPT_OBJECT_IDEMPOTENCY);
     }
 
     @Override
@@ -283,25 +288,14 @@ public class StoragePlacementReceipt extends TableImpl<StoragePlacementReceiptRe
         return _storageObjectPlacement;
     }
 
-    private transient StorageIdentityMigrationJournalPath _storageIdentityMigrationJournal;
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>public.storage_identity_migration_journal</code> table
-     */
-    public StorageIdentityMigrationJournalPath storageIdentityMigrationJournal() {
-        if (_storageIdentityMigrationJournal == null)
-            _storageIdentityMigrationJournal = new StorageIdentityMigrationJournalPath(this, null, Keys.STORAGE_IDENTITY_MIGRATION_JOURNAL__FK_STORAGE_IDENTITY_MIGRATION_JOURNAL_RECEIPT.getInverseKey());
-
-        return _storageIdentityMigrationJournal;
-    }
-
     @Override
     public List<Check<StoragePlacementReceiptRecord>> getChecks() {
         return Arrays.asList(
             Internal.createCheck(this, DSL.name("ck_storage_placement_receipt_digest"), "((((committed_digest_algorithm)::text = 'SHA_256'::text) AND ((committed_digest)::text ~ '^[0-9a-f]{64}$'::text)))", true),
             Internal.createCheck(this, DSL.name("ck_storage_placement_receipt_fingerprint"), "(((semantic_fingerprint)::text ~ '^[0-9a-f]{64}$'::text))", true),
-            Internal.createCheck(this, DSL.name("ck_storage_placement_receipt_length"), "((committed_length >= 0))", true)
+            Internal.createCheck(this, DSL.name("ck_storage_placement_receipt_length"), "((committed_length >= 0))", true),
+            Internal.createCheck(this, DSL.name("ck_storage_placement_receipt_purpose"), "(((receipt_purpose)::text = ANY ((ARRAY['ORIGINAL_ISSUANCE', 'ADDITIONAL_PLACEMENT'])::text[])))", true),
+            Internal.createCheck(this, DSL.name("ck_storage_placement_receipt_state"), "(((placement_state)::text = ANY ((ARRAY['PENDING', 'UPLOADING', 'VERIFYING', 'AVAILABLE', 'QUARANTINED', 'DELETING', 'DELETED', 'FAILED'])::text[])))", true)
         );
     }
 

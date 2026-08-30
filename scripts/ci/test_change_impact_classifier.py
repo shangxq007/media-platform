@@ -65,6 +65,8 @@ CASES = (
     ("formal-script", "scripts/formal/validate-faof2.sh", {"formal_verification"}, {"formal_verification"}),
     ("workflow", ".github/workflows/ci.yml", {"workflow"}, {"full_ci", "backend_ci", "frontend_ci", "architecture_drift", "gitops_validation", "semgrep_validation", "formal_verification"}),
     ("ci-infrastructure", "scripts/ci/setup-test-runtime.sh", {"ci_infrastructure"}, {"full_ci", "backend_ci", "frontend_ci", "architecture_drift", "gitops_validation", "semgrep_validation", "formal_verification"}),
+    ("storage-identity-placement-guard", "scripts/check-storage-identity-placement-m0-m1.py", {"ci_infrastructure"}, {"full_ci", "backend_ci", "frontend_ci", "architecture_drift", "gitops_validation", "semgrep_validation", "formal_verification"}),
+    ("storage-identity-placement-guard-test", "scripts/test-check-storage-identity-placement-m0-m1.py", {"ci_infrastructure"}, {"full_ci", "backend_ci", "frontend_ci", "architecture_drift", "gitops_validation", "semgrep_validation", "formal_verification"}),
     ("unknown", "unowned/new-surface.xyz", {"unknown"}, {"full_ci", "backend_ci", "frontend_ci", "architecture_drift", "gitops_validation", "semgrep_validation", "formal_verification"}),
 )
 
@@ -314,6 +316,14 @@ def main() -> None:
     for case in CASES:
         assert_case(*case)
 
+    for path in (
+        "scripts/check-storage-identity-placement-m0-m1.py",
+        "scripts/test-check-storage-identity-placement-m0-m1.py",
+    ):
+        result = classifier.Classification.from_paths([path], "storage_guard_matrix")
+        if set(result.categories) != {"ci_infrastructure"}:
+            raise AssertionError(f"{path}: Storage authority guard classification is not exact")
+
     empty = classifier.Classification.from_paths([], "matrix")
     if set(empty.categories) != {"unknown"} or not empty.policy()["full_ci"] or empty.policy()["runtime_image_publish"]:
         raise AssertionError("empty change set did not fail closed without image publication")
@@ -424,10 +434,32 @@ def main() -> None:
     finally:
         classifier.classify_path = original_classify_path
 
+    storage_guard_paths = (
+        "scripts/check-storage-identity-placement-m0-m1.py",
+        "scripts/test-check-storage-identity-placement-m0-m1.py",
+    )
+    for path in storage_guard_paths:
+        script_name = Path(path).name
+        classifier.CI_SCRIPT_NAMES.remove(script_name)
+        try:
+            try:
+                assert_case(
+                    f"{script_name}-rule-removal",
+                    path,
+                    {"ci_infrastructure"},
+                    {"full_ci", "backend_ci", "frontend_ci", "architecture_drift", "gitops_validation", "semgrep_validation", "formal_verification"},
+                )
+            except AssertionError:
+                pass
+            else:
+                raise AssertionError(f"RED mutation passed: {script_name}-rule-removal")
+        finally:
+            classifier.CI_SCRIPT_NAMES.add(script_name)
+
     print(
         f"CHANGE_IMPACT_CLASSIFIER_RED_MATRIX=PASS cases={len(CASES) + 4} "
         f"workflow_mutations={len(mutations)} governance_mutations={len(governance_mutations)} "
-        "classifier_mutations=1"
+        f"classifier_mutations={1 + len(storage_guard_paths)}"
     )
 
 
