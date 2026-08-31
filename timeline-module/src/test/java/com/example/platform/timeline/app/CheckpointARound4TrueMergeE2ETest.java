@@ -304,7 +304,7 @@ engine = new TimelineMergeEngine(revisionRepository, snapshotService, mock(Timel
 
     private TimelineMergeResult merge(String baseJson, String sourceJson, String targetJson) {
         stubRevisions(baseJson, sourceJson, targetJson);
-        return engine.mergeSemantic(new TimelineMergeRequest(
+        return engine.mergeSemantic(TestTimelineMutationContexts.mergeRequest(
                 PROJECT, TENANT, BASE_REV, SOURCE_REV, TARGET_REV, "user-1", "merge-r4"));
     }
 

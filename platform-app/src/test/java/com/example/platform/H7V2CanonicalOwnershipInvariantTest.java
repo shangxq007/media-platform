@@ -24,7 +24,9 @@ import com.example.platform.timeline.app.PatchPreviewResult;
 import com.example.platform.timeline.app.TimelineArtifactPinValidator;
 import com.example.platform.timeline.app.TimelineDocumentJsonSerializer;
 import com.example.platform.timeline.app.TimelineMergeEngine;
+import com.example.platform.timeline.app.TimelineMutationContext;
 import com.example.platform.timeline.app.TimelinePatchApplicationService;
+import com.example.platform.timeline.app.ProjectRevisionNumberAllocator;
 import com.example.platform.timeline.app.TimelineRevisionCommandConflictException;
 import com.example.platform.timeline.app.TimelineRevisionDiffQuery;
 import com.example.platform.timeline.app.TimelineRevisionDiffService;
@@ -55,6 +57,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import javax.sql.DataSource;
 import org.jooq.DSLContext;
 import org.jooq.impl.DSL;
@@ -138,23 +143,8 @@ class H7V2CanonicalOwnershipInvariantTest {
         revisionRefMutation = new TimelineRevisionRefMutation(dsl);
         snapshotService = new TimelineSnapshotService(dsl);
         revisionRepository = new TimelineRevisionRepository(dsl);
-        var artifactQuery = new JooqArtifactQueryService(
-                new ArtifactRepository(dsl), new ArtifactRelationRepository(dsl));
-        var pinValidator = new TimelineArtifactPinValidator(artifactQuery);
-        var pinService = new ArtifactPinService(new ArtifactPinRepository(dsl));
-        saveService = new TimelineRevisionSaveService(
-                dsl,
-                revisionRefMutation,
-                digester,
-                snapshotService,
-                pinValidator,
-                pinService,
-                new EffectSemanticSnapshotAuthority(
-                        new JdbcEffectDefinitionVersionRegistry(dsl),
-                        new JdbcEffectSemanticSnapshotStore(dsl)),
-                new JdbcTimelineRevisionSemanticContextStore(dsl),
-                new DefaultTimelineRevisionPersistence(),
-                new TimelineRevisionRefHeadUpdateAdapter(revisionRefMutation));
+        saveService = newSaveService(
+                request -> com.example.platform.shared.authorization.AuthorizationDecision.allow("test"));
         patchService = new TimelinePatchApplicationService(
                 saveService, revisionRefMutation, digester);
         diffQuery = new TimelineRevisionDiffQuery(
@@ -168,9 +158,30 @@ class H7V2CanonicalOwnershipInvariantTest {
                 new TimelineNonConflictingMergePlanner(preview),
                 new TimelinePatchApplier(),
                 TimelineDocumentJsonSerializer.mapper(),
-                pinValidator,
-                pinService,
+                new TimelineArtifactPinValidator(new JooqArtifactQueryService(
+                        new ArtifactRepository(dsl), new ArtifactRelationRepository(dsl))),
+                new ArtifactPinService(new ArtifactPinRepository(dsl)),
                 dsl);
+    }
+
+    private TimelineRevisionSaveService newSaveService(
+            com.example.platform.shared.authorization.AuthorizationDecisionPort authorization) {
+        var artifactQuery = new JooqArtifactQueryService(
+                new ArtifactRepository(dsl), new ArtifactRelationRepository(dsl));
+        return new TimelineRevisionSaveService(
+                dsl,
+                revisionRefMutation,
+                digester,
+                snapshotService,
+                new TimelineArtifactPinValidator(artifactQuery),
+                new ArtifactPinService(new ArtifactPinRepository(dsl)),
+                new EffectSemanticSnapshotAuthority(
+                        new JdbcEffectDefinitionVersionRegistry(dsl),
+                        new JdbcEffectSemanticSnapshotStore(dsl)),
+                new JdbcTimelineRevisionSemanticContextStore(dsl),
+                new DefaultTimelineRevisionPersistence(),
+                new TimelineRevisionRefHeadUpdateAdapter(revisionRefMutation),
+                authorization);
     }
 
     @Test
@@ -189,6 +200,65 @@ class H7V2CanonicalOwnershipInvariantTest {
     }
 
     @Test
+    @DisplayName("CONCURRENT_REVISION_ALLOCATION=PASS (independent connections, one project counter row)")
+    void concurrentAllocatorUsesIndependentConnectionsAndAllocatesDistinctProjectNumbers()
+            throws Exception {
+        String project = createOwnedProject("p-concurrent-allocator");
+        ProjectRevisionNumberAllocator allocator = new ProjectRevisionNumberAllocator();
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            java.util.concurrent.Callable<Long> allocation = () -> {
+                try (Connection connection = dataSource.getConnection()) {
+                    connection.setAutoCommit(false);
+                    DSLContext threadDsl = DSL.using(connection, org.jooq.SQLDialect.POSTGRES);
+                    ready.countDown();
+                    assertTrue(start.await(10, TimeUnit.SECONDS));
+                    long number = allocator.allocate(threadDsl, project);
+                    connection.commit();
+                    return number;
+                }
+            };
+            var first = executor.submit(allocation);
+            var second = executor.submit(allocation);
+            assertTrue(ready.await(10, TimeUnit.SECONDS));
+            start.countDown();
+            assertEquals(Set.of(1L, 2L), Set.of(
+                    first.get(10, TimeUnit.SECONDS),
+                    second.get(10, TimeUnit.SECONDS)));
+        }
+        assertEquals(1, jdbc.queryForObject(
+                "select count(*) from project_revision_counter where project_id = ?",
+                Integer.class, project));
+        assertEquals(2L, jdbc.queryForObject(
+                "select next_revision_number from project_revision_counter where project_id = ?",
+                Long.class, project));
+    }
+
+    @Test
+    @DisplayName("FORGED_CANONICAL_AUTHOR=REJECTED_BEFORE_MUTATION")
+    void forgedActorCannotSelectCanonicalRevisionAuthor() {
+        String project = createOwnedProject("p-forged-author");
+        TimelineRevisionSaveService guarded = newSaveService(request ->
+                "server-author".equals(request.actor().actorId())
+                        ? com.example.platform.shared.authorization.AuthorizationDecision.allow("test")
+                        : com.example.platform.shared.authorization.AuthorizationDecision.deny(
+                                "RBAC_DENY", "test"));
+
+        assertThrows(com.example.platform.shared.authorization.AuthorizationDeniedException.class,
+                () -> guarded.saveRevision(
+                        mutation("ta", project, "forged-author"),
+                        null,
+                        document("forged", "track-forged")));
+
+        assertEquals(0L, count("timeline_revision", project));
+        assertEquals(0L, count("timeline_snapshot", project));
+        assertEquals(0, jdbc.queryForObject(
+                "select count(*) from timeline_revision_ref where project_id = ?",
+                Integer.class, project));
+    }
+
+    @Test
     @DisplayName("PRODUCTION_JSON_ROUNDTRIP=PASS")
     void canonicalTimelineDocumentProductionSerializerPersistedJsonRepositoryReadReloadHasExactDigest() {
         String project = createOwnedProject("p-json-roundtrip");
@@ -196,7 +266,7 @@ class H7V2CanonicalOwnershipInvariantTest {
         String expectedPayload = TimelineDocumentJsonSerializer.serializeWithCaptions(document);
         String expectedDigest = digester.digest(document);
 
-        TimelineRevision persisted = saveService.saveRevision(
+        TimelineRevision persisted = saveRevision(
                 "ta", project, null, document, "server-author");
         var revisionRow = revisionRepository.findOwnedById(
                 persisted.revisionId(), project, "ta").orElseThrow();
@@ -214,12 +284,109 @@ class H7V2CanonicalOwnershipInvariantTest {
     }
 
     @Test
+    @DisplayName("H7_TYPED_SOURCE_BINDING_ARTIFACT_PIN_OPERATION_DIGEST_ROUNDTRIP=PASS")
+    void completeH7OperationPreviewApplyReloadPreservesTypedBindingPinsAndDigests() {
+        String project = createOwnedProject("p-h7-complete-roundtrip");
+        String mediaAssetId = "media-h7";
+        String mediaStreamId = "stream-h7-video";
+        String artifactId = java.util.UUID.randomUUID().toString();
+        String contentDigest = "c".repeat(64);
+        jdbc.update("""
+                insert into artifact(id,tenant_id,project_id,content_digest,byte_length,
+                    media_type,artifact_kind,state,schema_version,created_at)
+                values (?, 'ta', ?, ?, 1024, 'VIDEO', 'SOURCE_MEDIA', 'AVAILABLE', 1, now())
+                """, artifactId, project, contentDigest);
+        jdbc.update("""
+                insert into media_asset(id,tenant_id,project_id,storage_key,media_type,
+                    media_version,created_at,publish_status)
+                values (?, 'ta', ?, 'source/key', 'VIDEO', 'v1', now(), 'DRAFT')
+                """, mediaAssetId, project);
+        jdbc.update("""
+                insert into media_stream(id,media_asset_id,stream_index,stream_kind,codec,
+                    timebase_num,timebase_den,rate_num,rate_den,is_vfr,width,height)
+                values (?, ?, 0, 'VIDEO', 'h264', 1, 1000, 24, 1, false, 1920, 1080)
+                """, mediaStreamId, mediaAssetId);
+
+        TimelineDocument baseDocument = new TimelineDocument(
+                TimelineDocument.CURRENT_SCHEMA_VERSION,
+                List.of(new TimelineTrack("video-main", "Video", TrackType.VIDEO, List.of())),
+                new TimelineMetadata("H7", "exact-v1", Map.of("path", "complete")));
+        TimelineRevision base = saveRevision(
+                "ta", project, null, baseDocument, "server-author");
+        var actor = com.example.platform.shared.authorization.CanonicalActor.user(
+                "server-author", "ta", Set.of("EDITOR"), "test-authenticated");
+        var sourceValidator = new com.example.platform.timeline.app.TimelineSourceReferenceValidator(
+                new com.example.platform.media.infrastructure.persistence.JooqMediaAssetRepository(dsl),
+                new com.example.platform.media.infrastructure.persistence.JooqMediaStreamRepository(dsl));
+        var operationService = new com.example.platform.render.app.operation.TimelineMediaClipOperationService(
+                saveService,
+                sourceValidator,
+                new com.example.platform.timeline.app.InternalTimelineValidationService(),
+                request -> com.example.platform.shared.authorization.AuthorizationDecision.allow("test"),
+                new com.example.platform.render.app.plan.OperationPlanApplyService(saveService));
+        var command = new com.example.platform.render.app.operation.AddMediaClipCommand(
+                base.revisionId(), base.semanticContext().timelineContentDigest(),
+                "video-main", "clip-h7", mediaAssetId, mediaStreamId,
+                artifactId, contentDigest,
+                "10/1", "20/1", "0/1", "10/1", 1, 1,
+                com.example.platform.render.app.operation.AddMediaClipCommand.Direction.FORWARD);
+
+        var preview = operationService.preview("ta", project, command, actor);
+        assertEquals(mediaAssetId, preview.sourceBinding().mediaAssetId().value());
+        assertEquals(mediaStreamId, preview.sourceBinding().mediaStreamId().value());
+        assertEquals(artifactId, preview.sourceBinding().artifactId().value());
+        assertEquals(contentDigest, preview.sourceBinding().contentDigest().canonicalValue());
+        var typedParameters = new com.example.platform.operation.operation.OperationParameters.AddMediaClipParameters(
+                "video-main",
+                com.example.platform.timeline.canonical.TimelineClipId.of("clip-h7"),
+                preview.sourceBinding(), preview.placement(), preview.temporalMapping());
+        String parameterDigest = com.example.platform.operation.operation.ParameterDigest.compute(
+                com.example.platform.operation.operation.OperationDefinition.V1.ADD_MEDIA_CLIP.definitionId(),
+                com.example.platform.operation.operation.OperationDefinition.V1.ADD_MEDIA_CLIP.version(),
+                typedParameters);
+        String expectedFingerprint = com.example.platform.render.app.plan.OperationPlanApplyService.fingerprint(
+                preview.planDigest(),
+                new com.example.platform.operation.plan.TargetRevisionRef(RevisionRef.MAIN_REF),
+                base.revisionId(), project, "ta", actor.actorId(),
+                com.example.platform.operation.operation.OperationDefinition.V1.ADD_MEDIA_CLIP
+                        .definitionId().value(),
+                parameterDigest);
+
+        var applied = operationService.authorizeAndApply(
+                "ta", project, command, preview.planDigest(), "apply-h7-complete", actor);
+
+        assertEquals("APPLIED", applied.status());
+        assertEquals(preview.planDigest(), applied.planDigest());
+        assertEquals(preview.candidateContentHash(), applied.newTimelineContentHash());
+        TimelineDocument reloaded = assertCanonicalReload(
+                applied.newRevisionId(), applied.newTimelineContentHash());
+        TimelineClip clip = reloaded.getTracks().getFirst().clips().getFirst();
+        assertEquals(mediaAssetId, clip.getMediaAssetId());
+        assertEquals(mediaStreamId, clip.getMediaStreamId());
+        assertEquals(artifactId, clip.getArtifactId());
+        assertEquals(contentDigest, clip.getContentDigest());
+        assertEquals(1, jdbc.queryForObject(
+                "select count(*) from artifact_pin where tenant_id='ta' and project_id=? "
+                        + "and revision_id=? and artifact_id=? and content_digest=?",
+                Integer.class, project, applied.newRevisionId(), artifactId, contentDigest));
+        assertEquals(preview.planDigest(), jdbc.queryForObject(
+                "select plan_digest from apply_command where apply_command_id='apply-h7-complete'",
+                String.class));
+        assertEquals(expectedFingerprint, jdbc.queryForObject(
+                "select fingerprint from apply_command where apply_command_id='apply-h7-complete'",
+                String.class));
+        assertEquals(actor.actorId(), jdbc.queryForObject(
+                "select author_user_id from timeline_revision where id=?",
+                String.class, applied.newRevisionId()));
+    }
+
+    @Test
     @DisplayName("SAVE_REVISION_H7_CANONICAL_RELOAD=PASS")
     void saveRevisionCanonicalReloadHasExactContentDigest() {
         String project = createOwnedProject("p-save-reload");
         TimelineDocument document = document("saved", "track-saved");
 
-        TimelineRevision saved = saveService.saveRevision(
+        TimelineRevision saved = saveRevision(
                 "ta", project, null, document, "server-author");
 
         assertCanonicalReload(saved.revisionId(), digester.digest(document));
@@ -231,7 +398,7 @@ class H7V2CanonicalOwnershipInvariantTest {
     void patchCreatedRevisionCanonicalReloadMatchesPreviewAndApplyDigest() {
         String project = createOwnedProject("p-patch-reload");
         TimelineDocument baseDocument = document("patch-base", "track-base");
-        TimelineRevision base = saveService.saveRevision(
+        TimelineRevision base = saveRevision(
                 "ta", project, null, baseDocument, "server-author");
         TimelinePatch patch = new TimelinePatch(
                 TimelinePatch.CURRENT_PATCH_VERSION,
@@ -250,7 +417,7 @@ class H7V2CanonicalOwnershipInvariantTest {
 
         PatchPreviewResult preview = patchService.preview("ta", patch);
         assertTrue(preview instanceof PatchPreviewResult.Success);
-        PatchApplyResult apply = patchService.apply("ta", "server-author", patch);
+        PatchApplyResult apply = patchService.apply(mutation("ta", project, "server-author"), patch);
         assertTrue(apply instanceof PatchApplyResult.Success);
         var success = (PatchApplyResult.Success) apply;
         assertEquals(((PatchPreviewResult.Success) preview).resultDigest(), success.resultDigest());
@@ -266,13 +433,13 @@ class H7V2CanonicalOwnershipInvariantTest {
     void restoreCreatedRevisionCanonicalReloadAndParentZeroIsPreRestoreMainHead() {
         String project = createOwnedProject("p-restore-reload");
         TimelineDocument historicalDocument = document("historical", "track-historical");
-        TimelineRevision historical = saveService.saveRevision(
+        TimelineRevision historical = saveRevision(
                 "ta", project, null, historicalDocument, "server-author");
-        TimelineRevision preRestoreHead = saveService.saveRevision(
+        TimelineRevision preRestoreHead = saveRevision(
                 "ta", project, historical.revisionId(),
                 document("current", "track-current"), "server-author");
 
-        TimelineRevision restored = saveService.restoreRevision(
+        TimelineRevision restored = restoreRevision(
                 "ta", project, historical.revisionId(), preRestoreHead.revisionId(), "server-author");
 
         assertCanonicalReload(restored.revisionId(), digester.digest(historicalDocument));
@@ -286,20 +453,21 @@ class H7V2CanonicalOwnershipInvariantTest {
     void mergeCreatedRevisionCanonicalReloadAndParentsAreTargetThenSource() {
         String project = createOwnedProject("p-merge-reload");
         TimelineDocument baseDocument = document("base", "track-base");
-        TimelineRevision base = saveService.saveRevision(
+        TimelineRevision base = saveRevision(
                 "ta", project, null, baseDocument, "server-author");
         TimelineDocument sourceDocument = document("base", "track-base", "track-source");
-        TimelineRevision source = saveService.saveRevision(
+        TimelineRevision source = saveRevision(
                 "ta", project, base.revisionId(), sourceDocument, "server-author");
         assertTrue(revisionRefMutation.advance(
                 dsl, RevisionRef.main("ta", project), source.revisionId(), base.revisionId()),
                 "production ref authority creates the target sibling from the merge base");
-        TimelineRevision target = saveService.saveRevision(
+        TimelineRevision target = saveRevision(
                 "ta", project, base.revisionId(), baseDocument, "server-author");
 
         TimelineMergeResult result = mergeEngine.merge(new TimelineMergeRequest(
-                project, "ta", base.revisionId(), source.revisionId(), target.revisionId(),
-                "server-author", "exact-v1 merge"));
+                mutation("ta", project, "server-author"),
+                base.revisionId(), source.revisionId(), target.revisionId(),
+                "exact-v1 merge"));
 
         assertEquals(TimelineMergeResult.MergeStatus.MERGED, result.status());
         assertNotNull(result.mergedRevisionId());
@@ -311,19 +479,93 @@ class H7V2CanonicalOwnershipInvariantTest {
                 orderedParents(result.mergedRevisionId()));
         assertEquals(result.mergedRevisionId(),
                 revisionRefMutation.currentHead(RevisionRef.main("ta", project)));
+
+        CanonicalState afterFirst = canonicalState(project);
+        TimelineMergeResult replay = mergeEngine.merge(new TimelineMergeRequest(
+                mutation("ta", project, "server-author"),
+                base.revisionId(), source.revisionId(), target.revisionId(),
+                "exact-v1 merge replay"));
+        assertEquals(TimelineMergeResult.MergeStatus.MERGED, replay.status());
+        assertEquals(result.mergedRevisionId(), replay.mergedRevisionId(),
+                "durable duplicate merge returns the already persisted deterministic result");
+        assertEquals(afterFirst, canonicalState(project),
+                "durable merge replay creates no duplicate canonical state");
+        assertCanonicalReload(replay.mergedRevisionId(),
+                revisionRepository.findOwnedById(
+                                replay.mergedRevisionId(), project, "ta")
+                        .orElseThrow().contentHash());
+    }
+
+    @Test
+    @DisplayName("PERSISTENT_MERGE_STALE_MAIN=REJECTED_WITHOUT_PARTIAL_STATE")
+    void persistentMergeRejectsStaleTargetMainAndRollsBackAllState() {
+        String project = createOwnedProject("p-merge-stale-main");
+        TimelineDocument baseDocument = document("base", "track-base");
+        TimelineRevision base = saveRevision(
+                "ta", project, null, baseDocument, "server-author");
+        TimelineRevision source = saveRevision(
+                "ta", project, base.revisionId(),
+                document("base", "track-base", "track-source"), "server-author");
+        assertTrue(revisionRefMutation.advance(
+                dsl, RevisionRef.main("ta", project), source.revisionId(), base.revisionId()));
+        TimelineRevision target = saveRevision(
+                "ta", project, base.revisionId(), baseDocument, "server-author");
+        TimelineRevision newerMain = saveRevision(
+                "ta", project, target.revisionId(),
+                document("base", "track-base", "track-newer"), "server-author");
+        CanonicalState before = canonicalState(project);
+
+        assertThrows(TimelineConflictException.class, () -> mergeEngine.merge(
+                new TimelineMergeRequest(
+                        mutation("ta", project, "server-author"),
+                        base.revisionId(), source.revisionId(), target.revisionId(),
+                        "stale merge")));
+
+        assertEquals(before, canonicalState(project));
+        assertEquals(newerMain.revisionId(),
+                revisionRefMutation.currentHead(RevisionRef.main("ta", project)));
+    }
+
+    @Test
+    @DisplayName("PERSISTENT_MERGE_CONFLICT=NO_MUTATION")
+    void persistentMergeConflictReturnsTypedConflictsWithoutMutation() {
+        String project = createOwnedProject("p-merge-conflict");
+        TimelineDocument baseDoc = documentWithClip("base", "clip-shared", 0, 10);
+        TimelineRevision base = saveRevision(
+                "ta", project, null, baseDoc, "server-author");
+        TimelineRevision source = saveRevision(
+                "ta", project, base.revisionId(),
+                documentWithClip("source", "clip-shared", 1, 10), "server-author");
+        assertTrue(revisionRefMutation.advance(
+                dsl, RevisionRef.main("ta", project), source.revisionId(), base.revisionId()));
+        TimelineRevision target = saveRevision(
+                "ta", project, base.revisionId(),
+                documentWithClip("target", "clip-shared", 2, 10), "server-author");
+        CanonicalState before = canonicalState(project);
+
+        TimelineMergeResult conflict = mergeEngine.merge(new TimelineMergeRequest(
+                mutation("ta", project, "server-author"),
+                base.revisionId(), source.revisionId(), target.revisionId(),
+                "conflicting merge"));
+
+        assertEquals(TimelineMergeResult.MergeStatus.CONFLICTS, conflict.status());
+        assertTrue(conflict.hasConflicts());
+        assertEquals(before, canonicalState(project));
+        assertEquals(target.revisionId(),
+                revisionRefMutation.currentHead(RevisionRef.main("ta", project)));
     }
 
     @Test
     @DisplayName("STALE_REF_CAS=REJECTED; NO_ORPHAN_CANONICAL_STATE=PASS")
     void staleMainRefCasIsRejectedWithoutOrphanCanonicalState() {
         String project = createOwnedProject("p-stale-cas");
-        TimelineRevision root = saveService.saveRevision(
+        TimelineRevision root = saveRevision(
                 "ta", project, null, document("root", "track-root"), "server-author");
-        TimelineRevision head = saveService.saveRevision(
+        TimelineRevision head = saveRevision(
                 "ta", project, root.revisionId(), document("head", "track-head"), "server-author");
         CanonicalState before = canonicalState(project);
 
-        assertThrows(TimelineConflictException.class, () -> saveService.saveRevision(
+        assertThrows(TimelineConflictException.class, () -> saveRevision(
                 "ta", project, root.revisionId(), document("stale", "track-stale"), "server-author"));
 
         assertEquals(before, canonicalState(project));
@@ -335,19 +577,19 @@ class H7V2CanonicalOwnershipInvariantTest {
     void immutableCommandSameKeyDifferentScopeConflictsOnProductionPath() {
         String projectA = createOwnedProject("p-command-a");
         String projectB = createOwnedProject("p-command-b");
-        TimelineRevision rootA = saveService.saveRevision(
+        TimelineRevision rootA = saveRevision(
                 "ta", projectA, null, document("root-a", "track-a"), "server-author");
-        TimelineRevision rootB = saveService.saveRevision(
+        TimelineRevision rootB = saveRevision(
                 "ta", projectB, null, document("root-b", "track-b"), "server-author");
         var command = new TimelineRevisionSaveService.RevisionWriteCommand(
                 "same-command-key", "same-plan", "same-fingerprint", "OPERATION_PLAN", "ta");
-        saveService.saveRevisionForCommand(
+        saveRevisionForCommand(
                 RevisionRef.main("ta", projectA), rootA.revisionId(),
                 document("candidate-a", "track-a-candidate"), "server-author", command);
         CanonicalState projectBBefore = canonicalState(projectB);
 
         assertThrows(TimelineRevisionCommandConflictException.class, () ->
-                saveService.saveRevisionForCommand(
+                saveRevisionForCommand(
                         RevisionRef.main("ta", projectB), rootB.revisionId(),
                         document("candidate-b", "track-b-candidate"), "server-author", command));
 
@@ -361,11 +603,11 @@ class H7V2CanonicalOwnershipInvariantTest {
     @DisplayName("COMPARE_FROM_TO_ACTUAL_PAIR_SEMANTICS=PASS")
     void compareFromToDescribesTheActualRequestedCanonicalPair() {
         String project = createOwnedProject("p-compare-pair");
-        TimelineRevision from = saveService.saveRevision(
+        TimelineRevision from = saveRevision(
                 "ta", project, null, document("from", "track-from"), "server-author");
-        TimelineRevision to = saveService.saveRevision(
+        TimelineRevision to = saveRevision(
                 "ta", project, from.revisionId(), document("to", "track-to"), "server-author");
-        saveService.saveRevision(
+        saveRevision(
                 "ta", project, to.revisionId(), document("unrequested", "track-unrequested"),
                 "server-author");
 
@@ -485,6 +727,37 @@ class H7V2CanonicalOwnershipInvariantTest {
         assertThrows(Exception.class, () -> jdbc.update(
                 "insert into artifact_pin(pin_id,tenant_id,project_id,revision_id,artifact_id,content_digest,pinned_at) values ('pin-bad','ta','pa','r_pc','artifact-a',?,now())",
                 "a".repeat(64)));
+    }
+
+    private TimelineRevision saveRevision(
+            String tenantId, String projectId, String expectedHead,
+            TimelineDocument document, String actorId) {
+        return saveService.saveRevision(
+                mutation(tenantId, projectId, actorId), expectedHead, document);
+    }
+
+    private TimelineRevision restoreRevision(
+            String tenantId, String projectId, String historicalRevisionId,
+            String expectedHead, String actorId) {
+        return saveService.restoreRevision(
+                mutation(tenantId, projectId, actorId), historicalRevisionId, expectedHead);
+    }
+
+    private TimelineRevisionSaveService.RevisionWriteResult saveRevisionForCommand(
+            RevisionRef targetRef, String expectedHead, TimelineDocument document,
+            String actorId, TimelineRevisionSaveService.RevisionWriteCommand command) {
+        return saveService.saveRevisionForCommand(
+                mutation(targetRef.tenantId(), targetRef.projectId(), actorId),
+                targetRef, expectedHead, document, command);
+    }
+
+    private static TimelineMutationContext mutation(
+            String tenantId, String projectId, String actorId) {
+        return new TimelineMutationContext(
+                tenantId,
+                projectId,
+                com.example.platform.shared.authorization.CanonicalActor.user(
+                        actorId, tenantId, Set.of(), "test-authenticated"));
     }
 
     private static String createOwnedProject(String projectId) {

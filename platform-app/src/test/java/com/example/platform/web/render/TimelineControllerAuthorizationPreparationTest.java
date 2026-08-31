@@ -52,7 +52,7 @@ class TimelineControllerAuthorizationPreparationTest {
                 query,
                 mock(com.example.platform.render.app.timeline.RenderJobRevisionPinningService.class),
                 new com.example.platform.timeline.canonical.TimelineContentDigester(),
-                mock(com.example.platform.timeline.app.TimelineSemanticDiffV1Service.class),
+                mock(com.example.platform.timeline.app.TimelineRevisionDiffQuery.class),
                 mock(com.example.platform.timeline.app.TimelinePatchApplicationService.class),
                 authorization);
 

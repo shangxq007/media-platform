@@ -132,10 +132,10 @@ class CheckpointAPinRegistrationRollbackIT extends PostgresTestContainerSupport 
 
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService,
                 new TimelineContentDigester(), snapshotService,
-                new TimelineArtifactPinValidator(query), pinService, effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService));
+                new TimelineArtifactPinValidator(query), pinService, effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
 
         assertThrows(IllegalStateException.class,
-                () -> saveService.saveRevision(
+                () -> com.example.platform.render.testsupport.TimelineMutationTestSupport.save(saveService,
                         TENANT, productId, null, pinnedDoc(), RenderTestSchemaFixture.SERVER_ACTOR),
                 "pin registration failure must fail the save");
 
@@ -173,9 +173,9 @@ class CheckpointAPinRegistrationRollbackIT extends PostgresTestContainerSupport 
 
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService,
                 new TimelineContentDigester(), snapshotService,
-                new TimelineArtifactPinValidator(query), pinService, effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService));
+                new TimelineArtifactPinValidator(query), pinService, effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
 
-        var revision = saveService.saveRevision(
+        var revision = com.example.platform.render.testsupport.TimelineMutationTestSupport.save(saveService,
                 TENANT, productId, null, pinnedDoc(), RenderTestSchemaFixture.SERVER_ACTOR);
         assertEquals(1, dsl.fetchCount(DSL.selectFrom(TIMELINE_REVISION)
                 .where(TIMELINE_REVISION.PROJECT_ID.eq(productId))), "revision committed");

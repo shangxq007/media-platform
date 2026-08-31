@@ -165,7 +165,8 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
                 TENANT, RevisionRef.MAIN_REF, "policy-v1");
         var context = new ApplyContext("coordinator-parent-edge",
                 new TargetRevisionRef(RevisionRef.MAIN_REF), root.revisionId(), TENANT,
-                "alice", authorization);
+                com.example.platform.shared.authorization.CanonicalActor.user(
+                        "alice", TENANT, java.util.Set.of(), "test"), authorization);
 
         var result = new OperationPlanApplyService(service)
                 .apply(plan, context, productId, base);
@@ -185,9 +186,9 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
         var root = seedRoot(service, productId, document("base"));
         var command = command("command-replay", "plan-a", "fingerprint-a");
 
-        var first = service.saveRevisionForCommand(
+        var first = com.example.platform.render.testsupport.TimelineMutationTestSupport.saveForCommand(service,
                 ref(productId), root.revisionId(), document("candidate"), "editor", command);
-        var replay = service.saveRevisionForCommand(
+        var replay = com.example.platform.render.testsupport.TimelineMutationTestSupport.saveForCommand(service,
                 ref(productId), root.revisionId(), document("candidate"), "editor", command);
 
         assertFalse(first.replayed());
@@ -203,11 +204,11 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
         insertProduct(productId);
         TimelineRevisionSaveService service = writer(dsl);
         var root = seedRoot(service, productId, document("base"));
-        service.saveRevisionForCommand(ref(productId), root.revisionId(), document("candidate-a"),
+        com.example.platform.render.testsupport.TimelineMutationTestSupport.saveForCommand(service, ref(productId), root.revisionId(), document("candidate-a"),
                 "editor", command("command-plan-conflict", "plan-a", "fingerprint-a"));
 
         assertThrows(TimelineRevisionCommandConflictException.class, () ->
-                service.saveRevisionForCommand(ref(productId), root.revisionId(), document("candidate-b"),
+                com.example.platform.render.testsupport.TimelineMutationTestSupport.saveForCommand(service, ref(productId), root.revisionId(), document("candidate-b"),
                         "editor", command("command-plan-conflict", "plan-b", "fingerprint-b")));
         assertEquals(2L, revisionRows(productId));
     }
@@ -218,11 +219,11 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
         insertProduct(productId);
         TimelineRevisionSaveService service = writer(dsl);
         var root = seedRoot(service, productId, document("base"));
-        service.saveRevisionForCommand(ref(productId), root.revisionId(), document("candidate-a"),
+        com.example.platform.render.testsupport.TimelineMutationTestSupport.saveForCommand(service, ref(productId), root.revisionId(), document("candidate-a"),
                 "editor", command("command-advance", "plan-a", "fingerprint-a"));
 
         assertThrows(TimelineConflictException.class, () ->
-                service.saveRevisionForCommand(ref(productId), root.revisionId(), document("candidate-b"),
+                com.example.platform.render.testsupport.TimelineMutationTestSupport.saveForCommand(service, ref(productId), root.revisionId(), document("candidate-b"),
                         "editor", command("command-stale", "plan-b", "fingerprint-b")));
         assertEquals(0, commandRows("command-stale"), "stale command claim must roll back");
         assertEquals(2L, revisionRows(productId));
@@ -236,15 +237,15 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
         TimelineDocument base = document("base");
         var root = seedRoot(service, productId, base);
         String baseHash = new TimelineContentDigester().digest(base);
-        var firstNoOp = service.recordNoOpCommand(ref(productId), root.revisionId(), baseHash,
+        var firstNoOp = com.example.platform.render.testsupport.TimelineMutationTestSupport.recordNoOp(service, ref(productId), root.revisionId(), baseHash,
                 command("command-noop-ok", "plan-noop", "fingerprint-noop-ok"));
         assertFalse(firstNoOp.replayed());
         assertNull(firstNoOp.revisionId());
 
-        service.saveRevisionForCommand(ref(productId), root.revisionId(), document("candidate"),
+        com.example.platform.render.testsupport.TimelineMutationTestSupport.saveForCommand(service, ref(productId), root.revisionId(), document("candidate"),
                 "editor", command("command-move", "plan-move", "fingerprint-move"));
         assertThrows(TimelineConflictException.class, () ->
-                service.recordNoOpCommand(ref(productId), root.revisionId(), baseHash,
+                com.example.platform.render.testsupport.TimelineMutationTestSupport.recordNoOp(service, ref(productId), root.revisionId(), baseHash,
                         command("command-noop-stale", "plan-noop", "fingerprint-noop-stale")));
         assertEquals(0, commandRows("command-noop-stale"), "stale no-op claim must roll back");
         assertEquals(2L, revisionRows(productId), "stale no-op creates no revision");
@@ -262,11 +263,11 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
         var root = seedRoot(service, productId, base);
         String baseHash = new TimelineContentDigester().digest(base);
         var command = command("command-noop-replay", "plan-noop", "fingerprint-noop");
-        var first = service.recordNoOpCommand(ref(productId), root.revisionId(), baseHash, command);
-        service.saveRevisionForCommand(ref(productId), root.revisionId(), document("candidate"),
+        var first = com.example.platform.render.testsupport.TimelineMutationTestSupport.recordNoOp(service, ref(productId), root.revisionId(), baseHash, command);
+        com.example.platform.render.testsupport.TimelineMutationTestSupport.saveForCommand(service, ref(productId), root.revisionId(), document("candidate"),
                 "editor", command("command-move-after-noop", "plan-move", "fingerprint-move"));
 
-        var replay = service.recordNoOpCommand(ref(productId), root.revisionId(), baseHash, command);
+        var replay = com.example.platform.render.testsupport.TimelineMutationTestSupport.recordNoOp(service, ref(productId), root.revisionId(), baseHash, command);
         assertFalse(first.replayed());
         assertTrue(replay.replayed());
         assertNull(replay.revisionId());
@@ -289,7 +290,7 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
         insertProduct(productId);
         TimelineRevisionSaveService service = writer(dsl);
         var root = seedRoot(service, productId, document("base"));
-        var result = service.saveRevisionForCommand(
+        var result = com.example.platform.render.testsupport.TimelineMutationTestSupport.saveForCommand(service,
                 ref(productId), root.revisionId(), document("candidate"), "editor",
                 command("command-head", "plan-head", "fingerprint-head"));
 
@@ -311,7 +312,7 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
                         + "where tenant_id = ? and project_id = ? and ref_id = ?",
                 TENANT, productId, RevisionRef.MAIN_REF);
 
-        assertThrows(TimelineConflictException.class, () -> seed.saveRevisionForCommand(
+        assertThrows(TimelineConflictException.class, () -> com.example.platform.render.testsupport.TimelineMutationTestSupport.saveForCommand(seed,
                 ref(productId), root.revisionId(), document("candidate"), "editor",
                 command("command-rollback", "plan-rollback", "fingerprint-rollback")));
         assertNull(currentRevision(productId),
@@ -329,7 +330,7 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
         insertProduct(productId);
         TimelineRevisionSaveService service = writer(dsl);
 
-        var genesis = service.saveRevisionForCommand(
+        var genesis = com.example.platform.render.testsupport.TimelineMutationTestSupport.saveForCommand(service,
                 ref(productId), null, document("genesis"), "editor",
                 command("command-genesis", "plan-genesis", "fingerprint-genesis"));
 
@@ -379,7 +380,7 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
                 + "for each row when (old.project_id = '" + productId + "') "
                 + "execute function h7_reject_counter_update()");
         try {
-            assertThrows(RuntimeException.class, () -> service.saveRevisionForCommand(
+            assertThrows(RuntimeException.class, () -> com.example.platform.render.testsupport.TimelineMutationTestSupport.saveForCommand(service,
                     ref(productId), root.revisionId(), document("candidate"), "editor",
                     command("claim-failure", "plan-claim-failure", "fp-claim-failure")));
         } finally {
@@ -404,7 +405,7 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
                 + "for each row when (old.project_id = '" + productId + "') "
                 + "execute function h7_reject_ref_publication()");
         try {
-            assertThrows(RuntimeException.class, () -> service.saveRevisionForCommand(
+            assertThrows(RuntimeException.class, () -> com.example.platform.render.testsupport.TimelineMutationTestSupport.saveForCommand(service,
                     ref(productId), root.revisionId(), document("candidate"), "editor",
                     command("publication-failure", "plan-publication-failure",
                             "fp-publication-failure")));
@@ -428,7 +429,7 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
         ready.countDown();
         go.await();
         try {
-            service.saveRevisionForCommand(ref(productId), baseRevisionId, candidate, "editor",
+            com.example.platform.render.testsupport.TimelineMutationTestSupport.saveForCommand(service, ref(productId), baseRevisionId, candidate, "editor",
                     new TimelineRevisionSaveService.RevisionWriteCommand(
                             commandId, "plan-" + commandId, "fingerprint-" + commandId,
                             "OPERATION_PLAN", TENANT));
@@ -446,7 +447,7 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
                 DSL.using(dataSource, org.jooq.SQLDialect.POSTGRES));
         go.await();
         try {
-            service.saveRevisionForCommand(ref(productId), null, document(commandId), "editor",
+            com.example.platform.render.testsupport.TimelineMutationTestSupport.saveForCommand(service, ref(productId), null, document(commandId), "editor",
                     command(commandId, "plan-" + commandId, "fingerprint-" + commandId));
             applied.incrementAndGet();
         } catch (TimelineConflictException conflict) {
@@ -473,7 +474,7 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
                         new JdbcEffectSemanticSnapshotStore(context)),
                 new JdbcTimelineRevisionSemanticContextStore(context),
                 new DefaultTimelineRevisionPersistence(),
-                new TimelineRevisionRefHeadUpdateAdapter(current));
+                new TimelineRevisionRefHeadUpdateAdapter(current), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
     }
 
     private static TimelineRevisionSaveService.RevisionWriteCommand command(
@@ -489,11 +490,11 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
         TimelineRevisionSaveService service = writer(dsl);
         var root = seedRoot(service, productId, document("base"));
         String commandId = "command-" + discriminator;
-        service.saveRevisionForCommand(ref(productId), root.revisionId(), document("candidate"),
+        com.example.platform.render.testsupport.TimelineMutationTestSupport.saveForCommand(service, ref(productId), root.revisionId(), document("candidate"),
                 "editor", command(commandId, "plan", discriminator + "=" + original));
 
         assertThrows(TimelineRevisionCommandConflictException.class, () ->
-                service.saveRevisionForCommand(ref(productId), root.revisionId(), document("candidate"),
+                com.example.platform.render.testsupport.TimelineMutationTestSupport.saveForCommand(service, ref(productId), root.revisionId(), document("candidate"),
                         "editor", command(commandId, "plan", discriminator + "=" + changed)));
         assertEquals(2L, revisionRows(productId));
     }
@@ -509,7 +510,7 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
 
     private static com.example.platform.timeline.version.TimelineRevision seedRoot(
             TimelineRevisionSaveService service, String productId, TimelineDocument document) {
-        return service.saveRevision(
+        return com.example.platform.render.testsupport.TimelineMutationTestSupport.save(service,
                 TENANT, productId, null, document, RenderTestSchemaFixture.SERVER_ACTOR);
     }
 

@@ -181,7 +181,7 @@ class C1Cnm1RedBehavioralTest {
     }
 
     private static TimelineMergeRequest request(String message) {
-        return new TimelineMergeRequest(
+        return com.example.platform.render.testsupport.TimelineMutationTestSupport.mergeRequest(
                 PROJECT, TENANT, BASE, SOURCE, TARGET, "server-user", message);
     }
 

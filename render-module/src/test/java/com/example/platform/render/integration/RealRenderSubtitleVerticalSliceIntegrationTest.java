@@ -73,7 +73,7 @@ class RealRenderSubtitleVerticalSliceIntegrationTest extends PostgresTestContain
                 effectAuthority(),
                 new com.example.platform.timeline.adapter.JdbcTimelineRevisionSemanticContextStore(dsl),
                 new DefaultTimelineRevisionPersistence(),
-                new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService));
+                new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
     }
 
     @Test
@@ -82,7 +82,7 @@ class RealRenderSubtitleVerticalSliceIntegrationTest extends PostgresTestContain
         insertProduct(projectId, "ten-vslice");
 
         TimelineDocument document = createDocumentWithCaptions("clip-vslice", "asset-vslice");
-        var revision = saveService.saveRevision(
+        var revision = com.example.platform.render.testsupport.TimelineMutationTestSupport.save(saveService,
                 "ten-vslice", projectId, null, document, RenderTestSchemaFixture.SERVER_ACTOR);
 
         String snapshotId = dsl.select(
@@ -107,7 +107,7 @@ class RealRenderSubtitleVerticalSliceIntegrationTest extends PostgresTestContain
         TimelineDocument invalid = createDocumentWithDuplicateTrackIds();
 
         assertThrows(com.example.platform.timeline.app.TimelineCanonicalRejectionException.class,
-                () -> saveService.saveRevision(
+                () -> com.example.platform.render.testsupport.TimelineMutationTestSupport.save(saveService,
                         "ten-vslice", projectId, null, invalid,
                         RenderTestSchemaFixture.SERVER_ACTOR));
         assertEquals(0L, dsl.selectCount()

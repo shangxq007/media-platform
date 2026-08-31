@@ -77,7 +77,7 @@ class Roadmap20DefinitionConcurrencyAndCorruptionTest extends PostgresTestContai
                                 new com.example.platform.artifact.app.ArtifactRelationRepository(dsl))),
                 new com.example.platform.artifact.app.ArtifactPinService(
                         new com.example.platform.artifact.infrastructure.ArtifactPinRepository(dsl)),
-                authority, new JdbcTimelineRevisionSemanticContextStore(dsl), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService));
+                authority, new JdbcTimelineRevisionSemanticContextStore(dsl), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
     }
 
     private void insertFixtures(String productId) {
@@ -146,7 +146,7 @@ class Roadmap20DefinitionConcurrencyAndCorruptionTest extends PostgresTestContai
         // serial sanity: a SECOND write (different product) with a conflicting
         // definition digest must FAIL CLOSED (proves registerTx scanning works
         // before we test the concurrent variant)
-        saveService.saveRevisionWithEffects(
+        com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(saveService,
                 "tenant-1", productA, null, doc, List.of(blurEffect("eff-a", "4")),
                 List.of(blurDef("4")),
                 com.example.platform.render.testsupport.RenderTestSchemaFixture.SERVER_ACTOR);
@@ -158,7 +158,7 @@ class Roadmap20DefinitionConcurrencyAndCorruptionTest extends PostgresTestContai
                 + " first-payload-prefix=" + (esnapPayloads.isEmpty() ? "NONE"
                 : esnapPayloads.get(0).substring(0, Math.min(60, esnapPayloads.get(0).length()))));
         assertThrows(IllegalArgumentException.class,
-                () -> saveService.saveRevisionWithEffects(
+                () -> com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(saveService,
                         "tenant-1", productB, null, doc, List.of(blurEffect("eff-a2", "77")),
                         List.of(blurDef("77")),
                         com.example.platform.render.testsupport.RenderTestSchemaFixture.SERVER_ACTOR),
@@ -171,7 +171,7 @@ class Roadmap20DefinitionConcurrencyAndCorruptionTest extends PostgresTestContai
                 try {
                     com.example.platform.shared.web.TenantContext.set("tenant-1");
                     start.await();
-                    saveService.saveRevisionWithEffects(
+                    com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(saveService,
                             "tenant-1", productC, null, doc, List.of(blurEffect("eff-a", "4")),
                             List.of(blurDef("4")),
                             com.example.platform.render.testsupport.RenderTestSchemaFixture.SERVER_ACTOR);
@@ -184,7 +184,7 @@ class Roadmap20DefinitionConcurrencyAndCorruptionTest extends PostgresTestContai
                 try {
                     com.example.platform.shared.web.TenantContext.set("tenant-1");
                     start.await();
-                    saveService.saveRevisionWithEffects(
+                    com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(saveService,
                             "tenant-1", productD, null, doc, List.of(blurEffect("eff-b", "77")),
                             List.of(blurDef("77")),
                             com.example.platform.render.testsupport.RenderTestSchemaFixture.SERVER_ACTOR);
@@ -211,7 +211,7 @@ class Roadmap20DefinitionConcurrencyAndCorruptionTest extends PostgresTestContai
         insertFixtures(productId);
         var doc = sampleDocument();
         // persist a valid Effect-bearing revision first
-        var revision = saveService.saveRevisionWithEffects(
+        var revision = com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(saveService,
                 "tenant-1", productId, null, doc, List.of(blurEffect("eff-1", "4")),
                 List.of(blurDef("4")),
                 com.example.platform.render.testsupport.RenderTestSchemaFixture.SERVER_ACTOR);

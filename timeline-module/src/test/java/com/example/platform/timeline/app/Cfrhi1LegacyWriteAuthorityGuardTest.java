@@ -133,18 +133,17 @@ class Cfrhi1LegacyWriteAuthorityGuardTest {
 
     @Test
     void canonicalRestoreAuthorityIsActive() throws IOException {
-        // H7 V2 has one ownership-explicit restore implementation plus one
-        // trusted owner-resolving adapter. Count the structural signatures and
+        // H7 V2 has one typed, ownership-explicit restore implementation and no
+        // owner-discovering adapter. Count the structural signatures and
         // delegation instead of lexical restoreRevision occurrences: the token
         // also appears at the adapter call site and therefore is not an
         // authority count.
         Path root = repoRoot();
         long canonicalDefs = countPattern(root, "TimelineRevisionSaveService.java",
                 "\\bpublic\\s+TimelineRevision\\s+restoreRevision\\s*\\(\\s*"
-                        + "String\\s+tenantId\\s*,\\s*String\\s+productId\\s*,\\s*"
+                        + "TimelineMutationContext\\s+context\\s*,\\s*"
                         + "String\\s+historicalRevisionId\\s*,\\s*"
-                        + "String\\s+expectedCurrentRevisionId\\s*,\\s*"
-                        + "String\\s+canonicalAuthor\\s*\\)\\s*\\{");
+                        + "String\\s+expectedCurrentRevisionId\\s*\\)\\s*\\{");
         assertEquals(1, canonicalDefs,
                 "CANONICAL_RESTORE_AUTHORITY_COUNT must be 1 (root=" + root + ")");
         long ownerResolvingAdapters = countPattern(root, "TimelineRevisionSaveService.java",
@@ -152,19 +151,23 @@ class Cfrhi1LegacyWriteAuthorityGuardTest {
                         + "String\\s+productId\\s*,\\s*String\\s+historicalRevisionId\\s*,\\s*"
                         + "String\\s+expectedCurrentRevisionId\\s*,\\s*"
                         + "String\\s+createdBy\\s*\\)\\s*\\{");
-        assertEquals(1, ownerResolvingAdapters,
-                "canonical restore must expose exactly one trusted owner-resolving adapter");
+        assertEquals(0, ownerResolvingAdapters,
+                "canonical restore must expose no owner-discovering adapter");
         long adapterDelegations = countPattern(root, "TimelineRevisionSaveService.java",
                 "\\breturn\\s+restoreRevision\\s*\\(\\s*"
                         + "resolveProjectTenant\\s*\\(\\s*productId\\s*\\)\\s*,\\s*"
                         + "productId\\s*,\\s*historicalRevisionId\\s*,\\s*"
                         + "expectedCurrentRevisionId\\s*,\\s*createdBy\\s*\\)\\s*;");
-        assertEquals(1, adapterDelegations,
-                "trusted owner-resolving restore adapter must delegate exactly once");
+        assertEquals(0, adapterDelegations,
+                "owner-discovering restore delegation must remain absent");
         long controllerRefs = countPattern(root, "TimelineRevisionController.java",
                 "\\brevisionSaveService\\s*\\.\\s*restoreRevision\\s*\\(");
         assertEquals(1, controllerRefs,
                 "TimelineRevisionController must call the canonical restoreRevision exactly once (root=" + root + ")");
+        long gitControllerRefs = countPattern(root, "TimelineGitV1Controller.java",
+                "\\bsaveService\\s*\\.\\s*restoreRevision\\s*\\(");
+        assertEquals(1, gitControllerRefs,
+                "legacy public adapter must lower once to the same typed canonical restore boundary");
     }
 
     @Test

@@ -270,7 +270,8 @@ class CheckpointARound5PersistentMergePinIT extends PostgresTestContainerSupport
                 new com.example.platform.timeline.adapter.JdbcTimelineRevisionSemanticContextStore(dsl),
                 new com.example.platform.timeline.app.DefaultTimelineRevisionPersistence(),
                 new com.example.platform.timeline.app.TimelineRevisionRefHeadUpdateAdapter(
-                        currentRevisionService));
+                        currentRevisionService),
+                com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
         mergeEngine = new TimelineMergeEngine(
                 new TimelineRevisionRepository(dsl),
                 snapshotService,
@@ -314,7 +315,7 @@ class CheckpointARound5PersistentMergePinIT extends PostgresTestContainerSupport
                 dsl, com.example.platform.timeline.revisioncommand.RevisionRef.main(TENANT, productId),
                 targetRev));
 
-        TimelineMergeRequest request = new TimelineMergeRequest(
+        TimelineMergeRequest request = com.example.platform.render.testsupport.TimelineMutationTestSupport.mergeRequest(
                 productId, TENANT, baseRev, sourceRev, targetRev,
                 RenderTestSchemaFixture.SERVER_ACTOR, "merge");
 
@@ -379,7 +380,7 @@ class CheckpointARound5PersistentMergePinIT extends PostgresTestContainerSupport
 
         long snapshotsBefore = countSnapshots(productId);
 
-        TimelineMergeRequest request = new TimelineMergeRequest(
+        TimelineMergeRequest request = com.example.platform.render.testsupport.TimelineMutationTestSupport.mergeRequest(
                 productId, TENANT, baseRev, sourceRev, targetRev,
                 RenderTestSchemaFixture.SERVER_ACTOR, "merge");
 

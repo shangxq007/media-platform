@@ -74,7 +74,7 @@ class TimelineRevisionSaveServiceSnapshotIntegrationTest extends PostgresTestCon
         snapshotService = new TimelineSnapshotService(dsl);
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService, digester, snapshotService,
                 org.mockito.Mockito.mock(com.example.platform.timeline.app.TimelineArtifactPinValidator.class),
-                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class), effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService));
+                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class), effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
     }
 
     @AfterEach
@@ -88,7 +88,7 @@ class TimelineRevisionSaveServiceSnapshotIntegrationTest extends PostgresTestCon
         insertProduct(productId);
         var doc = createSampleDocument();
 
-        var revision = saveService.saveRevision(
+        var revision = com.example.platform.render.testsupport.TimelineMutationTestSupport.save(saveService,
                 TENANT, productId, null, doc, RenderTestSchemaFixture.SERVER_ACTOR);
 
         // Exactly one snapshot payload row for the project.
@@ -121,7 +121,7 @@ class TimelineRevisionSaveServiceSnapshotIntegrationTest extends PostgresTestCon
         var invalid = createDocumentWithDuplicateTrackIds();
 
         assertThrows(TimelineCanonicalRejectionException.class,
-                () -> saveService.saveRevision(
+                () -> com.example.platform.render.testsupport.TimelineMutationTestSupport.save(saveService,
                         TENANT, productId, null, invalid, RenderTestSchemaFixture.SERVER_ACTOR));
 
         long snapshotRows = dsl.selectCount().from(TIMELINE_SNAPSHOT)
@@ -138,7 +138,7 @@ class TimelineRevisionSaveServiceSnapshotIntegrationTest extends PostgresTestCon
         insertProduct(productId);
         TenantContext.clear();
 
-        var revision = saveService.saveRevision(
+        var revision = com.example.platform.render.testsupport.TimelineMutationTestSupport.save(saveService,
                 TENANT, productId, null, createSampleDocument(),
                 RenderTestSchemaFixture.SERVER_ACTOR);
 
@@ -154,12 +154,12 @@ class TimelineRevisionSaveServiceSnapshotIntegrationTest extends PostgresTestCon
         String productId = "prod-conflict-" + java.util.UUID.randomUUID();
         insertProduct(productId);
         var doc = createSampleDocument();
-        saveService.saveRevision(
+        com.example.platform.render.testsupport.TimelineMutationTestSupport.save(saveService,
                 TENANT, productId, null, doc, RenderTestSchemaFixture.SERVER_ACTOR);
 
         // Expected current revision mismatch -> conflict, no writes.
         assertThrows(TimelineConflictException.class,
-                () -> saveService.saveRevision(
+                () -> com.example.platform.render.testsupport.TimelineMutationTestSupport.save(saveService,
                         TENANT, productId, "stale-revision", doc,
                         RenderTestSchemaFixture.SERVER_ACTOR));
 
@@ -173,11 +173,11 @@ class TimelineRevisionSaveServiceSnapshotIntegrationTest extends PostgresTestCon
         String productId = "prod-restore-" + java.util.UUID.randomUUID();
         insertProduct(productId);
         var doc = createSampleDocument();
-        var original = saveService.saveRevision(
+        var original = com.example.platform.render.testsupport.TimelineMutationTestSupport.save(saveService,
                 TENANT, productId, null, doc, RenderTestSchemaFixture.SERVER_ACTOR);
         String originalPayload = payloadOf(snapshotIdOf(original.revisionId())).orElseThrow();
 
-        var restored = saveService.restoreRevision(
+        var restored = com.example.platform.render.testsupport.TimelineMutationTestSupport.restore(saveService,
                 TENANT, productId, original.revisionId(), original.revisionId(),
                 RenderTestSchemaFixture.SERVER_ACTOR);
 
@@ -200,7 +200,7 @@ class TimelineRevisionSaveServiceSnapshotIntegrationTest extends PostgresTestCon
         String productId = "prod-parse-" + java.util.UUID.randomUUID();
         insertProduct(productId);
         var doc = createSampleDocument();
-        var revision = saveService.saveRevision(
+        var revision = com.example.platform.render.testsupport.TimelineMutationTestSupport.save(saveService,
                 TENANT, productId, null, doc, RenderTestSchemaFixture.SERVER_ACTOR);
 
         String payload = payloadOf(snapshotIdOf(revision.revisionId())).orElseThrow();

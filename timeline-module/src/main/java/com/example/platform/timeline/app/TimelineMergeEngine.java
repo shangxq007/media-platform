@@ -361,9 +361,8 @@ public class TimelineMergeEngine {
                     : "Merge " + request.sourceRevisionId() + " into " + request.targetRevisionId();
             com.example.platform.timeline.version.TimelineRevision persisted =
                     revisionSaveService.saveMergeRevision(
-                            effectiveTenant, request.projectId(), request.targetRevisionId(),
-                            request.sourceRevisionId(), request.baseRevisionId(), mergedDocument,
-                            request.authorUserId());
+                            request.mutationContext(), request.targetRevisionId(),
+                            request.sourceRevisionId(), request.baseRevisionId(), mergedDocument);
             List<SemanticChange> autoMerged = applyOps.stream()
                         .map(op -> SemanticChange.of(
                                 toSemanticChangeType(op),

@@ -141,7 +141,7 @@ class CheckpointARound4RestorePinCopyIT extends PostgresTestContainerSupport {
     private void buildSaveService(ArtifactQueryService query, ArtifactPinService pinSvc) {
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService,
                 new TimelineContentDigester(), snapshotService,
-                new TimelineArtifactPinValidator(query), pinSvc, effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService));
+                new TimelineArtifactPinValidator(query), pinSvc, effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
     }
 
     private long countPinsFor(String projectId, String revisionId) {
@@ -160,7 +160,7 @@ class CheckpointARound4RestorePinCopyIT extends PostgresTestContainerSupport {
         buildSaveService(validQuery(), pinService);
 
         // historical pinned revision
-        var historical = saveService.saveRevision(
+        var historical = com.example.platform.render.testsupport.TimelineMutationTestSupport.save(saveService,
                 TENANT, productId, null, pinnedDoc(artifactId, DIGEST_HEX),
                 RenderTestSchemaFixture.SERVER_ACTOR);
         assertEquals(1, countPinsFor(productId, historical.revisionId()),
@@ -172,7 +172,7 @@ class CheckpointARound4RestorePinCopyIT extends PostgresTestContainerSupport {
                 .fetchOne(com.example.platform.typedschema.jooq.generated.tables.ArtifactPin.ARTIFACT_PIN.ARTIFACT_ID);
 
         // restore → NEW revision identity
-        var restored = saveService.restoreRevision(
+        var restored = com.example.platform.render.testsupport.TimelineMutationTestSupport.restore(saveService,
                 TENANT, productId, historical.revisionId(), historical.revisionId(),
                 RenderTestSchemaFixture.SERVER_ACTOR);
         assertNotNull(restored);
@@ -212,7 +212,7 @@ class CheckpointARound4RestorePinCopyIT extends PostgresTestContainerSupport {
         insertProduct(productId);
         insertArtifact("art-1", DIGEST_HEX);
         buildSaveService(validQuery(), pinService);
-        var historical = saveService.saveRevision(
+        var historical = com.example.platform.render.testsupport.TimelineMutationTestSupport.save(saveService,
                 TENANT, productId, null, pinnedDoc("art-1", DIGEST_HEX),
                 RenderTestSchemaFixture.SERVER_ACTOR);
         String headBefore = currentRevisionService.currentHead(dsl, com.example.platform.timeline.revisioncommand.RevisionRef.main(com.example.platform.shared.web.TenantContext.get(), productId));
@@ -226,7 +226,7 @@ class CheckpointARound4RestorePinCopyIT extends PostgresTestContainerSupport {
         buildSaveService(validQuery(), failing);
 
         assertThrows(IllegalStateException.class,
-                () -> saveService.restoreRevision(
+                () -> com.example.platform.render.testsupport.TimelineMutationTestSupport.restore(saveService,
                         TENANT, productId, historical.revisionId(), historical.revisionId(),
                         RenderTestSchemaFixture.SERVER_ACTOR),
                 "pin-copy failure must fail the restore");

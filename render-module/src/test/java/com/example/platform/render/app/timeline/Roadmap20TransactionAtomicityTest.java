@@ -70,7 +70,7 @@ class Roadmap20TransactionAtomicityTest extends PostgresTestContainerSupport {
                                 new com.example.platform.artifact.app.ArtifactRelationRepository(dsl))),
                 new com.example.platform.artifact.app.ArtifactPinService(
                         new com.example.platform.artifact.infrastructure.ArtifactPinRepository(dsl)),
-                authority, new JdbcTimelineRevisionSemanticContextStore(dsl), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService));
+                authority, new JdbcTimelineRevisionSemanticContextStore(dsl), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
     }
 
     private void insertFixtures(String productId) {
@@ -191,8 +191,9 @@ class Roadmap20TransactionAtomicityTest extends PostgresTestContainerSupport {
                                     currentRevisionService.currentHead(tx, ref));
                         }
                     }
-                });
-        spySave.saveRevisionWithEffects(
+                },
+                com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
+        com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(spySave,
                 "tenant-1", productId, null, sampleDocument(), List.of(), List.of(),
                 com.example.platform.render.testsupport.RenderTestSchemaFixture.SERVER_ACTOR);
         assertTrue(order.contains("revision"), "order: revision recorded");
@@ -226,13 +227,13 @@ class Roadmap20TransactionAtomicityTest extends PostgresTestContainerSupport {
         String p2 = "prod-tx1b-" + UUID.randomUUID();
         insertFixtures(p1);
         insertFixtures(p2);
-        saveService.saveRevisionWithEffects(
+        com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(saveService,
                 "tenant-1", p1, null, sampleDocument(), List.of(effect("eff-1", "4")),
                 List.of(def("4")),
                 com.example.platform.render.testsupport.RenderTestSchemaFixture.SERVER_ACTOR);
         // conflicting definition identity in a DIFFERENT product
         assertThrows(IllegalArgumentException.class, () ->
-                saveService.saveRevisionWithEffects(
+                com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(saveService,
                         "tenant-1", p2, null, sampleDocument(), List.of(effect("eff-2", "77")),
                         List.of(def("77")),
                         com.example.platform.render.testsupport.RenderTestSchemaFixture.SERVER_ACTOR));
@@ -275,9 +276,9 @@ class Roadmap20TransactionAtomicityTest extends PostgresTestContainerSupport {
                                 new com.example.platform.artifact.app.ArtifactRelationRepository(dsl))),
                 new com.example.platform.artifact.app.ArtifactPinService(
                         new com.example.platform.artifact.infrastructure.ArtifactPinRepository(dsl)),
-                failingAuthority, new JdbcTimelineRevisionSemanticContextStore(dsl), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService));
+                failingAuthority, new JdbcTimelineRevisionSemanticContextStore(dsl), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
         assertThrows(IllegalStateException.class, () ->
-                failingSave.saveRevisionWithEffects(
+                com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(failingSave,
                         "tenant-1", productId, null, sampleDocument(),
                         List.of(effect("eff-1", "4")), List.of(def("4")),
                         com.example.platform.render.testsupport.RenderTestSchemaFixture.SERVER_ACTOR));
@@ -310,10 +311,11 @@ class Roadmap20TransactionAtomicityTest extends PostgresTestContainerSupport {
                  revisionNumber, tenantId, source) -> {
                     throw new IllegalStateException("TX3 injected revision insert failure");
                 },
-                new com.example.platform.timeline.app.TimelineRevisionRefHeadUpdateAdapter(currentRevisionService));
+                new com.example.platform.timeline.app.TimelineRevisionRefHeadUpdateAdapter(currentRevisionService),
+                com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
         // TX3: failing revision-insert port was passed AT CONSTRUCTION.
         assertThrows(IllegalStateException.class, () ->
-                failingSave.saveRevisionWithEffects(
+                com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(failingSave,
                         "tenant-1", productId, null, sampleDocument(),
                         List.of(effect("eff-1", "4")), List.of(def("4")),
                         com.example.platform.render.testsupport.RenderTestSchemaFixture.SERVER_ACTOR));
@@ -359,9 +361,9 @@ class Roadmap20TransactionAtomicityTest extends PostgresTestContainerSupport {
                 new EffectSemanticSnapshotAuthority(
                         new JdbcEffectDefinitionVersionRegistry(dsl),
                         new JdbcEffectSemanticSnapshotStore(dsl)),
-                failingCtxStore, new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService));
+                failingCtxStore, new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
         assertThrows(IllegalStateException.class, () ->
-                failingSave.saveRevisionWithEffects(
+                com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(failingSave,
                         "tenant-1", productId, null, sampleDocument(),
                         List.of(effect("eff-1", "4")), List.of(def("4")),
                         com.example.platform.render.testsupport.RenderTestSchemaFixture.SERVER_ACTOR));
@@ -392,10 +394,11 @@ class Roadmap20TransactionAtomicityTest extends PostgresTestContainerSupport {
                 new JdbcTimelineRevisionSemanticContextStore(dsl), new DefaultTimelineRevisionPersistence(),
                 (tx, ref, expected, newRevisionId) -> {
                     throw new IllegalStateException("TX5 injected head update failure");
-                });
+                },
+                com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
         // TX5: failing head-update port passed AT CONSTRUCTION.
         assertThrows(IllegalStateException.class, () ->
-                failingSave.saveRevisionWithEffects(
+                com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(failingSave,
                         "tenant-1", productId, null, sampleDocument(),
                         List.of(effect("eff-1", "4")), List.of(def("4")),
                         com.example.platform.render.testsupport.RenderTestSchemaFixture.SERVER_ACTOR));

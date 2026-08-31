@@ -93,7 +93,7 @@ class Roadmap20E2ESaveReloadRenderIntegrationTest extends PostgresTestContainerS
                         new com.example.platform.artifact.app.ArtifactRelationRepository(dsl))),
                 new com.example.platform.artifact.app.ArtifactPinService(
                         new com.example.platform.artifact.infrastructure.ArtifactPinRepository(dsl)),
-                authority, new JdbcTimelineRevisionSemanticContextStore(dsl), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService));
+                authority, new JdbcTimelineRevisionSemanticContextStore(dsl), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
     }
 
     private void insertProduct(String productId) {
@@ -151,7 +151,7 @@ class Roadmap20E2ESaveReloadRenderIntegrationTest extends PostgresTestContainerS
         TimelineDocument doc = sampleDocument();
 
         // 1. REAL canonical save path (no-Effect authoring)
-        TimelineRevision revision = saveService.saveRevision(
+        TimelineRevision revision = com.example.platform.render.testsupport.TimelineMutationTestSupport.save(saveService,
                 "tenant-1", productId, null, doc,
                 com.example.platform.render.testsupport.RenderTestSchemaFixture.SERVER_ACTOR);
         // 2. authoritative EMPTY pinned + persisted
@@ -160,12 +160,12 @@ class Roadmap20E2ESaveReloadRenderIntegrationTest extends PostgresTestContainerS
         // 3. discard service objects — recreate the application layer
         EffectSemanticSnapshotStore freshStore = new JdbcEffectSemanticSnapshotStore(dsl);
         // 4. reload revision
-        TimelineRevision reloaded = saveService.findById(revision.revisionId());
+        TimelineRevision reloaded = saveService.findById("tenant-1", revision.revisionId());
         assertNotNull(reloaded, "E2E-A: reload");
         // hydrate the canonical document from the governed payload (production
         // read path) and rebuild the revision with its OWN persisted context
         TimelineRevision hydrated = reloaded.hydrate(
-                saveService.findPayloadDocument(reloaded.revisionId()).orElseThrow());
+                saveService.findPayloadDocument("tenant-1", reloaded.revisionId()).orElseThrow());
         // 5. exact pin comes FROM the revision
         var pin = hydrated.effectSemanticSnapshotReference();
         // 6. load exact snapshot from durable store
@@ -205,7 +205,7 @@ class Roadmap20E2ESaveReloadRenderIntegrationTest extends PostgresTestContainerS
         TimelineDocument doc = sampleDocument();
 
         // 1. REAL typed Effect-bearing canonical save path
-        TimelineRevision revision = saveService.saveRevisionWithEffects(
+        TimelineRevision revision = com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(saveService,
                 "tenant-1", productId, null, doc, List.of(blurEffect()), List.of(blurDef()),
                 com.example.platform.render.testsupport.RenderTestSchemaFixture.SERVER_ACTOR);
         // 2. NON-EMPTY snapshot persisted + exact pin owned by the revision
@@ -213,9 +213,9 @@ class Roadmap20E2ESaveReloadRenderIntegrationTest extends PostgresTestContainerS
         // 3. recreate application layer
         EffectSemanticSnapshotStore freshStore = new JdbcEffectSemanticSnapshotStore(dsl);
         // 4. reload revision
-        TimelineRevision reloaded = saveService.findById(revision.revisionId());
+        TimelineRevision reloaded = saveService.findById("tenant-1", revision.revisionId());
         TimelineRevision hydrated = reloaded.hydrate(
-                saveService.findPayloadDocument(reloaded.revisionId()).orElseThrow());
+                saveService.findPayloadDocument("tenant-1", reloaded.revisionId()).orElseThrow());
         // 5. pin FROM revision-owned persisted state
         var pin = hydrated.effectSemanticSnapshotReference();
         // 6. load exact snapshot by pin

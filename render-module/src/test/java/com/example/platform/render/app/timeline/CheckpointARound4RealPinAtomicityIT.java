@@ -148,9 +148,9 @@ class CheckpointARound4RealPinAtomicityIT extends PostgresTestContainerSupport {
 
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService,
                 new TimelineContentDigester(), snapshotService,
-                new TimelineArtifactPinValidator(query), pinService, effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService));
+                new TimelineArtifactPinValidator(query), pinService, effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
 
-        var revision = saveService.saveRevision(
+        var revision = com.example.platform.render.testsupport.TimelineMutationTestSupport.save(saveService,
                 TENANT, productId, null, pinnedDoc("art-1", DIGEST_HEX),
                 RenderTestSchemaFixture.SERVER_ACTOR);
         assertNotNull(revision);
@@ -204,14 +204,14 @@ class CheckpointARound4RealPinAtomicityIT extends PostgresTestContainerSupport {
 
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService,
                 new TimelineContentDigester(), snapshotService,
-                new TimelineArtifactPinValidator(query), pinService, effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService));
+                new TimelineArtifactPinValidator(query), pinService, effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
 
         // The pin FK constraint (artifact_pin.artifact_id → artifact.id) fires
         // INSIDE the save transaction: ghost artifact id → statement failure →
         // the whole dsl.transactionResult rolls back. Validation already
         // passed; this is a REAL database persistence failure.
         assertThrows(Exception.class,
-                () -> saveService.saveRevision(
+                () -> com.example.platform.render.testsupport.TimelineMutationTestSupport.save(saveService,
                         TENANT, productId, null, pinnedDoc("ghost-art", DIGEST_HEX),
                         RenderTestSchemaFixture.SERVER_ACTOR),
                 "ghost artifact must fail the real pin INSERT inside the save transaction");
@@ -255,7 +255,7 @@ class CheckpointARound4RealPinAtomicityIT extends PostgresTestContainerSupport {
 
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService,
                 new TimelineContentDigester(), snapshotService,
-                new TimelineArtifactPinValidator(query), pinService, effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService));
+                new TimelineArtifactPinValidator(query), pinService, effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
 
         // Two pinned clips: art-1 (real artifact row) + ghost-art (no row).
         TimelineClip clip1 = new TimelineClip(
@@ -271,7 +271,7 @@ class CheckpointARound4RealPinAtomicityIT extends PostgresTestContainerSupport {
                 List.of(track), TimelineMetadata.empty());
 
         assertThrows(Exception.class,
-                () -> saveService.saveRevision(
+                () -> com.example.platform.render.testsupport.TimelineMutationTestSupport.save(saveService,
                         TENANT, productId, null, doc, RenderTestSchemaFixture.SERVER_ACTOR),
                 "second pin INSERT (ghost artifact) must fail the whole save");
 

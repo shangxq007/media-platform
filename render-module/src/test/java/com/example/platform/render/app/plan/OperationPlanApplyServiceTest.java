@@ -12,7 +12,9 @@ import com.example.platform.operation.plan.OperationPlanner;
 import com.example.platform.operation.plan.PlanErrorCode;
 import com.example.platform.operation.plan.PlanException;
 import com.example.platform.operation.plan.TargetRevisionRef;
+import com.example.platform.shared.authorization.CanonicalActor;
 import com.example.platform.shared.time.MediaTime;
+import com.example.platform.timeline.app.TimelineMutationContext;
 import com.example.platform.timeline.app.TimelineRevisionSaveService;
 import com.example.platform.timeline.canonical.TimelineClip;
 import com.example.platform.timeline.canonical.TimelineClipId;
@@ -26,6 +28,7 @@ import com.example.platform.timeline.semantics.selection.SelectionSpec;
 import com.example.platform.timeline.revisioncommand.RevisionRef;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
@@ -70,22 +73,35 @@ class OperationPlanApplyServiceTest {
         assertTrue(plan.noOp());
 
         TimelineRevisionSaveService writer = mock(TimelineRevisionSaveService.class);
-        when(writer.recordNoOpCommand(eq(RevisionRef.main("tenant-a", "project")), eq("R0"), eq(hash), any()))
+        when(writer.recordNoOpCommand(
+                any(TimelineMutationContext.class),
+                eq(RevisionRef.main("tenant-a", "project")), eq("R0"), eq(hash), any()))
                 .thenReturn(new TimelineRevisionSaveService.RevisionWriteResult(null, "R0", hash, false));
         var authorization = AuthorizationDecision.allow(
                 plan.planDigest(), "alice", "project", "tenant-a",
                 OperationPlanApplyService.CURRENT_REVISION_REF, "policy-v1");
+        CanonicalActor actor = CanonicalActor.user(
+                "alice", "tenant-a", java.util.Set.of(), "test");
         var context = new ApplyContext("command-noop",
                 new TargetRevisionRef(OperationPlanApplyService.CURRENT_REVISION_REF),
-                "R0", "tenant-a", "alice", authorization);
+                "R0", "tenant-a", actor,
+                authorization);
 
         ApplyResult result = new OperationPlanApplyService(writer)
                 .apply(plan, context, "project", base);
         assertEquals(ApplyResult.NO_OP, result.status());
-        verify(writer).recordNoOpCommand(eq(RevisionRef.main("tenant-a", "project")), eq("R0"), eq(hash),
+        ArgumentCaptor<TimelineMutationContext> mutationContext =
+                ArgumentCaptor.forClass(TimelineMutationContext.class);
+        verify(writer).recordNoOpCommand(
+                mutationContext.capture(),
+                eq(RevisionRef.main("tenant-a", "project")), eq("R0"), eq(hash),
                 argThat(command -> command.commandId().equals("command-noop")
                         && command.tenantId().equals("tenant-a")));
-        verify(writer, never()).saveRevisionForCommand(any(), any(), any(), any(), any());
+        assertEquals("tenant-a", mutationContext.getValue().tenantId());
+        assertEquals("project", mutationContext.getValue().projectId());
+        assertEquals(actor, mutationContext.getValue().actor());
+        verify(writer, never()).saveRevisionForCommand(
+                any(TimelineMutationContext.class), any(), any(), any(), any());
     }
 
     @Test
@@ -108,7 +124,10 @@ class OperationPlanApplyServiceTest {
                 OperationPlanApplyService.CURRENT_REVISION_REF, "policy-v1");
         var context = new ApplyContext("command-mismatch",
                 new TargetRevisionRef(OperationPlanApplyService.CURRENT_REVISION_REF),
-                "R0", "tenant-a", "alice", authorization);
+                "R0", "tenant-a",
+                com.example.platform.shared.authorization.CanonicalActor.user(
+                        "alice", "tenant-a", java.util.Set.of(), "test"),
+                authorization);
 
         PlanException failure = assertThrows(PlanException.class,
                 () -> new OperationPlanApplyService(writer)

@@ -8,16 +8,14 @@ import com.example.platform.shared.web.TenantContext;
 import com.example.platform.render.app.timeline.RenderJobRevisionPinningService;
 import com.example.platform.timeline.app.TimelinePatchApplicationService;
 import com.example.platform.timeline.app.TimelineRevisionSaveService;
-import com.example.platform.timeline.app.TimelineSemanticDiffV1Service;
+import com.example.platform.timeline.app.TimelineMutationContext;
+import com.example.platform.timeline.app.TimelineRevisionDiffQuery;
 import com.example.platform.timeline.canonical.TimelineClip;
 import com.example.platform.timeline.canonical.TimelineContentDigester;
 import com.example.platform.timeline.canonical.TimelineDocument;
 import com.example.platform.timeline.canonical.TimelineMetadata;
 import com.example.platform.timeline.canonical.TimelineTrack;
 import com.example.platform.timeline.canonical.TrackType;
-import com.example.platform.timeline.diff.ChangeSummary;
-import com.example.platform.timeline.diff.TimelineChange;
-import com.example.platform.timeline.diff.TimelineChangeSet;
 import com.example.platform.timeline.patch.PatchError;
 import com.example.platform.timeline.patch.PatchErrorCode;
 import com.example.platform.timeline.patch.PatchExecutionException;
@@ -52,7 +50,7 @@ public class TimelineGitV1Controller {
     private final TimelineRevisionQueryService revisionQueryService;
     private final RenderJobRevisionPinningService pinningService;
     private final TimelineContentDigester contentDigester;
-    private final TimelineSemanticDiffV1Service diffService;
+    private final TimelineRevisionDiffQuery diffQuery;
     private final TimelinePatchApplicationService patchService;
     private final TimelineProjectAuthorizationService projectAuthorization;
 
@@ -60,14 +58,14 @@ public class TimelineGitV1Controller {
                                    TimelineRevisionQueryService revisionQueryService,
                                    RenderJobRevisionPinningService pinningService,
                                    TimelineContentDigester contentDigester,
-                                   TimelineSemanticDiffV1Service diffService,
+                                   TimelineRevisionDiffQuery diffQuery,
                                    TimelinePatchApplicationService patchService,
                                    TimelineProjectAuthorizationService projectAuthorization) {
         this.saveService = saveService;
         this.revisionQueryService = revisionQueryService;
         this.pinningService = pinningService;
         this.contentDigester = contentDigester;
-        this.diffService = diffService;
+        this.diffQuery = diffQuery;
         this.patchService = patchService;
         this.projectAuthorization = projectAuthorization;
     }
@@ -80,8 +78,9 @@ public class TimelineGitV1Controller {
         String tenantId = TenantContext.get();
         var actor = projectAuthorization.requireWrite(tenantId, productId);
         var document = request.toDocument();
-        var revision = saveService.saveRevision(tenantId, productId,
-                request.expectedCurrentRevisionId(), document, actor.actorId());
+        var revision = saveService.saveRevision(
+                new TimelineMutationContext(tenantId, productId, actor),
+                request.expectedCurrentRevisionId(), document);
         return ResponseEntity.status(HttpStatus.CREATED).body(RevisionResponse.from(revision));
     }
 
@@ -125,8 +124,9 @@ public class TimelineGitV1Controller {
             @RequestBody RestoreRequest request) {
         String tenantId = TenantContext.get();
         var actor = projectAuthorization.requireWrite(tenantId, productId);
-        var revision = saveService.restoreRevision(tenantId, productId,
-                historicalRevisionId, request.expectedCurrentRevisionId(), actor.actorId());
+        var revision = saveService.restoreRevision(
+                new TimelineMutationContext(tenantId, productId, actor),
+                historicalRevisionId, request.expectedCurrentRevisionId());
         return ResponseEntity.status(HttpStatus.CREATED).body(RevisionResponse.from(revision));
     }
 
@@ -141,17 +141,6 @@ public class TimelineGitV1Controller {
         return ResponseEntity.status(HttpStatus.CREATED).body(new RenderJobResponse(jobId));
     }
 
-    @ExceptionHandler(TimelineConflictException.class)
-    public ResponseEntity<ConflictError> handleConflict(TimelineConflictException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(new ConflictError(
-                        TimelineConflictException.ERROR_CODE,
-                        ex.getMessage(),
-                        ex.getProductId(),
-                        ex.getExpectedRevisionId(),
-                        ex.getActualRevisionId()));
-    }
-
     @GetMapping("/products/{productId}/diff")
     @Operation(summary = "Compute semantic diff between two revisions")
     public ResponseEntity<DiffResponse> getDiff(
@@ -159,9 +148,10 @@ public class TimelineGitV1Controller {
             @RequestParam String baseRevisionId,
             @RequestParam String targetRevisionId) {
         projectAuthorization.requireRead(TenantContext.get(), productId);
-        var changeSet = diffService.diff(
-                TenantContext.get(), productId, baseRevisionId, targetRevisionId);
-        return ResponseEntity.ok(DiffResponse.from(changeSet));
+        String tenantId = TenantContext.get();
+        var comparison = diffQuery.compareRevisions(
+                productId, tenantId, baseRevisionId, targetRevisionId);
+        return ResponseEntity.ok(DiffResponse.from(comparison));
     }
 
     @ExceptionHandler(com.example.platform.timeline.diff.TimelineDiffErrors.TimelineDiffException.class)
@@ -180,7 +170,7 @@ public class TimelineGitV1Controller {
         var patch = request.toPatch(productId);
         var result = patchService.preview(TenantContext.get(), patch);
         if (result instanceof PatchPreviewResult.Failure failure) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            return ResponseEntity.status(patchFailureStatus(failure.error().code()))
                     .body(new PatchPreviewResponse(failure.error().code().name(), failure.error().message(), null, false));
         }
         return ResponseEntity.ok(new PatchPreviewResponse(null, null, ((PatchPreviewResult.Success) result).resultDigest(), false));
@@ -194,9 +184,10 @@ public class TimelineGitV1Controller {
         String tenantId = TenantContext.get();
         var actor = projectAuthorization.requireWrite(tenantId, productId);
         var patch = request.toPatch(productId);
-        var result = patchService.apply(tenantId, actor.actorId(), patch);
+        var result = patchService.apply(
+                new TimelineMutationContext(tenantId, productId, actor), patch);
         if (result instanceof PatchApplyResult.Failure failure) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            return ResponseEntity.status(patchFailureStatus(failure.error().code()))
                     .body(new PatchApplyResponse(failure.error().code().name(), failure.error().message(), null, null, null, false));
         }
         if (result instanceof PatchApplyResult.NoChanges noChanges) {
@@ -209,8 +200,27 @@ public class TimelineGitV1Controller {
 
     @ExceptionHandler(PatchExecutionException.class)
     public ResponseEntity<PatchError> handlePatchException(PatchExecutionException ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
                 .body(new PatchError(PatchErrorCode.TIMELINE_PATCH_PRECONDITION_FAILED, ex.getMessage(), null, null));
+    }
+
+    private static HttpStatus patchFailureStatus(PatchErrorCode code) {
+        return switch (code) {
+            case TIMELINE_PATCH_REVISION_NOT_FOUND -> HttpStatus.NOT_FOUND;
+            case TIMELINE_PATCH_BASE_NOT_CURRENT,
+                    TIMELINE_PATCH_REVISION_CONFLICT -> HttpStatus.CONFLICT;
+            case TIMELINE_PATCH_CROSS_PRODUCT_NOT_ALLOWED -> HttpStatus.FORBIDDEN;
+            case TIMELINE_PATCH_BASE_DIGEST_MISMATCH,
+                    TIMELINE_PATCH_SCHEMA_INCOMPATIBLE,
+                    TIMELINE_PATCH_PAYLOAD_INVALID,
+                    TIMELINE_PATCH_CONFLICTING_OPERATIONS,
+                    TIMELINE_PATCH_PRECONDITION_FAILED,
+                    TIMELINE_PATCH_TARGET_NOT_FOUND,
+                    TIMELINE_PATCH_TARGET_ALREADY_EXISTS,
+                    TIMELINE_PATCH_POSITION_INVALID,
+                    TIMELINE_PATCH_RESULT_DIGEST_MISMATCH,
+                    TIMELINE_PATCH_NO_CHANGES -> HttpStatus.UNPROCESSABLE_ENTITY;
+        };
     }
 
     // Request/Response DTOs
@@ -288,39 +298,39 @@ public class TimelineGitV1Controller {
             List<ChangeDto> changes,
             SummaryDto summary) {
 
-        static DiffResponse from(TimelineChangeSet cs) {
-            List<ChangeDto> changes = cs.getChanges().stream()
+        static DiffResponse from(TimelineRevisionDiffQuery.CompareResult comparison) {
+            List<ChangeDto> changes = comparison.entityChanges().stream()
                     .map(c -> new ChangeDto(
-                            c.getChangeType().name(),
-                            c.getEntityKind().name(),
-                            c.getEntityId(),
-                            c.getPropertyName(),
-                            c.getBeforeValue(),
-                            c.getAfterValue(),
-                            c.getTargetPosition()))
+                            c.action().toUpperCase(),
+                            c.kind().toUpperCase(),
+                            c.entityId(),
+                            null,
+                            "removed".equals(c.action()) ? c.entityId() : null,
+                            "added".equals(c.action()) ? c.entityId() : null,
+                            -1))
                     .toList();
 
-            ChangeSummary s = cs.getSummary();
+            var s = comparison.summary();
             SummaryDto summary = new SummaryDto(
-                    s.getTotal(),
-                    s.getTracksAdded(),
-                    s.getTracksRemoved(),
-                    s.getTracksChanged(),
-                    s.getTracksReordered(),
-                    s.getClipsAdded(),
-                    s.getClipsRemoved(),
-                    s.getClipsChanged(),
-                    s.getClipsMoved(),
-                    s.getClipsReordered());
+                    changes.size(),
+                    s.tracksAdded(),
+                    s.tracksRemoved(),
+                    s.tracksModified(),
+                    0,
+                    s.clipsAdded(),
+                    s.clipsRemoved(),
+                    s.clipsModified(),
+                    0,
+                    0);
 
             return new DiffResponse(
-                    cs.getChangeSetVersion(),
-                    cs.getProductId(),
-                    cs.getBaseRevisionId(),
-                    cs.getTargetRevisionId(),
-                    cs.getBaseContentDigest(),
-                    cs.getTargetContentDigest(),
-                    cs.getTimelineSchemaVersion(),
+                    "1.0",
+                    comparison.fromRevision().projectId(),
+                    comparison.fromRevision().id(),
+                    comparison.toRevision().id(),
+                    comparison.fromRevision().contentHash(),
+                    comparison.toRevision().contentHash(),
+                    comparison.toRevision().schemaVersion(),
                     changes,
                     summary);
         }

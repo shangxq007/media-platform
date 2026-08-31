@@ -9,6 +9,7 @@ import com.example.platform.operation.plan.PlanException;
 import com.example.platform.operation.plan.TargetRevisionRef;
 import com.example.platform.timeline.app.TimelineRevisionSaveService;
 import com.example.platform.timeline.app.TimelineRevisionCommandConflictException;
+import com.example.platform.timeline.app.TimelineMutationContext;
 import com.example.platform.timeline.canonical.TimelineContentDigester;
 import com.example.platform.timeline.canonical.TimelineDocument;
 import com.example.platform.timeline.revisioncommand.RevisionRef;
@@ -105,16 +106,19 @@ public class OperationPlanApplyService {
                     "OPERATION_PLAN", context.tenantId());
             RevisionRef targetRef = new RevisionRef(
                     context.tenantId(), projectId, context.targetRef().refId());
+            TimelineMutationContext mutationContext = new TimelineMutationContext(
+                    context.tenantId(), projectId, context.actor());
             if (plan.noOp()) {
                 var noOp = revisionSaveService.recordNoOpCommand(
-                        targetRef, plan.baseRevisionId(), plan.baseContentHash(), command);
+                        mutationContext, targetRef, plan.baseRevisionId(),
+                        plan.baseContentHash(), command);
                 return ApplyResult.noOp(plan.planDigest(), context.applyCommandId(),
                         plan.baseRevisionId(), noOp.timelineContentHash(),
                         context.targetRef().refId());
             }
             var result = revisionSaveService.saveRevisionForCommand(
-                    targetRef, plan.baseRevisionId(), plan.candidateTimeline(),
-                    context.principalRef(), command);
+                    mutationContext, targetRef, plan.baseRevisionId(),
+                    plan.candidateTimeline(), command);
             String committedTimelineHash = result.timelineContentHash();
             if (!plan.candidateContentHash().equals(committedTimelineHash)) {
                 throw new PlanException(PlanErrorCode.PERSISTENCE_FAILURE,

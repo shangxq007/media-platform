@@ -97,7 +97,7 @@ class Roadmap20RevisionContextOwnershipAndRestoreTest extends PostgresTestContai
                         new JdbcEffectSemanticSnapshotStore(dsl)),
                 new JdbcTimelineRevisionSemanticContextStore(dsl),
                 new DefaultTimelineRevisionPersistence(),
-                new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService));
+                new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
     }
 
     private static TimelineDocument sampleDocument() {
@@ -219,11 +219,11 @@ class Roadmap20RevisionContextOwnershipAndRestoreTest extends PostgresTestContai
     void rst5_validCompleteRevisionRestoresPASS() {
         String productId = "proj-a";
         TimelineRevisionSaveService svc = saveService();
-        com.example.platform.timeline.version.TimelineRevision first = svc.saveRevisionWithEffects(
+        com.example.platform.timeline.version.TimelineRevision first = com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(svc,
                 productId, null, sampleDocument(),
                 List.of(effect("eff-1", "4")), List.of(def("4")), "u");
         TimelineRevisionSaveService svc2 = saveService();
-        var restored = svc2.restoreRevision(productId, first.revisionId(), first.revisionId(), "u");
+        var restored = com.example.platform.render.testsupport.TimelineMutationTestSupport.restore(svc2, productId, first.revisionId(), first.revisionId(), "u");
         assertNotNull(restored, "RST5: valid complete revision restores");
         assertNotEquals(first.revisionId(), restored.revisionId(), "RST5: new revision identity");
         assertEquals(2L, countRevisions(productId), "RST5: original + restored");
@@ -233,7 +233,7 @@ class Roadmap20RevisionContextOwnershipAndRestoreTest extends PostgresTestContai
     void rst1_nullHistoricalSnapshotIdFailsClosed() {
         String productId = "proj-a";
         TimelineRevisionSaveService svc = saveService();
-        var rev = svc.saveRevisionWithEffects(productId, null, sampleDocument(), List.of(), List.of(), "u");
+        var rev = com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(svc, productId, null, sampleDocument(), List.of(), List.of(), "u");
         // RST1: the DB itself enforces SNAPSHOT_ID NOT NULL — a null snapshot id
         // cannot exist in a final-model revision (constraint = fail-closed at
         // the storage boundary; the restore path additionally fails closed on
@@ -248,13 +248,13 @@ class Roadmap20RevisionContextOwnershipAndRestoreTest extends PostgresTestContai
     void rst2_missingSnapshotPayloadRowFailsClosed() {
         String productId = "proj-a";
         TimelineRevisionSaveService svc = saveService();
-        var rev = svc.saveRevisionWithEffects(productId, null, sampleDocument(), List.of(), List.of(), "u");
+        var rev = com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(svc, productId, null, sampleDocument(), List.of(), List.of(), "u");
         String snapId = dsl.fetchOne("select snapshot_id from timeline_revision where id = ?",
                 rev.revisionId()).get(0, String.class);
         com.example.platform.render.testsupport.RenderTestSchemaFixture.plantCorruptFixture(
                 dsl, tx -> tx.execute("delete from timeline_snapshot where id = ?", snapId));
         assertThrows(IllegalStateException.class,
-                () -> svc.restoreRevision(productId, rev.revisionId(), rev.revisionId(), "u"),
+                () -> com.example.platform.render.testsupport.TimelineMutationTestSupport.restore(svc, productId, rev.revisionId(), rev.revisionId(), "u"),
                 "RST2: missing snapshot payload row FAILS CLOSED");
     }
 
@@ -262,10 +262,10 @@ class Roadmap20RevisionContextOwnershipAndRestoreTest extends PostgresTestContai
     void rst3_missingSemanticContextFailsClosed() {
         String productId = "proj-a";
         TimelineRevisionSaveService svc = saveService();
-        var rev = svc.saveRevisionWithEffects(productId, null, sampleDocument(), List.of(), List.of(), "u");
+        var rev = com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(svc, productId, null, sampleDocument(), List.of(), List.of(), "u");
         dsl.execute("delete from timeline_snapshot where id = ?", "revctx_" + rev.revisionId());
         assertThrows(Exception.class,
-                () -> svc.restoreRevision(productId, rev.revisionId(), rev.revisionId(), "u"),
+                () -> com.example.platform.render.testsupport.TimelineMutationTestSupport.restore(svc, productId, rev.revisionId(), rev.revisionId(), "u"),
                 "RST3: missing revctx FAILS CLOSED");
     }
 
@@ -273,13 +273,13 @@ class Roadmap20RevisionContextOwnershipAndRestoreTest extends PostgresTestContai
     void rst4_wrongRevctxOwnershipFailsClosed() {
         String productId = "proj-a";
         TimelineRevisionSaveService svc = saveService();
-        var rev = svc.saveRevisionWithEffects(productId, null, sampleDocument(), List.of(), List.of(), "u");
+        var rev = com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(svc, productId, null, sampleDocument(), List.of(), List.of(), "u");
         com.example.platform.render.testsupport.RenderTestSchemaFixture.plantCorruptFixture(
                 dsl, tx -> tx.execute(
                         "update timeline_snapshot set project_id = 'proj-b', tenant_id = 'proj-b-t' "
                                 + "where id = ?", "revctx_" + rev.revisionId()));
         assertThrows(Exception.class,
-                () -> svc.restoreRevision(productId, rev.revisionId(), rev.revisionId(), "u"),
+                () -> com.example.platform.render.testsupport.TimelineMutationTestSupport.restore(svc, productId, rev.revisionId(), rev.revisionId(), "u"),
                 "RST4: revctx wrong ownership FAILS CLOSED");
     }
 
@@ -287,11 +287,11 @@ class Roadmap20RevisionContextOwnershipAndRestoreTest extends PostgresTestContai
     void rstown1_crossProjectRestoreFailsClosed() {
         String productId = "proj-a";
         TimelineRevisionSaveService svc = saveService();
-        var rev = svc.saveRevisionWithEffects(productId, null, sampleDocument(), List.of(), List.of(), "u");
+        var rev = com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(svc, productId, null, sampleDocument(), List.of(), List.of(), "u");
         // historical revision row is owned by proj-a; restore as proj-b
         com.example.platform.shared.web.TenantContext.set("proj-b-t");
         assertThrows(Exception.class,
-                () -> svc.restoreRevision("proj-b", rev.revisionId(), null, "u"),
+                () -> com.example.platform.render.testsupport.TimelineMutationTestSupport.restore(svc, "proj-b", rev.revisionId(), null, "u"),
                 "RSTOWN1: cross-project restore FAILS CLOSED");
     }
 
@@ -299,12 +299,12 @@ class Roadmap20RevisionContextOwnershipAndRestoreTest extends PostgresTestContai
     void rstown2_crossTenantRestoreFailsClosed() {
         String productId = "proj-a";
         TimelineRevisionSaveService svc = saveService();
-        var rev = svc.saveRevisionWithEffects(
+        var rev = com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(svc,
                 "proj-a-t", productId, null, sampleDocument(), List.of(), List.of(),
                 com.example.platform.render.testsupport.RenderTestSchemaFixture.SERVER_ACTOR);
         com.example.platform.shared.web.TenantContext.set("other-tenant");
         assertThrows(Exception.class,
-                () -> svc.restoreRevision(
+                () -> com.example.platform.render.testsupport.TimelineMutationTestSupport.restore(svc,
                         "other-tenant", "proj-a", rev.revisionId(), rev.revisionId(),
                         com.example.platform.render.testsupport.RenderTestSchemaFixture.SERVER_ACTOR),
                 "RSTOWN2: cross-tenant restore FAILS CLOSED");
@@ -314,7 +314,7 @@ class Roadmap20RevisionContextOwnershipAndRestoreTest extends PostgresTestContai
     void rstTxHead_restoreHeadFailureRollsBackWholeTransition() {
         String productId = "proj-a";
         TimelineRevisionSaveService svc = saveService();
-        var rev = svc.saveRevisionWithEffects(productId, null, sampleDocument(), List.of(), List.of(), "u");
+        var rev = com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(svc, productId, null, sampleDocument(), List.of(), List.of(), "u");
         long revisionsBefore = countRevisions(productId);
         long snapsBefore = countSnapshots(productId);
         TimelineRevisionSaveService failingRestore = new TimelineRevisionSaveService(
@@ -334,9 +334,10 @@ class Roadmap20RevisionContextOwnershipAndRestoreTest extends PostgresTestContai
                 new DefaultTimelineRevisionPersistence(),
                 (tx, ref, expected, newRevisionId) -> {
                     throw new IllegalStateException("RST_TX_HEAD injected head failure");
-                });
+                },
+                com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
         assertThrows(IllegalStateException.class,
-                () -> failingRestore.restoreRevision(productId, rev.revisionId(), rev.revisionId(), "u"));
+                () -> com.example.platform.render.testsupport.TimelineMutationTestSupport.restore(failingRestore, productId, rev.revisionId(), rev.revisionId(), "u"));
         assertEquals(revisionsBefore, countRevisions(productId), "RST_TX_HEAD: no new revision committed");
         assertEquals(snapsBefore, countSnapshots(productId), "RST_TX_HEAD: no new snapshot rows committed");
         assertEquals(rev.revisionId(), currentRevision(productId), "RST_TX_HEAD: head unchanged");
@@ -364,10 +365,10 @@ class Roadmap20RevisionContextOwnershipAndRestoreTest extends PostgresTestContai
         String tenantA = "proj-a-t";
         TimelineRevisionSaveService svcA = saveFor("proj-a", tenantA);
         com.example.platform.shared.web.TenantContext.set(tenantA);
-        var ra = svcA.saveRevisionWithEffects("proj-a", null, sampleDocument(), List.of(), List.of(), "u");
+        var ra = com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(svcA, "proj-a", null, sampleDocument(), List.of(), List.of(), "u");
         TimelineRevisionSaveService svcB = saveFor("proj-b", "proj-b-t");
         com.example.platform.shared.web.TenantContext.set("proj-b-t");
-        var rb = svcB.saveRevisionWithEffects("proj-b", null, new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
+        var rb = com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(svcB, "proj-b", null, new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
                         List.of(), TimelineMetadata.empty(),
                         com.example.platform.audio.domain.mix.AudioMix.EMPTY, List.of(), List.of()), List.of(), List.of(), "u");
         String rbSnap = dsl.fetchOne("select snapshot_id from timeline_revision where id = ?",
@@ -380,7 +381,7 @@ class Roadmap20RevisionContextOwnershipAndRestoreTest extends PostgresTestContai
         com.example.platform.shared.web.TenantContext.set(tenantA);
         TimelineRevisionSaveService svcA2 = saveService();
         assertThrows(Exception.class,
-                () -> svcA2.restoreRevision("proj-a", ra.revisionId(), ra.revisionId(), "u"),
+                () -> com.example.platform.render.testsupport.TimelineMutationTestSupport.restore(svcA2, "proj-a", ra.revisionId(), ra.revisionId(), "u"),
                 "RST7: foreign Timeline snapshot in restore FAILS CLOSED");
         assertEquals(ra.revisionId(), currentRevision("proj-a"), "RST7: head unchanged");
     }
@@ -391,12 +392,12 @@ class Roadmap20RevisionContextOwnershipAndRestoreTest extends PostgresTestContai
         saveFor("proj-a", tenantA);
         com.example.platform.shared.web.TenantContext.set(tenantA);
         TimelineRevisionSaveService svc = saveService();
-        var rev = svc.saveRevisionWithEffects(
+        var rev = com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(svc,
                 tenantA, "proj-a", null, sampleDocument(), List.of(), List.of(),
                 com.example.platform.render.testsupport.RenderTestSchemaFixture.SERVER_ACTOR);
         dsl.execute("update timeline_revision set content_hash = 'tampered' where id = ?", rev.revisionId());
         assertThrows(Exception.class,
-                () -> svc.restoreRevision("proj-a", rev.revisionId(), rev.revisionId(), "u"),
+                () -> com.example.platform.render.testsupport.TimelineMutationTestSupport.restore(svc, "proj-a", rev.revisionId(), rev.revisionId(), "u"),
                 "RST8: canonical Timeline content_hash mismatch FAILS CLOSED");
     }
 
@@ -406,7 +407,7 @@ class Roadmap20RevisionContextOwnershipAndRestoreTest extends PostgresTestContai
         saveFor("proj-a", tenantA);
         com.example.platform.shared.web.TenantContext.set(tenantA);
         TimelineRevisionSaveService svc = saveService();
-        var rev = svc.saveRevisionWithEffects("proj-a", null, sampleDocument(), List.of(), List.of(), "u");
+        var rev = com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(svc, "proj-a", null, sampleDocument(), List.of(), List.of(), "u");
         // replace the governed Timeline payload with a DIFFERENT valid document
         String snapId = dsl.fetchOne("select snapshot_id from timeline_revision where id = ?",
                 rev.revisionId()).get(0, String.class);
@@ -417,7 +418,7 @@ class Roadmap20RevisionContextOwnershipAndRestoreTest extends PostgresTestContai
                         List.of(), List.of()));
         dsl.execute("update timeline_snapshot set payload_json = ? where id = ?", other, snapId);
         assertThrows(Exception.class,
-                () -> svc.restoreRevision("proj-a", rev.revisionId(), rev.revisionId(), "u"),
+                () -> com.example.platform.render.testsupport.TimelineMutationTestSupport.restore(svc, "proj-a", rev.revisionId(), rev.revisionId(), "u"),
                 "RST9: Timeline payload digest mismatch FAILS CLOSED");
     }
 
@@ -433,7 +434,7 @@ class Roadmap20RevisionContextOwnershipAndRestoreTest extends PostgresTestContai
         saveFor("proj-a", tenantA);
         com.example.platform.shared.web.TenantContext.set(tenantA);
         TimelineRevisionSaveService svc = saveService();
-        var rev = svc.saveRevisionWithEffects("proj-a", null, sampleDocument(),
+        var rev = com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(svc, "proj-a", null, sampleDocument(),
                 List.of(effect("eff-1", "4")), List.of(def("4")), "u");
         // load the EXACT Effect snapshot id from the persisted revctx
         // (JdbcTimelineRevisionSemanticContextStore — the final production
@@ -469,7 +470,7 @@ class Roadmap20RevisionContextOwnershipAndRestoreTest extends PostgresTestContai
         // delete THAT esnap_ row ONLY — Timeline snapshot + revctx untouched
         dsl.execute("delete from timeline_snapshot where id = ?", esnapId);
         Exception ex = assertThrows(Exception.class,
-                () -> svc.restoreRevision("proj-a", rev.revisionId(), rev.revisionId(), "u"),
+                () -> com.example.platform.render.testsupport.TimelineMutationTestSupport.restore(svc, "proj-a", rev.revisionId(), rev.revisionId(), "u"),
                 "RST10: missing Effect snapshot FAILS CLOSED (no remint, no EMPTY)");
         // §40: the diagnostic must indicate the intended boundary — the
         // Effect snapshot, not an earlier Timeline/revctx failure.
@@ -491,7 +492,7 @@ class Roadmap20RevisionContextOwnershipAndRestoreTest extends PostgresTestContai
         String tenantA = "proj-a-t";
         TimelineRevisionSaveService svcA = saveFor("proj-a", tenantA);
         com.example.platform.shared.web.TenantContext.set(tenantA);
-        var ra = svcA.saveRevisionWithEffects("proj-a", null, sampleDocument(),
+        var ra = com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(svcA, "proj-a", null, sampleDocument(),
                 List.of(effect("eff-1", "4")), List.of(def("4")), "u");
         TimelineRevisionSaveService svcB = saveFor("proj-b", "proj-b-t");
         // B needs its own artifact under proj-b-t (pin validation is
@@ -502,7 +503,7 @@ class Roadmap20RevisionContextOwnershipAndRestoreTest extends PostgresTestContai
                 + "100, 'VIDEO', 'SOURCE_MEDIA', 'AVAILABLE', 1, now()) "
                 + "on conflict (id) do nothing");
         com.example.platform.shared.web.TenantContext.set("proj-b-t");
-        var rb = svcB.saveRevisionWithEffects("proj-b", null,
+        var rb = com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(svcB, "proj-b", null,
                 sampleDocument("c1", "asset-1", "stream-1", "art-b-1"),
                 List.of(effect("eff-1", "4")), List.of(def("4")), "u");
         // load RB's REAL Effect snapshot reference (exact esnap_ identity,
@@ -543,7 +544,7 @@ class Roadmap20RevisionContextOwnershipAndRestoreTest extends PostgresTestContai
                 tamperedPayload, "revctx_" + ra.revisionId());
         TimelineRevisionSaveService svcA2 = saveService();
         Exception ex = assertThrows(Exception.class,
-                () -> svcA2.restoreRevision("proj-a", ra.revisionId(), ra.revisionId(), "u"),
+                () -> com.example.platform.render.testsupport.TimelineMutationTestSupport.restore(svcA2, "proj-a", ra.revisionId(), ra.revisionId(), "u"),
                 "RST11: foreign Effect snapshot ownership FAILS CLOSED");
         // §40/§31: failure must come from the ownership-scoped Effect lookup
         // (Effect snapshot missing/not-owned for A because it belongs to B) —
@@ -563,7 +564,7 @@ class Roadmap20RevisionContextOwnershipAndRestoreTest extends PostgresTestContai
         saveFor("proj-a", tenantA);
         com.example.platform.shared.web.TenantContext.set(tenantA);
         TimelineRevisionSaveService svc = saveService();
-        var rev = svc.saveRevisionWithEffects("proj-a", null, sampleDocument(),
+        var rev = com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(svc, "proj-a", null, sampleDocument(),
                 List.of(effect("eff-1", "4")), List.of(def("4")), "u");
         // tamper revctx Effect reference contentDigest (keep snapshotId real)
         String payload = dsl.fetchOne("select payload_json from timeline_snapshot where id = ?",
@@ -573,7 +574,7 @@ class Roadmap20RevisionContextOwnershipAndRestoreTest extends PostgresTestContai
         dsl.execute("update timeline_snapshot set payload_json = ? where id = ?",
                 tampered, "revctx_" + rev.revisionId());
         assertThrows(Exception.class,
-                () -> svc.restoreRevision("proj-a", rev.revisionId(), rev.revisionId(), "u"),
+                () -> com.example.platform.render.testsupport.TimelineMutationTestSupport.restore(svc, "proj-a", rev.revisionId(), rev.revisionId(), "u"),
                 "RST12: Effect reference digest mismatch FAILS CLOSED");
     }
 
@@ -585,7 +586,7 @@ class Roadmap20RevisionContextOwnershipAndRestoreTest extends PostgresTestContai
         saveFor("proj-a", tenantA);
         com.example.platform.shared.web.TenantContext.set(tenantA);
         TimelineRevisionSaveService svc = saveService();
-        var rev = svc.saveRevisionWithEffects("proj-a", null, sampleDocument(), List.of(), List.of(), "u");
+        var rev = com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(svc, "proj-a", null, sampleDocument(), List.of(), List.of(), "u");
         // switch tenant -> findById must NOT resolve the revision
         com.example.platform.shared.web.TenantContext.set("other-tenant");
         assertNull(svc.findById("other-tenant", rev.revisionId()),
@@ -601,10 +602,10 @@ class Roadmap20RevisionContextOwnershipAndRestoreTest extends PostgresTestContai
         String tenantA = "proj-a-t";
         TimelineRevisionSaveService svcA = saveFor("proj-a", tenantA);
         com.example.platform.shared.web.TenantContext.set(tenantA);
-        var ra = svcA.saveRevisionWithEffects("proj-a", null, sampleDocument(), List.of(), List.of(), "u");
+        var ra = com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(svcA, "proj-a", null, sampleDocument(), List.of(), List.of(), "u");
         TimelineRevisionSaveService svcB = saveFor("proj-b", "proj-b-t");
         com.example.platform.shared.web.TenantContext.set("proj-b-t");
-        var rb = svcB.saveRevisionWithEffects("proj-b", null, new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
+        var rb = com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(svcB, "proj-b", null, new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
                         List.of(), TimelineMetadata.empty(),
                         com.example.platform.audio.domain.mix.AudioMix.EMPTY, List.of(), List.of()), List.of(), List.of(), "u");
         String rbSnap = dsl.fetchOne("select snapshot_id from timeline_revision where id = ?",
@@ -618,7 +619,7 @@ class Roadmap20RevisionContextOwnershipAndRestoreTest extends PostgresTestContai
         // DIRECT hydration-helper call: the foreign payload must NOT be
         // returned — Optional.empty / fail closed (no foreign payload).
         TimelineRevisionSaveService svcA2 = saveService();
-        assertTrue(svcA2.findPayloadDocument(ra.revisionId()).isEmpty(),
+        assertTrue(svcA2.findPayloadDocument(tenantA, ra.revisionId()).isEmpty(),
                 "READOWN2: foreign Timeline snapshot never hydrates the canonical payload "
                         + "(findPayloadDocument returns empty)");
     }
@@ -631,10 +632,10 @@ class Roadmap20RevisionContextOwnershipAndRestoreTest extends PostgresTestContai
         String tenantA = "proj-a-t";
         TimelineRevisionSaveService svcA = saveFor("proj-a", tenantA);
         com.example.platform.shared.web.TenantContext.set(tenantA);
-        var ra = svcA.saveRevisionWithEffects("proj-a", null, sampleDocument(), List.of(), List.of(), "u");
+        var ra = com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(svcA, "proj-a", null, sampleDocument(), List.of(), List.of(), "u");
         TimelineRevisionSaveService svcB = saveFor("proj-b", "proj-b-t");
         com.example.platform.shared.web.TenantContext.set("proj-b-t");
-        var rb = svcB.saveRevisionWithEffects("proj-b", null, new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
+        var rb = com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(svcB, "proj-b", null, new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
                         List.of(), TimelineMetadata.empty(),
                         com.example.platform.audio.domain.mix.AudioMix.EMPTY, List.of(), List.of()), List.of(), List.of(), "u");
         String rbSnap = dsl.fetchOne("select snapshot_id from timeline_revision where id = ?",
@@ -657,7 +658,9 @@ class Roadmap20RevisionContextOwnershipAndRestoreTest extends PostgresTestContai
                 null, null);
         var patchService = new TimelinePatchApplicationService(
                 saveService(), currentRevisionService, digester);
-        PatchApplyResult result = patchService.apply(patch);
+        PatchApplyResult result = patchService.apply(
+                com.example.platform.render.testsupport.TimelineMutationTestSupport.user(
+                        tenantA, "proj-a", "u"), patch);
         assertTrue(result instanceof PatchApplyResult.Failure f
                         && f.error().code() == PatchErrorCode.TIMELINE_PATCH_PAYLOAD_INVALID,
                 "READOWN3: patch apply with foreign snapshot FAILS CLOSED with PAYLOAD_INVALID, got: " + result);
@@ -673,10 +676,10 @@ class Roadmap20RevisionContextOwnershipAndRestoreTest extends PostgresTestContai
         String tenantA = "proj-a-t";
         TimelineRevisionSaveService svcA = saveFor("proj-a", tenantA);
         com.example.platform.shared.web.TenantContext.set(tenantA);
-        var ra = svcA.saveRevisionWithEffects("proj-a", null, sampleDocument(), List.of(), List.of(), "u");
+        var ra = com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(svcA, "proj-a", null, sampleDocument(), List.of(), List.of(), "u");
         TimelineRevisionSaveService svcB = saveFor("proj-b", "proj-b-t");
         com.example.platform.shared.web.TenantContext.set("proj-b-t");
-        var rb = svcB.saveRevisionWithEffects("proj-b", null, new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
+        var rb = com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(svcB, "proj-b", null, new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
                         List.of(), TimelineMetadata.empty(),
                         com.example.platform.audio.domain.mix.AudioMix.EMPTY, List.of(), List.of()), List.of(), List.of(), "u");
         String rbSnap = dsl.fetchOne("select snapshot_id from timeline_revision where id = ?",
@@ -698,7 +701,7 @@ class Roadmap20RevisionContextOwnershipAndRestoreTest extends PostgresTestContai
                 null, null);
         var patchService = new TimelinePatchApplicationService(
                 saveService(), currentRevisionService, digester);
-        PatchPreviewResult result = patchService.preview(patch);
+        PatchPreviewResult result = patchService.preview(tenantA, patch);
         assertTrue(result instanceof PatchPreviewResult.Failure f
                         && f.error().code() == PatchErrorCode.TIMELINE_PATCH_PAYLOAD_INVALID,
                 "READOWN4: patch preview with foreign snapshot FAILS CLOSED with PAYLOAD_INVALID, got: " + result);
@@ -717,7 +720,7 @@ class Roadmap20RevisionContextOwnershipAndRestoreTest extends PostgresTestContai
         saveFor("proj-a", tenantA);
         com.example.platform.shared.web.TenantContext.set(tenantA);
         TimelineRevisionSaveService svc = saveService();
-        var rev = svc.saveRevisionWithEffects("proj-a", null, sampleDocument(),
+        var rev = com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(svc, "proj-a", null, sampleDocument(),
                 List.of(effect("eff-1", "4")), List.of(def("4")), "u");
         // historical owned snapshot payload (exact bytes)
         String historicalSnapId = dsl.fetchOne("select snapshot_id from timeline_revision where id = ?",
@@ -729,7 +732,7 @@ class Roadmap20RevisionContextOwnershipAndRestoreTest extends PostgresTestContai
                 .orElseThrow();
         // run restore
         TimelineRevisionSaveService svc2 = saveService();
-        var restored = svc2.restoreRevision("proj-a", rev.revisionId(), rev.revisionId(), "u");
+        var restored = com.example.platform.render.testsupport.TimelineMutationTestSupport.restore(svc2, "proj-a", rev.revisionId(), rev.revisionId(), "u");
         // load the NEW restored owned snapshot
         String restoredSnapId = dsl.fetchOne("select snapshot_id from timeline_revision where id = ?",
                 restored.revisionId()).get(0, String.class);
@@ -758,7 +761,7 @@ class Roadmap20RevisionContextOwnershipAndRestoreTest extends PostgresTestContai
         saveFor("proj-a", tenantA);
         com.example.platform.shared.web.TenantContext.set(tenantA);
         TimelineRevisionSaveService svc = saveService();
-        var rev = svc.saveRevisionWithEffects("proj-a", null, sampleDocument(),
+        var rev = com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(svc, "proj-a", null, sampleDocument(),
                 List.of(effect("eff-1", "4")), List.of(def("4")), "u");
         var revctxStore = new JdbcTimelineRevisionSemanticContextStore(dsl);
         var histCtx = revctxStore.findByRevisionId(dsl, "proj-a", tenantA, rev.revisionId())
@@ -766,7 +769,7 @@ class Roadmap20RevisionContextOwnershipAndRestoreTest extends PostgresTestContai
         var histRef = histCtx.effectReference();
         // run restore
         TimelineRevisionSaveService svc2 = saveService();
-        var restored = svc2.restoreRevision("proj-a", rev.revisionId(), rev.revisionId(), "u");
+        var restored = com.example.platform.render.testsupport.TimelineMutationTestSupport.restore(svc2, "proj-a", rev.revisionId(), rev.revisionId(), "u");
         var restoredCtx = revctxStore.findByRevisionId(dsl, "proj-a", tenantA, restored.revisionId())
                 .orElseThrow();
         var restoredRef = restoredCtx.effectReference();

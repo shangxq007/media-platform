@@ -143,7 +143,7 @@ class CheckpointARound4SourceBindingClosureTest {
         String theirsJson = payloadWithBinding(BINDING);
 
         TimelineMergeEngine engine = newEngine(baseJson, oursJson, theirsJson);
-        TimelineMergeResult result = engine.mergeSemantic(new TimelineMergeRequest(
+        TimelineMergeResult result = engine.mergeSemantic(TestTimelineMutationContexts.mergeRequest(
                 PROJECT, TENANT, "base-rev", "src-rev", "tgt-rev", "u", "m"));
         assertEquals(TimelineMergeResult.MergeStatus.MERGED, result.status(),
                 "merge must succeed: " + result.summary());
@@ -176,7 +176,7 @@ class CheckpointARound4SourceBindingClosureTest {
                         ContentDigest.sha256("c".repeat(64)),
                         new MediaClip.TimeRange(MediaTime.ZERO, MediaTime.ofTicks(60, 30))));
         TimelineMergeEngine engine = newEngine(baseJson, oursJson, theirsJson);
-        TimelineMergeResult result = engine.mergeSemantic(new TimelineMergeRequest(
+        TimelineMergeResult result = engine.mergeSemantic(TestTimelineMutationContexts.mergeRequest(
                 PROJECT, TENANT, "base-rev", "src-rev", "tgt-rev", "u", "m"));
         assertEquals(TimelineMergeResult.MergeStatus.CONFLICTS, result.status(),
                 "divergent binding replacement must conflict through the REAL engine");
@@ -305,7 +305,6 @@ class CheckpointARound4SourceBindingClosureTest {
                 .thenReturn(Optional.of(info("snap-s", srcPayload)));
         when(snap.findOwnedById(PROJECT, TENANT, "snap-t"))
                 .thenReturn(Optional.of(info("snap-t", tgtPayload)));
-        when(snap.save(anyString(), anyString(), anyString(), anyString())).thenReturn("snap-m");
         when(repo.listOwnedByProject(PROJECT, TENANT, null, null, null, 500)).thenReturn(List.of());
         when(cur.currentHead(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any())).thenReturn("tgt-rev");
         TimelineMergePreviewService pv = new TimelineMergePreviewService(new TimelineMergeConflictDetector());

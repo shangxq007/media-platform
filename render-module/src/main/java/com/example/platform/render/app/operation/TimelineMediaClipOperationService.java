@@ -124,7 +124,7 @@ public class TimelineMediaClipOperationService {
         ApplyContext context = new ApplyContext(
                 applyCommandId,
                 new TargetRevisionRef(OperationPlanApplyService.CURRENT_REVISION_REF),
-                prepared.plan().baseRevisionId(), tenantId, actor.actorId(), boundDecision);
+                prepared.plan().baseRevisionId(), tenantId, actor, boundDecision);
         final ApplyResult result;
         try {
             result = applyService.apply(

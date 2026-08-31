@@ -5,6 +5,7 @@ import com.example.platform.timeline.app.InternalTimelineCandidateAdapter;
 import com.example.platform.timeline.app.TimelineDocumentJsonSerializer;
 import com.example.platform.timeline.app.TimelineRevisionQueryService;
 import com.example.platform.timeline.app.TimelineRevisionSaveService;
+import com.example.platform.timeline.app.TimelineMutationContext;
 import com.example.platform.timeline.diff.calculation.TimelineSnapshotConverter;
 import com.example.platform.shared.web.TenantContext;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -50,8 +51,8 @@ public class TimelineSnapshotController {
         var actor = projectAuthorization.requireWrite(tenantId, request.projectId());
         var document = toCanonicalDocument(request);
         var revision = revisionSaveService.saveRevision(
-                tenantId, request.projectId(), request.expectedCurrentRevisionId(),
-                document, actor.actorId());
+                new TimelineMutationContext(tenantId, request.projectId(), actor),
+                request.expectedCurrentRevisionId(), document);
         String snapshotId = revisionQueryService
                 .findById(request.projectId(), tenantId, revision.revisionId())
                 .map(TimelineRevisionQueryService.RevisionInfo::snapshotId)

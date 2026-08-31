@@ -78,7 +78,7 @@ class TimelineRevisionServiceTest extends PostgresTestContainerSupport {
                 org.mockito.Mockito.mock(
                         com.example.platform.timeline.version.TimelineRevisionSemanticContextStore.class),
                 new DefaultTimelineRevisionPersistence(),
-                new TimelineRevisionRefHeadUpdateAdapter(revisionRefMutation));
+                new TimelineRevisionRefHeadUpdateAdapter(revisionRefMutation), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
         revisionQueryService = new TimelineRevisionQueryService(
                 repo, snapshotService, diffService);
     }
@@ -192,7 +192,7 @@ class TimelineRevisionServiceTest extends PostgresTestContainerSupport {
                 new TimelineMetadata(projectId, "", Map.of()));
         RevisionRef mainRef = RevisionRef.main(tenantId, projectId);
         String expectedHead = revisionRefMutation.currentHead(mainRef);
-        var revision = revisionSaveService.saveRevision(
+        var revision = com.example.platform.render.testsupport.TimelineMutationTestSupport.save(revisionSaveService,
                 projectId, expectedHead, document,
                 authorUserId != null ? authorUserId : "query-fixture");
 

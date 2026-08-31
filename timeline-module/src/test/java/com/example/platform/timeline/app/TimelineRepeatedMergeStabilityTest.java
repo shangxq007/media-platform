@@ -168,7 +168,7 @@ engine = new TimelineMergeEngine(revisionRepository, snapshotService, mock(Timel
     }
 
     private TimelineMergeRequest request(String message) {
-        return new TimelineMergeRequest(PROJECT, TENANT, "rev-base", "rev-source", "rev-target", "user-1", message);
+        return TestTimelineMutationContexts.mergeRequest(PROJECT, TENANT, "rev-base", "rev-source", "rev-target", "user-1", message);
     }
 
     private long firstClipStartFrame(String payload) throws Exception {

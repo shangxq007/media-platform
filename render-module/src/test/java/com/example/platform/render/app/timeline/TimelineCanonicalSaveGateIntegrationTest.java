@@ -65,7 +65,7 @@ class TimelineCanonicalSaveGateIntegrationTest extends PostgresTestContainerSupp
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService, digester,
                 new com.example.platform.timeline.adapter.TimelineSnapshotService(dsl),
                 org.mockito.Mockito.mock(com.example.platform.timeline.app.TimelineArtifactPinValidator.class),
-                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class), effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService));
+                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class), effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
     }
 
     @Test
@@ -74,7 +74,7 @@ class TimelineCanonicalSaveGateIntegrationTest extends PostgresTestContainerSupp
         insertProduct(productId);
         var doc = createSampleDocument();
 
-        var revision = saveService.saveRevision(
+        var revision = com.example.platform.render.testsupport.TimelineMutationTestSupport.save(saveService,
                 TENANT, productId, null, doc, RenderTestSchemaFixture.SERVER_ACTOR);
 
         assertNotNull(revision.revisionId());
@@ -111,7 +111,7 @@ class TimelineCanonicalSaveGateIntegrationTest extends PostgresTestContainerSupp
 
         TimelineCanonicalRejectionException ex =
                 assertThrows(TimelineCanonicalRejectionException.class, () ->
-                        saveService.saveRevision(
+                        com.example.platform.render.testsupport.TimelineMutationTestSupport.save(saveService,
                                 TENANT, productId, null, doc,
                                 RenderTestSchemaFixture.SERVER_ACTOR));
 
@@ -133,7 +133,7 @@ class TimelineCanonicalSaveGateIntegrationTest extends PostgresTestContainerSupp
                 com.example.platform.timeline.revisioncommand.RevisionRef.main(TENANT, productId)),
                 "current revision unchanged");
         // transaction remains usable; subsequent valid save succeeds
-        var valid = saveService.saveRevision(
+        var valid = com.example.platform.render.testsupport.TimelineMutationTestSupport.save(saveService,
                 TENANT, productId, null, createSampleDocument(),
                 RenderTestSchemaFixture.SERVER_ACTOR);
         assertNotNull(valid.revisionId());
@@ -152,7 +152,7 @@ class TimelineCanonicalSaveGateIntegrationTest extends PostgresTestContainerSupp
 
         TimelineCanonicalRejectionException ex =
                 assertThrows(TimelineCanonicalRejectionException.class, () ->
-                        saveService.saveRevision(
+                        com.example.platform.render.testsupport.TimelineMutationTestSupport.save(saveService,
                                 TENANT, productId, null, doc,
                                 RenderTestSchemaFixture.SERVER_ACTOR));
 

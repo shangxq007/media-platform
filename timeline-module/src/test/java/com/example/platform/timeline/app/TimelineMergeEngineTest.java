@@ -79,23 +79,22 @@ class TimelineMergeEngineTest {
         var persisted = mock(com.example.platform.timeline.version.TimelineRevision.class);
         when(persisted.revisionId()).thenReturn("revision-merge");
         when(saveService.saveMergeRevision(
-                anyString(), anyString(), anyString(), anyString(), anyString(),
-                any(TimelineDocument.class), anyString())).thenReturn(persisted);
+                any(TimelineMutationContext.class), anyString(), anyString(), anyString(),
+                any(TimelineDocument.class))).thenReturn(persisted);
 
         TimelineMergeResult result = engine.merge(request());
 
         assertEquals("revision-merge", result.mergedRevisionId());
         assertNotNull(TimelineDocumentJsonSerializer.deserialize(result.mergedPayloadJson()));
         verify(saveService).saveMergeRevision(
-                org.mockito.ArgumentMatchers.eq(TENANT),
-                org.mockito.ArgumentMatchers.eq(PROJECT),
+                org.mockito.ArgumentMatchers.eq(TestTimelineMutationContexts.user(
+                        TENANT, PROJECT, "server-user")),
                 org.mockito.ArgumentMatchers.eq(TARGET),
                 org.mockito.ArgumentMatchers.eq(SOURCE),
                 org.mockito.ArgumentMatchers.eq(BASE),
                 org.mockito.ArgumentMatchers.argThat(document ->
                         TimelineDocumentJsonSerializer.serialize(document)
-                                .equals(result.mergedPayloadJson())),
-                org.mockito.ArgumentMatchers.eq("server-user"));
+                                .equals(result.mergedPayloadJson())));
     }
 
     private void stubDocuments(
@@ -120,7 +119,7 @@ class TimelineMergeEngineTest {
     }
 
     private static TimelineMergeRequest request() {
-        return new TimelineMergeRequest(
+        return TestTimelineMutationContexts.mergeRequest(
                 PROJECT, TENANT, BASE, SOURCE, TARGET, "server-user", "merge");
     }
 

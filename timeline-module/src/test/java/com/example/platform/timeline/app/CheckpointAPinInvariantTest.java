@@ -97,7 +97,8 @@ class CheckpointAPinInvariantTest {
                 effectAuthority(), revisionSemanticContextStore(),
                 new DefaultTimelineRevisionPersistence(),
                 new TimelineRevisionRefHeadUpdateAdapter(
-                        org.mockito.Mockito.mock(TimelineRevisionRefMutation.class)));
+                        org.mockito.Mockito.mock(TimelineRevisionRefMutation.class)),
+                TestTimelineMutationContexts.ALLOW_ALL);
     }
 
     private static com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotAuthority effectAuthority() {
@@ -121,7 +122,9 @@ class CheckpointAPinInvariantTest {
         TimelineRevisionSaveService svc = saveService(query, pinService, dsl);
         TimelineCanonicalRejectionException rejection = assertThrows(
                 TimelineCanonicalRejectionException.class,
-                () -> svc.saveRevision("p1", null, pinnedDoc("art-1", "a".repeat(64)), "user"),
+                () -> svc.saveRevision(
+                        TestTimelineMutationContexts.user(TENANT, "p1", "user"),
+                        null, pinnedDoc("art-1", "a".repeat(64))),
                 "missing artifact must fail closed before any write");
         assertPinRejection(rejection, "does not exist for tenant " + TENANT);
         assertNoWriteStarted(dsl, pinService);
@@ -141,7 +144,9 @@ class CheckpointAPinInvariantTest {
         TimelineRevisionSaveService svc = saveService(query, pinService, dsl);
         TimelineCanonicalRejectionException rejection = assertThrows(
                 TimelineCanonicalRejectionException.class,
-                () -> svc.saveRevision("p1", null, pinnedDoc("art-1", "a".repeat(64)), "user"),
+                () -> svc.saveRevision(
+                        TestTimelineMutationContexts.user(TENANT, "p1", "user"),
+                        null, pinnedDoc("art-1", "a".repeat(64))),
                 "wrong tenant must fail closed");
         assertPinRejection(rejection, "does not exist for tenant " + TENANT);
         assertNoWriteStarted(dsl, pinService);
@@ -159,7 +164,9 @@ class CheckpointAPinInvariantTest {
         TimelineRevisionSaveService svc = saveService(query, pinService, dsl);
         TimelineCanonicalRejectionException rejection = assertThrows(
                 TimelineCanonicalRejectionException.class,
-                () -> svc.saveRevision("p1", null, pinnedDoc("art-1", "a".repeat(64)), "user"),
+                () -> svc.saveRevision(
+                        TestTimelineMutationContexts.user(TENANT, "p1", "user"),
+                        null, pinnedDoc("art-1", "a".repeat(64))),
                 "digest mismatch must fail closed");
         assertPinRejection(rejection, "content digest mismatch");
         assertNoWriteStarted(dsl, pinService);
@@ -197,7 +204,9 @@ class CheckpointAPinInvariantTest {
                 });
         TimelineRevisionSaveService svc = saveService(query, pinService, dslMock);
         assertThrows(Exception.class,
-                () -> svc.saveRevision("p1", null, pinnedDoc("art-1", "a".repeat(64)), "user"),
+                () -> svc.saveRevision(
+                        TestTimelineMutationContexts.user(TENANT, "p1", "user"),
+                        null, pinnedDoc("art-1", "a".repeat(64))),
                 "pin registration failure must fail the whole save (no visible dangling revision)");
     }
 
@@ -239,7 +248,7 @@ class CheckpointAPinInvariantTest {
                         org.mockito.Mockito.mock(com.example.platform.timeline.adapter.TimelineSnapshotService.class),
                         null,
                         org.mockito.Mockito.mock(ArtifactPinService.class),
-                        effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(org.mockito.Mockito.mock(TimelineRevisionRefMutation.class))),
+                        effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(org.mockito.Mockito.mock(TimelineRevisionRefMutation.class)), TestTimelineMutationContexts.ALLOW_ALL),
                 "null artifactPinValidator must be rejected by construction");
         assertThrows(NullPointerException.class,
                 () -> new TimelineRevisionSaveService(
@@ -249,7 +258,7 @@ class CheckpointAPinInvariantTest {
                         org.mockito.Mockito.mock(com.example.platform.timeline.adapter.TimelineSnapshotService.class),
                         new TimelineArtifactPinValidator(mock(ArtifactQueryService.class)),
                         null,
-                        effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(org.mockito.Mockito.mock(TimelineRevisionRefMutation.class))),
+                        effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(org.mockito.Mockito.mock(TimelineRevisionRefMutation.class)), TestTimelineMutationContexts.ALLOW_ALL),
                         "null artifactPinService must be rejected by construction");
                         assertThrows(NullPointerException.class,
                         () -> new TimelineRevisionSaveService(
@@ -259,7 +268,7 @@ class CheckpointAPinInvariantTest {
                                 org.mockito.Mockito.mock(com.example.platform.timeline.adapter.TimelineSnapshotService.class),
                                 new TimelineArtifactPinValidator(mock(ArtifactQueryService.class)),
                                 org.mockito.Mockito.mock(ArtifactPinService.class),
-                                effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(org.mockito.Mockito.mock(TimelineRevisionRefMutation.class))),
+                                effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(org.mockito.Mockito.mock(TimelineRevisionRefMutation.class)), TestTimelineMutationContexts.ALLOW_ALL),
                         "null dsl must be rejected by construction");
         // ROADMAP20 authority integration: Effect authority + context store are
         // REQUIRED BY CONSTRUCTION — a save surface without them cannot exist.
@@ -271,7 +280,7 @@ class CheckpointAPinInvariantTest {
                         org.mockito.Mockito.mock(com.example.platform.timeline.adapter.TimelineSnapshotService.class),
                         new TimelineArtifactPinValidator(mock(ArtifactQueryService.class)),
                         org.mockito.Mockito.mock(ArtifactPinService.class),
-                        null, revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(org.mockito.Mockito.mock(TimelineRevisionRefMutation.class))),
+                        null, revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(org.mockito.Mockito.mock(TimelineRevisionRefMutation.class)), TestTimelineMutationContexts.ALLOW_ALL),
                 "null Effect snapshot authority must be rejected by construction");
     }
 

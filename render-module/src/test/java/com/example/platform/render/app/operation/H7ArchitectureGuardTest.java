@@ -55,10 +55,10 @@ class H7ArchitectureGuardTest {
         GuardResult result = runGuard(ROOT, true);
 
         assertEquals(0, result.exitCode(), result.output());
-        assertTrue(result.output().contains("MUTATION_MATRIX_TOTAL=12"), result.output());
+        assertTrue(result.output().contains("MUTATION_MATRIX_TOTAL=13"), result.output());
         assertTrue(result.output().contains("MUTATION_MATRIX_FAILURES=0"), result.output());
-        assertEquals(12, count(result.output(), "MUTATION "), result.output());
-        assertEquals(12, count(result.output(), "=PASS "), result.output());
+        assertEquals(13, count(result.output(), "MUTATION "), result.output());
+        assertEquals(13, count(result.output(), "=PASS "), result.output());
         assertFalse(result.output().contains("=FAIL "), result.output());
     }
 

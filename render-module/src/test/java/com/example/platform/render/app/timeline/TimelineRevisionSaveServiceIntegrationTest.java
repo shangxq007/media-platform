@@ -76,7 +76,7 @@ class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSu
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService, new TimelineContentDigester(),
                 new com.example.platform.timeline.adapter.TimelineSnapshotService(dsl),
                 org.mockito.Mockito.mock(com.example.platform.timeline.app.TimelineArtifactPinValidator.class),
-                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class), effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService));
+                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class), effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
     }
 
     @AfterEach
@@ -191,7 +191,7 @@ class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSu
         TimelineDocument base = new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
                 List.of(new TimelineTrack("video-1", "Main", TrackType.VIDEO, List.of())),
                 TimelineMetadata.empty());
-        TimelineRevision root = saveService.saveRevision(
+        TimelineRevision root = com.example.platform.render.testsupport.TimelineMutationTestSupport.save(saveService,
                 TENANT, productId, null, base, RenderTestSchemaFixture.SERVER_ACTOR);
         // Operation execution may move to a worker without request ThreadLocal
         // propagation. Its immutable command must carry the authorized tenant.
@@ -224,14 +224,14 @@ class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSu
                 org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class),
                 effectAuthority(), revisionSemanticContextStore(),
                 new DefaultTimelineRevisionPersistence(),
-                new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService));
+                new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
         var command = new TimelineRevisionSaveService.RevisionWriteCommand(
                 "apply-H7-durable", "plan-digest-H7", "fingerprint-H7", "OPERATION_PLAN", TENANT);
 
-        var first = commandSave.saveRevisionForCommand(
+        var first = com.example.platform.render.testsupport.TimelineMutationTestSupport.saveForCommand(commandSave,
                 RevisionRef.main(TENANT, productId), root.revisionId(), candidate,
                 RenderTestSchemaFixture.SERVER_ACTOR, command);
-        var replay = commandSave.saveRevisionForCommand(
+        var replay = com.example.platform.render.testsupport.TimelineMutationTestSupport.saveForCommand(commandSave,
                 RevisionRef.main(TENANT, productId), root.revisionId(), candidate,
                 RenderTestSchemaFixture.SERVER_ACTOR, command);
 
@@ -248,7 +248,7 @@ class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSu
         var conflict = new TimelineRevisionSaveService.RevisionWriteCommand(
                 "apply-H7-durable", "different-plan", "different-fingerprint", "OPERATION_PLAN", TENANT);
         assertThrows(com.example.platform.timeline.app.TimelineRevisionCommandConflictException.class,
-                () -> commandSave.saveRevisionForCommand(
+                () -> com.example.platform.render.testsupport.TimelineMutationTestSupport.saveForCommand(commandSave,
                         RevisionRef.main(TENANT, productId), root.revisionId(), candidate, "editor", conflict));
         assertEquals(2L, dsl.selectCount().from(TIMELINE_REVISION)
                 .where(TIMELINE_REVISION.PROJECT_ID.eq(productId)).fetchOne(0, Long.class));
@@ -345,7 +345,8 @@ class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSu
         var patchService = new TimelinePatchApplicationService(saveService, currentRevisionService,
                 new TimelineContentDigester());
         var result = patchService.apply(
-                TENANT, RenderTestSchemaFixture.SERVER_ACTOR, patch);
+                com.example.platform.render.testsupport.TimelineMutationTestSupport.user(
+                        TENANT, productId, RenderTestSchemaFixture.SERVER_ACTOR), patch);
 
         assertTrue(result.isSuccess(), "canonical payload must hydrate and patch");
         long rows = dsl.selectCount().from(TIMELINE_REVISION)
@@ -369,7 +370,7 @@ class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSu
 
     private TimelineRevision save(
             String productId, String expectedHead, TimelineDocument document) {
-        return saveService.saveRevision(
+        return com.example.platform.render.testsupport.TimelineMutationTestSupport.save(saveService,
                 TENANT, productId, expectedHead, document, RenderTestSchemaFixture.SERVER_ACTOR);
     }
 

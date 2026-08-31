@@ -56,7 +56,7 @@ class RenderJobRevisionPinningServiceIntegrationTest extends PostgresTestContain
         revisionSaveService = new TimelineRevisionSaveService(dsl, currentRevisionService, new TimelineContentDigester(),
                 new com.example.platform.timeline.adapter.TimelineSnapshotService(dsl),
                 org.mockito.Mockito.mock(com.example.platform.timeline.app.TimelineArtifactPinValidator.class),
-                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class), effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService));
+                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class), effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
         pinningService = new RenderJobRevisionPinningService(dsl);
     }
 
@@ -67,7 +67,7 @@ class RenderJobRevisionPinningServiceIntegrationTest extends PostgresTestContain
         String jobId = "job-test-" + UUID.randomUUID();
         var doc = createSampleDocument();
 
-        var revision = revisionSaveService.saveRevision(
+        var revision = com.example.platform.render.testsupport.TimelineMutationTestSupport.save(revisionSaveService,
                 "tenant-1", productId, null, doc, RenderTestSchemaFixture.SERVER_ACTOR);
 
         pinningService.createRenderJobWithRevision(jobId, productId, revision.revisionId(), "provider-a");
@@ -83,7 +83,7 @@ class RenderJobRevisionPinningServiceIntegrationTest extends PostgresTestContain
         String jobId = "job-test-" + UUID.randomUUID();
         var doc = createSampleDocument();
 
-        var revision = revisionSaveService.saveRevision(
+        var revision = com.example.platform.render.testsupport.TimelineMutationTestSupport.save(revisionSaveService,
                 "tenant-1", productId, null, doc, RenderTestSchemaFixture.SERVER_ACTOR);
 
         assertDoesNotThrow(() ->
@@ -94,7 +94,7 @@ class RenderJobRevisionPinningServiceIntegrationTest extends PostgresTestContain
     void unboundBackendIdentities_areRejected() {
         String productId = "prod-test-" + UUID.randomUUID();
         insertProduct(productId);
-        var revision = revisionSaveService.saveRevision(
+        var revision = com.example.platform.render.testsupport.TimelineMutationTestSupport.save(revisionSaveService,
                 "tenant-1", productId, null, createSampleDocument(),
                 RenderTestSchemaFixture.SERVER_ACTOR);
 
@@ -115,7 +115,7 @@ class RenderJobRevisionPinningServiceIntegrationTest extends PostgresTestContain
         String jobId = "job-test-" + UUID.randomUUID();
         var doc = createSampleDocument();
 
-        var revision = revisionSaveService.saveRevision(
+        var revision = com.example.platform.render.testsupport.TimelineMutationTestSupport.save(revisionSaveService,
                 "tenant-1", productId1, null, doc, RenderTestSchemaFixture.SERVER_ACTOR);
 
         // Try to pin job from product2 to product1's revision
@@ -131,7 +131,7 @@ class RenderJobRevisionPinningServiceIntegrationTest extends PostgresTestContain
         String retryJobId = "job-retry-" + UUID.randomUUID();
         var doc = createSampleDocument();
 
-        var revision = revisionSaveService.saveRevision(
+        var revision = com.example.platform.render.testsupport.TimelineMutationTestSupport.save(revisionSaveService,
                 "tenant-1", productId, null, doc, RenderTestSchemaFixture.SERVER_ACTOR);
 
         pinningService.createRenderJobWithRevision(originalJobId, productId, revision.revisionId(), "provider-a");
@@ -151,13 +151,13 @@ class RenderJobRevisionPinningServiceIntegrationTest extends PostgresTestContain
         var doc1 = createSampleDocument();
         var doc2 = createSampleDocumentWithDifferentClip();
 
-        var rev1 = revisionSaveService.saveRevision(
+        var rev1 = com.example.platform.render.testsupport.TimelineMutationTestSupport.save(revisionSaveService,
                 "tenant-1", productId, null, doc1, RenderTestSchemaFixture.SERVER_ACTOR);
 
         pinningService.createRenderJobWithRevision(jobId, productId, rev1.revisionId(), "provider-a");
 
         // Save new revision (changes product current)
-        var rev2 = revisionSaveService.saveRevision(
+        var rev2 = com.example.platform.render.testsupport.TimelineMutationTestSupport.save(revisionSaveService,
                 "tenant-1", productId, rev1.revisionId(), doc2,
                 RenderTestSchemaFixture.SERVER_ACTOR);
 

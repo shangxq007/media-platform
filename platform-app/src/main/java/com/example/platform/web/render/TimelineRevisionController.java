@@ -24,6 +24,7 @@ import com.example.platform.timeline.diff.merge.TimelineMergeResult;
 import com.example.platform.timeline.diff.merge.TimelineMergeSummary;
 import com.example.platform.timeline.diff.merge.TimelineConflict;
 import com.example.platform.timeline.diff.merge.TimelineResolutionIntent;
+import com.example.platform.timeline.app.TimelineMutationContext;
 import com.example.platform.shared.web.TenantContext;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
@@ -191,8 +192,7 @@ public class TimelineRevisionController {
     @Operation(summary = "回滚到指定修订（生成新 HEAD，不删除历史）")
     public ResponseEntity<RestoreResponse> restore(
             @PathVariable String projectId,
-            @PathVariable String revisionId,
-            @RequestParam(required = false) String authorUserId) {
+            @PathVariable String revisionId) {
         String tenantId = TenantContext.get();
         var actor = projectAuthorization.requireWrite(tenantId, projectId);
         // CFRH-I1: legacy restore authority (TimelineRevisionDiffQuery.restore) replaced by the
@@ -202,7 +202,8 @@ public class TimelineRevisionController {
                 .map(com.example.platform.timeline.app.TimelineRevisionQueryService.RevisionInfo::id)
                 .orElse(null);
         var restored = revisionSaveService.restoreRevision(
-                tenantId, projectId, revisionId, expectedCurrent, actor.actorId());
+                new TimelineMutationContext(tenantId, projectId, actor),
+                revisionId, expectedCurrent);
         eventPublisher.publish(new TimelineRestoredEvent(projectId, revisionId, restored.revisionId()));
         return ResponseEntity.status(HttpStatus.CREATED).body(toRestoreResponse(projectId, restored.revisionId()));
     }
@@ -215,9 +216,9 @@ public class TimelineRevisionController {
         String tenantId = TenantContext.get();
         var actor = projectAuthorization.requireWrite(tenantId, projectId);
         TimelineMergeRequest request = new TimelineMergeRequest(
-                projectId, tenantId,
+                new TimelineMutationContext(tenantId, projectId, actor),
                 body.baseRevisionId(), body.sourceRevisionId(), body.targetRevisionId(),
-                actor.actorId(), body.message());
+                body.message());
 
         TimelineMergeResult result;
         if (body.resolutions() != null && !body.resolutions().isEmpty()) {

@@ -1,6 +1,7 @@
 package com.example.platform.app;
 
 import com.example.platform.observability.monitoring.SentryMonitoringService;
+import com.example.platform.shared.web.CommonErrorCode;
 import com.example.platform.shared.web.ErrorCodeRegistry;
 import com.example.platform.web.GlobalExceptionHandler;
 import jakarta.servlet.http.HttpServletRequest;
@@ -8,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -15,7 +17,7 @@ import static org.mockito.Mockito.*;
 
 class GlobalExceptionHandlerSentryTest {
 
-    private final SentryMonitoringService sentryService = new SentryMonitoringService();
+    private final SentryMonitoringService sentryService = mock(SentryMonitoringService.class);
     private final ErrorCodeRegistry errorCodeRegistry = mock(ErrorCodeRegistry.class);
     private final GlobalExceptionHandler handler = new GlobalExceptionHandler(errorCodeRegistry, Optional.of(sentryService));
     private final HttpServletRequest request = mock(HttpServletRequest.class);
@@ -34,11 +36,15 @@ class GlobalExceptionHandlerSentryTest {
     void shouldHandleIllegalStateException() {
         when(request.getHeader("Accept-Language")).thenReturn(null);
         when(request.getRequestURI()).thenReturn("/test");
-        ProblemDetail pd = handler.handleIllegalState(
-                new IllegalStateException("Bad state"), request);
+        IllegalStateException exception = new IllegalStateException("Bad state");
+        ProblemDetail pd = handler.handleIllegalState(exception, request);
         assertNotNull(pd);
-        assertEquals(HttpStatus.CONFLICT.value(), pd.getStatus());
-        assertEquals("Conflict", pd.getTitle());
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR.value(), pd.getStatus());
+        assertEquals(CommonErrorCode.INTERNAL_ERROR.title(), pd.getTitle());
+        assertEquals(CommonErrorCode.INTERNAL_ERROR.code(), pd.getProperties().get("errorCode"));
+        verify(sentryService).captureException(same(exception), eq(Map.of(
+                "type", "IllegalStateException",
+                "module", "api")));
     }
 
     @Test

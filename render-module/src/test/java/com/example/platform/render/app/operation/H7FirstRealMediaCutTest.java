@@ -9,6 +9,7 @@ import com.example.platform.shared.authorization.AuthorizationDecisionPort;
 import com.example.platform.shared.authorization.CanonicalActor;
 import com.example.platform.shared.time.MediaTime;
 import com.example.platform.timeline.app.InternalTimelineValidationService;
+import com.example.platform.timeline.app.TimelineMutationContext;
 import com.example.platform.timeline.app.TimelineRevisionSaveService;
 import com.example.platform.timeline.app.TimelineSourceReferenceValidator;
 import com.example.platform.timeline.canonical.TimelineContentDigester;
@@ -33,6 +34,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -54,15 +56,19 @@ class H7FirstRealMediaCutTest {
         String baseHash = DIGESTER.digest(base);
         TimelineRevision baseRevision = revision(BASE_REVISION, null, base, "base-author");
         AtomicReference<TimelineDocument> savedDocument = new AtomicReference<>();
+        CanonicalActor applyingActor = CanonicalActor.user(
+                "editor-1", TENANT, Set.of("EDITOR"), "test");
 
         TimelineRevisionSaveService writer = mock(TimelineRevisionSaveService.class);
         when(writer.findById(TENANT, BASE_REVISION)).thenReturn(baseRevision);
         when(writer.findPayloadDocument(TENANT, BASE_REVISION)).thenReturn(Optional.of(base));
-        when(writer.saveRevisionForCommand(eq(RevisionRef.main(TENANT, PROJECT)), eq(BASE_REVISION),
-                any(TimelineDocument.class), eq("editor-1"),
+        when(writer.saveRevisionForCommand(
+                any(TimelineMutationContext.class),
+                eq(RevisionRef.main(TENANT, PROJECT)), eq(BASE_REVISION),
+                any(TimelineDocument.class),
                 any(TimelineRevisionSaveService.RevisionWriteCommand.class)))
                 .thenAnswer(invocation -> {
-                    TimelineDocument document = invocation.getArgument(2, TimelineDocument.class);
+                    TimelineDocument document = invocation.getArgument(3, TimelineDocument.class);
                     savedDocument.set(document);
                     return new TimelineRevisionSaveService.RevisionWriteResult(
                             "revision-R1", BASE_REVISION, DIGESTER.digest(document), false);
@@ -102,7 +108,7 @@ class H7FirstRealMediaCutTest {
 
         var applied = service.authorizeAndApply(
                 TENANT, PROJECT, request, preview.planDigest(), "apply-H7-1",
-                CanonicalActor.user("editor-1", TENANT, Set.of("EDITOR"), "test"));
+                applyingActor);
         assertEquals(List.of("READ", "READ", "WRITE"), authorizationActions,
                 "preview and apply preparation authorize before disclosure, then exact-plan write authorizes");
         assertEquals("APPLIED", applied.status());
@@ -110,14 +116,19 @@ class H7FirstRealMediaCutTest {
         assertEquals("revision-R1", applied.renderHandoff().timelineRevisionId());
         assertEquals(preview.candidateContentHash(),
                 applied.renderHandoff().timelineContentHash());
+        ArgumentCaptor<TimelineMutationContext> mutationContext =
+                ArgumentCaptor.forClass(TimelineMutationContext.class);
         verify(writer, times(1)).saveRevisionForCommand(
+                mutationContext.capture(),
                 eq(RevisionRef.main(TENANT, PROJECT)), eq(BASE_REVISION),
                 argThat(document -> DIGESTER.digest(document)
                         .equals(preview.candidateContentHash())),
-                eq("editor-1"),
                 argThat(command -> command.commandId().equals("apply-H7-1")
                         && command.commandDomain().equals("OPERATION_PLAN")
                         && command.tenantId().equals(TENANT)));
+        assertEquals(TENANT, mutationContext.getValue().tenantId());
+        assertEquals(PROJECT, mutationContext.getValue().projectId());
+        assertEquals(applyingActor, mutationContext.getValue().actor());
         verify(sourceValidator, times(2)).validate(
                 argThat(binding -> binding.mediaAssetId().value().equals("media-S")
                         && binding.mediaStreamId().value().equals("stream-S-video")
@@ -165,7 +176,8 @@ class H7FirstRealMediaCutTest {
                         "apply-H7-2", CanonicalActor.user("editor", TENANT, Set.of(), "test")));
         assertEquals(TimelineOperationException.Code.PLAN_CHANGED, changed.code());
         verify(writer, never()).saveRevisionForCommand(
-                any(RevisionRef.class), any(), any(), anyString(), any());
+                any(TimelineMutationContext.class),
+                any(RevisionRef.class), any(), any(), any());
         assertNotNull(preview.planDigest());
     }
 
@@ -197,7 +209,8 @@ class H7FirstRealMediaCutTest {
         assertEquals(TimelineOperationException.Code.STALE_TARGET_REF, failure.code());
         assertEquals(List.of("current ref changed"), failure.failures());
         verify(writer, never()).saveRevisionForCommand(
-                any(RevisionRef.class), any(), any(), anyString(), any());
+                any(TimelineMutationContext.class),
+                any(RevisionRef.class), any(), any(), any());
     }
 
     @Test

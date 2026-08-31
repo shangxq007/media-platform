@@ -4,6 +4,7 @@ import com.example.platform.timeline.app.TimelinePayloadCodec;
 import com.example.platform.timeline.app.TimelineRevisionSaveService;
 import com.example.platform.timeline.app.TimelineRevisionQueryService;
 import com.example.platform.timeline.app.TimelineRevisionDiffQuery;
+import com.example.platform.timeline.app.TimelineMutationContext;
 import com.example.platform.shared.web.TenantContext;
 import com.example.platform.timeline.version.TimelineRevision;
 import org.junit.jupiter.api.Test;
@@ -69,6 +70,13 @@ class TimelineRevisionControllerRestoreResponseTest {
                 "1.0", null, revisionSemanticDigest, java.time.Instant.now(), "user-1", ctx);
     }
 
+    private static TimelineMutationContext mutation() {
+        return new TimelineMutationContext(
+                "ten_r", "prj_r",
+                com.example.platform.shared.authorization.CanonicalActor.user(
+                        "user-1", "ten_r", java.util.Set.of(), "test"));
+    }
+
     private static TimelineRevisionController controller(
             TimelineRevisionQueryService revisionQueryService,
             TimelineRevisionSaveService saveService,
@@ -92,7 +100,7 @@ class TimelineRevisionControllerRestoreResponseTest {
         TimelineRevisionSaveService saveService = mock(TimelineRevisionSaveService.class);
         TimelinePayloadCodec codec = mock(TimelinePayloadCodec.class);
         when(revisionQueryService.findHead("prj_r", "ten_r")).thenReturn(Optional.of(headInfo()));
-        when(saveService.restoreRevision("ten_r", "prj_r", "trev_restored", "trev_current", "user-1"))
+        when(saveService.restoreRevision(mutation(), "trev_restored", "trev_current"))
                 .thenReturn(validRestoredRevision("trev_current"));
         when(revisionQueryService.getDetail(eq("prj_r"), eq("ten_r"), eq("trev_restored")))
                 .thenReturn(Optional.of(new TimelineRevisionQueryService.RevisionDetail(revisionInfo(), null, null)));
@@ -103,7 +111,7 @@ class TimelineRevisionControllerRestoreResponseTest {
 
         TenantContext.set("ten_r");
         var c = controller(revisionQueryService, saveService, codec);
-        var response = c.restore("prj_r", "trev_restored", "user-1");
+        var response = c.restore("prj_r", "trev_restored");
 
         assertEquals(org.springframework.http.HttpStatus.CREATED, response.getStatusCode());
         var body = response.getBody();
@@ -123,7 +131,7 @@ class TimelineRevisionControllerRestoreResponseTest {
         TimelineRevisionSaveService saveService = mock(TimelineRevisionSaveService.class);
         TimelinePayloadCodec codec = mock(TimelinePayloadCodec.class);
         when(revisionQueryService.findHead("prj_r", "ten_r")).thenReturn(Optional.of(headInfo()));
-        when(saveService.restoreRevision("ten_r", "prj_r", "trev_restored", "trev_current", "user-1"))
+        when(saveService.restoreRevision(mutation(), "trev_restored", "trev_current"))
                 .thenReturn(validRestoredRevision("trev_current"));
         when(revisionQueryService.getDetail(eq("prj_r"), eq("ten_r"), eq("trev_restored")))
                 .thenReturn(Optional.of(new TimelineRevisionQueryService.RevisionDetail(revisionInfo(), null, null)));
@@ -134,7 +142,7 @@ class TimelineRevisionControllerRestoreResponseTest {
 
         TenantContext.set("ten_r");
         var c = controller(revisionQueryService, saveService, codec);
-        c.restore("prj_r", "trev_restored", "user-1");
+        c.restore("prj_r", "trev_restored");
 
         // the exact restored internal payload must be supplied to the projection port
         verify(codec).toEditorJson(CANONICAL_FIXTURE);
@@ -146,7 +154,7 @@ class TimelineRevisionControllerRestoreResponseTest {
         TimelineRevisionSaveService saveService = mock(TimelineRevisionSaveService.class);
         TimelinePayloadCodec codec = mock(TimelinePayloadCodec.class);
         when(revisionQueryService.findHead("prj_r", "ten_r")).thenReturn(Optional.of(headInfo()));
-        when(saveService.restoreRevision("ten_r", "prj_r", "trev_restored", "trev_current", "user-1"))
+        when(saveService.restoreRevision(mutation(), "trev_restored", "trev_current"))
                 .thenReturn(validRestoredRevision("trev_current"));
         when(revisionQueryService.getDetail(eq("prj_r"), eq("ten_r"), eq("trev_restored")))
                 .thenReturn(Optional.of(new TimelineRevisionQueryService.RevisionDetail(revisionInfo(), null, null)));
@@ -167,11 +175,11 @@ class TimelineRevisionControllerRestoreResponseTest {
                 mock(com.example.platform.render.app.event.TimelineReviewEventPublisher.class),
                 null, null,
                 saveService, codec, authorization);
-        c.restore("prj_r", "trev_restored", "user-1");
+        c.restore("prj_r", "trev_restored");
 
         // canonical restore authority called exactly once; expected-current from canonical CAS
         verify(saveService, times(1)).restoreRevision(
-                "ten_r", "prj_r", "trev_restored", "trev_current", "user-1");
+                mutation(), "trev_restored", "trev_current");
         verify(revisionQueryService, times(1)).findHead("prj_r", "ten_r");
         // legacy restore authority is absent by construction (CFRH-I1): the
         // TimelineRevisionService type no longer exposes a restore method, which

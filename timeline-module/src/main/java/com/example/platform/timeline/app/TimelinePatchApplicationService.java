@@ -34,13 +34,11 @@ public class TimelinePatchApplicationService {
     }
 
     @Transactional
-    public PatchApplyResult apply(TimelinePatch patch) {
-        return apply(revisionSaveService.tenantForProject(patch.productId()),
-                "patch-service", patch);
-    }
-
-    @Transactional
-    public PatchApplyResult apply(String tenantId, String canonicalAuthor, TimelinePatch patch) {
+    public PatchApplyResult apply(TimelineMutationContext context, TimelinePatch patch) {
+        String tenantId = context.tenantId();
+        if (!context.projectId().equals(patch.productId())) {
+            throw new IllegalArgumentException("patch project must match mutation context");
+        }
         // Load base revision
         TimelineRevision baseRevision = revisionSaveService.findById(tenantId, patch.baseRevisionId());
         if (baseRevision == null) {
@@ -117,15 +115,9 @@ public class TimelinePatchApplicationService {
 
         // Create new revision atomically
         TimelineRevision newRevision = revisionSaveService.saveRevision(
-                tenantId, patch.productId(), patch.expectedCurrentRevisionId(),
-                resultDocument, canonicalAuthor);
+                context, patch.expectedCurrentRevisionId(), resultDocument);
 
         return PatchApplyResult.success(newRevision.revisionId(), patch.baseRevisionId(), resultDigest);
-    }
-
-    @Transactional(readOnly = true)
-    public PatchPreviewResult preview(TimelinePatch patch) {
-        return preview(revisionSaveService.tenantForProject(patch.productId()), patch);
     }
 
     @Transactional(readOnly = true)

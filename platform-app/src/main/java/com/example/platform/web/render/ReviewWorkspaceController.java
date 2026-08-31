@@ -2,6 +2,7 @@ package com.example.platform.web.render;
 
 import com.example.platform.render.app.timeline.*;
 import com.example.platform.timeline.diff.merge.ReviewDecision;
+import com.example.platform.shared.web.TenantContext;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.*;
@@ -12,7 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/reviews")
+@RequestMapping("/api/render/projects/{projectId}/timeline/review-workspace")
 @Tag(name = "Review Workspace", description = "Aggregated review workspace APIs for frontend")
 public class ReviewWorkspaceController {
 
@@ -21,22 +22,26 @@ public class ReviewWorkspaceController {
     private final TimelineReviewRepository reviewRepo;
     private final TimelineCommentService commentService;
     private final ReviewDecisionService decisionService;
+    private final TimelineProjectAuthorizationService projectAuthorization;
 
     public ReviewWorkspaceController(TimelineReviewService reviewService,
                                        TimelineReviewRepository reviewRepo,
                                        TimelineCommentService commentService,
-                                       ReviewDecisionService decisionService) {
+                                       ReviewDecisionService decisionService,
+                                       TimelineProjectAuthorizationService projectAuthorization) {
         this.reviewService = reviewService;
         this.reviewRepo = reviewRepo;
         this.commentService = commentService;
         this.decisionService = decisionService;
+        this.projectAuthorization = projectAuthorization;
     }
 
     @GetMapping("/{reviewId}/workspace")
     @Operation(summary = "Full review workspace summary")
-    public ResponseEntity<ReviewWorkspaceDto> workspace(@PathVariable String reviewId) {
+    public ResponseEntity<ReviewWorkspaceDto> workspace(
+            @PathVariable String projectId, @PathVariable String reviewId) {
         long start = System.currentTimeMillis();
-        return reviewRepo.findById(reviewId).map(r -> {
+        return ownedReview(projectId, reviewId).map(r -> {
             var cmts = commentService.listComments(reviewId);
             var threads = commentService.listThreads(reviewId);
             var decisions = decisionService.listDecisions(reviewId);
@@ -60,7 +65,9 @@ public class ReviewWorkspaceController {
 
     @GetMapping("/{reviewId}/threads")
     @Operation(summary = "List review threads for sidebar")
-    public List<ReviewThreadDto> threads(@PathVariable String reviewId) {
+    public List<ReviewThreadDto> threads(
+            @PathVariable String projectId, @PathVariable String reviewId) {
+        requireOwnedReview(projectId, reviewId);
         return commentService.listThreads(reviewId).stream()
                 .map(t -> {
                     var threadComments = commentService.listComments(reviewId).stream()
@@ -74,8 +81,10 @@ public class ReviewWorkspaceController {
 
     @GetMapping("/{reviewId}/comments")
     @Operation(summary = "List review comments")
-    public List<ReviewCommentDto> comments(@PathVariable String reviewId,
+    public List<ReviewCommentDto> comments(
+            @PathVariable String projectId, @PathVariable String reviewId,
             @RequestParam(required = false) String threadId) {
+        requireOwnedReview(projectId, reviewId);
         return commentService.listComments(reviewId).stream()
                 .filter(c -> threadId == null || threadId.equals(c.threadId()))
                 .map(c -> new ReviewCommentDto(c.id(), c.threadId(), c.entityRef(),
@@ -86,7 +95,9 @@ public class ReviewWorkspaceController {
 
     @GetMapping("/{reviewId}/anchors")
     @Operation(summary = "Entity anchor summary for timeline overlay")
-    public List<EntityAnchorDto> anchors(@PathVariable String reviewId) {
+    public List<EntityAnchorDto> anchors(
+            @PathVariable String projectId, @PathVariable String reviewId) {
+        requireOwnedReview(projectId, reviewId);
         var cmts = commentService.listComments(reviewId);
         var threads = commentService.listThreads(reviewId);
         Map<String, EntityAnchorDto> anchorMap = new LinkedHashMap<>();
@@ -114,7 +125,9 @@ public class ReviewWorkspaceController {
 
     @GetMapping("/{reviewId}/decisions")
     @Operation(summary = "Decision summary overview")
-    public ResponseEntity<DecisionSummaryDto> decisions(@PathVariable String reviewId) {
+    public ResponseEntity<DecisionSummaryDto> decisions(
+            @PathVariable String projectId, @PathVariable String reviewId) {
+        requireOwnedReview(projectId, reviewId);
         var decisions = decisionService.listDecisions(reviewId);
         int approve = (int) decisions.stream().filter(d -> "APPROVE".equals(d.decision())).count();
         int reject = (int) decisions.stream().filter(d -> "REJECT".equals(d.decision())).count();
@@ -128,7 +141,9 @@ public class ReviewWorkspaceController {
 
     @GetMapping("/{reviewId}/merge-guard")
     @Operation(summary = "Merge guard for merge button")
-    public ResponseEntity<MergeGuardDto> mergeGuard(@PathVariable String reviewId) {
+    public ResponseEntity<MergeGuardDto> mergeGuard(
+            @PathVariable String projectId, @PathVariable String reviewId) {
+        requireOwnedReview(projectId, reviewId);
         var guard = reviewService.checkMergeGuard(reviewId);
         var threads = commentService.listThreads(reviewId);
         long pendingThreads = threads.stream().filter(t -> "OPEN".equals(t.status())).count();
@@ -138,6 +153,20 @@ public class ReviewWorkspaceController {
 
         return ResponseEntity.ok(new MergeGuardDto(guard.canMerge(), guard.reason(),
                 (int) pendingThreads, pendingChanges, 1, approvals));
+    }
+
+    private Optional<TimelineReviewRepository.ReviewRow> ownedReview(
+            String projectId, String reviewId) {
+        String tenantId = TenantContext.get();
+        projectAuthorization.requireRead(tenantId, projectId);
+        return reviewRepo.findOwnedById(reviewId, projectId, tenantId);
+    }
+
+    private TimelineReviewRepository.ReviewRow requireOwnedReview(
+            String projectId, String reviewId) {
+        return ownedReview(projectId, reviewId)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "review not found"));
     }
 
     public record ReviewWorkspaceDto(String reviewId, String revisionId, String title, String status,

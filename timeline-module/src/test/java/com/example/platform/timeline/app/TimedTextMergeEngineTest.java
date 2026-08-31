@@ -137,7 +137,7 @@ org.jooq.Configuration cfgdslMockTime0 = org.mockito.Mockito.mock(org.jooq.Confi
                 org.mockito.Mockito.mock(com.example.platform.timeline.app.TimelineArtifactPinValidator.class),
                 org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class),
                 dslMockTime0);
-        TimelineMergeResult result = engine.mergeSemantic(new TimelineMergeRequest(
+        TimelineMergeResult result = engine.mergeSemantic(TestTimelineMutationContexts.mergeRequest(
                 "proj-1", "tenant-1", "base-rev", "src-rev", "tgt-rev", "user-1", "merge-1"));
         if (result.status() == TimelineMergeResult.MergeStatus.MERGED) {
             TimelineCandidate reloaded = TimelineDocumentCandidateMapper.map(

@@ -289,6 +289,49 @@ def evaluate(raw_sources: dict[str, str]) -> Evaluation:
         command_branch_bodies + no_op_transactions)
 
     production_text = "\n".join(handwritten.values())
+    disposition_pattern = re.compile(
+        r"\bTIMELINE_REVISION_REF\b|\bProjectRevisionNumberAllocator\b|"
+        r"\bfind(?:Owned)?Head\s*\(|\bsaveRevision(?:ForCommand|WithEffects)?\s*\(|"
+        r"\brecordNoOpCommand\s*\(|\bupdateHeadTx\s*\(",
+        flags=re.IGNORECASE)
+    disposition_candidates = {
+        path: source for path, source in handwritten.items()
+        if disposition_pattern.search(source)
+    }
+
+    def classified_disposition(path: str, source: str) -> bool:
+        if re.search(
+                r"\bclass\s+(?:TimelineRevisionRefMutation|ProjectRevisionNumberAllocator|"
+                r"TimelineRevisionSaveService|TimelineRevisionRefHeadUpdateAdapter|"
+                r"DefaultTimelineRevisionPersistence)\b", source):
+            return True
+        if re.search(
+                r"\binterface\s+(?:TimelineRevisionPersistencePort|HeadUpdatePort)\b|"
+                r"\brecord\s+RevisionRef\b", source):
+            return True
+        if re.search(r"\b(?:revisionSaveService|saveService)\s*\.\s*"
+                     r"(?:saveRevision|saveRevisionForCommand|recordNoOpCommand|restoreRevision)\s*\(",
+                     source):
+            return ("TimelineMutationContext" in source
+                    or "ApplyContext" in source
+                    or "TimelinePatchApplicationService" in source)
+        if re.search(r"\bclass\s+(?:TimelineRevisionQueryService|TimelineRevisionRepository|"
+                     r"TimelineRevisionDiffQuery)\b", source):
+            return re.search(
+                r"(?:update|insertInto|deleteFrom|mergeInto)\s*\(\s*TIMELINE_REVISION_REF\s*\)",
+                source, flags=re.IGNORECASE) is None
+        if re.search(r"\bclass\s+(?:OperationPlanApplyService|TimelineMediaClipOperationService|"
+                     r"TimelineMediaClipOperationController)\b", source):
+            return True
+        return False
+
+    unclassified_paths = [
+        path for path, source in disposition_candidates.items()
+        if not classified_disposition(path, source)
+    ]
+    if unclassified_paths:
+        details.extend(f"unclassified authority disposition: {path}"
+                       for path in sorted(unclassified_paths))
     product_current_usage = occurrences(
         r"\bProductCurrentRevisionService\b|\bPRODUCT\s*\.\s*CURRENT_REVISION_ID\b|"
         r"\bcurrent_revision_id\b|\bgetCurrentRevisionId\s*\(|"
@@ -535,7 +578,8 @@ def evaluate(raw_sources: dict[str, str]) -> Evaluation:
             0 if ref_authority_valid else 1,
         "CANONICAL_PROJECT_REVISION_ALLOCATOR_AUTHORITY_MISSING_COUNT":
             0 if allocator_authority_valid else 1,
-        "UNCLASSIFIED": 0,
+        "UNCLASSIFIED": len(unclassified_paths),
+        "DISPOSITION_CENSUS_TOTAL": len(disposition_candidates),
         "CANONICAL_TIMELINE_REF_MUTATION_AUTHORITY_TYPE_COUNT": len(ref_types),
         "CANONICAL_PROJECT_REVISION_ALLOCATOR_TYPE_COUNT": len(allocator_types),
     }
@@ -657,6 +701,18 @@ def run_self_test(sources: dict[str, str]) -> bool:
                       source.replace("revisionRefMutation.bootstrap(",
                                      "revisionRefMutation.advance(", 1)), False))
 
+    unclassified = dict(sources)
+    unclassified[
+        "timeline-module/src/main/java/com/example/platform/timeline/app/ShadowHeadAccessor.java"
+    ] = """
+        package com.example.platform.timeline.app;
+        final class ShadowHeadAccessor {
+            String findHead() { return null; }
+        }
+    """
+    cases.append(("unclassified_authority_disposition",
+                  "UNCLASSIFIED", unclassified, False))
+
     failures = 0
     for name, target, mutated, should_pass in cases:
         result = evaluate(mutated)
@@ -699,6 +755,7 @@ def main() -> int:
           f"{baseline.counts['CANONICAL_TIMELINE_REF_MUTATION_AUTHORITY_TYPE_COUNT']}")
     print("CANONICAL_PROJECT_REVISION_ALLOCATOR_TYPE_COUNT="
           f"{baseline.counts['CANONICAL_PROJECT_REVISION_ALLOCATOR_TYPE_COUNT']}")
+    print(f"DISPOSITION_CENSUS_TOTAL={baseline.counts['DISPOSITION_CENSUS_TOTAL']}")
     for detail in baseline.details:
         print(f"H7_GUARD_DETAIL={detail}", file=sys.stderr)
     if not baseline.passed:

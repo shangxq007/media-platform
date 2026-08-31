@@ -157,7 +157,7 @@ class CheckpointARound4PatchPathPinIT extends PostgresTestContainerSupport {
 
     private void buildServices(ArtifactQueryService query, ArtifactPinService pinSvc) {
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService,
-                digester, snapshotService, new TimelineArtifactPinValidator(query), pinSvc, effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService));
+                digester, snapshotService, new TimelineArtifactPinValidator(query), pinSvc, effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
     }
 
     private TimelinePatch patchMove(String productId, TimelineRevision base,
@@ -193,13 +193,14 @@ class CheckpointARound4PatchPathPinIT extends PostgresTestContainerSupport {
         buildServices(queryFor("art-1", DIGEST_HEX), pinService);
 
         TimelineDocument baseDoc = pinnedDoc("clip-1", "0/1", "art-1", DIGEST_HEX);
-        TimelineRevision base = saveService.saveRevision(
+        TimelineRevision base = com.example.platform.render.testsupport.TimelineMutationTestSupport.save(saveService,
                 TENANT, productId, null, baseDoc, RenderTestSchemaFixture.SERVER_ACTOR);
         assertEquals(1, countPinsFor(productId, base.revisionId()), "base revision pinned");
 
         var patchService = new TimelinePatchApplicationService(saveService, currentRevisionService, digester);
         PatchApplyResult result = patchService.apply(
-                TENANT, RenderTestSchemaFixture.SERVER_ACTOR,
+                com.example.platform.render.testsupport.TimelineMutationTestSupport.user(
+                        TENANT, productId, RenderTestSchemaFixture.SERVER_ACTOR),
                 patchMove(productId, base, baseDoc, "2/1"));
 
         assertTrue(result instanceof PatchApplyResult.Success,
@@ -226,7 +227,7 @@ class CheckpointARound4PatchPathPinIT extends PostgresTestContainerSupport {
         // base save itself fails closed (digest mismatch at save) — so seed via
         // a no-pin save path is impossible; prove the INVARIANT at save:
         var thrown = org.junit.jupiter.api.Assertions.assertThrows(Exception.class,
-                () -> saveService.saveRevision(
+                () -> com.example.platform.render.testsupport.TimelineMutationTestSupport.save(saveService,
                         TENANT, productId, null, baseDoc, RenderTestSchemaFixture.SERVER_ACTOR),
                 "digest-mismatched pinned save must fail closed");
         assertNotNull(thrown);
@@ -242,7 +243,7 @@ class CheckpointARound4PatchPathPinIT extends PostgresTestContainerSupport {
         buildServices(queryFor("art-1", DIGEST_HEX), pinService);
 
         TimelineDocument baseDoc = pinnedDoc("clip-1", "0/1", "art-1", DIGEST_HEX);
-        TimelineRevision base = saveService.saveRevision(
+        TimelineRevision base = com.example.platform.render.testsupport.TimelineMutationTestSupport.save(saveService,
                 TENANT, productId, null, baseDoc, RenderTestSchemaFixture.SERVER_ACTOR);
         String headBefore = currentRevisionService.currentHead(dsl, com.example.platform.timeline.revisioncommand.RevisionRef.main(com.example.platform.shared.web.TenantContext.get(), productId));
 
@@ -256,7 +257,8 @@ class CheckpointARound4PatchPathPinIT extends PostgresTestContainerSupport {
 
         org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
                 () -> patchService.apply(
-                        TENANT, RenderTestSchemaFixture.SERVER_ACTOR,
+                        com.example.platform.render.testsupport.TimelineMutationTestSupport.user(
+                                TENANT, productId, RenderTestSchemaFixture.SERVER_ACTOR),
                         patchMove(productId, base, baseDoc, "2/1")),
                 "pin persistence failure must fail the whole patch save");
 

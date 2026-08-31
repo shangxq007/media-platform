@@ -87,7 +87,7 @@ class TimelinePatchApplicationServiceHydrationIntegrationTest extends PostgresTe
         // PRODUCTION wiring: 4-arg constructor enables the Contract P snapshot payload write.
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService, digester, snapshotService,
                 org.mockito.Mockito.mock(com.example.platform.timeline.app.TimelineArtifactPinValidator.class),
-                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class), effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService));
+                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class), effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
         patchService = new TimelinePatchApplicationService(
                 saveService, currentRevisionService, digester);
     }
@@ -170,7 +170,7 @@ class TimelinePatchApplicationServiceHydrationIntegrationTest extends PostgresTe
         assertEquals(productId, persistedRowProject(newRevisionId), "project identity preserved");
         assertEquals("ten-pphr", persistedRowTenant(newRevisionId), "tenant identity preserved");
         // base revision and base snapshot remain readable
-        assertNotNull(saveService.findById(base.revisionId()));
+        assertNotNull(saveService.findById("ten-pphr", base.revisionId()));
         assertTrue(payloadOf(baseSnapshotId).isPresent(), "base payload still readable");
     }
 
@@ -333,7 +333,7 @@ class TimelinePatchApplicationServiceHydrationIntegrationTest extends PostgresTe
                 invalidDoc.getTracks().get(0).clips().get(0).getStartTime());
 
         assertThrows(TimelineCanonicalRejectionException.class,
-                () -> saveService.saveRevision(
+                () -> com.example.platform.render.testsupport.TimelineMutationTestSupport.save(saveService,
                         "ten-pphr", productId, base.revisionId(), invalidDoc,
                         RenderTestSchemaFixture.SERVER_ACTOR));
         assertZeroWrites(productId, base.revisionId());
@@ -419,13 +419,16 @@ class TimelinePatchApplicationServiceHydrationIntegrationTest extends PostgresTe
 
     private TimelineRevision save(
             String projectId, String expectedHead, TimelineDocument document) {
-        return saveService.saveRevision(
+        return com.example.platform.render.testsupport.TimelineMutationTestSupport.save(saveService,
                 "ten-pphr", projectId, expectedHead, document,
                 RenderTestSchemaFixture.SERVER_ACTOR);
     }
 
     private PatchApplyResult apply(TimelinePatch patch) {
-        return patchService.apply("ten-pphr", RenderTestSchemaFixture.SERVER_ACTOR, patch);
+        return patchService.apply(
+                com.example.platform.render.testsupport.TimelineMutationTestSupport.user(
+                        "ten-pphr", patch.productId(), RenderTestSchemaFixture.SERVER_ACTOR),
+                patch);
     }
 
     private TimelineDocument sampleDocument(String clipId, String start, String end) {
