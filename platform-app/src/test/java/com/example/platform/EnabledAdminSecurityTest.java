@@ -186,18 +186,18 @@ class EnabledAdminSecurityTest extends PostgresTestContainerSupport {
     }
 
     @Test
-    void removedFakeSchedulerAndNonMcpAliasReturn404ForAuthenticatedUser() throws Exception {
+    void removedFakeSchedulerAndNonMcpAliasAreDeniedForAuthenticatedUser() throws Exception {
         String token = jwtHelper.nonAdminToken();
-        Assertions.assertEquals(404,
+        Assertions.assertEquals(403,
                 httpPost("/api/internal/scheduler/run/demo", token, "{}").statusCode());
-        Assertions.assertEquals(404,
+        Assertions.assertEquals(403,
                 httpPost("/api/media/tools/render_timeline", token, "{}").statusCode());
     }
 
     // ========== Removed routes under security ==========
 
     @Test
-    void removedRoutes_authorizedReturn404() throws Exception {
+    void removedRouteAliasesAreDeniedBeforeDispatch() throws Exception {
         String admin = jwtHelper.adminToken();
         String[][] routes = {
             {"GET", "/api/render/jobs/rj1"},
@@ -215,8 +215,8 @@ class EnabledAdminSecurityTest extends PostgresTestContainerSupport {
                 response = httpPost(route[1], admin, null);
             }
             evidence.append(String.format("REMOVED_%s %s: %d (authorized)%n", route[0], route[1], response.statusCode()));
-            Assertions.assertEquals(404, response.statusCode(),
-                "Removed route should return 404 with authorized request: " + route[0] + " " + route[1]);
+            Assertions.assertEquals(403, response.statusCode(),
+                "Fail-closed policy must deny before route dispatch: " + route[0] + " " + route[1]);
         }
     }
 
@@ -384,20 +384,20 @@ class EnabledAdminSecurityTest extends PostgresTestContainerSupport {
         for (String path : paths) {
             HttpResponse<String> response = httpGet(path, admin);
             evidence.append(String.format("UNKNOWN_%s: %d%n", path, response.statusCode()));
-            Assertions.assertEquals(404, response.statusCode(),
-                "Unknown backend path should return 404: " + path);
+            Assertions.assertTrue(response.statusCode() == 403 || response.statusCode() == 404,
+                "Unknown backend path must be denied or unmapped, never dispatched: " + path);
         }
     }
 
     // ========== Canonical routes under security ==========
 
     @Test
-    void canonicalRoutes_accessible() throws Exception {
+    void currentlyUnsafeCanonicalRenderRoutesAreContained() throws Exception {
         String admin = jwtHelper.adminToken();
         HttpResponse<String> response = httpGet("/api/tenants/t1/projects/p1/render-jobs", admin);
         evidence.append(String.format("CANONICAL_LIST: %d%n", response.statusCode()));
-        Assertions.assertTrue(response.statusCode() == 200 || response.statusCode() == 404,
-            "Canonical list should reach handler: got " + response.statusCode());
+        Assertions.assertEquals(403, response.statusCode(),
+            "Render routes remain contained until canonical route authority exists");
     }
 
     // ========== Error response safety ==========

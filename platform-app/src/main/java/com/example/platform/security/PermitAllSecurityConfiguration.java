@@ -12,7 +12,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 
 /**
  * When JWT security is disabled ({@code app.security.enabled=false}), register an explicit
- * local-development chain. Phase-0 contained routes remain denied in this mode.
+ * fail-closed local-development chain. Authentication-dependent routes remain unavailable.
  */
 @Configuration
 @EnableWebSecurity
@@ -31,10 +31,7 @@ public class PermitAllSecurityConfiguration {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .csrf(AbstractHttpConfigurer::disable)
-                .authorizeHttpRequests(auth -> {
-                    PhaseZeroContainmentPolicy.apply(auth);
-                    auth.anyRequest().permitAll();
-                });
+                .authorizeHttpRequests(PhaseZeroContainmentPolicy::applySecurityDisabled);
         return http.build();
     }
 }

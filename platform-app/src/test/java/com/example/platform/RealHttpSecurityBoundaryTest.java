@@ -64,36 +64,36 @@ class RealHttpSecurityBoundaryTest extends PostgresTestContainerSupport {
         Files.writeString(Path.of("/tmp/real-http-evidence.txt"), evidence.toString());
     }
 
-    // ========== Removed routes — must return 404 ==========
+    // ========== Security-disabled mode is fail-closed before route dispatch ==========
 
     @Test
-    void removedRoute_executeLocal_returns404() throws Exception {
-        assertRemovedRoute("POST", "/api/tenants/t1/projects/p1/render-jobs/rj1/execute-local");
+    void removedRoute_executeLocal_isDeniedBeforeDispatch() throws Exception {
+        assertDeniedBeforeDispatch("POST", "/api/tenants/t1/projects/p1/render-jobs/rj1/execute-local");
     }
 
     @Test
-    void removedRoute_retry_returns404() throws Exception {
-        assertRemovedRoute("POST", "/api/render/jobs/rj1/retry");
+    void removedRoute_retry_isDeniedBeforeDispatch() throws Exception {
+        assertDeniedBeforeDispatch("POST", "/api/render/jobs/rj1/retry");
     }
 
     @Test
-    void removedRoute_oldCreateAlias_returns404() throws Exception {
-        assertRemovedRoute("POST", "/api/render/jobs");
+    void removedRoute_oldCreateAlias_isDeniedBeforeDispatch() throws Exception {
+        assertDeniedBeforeDispatch("POST", "/api/render/jobs");
     }
 
     @Test
-    void removedRoute_oldSubmitAlias_returns404() throws Exception {
-        assertRemovedRoute("POST", "/api/render/jobs/submit");
+    void removedRoute_oldSubmitAlias_isDeniedBeforeDispatch() throws Exception {
+        assertDeniedBeforeDispatch("POST", "/api/render/jobs/submit");
     }
 
     @Test
-    void removedRoute_oldDetailAlias_returns404() throws Exception {
-        assertRemovedRoute("GET", "/api/render/jobs/rj1");
+    void removedRoute_oldDetailAlias_isDeniedBeforeDispatch() throws Exception {
+        assertDeniedBeforeDispatch("GET", "/api/render/jobs/rj1");
     }
 
     @Test
-    void removedRoute_oldListAlias_returns404() throws Exception {
-        assertRemovedRoute("GET", "/api/render/jobs");
+    void removedRoute_oldListAlias_isDeniedBeforeDispatch() throws Exception {
+        assertDeniedBeforeDispatch("GET", "/api/render/jobs");
     }
 
     // ========== Canonical RenderJob routes ==========
@@ -234,11 +234,11 @@ class RealHttpSecurityBoundaryTest extends PostgresTestContainerSupport {
 
     @Test
     void removedSchedulerAndNonMcpAliasStayAbsentWhenSecurityDisabled() throws Exception {
-        assertRemovedRoute("POST", "/api/internal/scheduler/run/demo");
-        assertRemovedRoute("POST", "/api/media/tools/render_timeline");
+        assertDeniedBeforeDispatch("POST", "/api/internal/scheduler/run/demo");
+        assertDeniedBeforeDispatch("POST", "/api/media/tools/render_timeline");
     }
 
-    // ========== Dev routes — should be absent under test/preview ==========
+    // ========== Dev routes remain unreachable under test/preview ==========
 
     @Test
     void devRoutes_absentUnderPreview() throws Exception {
@@ -253,17 +253,15 @@ class RealHttpSecurityBoundaryTest extends PostgresTestContainerSupport {
         for (String path : devPaths) {
             HttpResponse<String> response = httpGetReq(path);
             evidence.append(String.format("DEV_%s: %d%n", path, response.statusCode()));
-            Assertions.assertEquals(404, response.statusCode(),
-                "Dev route should be absent under preview: " + path);
+            Assertions.assertEquals(403, response.statusCode(),
+                "Dev route must be denied before dispatch under preview: " + path);
         }
     }
 
     // ========== Admin routes — anonymous should not get 2xx ==========
 
     @Test
-    void adminRoutes_anonymous_recordBehavior() throws Exception {
-        // With security disabled, admin routes are accessible. Record for documentation.
-        // Full admin security validation requires app.security.enabled=true.
+    void securityDisabledDeniesAdminRoutes() throws Exception {
         String[] adminPaths = {
             "/api/admin/feature-flags",
             "/api/admin/billing/plans",
@@ -273,6 +271,7 @@ class RealHttpSecurityBoundaryTest extends PostgresTestContainerSupport {
             HttpResponse<String> response = httpGetReq(path);
             int status = response.statusCode();
             evidence.append(String.format("ADMIN_ANON_%s: %d (security-disabled)%n", path, status));
+            Assertions.assertEquals(403, status, path);
         }
         // Admin mutation test
         HttpRequest request = HttpRequest.newBuilder()
@@ -282,28 +281,28 @@ class RealHttpSecurityBoundaryTest extends PostgresTestContainerSupport {
             .build();
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
         evidence.append(String.format("ADMIN_MUTATION_ANON: %d (security-disabled)%n", response.statusCode()));
+        Assertions.assertEquals(403, response.statusCode());
     }
 
     // ========== SPA fallback isolation ==========
 
     @Test
     void spaFallback_onlyHandlesAppNamespace() throws Exception {
-        // /app/something should get SPA fallback (forward to index.html)
-        // /api/something unknown should get 404
+        // Unknown routes are denied at the global boundary while security is disabled.
         HttpResponse<String> apiUnknown = httpGetReq("/api/nonexistent-path");
         evidence.append(String.format("UNKNOWN_API: %d%n", apiUnknown.statusCode()));
-        Assertions.assertEquals(404, apiUnknown.statusCode(),
-            "Unknown API path should return 404, not SPA HTML");
+        Assertions.assertEquals(403, apiUnknown.statusCode(),
+            "Unknown API path must be denied, not forwarded to SPA HTML");
 
         HttpResponse<String> devUnknown = httpGetReq("/dev/nonexistent");
         evidence.append(String.format("UNKNOWN_DEV: %d%n", devUnknown.statusCode()));
-        Assertions.assertEquals(404, devUnknown.statusCode(),
-            "Unknown dev path should return 404, not SPA HTML");
+        Assertions.assertEquals(403, devUnknown.statusCode(),
+            "Unknown dev path must be denied, not forwarded to SPA HTML");
 
         HttpResponse<String> adminUnknown = httpGetReq("/admin/nonexistent");
         evidence.append(String.format("UNKNOWN_ADMIN: %d%n", adminUnknown.statusCode()));
-        Assertions.assertEquals(404, adminUnknown.statusCode(),
-            "Unknown admin path should return 404, not SPA HTML");
+        Assertions.assertEquals(403, adminUnknown.statusCode(),
+            "Unknown admin path must be denied, not forwarded to SPA HTML");
     }
 
     // ========== Health ==========
@@ -316,7 +315,7 @@ class RealHttpSecurityBoundaryTest extends PostgresTestContainerSupport {
 
     // ========== Helpers ==========
 
-    private void assertRemovedRoute(String method, String path) throws Exception {
+    private void assertDeniedBeforeDispatch(String method, String path) throws Exception {
         HttpResponse<String> response;
         if ("GET".equals(method)) {
             response = httpGetReq(path);
@@ -328,8 +327,8 @@ class RealHttpSecurityBoundaryTest extends PostgresTestContainerSupport {
             response = client.send(request, HttpResponse.BodyHandlers.ofString());
         }
         evidence.append(String.format("REMOVED_%s %s: %d%n", method, path, response.statusCode()));
-        Assertions.assertEquals(404, response.statusCode(),
-            "Removed route should return 404: " + method + " " + path);
+        Assertions.assertEquals(403, response.statusCode(),
+            "Security-disabled mode must deny before route dispatch: " + method + " " + path);
     }
 
     private HttpResponse<String> httpGetReq(String path) throws Exception {
