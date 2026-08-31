@@ -190,6 +190,17 @@ class ClientExportServiceTest extends PostgresTestContainerSupport {
     }
 
     @Test
+    void publicServiceCannotReturnALocalUploadPath() {
+        var config = service.createSessionWithConfig(
+                "tenant-1", "ws-1", "proj-1", "user-1",
+                "FREE", "client_720p_watermarked", "snap-1");
+
+        AuthorizationDeniedException failure = assertThrows(AuthorizationDeniedException.class, () ->
+                service.resolveUploadPath(config.sessionId()));
+        assertEquals("AUTHORIZATION_UNAVAILABLE", failure.decision().reasonCode());
+    }
+
+    @Test
     void clientFailureCannotMutateExecutionTruth() {
         var config = service.createSessionWithConfig(
                 "tenant-1", "ws-1", "proj-1", "user-1",

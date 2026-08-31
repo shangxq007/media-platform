@@ -190,10 +190,7 @@ public class ClientExportService {
     }
 
     public Path resolveUploadPath(String sessionId) throws IOException {
-        ClientExportSession session = findSessionOrThrow(sessionId);
-        Path dir = buildTenantPath(session).resolve(sessionId);
-        Files.createDirectories(dir);
-        return dir.resolve("output." + session.format());
+        throw FailClosedAuthorization.unavailable("client export local upload path");
     }
 
     public ClientExportSession uploadAndComplete(

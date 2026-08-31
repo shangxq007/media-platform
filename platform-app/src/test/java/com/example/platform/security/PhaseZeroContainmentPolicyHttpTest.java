@@ -17,6 +17,7 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Profile;
 import org.springframework.mock.web.MockServletContext;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -68,6 +69,10 @@ class PhaseZeroContainmentPolicyHttpTest {
                 test.mvc().perform(MockMvcRequestBuilders.get(path))
                         .andExpect(status().isForbidden());
             }
+            for (C3Route route : c3ContainedRoutes()) {
+                test.mvc().perform(MockMvcRequestBuilders.request(route.method(), route.alias()))
+                        .andExpect(status().isForbidden());
+            }
             test.mvc().perform(MockMvcRequestBuilders.post("/api/dev/auth/token"))
                     .andExpect(status().isForbidden());
             test.mvc().perform(MockMvcRequestBuilders.options(
@@ -106,6 +111,11 @@ class PhaseZeroContainmentPolicyHttpTest {
                     .andExpect(status().isForbidden());
             for (String path : projectDashboardAliases()) {
                 test.mvc().perform(MockMvcRequestBuilders.get(path)
+                                .sessionAttr(ordinary, authenticated(true)))
+                        .andExpect(status().isForbidden());
+            }
+            for (C3Route route : c3ContainedRoutes()) {
+                test.mvc().perform(MockMvcRequestBuilders.request(route.method(), route.alias())
                                 .sessionAttr(ordinary, authenticated(true)))
                         .andExpect(status().isForbidden());
             }
@@ -166,6 +176,10 @@ class PhaseZeroContainmentPolicyHttpTest {
                 assertEquals(Optional.of(PhaseZeroContainmentPolicy.Classification.DISABLED_CONTAINED),
                         actual.get("GET " + path));
             }
+            for (C3Route route : c3ContainedRoutes()) {
+                assertEquals(Optional.of(PhaseZeroContainmentPolicy.Classification.DISABLED_CONTAINED),
+                        actual.get(route.method() + " " + route.mapping()), route.mapping());
+            }
             assertEquals(Optional.of(PhaseZeroContainmentPolicy.Classification.TEST_ONLY),
                     actual.get("POST /api/dev/auth/token"));
             assertEquals(Optional.empty(),
@@ -195,6 +209,43 @@ class PhaseZeroContainmentPolicyHttpTest {
                 "/api/projects/{projectId}/dashboard/activity",
                 "/api/projects/{projectId}/dashboard/pending",
                 "/api/projects/{projectId}/dashboard/health");
+    }
+
+    private static List<C3Route> c3ContainedRoutes() {
+        return List.of(
+                new C3Route(HttpMethod.POST,
+                        "/api/tenants/tenant-1/delivery/destinations",
+                        "/api/tenants/{tenantId}/delivery/destinations"),
+                new C3Route(HttpMethod.POST,
+                        "/api/timeline-git/products/product-1/revisions",
+                        "/api/timeline-git/products/{productId}/revisions"),
+                new C3Route(HttpMethod.POST,
+                        "/api/render/projects/project-1/timeline/revisions/merge",
+                        "/api/render/projects/{projectId}/timeline/revisions/merge"),
+                new C3Route(HttpMethod.POST,
+                        "/api/render/projects/project-1/timeline/reviews",
+                        "/api/render/projects/{projectId}/timeline/reviews"),
+                new C3Route(HttpMethod.GET,
+                        "/api/products/product-1",
+                        "/api/products/{productId}"),
+                new C3Route(HttpMethod.GET,
+                        "/api/assets/asset-1/workspace",
+                        "/api/assets/{assetId}/workspace"),
+                new C3Route(HttpMethod.POST,
+                        "/api/tenants/tenant-1/projects/project-1/render-jobs",
+                        "/api/tenants/{tenantId}/projects/{projectId}/render-jobs"),
+                new C3Route(HttpMethod.GET,
+                        "/api/render/client-exports",
+                        "/api/render/client-exports"),
+                new C3Route(HttpMethod.POST,
+                        "/api/projects/project-1/assets/asset-1/enrich",
+                        "/api/projects/{projectId}/assets/{assetId}/enrich"),
+                new C3Route(HttpMethod.POST,
+                        "/api/media/assets/integrity/scan",
+                        "/api/media/assets/integrity/scan"),
+                new C3Route(HttpMethod.POST,
+                        "/api/projects/project-1/assets/asset-1/publish",
+                        "/api/projects/{projectId}/assets/{assetId}/publish"));
     }
 
     private static TestHttpContext context(Class<?> securityConfiguration) {
@@ -261,6 +312,28 @@ class PhaseZeroContainmentPolicyHttpTest {
         void projectDashboardPending() { downstream.invoke("project-dashboard-pending"); }
         @GetMapping("/api/projects/{projectId}/dashboard/health")
         void projectDashboardHealth() { downstream.invoke("project-dashboard-health"); }
+        @PostMapping("/api/tenants/{tenantId}/delivery/destinations")
+        void deliveryDestination() { downstream.invoke("c3-delivery"); }
+        @PostMapping("/api/timeline-git/products/{productId}/revisions")
+        void timelineSave() { downstream.invoke("c3-timeline-save"); }
+        @PostMapping("/api/render/projects/{projectId}/timeline/revisions/merge")
+        void timelineMerge() { downstream.invoke("c3-timeline-merge"); }
+        @PostMapping("/api/render/projects/{projectId}/timeline/reviews")
+        void timelineReview() { downstream.invoke("c3-timeline-review"); }
+        @GetMapping("/api/products/{productId}")
+        void productRead() { downstream.invoke("c3-product"); }
+        @GetMapping("/api/assets/{assetId}/workspace")
+        void assetWorkbenchRead() { downstream.invoke("c3-asset-workbench"); }
+        @PostMapping("/api/tenants/{tenantId}/projects/{projectId}/render-jobs")
+        void renderCreate() { downstream.invoke("c3-render"); }
+        @GetMapping("/api/render/client-exports")
+        void clientExport() { downstream.invoke("c3-client-export"); }
+        @PostMapping("/api/projects/{projectId}/assets/{assetId}/enrich")
+        void assetEnrichment() { downstream.invoke("c3-enrichment"); }
+        @PostMapping("/api/media/assets/integrity/scan")
+        void integrityScan() { downstream.invoke("c3-integrity"); }
+        @PostMapping("/api/projects/{projectId}/assets/{assetId}/publish")
+        void assetPublish() { downstream.invoke("c3-publish"); }
         @PostMapping("/api/dev/auth/token") void testOnly() { downstream.invoke("test"); }
         @RequestMapping(
                 path = "/api/runtime-policy-negative-control/execute-options",
@@ -302,4 +375,6 @@ class PhaseZeroContainmentPolicyHttpTest {
             context.close();
         }
     }
+
+    private record C3Route(HttpMethod method, String alias, String mapping) {}
 }
