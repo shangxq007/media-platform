@@ -11,6 +11,7 @@ import com.example.platform.delivery.app.DeliveryDestinationCredentialService;
 import com.example.platform.delivery.app.DeliveryJobService;
 import com.example.platform.secrets.api.port.CredentialBundlePort;
 import com.example.platform.shared.Ids;
+import com.example.platform.shared.authorization.FailClosedAuthorization;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -55,21 +56,7 @@ public class DeliveryController {
     public DeliveryDestinationResponse createDestination(
             @PathVariable String tenantId,
             @Valid @RequestBody CreateDeliveryDestinationRequest request) {
-        String id = Ids.newId("dst");
-        String configJson = toJson(request.config());
-        var stored = destinationCredentialService.persist(
-                tenantId, id, request.credentialRef(), request.credentials());
-        dsl.insertInto(DELIVERY_DESTINATION)
-                .columns(DELIVERY_DESTINATION.ID, DELIVERY_DESTINATION.TENANT_ID, DELIVERY_DESTINATION.NAME, DELIVERY_DESTINATION.PROTOCOL,
-                        DELIVERY_DESTINATION.CONFIG_JSON, DELIVERY_DESTINATION.CREDENTIAL_REF, DELIVERY_DESTINATION.CREDENTIAL_JSON,
-                        DELIVERY_DESTINATION.ENABLED, DELIVERY_DESTINATION.CREATED_AT)
-                .values(id, tenantId, request.name(), request.protocol(), configJson,
-                        stored.credentialRef(), stored.credentialJson(),
-                        request.enabled() != null ? request.enabled() : true, LocalDateTime.now())
-                .execute();
-        return toDestinationResponse(id, tenantId, request.name(), request.protocol(),
-                request.enabled() != null ? request.enabled() : true,
-                stored.credentialRef(), stored.credentialJson());
+        throw FailClosedAuthorization.unavailable("delivery destination creation");
     }
 
     @PostMapping("/delivery/destinations/{destinationId}/probe")
@@ -77,8 +64,7 @@ public class DeliveryController {
     public Map<String, Object> probeDestination(
             @PathVariable String tenantId,
             @PathVariable String destinationId) {
-        var result = deliveryJobService.probeDestination(tenantId, destinationId);
-        return Map.of("ok", result.ok(), "message", result.message() != null ? result.message() : "");
+        throw FailClosedAuthorization.unavailable("delivery destination probe");
     }
 
     @PatchMapping("/delivery/destinations/{destinationId}")
@@ -87,25 +73,7 @@ public class DeliveryController {
             @PathVariable String tenantId,
             @PathVariable String destinationId,
             @RequestBody UpdateDeliveryDestinationRequest request) {
-        deliveryJobService.updateDestination(tenantId, destinationId, request);
-        if (request.credentialRef() != null || (request.credentials() != null && !request.credentials().isEmpty())) {
-            var stored = destinationCredentialService.persist(
-                    tenantId, destinationId, request.credentialRef(), request.credentials());
-            dsl.update(DELIVERY_DESTINATION)
-                    .set(DELIVERY_DESTINATION.CREDENTIAL_REF, stored.credentialRef())
-                    .set(DELIVERY_DESTINATION.CREDENTIAL_JSON, stored.credentialJson())
-                    .where(DELIVERY_DESTINATION.ID.eq(destinationId))
-                    .execute();
-        }
-        Record row = dsl.select()
-                .from(DELIVERY_DESTINATION)
-                .where(DELIVERY_DESTINATION.ID.eq(destinationId))
-                .and(DELIVERY_DESTINATION.TENANT_ID.eq(tenantId))
-                .fetchOne();
-        if (row == null) {
-            throw new IllegalArgumentException("Destination not found");
-        }
-        return mapDestinationRow(tenantId, row);
+        throw FailClosedAuthorization.unavailable("delivery destination update");
     }
 
     @DeleteMapping("/delivery/destinations/{destinationId}")
@@ -113,16 +81,12 @@ public class DeliveryController {
     public Map<String, String> deleteDestination(
             @PathVariable String tenantId,
             @PathVariable String destinationId) {
-        deliveryJobService.deleteDestination(tenantId, destinationId);
-        return Map.of("destinationId", destinationId, "deleted", "true");
+        throw FailClosedAuthorization.unavailable("delivery destination deletion");
     }
 
     @GetMapping("/delivery/destinations")
     public List<DeliveryDestinationResponse> listDestinations(@PathVariable String tenantId) {
-        return dsl.select()
-                .from(DELIVERY_DESTINATION)
-                .where(DELIVERY_DESTINATION.TENANT_ID.eq(tenantId))
-                .fetch(r -> mapDestinationRow(tenantId, r));
+        throw FailClosedAuthorization.unavailable("delivery destination listing");
     }
 
     @GetMapping("/projects/{projectId}/delivery/policies")
@@ -130,19 +94,7 @@ public class DeliveryController {
     public List<DeliveryPolicyResponse> listPolicies(
             @PathVariable String tenantId,
             @PathVariable String projectId) {
-        return dsl.select()
-                .from(DELIVERY_POLICY)
-                .where(DELIVERY_POLICY.TENANT_ID.eq(tenantId))
-                .and(DELIVERY_POLICY.PROJECT_ID.eq(projectId))
-                .fetch(r -> new DeliveryPolicyResponse(
-                        r.get(DELIVERY_POLICY.ID),
-                        tenantId,
-                        projectId,
-                        r.get(DELIVERY_POLICY.DESTINATION_ID),
-                        r.get(DELIVERY_POLICY.ARTIFACT_SELECTOR),
-                        r.get(DELIVERY_POLICY.PATH_TEMPLATE),
-                        r.get(DELIVERY_POLICY.TRIGGER_MODE),
-                        Boolean.TRUE.equals(r.get(DELIVERY_DESTINATION.ENABLED))));
+        throw FailClosedAuthorization.unavailable("delivery policy listing");
     }
 
     @PostMapping("/projects/{projectId}/delivery/policies")
@@ -151,16 +103,7 @@ public class DeliveryController {
             @PathVariable String tenantId,
             @PathVariable String projectId,
             @Valid @RequestBody CreateDeliveryPolicyRequest request) {
-        String id = Ids.newId("dlp");
-        dsl.insertInto(DELIVERY_POLICY)
-                .columns(DELIVERY_POLICY.ID, DELIVERY_POLICY.TENANT_ID, DELIVERY_POLICY.PROJECT_ID, DELIVERY_POLICY.DESTINATION_ID,
-                        DELIVERY_POLICY.ARTIFACT_SELECTOR, DELIVERY_POLICY.PATH_TEMPLATE, DELIVERY_POLICY.TRIGGER_MODE,
-                        DELIVERY_POLICY.ENABLED, DELIVERY_POLICY.CREATED_AT)
-                .values(id, tenantId, projectId, request.destinationId(),
-                        request.artifactSelectorOrDefault(), request.pathTemplateOrDefault(),
-                        request.triggerModeOrDefault(), true, LocalDateTime.now())
-                .execute();
-        return Map.of("policyId", id);
+        throw FailClosedAuthorization.unavailable("delivery policy creation");
     }
 
     @PatchMapping("/projects/{projectId}/delivery/policies/{policyId}")
@@ -170,11 +113,7 @@ public class DeliveryController {
             @PathVariable String projectId,
             @PathVariable String policyId,
             @RequestBody UpdateDeliveryPolicyRequest request) {
-        if (request.enabled() == null) {
-            throw new IllegalArgumentException("enabled is required");
-        }
-        deliveryJobService.updatePolicyEnabled(tenantId, projectId, policyId, request.enabled());
-        return Map.of("policyId", policyId, "enabled", String.valueOf(request.enabled()));
+        throw FailClosedAuthorization.unavailable("delivery policy update");
     }
 
     @DeleteMapping("/projects/{projectId}/delivery/policies/{policyId}")
@@ -183,8 +122,7 @@ public class DeliveryController {
             @PathVariable String tenantId,
             @PathVariable String projectId,
             @PathVariable String policyId) {
-        deliveryJobService.deletePolicy(tenantId, projectId, policyId);
-        return Map.of("policyId", policyId, "deleted", "true");
+        throw FailClosedAuthorization.unavailable("delivery policy deletion");
     }
 
     @GetMapping("/projects/{projectId}/render-jobs/{jobId}/deliveries")
@@ -192,12 +130,7 @@ public class DeliveryController {
             @PathVariable String tenantId,
             @PathVariable String projectId,
             @PathVariable String jobId) {
-        return dsl.select()
-                .from(DELIVERY_JOB)
-                .where(DELIVERY_JOB.TENANT_ID.eq(tenantId))
-                .and(DELIVERY_JOB.PROJECT_ID.eq(projectId))
-                .and(DELIVERY_JOB.RENDER_JOB_ID.eq(jobId))
-                .fetch(this::mapJob);
+        throw FailClosedAuthorization.unavailable("delivery job listing");
     }
 
     @PostMapping("/projects/{projectId}/render-jobs/{jobId}/deliveries/{deliveryJobId}/retry")
@@ -207,8 +140,7 @@ public class DeliveryController {
             @PathVariable String projectId,
             @PathVariable String jobId,
             @PathVariable String deliveryJobId) {
-        boolean ok = deliveryJobService.retryDelivery(tenantId, projectId, jobId, deliveryJobId);
-        return Map.of("deliveryJobId", deliveryJobId, "status", ok ? "COMPLETED" : "PENDING_RETRY");
+        throw FailClosedAuthorization.unavailable("delivery retry");
     }
 
     @PostMapping("/projects/{projectId}/render-jobs/{jobId}/deliver")
@@ -218,9 +150,7 @@ public class DeliveryController {
             @PathVariable String projectId,
             @PathVariable String jobId,
             @RequestParam String destinationId) {
-        String dlvId = deliveryJobService.triggerManual(tenantId, projectId, jobId, destinationId);
-        deliveryJobService.runJob(dlvId);
-        return Map.of("deliveryJobId", dlvId);
+        throw FailClosedAuthorization.unavailable("manual delivery execution");
     }
 
     private DeliveryJobResponse mapJob(Record r) {

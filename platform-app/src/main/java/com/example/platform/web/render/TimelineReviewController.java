@@ -17,6 +17,7 @@ import com.example.platform.timeline.diff.merge.EntityRef;
 import com.example.platform.timeline.diff.merge.ReviewDecision;
 import com.example.platform.timeline.diff.merge.TimelineComment;
 import com.example.platform.shared.web.TenantContext;
+import com.example.platform.shared.authorization.FailClosedAuthorization;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
@@ -50,12 +51,7 @@ public class TimelineReviewController {
     public ResponseEntity<ReviewResponse> createReview(
             @PathVariable String projectId,
             @RequestBody CreateReviewRequest body) {
-        var review = reviewService.createReview(projectId,
-                body.revisionId(), body.authorUserId(), body.title(), body.description());
-        eventPublisher.publish(new ReviewCreatedEvent(review.reviewId(), projectId,
-                "TIMELINE", body.revisionId(), body.authorUserId(), body.title()));
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(toResponse(reviewService.getReview(review.reviewId()).orElseThrow()));
+        throw FailClosedAuthorization.unavailable("timeline review creation");
     }
 
     @GetMapping
@@ -63,9 +59,7 @@ public class TimelineReviewController {
     public List<ReviewResponse> listReviews(
             @PathVariable String projectId,
             @RequestParam(defaultValue = "30") int limit) {
-        return reviewService.listReviews(projectId, limit).stream()
-                .map(TimelineReviewController::toResponse)
-                .toList();
+        throw FailClosedAuthorization.unavailable("timeline review listing");
     }
 
     @GetMapping("/{reviewId}")
@@ -73,15 +67,7 @@ public class TimelineReviewController {
     public ResponseEntity<ReviewDetailResponse> getReview(
             @PathVariable String projectId,
             @PathVariable String reviewId) {
-        return reviewService.getReview(reviewId)
-                .map(r -> {
-                    var comments = commentService.listComments(reviewId);
-                    var threads = commentService.listThreads(reviewId);
-                    var decisions = decisionService.listDecisions(reviewId);
-                    var guard = reviewService.checkMergeGuard(reviewId);
-                    return ResponseEntity.ok(toDetailResponse(r, comments, threads, decisions, guard));
-                })
-                .orElse(ResponseEntity.notFound().build());
+        throw FailClosedAuthorization.unavailable("timeline review read");
     }
 
     @PostMapping("/{reviewId}/comments")
@@ -90,16 +76,7 @@ public class TimelineReviewController {
             @PathVariable String projectId,
             @PathVariable String reviewId,
             @RequestBody AddCommentRequest body) {
-        EntityRef ref = body.entityKind() != null && body.entityId() != null
-                ? new EntityRef(EntityKind.valueOf(body.entityKind()), body.entityId())
-                : null;
-        TimelineComment comment = commentService.addComment(
-                reviewId, body.revisionId(), body.threadId(), ref,
-                body.authorUserId(), body.content());
-        eventPublisher.publish(new ReviewCommentAddedEvent(reviewId, "unknown", "TIMELINE",
-                body.revisionId(), comment.commentId(), body.authorUserId(),
-                ref != null ? ref.key() : null));
-        return ResponseEntity.status(HttpStatus.CREATED).body(toCommentResponse(comment));
+        throw FailClosedAuthorization.unavailable("timeline review comment creation");
     }
 
     @GetMapping("/{reviewId}/comments")
@@ -107,9 +84,7 @@ public class TimelineReviewController {
     public List<CommentResponse> listComments(
             @PathVariable String projectId,
             @PathVariable String reviewId) {
-        return commentService.listComments(reviewId).stream()
-                .map(TimelineReviewController::toCommentResponse)
-                .toList();
+        throw FailClosedAuthorization.unavailable("timeline review comment listing");
     }
 
     @PostMapping("/{reviewId}/comments/{threadId}/resolve")
@@ -118,9 +93,7 @@ public class TimelineReviewController {
             @PathVariable String projectId,
             @PathVariable String reviewId,
             @PathVariable String threadId) {
-        commentService.resolveThread(threadId);
-        eventPublisher.publish(new ReviewThreadResolvedEvent(reviewId, "unknown", threadId, "unknown"));
-        return ResponseEntity.ok(Map.of("threadId", threadId, "resolved", true));
+        throw FailClosedAuthorization.unavailable("timeline review thread resolution");
     }
 
     @PostMapping("/{reviewId}/comments/{threadId}/reopen")
@@ -129,8 +102,7 @@ public class TimelineReviewController {
             @PathVariable String projectId,
             @PathVariable String reviewId,
             @PathVariable String threadId) {
-        commentService.reopenThread(threadId);
-        return ResponseEntity.ok(Map.of("threadId", threadId, "reopened", true));
+        throw FailClosedAuthorization.unavailable("timeline review thread reopen");
     }
 
     @PostMapping("/{reviewId}/approve")
@@ -139,10 +111,7 @@ public class TimelineReviewController {
             @PathVariable String projectId,
             @PathVariable String reviewId,
             @RequestParam String reviewerUserId) {
-        reviewService.approve(reviewId, reviewerUserId);
-        decisionService.recordDecision(reviewId, reviewerUserId, ReviewDecision.Decision.APPROVE);
-        eventPublisher.publish(new ReviewApprovedEvent(reviewId, "unknown", "TIMELINE", "unknown", reviewerUserId));
-        return ResponseEntity.ok(Map.of("reviewId", reviewId, "status", "APPROVED"));
+        throw FailClosedAuthorization.unavailable("timeline review approval");
     }
 
     @PostMapping("/{reviewId}/request-changes")
@@ -151,10 +120,7 @@ public class TimelineReviewController {
             @PathVariable String projectId,
             @PathVariable String reviewId,
             @RequestParam String reviewerUserId) {
-        reviewService.requestChanges(reviewId, reviewerUserId);
-        decisionService.recordDecision(reviewId, reviewerUserId, ReviewDecision.Decision.REQUEST_CHANGES);
-        eventPublisher.publish(new ReviewChangesRequestedEvent(reviewId, "unknown", "TIMELINE", "unknown", reviewerUserId));
-        return ResponseEntity.ok(Map.of("reviewId", reviewId, "status", "CHANGES_REQUESTED"));
+        throw FailClosedAuthorization.unavailable("timeline review change request");
     }
 
     @PostMapping("/{reviewId}/reject")
@@ -163,10 +129,7 @@ public class TimelineReviewController {
             @PathVariable String projectId,
             @PathVariable String reviewId,
             @RequestParam String reviewerUserId) {
-        reviewService.reject(reviewId);
-        decisionService.recordDecision(reviewId, reviewerUserId, ReviewDecision.Decision.REJECT);
-        eventPublisher.publish(new ReviewRejectedEvent(reviewId, "unknown", "TIMELINE", "unknown"));
-        return ResponseEntity.ok(Map.of("reviewId", reviewId, "status", "CLOSED"));
+        throw FailClosedAuthorization.unavailable("timeline review rejection");
     }
 
     @GetMapping("/{reviewId}/merge-guard")
@@ -174,9 +137,7 @@ public class TimelineReviewController {
     public ResponseEntity<Map<String, Object>> checkMergeGuard(
             @PathVariable String projectId,
             @PathVariable String reviewId) {
-        MergeGuardResult guard = reviewService.checkMergeGuard(reviewId);
-        return ResponseEntity.ok(Map.of("reviewId", reviewId,
-                "canMerge", guard.canMerge(), "reason", guard.reason() != null ? guard.reason() : ""));
+        throw FailClosedAuthorization.unavailable("timeline review merge guard");
     }
 
     private static ReviewResponse toResponse(TimelineReviewRepository.ReviewRow r) {

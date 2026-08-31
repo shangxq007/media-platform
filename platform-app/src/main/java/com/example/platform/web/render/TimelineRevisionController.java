@@ -27,6 +27,7 @@ import com.example.platform.timeline.diff.merge.TimelineMergeSummary;
 import com.example.platform.timeline.diff.merge.TimelineConflict;
 import com.example.platform.timeline.diff.merge.TimelineResolutionIntent;
 import com.example.platform.shared.web.TenantContext;
+import com.example.platform.shared.authorization.FailClosedAuthorization;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -115,15 +116,7 @@ public class TimelineRevisionController {
             @PathVariable String projectId,
             @PathVariable String revisionId,
             @RequestBody AnnotationRequest body) {
-        String tenantId = TenantContext.get();
-        return revisionQueryService
-                .updateAnnotation(
-                        projectId, tenantId,
-                        revisionId,
-                        body != null ? body.message() : null,
-                        body != null ? body.labels() : null)
-                .map(r -> ResponseEntity.ok(toListItem(r)))
-                .orElse(ResponseEntity.notFound().build());
+        throw FailClosedAuthorization.unavailable("timeline revision annotation mutation");
     }
 
     @GetMapping("/edit-sessions")
@@ -203,15 +196,7 @@ public class TimelineRevisionController {
             @PathVariable String projectId,
             @PathVariable String revisionId,
             @RequestParam(required = false) String authorUserId) {
-        String tenantId = TenantContext.get();
-        // CFRH-I1: legacy restore authority (TimelineRevisionDiffQuery.restore) replaced by the
-        // canonical restore transaction boundary (TimelineRevisionSaveService.restoreRevision).
-        // expected-current CAS comes from the canonical current-revision authority.
-        String expectedCurrent = currentRevisionService.getCurrentRevisionId(projectId);
-        var restored = revisionSaveService.restoreRevision(
-                projectId, revisionId, expectedCurrent, authorUserId);
-        eventPublisher.publish(new TimelineRestoredEvent(projectId, revisionId, restored.revisionId()));
-        return ResponseEntity.status(HttpStatus.CREATED).body(toRestoreResponse(projectId, restored.revisionId()));
+        throw FailClosedAuthorization.unavailable("timeline revision restore");
     }
 
     @PostMapping("/merge")
@@ -219,47 +204,7 @@ public class TimelineRevisionController {
     public ResponseEntity<MergeApiResponse> merge(
             @PathVariable String projectId,
             @RequestBody MergeApiRequest body) {
-        String tenantId = body.tenantId() != null ? body.tenantId() : TenantContext.get();
-        TimelineMergeRequest request = new TimelineMergeRequest(
-                projectId, tenantId,
-                body.baseRevisionId(), body.sourceRevisionId(), body.targetRevisionId(),
-                body.authorUserId(), body.message());
-
-        TimelineMergeResult result;
-        if (body.resolutions() != null && !body.resolutions().isEmpty()) {
-            Map<String, TimelineResolutionIntent> intents = new HashMap<>();
-            for (var r : body.resolutions()) {
-                var intent = switch (r.resolutionMode()) {
-                    case "USE_SOURCE" ->
-                        TimelineResolutionIntent.useSource(
-                            new com.example.platform.timeline.diff.merge.EntityRef(
-                                com.example.platform.timeline.diff.merge.EntityKind.CLIP,
-                                r.entityId()), null);
-                    case "USE_TARGET" ->
-                        TimelineResolutionIntent.useTarget(
-                            new com.example.platform.timeline.diff.merge.EntityRef(
-                                com.example.platform.timeline.diff.merge.EntityKind.CLIP,
-                                r.entityId()), null);
-                    default -> null;
-                };
-                if (intent != null) {
-                    intents.put(r.entityRef(), intent);
-                }
-            }
-            result = mergeEngine.merge(request, intents);
-        } else {
-            result = mergeEngine.merge(request);
-        }
-
-        if (result.isMerged() && result.mergedRevisionId() != null) {
-            eventPublisher.publish(new TimelineMergedEvent(projectId,
-                    result.baseRevisionId(), result.sourceRevisionId(), result.targetRevisionId(),
-                    result.mergedRevisionId(),
-                    body.sourceRevisionId() + "," + body.targetRevisionId(),
-                    result.baseRevisionId()));
-        }
-
-        return ResponseEntity.ok(toMergeResponse(result));
+        throw FailClosedAuthorization.unavailable("timeline revision merge");
     }
 
     @PostMapping("/{revisionId}/render")
@@ -270,23 +215,7 @@ public class TimelineRevisionController {
             @PathVariable String projectId,
             @PathVariable String revisionId,
             @RequestBody TimelineRevisionRenderRequest request) {
-        if (renderService == null) {
-            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                    .body(TimelineRevisionRenderResponse.failure(revisionId, "Timeline revision render service is not available"));
-        }
-
-        try {
-            TimelineRevisionRenderService.RevisionRenderResult result =
-                    renderService.render(projectId, revisionId, request.profileOrDefault());
-            return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(TimelineRevisionRenderResponse.success(result));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest()
-                    .body(TimelineRevisionRenderResponse.failure(revisionId, e.getMessage()));
-        } catch (IllegalStateException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(TimelineRevisionRenderResponse.failure(revisionId, e.getMessage()));
-        }
+        throw FailClosedAuthorization.unavailable("timeline revision render creation");
     }
 
     @GetMapping("/{revisionId}/render-jobs/{renderJobId}")

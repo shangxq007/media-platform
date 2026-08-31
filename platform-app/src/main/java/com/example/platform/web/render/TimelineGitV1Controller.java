@@ -1,6 +1,7 @@
 package com.example.platform.web.render;
 
 import com.example.platform.shared.time.MediaTime;
+import com.example.platform.shared.authorization.FailClosedAuthorization;
 import com.example.platform.timeline.app.PatchApplyResult;
 import com.example.platform.timeline.app.PatchPreviewResult;
 import com.example.platform.timeline.app.ProductCurrentRevisionService;
@@ -73,33 +74,21 @@ public class TimelineGitV1Controller {
     public ResponseEntity<RevisionResponse> saveRevision(
             @PathVariable String productId,
             @RequestBody SaveRevisionRequest request) {
-        var document = request.toDocument();
-        var revision = saveService.saveRevision(productId, request.expectedCurrentRevisionId(),
-                document, request.createdBy());
-        return ResponseEntity.status(HttpStatus.CREATED).body(RevisionResponse.from(revision));
+        throw FailClosedAuthorization.unavailable("timeline revision save");
     }
 
     @GetMapping("/products/{productId}/revisions/current")
     @Operation(summary = "Get current revision for product")
     public ResponseEntity<CurrentRevisionResponse> getCurrentRevision(
             @PathVariable String productId) {
-        String currentRevisionId = currentRevisionService.getCurrentRevisionId(productId);
-        if (currentRevisionId == null) {
-            return ResponseEntity.notFound().build();
-        }
-        var revision = saveService.findById(currentRevisionId);
-        return ResponseEntity.ok(new CurrentRevisionResponse(currentRevisionId, revision));
+        throw FailClosedAuthorization.unavailable("timeline current revision read");
     }
 
     @GetMapping("/revisions/{revisionId}")
     @Operation(summary = "Get revision by ID")
     public ResponseEntity<RevisionResponse> getRevision(
             @PathVariable String revisionId) {
-        var revision = saveService.findById(revisionId);
-        if (revision == null) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(RevisionResponse.from(revision));
+        throw FailClosedAuthorization.unavailable("timeline revision read");
     }
 
     @PostMapping("/products/{productId}/revisions/{historicalRevisionId}/restore")
@@ -108,19 +97,14 @@ public class TimelineGitV1Controller {
             @PathVariable String productId,
             @PathVariable String historicalRevisionId,
             @RequestBody RestoreRequest request) {
-        var revision = saveService.restoreRevision(productId, historicalRevisionId,
-                request.expectedCurrentRevisionId(), request.createdBy());
-        return ResponseEntity.status(HttpStatus.CREATED).body(RevisionResponse.from(revision));
+        throw FailClosedAuthorization.unavailable("timeline revision restore");
     }
 
     @PostMapping("/render-jobs")
     @Operation(summary = "Create RenderJob pinned to a revision")
     public ResponseEntity<RenderJobResponse> createRenderJob(
             @RequestBody CreateRenderJobRequest request) {
-        String jobId = UUID.randomUUID().toString();
-        pinningService.createRenderJobWithRevision(jobId, request.productId(),
-                request.timelineRevisionId(), request.backend());
-        return ResponseEntity.status(HttpStatus.CREATED).body(new RenderJobResponse(jobId));
+        throw FailClosedAuthorization.unavailable("timeline render job creation");
     }
 
     @ExceptionHandler(TimelineConflictException.class)
@@ -140,8 +124,7 @@ public class TimelineGitV1Controller {
             @PathVariable String productId,
             @RequestParam String baseRevisionId,
             @RequestParam String targetRevisionId) {
-        var changeSet = diffService.diff(productId, baseRevisionId, targetRevisionId);
-        return ResponseEntity.ok(DiffResponse.from(changeSet));
+        throw FailClosedAuthorization.unavailable("timeline revision diff");
     }
 
     @ExceptionHandler(com.example.platform.timeline.diff.TimelineDiffErrors.TimelineDiffException.class)
@@ -156,13 +139,7 @@ public class TimelineGitV1Controller {
     public ResponseEntity<PatchPreviewResponse> previewPatch(
             @PathVariable String productId,
             @RequestBody PatchRequest request) {
-        var patch = request.toPatch(productId);
-        var result = patchService.preview(patch);
-        if (result instanceof PatchPreviewResult.Failure failure) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new PatchPreviewResponse(failure.error().code().name(), failure.error().message(), null, false));
-        }
-        return ResponseEntity.ok(new PatchPreviewResponse(null, null, ((PatchPreviewResult.Success) result).resultDigest(), false));
+        throw FailClosedAuthorization.unavailable("timeline patch preview");
     }
 
     @PostMapping("/products/{productId}/patch/apply")
@@ -170,18 +147,7 @@ public class TimelineGitV1Controller {
     public ResponseEntity<PatchApplyResponse> applyPatch(
             @PathVariable String productId,
             @RequestBody PatchRequest request) {
-        var patch = request.toPatch(productId);
-        var result = patchService.apply(patch);
-        if (result instanceof PatchApplyResult.Failure failure) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new PatchApplyResponse(failure.error().code().name(), failure.error().message(), null, null, null, false));
-        }
-        if (result instanceof PatchApplyResult.NoChanges noChanges) {
-            return ResponseEntity.ok(new PatchApplyResponse(null, null, noChanges.baseRevisionId(), null, null, false));
-        }
-        PatchApplyResult.Success success = (PatchApplyResult.Success) result;
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new PatchApplyResponse(null, null, success.newRevisionId(), success.parentRevisionId(), success.resultDigest(), true));
+        throw FailClosedAuthorization.unavailable("timeline patch application");
     }
 
     @ExceptionHandler(PatchExecutionException.class)
