@@ -7,6 +7,7 @@ import com.example.platform.timeline.app.TimelineMergeEngine;
 import com.example.platform.timeline.app.TimelineRevisionQueryService;
 import com.example.platform.timeline.app.TimelineRevisionDiffQuery;
 import com.example.platform.render.app.event.TimelineReviewEventPublisher;
+import com.example.platform.shared.authorization.AuthorizationDeniedException;
 import com.example.platform.render.domain.planning.*; // render-kept internal types only
 import com.example.platform.timeline.diff.merge.EntityKind;
 import com.example.platform.timeline.diff.merge.EntityRef;
@@ -53,15 +54,8 @@ class TimelineMergeControllerTest {
                 TimelineMergeSummary.merged(2, 1, List.of("CLIP:clip_a", "CLIP:clip_b")),
                 "Merge completed", null);
 
-        when(mergeEngine.merge(any())).thenReturn(result);
-
-        ResponseEntity<TimelineRevisionController.MergeApiResponse> response =
-                controller.merge("proj_1", req);
-
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals("MERGED", response.getBody().status());
-        assertEquals("trev_merge_1", response.getBody().mergedRevisionId());
-        assertTrue(response.getBody().conflicts().isEmpty());
+        assertUnavailable(() -> controller.merge("proj_1", req));
+        verifyNoInteractions(revisionQueryService, revisionDiffQuery, mergeEngine, eventPublisher);
     }
 
     @Test
@@ -81,14 +75,13 @@ class TimelineMergeControllerTest {
                 TimelineMergeSummary.conflicts(0, 0, List.of(), List.of("CLIP:clip_shared")),
                 "Conflict detected", null);
 
-        when(mergeEngine.merge(any())).thenReturn(result);
+        assertUnavailable(() -> controller.merge("proj_1", req));
+        verifyNoInteractions(revisionQueryService, revisionDiffQuery, mergeEngine, eventPublisher);
+    }
 
-        ResponseEntity<TimelineRevisionController.MergeApiResponse> response =
-                controller.merge("proj_1", req);
-
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals("CONFLICTS", response.getBody().status());
-        assertNull(response.getBody().mergedRevisionId());
-        assertEquals(1, response.getBody().conflicts().size());
+    private static void assertUnavailable(org.junit.jupiter.api.function.Executable invocation) {
+        AuthorizationDeniedException failure = assertThrows(
+                AuthorizationDeniedException.class, invocation);
+        assertEquals("AUTHORIZATION_UNAVAILABLE", failure.decision().reasonCode());
     }
 }

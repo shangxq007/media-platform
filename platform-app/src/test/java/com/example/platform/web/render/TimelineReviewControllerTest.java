@@ -8,6 +8,7 @@ import com.example.platform.render.app.timeline.TimelineReviewRepository;
 import com.example.platform.render.app.timeline.TimelineReviewService;
 import com.example.platform.render.app.timeline.ReviewDecisionService;
 import com.example.platform.render.app.event.TimelineReviewEventPublisher;
+import com.example.platform.shared.authorization.AuthorizationDeniedException;
 import com.example.platform.timeline.diff.merge.EntityKind;
 import com.example.platform.timeline.diff.merge.EntityRef;
 import com.example.platform.timeline.diff.merge.TimelineComment;
@@ -45,38 +46,25 @@ class TimelineReviewControllerTest {
         var review = com.example.platform.timeline.diff.merge.TimelineReview.create(
                 "rvw_001", "proj_1", "tenant_1", "trev_001", "user_1", "Review Title", "Review Description");
 
-        when(reviewService.createReview(any(), any(), any(), any(), any())).thenReturn(review);
-        OffsetDateTime now = OffsetDateTime.now();
-        var row = new TimelineReviewRepository.ReviewRow(
-                "rvw_001", "proj_1", "tenant_1", "trev_001", "user_1",
-                "Review Title", "Review Description", "OPEN", now, now);
-        when(reviewService.getReview("rvw_001")).thenReturn(Optional.of(row));
-
-        ResponseEntity<TimelineReviewController.ReviewResponse> response =
-                controller.createReview("proj_1", body);
-
-        assertEquals(HttpStatus.CREATED, response.getStatusCode());
-        assertEquals("rvw_001", response.getBody().reviewId());
+        assertUnavailable(() -> controller.createReview("proj_1", body));
+        verifyNoInteractions(reviewService, commentService, decisionService, eventPublisher);
     }
 
     @Test
     void shouldApproveReview() {
-        ResponseEntity<Map<String, Object>> response =
-                controller.approve("proj_1", "rvw_1", "user_2");
-
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals("APPROVED", response.getBody().get("status"));
+        assertUnavailable(() -> controller.approve("proj_1", "rvw_1", "user_2"));
+        verifyNoInteractions(reviewService, commentService, decisionService, eventPublisher);
     }
 
     @Test
     void shouldCheckMergeGuard() {
-        when(reviewService.checkMergeGuard("rvw_1"))
-                .thenReturn(new TimelineReviewService.MergeGuardResult(false, "Review is OPEN"));
+        assertUnavailable(() -> controller.checkMergeGuard("proj_1", "rvw_1"));
+        verifyNoInteractions(reviewService, commentService, decisionService, eventPublisher);
+    }
 
-        ResponseEntity<Map<String, Object>> response =
-                controller.checkMergeGuard("proj_1", "rvw_1");
-
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(false, response.getBody().get("canMerge"));
+    private static void assertUnavailable(org.junit.jupiter.api.function.Executable invocation) {
+        AuthorizationDeniedException failure = assertThrows(
+                AuthorizationDeniedException.class, invocation);
+        assertEquals("AUTHORIZATION_UNAVAILABLE", failure.decision().reasonCode());
     }
 }

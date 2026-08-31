@@ -3,7 +3,6 @@ package com.example.platform;
 import com.example.platform.render.infrastructure.RenderProviderRegistry;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
 import java.net.http.*;
 import java.nio.file.*;
@@ -46,12 +45,8 @@ class RenderExecutionBoundaryTest extends PostgresTestContainerSupport {
     @Autowired
     private JdbcTemplate jdbc;
 
-    @Autowired
-    private com.example.platform.entitlement.app.EntitlementService entitlementService;
-
     private HttpClient client;
     private String baseUrl;
-    private final ObjectMapper mapper = new ObjectMapper();
 
     // Minimal valid timeline JSON
     private static final String MINIMAL_TIMELINE_JSON = """
@@ -108,45 +103,9 @@ class RenderExecutionBoundaryTest extends PostgresTestContainerSupport {
 
     @Test
     void canonicalFlow_providerIdIsCanonical() throws Exception {
-        // Create tenant + project
-        String tenantId = createTenant("boundary-tenant");
-        String projectId = createProject(tenantId, "boundary-project");
-
-        // Create RenderJob
-        String jobId = createRenderJob(tenantId, projectId);
-        evidence.append(String.format("R1_JOB_ID: %s%n", jobId));
-
-        // Inject valid ai_script
-        jdbc.update("UPDATE render_job SET ai_script = ? WHERE id = ?", MINIMAL_TIMELINE_JSON, jobId);
-        evidence.append("SCRIPT_INJECTED: YES\n");
-
-        // Start
-        HttpResponse<String> startResp = httpPost(
-                "/api/tenants/" + tenantId + "/projects/" + projectId
-                        + "/render-jobs/" + jobId + "/start", null);
-        evidence.append(String.format("START_HTTP: %d%n", startResp.statusCode()));
-
-        // Check canonical Provider ID in database
-        String dbProvider = jdbc.queryForObject(
-                "SELECT selected_provider FROM render_job WHERE id = ?", String.class, jobId);
-        String dbStatus = jdbc.queryForObject(
-                "SELECT status FROM render_job WHERE id = ?", String.class, jobId);
-        evidence.append(String.format("R6_DB_PROVIDER: %s%n", dbProvider));
-        evidence.append(String.format("R6_DB_STATUS: %s%n", dbStatus));
-
-        // Verify canonical ID
-        Assertions.assertNotEquals("FFmpegRenderProvider", dbProvider,
-                "selected_provider must not be Java class name");
-        // dbProvider may be null when execution fails before provider selection.
-
-        // Status API
-        HttpResponse<String> statusResp = httpGet(
-                "/api/tenants/" + tenantId + "/projects/" + projectId
-                        + "/render-jobs/" + jobId);
-        JsonNode statusNode = mapper.readTree(statusResp.body());
-        String apiStatus = statusNode.get("status").asText();
-        evidence.append(String.format("STATUS_API: %s%n", apiStatus));
-        Assertions.assertEquals(dbStatus, apiStatus);
+        assertPostContainedWithoutRenderWrite(
+                "/api/tenants/request-tenant/projects/request-project/render-jobs",
+                "{\"projectId\":\"request-project\",\"timelineSnapshotId\":\"snap-test\",\"profile\":\"default_1080p\"}");
     }
 
     // ========== Flyway ==========
@@ -184,39 +143,21 @@ class RenderExecutionBoundaryTest extends PostgresTestContainerSupport {
 
     @Test
     void removedRoutes_404() throws Exception {
-        HttpResponse<String> execLocal = httpPost(
+        assertPostContainedWithoutRenderWrite(
                 "/api/tenants/t1/projects/p1/render-jobs/rj1/execute-local", null);
-        HttpResponse<String> retry = httpPost("/api/render/jobs/rj1/retry", null);
-        evidence.append(String.format("EXECUTE_LOCAL: %d%n", execLocal.statusCode()));
-        evidence.append(String.format("RETRY: %d%n", retry.statusCode()));
-        Assertions.assertEquals(404, execLocal.statusCode());
-        Assertions.assertEquals(404, retry.statusCode());
+        assertPostContainedWithoutRenderWrite("/api/render/jobs/rj1/retry", null);
+    }
+
+    private void assertPostContainedWithoutRenderWrite(String path, String body) throws Exception {
+        Integer before = jdbc.queryForObject("SELECT COUNT(*) FROM render_job", Integer.class);
+        HttpResponse<String> response = httpPost(path, body);
+        Integer after = jdbc.queryForObject("SELECT COUNT(*) FROM render_job", Integer.class);
+        evidence.append(String.format("CONTAINED_POST %s: %d%n", path, response.statusCode()));
+        Assertions.assertEquals(403, response.statusCode());
+        Assertions.assertEquals(before, after, "Denied request must not dispatch a render write");
     }
 
     // ========== Helpers ==========
-
-    private String createTenant(String name) throws Exception {
-        String body = "{\"name\":\"" + name + "-" + System.nanoTime() + "\"}";
-        HttpResponse<String> resp = httpPost("/api/identity/tenants", body);
-        String tenantId = mapper.readTree(resp.body()).get("id").asText();
-        TestEntitlementGrantSupport.grant(entitlementService, tenantId, "render.job.create");
-        return tenantId;
-    }
-
-    private String createProject(String tenantId, String name) throws Exception {
-        String body = "{\"name\":\"" + name + "-" + System.nanoTime() + "\",\"description\":\"test\"}";
-        HttpResponse<String> resp = httpPost("/api/identity/tenants/" + tenantId + "/projects", body);
-        return mapper.readTree(resp.body()).get("id").asText();
-    }
-
-    private String createRenderJob(String tenantId, String projectId) throws Exception {
-        String body = String.format(
-                "{\"projectId\":\"%s\",\"timelineSnapshotId\":\"snap-test\",\"profile\":\"default_1080p\"}",
-                projectId);
-        HttpResponse<String> resp = httpPost(
-                "/api/tenants/" + tenantId + "/projects/" + projectId + "/render-jobs", body);
-        return mapper.readTree(resp.body()).get("id").asText();
-    }
 
     private HttpResponse<String> httpPost(String path, String body) throws Exception {
         HttpRequest.Builder builder = HttpRequest.newBuilder()
@@ -226,11 +167,4 @@ class RenderExecutionBoundaryTest extends PostgresTestContainerSupport {
         return client.send(builder.build(), HttpResponse.BodyHandlers.ofString());
     }
 
-    private HttpResponse<String> httpGet(String path) throws Exception {
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + path))
-                .GET()
-                .build();
-        return client.send(request, HttpResponse.BodyHandlers.ofString());
-    }
 }

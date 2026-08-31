@@ -6,8 +6,6 @@ import java.net.URI;
 import java.net.http.*;
 import java.nio.file.*;
 import java.util.*;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -44,12 +42,8 @@ class RenderJobSelectionTransitionTest extends PostgresTestContainerSupport {
     @Autowired
     private JdbcTemplate jdbc;
 
-    @Autowired
-    private com.example.platform.entitlement.app.EntitlementService entitlementService;
-
     private HttpClient client;
     private String baseUrl;
-    private final ObjectMapper jsonMapper = new ObjectMapper();
 
     private static final StringBuilder evidence = new StringBuilder();
 
@@ -68,30 +62,15 @@ class RenderJobSelectionTransitionTest extends PostgresTestContainerSupport {
 
     @Test
     void startRoute_registered() throws Exception {
-        // Create real tenant, project, and render job to verify the route is registered
-        String tenantId = createTenant("start-route-test");
-        String projectId = createProject(tenantId, "start-route-project");
-        String jobId = createRenderJob(tenantId, projectId);
-
-        HttpResponse<String> response = httpPost(
-                "/api/tenants/" + tenantId + "/projects/" + projectId
-                        + "/render-jobs/" + jobId + "/start", null);
-        evidence.append(String.format("S1_START_ROUTE: %d%n", response.statusCode()));
-        Assertions.assertNotEquals(404, response.statusCode(),
-                "Start route should be registered");
+        assertPostContainedWithoutRenderWrite(
+                "/api/tenants/request-tenant/projects/request-project/render-jobs/request-job/start", null);
     }
 
     @Test
     void createRoute_registered() throws Exception {
-        String tenantId = createTenant("create-route-test");
-        String projectId = createProject(tenantId, "create-route-project");
-
-        HttpResponse<String> response = httpPost(
-                "/api/tenants/" + tenantId + "/projects/" + projectId + "/render-jobs",
+        assertPostContainedWithoutRenderWrite(
+                "/api/tenants/request-tenant/projects/request-project/render-jobs",
                 "{\"timelineSnapshotId\":\"snap1\",\"profile\":\"default_1080p\"}");
-        evidence.append(String.format("S1_CREATE_ROUTE: %d%n", response.statusCode()));
-        Assertions.assertNotEquals(404, response.statusCode(),
-                "Create route should be registered");
     }
 
     // ========== Provider Registry verification ==========
@@ -140,41 +119,22 @@ class RenderJobSelectionTransitionTest extends PostgresTestContainerSupport {
 
     @Test
     void executeLocal_remains404() throws Exception {
-        HttpResponse<String> response = httpPost(
+        assertPostContainedWithoutRenderWrite(
                 "/api/tenants/t1/projects/p1/render-jobs/rj1/execute-local", null);
-        evidence.append(String.format("REMOVED_EXECUTELocal: %d%n", response.statusCode()));
-        Assertions.assertEquals(404, response.statusCode(), "execute-local should remain 404");
     }
 
     @Test
     void retry_remains404() throws Exception {
-        HttpResponse<String> response = httpPost(
-                "/api/render/jobs/rj1/retry", null);
-        evidence.append(String.format("REMOVED_RETRY: %d%n", response.statusCode()));
-        Assertions.assertEquals(404, response.statusCode(), "retry should remain 404");
+        assertPostContainedWithoutRenderWrite("/api/render/jobs/rj1/retry", null);
     }
 
-    private String createTenant(String name) throws Exception {
-        String body = "{\"name\":\"" + name + "-" + System.nanoTime() + "\"}";
-        HttpResponse<String> resp = httpPost("/api/identity/tenants", body);
-        String tenantId = jsonMapper.readTree(resp.body()).get("id").asText();
-        TestEntitlementGrantSupport.grant(entitlementService, tenantId, "render.job.create");
-        return tenantId;
-    }
-
-    private String createProject(String tenantId, String name) throws Exception {
-        String body = "{\"name\":\"" + name + "-" + System.nanoTime() + "\",\"description\":\"test\"}";
-        HttpResponse<String> resp = httpPost("/api/identity/tenants/" + tenantId + "/projects", body);
-        return jsonMapper.readTree(resp.body()).get("id").asText();
-    }
-
-    private String createRenderJob(String tenantId, String projectId) throws Exception {
-        String body = String.format(
-                "{\"projectId\":\"%s\",\"timelineSnapshotId\":\"snap-test\",\"profile\":\"default_1080p\"}",
-                projectId);
-        HttpResponse<String> resp = httpPost(
-                "/api/tenants/" + tenantId + "/projects/" + projectId + "/render-jobs", body);
-        return jsonMapper.readTree(resp.body()).get("id").asText();
+    private void assertPostContainedWithoutRenderWrite(String path, String body) throws Exception {
+        Integer before = jdbc.queryForObject("SELECT COUNT(*) FROM render_job", Integer.class);
+        HttpResponse<String> response = httpPost(path, body);
+        Integer after = jdbc.queryForObject("SELECT COUNT(*) FROM render_job", Integer.class);
+        evidence.append(String.format("CONTAINED_POST %s: %d%n", path, response.statusCode()));
+        Assertions.assertEquals(403, response.statusCode());
+        Assertions.assertEquals(before, after, "Denied request must not dispatch a render write");
     }
 
     // ========== Helpers ==========
@@ -187,11 +147,4 @@ class RenderJobSelectionTransitionTest extends PostgresTestContainerSupport {
         return client.send(builder.build(), HttpResponse.BodyHandlers.ofString());
     }
 
-    private HttpResponse<String> httpGet(String path) throws Exception {
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + path))
-                .GET()
-                .build();
-        return client.send(request, HttpResponse.BodyHandlers.ofString());
-    }
 }

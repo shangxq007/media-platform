@@ -1,14 +1,18 @@
 package com.example.platform.render.api;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.example.platform.render.app.RenderJobService;
 import com.example.platform.render.app.dto.CreateRenderJobRequest;
 import com.example.platform.render.app.dto.RenderJobResponse;
+import com.example.platform.shared.authorization.AuthorizationDeniedException;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,14 +32,12 @@ class RenderControllerTest {
     @Test
     void createDelegatesToService() {
         CreateRenderJobRequest request = new CreateRenderJobRequest("proj-1", "snap-1", "social_1080p");
-        RenderJobResponse expected = new RenderJobResponse("rj_abc", "proj-1", "snap-1", "social_1080p", "QUEUED");
-        when(service.createForProject("tenant-1", "proj-1", request)).thenReturn(expected);
 
-        RenderJobResponse response = controller.createRenderJob("tenant-1", "proj-1", request);
+        AuthorizationDeniedException failure = assertThrowsExactly(AuthorizationDeniedException.class,
+                () -> controller.createRenderJob("tenant-1", "proj-1", request));
 
-        assertNotNull(response);
-        assertEquals("rj_abc", response.id());
-        assertEquals("QUEUED", response.status());
+        assertAuthorizationUnavailable(failure, "render job creation");
+        verifyNoInteractions(service);
     }
 
     @Test
@@ -61,5 +63,14 @@ class RenderControllerTest {
         List<RenderJobResponse> response = controller.listRenderJobs("tenant-1", "proj-1");
         assertNotNull(response);
         assertTrue(response.isEmpty());
+    }
+
+    private static void assertAuthorizationUnavailable(
+            AuthorizationDeniedException failure, String operation) {
+        assertFalse(failure.decision().allowed());
+        assertEquals("AUTHORIZATION_UNAVAILABLE", failure.decision().reasonCode());
+        assertEquals("FAIL_CLOSED_CONTAINMENT", failure.decision().ruleRef());
+        assertEquals(operation + " is unavailable until canonical authorization is established",
+                failure.decision().detail());
     }
 }

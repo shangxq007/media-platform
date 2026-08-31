@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.example.platform.security.RuntimeRoutePolicyVerifier.RoutePolicyVerificationException;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.TestComponent;
-import org.springframework.context.annotation.Configuration;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpMethod;
 import org.springframework.mock.web.MockServletContext;
@@ -27,6 +27,7 @@ class RuntimeRoutePolicyNegativeControlTest {
     void emptyRuntimeRouteUniverseFailsClosed() {
         try (AnnotationConfigWebApplicationContext context = new AnnotationConfigWebApplicationContext()) {
             context.setServletContext(new MockServletContext());
+            context.getEnvironment().setActiveProfiles(PROFILE);
             context.register(WebMvcConfiguration.class);
             context.refresh();
 
@@ -94,8 +95,9 @@ class RuntimeRoutePolicyNegativeControlTest {
         }
     }
 
-    @Configuration(proxyBeanMethods = false)
+    @TestConfiguration(proxyBeanMethods = false)
     @EnableWebMvc
+    @Profile(PROFILE)
     static class WebMvcConfiguration {}
 
     @TestComponent

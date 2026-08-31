@@ -56,8 +56,16 @@ public class ProductionSafetyValidator {
         }
         List<String> errors = new ArrayList<>();
 
-        if (hasProfile("dev")) {
-            errors.add("spring profile 'dev' must not be active in production");
+        for (String nonProductionProfile : List.of("dev", "local", "test")) {
+            if (hasProfile(nonProductionProfile)) {
+                errors.add("spring profile '" + nonProductionProfile + "' must not be active in production");
+            }
+        }
+        if (getBool("app.security.oidc-dev-bootstrap.enabled", false)) {
+            errors.add("app.security.oidc-dev-bootstrap.enabled must be false in production");
+        }
+        if (getBool("app.security.dev-auth-endpoint", false)) {
+            errors.add("app.security.dev-auth-endpoint must be false in production");
         }
         if (!getBool("app.security.enabled", false)) {
             errors.add("app.security.enabled must be true");

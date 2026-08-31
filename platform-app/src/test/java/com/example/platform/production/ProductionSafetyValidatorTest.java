@@ -50,6 +50,44 @@ class ProductionSafetyValidatorTest {
     }
 
     @Test
+    void productionChecksRejectLocalOrTestIdentityBootstrapConfiguration() {
+        for (String forbiddenProfile : List.of("local", "test")) {
+            MockEnvironment env = new MockEnvironment()
+                    .withProperty("app.security.oidc-dev-bootstrap.enabled", "true");
+            env.setActiveProfiles("prod", forbiddenProfile);
+            PlatformRuntimeProperties props = new PlatformRuntimeProperties();
+            props.setProductionChecksEnabled(true);
+
+            var validator = new ProductionSafetyValidator(
+                    env, props, jwtProps(), corsProps(), emptyProvider(), emptyProvider(),
+                    emptyProvider(), emptyProvider());
+            IllegalStateException failure = assertThrows(
+                    IllegalStateException.class, validator::validateProductionReadiness);
+
+            assertTrue(failure.getMessage().contains("spring profile '" + forbiddenProfile + "'"));
+            assertTrue(failure.getMessage().contains("app.security.oidc-dev-bootstrap.enabled"));
+        }
+    }
+
+    @Test
+    void productionChecksRejectDevAuthIssuerConfiguration() {
+        MockEnvironment env = new MockEnvironment()
+                .withProperty("app.security.dev-auth-endpoint", "true");
+        env.setActiveProfiles("prod");
+        PlatformRuntimeProperties props = new PlatformRuntimeProperties();
+        props.setProductionChecksEnabled(true);
+
+        var validator = new ProductionSafetyValidator(
+                env, props, jwtProps(), corsProps(), emptyProvider(), emptyProvider(),
+                emptyProvider(), emptyProvider());
+        IllegalStateException failure = assertThrows(
+                IllegalStateException.class, validator::validateProductionReadiness);
+
+        assertTrue(failure.getMessage().contains(
+                "app.security.dev-auth-endpoint must be false in production"));
+    }
+
+    @Test
     void passesWithMinimalProdConfig() {
         MockEnvironment env = new MockEnvironment()
                 .withProperty("spring.profiles.active", "prod")

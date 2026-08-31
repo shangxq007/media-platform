@@ -4,6 +4,7 @@ import com.example.platform.render.api.RenderController;
 import com.example.platform.render.app.RenderJobService;
 import com.example.platform.render.app.dto.CreateRenderJobRequest;
 import com.example.platform.render.app.dto.RenderJobResponse;
+import com.example.platform.shared.authorization.AuthorizationDeniedException;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,15 +27,8 @@ class RenderControllerTest {
     @Test
     void shouldCreateJob() {
         CreateRenderJobRequest request = new CreateRenderJobRequest("proj-1", "snap-1", "default_1080p");
-        RenderJobResponse expected = new RenderJobResponse("rj-1", "proj-1", "snap-1", "default_1080p", "QUEUED");
-        when(renderJobService.createForProject("tenant-1", "proj-1", request)).thenReturn(expected);
-
-        RenderJobResponse response = controller.createRenderJob("tenant-1", "proj-1", request);
-
-        assertNotNull(response);
-        assertEquals("rj-1", response.id());
-        assertEquals("QUEUED", response.status());
-        verify(renderJobService).createForProject("tenant-1", "proj-1", request);
+        assertUnavailable(() -> controller.createRenderJob("tenant-1", "proj-1", request));
+        verifyNoInteractions(renderJobService);
     }
 
     @Test
@@ -62,14 +56,13 @@ class RenderControllerTest {
 
     @Test
     void shouldCancelJob() {
-        RenderJobResponse expected = new RenderJobResponse("rj-1", "proj-1", "snap-1", "default_1080p", "CANCELLED");
-        when(renderJobService.cancel("rj-1", "tenant-1")).thenReturn(expected);
-
-        RenderJobResponse response = controller.cancelJob("rj-1", "tenant-1");
-
-        assertNotNull(response);
-        assertEquals("CANCELLED", response.status());
-        verify(renderJobService).cancel("rj-1", "tenant-1");
+        assertUnavailable(() -> controller.cancelJob("rj-1", "tenant-1"));
+        verifyNoInteractions(renderJobService);
     }
 
+    private static void assertUnavailable(org.junit.jupiter.api.function.Executable invocation) {
+        AuthorizationDeniedException failure = assertThrows(
+                AuthorizationDeniedException.class, invocation);
+        assertEquals("AUTHORIZATION_UNAVAILABLE", failure.decision().reasonCode());
+    }
 }

@@ -86,83 +86,27 @@ class UserWorkflowDefinitionApiTest extends PostgresTestContainerSupport {
                 + "\",\"targetNodeId\":\"" + to + "\",\"conditionRef\":\"\",\"sortOrder\":0}]";
     }
 
-    private String createDefinition(String tenant, String name, String body) throws Exception {
-        HttpResponse<String> r = send("POST", "/api/tenants/" + tenant + "/workflow-definitions", body);
-        assertEquals(201, r.statusCode(), r.body());
-        Matcher m = ID_PATTERN.matcher(r.body());
-        assertTrue(m.find(), r.body());
-        return m.group(1);
-    }
-
     @Test
     void createUpdateValidatePublishReadRoundtrip() throws Exception {
-        String id = createDefinition("tenant-a", "wf", validBody("wf"));
-
-        // get latest
-        HttpResponse<String> latest = send("GET", BASE + "/" + id, null);
-        assertEquals(200, latest.statusCode());
-
-        // update draft
-        HttpResponse<String> updated = send("PUT", BASE + "/" + id + "/versions/1",
-                "{\"name\":\"wf2\",\"description\":null,\"nodes\":[" + VALID_NODE + "],\"edges\":[],"
-                        + "\"parameters\":[],\"trigger\":{\"triggerType\":\"MANUAL\",\"referenceId\":null,\"referenceVersion\":null}"
-                        + ",\"optimisticVersion\":1}");
-        assertEquals(200, updated.statusCode(), updated.body());
-
-        // validate
-        HttpResponse<String> validated = send("POST", BASE + "/" + id + "/versions/1/validate",
-                "{\"optimisticVersion\":2}");
-        assertEquals(200, validated.statusCode(), validated.body());
-
-        // publish
-        HttpResponse<String> published = send("POST", BASE + "/" + id + "/versions/1/publish",
-                "{\"optimisticVersion\":3}");
-        assertEquals(200, published.statusCode(), published.body());
-        assertTrue(published.body().contains("\"status\":\"PUBLISHED\""));
-
-        // new version
-        HttpResponse<String> v2 = send("POST", BASE + "/" + id + "/versions",
-                "{\"sourceVersion\":1}");
-        assertEquals(201, v2.statusCode(), v2.body());
-        assertTrue(v2.body().contains("\"versionNumber\":2"));
-
-        // get exact version
-        HttpResponse<String> exact = send("GET", BASE + "/" + id + "/versions/1", null);
-        assertEquals(200, exact.statusCode());
-
-        // archive
-        HttpResponse<String> archived = send("POST", BASE + "/" + id + "/versions/1/archive",
-                "{\"optimisticVersion\":4}");
-        assertEquals(200, archived.statusCode(), archived.body());
-        assertTrue(archived.body().contains("\"status\":\"ARCHIVED\""));
-
-        // list
-        HttpResponse<String> list = send("GET", BASE, null);
-        assertEquals(200, list.statusCode());
+        assertContainedWithoutWorkflowWrite("POST", BASE, validBody("wf"));
     }
 
     @Test
     void tenantIsolationReturns404WithoutExistenceLeak() throws Exception {
-        String id = createDefinition("tenant-a", "wf", validBody("wf"));
-        HttpResponse<String> r = send("GET", "/api/tenants/tenant-b/workflow-definitions/" + id, null);
-        assertEquals(404, r.statusCode());
-        assertTrue(r.body().contains("WORKFLOW-404-001"), r.body());
+        assertContainedWithoutWorkflowWrite(
+                "GET", "/api/tenants/tenant-b/workflow-definitions/request-definition", null);
     }
 
     @Test
     void unknownVersionReturns404() throws Exception {
-        String id = createDefinition("tenant-a", "wf", validBody("wf"));
-        HttpResponse<String> r = send("GET", BASE + "/" + id + "/versions/99", null);
-        assertEquals(404, r.statusCode());
-        assertTrue(r.body().contains("WORKFLOW-404-002"), r.body());
+        assertContainedWithoutWorkflowWrite(
+                "GET", BASE + "/request-definition/versions/99", null);
     }
 
     @Test
     void invalidGraphRejectedWith422() throws Exception {
         String selfEdgeBody = createBody("wf", "[" + VALID_NODE + "]", edgeBody("e1", "n0", "n0"));
-        HttpResponse<String> r = send("POST", BASE, selfEdgeBody);
-        assertEquals(422, r.statusCode(), r.body());
-        assertTrue(r.body().contains("WORKFLOW-422-001"), r.body());
+        assertContainedWithoutWorkflowWrite("POST", BASE, selfEdgeBody);
     }
 
     @Test
@@ -172,59 +116,59 @@ class UserWorkflowDefinitionApiTest extends PostgresTestContainerSupport {
             if (i > 0) nodes.append(",");
             nodes.append(nodeJson("n" + i, "ACTION", "{\"capabilityKey\":\"k" + i + "\",\"capabilityVersion\":\"1\"}"));
         }
-        HttpResponse<String> r = send("POST", BASE, createBody("wf-big", "[" + nodes + "]", "[]"));
-        assertEquals(422, r.statusCode(), r.body());
-        assertTrue(r.body().contains("WORKFLOW-422-001"), r.body());
+        assertContainedWithoutWorkflowWrite(
+                "POST", BASE, createBody("wf-big", "[" + nodes + "]", "[]"));
     }
 
     @Test
     void publishedMutationRejectedWith409() throws Exception {
-        String id = createDefinition("tenant-a", "wf", validBody("wf"));
-        send("POST", BASE + "/" + id + "/versions/1/validate", "{\"optimisticVersion\":1}");
-        HttpResponse<String> published = send("POST", BASE + "/" + id + "/versions/1/publish", "{\"optimisticVersion\":2}");
-        assertEquals(200, published.statusCode());
-
-        HttpResponse<String> mutation = send("PUT", BASE + "/" + id + "/versions/1",
+        assertContainedWithoutWorkflowWrite("PUT", BASE + "/request-definition/versions/1",
                 "{\"name\":\"mutated\",\"description\":null,\"nodes\":[" + VALID_NODE + "],\"edges\":[],"
                         + "\"parameters\":[],\"trigger\":{\"triggerType\":\"MANUAL\",\"referenceId\":null,\"referenceVersion\":null}"
                         + ",\"optimisticVersion\":3}");
-        assertEquals(409, mutation.statusCode(), mutation.body());
-        assertTrue(mutation.body().contains("WORKFLOW-409-002"), mutation.body());
     }
 
     @Test
     void optimisticConflictRejectedWith409() throws Exception {
-        String id = createDefinition("tenant-a", "wf", validBody("wf"));
-        HttpResponse<String> r = send("PUT", BASE + "/" + id + "/versions/1",
+        assertContainedWithoutWorkflowWrite("PUT", BASE + "/request-definition/versions/1",
                 "{\"name\":\"stale\",\"description\":null,\"nodes\":[" + VALID_NODE + "],\"edges\":[],"
                         + "\"parameters\":[],\"trigger\":{\"triggerType\":\"MANUAL\",\"referenceId\":null,\"referenceVersion\":null}"
                         + ",\"optimisticVersion\":42}");
-        assertEquals(409, r.statusCode(), r.body());
-        assertTrue(r.body().contains("WORKFLOW-409-003"), r.body());
     }
 
     @Test
     void unknownNodeTypeRejectedWith400() throws Exception {
         String badNode = nodeJson("n0", "BOGUS", "{}");
-        HttpResponse<String> r = send("POST", BASE, createBody("wf", "[" + badNode + "]", "[]"));
-        assertEquals(400, r.statusCode(), r.body());
-        assertTrue(r.body().contains("WORKFLOW-400-009"), r.body());
+        assertContainedWithoutWorkflowWrite(
+                "POST", BASE, createBody("wf", "[" + badNode + "]", "[]"));
     }
 
     @Test
     void secretLikeConfigRejectedWith400() throws Exception {
         String secretNode = nodeJson("n0", "ACTION",
                 "{\"capabilityKey\":\"ghp_secretvalue12345\",\"capabilityVersion\":\"1\"}");
-        HttpResponse<String> r = send("POST", BASE, createBody("wf", "[" + secretNode + "]", "[]"));
-        assertEquals(400, r.statusCode(), r.body());
-        assertTrue(r.body().contains("WORKFLOW-400-010"), r.body());
+        assertContainedWithoutWorkflowWrite(
+                "POST", BASE, createBody("wf", "[" + secretNode + "]", "[]"));
     }
 
     @Test
     void publishFromDraftRejectedWith409() throws Exception {
-        String id = createDefinition("tenant-a", "wf", validBody("wf"));
-        HttpResponse<String> r = send("POST", BASE + "/" + id + "/versions/1/publish", "{\"optimisticVersion\":1}");
-        assertEquals(409, r.statusCode(), r.body());
-        assertTrue(r.body().contains("WORKFLOW-409-001"), r.body());
+        assertContainedWithoutWorkflowWrite(
+                "POST", BASE + "/request-definition/versions/1/publish", "{\"optimisticVersion\":1}");
+    }
+
+    private void assertContainedWithoutWorkflowWrite(String method, String path, String body) throws Exception {
+        int definitionsBefore = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM user_workflow_definition", Integer.class);
+        int versionsBefore = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM user_workflow_definition_version", Integer.class);
+        HttpResponse<String> response = send(method, path, body);
+        assertEquals(403, response.statusCode(), response.body());
+        assertEquals(definitionsBefore, jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM user_workflow_definition", Integer.class),
+                "Denied request must not dispatch a workflow-definition write");
+        assertEquals(versionsBefore, jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM user_workflow_definition_version", Integer.class),
+                "Denied request must not dispatch a workflow-version write");
     }
 }

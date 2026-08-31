@@ -73,6 +73,14 @@ class PhaseZeroContainmentPolicyHttpTest {
                 test.mvc().perform(MockMvcRequestBuilders.request(route.method(), route.alias()))
                         .andExpect(status().isForbidden());
             }
+            for (ContainedRoute route : finalHostileContainedRoutes()) {
+                test.mvc().perform(MockMvcRequestBuilders.request(route.method(), route.alias()))
+                        .andExpect(status().isForbidden());
+            }
+            test.mvc().perform(MockMvcRequestBuilders.post("/api/admin/navigation/preview"))
+                    .andExpect(status().isForbidden());
+            test.mvc().perform(MockMvcRequestBuilders.get("/api/storage/providers"))
+                    .andExpect(status().isForbidden());
             test.mvc().perform(MockMvcRequestBuilders.post("/api/dev/auth/token"))
                     .andExpect(status().isForbidden());
             test.mvc().perform(MockMvcRequestBuilders.options(
@@ -119,6 +127,20 @@ class PhaseZeroContainmentPolicyHttpTest {
                                 .sessionAttr(ordinary, authenticated(true)))
                         .andExpect(status().isForbidden());
             }
+            for (ContainedRoute route : finalHostileContainedRoutes()) {
+                test.mvc().perform(MockMvcRequestBuilders.request(route.method(), route.alias())
+                                .sessionAttr(ordinary, authenticated(true)))
+                        .andExpect(status().isForbidden());
+            }
+            test.mvc().perform(MockMvcRequestBuilders.post("/api/admin/navigation/preview")
+                            .sessionAttr(ordinary, authenticated(false)))
+                    .andExpect(status().isForbidden());
+            test.mvc().perform(MockMvcRequestBuilders.post("/api/admin/navigation/preview")
+                            .sessionAttr(ordinary, authenticated(true)))
+                    .andExpect(status().isOk());
+            test.mvc().perform(MockMvcRequestBuilders.get("/api/storage/providers")
+                            .sessionAttr(ordinary, authenticated(true)))
+                    .andExpect(status().isForbidden());
             test.mvc().perform(MockMvcRequestBuilders.post("/api/dev/auth/token"))
                     .andExpect(status().isOk());
             test.mvc().perform(MockMvcRequestBuilders.options(
@@ -128,6 +150,7 @@ class PhaseZeroContainmentPolicyHttpTest {
             verify(test.downstream()).invoke("read");
             verify(test.downstream()).invoke("mutation");
             verify(test.downstream()).invoke("admin");
+            verify(test.downstream()).invoke("admin-navigation-preview");
             verify(test.downstream()).invoke("test");
             verifyNoMoreInteractions(test.downstream());
         }
@@ -180,6 +203,18 @@ class PhaseZeroContainmentPolicyHttpTest {
                 assertEquals(Optional.of(PhaseZeroContainmentPolicy.Classification.DISABLED_CONTAINED),
                         actual.get(route.method() + " " + route.mapping()), route.mapping());
             }
+            for (ContainedRoute route : finalHostileContainedRoutes()) {
+                assertEquals(Optional.of(PhaseZeroContainmentPolicy.Classification.DISABLED_CONTAINED),
+                        actual.get(route.method() + " " + route.mapping()), route.mapping());
+            }
+            System.out.println("FINAL_HOSTILE_CONTAINED_EFFECTIVE_ROUTE_COUNT="
+                    + finalHostileContainedRoutes().size());
+            assertEquals(Optional.of(PhaseZeroContainmentPolicy.Classification.ADMIN_ONLY),
+                    actual.get("POST /api/admin/navigation/preview"));
+            assertEquals(Optional.of(PhaseZeroContainmentPolicy.Classification.INTERNAL_CONTROL_PLANE),
+                    actual.get("GET /api/storage/providers"));
+            assertEquals(Optional.of(PhaseZeroContainmentPolicy.Classification.INTERNAL_CONTROL_PLANE),
+                    actual.get("HEAD /api/storage/providers"));
             assertEquals(Optional.of(PhaseZeroContainmentPolicy.Classification.TEST_ONLY),
                     actual.get("POST /api/dev/auth/token"));
             assertEquals(Optional.empty(),
@@ -266,6 +301,55 @@ class PhaseZeroContainmentPolicyHttpTest {
                         "/api/marketplace/discovery"));
     }
 
+    private static List<ContainedRoute> finalHostileContainedRoutes() {
+        return List.of(
+                route(HttpMethod.GET, "/api/audit/compliance/overview"),
+                route(HttpMethod.HEAD, "/api/audit/compliance/overview"),
+                route(HttpMethod.GET, "/api/audit/compliance/records"),
+                route(HttpMethod.HEAD, "/api/audit/compliance/records"),
+                route(HttpMethod.POST, "/api/audit/compliance/records"),
+                route(HttpMethod.GET, "/api/audit/compliance/records/category/SECURITY",
+                        "/api/audit/compliance/records/category/{category}"),
+                route(HttpMethod.HEAD, "/api/audit/compliance/records/category/SECURITY",
+                        "/api/audit/compliance/records/category/{category}"),
+                route(HttpMethod.GET, "/api/audit/compliance/records/resource"),
+                route(HttpMethod.HEAD, "/api/audit/compliance/records/resource"),
+                route(HttpMethod.POST, "/api/navigation/preview"),
+                route(HttpMethod.POST,
+                        "/api/tenants/tenant-1/projects/project-1/upload/raw-media",
+                        "/api/tenants/{tenantId}/projects/{projectId}/upload/raw-media"),
+                route(HttpMethod.GET, "/api/semantic/explain/job-1",
+                        "/api/semantic/explain/{jobId}"),
+                route(HttpMethod.HEAD, "/api/semantic/explain/job-1",
+                        "/api/semantic/explain/{jobId}"),
+                route(HttpMethod.GET, "/api/semantic/explain/job-1/ai",
+                        "/api/semantic/explain/{jobId}/ai"),
+                route(HttpMethod.HEAD, "/api/semantic/explain/job-1/ai",
+                        "/api/semantic/explain/{jobId}/ai"),
+                route(HttpMethod.GET, "/api/semantic/status/job-1",
+                        "/api/semantic/status/{jobId}"),
+                route(HttpMethod.HEAD, "/api/semantic/status/job-1",
+                        "/api/semantic/status/{jobId}"),
+                route(HttpMethod.GET, "/api/semantic/cost/job-1",
+                        "/api/semantic/cost/{jobId}"),
+                route(HttpMethod.HEAD, "/api/semantic/cost/job-1",
+                        "/api/semantic/cost/{jobId}"),
+                route(HttpMethod.GET, "/api/storage/storage-1",
+                        "/api/storage/{storageReferenceId}"),
+                route(HttpMethod.HEAD, "/api/storage/storage-1",
+                        "/api/storage/{storageReferenceId}"),
+                route(HttpMethod.POST, "/api/feature-flags/evaluate"),
+                route(HttpMethod.POST, "/api/feature-flags/batch-evaluate"));
+    }
+
+    private static ContainedRoute route(HttpMethod method, String path) {
+        return new ContainedRoute(method, path, path);
+    }
+
+    private static ContainedRoute route(HttpMethod method, String alias, String mapping) {
+        return new ContainedRoute(method, alias, mapping);
+    }
+
     private static TestHttpContext context(Class<?> securityConfiguration) {
         Beans.downstream = mock(Downstream.class);
         AnnotationConfigWebApplicationContext context = new AnnotationConfigWebApplicationContext();
@@ -322,6 +406,34 @@ class PhaseZeroContainmentPolicyHttpTest {
             downstream.invoke("internal-outbox");
         }
         @PostMapping("/api/render/probe") void disabled() { downstream.invoke("disabled"); }
+        @GetMapping({
+                "/api/audit/compliance/overview",
+                "/api/audit/compliance/records",
+                "/api/audit/compliance/records/category/{category}",
+                "/api/audit/compliance/records/resource"
+        })
+        void auditCompliance() { downstream.invoke("final-hostile-audit"); }
+        @PostMapping("/api/audit/compliance/records")
+        void auditRecord() { downstream.invoke("final-hostile-audit-record"); }
+        @PostMapping("/api/navigation/preview")
+        void navigationPreview() { downstream.invoke("final-hostile-navigation-preview"); }
+        @PostMapping("/api/admin/navigation/preview")
+        void adminNavigationPreview() { downstream.invoke("admin-navigation-preview"); }
+        @PostMapping("/api/tenants/{tenantId}/projects/{projectId}/upload/raw-media")
+        void rawMediaUpload() { downstream.invoke("final-hostile-upload"); }
+        @GetMapping({
+                "/api/semantic/explain/{jobId}",
+                "/api/semantic/explain/{jobId}/ai",
+                "/api/semantic/status/{jobId}",
+                "/api/semantic/cost/{jobId}"
+        })
+        void semantic() { downstream.invoke("final-hostile-semantic"); }
+        @GetMapping("/api/storage/{storageReferenceId}")
+        void storageReference() { downstream.invoke("final-hostile-storage"); }
+        @GetMapping("/api/storage/providers")
+        void storageProviders() { downstream.invoke("internal-storage-providers"); }
+        @PostMapping({"/api/feature-flags/evaluate", "/api/feature-flags/batch-evaluate"})
+        void featureFlagEvaluation() { downstream.invoke("final-hostile-feature-flag"); }
         @GetMapping("/api/projects/{projectId}/dashboard")
         void projectDashboard() { downstream.invoke("project-dashboard"); }
         @GetMapping("/api/projects/{projectId}/dashboard/activity")
@@ -407,4 +519,6 @@ class PhaseZeroContainmentPolicyHttpTest {
     }
 
     private record C3Route(HttpMethod method, String alias, String mapping) {}
+
+    private record ContainedRoute(HttpMethod method, String alias, String mapping) {}
 }

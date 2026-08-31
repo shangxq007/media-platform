@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import com.example.platform.payment.app.PaymentTransactionAuthority;
 import com.example.platform.payment.domain.ApplyWebhookCommand;
 import com.example.platform.payment.domain.PaymentProvider;
+import com.example.platform.payment.domain.PaymentProviderUnavailableException;
 import com.example.platform.payment.domain.PaymentState;
 import com.example.platform.payment.domain.PaymentTransaction;
 import com.example.platform.payment.domain.ProviderCode;
@@ -73,8 +74,12 @@ class PaymentWebhookAdapterTest {
 
     @Test
     void unknownProviderFailsClosed() {
-        assertThrows(IllegalArgumentException.class,
+        PaymentProviderUnavailableException failure = assertThrows(
+                PaymentProviderUnavailableException.class,
                 () -> adapter.handle("unknown", Map.of(), "{}"));
+        assertEquals("Payment provider is unavailable: unknown", failure.getMessage());
+        verify(provider, never()).parseWebhook(any(), any());
+        verify(authority, never()).applyWebhook(any());
     }
 
     private static PaymentTransaction transaction() {

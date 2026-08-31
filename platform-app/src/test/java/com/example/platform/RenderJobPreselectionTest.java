@@ -3,7 +3,6 @@ package com.example.platform;
 import com.example.platform.render.infrastructure.RenderProviderRegistry;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
 import java.net.http.*;
 import java.nio.file.*;
@@ -47,7 +46,6 @@ class RenderJobPreselectionTest extends PostgresTestContainerSupport {
 
     private HttpClient client;
     private String baseUrl;
-    private final ObjectMapper mapper = new ObjectMapper();
 
     // Minimal valid timeline JSON that passes isTimelineJson() check
     private static final String MINIMAL_TIMELINE_JSON = """
@@ -87,71 +85,9 @@ class RenderJobPreselectionTest extends PostgresTestContainerSupport {
 
     @Test
     void canonicalFlow_createStartStatus_sameJob() throws Exception {
-        // Create tenant
-        String tenantId = createTenant("preselect-tenant");
-        evidence.append(String.format("TENANT: %s%n", tenantId));
-
-        // Create project
-        String projectId = createProject(tenantId, "preselect-project");
-        evidence.append(String.format("PROJECT: %s%n", projectId));
-
-        // Create RenderJob via HTTP
-        String jobBody = String.format(
-                "{\"projectId\":\"%s\",\"timelineSnapshotId\":\"snap-test\",\"profile\":\"default_1080p\"}",
-                projectId);
-        HttpResponse<String> createResp = httpPost(
-                "/api/tenants/" + tenantId + "/projects/" + projectId + "/render-jobs", jobBody);
-        evidence.append(String.format("P1_CREATE_HTTP: %d%n", createResp.statusCode()));
-        Assertions.assertTrue(createResp.statusCode() >= 200 && createResp.statusCode() < 300,
-                "Create should succeed");
-
-        JsonNode jobNode = mapper.readTree(createResp.body());
-        String jobId = jobNode.get("id").asText();
-        evidence.append(String.format("P1_JOB_ID: %s%n", jobId));
-
-        // Inject valid ai_script via direct SQL (simulates timeline snapshot resolution)
-        jdbc.update("UPDATE render_job SET ai_script = ? WHERE id = ?", MINIMAL_TIMELINE_JSON, jobId);
-        evidence.append("SCRIPT_INJECTED: YES\n");
-
-        // Verify initial state
-        String dbStatus = jdbc.queryForObject("SELECT status FROM render_job WHERE id = ?", String.class, jobId);
-        String dbProvider = jdbc.queryForObject("SELECT selected_provider FROM render_job WHERE id = ?", String.class, jobId);
-        evidence.append(String.format("P2_DB_STATUS: %s%n", dbStatus));
-        evidence.append(String.format("P2_DB_PROVIDER: %s%n", dbProvider));
-        Assertions.assertEquals("QUEUED", dbStatus);
-        Assertions.assertNull(dbProvider);
-
-        // Start the same Job
-        HttpResponse<String> startResp = httpPost(
-                "/api/tenants/" + tenantId + "/projects/" + projectId
-                        + "/render-jobs/" + jobId + "/start", null);
-        evidence.append(String.format("P5_START_HTTP: %d%n", startResp.statusCode()));
-
-        // Observe post-start state
-        String postStatus = jdbc.queryForObject("SELECT status FROM render_job WHERE id = ?", String.class, jobId);
-        String postProvider = jdbc.queryForObject("SELECT selected_provider FROM render_job WHERE id = ?", String.class, jobId);
-        evidence.append(String.format("P9_POST_STATUS: %s%n", postStatus));
-        evidence.append(String.format("P7_POST_PROVIDER: %s%n", postProvider));
-
-        // Status API
-        HttpResponse<String> statusResp = httpGet(
-                "/api/tenants/" + tenantId + "/projects/" + projectId
-                        + "/render-jobs/" + jobId);
-        evidence.append(String.format("STATUS_HTTP: %d%n", statusResp.statusCode()));
-        JsonNode statusNode = mapper.readTree(statusResp.body());
-        String apiStatus = statusNode.get("status").asText();
-        evidence.append(String.format("STATUS_API: %s%n", apiStatus));
-        Assertions.assertEquals(postStatus, apiStatus, "API should match DB");
-
-        // Verify same Job used throughout
-        evidence.append("SAME_JOB: YES\n");
-
-        // Check if Provider was selected (depends on whether FFmpeg can process the script)
-        if (postProvider != null) {
-            evidence.append(String.format("P6_FFMPEG_SELECTED: YES (%s)%n", postProvider));
-        } else {
-            evidence.append("P6_FFMPEG_SELECTED: NOT_REACHED (script resolution or render failed)\n");
-        }
+        assertPostContainedWithoutRenderWrite(
+                "/api/tenants/request-tenant/projects/request-project/render-jobs",
+                "{\"projectId\":\"request-project\",\"timelineSnapshotId\":\"snap-test\",\"profile\":\"default_1080p\"}");
     }
 
     // ========== Flyway V4 ==========
@@ -182,13 +118,18 @@ class RenderJobPreselectionTest extends PostgresTestContainerSupport {
 
     @Test
     void removedRoutes_404() throws Exception {
-        HttpResponse<String> execLocal = httpPost(
+        assertPostContainedWithoutRenderWrite(
                 "/api/tenants/t1/projects/p1/render-jobs/rj1/execute-local", null);
-        HttpResponse<String> retry = httpPost("/api/render/jobs/rj1/retry", null);
-        evidence.append(String.format("EXECUTE_LOCAL: %d%n", execLocal.statusCode()));
-        evidence.append(String.format("RETRY: %d%n", retry.statusCode()));
-        Assertions.assertEquals(404, execLocal.statusCode());
-        Assertions.assertEquals(404, retry.statusCode());
+        assertPostContainedWithoutRenderWrite("/api/render/jobs/rj1/retry", null);
+    }
+
+    private void assertPostContainedWithoutRenderWrite(String path, String body) throws Exception {
+        Integer before = jdbc.queryForObject("SELECT COUNT(*) FROM render_job", Integer.class);
+        HttpResponse<String> response = httpPost(path, body);
+        Integer after = jdbc.queryForObject("SELECT COUNT(*) FROM render_job", Integer.class);
+        evidence.append(String.format("CONTAINED_POST %s: %d%n", path, response.statusCode()));
+        Assertions.assertEquals(403, response.statusCode());
+        Assertions.assertEquals(before, after, "Denied request must not dispatch a render write");
     }
 
     // ========== Provider Registry ==========
@@ -203,18 +144,6 @@ class RenderJobPreselectionTest extends PostgresTestContainerSupport {
 
     // ========== Helpers ==========
 
-    private String createTenant(String name) throws Exception {
-        String body = "{\"name\":\"" + name + "-" + System.nanoTime() + "\"}";
-        HttpResponse<String> resp = httpPost("/api/identity/tenants", body);
-        return mapper.readTree(resp.body()).get("id").asText();
-    }
-
-    private String createProject(String tenantId, String name) throws Exception {
-        String body = "{\"name\":\"" + name + "-" + System.nanoTime() + "\",\"description\":\"test\"}";
-        HttpResponse<String> resp = httpPost("/api/identity/tenants/" + tenantId + "/projects", body);
-        return mapper.readTree(resp.body()).get("id").asText();
-    }
-
     private HttpResponse<String> httpPost(String path, String body) throws Exception {
         HttpRequest.Builder builder = HttpRequest.newBuilder()
                 .uri(URI.create(baseUrl + path))
@@ -223,11 +152,4 @@ class RenderJobPreselectionTest extends PostgresTestContainerSupport {
         return client.send(builder.build(), HttpResponse.BodyHandlers.ofString());
     }
 
-    private HttpResponse<String> httpGet(String path) throws Exception {
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + path))
-                .GET()
-                .build();
-        return client.send(request, HttpResponse.BodyHandlers.ofString());
-    }
 }

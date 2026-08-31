@@ -103,6 +103,7 @@ public class VisionTaskHandler implements TaskHandler, Producer {
     @Override public String producerId() { return "vision-default"; }
     @Override public List<String> supportedOutputTypes() { return List.of("VISION"); }
     @Override public ProducerResult execute(ProducerContext context) {
-        return ProducerResult.success(List.of(), 0);
+        return ProducerResult.failure(
+                "Vision producer unavailable: no real vision provider is configured", 0);
     }
 }

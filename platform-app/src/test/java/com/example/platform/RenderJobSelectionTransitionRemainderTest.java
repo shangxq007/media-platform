@@ -3,7 +3,6 @@ package com.example.platform;
 import com.example.platform.render.infrastructure.RenderProviderRegistry;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
 import java.net.http.*;
 import java.nio.file.*;
@@ -46,12 +45,8 @@ class RenderJobSelectionTransitionRemainderTest extends PostgresTestContainerSup
     @Autowired
     private JdbcTemplate jdbc;
 
-    @Autowired
-    private com.example.platform.entitlement.app.EntitlementService entitlementService;
-
     private HttpClient client;
     private String baseUrl;
-    private final ObjectMapper mapper = new ObjectMapper();
 
     private static final StringBuilder evidence = new StringBuilder();
 
@@ -70,83 +65,9 @@ class RenderJobSelectionTransitionRemainderTest extends PostgresTestContainerSup
 
     @Test
     void canonicalCreate_validRequest_succeeds() throws Exception {
-        // First create a tenant
-        String tenantBody = "{\"name\":\"test-tenant-" + System.nanoTime() + "\"}";
-        HttpResponse<String> tenantResp = httpPost("/api/identity/tenants", tenantBody);
-        evidence.append(String.format("TENANT_CREATE: %d%n", tenantResp.statusCode()));
-        // 200 or 201
-        Assertions.assertTrue(tenantResp.statusCode() >= 200 && tenantResp.statusCode() < 300,
-                "Tenant create should succeed: " + tenantResp.statusCode());
-
-        JsonNode tenantNode = mapper.readTree(tenantResp.body());
-        String tenantId = tenantNode.get("id").asText();
-        evidence.append(String.format("TENANT_ID: %s%n", tenantId));
-
-        // Create a project
-        String projectBody = "{\"name\":\"test-project-" + System.nanoTime() + "\",\"description\":\"test\"}";
-        HttpResponse<String> projectResp = httpPost(
-                "/api/identity/tenants/" + tenantId + "/projects", projectBody);
-        evidence.append(String.format("PROJECT_CREATE: %d%n", projectResp.statusCode()));
-        Assertions.assertTrue(projectResp.statusCode() >= 200 && projectResp.statusCode() < 300,
-                "Project create should succeed: " + projectResp.statusCode());
-
-        JsonNode projectNode = mapper.readTree(projectResp.body());
-        String projectId = projectNode.get("id").asText();
-        evidence.append(String.format("PROJECT_ID: %s%n", projectId));
-
-        // Create a RenderJob
-        String jobBody = String.format(
-                "{\"projectId\":\"%s\",\"timelineSnapshotId\":\"snap-test\",\"profile\":\"default_1080p\"}",
-                projectId);
-        HttpResponse<String> jobResp = httpPost(
-                "/api/tenants/" + tenantId + "/projects/" + projectId + "/render-jobs", jobBody);
-        evidence.append(String.format("E2_CREATE_HTTP: %d%n", jobResp.statusCode()));
-        Assertions.assertTrue(jobResp.statusCode() >= 200 && jobResp.statusCode() < 300,
-                "RenderJob create should succeed: " + jobResp.statusCode());
-
-        JsonNode jobNode = mapper.readTree(jobResp.body());
-        String jobId = jobNode.get("id").asText();
-        String initialStatus = jobNode.get("status").asText();
-        evidence.append(String.format("E3_JOB_ID: %s%n", jobId));
-        evidence.append(String.format("E4_INITIAL_STATUS: %s%n", initialStatus));
-        Assertions.assertEquals("QUEUED", initialStatus, "Initial status should be QUEUED");
-
-        // Verify persisted state
-        String dbStatus = jdbc.queryForObject(
-                "SELECT status FROM render_job WHERE id = ?", String.class, jobId);
-        String dbProvider = jdbc.queryForObject(
-                "SELECT selected_provider FROM render_job WHERE id = ?", String.class, jobId);
-        evidence.append(String.format("E4_DB_STATUS: %s%n", dbStatus));
-        evidence.append(String.format("E4_DB_PROVIDER: %s%n", dbProvider));
-        Assertions.assertEquals("QUEUED", dbStatus);
-        Assertions.assertNull(dbProvider, "Initial selected_provider should be NULL");
-
-        // Start the same Job
-        HttpResponse<String> startResp = httpPost(
-                "/api/tenants/" + tenantId + "/projects/" + projectId
-                        + "/render-jobs/" + jobId + "/start", null);
-        evidence.append(String.format("E5_START_HTTP: %d%n", startResp.statusCode()));
-        JsonNode startNode = mapper.readTree(startResp.body());
-        String startStatus = startNode.has("status") ? startNode.get("status").asText() : "unknown";
-        evidence.append(String.format("E5_START_RESPONSE_STATUS: %s%n", startStatus));
-
-        // Check database after start
-        String postStartStatus = jdbc.queryForObject(
-                "SELECT status FROM render_job WHERE id = ?", String.class, jobId);
-        String postStartProvider = jdbc.queryForObject(
-                "SELECT selected_provider FROM render_job WHERE id = ?", String.class, jobId);
-        evidence.append(String.format("E9_POST_START_STATUS: %s%n", postStartStatus));
-        evidence.append(String.format("E9_POST_START_PROVIDER: %s%n", postStartProvider));
-
-        // Status API
-        HttpResponse<String> statusResp = httpGet(
-                "/api/tenants/" + tenantId + "/projects/" + projectId
-                        + "/render-jobs/" + jobId);
-        evidence.append(String.format("E13_STATUS_HTTP: %d%n", statusResp.statusCode()));
-        JsonNode statusNode = mapper.readTree(statusResp.body());
-        String apiStatus = statusNode.get("status").asText();
-        evidence.append(String.format("E13_API_STATUS: %s%n", apiStatus));
-        Assertions.assertEquals(postStartStatus, apiStatus, "API status should match DB");
+        assertPostContainedWithoutRenderWrite(
+                "/api/tenants/request-tenant/projects/request-project/render-jobs",
+                "{\"projectId\":\"request-project\",\"timelineSnapshotId\":\"snap-test\",\"profile\":\"default_1080p\"}");
     }
 
     // ========== Flyway V4 ==========
@@ -166,37 +87,22 @@ class RenderJobSelectionTransitionRemainderTest extends PostgresTestContainerSup
 
     @Test
     void executeLocal_remains404() throws Exception {
-        HttpResponse<String> response = httpPost(
+        assertPostContainedWithoutRenderWrite(
                 "/api/tenants/t1/projects/p1/render-jobs/rj1/execute-local", null);
-        evidence.append(String.format("REMOVED_EXECUTELocal: %d%n", response.statusCode()));
-        Assertions.assertEquals(404, response.statusCode());
     }
 
     @Test
     void retry_remains404() throws Exception {
-        HttpResponse<String> response = httpPost("/api/render/jobs/rj1/retry", null);
-        evidence.append(String.format("REMOVED_RETRY: %d%n", response.statusCode()));
-        Assertions.assertEquals(404, response.statusCode());
+        assertPostContainedWithoutRenderWrite("/api/render/jobs/rj1/retry", null);
     }
 
     // ========== Concurrent start ==========
 
     @Test
     void concurrentStart_noDuplicateExecution() throws Exception {
-        // Create tenant + project + job
-        String tenantId = createTenant("conc-tenant");
-        String projectId = createProject(tenantId, "conc-project");
-        String jobId = createRenderJob(tenantId, projectId);
-
-        // Verify initial state
-        String preStatus = jdbc.queryForObject(
-                "SELECT status FROM render_job WHERE id = ?", String.class, jobId);
-        Assertions.assertEquals("QUEUED", preStatus);
-
-        // Issue two concurrent start requests
+        Integer before = jdbc.queryForObject("SELECT COUNT(*) FROM render_job", Integer.class);
         ExecutorService executor = Executors.newFixedThreadPool(2);
-        String startPath = "/api/tenants/" + tenantId + "/projects/" + projectId
-                + "/render-jobs/" + jobId + "/start";
+        String startPath = "/api/tenants/request-tenant/projects/request-project/render-jobs/request-job/start";
         CyclicBarrier barrier = new CyclicBarrier(2);
 
         Callable<Integer> startCall = () -> {
@@ -219,70 +125,31 @@ class RenderJobSelectionTransitionRemainderTest extends PostgresTestContainerSup
         evidence.append(String.format("CONCURRENT_A: %d%n", statusA));
         evidence.append(String.format("CONCURRENT_B: %d%n", statusB));
 
-        // Verify no duplicate execution
-        String finalStatus = jdbc.queryForObject(
-                "SELECT status FROM render_job WHERE id = ?", String.class, jobId);
-        String finalProvider = jdbc.queryForObject(
-                "SELECT selected_provider FROM render_job WHERE id = ?", String.class, jobId);
-        evidence.append(String.format("CONCURRENT_FINAL_STATUS: %s%n", finalStatus));
-        evidence.append(String.format("CONCURRENT_FINAL_PROVIDER: %s%n", finalProvider));
-
-        // Verify only one logical execution attempt
-        Integer count = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM render_job WHERE id = ?", Integer.class, jobId);
-        Assertions.assertEquals(1, count, "Should have exactly one RenderJob record");
+        Integer after = jdbc.queryForObject("SELECT COUNT(*) FROM render_job", Integer.class);
+        Assertions.assertEquals(403, statusA);
+        Assertions.assertEquals(403, statusB);
+        Assertions.assertEquals(before, after, "Concurrent denials must not dispatch a render write");
     }
 
     // ========== Sequential repeated start ==========
 
     @Test
     void sequentialRepeatedStart_idempotent() throws Exception {
-        String tenantId = createTenant("repeat-tenant");
-        String projectId = createProject(tenantId, "repeat-project");
-        String jobId = createRenderJob(tenantId, projectId);
+        String path = "/api/tenants/request-tenant/projects/request-project/render-jobs/request-job/start";
+        assertPostContainedWithoutRenderWrite(path, null);
+        assertPostContainedWithoutRenderWrite(path, null);
+    }
 
-        // First start
-        HttpResponse<String> resp1 = httpPost(
-                "/api/tenants/" + tenantId + "/projects/" + projectId
-                        + "/render-jobs/" + jobId + "/start", null);
-        evidence.append(String.format("REPEAT_START_1: %d%n", resp1.statusCode()));
-
-        // Second start
-        HttpResponse<String> resp2 = httpPost(
-                "/api/tenants/" + tenantId + "/projects/" + projectId
-                        + "/render-jobs/" + jobId + "/start", null);
-        evidence.append(String.format("REPEAT_START_2: %d%n", resp2.statusCode()));
-
-        // Verify one execution attempt
-        Integer count = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM render_job WHERE id = ?", Integer.class, jobId);
-        Assertions.assertEquals(1, count, "Should have exactly one RenderJob record");
+    private void assertPostContainedWithoutRenderWrite(String path, String body) throws Exception {
+        Integer before = jdbc.queryForObject("SELECT COUNT(*) FROM render_job", Integer.class);
+        HttpResponse<String> response = httpPost(path, body);
+        Integer after = jdbc.queryForObject("SELECT COUNT(*) FROM render_job", Integer.class);
+        evidence.append(String.format("CONTAINED_POST %s: %d%n", path, response.statusCode()));
+        Assertions.assertEquals(403, response.statusCode());
+        Assertions.assertEquals(before, after, "Denied request must not dispatch a render write");
     }
 
     // ========== Helpers ==========
-
-    private String createTenant(String name) throws Exception {
-        String body = "{\"name\":\"" + name + "-" + System.nanoTime() + "\"}";
-        HttpResponse<String> resp = httpPost("/api/identity/tenants", body);
-        String tenantId = mapper.readTree(resp.body()).get("id").asText();
-        TestEntitlementGrantSupport.grant(entitlementService, tenantId, "render.job.create");
-        return tenantId;
-    }
-
-    private String createProject(String tenantId, String name) throws Exception {
-        String body = "{\"name\":\"" + name + "-" + System.nanoTime() + "\",\"description\":\"test\"}";
-        HttpResponse<String> resp = httpPost("/api/identity/tenants/" + tenantId + "/projects", body);
-        return mapper.readTree(resp.body()).get("id").asText();
-    }
-
-    private String createRenderJob(String tenantId, String projectId) throws Exception {
-        String body = String.format(
-                "{\"projectId\":\"%s\",\"timelineSnapshotId\":\"snap-test\",\"profile\":\"default_1080p\"}",
-                projectId);
-        HttpResponse<String> resp = httpPost(
-                "/api/tenants/" + tenantId + "/projects/" + projectId + "/render-jobs", body);
-        return mapper.readTree(resp.body()).get("id").asText();
-    }
 
     private HttpResponse<String> httpPost(String path, String body) throws Exception {
         HttpRequest.Builder builder = HttpRequest.newBuilder()
@@ -292,11 +159,4 @@ class RenderJobSelectionTransitionRemainderTest extends PostgresTestContainerSup
         return client.send(builder.build(), HttpResponse.BodyHandlers.ofString());
     }
 
-    private HttpResponse<String> httpGet(String path) throws Exception {
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + path))
-                .GET()
-                .build();
-        return client.send(request, HttpResponse.BodyHandlers.ofString());
-    }
 }

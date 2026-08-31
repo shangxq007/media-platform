@@ -107,6 +107,7 @@ public class OcrTaskHandler implements TaskHandler, Producer {
     @Override public String producerId() { return "tesseract-ocr"; }
     @Override public List<String> supportedOutputTypes() { return List.of("OCR"); }
     @Override public ProducerResult execute(ProducerContext context) {
-        return ProducerResult.success(List.of(), 0);
+        return ProducerResult.failure(
+                "OCR producer unavailable: no real OCR provider is configured", 0);
     }
 }

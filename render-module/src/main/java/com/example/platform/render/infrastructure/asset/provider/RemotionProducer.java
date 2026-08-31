@@ -3,8 +3,6 @@ package com.example.platform.render.infrastructure.asset.provider;
 import com.example.platform.render.domain.producer.*;
 import com.example.platform.render.domain.capability.CapabilityDescriptor;
 import java.util.List;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 /**
@@ -15,7 +13,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class RemotionProducer implements Producer {
 
-    private static final Logger log = LoggerFactory.getLogger(RemotionProducer.class);
+    static final String UNAVAILABLE_REASON =
+            "Remotion producer is unavailable until a governed execution provider is configured";
 
     @Override public String producerId() { return "remotion-render"; }
     @Override public List<String> supportedOutputTypes() { return List.of("PREVIEW", "FINAL_RENDER"); }
@@ -30,9 +29,6 @@ public class RemotionProducer implements Producer {
 
     @Override
     public ProducerResult execute(ProducerContext context) {
-        long start = System.currentTimeMillis();
-        log.info("RemotionProducer: rendering timeline inputs={}", context.inputProductIds());
-        long dur = System.currentTimeMillis() - start;
-        return ProducerResult.success(List.of(), dur);
+        return ProducerResult.failure(UNAVAILABLE_REASON, 0);
     }
 }

@@ -8,7 +8,9 @@ import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import javax.crypto.SecretKey;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperties;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -18,12 +20,23 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * Issues a dev JWT for local frontend against {@code bootRun}.
  *
- * <p>DEV-ONLY: This endpoint is gated by {@code app.security.dev-auth-endpoint=true}
- * and is never enabled in production. The "tenant-1" default is a development convenience.
+ * <p>DEV-ONLY: This endpoint requires an explicit nonproduction profile, disabled production
+ * checks, and {@code app.security.dev-auth-endpoint=true}. The "tenant-1" default is a
+ * development convenience.
  */
 @RestController
 @RequestMapping("/api/dev/auth")
-@ConditionalOnProperty(name = "app.security.dev-auth-endpoint", havingValue = "true", matchIfMissing = false)
+@Profile("!prod & (dev | local | test)")
+@ConditionalOnProperties({
+    @ConditionalOnProperty(
+            name = "app.security.dev-auth-endpoint",
+            havingValue = "true",
+            matchIfMissing = false),
+    @ConditionalOnProperty(
+            name = "platform.runtime.production-checks-enabled",
+            havingValue = "false",
+            matchIfMissing = true)
+})
 public class DevAuthController {
 
     private final JwtProperties jwtProperties;
@@ -34,8 +47,7 @@ public class DevAuthController {
 
     @PostMapping("/token")
     public ResponseEntity<Map<String, Object>> issueToken(@RequestBody(required = false) DevTokenRequest body) {
-        // DEV-ONLY: This endpoint is gated by @ConditionalOnProperty("app.security.dev-auth-endpoint=true").
-        // The "tenant-1" default is intentionally a development convenience and is NEVER used in production.
+        // The bean-level profile and property conditions make this a nonproduction-only issuer.
         String tenantId = body != null && body.tenantId() != null ? body.tenantId() : "tenant-1";
         String userId = body != null && body.userId() != null ? body.userId() : "user-1";
 

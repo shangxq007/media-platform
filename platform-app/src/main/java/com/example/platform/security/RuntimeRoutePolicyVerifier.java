@@ -10,10 +10,12 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.SmartInitializingSingleton;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.stereotype.Component;
 
 /** Fails startup if the live application route universe is empty or not completely classified. */
 @Component
+@ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 public final class RuntimeRoutePolicyVerifier implements SmartInitializingSingleton {
 
     private static final Logger log = LoggerFactory.getLogger(RuntimeRoutePolicyVerifier.class);

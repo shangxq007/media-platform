@@ -22,7 +22,7 @@ class BundledDistributionPluginConformanceTest {
     @TempDir Path temp;
 
     @Test
-    void solePublishedExecutableIsTheTestedBundledBootJar() throws Exception {
+    void bundledPluginConformanceDistributionHasTheExpectedLauncherAndPlugin() throws Exception {
         Path executable = Path.of(System.getProperty("distribution.executable.jar"));
         assertThat(executable.getFileName().toString()).isEqualTo("media-platform-all-in-one.jar");
         try (JarFile jar = new JarFile(executable.toFile())) {

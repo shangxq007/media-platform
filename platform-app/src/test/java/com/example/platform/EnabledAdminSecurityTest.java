@@ -199,6 +199,44 @@ class EnabledAdminSecurityTest extends PostgresTestContainerSupport {
                     "Contained admin request must be denied: " + path);
         }
 
+        String[][] finalHostileRoutes = {
+            {"GET", "/api/audit/compliance/overview"},
+            {"HEAD", "/api/audit/compliance/overview"},
+            {"GET", "/api/audit/compliance/records"},
+            {"HEAD", "/api/audit/compliance/records"},
+            {"POST", "/api/audit/compliance/records"},
+            {"GET", "/api/audit/compliance/records/category/SECURITY"},
+            {"HEAD", "/api/audit/compliance/records/category/SECURITY"},
+            {"GET", "/api/audit/compliance/records/resource"},
+            {"HEAD", "/api/audit/compliance/records/resource"},
+            {"POST", "/api/navigation/preview"},
+            {"POST", "/api/tenants/t1/projects/p1/upload/raw-media"},
+            {"GET", "/api/semantic/explain/job-1"},
+            {"HEAD", "/api/semantic/explain/job-1"},
+            {"GET", "/api/semantic/explain/job-1/ai"},
+            {"HEAD", "/api/semantic/explain/job-1/ai"},
+            {"GET", "/api/semantic/status/job-1"},
+            {"HEAD", "/api/semantic/status/job-1"},
+            {"GET", "/api/semantic/cost/job-1"},
+            {"HEAD", "/api/semantic/cost/job-1"},
+            {"GET", "/api/storage/storage-1"},
+            {"HEAD", "/api/storage/storage-1"},
+            {"POST", "/api/feature-flags/evaluate"},
+            {"POST", "/api/feature-flags/batch-evaluate"}
+        };
+        for (String[] route : finalHostileRoutes) {
+            int anonymousStatus = httpRequest(route[0], route[1], null).statusCode();
+            Assertions.assertTrue(anonymousStatus == 401 || anonymousStatus == 403,
+                    "Contained anonymous request must be rejected: "
+                            + route[0] + " " + route[1] + " got " + anonymousStatus);
+            Assertions.assertEquals(403,
+                    httpRequest(route[0], route[1], jwtHelper.nonAdminToken()).statusCode(),
+                    "Contained ordinary-user request must be denied: " + route[0] + " " + route[1]);
+            Assertions.assertEquals(403,
+                    httpRequest(route[0], route[1], jwtHelper.adminToken()).statusCode(),
+                    "Contained admin request must be denied: " + route[0] + " " + route[1]);
+        }
+
         org.mockito.Mockito.verifyNoInteractions(analyticsRebuildJob, pluginRuntime,
                 subscriptionBillingService, remoteRenderDispatcher, productRuntimeService,
                 notificationChannelBindingService);
@@ -380,14 +418,14 @@ class EnabledAdminSecurityTest extends PostgresTestContainerSupport {
     }
 
     @Test
-    void identityAdminTenants_admin_reachesBoundary() throws Exception {
+    void identityAdminTenants_adminDeniedWithoutTrustedServerDerivedAdminBoundary() throws Exception {
         String admin = jwtHelper.adminToken();
         HttpResponse<String> response = httpGet("/api/identity/admin/tenants", admin);
         int status = response.statusCode();
         evidence.append(String.format("IDENTITY_ADMIN_ADMIN: %d%n", status));
-        // Should reach handler (200 or 404), not 401/403
-        Assertions.assertTrue(status == 200 || status == 404,
-            "Admin identity/admin should reach handler: got " + status);
+        // Phase 0 has no handler or trusted server-derived authorized-admin boundary for this surface.
+        Assertions.assertEquals(403, status,
+            "Phase 0 must deny GET /api/identity/admin/tenants without a trusted server-derived authorized-admin boundary");
     }
 
     // ========== Dev routes under security ==========
@@ -434,6 +472,21 @@ class EnabledAdminSecurityTest extends PostgresTestContainerSupport {
         evidence.append(String.format("CANONICAL_LIST: %d%n", response.statusCode()));
         Assertions.assertEquals(403, response.statusCode(),
             "Render routes remain contained until canonical route authority exists");
+    }
+
+    private HttpResponse<String> httpRequest(String method, String path, String token)
+            throws Exception {
+        HttpRequest.BodyPublisher body = "POST".equals(method) || "PUT".equals(method)
+                ? HttpRequest.BodyPublishers.ofString("{}")
+                : HttpRequest.BodyPublishers.noBody();
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + path))
+                .header("Content-Type", "application/json")
+                .method(method, body);
+        if (token != null) {
+            builder.header("Authorization", "Bearer " + token);
+        }
+        return client.send(builder.build(), HttpResponse.BodyHandlers.ofString());
     }
 
     // ========== Error response safety ==========

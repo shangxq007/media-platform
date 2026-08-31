@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperties;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
@@ -15,8 +16,17 @@ import org.springframework.stereotype.Component;
  * It will NOT run in production OIDC environments.
  */
 @Component
-@Profile({"dev", "local", "test"})
-@ConditionalOnProperty(name = "app.security.oidc-dev-bootstrap.enabled", havingValue = "true", matchIfMissing = false)
+@Profile("!prod & (dev | local | test)")
+@ConditionalOnProperties({
+    @ConditionalOnProperty(
+            name = "app.security.oidc-dev-bootstrap.enabled",
+            havingValue = "true",
+            matchIfMissing = false),
+    @ConditionalOnProperty(
+            name = "platform.runtime.production-checks-enabled",
+            havingValue = "false",
+            matchIfMissing = true)
+})
 public class OidcDevBootstrapRunner implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(OidcDevBootstrapRunner.class);

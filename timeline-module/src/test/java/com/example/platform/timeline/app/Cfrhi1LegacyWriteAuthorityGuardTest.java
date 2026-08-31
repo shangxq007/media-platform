@@ -28,7 +28,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  *     TimelineRevisionSaveService.restoreRevision — the canonical authority)
  *
  * The canonical restore path (TimelineRevisionSaveService.restoreRevision) is
- * the single allowed restore authority and is asserted present.
+ * the single allowed restore authority and is asserted present. During Phase 0
+ * containment, the public controller restore endpoint must remain fail closed
+ * and must not dispatch that authority.
  *
  * KNOWN_FORBIDDEN_LEGACY_TIMELINE_WRITE_SYMBOL_COUNT is symbol-set bounded:
  * it detects the frozen forbidden symbols; it does not claim to detect
@@ -133,14 +135,25 @@ class Cfrhi1LegacyWriteAuthorityGuardTest {
 
     @Test
     void canonicalRestoreAuthorityIsActive() throws IOException {
-        // the canonical restore authority must exist and be referenced by the controller
+        // The canonical restore authority remains available behind the containment
+        // boundary, but the public controller must not dispatch it during Phase 0.
         Path root = repoRoot();
         long canonicalDefs = countSymbol(root, "TimelineRevisionSaveService.java", "restoreRevision");
         assertEquals(1, canonicalDefs,
                 "CANONICAL_RESTORE_AUTHORITY_COUNT must be 1 (root=" + root + ")");
         long controllerRefs = countSymbol(root, "TimelineRevisionController.java", "restoreRevision");
-        assertEquals(1, controllerRefs,
-                "TimelineRevisionController must call the canonical restoreRevision exactly once (root=" + root + ")");
+        assertEquals(0, controllerRefs,
+                "TimelineRevisionController must not dispatch restoreRevision during Phase 0 containment (root="
+                        + root + ")");
+
+        Path controller = productionJavaFiles().stream()
+                .filter(f -> f.getFileName().toString().equals("TimelineRevisionController.java"))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("TimelineRevisionController.java must exist (root=" + root + ")"));
+        String restoreBody = methodBody(controller, "public ResponseEntity<RestoreResponse> restore(");
+        assertEquals("throw FailClosedAuthorization.unavailable(\"timeline revision restore\");", restoreBody,
+                "TimelineRevisionController restore endpoint must contain only the exact fail-closed statement "
+                        + "and cannot dispatch event/save services");
     }
 
     @Test
@@ -189,5 +202,27 @@ class Cfrhi1LegacyWriteAuthorityGuardTest {
                     .filter(l -> l.contains(token))
                     .count();
         }
+    }
+
+    private static String methodBody(Path sourceFile, String signature) throws IOException {
+        String source = Files.readString(sourceFile);
+        int signatureStart = source.indexOf(signature);
+        if (signatureStart < 0) {
+            return "";
+        }
+        int bodyStart = source.indexOf('{', signatureStart + signature.length());
+        if (bodyStart < 0) {
+            return "";
+        }
+        int depth = 0;
+        for (int i = bodyStart; i < source.length(); i++) {
+            char c = source.charAt(i);
+            if (c == '{') {
+                depth++;
+            } else if (c == '}' && --depth == 0) {
+                return source.substring(bodyStart + 1, i).trim();
+            }
+        }
+        return "";
     }
 }

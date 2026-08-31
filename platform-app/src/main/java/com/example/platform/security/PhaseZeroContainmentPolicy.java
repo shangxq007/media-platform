@@ -117,22 +117,22 @@ public final class PhaseZeroContainmentPolicy {
             "/api/me/notifications/**",
             "/api/me/notification-*/**",
             "/api/tenants/*/tier",
-            "/api/prompts/**");
+            "/api/prompts/**",
+            "/api/audit/compliance/**",
+            "/api/navigation/preview",
+            "/api/tenants/*/projects/*/upload/**",
+            "/api/semantic/**",
+            "/api/storage/*",
+            "/api/feature-flags/**");
 
     /** Known application families whose current boundary is ordinary authenticated access. */
     private static final List<String> AUTHENTICATED_FAMILIES = List.of(
             "/api/me/**",
-            "/api/audit/compliance/**",
             "/api/datasources/**",
             "/api/effect-packs/**",
-            "/api/feature-flags/**",
-            "/api/navigation/**",
-            "/api/semantic/**",
-            "/api/storage/*",
             "/api/identity/access/**",
             "/api/artifact/catalog/**",
-            "/api/tenants/*/workflow-definitions/**",
-            "/api/tenants/*/projects/*/upload/**");
+            "/api/tenants/*/workflow-definitions/**");
 
     private PhaseZeroContainmentPolicy() {}
 
@@ -144,12 +144,14 @@ public final class PhaseZeroContainmentPolicy {
         if (matchesAny(TEST_ONLY_FAMILIES, path)) {
             return Optional.of(Classification.TEST_ONLY);
         }
+        // The exact provider registry route is already a contained control-plane endpoint and
+        // must retain that classification ahead of the broader unsafe storage-reference family.
+        if (matchesAny(INTERNAL_CONTROL_FAMILIES, path)) {
+            return Optional.of(Classification.INTERNAL_CONTROL_PLANE);
+        }
         if (matchesAny(DISABLED_FAMILIES, path)
                 || (matchesAny(PUBLIC_READ_FAMILIES, path) && !READ_METHODS.contains(method))) {
             return Optional.of(Classification.DISABLED_CONTAINED);
-        }
-        if (matchesAny(INTERNAL_CONTROL_FAMILIES, path)) {
-            return Optional.of(Classification.INTERNAL_CONTROL_PLANE);
         }
         if (matchesAny(ADMIN_FAMILIES, path)) {
             return Optional.of(Classification.ADMIN_ONLY);
@@ -166,8 +168,8 @@ public final class PhaseZeroContainmentPolicy {
     public static void applyEnabled(
             AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry auth) {
         auth.requestMatchers(CorsUtils::isPreFlightRequest).permitAll();
-        requestMatchers(auth, DISABLED_FAMILIES).denyAll();
         requestMatchers(auth, INTERNAL_CONTROL_FAMILIES).denyAll();
+        requestMatchers(auth, DISABLED_FAMILIES).denyAll();
         requestMatchers(auth, ADMIN_FAMILIES).hasAuthority("ROLE_ADMIN");
         requestMatchers(auth, HttpMethod.GET, PUBLIC_READ_FAMILIES).permitAll();
         requestMatchers(auth, HttpMethod.HEAD, PUBLIC_READ_FAMILIES).permitAll();

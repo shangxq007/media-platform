@@ -7,6 +7,7 @@ import com.example.platform.render.app.dto.ArtifactInfoResponse;
 import com.example.platform.render.app.dto.CreateRenderJobRequest;
 import com.example.platform.render.app.dto.RenderJobResponse;
 import com.example.platform.render.app.dto.StatusHistoryResponse;
+import com.example.platform.shared.authorization.AuthorizationDeniedException;
 import com.example.platform.shared.web.TenantContext;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -67,13 +68,11 @@ class RenderControllerContractTest {
         void createRenderJobDelegates() {
             CreateRenderJobRequest req = new CreateRenderJobRequest("proj-1", "snap-1", "default_1080p");
 
-            RenderJobResponse result = controller.createRenderJob("t-1", "proj-1", req);
+            AuthorizationDeniedException failure = assertThrowsExactly(AuthorizationDeniedException.class,
+                    () -> controller.createRenderJob("t-1", "proj-1", req));
 
-            assertNotNull(result);
-            assertTrue(result.id().startsWith("rj"));
-            assertEquals("QUEUED", result.status());
-            assertEquals("proj-1", result.projectId());
-            assertEquals(1, fakeService.createForProjectCalls);
+            assertAuthorizationUnavailable(failure, "render job creation");
+            assertDependenciesUntouched();
         }
     }
 
@@ -124,10 +123,11 @@ class RenderControllerContractTest {
                     new RenderJobResponse("rj-1", "proj-1", "snap-1", "default_1080p", "QUEUED"));
             fakeOrchestrator.executeResult = "rj-1";
 
-            Map<String, String> result = controller.startRenderJob("t-1", "proj-1", "rj-1");
+            AuthorizationDeniedException failure = assertThrowsExactly(AuthorizationDeniedException.class,
+                    () -> controller.startRenderJob("t-1", "proj-1", "rj-1"));
 
-            assertEquals("rj-1", result.get("jobId"));
-            assertEquals("STARTED", result.get("status"));
+            assertAuthorizationUnavailable(failure, "render job execution");
+            assertDependenciesUntouched();
         }
 
         @Test
@@ -136,8 +136,11 @@ class RenderControllerContractTest {
             RenderController controllerNoOrch = new RenderController(fakeService, null, java.util.List.of(),
                     null, null, null, null, null, null, null, null, null);
 
-            assertThrows(IllegalStateException.class,
+            AuthorizationDeniedException failure = assertThrowsExactly(AuthorizationDeniedException.class,
                     () -> controllerNoOrch.startRenderJob("t-1", "proj-1", "rj-1"));
+
+            assertAuthorizationUnavailable(failure, "render job execution");
+            assertDependenciesUntouched();
         }
     }
 
@@ -154,9 +157,11 @@ class RenderControllerContractTest {
             fakeService.storedJobs.put("rj-1",
                     new RenderJobResponse("rj-1", "proj-1", "snap-1", "default_1080p", "CANCELLED"));
 
-            RenderJobResponse result = controller.cancelJob("rj-1", "t-1");
+            AuthorizationDeniedException failure = assertThrowsExactly(AuthorizationDeniedException.class,
+                    () -> controller.cancelJob("rj-1", "t-1"));
 
-            assertEquals("CANCELLED", result.status());
+            assertAuthorizationUnavailable(failure, "global render cancellation");
+            assertDependenciesUntouched();
         }
 
         @Test
@@ -164,8 +169,11 @@ class RenderControllerContractTest {
         void cancelThrowsWhenTenantMismatch() {
             TenantContext.set("t-1");
 
-            assertThrows(IllegalArgumentException.class,
+            AuthorizationDeniedException failure = assertThrowsExactly(AuthorizationDeniedException.class,
                     () -> controller.cancelJob("rj-1", "t-other"));
+
+            assertAuthorizationUnavailable(failure, "global render cancellation");
+            assertDependenciesUntouched();
         }
     }
 
@@ -182,10 +190,11 @@ class RenderControllerContractTest {
                     new ArtifactInfoResponse("art-1", "rj-1", "proj-1", "/api/downloads/art-1",
                             "video/mp4", "1920x1080", 1024L, Instant.now())));
 
-            List<ArtifactInfoResponse> result = controller.getArtifacts("rj-1");
+            AuthorizationDeniedException failure = assertThrowsExactly(AuthorizationDeniedException.class,
+                    () -> controller.getArtifacts("rj-1"));
 
-            assertEquals(1, result.size());
-            assertEquals("art-1", result.get(0).artifactId());
+            assertAuthorizationUnavailable(failure, "global render artifact read");
+            assertDependenciesUntouched();
         }
 
         @Test
@@ -194,9 +203,11 @@ class RenderControllerContractTest {
             RenderController controllerNoOrch = new RenderController(fakeService, null, java.util.List.of(),
                     null, null, null, null, null, null, null, null, null);
 
-            List<ArtifactInfoResponse> result = controllerNoOrch.getArtifacts("rj-1");
+            AuthorizationDeniedException failure = assertThrowsExactly(AuthorizationDeniedException.class,
+                    () -> controllerNoOrch.getArtifacts("rj-1"));
 
-            assertTrue(result.isEmpty());
+            assertAuthorizationUnavailable(failure, "global render artifact read");
+            assertDependenciesUntouched();
         }
     }
 
@@ -268,29 +279,32 @@ class RenderControllerContractTest {
                     Instant.now().plusSeconds(900), 900,
                     "video/mp4", "output.mp4", 1024L, "READY", null, true);
 
-            ResponseEntity<?> result = controller.getArtifactAccess("rj-1", "art-1");
+            AuthorizationDeniedException failure = assertThrowsExactly(AuthorizationDeniedException.class,
+                    () -> controller.getArtifactAccess("rj-1", "art-1"));
 
-            assertEquals(200, result.getStatusCode().value());
+            assertAuthorizationUnavailable(failure, "global render artifact access");
+            assertDependenciesUntouched();
         }
 
         @Test
         @DisplayName("Legacy access returns 404 when not found")
         void legacyAccessReturns404WhenNotFound() {
             // not stored -> getById will throw IllegalArgumentException
-            assertThrows(IllegalArgumentException.class,
+            AuthorizationDeniedException failure = assertThrowsExactly(AuthorizationDeniedException.class,
                     () -> controller.getArtifactAccess("rj-missing", "art-1"));
+
+            assertAuthorizationUnavailable(failure, "global render artifact access");
+            assertDependenciesUntouched();
         }
 
         @Test
         @DisplayName("Legacy access never calls presigner before authorization")
         void legacyAccessNeverCallsPresignerBeforeAuth() {
-            // not stored -> auth fails, presigner must not be called
-            try {
-                controller.getArtifactAccess("rj-missing", "art-1");
-            } catch (IllegalArgumentException ignored) {
-            }
-            assertEquals(0, fakeArtifactAccess.createAccessCalls,
-                    "Presigner must not be called before authorization passes");
+            AuthorizationDeniedException failure = assertThrowsExactly(AuthorizationDeniedException.class,
+                    () -> controller.getArtifactAccess("rj-missing", "art-1"));
+
+            assertAuthorizationUnavailable(failure, "global render artifact access");
+            assertDependenciesUntouched();
         }
     }
 
@@ -324,11 +338,46 @@ class RenderControllerContractTest {
         }
     }
 
+    private static void assertAuthorizationUnavailable(
+            AuthorizationDeniedException failure, String operation) {
+        assertFalse(failure.decision().allowed());
+        assertEquals("AUTHORIZATION_UNAVAILABLE", failure.decision().reasonCode());
+        assertEquals("FAIL_CLOSED_CONTAINMENT", failure.decision().ruleRef());
+        assertEquals(operation + " is unavailable until canonical authorization is established",
+                failure.decision().detail());
+    }
+
+    private void assertDependenciesUntouched() {
+        assertEquals(0, fakeService.createCalls);
+        assertEquals(0, fakeService.createForProjectCalls);
+        assertEquals(0, fakeService.getByIdCalls);
+        assertEquals(0, fakeService.getByIdAndProjectCalls);
+        assertEquals(0, fakeService.listCalls);
+        assertEquals(0, fakeService.listByProjectCalls);
+        assertEquals(0, fakeService.cancelCalls);
+        assertEquals(0, fakeService.retryCalls);
+        assertEquals(0, fakeService.statusHistoryCalls);
+        assertEquals(0, fakeOrchestrator.submitCalls);
+        assertEquals(0, fakeOrchestrator.executeCalls);
+        assertEquals(0, fakeOrchestrator.finishCalls);
+        assertEquals(0, fakeOrchestrator.artifactQueryCalls);
+        assertEquals(0, fakeOrchestrator.artifactContentCalls);
+        assertEquals(0, fakeOrchestrator.timelineLoadCalls);
+        assertEquals(0, fakeArtifactAccess.createAccessCalls);
+    }
+
     // ========== Fakes ==========
 
     static class FakeRenderJobService extends RenderJobService {
         int createCalls = 0;
         int createForProjectCalls = 0;
+        int getByIdCalls = 0;
+        int getByIdAndProjectCalls = 0;
+        int listCalls = 0;
+        int listByProjectCalls = 0;
+        int cancelCalls = 0;
+        int retryCalls = 0;
+        int statusHistoryCalls = 0;
         final Map<String, RenderJobResponse> storedJobs = new HashMap<>();
 
         FakeRenderJobService() {
@@ -353,6 +402,7 @@ class RenderControllerContractTest {
 
         @Override
         public RenderJobResponse getById(String jobId) {
+            getByIdCalls++;
             RenderJobResponse job = storedJobs.get(jobId);
             if (job == null) throw new IllegalArgumentException("Render job not found: " + jobId);
             return job;
@@ -360,6 +410,7 @@ class RenderControllerContractTest {
 
         @Override
         public RenderJobResponse getByIdAndProject(String tenantId, String projectId, String jobId) {
+            getByIdAndProjectCalls++;
             RenderJobResponse job = storedJobs.get(jobId);
             if (job == null) throw new IllegalArgumentException("Render job not found: " + jobId);
             return job;
@@ -367,11 +418,13 @@ class RenderControllerContractTest {
 
         @Override
         public List<RenderJobResponse> list() {
+            listCalls++;
             return new ArrayList<>(storedJobs.values());
         }
 
         @Override
         public List<RenderJobResponse> listByProject(String tenantId, String projectId) {
+            listByProjectCalls++;
             return storedJobs.values().stream()
                     .filter(j -> j.projectId().equals(projectId))
                     .toList();
@@ -379,6 +432,7 @@ class RenderControllerContractTest {
 
         @Override
         public RenderJobResponse cancel(String jobId, String tenantId) {
+            cancelCalls++;
             RenderJobResponse job = storedJobs.get(jobId);
             if (job == null) throw new IllegalArgumentException("Render job not found: " + jobId);
             RenderJobResponse cancelled = new RenderJobResponse(job.id(), job.projectId(),
@@ -389,6 +443,7 @@ class RenderControllerContractTest {
 
         @Override
         public RenderJobResponse retry(String jobId, String tenantId) {
+            retryCalls++;
             RenderJobResponse job = storedJobs.get(jobId);
             if (job == null) throw new IllegalArgumentException("Render job not found: " + jobId);
             RenderJobResponse retried = new RenderJobResponse(job.id(), job.projectId(),
@@ -399,6 +454,7 @@ class RenderControllerContractTest {
 
         @Override
         public List<StatusHistoryResponse> getStatusHistory(String jobId, String tenantId) {
+            statusHistoryCalls++;
             return List.of();
         }
     }
@@ -406,6 +462,10 @@ class RenderControllerContractTest {
     static class FakeOrchestratorPort implements RenderOrchestratorPort {
         int submitCalls = 0;
         int executeCalls = 0;
+        int finishCalls = 0;
+        int artifactQueryCalls = 0;
+        int artifactContentCalls = 0;
+        int timelineLoadCalls = 0;
         String submitResult = "rj-default";
         String executeResult = "rj-default";
         final Map<String, List<ArtifactInfoResponse>> artifacts = new HashMap<>();
@@ -424,21 +484,25 @@ class RenderControllerContractTest {
 
         @Override
         public String finishRenderPhase(String tenantId, String jobId) {
+            finishCalls++;
             return jobId;
         }
 
         @Override
         public List<ArtifactInfoResponse> getArtifactsByJob(String jobId) {
+            artifactQueryCalls++;
             return artifacts.getOrDefault(jobId, List.of());
         }
 
         @Override
         public byte[] getArtifactContent(String artifactId) {
+            artifactContentCalls++;
             return new byte[0];
         }
 
         @Override
         public String loadJobTimelineJson(String tenantId, String jobId) {
+            timelineLoadCalls++;
             return "{}";
         }
     }

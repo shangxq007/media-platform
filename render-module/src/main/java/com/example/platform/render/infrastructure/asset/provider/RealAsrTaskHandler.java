@@ -147,6 +147,7 @@ public class RealAsrTaskHandler implements TaskHandler, Producer {
     @Override public String producerId() { return "whisper-asr"; }
     @Override public List<String> supportedOutputTypes() { return List.of("TRANSCRIPT"); }
     @Override public ProducerResult execute(ProducerContext context) {
-        return ProducerResult.success(List.of(), 0);
+        return ProducerResult.failure(
+                "ASR producer entry point unavailable: use governed task execution", 0);
     }
 }

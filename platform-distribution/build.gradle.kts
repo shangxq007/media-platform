@@ -73,6 +73,7 @@ tasks.test {
     dependsOn(providerJar, tasks.named("bootJar"))
     systemProperty("distribution.provider.jar", providerJar.get().asFile.absolutePath)
     systemProperty("distribution.executable.jar", executableJar.get().asFile.absolutePath)
+    systemProperty("distribution.repository.root", rootProject.projectDir.absolutePath)
 }
 
 tasks.withType<AbstractArchiveTask>().configureEach {

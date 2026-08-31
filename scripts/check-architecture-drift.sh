@@ -10,6 +10,22 @@ CHECKS=0
 pass() { printf "✅ PASS: %s\n" "$1"; CHECKS=$((CHECKS + 1)); }
 fail() { printf "❌ FAIL: %s\n" "$1" >&2; FAILED=1; CHECKS=$((CHECKS + 1)); }
 
+verify_enabled_admin_policy() {
+    local policy_file="$1"
+
+    python3 "$ROOT_DIR/scripts/verify-enabled-admin-policy.py" "$policy_file"
+}
+
+if [ "${1:-}" = "--check-enabled-admin-policy" ]; then
+    if [ "$#" -ne 2 ]; then
+        printf "usage: %s --check-enabled-admin-policy POLICY_FILE\n" "$0" >&2
+        exit 2
+    fi
+    verify_enabled_admin_policy "$2"
+    printf "Enabled admin policy contract verified: %s\n" "$2"
+    exit 0
+fi
+
 echo "=== Architecture Drift Guard ==="
 echo ""
 
@@ -155,8 +171,10 @@ else
     fail "Spring AI mainline approval status unclear"
 fi
 
-# Verify admin routes require ROLE_ADMIN authority
-if grep -q 'hasAuthority("ROLE_ADMIN")' platform-app/src/main/java/com/example/platform/security/SecurityHttpRules.java 2>/dev/null; then
+# Verify the enabled security policy binds declared admin families to ROLE_ADMIN and remains
+# fail-closed for every unmatched request.
+ENABLED_SECURITY_POLICY="platform-app/src/main/java/com/example/platform/security/PhaseZeroContainmentPolicy.java"
+if verify_enabled_admin_policy "$ENABLED_SECURITY_POLICY"; then
     pass "Admin routes require ROLE_ADMIN authority"
 else
     fail "Admin routes missing ROLE_ADMIN authority requirement"

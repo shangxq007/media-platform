@@ -21,6 +21,7 @@ import com.example.platform.render.testsupport.fakes.FakeProductRepository;
 import com.example.platform.render.testsupport.fakes.FakeRenderJobService;
 import com.example.platform.render.testsupport.fakes.FakeRenderOrchestratorPort;
 import com.example.platform.render.testsupport.fakes.FakeStorageReferenceRepository;
+import com.example.platform.shared.authorization.AuthorizationDeniedException;
 import com.example.platform.shared.web.PlatformException;
 import com.example.platform.shared.web.TenantContext;
 import java.time.Instant;
@@ -31,6 +32,9 @@ import java.util.Optional;
 import org.junit.jupiter.api.*;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 /**
  * VS.1 smoke integration test — end-to-end flow for Preview Render Job.
@@ -74,7 +78,7 @@ class VS1SmokeIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        fakeJobService = new FakeRenderJobService();
+        fakeJobService = spy(new FakeRenderJobService());
         fakeJobService.registerProject("proj-1", "t-1");
         fakeJobService.registerProject("proj-2", "t-1");
 
@@ -84,10 +88,11 @@ class VS1SmokeIntegrationTest {
         productRuntimeService = new ProductRuntimeService(fakeProductRepo, fakeDepRepo);
         storageRuntimeService = new StorageRuntimeService(fakeStorageRepo, mockProvider(null));
 
-        fakeOrchestrator = new FakeRenderOrchestratorPort();
+        fakeOrchestrator = spy(new FakeRenderOrchestratorPort());
         controller = new RenderController(fakeJobService, fakeOrchestrator, java.util.List.<com.example.platform.storage.domain.BlobStorage>of(),
                 null, null, null, null, null, null, null, null, null);
         stateMachine = new RenderJobStateMachine();
+        clearInvocations(fakeJobService, fakeOrchestrator);
     }
 
     @AfterEach
@@ -106,18 +111,11 @@ class VS1SmokeIntegrationTest {
         void createAndGetJob() {
             CreateRenderJobRequest createReq = new CreateRenderJobRequest("proj-1", "snap-1", "default_1080p");
 
-            RenderJobResponse createResult = controller.createRenderJob("t-1", "proj-1", createReq);
-            assertEquals("QUEUED", createResult.status());
-            assertNotNull(createResult.id());
-            assertEquals("proj-1", createResult.projectId());
-            assertEquals("snap-1", createResult.timelineSnapshotId());
-            assertEquals("default_1080p", createResult.profile());
+            AuthorizationDeniedException failure = assertThrowsExactly(AuthorizationDeniedException.class,
+                    () -> controller.createRenderJob("t-1", "proj-1", createReq));
 
-            // Get by ID
-            RenderJobResponse getResult = controller.getRenderJob("t-1", "proj-1", createResult.id());
-            assertEquals(createResult.id(), getResult.id());
-            assertEquals("proj-1", getResult.projectId());
-            assertEquals("default_1080p", getResult.profile());
+            assertAuthorizationUnavailable(failure, "render job creation");
+            verifyControllerDependenciesUntouched();
         }
 
         @Test
@@ -178,11 +176,11 @@ class VS1SmokeIntegrationTest {
             SubmitRenderJobRequest submitReq = new SubmitRenderJobRequest(
                     "t-1", "proj-1", "Create promo video", "default_1080p", "snap-1");
 
-            Map<String, String> result = controller.submitIncrementalRenderJob("t-1", "proj-1", submitReq);
+            AuthorizationDeniedException failure = assertThrowsExactly(AuthorizationDeniedException.class,
+                    () -> controller.submitIncrementalRenderJob("t-1", "proj-1", submitReq));
 
-            assertNotNull(result.get("jobId"));
-            assertEquals("QUEUED", result.get("status"));
-            assertEquals(1, fakeOrchestrator.getSubmittedJobs().size());
+            assertAuthorizationUnavailable(failure, "incremental render submission");
+            verifyControllerDependenciesUntouched();
         }
 
         @Test
@@ -191,12 +189,13 @@ class VS1SmokeIntegrationTest {
             fakeJobService.registerProject("proj-1", "t-1");
             CreateRenderJobRequest createReq = new CreateRenderJobRequest("proj-1", "snap-1", "default_1080p");
             RenderJobResponse created = fakeJobService.createForProject("t-1", "proj-1", createReq);
+            clearInvocations(fakeJobService, fakeOrchestrator);
 
-            Map<String, String> result = controller.startRenderJob("t-1", "proj-1", created.id());
+            AuthorizationDeniedException failure = assertThrowsExactly(AuthorizationDeniedException.class,
+                    () -> controller.startRenderJob("t-1", "proj-1", created.id()));
 
-            assertEquals(created.id(), result.get("jobId"));
-            assertEquals("STARTED", result.get("status"));
-            assertTrue(fakeOrchestrator.getExecutedJobs().contains(created.id()));
+            assertAuthorizationUnavailable(failure, "render job execution");
+            verifyControllerDependenciesUntouched();
         }
     }
 
@@ -306,8 +305,11 @@ class VS1SmokeIntegrationTest {
         void tenantMismatchOnCancel() {
             TenantContext.set("t-1");
 
-            assertThrows(IllegalArgumentException.class,
+            AuthorizationDeniedException failure = assertThrowsExactly(AuthorizationDeniedException.class,
                     () -> controller.cancelJob("rj-1", "t-other"));
+
+            assertAuthorizationUnavailable(failure, "global render cancellation");
+            verifyControllerDependenciesUntouched();
         }
 
         @Test
@@ -318,8 +320,11 @@ class VS1SmokeIntegrationTest {
             SubmitRenderJobRequest req = new SubmitRenderJobRequest(
                     "t-1", "proj-1", "test", "default_1080p", "snap-1");
 
-            assertThrows(IllegalStateException.class,
+            AuthorizationDeniedException failure = assertThrowsExactly(AuthorizationDeniedException.class,
                     () -> controllerNoOrch.submitIncrementalRenderJob("t-1", "proj-1", req));
+
+            assertAuthorizationUnavailable(failure, "incremental render submission");
+            verifyControllerDependenciesUntouched();
         }
 
         @Test
@@ -340,6 +345,19 @@ class VS1SmokeIntegrationTest {
 
             assertTrue(ex.isProductRegistered());
         }
+    }
+
+    private static void assertAuthorizationUnavailable(
+            AuthorizationDeniedException failure, String operation) {
+        assertFalse(failure.decision().allowed());
+        assertEquals("AUTHORIZATION_UNAVAILABLE", failure.decision().reasonCode());
+        assertEquals("FAIL_CLOSED_CONTAINMENT", failure.decision().ruleRef());
+        assertEquals(operation + " is unavailable until canonical authorization is established",
+                failure.decision().detail());
+    }
+
+    private void verifyControllerDependenciesUntouched() {
+        verifyNoInteractions(fakeJobService, fakeOrchestrator);
     }
 
     // ========== VS.1-E: API response safety ==========

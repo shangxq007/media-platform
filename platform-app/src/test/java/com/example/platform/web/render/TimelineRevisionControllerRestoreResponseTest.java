@@ -6,6 +6,7 @@ import com.example.platform.timeline.app.TimelineRevisionSaveService;
 import com.example.platform.timeline.app.TimelineRevisionQueryService;
 import com.example.platform.timeline.app.TimelineRevisionDiffQuery;
 import com.example.platform.shared.web.TenantContext;
+import com.example.platform.shared.authorization.AuthorizationDeniedException;
 import com.example.platform.timeline.version.TimelineRevision;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
@@ -97,20 +98,9 @@ class TimelineRevisionControllerRestoreResponseTest {
                         "snap_r", INTERNAL_FIXTURE, "internal-1.0")));
         when(codec.toEditorJson(INTERNAL_FIXTURE)).thenReturn(EDITOR_PROJECTION);
 
-        TenantContext.set("ten_r");
         var c = controller(revisionQueryService, saveService, currentService, codec);
-        var response = c.restore("prj_r", "trev_restored", "user-1");
-
-        assertEquals(org.springframework.http.HttpStatus.CREATED, response.getStatusCode());
-        var body = response.getBody();
-        assertNotNull(body);
-        assertEquals("trev_restored", body.newRevision().id());
-        assertEquals(INTERNAL_FIXTURE, body.internalTimelineJson(),
-                "internalTimelineJson must be the restored internal payload");
-        assertEquals(EDITOR_PROJECTION, body.editorTimelineJson(),
-                "editorTimelineJson must be the editor projection of the internal payload");
-        assertNotEquals(body.editorTimelineJson(), body.internalTimelineJson(),
-                "RESTORE_RESPONSE_FIELD_ALIASING_COUNT must be 0 (fields must not be aliased)");
+        assertUnavailable(() -> c.restore("prj_r", "trev_restored", "user-1"));
+        verifyNoInteractions(revisionQueryService, saveService, currentService, codec);
     }
 
     @Test
@@ -129,12 +119,9 @@ class TimelineRevisionControllerRestoreResponseTest {
                         "snap_r", INTERNAL_FIXTURE, "internal-1.0")));
         when(codec.toEditorJson(INTERNAL_FIXTURE)).thenReturn(EDITOR_PROJECTION);
 
-        TenantContext.set("ten_r");
         var c = controller(revisionQueryService, saveService, currentService, codec);
-        c.restore("prj_r", "trev_restored", "user-1");
-
-        // the exact restored internal payload must be supplied to the projection port
-        verify(codec).toEditorJson(INTERNAL_FIXTURE);
+        assertUnavailable(() -> c.restore("prj_r", "trev_restored", "user-1"));
+        verifyNoInteractions(revisionQueryService, saveService, currentService, codec);
     }
 
     @Test
@@ -153,7 +140,6 @@ class TimelineRevisionControllerRestoreResponseTest {
                         "snap_r", INTERNAL_FIXTURE, "internal-1.0")));
         when(codec.toEditorJson(INTERNAL_FIXTURE)).thenReturn(EDITOR_PROJECTION);
 
-        TenantContext.set("ten_r");
         var c = new TimelineRevisionController(
                 revisionQueryService,
                 mock(TimelineRevisionDiffQuery.class),
@@ -161,13 +147,13 @@ class TimelineRevisionControllerRestoreResponseTest {
                 mock(com.example.platform.render.app.event.TimelineReviewEventPublisher.class),
                 null, null,
                 saveService, currentService, codec);
-        c.restore("prj_r", "trev_restored", "user-1");
+        assertUnavailable(() -> c.restore("prj_r", "trev_restored", "user-1"));
+        verifyNoInteractions(revisionQueryService, saveService, currentService, codec);
+    }
 
-        // canonical restore authority called exactly once; expected-current from canonical CAS
-        verify(saveService, times(1)).restoreRevision("prj_r", "trev_restored", "trev_current", "user-1");
-        verify(currentService, times(1)).getCurrentRevisionId("prj_r");
-        // legacy restore authority is absent by construction (CFRH-I1): the
-        // TimelineRevisionService type no longer exposes a restore method, which
-        // Cfrhi1LegacyWriteAuthorityGuardTest verifies structurally.
+    private static void assertUnavailable(org.junit.jupiter.api.function.Executable invocation) {
+        AuthorizationDeniedException failure = assertThrows(
+                AuthorizationDeniedException.class, invocation);
+        assertEquals("AUTHORIZATION_UNAVAILABLE", failure.decision().reasonCode());
     }
 }

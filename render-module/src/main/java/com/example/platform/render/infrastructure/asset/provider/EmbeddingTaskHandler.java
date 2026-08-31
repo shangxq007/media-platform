@@ -81,6 +81,7 @@ public class EmbeddingTaskHandler implements TaskHandler, Producer {
     @Override public String producerId() { return "embedding-default"; }
     @Override public List<String> supportedOutputTypes() { return List.of("EMBEDDING"); }
     @Override public ProducerResult execute(ProducerContext context) {
-        return ProducerResult.success(List.of(), 0);
+        return ProducerResult.failure(
+                "Embedding producer unavailable: no real embedding provider is configured", 0);
     }
 }
