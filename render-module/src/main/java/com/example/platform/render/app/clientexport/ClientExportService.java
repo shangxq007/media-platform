@@ -10,6 +10,7 @@ import com.example.platform.shared.commercial.CommercialAdmissionRequest;
 import com.example.platform.shared.commercial.CommercialDecision;
 import com.example.platform.shared.commercial.PrincipalRef;
 import com.example.platform.shared.commercial.PrincipalType;
+import com.example.platform.shared.authorization.FailClosedAuthorization;
 import com.example.platform.storage.contract.ChecksummingInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -185,13 +186,7 @@ public class ClientExportService {
     }
 
     public ClientExportSession updateProgress(String sessionId, String status, int progress) {
-        ClientExportSession session = findSessionOrThrow(sessionId);
-        if (!session.canTransitionTo(status)) {
-            throw new IllegalStateException(
-                    "Invalid status transition: " + session.status() + " -> " + status);
-        }
-        repository.updateProgress(sessionId, status, progress);
-        return findSessionOrThrow(sessionId);
+        throw FailClosedAuthorization.unavailable("client export progress mutation");
     }
 
     public Path resolveUploadPath(String sessionId) throws IOException {
@@ -204,64 +199,11 @@ public class ClientExportService {
     public ClientExportSession uploadAndComplete(
             String sessionId, MultipartFile file,
             Long durationSeconds, String checksum, boolean registerArtifact) throws IOException {
-
-        ClientExportSession session = findSessionOrThrow(sessionId);
-
-        if (session.isTerminal()) {
-            throw new IllegalStateException("Session " + sessionId + " is already in terminal state: " + session.status());
-        }
-
-        // Stream through ChecksummingInputStream to compute sizeBytes + checksum
-        // without buffering the entire file in memory.
-        long computedSizeBytes;
-        String computedChecksum;
-        Path output = resolveUploadPath(sessionId);
-        try (InputStream rawIn = file.getInputStream();
-             ChecksummingInputStream cis = new ChecksummingInputStream(rawIn)) {
-            Files.copy(cis, output, StandardCopyOption.REPLACE_EXISTING);
-            computedSizeBytes = cis.sizeBytes();
-            computedChecksum = cis.checksum();
-        }
-
-        // Fall back to MultipartFile.getSize() if ChecksummingInputStream returned 0
-        // (shouldn't happen but defensive)
-        if (computedSizeBytes == 0 && file.getSize() > 0) {
-            computedSizeBytes = file.getSize();
-        }
-
-        // Use caller-provided checksum only if it's valid sha256; otherwise use computed
-        String finalChecksum = checksum != null && checksum.startsWith("sha256:") ? checksum : computedChecksum;
-
-        String storageUri = buildTenantPath(session).resolve(sessionId).resolve("output." + session.format()).toString();
-        String artifactId = null;
-        String downloadPath = "/api/render/client-exports/" + sessionId + "/download";
-
-        if (registerArtifact && artifactPort.isPresent()) {
-            var registered = artifactPort.get().register(
-                    sessionId, session.projectId(), storageUri,
-                    session.format(), session.resolution(),
-                    durationSeconds != null ? durationSeconds : 0L,
-                    computedSizeBytes,
-                    finalChecksum);
-            artifactId = registered.artifactId();
-            if (registered.downloadPath() != null) {
-                downloadPath = registered.downloadPath();
-            }
-        }
-
-        repository.updateStatus(sessionId, ClientExportSession.STATUS_COMPLETED, 100,
-                storageUri, artifactId, downloadPath, null, null);
-
-        log.info("Client export session completed id={} size={}b checksum={}", sessionId, computedSizeBytes, finalChecksum);
-        return findSessionOrThrow(sessionId);
+        throw FailClosedAuthorization.unavailable("client export upload completion");
     }
 
     public ClientExportSession failSession(String sessionId, String errorCode, String errorMessage) {
-        findSessionOrThrow(sessionId);
-        repository.updateStatus(sessionId, ClientExportSession.STATUS_FAILED, 0,
-                null, null, null, errorCode, errorMessage);
-        log.warn("Client export session failed id={} error={}", sessionId, errorCode);
-        return findSessionOrThrow(sessionId);
+        throw FailClosedAuthorization.unavailable("client export failure mutation");
     }
 
     public ClientExportSession cancelSession(String sessionId) {

@@ -5,6 +5,7 @@ import com.example.platform.render.domain.asset.AssetGovernanceMetadata;
 import com.example.platform.render.domain.asset.AssetRegistryRecord;
 import com.example.platform.render.infrastructure.asset.MarketplaceListingRepository;
 import com.example.platform.render.infrastructure.asset.SearchProjectionRepository;
+import com.example.platform.shared.authorization.FailClosedAuthorization;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.*;
@@ -43,83 +44,31 @@ public class AssetWorkbenchController {
     @GetMapping
     @Operation(summary = "Full asset workbench view")
     public ResponseEntity<AssetWorkbenchDto> workbench(@PathVariable String assetId) {
-        long start = System.currentTimeMillis();
-        var asset = registryService.resolve(assetId);
-        if (asset.isEmpty()) return ResponseEntity.notFound().build();
-
-        AssetRegistryRecord r = asset.get();
-        var semantic = semanticService.get(assetId);
-        var pubStatus = reviewService.getPublishStatus(assetId);
-        var marketplace = marketplaceRepo.findByAssetId(assetId, null);
-        var searchProj = searchProjectionRepo.findByAssetId(assetId);
-
-        var dto = new AssetWorkbenchDto(
-                r.assetId(), r.assetType(), r.storageUri(), r.checksum(),
-                r.createdAt() != null ? r.createdAt().toString() : null,
-                r.updatedAt() != null ? r.updatedAt().toString() : null,
-                pubStatus.map(Enum::name).orElse("DRAFT"),
-                semantic.map(s -> s.status().name()).orElse("PENDING"),
-                marketplace.map(m -> m.status().name()).orElse(null),
-                searchProj.isPresent(),
-                r.governance() != null ? r.governance().classification() : null,
-                r.governance() != null ? r.governance().license() : null,
-                r.assetVersion()
-        );
-        log.info("Asset workbench loaded: asset={} latency={}ms",
-                assetId, System.currentTimeMillis() - start);
-        return ResponseEntity.ok(dto);
+        throw FailClosedAuthorization.unavailable("tenant-unscoped asset workbench read");
     }
 
     @GetMapping("/semantic")
     @Operation(summary = "Semantic metadata workspace")
     public ResponseEntity<SemanticWsDto> semantic(@PathVariable String assetId) {
-        return semanticService.get(assetId)
-                .map(s -> ResponseEntity.ok(new SemanticWsDto(
-                        s.transcripts() != null ? s.transcripts().stream()
-                                .map(t -> t.text()).reduce("", (a, b) -> a + " " + b).trim() : "",
-                        s.scenes() != null ? s.scenes().size() : 0,
-                        s.objects() != null ? s.objects().size() : 0,
-                        s.brands() != null ? s.brands().size() : 0,
-                        s.people() != null ? s.people().size() : 0,
-                        s.language(), s.status().name())))
-                .orElse(ResponseEntity.notFound().build());
+        throw FailClosedAuthorization.unavailable("tenant-unscoped asset semantic read");
     }
 
     @GetMapping("/governance")
     @Operation(summary = "Governance workspace")
     public ResponseEntity<GovernanceWsDto> governance(@PathVariable String assetId) {
-        return registryService.resolve(assetId)
-                .map(r -> {
-                    AssetGovernanceMetadata g = r.governance() != null ? r.governance()
-                            : AssetGovernanceMetadata.defaults();
-                    return ResponseEntity.ok(new GovernanceWsDto(
-                            g.classification(), g.license(), g.containsPii(),
-                            g.retentionPolicy(), g.securityLevel(),
-                            r.ownerId(), r.assetVersion()));
-                })
-                .orElse(ResponseEntity.notFound().build());
+        throw FailClosedAuthorization.unavailable("tenant-unscoped asset governance read");
     }
 
     @GetMapping("/marketplace")
     @Operation(summary = "Marketplace listing workspace")
     public ResponseEntity<MarketplaceWsDto> marketplace(@PathVariable String assetId) {
-        return marketplaceRepo.findByAssetId(assetId, null)
-                .map(m -> ResponseEntity.ok(new MarketplaceWsDto(
-                        m.id(), m.status().name(),
-                        m.listingType() != null ? m.listingType().name() : null,
-                        m.previewUrl(), m.coverUrl(),
-                        m.updatedAt() != null ? m.updatedAt().toString() : null)))
-                .orElse(ResponseEntity.notFound().build());
+        throw FailClosedAuthorization.unavailable("tenant-unscoped asset marketplace read");
     }
 
     @GetMapping("/search")
     @Operation(summary = "Search projection workspace")
     public ResponseEntity<SearchWsDto> search(@PathVariable String assetId) {
-        return searchProjectionRepo.findByAssetId(assetId)
-                .map(p -> ResponseEntity.ok(new SearchWsDto(
-                        true,
-                        p.searchText() != null ? p.searchText().length() : 0)))
-                .orElse(ResponseEntity.ok(new SearchWsDto(false, 0)));
+        throw FailClosedAuthorization.unavailable("tenant-unscoped asset search read");
     }
 
     public record AssetWorkbenchDto(String assetId, String assetType, String storageUri,

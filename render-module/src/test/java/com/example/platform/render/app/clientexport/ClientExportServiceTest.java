@@ -3,6 +3,7 @@ package com.example.platform.render.app.clientexport;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -19,6 +20,7 @@ import com.example.platform.shared.test.PostgresTestContainerSupport;
 import com.example.platform.shared.commercial.CommercialAdmissionPort;
 import com.example.platform.shared.commercial.CommercialDecision;
 import com.example.platform.shared.commercial.CommercialDecisionReason;
+import com.example.platform.shared.authorization.AuthorizationDeniedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import javax.sql.DataSource;
@@ -127,29 +129,30 @@ class ClientExportServiceTest extends PostgresTestContainerSupport {
     }
 
     @Test
-    void updateProgressPersists() {
+    void clientProgressCannotMutateExecutionTruth() {
         var config = service.createSessionWithConfig(
                 "tenant-1", "ws-1", "proj-1", "user-1",
                 "FREE", null, null);
 
-        service.updateProgress(config.sessionId(), ClientExportSession.STATUS_EXPORTING, 50);
+        AuthorizationDeniedException failure = assertThrows(AuthorizationDeniedException.class, () ->
+                service.updateProgress(config.sessionId(), ClientExportSession.STATUS_EXPORTING, 50));
 
         var updated = service.findSession(config.sessionId()).orElseThrow();
-        assertEquals("EXPORTING", updated.status());
-        assertEquals(50, updated.progress());
+        assertEquals("AUTHORIZATION_UNAVAILABLE", failure.decision().reasonCode());
+        assertEquals("CREATED", updated.status());
+        assertEquals(0, updated.progress());
     }
 
     @Test
-    void invalidTransitionThrows() {
+    void clientCannotAssertCompletedStatusThroughProgress() {
         var config = service.createSessionWithConfig(
                 "tenant-1", "ws-1", "proj-1", "user-1",
                 "FREE", null, null);
 
-        service.updateProgress(config.sessionId(), ClientExportSession.STATUS_EXPORTING, 50);
-        service.updateProgress(config.sessionId(), ClientExportSession.STATUS_COMPLETED, 100);
-
-        assertThrows(IllegalStateException.class, () ->
-                service.updateProgress(config.sessionId(), ClientExportSession.STATUS_EXPORTING, 0));
+        AuthorizationDeniedException failure = assertThrows(AuthorizationDeniedException.class, () ->
+                service.updateProgress(config.sessionId(), ClientExportSession.STATUS_COMPLETED, 100));
+        assertEquals("AUTHORIZATION_UNAVAILABLE", failure.decision().reasonCode());
+        assertEquals("CREATED", service.findSession(config.sessionId()).orElseThrow().status());
     }
 
     @Test
@@ -163,18 +166,19 @@ class ClientExportServiceTest extends PostgresTestContainerSupport {
     }
 
     @Test
-    void uploadAndCompleteUsesTenantPath() throws Exception {
+    void uploadCannotCompleteOrStoreAnAbsoluteLocalPath() throws Exception {
         var config = service.createSessionWithConfig(
                 "tenant-1", "ws-1", "proj-1", "user-1",
                 "FREE", "client_720p_watermarked", "snap-1");
 
         byte[] payload = new byte[]{1, 2, 3, 4};
         var file = new MockMultipartFile("file", "out.mp4", "video/mp4", payload);
-        var completed = service.uploadAndComplete(config.sessionId(), file, 10L, null, false);
-
-        assertEquals("COMPLETED", completed.status());
-        assertTrue(completed.outputUri().contains("tenant/tenant-1"));
-        assertTrue(completed.outputUri().contains("project/proj-1"));
+        AuthorizationDeniedException failure = assertThrows(AuthorizationDeniedException.class, () ->
+                service.uploadAndComplete(config.sessionId(), file, 10L, null, false));
+        assertEquals("AUTHORIZATION_UNAVAILABLE", failure.decision().reasonCode());
+        var unchanged = service.findSession(config.sessionId()).orElseThrow();
+        assertEquals("CREATED", unchanged.status());
+        assertNull(unchanged.outputUri());
 
         Path expectedFile = tempDir
                 .resolve("tenant").resolve("tenant-1")
@@ -182,18 +186,21 @@ class ClientExportServiceTest extends PostgresTestContainerSupport {
                 .resolve("project").resolve("proj-1")
                 .resolve("exports").resolve(config.sessionId())
                 .resolve("output.mp4");
-        assertTrue(Files.exists(expectedFile));
+        assertFalse(Files.exists(expectedFile));
     }
 
     @Test
-    void failSessionRecordsError() {
+    void clientFailureCannotMutateExecutionTruth() {
         var config = service.createSessionWithConfig(
                 "tenant-1", "ws-1", "proj-1", "user-1",
                 "FREE", null, null);
 
-        var failed = service.failSession(config.sessionId(), "BROWSER_CRASH", "MediaRecorder stopped");
-        assertEquals("FAILED", failed.status());
-        assertEquals("BROWSER_CRASH", failed.errorCode());
+        AuthorizationDeniedException failure = assertThrows(AuthorizationDeniedException.class, () ->
+                service.failSession(config.sessionId(), "BROWSER_CRASH", "MediaRecorder stopped"));
+        assertEquals("AUTHORIZATION_UNAVAILABLE", failure.decision().reasonCode());
+        var unchanged = service.findSession(config.sessionId()).orElseThrow();
+        assertEquals("CREATED", unchanged.status());
+        assertNull(unchanged.errorCode());
     }
 
     @Test
@@ -202,7 +209,6 @@ class ClientExportServiceTest extends PostgresTestContainerSupport {
                 "tenant-1", "ws-1", "proj-1", "user-1",
                 "FREE", null, null);
 
-        service.updateProgress(config.sessionId(), ClientExportSession.STATUS_EXPORTING, 30);
         var cancelled = service.cancelSession(config.sessionId());
         assertEquals("CANCELLED", cancelled.status());
     }
@@ -213,7 +219,8 @@ class ClientExportServiceTest extends PostgresTestContainerSupport {
                 "tenant-1", "ws-1", "proj-1", "user-1",
                 "FREE", null, null);
 
-        service.failSession(config.sessionId(), "ERR", "test");
+        repository.updateStatus(config.sessionId(), ClientExportSession.STATUS_FAILED, 0,
+                null, null, null, "ERR", "test");
         assertThrows(IllegalStateException.class, () ->
                 service.cancelSession(config.sessionId()));
     }

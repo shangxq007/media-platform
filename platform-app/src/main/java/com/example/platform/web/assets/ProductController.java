@@ -2,6 +2,7 @@ package com.example.platform.web.assets;
 
 import com.example.platform.render.app.product.ProductRuntimeService;
 import com.example.platform.render.domain.product.*;
+import com.example.platform.shared.authorization.FailClosedAuthorization;
 import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -18,46 +19,34 @@ public class ProductController {
 
     @GetMapping("/products/{productId}")
     public ResponseEntity<ProductDto> get(@PathVariable String productId) {
-        return service.find(productId).map(p -> ResponseEntity.ok(toDto(p)))
-                .orElse(ResponseEntity.notFound().build());
+        throw FailClosedAuthorization.unavailable("tenant-unscoped product read");
     }
 
     @GetMapping("/projects/{projectId}/products")
     public List<ProductDto> listByProject(@PathVariable String projectId, @RequestParam(defaultValue = "50") int limit) {
-        return service.findByProject(projectId, limit).stream().map(ProductController::toDto).toList();
+        throw FailClosedAuthorization.unavailable("tenant-unscoped project product listing");
     }
 
     @GetMapping("/assets/{assetId}/products")
     public List<ProductDto> listByAsset(@PathVariable String assetId) {
-        return service.findByAsset(assetId).stream().map(ProductController::toDto).toList();
+        throw FailClosedAuthorization.unavailable("tenant-unscoped asset product listing");
     }
 
     @GetMapping("/products/{productId}/dependencies")
     public List<Map<String, String>> getDependencies(@PathVariable String productId) {
-        return service.findDependencies(productId).stream()
-                .map(d -> Map.of("dependencyId", d.dependencyId(), "dependsOnId", d.dependsOnProductId(),
-                        "type", d.dependencyType().name(), "createdAt", d.createdAt() != null ? d.createdAt().toString() : ""))
-                .toList();
+        throw FailClosedAuthorization.unavailable("tenant-unscoped product dependency read");
     }
 
     @PostMapping("/products/{productId}/dependencies")
     public ResponseEntity<Map<String, String>> linkDependency(@PathVariable String productId,
             @RequestBody LinkRequest body) {
-        try {
-            var dep = service.linkDependency(productId, body.dependsOnProductId(),
-                    DependencyType.valueOf(body.dependencyType()), "system", body.projectId());
-            return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(Map.of("dependencyId", dep.dependencyId(), "status", "linked"));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+        throw FailClosedAuthorization.unavailable("product dependency mutation");
     }
 
     @DeleteMapping("/products/{productId}/dependencies/{dependencyId}")
     public ResponseEntity<Map<String, String>> unlink(@PathVariable String productId,
             @PathVariable String dependencyId) {
-        service.unlinkDependency(dependencyId);
-        return ResponseEntity.ok(Map.of("status", "unlinked"));
+        throw FailClosedAuthorization.unavailable("product dependency mutation");
     }
 
     private static ProductDto toDto(Product p) {

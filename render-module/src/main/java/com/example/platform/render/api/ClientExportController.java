@@ -3,6 +3,7 @@ package com.example.platform.render.api;
 import com.example.platform.render.app.clientexport.ClientExportService;
 import com.example.platform.render.app.clientexport.ClientExportService.ExportConfig;
 import com.example.platform.render.domain.clientexport.ClientExportSession;
+import com.example.platform.shared.authorization.FailClosedAuthorization;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -34,36 +35,14 @@ public class ClientExportController {
     @PostMapping
     public ExportConfig startSession(
             @RequestBody StartClientExportRequest request) {
-        String effectiveTenant = com.example.platform.shared.web.TenantContext.get();
-        if (effectiveTenant == null || effectiveTenant.isBlank()) {
-            throw new IllegalArgumentException("Tenant context is required");
-        }
-        String tier = request.tier() != null ? request.tier() : "FREE";
-        return clientExportService.createSessionWithConfig(
-                effectiveTenant,
-                request.workspaceId(),
-                request.projectId(),
-                request.userId(),
-                tier,
-                request.preset(),
-                request.timelineSnapshotId());
+        throw FailClosedAuthorization.unavailable("client export session creation");
     }
 
     @PostMapping("/{sessionId}/progress")
     public Map<String, Object> updateProgress(
             @PathVariable String sessionId,
             @RequestBody ProgressUpdateRequest request) {
-        String effectiveTenant = com.example.platform.shared.web.TenantContext.get();
-        if (effectiveTenant == null || effectiveTenant.isBlank()) {
-            throw new IllegalArgumentException("Tenant context is required");
-        }
-        clientExportService.findSessionForTenant(sessionId, effectiveTenant);
-        ClientExportSession session = clientExportService.updateProgress(
-                sessionId, request.status(), request.progress());
-        return Map.of(
-                "sessionId", session.id(),
-                "status", session.status(),
-                "progress", session.progress());
+        throw FailClosedAuthorization.unavailable("client export progress mutation");
     }
 
     @PostMapping(value = "/{sessionId}/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -74,58 +53,26 @@ public class ClientExportController {
             @RequestParam(value = "checksum", required = false) String checksum,
             @RequestParam(value = "registerArtifact", defaultValue = "true") boolean registerArtifact)
             throws Exception {
-        String effectiveTenant = com.example.platform.shared.web.TenantContext.get();
-        if (effectiveTenant == null || effectiveTenant.isBlank()) {
-            throw new IllegalArgumentException("Tenant context is required");
-        }
-        clientExportService.findSessionForTenant(sessionId, effectiveTenant);
-        ClientExportSession session = clientExportService.uploadAndComplete(
-                sessionId, file, durationSeconds, checksum, registerArtifact);
-        return Map.of(
-                "sessionId", session.id(),
-                "status", session.status(),
-                "storageUri", session.outputUri() != null ? session.outputUri() : "",
-                "artifactId", session.artifactId() != null ? session.artifactId() : "",
-                "downloadUrl", session.downloadPath() != null ? session.downloadPath() : "");
+        throw FailClosedAuthorization.unavailable("client export upload completion");
     }
 
     @PostMapping("/{sessionId}/fail")
     public Map<String, Object> failSession(
             @PathVariable String sessionId,
             @RequestBody FailRequest request) {
-        String effectiveTenant = com.example.platform.shared.web.TenantContext.get();
-        if (effectiveTenant == null || effectiveTenant.isBlank()) {
-            throw new IllegalArgumentException("Tenant context is required");
-        }
-        clientExportService.findSessionForTenant(sessionId, effectiveTenant);
-        ClientExportSession session = clientExportService.failSession(
-                sessionId, request.errorCode(), request.errorMessage());
-        return Map.of(
-                "sessionId", session.id(),
-                "status", session.status(),
-                "errorCode", session.errorCode() != null ? session.errorCode() : "");
+        throw FailClosedAuthorization.unavailable("client export failure mutation");
     }
 
     @PostMapping("/{sessionId}/cancel")
     public Map<String, Object> cancelSession(
             @PathVariable String sessionId) {
-        String effectiveTenant = com.example.platform.shared.web.TenantContext.get();
-        if (effectiveTenant == null || effectiveTenant.isBlank()) {
-            throw new IllegalArgumentException("Tenant context is required");
-        }
-        clientExportService.findSessionForTenant(sessionId, effectiveTenant);
-        ClientExportSession session = clientExportService.cancelSession(sessionId);
-        return Map.of("sessionId", session.id(), "status", session.status());
+        throw FailClosedAuthorization.unavailable("client export cancellation");
     }
 
     @GetMapping("/{sessionId}")
     public ClientExportSession getSession(
             @PathVariable String sessionId) {
-        String effectiveTenant = com.example.platform.shared.web.TenantContext.get();
-        if (effectiveTenant == null || effectiveTenant.isBlank()) {
-            throw new IllegalArgumentException("Tenant context is required");
-        }
-        return clientExportService.findSessionForTenant(sessionId, effectiveTenant);
+        throw FailClosedAuthorization.unavailable("client export session read");
     }
 
     @GetMapping
@@ -133,34 +80,13 @@ public class ClientExportController {
             @RequestParam(value = "projectId", required = false) String projectId,
             @RequestParam(value = "limit", defaultValue = "50") int limit,
             @RequestParam(value = "offset", defaultValue = "0") int offset) {
-        String effectiveTenant = com.example.platform.shared.web.TenantContext.get();
-        if (effectiveTenant == null || effectiveTenant.isBlank()) {
-            throw new IllegalArgumentException("Tenant context is required");
-        }
-        if (projectId != null && !projectId.isBlank()) {
-            return clientExportService.listByTenantAndProject(effectiveTenant, projectId, limit, offset);
-        }
-        return clientExportService.listByTenant(effectiveTenant, limit, offset);
+        throw FailClosedAuthorization.unavailable("client export session listing");
     }
 
     @GetMapping("/{sessionId}/download")
     public ResponseEntity<Resource> download(
             @PathVariable String sessionId) throws Exception {
-        String effectiveTenant = com.example.platform.shared.web.TenantContext.get();
-        if (effectiveTenant == null || effectiveTenant.isBlank()) {
-            throw new IllegalArgumentException("Tenant context is required");
-        }
-        ClientExportSession session = clientExportService.findSessionForTenant(sessionId, effectiveTenant);
-        Path file = clientExportService.resolveUploadPath(sessionId);
-        if (!Files.exists(file)) {
-            return ResponseEntity.notFound().build();
-        }
-        Resource resource = new FileSystemResource(file);
-        String filename = "export-" + sessionId + "." + session.format();
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-                .contentType(MediaType.parseMediaType("video/" + session.format()))
-                .body(resource);
+        throw FailClosedAuthorization.unavailable("client export local file download");
     }
 
     public record StartClientExportRequest(

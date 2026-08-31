@@ -28,6 +28,7 @@ import com.example.platform.render.app.dto.ArtifactInfoResponse;
 import com.example.platform.render.app.dto.StatusHistoryResponse;
 import com.example.platform.render.app.dto.CreateRenderJobRequest;
 import com.example.platform.render.app.dto.RenderJobResponse;
+import com.example.platform.shared.authorization.FailClosedAuthorization;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -134,7 +135,7 @@ public class RenderController {
     public RenderJobResponse createRenderJob(@PathVariable String tenantId,
             @PathVariable String projectId,
             @Valid @RequestBody CreateRenderJobRequest request) {
-        return renderJobService.createForProject(tenantId, projectId, request);
+        throw FailClosedAuthorization.unavailable("render job creation");
     }
 
     @GetMapping("/tenants/{tenantId}/projects/{projectId}/render-jobs/{jobId}")
@@ -156,8 +157,7 @@ public class RenderController {
             @PathVariable String tenantId,
             @PathVariable String projectId,
             @Valid @RequestBody GenerateIncrementalPlanRequest request) throws java.io.IOException {
-        requireIncrementalApi();
-        return incrementalApiService.previewPlan(tenantId, projectId, request);
+        throw FailClosedAuthorization.unavailable("incremental render planning");
     }
 
     @PostMapping("/tenants/{tenantId}/projects/{projectId}/render-jobs/incremental/submit")
@@ -166,14 +166,7 @@ public class RenderController {
             @PathVariable String tenantId,
             @PathVariable String projectId,
             @Valid @RequestBody SubmitRenderJobRequest request) {
-        if (!tenantId.equals(request.tenantId()) || !projectId.equals(request.projectId())) {
-            throw new IllegalArgumentException("Path tenant/project must match request body");
-        }
-        if (orchestratorPort == null) {
-            throw new IllegalStateException("Render orchestrator is not available");
-        }
-        String jobId = orchestratorPort.submitRenderJob(request);
-        return Map.of("jobId", jobId, "status", "QUEUED");
+        throw FailClosedAuthorization.unavailable("incremental render submission");
     }
 
     @PostMapping("/tenants/{tenantId}/projects/{projectId}/render/cache/cleanup")
@@ -181,10 +174,7 @@ public class RenderController {
     public RenderCacheCleanupResponse cleanupExpiredCache(
             @PathVariable String tenantId,
             @PathVariable String projectId) {
-        requireCacheCleanup();
-        var result = cacheCleanupService.runCleanup(tenantId, projectId);
-        return new RenderCacheCleanupResponse(
-                result.jobsScanned(), result.objectsDeleted(), result.jobsUpdated());
+        throw FailClosedAuthorization.unavailable("render cache cleanup");
     }
 
     @GetMapping("/tenants/{tenantId}/projects/{projectId}/render-jobs/{jobId}/cache/presign")
@@ -194,23 +184,14 @@ public class RenderController {
             @PathVariable String projectId,
             @PathVariable String jobId,
             @RequestParam(required = false) String cacheKey) {
-        requireCachePresign();
-        if (cacheKey != null && !cacheKey.isBlank()) {
-            return toEntryDto(cachePresignService.presignOne(tenantId, projectId, jobId, cacheKey));
-        }
-        return toPresignDto(cachePresignService.presignAll(tenantId, projectId, jobId));
+        throw FailClosedAuthorization.unavailable("render cache access");
     }
 
     @PostMapping("/tenants/{tenantId}/projects/{projectId}/render-jobs/{jobId}/start")
     public Map<String, String> startRenderJob(@PathVariable String tenantId,
             @PathVariable String projectId,
             @PathVariable String jobId) {
-        if (orchestratorPort == null) {
-            throw new IllegalStateException("Render orchestrator is not available");
-        }
-        renderJobService.getByIdAndProject(tenantId, projectId, jobId);
-        String resultJobId = orchestratorPort.executeExistingRenderJob(tenantId, jobId);
-        return Map.of("jobId", resultJobId, "status", "STARTED");
+        throw FailClosedAuthorization.unavailable("render job execution");
     }
 
     @GetMapping("/tenants/{tenantId}/projects/{projectId}/render-jobs/{jobId}/execution")
@@ -239,27 +220,7 @@ public class RenderController {
             @PathVariable String tenantId,
             @PathVariable String projectId,
             @Valid @RequestBody AiTimelineEditRequest request) {
-        if (aiTimelineEditService == null) {
-            throw new IllegalStateException("AI timeline edit is not available");
-        }
-        if (!tenantId.equals(request.tenantId()) || !projectId.equals(request.projectId())) {
-            throw new IllegalArgumentException("Path tenant/project must match request body");
-        }
-        boolean humanInTheLoop = Boolean.TRUE.equals(request.humanInTheLoop());
-        AiTimelineEditContext ctx = new AiTimelineEditContext(
-                tenantId,
-                projectId,
-                request.editSessionId(),
-                request.baseJobId(),
-                request.intent(),
-                request.conversationId(),
-                request.instruction(),
-                null,
-                humanInTheLoop);
-        var result = request.baseJobId() != null && !request.baseJobId().isBlank()
-                ? aiTimelineEditService.editFromBaseJob(tenantId, request.baseJobId(), request.instruction(), ctx)
-                : aiTimelineEditService.editTimeline(request.baseTimelineJson(), request.instruction(), ctx);
-        return toAiTimelineEditResponse(result);
+        throw FailClosedAuthorization.unavailable("AI timeline edit");
     }
 
     @PostMapping("/tenants/{tenantId}/projects/{projectId}/timeline/preview-internal")
@@ -268,21 +229,7 @@ public class RenderController {
             @PathVariable String tenantId,
             @PathVariable String projectId,
             @Valid @RequestBody TimelineInternalPreviewRequest request) {
-        if (timelineConversionService == null) {
-            throw new IllegalStateException("Timeline conversion is not available");
-        }
-        var preview = timelineConversionService.preview(request.timelineJson());
-        var s = preview.summary();
-        return new TimelineInternalPreviewResponse(
-                preview.internalTimelineJson(),
-                preview.sourceSchema(),
-                preview.alreadyInternal(),
-                s.sourceTrackOrLayerCount(),
-                s.internalTrackOrLayerCount(),
-                s.sourceClipCount(),
-                s.internalClipCount(),
-                s.targetRevision(),
-                s.jsonByteDelta());
+        throw FailClosedAuthorization.unavailable("timeline preview conversion");
     }
 
     @PostMapping("/tenants/{tenantId}/projects/{projectId}/timeline/ai-proposals/{proposalId}/adopt")
@@ -292,20 +239,7 @@ public class RenderController {
             @PathVariable String projectId,
             @PathVariable String proposalId,
             @Valid @RequestBody AiProposalResolveRequest request) {
-        if (aiTimelineProposalService == null) {
-            throw new IllegalStateException("AI proposal service is not available");
-        }
-        var resolved = aiTimelineProposalService.adopt(request.timelineJson(), proposalId);
-        // CFRH-I1: legacy AI-adopt revision persistence (recordAiAdoptRevision) removed
-        // (DELETE_OBSOLETE_PRODUCT_BEHAVIOR — LOSSLESS_MIGRATION_PROOF = FAIL). The adopt
-        // operation retains its separable proposal-resolve semantics; no revision is created.
-        return new AiTimelineEditResponse(
-                resolved.timelineJson(),
-                "platform",
-                "proposal-adopt",
-                resolved.applied(),
-                toProposalDtos(aiTimelineProposalService.listProposals(resolved.timelineJson())),
-                null);
+        throw FailClosedAuthorization.unavailable("AI timeline proposal adoption");
     }
 
     @PostMapping("/tenants/{tenantId}/projects/{projectId}/timeline/ai-proposals/{proposalId}/reject")
@@ -315,17 +249,7 @@ public class RenderController {
             @PathVariable String projectId,
             @PathVariable String proposalId,
             @Valid @RequestBody AiProposalResolveRequest request) {
-        if (aiTimelineProposalService == null) {
-            throw new IllegalStateException("AI proposal service is not available");
-        }
-        var resolved = aiTimelineProposalService.reject(request.timelineJson(), proposalId);
-        return new AiTimelineEditResponse(
-                resolved.timelineJson(),
-                "platform",
-                "proposal-reject",
-                false,
-                toProposalDtos(aiTimelineProposalService.listProposals(resolved.timelineJson())),
-                null);
+        throw FailClosedAuthorization.unavailable("AI timeline proposal rejection");
     }
 
     private static AiTimelineEditResponse toAiTimelineEditResponse(AiTimelineEditService.AiTimelineEditResult result) {
@@ -353,28 +277,17 @@ public class RenderController {
 
     @GetMapping("/render/jobs/{jobId}/artifacts")
     public List<ArtifactInfoResponse> getArtifacts(@PathVariable String jobId) {
-        if (orchestratorPort != null) {
-            return orchestratorPort.getArtifactsByJob(jobId);
-        }
-        return List.of();
+        throw FailClosedAuthorization.unavailable("global render artifact read");
     }
 
     @PostMapping("/render/jobs/{jobId}/cancel")
     public RenderJobResponse cancelJob(@PathVariable String jobId, @RequestParam String tenantId) {
-        String contextTenant = com.example.platform.shared.web.TenantContext.get();
-        if (contextTenant != null && !contextTenant.equals(tenantId)) {
-            throw new IllegalArgumentException("Tenant ID does not match authenticated tenant");
-        }
-        return renderJobService.cancel(jobId, tenantId);
+        throw FailClosedAuthorization.unavailable("global render cancellation");
     }
 
     @GetMapping("/render/jobs/{jobId}/status-history")
     public List<StatusHistoryResponse> getStatusHistory(@PathVariable String jobId, @RequestParam String tenantId) {
-        String contextTenant = com.example.platform.shared.web.TenantContext.get();
-        if (contextTenant != null && !contextTenant.equals(tenantId)) {
-            throw new IllegalArgumentException("Tenant ID does not match authenticated tenant");
-        }
-        return renderJobService.getStatusHistory(jobId, tenantId);
+        throw FailClosedAuthorization.unavailable("global render status history read");
     }
 
     private void requireIncrementalApi() {
@@ -443,62 +356,7 @@ public class RenderController {
     @PostMapping("/preview/media")
     @Operation(summary = "Upload preview media (dev/preview only)")
     public Map<String, String> uploadPreviewMedia(@RequestParam("file") MultipartFile file) {
-        if (!"video/mp4".equals(file.getContentType())) {
-            throw new IllegalArgumentException("Only video/mp4 is supported");
-        }
-        if (file.getSize() > 20 * 1024 * 1024) {
-            throw new IllegalArgumentException("File too large (max 20MB)");
-        }
-        try {
-            String mediaId = "media_" + System.currentTimeMillis();
-            String objectKey = mediaId + "/input.mp4";
-            java.nio.file.Path storageRoot = java.nio.file.Path.of("/tmp/platform");
-            java.nio.file.Path mediaPath = storageRoot.resolve("preview-media").resolve(objectKey);
-            java.nio.file.Files.createDirectories(mediaPath.getParent());
-            java.nio.file.Files.write(mediaPath, file.getBytes());
-            String storageUri = "localFsStorageProvider://preview-media/" + objectKey;
-
-            // Create StorageReference and RAW_MEDIA Product for Product-backed resolution
-            try {
-                String tenantId = com.example.platform.shared.web.TenantContext.get();
-                if (tenantId != null) {
-                    var existing = productRuntimeService.findByAsset(mediaId);
-                    if (existing.isEmpty()) {
-                        // Create StorageReference
-                        String storageRefId = com.example.platform.shared.Ids.newId("stor");
-                        var storageRef = new com.example.platform.storage.contract.StorageReference(
-                                storageRefId, "localFsStorageProvider",
-                                com.example.platform.storage.contract.StorageClass.STANDARD,
-                                "/tmp/platform", "preview-media/" + objectKey,
-                                null, null, file.getSize(), "video/mp4",
-                                java.time.Instant.now(), java.time.Instant.now());
-                        storageReferenceRepository.save(storageRef);
-
-                        // Create RAW_MEDIA Product with storageReferenceId
-                        String productId = com.example.platform.shared.Ids.newId("prod");
-                        var product = new com.example.platform.render.domain.product.Product(
-                                productId, tenantId, null, mediaId,
-                                com.example.platform.render.domain.product.ProductType.RAW_MEDIA,
-                                com.example.platform.render.domain.product.RepresentationKind.MEDIA_FILE,
-                                "upload", mediaId, null,
-                                com.example.platform.render.domain.product.ProductStatus.REGISTERED,
-                                storageRefId, null, null, "video/mp4", 1,
-                                "{\"source\":\"preview-upload\"}",
-                                java.time.Instant.now(), java.time.Instant.now());
-                        productRuntimeService.register(product);
-                        productRuntimeService.markReady(productId);
-                        log.info("Created RAW_MEDIA Product {} with storageRef {} for media: {}", productId, storageRefId, mediaId);
-                    }
-                }
-            } catch (Exception e) {
-                log.warn("Failed to create RAW_MEDIA Product for {}: {}", mediaId, e.getMessage());
-                // Continue without Product - URI fallback will work
-            }
-
-            return Map.of("mediaId", mediaId, "storageUri", storageUri, "size", String.valueOf(file.getSize()));
-        } catch (java.io.IOException e) {
-            throw new IllegalStateException("Failed to store media", e);
-        }
+        throw FailClosedAuthorization.unavailable("preview media upload");
     }
 
     @GetMapping("/render/jobs/{jobId}/artifacts/{artifactId}/content")
@@ -506,23 +364,7 @@ public class RenderController {
     public ResponseEntity<byte[]> getArtifactContent(
             @PathVariable String jobId,
             @PathVariable String artifactId) {
-        if (orchestratorPort == null) {
-            throw new IllegalStateException("Render orchestrator not available");
-        }
-        List<ArtifactInfoResponse> artifacts = orchestratorPort.getArtifactsByJob(jobId);
-        boolean belongsToJob = artifacts.stream().anyMatch(a -> a.artifactId().equals(artifactId));
-        if (!belongsToJob) {
-            return ResponseEntity.notFound().build();
-        }
-        byte[] content = orchestratorPort.getArtifactContent(artifactId);
-        if (content == null || content.length == 0) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok()
-                .header("Content-Type", "video/mp4")
-                .header("Content-Disposition", "inline; filename=output.mp4")
-                .header("Content-Length", String.valueOf(content.length))
-                .body(content);
+        throw FailClosedAuthorization.unavailable("global render artifact content read");
     }
 
     @GetMapping("/tenants/{tenantId}/projects/{projectId}/render-jobs/{jobId}/artifacts/{artifactId}/access")
@@ -551,13 +393,7 @@ public class RenderController {
     public ResponseEntity<?> getArtifactAccess(
             @PathVariable String jobId,
             @PathVariable String artifactId) {
-        requireArtifactAccess();
-
-        // Authorization: verify job exists and tenant access is valid (throws IllegalArgumentException -> 404)
-        renderJobService.getById(jobId);
-
-        // Verify artifact belongs to job, then build access response (never calls presigner before auth passes)
-        return resolveArtifactAndBuildAccess(jobId, artifactId);
+        throw FailClosedAuthorization.unavailable("global render artifact access");
     }
 
     /**
