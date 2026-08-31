@@ -13,6 +13,7 @@ import com.example.platform.commerce.domain.ProductLineType;
 import com.example.platform.entitlement.app.EntitlementPolicyService;
 import com.example.platform.shared.commercial.PrincipalRef;
 import com.example.platform.shared.commercial.PrincipalType;
+import com.example.platform.shared.authorization.FailClosedAuthorization;
 import com.example.platform.shared.web.TenantContext;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
@@ -205,30 +206,7 @@ public class MeBillingController {
     public ResponseEntity<Map<String, Object>> topUpCredits(
             HttpServletRequest req,
             @RequestBody Map<String, Object> body) {
-        BillingSubject subject = resolveSubject(req);
-        long amountMinor = body.get("amount") instanceof Number n
-                ? Math.round(n.doubleValue() * 100)
-                : 0L;
-        if (amountMinor <= 0) {
-            return ResponseEntity.badRequest().body(Map.of("message", "amount must be positive"));
-        }
-        CreditWallet wallet = creditWalletService.getWalletByTenant(subject.tenantId(), subject.userId());
-        if (wallet == null) {
-            wallet = creditWalletService.createWallet(subject.tenantId(), null, subject.userId(), "USD");
-        }
-        String topupReference = "me-topup-" + Instant.now().toEpochMilli();
-        CreditWallet updated = creditWalletService.credit(
-                subject.tenantId(), wallet.walletId(), amountMinor,
-                "TOP_UP", topupReference, "Manual top-up");
-        billingLedgerService.writeEntry(subject.tenantId(), null, subject.userId(),
-                "CREDIT", amountMinor, updated.currencyCode(), "TOP_UP", topupReference, "Credit top-up");
-        return ResponseEntity.ok(Map.of(
-                "transactionId", "topup-" + Instant.now().toEpochMilli(),
-                "walletId", updated.walletId(),
-                "amount", amountMinor / 100.0,
-                "balanceAfter", updated.balanceMinor() / 100.0,
-                "type", "TOP_UP",
-                "createdAt", Instant.now().toString()));
+        throw FailClosedAuthorization.unavailable("wallet top-up without settled payment authority");
     }
 
     private Map<String, Object> subscriptionToMap(SubscriptionContract contract) {

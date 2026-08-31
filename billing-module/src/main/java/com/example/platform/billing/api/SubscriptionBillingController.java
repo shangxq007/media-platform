@@ -3,11 +3,9 @@ package com.example.platform.billing.api;
 import com.example.platform.billing.api.dto.*;
 import com.example.platform.billing.app.SubscriptionBillingService;
 import com.example.platform.billing.domain.SubscriptionContract;
-import com.example.platform.billing.domain.SubscriptionCommand;
-import com.example.platform.billing.domain.SubscriptionCommandType;
-import com.example.platform.billing.domain.SubscriptionContractRole;
 import com.example.platform.billing.domain.SubscriptionPlan;
 import com.example.platform.shared.audit.AdminAuditPublisher;
+import com.example.platform.shared.authorization.FailClosedAuthorization;
 import com.example.platform.shared.commercial.PrincipalRef;
 import com.example.platform.shared.commercial.PrincipalType;
 import jakarta.servlet.http.HttpServletRequest;
@@ -56,14 +54,7 @@ public class SubscriptionBillingController {
 
     @PostMapping("/billing/subscriptions")
     public SubscriptionResponse createSubscription(@RequestBody CreateSubscriptionRequest request) {
-        String tenantId = resolveTenantId(request.tenantId());
-        PrincipalRef principal = PrincipalRef.tenantScoped(tenantId, PrincipalType.USER, request.userId());
-        SubscriptionContract contract = subscriptionBillingService.execute(new SubscriptionCommand(
-                SubscriptionCommandType.CREATE, principal, request.contractId(), request.planKey(),
-                request.planKey(), request.periodDays(), SubscriptionContractRole.BASE, 0,
-                request.idempotencyKey(), request.actor(), request.reason(), request.traceId(),
-                request.effectiveAt())).contract();
-        return toSubscriptionResponse(contract);
+        throw FailClosedAuthorization.unavailable("subscription creation");
     }
 
     @GetMapping("/billing/subscriptions/current")
@@ -101,25 +92,12 @@ public class SubscriptionBillingController {
 
     @PostMapping("/billing/subscriptions/change-plan")
     public SubscriptionResponse changePlan(@RequestBody ChangePlanRequest request) {
-        String tenantId = resolveTenantId(request.tenantId());
-        PrincipalRef principal = PrincipalRef.tenantScoped(tenantId, PrincipalType.USER, request.userId());
-        SubscriptionContract contract = subscriptionBillingService.execute(new SubscriptionCommand(
-                SubscriptionCommandType.CHANGE, principal, request.contractId(), request.newPlanKey(),
-                request.newPlanKey(), request.periodDays(), SubscriptionContractRole.BASE,
-                request.expectedVersion(), request.idempotencyKey(), request.actor(), request.reason(),
-                request.traceId(), request.effectiveAt())).contract();
-        return toSubscriptionResponse(contract);
+        throw FailClosedAuthorization.unavailable("subscription plan change");
     }
 
     @PostMapping("/billing/subscriptions/cancel")
     public SubscriptionResponse cancel(@RequestBody CancelSubscriptionRequest request) {
-        String tenantId = resolveTenantId(request.tenantId());
-        PrincipalRef principal = PrincipalRef.tenantScoped(tenantId, PrincipalType.USER, request.userId());
-        SubscriptionContract contract = subscriptionBillingService.execute(new SubscriptionCommand(
-                SubscriptionCommandType.CANCEL, principal, request.contractId(), null, null, 0,
-                SubscriptionContractRole.BASE, request.expectedVersion(), request.idempotencyKey(),
-                request.actor(), request.reason(), request.traceId(), request.effectiveAt())).contract();
-        return toSubscriptionResponse(contract);
+        throw FailClosedAuthorization.unavailable("subscription cancellation");
     }
 
     private String resolveTenantId(String requestedTenantId) {

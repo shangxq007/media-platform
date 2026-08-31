@@ -2,6 +2,7 @@ package com.example.platform.outbox.api;
 
 import com.example.platform.outbox.app.OutboxEventService;
 import com.example.platform.outbox.app.OutboxEventDispatcher;
+import com.example.platform.shared.authorization.FailClosedAuthorization;
 import java.util.List;
 import java.util.Map;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -30,13 +31,12 @@ public class OutboxController {
 
     @PostMapping("/internal/outbox/process-once")
     public Map<String, Object> processOnceInternal() {
-        int processed = dispatcher.processBatch(1);
-        return Map.of("processed", processed);
+        throw FailClosedAuthorization.unavailable("internal outbox processing");
     }
 
     @GetMapping("/internal/outbox/events")
     public List<Map<String, Object>> getOutboxEvents(@RequestParam(defaultValue = "20") int limit) {
-        return service.recent(Math.max(1, Math.min(limit, 200)));
+        throw FailClosedAuthorization.unavailable("internal outbox event inspection");
     }
 
     // -------------------------------------------------------------------------
@@ -45,58 +45,52 @@ public class OutboxController {
 
     @GetMapping("/outbox/overview")
     public Map<String, Object> overview() {
-        return service.overview();
+        throw FailClosedAuthorization.unavailable("outbox overview inspection");
     }
 
     @GetMapping("/outbox/recent")
     public List<Map<String, Object>> recent(@RequestParam(defaultValue = "20") int limit) {
-        return service.recent(Math.max(1, Math.min(limit, 200)));
+        throw FailClosedAuthorization.unavailable("outbox event inspection");
     }
 
     @PostMapping("/outbox/dispatch")
     public Map<String, Object> dispatch(@RequestParam(defaultValue = "100") int limit) {
-        int processed = dispatcher.processBatch(Math.max(1, Math.min(limit, 500)));
-        return Map.of("processed", processed);
+        throw FailClosedAuthorization.unavailable("outbox dispatch");
     }
 
     @PostMapping("/outbox/process-once/{outboxId}")
     public Map<String, Object> processOnce(@PathVariable String outboxId) {
-        boolean success = dispatcher.processOnce(outboxId);
-        return Map.of("outboxId", outboxId, "dispatched", success);
+        throw FailClosedAuthorization.unavailable("single outbox processing");
     }
 
     @PostMapping("/outbox/process-batch")
     public Map<String, Object> processBatch(@RequestParam(defaultValue = "100") int limit) {
-        int processed = dispatcher.processBatch(Math.max(1, Math.min(limit, 500)));
-        return Map.of("processed", processed);
+        throw FailClosedAuthorization.unavailable("outbox batch processing");
     }
 
     @GetMapping("/outbox/failed")
     public List<Map<String, Object>> failedEvents(@RequestParam(defaultValue = "50") int limit) {
-        return service.failedEvents(Math.max(1, Math.min(limit, 200)));
+        throw FailClosedAuthorization.unavailable("failed outbox event inspection");
     }
 
     @PostMapping("/outbox/retry/{outboxId}")
     public Map<String, Object> retry(@PathVariable String outboxId) {
-        boolean success = dispatcher.processOnce(outboxId);
-        return Map.of("outboxId", outboxId, "retried", success);
+        throw FailClosedAuthorization.unavailable("outbox retry");
     }
 
     @PostMapping("/outbox/dead-letter/{outboxId}")
     public Map<String, Object> deadLetter(@PathVariable String outboxId,
             @RequestParam(defaultValue = "Manual dead-letter via API") String reason) {
-        dispatcher.deadLetter(outboxId, reason);
-        return Map.of("outboxId", outboxId, "status", "DEAD_LETTER", "reason", reason);
+        throw FailClosedAuthorization.unavailable("outbox dead-letter mutation");
     }
 
     @GetMapping("/outbox/dead-letter")
     public List<Map<String, Object>> deadLetterEvents(@RequestParam(defaultValue = "50") int limit) {
-        return service.deadLetterEvents(Math.max(1, Math.min(limit, 200)));
+        throw FailClosedAuthorization.unavailable("dead-letter event inspection");
     }
 
     @PostMapping("/outbox/retry-due")
     public Map<String, Object> retryDue(@RequestParam(defaultValue = "100") int limit) {
-        int processed = dispatcher.retryDueEvents();
-        return Map.of("processed", processed, "limit", Math.max(1, Math.min(limit, 500)));
+        throw FailClosedAuthorization.unavailable("global outbox retry");
     }
 }

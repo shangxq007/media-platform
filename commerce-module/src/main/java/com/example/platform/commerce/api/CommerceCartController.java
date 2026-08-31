@@ -4,6 +4,7 @@ import com.example.platform.commerce.api.dto.*;
 import com.example.platform.commerce.app.CheckoutOrchestrator;
 import com.example.platform.commerce.app.CommerceCartService;
 import com.example.platform.commerce.domain.CommerceCart;
+import com.example.platform.shared.authorization.FailClosedAuthorization;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -20,7 +21,7 @@ public class CommerceCartController {
 
     @PostMapping
     public CommerceCart createCart(@RequestBody CreateCartRequest request) {
-        return cartService.createCart(request.tenantId(), request.userId());
+        throw FailClosedAuthorization.unavailable("commerce cart creation");
     }
 
     @GetMapping("/{cartId}")
@@ -30,12 +31,12 @@ public class CommerceCartController {
 
     @PostMapping("/{cartId}/lines")
     public CommerceCart addLine(@PathVariable String cartId, @RequestBody AddCartLineRequest request) {
-        return cartService.addLine(cartId, request.productCode(), request.quantity());
+        throw FailClosedAuthorization.unavailable("commerce cart line addition");
     }
 
     @DeleteMapping("/{cartId}/lines/{productCode}")
     public CommerceCart removeLine(@PathVariable String cartId, @PathVariable String productCode) {
-        return cartService.removeLine(cartId, productCode);
+        throw FailClosedAuthorization.unavailable("commerce cart line removal");
     }
 
     @GetMapping("/{cartId}/total")
@@ -47,18 +48,6 @@ public class CommerceCartController {
     public CheckoutSessionResponse checkoutCart(
             @PathVariable String cartId,
             @RequestBody CartCheckoutRequest request) {
-        CommerceCart cart = cartService.getCart(cartId);
-        if (cart.lines().isEmpty()) {
-            throw new IllegalArgumentException("Cart is empty");
-        }
-        String primaryProduct = cart.lines().get(0).productCode();
-        return checkoutOrchestrator.createSession(new CreateCheckoutSessionRequest(
-                cart.tenantId(),
-                primaryProduct,
-                cart.userId(),
-                null,
-                request.successUrl(),
-                request.cancelUrl()),
-                cartId);
+        throw FailClosedAuthorization.unavailable("commerce cart checkout");
     }
 }

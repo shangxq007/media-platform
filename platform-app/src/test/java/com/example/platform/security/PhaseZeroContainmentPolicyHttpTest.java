@@ -60,6 +60,8 @@ class PhaseZeroContainmentPolicyHttpTest {
                     .andExpect(status().isForbidden());
             test.mvc().perform(MockMvcRequestBuilders.post("/api/mcp/probe"))
                     .andExpect(status().isForbidden());
+            test.mvc().perform(MockMvcRequestBuilders.post("/api/internal/outbox/probe"))
+                    .andExpect(status().isForbidden());
             test.mvc().perform(MockMvcRequestBuilders.post("/api/render/probe"))
                     .andExpect(status().isForbidden());
             test.mvc().perform(MockMvcRequestBuilders.post("/api/dev/auth/token"))
@@ -90,6 +92,9 @@ class PhaseZeroContainmentPolicyHttpTest {
                             .sessionAttr(ordinary, authenticated(true)))
                     .andExpect(status().isOk());
             test.mvc().perform(MockMvcRequestBuilders.post("/api/mcp/probe")
+                            .sessionAttr(ordinary, authenticated(true)))
+                    .andExpect(status().isForbidden());
+            test.mvc().perform(MockMvcRequestBuilders.post("/api/internal/outbox/probe")
                             .sessionAttr(ordinary, authenticated(true)))
                     .andExpect(status().isForbidden());
             test.mvc().perform(MockMvcRequestBuilders.post("/api/render/probe")
@@ -144,6 +149,8 @@ class PhaseZeroContainmentPolicyHttpTest {
                     actual.get("GET /api/admin/feature-flags"));
             assertEquals(Optional.of(PhaseZeroContainmentPolicy.Classification.INTERNAL_CONTROL_PLANE),
                     actual.get("POST /api/mcp/probe"));
+            assertEquals(Optional.of(PhaseZeroContainmentPolicy.Classification.INTERNAL_CONTROL_PLANE),
+                    actual.get("POST /api/internal/outbox/probe"));
             assertEquals(Optional.of(PhaseZeroContainmentPolicy.Classification.DISABLED_CONTAINED),
                     actual.get("POST /api/render/probe"));
             assertEquals(Optional.of(PhaseZeroContainmentPolicy.Classification.TEST_ONLY),
@@ -213,6 +220,9 @@ class PhaseZeroContainmentPolicyHttpTest {
         @PostMapping("/api/effect-packs") void authenticatedMutation() { downstream.invoke("mutation"); }
         @GetMapping("/api/admin/feature-flags") void admin() { downstream.invoke("admin"); }
         @PostMapping("/api/mcp/probe") void internalControl() { downstream.invoke("internal"); }
+        @PostMapping("/api/internal/outbox/probe") void internalOutboxControl() {
+            downstream.invoke("internal-outbox");
+        }
         @PostMapping("/api/render/probe") void disabled() { downstream.invoke("disabled"); }
         @PostMapping("/api/dev/auth/token") void testOnly() { downstream.invoke("test"); }
         @RequestMapping(

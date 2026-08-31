@@ -54,6 +54,7 @@ public final class PhaseZeroContainmentPolicy {
     private static final List<String> INTERNAL_CONTROL_FAMILIES = List.of(
             "/api/mcp/**",
             "/api/remote-worker/**",
+            "/api/internal/outbox/**",
             "/api/outbox/**",
             "/api/scheduler/**",
             "/api/observability/**",

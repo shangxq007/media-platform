@@ -7,6 +7,7 @@ import com.example.platform.commerce.api.dto.CheckoutSessionResponse;
 import com.example.platform.commerce.domain.CanonicalProduct;
 import com.example.platform.commerce.domain.PurchaseOrderCreatedEvent;
 import com.example.platform.commerce.app.CheckoutOrchestrator;
+import com.example.platform.shared.authorization.FailClosedAuthorization;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -30,15 +31,14 @@ public class CommerceController {
 
     @PostMapping("/checkout-sessions")
     public CheckoutSessionResponse createCheckoutSession(@RequestBody CreateCheckoutSessionRequest request) {
-        return checkoutOrchestrator.createSession(request);
+        throw FailClosedAuthorization.unavailable("commerce checkout session creation");
     }
 
     @PostMapping("/checkout-sessions/{sessionId}/confirm")
     public PurchaseOrderCreatedEvent confirmCheckout(
             @PathVariable String sessionId,
             @RequestBody(required = false) ConfirmCheckoutRequest request) {
-        String userId = request != null ? request.userId() : null;
-        return checkoutOrchestrator.confirmCheckout(sessionId, userId);
+        throw FailClosedAuthorization.unavailable("commerce checkout confirmation");
     }
 
     @GetMapping("/events/recent/{tenantId}")
@@ -60,7 +60,7 @@ public class CommerceController {
 
     @PostMapping("/checkout-sessions/{sessionId}/cancel")
     public PurchaseOrderCreatedEvent cancelCheckout(@PathVariable String sessionId) {
-        return checkoutOrchestrator.cancelCheckout(sessionId);
+        throw FailClosedAuthorization.unavailable("commerce checkout cancellation");
     }
 
     private static CanonicalProductResponse toProductResponse(CanonicalProduct product) {

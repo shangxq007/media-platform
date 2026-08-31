@@ -160,11 +160,23 @@ class EnabledAdminSecurityTest extends PostgresTestContainerSupport {
     }
 
     @Test
-    void phaseZeroContainedRoutesRejectAnonymousAndOrdinaryUsersWithoutDispatch() throws Exception {
+    void phaseZeroContainedRoutesRejectEveryCallerWithoutDispatch() throws Exception {
         String[] paths = {
             "/api/extensions/demo/execute",
             "/api/analytics/internal/rebuild-profiles",
+            "/api/tenants/t1/workflow-executions",
+            "/api/identity/tenants",
+            "/api/workspaces",
+            "/api/me/shared-resources/grants",
+            "/api/entitlements/policies/refresh",
+            "/api/analytics/reports/report-1/execute?isAdmin=true",
+            "/api/commerce/checkout-sessions",
+            "/api/billing/subscriptions",
             "/api/billing/cycles/process-due",
+            "/api/payments/confirm",
+            "/api/billing/me/credits/topup",
+            "/api/outbox/dispatch",
+            "/api/internal/outbox/process-once",
             "/api/remote-worker/register",
             "/api/products/product-1/dependencies",
             "/api/me/notification-channels/binding-1/verify",
@@ -178,6 +190,10 @@ class EnabledAdminSecurityTest extends PostgresTestContainerSupport {
             int userStatus = httpPost(path, jwtHelper.nonAdminToken(), "{}").statusCode();
             Assertions.assertEquals(403, userStatus,
                     "Contained ordinary-user request must be denied: " + path);
+
+            int adminStatus = httpPost(path, jwtHelper.adminToken(), "{}").statusCode();
+            Assertions.assertEquals(403, adminStatus,
+                    "Contained admin request must be denied: " + path);
         }
 
         org.mockito.Mockito.verifyNoInteractions(analyticsRebuildJob, pluginRuntime,

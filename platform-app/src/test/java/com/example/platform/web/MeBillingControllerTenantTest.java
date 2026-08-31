@@ -10,6 +10,7 @@ import com.example.platform.commerce.app.CommerceCatalogService;
 import com.example.platform.entitlement.app.EntitlementPolicyService;
 import com.example.platform.shared.commercial.PrincipalRef;
 import com.example.platform.shared.commercial.PrincipalType;
+import com.example.platform.shared.authorization.AuthorizationDeniedException;
 import com.example.platform.shared.web.TenantContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,6 +27,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
 @ExtendWith(MockitoExtension.class)
 class MeBillingControllerTenantTest {
@@ -142,5 +144,19 @@ class MeBillingControllerTenantTest {
         verify(subscriptionBillingService).getCurrentSubscription(principal);
         verify(subscriptionBillingService, never()).getCurrentSubscription(
                 PrincipalRef.tenantScoped("fake-tenant", PrincipalType.USER, "user-1"));
+    }
+
+    @Test
+    void topUpIsUnavailableBeforeAnyDurableCreditOrLedgerWrite() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setAttribute("jwt.subject", "request-user");
+        request.setAttribute("jwt.tenantId", "request-tenant");
+
+        AuthorizationDeniedException failure = assertThrows(
+                AuthorizationDeniedException.class,
+                () -> controller.topUpCredits(request, Map.of("amount", 100)));
+
+        assertEquals("AUTHORIZATION_UNAVAILABLE", failure.decision().reasonCode());
+        verifyNoInteractions(creditWalletService, billingLedgerService);
     }
 }
