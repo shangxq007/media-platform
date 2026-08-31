@@ -1,11 +1,13 @@
 package com.example.platform.studio.validation;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.example.platform.shared.digest.ContentDigest;
 import com.example.platform.studio.digest.VerifiedStudioVersion;
 import com.example.platform.studio.identity.*;
+import com.example.platform.studio.reference.StudioVersionPin;
 import com.example.platform.studio.scope.*;
 import com.example.platform.studio.screenplay.*;
 import java.nio.charset.StandardCharsets;
@@ -20,4 +22,37 @@ class StudioFoundationLawTest {
     @Test void verifiesProvidedDigestAndRejectsMismatch(){var version=ScreenplayVersion.create(new ScreenplayId("screenplay-a"),new ScreenplayVersionId("v1"),SCOPE,null,List.of(new ScreenplayElement.Action(new ScreenplayElementId("a"),"Action")));assertThat(VerifiedStudioVersion.verify(version,version.semanticDigest())).isSameAs(version);assertThatThrownBy(()->VerifiedStudioVersion.verify(version,ContentDigest.sha256("0".repeat(64)))).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("digest mismatch");}
 
     @Test void exposesExactlyNineteenRequiredTypedStudioIdentities(){assertThat(List.of(ScreenplayId.class,ScreenplayVersionId.class,ScreenplayElementId.class,SceneId.class,SceneVersionId.class,ShotId.class,ShotVersionId.class,ShotPlanId.class,ShotPlanVersionId.class,DirectorIntentId.class,DirectorIntentVersionId.class,CameraPlanId.class,CameraPlanVersionId.class,StoryboardId.class,StoryboardVersionId.class,StoryboardPanelId.class,ShotSceneId.class,ShotSceneVersionId.class,SceneElementId.class)).hasSize(19).doesNotHaveDuplicates();}
+
+    @Test
+    void exactVersionPinsRejectEveryKindIdentityFamilyMismatchAndPreserveDigestAlgorithm() {
+        var digest = ContentDigest.sha256("a".repeat(64));
+        var families = List.of(
+                new PinFamily(StudioVersionPin.AggregateKind.SCREENPLAY, new ScreenplayId("a"), new ScreenplayVersionId("v")),
+                new PinFamily(StudioVersionPin.AggregateKind.SCENE, new SceneId("a"), new SceneVersionId("v")),
+                new PinFamily(StudioVersionPin.AggregateKind.SHOT, new ShotId("a"), new ShotVersionId("v")),
+                new PinFamily(StudioVersionPin.AggregateKind.SHOT_PLAN, new ShotPlanId("a"), new ShotPlanVersionId("v")),
+                new PinFamily(StudioVersionPin.AggregateKind.DIRECTOR_INTENT, new DirectorIntentId("a"), new DirectorIntentVersionId("v")),
+                new PinFamily(StudioVersionPin.AggregateKind.CAMERA_PLAN, new CameraPlanId("a"), new CameraPlanVersionId("v")),
+                new PinFamily(StudioVersionPin.AggregateKind.STORYBOARD, new StoryboardId("a"), new StoryboardVersionId("v")),
+                new PinFamily(StudioVersionPin.AggregateKind.SHOT_SCENE, new ShotSceneId("a"), new ShotSceneVersionId("v")));
+
+        for (var expected : families) {
+            for (var supplied : families) {
+                var construction = (org.assertj.core.api.ThrowableAssert.ThrowingCallable) () ->
+                        new StudioVersionPin<>(expected.kind(), supplied.aggregateId(), supplied.versionId(), SCOPE, 1, digest);
+                if (expected == supplied) {
+                    assertThatCode(construction).doesNotThrowAnyException();
+                } else {
+                    assertThatThrownBy(construction).isInstanceOf(IllegalArgumentException.class)
+                            .hasMessageContaining("identity family mismatch");
+                }
+            }
+        }
+        var pin = new StudioVersionPin<>(StudioVersionPin.AggregateKind.SHOT,
+                new ShotId("shot-a"), new ShotVersionId("shot-v1"), SCOPE, 1, digest);
+        assertThat(pin.canonicalJson()).contains("\"algorithm\":\"SHA_256\"")
+                .contains("\"value\":\"" + "a".repeat(64) + "\"");
+    }
+
+    private record PinFamily(StudioVersionPin.AggregateKind kind, StudioId aggregateId, StudioId versionId) {}
 }

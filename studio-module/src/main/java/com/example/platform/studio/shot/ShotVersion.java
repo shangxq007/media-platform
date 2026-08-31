@@ -60,4 +60,6 @@ public final class ShotVersion implements com.example.platform.studio.digest.Can
     public ShotVersionId parentVersionId(){return parentVersionId;} public StudioVersionPin<SceneId,SceneVersionId> scenePin(){return scenePin;}
     public MediaTime planningDuration(){return planningDuration;} public byte[] canonicalBytes(){return canonicalBytes.clone();}
     public ContentDigest semanticDigest(){return semanticDigest;} public String description(){return description;}
+    public String subjectActionIntent(){return subjectActionIntent;} public String continuityIntent(){return continuityIntent;}
+    public StudioVersionPin<?,?> directorIntentPin(){return directorIntentPin;} public StudioVersionPin<?,?> cameraPlanPin(){return cameraPlanPin;}
 }

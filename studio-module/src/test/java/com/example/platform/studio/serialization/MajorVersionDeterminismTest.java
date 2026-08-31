@@ -6,6 +6,8 @@ import com.example.platform.shared.digest.ContentDigest;
 import com.example.platform.shared.time.MediaTime;
 import com.example.platform.studio.camera.*;
 import com.example.platform.studio.directorintent.DirectorIntentVersion;
+import com.example.platform.studio.digest.CanonicalStudioVersion;
+import com.example.platform.studio.digest.VerifiedStudioVersion;
 import com.example.platform.studio.identity.*;
 import com.example.platform.studio.scene.SceneVersion;
 import com.example.platform.studio.scope.*;
@@ -33,6 +35,10 @@ class MajorVersionDeterminismTest {
         var cp1=camera(sh1,plan1,di1,CameraPlanVersion.Framing.MEDIUM);var cp2=camera(sh2,plan2,di2,CameraPlanVersion.Framing.MEDIUM);var cpChanged=camera(sh1,plan1,di1,CameraPlanVersion.Framing.WIDE);prove(cp1.canonicalBytes(),cp1.semanticDigest(),cp2.canonicalBytes(),cp2.semanticDigest(),cpChanged.semanticDigest());
         var p1=new StoryboardPanel(new StoryboardPanelId("p1"),sh1.pin(),"One",null,new PanelImage.Planned());var p2=new StoryboardPanel(new StoryboardPanelId("p2"),extra1.pin(),"Two",null,new PanelImage.Planned());var board1=StoryboardVersion.create(new StoryboardId("board"),new StoryboardVersionId("v1"),SCOPE,null,plan1,List.of(p1,p2));var board2=StoryboardVersion.create(new StoryboardId("board"),new StoryboardVersionId("v1"),SCOPE,null,plan2,List.of(new StoryboardPanel(new StoryboardPanelId("p1"),sh2.pin(),"One",null,new PanelImage.Planned()),new StoryboardPanel(new StoryboardPanelId("p2"),extra2.pin(),"Two",null,new PanelImage.Planned())));var boardChanged=StoryboardVersion.create(new StoryboardId("board"),new StoryboardVersionId("v1"),SCOPE,null,plan1,List.of(p2,p1));prove(board1.canonicalBytes(),board1.semanticDigest(),board2.canonicalBytes(),board2.semanticDigest(),boardChanged.semanticDigest());
         var e1=new SceneElement(new SceneElementId("a"),SceneElement.Kind.MARKER,null,IDENTITY,List.of(),"One");var e2=new SceneElement(new SceneElementId("b"),SceneElement.Kind.PROP,null,IDENTITY,List.of(),"Two");var ss1=ShotSceneVersion.create(new ShotSceneId("ss"),new ShotSceneVersionId("v1"),SCOPE,null,plan1,sp1,sc1,List.of(e1,e2));var ss2=ShotSceneVersion.create(new ShotSceneId("ss"),new ShotSceneVersionId("v1"),SCOPE,null,plan2,sp2,sc2,List.of(e1,e2));var ssChanged=ShotSceneVersion.create(new ShotSceneId("ss"),new ShotSceneVersionId("v1"),SCOPE,null,plan1,sp1,sc1,List.of(e2,e1));prove(ss1.canonicalBytes(),ss1.semanticDigest(),ss2.canonicalBytes(),ss2.semanticDigest(),ssChanged.semanticDigest());
+        var allMajorVersions=List.of(sp1,sc1,sh1,plan1,di1,cp1,board1,ss1);
+        assertThat(allMajorVersions).allMatch(CanonicalStudioVersion.class::isInstance);
+        allMajorVersions.stream().map(CanonicalStudioVersion.class::cast)
+                .forEach(version->assertThat(VerifiedStudioVersion.verify(version,version.semanticDigest())).isSameAs(version));
         var left=new LinkedHashMap<String,String>();left.put("z","2");left.put("a","1");var right=new LinkedHashMap<String,String>();right.put("a","1");right.put("z","2");assertThat(CanonicalJson.object(left)).isEqualTo(CanonicalJson.object(right));
     }
 

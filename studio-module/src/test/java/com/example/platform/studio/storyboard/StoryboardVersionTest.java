@@ -14,6 +14,7 @@ import com.example.platform.studio.shot.ShotVersion;
 import com.example.platform.studio.shotplan.ShotPlanVersion;
 import com.example.platform.studio.diff.StudioSemanticDiff;
 import java.util.List;
+import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
 
 class StoryboardVersionTest {
@@ -25,6 +26,8 @@ class StoryboardVersionTest {
         var two=new StoryboardPanel(new StoryboardPanelId("panel-b"),c.shot.pin(),"Reaction",null,new PanelImage.Materialized(new ArtifactId("artifact-a"),DIGEST));
         var version=StoryboardVersion.create(new StoryboardId("board-a"),new StoryboardVersionId("board-v1"),SCOPE,null,c.plan,List.of(one,two));
         assertThat(version.panels()).containsExactly(one,two);assertThat(((PanelImage.Materialized)two.image()).contentDigest()).isEqualTo(DIGEST);
+        assertThat(new String(version.canonicalBytes(),StandardCharsets.UTF_8))
+                .contains("\"contentDigest\":{\"algorithm\":\"SHA_256\",\"value\":\""+"a".repeat(64)+"\"}");
         var reordered=StoryboardVersion.create(new StoryboardId("board-a"),new StoryboardVersionId("board-v2"),SCOPE,
                 new StoryboardVersionId("board-v1"),c.plan,List.of(two,one));
         assertThat(StudioSemanticDiff.between(version,reordered).changes())
