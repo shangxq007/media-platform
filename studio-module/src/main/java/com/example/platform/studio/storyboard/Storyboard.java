@@ -1,0 +1,1 @@
+package com.example.platform.studio.storyboard;import com.example.platform.studio.identity.StoryboardId;import com.example.platform.studio.scope.StudioScope;public record Storyboard(StoryboardId id,StudioScope scope){public Storyboard{if(id==null||scope==null)throw new IllegalArgumentException("storyboard identity and scope are required");}}

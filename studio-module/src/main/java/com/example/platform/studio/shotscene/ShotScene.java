@@ -1,0 +1,1 @@
+package com.example.platform.studio.shotscene;import com.example.platform.studio.identity.ShotSceneId;import com.example.platform.studio.scope.StudioScope;public record ShotScene(ShotSceneId id,StudioScope scope){public ShotScene{if(id==null||scope==null)throw new IllegalArgumentException("shot scene identity and scope required");}}
