@@ -98,11 +98,14 @@ class TimedTextMergeEngineTest {
     }
 
     private MergeOutcome merge(String basePayload, String sourcePayload, String targetPayload) {
+        basePayload = canonicalPayload(basePayload);
+        sourcePayload = canonicalPayload(sourcePayload);
+        targetPayload = canonicalPayload(targetPayload);
         com.example.platform.shared.web.TenantContext.set("tenant-1");
         TimelineRevisionRepository revisionRepo = mock(TimelineRevisionRepository.class);
         TimelineSnapshotService snapshotService = mock(TimelineSnapshotService.class);
-        com.example.platform.timeline.app.ProductCurrentRevisionService currentService =
-                mock(com.example.platform.timeline.app.ProductCurrentRevisionService.class);
+        com.example.platform.timeline.app.TimelineRevisionRefMutation currentService =
+                mock(com.example.platform.timeline.app.TimelineRevisionRefMutation.class);
         TimelineRevisionRepository.RevisionRow baseRow = row("base-rev", "snap-base", basePayload);
         TimelineRevisionRepository.RevisionRow srcRow = row("src-rev", "snap-src", sourcePayload);
         TimelineRevisionRepository.RevisionRow tgtRow = row("tgt-rev", "snap-tgt", targetPayload);
@@ -110,16 +113,13 @@ class TimedTextMergeEngineTest {
         when(revisionRepo.findOwnedById("src-rev", "proj-1", "tenant-1")).thenReturn(Optional.of(srcRow));
         when(revisionRepo.findOwnedById("tgt-rev", "proj-1", "tenant-1")).thenReturn(Optional.of(tgtRow));
                 when(snapshotService.findOwnedById("proj-1", "tenant-1", "snap-base"))
-                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-base", "proj-1", "tenant-1", basePayload, "internal-1.0")));
+                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-base", "proj-1", "tenant-1", basePayload, "timeline-1.0")));
                 when(snapshotService.findOwnedById("proj-1", "tenant-1", "snap-src"))
-                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-src", "proj-1", "tenant-1", sourcePayload, "internal-1.0")));
+                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-src", "proj-1", "tenant-1", sourcePayload, "timeline-1.0")));
                 when(snapshotService.findOwnedById("proj-1", "tenant-1", "snap-tgt"))
-                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-tgt", "proj-1", "tenant-1", targetPayload, "internal-1.0")));
-        when(snapshotService.save(anyString(), anyString(), anyString(), anyString()))
-                .thenReturn("snap-merged");
-        when(revisionRepo.nextRevisionNumber("proj-1")).thenReturn(9);
+                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-tgt", "proj-1", "tenant-1", targetPayload, "timeline-1.0")));
         when(revisionRepo.listOwnedByProject("proj-1", "tenant-1", null, null, null, 500)).thenReturn(List.of());
-        when(currentService.getCurrentRevisionId("proj-1")).thenReturn("tgt-rev");
+        when(currentService.currentHead(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any())).thenReturn("tgt-rev");
         var previewService = new TimelineMergePreviewService(new TimelineMergeConflictDetector());
         var planner = new TimelineNonConflictingMergePlanner(previewService);
         org.jooq.DSLContext dslMockTime0 = org.mockito.Mockito.mock(org.jooq.DSLContext.class);
@@ -132,15 +132,16 @@ org.jooq.Configuration cfgdslMockTime0 = org.mockito.Mockito.mock(org.jooq.Confi
                     return callable.run(cfgdslMockTime0);
                 });
         TimelineMergeEngine engine = new TimelineMergeEngine(revisionRepo, snapshotService,
-                currentService, previewService, planner, new TimelinePatchApplier(),
+                org.mockito.Mockito.mock(TimelineRevisionSaveService.class), previewService, planner, new TimelinePatchApplier(),
                 InternalTimelineJson.mapper(),
                 org.mockito.Mockito.mock(com.example.platform.timeline.app.TimelineArtifactPinValidator.class),
                 org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class),
                 dslMockTime0);
-        TimelineMergeResult result = engine.merge(new TimelineMergeRequest(
+        TimelineMergeResult result = engine.mergeSemantic(new TimelineMergeRequest(
                 "proj-1", "tenant-1", "base-rev", "src-rev", "tgt-rev", "user-1", "merge-1"));
         if (result.status() == TimelineMergeResult.MergeStatus.MERGED) {
-            TimelineCandidate reloaded = InternalTimelineCandidateAdapter.map("proj-1", result.mergedPayloadJson());
+            TimelineCandidate reloaded = TimelineDocumentCandidateMapper.map(
+                    "proj-1", TimelineDocumentJsonSerializer.deserialize(result.mergedPayloadJson()));
             TimelineValidationResult validation = TimelineCanonicalValidator.validate(reloaded);
             return new MergeOutcome(result, result.mergedPayloadJson(), reloaded, validation);
         }
@@ -150,9 +151,18 @@ org.jooq.Configuration cfgdslMockTime0 = org.mockito.Mockito.mock(org.jooq.Confi
     private static TimelineRevisionRepository.RevisionRow row(String rev, String snap, String payload) {
         return new TimelineRevisionRepository.RevisionRow(
                 rev, "proj-1", "tenant-1", "base-rev", 1, snap, 0,
-                new TimelineContentHasher(new TimelineCanonicalizer()).hashInternalTimeline(payload),
-                "internal-1.0", "merge", "user-1", null, "test", null, null, null,
+                new com.example.platform.timeline.canonical.TimelineContentDigester().digest(
+                        TimelineDocumentJsonSerializer.deserialize(payload)),
+                "timeline-1.0", "merge", "user-1", null, "test", null, null, null,
                 true, "src-rev,tgt-rev", "base-rev", java.time.OffsetDateTime.now());
+    }
+
+    private static String canonicalPayload(String importPayload) {
+        TimelineCandidate candidate = InternalTimelineCandidateAdapter.map("proj-1", importPayload);
+        TimelineDocument document = com.example.platform.timeline.diff.calculation.TimelineSnapshotConverter
+                .toDocument(com.example.platform.timeline.diff.calculation.TimelineSnapshotConverter
+                        .toSnapshot(candidate, "fixture"));
+        return TimelineDocumentJsonSerializer.serialize(document);
     }
 
 
@@ -238,8 +248,8 @@ org.jooq.Configuration cfgdslMockTime0 = org.mockito.Mockito.mock(org.jooq.Confi
         assertEquals(TimelineMergeResult.MergeStatus.MERGED, out.result.status());
         assertNotNull(out.mergedPayload);
         assertFalse(out.reloadValidation.hasFatalErrors());
-        com.fasterxml.jackson.databind.JsonNode merged = InternalTimelineJson.mapper().readTree(out.mergedPayload);
-        assertTrue(merged.path("textElements").isMissingNode() || merged.path("textElements").size() == 0,
+        TimelineDocument merged = TimelineDocumentJsonSerializer.deserialize(out.mergedPayload);
+        assertTrue(merged.getTextElements().isEmpty(),
                 "F5: delete-last must yield canonical empty TimedText state");
     }
 
@@ -254,11 +264,9 @@ org.jooq.Configuration cfgdslMockTime0 = org.mockito.Mockito.mock(org.jooq.Confi
         assertFalse(out.reloadValidation.hasFatalErrors());
         // Reload the merged payload through the canonical adapter and assert
         // EXACT semantic equality of the added TextElement.
-        var node = InternalTimelineJson.mapper().readTree(out.mergedPayload);
-        var arr = node.path("composition").path("textElements");
-        assertEquals(1, arr.size(), "F7: exactly one TextElement must be added");
-        TextElement reloaded = com.example.platform.timeline.canonical.TimedTextCanonicalSemantics
-                .fromCanonicalNode(arr.get(0));
+        var document = TimelineDocumentJsonSerializer.deserialize(out.mergedPayload);
+        assertEquals(1, document.getTextElements().size(), "F7: exactly one TextElement must be added");
+        TextElement reloaded = document.getTextElements().getFirst();
         assertEquals(t1, reloaded, "F7: reloaded TextElement must EXACTLY equal THEIRS t1");
         assertEquals(com.example.platform.timeline.canonical.TimedTextCanonicalSemantics.semanticFingerprint(t1), com.example.platform.timeline.canonical.TimedTextCanonicalSemantics.semanticFingerprint(reloaded));
     }

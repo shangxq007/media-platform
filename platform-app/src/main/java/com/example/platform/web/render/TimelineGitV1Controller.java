@@ -3,7 +3,8 @@ package com.example.platform.web.render;
 import com.example.platform.shared.time.MediaTime;
 import com.example.platform.timeline.app.PatchApplyResult;
 import com.example.platform.timeline.app.PatchPreviewResult;
-import com.example.platform.timeline.app.ProductCurrentRevisionService;
+import com.example.platform.timeline.app.TimelineRevisionQueryService;
+import com.example.platform.shared.web.TenantContext;
 import com.example.platform.render.app.timeline.RenderJobRevisionPinningService;
 import com.example.platform.timeline.app.TimelinePatchApplicationService;
 import com.example.platform.timeline.app.TimelineRevisionSaveService;
@@ -48,24 +49,27 @@ import java.util.UUID;
 public class TimelineGitV1Controller {
 
     private final TimelineRevisionSaveService saveService;
-    private final ProductCurrentRevisionService currentRevisionService;
+    private final TimelineRevisionQueryService revisionQueryService;
     private final RenderJobRevisionPinningService pinningService;
     private final TimelineContentDigester contentDigester;
     private final TimelineSemanticDiffV1Service diffService;
     private final TimelinePatchApplicationService patchService;
+    private final TimelineProjectAuthorizationService projectAuthorization;
 
     public TimelineGitV1Controller(TimelineRevisionSaveService saveService,
-                                   ProductCurrentRevisionService currentRevisionService,
+                                   TimelineRevisionQueryService revisionQueryService,
                                    RenderJobRevisionPinningService pinningService,
                                    TimelineContentDigester contentDigester,
                                    TimelineSemanticDiffV1Service diffService,
-                                   TimelinePatchApplicationService patchService) {
+                                   TimelinePatchApplicationService patchService,
+                                   TimelineProjectAuthorizationService projectAuthorization) {
         this.saveService = saveService;
-        this.currentRevisionService = currentRevisionService;
+        this.revisionQueryService = revisionQueryService;
         this.pinningService = pinningService;
         this.contentDigester = contentDigester;
         this.diffService = diffService;
         this.patchService = patchService;
+        this.projectAuthorization = projectAuthorization;
     }
 
     @PostMapping("/products/{productId}/revisions")
@@ -73,9 +77,11 @@ public class TimelineGitV1Controller {
     public ResponseEntity<RevisionResponse> saveRevision(
             @PathVariable String productId,
             @RequestBody SaveRevisionRequest request) {
+        String tenantId = TenantContext.get();
+        var actor = projectAuthorization.requireWrite(tenantId, productId);
         var document = request.toDocument();
-        var revision = saveService.saveRevision(productId, request.expectedCurrentRevisionId(),
-                document, request.createdBy());
+        var revision = saveService.saveRevision(tenantId, productId,
+                request.expectedCurrentRevisionId(), document, actor.actorId());
         return ResponseEntity.status(HttpStatus.CREATED).body(RevisionResponse.from(revision));
     }
 
@@ -83,19 +89,28 @@ public class TimelineGitV1Controller {
     @Operation(summary = "Get current revision for product")
     public ResponseEntity<CurrentRevisionResponse> getCurrentRevision(
             @PathVariable String productId) {
-        String currentRevisionId = currentRevisionService.getCurrentRevisionId(productId);
-        if (currentRevisionId == null) {
+        String tenantId = TenantContext.get();
+        projectAuthorization.requireRead(tenantId, productId);
+        var current = revisionQueryService.findHead(productId, tenantId);
+        if (current.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
-        var revision = saveService.findById(currentRevisionId);
+        String currentRevisionId = current.get().id();
+        var revision = saveService.findById(tenantId, currentRevisionId);
         return ResponseEntity.ok(new CurrentRevisionResponse(currentRevisionId, revision));
     }
 
-    @GetMapping("/revisions/{revisionId}")
+    @GetMapping("/products/{productId}/revisions/{revisionId}")
     @Operation(summary = "Get revision by ID")
     public ResponseEntity<RevisionResponse> getRevision(
+            @PathVariable String productId,
             @PathVariable String revisionId) {
-        var revision = saveService.findById(revisionId);
+        String tenantId = TenantContext.get();
+        projectAuthorization.requireRead(tenantId, productId);
+        if (revisionQueryService.findById(productId, tenantId, revisionId).isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        var revision = saveService.findById(tenantId, revisionId);
         if (revision == null) {
             return ResponseEntity.notFound().build();
         }
@@ -108,8 +123,10 @@ public class TimelineGitV1Controller {
             @PathVariable String productId,
             @PathVariable String historicalRevisionId,
             @RequestBody RestoreRequest request) {
-        var revision = saveService.restoreRevision(productId, historicalRevisionId,
-                request.expectedCurrentRevisionId(), request.createdBy());
+        String tenantId = TenantContext.get();
+        var actor = projectAuthorization.requireWrite(tenantId, productId);
+        var revision = saveService.restoreRevision(tenantId, productId,
+                historicalRevisionId, request.expectedCurrentRevisionId(), actor.actorId());
         return ResponseEntity.status(HttpStatus.CREATED).body(RevisionResponse.from(revision));
     }
 
@@ -117,6 +134,7 @@ public class TimelineGitV1Controller {
     @Operation(summary = "Create RenderJob pinned to a revision")
     public ResponseEntity<RenderJobResponse> createRenderJob(
             @RequestBody CreateRenderJobRequest request) {
+        projectAuthorization.requireWrite(TenantContext.get(), request.productId());
         String jobId = UUID.randomUUID().toString();
         pinningService.createRenderJobWithRevision(jobId, request.productId(),
                 request.timelineRevisionId(), request.backend());
@@ -140,7 +158,9 @@ public class TimelineGitV1Controller {
             @PathVariable String productId,
             @RequestParam String baseRevisionId,
             @RequestParam String targetRevisionId) {
-        var changeSet = diffService.diff(productId, baseRevisionId, targetRevisionId);
+        projectAuthorization.requireRead(TenantContext.get(), productId);
+        var changeSet = diffService.diff(
+                TenantContext.get(), productId, baseRevisionId, targetRevisionId);
         return ResponseEntity.ok(DiffResponse.from(changeSet));
     }
 
@@ -156,8 +176,9 @@ public class TimelineGitV1Controller {
     public ResponseEntity<PatchPreviewResponse> previewPatch(
             @PathVariable String productId,
             @RequestBody PatchRequest request) {
+        projectAuthorization.requireRead(TenantContext.get(), productId);
         var patch = request.toPatch(productId);
-        var result = patchService.preview(patch);
+        var result = patchService.preview(TenantContext.get(), patch);
         if (result instanceof PatchPreviewResult.Failure failure) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new PatchPreviewResponse(failure.error().code().name(), failure.error().message(), null, false));
@@ -170,8 +191,10 @@ public class TimelineGitV1Controller {
     public ResponseEntity<PatchApplyResponse> applyPatch(
             @PathVariable String productId,
             @RequestBody PatchRequest request) {
+        String tenantId = TenantContext.get();
+        var actor = projectAuthorization.requireWrite(tenantId, productId);
         var patch = request.toPatch(productId);
-        var result = patchService.apply(patch);
+        var result = patchService.apply(tenantId, actor.actorId(), patch);
         if (result instanceof PatchApplyResult.Failure failure) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new PatchApplyResponse(failure.error().code().name(), failure.error().message(), null, null, null, false));
@@ -194,7 +217,6 @@ public class TimelineGitV1Controller {
 
     public record SaveRevisionRequest(
             String expectedCurrentRevisionId,
-            String createdBy,
             List<TrackDto> tracks) {
         TimelineDocument toDocument() {
             var tracks = this.tracks().stream().map(TrackDto::toTrack).toList();
@@ -222,7 +244,7 @@ public class TimelineGitV1Controller {
         }
     }
 
-    public record RestoreRequest(String expectedCurrentRevisionId, String createdBy) {}
+    public record RestoreRequest(String expectedCurrentRevisionId) {}
 
     public record CreateRenderJobRequest(String productId, String timelineRevisionId, String backend) {}
 
@@ -387,4 +409,5 @@ public class TimelineGitV1Controller {
     public record PatchPreviewResponse(String error, String message, String resultDigest, boolean persisted) {}
 
     public record PatchApplyResponse(String error, String message, String revisionId, String parentRevisionId, String resultDigest, boolean persisted) {}
+
 }

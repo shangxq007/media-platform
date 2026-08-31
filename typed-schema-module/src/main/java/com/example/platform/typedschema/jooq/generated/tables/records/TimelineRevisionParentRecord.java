@@ -6,7 +6,7 @@ package com.example.platform.typedschema.jooq.generated.tables.records;
 
 import com.example.platform.typedschema.jooq.generated.tables.TimelineRevisionParent;
 
-import org.jooq.Record2;
+import org.jooq.Record4;
 import org.jooq.impl.UpdatableRecordImpl;
 
 
@@ -19,31 +19,45 @@ public class TimelineRevisionParentRecord extends UpdatableRecordImpl<TimelineRe
     private static final long serialVersionUID = 1L;
 
     /**
+     * Setter for <code>public.timeline_revision_parent.tenant_id</code>.
+     */
+    public void setTenantId(String value) {
+        set(0, value);
+    }
+
+    /**
+     * Getter for <code>public.timeline_revision_parent.tenant_id</code>.
+     */
+    public String getTenantId() {
+        return (String) get(0);
+    }
+
+    /**
      * Setter for <code>public.timeline_revision_parent.project_id</code>.
      */
     public void setProjectId(String value) {
-        set(0, value);
+        set(1, value);
     }
 
     /**
      * Getter for <code>public.timeline_revision_parent.project_id</code>.
      */
     public String getProjectId() {
-        return (String) get(0);
+        return (String) get(1);
     }
 
     /**
      * Setter for <code>public.timeline_revision_parent.revision_id</code>.
      */
     public void setRevisionId(String value) {
-        set(1, value);
+        set(2, value);
     }
 
     /**
      * Getter for <code>public.timeline_revision_parent.revision_id</code>.
      */
     public String getRevisionId() {
-        return (String) get(1);
+        return (String) get(2);
     }
 
     /**
@@ -51,7 +65,7 @@ public class TimelineRevisionParentRecord extends UpdatableRecordImpl<TimelineRe
      * <code>public.timeline_revision_parent.parent_revision_id</code>.
      */
     public void setParentRevisionId(String value) {
-        set(2, value);
+        set(3, value);
     }
 
     /**
@@ -59,21 +73,21 @@ public class TimelineRevisionParentRecord extends UpdatableRecordImpl<TimelineRe
      * <code>public.timeline_revision_parent.parent_revision_id</code>.
      */
     public String getParentRevisionId() {
-        return (String) get(2);
+        return (String) get(3);
     }
 
     /**
      * Setter for <code>public.timeline_revision_parent.parent_order</code>.
      */
     public void setParentOrder(Integer value) {
-        set(3, value);
+        set(4, value);
     }
 
     /**
      * Getter for <code>public.timeline_revision_parent.parent_order</code>.
      */
     public Integer getParentOrder() {
-        return (Integer) get(3);
+        return (Integer) get(4);
     }
 
     // -------------------------------------------------------------------------
@@ -81,8 +95,8 @@ public class TimelineRevisionParentRecord extends UpdatableRecordImpl<TimelineRe
     // -------------------------------------------------------------------------
 
     @Override
-    public Record2<String, Integer> key() {
-        return (Record2) super.key();
+    public Record4<String, String, String, Integer> key() {
+        return (Record4) super.key();
     }
 
     // -------------------------------------------------------------------------
@@ -99,9 +113,10 @@ public class TimelineRevisionParentRecord extends UpdatableRecordImpl<TimelineRe
     /**
      * Create a detached, initialised TimelineRevisionParentRecord
      */
-    public TimelineRevisionParentRecord(String projectId, String revisionId, String parentRevisionId, Integer parentOrder) {
+    public TimelineRevisionParentRecord(String tenantId, String projectId, String revisionId, String parentRevisionId, Integer parentOrder) {
         super(TimelineRevisionParent.TIMELINE_REVISION_PARENT);
 
+        setTenantId(tenantId);
         setProjectId(projectId);
         setRevisionId(revisionId);
         setParentRevisionId(parentRevisionId);

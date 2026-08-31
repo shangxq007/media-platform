@@ -54,7 +54,7 @@ public class AssetReviewService {
     }
 
     public List<TimelineReviewRepository.ReviewRow> listAssetReviews(String projectId, int limit) {
-        return reviewRepository.listByProject(projectId, limit);
+        return reviewRepository.listByProject(projectId, TenantContext.get(), limit);
     }
 
     @Transactional

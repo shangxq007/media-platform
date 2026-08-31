@@ -11,8 +11,8 @@ import com.example.platform.timeline.revisioncommand.RevisionRef;
 import com.example.platform.timeline.version.TimelineConflictException;
 import com.example.platform.timeline.version.TimelineRevision;
 import java.util.Objects;
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import org.jooq.DSLContext;
+import org.jooq.impl.DSL;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -44,7 +44,6 @@ public class TimelineRevisionSaveService {
 
     private static final Logger log = LoggerFactory.getLogger(TimelineRevisionSaveService.class);
     private final DSLContext dsl;
-    private final ProductCurrentRevisionService currentRevisionService;
     private final TimelineContentDigester contentDigester;
     private final TimelineSnapshotService timelineSnapshotService;
     private final TimelineArtifactPinValidator artifactPinValidator;
@@ -58,8 +57,7 @@ public class TimelineRevisionSaveService {
     private final HeadUpdatePort headUpdatePort;
     private final ProjectRevisionNumberAllocator revisionNumberAllocator =
             new ProjectRevisionNumberAllocator();
-    private final TimelineRevisionRefMutation revisionRefMutation =
-            new TimelineRevisionRefMutation();
+    private final TimelineRevisionRefMutation revisionRefMutation;
     // R2: bounded restore verification boundary (fail-closed; no new authority).
     private final HistoricalRevisionRestoreVerifier restoreVerifier;
 
@@ -80,7 +78,7 @@ public class TimelineRevisionSaveService {
     // with a missing artifact-pin dependency. A pinned revision can never be
     // committed without pin validation/persistence authority.
     public TimelineRevisionSaveService(DSLContext dsl,
-                                       ProductCurrentRevisionService currentRevisionService,
+                                       TimelineRevisionRefMutation revisionRefMutation,
                                        TimelineContentDigester contentDigester,
                                        TimelineSnapshotService timelineSnapshotService,
                                        TimelineArtifactPinValidator artifactPinValidator,
@@ -94,7 +92,7 @@ public class TimelineRevisionSaveService {
         // a missing artifact-pin dependency. A pinned revision can never be
         // committed without pin validation/persistence authority.
         this.dsl = Objects.requireNonNull(dsl, "dsl");
-        this.currentRevisionService = Objects.requireNonNull(currentRevisionService, "currentRevisionService");
+        this.revisionRefMutation = Objects.requireNonNull(revisionRefMutation, "revisionRefMutation");
         this.contentDigester = Objects.requireNonNull(contentDigester, "contentDigester");
         this.timelineSnapshotService = Objects.requireNonNull(timelineSnapshotService, "timelineSnapshotService");
         this.artifactPinValidator = Objects.requireNonNull(artifactPinValidator, "artifactPinValidator");
@@ -120,8 +118,17 @@ public class TimelineRevisionSaveService {
     @Transactional
     public TimelineRevision saveRevision(String productId, String expectedCurrentRevisionId,
                                          TimelineDocument document, String createdBy) {
-        return saveRevisionInternal(productId, expectedCurrentRevisionId, document,
-                java.util.List.of(), java.util.List.of(), createdBy, null, null).revision();
+        return saveRevision(resolveProjectTenant(productId), productId,
+                expectedCurrentRevisionId, document, createdBy);
+    }
+
+    /** Canonical explicit-owner save entrypoint used by authenticated adapters and workers. */
+    @Transactional
+    public TimelineRevision saveRevision(String tenantId, String productId,
+                                         String expectedCurrentRevisionId,
+                                         TimelineDocument document, String canonicalAuthor) {
+        return saveRevisionInternal(tenantId, productId, expectedCurrentRevisionId, document,
+                java.util.List.of(), java.util.List.of(), canonicalAuthor, null, null).revision();
     }
 
     /**
@@ -139,7 +146,7 @@ public class TimelineRevisionSaveService {
             RevisionWriteCommand command) {
         Objects.requireNonNull(targetRef, "targetRef");
         SaveOutcome outcome = saveRevisionInternal(
-                targetRef.projectId(), expectedCurrentRevisionId, document,
+                targetRef.tenantId(), targetRef.projectId(), expectedCurrentRevisionId, document,
                 java.util.List.of(), java.util.List.of(), createdBy,
                 Objects.requireNonNull(command, "command"), targetRef);
         if (outcome.replayed()) {
@@ -165,7 +172,7 @@ public class TimelineRevisionSaveService {
         Objects.requireNonNull(command, "command");
         return dsl.transactionResult(tx -> {
             SaveOutcome replay = claimOrReplayCommand(
-                    tx.dsl(), command, targetRef.projectId(), "NO_OP");
+                    tx.dsl(), command, targetRef, expectedCurrentRevisionId, "NO_OP");
             if (replay != null) {
                 return new RevisionWriteResult(null, expectedCurrentRevisionId,
                         replay.timelineContentHash(), true);
@@ -208,31 +215,79 @@ public class TimelineRevisionSaveService {
             java.util.List<com.example.platform.timeline.semantics.effect.EffectInstance> effects,
             java.util.List<com.example.platform.timeline.semantics.effect.EffectInstance.EffectDefinition> definitions,
             String createdBy) {
-        return saveRevisionInternal(productId, expectedCurrentRevisionId, document,
+        return saveRevisionWithEffects(resolveProjectTenant(productId), productId,
+                expectedCurrentRevisionId, document, effects, definitions, createdBy);
+    }
+
+    /** Explicit-owner Effect-bearing save entrypoint for an authorized server actor. */
+    @Transactional
+    public TimelineRevision saveRevisionWithEffects(
+            String tenantId, String productId, String expectedCurrentRevisionId,
+            TimelineDocument document,
+            java.util.List<com.example.platform.timeline.semantics.effect.EffectInstance> effects,
+            java.util.List<com.example.platform.timeline.semantics.effect.EffectInstance.EffectDefinition> definitions,
+            String canonicalAuthor) {
+        return saveRevisionInternal(tenantId, productId,
+                expectedCurrentRevisionId, document,
                 effects == null ? java.util.List.of() : effects,
                 definitions == null ? java.util.List.of() : definitions,
-                createdBy, null, null).revision();
+                canonicalAuthor, null, null).revision();
     }
 
     private SaveOutcome saveRevisionInternal(
-            String productId, String expectedCurrentRevisionId,
+            String tenantId, String productId, String expectedCurrentRevisionId,
             TimelineDocument document,
             java.util.List<com.example.platform.timeline.semantics.effect.EffectInstance> effects,
             java.util.List<com.example.platform.timeline.semantics.effect.EffectInstance.EffectDefinition> definitions,
             String createdBy,
             RevisionWriteCommand command,
             RevisionRef commandTargetRef) {
+        return saveRevisionInternal(tenantId, productId, expectedCurrentRevisionId,
+                document, effects, definitions, createdBy, command, commandTargetRef,
+                java.util.List.of(), "api", null);
+    }
+
+    /** Sole-boundary two-parent merge persistence: target/main first, source second. */
+    public TimelineRevision saveMergeRevision(
+            String tenantId, String projectId, String expectedMainHead,
+            String sourceRevisionId, String mergeBaseRevisionId,
+            TimelineDocument document, String canonicalAuthor) {
+        if (sourceRevisionId == null || sourceRevisionId.isBlank()) {
+            throw new IllegalArgumentException("merge source revision required");
+        }
+        return saveRevisionInternal(tenantId, projectId, expectedMainHead, document,
+                java.util.List.of(), java.util.List.of(), canonicalAuthor, null, null,
+                java.util.List.of(sourceRevisionId), "merge", mergeBaseRevisionId).revision();
+    }
+
+    private SaveOutcome saveRevisionInternal(
+            String tenantId, String productId, String expectedCurrentRevisionId,
+            TimelineDocument document,
+            java.util.List<com.example.platform.timeline.semantics.effect.EffectInstance> effects,
+            java.util.List<com.example.platform.timeline.semantics.effect.EffectInstance.EffectDefinition> definitions,
+            String createdBy,
+            RevisionWriteCommand command,
+            RevisionRef commandTargetRef,
+            java.util.List<String> additionalParents,
+            String revisionSource,
+            String mergeBaseRevisionId) {
+        requireOwnedProject(tenantId, productId);
         if (command != null && (commandTargetRef == null
-                || !productId.equals(commandTargetRef.projectId()))) {
+                || !productId.equals(commandTargetRef.projectId())
+                || !command.tenantId().equals(commandTargetRef.tenantId())
+                || !RevisionRef.MAIN_REF.equals(commandTargetRef.refId()))) {
             throw new IllegalArgumentException("command target ref must belong to the persisted project");
         }
         // Existing canonical callers are authenticated request paths and retain
         // the established TenantContext contract. Operation application carries
         // the authorization-bound tenant explicitly in its immutable command so
         // worker execution never depends on ambient ThreadLocal propagation.
-        String tenantId = command == null
-                ? requireCanonicalTenantContext()
-                : command.tenantId();
+        if (tenantId == null || tenantId.isBlank()) {
+            throw new IllegalArgumentException("explicit tenantId required for canonical revision persistence");
+        }
+        if (command != null && !tenantId.equals(command.tenantId())) {
+            throw new IllegalArgumentException("command tenant must equal canonical revision tenant");
+        }
         // NDSF-SCOPE-E1 canonical save gate: first semantic operation (F018) — before
         // revision allocation and before every write or side effect.
         TimelineCandidate candidate = TimelineDocumentCandidateMapper.map(productId, document);
@@ -279,14 +334,15 @@ public class TimelineRevisionSaveService {
         return dsl.transactionResult(tx -> {
             if (command != null) {
                 SaveOutcome replay = claimOrReplayCommand(
-                        tx.dsl(), command, productId, "APPLIED");
+                        tx.dsl(), command, commandTargetRef,
+                        expectedCurrentRevisionId, "APPLIED");
                 if (replay != null) {
                     return replay;
                 }
             }
             int nextRevisionNumber = Math.toIntExact(
                     revisionNumberAllocator.allocate(tx.dsl(), productId));
-            String snapshotId = persistSnapshotPayload(tx.dsl(), productId, document);
+            String snapshotId = persistSnapshotPayload(tx.dsl(), productId, tenantId, document);
 
             // ROADMAP20 authority integration (blockers 1/4): every NEW canonical
             // revision mints authoritative Effect semantics (EMPTY for the
@@ -317,7 +373,21 @@ public class TimelineRevisionSaveService {
 
             revisionPersistence.insertRevisionTx(
                     tx.dsl(), revision, productId, snapshotId, revision.timelineSchemaVersion(),
-                    nextRevisionNumber, tenantId, "api");
+                    timelineDigest, nextRevisionNumber, tenantId, revisionSource);
+
+            if (!additionalParents.isEmpty()) {
+                tx.dsl().update(TIMELINE_REVISION)
+                        .set(TIMELINE_REVISION.IS_MERGE, true)
+                        .set(TIMELINE_REVISION.MERGE_PARENT_REVISION_IDS,
+                                String.join(",", java.util.stream.Stream.concat(
+                                        java.util.stream.Stream.of(parentRevisionId),
+                                        additionalParents.stream()).toList()))
+                        .set(TIMELINE_REVISION.MERGE_BASE_REVISION_ID, mergeBaseRevisionId)
+                        .where(TIMELINE_REVISION.ID.eq(revisionId))
+                        .and(TIMELINE_REVISION.TENANT_ID.eq(tenantId))
+                        .and(TIMELINE_REVISION.PROJECT_ID.eq(productId))
+                        .execute();
+            }
 
             // Canonical state order begins with the complete immutable revision
             // state; H7 then writes its parent edge, publishes the ref, and
@@ -342,15 +412,26 @@ public class TimelineRevisionSaveService {
                                 .toList());
             }
 
+            if (parentRevisionId != null) {
+                tx.dsl().insertInto(TIMELINE_REVISION_PARENT)
+                        .set(TIMELINE_REVISION_PARENT.TENANT_ID, tenantId)
+                        .set(TIMELINE_REVISION_PARENT.PROJECT_ID, productId)
+                        .set(TIMELINE_REVISION_PARENT.REVISION_ID, revisionId)
+                        .set(TIMELINE_REVISION_PARENT.PARENT_REVISION_ID, parentRevisionId)
+                        .set(TIMELINE_REVISION_PARENT.PARENT_ORDER, 0)
+                        .execute();
+            }
+            for (int parentOrder = 0; parentOrder < additionalParents.size(); parentOrder++) {
+                tx.dsl().insertInto(TIMELINE_REVISION_PARENT)
+                        .set(TIMELINE_REVISION_PARENT.TENANT_ID, tenantId)
+                        .set(TIMELINE_REVISION_PARENT.PROJECT_ID, productId)
+                        .set(TIMELINE_REVISION_PARENT.REVISION_ID, revisionId)
+                        .set(TIMELINE_REVISION_PARENT.PARENT_REVISION_ID,
+                                additionalParents.get(parentOrder))
+                        .set(TIMELINE_REVISION_PARENT.PARENT_ORDER, parentOrder + 1)
+                        .execute();
+            }
             if (command != null) {
-                if (parentRevisionId != null) {
-                    tx.dsl().insertInto(TIMELINE_REVISION_PARENT)
-                            .set(TIMELINE_REVISION_PARENT.PROJECT_ID, productId)
-                            .set(TIMELINE_REVISION_PARENT.REVISION_ID, revisionId)
-                            .set(TIMELINE_REVISION_PARENT.PARENT_REVISION_ID, parentRevisionId)
-                            .set(TIMELINE_REVISION_PARENT.PARENT_ORDER, 0)
-                            .execute();
-                }
                 boolean published = parentRevisionId == null
                         ? revisionRefMutation.bootstrap(tx.dsl(), commandTargetRef, revisionId)
                         : revisionRefMutation.advance(
@@ -361,10 +442,9 @@ public class TimelineRevisionSaveService {
                 completeCommand(tx.dsl(), command.commandId(), revisionId,
                         timelineDigest, "APPLIED");
             } else {
-                // Legacy/non-command save surfaces retain their existing product
-                // projection contract. H7 command correctness never consults it.
                 headUpdatePort.updateHeadTx(
-                        tx.dsl(), productId, expectedCurrentRevisionId, revisionId);
+                        tx.dsl(), RevisionRef.main(tenantId, productId),
+                        expectedCurrentRevisionId, revisionId);
             }
 
             log.info("Saved timeline revision {} for product {}", revisionId, productId);
@@ -375,28 +455,38 @@ public class TimelineRevisionSaveService {
     private static SaveOutcome claimOrReplayCommand(
             org.jooq.DSLContext tx,
             RevisionWriteCommand command,
-            String productId,
+            RevisionRef targetRef,
+            String expectedHeadRevisionId,
             String expectedResultStatus) {
         int inserted = tx.execute("""
                 insert into apply_command
-                    (apply_command_id, plan_digest, fingerprint, status, project_id, command_domain)
-                values (?, ?, ?, 'IN_PROGRESS', ?, ?)
+                    (apply_command_id, plan_digest, fingerprint, status, tenant_id, project_id,
+                     command_domain, target_ref_id, expected_head_revision_id, expected_result_status)
+                values (?, ?, ?, 'IN_PROGRESS', ?, ?, ?, ?, ?, ?)
                 on conflict (apply_command_id) do nothing
                 """, command.commandId(), command.planDigest(), command.fingerprint(),
-                productId, command.commandDomain());
+                command.tenantId(), targetRef.projectId(), command.commandDomain(), targetRef.refId(),
+                expectedHeadRevisionId, expectedResultStatus);
         if (inserted == 1) {
             return null;
         }
         var existing = tx.fetchOne("""
-                select plan_digest, fingerprint, status, project_id, command_domain,
+                select plan_digest, fingerprint, status, tenant_id, project_id, command_domain,
+                       target_ref_id, expected_head_revision_id, expected_result_status,
                        result_revision_id, result_content_hash, result_status
                 from apply_command where apply_command_id = ?
                 """, command.commandId());
         if (existing == null
                 || !command.planDigest().equals(existing.get("plan_digest", String.class))
                 || !command.fingerprint().equals(existing.get("fingerprint", String.class))
-                || !productId.equals(existing.get("project_id", String.class))
-                || !command.commandDomain().equals(existing.get("command_domain", String.class))) {
+                || !command.tenantId().equals(existing.get("tenant_id", String.class))
+                || !targetRef.projectId().equals(existing.get("project_id", String.class))
+                || !command.commandDomain().equals(existing.get("command_domain", String.class))
+                || !targetRef.refId().equals(existing.get("target_ref_id", String.class))
+                || !Objects.equals(expectedHeadRevisionId,
+                        existing.get("expected_head_revision_id", String.class))
+                || !expectedResultStatus.equals(
+                        existing.get("expected_result_status", String.class))) {
             throw new TimelineRevisionCommandConflictException(
                     "revision command id reused with different immutable context");
         }
@@ -442,15 +532,6 @@ public class TimelineRevisionSaveService {
         }
     }
 
-    private static String requireCanonicalTenantContext() {
-        String tenantId = com.example.platform.shared.web.TenantContext.get();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new IllegalStateException(
-                    "authenticated tenant context required for canonical Timeline revision save");
-        }
-        return tenantId;
-    }
-
     public record RevisionWriteResult(
             String revisionId,
             String parentRevisionId,
@@ -468,7 +549,16 @@ public class TimelineRevisionSaveService {
     @Transactional
     public TimelineRevision restoreRevision(String productId, String historicalRevisionId,
                                            String expectedCurrentRevisionId, String createdBy) {
-        String tenantId = com.example.platform.shared.web.TenantContext.get();
+        return restoreRevision(resolveProjectTenant(productId), productId, historicalRevisionId,
+                expectedCurrentRevisionId, createdBy);
+    }
+
+    @Transactional
+    public TimelineRevision restoreRevision(String tenantId, String productId,
+                                            String historicalRevisionId,
+                                            String expectedCurrentRevisionId,
+                                            String canonicalAuthor) {
+        requireOwnedProject(tenantId, productId);
         String contentHash = dsl.select(TIMELINE_REVISION.CONTENT_HASH)
                 .from(TIMELINE_REVISION)
                 .where(TIMELINE_REVISION.ID.eq(historicalRevisionId))
@@ -528,7 +618,7 @@ public class TimelineRevisionSaveService {
             // (RESTORE_POST_VERIFICATION_HISTORICAL_REREAD_COUNT = 0).
             String snapshotId = timelineSnapshotService.saveTx(
                     tx.dsl(), productId, tenantId,
-                    verified.canonicalPayloadJson(),
+                    TimelineDocumentJsonSerializer.serializeWithCaptions(verified.document()),
                     verified.timelineSchemaVersion());
 
             // R2: the restored revision reissues the VERIFIED historical
@@ -551,11 +641,22 @@ public class TimelineRevisionSaveService {
             revisionPersistence.insertRevisionTx(
                     tx.dsl(), new TimelineRevision(revisionId, productId, expectedCurrentRevisionId,
                             schemaVersionFinal, null, revisionSemanticDigest, java.time.Instant.now(),
-                            createdBy, newContext),
-                    productId, snapshotId, schemaVersionFinal, nextRevisionNumber, tenantId, "restore");
+                            canonicalAuthor, newContext),
+                    productId, snapshotId, schemaVersionFinal, verified.timelineDigest(),
+                    nextRevisionNumber, tenantId, "restore");
 
             // F3: revctx + pins BEFORE the head CAS (final mutation).
             revisionSemanticContextStore.storeTx(tx.dsl(), productId, tenantId, revisionId, newContext);
+
+            if (expectedCurrentRevisionId != null) {
+                tx.dsl().insertInto(TIMELINE_REVISION_PARENT)
+                        .set(TIMELINE_REVISION_PARENT.TENANT_ID, tenantId)
+                        .set(TIMELINE_REVISION_PARENT.PROJECT_ID, productId)
+                        .set(TIMELINE_REVISION_PARENT.REVISION_ID, revisionId)
+                        .set(TIMELINE_REVISION_PARENT.PARENT_REVISION_ID, expectedCurrentRevisionId)
+                        .set(TIMELINE_REVISION_PARENT.PARENT_ORDER, 0)
+                        .execute();
+            }
 
             // R4-D1: the restored revision is a DISTINCT revision id — it must
             // carry its own artifact-pin protection rows, copied from the
@@ -563,15 +664,18 @@ public class TimelineRevisionSaveService {
             // R5-C: no nullable skip — pin persistence authority is required
             // by construction.
             // F3: the HEAD CAS is the FINAL mutation (after pins).
-            artifactPinService.copyRevisionPinsTx(tx.dsl(), productId, historicalRevisionId, revisionId);
+            artifactPinService.copyRevisionPinsTx(
+                    tx.dsl(), tenantId, productId, historicalRevisionId, revisionId);
 
             // F3: HEAD CAS LAST — publishes only fully persisted restored state.
-            headUpdatePort.updateHeadTx(tx.dsl(), productId, expectedCurrentRevisionId, revisionId);
+            headUpdatePort.updateHeadTx(
+                    tx.dsl(), RevisionRef.main(tenantId, productId),
+                    expectedCurrentRevisionId, revisionId);
 
             log.info("Restored revision {} as new revision {} for product {}", historicalRevisionId, revisionId, productId);
             return new TimelineRevision(revisionId, productId, expectedCurrentRevisionId,
                     schemaVersionFinal,
-                    null, revisionSemanticDigest, Instant.now(), createdBy, newContext);
+                    null, revisionSemanticDigest, Instant.now(), canonicalAuthor, newContext);
         });
     }
 
@@ -607,10 +711,10 @@ public class TimelineRevisionSaveService {
     }
 
     private String persistSnapshotPayload(org.jooq.DSLContext tx, String productId,
-                                          TimelineDocument document) {
+                                          String tenantId, TimelineDocument document) {
         return timelineSnapshotService.saveTx(
                 tx, productId,
-                null,
+                tenantId,
                 TimelineDocumentJsonSerializer.serializeWithCaptions(document),
                 TimelineDocument.CURRENT_SCHEMA_VERSION);
     }
@@ -672,7 +776,11 @@ public class TimelineRevisionSaveService {
 
     @Transactional(readOnly = true)
     public TimelineRevision findById(String revisionId) {
-        String tenantId = com.example.platform.shared.web.TenantContext.get();
+        return findById(resolveRevisionTenant(revisionId), revisionId);
+    }
+
+    @Transactional(readOnly = true)
+    public TimelineRevision findById(String tenantId, String revisionId) {
         // FINAL (R3): ONE ownership-scoped row read — all fields derive from
         // the single validated row; no subsequent revisionId-only field
         // lookups (REVISION_ROW_AUTHORITATIVE_READ_IS_TENANT_SCOPED_V1,
@@ -728,7 +836,11 @@ public class TimelineRevisionSaveService {
      */
     @Transactional(readOnly = true)
     public Optional<TimelineDocument> findPayloadDocument(String revisionId) {
-        String tenantId = com.example.platform.shared.web.TenantContext.get();
+        return findPayloadDocument(resolveRevisionTenant(revisionId), revisionId);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<TimelineDocument> findPayloadDocument(String tenantId, String revisionId) {
         // C2: ONE ownership-validated revision row read (same unit as findById).
         OwnedRevisionRow row = readOwnedRevisionRow(revisionId, tenantId);
         if (row == null || row.snapshotId() == null || row.snapshotId().isBlank()) {
@@ -743,15 +855,51 @@ public class TimelineRevisionSaveService {
             return Optional.empty();
         }
         try {
-            TimelineDocument document = TimelineDocumentJsonSerializer.mapper()
-                    .readerFor(TimelineDocument.class)
-                    .without(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-                    .readValue(snapshot.get().payloadJson());
+            TimelineDocument document = TimelineDocumentJsonSerializer.deserialize(
+                    snapshot.get().payloadJson());
             return Optional.ofNullable(document);
         } catch (Exception e) {
             // Malformed governed payload: fail closed (caller returns PAYLOAD_INVALID).
             log.warn("Failed to deserialize governed payload for revision {}: {}", revisionId, e.getMessage());
             return Optional.empty();
         }
+    }
+
+    /** Trusted ownership lookup for legacy in-process adapters; mutation receives it explicitly. */
+    public String tenantForProject(String projectId) {
+        return resolveProjectTenant(projectId);
+    }
+
+    private String resolveProjectTenant(String projectId) {
+        String tenantId = dsl.select(DSL.field("tenant_id", String.class))
+                .from(DSL.table("project"))
+                .where(DSL.field("id", String.class).eq(projectId))
+                .fetchOne(DSL.field("tenant_id", String.class));
+        if (tenantId == null || tenantId.isBlank()) {
+            throw new IllegalArgumentException("project not found or has no tenant: " + projectId);
+        }
+        return tenantId;
+    }
+
+    private void requireOwnedProject(String tenantId, String projectId) {
+        if (tenantId == null || tenantId.isBlank()
+                || projectId == null || projectId.isBlank()
+                || dsl.fetchExists(DSL.selectOne().from("project")
+                        .where(DSL.field("id", String.class).eq(projectId))
+                        .and(DSL.field("tenant_id", String.class).eq(tenantId))) == false) {
+            throw new IllegalArgumentException(
+                    "canonical Timeline project is not available in the requested tenant");
+        }
+    }
+
+    private String resolveRevisionTenant(String revisionId) {
+        String tenantId = dsl.select(TIMELINE_REVISION.TENANT_ID)
+                .from(TIMELINE_REVISION)
+                .where(TIMELINE_REVISION.ID.eq(revisionId))
+                .fetchOne(TIMELINE_REVISION.TENANT_ID);
+        if (tenantId == null || tenantId.isBlank()) {
+            throw new IllegalArgumentException("revision not found: " + revisionId);
+        }
+        return tenantId;
     }
 }

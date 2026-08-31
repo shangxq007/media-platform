@@ -5,6 +5,7 @@ import static com.example.platform.typedschema.jooq.generated.tables.TimelineRev
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
@@ -26,7 +27,7 @@ import com.example.platform.shared.web.TenantContext;
 import com.example.platform.timeline.adapter.TimelineRevisionRepository;
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.timeline.app.InternalTimelineJson;
-import com.example.platform.timeline.app.ProductCurrentRevisionService;
+import com.example.platform.timeline.app.TimelineRevisionRefMutation;
 import com.example.platform.timeline.app.TimelineArtifactPinValidator;
 import com.example.platform.timeline.app.TimelineMergeEngine;
 import com.example.platform.timeline.diff.merge.preview.TimelineMergePreviewService;
@@ -73,7 +74,7 @@ class CheckpointARound5PersistentMergePinIT extends PostgresTestContainerSupport
 
     private static DataSource dataSource;
     private DSLContext dsl;
-    private ProductCurrentRevisionService currentRevisionService;
+    private TimelineRevisionRefMutation currentRevisionService;
     private TimelineSnapshotService snapshotService;
     private ArtifactPinService pinService;
     private TimelineMergeEngine mergeEngine;
@@ -93,7 +94,7 @@ class CheckpointARound5PersistentMergePinIT extends PostgresTestContainerSupport
     @BeforeEach
     void setUp() {
         RenderTestSchemaFixture.truncate(dsl);
-        currentRevisionService = new ProductCurrentRevisionService(dsl);
+        currentRevisionService = new TimelineRevisionRefMutation(dsl);
         snapshotService = new TimelineSnapshotService(dsl);
         pinService = new ArtifactPinService(new ArtifactPinRepository(dsl));
         TenantContext.set(TENANT);
@@ -105,11 +106,14 @@ class CheckpointARound5PersistentMergePinIT extends PostgresTestContainerSupport
     }
 
     private void insertProduct(String productId) {
+        RenderTestSchemaFixture.insertCanonicalProject(dsl, TENANT, productId);
         dsl.insertInto(Product.PRODUCT)
                 .set(Product.PRODUCT.PRODUCT_ID, productId)
                 .set(Product.PRODUCT.PRODUCT_TYPE, "video")
                 .set(Product.PRODUCT.REPRESENTATION_KIND, "master")
                 .set(Product.PRODUCT.STATUS, "REGISTERED")
+                .set(Product.PRODUCT.TENANT_ID, TENANT)
+                .set(Product.PRODUCT.PROJECT_ID, productId)
                 .set(Product.PRODUCT.CREATED_AT, java.time.LocalDateTime.now())
                 .set(Product.PRODUCT.UPDATED_AT, java.time.LocalDateTime.now())
                 .execute();
@@ -129,7 +133,7 @@ class CheckpointARound5PersistentMergePinIT extends PostgresTestContainerSupport
                 .execute();
     }
 
-    // ── internal-1.0 payload fixtures (the merge path's canonical wire) ──
+    // Import fixtures are converted to TimelineDocument before persistence.
 
     private static com.fasterxml.jackson.databind.node.ObjectNode rangeNode(
             com.fasterxml.jackson.databind.ObjectMapper mapper, long startMs, long durationMs) {
@@ -205,10 +209,14 @@ class CheckpointARound5PersistentMergePinIT extends PostgresTestContainerSupport
                 .set(TIMELINE_REVISION.REVISION_NUMBER, revNumber)
                 .set(TIMELINE_REVISION.SNAPSHOT_ID, snapshotId)
                 .set(TIMELINE_REVISION.INTERNAL_REVISION, revNumber)
-                .set(TIMELINE_REVISION.CONTENT_HASH, "hash-" + revId)
-                .set(TIMELINE_REVISION.SCHEMA_VERSION, "internal-1.0")
+                .set(TIMELINE_REVISION.CONTENT_HASH,
+                        new com.example.platform.timeline.canonical.TimelineContentDigester().digest(
+                                com.example.platform.timeline.app.TimelineDocumentJsonSerializer.deserialize(
+                                        snapshotService.findOwnedById(projectId, TENANT, snapshotId)
+                                                .orElseThrow().payloadJson())))
+                .set(TIMELINE_REVISION.SCHEMA_VERSION, "timeline-1.0")
                 .set(TIMELINE_REVISION.SOURCE, "merge")
-                .set(TIMELINE_REVISION.AUTHOR_USER_ID, "user-1")
+                .set(TIMELINE_REVISION.AUTHOR_USER_ID, RenderTestSchemaFixture.SERVER_ACTOR)
                 .set(TIMELINE_REVISION.IS_MERGE, false)
                 .set(TIMELINE_REVISION.CREATED_AT, java.time.LocalDateTime.now())
                 .execute();
@@ -216,8 +224,20 @@ class CheckpointARound5PersistentMergePinIT extends PostgresTestContainerSupport
 
     private String persistRevision(String revId, String projectId, String parentRevId, int revNumber,
             String payload) {
-        String snapshotId = snapshotService.saveTx(dsl, projectId, null, payload, "internal-1.0");
+        String canonicalPayload = canonicalPayload(projectId, payload);
+        String snapshotId = snapshotService.saveTx(
+                dsl, projectId, TENANT, canonicalPayload, "timeline-1.0");
         insertRevision(revId, projectId, parentRevId, revNumber, snapshotId);
+        if (parentRevId != null) {
+            dsl.execute("insert into timeline_revision_parent "
+                            + "(tenant_id, project_id, revision_id, parent_revision_id, parent_order) "
+                            + "values (?, ?, ?, ?, 0)",
+                    TENANT, projectId, revId, parentRevId);
+        }
+        dsl.execute("insert into project_revision_counter (project_id, next_revision_number) "
+                        + "values (?, ?) on conflict (project_id) do update set "
+                        + "next_revision_number = greatest(project_revision_counter.next_revision_number, excluded.next_revision_number)",
+                projectId, revNumber);
         return snapshotId;
     }
 
@@ -236,17 +256,41 @@ class CheckpointARound5PersistentMergePinIT extends PostgresTestContainerSupport
 
     private void buildServices(ArtifactQueryService query) {
         TimelineMergePreviewService preview = new TimelineMergePreviewService(new TimelineMergeConflictDetector());
+        TimelineArtifactPinValidator pinValidator = new TimelineArtifactPinValidator(query);
+        TimelineRevisionSaveService canonicalSave = new TimelineRevisionSaveService(
+                dsl,
+                currentRevisionService,
+                new com.example.platform.timeline.canonical.TimelineContentDigester(),
+                snapshotService,
+                pinValidator,
+                pinService,
+                new com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotAuthority(
+                        new com.example.platform.timeline.semantics.effect.EffectDefinitionVersionRegistry.InMemory(),
+                        new com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotStore.InMemory()),
+                new com.example.platform.timeline.adapter.JdbcTimelineRevisionSemanticContextStore(dsl),
+                new com.example.platform.timeline.app.DefaultTimelineRevisionPersistence(),
+                new com.example.platform.timeline.app.TimelineRevisionRefHeadUpdateAdapter(
+                        currentRevisionService));
         mergeEngine = new TimelineMergeEngine(
                 new TimelineRevisionRepository(dsl),
                 snapshotService,
-                currentRevisionService,
+                canonicalSave,
                 preview,
                 new TimelineNonConflictingMergePlanner(preview),
                 new TimelinePatchApplier(),
                 InternalTimelineJson.mapper(),
-                new TimelineArtifactPinValidator(query),
+                pinValidator,
                 pinService,
                 dsl);
+    }
+
+    private static String canonicalPayload(String projectId, String importPayload) {
+        var candidate = com.example.platform.timeline.app.InternalTimelineCandidateAdapter
+                .map(projectId, importPayload);
+        var document = com.example.platform.timeline.diff.calculation.TimelineSnapshotConverter
+                .toDocument(com.example.platform.timeline.diff.calculation.TimelineSnapshotConverter
+                        .toSnapshot(candidate, "fixture"));
+        return com.example.platform.timeline.app.TimelineDocumentJsonSerializer.serialize(document);
     }
 
     @Test
@@ -266,10 +310,13 @@ class CheckpointARound5PersistentMergePinIT extends PostgresTestContainerSupport
                 internalPayload(mapper, "tl-1", 2000L, "art-1", DIGEST_HEX));
         persistRevision(targetRev, productId, baseRev, 3,
                 internalPayload(mapper, "tl-1", 1000L, "art-1", DIGEST_HEX));
-        currentRevisionService.updateCurrentRevision(productId, null, targetRev);
+        assertTrue(currentRevisionService.bootstrap(
+                dsl, com.example.platform.timeline.revisioncommand.RevisionRef.main(TENANT, productId),
+                targetRev));
 
         TimelineMergeRequest request = new TimelineMergeRequest(
-                productId, TENANT, baseRev, sourceRev, targetRev, "user", "merge");
+                productId, TENANT, baseRev, sourceRev, targetRev,
+                RenderTestSchemaFixture.SERVER_ACTOR, "merge");
 
         TimelineMergeResult result = mergeEngine.merge(request);
         assertEquals(TimelineMergeResult.MergeStatus.MERGED,
@@ -288,7 +335,7 @@ class CheckpointARound5PersistentMergePinIT extends PostgresTestContainerSupport
         assertEquals("art-1", pins.get(0).get(ARTIFACT_PIN.ARTIFACT_ID), "exact artifact id");
         assertEquals(DIGEST_HEX, pins.get(0).get(ARTIFACT_PIN.CONTENT_DIGEST), "exact digest");
 
-        assertEquals(mergeRevId, currentRevisionService.getCurrentRevisionId(productId),
+        assertEquals(mergeRevId, currentRevisionService.currentHead(dsl, com.example.platform.timeline.revisioncommand.RevisionRef.main(com.example.platform.shared.web.TenantContext.get(), productId)),
                 "head must advance to the merge revision");
     }
 
@@ -326,12 +373,15 @@ class CheckpointARound5PersistentMergePinIT extends PostgresTestContainerSupport
                 twoClipPayload(mapper, "tl-1", "art-1", "ghost-art", DIGEST_HEX));
         persistRevision(targetRev, productId, baseRev, 3,
                 internalPayload(mapper, "tl-1", 1000L, "art-1", DIGEST_HEX));
-        currentRevisionService.updateCurrentRevision(productId, null, targetRev);
+        assertTrue(currentRevisionService.bootstrap(
+                dsl, com.example.platform.timeline.revisioncommand.RevisionRef.main(TENANT, productId),
+                targetRev));
 
         long snapshotsBefore = countSnapshots(productId);
 
         TimelineMergeRequest request = new TimelineMergeRequest(
-                productId, TENANT, baseRev, sourceRev, targetRev, "user", "merge");
+                productId, TENANT, baseRev, sourceRev, targetRev,
+                RenderTestSchemaFixture.SERVER_ACTOR, "merge");
 
         assertThrows(Exception.class,
                 () -> mergeEngine.merge(request),
@@ -351,7 +401,7 @@ class CheckpointARound5PersistentMergePinIT extends PostgresTestContainerSupport
                         .where(ARTIFACT_PIN.PROJECT_ID.eq(productId))),
                 "no partial pin set may survive (merge pin 1 rolled back with pin 2 failure)");
         // Head unchanged.
-        assertEquals(targetRev, currentRevisionService.getCurrentRevisionId(productId),
+        assertEquals(targetRev, currentRevisionService.currentHead(dsl, com.example.platform.timeline.revisioncommand.RevisionRef.main(com.example.platform.shared.web.TenantContext.get(), productId)),
                 "head must remain at the last saved revision (merge rolled back)");
     }
 

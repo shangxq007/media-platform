@@ -10,8 +10,8 @@ import com.example.platform.shared.test.PostgresTestContainerSupport;
 import com.example.platform.shared.time.MediaTime;
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.timeline.app.DefaultTimelineRevisionPersistence;
-import com.example.platform.timeline.app.ProductCurrentRevisionHeadUpdateAdapter;
-import com.example.platform.timeline.app.ProductCurrentRevisionService;
+import com.example.platform.timeline.app.TimelineRevisionRefHeadUpdateAdapter;
+import com.example.platform.timeline.app.TimelineRevisionRefMutation;
 import com.example.platform.timeline.app.TimelineArtifactPinValidator;
 import com.example.platform.timeline.app.TimelineRevisionSaveService;
 import com.example.platform.timeline.canonical.TimelineClip;
@@ -58,9 +58,9 @@ class RealRenderSubtitleVerticalSliceIntegrationTest extends PostgresTestContain
     @BeforeEach
     void setUp() {
         RenderTestSchemaFixture.truncate(dsl);
-        com.example.platform.shared.web.TenantContext.set("ten-vslice");
+        com.example.platform.shared.web.TenantContext.clear();
         TimelineSnapshotService snapshotService = new TimelineSnapshotService(dsl);
-        ProductCurrentRevisionService currentRevisionService = new ProductCurrentRevisionService(dsl);
+        TimelineRevisionRefMutation currentRevisionService = new TimelineRevisionRefMutation(dsl);
         saveService = new TimelineRevisionSaveService(
                 dsl,
                 currentRevisionService,
@@ -73,7 +73,7 @@ class RealRenderSubtitleVerticalSliceIntegrationTest extends PostgresTestContain
                 effectAuthority(),
                 new com.example.platform.timeline.adapter.JdbcTimelineRevisionSemanticContextStore(dsl),
                 new DefaultTimelineRevisionPersistence(),
-                new ProductCurrentRevisionHeadUpdateAdapter(currentRevisionService));
+                new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService));
     }
 
     @Test
@@ -82,7 +82,8 @@ class RealRenderSubtitleVerticalSliceIntegrationTest extends PostgresTestContain
         insertProduct(projectId, "ten-vslice");
 
         TimelineDocument document = createDocumentWithCaptions("clip-vslice", "asset-vslice");
-        var revision = saveService.saveRevision(projectId, null, document, "vslice-user");
+        var revision = saveService.saveRevision(
+                "ten-vslice", projectId, null, document, RenderTestSchemaFixture.SERVER_ACTOR);
 
         String snapshotId = dsl.select(
                         com.example.platform.typedschema.jooq.generated.tables.TimelineRevision
@@ -102,10 +103,13 @@ class RealRenderSubtitleVerticalSliceIntegrationTest extends PostgresTestContain
     @Test
     void invalidSave_renderNeverReachesReady() {
         String projectId = "prj-bad-" + java.util.UUID.randomUUID().toString().substring(0, 8);
+        insertProduct(projectId, "ten-vslice");
         TimelineDocument invalid = createDocumentWithDuplicateTrackIds();
 
         assertThrows(com.example.platform.timeline.app.TimelineCanonicalRejectionException.class,
-                () -> saveService.saveRevision(projectId, null, invalid, "vslice-user"));
+                () -> saveService.saveRevision(
+                        "ten-vslice", projectId, null, invalid,
+                        RenderTestSchemaFixture.SERVER_ACTOR));
         assertEquals(0L, dsl.selectCount()
                 .from(com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot.TIMELINE_SNAPSHOT)
                 .where(com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot
@@ -114,6 +118,7 @@ class RealRenderSubtitleVerticalSliceIntegrationTest extends PostgresTestContain
     }
 
     private void insertProduct(String productId, String tenantId) {
+        RenderTestSchemaFixture.insertCanonicalProject(dsl, tenantId, productId);
         dsl.insertInto(PRODUCT)
                 .set(PRODUCT.PRODUCT_ID, productId)
                 .set(PRODUCT.TENANT_ID, tenantId)

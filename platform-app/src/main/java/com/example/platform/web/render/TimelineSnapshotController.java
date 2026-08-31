@@ -1,6 +1,11 @@
 package com.example.platform.web.render;
 
-import com.example.platform.timeline.adapter.TimelineSnapshotService;
+import com.example.platform.render.app.timeline.TimelineConversionService;
+import com.example.platform.timeline.app.InternalTimelineCandidateAdapter;
+import com.example.platform.timeline.app.TimelineDocumentJsonSerializer;
+import com.example.platform.timeline.app.TimelineRevisionQueryService;
+import com.example.platform.timeline.app.TimelineRevisionSaveService;
+import com.example.platform.timeline.diff.calculation.TimelineSnapshotConverter;
 import com.example.platform.shared.web.TenantContext;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -22,32 +27,53 @@ public class TimelineSnapshotController {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    private final TimelineSnapshotService timelineSnapshotService;
+    private final TimelineRevisionSaveService revisionSaveService;
+    private final TimelineRevisionQueryService revisionQueryService;
+    private final TimelineConversionService conversionService;
+    private final TimelineProjectAuthorizationService projectAuthorization;
 
-    public TimelineSnapshotController(TimelineSnapshotService timelineSnapshotService) {
-        this.timelineSnapshotService = timelineSnapshotService;
+    public TimelineSnapshotController(
+            TimelineRevisionSaveService revisionSaveService,
+            TimelineRevisionQueryService revisionQueryService,
+            TimelineConversionService conversionService,
+            TimelineProjectAuthorizationService projectAuthorization) {
+        this.revisionSaveService = revisionSaveService;
+        this.revisionQueryService = revisionQueryService;
+        this.conversionService = conversionService;
+        this.projectAuthorization = projectAuthorization;
     }
 
     @PostMapping
     @Operation(summary = "保存时间线快照", description = "将编辑器时间线 JSON 持久化并返回 snapshotId，供创建渲染任务使用")
     public ResponseEntity<SnapshotResponse> saveSnapshot(@Valid @RequestBody SaveSnapshotRequest request) {
         String tenantId = TenantContext.get();
-        String payload = serializePayload(request);
-        String schemaVersion = request.schemaVersion() != null ? request.schemaVersion() : "2.0.0";
-        // CFRH-I1: legacy saveSnapshotEnsuringInternal (recordRevision write path) removed;
-        // snapshots persist directly through the canonical TimelineSnapshotService.
-        String snapshotId = timelineSnapshotService.save(request.projectId(), tenantId, payload, schemaVersion);
+        var actor = projectAuthorization.requireWrite(tenantId, request.projectId());
+        var document = toCanonicalDocument(request);
+        var revision = revisionSaveService.saveRevision(
+                tenantId, request.projectId(), request.expectedCurrentRevisionId(),
+                document, actor.actorId());
+        String snapshotId = revisionQueryService
+                .findById(request.projectId(), tenantId, revision.revisionId())
+                .map(TimelineRevisionQueryService.RevisionInfo::snapshotId)
+                .orElseThrow(() -> new IllegalStateException(
+                        "canonical revision result could not be reloaded: " + revision.revisionId()));
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new SnapshotResponse(snapshotId, request.projectId()));
+                .body(new SnapshotResponse(snapshotId, request.projectId(), revision.revisionId()));
     }
 
-    private String serializePayload(SaveSnapshotRequest request) {
+    private com.example.platform.timeline.canonical.TimelineDocument toCanonicalDocument(
+            SaveSnapshotRequest request) {
         try {
-            if (request.editorTimeline() != null) {
-                return MAPPER.writeValueAsString(request.editorTimeline());
-            }
             if (request.payloadJson() != null && !request.payloadJson().isBlank()) {
-                return request.payloadJson();
+                try {
+                    return TimelineDocumentJsonSerializer.deserialize(request.payloadJson());
+                } catch (IllegalArgumentException importedFormat) {
+                    return importDocument(request.projectId(), request.payloadJson());
+                }
+            }
+            if (request.editorTimeline() != null) {
+                return importDocument(
+                        request.projectId(), MAPPER.writeValueAsString(request.editorTimeline()));
             }
             throw new IllegalArgumentException("editorTimeline or payloadJson is required");
         } catch (IllegalArgumentException e) {
@@ -57,11 +83,19 @@ public class TimelineSnapshotController {
         }
     }
 
+    private com.example.platform.timeline.canonical.TimelineDocument importDocument(
+            String projectId, String externalJson) {
+        String importProjection = conversionService.ensureInternalTimelineJson(externalJson);
+        var candidate = InternalTimelineCandidateAdapter.map(projectId, importProjection);
+        return TimelineSnapshotConverter.toDocument(
+                TimelineSnapshotConverter.toSnapshot(candidate, "import"));
+    }
+
     public record SaveSnapshotRequest(
             @NotBlank String projectId,
             JsonNode editorTimeline,
             String payloadJson,
-            String schemaVersion) {}
+            String expectedCurrentRevisionId) {}
 
-    public record SnapshotResponse(String snapshotId, String projectId) {}
+    public record SnapshotResponse(String snapshotId, String projectId, String revisionId) {}
 }

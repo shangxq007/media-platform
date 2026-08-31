@@ -7,7 +7,7 @@ package com.example.platform.typedschema.jooq.generated.tables;
 import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
-import com.example.platform.typedschema.jooq.generated.tables.Artifact.ArtifactPath;
+import com.example.platform.typedschema.jooq.generated.tables.ApplyCommand.ApplyCommandPath;
 import com.example.platform.typedschema.jooq.generated.tables.ArtifactPin.ArtifactPinPath;
 import com.example.platform.typedschema.jooq.generated.tables.Project.ProjectPath;
 import com.example.platform.typedschema.jooq.generated.tables.TimelineRevision.TimelineRevisionPath;
@@ -78,7 +78,7 @@ public class TimelineRevision extends TableImpl<TimelineRevisionRecord> {
     /**
      * The column <code>public.timeline_revision.tenant_id</code>.
      */
-    public final TableField<TimelineRevisionRecord, String> TENANT_ID = createField(DSL.name("tenant_id"), SQLDataType.VARCHAR(64), this, "");
+    public final TableField<TimelineRevisionRecord, String> TENANT_ID = createField(DSL.name("tenant_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
     /**
      * The column <code>public.timeline_revision.parent_revision_id</code>.
@@ -108,7 +108,7 @@ public class TimelineRevision extends TableImpl<TimelineRevisionRecord> {
     /**
      * The column <code>public.timeline_revision.schema_version</code>.
      */
-    public final TableField<TimelineRevisionRecord, String> SCHEMA_VERSION = createField(DSL.name("schema_version"), SQLDataType.VARCHAR(32).nullable(false).defaultValue(DSL.field(DSL.raw("'internal-1.0'::character varying"), SQLDataType.VARCHAR)), this, "");
+    public final TableField<TimelineRevisionRecord, String> SCHEMA_VERSION = createField(DSL.name("schema_version"), SQLDataType.VARCHAR(32).nullable(false).defaultValue(DSL.field(DSL.raw("'timeline-1.0'::character varying"), SQLDataType.VARCHAR)), this, "");
 
     /**
      * The column <code>public.timeline_revision.source</code>.
@@ -235,12 +235,17 @@ public class TimelineRevision extends TableImpl<TimelineRevisionRecord> {
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.IX_TIMELINE_REVISION_EDIT_SESSION, Indexes.IX_TIMELINE_REVISION_IS_MERGE, Indexes.IX_TIMELINE_REVISION_PARENT, Indexes.IX_TIMELINE_REVISION_PROJECT_CREATED, Indexes.IX_TIMELINE_REVISION_PROJECT_SOURCE, Indexes.IX_TIMELINE_REVISION_SNAPSHOT, Indexes.UX_TIMELINE_REVISION_PROJECT_ID, Indexes.UX_TIMELINE_REVISION_PROJECT_NUM);
+        return Arrays.asList(Indexes.IX_TIMELINE_REVISION_EDIT_SESSION, Indexes.IX_TIMELINE_REVISION_IS_MERGE, Indexes.IX_TIMELINE_REVISION_PARENT, Indexes.IX_TIMELINE_REVISION_PROJECT_CREATED, Indexes.IX_TIMELINE_REVISION_PROJECT_SOURCE, Indexes.IX_TIMELINE_REVISION_SNAPSHOT, Indexes.UX_TIMELINE_REVISION_PROJECT_NUM);
     }
 
     @Override
     public UniqueKey<TimelineRevisionRecord> getPrimaryKey() {
         return Keys.TIMELINE_REVISION_PKEY;
+    }
+
+    @Override
+    public List<UniqueKey<TimelineRevisionRecord>> getUniqueKeys() {
+        return Arrays.asList(Keys.UQ_TIMELINE_REVISION_OWNER_ID, Keys.UQ_TIMELINE_REVISION_PROJECT_ID);
     }
 
     @Override
@@ -286,6 +291,34 @@ public class TimelineRevision extends TableImpl<TimelineRevisionRecord> {
         return _timelineSnapshot;
     }
 
+    private transient ApplyCommandPath _fkApplyCommandExpectedHead;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.apply_command</code> table, via the
+     * <code>fk_apply_command_expected_head</code> key
+     */
+    public ApplyCommandPath fkApplyCommandExpectedHead() {
+        if (_fkApplyCommandExpectedHead == null)
+            _fkApplyCommandExpectedHead = new ApplyCommandPath(this, null, Keys.APPLY_COMMAND__FK_APPLY_COMMAND_EXPECTED_HEAD.getInverseKey());
+
+        return _fkApplyCommandExpectedHead;
+    }
+
+    private transient ApplyCommandPath _fkApplyCommandResultRevision;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.apply_command</code> table, via the
+     * <code>fk_apply_command_result_revision</code> key
+     */
+    public ApplyCommandPath fkApplyCommandResultRevision() {
+        if (_fkApplyCommandResultRevision == null)
+            _fkApplyCommandResultRevision = new ApplyCommandPath(this, null, Keys.APPLY_COMMAND__FK_APPLY_COMMAND_RESULT_REVISION.getInverseKey());
+
+        return _fkApplyCommandResultRevision;
+    }
+
     private transient ArtifactPinPath _artifactPin;
 
     /**
@@ -299,17 +332,32 @@ public class TimelineRevision extends TableImpl<TimelineRevisionRecord> {
         return _artifactPin;
     }
 
-    private transient TimelineRevisionParentPath _timelineRevisionParent;
+    private transient TimelineRevisionParentPath _fkTimelineRevisionParentParent;
 
     /**
      * Get the implicit to-many join path to the
-     * <code>public.timeline_revision_parent</code> table
+     * <code>public.timeline_revision_parent</code> table, via the
+     * <code>fk_timeline_revision_parent_parent</code> key
      */
-    public TimelineRevisionParentPath timelineRevisionParent() {
-        if (_timelineRevisionParent == null)
-            _timelineRevisionParent = new TimelineRevisionParentPath(this, null, Keys.TIMELINE_REVISION_PARENT__FK_TIMELINE_REVISION_PARENT_REVISION.getInverseKey());
+    public TimelineRevisionParentPath fkTimelineRevisionParentParent() {
+        if (_fkTimelineRevisionParentParent == null)
+            _fkTimelineRevisionParentParent = new TimelineRevisionParentPath(this, null, Keys.TIMELINE_REVISION_PARENT__FK_TIMELINE_REVISION_PARENT_PARENT.getInverseKey());
 
-        return _timelineRevisionParent;
+        return _fkTimelineRevisionParentParent;
+    }
+
+    private transient TimelineRevisionParentPath _fkTimelineRevisionParentRevision;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.timeline_revision_parent</code> table, via the
+     * <code>fk_timeline_revision_parent_revision</code> key
+     */
+    public TimelineRevisionParentPath fkTimelineRevisionParentRevision() {
+        if (_fkTimelineRevisionParentRevision == null)
+            _fkTimelineRevisionParentRevision = new TimelineRevisionParentPath(this, null, Keys.TIMELINE_REVISION_PARENT__FK_TIMELINE_REVISION_PARENT_REVISION.getInverseKey());
+
+        return _fkTimelineRevisionParentRevision;
     }
 
     private transient TimelineRevisionRefPath _timelineRevisionRef;
@@ -323,14 +371,6 @@ public class TimelineRevision extends TableImpl<TimelineRevisionRecord> {
             _timelineRevisionRef = new TimelineRevisionRefPath(this, null, Keys.TIMELINE_REVISION_REF__FK_TIMELINE_REVISION_REF_HEAD.getInverseKey());
 
         return _timelineRevisionRef;
-    }
-
-    /**
-     * Get the implicit many-to-many join path to the
-     * <code>public.artifact</code> table
-     */
-    public ArtifactPath artifact() {
-        return artifactPin().artifact();
     }
 
     @Override

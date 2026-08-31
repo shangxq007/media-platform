@@ -2,11 +2,13 @@ package com.example.platform.timeline.canonical;
 
 import com.example.platform.timeline.semantics.temporal.ConstantRateTemporalMapping;
 import com.example.platform.timeline.semantics.temporal.TemporalMapping;
+import com.example.platform.timeline.canonicalmodel.TimelineClipEffect;
 import com.example.platform.shared.time.MediaTime;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import java.util.List;
 
 /**
  * Canonical Timeline Clip — stable entity with clipId (TIMELINE_V2).
@@ -80,6 +82,10 @@ public class TimelineClip {
     @JsonProperty("temporalMapping")
     private final TemporalMapping temporalMapping;
 
+    /** Authored per-clip Effect semantics carried by the sole persisted document. */
+    @JsonProperty("effects")
+    private final List<TimelineClipEffect> effects;
+
     /** Convenience constructor: identity temporal mapping (1/1 FORWARD). */
     public TimelineClip(
             String clipId,
@@ -93,7 +99,24 @@ public class TimelineClip {
             MediaTime trimEnd,
             String sourceKind) {
         this(clipId, mediaAssetId, mediaStreamId, artifactId, contentDigest,
-                startTime, endTime, trimStart, trimEnd, sourceKind, null);
+                startTime, endTime, trimStart, trimEnd, sourceKind, null, List.of());
+    }
+
+    /** Compatibility constructor for callers without authored clip effects. */
+    public TimelineClip(
+            String clipId,
+            String mediaAssetId,
+            String mediaStreamId,
+            String artifactId,
+            String contentDigest,
+            MediaTime startTime,
+            MediaTime endTime,
+            MediaTime trimStart,
+            MediaTime trimEnd,
+            String sourceKind,
+            TemporalMapping temporalMapping) {
+        this(clipId, mediaAssetId, mediaStreamId, artifactId, contentDigest,
+                startTime, endTime, trimStart, trimEnd, sourceKind, temporalMapping, List.of());
     }
 
     @JsonCreator
@@ -108,7 +131,8 @@ public class TimelineClip {
             @JsonProperty("trimStart") MediaTime trimStart,
             @JsonProperty("trimEnd") MediaTime trimEnd,
             @JsonProperty("sourceKind") String sourceKind,
-            @JsonProperty("temporalMapping") TemporalMapping temporalMapping) {
+            @JsonProperty("temporalMapping") TemporalMapping temporalMapping,
+            @JsonProperty("effects") List<TimelineClipEffect> effects) {
         if (clipId == null || clipId.isBlank()) {
             throw new IllegalArgumentException("clipId must not be blank");
         }
@@ -136,6 +160,7 @@ public class TimelineClip {
                 ? temporalMapping
                 : ConstantRateTemporalMapping.of(1, 1,
                         com.example.platform.timeline.semantics.temporal.PlaybackDirection.FORWARD);
+        this.effects = effects != null ? List.copyOf(effects) : List.of();
     }
 
     public TimelineClipId getClipId() { return clipId; }
@@ -149,4 +174,5 @@ public class TimelineClip {
     public MediaTime getEndTime() { return endTime; }
     public MediaTime getTrimStart() { return trimStart; }
     public MediaTime getTrimEnd() { return trimEnd; }
+    public List<TimelineClipEffect> getEffects() { return effects; }
 }

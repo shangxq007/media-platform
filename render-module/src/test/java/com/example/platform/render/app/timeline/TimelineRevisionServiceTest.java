@@ -1,24 +1,26 @@
 package com.example.platform.render.app.timeline;
 
 import com.example.platform.timeline.adapter.TimelineRevisionRepository;
-import com.example.platform.timeline.app.TimelineCanonicalizer;
-import com.example.platform.timeline.app.TimelineContentHasher;
 import com.example.platform.timeline.app.TimelineRevisionDiffService;
 import com.example.platform.timeline.app.TimelineRevisionQueryService;
-import com.example.platform.timeline.app.TimelineRevisionDiffQuery;
-import com.example.platform.timeline.app.TimelineSemanticDiffService;
-import com.example.platform.timeline.app.InternalTimelineJson;
-import com.example.platform.timeline.app.TimelineImportService;
-import com.example.platform.timeline.app.TimelinePatchService;
+import com.example.platform.timeline.app.DefaultTimelineRevisionPersistence;
+import com.example.platform.timeline.app.TimelineRevisionRefHeadUpdateAdapter;
+import com.example.platform.timeline.app.TimelineRevisionRefMutation;
+import com.example.platform.timeline.app.TimelineRevisionSaveService;
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
-import com.example.platform.render.domain.interchange.TimelineExtensionsReader;
-import com.example.platform.render.domain.interchange.TimelineOutputSpec;
-import com.example.platform.render.domain.interchange.TimelineScriptParser;
-import com.example.platform.render.domain.interchange.TimelineSpec;
 import com.example.platform.render.testsupport.RenderTestSchemaFixture;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
+import com.example.platform.shared.time.MediaTime;
 import com.example.platform.shared.web.TenantContext;
+import com.example.platform.timeline.canonical.TimelineClip;
+import com.example.platform.timeline.canonical.TimelineContentDigester;
+import com.example.platform.timeline.canonical.TimelineDocument;
+import com.example.platform.timeline.canonical.TimelineMetadata;
+import com.example.platform.timeline.canonical.TimelineTrack;
+import com.example.platform.timeline.canonical.TrackType;
+import com.example.platform.timeline.revisioncommand.RevisionRef;
 import java.util.List;
+import java.util.Map;
 import javax.sql.DataSource;
 import org.jooq.DSLContext;
 import org.jooq.impl.DSL;
@@ -28,8 +30,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static com.example.platform.typedschema.jooq.generated.tables.TimelineRevision.TIMELINE_REVISION;
 
 /**
  * CFRH-I2 ownership-scoped query authority tests (replaces the retired
@@ -42,10 +44,9 @@ class TimelineRevisionServiceTest extends PostgresTestContainerSupport {
     private static DataSource dataSource;
     private static DSLContext dsl;
     private TimelineRevisionQueryService revisionQueryService;
-    private TimelineRevisionDiffQuery revisionDiffQuery;
     private TimelineSnapshotService snapshotService;
-    private TimelineSpecImportAdapter importAdapter;
-    private TimelineImportService importService;
+    private TimelineRevisionRefMutation revisionRefMutation;
+    private TimelineRevisionSaveService revisionSaveService;
 
     @BeforeAll
     static void setUpDatabase() {
@@ -64,45 +65,28 @@ class TimelineRevisionServiceTest extends PostgresTestContainerSupport {
         TenantContext.set("ten-1");
         RenderTestSchemaFixture.truncate(dsl);
         snapshotService = new TimelineSnapshotService(dsl);
-        TimelineCanonicalizer canonicalizer = new TimelineCanonicalizer();
-        TimelineSpecResolver resolver =
-                new TimelineSpecResolver(TimelineTestSupport.internalTimelineAdapter(), new TimelineScriptParser());
-        importAdapter = new TimelineSpecImportAdapter(new TimelineExtensionsReader());
-        importService = new TimelineImportService();
-        TimelineConversionService conversionService = new TimelineConversionService(resolver, importAdapter, importService);
         var repo = new TimelineRevisionRepository(dsl);
         var diffService = new TimelineRevisionDiffService();
-        var hasher = new TimelineContentHasher(canonicalizer);
-        var payloadCodec = new RenderTimelinePayloadCodec(conversionService, new InternalTimelineToEditorConverter());
+        revisionRefMutation = new TimelineRevisionRefMutation(dsl);
+        revisionSaveService = new TimelineRevisionSaveService(
+                dsl, revisionRefMutation, new TimelineContentDigester(), snapshotService,
+                org.mockito.Mockito.mock(com.example.platform.timeline.app.TimelineArtifactPinValidator.class),
+                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class),
+                new com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotAuthority(
+                        new com.example.platform.timeline.semantics.effect.EffectDefinitionVersionRegistry.InMemory(),
+                        new com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotStore.InMemory()),
+                org.mockito.Mockito.mock(
+                        com.example.platform.timeline.version.TimelineRevisionSemanticContextStore.class),
+                new DefaultTimelineRevisionPersistence(),
+                new TimelineRevisionRefHeadUpdateAdapter(revisionRefMutation));
         revisionQueryService = new TimelineRevisionQueryService(
-                repo, snapshotService, diffService, payloadCodec);
-        revisionDiffQuery = new TimelineRevisionDiffQuery(
-                repo, snapshotService, hasher, diffService,
-                new TimelinePatchService(canonicalizer), new TimelineSemanticDiffService(canonicalizer));
-    }
-
-    @Test
-    void previewPatchReplayRequiresStoredOps() throws Exception {
-        TimelineSpec spec = TimelineSpec.create("tl-patch", "Patch", TimelineOutputSpec.mp4_1080p30());
-        String v1 = importService.importTimeline(importAdapter.toRequest(spec));
-        String snap1 = snapshotService.save("prj-patch", "ten-1", v1, "internal-1.0");
-        String headId = insertRevisionRow("prj-patch", "ten-1", snap1, v1, 1, null, "sync", null, null, "base");
-
-        var noOps = revisionDiffQuery.previewPatchReplay("prj-patch", "ten-1", headId);
-        assertFalse(noOps.hasPatchOps());
+                repo, snapshotService, diffService);
     }
 
     @Test
     void listHistoryFiltersBySourceAndAuthor() throws Exception {
-        TimelineSpec spec = TimelineSpec.create("tl-filter", "F", TimelineOutputSpec.mp4_1080p30());
-        String v1 = importService.importTimeline(importAdapter.toRequest(spec));
-        String snap1 = snapshotService.save("prj-filter", "ten-1", v1, "internal-1.0");
-        insertRevisionRow("prj-filter", "ten-1", snap1, v1, 1, null, "sync", "alice", null, "alice edit");
-
-        TimelineSpec spec2 = TimelineSpec.create("tl-filter-2", "F2", TimelineOutputSpec.mp4_1080p30());
-        String v2 = importService.importTimeline(importAdapter.toRequest(spec2));
-        String snap2 = snapshotService.save("prj-filter", "ten-1", v2, "internal-1.0");
-        insertRevisionRow("prj-filter", "ten-1", snap2, v2, 2, null, "ai-adopt", "bob", null, "bob adopt");
+        saveRevision("prj-filter", "ten-1", "sync", "alice", null, "alice edit");
+        saveRevision("prj-filter", "ten-1", "ai-adopt", "bob", null, "bob adopt");
 
         assertEquals(1, revisionQueryService.listHistory("prj-filter", "ten-1", null, "alice", null, 10).size());
         assertEquals(1, revisionQueryService.listHistory("prj-filter", "ten-1", null, null, "ai-adopt", 10).size());
@@ -111,10 +95,7 @@ class TimelineRevisionServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void listHistoryIsTenantIsolated() throws Exception {
-        TimelineSpec spec = TimelineSpec.create("tl-iso", "I", TimelineOutputSpec.mp4_1080p30());
-        String v1 = importService.importTimeline(importAdapter.toRequest(spec));
-        String snap1 = snapshotService.save("prj-iso", "ten-1", v1, "internal-1.0");
-        insertRevisionRow("prj-iso", "ten-1", snap1, v1, 1, null, "sync", "alice", null, "a");
+        saveRevision("prj-iso", "ten-1", "sync", "alice", null, "a");
 
         // tenant-2 cannot see tenant-1 revisions even for the same projectId
         assertEquals(0, revisionQueryService.listHistory("prj-iso", "ten-2", null, null, null, 10).size());
@@ -122,14 +103,8 @@ class TimelineRevisionServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void listFacetsReturnsSourcesAndAuthors() throws Exception {
-        TimelineSpec spec = TimelineSpec.create("tl-facet", "F", TimelineOutputSpec.mp4_1080p30());
-        String v1 = importService.importTimeline(importAdapter.toRequest(spec));
-        String snap1 = snapshotService.save("prj-facet", "ten-1", v1, "internal-1.0");
-        insertRevisionRow("prj-facet", "ten-1", snap1, v1, 1, null, "sync", "alice", null, "a");
-        TimelineSpec spec2 = TimelineSpec.create("tl-facet-2", "F2", TimelineOutputSpec.mp4_1080p30());
-        String v2 = importService.importTimeline(importAdapter.toRequest(spec2));
-        String snap2 = snapshotService.save("prj-facet", "ten-1", v2, "internal-1.0");
-        insertRevisionRow("prj-facet", "ten-1", snap2, v2, 2, null, "ai-adopt", "bob", null, "b");
+        saveRevision("prj-facet", "ten-1", "sync", "alice", null, "a");
+        saveRevision("prj-facet", "ten-1", "ai-adopt", "bob", null, "b");
 
         var facets = revisionQueryService.listFacets("prj-facet", "ten-1");
         assertTrue(facets.sources().contains("sync"));
@@ -139,10 +114,7 @@ class TimelineRevisionServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void updateAnnotationPersistsMessage() throws Exception {
-        TimelineSpec spec = TimelineSpec.create("tl-note", "Note", TimelineOutputSpec.mp4_1080p30());
-        String v1 = importService.importTimeline(importAdapter.toRequest(spec));
-        String snap1 = snapshotService.save("prj-note", "ten-1", v1, "internal-1.0");
-        String headId = insertRevisionRow("prj-note", "ten-1", snap1, v1, 1, null, "sync", null, null, "before");
+        String headId = saveRevision("prj-note", "ten-1", "sync", null, null, "before");
 
         var updated = revisionQueryService.updateAnnotation(
                 "prj-note", "ten-1", headId, "  release candidate  ", List.of("review", "release"));
@@ -157,10 +129,7 @@ class TimelineRevisionServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void updateAnnotationIsOwnershipScoped() throws Exception {
-        TimelineSpec spec = TimelineSpec.create("tl-note2", "N", TimelineOutputSpec.mp4_1080p30());
-        String v1 = importService.importTimeline(importAdapter.toRequest(spec));
-        String snap1 = snapshotService.save("prj-note2", "ten-1", v1, "internal-1.0");
-        String headId = insertRevisionRow("prj-note2", "ten-1", snap1, v1, 1, null, "sync", null, null, "before");
+        String headId = saveRevision("prj-note2", "ten-1", "sync", null, null, "before");
 
         // wrong project: no update, no leak
         assertTrue(revisionQueryService.updateAnnotation(
@@ -171,23 +140,8 @@ class TimelineRevisionServiceTest extends PostgresTestContainerSupport {
     }
 
     @Test
-    void previewPatchStepsReturnsEmptyWhenNoOps() throws Exception {
-        TimelineSpec spec = TimelineSpec.create("tl-steps", "Steps", TimelineOutputSpec.mp4_1080p30());
-        String v1 = importService.importTimeline(importAdapter.toRequest(spec));
-        String snap1 = snapshotService.save("prj-steps", "ten-1", v1, "internal-1.0");
-        String headId = insertRevisionRow("prj-steps", "ten-1", snap1, v1, 1, null, "sync", null, null, "base");
-
-        var steps = revisionDiffQuery.previewPatchSteps("prj-steps", "ten-1", headId);
-        assertFalse(steps.hasPatchOps());
-        assertTrue(steps.steps().isEmpty());
-    }
-
-    @Test
     void findByIdRequiresExactProjectAndTenant() throws Exception {
-        TimelineSpec spec = TimelineSpec.create("tl-find", "F", TimelineOutputSpec.mp4_1080p30());
-        String v1 = importService.importTimeline(importAdapter.toRequest(spec));
-        String snap1 = snapshotService.save("prj-find", "ten-1", v1, "internal-1.0");
-        String headId = insertRevisionRow("prj-find", "ten-1", snap1, v1, 1, null, "sync", null, null, "a");
+        String headId = saveRevision("prj-find", "ten-1", "sync", null, null, "a");
 
         // correct ownership -> found
         assertTrue(revisionQueryService.findById("prj-find", "ten-1", headId).isPresent());
@@ -199,10 +153,7 @@ class TimelineRevisionServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void getDetailIsOwnershipScopedNoLoadThenCheck() throws Exception {
-        TimelineSpec spec = TimelineSpec.create("tl-det", "D", TimelineOutputSpec.mp4_1080p30());
-        String v1 = importService.importTimeline(importAdapter.toRequest(spec));
-        String snap1 = snapshotService.save("prj-det", "ten-1", v1, "internal-1.0");
-        String headId = insertRevisionRow("prj-det", "ten-1", snap1, v1, 1, null, "sync", null, null, "a");
+        String headId = saveRevision("prj-det", "ten-1", "sync", null, null, "a");
 
         assertTrue(revisionQueryService.getDetail("prj-det", "ten-1", headId).isPresent());
         // foreign project -> empty (persistence predicate excludes)
@@ -212,23 +163,48 @@ class TimelineRevisionServiceTest extends PostgresTestContainerSupport {
     }
 
     /**
-     * Test data preparation: inserts a timeline_revision row directly.
-     * CFRH-I1 removed the legacy recordRevision write authority; query tests
-     * seed rows through the repository to exercise ownership-scoped query
-     * projections (CFRH-I2).
+     * Seed query projections through the sole canonical revision save authority.
+     * Source, author, session, and message are non-canonical query annotations,
+     * so the fixture sets them only after the canonical snapshot/revision/ref
+     * transition has completed.
      */
-    private String insertRevisionRow(
-            String projectId, String tenantId, String snapshotId, String payload,
-            int revisionNumber, String parentId, String source,
-            String authorUserId, String editSessionId, String message) throws java.io.IOException {
-        String id = "rev-" + java.util.UUID.randomUUID().toString().substring(0, 8);
-        var hasher = new TimelineContentHasher(new TimelineCanonicalizer());
-        new TimelineRevisionRepository(dsl).insert(new TimelineRevisionRepository.RevisionRow(
-                id, projectId, tenantId, parentId, revisionNumber, snapshotId,
-                InternalTimelineJson.revision(InternalTimelineJson.parse(payload)),
-                hasher.hashInternalTimeline(payload), "1.0", source, authorUserId,
-                editSessionId, message, null, null, "{}", false, null, null,
-                java.time.OffsetDateTime.now()));
-        return id;
+    private String saveRevision(
+            String projectId, String tenantId, String source,
+            String authorUserId, String editSessionId, String message) {
+        dsl.execute("insert into project (id, tenant_id, name, status, created_at) "
+                        + "values (?, ?, ?, 'ACTIVE', now()) on conflict (id) do nothing",
+                projectId, tenantId, projectId);
+        dsl.execute("insert into product (product_id, tenant_id, project_id, product_type, "
+                        + "representation_kind, status, created_at, updated_at) "
+                        + "values (?, ?, ?, 'video', 'master', 'REGISTERED', now(), now()) "
+                        + "on conflict (product_id) do nothing",
+                projectId, tenantId, projectId);
+
+        TimelineDocument document = new TimelineDocument(
+                TimelineDocument.CURRENT_SCHEMA_VERSION,
+                List.of(new TimelineTrack(
+                        "track-" + projectId, "Main", TrackType.VIDEO,
+                        List.of(new TimelineClip(
+                                "clip-" + java.util.UUID.randomUUID(), "asset-test",
+                                null, null, null,
+                                MediaTime.ZERO, MediaTime.ofRational(1, 1),
+                                MediaTime.ZERO, MediaTime.ZERO, "MEDIA_STREAM")))),
+                new TimelineMetadata(projectId, "", Map.of()));
+        RevisionRef mainRef = RevisionRef.main(tenantId, projectId);
+        String expectedHead = revisionRefMutation.currentHead(mainRef);
+        var revision = revisionSaveService.saveRevision(
+                projectId, expectedHead, document,
+                authorUserId != null ? authorUserId : "query-fixture");
+
+        dsl.update(TIMELINE_REVISION)
+                .set(TIMELINE_REVISION.SOURCE, source)
+                .set(TIMELINE_REVISION.AUTHOR_USER_ID, authorUserId)
+                .set(TIMELINE_REVISION.EDIT_SESSION_ID, editSessionId)
+                .set(TIMELINE_REVISION.MESSAGE, message)
+                .where(TIMELINE_REVISION.ID.eq(revision.revisionId()))
+                .and(TIMELINE_REVISION.PROJECT_ID.eq(projectId))
+                .and(TIMELINE_REVISION.TENANT_ID.eq(tenantId))
+                .execute();
+        return revision.revisionId();
     }
 }

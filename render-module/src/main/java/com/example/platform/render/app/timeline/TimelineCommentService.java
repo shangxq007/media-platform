@@ -45,13 +45,13 @@ public class TimelineCommentService {
     }
 
     @Transactional
-    public void resolveThread(String threadId) {
-        reviewRepository.updateThreadStatus(threadId, "RESOLVED");
+    public boolean resolveThread(String reviewId, String threadId) {
+        return reviewRepository.updateThreadStatus(reviewId, threadId, "RESOLVED");
     }
 
     @Transactional
-    public void reopenThread(String threadId) {
-        reviewRepository.updateThreadStatus(threadId, "OPEN");
+    public boolean reopenThread(String reviewId, String threadId) {
+        return reviewRepository.updateThreadStatus(reviewId, threadId, "OPEN");
     }
 
     public List<TimelineReviewRepository.ThreadRow> listThreads(String reviewId) {

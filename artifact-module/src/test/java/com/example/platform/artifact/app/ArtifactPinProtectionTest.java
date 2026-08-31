@@ -95,7 +95,8 @@ class ArtifactPinProtectionTest extends PostgresTestContainerSupport {
                 new com.example.platform.storage.contract.StorageReplicaId(replicaId),
                 new com.example.platform.storage.contract.StorageProviderId("s3"),
                 com.example.platform.artifact.domain.ReplicaRole.PRIMARY, "default", Instant.now()));
-        pinRepository.insert("pin-" + replicaId, "trev-hist-1", "proj-1", ARTIFACT_ID, DIGEST, Instant.now());
+        pinRepository.insert("pin-" + replicaId, "trev-hist-1", "proj-1", TENANT,
+                ARTIFACT_ID, DIGEST, Instant.now());
     }
 
     @Test
@@ -135,11 +136,26 @@ class ArtifactPinProtectionTest extends PostgresTestContainerSupport {
 
     @Test
     void r5_pinProtectionRequiresCanonicalArtifactPresence() {
-        // DB FK (fk_pin_artifact) rejects a pin for a nonexistent Artifact —
+        // DB FK (fk_artifact_pin_artifact) rejects a pin for a nonexistent Artifact —
         // canonical existence is database-enforced, not just application-validated.
         assertThrows(org.jooq.exception.DataAccessException.class, () ->
-                pinRepository.insert("pin-x", "trev-x", "proj-x", "art-phantom", DIGEST, Instant.now()));
+                pinRepository.insert("pin-x", "trev-x", "proj-x", "tenant-1",
+                        "art-phantom", DIGEST, Instant.now()));
         assertFalse(pinRepository.isPinned("art-phantom"));
+    }
+
+    @Test
+    void r6_pinProtectionRejectsCrossTenantArtifactOwnership() {
+        artifactRepository.insertRaw(new ArtifactId(ARTIFACT_ID), TENANT, DIGEST, 1024L,
+                ArtifactMediaType.VIDEO, ArtifactKind.RENDER_MASTER, ArtifactState.AVAILABLE, null);
+
+        var failure = assertThrows(org.jooq.exception.DataAccessException.class, () ->
+                pinRepository.insert("pin-cross-owner", "trev-x", "proj-x", "tenant-other",
+                        ARTIFACT_ID, DIGEST, Instant.now()));
+
+        var postgresFailure = (org.postgresql.util.PSQLException) failure.getCause();
+        assertEquals("23503", postgresFailure.getSQLState());
+        assertFalse(pinRepository.isPinned(ARTIFACT_ID));
     }
 
     @Test

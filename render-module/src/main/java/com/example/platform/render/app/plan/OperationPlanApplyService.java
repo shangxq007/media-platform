@@ -13,8 +13,7 @@ import com.example.platform.timeline.canonical.TimelineContentDigester;
 import com.example.platform.timeline.canonical.TimelineDocument;
 import com.example.platform.timeline.revisioncommand.RevisionRef;
 import com.example.platform.timeline.version.TimelineConflictException;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
+import com.example.platform.shared.digest.CanonicalCommandFingerprint;
 import java.util.Objects;
 import org.springframework.stereotype.Service;
 
@@ -41,9 +40,18 @@ public class OperationPlanApplyService {
     }
 
     public static String fingerprint(String planDigest, TargetRevisionRef ref, String expectedHead,
-                                     String projectId, String tenantId, String principalRef) {
-        return sha256(planDigest + "|" + tenantId + "|" + projectId + "|" + ref.refId() + "|"
-                + expectedHead + "|" + principalRef);
+                                     String projectId, String tenantId, String principalRef,
+                                     String operationIdentity, String parameterDigest) {
+        return CanonicalCommandFingerprint.builder("OPERATION_PLAN")
+                .required("tenantId", tenantId)
+                .required("projectId", projectId)
+                .required("targetRefId", ref.refId())
+                .required("expectedHeadRevisionId", expectedHead)
+                .required("operationIdentity", operationIdentity)
+                .required("parameterDigest", parameterDigest)
+                .required("planDigest", planDigest)
+                .required("principalRef", principalRef)
+                .sha256Hex();
     }
 
     /**
@@ -77,7 +85,8 @@ public class OperationPlanApplyService {
 
         // Re-plan from the immutable instance + exact base immediately before
         // authorization-consuming apply. Any plan/candidate drift fails closed.
-        OperationPlan verified = planner.plan(plan.sourceInstance(), exactBase);
+        OperationPlan verified = planner.plan(
+                plan.sourceInstance(), context.expectedHeadRevisionId(), exactBase);
         if (!verified.planDigest().equals(plan.planDigest())
                 || !verified.candidateContentHash().equals(plan.candidateContentHash())
                 || !digester.digest(plan.candidateTimeline()).equals(plan.candidateContentHash())) {
@@ -88,11 +97,14 @@ public class OperationPlanApplyService {
         try {
             String commandFingerprint = fingerprint(
                     plan.planDigest(), context.targetRef(), context.expectedHeadRevisionId(),
-                    projectId, context.tenantId(), context.principalRef());
+                    projectId, context.tenantId(), context.principalRef(),
+                    plan.sourceInstance().definitionId().value(),
+                    plan.sourceInstance().parameterDigest());
             var command = new TimelineRevisionSaveService.RevisionWriteCommand(
                     context.applyCommandId(), plan.planDigest(), commandFingerprint,
                     "OPERATION_PLAN", context.tenantId());
-            RevisionRef targetRef = new RevisionRef(projectId, context.targetRef().refId());
+            RevisionRef targetRef = new RevisionRef(
+                    context.tenantId(), projectId, context.targetRef().refId());
             if (plan.noOp()) {
                 var noOp = revisionSaveService.recordNoOpCommand(
                         targetRef, plan.baseRevisionId(), plan.baseContentHash(), command);
@@ -136,17 +148,4 @@ public class OperationPlanApplyService {
         }
     }
 
-    private static String sha256(String input) {
-        try {
-            byte[] digest = MessageDigest.getInstance("SHA-256")
-                    .digest(input.getBytes(StandardCharsets.UTF_8));
-            StringBuilder out = new StringBuilder();
-            for (byte b : digest) {
-                out.append(String.format("%02x", b));
-            }
-            return out.toString();
-        } catch (Exception e) {
-            throw new IllegalStateException("SHA-256 unavailable", e);
-        }
-    }
 }

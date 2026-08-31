@@ -56,6 +56,9 @@ class RenderNativeToolsIT extends PostgresTestContainerSupport {
     @Autowired
     private TimelineSnapshotService timelineSnapshotService;
 
+    @Autowired
+    private org.jooq.DSLContext dsl;
+
     @Value("${app.storage.local-root:/tmp/platform}")
     private String storageRoot;
 
@@ -118,7 +121,8 @@ class RenderNativeToolsIT extends PostgresTestContainerSupport {
                 }
                 """.formatted(Path.of(storageRoot, "artifacts", "native-e2e", "source.mp4").toAbsolutePath());
 
-        String snapshotId = timelineSnapshotService.save(project.id(), tenant.id(), editorJson, "2.0.0");
+        String snapshotId = timelineSnapshotService.saveTx(
+                dsl, project.id(), tenant.id(), editorJson, "2.0.0");
 
         RenderJobResponse job = renderController.createRenderJob(tenant.id(), project.id(), 
                 new CreateRenderJobRequest(project.id(), snapshotId, "default_720p"));
@@ -164,7 +168,8 @@ class RenderNativeToolsIT extends PostgresTestContainerSupport {
                 }
                 """.formatted(sourcePath);
 
-        String snapshotId = timelineSnapshotService.save(project.id(), tenant.id(), editorJson, "2.0.0");
+        String snapshotId = timelineSnapshotService.saveTx(
+                dsl, project.id(), tenant.id(), editorJson, "2.0.0");
         RenderJobResponse job = renderController.createRenderJob(tenant.id(), project.id(), 
                 new CreateRenderJobRequest(project.id(), snapshotId, "default_720p"));
 

@@ -1,14 +1,19 @@
 package com.example.platform;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.example.platform.shared.test.PostgresTestContainerSupport;
+import java.sql.SQLException;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
@@ -68,6 +73,16 @@ class Gcr5Gcr6DatabaseStructuralIntegrityTest extends PostgresTestContainerSuppo
         return count % 2 == 0;
     }
 
+    private static void assertForeignKeyViolation(Executable executable, String message) {
+        var failure = assertThrows(DataIntegrityViolationException.class, executable, message);
+        Throwable cause = failure;
+        while (cause != null && !(cause instanceof SQLException)) {
+            cause = cause.getCause();
+        }
+        var postgresFailure = assertInstanceOf(SQLException.class, cause, message);
+        assertEquals("23503", postgresFailure.getSQLState(), message);
+    }
+
     @AfterAll
     static void tearDown() {
         closeDataSource(dataSource);
@@ -95,8 +110,9 @@ class Gcr5Gcr6DatabaseStructuralIntegrityTest extends PostgresTestContainerSuppo
     @Test
     void timelineRevisionProjectFkRejectsUnknownProject() {
         jdbc.update("INSERT INTO tenant (id, name, status, created_at) VALUES ('ten-1','t','ACTIVE',now())");
-        assertThrows(Exception.class,
-                () -> jdbc.update("INSERT INTO timeline_snapshot (id, project_id, payload_json) VALUES ('snap-1','proj-missing','{}')"),
+        assertForeignKeyViolation(
+                () -> jdbc.update("INSERT INTO timeline_snapshot (id, tenant_id, project_id, payload_json) "
+                        + "VALUES ('snap-1','ten-1','proj-missing','{}')"),
                 "timeline_snapshot.project_id FK must reject unknown project");
     }
 
@@ -105,21 +121,23 @@ class Gcr5Gcr6DatabaseStructuralIntegrityTest extends PostgresTestContainerSuppo
         jdbc.update("INSERT INTO tenant (id, name, status, created_at) VALUES ('ten-1','t','ACTIVE',now())");
         jdbc.update("INSERT INTO project (id, tenant_id, name, created_at) VALUES ('proj-1','ten-1','p',now())");
         assertDoesNotThrow(() -> jdbc.update(
-                "INSERT INTO timeline_snapshot (id, project_id, payload_json) VALUES ('snap-1','proj-1','{}')"));
+                "INSERT INTO timeline_snapshot (id, tenant_id, project_id, payload_json) "
+                        + "VALUES ('snap-1','ten-1','proj-1','{}')"));
         assertDoesNotThrow(() -> jdbc.update(
-                "INSERT INTO timeline_revision (id, project_id, revision_number, snapshot_id, content_hash, schema_version, source, created_at) "
-                        + "VALUES ('rev-1','proj-1',1,'snap-1','hash','internal-1.0','test',now())"));
+                "INSERT INTO timeline_revision (id, tenant_id, project_id, revision_number, snapshot_id, content_hash, schema_version, source, created_at) "
+                        + "VALUES ('rev-1','ten-1','proj-1',1,'snap-1','hash','internal-1.0','test',now())"));
     }
 
     @Test
     void timelineRevisionParentFkRejectsUnknownParent() {
         jdbc.update("INSERT INTO tenant (id, name, status, created_at) VALUES ('ten-1','t','ACTIVE',now())");
         jdbc.update("INSERT INTO project (id, tenant_id, name, created_at) VALUES ('proj-1','ten-1','p',now())");
-        jdbc.update("INSERT INTO timeline_snapshot (id, project_id, payload_json) VALUES ('snap-1','proj-1','{}')");
-        assertThrows(Exception.class,
+        jdbc.update("INSERT INTO timeline_snapshot (id, tenant_id, project_id, payload_json) "
+                + "VALUES ('snap-1','ten-1','proj-1','{}')");
+        assertForeignKeyViolation(
                 () -> jdbc.update(
-                        "INSERT INTO timeline_revision (id, project_id, parent_revision_id, revision_number, snapshot_id, content_hash, schema_version, source, created_at) "
-                                + "VALUES ('rev-1','proj-1','rev-ghost',1,'snap-1','hash','internal-1.0','test',now())"),
+                        "INSERT INTO timeline_revision (id, tenant_id, project_id, parent_revision_id, revision_number, snapshot_id, content_hash, schema_version, source, created_at) "
+                                + "VALUES ('rev-1','ten-1','proj-1','rev-ghost',1,'snap-1','hash','internal-1.0','test',now())"),
                 "parent_revision_id FK must reject unknown parent");
     }
 
@@ -129,10 +147,10 @@ class Gcr5Gcr6DatabaseStructuralIntegrityTest extends PostgresTestContainerSuppo
         jdbc.update("INSERT INTO project (id, tenant_id, name, created_at) VALUES ('proj-1','ten-1','p',now())");
         jdbc.update("INSERT INTO artifact (id, tenant_id, content_digest, byte_length, media_type, artifact_kind, state, schema_version, created_at) "
                 + "VALUES ('art-1','ten-1','" + "a".repeat(64) + "',100,'VIDEO','RENDER_MASTER','AVAILABLE',1,now())");
-        assertThrows(Exception.class,
+        assertForeignKeyViolation(
                 () -> jdbc.update(
-                        "INSERT INTO artifact_pin (pin_id, revision_id, project_id, artifact_id, content_digest, pinned_at) "
-                                + "VALUES ('pin-1','rev-ghost','proj-1','art-1','" + "a".repeat(64) + "',now())"),
+                        "INSERT INTO artifact_pin (pin_id, tenant_id, revision_id, project_id, artifact_id, content_digest, pinned_at) "
+                                + "VALUES ('pin-1','ten-1','rev-ghost','proj-1','art-1','" + "a".repeat(64) + "',now())"),
                 "artifact_pin.revision_id FK must reject unknown revision");
     }
 
@@ -140,13 +158,17 @@ class Gcr5Gcr6DatabaseStructuralIntegrityTest extends PostgresTestContainerSuppo
     void artifactPinProjectFkRejectsUnknownProject() {
         jdbc.update("INSERT INTO tenant (id, name, status, created_at) VALUES ('ten-1','t','ACTIVE',now())");
         jdbc.update("INSERT INTO project (id, tenant_id, name, created_at) VALUES ('proj-1','ten-1','p',now())");
+        jdbc.update("INSERT INTO timeline_snapshot (id, tenant_id, project_id, payload_json) "
+                + "VALUES ('snap-1','ten-1','proj-1','{}')");
+        jdbc.update("INSERT INTO timeline_revision (id, tenant_id, project_id, revision_number, snapshot_id, content_hash, schema_version, source, created_at) "
+                + "VALUES ('rev-1','ten-1','proj-1',1,'snap-1','hash','internal-1.0','test',now())");
         jdbc.update("INSERT INTO artifact (id, tenant_id, content_digest, byte_length, media_type, artifact_kind, state, schema_version, created_at) "
                 + "VALUES ('art-1','ten-1','" + "a".repeat(64) + "',100,'VIDEO','RENDER_MASTER','AVAILABLE',1,now())");
-        assertThrows(Exception.class,
+        assertForeignKeyViolation(
                 () -> jdbc.update(
-                        "INSERT INTO artifact_pin (pin_id, revision_id, project_id, artifact_id, content_digest, pinned_at) "
-                                + "VALUES ('pin-1','rev-1','proj-ghost','art-1','" + "a".repeat(64) + "',now())"),
-                "artifact_pin.project_id FK must reject unknown project");
+                        "INSERT INTO artifact_pin (pin_id, tenant_id, revision_id, project_id, artifact_id, content_digest, pinned_at) "
+                                + "VALUES ('pin-1','ten-1','rev-1','proj-ghost','art-1','" + "a".repeat(64) + "',now())"),
+                "artifact_pin composite ownership FKs must reject an unknown project/cross-project revision");
     }
 
     // ── D6: historical delete safety (media_stream RESTRICT) ──
@@ -179,14 +201,15 @@ class Gcr5Gcr6DatabaseStructuralIntegrityTest extends PostgresTestContainerSuppo
     void renderJobProjectFkRejectsUnknownProject() {
         jdbc.update("INSERT INTO tenant (id, name, status, created_at) VALUES ('ten-1','t','ACTIVE',now())");
         jdbc.update("INSERT INTO project (id, tenant_id, name, created_at) VALUES ('proj-1','ten-1','p',now())");
-        jdbc.update("INSERT INTO timeline_snapshot (id, project_id, payload_json) VALUES ('snap-1','proj-1','{}')");
-        assertThrows(Exception.class,
+        jdbc.update("INSERT INTO timeline_snapshot (id, tenant_id, project_id, payload_json) "
+                + "VALUES ('snap-1','ten-1','proj-1','{}')");
+        assertForeignKeyViolation(
                 () -> jdbc.update(
-                        "INSERT INTO render_job (id, project_id, timeline_snapshot_id, profile, status, created_at) "
-                                + "VALUES ('job-1','proj-ghost','snap-1','default','PENDING',now())"),
+                        "INSERT INTO render_job (id, tenant_id, project_id, timeline_snapshot_id, profile, status, created_at) "
+                                + "VALUES ('job-1','ten-1','proj-ghost','snap-1','default','PENDING',now())"),
                 "render_job.project_id FK must reject unknown project");
         assertDoesNotThrow(() -> jdbc.update(
-                "INSERT INTO render_job (id, project_id, timeline_snapshot_id, profile, status, created_at) "
-                        + "VALUES ('job-1','proj-1','snap-1','default','PENDING',now())"));
+                "INSERT INTO render_job (id, tenant_id, project_id, timeline_snapshot_id, profile, status, created_at) "
+                        + "VALUES ('job-1','ten-1','proj-1','snap-1','default','PENDING',now())"));
     }
 }

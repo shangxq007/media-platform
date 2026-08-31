@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import com.example.platform.timeline.app.DefaultTimelineRevisionPersistence;
-import com.example.platform.timeline.app.ProductCurrentRevisionHeadUpdateAdapter;
+import com.example.platform.timeline.app.TimelineRevisionRefHeadUpdateAdapter;
 
 import com.example.platform.artifact.app.ArtifactPinService;
 import com.example.platform.artifact.domain.Artifact;
@@ -24,6 +24,7 @@ import com.example.platform.timeline.canonical.TimelineMetadata;
 import com.example.platform.timeline.canonical.TimelineTrack;
 import java.util.List;
 import java.util.Optional;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -34,6 +35,11 @@ import org.junit.jupiter.api.Test;
 class CheckpointAPinInvariantTest {
 
     private static final String TENANT = "tenant-1";
+
+    @AfterEach
+    void clearAmbientTenant() {
+        com.example.platform.shared.web.TenantContext.clear();
+    }
 
     private static ContentDigest digest(String hex) {
         return new ContentDigest(ContentDigest.DigestAlgorithm.SHA_256, hex);
@@ -59,8 +65,21 @@ class CheckpointAPinInvariantTest {
                 1, java.time.Instant.EPOCH);
     }
 
-    private TimelineRevisionSaveService saveService(ArtifactQueryService query, ArtifactPinService pinService) {
-        return saveService(query, pinService, org.mockito.Mockito.mock(org.jooq.DSLContext.class));
+    private org.jooq.DSLContext ownedProjectDsl() {
+        org.jooq.DSLContext dsl = org.mockito.Mockito.mock(
+                org.jooq.DSLContext.class, org.mockito.Answers.RETURNS_DEEP_STUBS);
+        // H7 V2 resolves the trusted project owner before pin validation and
+        // independently verifies the explicit (tenant, project) pair. Model
+        // both ownership facts so these tests reach the pin boundary they own.
+        org.mockito.Mockito.when(dsl.select(org.mockito.ArgumentMatchers.<org.jooq.SelectField<String>>any())
+                        .from(org.mockito.ArgumentMatchers.any(org.jooq.TableLike.class))
+                        .where(org.mockito.ArgumentMatchers.any(org.jooq.Condition.class))
+                        .fetchOne(org.mockito.ArgumentMatchers.<org.jooq.Field<String>>any()))
+                .thenReturn(TENANT);
+        org.mockito.Mockito.when(dsl.fetchExists(
+                        org.mockito.ArgumentMatchers.any(org.jooq.Select.class)))
+                .thenReturn(true);
+        return dsl;
     }
 
     private TimelineRevisionSaveService saveService(ArtifactQueryService query, ArtifactPinService pinService,
@@ -71,14 +90,14 @@ class CheckpointAPinInvariantTest {
         // validator/pinService are the real/mocked pin boundary under test.
         return new TimelineRevisionSaveService(
                 dsl,
-                org.mockito.Mockito.mock(ProductCurrentRevisionService.class),
+                org.mockito.Mockito.mock(TimelineRevisionRefMutation.class),
                 new TimelineContentDigester(),
                 org.mockito.Mockito.mock(com.example.platform.timeline.adapter.TimelineSnapshotService.class),
                 validator, pinService,
                 effectAuthority(), revisionSemanticContextStore(),
                 new DefaultTimelineRevisionPersistence(),
-                new ProductCurrentRevisionHeadUpdateAdapter(
-                        org.mockito.Mockito.mock(ProductCurrentRevisionService.class)));
+                new TimelineRevisionRefHeadUpdateAdapter(
+                        org.mockito.Mockito.mock(TimelineRevisionRefMutation.class)));
     }
 
     private static com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotAuthority effectAuthority() {
@@ -97,10 +116,15 @@ class CheckpointAPinInvariantTest {
         ArtifactQueryService query = mock(ArtifactQueryService.class);
         when(query.getArtifact(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any()))
                 .thenReturn(Optional.empty());
-        TimelineRevisionSaveService svc = saveService(query, mock(ArtifactPinService.class));
-        assertThrows(TimelineCanonicalRejectionException.class,
+        ArtifactPinService pinService = mock(ArtifactPinService.class);
+        org.jooq.DSLContext dsl = ownedProjectDsl();
+        TimelineRevisionSaveService svc = saveService(query, pinService, dsl);
+        TimelineCanonicalRejectionException rejection = assertThrows(
+                TimelineCanonicalRejectionException.class,
                 () -> svc.saveRevision("p1", null, pinnedDoc("art-1", "a".repeat(64)), "user"),
                 "missing artifact must fail closed before any write");
+        assertPinRejection(rejection, "does not exist for tenant " + TENANT);
+        assertNoWriteStarted(dsl, pinService);
     }
 
     @Test
@@ -108,12 +132,19 @@ class CheckpointAPinInvariantTest {
         com.example.platform.shared.web.TenantContext.set(TENANT);
         ArtifactQueryService query = mock(ArtifactQueryService.class);
         // artifact exists for another tenant → cross-tenant lookup returns empty
-        when(query.getArtifact(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any()))
+        when(query.getArtifact(TENANT, new ArtifactId("art-1")))
                 .thenReturn(Optional.empty());
-        TimelineRevisionSaveService svc = saveService(query, mock(ArtifactPinService.class));
-        assertThrows(TimelineCanonicalRejectionException.class,
+        when(query.getArtifact("tenant-2", new ArtifactId("art-1")))
+                .thenReturn(Optional.of(artifact("tenant-2", "a".repeat(64))));
+        ArtifactPinService pinService = mock(ArtifactPinService.class);
+        org.jooq.DSLContext dsl = ownedProjectDsl();
+        TimelineRevisionSaveService svc = saveService(query, pinService, dsl);
+        TimelineCanonicalRejectionException rejection = assertThrows(
+                TimelineCanonicalRejectionException.class,
                 () -> svc.saveRevision("p1", null, pinnedDoc("art-1", "a".repeat(64)), "user"),
                 "wrong tenant must fail closed");
+        assertPinRejection(rejection, "does not exist for tenant " + TENANT);
+        assertNoWriteStarted(dsl, pinService);
     }
 
     @Test
@@ -123,10 +154,15 @@ class CheckpointAPinInvariantTest {
         Artifact artifact = artifact(TENANT, "b".repeat(64));
         when(query.getArtifact(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any()))
                 .thenReturn(Optional.of(artifact));
-        TimelineRevisionSaveService svc = saveService(query, mock(ArtifactPinService.class));
-        assertThrows(TimelineCanonicalRejectionException.class,
+        ArtifactPinService pinService = mock(ArtifactPinService.class);
+        org.jooq.DSLContext dsl = ownedProjectDsl();
+        TimelineRevisionSaveService svc = saveService(query, pinService, dsl);
+        TimelineCanonicalRejectionException rejection = assertThrows(
+                TimelineCanonicalRejectionException.class,
                 () -> svc.saveRevision("p1", null, pinnedDoc("art-1", "a".repeat(64)), "user"),
                 "digest mismatch must fail closed");
+        assertPinRejection(rejection, "content digest mismatch");
+        assertNoWriteStarted(dsl, pinService);
     }
 
     @Test
@@ -198,44 +234,63 @@ class CheckpointAPinInvariantTest {
         assertThrows(NullPointerException.class,
                 () -> new TimelineRevisionSaveService(
                         org.mockito.Mockito.mock(org.jooq.DSLContext.class),
-                        org.mockito.Mockito.mock(ProductCurrentRevisionService.class),
+                        org.mockito.Mockito.mock(TimelineRevisionRefMutation.class),
                         digester,
                         org.mockito.Mockito.mock(com.example.platform.timeline.adapter.TimelineSnapshotService.class),
                         null,
                         org.mockito.Mockito.mock(ArtifactPinService.class),
-                        effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new ProductCurrentRevisionHeadUpdateAdapter(org.mockito.Mockito.mock(ProductCurrentRevisionService.class))),
+                        effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(org.mockito.Mockito.mock(TimelineRevisionRefMutation.class))),
                 "null artifactPinValidator must be rejected by construction");
         assertThrows(NullPointerException.class,
                 () -> new TimelineRevisionSaveService(
                         org.mockito.Mockito.mock(org.jooq.DSLContext.class),
-                        org.mockito.Mockito.mock(ProductCurrentRevisionService.class),
+                        org.mockito.Mockito.mock(TimelineRevisionRefMutation.class),
                         digester,
                         org.mockito.Mockito.mock(com.example.platform.timeline.adapter.TimelineSnapshotService.class),
                         new TimelineArtifactPinValidator(mock(ArtifactQueryService.class)),
                         null,
-                        effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new ProductCurrentRevisionHeadUpdateAdapter(org.mockito.Mockito.mock(ProductCurrentRevisionService.class))),
+                        effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(org.mockito.Mockito.mock(TimelineRevisionRefMutation.class))),
                         "null artifactPinService must be rejected by construction");
                         assertThrows(NullPointerException.class,
                         () -> new TimelineRevisionSaveService(
                                 null,
-                                org.mockito.Mockito.mock(ProductCurrentRevisionService.class),
+                                org.mockito.Mockito.mock(TimelineRevisionRefMutation.class),
                                 digester,
                                 org.mockito.Mockito.mock(com.example.platform.timeline.adapter.TimelineSnapshotService.class),
                                 new TimelineArtifactPinValidator(mock(ArtifactQueryService.class)),
                                 org.mockito.Mockito.mock(ArtifactPinService.class),
-                                effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new ProductCurrentRevisionHeadUpdateAdapter(org.mockito.Mockito.mock(ProductCurrentRevisionService.class))),
+                                effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(org.mockito.Mockito.mock(TimelineRevisionRefMutation.class))),
                         "null dsl must be rejected by construction");
         // ROADMAP20 authority integration: Effect authority + context store are
         // REQUIRED BY CONSTRUCTION — a save surface without them cannot exist.
         assertThrows(NullPointerException.class,
                 () -> new TimelineRevisionSaveService(
                         org.mockito.Mockito.mock(org.jooq.DSLContext.class),
-                        org.mockito.Mockito.mock(ProductCurrentRevisionService.class),
+                        org.mockito.Mockito.mock(TimelineRevisionRefMutation.class),
                         digester,
                         org.mockito.Mockito.mock(com.example.platform.timeline.adapter.TimelineSnapshotService.class),
                         new TimelineArtifactPinValidator(mock(ArtifactQueryService.class)),
                         org.mockito.Mockito.mock(ArtifactPinService.class),
-                        null, revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new ProductCurrentRevisionHeadUpdateAdapter(org.mockito.Mockito.mock(ProductCurrentRevisionService.class))),
+                        null, revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(org.mockito.Mockito.mock(TimelineRevisionRefMutation.class))),
                 "null Effect snapshot authority must be rejected by construction");
+    }
+
+    private static void assertPinRejection(
+            TimelineCanonicalRejectionException rejection, String expectedMessageFragment) {
+        assertEquals(1, rejection.adapterDiagnostics().size(),
+                "pin failure must expose one exact adapter diagnostic");
+        TimelineCanonicalRejectionException.AdapterDiagnostic diagnostic =
+                rejection.adapterDiagnostics().get(0);
+        assertEquals(TimelineCanonicalRejectionException.Code.TIMELINE_SOURCE_REF_INVALID,
+                diagnostic.code(), "artifact-pin failures use the frozen source-ref code");
+        assertTrue(diagnostic.message().contains(expectedMessageFragment),
+                "pin diagnostic must preserve its exact failure meaning: " + diagnostic.message());
+    }
+
+    private static void assertNoWriteStarted(
+            org.jooq.DSLContext dsl, ArtifactPinService pinService) {
+        org.mockito.Mockito.verify(dsl, org.mockito.Mockito.never()).transactionResult(
+                org.mockito.ArgumentMatchers.<org.jooq.TransactionalCallable<Object>>any());
+        org.mockito.Mockito.verifyNoInteractions(pinService);
     }
 }

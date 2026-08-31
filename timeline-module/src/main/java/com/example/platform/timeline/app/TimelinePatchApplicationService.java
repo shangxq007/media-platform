@@ -22,21 +22,27 @@ import java.util.List;
 public class TimelinePatchApplicationService {
 
     private final TimelineRevisionSaveService revisionSaveService;
-    private final ProductCurrentRevisionService currentRevisionService;
+    private final TimelineRevisionRefMutation revisionRefMutation;
     private final TimelineContentDigester contentDigester;
 
     public TimelinePatchApplicationService(TimelineRevisionSaveService revisionSaveService,
-                                           ProductCurrentRevisionService currentRevisionService,
+                                           TimelineRevisionRefMutation revisionRefMutation,
                                            TimelineContentDigester contentDigester) {
         this.revisionSaveService = revisionSaveService;
-        this.currentRevisionService = currentRevisionService;
+        this.revisionRefMutation = revisionRefMutation;
         this.contentDigester = contentDigester;
     }
 
     @Transactional
     public PatchApplyResult apply(TimelinePatch patch) {
+        return apply(revisionSaveService.tenantForProject(patch.productId()),
+                "patch-service", patch);
+    }
+
+    @Transactional
+    public PatchApplyResult apply(String tenantId, String canonicalAuthor, TimelinePatch patch) {
         // Load base revision
-        TimelineRevision baseRevision = revisionSaveService.findById(patch.baseRevisionId());
+        TimelineRevision baseRevision = revisionSaveService.findById(tenantId, patch.baseRevisionId());
         if (baseRevision == null) {
             return PatchApplyResult.failure(new PatchError(PatchErrorCode.TIMELINE_PATCH_REVISION_NOT_FOUND,
                     "Base revision not found: " + patch.baseRevisionId(), null, null));
@@ -49,7 +55,9 @@ public class TimelinePatchApplicationService {
         }
 
         // Validate base is current
-        String currentRevisionId = currentRevisionService.getCurrentRevisionId(patch.productId());
+        String currentRevisionId = revisionRefMutation.currentHead(
+                com.example.platform.timeline.revisioncommand.RevisionRef.main(
+                        tenantId, patch.productId()));
         if (!patch.baseRevisionId().equals(currentRevisionId)) {
             return PatchApplyResult.failure(new PatchError(PatchErrorCode.TIMELINE_PATCH_BASE_NOT_CURRENT,
                     "Base revision is not current", null, null));
@@ -79,7 +87,7 @@ public class TimelinePatchApplicationService {
         // snapshot authority (TimelineSnapshotService via TimelineRevisionSaveService)
         // before invoking the Patch engine. findById intentionally does not hydrate
         // canonicalTimeline; the hydration is explicit and local to the Patch flow.
-        TimelineDocument baseDocument = revisionSaveService.findPayloadDocument(patch.baseRevisionId())
+        TimelineDocument baseDocument = revisionSaveService.findPayloadDocument(tenantId, patch.baseRevisionId())
                 .orElse(null);
         if (baseDocument == null) {
             return PatchApplyResult.failure(new PatchError(PatchErrorCode.TIMELINE_PATCH_PAYLOAD_INVALID,
@@ -109,15 +117,21 @@ public class TimelinePatchApplicationService {
 
         // Create new revision atomically
         TimelineRevision newRevision = revisionSaveService.saveRevision(
-                patch.productId(), patch.expectedCurrentRevisionId(), resultDocument, "patch-service");
+                tenantId, patch.productId(), patch.expectedCurrentRevisionId(),
+                resultDocument, canonicalAuthor);
 
         return PatchApplyResult.success(newRevision.revisionId(), patch.baseRevisionId(), resultDigest);
     }
 
     @Transactional(readOnly = true)
     public PatchPreviewResult preview(TimelinePatch patch) {
+        return preview(revisionSaveService.tenantForProject(patch.productId()), patch);
+    }
+
+    @Transactional(readOnly = true)
+    public PatchPreviewResult preview(String tenantId, TimelinePatch patch) {
         // Load base revision
-        TimelineRevision baseRevision = revisionSaveService.findById(patch.baseRevisionId());
+        TimelineRevision baseRevision = revisionSaveService.findById(tenantId, patch.baseRevisionId());
         if (baseRevision == null) {
             return PatchPreviewResult.failure(new PatchError(PatchErrorCode.TIMELINE_PATCH_REVISION_NOT_FOUND,
                     "Base revision not found: " + patch.baseRevisionId(), null, null));
@@ -137,7 +151,7 @@ public class TimelinePatchApplicationService {
 
         // PPHR-BIC: resolve the governed persisted Timeline payload through the existing
         // snapshot authority before invoking the Patch engine (preview: dry run only).
-        TimelineDocument baseDocument = revisionSaveService.findPayloadDocument(patch.baseRevisionId())
+        TimelineDocument baseDocument = revisionSaveService.findPayloadDocument(tenantId, patch.baseRevisionId())
                 .orElse(null);
         if (baseDocument == null) {
             return PatchPreviewResult.failure(new PatchError(PatchErrorCode.TIMELINE_PATCH_PAYLOAD_INVALID,

@@ -15,11 +15,10 @@ import com.example.platform.shared.test.PostgresTestContainerSupport;
 import com.example.platform.timeline.adapter.JdbcEffectDefinitionVersionRegistry;
 import com.example.platform.timeline.adapter.JdbcEffectSemanticSnapshotStore;
 import com.example.platform.timeline.adapter.JdbcTimelineRevisionSemanticContextStore;
-import com.example.platform.timeline.adapter.RevisionCommandApplyService;
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.timeline.app.DefaultTimelineRevisionPersistence;
-import com.example.platform.timeline.app.ProductCurrentRevisionHeadUpdateAdapter;
-import com.example.platform.timeline.app.ProductCurrentRevisionService;
+import com.example.platform.timeline.app.TimelineRevisionRefHeadUpdateAdapter;
+import com.example.platform.timeline.app.TimelineRevisionRefMutation;
 import com.example.platform.timeline.app.TimelineRevisionCommandConflictException;
 import com.example.platform.timeline.app.TimelineRevisionSaveService;
 import com.example.platform.timeline.canonical.TimelineContentDigester;
@@ -34,9 +33,6 @@ import com.example.platform.timeline.semantics.selection.ResolvedScope;
 import com.example.platform.timeline.semantics.selection.SelectionSpec;
 import com.example.platform.timeline.version.TimelineConflictException;
 import com.example.platform.timeline.revisioncommand.RevisionRef;
-import com.example.platform.timeline.revisioncommand.RevisionCommandException;
-import com.example.platform.timeline.revisioncommand.RevisionCommandPlan;
-import com.example.platform.timeline.revisioncommand.RevisionCommandPlanDigest;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -164,7 +160,7 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
                         SelectionSpec.ExpansionPolicy.EXACT)),
                 new OperationParameters.MoveParameters(MediaTime.ofRational(1, 1), false),
                 "parameters", null);
-        var plan = new OperationPlanner().plan(instance, base);
+        var plan = new OperationPlanner().plan(instance, instance.baseRevisionId(), base);
         var authorization = AuthorizationDecision.allow(plan.planDigest(), "alice", productId,
                 TENANT, RevisionRef.MAIN_REF, "policy-v1");
         var context = new ApplyContext("coordinator-parent-edge",
@@ -298,8 +294,8 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
                 command("command-head", "plan-head", "fingerprint-head"));
 
         assertEquals(result.revisionId(), canonicalHead(productId));
-        assertEquals(root.revisionId(), currentRevision(productId),
-                "product pointer is a non-authoritative projection for H7");
+        assertEquals(result.revisionId(), currentRevision(productId),
+                "every current surface observes the same canonical ref");
         assertEquals(1L, dsl.selectCount().from(TIMELINE_REVISION)
                 .where(TIMELINE_REVISION.ID.eq(result.revisionId())).fetchOne(0, Long.class));
     }
@@ -311,13 +307,15 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
         TimelineRevisionSaveService seed = writer(dsl);
         var root = seedRoot(seed, productId, document("base"));
         long counterBefore = counterValue(productId);
-        dsl.execute("delete from timeline_revision_ref where project_id = ? and ref_id = ?",
-                productId, RevisionRef.MAIN_REF);
+        dsl.execute("delete from timeline_revision_ref "
+                        + "where tenant_id = ? and project_id = ? and ref_id = ?",
+                TENANT, productId, RevisionRef.MAIN_REF);
 
         assertThrows(TimelineConflictException.class, () -> seed.saveRevisionForCommand(
                 ref(productId), root.revisionId(), document("candidate"), "editor",
                 command("command-rollback", "plan-rollback", "fingerprint-rollback")));
-        assertEquals(root.revisionId(), currentRevision(productId));
+        assertNull(currentRevision(productId),
+                "the deliberately deleted canonical ref remains absent after rollback");
         assertEquals(1L, revisionRows(productId));
         assertEquals(0, dsl.fetchOne("select count(*) from timeline_revision_parent "
                 + "where project_id = ?", productId).get(0, Integer.class));
@@ -338,45 +336,7 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
         assertEquals(genesis.revisionId(), canonicalHead(productId));
         assertEquals(0, dsl.fetchOne("select count(*) from timeline_revision_parent "
                 + "where project_id = ?", productId).get(0, Integer.class));
-        assertNull(currentRevision(productId),
-                "genesis does not need a product-pointer authority row transition");
-    }
-
-    @Test
-    void canonicalRefAllowsApplyWhenProductPointerMismatches() {
-        String productId = "operation-product-mismatch-" + java.util.UUID.randomUUID();
-        insertProduct(productId);
-        TimelineRevisionSaveService service = writer(dsl);
-        var root = seedRoot(service, productId, document("base"));
-        dsl.update(PRODUCT).set(PRODUCT.CURRENT_REVISION_ID, (String) null)
-                .where(PRODUCT.PRODUCT_ID.eq(productId)).execute();
-
-        var applied = service.saveRevisionForCommand(
-                ref(productId), root.revisionId(), document("candidate"), "editor",
-                command("command-product-mismatch", "plan-product-mismatch",
-                        "fingerprint-product-mismatch"));
-
-        assertEquals(applied.revisionId(), canonicalHead(productId));
-        assertNull(currentRevision(productId));
-    }
-
-    @Test
-    void canonicalRefAllowsNoOpWhenProductPointerMismatches() {
-        String productId = "operation-noop-product-mismatch-" + java.util.UUID.randomUUID().toString().replace("-", "");
-        insertProduct(productId);
-        TimelineRevisionSaveService service = writer(dsl);
-        TimelineDocument base = document("base");
-        var root = seedRoot(service, productId, base);
-        dsl.update(PRODUCT).set(PRODUCT.CURRENT_REVISION_ID, (String) null)
-                .where(PRODUCT.PRODUCT_ID.eq(productId)).execute();
-
-        var noOp = service.recordNoOpCommand(ref(productId), root.revisionId(),
-                new TimelineContentDigester().digest(base),
-                command("noop-product-mismatch", "plan-noop-product", "fp-noop-product"));
-
-        assertFalse(noOp.replayed());
-        assertEquals(root.revisionId(), canonicalHead(productId));
-        assertNull(currentRevision(productId));
+        assertEquals(genesis.revisionId(), currentRevision(productId));
     }
 
     @Test
@@ -402,7 +362,8 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
         assertEquals(0, dsl.fetchOne("select count(*) from timeline_revision_parent "
                 + "where project_id = ?", productId).get(0, Integer.class));
         assertEquals(1, dsl.fetchOne("select count(*) from timeline_revision_ref "
-                + "where project_id = ? and ref_id = ?", productId, RevisionRef.MAIN_REF)
+                + "where tenant_id = ? and project_id = ? and ref_id = ?",
+                TENANT, productId, RevisionRef.MAIN_REF)
                 .get(0, Integer.class));
     }
 
@@ -459,89 +420,6 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
         assertEquals(counterBefore, counterValue(productId));
     }
 
-    @Test
-    void revisionCommandHeadMoveMakesH7StaleAndH7MoveMakesRevisionCommandStale() {
-        String projectA = "cross-head-rc-first-" + java.util.UUID.randomUUID();
-        insertProduct(projectA);
-        TimelineRevisionSaveService serviceA = writer(dsl);
-        var rootA = seedRoot(serviceA, projectA, document("base-a"));
-        var childA = serviceA.saveRevision(
-                projectA, rootA.revisionId(), document("detached-child"), "seed");
-        RevisionCommandApplyService revisionCommands = new RevisionCommandApplyService(dsl);
-        var deleteMain = new RevisionCommandPlan.DeleteRefPlan(projectA, ref(projectA),
-                rootA.revisionId(), RevisionCommandPlanDigest.deleteRef(
-                        projectA, RevisionRef.MAIN_REF, rootA.revisionId()));
-        revisionCommands.deleteRef(deleteMain, "rc-delete-main", "alice", projectA);
-        var recreateMain = new RevisionCommandPlan.CreateRefPlan(projectA, ref(projectA),
-                childA.revisionId(), RevisionCommandPlanDigest.createRef(
-                        projectA, RevisionRef.MAIN_REF, childA.revisionId()));
-        revisionCommands.createRef(recreateMain, "rc-recreate-main", "alice", projectA);
-
-        assertThrows(TimelineConflictException.class, () -> serviceA.saveRevisionForCommand(
-                ref(projectA), rootA.revisionId(), document("stale-h7"), "editor",
-                command("stale-h7-after-rc", "plan-stale-h7", "fp-stale-h7")));
-
-        String projectB = "cross-head-h7-first-" + java.util.UUID.randomUUID();
-        insertProduct(projectB);
-        TimelineRevisionSaveService serviceB = writer(dsl);
-        var rootB = seedRoot(serviceB, projectB, document("base-b"));
-        serviceB.saveRevisionForCommand(ref(projectB), rootB.revisionId(),
-                document("h7-move"), "editor",
-                command("h7-move-before-rc", "plan-h7-move", "fp-h7-move"));
-        var staleDelete = new RevisionCommandPlan.DeleteRefPlan(projectB, ref(projectB),
-                rootB.revisionId(), RevisionCommandPlanDigest.deleteRef(
-                        projectB, RevisionRef.MAIN_REF, rootB.revisionId()));
-        assertThrows(RevisionCommandException.class, () ->
-                revisionCommands.deleteRef(staleDelete, "rc-stale-delete", "alice", projectB));
-    }
-
-    @Test
-    void h7AndRevisionCommandShareFirstCounterBootstrapWithoutDuplicateNumbers() throws Exception {
-        String productId = "cross-counter-" + java.util.UUID.randomUUID();
-        insertProduct(productId);
-        TimelineRevisionSaveService seed = writer(dsl);
-        var root = seedRoot(seed, productId, document("base"));
-        RevisionRef feature = new RevisionRef(productId, "feature");
-        RevisionCommandApplyService setupCommands = new RevisionCommandApplyService(dsl);
-        setupCommands.createRef(new RevisionCommandPlan.CreateRefPlan(productId, feature,
-                        root.revisionId(), RevisionCommandPlanDigest.createRef(
-                                productId, feature.refId(), root.revisionId())),
-                "counter-feature-create", "alice", productId);
-        dsl.execute("delete from project_revision_counter where project_id = ?", productId);
-        dsl.execute("update timeline_revision set revision_number = 1, internal_revision = 1 "
-                + "where project_id = ? and id = ?", productId, root.revisionId());
-
-        var restorePlan = new RevisionCommandPlan.RestoreRevisionPlan(productId,
-                root.revisionId(), feature, root.revisionId(), "restore-content-hash",
-                RevisionCommandPlanDigest.restore(productId, root.revisionId(), feature.refId(),
-                        root.revisionId(), "restore-content-hash"));
-        CountDownLatch go = new CountDownLatch(1);
-        try (var pool = Executors.newFixedThreadPool(2)) {
-            var h7 = pool.submit(() -> {
-                go.await();
-                return writer(DSL.using(dataSource, org.jooq.SQLDialect.POSTGRES))
-                        .saveRevisionForCommand(ref(productId), root.revisionId(),
-                                document("h7-candidate"), "editor",
-                                command("cross-counter-h7", "plan-counter-h7", "fp-counter-h7"));
-            });
-            var rc = pool.submit(() -> {
-                go.await();
-                return new RevisionCommandApplyService(
-                        DSL.using(dataSource, org.jooq.SQLDialect.POSTGRES))
-                        .restore(restorePlan, "cross-counter-rc", "alice", productId);
-            });
-            go.countDown();
-            assertFalse(h7.get().replayed());
-            assertTrue(rc.get().startsWith("APPLIED:"));
-        }
-
-        assertEquals(0, dsl.fetchOne("select count(*) from (select revision_number "
-                + "from timeline_revision where project_id = ? group by revision_number "
-                + "having count(*) > 1) duplicates", productId).get(0, Integer.class));
-        assertEquals(1, dsl.fetchOne("select count(*) from project_revision_counter "
-                + "where project_id = ?", productId).get(0, Integer.class));
-    }
-
     private static Void runWriter(
             String productId, String baseRevisionId, TimelineDocument candidate,
             String commandId, CountDownLatch ready, CountDownLatch go,
@@ -578,7 +456,7 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
     }
 
     private static TimelineRevisionSaveService writer(DSLContext context) {
-        var current = new ProductCurrentRevisionService(context);
+        var current = new TimelineRevisionRefMutation(context);
         var pinValidator = org.mockito.Mockito.mock(
                 com.example.platform.timeline.app.TimelineArtifactPinValidator.class);
         org.mockito.Mockito.when(pinValidator.validate(
@@ -595,7 +473,7 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
                         new JdbcEffectSemanticSnapshotStore(context)),
                 new JdbcTimelineRevisionSemanticContextStore(context),
                 new DefaultTimelineRevisionPersistence(),
-                new ProductCurrentRevisionHeadUpdateAdapter(current));
+                new TimelineRevisionRefHeadUpdateAdapter(current));
     }
 
     private static TimelineRevisionSaveService.RevisionWriteCommand command(
@@ -626,22 +504,13 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
     }
 
     private static RevisionRef ref(String productId) {
-        return RevisionRef.main(productId);
+        return RevisionRef.main(TENANT, productId);
     }
 
     private static com.example.platform.timeline.version.TimelineRevision seedRoot(
             TimelineRevisionSaveService service, String productId, TimelineDocument document) {
-        var root = service.saveRevision(productId, null, document, "seed");
-        dsl.insertInto(com.example.platform.typedschema.jooq.generated.tables.TimelineRevisionRef
-                        .TIMELINE_REVISION_REF)
-                .set(com.example.platform.typedschema.jooq.generated.tables.TimelineRevisionRef
-                        .TIMELINE_REVISION_REF.PROJECT_ID, productId)
-                .set(com.example.platform.typedschema.jooq.generated.tables.TimelineRevisionRef
-                        .TIMELINE_REVISION_REF.REF_ID, RevisionRef.MAIN_REF)
-                .set(com.example.platform.typedschema.jooq.generated.tables.TimelineRevisionRef
-                        .TIMELINE_REVISION_REF.HEAD_REVISION_ID, root.revisionId())
-                .execute();
-        return root;
+        return service.saveRevision(
+                TENANT, productId, null, document, RenderTestSchemaFixture.SERVER_ACTOR);
     }
 
     private static int commandRows(String commandId) {
@@ -650,14 +519,14 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
     }
 
     private static String currentRevision(String productId) {
-        return dsl.select(PRODUCT.CURRENT_REVISION_ID).from(PRODUCT)
-                .where(PRODUCT.PRODUCT_ID.eq(productId)).fetchOne(PRODUCT.CURRENT_REVISION_ID);
+        return canonicalHead(productId);
     }
 
     private static String canonicalHead(String productId) {
-        return dsl.fetchOne("select head_revision_id from timeline_revision_ref "
-                        + "where project_id = ? and ref_id = ?", productId, RevisionRef.MAIN_REF)
-                .get(0, String.class);
+        var row = dsl.fetchOne("select head_revision_id from timeline_revision_ref "
+                        + "where tenant_id = ? and project_id = ? and ref_id = ?",
+                        TENANT, productId, RevisionRef.MAIN_REF);
+        return row == null ? null : row.get(0, String.class);
     }
 
     private static long counterValue(String productId) {
@@ -687,12 +556,14 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
         if (productId.length() > 64) {
             throw new IllegalArgumentException("productId exceeds varchar(64): " + productId.length());
         }
+        RenderTestSchemaFixture.insertCanonicalProject(dsl, TENANT, productId);
         dsl.insertInto(PRODUCT)
                 .set(PRODUCT.PRODUCT_ID, productId)
                 .set(PRODUCT.PRODUCT_TYPE, "video")
                 .set(PRODUCT.REPRESENTATION_KIND, "master")
                 .set(PRODUCT.STATUS, "REGISTERED")
                 .set(PRODUCT.TENANT_ID, TENANT)
+                .set(PRODUCT.PROJECT_ID, productId)
                 .set(PRODUCT.CREATED_AT, java.time.LocalDateTime.now())
                 .set(PRODUCT.UPDATED_AT, java.time.LocalDateTime.now())
                 .execute();

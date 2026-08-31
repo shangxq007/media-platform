@@ -15,7 +15,7 @@ public final class TimelineOperationException extends RuntimeException {
         STALE_TARGET_REF,
         AUTHORIZATION_DENIED,
         AUTHORIZATION_CONTEXT_MISMATCH,
-        AUTHORIZATION_STALE,
+        TENANT_CONTEXT_MISMATCH,
         IDEMPOTENCY_KEY_CONFLICT,
         TARGET_MISSING,
         UNSUPPORTED_TEMPORAL_STATE,

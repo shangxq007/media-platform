@@ -1,11 +1,13 @@
 package com.example.platform.web.render;
 
-import com.example.platform.render.app.operation.AddOrTrimMediaClipCommand;
-import com.example.platform.render.app.operation.AddOrTrimMediaClipPreview;
-import com.example.platform.render.app.operation.AddOrTrimMediaClipResult;
+import com.example.platform.render.app.operation.AddMediaClipCommand;
+import com.example.platform.render.app.operation.AddMediaClipPreview;
+import com.example.platform.render.app.operation.AddMediaClipResult;
 import com.example.platform.render.app.operation.TimelineMediaClipOperationService;
 import com.example.platform.render.app.operation.TimelineOperationException;
 import com.example.platform.shared.authorization.CanonicalActorResolver;
+import com.example.platform.shared.authorization.CanonicalActor;
+import com.example.platform.shared.web.TenantContext;
 import java.net.URI;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -37,26 +39,44 @@ public class TimelineMediaClipOperationController {
         this.actorResolver = actorResolver;
     }
 
-    @PostMapping("/add-or-trim-media-clip/preview")
-    public AddOrTrimMediaClipPreview preview(
+    @PostMapping("/add-media-clip/preview")
+    public AddMediaClipPreview preview(
             @PathVariable String tenantId,
             @PathVariable String projectId,
             @RequestBody AddMediaClipRequest request) {
-        return operationService.preview(tenantId, projectId, request.toCommand());
+        requireTransportId(tenantId, "tenantId");
+        requireTransportId(projectId, "projectId");
+        return operationService.preview(
+                tenantId, projectId, request.toCommand(), authenticatedActor(tenantId));
     }
 
-    @PostMapping("/add-or-trim-media-clip/apply")
-    public ResponseEntity<AddOrTrimMediaClipResult> apply(
+    @PostMapping("/add-media-clip/apply")
+    public ResponseEntity<AddMediaClipResult> apply(
             @PathVariable String tenantId,
             @PathVariable String projectId,
             @RequestBody ApplyMediaClipRequest request) {
-        var actor = actorResolver.resolveCurrentActor()
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.UNAUTHORIZED, "authenticated actor required"));
-        AddOrTrimMediaClipResult applied = operationService.authorizeAndApply(
+        requireTransportId(tenantId, "tenantId");
+        requireTransportId(projectId, "projectId");
+        var actor = authenticatedActor(tenantId);
+        AddMediaClipResult applied = operationService.authorizeAndApply(
                 tenantId, projectId, request.request().toCommand(),
                 request.expectedPlanDigest(), request.applyCommandId(), actor);
         return ResponseEntity.status(HttpStatus.CREATED).body(applied);
+    }
+
+    private CanonicalActor authenticatedActor(String explicitTenantId) {
+        CanonicalActor actor = actorResolver.resolveCurrentActor()
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.UNAUTHORIZED, "authenticated actor required"));
+        String ambientTenantId = TenantContext.get();
+        requireBoundedText(actor.actorId(), "principalRef", 128);
+        if (!java.util.Objects.equals(explicitTenantId, ambientTenantId)
+                || !java.util.Objects.equals(explicitTenantId, actor.tenantId())) {
+            throw new TimelineOperationException(
+                    TimelineOperationException.Code.TENANT_CONTEXT_MISMATCH,
+                    List.of("explicit, ambient and authenticated tenant must match"));
+        }
+        return actor;
     }
 
     /** Transport shape uses canonical rational strings; no float time fields. */
@@ -75,10 +95,25 @@ public class TimelineMediaClipOperationController {
             String timelineEnd,
             long rateNumerator,
             long rateDenominator,
-            AddOrTrimMediaClipCommand.Direction direction) {
+            AddMediaClipCommand.Direction direction) {
 
-        AddOrTrimMediaClipCommand toCommand() {
-            return new AddOrTrimMediaClipCommand(
+        public AddMediaClipRequest {
+            requireTransportId(baseRevisionId, "baseRevisionId");
+            requireDigest(baseContentHash, "baseContentHash");
+            requireTransportId(trackId, "trackId");
+            requireTransportId(clipId, "clipId");
+            requireTransportId(mediaAssetId, "mediaAssetId");
+            requireTransportId(mediaStreamId, "mediaStreamId");
+            requireTransportId(artifactId, "artifactId");
+            requireDigest(contentDigest, "contentDigest");
+            requireRational(sourceStart, "sourceStart");
+            requireRational(sourceEnd, "sourceEnd");
+            requireRational(timelineStart, "timelineStart");
+            requireRational(timelineEnd, "timelineEnd");
+        }
+
+        AddMediaClipCommand toCommand() {
+            return new AddMediaClipCommand(
                     baseRevisionId, baseContentHash, trackId, clipId,
                     mediaAssetId, mediaStreamId, artifactId, contentDigest,
                     sourceStart, sourceEnd, timelineStart, timelineEnd,
@@ -91,11 +126,11 @@ public class TimelineMediaClipOperationController {
             String expectedPlanDigest,
             String applyCommandId) {
         public ApplyMediaClipRequest {
-            if (request == null || expectedPlanDigest == null || expectedPlanDigest.isBlank()
-                    || applyCommandId == null || applyCommandId.isBlank()) {
-                throw new IllegalArgumentException(
-                        "request, expectedPlanDigest and applyCommandId required");
+            if (request == null) {
+                throw new TimelineTransportException("request required");
             }
+            requireDigest(expectedPlanDigest, "expectedPlanDigest");
+            requireTransportId(applyCommandId, "applyCommandId");
         }
     }
 
@@ -103,12 +138,57 @@ public class TimelineMediaClipOperationController {
     ResponseEntity<ProblemDetail> operationFailure(TimelineOperationException failure) {
         HttpStatus status = switch (failure.code()) {
             case STALE_BASE_REVISION, STALE_TARGET_REF, PLAN_CHANGED -> HttpStatus.CONFLICT;
-            case AUTHORIZATION_DENIED, AUTHORIZATION_CONTEXT_MISMATCH -> HttpStatus.FORBIDDEN;
+            case AUTHORIZATION_DENIED, AUTHORIZATION_CONTEXT_MISMATCH, TENANT_CONTEXT_MISMATCH ->
+                    HttpStatus.FORBIDDEN;
             case BASE_REVISION_NOT_FOUND -> HttpStatus.NOT_FOUND;
-            case SOURCE_REFERENCE_INVALID, CANDIDATE_INVALID -> HttpStatus.UNPROCESSABLE_ENTITY;
-            default -> HttpStatus.UNPROCESSABLE_ENTITY;
+            case TARGET_MISSING -> HttpStatus.NOT_FOUND;
+            case IDEMPOTENCY_KEY_CONFLICT -> HttpStatus.CONFLICT;
+            case SOURCE_REFERENCE_INVALID, CANDIDATE_INVALID, INVALID_PLAN,
+                    UNSUPPORTED_TEMPORAL_STATE, UNSUPPORTED_AUDIO_TEMPORAL_BEHAVIOR,
+                    SYNC_ANCHOR_INVALIDATED, GROUP_CARDINALITY_CONFLICT,
+                    PLACEMENT_CONFLICT, BATCH_CONFLICT, CANONICAL_INVARIANT_VIOLATION ->
+                    HttpStatus.UNPROCESSABLE_ENTITY;
+            case PERSISTENCE_FAILURE, REF_UPDATE_FAILURE, APPLY_UNKNOWN_FAILURE ->
+                    HttpStatus.INTERNAL_SERVER_ERROR;
         };
         return problem(status, failure.code().name(), failure.getMessage(), failure.failures());
+    }
+
+    @ExceptionHandler(TimelineTransportException.class)
+    ResponseEntity<ProblemDetail> malformedInput(TimelineTransportException failure) {
+        return problem(HttpStatus.BAD_REQUEST, "MALFORMED_INPUT", failure.getMessage(), List.of());
+    }
+
+    private static void requireTransportId(String value, String field) {
+        requireBoundedText(value, field, 64);
+        if (!value.matches("[A-Za-z0-9._:-]+")) {
+            throw new TimelineTransportException(field + " has invalid syntax");
+        }
+    }
+
+    private static void requireDigest(String value, String field) {
+        if (value == null || !value.matches("[0-9a-fA-F]{64}")) {
+            throw new TimelineTransportException(field + " must be a 64-character hex digest");
+        }
+    }
+
+    private static void requireRational(String value, String field) {
+        requireBoundedText(value, field, 64);
+        if (!value.matches("[+-]?[0-9]+(?:/[1-9][0-9]*)?")) {
+            throw new TimelineTransportException(field + " must use bounded rational syntax");
+        }
+    }
+
+    private static void requireBoundedText(String value, String field, int maximum) {
+        if (value == null || value.isBlank() || value.length() > maximum) {
+            throw new TimelineTransportException(field + " required and bounded to " + maximum);
+        }
+    }
+
+    private static final class TimelineTransportException extends RuntimeException {
+        private TimelineTransportException(String message) {
+            super(message);
+        }
     }
 
     private static ResponseEntity<ProblemDetail> problem(

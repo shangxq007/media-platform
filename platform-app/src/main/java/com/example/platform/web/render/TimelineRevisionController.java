@@ -12,8 +12,6 @@ import com.example.platform.timeline.app.TimelineRevisionDiffQuery.CompareResult
 import com.example.platform.timeline.app.TimelineRevisionQueryService.EditSessionInfo;
 import com.example.platform.timeline.app.TimelineRevisionQueryService.RevisionDetail;
 import com.example.platform.timeline.app.TimelineRevisionQueryService.RevisionInfo;
-import com.example.platform.timeline.app.TimelineRevisionDiffQuery.PatchPreviewResult;
-import com.example.platform.timeline.app.TimelineRevisionDiffQuery.PatchStepsResult;
 import com.example.platform.timeline.app.TimelineRevisionQueryService.RevisionSnapshotPayload;
 import com.example.platform.timeline.app.TimelineMergeEngine;
 import com.example.platform.render.api.dto.TimelineRevisionRenderRequest;
@@ -58,8 +56,8 @@ public class TimelineRevisionController {
     private final TimelineRevisionRenderService renderService;
     private final RenderJobStatusService renderJobStatusService;
     private final com.example.platform.timeline.app.TimelineRevisionSaveService revisionSaveService;
-    private final com.example.platform.timeline.app.ProductCurrentRevisionService currentRevisionService;
     private final com.example.platform.timeline.app.TimelinePayloadCodec timelinePayloadCodec;
+    private final TimelineProjectAuthorizationService projectAuthorization;
 
     public TimelineRevisionController(
             com.example.platform.timeline.app.TimelineRevisionQueryService revisionQueryService,
@@ -69,8 +67,8 @@ public class TimelineRevisionController {
                                        @org.springframework.beans.factory.annotation.Autowired(required = false) TimelineRevisionRenderService renderService,
                                        @org.springframework.beans.factory.annotation.Autowired(required = false) RenderJobStatusService renderJobStatusService,
                                        com.example.platform.timeline.app.TimelineRevisionSaveService revisionSaveService,
-                                       com.example.platform.timeline.app.ProductCurrentRevisionService currentRevisionService,
-                                       com.example.platform.timeline.app.TimelinePayloadCodec timelinePayloadCodec) {
+                                       com.example.platform.timeline.app.TimelinePayloadCodec timelinePayloadCodec,
+                                       TimelineProjectAuthorizationService projectAuthorization) {
         this.revisionQueryService = revisionQueryService;
         this.revisionDiffQuery = revisionDiffQuery;
         this.mergeEngine = mergeEngine;
@@ -78,8 +76,8 @@ public class TimelineRevisionController {
         this.renderService = renderService;
         this.renderJobStatusService = renderJobStatusService;
         this.revisionSaveService = revisionSaveService;
-        this.currentRevisionService = currentRevisionService;
         this.timelinePayloadCodec = timelinePayloadCodec;
+        this.projectAuthorization = projectAuthorization;
     }
 
     @GetMapping
@@ -91,6 +89,7 @@ public class TimelineRevisionController {
             @RequestParam(required = false) String authorUserId,
             @RequestParam(required = false) String source) {
         String tenantId = TenantContext.get();
+        projectAuthorization.requireRead(tenantId, projectId);
         return revisionQueryService
                 .listHistory(projectId, tenantId, editSessionId, authorUserId, source, limit)
                 .stream()
@@ -101,7 +100,9 @@ public class TimelineRevisionController {
     @GetMapping("/facets")
     @Operation(summary = "项目修订筛选项（来源、作者）")
     public RevisionFacetsResponse facets(@PathVariable String projectId) {
-        TimelineRevisionQueryService.RevisionFacets facets = revisionQueryService.listFacets(projectId, TenantContext.get());
+        String tenantId = TenantContext.get();
+        projectAuthorization.requireRead(tenantId, projectId);
+        TimelineRevisionQueryService.RevisionFacets facets = revisionQueryService.listFacets(projectId, tenantId);
         return new RevisionFacetsResponse(
                 facets.sources(),
                 facets.authors().stream()
@@ -116,6 +117,7 @@ public class TimelineRevisionController {
             @PathVariable String revisionId,
             @RequestBody AnnotationRequest body) {
         String tenantId = TenantContext.get();
+        projectAuthorization.requireWrite(tenantId, projectId);
         return revisionQueryService
                 .updateAnnotation(
                         projectId, tenantId,
@@ -130,7 +132,9 @@ public class TimelineRevisionController {
     @Operation(summary = "列出项目的 AI 改稿会话分支")
     public List<EditSessionItem> editSessions(
             @PathVariable String projectId, @RequestParam(defaultValue = "20") int limit) {
-        return revisionQueryService.listEditSessions(projectId, TenantContext.get(), limit).stream()
+        String tenantId = TenantContext.get();
+        projectAuthorization.requireRead(tenantId, projectId);
+        return revisionQueryService.listEditSessions(projectId, tenantId, limit).stream()
                 .map(s -> new EditSessionItem(s.editSessionId(), s.lastAt(), s.revisionCount()))
                 .toList();
     }
@@ -141,38 +145,20 @@ public class TimelineRevisionController {
             @PathVariable String projectId,
             @RequestParam String from,
             @RequestParam String to) {
-        CompareResult result = revisionDiffQuery.compareRevisions(projectId, TenantContext.get(), from, to);
+        String tenantId = TenantContext.get();
+        projectAuthorization.requireRead(tenantId, projectId);
+        CompareResult result = revisionDiffQuery.compareRevisions(projectId, tenantId, from, to);
         return toCompareResponse(result);
     }
 
     @GetMapping("/head")
     @Operation(summary = "当前 HEAD 修订")
     public ResponseEntity<RevisionListItem> head(@PathVariable String projectId) {
+        String tenantId = TenantContext.get();
+        projectAuthorization.requireRead(tenantId, projectId);
         return revisionQueryService
-                .findHead(projectId, TenantContext.get())
+                .findHead(projectId, tenantId)
                 .map(r -> ResponseEntity.ok(toListItem(r)))
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-    @GetMapping("/{revisionId}/patch-preview")
-    @Operation(summary = "预览修订中存储的 RFC6902 patch（对父快照 dry-run）")
-    public ResponseEntity<PatchPreviewResponse> patchPreview(
-            @PathVariable String projectId, @PathVariable String revisionId) {
-        String tenantId = TenantContext.get();
-        return revisionQueryService
-                .findById(projectId, tenantId, revisionId)
-                .map(r -> ResponseEntity.ok(toPatchPreview(revisionDiffQuery.previewPatchReplay(projectId, tenantId, revisionId))))
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-    @GetMapping("/{revisionId}/patch-steps")
-    @Operation(summary = "分步预览 patch（每步单独 apply，累积 dry-run）")
-    public ResponseEntity<PatchStepsResponse> patchSteps(
-            @PathVariable String projectId, @PathVariable String revisionId) {
-        String tenantId = TenantContext.get();
-        return revisionQueryService
-                .findById(projectId, tenantId, revisionId)
-                .map(r -> ResponseEntity.ok(toPatchSteps(revisionDiffQuery.previewPatchSteps(projectId, tenantId, revisionId))))
                 .orElse(ResponseEntity.notFound().build());
     }
 
@@ -180,10 +166,12 @@ public class TimelineRevisionController {
     @Operation(summary = "修订关联快照的 Internal Timeline JSON（供 patch 路径索引解析）")
     public ResponseEntity<RevisionSnapshotResponse> revisionSnapshot(
             @PathVariable String projectId, @PathVariable String revisionId) {
+        String tenantId = TenantContext.get();
+        projectAuthorization.requireRead(tenantId, projectId);
         return revisionQueryService
-                .getRevisionSnapshotPayload(projectId, TenantContext.get(), revisionId)
+                .getRevisionSnapshotPayload(projectId, tenantId, revisionId)
                 .map(p -> ResponseEntity.ok(new RevisionSnapshotResponse(
-                        revisionId, p.snapshotId(), p.internalTimelineJson(), p.schemaVersion())))
+                        revisionId, p.snapshotId(), p.canonicalTimelineJson(), p.schemaVersion())))
                 .orElse(ResponseEntity.notFound().build());
     }
 
@@ -191,8 +179,10 @@ public class TimelineRevisionController {
     @Operation(summary = "修订详情（含变更摘要）")
     public ResponseEntity<RevisionDetailResponse> get(
             @PathVariable String projectId, @PathVariable String revisionId) {
+        String tenantId = TenantContext.get();
+        projectAuthorization.requireRead(tenantId, projectId);
         return revisionQueryService
-                .getDetail(projectId, TenantContext.get(), revisionId)
+                .getDetail(projectId, tenantId, revisionId)
                 .map(d -> ResponseEntity.ok(toDetailResponse(d)))
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -204,12 +194,15 @@ public class TimelineRevisionController {
             @PathVariable String revisionId,
             @RequestParam(required = false) String authorUserId) {
         String tenantId = TenantContext.get();
+        var actor = projectAuthorization.requireWrite(tenantId, projectId);
         // CFRH-I1: legacy restore authority (TimelineRevisionDiffQuery.restore) replaced by the
         // canonical restore transaction boundary (TimelineRevisionSaveService.restoreRevision).
         // expected-current CAS comes from the canonical current-revision authority.
-        String expectedCurrent = currentRevisionService.getCurrentRevisionId(projectId);
+        String expectedCurrent = revisionQueryService.findHead(projectId, tenantId)
+                .map(com.example.platform.timeline.app.TimelineRevisionQueryService.RevisionInfo::id)
+                .orElse(null);
         var restored = revisionSaveService.restoreRevision(
-                projectId, revisionId, expectedCurrent, authorUserId);
+                tenantId, projectId, revisionId, expectedCurrent, actor.actorId());
         eventPublisher.publish(new TimelineRestoredEvent(projectId, revisionId, restored.revisionId()));
         return ResponseEntity.status(HttpStatus.CREATED).body(toRestoreResponse(projectId, restored.revisionId()));
     }
@@ -219,11 +212,12 @@ public class TimelineRevisionController {
     public ResponseEntity<MergeApiResponse> merge(
             @PathVariable String projectId,
             @RequestBody MergeApiRequest body) {
-        String tenantId = body.tenantId() != null ? body.tenantId() : TenantContext.get();
+        String tenantId = TenantContext.get();
+        var actor = projectAuthorization.requireWrite(tenantId, projectId);
         TimelineMergeRequest request = new TimelineMergeRequest(
                 projectId, tenantId,
                 body.baseRevisionId(), body.sourceRevisionId(), body.targetRevisionId(),
-                body.authorUserId(), body.message());
+                actor.actorId(), body.message());
 
         TimelineMergeResult result;
         if (body.resolutions() != null && !body.resolutions().isEmpty()) {
@@ -270,6 +264,7 @@ public class TimelineRevisionController {
             @PathVariable String projectId,
             @PathVariable String revisionId,
             @RequestBody TimelineRevisionRenderRequest request) {
+        projectAuthorization.requireWrite(TenantContext.get(), projectId);
         if (renderService == null) {
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
                     .body(TimelineRevisionRenderResponse.failure(revisionId, "Timeline revision render service is not available"));
@@ -298,6 +293,7 @@ public class TimelineRevisionController {
             @PathVariable String projectId,
             @PathVariable String revisionId,
             @PathVariable String renderJobId) {
+        projectAuthorization.requireRead(TenantContext.get(), projectId);
         if (renderJobStatusService == null) {
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
         }
@@ -316,6 +312,7 @@ public class TimelineRevisionController {
             @PathVariable String projectId,
             @PathVariable String revisionId,
             @PathVariable String renderJobId) {
+        projectAuthorization.requireRead(TenantContext.get(), projectId);
         if (renderJobStatusService == null) {
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
         }
@@ -359,21 +356,6 @@ public class TimelineRevisionController {
                 .map(p -> new PatchPathDto(p.op(), p.path()))
                 .toList();
 
-        // Map semantic diff
-        SemanticDiffDto semanticDto = null;
-        if (result.semanticDiff() != null) {
-            var sd = result.semanticDiff();
-            List<SemanticChangeDto> changeDtos = sd.changes().stream()
-                    .map(c -> new SemanticChangeDto(
-                            c.type().name(),
-                            c.entity().kind().name(),
-                            c.entity().id(),
-                            c.summary(),
-                            isRenderAffecting(c.type().name())))
-                    .toList();
-            semanticDto = new SemanticDiffDto(true, sd.structurallyEqual(), changeDtos.size(), changeDtos);
-        }
-
         return new CompareResponse(
                 toListItem(result.fromRevision()),
                 toListItem(result.toRevision()),
@@ -382,43 +364,7 @@ public class TimelineRevisionController {
                         .map(e -> new EntityChangeDto(e.kind(), e.entityId(), e.action()))
                         .toList(),
                 paths,
-                paths.size(),
-                semanticDto);
-    }
-
-    private static boolean isRenderAffecting(String changeType) {
-        // All semantic changes are render-affecting except metadata-only
-        return !changeType.contains("METADATA") && !changeType.contains("MESSAGE") && !changeType.contains("AUTHOR");
-    }
-
-    private static PatchPreviewResponse toPatchPreview(PatchPreviewResult r) {
-        return new PatchPreviewResponse(
-                r.revisionId(),
-                r.hasPatchOps(),
-                r.success(),
-                r.patchPaths().stream().map(p -> new PatchPathDto(p.op(), p.path())).toList(),
-                r.appliedOps(),
-                r.errors(),
-                r.contentHashBefore(),
-                r.contentHashAfter(),
-                r.revisionContentHash());
-    }
-
-    private static PatchStepsResponse toPatchSteps(PatchStepsResult r) {
-        return new PatchStepsResponse(
-                r.revisionId(),
-                r.hasPatchOps(),
-                r.allStepsSucceeded(),
-                r.steps().stream()
-                        .map(s -> new PatchStepDto(
-                                s.stepIndex(),
-                                s.op(),
-                                s.path(),
-                                s.success(),
-                                s.appliedOps(),
-                                s.errors(),
-                                s.contentHashAfter()))
-                        .toList());
+                paths.size());
     }
 
     private RestoreResponse toRestoreResponse(String projectId, String newRevisionId) {
@@ -427,21 +373,21 @@ public class TimelineRevisionController {
         String tenantId = TenantContext.get();
         var detail = revisionQueryService.getDetail(projectId, tenantId, newRevisionId);
         var info = detail.map(RevisionDetail::revision).orElse(null);
-        var internalPayload = revisionQueryService.getRevisionSnapshotPayload(projectId, tenantId, newRevisionId)
-                .map(RevisionSnapshotPayload::internalTimelineJson)
+        var canonicalPayload = revisionQueryService.getRevisionSnapshotPayload(projectId, tenantId, newRevisionId)
+                .map(RevisionSnapshotPayload::canonicalTimelineJson)
                 .orElse(null);
-        if (info == null || internalPayload == null) {
+        if (info == null || canonicalPayload == null) {
             // Canonical restore success guarantees the new revision + governed
             // payload exist; a missing read is an impossible post-restore state.
             throw new IllegalStateException(
                     "RESTORE_RESPONSE_INCOMPLETE: restored revision " + newRevisionId
                             + " missing detail or internal payload");
         }
-        String editorPayload = timelinePayloadCodec.toEditorJson(internalPayload);
+        String editorPayload = timelinePayloadCodec.toEditorJson(canonicalPayload);
         return new RestoreResponse(
                 toListItem(info),
                 editorPayload,
-                internalPayload);
+                canonicalPayload);
     }
 
     private static ChangeSummaryDto parseChangeSummary(String json) {
@@ -485,7 +431,7 @@ public class TimelineRevisionController {
             RevisionListItem revision, ChangeSummaryDto changeSummary, int patchOpCount) {}
 
     public record RestoreResponse(
-            RevisionListItem newRevision, String editorTimelineJson, String internalTimelineJson) {}
+            RevisionListItem newRevision, String editorTimelineJson, String canonicalTimelineJson) {}
 
     public record CompareResponse(
             RevisionListItem fromRevision,
@@ -493,50 +439,10 @@ public class TimelineRevisionController {
             ChangeSummaryDto summary,
             List<EntityChangeDto> entityChanges,
             List<PatchPathDto> patchPaths,
-            int patchOpCount,
-            SemanticDiffDto semanticDiff) {}
-
-    public record SemanticDiffDto(
-            boolean supported,
-            boolean structurallyEqual,
-            int changeCount,
-            List<SemanticChangeDto> changes) {}
-
-    public record SemanticChangeDto(
-            String changeType,
-            String entityKind,
-            String entityId,
-            String description,
-            boolean renderAffecting) {}
-
-    public record PatchPreviewResponse(
-            String revisionId,
-            boolean hasPatchOps,
-            boolean success,
-            List<PatchPathDto> patchPaths,
-            List<String> appliedOps,
-            List<String> errors,
-            String contentHashBefore,
-            String contentHashAfter,
-            String revisionContentHash) {}
-
-    public record PatchStepsResponse(
-            String revisionId,
-            boolean hasPatchOps,
-            boolean allStepsSucceeded,
-            List<PatchStepDto> steps) {}
-
-    public record PatchStepDto(
-            int stepIndex,
-            String op,
-            String path,
-            boolean success,
-            List<String> appliedOps,
-            List<String> errors,
-            String contentHashAfter) {}
+            int patchOpCount) {}
 
     public record RevisionSnapshotResponse(
-            String revisionId, String snapshotId, String internalTimelineJson, String schemaVersion) {}
+            String revisionId, String snapshotId, String canonicalTimelineJson, String schemaVersion) {}
 
     public record PatchPathDto(String op, String path) {}
 
@@ -576,11 +482,9 @@ public class TimelineRevisionController {
     }
 
     public record MergeApiRequest(
-            String tenantId,
             String baseRevisionId,
             String sourceRevisionId,
             String targetRevisionId,
-            String authorUserId,
             String message,
             List<ResolutionDto> resolutions) {}
 
@@ -644,4 +548,5 @@ public class TimelineRevisionController {
                 r.mergedRevisionId(),
                 conflictDtos, summary, r.summary());
     }
+
 }

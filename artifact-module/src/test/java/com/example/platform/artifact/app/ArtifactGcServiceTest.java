@@ -120,7 +120,7 @@ class ArtifactGcServiceTest extends PostgresTestContainerSupport {
     @Test
     void skipsPinnedArtifacts() {
         insertTombstonedArtifact("art_pinned", Instant.now().minusSeconds(86400 * 10));
-        pinRepository.insert("pin_1", "trev_1", "prj_1", "art_pinned",
+        pinRepository.insert("pin_1", "trev_1", "prj_1", "t1", "art_pinned",
                 ContentDigest.sha256("a".repeat(64)), Instant.now());
 
         ArtifactGcService.GcResult result = gcService.runGc(1);

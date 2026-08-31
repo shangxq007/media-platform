@@ -27,10 +27,10 @@ import com.example.platform.timeline.semantics.temporal.PlaybackDirection;
 import com.example.platform.timeline.version.TimelineRevision;
 import com.example.platform.timeline.version.TimelineRevisionSemanticContext;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
@@ -56,9 +56,9 @@ class H7FirstRealMediaCutTest {
         AtomicReference<TimelineDocument> savedDocument = new AtomicReference<>();
 
         TimelineRevisionSaveService writer = mock(TimelineRevisionSaveService.class);
-        when(writer.findById(BASE_REVISION)).thenReturn(baseRevision);
-        when(writer.findPayloadDocument(BASE_REVISION)).thenReturn(Optional.of(base));
-        when(writer.saveRevisionForCommand(eq(RevisionRef.main(PROJECT)), eq(BASE_REVISION),
+        when(writer.findById(TENANT, BASE_REVISION)).thenReturn(baseRevision);
+        when(writer.findPayloadDocument(TENANT, BASE_REVISION)).thenReturn(Optional.of(base));
+        when(writer.saveRevisionForCommand(eq(RevisionRef.main(TENANT, PROJECT)), eq(BASE_REVISION),
                 any(TimelineDocument.class), eq("editor-1"),
                 any(TimelineRevisionSaveService.RevisionWriteCommand.class)))
                 .thenAnswer(invocation -> {
@@ -71,22 +71,25 @@ class H7FirstRealMediaCutTest {
         TimelineSourceReferenceValidator sourceValidator = mock(TimelineSourceReferenceValidator.class);
         when(sourceValidator.validate(any(MediaStreamSourceBinding.class), eq(TENANT), eq(PROJECT), eq(TrackType.VIDEO)))
                 .thenReturn(new TimelineSourceReferenceValidator.ValidationResult(true, List.of()));
-        AtomicInteger authorizationInvocations = new AtomicInteger();
+        List<String> authorizationActions = new ArrayList<>();
         AuthorizationDecisionPort authorization = request -> {
-            authorizationInvocations.incrementAndGet();
-            assertEquals("WRITE", request.action().permissionKey());
+            authorizationActions.add(request.action().permissionKey());
             assertEquals(PROJECT, request.resource().projectId());
             assertEquals(TENANT, request.resource().tenantId());
-            assertFalse(request.context().additionalReadOnlySignals()
-                    .get("operationPlanDigest").isBlank());
+            String planDigest = request.context().additionalReadOnlySignals()
+                    .get("operationPlanDigest");
+            if ("WRITE".equals(request.action().permissionKey())) {
+                assertNotNull(planDigest);
+                assertFalse(planDigest.isBlank());
+            }
             return com.example.platform.shared.authorization.AuthorizationDecision.allow("rbac-v1");
         };
         var apply = new OperationPlanApplyService(writer);
         var service = new TimelineMediaClipOperationService(
                 writer, sourceValidator, new InternalTimelineValidationService(), authorization, apply);
-        AddOrTrimMediaClipCommand request = request(baseHash);
+        AddMediaClipCommand request = request(baseHash);
 
-        var preview = service.preview(TENANT, PROJECT, request);
+        var preview = service.preview(TENANT, PROJECT, request, actor("editor-1", TENANT));
         assertEquals(TimelineMediaClipOperationService.OPERATION, preview.operation());
         assertEquals(MediaTime.ofRational(10, 1), preview.sourceRange().start());
         assertEquals(MediaTime.ofRational(20, 1), preview.sourceRange().end());
@@ -100,14 +103,15 @@ class H7FirstRealMediaCutTest {
         var applied = service.authorizeAndApply(
                 TENANT, PROJECT, request, preview.planDigest(), "apply-H7-1",
                 CanonicalActor.user("editor-1", TENANT, Set.of("EDITOR"), "test"));
-        assertEquals(1, authorizationInvocations.get(), "authorization boundary invoked exactly once");
+        assertEquals(List.of("READ", "READ", "WRITE"), authorizationActions,
+                "preview and apply preparation authorize before disclosure, then exact-plan write authorizes");
         assertEquals("APPLIED", applied.status());
         assertEquals(BASE_REVISION, applied.parentRevisionId());
         assertEquals("revision-R1", applied.renderHandoff().timelineRevisionId());
         assertEquals(preview.candidateContentHash(),
                 applied.renderHandoff().timelineContentHash());
         verify(writer, times(1)).saveRevisionForCommand(
-                eq(RevisionRef.main(PROJECT)), eq(BASE_REVISION),
+                eq(RevisionRef.main(TENANT, PROJECT)), eq(BASE_REVISION),
                 argThat(document -> DIGESTER.digest(document)
                         .equals(preview.candidateContentHash())),
                 eq("editor-1"),
@@ -138,8 +142,9 @@ class H7FirstRealMediaCutTest {
     void staleBaseAndPlanDigestFailBeforeCanonicalMutation() {
         TimelineDocument base = baseTimeline();
         TimelineRevisionSaveService writer = mock(TimelineRevisionSaveService.class);
-        when(writer.findById(BASE_REVISION)).thenReturn(revision(BASE_REVISION, null, base, "base"));
-        when(writer.findPayloadDocument(BASE_REVISION)).thenReturn(Optional.of(base));
+        when(writer.findById(TENANT, BASE_REVISION))
+                .thenReturn(revision(BASE_REVISION, null, base, "base"));
+        when(writer.findPayloadDocument(TENANT, BASE_REVISION)).thenReturn(Optional.of(base));
         TimelineSourceReferenceValidator sources = mock(TimelineSourceReferenceValidator.class);
         when(sources.validate(any(), anyString(), anyString(), any()))
                 .thenReturn(new TimelineSourceReferenceValidator.ValidationResult(true, List.of()));
@@ -148,13 +153,13 @@ class H7FirstRealMediaCutTest {
                 request -> com.example.platform.shared.authorization.AuthorizationDecision.allow("rbac"),
                 new OperationPlanApplyService(writer));
 
-        AddOrTrimMediaClipCommand stale = request("not-the-base-hash");
+        AddMediaClipCommand stale = request("not-the-base-hash");
         TimelineOperationException staleFailure = assertThrows(TimelineOperationException.class,
-                () -> service.preview(TENANT, PROJECT, stale));
+                () -> service.preview(TENANT, PROJECT, stale, actor("editor", TENANT)));
         assertEquals(TimelineOperationException.Code.STALE_BASE_REVISION, staleFailure.code());
 
-        AddOrTrimMediaClipCommand exact = request(DIGESTER.digest(base));
-        var preview = service.preview(TENANT, PROJECT, exact);
+        AddMediaClipCommand exact = request(DIGESTER.digest(base));
+        var preview = service.preview(TENANT, PROJECT, exact, actor("editor", TENANT));
         TimelineOperationException changed = assertThrows(TimelineOperationException.class,
                 () -> service.authorizeAndApply(TENANT, PROJECT, exact, "changed-plan",
                         "apply-H7-2", CanonicalActor.user("editor", TENANT, Set.of(), "test")));
@@ -168,8 +173,9 @@ class H7FirstRealMediaCutTest {
     void operationPlanFailureIsTranslatedAtRenderApplicationBoundary() {
         TimelineDocument base = baseTimeline();
         TimelineRevisionSaveService writer = mock(TimelineRevisionSaveService.class);
-        when(writer.findById(BASE_REVISION)).thenReturn(revision(BASE_REVISION, null, base, "base"));
-        when(writer.findPayloadDocument(BASE_REVISION)).thenReturn(Optional.of(base));
+        when(writer.findById(TENANT, BASE_REVISION))
+                .thenReturn(revision(BASE_REVISION, null, base, "base"));
+        when(writer.findPayloadDocument(TENANT, BASE_REVISION)).thenReturn(Optional.of(base));
         TimelineSourceReferenceValidator sources = mock(TimelineSourceReferenceValidator.class);
         when(sources.validate(any(), anyString(), anyString(), any()))
                 .thenReturn(new TimelineSourceReferenceValidator.ValidationResult(true, List.of()));
@@ -181,8 +187,8 @@ class H7FirstRealMediaCutTest {
                 request -> com.example.platform.shared.authorization.AuthorizationDecision.allow("rbac"),
                 apply);
 
-        AddOrTrimMediaClipCommand command = request(DIGESTER.digest(base));
-        var preview = service.preview(TENANT, PROJECT, command);
+        AddMediaClipCommand command = request(DIGESTER.digest(base));
+        var preview = service.preview(TENANT, PROJECT, command, actor("editor", TENANT));
         TimelineOperationException failure = assertThrows(TimelineOperationException.class,
                 () -> service.authorizeAndApply(TENANT, PROJECT, command, preview.planDigest(),
                         "apply-H7-boundary", CanonicalActor.user(
@@ -196,11 +202,50 @@ class H7FirstRealMediaCutTest {
 
     @Test
     void commandRejectsBlankTransportIdentityBeforeCanonicalResolution() {
-        assertThrows(IllegalArgumentException.class, () -> new AddOrTrimMediaClipCommand(
+        assertThrows(IllegalArgumentException.class, () -> new AddMediaClipCommand(
                 BASE_REVISION, "base-hash", "video-1", "clip-S-10-20",
                 " ", "stream-S-video", "artifact-S-v1", DIGEST,
                 "10/1", "20/1", "0", "10/1", 1, 1,
-                AddOrTrimMediaClipCommand.Direction.FORWARD));
+                AddMediaClipCommand.Direction.FORWARD));
+    }
+
+    @Test
+    void unauthorizedPreviewFailsBeforeBaseOrSourceDisclosure() {
+        TimelineRevisionSaveService writer = mock(TimelineRevisionSaveService.class);
+        TimelineSourceReferenceValidator sources = mock(TimelineSourceReferenceValidator.class);
+        var service = new TimelineMediaClipOperationService(
+                writer, sources, new InternalTimelineValidationService(),
+                request -> com.example.platform.shared.authorization.AuthorizationDecision.deny(
+                        "RBAC_DENY", "RBAC", "hidden"),
+                new OperationPlanApplyService(writer));
+
+        TimelineOperationException failure = assertThrows(TimelineOperationException.class,
+                () -> service.preview(TENANT, PROJECT, request("unknown"), actor("viewer", TENANT)));
+
+        assertEquals(TimelineOperationException.Code.AUTHORIZATION_DENIED, failure.code());
+        assertEquals(List.of("project operation access denied"), failure.failures());
+        verifyNoInteractions(writer, sources);
+    }
+
+    @Test
+    void explicitAndAuthenticatedTenantMismatchFailsBeforeHydration() {
+        TimelineRevisionSaveService writer = mock(TimelineRevisionSaveService.class);
+        TimelineSourceReferenceValidator sources = mock(TimelineSourceReferenceValidator.class);
+        var service = new TimelineMediaClipOperationService(
+                writer, sources, new InternalTimelineValidationService(),
+                request -> com.example.platform.shared.authorization.AuthorizationDecision.allow("rbac"),
+                new OperationPlanApplyService(writer));
+
+        TimelineOperationException failure = assertThrows(TimelineOperationException.class,
+                () -> service.preview(TENANT, PROJECT, request("unknown"),
+                        actor("viewer", "tenant-B")));
+
+        assertEquals(TimelineOperationException.Code.TENANT_CONTEXT_MISMATCH, failure.code());
+        verifyNoInteractions(writer, sources);
+    }
+
+    private static CanonicalActor actor(String actorId, String tenantId) {
+        return CanonicalActor.user(actorId, tenantId, Set.of("EDITOR"), "test");
     }
 
     private static TimelineDocument baseTimeline() {
@@ -209,8 +254,8 @@ class H7FirstRealMediaCutTest {
                 TimelineMetadata.empty());
     }
 
-    private static AddOrTrimMediaClipCommand request(String baseHash) {
-        return new AddOrTrimMediaClipCommand(
+    private static AddMediaClipCommand request(String baseHash) {
+        return new AddMediaClipCommand(
                 BASE_REVISION, baseHash, "video-1", "clip-S-10-20",
                 "media-S", "stream-S-video", "artifact-S-v1", DIGEST,
                 "10/1", "20/1", "0", "10/1", 1, 1, null);

@@ -1,6 +1,5 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.shared.web.TenantGuard;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -68,9 +67,20 @@ public class TimelineReviewRepository {
         return row == null ? Optional.empty() : Optional.of(mapReview(row));
     }
 
-    public List<ReviewRow> listByProject(String projectId, int limit) {
+    public Optional<ReviewRow> findOwnedById(
+            String reviewId, String projectId, String tenantId) {
+        Record row = dsl.select().from(TIMELINE_REVIEW)
+                .where(TIMELINE_REVIEW.ID.eq(reviewId))
+                .and(TIMELINE_REVIEW.PROJECT_ID.eq(projectId))
+                .and(TIMELINE_REVIEW.TENANT_ID.eq(tenantId))
+                .fetchOne();
+        return row == null ? Optional.empty() : Optional.of(mapReview(row));
+    }
+
+    public List<ReviewRow> listByProject(String projectId, String tenantId, int limit) {
         return dsl.select().from(TIMELINE_REVIEW)
-                .where(projectScope(projectId))
+                .where(TIMELINE_REVIEW.PROJECT_ID.eq(projectId))
+                .and(TIMELINE_REVIEW.TENANT_ID.eq(tenantId))
                 .orderBy(TIMELINE_REVIEW.CREATED_AT.desc())
                 .limit(Math.min(limit, 100))
                 .fetch().map(TimelineReviewRepository::mapReview);
@@ -97,11 +107,12 @@ public class TimelineReviewRepository {
                 .execute();
     }
 
-    public void updateThreadStatus(String threadId, String status) {
-        dsl.update(REVIEW_THREAD)
+    public boolean updateThreadStatus(String reviewId, String threadId, String status) {
+        return dsl.update(REVIEW_THREAD)
                 .set(REVIEW_THREAD.STATUS, status)
                 .where(REVIEW_THREAD.ID.eq(threadId))
-                .execute();
+                .and(REVIEW_THREAD.REVIEW_ID.eq(reviewId))
+                .execute() == 1;
     }
 
     public void insertDecision(String id, String reviewId, String reviewerUserId,
@@ -131,11 +142,6 @@ public class TimelineReviewRepository {
         return dsl.select().from(REVIEW_THREAD)
                 .where(REVIEW_THREAD.REVIEW_ID.eq(reviewId))
                 .fetch().map(TimelineReviewRepository::mapThread);
-    }
-
-    private static Condition projectScope(String projectId) {
-        return TIMELINE_REVIEW.PROJECT_ID.eq(projectId)
-                .and(TIMELINE_REVIEW.TENANT_ID.eq(TenantGuard.requireTenantId()));
     }
 
     private static ReviewRow mapReview(Record r) {

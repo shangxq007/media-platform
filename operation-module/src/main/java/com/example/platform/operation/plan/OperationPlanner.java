@@ -41,14 +41,16 @@ public final class OperationPlanner {
 
     private final TimelineContentDigester digester = new TimelineContentDigester();
 
-    public OperationPlan plan(OperationInstance instance, TimelineDocument base) {
-        if (!instance.baseRevisionId().equals(baseRevisionIdOf(instance))) {
+    public OperationPlan plan(
+            OperationInstance instance, String hydratedBaseRevisionId, TimelineDocument base) {
+        if (!instance.baseRevisionId().equals(hydratedBaseRevisionId)) {
             throw new PlanException(PlanErrorCode.STALE_BASE_REVISION,
-                    "instance base " + instance.baseRevisionId() + " does not match supplied base");
+                    "instance base " + instance.baseRevisionId()
+                            + " does not match independently hydrated base " + hydratedBaseRevisionId);
         }
         List<PlannedChange> changes = new ArrayList<>();
         TimelineDocument candidate = switch (instance.definitionId().value()) {
-            case "timeline.media-clip.add-or-trim" -> planAddMediaClip(instance, base, changes);
+            case "timeline.media-clip.add" -> planAddMediaClip(instance, base, changes);
             case "timeline.move" -> planMove(instance, base, changes);
             case "timeline.delete" -> planDelete(instance, base, changes);
             case "timeline.trim" -> planTrim(instance, base, changes);
@@ -78,10 +80,6 @@ public final class OperationPlanner {
         return new OperationPlan(OperationPlan.FORMAT_VERSION, instance.baseRevisionId(),
                 instance.baseContentHash(), instance, List.copyOf(changes), candidate,
                 candidateHash, true, digest, noOp);
-    }
-
-    private static String baseRevisionIdOf(OperationInstance instance) {
-        return instance.baseRevisionId();
     }
 
     private static List<String> targetIdentities(OperationTarget target) {
@@ -163,9 +161,9 @@ public final class OperationPlanner {
             OperationInstance instance, TimelineDocument base, List<PlannedChange> changes) {
         if (!(instance.target() instanceof OperationTarget.TimelineTarget)) {
             throw new PlanException(PlanErrorCode.INVALID_PLAN,
-                    "ADD_OR_TRIM_MEDIA_CLIP requires Timeline target");
+                    "ADD_MEDIA_CLIP requires Timeline target");
         }
-        var parameters = (OperationParameters.AddOrTrimMediaClipParameters) instance.parameters();
+        var parameters = (OperationParameters.AddMediaClipParameters) instance.parameters();
         for (TimelineTrack track : base.getTracks()) {
             for (TimelineClip existing : track.clips()) {
                 if (existing.getClipId().equals(parameters.clipId())) {

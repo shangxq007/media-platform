@@ -61,7 +61,7 @@ class TimelineEditorSyncServiceTest {
         assertTrue(result.alreadyInternal());
         assertNull(result.snapshotId(), "push must not create a snapshot");
         assertNull(result.revision(), "push must not create a revision");
-        verify(snapshotService, never()).save(any(), any(), any(), any());
+        verify(snapshotService, never()).saveTx(any(), any(), any(), any(), any());
     }
 
     @Test
@@ -104,17 +104,13 @@ class TimelineEditorSyncServiceTest {
     }
 
     @Test
-    void pullByProjectFallsThroughToLatestSnapshotWhenNoHead() {
-        TimelineSpec spec = TimelineSpec.create("tl-pull2", "Pull2", TimelineOutputSpec.mp4_1080p30());
-        String internal = importService.importTimeline(importAdapter.toRequest(spec));
+    void pullByProjectFailsClosedWithoutCanonicalMainHead() {
         when(revisionQueryService.findHead("prj_3", "ten_3")).thenReturn(Optional.empty());
-        when(snapshotService.findLatestOwnedByProject("prj_3", "ten_3"))
-                .thenReturn(Optional.of(new SnapshotInfo("snap_3", "prj_3", "ten_3", internal, "internal-1.0")));
 
-        var result = syncService.pullByProject("prj_3", "ten_3");
+        IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
+                () -> syncService.pullByProject("prj_3", "ten_3"));
 
-        assertEquals("snap_3", result.snapshotId());
-        assertNull(result.headRevision());
-        // backfill write authority absent by construction (CFRH-I1).
+        assertTrue(failure.getMessage().contains("canonical main"));
+        verify(snapshotService, never()).findLatestOwnedByProject(anyString(), anyString());
     }
 }

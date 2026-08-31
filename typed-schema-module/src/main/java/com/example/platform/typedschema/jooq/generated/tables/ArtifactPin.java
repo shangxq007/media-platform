@@ -67,6 +67,11 @@ public class ArtifactPin extends TableImpl<ArtifactPinRecord> {
     public final TableField<ArtifactPinRecord, String> PIN_ID = createField(DSL.name("pin_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
     /**
+     * The column <code>public.artifact_pin.tenant_id</code>.
+     */
+    public final TableField<ArtifactPinRecord, String> TENANT_ID = createField(DSL.name("tenant_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
+
+    /**
      * The column <code>public.artifact_pin.revision_id</code>.
      */
     public final TableField<ArtifactPinRecord, String> REVISION_ID = createField(DSL.name("revision_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");

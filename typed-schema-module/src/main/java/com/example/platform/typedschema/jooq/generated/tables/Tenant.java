@@ -6,6 +6,7 @@ package com.example.platform.typedschema.jooq.generated.tables;
 
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
+import com.example.platform.typedschema.jooq.generated.tables.Project.ProjectPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.TenantRecord;
 
 import java.time.LocalDateTime;
@@ -13,9 +14,13 @@ import java.util.Collection;
 
 import org.jooq.Condition;
 import org.jooq.Field;
+import org.jooq.ForeignKey;
+import org.jooq.InverseForeignKey;
 import org.jooq.Name;
+import org.jooq.Path;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
+import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
 import org.jooq.Select;
@@ -99,6 +104,39 @@ public class Tenant extends TableImpl<TenantRecord> {
         this(DSL.name("tenant"), null);
     }
 
+    public <O extends Record> Tenant(Table<O> path, ForeignKey<O, TenantRecord> childPath, InverseForeignKey<O, TenantRecord> parentPath) {
+        super(path, childPath, parentPath, TENANT);
+    }
+
+    /**
+     * A subtype implementing {@link Path} for simplified path-based joins.
+     */
+    public static class TenantPath extends Tenant implements Path<TenantRecord> {
+
+        private static final long serialVersionUID = 1L;
+        public <O extends Record> TenantPath(Table<O> path, ForeignKey<O, TenantRecord> childPath, InverseForeignKey<O, TenantRecord> parentPath) {
+            super(path, childPath, parentPath);
+        }
+        private TenantPath(Name alias, Table<TenantRecord> aliased) {
+            super(alias, aliased);
+        }
+
+        @Override
+        public TenantPath as(String alias) {
+            return new TenantPath(DSL.name(alias), this);
+        }
+
+        @Override
+        public TenantPath as(Name alias) {
+            return new TenantPath(alias, this);
+        }
+
+        @Override
+        public TenantPath as(Table<?> alias) {
+            return new TenantPath(alias.getQualifiedName(), this);
+        }
+    }
+
     @Override
     public Schema getSchema() {
         return aliased() ? null : Public.PUBLIC;
@@ -107,6 +145,19 @@ public class Tenant extends TableImpl<TenantRecord> {
     @Override
     public UniqueKey<TenantRecord> getPrimaryKey() {
         return Keys.TENANT_PKEY;
+    }
+
+    private transient ProjectPath _project;
+
+    /**
+     * Get the implicit to-many join path to the <code>public.project</code>
+     * table
+     */
+    public ProjectPath project() {
+        if (_project == null)
+            _project = new ProjectPath(this, null, Keys.PROJECT__FK_PROJECT_TENANT.getInverseKey());
+
+        return _project;
     }
 
     @Override

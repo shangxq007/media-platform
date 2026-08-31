@@ -20,15 +20,20 @@ import org.springframework.web.bind.annotation.RestController;
 public class TimelineEditorSyncController {
 
     private final TimelineEditorSyncService timelineEditorSyncService;
+    private final TimelineProjectAuthorizationService projectAuthorization;
 
-    public TimelineEditorSyncController(TimelineEditorSyncService timelineEditorSyncService) {
+    public TimelineEditorSyncController(
+            TimelineEditorSyncService timelineEditorSyncService,
+            TimelineProjectAuthorizationService projectAuthorization) {
         this.timelineEditorSyncService = timelineEditorSyncService;
+        this.projectAuthorization = projectAuthorization;
     }
 
     @PostMapping("/push")
     @Operation(summary = "推送：编辑器/遗留 JSON → Internal 1.0（转换预览，不创建修订）")
     public ResponseEntity<PushResponse> push(@Valid @RequestBody PushRequest request) {
         String tenantId = TenantContext.get();
+        projectAuthorization.requireRead(tenantId, request.projectId());
         var result = timelineEditorSyncService.push(
                 request.projectId(), tenantId, request.timelineJson());
         return ResponseEntity.ok(toPushResponse(result));
@@ -40,6 +45,9 @@ public class TimelineEditorSyncController {
                                              @RequestParam(required = false) String projectId,
                                              @RequestParam(required = false) String snapshotId) {
         String tenantId = TenantContext.get();
+        String requestedProjectId = request != null && request.projectId() != null
+                && !request.projectId().isBlank() ? request.projectId() : projectId;
+        projectAuthorization.requireRead(tenantId, requestedProjectId);
         TimelineEditorSyncService.PullResult result;
         if (request != null && request.snapshotId() != null && !request.snapshotId().isBlank()) {
             result = timelineEditorSyncService.pullBySnapshotId(request.projectId(), tenantId, request.snapshotId());
@@ -58,7 +66,9 @@ public class TimelineEditorSyncController {
     @GetMapping("/latest")
     @Operation(summary = "拉取项目最新快照（编辑器 + Internal）")
     public ResponseEntity<PullResponse> pullLatest(@RequestParam @NotBlank String projectId) {
-        var result = timelineEditorSyncService.pullByProject(projectId, TenantContext.get());
+        String tenantId = TenantContext.get();
+        projectAuthorization.requireRead(tenantId, projectId);
+        var result = timelineEditorSyncService.pullByProject(projectId, tenantId);
         return ResponseEntity.ok(toPullResponse(result));
     }
 

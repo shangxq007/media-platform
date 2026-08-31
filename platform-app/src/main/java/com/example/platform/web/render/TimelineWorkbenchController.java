@@ -23,18 +23,21 @@ public class TimelineWorkbenchController {
     private final TimelineReviewService reviewService;
     private final TimelineReviewRepository reviewRepo;
     private final TimelineCommentService commentService;
+    private final TimelineProjectAuthorizationService projectAuthorization;
 
     public TimelineWorkbenchController(
             com.example.platform.timeline.app.TimelineRevisionQueryService revisionQueryService,
             com.example.platform.timeline.app.TimelineRevisionDiffQuery revisionDiffQuery,
                                         TimelineReviewService reviewService,
                                         TimelineReviewRepository reviewRepo,
-                                        TimelineCommentService commentService) {
+                                        TimelineCommentService commentService,
+                                        TimelineProjectAuthorizationService projectAuthorization) {
         this.revisionQueryService = revisionQueryService;
         this.revisionDiffQuery = revisionDiffQuery;
         this.reviewService = reviewService;
         this.reviewRepo = reviewRepo;
         this.commentService = commentService;
+        this.projectAuthorization = projectAuthorization;
     }
 
     @GetMapping("/{timelineId}/workbench")
@@ -42,8 +45,10 @@ public class TimelineWorkbenchController {
     public ResponseEntity<WorkbenchDto> workbench(
             @PathVariable String projectId, @PathVariable String timelineId) {
         long start = System.currentTimeMillis();
-        TimelineRevisionQueryService.RevisionFacets facets = revisionQueryService.listFacets(projectId, TenantContext.get());
-        var reviews = reviewRepo.listByProject(projectId, 20);
+        String tenantId = TenantContext.get();
+        projectAuthorization.requireRead(tenantId, projectId);
+        TimelineRevisionQueryService.RevisionFacets facets = revisionQueryService.listFacets(projectId, tenantId);
+        var reviews = reviewRepo.listByProject(projectId, tenantId, 20);
         int openComments = reviews.stream()
                 .mapToInt(r -> commentService.listComments(r.id()).size()).sum();
 
@@ -58,7 +63,9 @@ public class TimelineWorkbenchController {
     @Operation(summary = "Get review workspace summary")
     public ReviewWsDto reviewWorkspace(
             @PathVariable String projectId, @PathVariable String timelineId) {
-        var reviews = reviewRepo.listByProject(projectId, 20);
+        String tenantId = TenantContext.get();
+        projectAuthorization.requireRead(tenantId, projectId);
+        var reviews = reviewRepo.listByProject(projectId, tenantId, 20);
         int open = 0, approved = 0, changes = 0, merged = 0;
         for (var r : reviews) {
             switch (r.status()) {
@@ -76,7 +83,9 @@ public class TimelineWorkbenchController {
     public ResponseEntity<ReviewDetailDto> reviewDetail(
             @PathVariable String projectId, @PathVariable String timelineId,
             @PathVariable String reviewId) {
-        return reviewRepo.findById(reviewId).map(r -> {
+        String tenantId = TenantContext.get();
+        projectAuthorization.requireRead(tenantId, projectId);
+        return reviewRepo.findOwnedById(reviewId, projectId, tenantId).map(r -> {
             var cmts = commentService.listComments(reviewId);
             var threads = commentService.listThreads(reviewId);
             long openT = threads.stream().filter(t -> "OPEN".equals(t.status())).count();
@@ -93,7 +102,9 @@ public class TimelineWorkbenchController {
     public DiffPreviewDto diffPreview(
             @PathVariable String projectId, @PathVariable String timelineId,
             @RequestParam String from, @RequestParam String to) {
-        var diff = revisionDiffQuery.compareRevisions(projectId, TenantContext.get(), from, to);
+        String tenantId = TenantContext.get();
+        projectAuthorization.requireRead(tenantId, projectId);
+        var diff = revisionDiffQuery.compareRevisions(projectId, tenantId, from, to);
         int changes = diff.entityChanges() != null ? diff.entityChanges().size() : 0;
         return new DiffPreviewDto(from, to, diff.summary() != null, changes);
     }
@@ -103,8 +114,10 @@ public class TimelineWorkbenchController {
     public ConflictDto conflicts(
             @PathVariable String projectId, @PathVariable String timelineId,
             @RequestParam String base, @RequestParam String source, @RequestParam String target) {
-        var sDiff = revisionDiffQuery.compareRevisions(projectId, TenantContext.get(), base, source);
-        var tDiff = revisionDiffQuery.compareRevisions(projectId, TenantContext.get(), base, target);
+        String tenantId = TenantContext.get();
+        projectAuthorization.requireRead(tenantId, projectId);
+        var sDiff = revisionDiffQuery.compareRevisions(projectId, tenantId, base, source);
+        var tDiff = revisionDiffQuery.compareRevisions(projectId, tenantId, base, target);
         int sc = sDiff.entityChanges() != null ? sDiff.entityChanges().size() : 0;
         int tc = tDiff.entityChanges() != null ? tDiff.entityChanges().size() : 0;
         return new ConflictDto(sc, tc, "Conflicts determined at merge time");

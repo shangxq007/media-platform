@@ -195,13 +195,13 @@ class EffectTransitionEndToEndMergeTest {
     private MergeOutcome merge(TimelineImportRequest baseReq, TimelineImportRequest sourceReq,
             TimelineImportRequest targetReq) {
         com.example.platform.shared.web.TenantContext.set("tenant-1");
-        String base = importService.importTimeline(baseReq);
-        String source = importService.importTimeline(sourceReq);
-        String target = importService.importTimeline(targetReq);
+        String base = canonicalPayload(importService.importTimeline(baseReq));
+        String source = canonicalPayload(importService.importTimeline(sourceReq));
+        String target = canonicalPayload(importService.importTimeline(targetReq));
         TimelineRevisionRepository revisionRepo = mock(TimelineRevisionRepository.class);
         TimelineSnapshotService snapshotService = mock(TimelineSnapshotService.class);
-        com.example.platform.timeline.app.ProductCurrentRevisionService currentService =
-                mock(com.example.platform.timeline.app.ProductCurrentRevisionService.class);
+        com.example.platform.timeline.app.TimelineRevisionRefMutation currentService =
+                mock(com.example.platform.timeline.app.TimelineRevisionRefMutation.class);
         TimelineRevisionRepository.RevisionRow baseRow = row("base-rev", "snap-base", base);
         TimelineRevisionRepository.RevisionRow srcRow = row("src-rev", "snap-src", source);
         TimelineRevisionRepository.RevisionRow tgtRow = row("tgt-rev", "snap-tgt", target);
@@ -209,16 +209,13 @@ class EffectTransitionEndToEndMergeTest {
         when(revisionRepo.findOwnedById("src-rev", "proj-1", "tenant-1")).thenReturn(Optional.of(srcRow));
         when(revisionRepo.findOwnedById("tgt-rev", "proj-1", "tenant-1")).thenReturn(Optional.of(tgtRow));
                 when(snapshotService.findOwnedById("proj-1", "tenant-1", "snap-base"))
-                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-base", "proj-1", "tenant-1", base, "internal-1.0")));
+                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-base", "proj-1", "tenant-1", base, "timeline-1.0")));
                 when(snapshotService.findOwnedById("proj-1", "tenant-1", "snap-src"))
-                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-src", "proj-1", "tenant-1", source, "internal-1.0")));
+                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-src", "proj-1", "tenant-1", source, "timeline-1.0")));
                 when(snapshotService.findOwnedById("proj-1", "tenant-1", "snap-tgt"))
-                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-tgt", "proj-1", "tenant-1", target, "internal-1.0")));
-        when(snapshotService.save(anyString(), anyString(), anyString(), anyString()))
-                .thenReturn("snap-merged");
-        when(revisionRepo.nextRevisionNumber("proj-1")).thenReturn(9);
+                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-tgt", "proj-1", "tenant-1", target, "timeline-1.0")));
         when(revisionRepo.listOwnedByProject("proj-1", "tenant-1", null, null, null, 500)).thenReturn(List.of());
-        when(currentService.getCurrentRevisionId("proj-1")).thenReturn("tgt-rev");
+        when(currentService.currentHead(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any())).thenReturn("tgt-rev");
         var previewService = new TimelineMergePreviewService(new TimelineMergeConflictDetector());
         var planner = new TimelineNonConflictingMergePlanner(previewService);
         org.jooq.DSLContext dslMockEffe0 = org.mockito.Mockito.mock(org.jooq.DSLContext.class);
@@ -231,31 +228,37 @@ org.jooq.Configuration cfgdslMockEffe0 = org.mockito.Mockito.mock(org.jooq.Confi
                     return callable.run(cfgdslMockEffe0);
                 });
         TimelineMergeEngine engine = new TimelineMergeEngine(revisionRepo, snapshotService,
-                currentService, previewService, planner, new TimelinePatchApplier(),
+                org.mockito.Mockito.mock(TimelineRevisionSaveService.class), previewService, planner, new TimelinePatchApplier(),
                 InternalTimelineJson.mapper(),
                 org.mockito.Mockito.mock(com.example.platform.timeline.app.TimelineArtifactPinValidator.class),
                 org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class),
                 dslMockEffe0);
-        TimelineMergeResult result = engine.merge(new TimelineMergeRequest(
+        TimelineMergeResult result = engine.mergeSemantic(new TimelineMergeRequest(
                 "proj-1", "tenant-1", "base-rev", "src-rev", "tgt-rev", "user-1", "merge-1"));
         if (result.status() == TimelineMergeResult.MergeStatus.MERGED) {
-            TimelineCandidate reloaded = InternalTimelineCandidateAdapter.map("proj-1", result.mergedPayloadJson());
+            TimelineCandidate reloaded = TimelineDocumentCandidateMapper.map(
+                    "proj-1", TimelineDocumentJsonSerializer.deserialize(result.mergedPayloadJson()));
             TimelineValidationResult validation = TimelineCanonicalValidator.validate(reloaded);
             return new MergeOutcome(result, result.mergedPayloadJson(), reloaded, validation);
         }
         return new MergeOutcome(result, null, null, null);
     }
 
-    private String hashOf(String payload) {
-        return new TimelineContentHasher(new TimelineCanonicalizer()).hashInternalTimeline(payload);
-    }
-
     private static TimelineRevisionRepository.RevisionRow row(String rev, String snap, String payload) {
         return new TimelineRevisionRepository.RevisionRow(
                 rev, "proj-1", "tenant-1", "base-rev", 1, snap, 0,
-                new TimelineContentHasher(new TimelineCanonicalizer()).hashInternalTimeline(payload),
-                "internal-1.0", "merge", "user-1", null, "test", null, null, null,
+                new com.example.platform.timeline.canonical.TimelineContentDigester().digest(
+                        TimelineDocumentJsonSerializer.deserialize(payload)),
+                "timeline-1.0", "merge", "user-1", null, "test", null, null, null,
                 true, "src-rev,tgt-rev", "base-rev", java.time.OffsetDateTime.now());
+    }
+
+    private static String canonicalPayload(String importPayload) {
+        TimelineCandidate candidate = InternalTimelineCandidateAdapter.map("proj-1", importPayload);
+        var document = com.example.platform.timeline.diff.calculation.TimelineSnapshotConverter
+                .toDocument(com.example.platform.timeline.diff.calculation.TimelineSnapshotConverter
+                        .toSnapshot(candidate, "fixture"));
+        return TimelineDocumentJsonSerializer.serialize(document);
     }
 
     // ── E2E-M1: effect source-only merge ──

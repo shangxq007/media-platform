@@ -12,23 +12,20 @@ import java.util.Set;
 import org.springframework.stereotype.Service;
 
 /**
- * Entity-id-based diff summary between two Internal Timeline 1.0 documents.
+ * Entity-id-based diff summary between two canonical TimelineDocument payloads.
  */
 @Service
 public class TimelineRevisionDiffService {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final ObjectMapper MAPPER = TimelineDocumentJsonSerializer.mapper();
 
     public ChangeSummary summarize(String parentInternalJson, String newInternalJson) {
         try {
             if (parentInternalJson == null || parentInternalJson.isBlank()) {
                 return summarizeInitial(newInternalJson);
             }
-            JsonNode parent = InternalTimelineJson.parse(parentInternalJson);
-            JsonNode current = InternalTimelineJson.parse(newInternalJson);
-            if (!InternalTimelineJson.isInternalTimeline(parent) || !InternalTimelineJson.isInternalTimeline(current)) {
-                return ChangeSummary.unsupported();
-            }
+            JsonNode parent = parseCanonical(parentInternalJson);
+            JsonNode current = parseCanonical(newInternalJson);
 
             Map<String, JsonNode> parentTracks = indexTracks(parent);
             Map<String, JsonNode> currentTracks = indexTracks(current);
@@ -80,9 +77,6 @@ public class TimelineRevisionDiffService {
                 }
             }
 
-            int parentRev = InternalTimelineJson.revision(parent);
-            int currentRev = InternalTimelineJson.revision(current);
-
             return new ChangeSummary(
                     true,
                     tracksAdded,
@@ -93,8 +87,8 @@ public class TimelineRevisionDiffService {
                     clipsModified,
                     assetsAdded,
                     assetsRemoved,
-                    parentRev,
-                    currentRev);
+                    0,
+                    0);
         } catch (Exception e) {
             return ChangeSummary.unsupported();
         }
@@ -115,12 +109,21 @@ public class TimelineRevisionDiffService {
             return new DetailedCompare(false, summary, List.of());
         }
         try {
-            JsonNode from = InternalTimelineJson.parse(fromInternalJson);
-            JsonNode to = InternalTimelineJson.parse(toInternalJson);
+            JsonNode from = parseCanonical(fromInternalJson);
+            JsonNode to = parseCanonical(toInternalJson);
             List<EntityChange> changes = new ArrayList<>();
             diffEntityMap("track", indexTracks(from), indexTracks(to), changes, false);
             diffEntityMap("clip", indexClips(from), indexClips(to), changes, true);
             diffEntityMap("asset", indexAssets(from), indexAssets(to), changes, true);
+            diffEntityMap("transition", indexArray(from, "transitions", "transitionId"),
+                    indexArray(to, "transitions", "transitionId"), changes, true);
+            diffEntityMap("automation", indexArray(from, "automations", "automationId"),
+                    indexArray(to, "automations", "automationId"), changes, true);
+            diffEntityMap("textElement", indexArray(from, "textElements", "id"),
+                    indexArray(to, "textElements", "id"), changes, true);
+            diffEntityMap("relationship", indexRelationships(from), indexRelationships(to), changes, true);
+            diffEntityMap("audioMix", singleton(from, "audioMix"), singleton(to, "audioMix"), changes, true);
+            diffEntityMap("metadata", singleton(from, "metadata"), singleton(to, "metadata"), changes, true);
             return new DetailedCompare(true, summary, changes);
         } catch (Exception e) {
             return new DetailedCompare(false, ChangeSummary.unsupported(), List.of());
@@ -153,7 +156,7 @@ public class TimelineRevisionDiffService {
     }
 
     private static ChangeSummary summarizeInitial(String newInternalJson) throws Exception {
-        JsonNode current = InternalTimelineJson.parse(newInternalJson);
+        JsonNode current = parseCanonical(newInternalJson);
         Map<String, JsonNode> tracks = indexTracks(current);
         Map<String, JsonNode> clips = indexClips(current);
         Map<String, JsonNode> assets = indexAssets(current);
@@ -168,15 +171,19 @@ public class TimelineRevisionDiffService {
                 assets.size(),
                 0,
                 0,
-                InternalTimelineJson.revision(current));
+                0);
+    }
+
+    private static JsonNode parseCanonical(String payload) {
+        return MAPPER.valueToTree(TimelineDocumentJsonSerializer.deserialize(payload));
     }
 
     private static Map<String, JsonNode> indexTracks(JsonNode root) {
         Map<String, JsonNode> map = new LinkedHashMap<>();
-        JsonNode tracks = root.path("composition").path("tracks");
+        JsonNode tracks = root.path("tracks");
         if (tracks.isArray()) {
             for (JsonNode track : tracks) {
-                String id = track.path("id").asText("");
+                String id = track.path("trackId").asText("");
                 if (!id.isBlank()) {
                     map.put(id, track);
                 }
@@ -187,7 +194,7 @@ public class TimelineRevisionDiffService {
 
     private static Map<String, JsonNode> indexClips(JsonNode root) {
         Map<String, JsonNode> map = new LinkedHashMap<>();
-        JsonNode tracks = root.path("composition").path("tracks");
+        JsonNode tracks = root.path("tracks");
         if (tracks.isArray()) {
             for (JsonNode track : tracks) {
                 JsonNode clips = track.path("clips");
@@ -195,7 +202,7 @@ public class TimelineRevisionDiffService {
                     continue;
                 }
                 for (JsonNode clip : clips) {
-                    String id = clip.path("id").asText("");
+                    String id = clip.path("clipId").asText("");
                     if (!id.isBlank()) {
                         map.put(id, clip);
                     }
@@ -207,11 +214,69 @@ public class TimelineRevisionDiffService {
 
     private static Map<String, JsonNode> indexAssets(JsonNode root) {
         Map<String, JsonNode> map = new LinkedHashMap<>();
-        JsonNode assets = root.path("assetRegistry").path("assets");
-        if (assets.isObject()) {
-            assets.fields().forEachRemaining(e -> map.put(e.getKey(), e.getValue()));
+        JsonNode tracks = root.path("tracks");
+        if (tracks.isArray()) {
+            for (JsonNode track : tracks) {
+                JsonNode clips = track.path("clips");
+                if (!clips.isArray()) {
+                    continue;
+                }
+                for (JsonNode clip : clips) {
+                    String assetId = clip.path("mediaAssetId").asText("");
+                    if (!assetId.isBlank()) {
+                        map.putIfAbsent(assetId, clip.path("mediaAssetId"));
+                    }
+                }
+            }
         }
         return map;
+    }
+
+    private static Map<String, JsonNode> indexArray(JsonNode root, String field, String idField) {
+        Map<String, JsonNode> map = new LinkedHashMap<>();
+        JsonNode values = root.path(field);
+        if (values.isArray()) {
+            for (JsonNode value : values) {
+                String id = textualIdentity(value.path(idField));
+                if (!id.isBlank()) {
+                    map.put(id, value);
+                }
+            }
+        }
+        return map;
+    }
+
+    private static Map<String, JsonNode> indexRelationships(JsonNode root) {
+        Map<String, JsonNode> map = new LinkedHashMap<>();
+        JsonNode values = root.path("semanticRelationships");
+        if (values.isArray()) {
+            for (JsonNode value : values) {
+                String id = textualIdentity(value.path("groupId"));
+                if (id.isBlank()) {
+                    id = value.path("kind").asText("") + ":"
+                            + textualIdentity(value.path("sourceElementId")) + ":"
+                            + textualIdentity(value.path("targetElementId"));
+                }
+                map.put(id, value);
+            }
+        }
+        return map;
+    }
+
+    private static Map<String, JsonNode> singleton(JsonNode root, String field) {
+        JsonNode value = root.path(field);
+        return value.isMissingNode() || value.isNull() ? Map.of() : Map.of(field, value);
+    }
+
+    private static String textualIdentity(JsonNode value) {
+        if (value.isTextual()) {
+            return value.asText();
+        }
+        if (value.isObject()) {
+            if (value.has("value")) return value.path("value").asText("");
+            if (value.has("id")) return value.path("id").asText("");
+        }
+        return "";
     }
 
     private static boolean clipSetChanged(JsonNode parentTrack, JsonNode currentTrack) {
@@ -220,27 +285,24 @@ public class TimelineRevisionDiffService {
         JsonNode pClips = parentTrack.path("clips");
         JsonNode cClips = currentTrack.path("clips");
         if (pClips.isArray()) {
-            pClips.forEach(c -> parentClipIds.add(c.path("id").asText("")));
+            pClips.forEach(c -> parentClipIds.add(c.path("clipId").asText("")));
         }
         if (cClips.isArray()) {
-            cClips.forEach(c -> currentClipIds.add(c.path("id").asText("")));
+            cClips.forEach(c -> currentClipIds.add(c.path("clipId").asText("")));
         }
         return !parentClipIds.equals(currentClipIds);
     }
 
     private static boolean clipNodesEqual(JsonNode a, JsonNode b) {
         try {
-            ObjectNode na = (ObjectNode) a.deepCopy();
-            ObjectNode nb = (ObjectNode) b.deepCopy();
-            return InternalTimelineJson.write(InternalTimelineJson.deepCanonicalize(na))
-                    .equals(InternalTimelineJson.write(InternalTimelineJson.deepCanonicalize(nb)));
+            return a.equals(b);
         } catch (Exception e) {
             return false;
         }
     }
 
     private static Set<String> union(Set<String> a, Set<String> b) {
-        Set<String> all = new HashSet<>(a);
+        Set<String> all = new java.util.TreeSet<>(a);
         all.addAll(b);
         return all;
     }

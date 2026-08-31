@@ -15,5 +15,6 @@ public interface TimelineRevisionPersistencePort {
     /** Inserts the revision row inside the caller's physical transaction. */
     void insertRevisionTx(org.jooq.DSLContext tx, TimelineRevision revision,
                           String productId, String snapshotId, String schemaVersion,
-                          int revisionNumber, String tenantId, String source);
+                          String timelineContentDigest, int revisionNumber,
+                          String tenantId, String source);
 }

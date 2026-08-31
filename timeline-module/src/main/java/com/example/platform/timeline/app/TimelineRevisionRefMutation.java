@@ -15,6 +15,12 @@ import static com.example.platform.typedschema.jooq.generated.tables.TimelineRev
  */
 public final class TimelineRevisionRefMutation {
 
+    private final DSLContext dsl;
+
+    public TimelineRevisionRefMutation(DSLContext dsl) {
+        this.dsl = java.util.Objects.requireNonNull(dsl, "dsl");
+    }
+
     public boolean advance(DSLContext tx, RevisionRef ref,
                            String expectedHeadRevisionId, String newHeadRevisionId) {
         if (expectedHeadRevisionId == null || expectedHeadRevisionId.isBlank()) {
@@ -52,31 +58,16 @@ public final class TimelineRevisionRefMutation {
             throw new IllegalArgumentException("genesis revision required");
         }
         return tx.insertInto(TIMELINE_REVISION_REF)
+                .set(TIMELINE_REVISION_REF.TENANT_ID, ref.tenantId())
                 .set(TIMELINE_REVISION_REF.PROJECT_ID, ref.projectId())
                 .set(TIMELINE_REVISION_REF.REF_ID, ref.refId())
                 .set(TIMELINE_REVISION_REF.HEAD_REVISION_ID, genesisRevisionId)
                 .set(TIMELINE_REVISION_REF.VERSION, 0L)
                 .set(TIMELINE_REVISION_REF.UPDATED_AT, LocalDateTime.now())
-                .onConflict(TIMELINE_REVISION_REF.PROJECT_ID, TIMELINE_REVISION_REF.REF_ID)
+                .onConflict(TIMELINE_REVISION_REF.TENANT_ID,
+                        TIMELINE_REVISION_REF.PROJECT_ID, TIMELINE_REVISION_REF.REF_ID)
                 .doNothing()
                 .execute() == 1;
-    }
-
-    public boolean create(DSLContext tx, RevisionRef ref, String headRevisionId) {
-        return bootstrap(tx, ref, headRevisionId);
-    }
-
-    public boolean delete(DSLContext tx, RevisionRef ref, String expectedHeadRevisionId) {
-        return tx.deleteFrom(TIMELINE_REVISION_REF)
-                .where(identity(ref))
-                .and(TIMELINE_REVISION_REF.HEAD_REVISION_ID.eq(expectedHeadRevisionId))
-                .execute() == 1;
-    }
-
-    public boolean exists(DSLContext tx, RevisionRef ref) {
-        return tx.fetchExists(DSL.selectOne()
-                .from(TIMELINE_REVISION_REF)
-                .where(identity(ref)));
     }
 
     public String currentHead(DSLContext tx, RevisionRef ref) {
@@ -86,11 +77,19 @@ public final class TimelineRevisionRefMutation {
                 .fetchOne(TIMELINE_REVISION_REF.HEAD_REVISION_ID);
     }
 
+    public String currentHead(RevisionRef ref) {
+        return currentHead(dsl, ref);
+    }
+
     private static Condition identity(RevisionRef ref) {
         if (ref == null) {
             throw new IllegalArgumentException("revision ref required");
         }
-        return TIMELINE_REVISION_REF.PROJECT_ID.eq(ref.projectId())
+        if (!RevisionRef.MAIN_REF.equals(ref.refId())) {
+            throw new IllegalArgumentException("only canonical main Timeline ref is supported");
+        }
+        return TIMELINE_REVISION_REF.TENANT_ID.eq(ref.tenantId())
+                .and(TIMELINE_REVISION_REF.PROJECT_ID.eq(ref.projectId()))
                 .and(TIMELINE_REVISION_REF.REF_ID.eq(ref.refId()));
     }
 }

@@ -35,73 +35,87 @@ public class ArtifactPinRecord extends UpdatableRecordImpl<ArtifactPinRecord> {
     }
 
     /**
+     * Setter for <code>public.artifact_pin.tenant_id</code>.
+     */
+    public void setTenantId(String value) {
+        set(1, value);
+    }
+
+    /**
+     * Getter for <code>public.artifact_pin.tenant_id</code>.
+     */
+    public String getTenantId() {
+        return (String) get(1);
+    }
+
+    /**
      * Setter for <code>public.artifact_pin.revision_id</code>.
      */
     public void setRevisionId(String value) {
-        set(1, value);
+        set(2, value);
     }
 
     /**
      * Getter for <code>public.artifact_pin.revision_id</code>.
      */
     public String getRevisionId() {
-        return (String) get(1);
+        return (String) get(2);
     }
 
     /**
      * Setter for <code>public.artifact_pin.project_id</code>.
      */
     public void setProjectId(String value) {
-        set(2, value);
+        set(3, value);
     }
 
     /**
      * Getter for <code>public.artifact_pin.project_id</code>.
      */
     public String getProjectId() {
-        return (String) get(2);
+        return (String) get(3);
     }
 
     /**
      * Setter for <code>public.artifact_pin.artifact_id</code>.
      */
     public void setArtifactId(String value) {
-        set(3, value);
+        set(4, value);
     }
 
     /**
      * Getter for <code>public.artifact_pin.artifact_id</code>.
      */
     public String getArtifactId() {
-        return (String) get(3);
+        return (String) get(4);
     }
 
     /**
      * Setter for <code>public.artifact_pin.content_digest</code>.
      */
     public void setContentDigest(String value) {
-        set(4, value);
+        set(5, value);
     }
 
     /**
      * Getter for <code>public.artifact_pin.content_digest</code>.
      */
     public String getContentDigest() {
-        return (String) get(4);
+        return (String) get(5);
     }
 
     /**
      * Setter for <code>public.artifact_pin.pinned_at</code>.
      */
     public void setPinnedAt(LocalDateTime value) {
-        set(5, value);
+        set(6, value);
     }
 
     /**
      * Getter for <code>public.artifact_pin.pinned_at</code>.
      */
     public LocalDateTime getPinnedAt() {
-        return (LocalDateTime) get(5);
+        return (LocalDateTime) get(6);
     }
 
     // -------------------------------------------------------------------------
@@ -127,10 +141,11 @@ public class ArtifactPinRecord extends UpdatableRecordImpl<ArtifactPinRecord> {
     /**
      * Create a detached, initialised ArtifactPinRecord
      */
-    public ArtifactPinRecord(String pinId, String revisionId, String projectId, String artifactId, String contentDigest, LocalDateTime pinnedAt) {
+    public ArtifactPinRecord(String pinId, String tenantId, String revisionId, String projectId, String artifactId, String contentDigest, LocalDateTime pinnedAt) {
         super(ArtifactPin.ARTIFACT_PIN);
 
         setPinId(pinId);
+        setTenantId(tenantId);
         setRevisionId(revisionId);
         setProjectId(projectId);
         setArtifactId(artifactId);

@@ -15,7 +15,7 @@ import static com.example.platform.typedschema.jooq.generated.tables.ProjectRevi
  */
 public final class ProjectRevisionNumberAllocator {
 
-    private static final long BOOTSTRAP_VALUE = 1L;
+    private static final long BOOTSTRAP_VALUE = 0L;
 
     public long allocate(DSLContext tx, String projectId) {
         if (projectId == null || projectId.isBlank()) {

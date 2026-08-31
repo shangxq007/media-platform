@@ -1,7 +1,6 @@
 package com.example.platform.timeline.adapter;
 
 import com.example.platform.shared.Ids;
-import com.example.platform.shared.web.TenantContext;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -11,7 +10,6 @@ import org.jooq.Record;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import static com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot.TIMELINE_SNAPSHOT;
 
 
@@ -26,22 +24,21 @@ public class TimelineSnapshotService {
         this.dsl = dsl;
     }
 
-    @Transactional
-    public String save(String projectId, String tenantId, String payloadJson, String schemaVersion) {
-        return saveTx(dsl, projectId, tenantId, payloadJson, schemaVersion);
-    }
-
     /** CHECKPOINT_A (Round 3): transaction-scoped snapshot write joining the
      *  caller's jOOQ transaction (rollback-safe with revision + pins). */
     public String saveTx(org.jooq.DSLContext tx, String projectId, String tenantId,
                          String payloadJson, String schemaVersion) {
         String snapshotId = Ids.newId("snap");
-        String effectiveTenant = tenantId != null ? tenantId : TenantContext.get();
+        if (tenantId == null || tenantId.isBlank()) {
+            throw new IllegalArgumentException("explicit tenantId required for Timeline snapshot persistence");
+        }
         tx.insertInto(TIMELINE_SNAPSHOT)
                 .columns(TIMELINE_SNAPSHOT.ID, TIMELINE_SNAPSHOT.PROJECT_ID, TIMELINE_SNAPSHOT.TENANT_ID,
                         TIMELINE_SNAPSHOT.PAYLOAD_JSON, TIMELINE_SNAPSHOT.SCHEMA_VERSION, TIMELINE_SNAPSHOT.CREATED_AT)
-                .values(snapshotId, projectId, effectiveTenant, payloadJson,
-                        schemaVersion != null ? schemaVersion : "2.0.0", LocalDateTime.now())
+                .values(snapshotId, projectId, tenantId, payloadJson,
+                        schemaVersion != null ? schemaVersion
+                                : com.example.platform.timeline.canonical.TimelineDocument.CURRENT_SCHEMA_VERSION,
+                        LocalDateTime.now())
                 .execute();
         log.info("Saved timeline snapshot id={} project={}", snapshotId, projectId);
         return snapshotId;

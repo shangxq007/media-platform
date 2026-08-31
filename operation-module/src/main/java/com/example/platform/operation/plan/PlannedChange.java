@@ -27,7 +27,7 @@ public sealed interface PlannedChange permits
 
     boolean primary();
 
-    /** ADD_OR_TRIM_MEDIA_CLIP_V1: add one fully typed canonical clip. */
+    /** ADD_MEDIA_CLIP_V1: add one fully typed canonical clip. */
     record ClipAdded(String trackId, TimelineClip newClip) implements PlannedChange {
         public ClipAdded {
             if (trackId == null || trackId.isBlank() || newClip == null) {

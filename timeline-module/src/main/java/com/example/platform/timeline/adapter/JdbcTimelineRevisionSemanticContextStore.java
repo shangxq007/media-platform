@@ -53,9 +53,10 @@ public final class JdbcTimelineRevisionSemanticContextStore
             return; // exact identical -> idempotent PASS
         }
         tx.execute("insert into timeline_snapshot "
-                        + "(id, project_id, tenant_id, payload_json, schema_version, created_at) "
-                        + "values (?, ?, ?, ?, ?, now())",
-                id, projectId, tenantId, payload, context.digestContractVersion());
+                        + "(id, project_id, tenant_id, payload_json, schema_version, "
+                        + " semantic_revision_id, created_at) "
+                        + "values (?, ?, ?, ?, ?, ?, now())",
+                id, projectId, tenantId, payload, context.digestContractVersion(), revisionId);
     }
 
     /** F1/F4-§36: full deserialize + ownership + digest verification of an existing revctx row. */

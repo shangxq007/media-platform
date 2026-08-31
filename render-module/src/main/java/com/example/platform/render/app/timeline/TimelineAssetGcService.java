@@ -86,8 +86,9 @@ public class TimelineAssetGcService {
         List<String> errors = new ArrayList<>();
         try {
             JsonNode root = InternalTimelineJson.parse(latest.get().payloadJson());
-            if (!InternalTimelineJson.isInternalTimeline(root)) {
-                return new GcProjectResult(projectId, 0, 0, 0, List.of());
+            if (InternalTimelineJson.isInternalTimeline(root)) {
+                errors.add("NEEDS_ARCHITECTURE_REVIEW: legacy internal asset-registry GC is retired");
+                return new GcProjectResult(projectId, 0, 0, 0, List.copyOf(errors));
             }
             ObjectNode doc = (ObjectNode) root.deepCopy();
             ObjectNode assets = doc.with("assetRegistry").with("assets");
@@ -128,11 +129,8 @@ public class TimelineAssetGcService {
             if (!changed) {
                 return new GcProjectResult(projectId, candidates, purged, skipped, errors);
             }
-            int rev = doc.path("revision").asInt(0);
-            doc.put("revision", rev + 1);
-            String patched = InternalTimelineJson.write(doc);
-            String effectiveTenant = tenantId != null ? tenantId : latest.get().tenantId();
-            timelineSnapshotService.save(projectId, effectiveTenant, patched, latest.get().schemaVersion());
+            errors.add("NEEDS_ARCHITECTURE_REVIEW: asset GC cannot publish a shadow Timeline snapshot");
+            purged = 0;
         } catch (Exception e) {
             errors.add(e.getMessage());
         }
@@ -155,7 +153,8 @@ public class TimelineAssetGcService {
         int count = 0;
         try {
             JsonNode root = InternalTimelineJson.parse(latest.get().payloadJson());
-            if (!InternalTimelineJson.isInternalTimeline(root)) {
+            if (InternalTimelineJson.isInternalTimeline(root)) {
+                log.warn("NEEDS_ARCHITECTURE_REVIEW: legacy internal asset-registry tombstone is retired");
                 return 0;
             }
             ObjectNode doc = (ObjectNode) root.deepCopy();
@@ -185,11 +184,8 @@ public class TimelineAssetGcService {
             if (!changed) {
                 return 0;
             }
-            int rev = doc.path("revision").asInt(0);
-            doc.put("revision", rev + 1);
-            String patched = InternalTimelineJson.write(doc);
-            String effectiveTenant = tenantId != null ? tenantId : latest.get().tenantId();
-            timelineSnapshotService.save(projectId, effectiveTenant, patched, latest.get().schemaVersion());
+            log.warn("NEEDS_ARCHITECTURE_REVIEW: asset tombstone cannot publish a shadow Timeline snapshot");
+            count = 0;
         } catch (Exception e) {
             log.warn("Failed to sync timeline tombstone for uri={}: {}", storageUri, e.getMessage());
         }

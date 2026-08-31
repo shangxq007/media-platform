@@ -34,15 +34,18 @@ public class TimelineReviewController {
     private final TimelineCommentService commentService;
     private final ReviewDecisionService decisionService;
     private final TimelineReviewEventPublisher eventPublisher;
+    private final TimelineProjectAuthorizationService projectAuthorization;
 
     public TimelineReviewController(TimelineReviewService reviewService,
                                      TimelineCommentService commentService,
                                      ReviewDecisionService decisionService,
-                                     TimelineReviewEventPublisher eventPublisher) {
+                                     TimelineReviewEventPublisher eventPublisher,
+                                     TimelineProjectAuthorizationService projectAuthorization) {
         this.reviewService = reviewService;
         this.commentService = commentService;
         this.decisionService = decisionService;
         this.eventPublisher = eventPublisher;
+        this.projectAuthorization = projectAuthorization;
     }
 
     @PostMapping
@@ -50,12 +53,13 @@ public class TimelineReviewController {
     public ResponseEntity<ReviewResponse> createReview(
             @PathVariable String projectId,
             @RequestBody CreateReviewRequest body) {
+        String actorId = projectAuthorization.requireWrite(TenantContext.get(), projectId).actorId();
         var review = reviewService.createReview(projectId,
-                body.revisionId(), body.authorUserId(), body.title(), body.description());
+                body.revisionId(), actorId, body.title(), body.description());
         eventPublisher.publish(new ReviewCreatedEvent(review.reviewId(), projectId,
-                "TIMELINE", body.revisionId(), body.authorUserId(), body.title()));
+                "TIMELINE", body.revisionId(), actorId, body.title()));
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(toResponse(reviewService.getReview(review.reviewId()).orElseThrow()));
+                .body(toResponse(requireOwnedReview(projectId, review.reviewId())));
     }
 
     @GetMapping
@@ -63,7 +67,8 @@ public class TimelineReviewController {
     public List<ReviewResponse> listReviews(
             @PathVariable String projectId,
             @RequestParam(defaultValue = "30") int limit) {
-        return reviewService.listReviews(projectId, limit).stream()
+        projectAuthorization.requireRead(TenantContext.get(), projectId);
+        return reviewService.listReviews(projectId, TenantContext.get(), limit).stream()
                 .map(TimelineReviewController::toResponse)
                 .toList();
     }
@@ -73,7 +78,8 @@ public class TimelineReviewController {
     public ResponseEntity<ReviewDetailResponse> getReview(
             @PathVariable String projectId,
             @PathVariable String reviewId) {
-        return reviewService.getReview(reviewId)
+        projectAuthorization.requireRead(TenantContext.get(), projectId);
+        return java.util.Optional.of(requireOwnedReview(projectId, reviewId))
                 .map(r -> {
                     var comments = commentService.listComments(reviewId);
                     var threads = commentService.listThreads(reviewId);
@@ -90,14 +96,16 @@ public class TimelineReviewController {
             @PathVariable String projectId,
             @PathVariable String reviewId,
             @RequestBody AddCommentRequest body) {
+        String actorId = projectAuthorization.requireWrite(TenantContext.get(), projectId).actorId();
+        requireOwnedReview(projectId, reviewId);
         EntityRef ref = body.entityKind() != null && body.entityId() != null
                 ? new EntityRef(EntityKind.valueOf(body.entityKind()), body.entityId())
                 : null;
         TimelineComment comment = commentService.addComment(
                 reviewId, body.revisionId(), body.threadId(), ref,
-                body.authorUserId(), body.content());
+                actorId, body.content());
         eventPublisher.publish(new ReviewCommentAddedEvent(reviewId, "unknown", "TIMELINE",
-                body.revisionId(), comment.commentId(), body.authorUserId(),
+                body.revisionId(), comment.commentId(), actorId,
                 ref != null ? ref.key() : null));
         return ResponseEntity.status(HttpStatus.CREATED).body(toCommentResponse(comment));
     }
@@ -107,6 +115,8 @@ public class TimelineReviewController {
     public List<CommentResponse> listComments(
             @PathVariable String projectId,
             @PathVariable String reviewId) {
+        projectAuthorization.requireRead(TenantContext.get(), projectId);
+        requireOwnedReview(projectId, reviewId);
         return commentService.listComments(reviewId).stream()
                 .map(TimelineReviewController::toCommentResponse)
                 .toList();
@@ -118,7 +128,12 @@ public class TimelineReviewController {
             @PathVariable String projectId,
             @PathVariable String reviewId,
             @PathVariable String threadId) {
-        commentService.resolveThread(threadId);
+        projectAuthorization.requireWrite(TenantContext.get(), projectId);
+        requireOwnedReview(projectId, reviewId);
+        if (!commentService.resolveThread(reviewId, threadId)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    HttpStatus.NOT_FOUND, "thread not found in review");
+        }
         eventPublisher.publish(new ReviewThreadResolvedEvent(reviewId, "unknown", threadId, "unknown"));
         return ResponseEntity.ok(Map.of("threadId", threadId, "resolved", true));
     }
@@ -129,7 +144,12 @@ public class TimelineReviewController {
             @PathVariable String projectId,
             @PathVariable String reviewId,
             @PathVariable String threadId) {
-        commentService.reopenThread(threadId);
+        projectAuthorization.requireWrite(TenantContext.get(), projectId);
+        requireOwnedReview(projectId, reviewId);
+        if (!commentService.reopenThread(reviewId, threadId)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    HttpStatus.NOT_FOUND, "thread not found in review");
+        }
         return ResponseEntity.ok(Map.of("threadId", threadId, "reopened", true));
     }
 
@@ -137,8 +157,10 @@ public class TimelineReviewController {
     @Operation(summary = "Approve a review")
     public ResponseEntity<Map<String, Object>> approve(
             @PathVariable String projectId,
-            @PathVariable String reviewId,
-            @RequestParam String reviewerUserId) {
+            @PathVariable String reviewId) {
+        String reviewerUserId = projectAuthorization.requireWrite(
+                TenantContext.get(), projectId).actorId();
+        requireOwnedReview(projectId, reviewId);
         reviewService.approve(reviewId, reviewerUserId);
         decisionService.recordDecision(reviewId, reviewerUserId, ReviewDecision.Decision.APPROVE);
         eventPublisher.publish(new ReviewApprovedEvent(reviewId, "unknown", "TIMELINE", "unknown", reviewerUserId));
@@ -149,8 +171,10 @@ public class TimelineReviewController {
     @Operation(summary = "Request changes on a review")
     public ResponseEntity<Map<String, Object>> requestChanges(
             @PathVariable String projectId,
-            @PathVariable String reviewId,
-            @RequestParam String reviewerUserId) {
+            @PathVariable String reviewId) {
+        String reviewerUserId = projectAuthorization.requireWrite(
+                TenantContext.get(), projectId).actorId();
+        requireOwnedReview(projectId, reviewId);
         reviewService.requestChanges(reviewId, reviewerUserId);
         decisionService.recordDecision(reviewId, reviewerUserId, ReviewDecision.Decision.REQUEST_CHANGES);
         eventPublisher.publish(new ReviewChangesRequestedEvent(reviewId, "unknown", "TIMELINE", "unknown", reviewerUserId));
@@ -161,8 +185,10 @@ public class TimelineReviewController {
     @Operation(summary = "Reject a review")
     public ResponseEntity<Map<String, Object>> reject(
             @PathVariable String projectId,
-            @PathVariable String reviewId,
-            @RequestParam String reviewerUserId) {
+            @PathVariable String reviewId) {
+        String reviewerUserId = projectAuthorization.requireWrite(
+                TenantContext.get(), projectId).actorId();
+        requireOwnedReview(projectId, reviewId);
         reviewService.reject(reviewId);
         decisionService.recordDecision(reviewId, reviewerUserId, ReviewDecision.Decision.REJECT);
         eventPublisher.publish(new ReviewRejectedEvent(reviewId, "unknown", "TIMELINE", "unknown"));
@@ -174,6 +200,8 @@ public class TimelineReviewController {
     public ResponseEntity<Map<String, Object>> checkMergeGuard(
             @PathVariable String projectId,
             @PathVariable String reviewId) {
+        projectAuthorization.requireRead(TenantContext.get(), projectId);
+        requireOwnedReview(projectId, reviewId);
         MergeGuardResult guard = reviewService.checkMergeGuard(reviewId);
         return ResponseEntity.ok(Map.of("reviewId", reviewId,
                 "canMerge", guard.canMerge(), "reason", guard.reason() != null ? guard.reason() : ""));
@@ -184,6 +212,13 @@ public class TimelineReviewController {
                 r.authorUserId(), r.title(), r.description(), r.status(),
                 r.createdAt() != null ? r.createdAt().toString() : null,
                 r.updatedAt() != null ? r.updatedAt().toString() : null);
+    }
+
+    private TimelineReviewRepository.ReviewRow requireOwnedReview(
+            String projectId, String reviewId) {
+        return reviewService.getReview(projectId, TenantContext.get(), reviewId)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "review not found"));
     }
 
     private static ReviewDetailResponse toDetailResponse(TimelineReviewRepository.ReviewRow r,
@@ -221,12 +256,12 @@ public class TimelineReviewController {
                 d.createdAt() != null ? d.createdAt().toString() : null);
     }
 
-    public record CreateReviewRequest(String revisionId, String authorUserId,
+    public record CreateReviewRequest(String revisionId,
                                         String title, String description) {}
 
     public record AddCommentRequest(String threadId, String revisionId,
                                       String entityKind, String entityId,
-                                      String authorUserId, String content) {}
+                                      String content) {}
 
     public record ReviewResponse(String reviewId, String projectId, String revisionId,
                                    String authorUserId, String title, String description,

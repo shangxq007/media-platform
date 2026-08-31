@@ -54,7 +54,7 @@ public final class ParameterDigest {
 
     /** Deterministic canonical semantic serialization of typed parameters. */
     static String serialize(OperationParameters p) {
-        if (p instanceof OperationParameters.AddOrTrimMediaClipParameters a) {
+        if (p instanceof OperationParameters.AddMediaClipParameters a) {
             var binding = a.sourceBinding();
             return "media-clip(" + a.trackId() + "," + a.clipId().value()
                     + ",sourceBinding="

@@ -1,9 +1,9 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.timeline.app.ProductCurrentRevisionService;import com.example.platform.timeline.app.TimelineCanonicalRejectionException;import com.example.platform.timeline.app.TimelineRevisionSaveService;
+import com.example.platform.timeline.app.TimelineRevisionRefMutation;import com.example.platform.timeline.app.TimelineCanonicalRejectionException;import com.example.platform.timeline.app.TimelineRevisionSaveService;
 import com.example.platform.shared.time.MediaTime;
 import com.example.platform.timeline.app.DefaultTimelineRevisionPersistence;
-import com.example.platform.timeline.app.ProductCurrentRevisionHeadUpdateAdapter;
+import com.example.platform.timeline.app.TimelineRevisionRefHeadUpdateAdapter;
 
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.timeline.canonical.TimelineClip;
@@ -50,7 +50,7 @@ class TimelineRevisionSaveServiceSnapshotIntegrationTest extends PostgresTestCon
     private static DSLContext dsl;
     private TimelineRevisionSaveService saveService;
     private TimelineSnapshotService snapshotService;
-    private ProductCurrentRevisionService currentRevisionService;
+    private TimelineRevisionRefMutation currentRevisionService;
     private TimelineContentDigester digester;
 
     @BeforeAll
@@ -70,11 +70,11 @@ class TimelineRevisionSaveServiceSnapshotIntegrationTest extends PostgresTestCon
         RenderTestSchemaFixture.truncate(dsl);
         TenantContext.set(TENANT);
         digester = new TimelineContentDigester();
-        currentRevisionService = new ProductCurrentRevisionService(dsl);
+        currentRevisionService = new TimelineRevisionRefMutation(dsl);
         snapshotService = new TimelineSnapshotService(dsl);
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService, digester, snapshotService,
                 org.mockito.Mockito.mock(com.example.platform.timeline.app.TimelineArtifactPinValidator.class),
-                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class), effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new ProductCurrentRevisionHeadUpdateAdapter(currentRevisionService));
+                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class), effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService));
     }
 
     @AfterEach
@@ -88,7 +88,8 @@ class TimelineRevisionSaveServiceSnapshotIntegrationTest extends PostgresTestCon
         insertProduct(productId);
         var doc = createSampleDocument();
 
-        var revision = saveService.saveRevision(productId, null, doc, "snap-user");
+        var revision = saveService.saveRevision(
+                TENANT, productId, null, doc, RenderTestSchemaFixture.SERVER_ACTOR);
 
         // Exactly one snapshot payload row for the project.
         long snapshotRows = dsl.selectCount().from(TIMELINE_SNAPSHOT)
@@ -120,7 +121,8 @@ class TimelineRevisionSaveServiceSnapshotIntegrationTest extends PostgresTestCon
         var invalid = createDocumentWithDuplicateTrackIds();
 
         assertThrows(TimelineCanonicalRejectionException.class,
-                () -> saveService.saveRevision(productId, null, invalid, "snap-user"));
+                () -> saveService.saveRevision(
+                        TENANT, productId, null, invalid, RenderTestSchemaFixture.SERVER_ACTOR));
 
         long snapshotRows = dsl.selectCount().from(TIMELINE_SNAPSHOT)
                 .where(TIMELINE_SNAPSHOT.PROJECT_ID.eq(productId)).fetchOne(0, Long.class);
@@ -131,16 +133,20 @@ class TimelineRevisionSaveServiceSnapshotIntegrationTest extends PostgresTestCon
     }
 
     @Test
-    void canonicalSave_withoutAuthenticatedTenantContext_isRejected() {
+    void explicitOwnerCanonicalSave_doesNotDependOnAmbientTenantContext() {
         String productId = "prod-no-tenant-" + java.util.UUID.randomUUID();
         insertProduct(productId);
         TenantContext.clear();
 
-        IllegalStateException exception = assertThrows(IllegalStateException.class,
-                () -> saveService.saveRevision(productId, null, createSampleDocument(), "snap-user"));
+        var revision = saveService.saveRevision(
+                TENANT, productId, null, createSampleDocument(),
+                RenderTestSchemaFixture.SERVER_ACTOR);
 
-        assertEquals("authenticated tenant context required for canonical Timeline revision save",
-                exception.getMessage());
+        assertNotNull(revision.revisionId());
+        assertEquals(TENANT, dsl.select(TIMELINE_REVISION.TENANT_ID)
+                .from(TIMELINE_REVISION)
+                .where(TIMELINE_REVISION.ID.eq(revision.revisionId()))
+                .fetchOne(TIMELINE_REVISION.TENANT_ID));
     }
 
     @Test
@@ -148,11 +154,14 @@ class TimelineRevisionSaveServiceSnapshotIntegrationTest extends PostgresTestCon
         String productId = "prod-conflict-" + java.util.UUID.randomUUID();
         insertProduct(productId);
         var doc = createSampleDocument();
-        saveService.saveRevision(productId, null, doc, "snap-user");
+        saveService.saveRevision(
+                TENANT, productId, null, doc, RenderTestSchemaFixture.SERVER_ACTOR);
 
         // Expected current revision mismatch -> conflict, no writes.
         assertThrows(TimelineConflictException.class,
-                () -> saveService.saveRevision(productId, "stale-revision", doc, "snap-user"));
+                () -> saveService.saveRevision(
+                        TENANT, productId, "stale-revision", doc,
+                        RenderTestSchemaFixture.SERVER_ACTOR));
 
         long snapshotRows = dsl.selectCount().from(TIMELINE_SNAPSHOT)
                 .where(TIMELINE_SNAPSHOT.PROJECT_ID.eq(productId)).fetchOne(0, Long.class);
@@ -164,10 +173,13 @@ class TimelineRevisionSaveServiceSnapshotIntegrationTest extends PostgresTestCon
         String productId = "prod-restore-" + java.util.UUID.randomUUID();
         insertProduct(productId);
         var doc = createSampleDocument();
-        var original = saveService.saveRevision(productId, null, doc, "snap-user");
+        var original = saveService.saveRevision(
+                TENANT, productId, null, doc, RenderTestSchemaFixture.SERVER_ACTOR);
         String originalPayload = payloadOf(snapshotIdOf(original.revisionId())).orElseThrow();
 
-        var restored = saveService.restoreRevision(productId, original.revisionId(), original.revisionId(), "snap-user");
+        var restored = saveService.restoreRevision(
+                TENANT, productId, original.revisionId(), original.revisionId(),
+                RenderTestSchemaFixture.SERVER_ACTOR);
 
         // Restored revision carries a NEW snapshot row with the copied payload.
         long snapshotRows = dsl.selectCount().from(TIMELINE_SNAPSHOT)
@@ -188,7 +200,8 @@ class TimelineRevisionSaveServiceSnapshotIntegrationTest extends PostgresTestCon
         String productId = "prod-parse-" + java.util.UUID.randomUUID();
         insertProduct(productId);
         var doc = createSampleDocument();
-        var revision = saveService.saveRevision(productId, null, doc, "snap-user");
+        var revision = saveService.saveRevision(
+                TENANT, productId, null, doc, RenderTestSchemaFixture.SERVER_ACTOR);
 
         String payload = payloadOf(snapshotIdOf(revision.revisionId())).orElseThrow();
         TimelineScriptParser parser = new TimelineScriptParser();
@@ -203,11 +216,14 @@ class TimelineRevisionSaveServiceSnapshotIntegrationTest extends PostgresTestCon
     }
 
     private void insertProduct(String productId) {
+        RenderTestSchemaFixture.insertCanonicalProject(dsl, TENANT, productId);
         dsl.insertInto(PRODUCT)
                 .set(PRODUCT.PRODUCT_ID, productId)
                 .set(PRODUCT.PRODUCT_TYPE, "video")
                 .set(PRODUCT.REPRESENTATION_KIND, "master")
                 .set(PRODUCT.STATUS, "REGISTERED")
+                .set(PRODUCT.TENANT_ID, TENANT)
+                .set(PRODUCT.PROJECT_ID, productId)
                 .set(PRODUCT.CREATED_AT, java.time.LocalDateTime.now())
                 .set(PRODUCT.UPDATED_AT, java.time.LocalDateTime.now())
                 .execute();

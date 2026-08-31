@@ -119,59 +119,115 @@ public class ApplyCommandRecord extends UpdatableRecordImpl<ApplyCommandRecord> 
     }
 
     /**
+     * Setter for <code>public.apply_command.tenant_id</code>.
+     */
+    public void setTenantId(String value) {
+        set(7, value);
+    }
+
+    /**
+     * Getter for <code>public.apply_command.tenant_id</code>.
+     */
+    public String getTenantId() {
+        return (String) get(7);
+    }
+
+    /**
      * Setter for <code>public.apply_command.project_id</code>.
      */
     public void setProjectId(String value) {
-        set(7, value);
+        set(8, value);
     }
 
     /**
      * Getter for <code>public.apply_command.project_id</code>.
      */
     public String getProjectId() {
-        return (String) get(7);
+        return (String) get(8);
     }
 
     /**
      * Setter for <code>public.apply_command.command_domain</code>.
      */
     public void setCommandDomain(String value) {
-        set(8, value);
+        set(9, value);
     }
 
     /**
      * Getter for <code>public.apply_command.command_domain</code>.
      */
     public String getCommandDomain() {
-        return (String) get(8);
+        return (String) get(9);
+    }
+
+    /**
+     * Setter for <code>public.apply_command.target_ref_id</code>.
+     */
+    public void setTargetRefId(String value) {
+        set(10, value);
+    }
+
+    /**
+     * Getter for <code>public.apply_command.target_ref_id</code>.
+     */
+    public String getTargetRefId() {
+        return (String) get(10);
+    }
+
+    /**
+     * Setter for <code>public.apply_command.expected_head_revision_id</code>.
+     */
+    public void setExpectedHeadRevisionId(String value) {
+        set(11, value);
+    }
+
+    /**
+     * Getter for <code>public.apply_command.expected_head_revision_id</code>.
+     */
+    public String getExpectedHeadRevisionId() {
+        return (String) get(11);
+    }
+
+    /**
+     * Setter for <code>public.apply_command.expected_result_status</code>.
+     */
+    public void setExpectedResultStatus(String value) {
+        set(12, value);
+    }
+
+    /**
+     * Getter for <code>public.apply_command.expected_result_status</code>.
+     */
+    public String getExpectedResultStatus() {
+        return (String) get(12);
     }
 
     /**
      * Setter for <code>public.apply_command.created_at</code>.
      */
     public void setCreatedAt(LocalDateTime value) {
-        set(9, value);
+        set(13, value);
     }
 
     /**
      * Getter for <code>public.apply_command.created_at</code>.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(9);
+        return (LocalDateTime) get(13);
     }
 
     /**
      * Setter for <code>public.apply_command.completed_at</code>.
      */
     public void setCompletedAt(LocalDateTime value) {
-        set(10, value);
+        set(14, value);
     }
 
     /**
      * Getter for <code>public.apply_command.completed_at</code>.
      */
     public LocalDateTime getCompletedAt() {
-        return (LocalDateTime) get(10);
+        return (LocalDateTime) get(14);
     }
 
     // -------------------------------------------------------------------------
@@ -197,7 +253,7 @@ public class ApplyCommandRecord extends UpdatableRecordImpl<ApplyCommandRecord> 
     /**
      * Create a detached, initialised ApplyCommandRecord
      */
-    public ApplyCommandRecord(String applyCommandId, String planDigest, String fingerprint, String status, String resultRevisionId, String resultContentHash, String resultStatus, String projectId, String commandDomain, LocalDateTime createdAt, LocalDateTime completedAt) {
+    public ApplyCommandRecord(String applyCommandId, String planDigest, String fingerprint, String status, String resultRevisionId, String resultContentHash, String resultStatus, String tenantId, String projectId, String commandDomain, String targetRefId, String expectedHeadRevisionId, String expectedResultStatus, LocalDateTime createdAt, LocalDateTime completedAt) {
         super(ApplyCommand.APPLY_COMMAND);
 
         setApplyCommandId(applyCommandId);
@@ -207,8 +263,12 @@ public class ApplyCommandRecord extends UpdatableRecordImpl<ApplyCommandRecord> 
         setResultRevisionId(resultRevisionId);
         setResultContentHash(resultContentHash);
         setResultStatus(resultStatus);
+        setTenantId(tenantId);
         setProjectId(projectId);
         setCommandDomain(commandDomain);
+        setTargetRefId(targetRefId);
+        setExpectedHeadRevisionId(expectedHeadRevisionId);
+        setExpectedResultStatus(expectedResultStatus);
         setCreatedAt(createdAt);
         setCompletedAt(completedAt);
         resetChangedOnNotNull();

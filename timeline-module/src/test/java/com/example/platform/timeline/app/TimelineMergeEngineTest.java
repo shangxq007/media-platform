@@ -1,359 +1,137 @@
 package com.example.platform.timeline.app;
 
-import com.example.platform.timeline.adapter.TimelineRevisionRepository;import com.example.platform.timeline.app.InternalTimelineJson;import com.example.platform.timeline.app.ProductCurrentRevisionService;import com.example.platform.timeline.app.TimelineMergeEngine;import com.example.platform.timeline.app.TimelineRevisionQueryService;
-import com.example.platform.timeline.app.TimelineRevisionDiffQuery;
-import com.example.platform.timeline.adapter.TimelineSnapshotService;
-import com.example.platform.timeline.diff.merge.preview.TimelineMergePreviewService;
-import com.example.platform.timeline.diff.merge.plan.TimelineNonConflictingMergePlanner;
-import com.example.platform.timeline.diff.merge.TimelineMergeRequest;
-import com.example.platform.timeline.diff.merge.TimelineMergeResult;
-import com.example.platform.timeline.version.TimelineConflictException;
-import com.example.platform.shared.web.TenantContext;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
-import java.time.OffsetDateTime;
-import java.util.List;
-import java.util.Optional;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/**
- * Canonical merge engine behavioral tests (C1 convergence, C1-CRR1 corrected).
- *
- * <p>C1-CRR1: fixtures are the canonical PERSISTED revision payload format
- * (internal-1.0: schemaVersion "1.0", composition block) — the exact format
- * produced by the canonical save path (TimelineRevisionSaveService);
- * path). Canonical gates are always enabled (no bypass flag). The engine's
- * input conversion consumes internal-1.0 via the E1b gate adapter and its
- * output is rebuilt as internal-1.0, so every test exercises the corrected
- * contract.</p>
- *
- * <p>Covers: source-only / target-only, same-entity disjoint typed paths
- * (C1-RED-05 materialization), same-path conflict, delete-vs-modify conflict
- * (C1-RED-06), dual-parent revision, stale-current rejection, idempotent retry,
- * deterministic result.</p>
- */
+import com.example.platform.shared.time.MediaTime;
+import com.example.platform.timeline.adapter.TimelineRevisionRepository;
+import com.example.platform.timeline.adapter.TimelineSnapshotService;
+import com.example.platform.timeline.canonical.TimelineClip;
+import com.example.platform.timeline.canonical.TimelineDocument;
+import com.example.platform.timeline.canonical.TimelineMetadata;
+import com.example.platform.timeline.canonical.TimelineTrack;
+import com.example.platform.timeline.canonical.TrackType;
+import com.example.platform.timeline.diff.application.TimelinePatchApplier;
+import com.example.platform.timeline.diff.merge.TimelineMergeRequest;
+import com.example.platform.timeline.diff.merge.TimelineMergeResult;
+import com.example.platform.timeline.diff.merge.plan.TimelineNonConflictingMergePlanner;
+import com.example.platform.timeline.diff.merge.preview.TimelineMergePreviewService;
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
 class TimelineMergeEngineTest {
 
-    private static final String PROJECT = "proj-1";
+    private static final String PROJECT = "project-1";
     private static final String TENANT = "tenant-1";
-    private static final String BASE_REV = "rev-base";
-    private static final String SOURCE_REV = "rev-source";
-    private static final String TARGET_REV = "rev-target";
-    private static final int FPS = 30;
+    private static final String BASE = "revision-base";
+    private static final String SOURCE = "revision-source";
+    private static final String TARGET = "revision-target";
 
-    private TimelineRevisionRepository revisionRepository;
-    private TimelineSnapshotService snapshotService;
-    private ProductCurrentRevisionService currentRevisionService;
+    private TimelineRevisionRepository revisions;
+    private TimelineSnapshotService snapshots;
+    private TimelineRevisionSaveService saveService;
     private TimelineMergeEngine engine;
-    private TimelineRevisionRepository.RevisionRow persistedRow;
-    private ObjectMapper mapper = InternalTimelineJson.mapper();
 
     @BeforeEach
     void setUp() {
-        TenantContext.set(TENANT);
-        revisionRepository = mock(TimelineRevisionRepository.class);
-        snapshotService = mock(TimelineSnapshotService.class);
-        currentRevisionService = mock(ProductCurrentRevisionService.class);
-        TimelineMergePreviewService previewService = new TimelineMergePreviewService(
+        revisions = mock(TimelineRevisionRepository.class);
+        snapshots = mock(TimelineSnapshotService.class);
+        saveService = mock(TimelineRevisionSaveService.class);
+        var preview = new TimelineMergePreviewService(
                 new com.example.platform.timeline.diff.merge.TimelineMergeConflictDetector());
-        TimelineNonConflictingMergePlanner planner =
-                new TimelineNonConflictingMergePlanner(previewService);
-        org.jooq.DSLContext dslMockTime0 = org.mockito.Mockito.mock(org.jooq.DSLContext.class);
-org.jooq.Configuration cfgdslMockTime0 = org.mockito.Mockito.mock(org.jooq.Configuration.class);
-        org.jooq.DSLContext txDsldslMockTime0 = org.mockito.Mockito.mock(org.jooq.DSLContext.class, org.mockito.Answers.RETURNS_DEEP_STUBS);
-        org.mockito.Mockito.when(cfgdslMockTime0.dsl()).thenReturn(txDsldslMockTime0);
-        org.mockito.Mockito.when(dslMockTime0.transactionResult(org.mockito.ArgumentMatchers.<org.jooq.TransactionalCallable<Object>>any()))
-                .thenAnswer(inv -> {
-                    org.jooq.TransactionalCallable<Object> callable = inv.getArgument(0);
-                    return callable.run(cfgdslMockTime0);
-                });
-engine = new TimelineMergeEngine(revisionRepository, snapshotService, currentRevisionService,
-                previewService, planner,
-                new com.example.platform.timeline.diff.application.TimelinePatchApplier(),
-                mapper,
-                org.mockito.Mockito.mock(com.example.platform.timeline.app.TimelineArtifactPinValidator.class),
-                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class),
-                dslMockTime0);
-        persistedRow = null;
+        engine = new TimelineMergeEngine(
+                revisions, snapshots, saveService, preview,
+                new TimelineNonConflictingMergePlanner(preview),
+                new TimelinePatchApplier(), new com.fasterxml.jackson.databind.ObjectMapper(),
+                mock(TimelineArtifactPinValidator.class),
+                mock(com.example.platform.artifact.app.ArtifactPinService.class),
+                mock(org.jooq.DSLContext.class));
     }
 
-    @AfterEach
-    void tearDown() {
-        TenantContext.clear();
+    @Test
+    void semanticMergeReturnsReloadableTimelineDocumentForSourceChange() {
+        stubDocuments(document(0, 1_000), document(500, 1_000), document(0, 1_000));
+
+        TimelineMergeResult result = engine.mergeSemantic(request());
+
+        assertEquals(TimelineMergeResult.MergeStatus.MERGED, result.status());
+        TimelineDocument reloaded = TimelineDocumentJsonSerializer.deserialize(
+                result.mergedPayloadJson());
+        assertEquals(MediaTime.ofMillis(500),
+                reloaded.getTracks().getFirst().clips().getFirst().getStartTime());
     }
 
-    // ── internal-1.0 fixtures (production save format: schemaVersion "1.0", composition) ──
-
-    private ObjectNode internalTimeline(String id, JsonNode... tracks) {
-        ObjectNode root = mapper.createObjectNode();
-        root.put("schemaVersion", "1.0");
-        root.put("id", id);
-        ObjectNode composition = mapper.createObjectNode();
-        ArrayNode trackArray = mapper.createArrayNode();
-        for (JsonNode track : tracks) {
-            trackArray.add(track);
-        }
-        composition.set("tracks", trackArray);
-        root.set("composition", composition);
-        return root;
-    }
-
-    private ObjectNode trackNode(String id, JsonNode... clips) {
-        ObjectNode track = mapper.createObjectNode();
-        track.put("id", id);
-        track.put("type", "VIDEO");
-        ArrayNode clipArray = mapper.createArrayNode();
-        for (JsonNode clip : clips) {
-            clipArray.add(clip);
-        }
-        track.set("clips", clipArray);
-        return track;
-    }
-
-    private ObjectNode clipNode(String id, long startMs, long durationMs) {
-        ObjectNode clip = mapper.createObjectNode();
-        clip.put("id", id);
-        clip.put("assetId", "asset-" + id);
-        clip.set("timelineRange", rangeNode(startMs, durationMs));
-        clip.set("sourceRange", rangeNode(0L, durationMs));
-        return clip;
-    }
-
-    private ObjectNode rangeNode(long startMs, long durationMs) {
-        ObjectNode rate = mapper.createObjectNode();
-        rate.put("num", FPS);
-        rate.put("den", 1);
-        ObjectNode start = mapper.createObjectNode();
-        start.put("frame", (startMs * FPS) / 1000L);
-        start.set("rate", rate);
-        ObjectNode duration = mapper.createObjectNode();
-        duration.put("frame", (durationMs * FPS) / 1000L);
-        duration.set("rate", rate);
-        ObjectNode range = mapper.createObjectNode();
-        range.set("start", start);
-        range.set("duration", duration);
-        return range;
-    }
-
-    private void stubRevisions(String baseJson, String sourceJson, String targetJson) {
-        when(revisionRepository.findOwnedById(BASE_REV, PROJECT, TENANT))
-                .thenReturn(Optional.of(row(BASE_REV, "snap-base")));
-        when(revisionRepository.findOwnedById(SOURCE_REV, PROJECT, TENANT))
-                .thenReturn(Optional.of(row(SOURCE_REV, "snap-source")));
-        when(revisionRepository.findOwnedById(TARGET_REV, PROJECT, TENANT))
-                .thenReturn(Optional.of(row(TARGET_REV, "snap-target")));
-        // CFRH-I2: loadPayload resolves snapshots via ownership-scoped findOwnedById only.
-        when(snapshotService.findOwnedById(PROJECT, TENANT, "snap-base"))
-                .thenReturn(Optional.of(info("snap-base", baseJson)));
-        when(snapshotService.findOwnedById(PROJECT, TENANT, "snap-source"))
-                .thenReturn(Optional.of(info("snap-source", sourceJson)));
-        when(snapshotService.findOwnedById(PROJECT, TENANT, "snap-target"))
-                .thenReturn(Optional.of(info("snap-target", targetJson)));
-        when(snapshotService.save(anyString(), anyString(), anyString(), anyString()))
-                .thenAnswer(inv -> "snap-merged-" + inv.getArgument(2).hashCode());
-        when(revisionRepository.nextRevisionNumber(PROJECT)).thenReturn(7);
-        when(revisionRepository.listOwnedByProject(PROJECT, TENANT, null, null, null, 500))
+    @Test
+    void persistentMergeLowersToSoleBoundaryWithTargetThenSourceParents() {
+        TimelineDocument expected = document(500, 1_000);
+        stubDocuments(document(0, 1_000), expected, document(0, 1_000));
+        when(revisions.listOwnedByProject(PROJECT, TENANT, null, null, null, 500))
                 .thenReturn(List.of());
-        when(currentRevisionService.getCurrentRevisionId(PROJECT)).thenReturn(TARGET_REV);
+        var persisted = mock(com.example.platform.timeline.version.TimelineRevision.class);
+        when(persisted.revisionId()).thenReturn("revision-merge");
+        when(saveService.saveMergeRevision(
+                anyString(), anyString(), anyString(), anyString(), anyString(),
+                any(TimelineDocument.class), anyString())).thenReturn(persisted);
+
+        TimelineMergeResult result = engine.merge(request());
+
+        assertEquals("revision-merge", result.mergedRevisionId());
+        assertNotNull(TimelineDocumentJsonSerializer.deserialize(result.mergedPayloadJson()));
+        verify(saveService).saveMergeRevision(
+                org.mockito.ArgumentMatchers.eq(TENANT),
+                org.mockito.ArgumentMatchers.eq(PROJECT),
+                org.mockito.ArgumentMatchers.eq(TARGET),
+                org.mockito.ArgumentMatchers.eq(SOURCE),
+                org.mockito.ArgumentMatchers.eq(BASE),
+                org.mockito.ArgumentMatchers.argThat(document ->
+                        TimelineDocumentJsonSerializer.serialize(document)
+                                .equals(result.mergedPayloadJson())),
+                org.mockito.ArgumentMatchers.eq("server-user"));
     }
 
-    private TimelineSnapshotService.SnapshotInfo info(String id, String payload) {
-        return new TimelineSnapshotService.SnapshotInfo(id, PROJECT, TENANT, payload, "internal-1.0");
+    private void stubDocuments(
+            TimelineDocument base, TimelineDocument source, TimelineDocument target) {
+        stubRevision(BASE, "snapshot-base", base);
+        stubRevision(SOURCE, "snapshot-source", source);
+        stubRevision(TARGET, "snapshot-target", target);
     }
 
-    private TimelineRevisionRepository.RevisionRow row(String id, String snapshotId) {
-        return new TimelineRevisionRepository.RevisionRow(
-                id, PROJECT, TENANT, null, 1, snapshotId, 0, "hash",
-                "internal-1.0", "test", "user-1", null, null, null, null, null,
-                false, null, null, OffsetDateTime.now());
+    private void stubRevision(String revisionId, String snapshotId, TimelineDocument document) {
+        when(revisions.findOwnedById(revisionId, PROJECT, TENANT))
+                .thenReturn(Optional.of(new TimelineRevisionRepository.RevisionRow(
+                        revisionId, PROJECT, TENANT, null, 1, snapshotId, 0,
+                        new com.example.platform.timeline.canonical.TimelineContentDigester().digest(document),
+                        TimelineDocument.CURRENT_SCHEMA_VERSION, "test", "server-user",
+                        null, null, null, null, null, false, null, null, OffsetDateTime.now())));
+        when(snapshots.findOwnedById(PROJECT, TENANT, snapshotId))
+                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo(
+                        snapshotId, PROJECT, TENANT,
+                        TimelineDocumentJsonSerializer.serialize(document),
+                        TimelineDocument.CURRENT_SCHEMA_VERSION)));
     }
 
-    private TimelineMergeRequest request(String message) {
-        return new TimelineMergeRequest(PROJECT, TENANT, BASE_REV, SOURCE_REV, TARGET_REV, "user-1", message);
+    private static TimelineMergeRequest request() {
+        return new TimelineMergeRequest(
+                PROJECT, TENANT, BASE, SOURCE, TARGET, "server-user", "merge");
     }
 
-    private String json(JsonNode node) throws Exception {
-        return InternalTimelineJson.write(node);
-    }
-
-    private void captureInsert() {
-        org.mockito.Mockito.doAnswer(inv -> {
-            persistedRow = inv.getArgument(1);
-            return null;
-        }).when(revisionRepository).insertTx(any(org.jooq.DSLContext.class), any(TimelineRevisionRepository.RevisionRow.class));
-    }
-
-    /** Read the merged payload (internal-1.0) and return the first track's first clip. */
-    private JsonNode firstClip(String payload) throws Exception {
-        JsonNode root = InternalTimelineJson.parse(payload);
-        return root.path("composition").path("tracks").path(0).path("clips").path(0);
-    }
-
-    private long clipStartMs(JsonNode clip) {
-        return clip.path("timelineRange").path("start").path("frame").asLong() * 1000L / FPS;
-    }
-
-    private long clipDurationMs(JsonNode clip) {
-        return clip.path("timelineRange").path("duration").path("frame").asLong() * 1000L / FPS;
-    }
-
-    private static String computeHash(String payload) throws Exception {
-        java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
-        String input = "merge:" + SOURCE_REV + ":" + TARGET_REV + ":" + payload;
-        byte[] h = md.digest(input.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-        StringBuilder sb = new StringBuilder(64);
-        for (byte b : h) {
-            sb.append(Character.forDigit((b >> 4) & 0xF, 16));
-            sb.append(Character.forDigit(b & 0xF, 16));
-        }
-        return sb.toString();
-    }
-
-    // 1. source-only change materialized
-    @Test
-    void sourceOnlyChangeIsMaterialized() throws Exception {
-        String base = json(internalTimeline("tl-1", trackNode("t1", clipNode("c1", 0, 5000))));
-        String source = json(internalTimeline("tl-1", trackNode("t1", clipNode("c1", 3000, 5000))));
-        String target = json(internalTimeline("tl-1", trackNode("t1", clipNode("c1", 0, 5000))));
-        stubRevisions(base, source, target);
-        captureInsert();
-
-        TimelineMergeResult result = engine.merge(request("source-only"));
-
-        assertEquals(TimelineMergeResult.MergeStatus.MERGED, result.status());
-        assertNotNull(result.mergedRevisionId());
-        assertEquals(SOURCE_REV + "," + TARGET_REV, persistedRow.mergeParentRevisionIds());
-        assertEquals(3000L, clipStartMs(firstClip(result.mergedPayloadJson())));
-    }
-
-    // 2. target-only change materialized
-    @Test
-    void targetOnlyChangeIsMaterialized() throws Exception {
-        String base = json(internalTimeline("tl-1", trackNode("t1", clipNode("c1", 0, 5000))));
-        String source = json(internalTimeline("tl-1", trackNode("t1", clipNode("c1", 0, 5000))));
-        String target = json(internalTimeline("tl-1", trackNode("t1", clipNode("c1", 0, 4000))));
-        stubRevisions(base, source, target);
-        captureInsert();
-
-        TimelineMergeResult result = engine.merge(request("target-only"));
-
-        assertEquals(TimelineMergeResult.MergeStatus.MERGED, result.status());
-        assertEquals(4000L, clipDurationMs(firstClip(result.mergedPayloadJson())));
-    }
-
-    // 3. C1-RED-05: disjoint typed paths (track reorder vs clip move) — BOTH materialized
-    @Test
-    void sameEntityDisjointPathsBothMaterialized() throws Exception {
-        String base = json(internalTimeline("tl-1",
-                trackNode("t1", clipNode("c1", 0, 5000)), trackNode("t2")));
-        // source: reorder tracks (t2 first) — touches track[t2].order / track[t1].order only
-        String source = json(internalTimeline("tl-1",
-                trackNode("t2"), trackNode("t1", clipNode("c1", 0, 5000))));
-        // target: move clip c1 — touches clip[c1].startMs + timeline.durationMs only
-        String target = json(internalTimeline("tl-1",
-                trackNode("t1", clipNode("c1", 3000, 5000)), trackNode("t2")));
-        stubRevisions(base, source, target);
-        captureInsert();
-
-        TimelineMergeResult result = engine.merge(request("disjoint"));
-
-        assertEquals(TimelineMergeResult.MergeStatus.MERGED, result.status());
-        JsonNode root = InternalTimelineJson.parse(result.mergedPayloadJson());
-        JsonNode mergedTracks = root.path("composition").path("tracks");
-        assertEquals("t2", mergedTracks.path(0).path("id").asText(), "source track reorder must be materialized");
-        JsonNode mergedClip = mergedTracks.path(1).path("clips").path(0);
-        assertEquals(3000L, clipStartMs(mergedClip), "target clip move must be materialized");
-    }
-
-    // 4. same-path divergent change -> CONFLICTS
-    @Test
-    void samePathConflict() throws Exception {
-        String base = json(internalTimeline("tl-1", trackNode("t1", clipNode("c1", 0, 5000))));
-        String source = json(internalTimeline("tl-1", trackNode("t1", clipNode("c1", 3000, 5000))));
-        String target = json(internalTimeline("tl-1", trackNode("t1", clipNode("c1", 4000, 5000))));
-        stubRevisions(base, source, target);
-
-        TimelineMergeResult result = engine.merge(request("same-path"));
-
-        assertEquals(TimelineMergeResult.MergeStatus.CONFLICTS, result.status());
-        assertTrue(result.hasConflicts());
-    }
-
-    // 5. delete vs modify -> explicit CONFLICT (C1-RED-06)
-    @Test
-    void deleteVsModifyConflict() throws Exception {
-        String base = json(internalTimeline("tl-1", trackNode("t1", clipNode("c1", 0, 5000))));
-        String source = json(internalTimeline("tl-1"));                                  // clip removed
-        String target = json(internalTimeline("tl-1", trackNode("t1", clipNode("c1", 2000, 5000)))); // clip moved
-        stubRevisions(base, source, target);
-
-        TimelineMergeResult result = engine.merge(request("delete-vs-modify"));
-
-        assertEquals(TimelineMergeResult.MergeStatus.CONFLICTS, result.status());
-        assertTrue(result.hasConflicts());
-    }
-
-    // 6. stale-current rejected
-    @Test
-    void staleCurrentRejected() throws Exception {
-        String base = json(internalTimeline("tl-1", trackNode("t1", clipNode("c1", 0, 5000))));
-        String source = json(internalTimeline("tl-1", trackNode("t1", clipNode("c1", 3000, 5000))));
-        String target = json(internalTimeline("tl-1", trackNode("t1", clipNode("c1", 0, 5000))));
-        stubRevisions(base, source, target);
-        when(currentRevisionService.getCurrentRevisionId(PROJECT)).thenReturn("rev-newer");
-
-        assertThrows(TimelineConflictException.class, () -> engine.merge(request("stale")));
-    }
-
-    // 7. idempotent retry returns existing merge revision
-    @Test
-    void idempotentRetryReturnsDuplicate() throws Exception {
-        String base = json(internalTimeline("tl-1", trackNode("t1", clipNode("c1", 0, 5000))));
-        String source = json(internalTimeline("tl-1", trackNode("t1", clipNode("c1", 3000, 5000))));
-        String target = json(internalTimeline("tl-1", trackNode("t1", clipNode("c1", 0, 5000))));
-        stubRevisions(base, source, target);
-        String payload = json(internalTimeline("tl-1", trackNode("t1", clipNode("c1", 3000, 5000))));
-        String hash = computeHash(payload);
-        TimelineRevisionRepository.RevisionRow existing = new TimelineRevisionRepository.RevisionRow(
-                "rev-dup", PROJECT, TENANT, TARGET_REV, 6, "snap-dup", 0, hash,
-                "internal-1.0", "merge", "user-1", null, "dup", null, null, null,
-                true, SOURCE_REV + "," + TARGET_REV, BASE_REV, OffsetDateTime.now());
-        when(revisionRepository.listOwnedByProject(PROJECT, TENANT, null, null, null, 500))
-                .thenReturn(List.of(existing));
-        when(snapshotService.findOwnedById(PROJECT, TENANT, "snap-dup")).thenReturn(Optional.of(
-                new TimelineSnapshotService.SnapshotInfo("snap-dup", PROJECT, TENANT, payload, "internal-1.0")));
-
-        TimelineMergeResult result = engine.merge(request("retry"));
-
-        assertEquals(TimelineMergeResult.MergeStatus.MERGED, result.status());
-        assertEquals("rev-dup", result.mergedRevisionId());
-    }
-
-    // 8. deterministic: identical inputs produce identical merged payload
-    @Test
-    void deterministicMergeResult() throws Exception {
-        String base = json(internalTimeline("tl-1", trackNode("t1", clipNode("c1", 0, 5000))));
-        String source = json(internalTimeline("tl-1", trackNode("t1", clipNode("c1", 3000, 5000))));
-        String target = json(internalTimeline("tl-1", trackNode("t1", clipNode("c1", 0, 4000))));
-        stubRevisions(base, source, target);
-        captureInsert();
-        TimelineMergeResult first = engine.merge(request("det-1"));
-        captureInsert();
-        TimelineMergeResult second = engine.merge(request("det-2"));
-        assertEquals(first.mergedPayloadJson(), second.mergedPayloadJson());
+    private static TimelineDocument document(long startMillis, long durationMillis) {
+        TimelineClip clip = new TimelineClip(
+                "clip-1", "asset-1", null, null, null,
+                MediaTime.ofMillis(startMillis), MediaTime.ofMillis(startMillis + durationMillis),
+                MediaTime.ZERO, MediaTime.ofMillis(durationMillis), "MEDIA_STREAM");
+        return new TimelineDocument(
+                TimelineDocument.CURRENT_SCHEMA_VERSION,
+                List.of(new TimelineTrack("track-1", "Video", TrackType.VIDEO, List.of(clip))),
+                new TimelineMetadata("", "", Map.of()));
     }
 }

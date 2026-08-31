@@ -23,6 +23,7 @@ public FontFamilyName(String name) {
         this.name = n;
     }
 
+    @com.fasterxml.jackson.annotation.JsonValue
     public String value() { return name; }
 
     @Override

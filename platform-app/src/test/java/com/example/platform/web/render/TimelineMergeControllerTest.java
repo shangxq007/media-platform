@@ -29,6 +29,7 @@ class TimelineMergeControllerTest {
     private TimelineRevisionDiffQuery revisionDiffQuery;
     private TimelineMergeEngine mergeEngine;
     private TimelineReviewEventPublisher eventPublisher;
+    private TimelineProjectAuthorizationService projectAuthorization;
     private TimelineRevisionController controller;
 
     @BeforeEach
@@ -37,15 +38,19 @@ class TimelineMergeControllerTest {
         revisionDiffQuery = mock(TimelineRevisionDiffQuery.class);
         mergeEngine = mock(TimelineMergeEngine.class);
         eventPublisher = mock(TimelineReviewEventPublisher.class);
+        projectAuthorization = mock(TimelineProjectAuthorizationService.class);
+        when(projectAuthorization.requireWrite(any(), any())).thenReturn(
+                com.example.platform.shared.authorization.CanonicalActor.user(
+                        "server-user", "tenant_1", Set.of(), "test"));
         controller = new TimelineRevisionController(
                 revisionQueryService, revisionDiffQuery, mergeEngine, eventPublisher,
-                null, null, null, null, null);
+                null, null, null, null, projectAuthorization);
     }
 
     @Test
     void shouldMergeWithoutConflicts() {
         var req = new TimelineRevisionController.MergeApiRequest(
-                "tenant_1", "trev_base", "trev_src", "trev_tgt", "user_1", "Merge test", List.of());
+                "trev_base", "trev_src", "trev_tgt", "Merge test", List.of());
 
         var result = new TimelineMergeResult(
                 MergeStatus.MERGED, "trev_base", "trev_src", "trev_tgt",
@@ -67,7 +72,7 @@ class TimelineMergeControllerTest {
     @Test
     void shouldReturnConflictsWhenConflictDetected() {
         var req = new TimelineRevisionController.MergeApiRequest(
-                "tenant_1", "trev_base", "trev_src", "trev_tgt", "user_1", "Merge test", List.of());
+                "trev_base", "trev_src", "trev_tgt", "Merge test", List.of());
 
         EntityRef clip = new EntityRef(EntityKind.CLIP, "clip_shared");
         var srcChange = SemanticChange.of(SemanticChangeType.CLIP_RANGE_CHANGED, clip, "source change");

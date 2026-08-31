@@ -28,7 +28,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 /** H7 authoritative cross-module semantic scenario through REQUEST -> RESOLVE -> PLAN -> PREVIEW. */
-class AddOrTrimMediaClipOperationTest {
+class AddMediaClipOperationTest {
 
     private static final String DIGEST =
             "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
@@ -45,18 +45,18 @@ class AddOrTrimMediaClipOperationTest {
                 "media-S", "stream-S-video", "artifact-S-v1", sourceRange);
         var placement = new MediaClip.TimeRange(MediaTime.ZERO, MediaTime.ofRational(10, 1));
         var mapping = ConstantRateTemporalMapping.of(1, 1, PlaybackDirection.FORWARD);
-        var parameters = new OperationParameters.AddOrTrimMediaClipParameters(
+        var parameters = new OperationParameters.AddMediaClipParameters(
                 "video-1", TimelineClipId.of("clip-S-10-20"), binding, placement, mapping);
         OperationRequest request = new OperationRequest(
-                OperationDefinition.V1.ADD_OR_TRIM_MEDIA_CLIP.definitionId(),
-                OperationDefinition.V1.ADD_OR_TRIM_MEDIA_CLIP.version(),
+                OperationDefinition.V1.ADD_MEDIA_CLIP.definitionId(),
+                OperationDefinition.V1.ADD_MEDIA_CLIP.version(),
                 new OperationTargetRequest.TimelineTargetRequest("timeline-T"),
                 parameters, "revision-R0", baseHash, null);
 
         var instance = OperationRequestResolver.resolve(request,
                 new OperationRequestResolver.OperationBaseContext(
                         "revision-R0", baseHash, base, "timeline-T"));
-        var plan = new OperationPlanner().plan(instance, base);
+        var plan = new OperationPlanner().plan(instance, instance.baseRevisionId(), base);
         var preview = OperationPlanPreview.of(plan);
 
         assertFalse(plan.noOp());
@@ -73,7 +73,7 @@ class AddOrTrimMediaClipOperationTest {
 
         String first = TimelineDocumentJsonSerializer.serialize(plan.candidateTimeline());
         String second = TimelineDocumentJsonSerializer.serialize(
-                new OperationPlanner().plan(instance, base).candidateTimeline());
+                new OperationPlanner().plan(instance, instance.baseRevisionId(), base).candidateTimeline());
         assertEquals(first, second, "canonical serialization must be deterministic");
         assertEquals(plan.candidateContentHash(),
                 new TimelineContentDigester().digest(plan.candidateTimeline()));
@@ -89,10 +89,10 @@ class AddOrTrimMediaClipOperationTest {
         var binding = TestSourceBindings.of(
                 "media-S", "stream-S-video", "artifact-S-v1", sourceRange);
         OperationRequest request = new OperationRequest(
-                OperationDefinition.V1.ADD_OR_TRIM_MEDIA_CLIP.definitionId(),
-                OperationDefinition.V1.ADD_OR_TRIM_MEDIA_CLIP.version(),
+                OperationDefinition.V1.ADD_MEDIA_CLIP.definitionId(),
+                OperationDefinition.V1.ADD_MEDIA_CLIP.version(),
                 new OperationTargetRequest.TimelineTargetRequest("timeline-other"),
-                new OperationParameters.AddOrTrimMediaClipParameters(
+                new OperationParameters.AddMediaClipParameters(
                         "video-1", TimelineClipId.of("clip-S"), binding,
                         new MediaClip.TimeRange(MediaTime.ZERO, MediaTime.ofRational(10, 1)),
                         ConstantRateTemporalMapping.of(1, 1, PlaybackDirection.FORWARD)),

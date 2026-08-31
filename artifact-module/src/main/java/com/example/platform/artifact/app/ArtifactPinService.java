@@ -1,7 +1,6 @@
 package com.example.platform.artifact.app;
 
 import com.example.platform.artifact.infrastructure.ArtifactPinRepository;
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.digest.ContentDigest;
 import com.example.platform.shared.identity.ArtifactId;
 import java.time.Instant;
@@ -36,8 +35,10 @@ public class ArtifactPinService {
         }
         Instant now = Instant.now();
         for (ArtifactPin pin : pins) {
-            pinRepository.insert(Ids.newId("pin"), revisionId, projectId,
-                    pin.artifactId().value(), pin.contentDigest(), now);
+            pinRepository.insert(ArtifactPinIdentity.forRevisionArtifact(
+                            tenantId, projectId, revisionId, pin.artifactId().value()),
+                    revisionId, projectId,
+                    tenantId, pin.artifactId().value(), pin.contentDigest(), now);
         }
     }
 
@@ -55,8 +56,10 @@ public class ArtifactPinService {
         }
         Instant now = Instant.now();
         for (ArtifactPin pin : pins) {
-            pinRepository.insertTx(tx, Ids.newId("pin"), revisionId, projectId,
-                    pin.artifactId().value(), pin.contentDigest(), now);
+            pinRepository.insertTx(tx, ArtifactPinIdentity.forRevisionArtifact(
+                            tenantId, projectId, revisionId, pin.artifactId().value()),
+                    revisionId, projectId,
+                    tenantId, pin.artifactId().value(), pin.contentDigest(), now);
         }
     }
 
@@ -66,9 +69,9 @@ public class ArtifactPinService {
      * mutable latest Artifact state; the historical immutable pin records are
      * the contract. Artifact owns the SQL.
      */
-    public void copyRevisionPinsTx(org.jooq.DSLContext tx, String projectId,
+    public void copyRevisionPinsTx(org.jooq.DSLContext tx, String tenantId, String projectId,
             String fromRevisionId, String toRevisionId) {
-        pinRepository.copyPinsTx(tx, projectId, fromRevisionId, toRevisionId);
+        pinRepository.copyPinsTx(tx, tenantId, projectId, fromRevisionId, toRevisionId);
     }
 
     public boolean isPinned(ArtifactId artifactId) {

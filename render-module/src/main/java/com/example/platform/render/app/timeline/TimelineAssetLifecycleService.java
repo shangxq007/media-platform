@@ -137,11 +137,9 @@ public class TimelineAssetLifecycleService {
             entry.put("tombstonedAt", Instant.now().toString());
             int rev = doc.path("revision").asInt(0);
             doc.put("revision", rev + 1);
-            String patched = InternalTimelineJson.write(doc);
-            String newSnapshotId = timelineSnapshotService.save(
-                    projectId, tenantId != null ? tenantId : info.get().tenantId(), patched, info.get().schemaVersion());
-            log.info("Tombstoned asset {} in snapshot {} -> {}", assetId, snapshotId, newSnapshotId);
-            return new TombstoneResult(assetId, snapshotId, newSnapshotId, "TOMBSTONED");
+            throw new IllegalStateException(
+                    "NEEDS_ARCHITECTURE_REVIEW: legacy internal asset-registry mutation is retired; "
+                            + "Artifact domain lifecycle must not create shadow Timeline snapshots");
         } catch (PlatformException e) {
             throw e;
         } catch (Exception e) {

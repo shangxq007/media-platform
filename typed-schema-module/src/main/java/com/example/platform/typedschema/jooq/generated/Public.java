@@ -153,6 +153,29 @@ import com.example.platform.typedschema.jooq.generated.tables.UserWorkflowDefini
 import com.example.platform.typedschema.jooq.generated.tables.UserWorkflowDefinitionEdge;
 import com.example.platform.typedschema.jooq.generated.tables.UserWorkflowDefinitionNode;
 import com.example.platform.typedschema.jooq.generated.tables.UserWorkflowDefinitionVersion;
+import com.example.platform.typedschema.jooq.generated.tables.WfArtifactReuseIndex;
+import com.example.platform.typedschema.jooq.generated.tables.WfCompletionEvent;
+import com.example.platform.typedschema.jooq.generated.tables.WfExecutionAssignment;
+import com.example.platform.typedschema.jooq.generated.tables.WfExecutionAssignmentDevice;
+import com.example.platform.typedschema.jooq.generated.tables.WfExecutionAttempt;
+import com.example.platform.typedschema.jooq.generated.tables.WfExecutionBackendSelection;
+import com.example.platform.typedschema.jooq.generated.tables.WfExecutionObservation;
+import com.example.platform.typedschema.jooq.generated.tables.WfExecutionOwnershipGeneration;
+import com.example.platform.typedschema.jooq.generated.tables.WfHostRegistration;
+import com.example.platform.typedschema.jooq.generated.tables.WfHostResourceSnapshot;
+import com.example.platform.typedschema.jooq.generated.tables.WfHostResourceSnapshotDevice;
+import com.example.platform.typedschema.jooq.generated.tables.WfHostSnapshotGenerationAuthority;
+import com.example.platform.typedschema.jooq.generated.tables.WfLocalAdmission;
+import com.example.platform.typedschema.jooq.generated.tables.WfPhysicalHostConnection;
+import com.example.platform.typedschema.jooq.generated.tables.WfPhysicalReleaseConfirmation;
+import com.example.platform.typedschema.jooq.generated.tables.WfRequestWorkResolution;
+import com.example.platform.typedschema.jooq.generated.tables.WfReservation;
+import com.example.platform.typedschema.jooq.generated.tables.WfReservationDevice;
+import com.example.platform.typedschema.jooq.generated.tables.WfRuntimeRegistration;
+import com.example.platform.typedschema.jooq.generated.tables.WfTaskLease;
+import com.example.platform.typedschema.jooq.generated.tables.WfTaskLeaseReservation;
+import com.example.platform.typedschema.jooq.generated.tables.WfTaskOwnership;
+import com.example.platform.typedschema.jooq.generated.tables.WfWorkerRuntimeConnection;
 import com.example.platform.typedschema.jooq.generated.tables.WorkflowExecution;
 import com.example.platform.typedschema.jooq.generated.tables.Workspace;
 import com.example.platform.typedschema.jooq.generated.tables.WorkspaceEntitlementPool;
@@ -929,6 +952,121 @@ public class Public extends SchemaImpl {
     public final UserWorkflowDefinitionVersion USER_WORKFLOW_DEFINITION_VERSION = UserWorkflowDefinitionVersion.USER_WORKFLOW_DEFINITION_VERSION;
 
     /**
+     * The table <code>public.wf_artifact_reuse_index</code>.
+     */
+    public final WfArtifactReuseIndex WF_ARTIFACT_REUSE_INDEX = WfArtifactReuseIndex.WF_ARTIFACT_REUSE_INDEX;
+
+    /**
+     * The table <code>public.wf_completion_event</code>.
+     */
+    public final WfCompletionEvent WF_COMPLETION_EVENT = WfCompletionEvent.WF_COMPLETION_EVENT;
+
+    /**
+     * The table <code>public.wf_execution_assignment</code>.
+     */
+    public final WfExecutionAssignment WF_EXECUTION_ASSIGNMENT = WfExecutionAssignment.WF_EXECUTION_ASSIGNMENT;
+
+    /**
+     * The table <code>public.wf_execution_assignment_device</code>.
+     */
+    public final WfExecutionAssignmentDevice WF_EXECUTION_ASSIGNMENT_DEVICE = WfExecutionAssignmentDevice.WF_EXECUTION_ASSIGNMENT_DEVICE;
+
+    /**
+     * The table <code>public.wf_execution_attempt</code>.
+     */
+    public final WfExecutionAttempt WF_EXECUTION_ATTEMPT = WfExecutionAttempt.WF_EXECUTION_ATTEMPT;
+
+    /**
+     * The table <code>public.wf_execution_backend_selection</code>.
+     */
+    public final WfExecutionBackendSelection WF_EXECUTION_BACKEND_SELECTION = WfExecutionBackendSelection.WF_EXECUTION_BACKEND_SELECTION;
+
+    /**
+     * The table <code>public.wf_execution_observation</code>.
+     */
+    public final WfExecutionObservation WF_EXECUTION_OBSERVATION = WfExecutionObservation.WF_EXECUTION_OBSERVATION;
+
+    /**
+     * The table <code>public.wf_execution_ownership_generation</code>.
+     */
+    public final WfExecutionOwnershipGeneration WF_EXECUTION_OWNERSHIP_GENERATION = WfExecutionOwnershipGeneration.WF_EXECUTION_OWNERSHIP_GENERATION;
+
+    /**
+     * The table <code>public.wf_host_registration</code>.
+     */
+    public final WfHostRegistration WF_HOST_REGISTRATION = WfHostRegistration.WF_HOST_REGISTRATION;
+
+    /**
+     * The table <code>public.wf_host_resource_snapshot</code>.
+     */
+    public final WfHostResourceSnapshot WF_HOST_RESOURCE_SNAPSHOT = WfHostResourceSnapshot.WF_HOST_RESOURCE_SNAPSHOT;
+
+    /**
+     * The table <code>public.wf_host_resource_snapshot_device</code>.
+     */
+    public final WfHostResourceSnapshotDevice WF_HOST_RESOURCE_SNAPSHOT_DEVICE = WfHostResourceSnapshotDevice.WF_HOST_RESOURCE_SNAPSHOT_DEVICE;
+
+    /**
+     * The table <code>public.wf_host_snapshot_generation_authority</code>.
+     */
+    public final WfHostSnapshotGenerationAuthority WF_HOST_SNAPSHOT_GENERATION_AUTHORITY = WfHostSnapshotGenerationAuthority.WF_HOST_SNAPSHOT_GENERATION_AUTHORITY;
+
+    /**
+     * The table <code>public.wf_local_admission</code>.
+     */
+    public final WfLocalAdmission WF_LOCAL_ADMISSION = WfLocalAdmission.WF_LOCAL_ADMISSION;
+
+    /**
+     * The table <code>public.wf_physical_host_connection</code>.
+     */
+    public final WfPhysicalHostConnection WF_PHYSICAL_HOST_CONNECTION = WfPhysicalHostConnection.WF_PHYSICAL_HOST_CONNECTION;
+
+    /**
+     * The table <code>public.wf_physical_release_confirmation</code>.
+     */
+    public final WfPhysicalReleaseConfirmation WF_PHYSICAL_RELEASE_CONFIRMATION = WfPhysicalReleaseConfirmation.WF_PHYSICAL_RELEASE_CONFIRMATION;
+
+    /**
+     * The table <code>public.wf_request_work_resolution</code>.
+     */
+    public final WfRequestWorkResolution WF_REQUEST_WORK_RESOLUTION = WfRequestWorkResolution.WF_REQUEST_WORK_RESOLUTION;
+
+    /**
+     * The table <code>public.wf_reservation</code>.
+     */
+    public final WfReservation WF_RESERVATION = WfReservation.WF_RESERVATION;
+
+    /**
+     * The table <code>public.wf_reservation_device</code>.
+     */
+    public final WfReservationDevice WF_RESERVATION_DEVICE = WfReservationDevice.WF_RESERVATION_DEVICE;
+
+    /**
+     * The table <code>public.wf_runtime_registration</code>.
+     */
+    public final WfRuntimeRegistration WF_RUNTIME_REGISTRATION = WfRuntimeRegistration.WF_RUNTIME_REGISTRATION;
+
+    /**
+     * The table <code>public.wf_task_lease</code>.
+     */
+    public final WfTaskLease WF_TASK_LEASE = WfTaskLease.WF_TASK_LEASE;
+
+    /**
+     * The table <code>public.wf_task_lease_reservation</code>.
+     */
+    public final WfTaskLeaseReservation WF_TASK_LEASE_RESERVATION = WfTaskLeaseReservation.WF_TASK_LEASE_RESERVATION;
+
+    /**
+     * The table <code>public.wf_task_ownership</code>.
+     */
+    public final WfTaskOwnership WF_TASK_OWNERSHIP = WfTaskOwnership.WF_TASK_OWNERSHIP;
+
+    /**
+     * The table <code>public.wf_worker_runtime_connection</code>.
+     */
+    public final WfWorkerRuntimeConnection WF_WORKER_RUNTIME_CONNECTION = WfWorkerRuntimeConnection.WF_WORKER_RUNTIME_CONNECTION;
+
+    /**
      * The table <code>public.workflow_execution</code>.
      */
     public final WorkflowExecution WORKFLOW_EXECUTION = WorkflowExecution.WORKFLOW_EXECUTION;
@@ -1133,6 +1271,29 @@ public class Public extends SchemaImpl {
             UserWorkflowDefinitionEdge.USER_WORKFLOW_DEFINITION_EDGE,
             UserWorkflowDefinitionNode.USER_WORKFLOW_DEFINITION_NODE,
             UserWorkflowDefinitionVersion.USER_WORKFLOW_DEFINITION_VERSION,
+            WfArtifactReuseIndex.WF_ARTIFACT_REUSE_INDEX,
+            WfCompletionEvent.WF_COMPLETION_EVENT,
+            WfExecutionAssignment.WF_EXECUTION_ASSIGNMENT,
+            WfExecutionAssignmentDevice.WF_EXECUTION_ASSIGNMENT_DEVICE,
+            WfExecutionAttempt.WF_EXECUTION_ATTEMPT,
+            WfExecutionBackendSelection.WF_EXECUTION_BACKEND_SELECTION,
+            WfExecutionObservation.WF_EXECUTION_OBSERVATION,
+            WfExecutionOwnershipGeneration.WF_EXECUTION_OWNERSHIP_GENERATION,
+            WfHostRegistration.WF_HOST_REGISTRATION,
+            WfHostResourceSnapshot.WF_HOST_RESOURCE_SNAPSHOT,
+            WfHostResourceSnapshotDevice.WF_HOST_RESOURCE_SNAPSHOT_DEVICE,
+            WfHostSnapshotGenerationAuthority.WF_HOST_SNAPSHOT_GENERATION_AUTHORITY,
+            WfLocalAdmission.WF_LOCAL_ADMISSION,
+            WfPhysicalHostConnection.WF_PHYSICAL_HOST_CONNECTION,
+            WfPhysicalReleaseConfirmation.WF_PHYSICAL_RELEASE_CONFIRMATION,
+            WfRequestWorkResolution.WF_REQUEST_WORK_RESOLUTION,
+            WfReservation.WF_RESERVATION,
+            WfReservationDevice.WF_RESERVATION_DEVICE,
+            WfRuntimeRegistration.WF_RUNTIME_REGISTRATION,
+            WfTaskLease.WF_TASK_LEASE,
+            WfTaskLeaseReservation.WF_TASK_LEASE_RESERVATION,
+            WfTaskOwnership.WF_TASK_OWNERSHIP,
+            WfWorkerRuntimeConnection.WF_WORKER_RUNTIME_CONNECTION,
             WorkflowExecution.WORKFLOW_EXECUTION,
             Workspace.WORKSPACE,
             WorkspaceEntitlementPool.WORKSPACE_ENTITLEMENT_POOL,

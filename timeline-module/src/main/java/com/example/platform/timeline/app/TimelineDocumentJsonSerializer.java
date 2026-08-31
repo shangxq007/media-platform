@@ -5,6 +5,8 @@ import com.example.platform.timeline.canonical.TimelineMetadata;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -33,7 +35,10 @@ public final class TimelineDocumentJsonSerializer {
 
     private static final ObjectMapper MAPPER = new ObjectMapper()
             .registerModule(new JavaTimeModule())
-            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+            .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+            .configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true)
+            .configure(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY, true);
 
     private TimelineDocumentJsonSerializer() {
     }
@@ -61,6 +66,22 @@ public final class TimelineDocumentJsonSerializer {
             return MAPPER.writeValueAsString(document);
         } catch (Exception e) {
             throw new IllegalStateException("Failed to serialize timeline document", e);
+        }
+    }
+
+    /**
+     * Decode a persisted canonical Timeline payload through the sole production
+     * reader authority. Governed render projections (for example textOverlays)
+     * are ignored because they are derived from the TimelineDocument itself.
+     */
+    public static TimelineDocument deserialize(String payloadJson) {
+        if (payloadJson == null || payloadJson.isBlank()) {
+            throw new IllegalArgumentException("timeline payload must not be blank");
+        }
+        try {
+            return MAPPER.readValue(payloadJson, TimelineDocument.class);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Failed to deserialize canonical TimelineDocument", e);
         }
     }
 

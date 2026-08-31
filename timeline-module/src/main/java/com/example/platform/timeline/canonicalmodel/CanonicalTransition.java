@@ -1,6 +1,9 @@
 package com.example.platform.timeline.canonicalmodel;
 
 import com.example.platform.shared.time.MediaTime;
+import com.example.platform.timeline.canonical.MediaTimeJsonCodec;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -18,6 +21,8 @@ public record CanonicalTransition(
         String outgoingClipId,
         String incomingClipId,
         String mediaType,
+        @JsonSerialize(using = MediaTimeJsonCodec.Serializer.class)
+        @JsonDeserialize(using = MediaTimeJsonCodec.Deserializer.class)
         MediaTime duration,
         String alignment,
         String temporalPolicy,

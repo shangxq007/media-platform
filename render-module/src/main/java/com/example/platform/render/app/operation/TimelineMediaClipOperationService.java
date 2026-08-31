@@ -31,6 +31,7 @@ import com.example.platform.shared.time.MediaTime;
 import com.example.platform.timeline.app.InternalTimelineValidationService;
 import com.example.platform.timeline.app.TimelineRevisionSaveService;
 import com.example.platform.timeline.app.TimelineSourceReferenceValidator;
+import com.example.platform.timeline.app.TimelineCanonicalRejectionException;
 import com.example.platform.timeline.canonical.TimelineDocument;
 import com.example.platform.timeline.canonical.TimelineClipId;
 import com.example.platform.timeline.canonical.TimelineTrack;
@@ -56,9 +57,11 @@ import org.springframework.stereotype.Service;
 @Service
 public class TimelineMediaClipOperationService {
 
-    public static final String OPERATION = "ADD_OR_TRIM_MEDIA_CLIP_V1";
+    public static final String OPERATION = "ADD_MEDIA_CLIP_V1";
     private static final AuthorizationAction TIMELINE_EDIT = new AuthorizationAction(
             "WRITE", AuthorizationResourceType.PROJECT, "Edit canonical Timeline");
+    private static final AuthorizationAction TIMELINE_READ = new AuthorizationAction(
+            "READ", AuthorizationResourceType.PROJECT, "Read canonical Timeline for preview");
 
     private final TimelineRevisionSaveService revisionSaveService;
     private final TimelineSourceReferenceValidator sourceValidator;
@@ -80,19 +83,22 @@ public class TimelineMediaClipOperationService {
         this.applyService = Objects.requireNonNull(applyService, "applyService");
     }
 
-    public AddOrTrimMediaClipPreview preview(
-            String tenantId, String projectId, AddOrTrimMediaClipCommand command) {
+    public AddMediaClipPreview preview(
+            String tenantId, String projectId, AddMediaClipCommand command,
+            CanonicalActor actor) {
+        requirePreparationAuthorization(tenantId, projectId, actor, TIMELINE_READ);
         return prepare(tenantId, projectId, toOperationRequest(projectId, command)).preview();
     }
 
-    public AddOrTrimMediaClipResult authorizeAndApply(
+    public AddMediaClipResult authorizeAndApply(
             String tenantId,
             String projectId,
-            AddOrTrimMediaClipCommand command,
+            AddMediaClipCommand command,
             String expectedPlanDigest,
             String applyCommandId,
             CanonicalActor actor) {
         Objects.requireNonNull(actor, "actor");
+        requirePreparationAuthorization(tenantId, projectId, actor, TIMELINE_READ);
         PreparedOperation prepared = prepare(
                 tenantId, projectId, toOperationRequest(projectId, command));
         if (!prepared.plan().planDigest().equals(expectedPlanDigest)) {
@@ -123,20 +129,56 @@ public class TimelineMediaClipOperationService {
         try {
             result = applyService.apply(
                     prepared.plan(), context, projectId, prepared.exactBase());
+        } catch (TimelineCanonicalRejectionException rejection) {
+            boolean sourceFailure = rejection.adapterDiagnostics().stream()
+                    .anyMatch(diagnostic -> diagnostic.code()
+                            == TimelineCanonicalRejectionException.Code.TIMELINE_SOURCE_REF_INVALID);
+            throw new TimelineOperationException(
+                    sourceFailure
+                            ? TimelineOperationException.Code.SOURCE_REFERENCE_INVALID
+                            : TimelineOperationException.Code.CANDIDATE_INVALID,
+                    java.util.stream.Stream.concat(
+                            rejection.diagnostics().stream().map(d -> d.message()),
+                            rejection.adapterDiagnostics().stream().map(d -> d.message()))
+                            .toList());
         } catch (PlanException failure) {
             throw translatePlanFailure(failure);
         }
-        return new AddOrTrimMediaClipResult(
+        return new AddMediaClipResult(
                 result.status(), result.planDigest(), result.baseRevisionId(),
                 result.newRevisionId(), result.newContentHash(), result.parentRevisionId(),
-                new AddOrTrimMediaClipResult.TimelineRevisionRenderHandoff(
+                new AddMediaClipResult.TimelineRevisionRenderHandoff(
                         projectId, result.newRevisionId(), result.newContentHash()),
                 prepared.preview().expectedChangedCanonicalObjects());
     }
 
+    private void requirePreparationAuthorization(
+            String tenantId, String projectId, CanonicalActor actor,
+            AuthorizationAction action) {
+        Objects.requireNonNull(actor, "actor");
+        if (!Objects.equals(tenantId, actor.tenantId())) {
+            throw new TimelineOperationException(
+                    TimelineOperationException.Code.TENANT_CONTEXT_MISMATCH,
+                    List.of("tenant context does not match authenticated actor"));
+        }
+        var decision = authorizationPort.decide(new AuthorizationRequest(
+                actor,
+                action,
+                new AuthorizableResourceRef(
+                        AuthorizationResourceType.PROJECT, projectId, tenantId, projectId, null),
+                new AuthorizationContext(
+                        "timeline-operation-prepare", projectId,
+                        Map.of("operation", OPERATION))));
+        if (!decision.allowed()) {
+            throw new TimelineOperationException(
+                    TimelineOperationException.Code.AUTHORIZATION_DENIED,
+                    List.of("project operation access denied"));
+        }
+    }
+
     private PreparedOperation prepare(String tenantId, String projectId, OperationRequest request) {
         requireExactDefinition(request);
-        TimelineRevision baseRevision = revisionSaveService.findById(request.baseRevisionId());
+        TimelineRevision baseRevision = revisionSaveService.findById(tenantId, request.baseRevisionId());
         if (baseRevision == null || !projectId.equals(baseRevision.productId())) {
             throw new TimelineOperationException(
                     TimelineOperationException.Code.BASE_REVISION_NOT_FOUND,
@@ -148,7 +190,7 @@ public class TimelineMediaClipOperationService {
                     TimelineOperationException.Code.STALE_BASE_REVISION,
                     List.of("base Timeline content hash mismatch"));
         }
-        TimelineDocument exactBase = revisionSaveService.findPayloadDocument(request.baseRevisionId())
+        TimelineDocument exactBase = revisionSaveService.findPayloadDocument(tenantId, request.baseRevisionId())
                 .orElseThrow(() -> new TimelineOperationException(
                         TimelineOperationException.Code.BASE_REVISION_NOT_FOUND,
                         List.of("base revision canonical payload unavailable")));
@@ -167,7 +209,7 @@ public class TimelineMediaClipOperationService {
             throw new TimelineOperationException(code, List.of(resolution.getMessage()));
         }
 
-        var parameters = (OperationParameters.AddOrTrimMediaClipParameters) instance.parameters();
+        var parameters = (OperationParameters.AddMediaClipParameters) instance.parameters();
         TimelineTrack targetTrack = exactBase.getTracks().stream()
                 .filter(track -> track.trackId().equals(parameters.trackId()))
                 .findFirst()
@@ -184,7 +226,7 @@ public class TimelineMediaClipOperationService {
 
         final OperationPlan plan;
         try {
-            plan = planner.plan(instance, exactBase);
+            plan = planner.plan(instance, baseRevision.revisionId(), exactBase);
         } catch (PlanException failure) {
             throw translatePlanFailure(failure);
         }
@@ -199,7 +241,7 @@ public class TimelineMediaClipOperationService {
                 : validation.diagnostics().stream()
                         .map(d -> d.code().name() + ":" + d.message()).toList();
         OperationPlanPreview genericPreview = OperationPlanPreview.of(plan);
-        AddOrTrimMediaClipPreview preview = new AddOrTrimMediaClipPreview(
+        AddMediaClipPreview preview = new AddMediaClipPreview(
                 OPERATION, plan.planDigest(), projectId, plan.baseRevisionId(),
                 plan.baseContentHash(), parameters.sourceBinding(),
                 parameters.sourceBinding().sourceRange(), parameters.placement(),
@@ -212,7 +254,7 @@ public class TimelineMediaClipOperationService {
     }
 
     private static OperationRequest toOperationRequest(
-            String timelineId, AddOrTrimMediaClipCommand command) {
+            String timelineId, AddMediaClipCommand command) {
         Objects.requireNonNull(command, "command");
         MediaClip.TimeRange sourceRange = new MediaClip.TimeRange(
                 MediaTime.parse(command.sourceStart()), MediaTime.parse(command.sourceEnd()));
@@ -222,7 +264,7 @@ public class TimelineMediaClipOperationService {
                 new ArtifactId(command.artifactId()),
                 ContentDigest.sha256(command.contentDigest()),
                 sourceRange);
-        var parameters = new OperationParameters.AddOrTrimMediaClipParameters(
+        var parameters = new OperationParameters.AddMediaClipParameters(
                 command.trackId(),
                 TimelineClipId.of(command.clipId()),
                 sourceBinding,
@@ -234,8 +276,8 @@ public class TimelineMediaClipOperationService {
                         command.rateDenominator(),
                         toCanonicalDirection(command.direction())));
         return new OperationRequest(
-                OperationDefinition.V1.ADD_OR_TRIM_MEDIA_CLIP.definitionId(),
-                OperationDefinition.V1.ADD_OR_TRIM_MEDIA_CLIP.version(),
+                OperationDefinition.V1.ADD_MEDIA_CLIP.definitionId(),
+                OperationDefinition.V1.ADD_MEDIA_CLIP.version(),
                 new OperationTargetRequest.TimelineTargetRequest(timelineId),
                 parameters,
                 command.baseRevisionId(),
@@ -244,16 +286,16 @@ public class TimelineMediaClipOperationService {
     }
 
     private static void requireExactDefinition(OperationRequest request) {
-        if (!OperationDefinition.V1.ADD_OR_TRIM_MEDIA_CLIP.definitionId()
+        if (!OperationDefinition.V1.ADD_MEDIA_CLIP.definitionId()
                 .equals(request.definitionId())
-                || !OperationDefinition.V1.ADD_OR_TRIM_MEDIA_CLIP.version()
+                || !OperationDefinition.V1.ADD_MEDIA_CLIP.version()
                 .equals(request.version())
                 || !(request.target() instanceof OperationTargetRequest.TimelineTargetRequest)
                 || !(request.parameters()
-                        instanceof OperationParameters.AddOrTrimMediaClipParameters)) {
+                        instanceof OperationParameters.AddMediaClipParameters)) {
             throw new TimelineOperationException(
                     TimelineOperationException.Code.CANDIDATE_INVALID,
-                    List.of("ADD_OR_TRIM_MEDIA_CLIP_V1 request required"));
+                    List.of("ADD_MEDIA_CLIP_V1 request required"));
         }
     }
 
@@ -263,8 +305,8 @@ public class TimelineMediaClipOperationService {
                 ? decision.reasonCode() : decision.ruleRef();
     }
 
-    private static PlaybackDirection toCanonicalDirection(AddOrTrimMediaClipCommand.Direction direction) {
-        if (direction == null || direction == AddOrTrimMediaClipCommand.Direction.FORWARD) {
+    private static PlaybackDirection toCanonicalDirection(AddMediaClipCommand.Direction direction) {
+        if (direction == null || direction == AddMediaClipCommand.Direction.FORWARD) {
             return PlaybackDirection.FORWARD;
         }
         return PlaybackDirection.REVERSE;
@@ -285,7 +327,6 @@ public class TimelineMediaClipOperationService {
             case AUTHORIZATION_DENIED -> TimelineOperationException.Code.AUTHORIZATION_DENIED;
             case AUTHORIZATION_CONTEXT_MISMATCH ->
                     TimelineOperationException.Code.AUTHORIZATION_CONTEXT_MISMATCH;
-            case AUTHORIZATION_STALE -> TimelineOperationException.Code.AUTHORIZATION_STALE;
             case IDEMPOTENCY_KEY_CONFLICT ->
                     TimelineOperationException.Code.IDEMPOTENCY_KEY_CONFLICT;
             case TARGET_MISSING -> TimelineOperationException.Code.TARGET_MISSING;
@@ -309,7 +350,7 @@ public class TimelineMediaClipOperationService {
 
     private record PreparedOperation(
             OperationPlan plan,
-            AddOrTrimMediaClipPreview preview,
+            AddMediaClipPreview preview,
             TimelineDocument exactBase) {
     }
 

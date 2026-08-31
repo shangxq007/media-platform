@@ -19,7 +19,7 @@ import java.util.TreeSet;
  * SetDirection has direction ONLY; Freeze has sourcePosition ONLY.
  */
 public sealed interface OperationParameters permits
-        OperationParameters.AddOrTrimMediaClipParameters,
+        OperationParameters.AddMediaClipParameters,
         OperationParameters.NoParameters,
         OperationParameters.MoveParameters,
         OperationParameters.TrimParameters,
@@ -44,19 +44,19 @@ public sealed interface OperationParameters permits
         OperationParameters.SetTextLayoutParameters {
 
     /**
-     * ADD_OR_TRIM_MEDIA_CLIP_V1. The first supported variant adds exactly one
+     * ADD_MEDIA_CLIP_V1. The first supported variant adds exactly one
      * recorded-media clip to an existing Timeline track. The immutable source
      * pin owns the exact source range; placement owns the exact Timeline range;
      * TemporalMapping owns only the mapping between them.
      */
-    record AddOrTrimMediaClipParameters(
+    record AddMediaClipParameters(
             String trackId,
             com.example.platform.timeline.canonical.TimelineClipId clipId,
             com.example.platform.timeline.semantics.clip.MediaStreamSourceBinding sourceBinding,
             com.example.platform.timeline.semantics.clip.MediaClip.TimeRange placement,
             com.example.platform.timeline.semantics.temporal.TemporalMapping temporalMapping)
             implements OperationParameters {
-        public AddOrTrimMediaClipParameters {
+        public AddMediaClipParameters {
             if (trackId == null || trackId.isBlank()) {
                 throw new IllegalArgumentException("trackId required");
             }

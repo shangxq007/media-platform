@@ -43,13 +43,11 @@ public final class TimelineDocumentCandidateMapper {
         }
         // F009: timelineId derived deterministically from productId (the Timeline belongs
         // to the product; TimelineDocument carries no timeline identifier).
-        // CHECKPOINT_A correction: full authored semantic surface — no silent
-        // narrowing of textElements/audioMix/relationships (TimelineDocument
-        // carries no transitions/automations fields; those live in internal
-        // payloads and remain List.of() here).
+        // CHECKPOINT_A/H7 V2: full authored semantic surface — no silent
+        // narrowing of effects, transitions, automations, text, audio or relationships.
         return new TimelineCandidate(productId, productId,
                 TimelineCanonicalProfile.CANONICAL_TIMELINE_FOUNDATION_V1, tracks,
-                List.of(), List.of(),
+                document.getTransitions(), document.getAutomations(),
                 document.getTextElements() != null ? List.copyOf(document.getTextElements()) : List.of(),
                 document.getAudioMix() != null ? document.getAudioMix() : com.example.platform.audio.domain.mix.AudioMix.empty(),
                 document.getSemanticRelationships() != null ? List.copyOf(document.getSemanticRelationships()) : List.of());
@@ -121,7 +119,7 @@ public final class TimelineDocumentCandidateMapper {
         // into ONE typed binding; partial/invalid source-binding intent FAILS
         // CLOSED (no catch→null narrowing).
         return new TimelineCandidate.Clip(clipId, TimelineSourceRef.of(mediaAssetId),
-                timelineStart, sourceStart, duration, FrameRate.of(30, 1), List.of(), List.of(),
+                timelineStart, sourceStart, duration, FrameRate.of(30, 1), clip.getEffects(), List.of(),
                 clip.getTemporalMapping(), typedBindingOf(clip, clipId));
     }
 

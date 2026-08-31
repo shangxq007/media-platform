@@ -48,9 +48,14 @@ public class Roadmap20EffectAuthorityConfiguration {
         return new DefaultTimelineRevisionPersistence();
     }
 
-    /** F2/F3: production HEAD CAS adapter (real CAS predicate, head is the final mutation). */
     @Bean
-    public HeadUpdatePort headUpdatePort(ProductCurrentRevisionService currentRevisionService) {
-        return new ProductCurrentRevisionHeadUpdateAdapter(currentRevisionService);
+    public TimelineRevisionRefMutation timelineRevisionRefMutation(DSLContext dsl) {
+        return new TimelineRevisionRefMutation(dsl);
+    }
+
+    /** F2/F3: production canonical ref CAS seam (head is the final mutation). */
+    @Bean
+    public HeadUpdatePort headUpdatePort(TimelineRevisionRefMutation mutation) {
+        return new TimelineRevisionRefHeadUpdateAdapter(mutation);
     }
 }

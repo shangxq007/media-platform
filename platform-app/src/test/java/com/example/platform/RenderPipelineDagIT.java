@@ -50,6 +50,8 @@ class RenderPipelineDagIT extends PostgresTestContainerSupport {
     @Autowired
     private TimelineSnapshotService timelineSnapshotService;
     @Autowired
+    private org.jooq.DSLContext dsl;
+    @Autowired
     private EntitlementPolicyService entitlementPolicyService;
     @Autowired
     private PipelinePlanPersistenceService pipelinePlanPersistence;
@@ -116,7 +118,8 @@ class RenderPipelineDagIT extends PostgresTestContainerSupport {
                 }
                 """.formatted(sourcePath, sourcePath);
 
-        String snapshotId = timelineSnapshotService.save(project.id(), tenant.id(), timelineJson, "2.0.0");
+        String snapshotId = timelineSnapshotService.saveTx(
+                dsl, project.id(), tenant.id(), timelineJson, "2.0.0");
         RenderJobResponse job = renderController.createRenderJob(tenant.id(), project.id(), 
                 new CreateRenderJobRequest(project.id(), snapshotId, "default_720p"));
         orchestratorService.executeExistingRenderJob(tenant.id(), job.id());

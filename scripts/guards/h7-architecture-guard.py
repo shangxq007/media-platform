@@ -18,6 +18,20 @@ from typing import Callable
 
 
 ZERO_LAWS = (
+    "PRODUCT_CURRENT_REVISION_ID_PRODUCTION_USAGE_COUNT",
+    "PRODUCT_CURRENT_REVISION_SERVICE_DEFINITION_COUNT",
+    "LEGACY_PRODUCT_HEAD_READER_COUNT",
+    "LEGACY_PRODUCT_HEAD_WRITER_COUNT",
+    "MUTABLE_LATEST_CANONICAL_AUTHORITY_COUNT",
+    "CANONICAL_COMMAND_FINGERPRINT_FRAMING_MISSING_COUNT",
+    "DELIMITER_COMMAND_FINGERPRINT_COUNT",
+    "PREVIEW_PROJECT_AUTHORIZATION_BEFORE_DISCLOSURE_MISSING_COUNT",
+    "APPLY_PREPARATION_AUTHORIZATION_BEFORE_DISCLOSURE_MISSING_COUNT",
+    "BLANKET_422_HTTP_MAPPING_COUNT",
+    "CANONICAL_REJECTION_TYPED_HTTP_MAPPING_MISSING_COUNT",
+    "PLANNER_BASE_REVISION_VALIDATION_TAUTOLOGICAL_COUNT",
+    "REVISION_ALLOCATOR_FIRST_VALUE_NOT_ONE_COUNT",
+    "LEGACY_ADD_OR_TRIM_OPERATION_ID_COUNT",
     "PRODUCT_CURRENT_REVISION_CORRECTNESS_AUTHORITY_COUNT",
     "PRODUCT_LOCAL_MAX_PLUS_ONE_REVISION_ALLOCATION_COUNT",
     "NON_CANONICAL_TIMELINE_HEAD_WRITER_COUNT",
@@ -218,6 +232,12 @@ def production_sources(root: Path) -> dict[str, str]:
                 r"saveRevisionForCommand|recordNoOpCommand)\b", source))
         if (relative.startswith("timeline-module/src/main/java/")
                 or relevant_render_source
+                or relative.endswith("/CanonicalCommandFingerprint.java")
+                or relative.endswith("/OperationPlanner.java")
+                or (relative.startswith("platform-app/src/main/java/com/example/platform/web/render/")
+                    and re.search(r"\b(?:current|head|latest).*revision|ProductCurrentRevision|"
+                                  r"TimelineMediaClipOperationController", source,
+                                  flags=re.IGNORECASE))
                 or relative.endswith("/AuthorizationDecision.java")
                 or "timeline_revision_ref" in source.lower()):
             sources[relative] = source
@@ -268,6 +288,69 @@ def evaluate(raw_sources: dict[str, str]) -> Evaluation:
     h7_correctness_scope = render_h7_text + "\n" + "\n".join(
         command_branch_bodies + no_op_transactions)
 
+    production_text = "\n".join(handwritten.values())
+    product_current_usage = occurrences(
+        r"\bProductCurrentRevisionService\b|\bPRODUCT\s*\.\s*CURRENT_REVISION_ID\b|"
+        r"\bcurrent_revision_id\b|\bgetCurrentRevisionId\s*\(|"
+        r"\bupdateCurrentRevision(?:Tx)?\s*\(", production_text)
+    product_service_definitions = occurrences(
+        r"\bclass\s+ProductCurrentRevisionService\b", production_text)
+    legacy_readers = sum(occurrences(pattern, production_text) for pattern in (
+        r"\.\s*getCurrentRevisionId\s*\(",
+        r"select\s*\(\s*PRODUCT\s*\.\s*CURRENT_REVISION_ID",
+        r"fetch(?:One|Any)\s*\(\s*PRODUCT\s*\.\s*CURRENT_REVISION_ID",
+    ))
+    legacy_writers = sum(occurrences(pattern, production_text) for pattern in (
+        r"\.\s*updateCurrentRevision(?:Tx)?\s*\(",
+        r"\.\s*set\s*\(\s*PRODUCT\s*\.\s*CURRENT_REVISION_ID",
+    ))
+    mutable_latest = sum(
+        1 for source in handwritten.values()
+        for name in ("findOwnedHead", "findHead")
+        if ((body := method_body(source, name)) is not None
+            and re.search(r"orderBy\s*\([^)]*REVISION_NUMBER\s*\.\s*desc", body))
+    )
+    fingerprint_sources = [source for path, source in handwritten.items()
+                           if ("fingerprint(" in source or "CanonicalCommandFingerprint" in source)
+                           and "command" in source.lower()]
+    fingerprint_text = "\n".join(fingerprint_sources)
+    framing_present = (
+        "CanonicalCommandFingerprint" in fingerprint_text
+        and "CANONICAL_COMMAND_FINGERPRINT_V1" in fingerprint_text
+        and "framedBytes" in fingerprint_text
+    )
+    delimiter_fingerprints = occurrences(
+        r"sha256\s*\([^;\n]*\+\s*\"\|\"\s*\+", fingerprint_text)
+    operation_services = class_sources(sources, "TimelineMediaClipOperationService")
+    operation_source = operation_services[0][1] if len(operation_services) == 1 else ""
+    preview_body = method_body(operation_source, "preview") or ""
+    apply_body = method_body(operation_source, "authorizeAndApply") or ""
+    preview_authorized_first = (
+        "requirePreparationAuthorization" in preview_body
+        and preview_body.index("requirePreparationAuthorization") < preview_body.index("prepare"))
+    apply_authorized_first = (
+        "requirePreparationAuthorization" in apply_body
+        and apply_body.index("requirePreparationAuthorization") < apply_body.index("prepare"))
+    controllers = class_sources(sources, "TimelineMediaClipOperationController")
+    controller_source = controllers[0][1] if len(controllers) == 1 else ""
+    blanket_422 = occurrences(r"default\s*->\s*HttpStatus\.UNPROCESSABLE_ENTITY", controller_source)
+    canonical_rejection_mapping = (
+        "TimelineCanonicalRejectionException" in operation_source
+        and "SOURCE_REFERENCE_INVALID" in operation_source
+        and "PERSISTENCE_FAILURE" in controller_source
+        and "INTERNAL_SERVER_ERROR" in controller_source)
+    planners = class_sources(sources, "OperationPlanner")
+    planner_source = planners[0][1] if len(planners) == 1 else ""
+    planner_tautology = occurrences(
+        r"instance\.baseRevisionId\(\)\.equals\(baseRevisionIdOf\(instance\)\)",
+        planner_source)
+    allocator_bootstrap_is_one = (
+        len(allocator_types) == 1
+        and re.search(r"BOOTSTRAP_VALUE\s*=\s*0L", allocator_types[0][1]) is not None
+        and re.search(r"NEXT_REVISION_NUMBER\.add\(1L\)", allocator_types[0][1]) is not None)
+    legacy_operation_id = occurrences(
+        r"ADD_OR_TRIM_MEDIA_CLIP|timeline\.media-clip\.add-or-trim", production_text)
+
     correctness_patterns = (
         r"currentRevisionService\s*\.\s*getCurrentRevisionId\s*\(",
         r"select\s*\(\s*PRODUCT\s*\.\s*CURRENT_REVISION_ID",
@@ -286,18 +369,21 @@ def evaluate(raw_sources: dict[str, str]) -> Evaluation:
         source for path, source in handwritten.items()
         if path.startswith("timeline-module/src/main/java/")
         and re.search(r"\bRevisionCommand(?:ApplyService|Plan)\b", source))
+    revision_command_runtime_present = bool(re.search(
+        r"class\s+(?:RevisionCommandApplyService|RevisionCommandPlanner)\b",
+        revision_command_text))
     product_command_scope = (render_h7_text + "\n" + revision_command_text
                              + "\n" + "\n".join(command_write_transactions))
     local_max = sum(occurrences(pattern, product_command_scope)
                     for pattern in max_plus_one_patterns)
 
     head_writer_patterns = (
-        r"headUpdatePort\s*\.\s*updateHeadTx\s*\(",
         r"currentRevisionService\s*\.\s*(?:update|compareAndSet|setCurrent)",
+        r"headUpdatePort\s*\.\s*updateHeadTx\s*\(",
         r"\.\s*set\s*\(\s*PRODUCT\s*\.\s*CURRENT_REVISION_ID",
         r"update\s+product\b[^;]*\bcurrent_revision_id\b",
     )
-    noncanonical_head_writer = sum(occurrences(pattern, h7_correctness_scope)
+    noncanonical_head_writer = sum(occurrences(pattern, render_h7_text)
                                    for pattern in head_writer_patterns)
 
     duplicate_allocator = 0
@@ -365,13 +451,13 @@ def evaluate(raw_sources: dict[str, str]) -> Evaluation:
         for body in command_write_transactions)
 
     h7_shared_ref = any("revisionRefMutation" in body for body in command_write_transactions)
-    revision_command_shared_ref = bool(re.search(
+    revision_command_shared_ref = not revision_command_runtime_present or bool(re.search(
         r"TimelineRevisionRefMutation|revisionRefMutation\s*\.\s*"
         r"(?:advance|validateExpectedHead|bootstrap|create|delete)", revision_command_text))
     h7_shared_allocator = any("revisionNumberAllocator" in body
                               and re.search(r"\.\s*allocate\s*\(", body)
                               for body in command_write_transactions)
-    revision_command_shared_allocator = bool(re.search(
+    revision_command_shared_allocator = not revision_command_runtime_present or bool(re.search(
         r"ProjectRevisionNumberAllocator|revisionNumberAllocator\s*\.\s*allocate",
         revision_command_text))
 
@@ -410,6 +496,24 @@ def evaluate(raw_sources: dict[str, str]) -> Evaluation:
     )
 
     counts = {
+        "PRODUCT_CURRENT_REVISION_ID_PRODUCTION_USAGE_COUNT": product_current_usage,
+        "PRODUCT_CURRENT_REVISION_SERVICE_DEFINITION_COUNT": product_service_definitions,
+        "LEGACY_PRODUCT_HEAD_READER_COUNT": legacy_readers,
+        "LEGACY_PRODUCT_HEAD_WRITER_COUNT": legacy_writers,
+        "MUTABLE_LATEST_CANONICAL_AUTHORITY_COUNT": mutable_latest,
+        "CANONICAL_COMMAND_FINGERPRINT_FRAMING_MISSING_COUNT": 0 if framing_present else 1,
+        "DELIMITER_COMMAND_FINGERPRINT_COUNT": delimiter_fingerprints,
+        "PREVIEW_PROJECT_AUTHORIZATION_BEFORE_DISCLOSURE_MISSING_COUNT":
+            0 if preview_authorized_first else 1,
+        "APPLY_PREPARATION_AUTHORIZATION_BEFORE_DISCLOSURE_MISSING_COUNT":
+            0 if apply_authorized_first else 1,
+        "BLANKET_422_HTTP_MAPPING_COUNT": blanket_422,
+        "CANONICAL_REJECTION_TYPED_HTTP_MAPPING_MISSING_COUNT":
+            0 if canonical_rejection_mapping else 1,
+        "PLANNER_BASE_REVISION_VALIDATION_TAUTOLOGICAL_COUNT": planner_tautology,
+        "REVISION_ALLOCATOR_FIRST_VALUE_NOT_ONE_COUNT":
+            0 if allocator_bootstrap_is_one else 1,
+        "LEGACY_ADD_OR_TRIM_OPERATION_ID_COUNT": legacy_operation_id,
         "PRODUCT_CURRENT_REVISION_CORRECTNESS_AUTHORITY_COUNT": product_correctness,
         "PRODUCT_LOCAL_MAX_PLUS_ONE_REVISION_ALLOCATION_COUNT": local_max,
         "NON_CANONICAL_TIMELINE_HEAD_WRITER_COUNT": noncanonical_head_writer,

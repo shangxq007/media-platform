@@ -28,7 +28,7 @@ CRITICAL_FILES=(
   timeline-module/src/main/java/com/example/platform/timeline/app/TimelineRevisionPersistencePort.java
   timeline-module/src/main/java/com/example/platform/timeline/app/DefaultTimelineRevisionPersistence.java
   timeline-module/src/main/java/com/example/platform/timeline/app/HeadUpdatePort.java
-  timeline-module/src/main/java/com/example/platform/timeline/app/ProductCurrentRevisionHeadUpdateAdapter.java
+  timeline-module/src/main/java/com/example/platform/timeline/app/TimelineRevisionRefHeadUpdateAdapter.java
   # render verification
   render-module/src/main/java/com/example/platform/render/domain/renderplan/VerifiedEffectSemanticSnapshotFactory.java
   render-module/src/main/java/com/example/platform/render/domain/renderplan/VerifiedRenderSemanticSnapshotFactory.java

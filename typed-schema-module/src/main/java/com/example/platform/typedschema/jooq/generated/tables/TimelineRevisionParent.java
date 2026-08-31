@@ -61,6 +61,11 @@ public class TimelineRevisionParent extends TableImpl<TimelineRevisionParentReco
     }
 
     /**
+     * The column <code>public.timeline_revision_parent.tenant_id</code>.
+     */
+    public final TableField<TimelineRevisionParentRecord, String> TENANT_ID = createField(DSL.name("tenant_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
+
+    /**
      * The column <code>public.timeline_revision_parent.project_id</code>.
      */
     public final TableField<TimelineRevisionParentRecord, String> PROJECT_ID = createField(DSL.name("project_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
@@ -167,20 +172,33 @@ public class TimelineRevisionParent extends TableImpl<TimelineRevisionParentReco
 
     @Override
     public List<ForeignKey<TimelineRevisionParentRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.TIMELINE_REVISION_PARENT__FK_TIMELINE_REVISION_PARENT_REVISION);
+        return Arrays.asList(Keys.TIMELINE_REVISION_PARENT__FK_TIMELINE_REVISION_PARENT_PARENT, Keys.TIMELINE_REVISION_PARENT__FK_TIMELINE_REVISION_PARENT_REVISION);
     }
 
-    private transient TimelineRevisionPath _timelineRevision;
+    private transient TimelineRevisionPath _fkTimelineRevisionParentParent;
 
     /**
      * Get the implicit join path to the <code>public.timeline_revision</code>
-     * table.
+     * table, via the <code>fk_timeline_revision_parent_parent</code> key.
      */
-    public TimelineRevisionPath timelineRevision() {
-        if (_timelineRevision == null)
-            _timelineRevision = new TimelineRevisionPath(this, Keys.TIMELINE_REVISION_PARENT__FK_TIMELINE_REVISION_PARENT_REVISION, null);
+    public TimelineRevisionPath fkTimelineRevisionParentParent() {
+        if (_fkTimelineRevisionParentParent == null)
+            _fkTimelineRevisionParentParent = new TimelineRevisionPath(this, Keys.TIMELINE_REVISION_PARENT__FK_TIMELINE_REVISION_PARENT_PARENT, null);
 
-        return _timelineRevision;
+        return _fkTimelineRevisionParentParent;
+    }
+
+    private transient TimelineRevisionPath _fkTimelineRevisionParentRevision;
+
+    /**
+     * Get the implicit join path to the <code>public.timeline_revision</code>
+     * table, via the <code>fk_timeline_revision_parent_revision</code> key.
+     */
+    public TimelineRevisionPath fkTimelineRevisionParentRevision() {
+        if (_fkTimelineRevisionParentRevision == null)
+            _fkTimelineRevisionParentRevision = new TimelineRevisionPath(this, Keys.TIMELINE_REVISION_PARENT__FK_TIMELINE_REVISION_PARENT_REVISION, null);
+
+        return _fkTimelineRevisionParentRevision;
     }
 
     @Override

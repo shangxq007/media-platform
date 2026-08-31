@@ -1,9 +1,9 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.timeline.app.ProductCurrentRevisionService;import com.example.platform.timeline.app.TimelineRevisionSaveService;import com.example.platform.timeline.app.TimelineSemanticDiffV1Service;
+import com.example.platform.timeline.app.TimelineRevisionRefMutation;import com.example.platform.timeline.app.TimelineRevisionSaveService;import com.example.platform.timeline.app.TimelineSemanticDiffV1Service;
 import com.example.platform.shared.time.MediaTime;
 import com.example.platform.timeline.app.DefaultTimelineRevisionPersistence;
-import com.example.platform.timeline.app.ProductCurrentRevisionHeadUpdateAdapter;
+import com.example.platform.timeline.app.TimelineRevisionRefHeadUpdateAdapter;
 
 import com.example.platform.timeline.canonical.TimelineClip;
 import com.example.platform.timeline.canonical.TimelineContentDigester;
@@ -44,6 +44,7 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class TimelineSemanticDiffV1ServiceIntegrationTest extends PostgresTestContainerSupport {
 
+    private static final String TENANT = "tenant-semantic-diff";
     private static DataSource dataSource;
     private static DSLContext dsl;
     private TimelineSemanticDiffV1Service diffService;
@@ -64,11 +65,11 @@ class TimelineSemanticDiffV1ServiceIntegrationTest extends PostgresTestContainer
     @BeforeEach
     void setUp() {
         RenderTestSchemaFixture.truncate(dsl);
-        ProductCurrentRevisionService currentRevisionService = new ProductCurrentRevisionService(dsl);
+        TimelineRevisionRefMutation currentRevisionService = new TimelineRevisionRefMutation(dsl);
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService, new TimelineContentDigester(),
                 new com.example.platform.timeline.adapter.TimelineSnapshotService(dsl),
                 org.mockito.Mockito.mock(com.example.platform.timeline.app.TimelineArtifactPinValidator.class),
-                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class), effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new ProductCurrentRevisionHeadUpdateAdapter(currentRevisionService));
+                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class), effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService));
         diffService = new TimelineSemanticDiffV1Service(saveService, new TimelineContentDigester(), new ObjectMapper());
     }
 
@@ -78,7 +79,8 @@ class TimelineSemanticDiffV1ServiceIntegrationTest extends PostgresTestContainer
         insertProduct(productId);
         TimelineRevision revision = createAndSaveRevision(productId, "rev-base", null);
 
-        TimelineChangeSet result = diffService.diff(productId, revision.revisionId(), revision.revisionId());
+        TimelineChangeSet result = diffService.diff(
+                TENANT, productId, revision.revisionId(), revision.revisionId());
 
         assertNotNull(result);
         assertTrue(result.isEmpty());
@@ -93,7 +95,8 @@ class TimelineSemanticDiffV1ServiceIntegrationTest extends PostgresTestContainer
         TimelineRevision base = createAndSaveRevision(productId, "rev-base", null);
         TimelineRevision target = createAndSaveRevisionWithExtraClip(productId, "rev-target", base.revisionId());
 
-        TimelineChangeSet result = diffService.diff(productId, base.revisionId(), target.revisionId());
+        TimelineChangeSet result = diffService.diff(
+                TENANT, productId, base.revisionId(), target.revisionId());
 
         assertNotNull(result);
         // Note: findById loads revision without canonicalTimeline (null), so diff is based on null documents
@@ -112,7 +115,7 @@ class TimelineSemanticDiffV1ServiceIntegrationTest extends PostgresTestContainer
         TimelineRevision revB = createAndSaveRevision(productIdB, "rev-b", null);
 
         assertThrows(TimelineDiffErrors.CrossProductException.class, () ->
-                diffService.diff(productIdA, revA.revisionId(), revB.revisionId()));
+                diffService.diff(TENANT, productIdA, revA.revisionId(), revB.revisionId()));
     }
 
     @Test
@@ -121,7 +124,7 @@ class TimelineSemanticDiffV1ServiceIntegrationTest extends PostgresTestContainer
         insertProduct(productId);
 
         assertThrows(TimelineDiffErrors.RevisionNotFoundException.class, () ->
-                diffService.diff(productId, "nonexistent-rev", "also-nonexistent"));
+                diffService.diff(TENANT, productId, "nonexistent-rev", "also-nonexistent"));
     }
 
     @Test
@@ -132,15 +135,15 @@ class TimelineSemanticDiffV1ServiceIntegrationTest extends PostgresTestContainer
         TimelineRevision target = createAndSaveRevisionWithExtraClip(productId, "rev-target", base.revisionId());
 
         // Capture initial state
-        TimelineRevision baseBefore = saveService.findById(base.revisionId());
-        TimelineRevision targetBefore = saveService.findById(target.revisionId());
+        TimelineRevision baseBefore = saveService.findById(TENANT, base.revisionId());
+        TimelineRevision targetBefore = saveService.findById(TENANT, target.revisionId());
 
         // Execute diff
-        diffService.diff(productId, base.revisionId(), target.revisionId());
+        diffService.diff(TENANT, productId, base.revisionId(), target.revisionId());
 
         // Verify no state modification
-        TimelineRevision baseAfter = saveService.findById(base.revisionId());
-        TimelineRevision targetAfter = saveService.findById(target.revisionId());
+        TimelineRevision baseAfter = saveService.findById(TENANT, base.revisionId());
+        TimelineRevision targetAfter = saveService.findById(TENANT, target.revisionId());
 
         assertEquals(baseBefore.contentDigest(), baseAfter.contentDigest());
         assertEquals(targetBefore.contentDigest(), targetAfter.contentDigest());
@@ -153,7 +156,8 @@ class TimelineSemanticDiffV1ServiceIntegrationTest extends PostgresTestContainer
         TimelineDocument doc = new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION, List.of(track),
                 new TimelineMetadata("", "", Map.of()));
 
-        return saveService.saveRevision(productId, parentId, doc, "test-user");
+        return saveService.saveRevision(
+                TENANT, productId, parentId, doc, RenderTestSchemaFixture.SERVER_ACTOR);
     }
 
     private TimelineRevision createAndSaveRevisionWithExtraClip(String productId, String revisionId, String parentId) {
@@ -165,15 +169,19 @@ class TimelineSemanticDiffV1ServiceIntegrationTest extends PostgresTestContainer
         TimelineDocument doc = new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION, List.of(track),
                 new TimelineMetadata("", "", Map.of()));
 
-        return saveService.saveRevision(productId, parentId, doc, "test-user");
+        return saveService.saveRevision(
+                TENANT, productId, parentId, doc, RenderTestSchemaFixture.SERVER_ACTOR);
     }
 
     private void insertProduct(String productId) {
+        RenderTestSchemaFixture.insertCanonicalProject(dsl, TENANT, productId);
         dsl.insertInto(PRODUCT)
                 .set(PRODUCT.PRODUCT_ID, productId)
                 .set(PRODUCT.PRODUCT_TYPE, "video")
                 .set(PRODUCT.REPRESENTATION_KIND, "master")
                 .set(PRODUCT.STATUS, "REGISTERED")
+                .set(PRODUCT.TENANT_ID, TENANT)
+                .set(PRODUCT.PROJECT_ID, productId)
                 .set(PRODUCT.CREATED_AT, java.time.LocalDateTime.now())
                 .set(PRODUCT.UPDATED_AT, java.time.LocalDateTime.now())
                 .execute();

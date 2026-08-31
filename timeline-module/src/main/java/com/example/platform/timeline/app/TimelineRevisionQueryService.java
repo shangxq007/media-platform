@@ -28,17 +28,14 @@ public class TimelineRevisionQueryService {
     private final TimelineRevisionRepository revisionRepository;
     private final TimelineSnapshotService snapshotService;
     private final TimelineRevisionDiffService diffService;
-    private final TimelinePayloadCodec payloadCodec;
 
     public TimelineRevisionQueryService(
             TimelineRevisionRepository revisionRepository,
             TimelineSnapshotService snapshotService,
-            TimelineRevisionDiffService diffService,
-            TimelinePayloadCodec payloadCodec) {
+            TimelineRevisionDiffService diffService) {
         this.revisionRepository = revisionRepository;
         this.snapshotService = snapshotService;
         this.diffService = diffService;
-        this.payloadCodec = payloadCodec;
     }
 
     public Optional<RevisionInfo> findHead(String projectId, String tenantId) {
@@ -51,7 +48,7 @@ public class TimelineRevisionQueryService {
     }
 
     /**
-     * Load Internal Timeline JSON for a revision's snapshot (for patch path index resolution on the client).
+     * Load canonical TimelineDocument JSON for a revision's owned snapshot.
      */
     public Optional<RevisionSnapshotPayload> getRevisionSnapshotPayload(
             String projectId, String tenantId, String revisionId) {
@@ -59,18 +56,18 @@ public class TimelineRevisionQueryService {
                 snapshotService
                         .findOwnedById(row.projectId(), row.tenantId(), row.snapshotId())
                         .map(TimelineSnapshotService.SnapshotInfo::payloadJson)
-                        .map(payload -> {
-                            String internal = payload;
+                        .flatMap(payload -> {
                             try {
-                                if (!InternalTimelineJson.isInternalTimeline(InternalTimelineJson.parse(payload))) {
-                                    internal = payloadCodec.ensureInternalTimelineJson(payload);
-                                }
-                            } catch (Exception e) {
-                                log.warn("Revision snapshot not internal, id={}", revisionId);
+                                TimelineDocumentJsonSerializer.deserialize(payload);
+                                return Optional.of(new RevisionSnapshotPayload(
+                                        row.snapshotId(), payload,
+                                        row.schemaVersion() != null
+                                                ? row.schemaVersion()
+                                                : com.example.platform.timeline.canonical.TimelineDocument.CURRENT_SCHEMA_VERSION));
+                            } catch (IllegalArgumentException malformed) {
+                                log.warn("Revision snapshot is not canonical TimelineDocument, id={}", revisionId);
+                                return Optional.empty();
                             }
-                            return new RevisionSnapshotPayload(
-                                    row.snapshotId(), internal,
-                                    row.schemaVersion() != null ? row.schemaVersion() : "internal-1.0");
                         }));
     }
 
@@ -204,5 +201,5 @@ public class TimelineRevisionQueryService {
             TimelineRevisionDiffService.ChangeSummary changeSummary,
             String parentChangeSummaryJson) {}
 
-    public record RevisionSnapshotPayload(String snapshotId, String internalTimelineJson, String schemaVersion) {}
+    public record RevisionSnapshotPayload(String snapshotId, String canonicalTimelineJson, String schemaVersion) {}
 }

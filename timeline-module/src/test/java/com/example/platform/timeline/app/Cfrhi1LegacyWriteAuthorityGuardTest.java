@@ -133,12 +133,36 @@ class Cfrhi1LegacyWriteAuthorityGuardTest {
 
     @Test
     void canonicalRestoreAuthorityIsActive() throws IOException {
-        // the canonical restore authority must exist and be referenced by the controller
+        // H7 V2 has one ownership-explicit restore implementation plus one
+        // trusted owner-resolving adapter. Count the structural signatures and
+        // delegation instead of lexical restoreRevision occurrences: the token
+        // also appears at the adapter call site and therefore is not an
+        // authority count.
         Path root = repoRoot();
-        long canonicalDefs = countSymbol(root, "TimelineRevisionSaveService.java", "restoreRevision");
+        long canonicalDefs = countPattern(root, "TimelineRevisionSaveService.java",
+                "\\bpublic\\s+TimelineRevision\\s+restoreRevision\\s*\\(\\s*"
+                        + "String\\s+tenantId\\s*,\\s*String\\s+productId\\s*,\\s*"
+                        + "String\\s+historicalRevisionId\\s*,\\s*"
+                        + "String\\s+expectedCurrentRevisionId\\s*,\\s*"
+                        + "String\\s+canonicalAuthor\\s*\\)\\s*\\{");
         assertEquals(1, canonicalDefs,
                 "CANONICAL_RESTORE_AUTHORITY_COUNT must be 1 (root=" + root + ")");
-        long controllerRefs = countSymbol(root, "TimelineRevisionController.java", "restoreRevision");
+        long ownerResolvingAdapters = countPattern(root, "TimelineRevisionSaveService.java",
+                "\\bpublic\\s+TimelineRevision\\s+restoreRevision\\s*\\(\\s*"
+                        + "String\\s+productId\\s*,\\s*String\\s+historicalRevisionId\\s*,\\s*"
+                        + "String\\s+expectedCurrentRevisionId\\s*,\\s*"
+                        + "String\\s+createdBy\\s*\\)\\s*\\{");
+        assertEquals(1, ownerResolvingAdapters,
+                "canonical restore must expose exactly one trusted owner-resolving adapter");
+        long adapterDelegations = countPattern(root, "TimelineRevisionSaveService.java",
+                "\\breturn\\s+restoreRevision\\s*\\(\\s*"
+                        + "resolveProjectTenant\\s*\\(\\s*productId\\s*\\)\\s*,\\s*"
+                        + "productId\\s*,\\s*historicalRevisionId\\s*,\\s*"
+                        + "expectedCurrentRevisionId\\s*,\\s*createdBy\\s*\\)\\s*;");
+        assertEquals(1, adapterDelegations,
+                "trusted owner-resolving restore adapter must delegate exactly once");
+        long controllerRefs = countPattern(root, "TimelineRevisionController.java",
+                "\\brevisionSaveService\\s*\\.\\s*restoreRevision\\s*\\(");
         assertEquals(1, controllerRefs,
                 "TimelineRevisionController must call the canonical restoreRevision exactly once (root=" + root + ")");
     }
@@ -189,5 +213,28 @@ class Cfrhi1LegacyWriteAuthorityGuardTest {
                     .filter(l -> l.contains(token))
                     .count();
         }
+    }
+
+    private static long countPattern(Path root, String fileName, String regex) throws IOException {
+        boolean rootIsWorktree = root.toString().contains("/.worktrees/");
+        Path worktreesDir = rootIsWorktree
+                ? root.getParent().getParent().resolve(".worktrees")
+                : root.resolve(".worktrees");
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(
+                regex, java.util.regex.Pattern.MULTILINE | java.util.regex.Pattern.DOTALL);
+        long count = 0;
+        try (Stream<Path> walk = Files.walk(root)) {
+            for (Path file : walk.filter(Files::isRegularFile)
+                    .filter(f -> f.getFileName().toString().equals(fileName))
+                    .filter(f -> f.toString().contains("/src/main/java/"))
+                    .filter(f -> !f.startsWith(worktreesDir) || (rootIsWorktree && f.startsWith(root)))
+                    .toList()) {
+                String source = Files.readString(file)
+                        .replaceAll("(?s)/\\*.*?\\*/", " ")
+                        .replaceAll("(?m)//[^\\n]*", " ");
+                count += pattern.matcher(source).results().count();
+            }
+        }
+        return count;
     }
 }

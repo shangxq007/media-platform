@@ -8,7 +8,7 @@ package com.example.platform.render.app.operation;
  * assembling the canonical operation, so HTTP adapters do not depend on the
  * Media module or mint a second source-identity model.
  */
-public record AddOrTrimMediaClipCommand(
+public record AddMediaClipCommand(
         String baseRevisionId,
         String baseContentHash,
         String trackId,
@@ -25,7 +25,7 @@ public record AddOrTrimMediaClipCommand(
         long rateDenominator,
         Direction direction) {
 
-    public AddOrTrimMediaClipCommand {
+    public AddMediaClipCommand {
         requireText(baseRevisionId, "baseRevisionId");
         requireText(baseContentHash, "baseContentHash");
         requireText(trackId, "trackId");

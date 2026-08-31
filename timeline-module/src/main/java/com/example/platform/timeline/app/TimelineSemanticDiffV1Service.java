@@ -53,13 +53,21 @@ public class TimelineSemanticDiffV1Service {
      */
     @Transactional(readOnly = true)
     public TimelineChangeSet diff(String productId, String baseRevisionId, String targetRevisionId) {
+        return diff(revisionSaveService.tenantForProject(productId), productId,
+                baseRevisionId, targetRevisionId);
+    }
+
+    /** Explicit-owner diff entrypoint for an already authorized project read. */
+    @Transactional(readOnly = true)
+    public TimelineChangeSet diff(String tenantId, String productId,
+                                  String baseRevisionId, String targetRevisionId) {
         // Load revisions
-        TimelineRevision baseRevision = revisionSaveService.findById(baseRevisionId);
+        TimelineRevision baseRevision = revisionSaveService.findById(tenantId, baseRevisionId);
         if (baseRevision == null) {
             throw new com.example.platform.timeline.diff.TimelineDiffErrors.RevisionNotFoundException(baseRevisionId);
         }
 
-        TimelineRevision targetRevision = revisionSaveService.findById(targetRevisionId);
+        TimelineRevision targetRevision = revisionSaveService.findById(tenantId, targetRevisionId);
         if (targetRevision == null) {
             throw new com.example.platform.timeline.diff.TimelineDiffErrors.RevisionNotFoundException(targetRevisionId);
         }

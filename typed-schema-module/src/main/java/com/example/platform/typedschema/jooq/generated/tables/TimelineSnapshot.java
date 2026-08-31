@@ -73,7 +73,7 @@ public class TimelineSnapshot extends TableImpl<TimelineSnapshotRecord> {
     /**
      * The column <code>public.timeline_snapshot.tenant_id</code>.
      */
-    public final TableField<TimelineSnapshotRecord, String> TENANT_ID = createField(DSL.name("tenant_id"), SQLDataType.VARCHAR(64), this, "");
+    public final TableField<TimelineSnapshotRecord, String> TENANT_ID = createField(DSL.name("tenant_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
     /**
      * The column <code>public.timeline_snapshot.payload_json</code>.
@@ -83,7 +83,7 @@ public class TimelineSnapshot extends TableImpl<TimelineSnapshotRecord> {
     /**
      * The column <code>public.timeline_snapshot.schema_version</code>.
      */
-    public final TableField<TimelineSnapshotRecord, String> SCHEMA_VERSION = createField(DSL.name("schema_version"), SQLDataType.VARCHAR(32).defaultValue(DSL.field(DSL.raw("'2.0.0'::character varying"), SQLDataType.VARCHAR)), this, "");
+    public final TableField<TimelineSnapshotRecord, String> SCHEMA_VERSION = createField(DSL.name("schema_version"), SQLDataType.VARCHAR(32).nullable(false).defaultValue(DSL.field(DSL.raw("'timeline-1.0'::character varying"), SQLDataType.VARCHAR)), this, "");
 
     /**
      * The column <code>public.timeline_snapshot.created_at</code>.
@@ -99,6 +99,11 @@ public class TimelineSnapshot extends TableImpl<TimelineSnapshotRecord> {
      * The column <code>public.timeline_snapshot.revision_number</code>.
      */
     public final TableField<TimelineSnapshotRecord, Integer> REVISION_NUMBER = createField(DSL.name("revision_number"), SQLDataType.INTEGER, this, "");
+
+    /**
+     * The column <code>public.timeline_snapshot.semantic_revision_id</code>.
+     */
+    public final TableField<TimelineSnapshotRecord, String> SEMANTIC_REVISION_ID = createField(DSL.name("semantic_revision_id"), SQLDataType.VARCHAR(64), this, "");
 
     private TimelineSnapshot(Name alias, Table<TimelineSnapshotRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
@@ -178,8 +183,13 @@ public class TimelineSnapshot extends TableImpl<TimelineSnapshotRecord> {
     }
 
     @Override
+    public List<UniqueKey<TimelineSnapshotRecord>> getUniqueKeys() {
+        return Arrays.asList(Keys.UQ_TIMELINE_SNAPSHOT_OWNER_ID, Keys.UQ_TIMELINE_SNAPSHOT_SEMANTIC_REVISION);
+    }
+
+    @Override
     public List<ForeignKey<TimelineSnapshotRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.TIMELINE_SNAPSHOT__FK_TIMELINE_SNAPSHOT_PROJECT);
+        return Arrays.asList(Keys.TIMELINE_SNAPSHOT__FK_TIMELINE_SNAPSHOT_PROJECT, Keys.TIMELINE_SNAPSHOT__FK_TIMELINE_SNAPSHOT_SEMANTIC_REVISION);
     }
 
     private transient ProjectPath _project;
@@ -197,12 +207,12 @@ public class TimelineSnapshot extends TableImpl<TimelineSnapshotRecord> {
     private transient TimelineRevisionPath _timelineRevision;
 
     /**
-     * Get the implicit to-many join path to the
-     * <code>public.timeline_revision</code> table
+     * Get the implicit join path to the <code>public.timeline_revision</code>
+     * table.
      */
     public TimelineRevisionPath timelineRevision() {
         if (_timelineRevision == null)
-            _timelineRevision = new TimelineRevisionPath(this, null, Keys.TIMELINE_REVISION__FK_TIMELINE_REVISION_SNAPSHOT.getInverseKey());
+            _timelineRevision = new TimelineRevisionPath(this, Keys.TIMELINE_SNAPSHOT__FK_TIMELINE_SNAPSHOT_SEMANTIC_REVISION, null);
 
         return _timelineRevision;
     }

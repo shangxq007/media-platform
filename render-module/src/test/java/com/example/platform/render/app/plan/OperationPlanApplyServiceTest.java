@@ -66,11 +66,11 @@ class OperationPlanApplyServiceTest {
                         "R0", hash, List.of(TimelineClipId.of("clip-1")),
                         SelectionSpec.ExpansionPolicy.EXACT)),
                 new OperationParameters.MoveParameters(MediaTime.ZERO, false), "parameters", null);
-        var plan = new OperationPlanner().plan(instance, base);
+        var plan = new OperationPlanner().plan(instance, "R0", base);
         assertTrue(plan.noOp());
 
         TimelineRevisionSaveService writer = mock(TimelineRevisionSaveService.class);
-        when(writer.recordNoOpCommand(eq(RevisionRef.main("project")), eq("R0"), eq(hash), any()))
+        when(writer.recordNoOpCommand(eq(RevisionRef.main("tenant-a", "project")), eq("R0"), eq(hash), any()))
                 .thenReturn(new TimelineRevisionSaveService.RevisionWriteResult(null, "R0", hash, false));
         var authorization = AuthorizationDecision.allow(
                 plan.planDigest(), "alice", "project", "tenant-a",
@@ -82,7 +82,7 @@ class OperationPlanApplyServiceTest {
         ApplyResult result = new OperationPlanApplyService(writer)
                 .apply(plan, context, "project", base);
         assertEquals(ApplyResult.NO_OP, result.status());
-        verify(writer).recordNoOpCommand(eq(RevisionRef.main("project")), eq("R0"), eq(hash),
+        verify(writer).recordNoOpCommand(eq(RevisionRef.main("tenant-a", "project")), eq("R0"), eq(hash),
                 argThat(command -> command.commandId().equals("command-noop")
                         && command.tenantId().equals("tenant-a")));
         verify(writer, never()).saveRevisionForCommand(any(), any(), any(), any(), any());
@@ -98,7 +98,10 @@ class OperationPlanApplyServiceTest {
                         "R0", hash, List.of(TimelineClipId.of("clip-1")),
                         SelectionSpec.ExpansionPolicy.EXACT)),
                 new OperationParameters.MoveParameters(MediaTime.ZERO, false), "parameters", null);
-        var plan = new OperationPlanner().plan(instance, base);
+        var plan = new OperationPlanner().plan(instance, "R0", base);
+
+        assertThrows(PlanException.class,
+                () -> new OperationPlanner().plan(instance, "R-other", base));
         TimelineRevisionSaveService writer = mock(TimelineRevisionSaveService.class);
         var authorization = AuthorizationDecision.allow(
                 plan.planDigest(), "bob", "project", "tenant-a",
@@ -117,13 +120,17 @@ class OperationPlanApplyServiceTest {
     @Test
     void commandFingerprintBindsTenantPrincipalAndTargetRef() {
         String alice = OperationPlanApplyService.fingerprint(
-                "plan", new TargetRevisionRef("current"), "R0", "project", "tenant-a", "alice");
+                "plan", new TargetRevisionRef("current"), "R0", "project", "tenant-a", "alice",
+                "timeline.move", "parameters");
         String bob = OperationPlanApplyService.fingerprint(
-                "plan", new TargetRevisionRef("current"), "R0", "project", "tenant-a", "bob");
+                "plan", new TargetRevisionRef("current"), "R0", "project", "tenant-a", "bob",
+                "timeline.move", "parameters");
         String branch = OperationPlanApplyService.fingerprint(
-                "plan", new TargetRevisionRef("branch"), "R0", "project", "tenant-a", "alice");
+                "plan", new TargetRevisionRef("branch"), "R0", "project", "tenant-a", "alice",
+                "timeline.move", "parameters");
         String otherTenant = OperationPlanApplyService.fingerprint(
-                "plan", new TargetRevisionRef("current"), "R0", "project", "tenant-b", "alice");
+                "plan", new TargetRevisionRef("current"), "R0", "project", "tenant-b", "alice",
+                "timeline.move", "parameters");
         assertNotEquals(alice, bob);
         assertNotEquals(alice, branch);
         assertNotEquals(alice, otherTenant);

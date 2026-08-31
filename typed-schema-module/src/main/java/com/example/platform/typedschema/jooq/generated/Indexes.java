@@ -125,6 +125,12 @@ import com.example.platform.typedschema.jooq.generated.tables.UserBehaviorEvent;
 import com.example.platform.typedschema.jooq.generated.tables.UserProfile;
 import com.example.platform.typedschema.jooq.generated.tables.UserRoleAssignment;
 import com.example.platform.typedschema.jooq.generated.tables.UserSegment;
+import com.example.platform.typedschema.jooq.generated.tables.WfArtifactReuseIndex;
+import com.example.platform.typedschema.jooq.generated.tables.WfExecutionBackendSelection;
+import com.example.platform.typedschema.jooq.generated.tables.WfHostRegistration;
+import com.example.platform.typedschema.jooq.generated.tables.WfReservation;
+import com.example.platform.typedschema.jooq.generated.tables.WfRuntimeRegistration;
+import com.example.platform.typedschema.jooq.generated.tables.WfTaskLease;
 import com.example.platform.typedschema.jooq.generated.tables.WorkflowExecution;
 import com.example.platform.typedschema.jooq.generated.tables.Workspace;
 import com.example.platform.typedschema.jooq.generated.tables.WorkspaceEntitlementPool;
@@ -327,7 +333,6 @@ public class Indexes {
     public static final Index IX_PROD_DEP_TYPE = Internal.createIndex(DSL.name("ix_prod_dep_type"), ProductDependency.PRODUCT_DEPENDENCY, new OrderField[] { ProductDependency.PRODUCT_DEPENDENCY.DEPENDENCY_TYPE }, false);
     public static final Index IX_PROD_DEP_UPSTREAM = Internal.createIndex(DSL.name("ix_prod_dep_upstream"), ProductDependency.PRODUCT_DEPENDENCY, new OrderField[] { ProductDependency.PRODUCT_DEPENDENCY.DEPENDS_ON_PRODUCT_ID }, false);
     public static final Index IX_PRODUCT_ASSET = Internal.createIndex(DSL.name("ix_product_asset"), Product.PRODUCT, new OrderField[] { Product.PRODUCT.OWNER_ASSET_ID }, false);
-    public static final Index IX_PRODUCT_CURRENT_REVISION = Internal.createIndex(DSL.name("ix_product_current_revision"), Product.PRODUCT, new OrderField[] { Product.PRODUCT.PROJECT_ID, Product.PRODUCT.CURRENT_REVISION_ID }, false);
     public static final Index IX_PRODUCT_PRODUCER = Internal.createIndex(DSL.name("ix_product_producer"), Product.PRODUCT, new OrderField[] { Product.PRODUCT.PRODUCER_ID }, false);
     public static final Index IX_PRODUCT_PROJECT = Internal.createIndex(DSL.name("ix_product_project"), Product.PRODUCT, new OrderField[] { Product.PRODUCT.PROJECT_ID }, false);
     public static final Index IX_PRODUCT_STATUS = Internal.createIndex(DSL.name("ix_product_status"), Product.PRODUCT, new OrderField[] { Product.PRODUCT.STATUS }, false);
@@ -422,6 +427,8 @@ public class Indexes {
     public static final Index IX_USER_ROLE_ASSIGNMENT_WORKSPACE_ID = Internal.createIndex(DSL.name("ix_user_role_assignment_workspace_id"), UserRoleAssignment.USER_ROLE_ASSIGNMENT, new OrderField[] { UserRoleAssignment.USER_ROLE_ASSIGNMENT.WORKSPACE_ID }, false);
     public static final Index IX_USER_SEGMENT_TENANT = Internal.createIndex(DSL.name("ix_user_segment_tenant"), UserSegment.USER_SEGMENT, new OrderField[] { UserSegment.USER_SEGMENT.TENANT_ID }, false);
     public static final Index IX_USER_TENANT_ID = Internal.createIndex(DSL.name("ix_user_tenant_id"), User.USER, new OrderField[] { User.USER.TENANT_ID }, false);
+    public static final Index IX_WF_ARTIFACT_REUSE_ARTIFACT = Internal.createIndex(DSL.name("ix_wf_artifact_reuse_artifact"), WfArtifactReuseIndex.WF_ARTIFACT_REUSE_INDEX, new OrderField[] { WfArtifactReuseIndex.WF_ARTIFACT_REUSE_INDEX.ARTIFACT_ID }, false);
+    public static final Index IX_WF_ARTIFACT_REUSE_PENDING = Internal.createIndex(DSL.name("ix_wf_artifact_reuse_pending"), WfArtifactReuseIndex.WF_ARTIFACT_REUSE_INDEX, new OrderField[] { WfArtifactReuseIndex.WF_ARTIFACT_REUSE_INDEX.PUBLISHED_AT }, false);
     public static final Index IX_WORKFLOW_EXECUTION_TENANT_STATUS = Internal.createIndex(DSL.name("ix_workflow_execution_tenant_status"), WorkflowExecution.WORKFLOW_EXECUTION, new OrderField[] { WorkflowExecution.WORKFLOW_EXECUTION.TENANT_ID, WorkflowExecution.WORKFLOW_EXECUTION.STATUS, WorkflowExecution.WORKFLOW_EXECUTION.CREATED_AT.desc() }, false);
     public static final Index IX_WORKSPACE_ENTITLEMENT_POOL_FEATURE_KEY = Internal.createIndex(DSL.name("ix_workspace_entitlement_pool_feature_key"), WorkspaceEntitlementPool.WORKSPACE_ENTITLEMENT_POOL, new OrderField[] { WorkspaceEntitlementPool.WORKSPACE_ENTITLEMENT_POOL.FEATURE_KEY }, false);
     public static final Index IX_WORKSPACE_ENTITLEMENT_POOL_WORKSPACE_ID = Internal.createIndex(DSL.name("ix_workspace_entitlement_pool_workspace_id"), WorkspaceEntitlementPool.WORKSPACE_ENTITLEMENT_POOL, new OrderField[] { WorkspaceEntitlementPool.WORKSPACE_ENTITLEMENT_POOL.WORKSPACE_ID }, false);
@@ -438,7 +445,11 @@ public class Indexes {
     public static final Index IX_WORKSPACE_TENANT_ID = Internal.createIndex(DSL.name("ix_workspace_tenant_id"), Workspace.WORKSPACE, new OrderField[] { Workspace.WORKSPACE.TENANT_ID }, false);
     public static final Index UQ_EFFECT_PACK_EFFECT_KEY = Internal.createIndex(DSL.name("uq_effect_pack_effect_key"), EffectPackEffect.EFFECT_PACK_EFFECT, new OrderField[] { EffectPackEffect.EFFECT_PACK_EFFECT.PACK_ROW_ID, EffectPackEffect.EFFECT_PACK_EFFECT.EFFECT_KEY }, true);
     public static final Index UQ_EFFECT_PACK_IDENTITY = Internal.createIndex(DSL.name("uq_effect_pack_identity"), EffectPack.EFFECT_PACK, new OrderField[] { EffectPack.EFFECT_PACK.PACK_ID, EffectPack.EFFECT_PACK.VERSION, EffectPack.EFFECT_PACK.TENANT_ID }, true);
-    public static final Index UX_TIMELINE_REVISION_PROJECT_ID = Internal.createIndex(DSL.name("ux_timeline_revision_project_id"), TimelineRevision.TIMELINE_REVISION, new OrderField[] { TimelineRevision.TIMELINE_REVISION.PROJECT_ID, TimelineRevision.TIMELINE_REVISION.ID }, true);
     public static final Index UX_TIMELINE_REVISION_PROJECT_NUM = Internal.createIndex(DSL.name("ux_timeline_revision_project_num"), TimelineRevision.TIMELINE_REVISION, new OrderField[] { TimelineRevision.TIMELINE_REVISION.PROJECT_ID, TimelineRevision.TIMELINE_REVISION.REVISION_NUMBER }, true);
+    public static final Index UX_WF_ONE_ACTIVE_BACKEND_SELECTION_PER_TASK = Internal.createIndex(DSL.name("ux_wf_one_active_backend_selection_per_task"), WfExecutionBackendSelection.WF_EXECUTION_BACKEND_SELECTION, new OrderField[] { WfExecutionBackendSelection.WF_EXECUTION_BACKEND_SELECTION.TASK_ID }, true);
+    public static final Index UX_WF_ONE_ACTIVE_HOST_REGISTRATION = Internal.createIndex(DSL.name("ux_wf_one_active_host_registration"), WfHostRegistration.WF_HOST_REGISTRATION, new OrderField[] { WfHostRegistration.WF_HOST_REGISTRATION.PHYSICAL_HOST_ID }, true);
+    public static final Index UX_WF_ONE_ACTIVE_NATIVE_LEASE_PER_TASK = Internal.createIndex(DSL.name("ux_wf_one_active_native_lease_per_task"), WfTaskLease.WF_TASK_LEASE, new OrderField[] { WfTaskLease.WF_TASK_LEASE.TASK_ID }, true);
+    public static final Index UX_WF_ONE_ACTIVE_RESERVATION_PER_TASK = Internal.createIndex(DSL.name("ux_wf_one_active_reservation_per_task"), WfReservation.WF_RESERVATION, new OrderField[] { WfReservation.WF_RESERVATION.TASK_ID }, true);
+    public static final Index UX_WF_ONE_ACTIVE_RUNTIME_REGISTRATION = Internal.createIndex(DSL.name("ux_wf_one_active_runtime_registration"), WfRuntimeRegistration.WF_RUNTIME_REGISTRATION, new OrderField[] { WfRuntimeRegistration.WF_RUNTIME_REGISTRATION.WORKER_RUNTIME_ID }, true);
     public static final Index UX_WORKFLOW_EXECUTION_IDEMPOTENCY = Internal.createIndex(DSL.name("ux_workflow_execution_idempotency"), WorkflowExecution.WORKFLOW_EXECUTION, new OrderField[] { WorkflowExecution.WORKFLOW_EXECUTION.TENANT_ID, WorkflowExecution.WORKFLOW_EXECUTION.IDEMPOTENCY_KEY }, true);
 }

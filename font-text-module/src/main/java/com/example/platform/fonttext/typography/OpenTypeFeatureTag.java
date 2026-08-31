@@ -20,6 +20,7 @@ public OpenTypeFeatureTag(String tag) {
         this.tag = t;
     }
 
+    @com.fasterxml.jackson.annotation.JsonValue
     public String value() { return tag; }
 
     @Override

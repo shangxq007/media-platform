@@ -22,6 +22,7 @@ public LanguageTag(String tag) {
 
     public static LanguageTag of(String tag) { return new LanguageTag(tag); }
 
+    @com.fasterxml.jackson.annotation.JsonValue
     public String value() { return tag; }
 
     @Override

@@ -156,7 +156,7 @@ class TextOperationPlannerTest {
                 "timeline.text.set-variable-axis@1.0",
                 "timeline.text.set-layout@1.0");
         Set<String> expectedRegistryKeys = Set.of(
-                "timeline.media-clip.add-or-trim@1.0",
+                "timeline.media-clip.add@1.0",
                 "timeline.move@1.0",
                 "timeline.delete@1.0",
                 "timeline.trim@1.0",
@@ -198,7 +198,7 @@ class TextOperationPlannerTest {
                 "operation registry must not contain duplicate stable keys");
         assertEquals(expectedRegistryKeys, uniqueRegistryKeys,
                 "operation registry must match the exact accepted stable-key inventory");
-        assertTrue(uniqueRegistryKeys.contains("timeline.media-clip.add-or-trim@1.0"),
+        assertTrue(uniqueRegistryKeys.contains("timeline.media-clip.add@1.0"),
                 "accepted H7 operation must remain registered");
 
         long unclassifiedDefinitions = OperationDefinition.V1.ALL.stream()

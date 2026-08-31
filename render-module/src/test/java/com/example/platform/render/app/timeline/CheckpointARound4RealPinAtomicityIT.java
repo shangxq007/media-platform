@@ -10,7 +10,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import com.example.platform.timeline.app.DefaultTimelineRevisionPersistence;
-import com.example.platform.timeline.app.ProductCurrentRevisionHeadUpdateAdapter;
+import com.example.platform.timeline.app.TimelineRevisionRefHeadUpdateAdapter;
 
 import com.example.platform.artifact.app.ArtifactPinService;
 import com.example.platform.artifact.domain.Artifact;
@@ -23,7 +23,7 @@ import com.example.platform.shared.digest.ContentDigest;
 import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.shared.time.MediaTime;
 import com.example.platform.shared.web.TenantContext;
-import com.example.platform.timeline.app.ProductCurrentRevisionService;
+import com.example.platform.timeline.app.TimelineRevisionRefMutation;
 import com.example.platform.timeline.app.TimelineArtifactPinValidator;
 import com.example.platform.timeline.app.TimelineRevisionSaveService;
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
@@ -67,7 +67,7 @@ class CheckpointARound4RealPinAtomicityIT extends PostgresTestContainerSupport {
     private static DataSource dataSource;
     private static DSLContext dsl;
     private TimelineRevisionSaveService saveService;
-    private ProductCurrentRevisionService currentRevisionService;
+    private TimelineRevisionRefMutation currentRevisionService;
     private ArtifactPinRepository pinRepository;
     private ArtifactPinService pinService;
     private TimelineSnapshotService snapshotService;
@@ -87,7 +87,7 @@ class CheckpointARound4RealPinAtomicityIT extends PostgresTestContainerSupport {
     @BeforeEach
     void setUp() {
         RenderTestSchemaFixture.truncate(dsl);
-        currentRevisionService = new ProductCurrentRevisionService(dsl);
+        currentRevisionService = new TimelineRevisionRefMutation(dsl);
         snapshotService = new TimelineSnapshotService(dsl);
         // REAL repository + REAL service (no mocks)
         pinRepository = new ArtifactPinRepository(dsl);
@@ -96,11 +96,14 @@ class CheckpointARound4RealPinAtomicityIT extends PostgresTestContainerSupport {
     }
 
     private void insertProduct(String productId) {
+        RenderTestSchemaFixture.insertCanonicalProject(dsl, TENANT, productId);
         dsl.insertInto(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT)
                 .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.PRODUCT_ID, productId)
                 .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.PRODUCT_TYPE, "video")
                 .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.REPRESENTATION_KIND, "master")
                 .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.STATUS, "REGISTERED")
+                .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.TENANT_ID, TENANT)
+                .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.PROJECT_ID, productId)
                 .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.CREATED_AT, java.time.LocalDateTime.now())
                 .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.UPDATED_AT, java.time.LocalDateTime.now())
                 .execute();
@@ -145,9 +148,11 @@ class CheckpointARound4RealPinAtomicityIT extends PostgresTestContainerSupport {
 
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService,
                 new TimelineContentDigester(), snapshotService,
-                new TimelineArtifactPinValidator(query), pinService, effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new ProductCurrentRevisionHeadUpdateAdapter(currentRevisionService));
+                new TimelineArtifactPinValidator(query), pinService, effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService));
 
-        var revision = saveService.saveRevision(productId, null, pinnedDoc("art-1", DIGEST_HEX), "user-1");
+        var revision = saveService.saveRevision(
+                TENANT, productId, null, pinnedDoc("art-1", DIGEST_HEX),
+                RenderTestSchemaFixture.SERVER_ACTOR);
         assertNotNull(revision);
 
         // timeline_revision row = 1
@@ -171,7 +176,7 @@ class CheckpointARound4RealPinAtomicityIT extends PostgresTestContainerSupport {
                 "exact content digest");
 
         // head
-        assertEquals(revision.revisionId(), currentRevisionService.getCurrentRevisionId(productId),
+        assertEquals(revision.revisionId(), currentRevisionService.currentHead(dsl, com.example.platform.timeline.revisioncommand.RevisionRef.main(com.example.platform.shared.web.TenantContext.get(), productId)),
                 "head updated to the new revision");
     }
 
@@ -199,14 +204,16 @@ class CheckpointARound4RealPinAtomicityIT extends PostgresTestContainerSupport {
 
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService,
                 new TimelineContentDigester(), snapshotService,
-                new TimelineArtifactPinValidator(query), pinService, effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new ProductCurrentRevisionHeadUpdateAdapter(currentRevisionService));
+                new TimelineArtifactPinValidator(query), pinService, effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService));
 
         // The pin FK constraint (artifact_pin.artifact_id → artifact.id) fires
         // INSIDE the save transaction: ghost artifact id → statement failure →
         // the whole dsl.transactionResult rolls back. Validation already
         // passed; this is a REAL database persistence failure.
         assertThrows(Exception.class,
-                () -> saveService.saveRevision(productId, null, pinnedDoc("ghost-art", DIGEST_HEX), "user-1"),
+                () -> saveService.saveRevision(
+                        TENANT, productId, null, pinnedDoc("ghost-art", DIGEST_HEX),
+                        RenderTestSchemaFixture.SERVER_ACTOR),
                 "ghost artifact must fail the real pin INSERT inside the save transaction");
 
         // no revision row
@@ -219,8 +226,8 @@ class CheckpointARound4RealPinAtomicityIT extends PostgresTestContainerSupport {
                 .where(com.example.platform.typedschema.jooq.generated.tables.ArtifactPin.ARTIFACT_PIN.PROJECT_ID.eq(productId))),
                 "no partial pin rows after rollback");
         // head unchanged (never set)
-        assertTrue(currentRevisionService.getCurrentRevisionId(productId) == null
-                        || currentRevisionService.getCurrentRevisionId(productId).isBlank(),
+        assertTrue(currentRevisionService.currentHead(dsl, com.example.platform.timeline.revisioncommand.RevisionRef.main(com.example.platform.shared.web.TenantContext.get(), productId)) == null
+                        || currentRevisionService.currentHead(dsl, com.example.platform.timeline.revisioncommand.RevisionRef.main(com.example.platform.shared.web.TenantContext.get(), productId)).isBlank(),
                 "head must remain unchanged");
     }
 
@@ -248,7 +255,7 @@ class CheckpointARound4RealPinAtomicityIT extends PostgresTestContainerSupport {
 
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService,
                 new TimelineContentDigester(), snapshotService,
-                new TimelineArtifactPinValidator(query), pinService, effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new ProductCurrentRevisionHeadUpdateAdapter(currentRevisionService));
+                new TimelineArtifactPinValidator(query), pinService, effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService));
 
         // Two pinned clips: art-1 (real artifact row) + ghost-art (no row).
         TimelineClip clip1 = new TimelineClip(
@@ -264,7 +271,8 @@ class CheckpointARound4RealPinAtomicityIT extends PostgresTestContainerSupport {
                 List.of(track), TimelineMetadata.empty());
 
         assertThrows(Exception.class,
-                () -> saveService.saveRevision(productId, null, doc, "user-1"),
+                () -> saveService.saveRevision(
+                        TENANT, productId, null, doc, RenderTestSchemaFixture.SERVER_ACTOR),
                 "second pin INSERT (ghost artifact) must fail the whole save");
 
         // No revision row.
@@ -278,8 +286,8 @@ class CheckpointARound4RealPinAtomicityIT extends PostgresTestContainerSupport {
                 .where(com.example.platform.typedschema.jooq.generated.tables.ArtifactPin.ARTIFACT_PIN.PROJECT_ID.eq(productId))),
                 "no partial pin set may survive (pin 1 rolled back with pin 2 failure)");
         // Head unchanged.
-        assertTrue(currentRevisionService.getCurrentRevisionId(productId) == null
-                        || currentRevisionService.getCurrentRevisionId(productId).isBlank(),
+        assertTrue(currentRevisionService.currentHead(dsl, com.example.platform.timeline.revisioncommand.RevisionRef.main(com.example.platform.shared.web.TenantContext.get(), productId)) == null
+                        || currentRevisionService.currentHead(dsl, com.example.platform.timeline.revisioncommand.RevisionRef.main(com.example.platform.shared.web.TenantContext.get(), productId)).isBlank(),
                 "head must remain unchanged");
     }
     private com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotAuthority effectAuthority() {

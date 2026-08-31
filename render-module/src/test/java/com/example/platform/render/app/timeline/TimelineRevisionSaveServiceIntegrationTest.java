@@ -1,9 +1,9 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.timeline.app.PatchApplyResult;import com.example.platform.timeline.app.ProductCurrentRevisionService;import com.example.platform.timeline.app.TimelineCanonicalRejectionException;import com.example.platform.timeline.app.TimelinePatchApplicationService;import com.example.platform.timeline.app.TimelineRevisionSaveService;
+import com.example.platform.timeline.app.PatchApplyResult;import com.example.platform.timeline.app.TimelineRevisionRefMutation;import com.example.platform.timeline.app.TimelineCanonicalRejectionException;import com.example.platform.timeline.app.TimelinePatchApplicationService;import com.example.platform.timeline.app.TimelineRevisionSaveService;
 import com.example.platform.shared.time.MediaTime;
 import com.example.platform.timeline.app.DefaultTimelineRevisionPersistence;
-import com.example.platform.timeline.app.ProductCurrentRevisionHeadUpdateAdapter;
+import com.example.platform.timeline.app.TimelineRevisionRefHeadUpdateAdapter;
 
 import com.example.platform.timeline.canonical.TimelineContentDigester;
 import com.example.platform.timeline.canonical.TimelineDocument;
@@ -39,7 +39,7 @@ class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSu
     private static DataSource dataSource;
     private static DSLContext dsl;
     private TimelineRevisionSaveService saveService;
-    private ProductCurrentRevisionService currentRevisionService;
+    private TimelineRevisionRefMutation currentRevisionService;
 
     @BeforeAll
     static void setUpDatabase() {
@@ -72,11 +72,11 @@ class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSu
         RenderTestSchemaFixture.truncate(dsl);
         dsl.execute("delete from apply_command");
         com.example.platform.shared.web.TenantContext.set(TENANT);
-        currentRevisionService = new ProductCurrentRevisionService(dsl);
+        currentRevisionService = new TimelineRevisionRefMutation(dsl);
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService, new TimelineContentDigester(),
                 new com.example.platform.timeline.adapter.TimelineSnapshotService(dsl),
                 org.mockito.Mockito.mock(com.example.platform.timeline.app.TimelineArtifactPinValidator.class),
-                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class), effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new ProductCurrentRevisionHeadUpdateAdapter(currentRevisionService));
+                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class), effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService));
     }
 
     @AfterEach
@@ -90,11 +90,18 @@ class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSu
         insertProduct(productId);
         var doc = createSampleDocument();
 
-        var revision = saveService.saveRevision(productId, null, doc, "user-1");
+        var revision = save(productId, null, doc);
 
         assertNotNull(revision.revisionId());
         assertNull(revision.parentRevisionId());
         assertNotNull(revision.contentDigest());
+        String storedTimelineDigest = dsl.select(TIMELINE_REVISION.CONTENT_HASH)
+                .from(TIMELINE_REVISION)
+                .where(TIMELINE_REVISION.ID.eq(revision.revisionId()))
+                .fetchOne(TIMELINE_REVISION.CONTENT_HASH);
+        assertEquals(new TimelineContentDigester().digest(doc), storedTimelineDigest,
+                "content_hash must mean canonical TimelineDocument content only");
+        assertEquals(revision.semanticContext().timelineContentDigest(), storedTimelineDigest);
     }
 
     @Test
@@ -104,8 +111,8 @@ class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSu
         var doc1 = createSampleDocument();
         var doc2 = createSampleDocumentWithDifferentClip();
 
-        var first = saveService.saveRevision(productId, null, doc1, "user-1");
-        var second = saveService.saveRevision(productId, first.revisionId(), doc2, "user-1");
+        var first = save(productId, null, doc1);
+        var second = save(productId, first.revisionId(), doc2);
 
         assertEquals(first.revisionId(), second.parentRevisionId());
     }
@@ -117,14 +124,14 @@ class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSu
         var doc1 = createSampleDocument();
         var doc2 = createSampleDocumentWithDifferentClip();
 
-        var first = saveService.saveRevision(productId, null, doc1, "user-1");
+        var first = save(productId, null, doc1);
 
         // Second save with first's revisionId as expected should succeed
-        saveService.saveRevision(productId, first.revisionId(), doc2, "user-1");
+        save(productId, first.revisionId(), doc2);
 
         // Third save with stale expected (first.revisionId) should fail
         assertThrows(TimelineConflictException.class, () ->
-                saveService.saveRevision(productId, first.revisionId(), doc1, "user-1"));
+                save(productId, first.revisionId(), doc1));
     }
 
     @Test
@@ -133,11 +140,11 @@ class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSu
         insertProduct(productId);
         var doc = createSampleDocument();
 
-        var first = saveService.saveRevision(productId, null, doc, "user-1");
-        saveService.saveRevision(productId, first.revisionId(), createSampleDocumentWithDifferentClip(), "user-1");
+        var first = save(productId, null, doc);
+        save(productId, first.revisionId(), createSampleDocumentWithDifferentClip());
 
         try {
-            saveService.saveRevision(productId, first.revisionId(), doc, "user-1");
+            save(productId, first.revisionId(), doc);
             fail("Should have thrown TimelineConflictException");
         } catch (TimelineConflictException ex) {
             assertEquals(productId, ex.getProductId());
@@ -153,9 +160,9 @@ class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSu
         insertProduct(productId);
         var doc = createSampleDocument();
 
-        var rev1 = saveService.saveRevision(productId, null, doc, "user-1");
-        var rev2 = saveService.saveRevision(productId, rev1.revisionId(), createSampleDocumentWithDifferentClip(), "user-1");
-        var rev3 = saveService.saveRevision(productId, rev2.revisionId(), createSampleDocument(), "user-1");
+        var rev1 = save(productId, null, doc);
+        var rev2 = save(productId, rev1.revisionId(), createSampleDocumentWithDifferentClip());
+        var rev3 = save(productId, rev2.revisionId(), createSampleDocument());
 
         // Verify lineage
         assertNull(rev1.parentRevisionId());
@@ -169,8 +176,8 @@ class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSu
         insertProduct(productId);
         var doc = createSampleDocument();
 
-        var rev1 = saveService.saveRevision(productId, null, doc, "user-1");
-        var rev2 = saveService.saveRevision(productId, rev1.revisionId(), doc, "user-1");
+        var rev1 = save(productId, null, doc);
+        var rev2 = save(productId, rev1.revisionId(), doc);
 
         // Same content should produce same digest
         assertNotNull(rev1.contentDigest());
@@ -184,9 +191,8 @@ class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSu
         TimelineDocument base = new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION,
                 List.of(new TimelineTrack("video-1", "Main", TrackType.VIDEO, List.of())),
                 TimelineMetadata.empty());
-        TimelineRevision root = saveService.saveRevision(productId, null, base, "editor");
-        dsl.execute("insert into timeline_revision_ref (project_id, ref_id, head_revision_id) "
-                + "values (?, ?, ?)", productId, RevisionRef.MAIN_REF, root.revisionId());
+        TimelineRevision root = saveService.saveRevision(
+                TENANT, productId, null, base, RenderTestSchemaFixture.SERVER_ACTOR);
         // Operation execution may move to a worker without request ThreadLocal
         // propagation. Its immutable command must carry the authorized tenant.
         com.example.platform.shared.web.TenantContext.clear();
@@ -218,14 +224,16 @@ class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSu
                 org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class),
                 effectAuthority(), revisionSemanticContextStore(),
                 new DefaultTimelineRevisionPersistence(),
-                new ProductCurrentRevisionHeadUpdateAdapter(currentRevisionService));
+                new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService));
         var command = new TimelineRevisionSaveService.RevisionWriteCommand(
                 "apply-H7-durable", "plan-digest-H7", "fingerprint-H7", "OPERATION_PLAN", TENANT);
 
         var first = commandSave.saveRevisionForCommand(
-                RevisionRef.main(productId), root.revisionId(), candidate, "editor", command);
+                RevisionRef.main(TENANT, productId), root.revisionId(), candidate,
+                RenderTestSchemaFixture.SERVER_ACTOR, command);
         var replay = commandSave.saveRevisionForCommand(
-                RevisionRef.main(productId), root.revisionId(), candidate, "editor", command);
+                RevisionRef.main(TENANT, productId), root.revisionId(), candidate,
+                RenderTestSchemaFixture.SERVER_ACTOR, command);
 
         assertFalse(first.replayed());
         assertTrue(replay.replayed());
@@ -241,7 +249,7 @@ class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSu
                 "apply-H7-durable", "different-plan", "different-fingerprint", "OPERATION_PLAN", TENANT);
         assertThrows(com.example.platform.timeline.app.TimelineRevisionCommandConflictException.class,
                 () -> commandSave.saveRevisionForCommand(
-                        RevisionRef.main(productId), root.revisionId(), candidate, "editor", conflict));
+                        RevisionRef.main(TENANT, productId), root.revisionId(), candidate, "editor", conflict));
         assertEquals(2L, dsl.selectCount().from(TIMELINE_REVISION)
                 .where(TIMELINE_REVISION.PROJECT_ID.eq(productId)).fetchOne(0, Long.class));
     }
@@ -254,7 +262,7 @@ class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSu
         insertProduct(productId);
         var doc = createSampleDocument();
 
-        var revision = saveService.saveRevision(productId, null, doc, "user-1");
+        var revision = save(productId, null, doc);
 
         assertNotNull(revision.revisionId());
     }
@@ -273,7 +281,7 @@ class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSu
                 new TimelineMetadata("invalid", "", Map.of()));
 
         assertThrows(TimelineCanonicalRejectionException.class, () ->
-                saveService.saveRevision(productId, null, doc, "user-1"));
+                save(productId, null, doc));
         long rows = dsl.selectCount().from(TIMELINE_REVISION)
                 .where(TIMELINE_REVISION.PROJECT_ID.eq(productId)).fetchOne(0, Long.class);
         assertEquals(0L, rows, "no revision persisted after canonical rejection");
@@ -290,7 +298,7 @@ class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSu
                 List.of(track), new TimelineMetadata("invalid", "", Map.of()));
 
         TimelineCanonicalRejectionException ex = assertThrows(TimelineCanonicalRejectionException.class,
-                () -> saveService.saveRevision(productId, null, doc, "user-1"));
+                () -> save(productId, null, doc));
 
         assertTrue(ex.hasAdapterDiagnostics(), "adapter-level frozen code expected");
         assertEquals(TimelineCanonicalRejectionException.Code.TIMELINE_TIMING_INVALID,
@@ -311,7 +319,7 @@ class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSu
                 new TimelineMetadata("invalid", "", Map.of()));
 
         TimelineCanonicalRejectionException ex = assertThrows(TimelineCanonicalRejectionException.class,
-                () -> saveService.saveRevision(productId, null, doc, "user-1"));
+                () -> save(productId, null, doc));
 
         assertTrue(ex.hasCanonicalDiagnostics());
         var codes = ex.diagnostics().stream().map(d -> d.code()).toList();
@@ -321,35 +329,10 @@ class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSu
     }
 
     @Test
-    void patchApplication_onGitV1SavedBase_characterizesExistingPayloadLimitation() {
-        // The GitV1 save path persists the revision row but does NOT populate a snapshot
-        // payload; TimelinePatchApplicationService loads the base document from the payload
-        // (baseRevision.canonicalTimeline()), so a GitV1-saved base yields
-        // TIMELINE_PATCH_PAYLOAD_INVALID before any save. This characterizes the pre-existing
-        // repository limitation (patch requires the snapshot-payload flow); E1 does not change
-        // the patch service or snapshot handling. Patch gate coverage is by construction:
-        // apply() delegates to the gated TimelineRevisionSaveService.saveRevision(...) when the
-        // base document is available (see patch-path-coverage evidence).
+    void patchApplication_onCanonicalSavedBase_usesGovernedPayload() {
         String productId = "prod-gateext-" + java.util.UUID.randomUUID();
         insertProduct(productId);
-        // R5-C: the production constructor requires non-null dependencies; the
-        // GitV1 "revision row without governed snapshot payload" limitation is
-        // reproduced with a snapshot service whose saveTx returns a snapshot id
-        // that has NO payload row (legacy semantics — the payload is absent, so
-        // the patch service cannot load the base document).
-        com.example.platform.timeline.adapter.TimelineSnapshotService legacySnapshot =
-                org.mockito.Mockito.mock(com.example.platform.timeline.adapter.TimelineSnapshotService.class);
-        org.mockito.Mockito.when(legacySnapshot.saveTx(org.mockito.ArgumentMatchers.any(),
-                        org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any(),
-                        org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString()))
-                .thenReturn("snap-legacy-" + java.util.UUID.randomUUID());
-        var saveServiceLegacy = new TimelineRevisionSaveService(dsl, currentRevisionService,
-                new TimelineContentDigester(), legacySnapshot,
-                new com.example.platform.timeline.app.TimelineArtifactPinValidator(
-                        new com.example.platform.render.testutil.NoopArtifactQueryService()),
-                new com.example.platform.artifact.app.ArtifactPinService(
-                        new com.example.platform.artifact.infrastructure.ArtifactPinRepository(dsl)), effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new ProductCurrentRevisionHeadUpdateAdapter(currentRevisionService));
-        var base = saveServiceLegacy.saveRevision(productId, null, createSampleDocument(), "user-1");
+        var base = save(productId, null, createSampleDocument());
 
         var patch = new com.example.platform.timeline.patch.TimelinePatch(
                 "1.0", "patch-" + java.util.UUID.randomUUID(), productId,
@@ -361,27 +344,33 @@ class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSu
 
         var patchService = new TimelinePatchApplicationService(saveService, currentRevisionService,
                 new TimelineContentDigester());
-        var result = patchService.apply(patch);
+        var result = patchService.apply(
+                TENANT, RenderTestSchemaFixture.SERVER_ACTOR, patch);
 
-        assertTrue(result.isFailure(), "pre-existing payload limitation must be unchanged");
-        assertTrue(result instanceof com.example.platform.timeline.app.PatchApplyResult.Failure f
-                && f.error().code() == com.example.platform.timeline.patch.PatchErrorCode.TIMELINE_PATCH_PAYLOAD_INVALID,
-                "expected TIMELINE_PATCH_PAYLOAD_INVALID (base document not loadable)");
+        assertTrue(result.isSuccess(), "canonical payload must hydrate and patch");
         long rows = dsl.selectCount().from(TIMELINE_REVISION)
                 .where(TIMELINE_REVISION.PROJECT_ID.eq(productId)).fetchOne(0, Long.class);
-        assertEquals(1L, rows, "no additional revision persisted");
+        assertEquals(2L, rows, "patch persists exactly one child revision");
     }
 
     private void insertProduct(String productId) {
+        RenderTestSchemaFixture.insertCanonicalProject(dsl, TENANT, productId);
         dsl.insertInto(PRODUCT)
                 .set(PRODUCT.PRODUCT_ID, productId)
                 .set(PRODUCT.PRODUCT_TYPE, "video")
                 .set(PRODUCT.REPRESENTATION_KIND, "master")
                 .set(PRODUCT.STATUS, "REGISTERED")
                 .set(PRODUCT.TENANT_ID, TENANT)
+                .set(PRODUCT.PROJECT_ID, productId)
                 .set(PRODUCT.CREATED_AT, java.time.LocalDateTime.now())
                 .set(PRODUCT.UPDATED_AT, java.time.LocalDateTime.now())
                 .execute();
+    }
+
+    private TimelineRevision save(
+            String productId, String expectedHead, TimelineDocument document) {
+        return saveService.saveRevision(
+                TENANT, productId, expectedHead, document, RenderTestSchemaFixture.SERVER_ACTOR);
     }
 
     private TimelineDocument createSampleDocument() {

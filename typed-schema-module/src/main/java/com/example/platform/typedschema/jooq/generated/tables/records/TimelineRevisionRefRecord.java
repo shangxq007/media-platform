@@ -8,7 +8,7 @@ import com.example.platform.typedschema.jooq.generated.tables.TimelineRevisionRe
 
 import java.time.LocalDateTime;
 
-import org.jooq.Record2;
+import org.jooq.Record3;
 import org.jooq.impl.UpdatableRecordImpl;
 
 
@@ -21,73 +21,87 @@ public class TimelineRevisionRefRecord extends UpdatableRecordImpl<TimelineRevis
     private static final long serialVersionUID = 1L;
 
     /**
+     * Setter for <code>public.timeline_revision_ref.tenant_id</code>.
+     */
+    public void setTenantId(String value) {
+        set(0, value);
+    }
+
+    /**
+     * Getter for <code>public.timeline_revision_ref.tenant_id</code>.
+     */
+    public String getTenantId() {
+        return (String) get(0);
+    }
+
+    /**
      * Setter for <code>public.timeline_revision_ref.project_id</code>.
      */
     public void setProjectId(String value) {
-        set(0, value);
+        set(1, value);
     }
 
     /**
      * Getter for <code>public.timeline_revision_ref.project_id</code>.
      */
     public String getProjectId() {
-        return (String) get(0);
+        return (String) get(1);
     }
 
     /**
      * Setter for <code>public.timeline_revision_ref.ref_id</code>.
      */
     public void setRefId(String value) {
-        set(1, value);
+        set(2, value);
     }
 
     /**
      * Getter for <code>public.timeline_revision_ref.ref_id</code>.
      */
     public String getRefId() {
-        return (String) get(1);
+        return (String) get(2);
     }
 
     /**
      * Setter for <code>public.timeline_revision_ref.head_revision_id</code>.
      */
     public void setHeadRevisionId(String value) {
-        set(2, value);
+        set(3, value);
     }
 
     /**
      * Getter for <code>public.timeline_revision_ref.head_revision_id</code>.
      */
     public String getHeadRevisionId() {
-        return (String) get(2);
+        return (String) get(3);
     }
 
     /**
      * Setter for <code>public.timeline_revision_ref.version</code>.
      */
     public void setVersion(Long value) {
-        set(3, value);
+        set(4, value);
     }
 
     /**
      * Getter for <code>public.timeline_revision_ref.version</code>.
      */
     public Long getVersion() {
-        return (Long) get(3);
+        return (Long) get(4);
     }
 
     /**
      * Setter for <code>public.timeline_revision_ref.updated_at</code>.
      */
     public void setUpdatedAt(LocalDateTime value) {
-        set(4, value);
+        set(5, value);
     }
 
     /**
      * Getter for <code>public.timeline_revision_ref.updated_at</code>.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(4);
+        return (LocalDateTime) get(5);
     }
 
     // -------------------------------------------------------------------------
@@ -95,8 +109,8 @@ public class TimelineRevisionRefRecord extends UpdatableRecordImpl<TimelineRevis
     // -------------------------------------------------------------------------
 
     @Override
-    public Record2<String, String> key() {
-        return (Record2) super.key();
+    public Record3<String, String, String> key() {
+        return (Record3) super.key();
     }
 
     // -------------------------------------------------------------------------
@@ -113,9 +127,10 @@ public class TimelineRevisionRefRecord extends UpdatableRecordImpl<TimelineRevis
     /**
      * Create a detached, initialised TimelineRevisionRefRecord
      */
-    public TimelineRevisionRefRecord(String projectId, String refId, String headRevisionId, Long version, LocalDateTime updatedAt) {
+    public TimelineRevisionRefRecord(String tenantId, String projectId, String refId, String headRevisionId, Long version, LocalDateTime updatedAt) {
         super(TimelineRevisionRef.TIMELINE_REVISION_REF);
 
+        setTenantId(tenantId);
         setProjectId(projectId);
         setRefId(refId);
         setHeadRevisionId(headRevisionId);

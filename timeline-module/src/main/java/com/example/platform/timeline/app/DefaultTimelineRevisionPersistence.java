@@ -16,7 +16,8 @@ public final class DefaultTimelineRevisionPersistence implements TimelineRevisio
     @Override
     public void insertRevisionTx(DSLContext tx, TimelineRevision revision,
                                  String productId, String snapshotId, String schemaVersion,
-                                 int revisionNumber, String tenantId, String source) {
+                                 String timelineContentDigest, int revisionNumber,
+                                 String tenantId, String source) {
         tx.insertInto(TIMELINE_REVISION)
                 .set(TIMELINE_REVISION.ID, revision.revisionId())
                 .set(TIMELINE_REVISION.PROJECT_ID, productId)
@@ -25,9 +26,13 @@ public final class DefaultTimelineRevisionPersistence implements TimelineRevisio
                 .set(TIMELINE_REVISION.TENANT_ID, tenantId)
                 .set(TIMELINE_REVISION.SNAPSHOT_ID, snapshotId)
                 .set(TIMELINE_REVISION.INTERNAL_REVISION, revisionNumber)
-                .set(TIMELINE_REVISION.CONTENT_HASH, revision.contentDigest())
+                // H7 V2: this column has exactly one meaning: the digest of the
+                // canonical TimelineDocument serialization. The full revision/effect
+                // commitment remains in timeline_revision_semantic_context.
+                .set(TIMELINE_REVISION.CONTENT_HASH, timelineContentDigest)
                 .set(TIMELINE_REVISION.SCHEMA_VERSION, schemaVersion)
                 .set(TIMELINE_REVISION.CREATED_AT, LocalDateTime.now())
+                .set(TIMELINE_REVISION.AUTHOR_USER_ID, revision.createdBy())
                 .set(TIMELINE_REVISION.SOURCE, source)
                 .execute();
     }

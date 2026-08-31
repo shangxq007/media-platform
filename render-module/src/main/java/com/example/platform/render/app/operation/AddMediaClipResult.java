@@ -8,7 +8,7 @@ import java.util.List;
  * <p>The operation transaction model is deliberately translated here so web
  * adapters never depend on operation-module result types.
  */
-public record AddOrTrimMediaClipResult(
+public record AddMediaClipResult(
         String status,
         String planDigest,
         String baseRevisionId,
@@ -18,7 +18,7 @@ public record AddOrTrimMediaClipResult(
         TimelineRevisionRenderHandoff renderHandoff,
         List<String> semanticDiff) {
 
-    public AddOrTrimMediaClipResult {
+    public AddMediaClipResult {
         semanticDiff = List.copyOf(semanticDiff);
     }
 

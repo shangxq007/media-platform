@@ -26,9 +26,9 @@ import org.jooq.DSLContext;
  *   <li>recomputed Timeline canonical digest == revctx.timelineContentDigest;</li>
  *   <li>owned Effect snapshot by the historical reference (P, T) — exact
  *       id/digest/contract match + internal definition digests;</li>
+ *   <li>recomputed Timeline digest == timeline_revision.content_hash;</li>
  *   <li>recomputed FULL revision semantic digest H(timeline, contract, effect)
- *       == revctx.revisionSemanticDigest == timeline_revision.content_hash
- *       (three-way equality).</li>
+ *       == revctx.revisionSemanticDigest.</li>
  * </ol>
  *
  * <p>This is ONLY a verification boundary — not a new authority, not a rule
@@ -53,8 +53,7 @@ public final class HistoricalRevisionRestoreVerifier {
     /** Verified historical semantic closure (owned + digest-agreeing).
      *
      * <p>FINAL (C1): carries the VERIFIED Timeline state itself — the decoded
-     * document, the exact canonical payload bytes that were verified, the
-     * schema version, the verified Timeline digest, the verified Effect
+     * document, schema version, verified Timeline digest, verified Effect
      * reference and the verified FULL revision semantic digest. Restore MUST
      * reissue directly from this value
      * (RESTORE_REISSUES_EXACTLY_THE_VERIFIED_TIMELINE_PAYLOAD_V1); it must NOT
@@ -63,7 +62,6 @@ public final class HistoricalRevisionRestoreVerifier {
      */
     public record VerifiedHistoricalRevision(
             TimelineDocument document,
-            String canonicalPayloadJson,
             String timelineSchemaVersion,
             String timelineDigest,
             EffectSemanticSnapshotReference effectReference,
@@ -92,10 +90,7 @@ public final class HistoricalRevisionRestoreVerifier {
         // hydration; malformed payload FAILS CLOSED)
         TimelineDocument document;
         try {
-            document = TimelineDocumentJsonSerializer.mapper()
-                    .readerFor(TimelineDocument.class)
-                    .without(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-                    .readValue(snapshot.payloadJson());
+            document = TimelineDocumentJsonSerializer.deserialize(snapshot.payloadJson());
         } catch (Exception e) {
             throw new IllegalStateException(
                     "RESTORE FAIL CLOSED (RST9): historical Timeline payload cannot be "
@@ -136,7 +131,7 @@ public final class HistoricalRevisionRestoreVerifier {
         for (var entry : effectSnapshot.entries()) {
             EffectDefinitionCanonicalSemantics.verifyDefinitionDigest(entry.definitionSnapshot());
         }
-        // 5. recomputed FULL revision semantic digest == revctx == content hash
+        // 5. recomputed FULL revision semantic digest == the separate context authority
         String recomputedFull = com.example.platform.timeline.semantics.effect
                 .TimelineRevisionEffectSemanticCommitment.revisionEffectSemanticDigest(
                         actualTimelineDigest, reference);
@@ -146,17 +141,16 @@ public final class HistoricalRevisionRestoreVerifier {
                             + recomputedFull + "' != revctx.revisionSemanticDigest '"
                             + historicalContext.revisionSemanticDigest() + "'");
         }
-        // FINAL (C1/§42): the persisted full commitment MUST be present — a
-        // missing content_hash is INVALID/CORRUPT, never a bypassable mode
-        // (no nullable acceptance of a missing persisted commitment).
+        // H7 V2 digest convergence: content_hash is only the canonical Timeline
+        // content digest. The full Timeline+Effect commitment is separate above.
         Objects.requireNonNull(historicalContentHash,
                 "RESTORE FAIL CLOSED: historical timeline_revision.content_hash "
-                        + "is null — missing persisted full commitment is INVALID/CORRUPT");
-        if (!recomputedFull.equals(historicalContentHash)) {
+                        + "is null — missing persisted Timeline commitment is INVALID/CORRUPT");
+        if (!actualTimelineDigest.equals(historicalContentHash)) {
             throw new IllegalStateException(
-                    "RESTORE FAIL CLOSED (RST8): recomputed full semantic digest '"
-                            + recomputedFull + "' != timeline_revision.content_hash '"
-                            + historicalContentHash + "' — 3-way digest equality violated");
+                    "RESTORE FAIL CLOSED (RST8): recomputed Timeline content digest '"
+                            + actualTimelineDigest + "' != timeline_revision.content_hash '"
+                            + historicalContentHash + "'");
         }
         // C1: the verified result carries the EXACT verified Timeline state —
         // decoded document + canonical payload bytes + schema version + digest
@@ -164,7 +158,6 @@ public final class HistoricalRevisionRestoreVerifier {
         // from this value without any post-verification reread.
         return new VerifiedHistoricalRevision(
                 document,
-                snapshot.payloadJson(),
                 snapshot.schemaVersion(),
                 actualTimelineDigest,
                 reference,

@@ -9,7 +9,7 @@ import java.util.List;
  * Small typed backend projection for H4 consumers. It exposes canonical WHAT,
  * validation and semantic change expectations; no provider HOW or raw syntax.
  */
-public record AddOrTrimMediaClipPreview(
+public record AddMediaClipPreview(
         String operation,
         String planDigest,
         String targetTimelineId,
@@ -26,7 +26,7 @@ public record AddOrTrimMediaClipPreview(
         List<String> failures,
         String candidateContentHash) {
 
-    public AddOrTrimMediaClipPreview {
+    public AddMediaClipPreview {
         expectedChangedCanonicalObjects = List.copyOf(expectedChangedCanonicalObjects);
         validation = List.copyOf(validation);
         capabilityRequirements = List.copyOf(capabilityRequirements);
