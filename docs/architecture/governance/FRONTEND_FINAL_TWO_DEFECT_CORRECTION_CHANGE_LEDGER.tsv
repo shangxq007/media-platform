@@ -1,0 +1,10 @@
+# task=FRONTEND_POST_H7_FINAL_TWO_DEFECT_CORRECTION_V1	baseline_head=f7fe6c0ab9b53694909ddb077420c0792b08e937	baseline_cached_patch_git_blob_oid=03be484094a16654bbb25234c2c4401dacccf009
+# OUT_OF_SCOPE_COUNT=0	UNCLASSIFIED_COUNT=0	correction_paths=7
+path	classification	rationale
+docs/architecture/governance/FRONTEND_FINAL_TWO_DEFECT_CORRECTION_CHANGE_LEDGER.tsv	GOVERNANCE	Auditable exact-path classification of the unstaged two-defect correction delta.
+frontend/scripts/frontend-architecture-guard.mjs	DEFECT_2_RUNTIME_INVENTORY	Uses one recursive runtime inventory for api/app TypeScript and TSX allowlist reconciliation and post-H7 scans.
+frontend/scripts/frontend-architecture-guard.test.mjs	DEFECT_2_GUARD_CONTROL	Preserves the existing 64 controls and adds hostile recursive inventory controls A-F.
+frontend/src/product/timeline/NleWorkspace.test.tsx	DEFECT_1_TEST	Exercises UI locking, pre-apply stale selection rejection, failure release, and later valid selection.
+frontend/src/product/timeline/NleWorkspace.tsx	DEFECT_1_UI_LOCK	Invalidates the existing selection generation at apply entry and visibly locks revision controls through authoritative readback.
+frontend/src/product/timeline/editor-state.test.ts	DEFECT_1_TEST	Exercises hostile reducer ordering A-F with stale and current typed selection generations.
+frontend/src/product/timeline/editor-state.ts	DEFECT_1_STATE_MACHINE	Fails closed on stale or ordinary selection events while apply and authoritative readback own canonical transition.

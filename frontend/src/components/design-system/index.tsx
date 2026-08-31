@@ -1,8 +1,10 @@
 import {
   useId,
+  useRef,
   useState,
   type ButtonHTMLAttributes,
   type InputHTMLAttributes,
+  type KeyboardEvent,
   type ReactNode,
 } from 'react'
 
@@ -27,6 +29,22 @@ export function Search({ label = 'Search', ...props }: InputHTMLAttributes<HTMLI
 export interface TabDefinition { id: string; label: string; disabled?: boolean }
 
 export function Tabs({ tabs, activeId, onChange, label }: { tabs: readonly TabDefinition[]; activeId: string; onChange: (id: string) => void; label: string }) {
+  const tabElements = useRef(new Map<string, HTMLButtonElement>())
+  const moveTab = (event: KeyboardEvent<HTMLButtonElement>, currentId: string) => {
+    const enabled = tabs.filter(tab => !tab.disabled)
+    const currentIndex = enabled.findIndex(tab => tab.id === currentId)
+    if (currentIndex < 0) return
+    let nextIndex: number | null = null
+    if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % enabled.length
+    if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + enabled.length) % enabled.length
+    if (event.key === 'Home') nextIndex = 0
+    if (event.key === 'End') nextIndex = enabled.length - 1
+    if (nextIndex === null) return
+    event.preventDefault()
+    const next = enabled[nextIndex]
+    onChange(next.id)
+    tabElements.current.get(next.id)?.focus()
+  }
   return (
     <div className="ff-tabs" role="tablist" aria-label={label}>
       {tabs.map(tab => (
@@ -37,6 +55,11 @@ export function Tabs({ tabs, activeId, onChange, label }: { tabs: readonly TabDe
           aria-selected={activeId === tab.id}
           disabled={tab.disabled}
           tabIndex={activeId === tab.id ? 0 : -1}
+          ref={element => {
+            if (element) tabElements.current.set(tab.id, element)
+            else tabElements.current.delete(tab.id)
+          }}
+          onKeyDown={event => moveTab(event, tab.id)}
           onClick={() => onChange(tab.id)}
         >
           {tab.label}

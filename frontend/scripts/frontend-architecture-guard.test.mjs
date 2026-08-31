@@ -4,8 +4,10 @@ import { tmpdir } from 'node:os'
 import { join, relative } from 'node:path'
 import test from 'node:test'
 import {
+  API_APP_RUNTIME_ALLOWLIST,
   AUTHORITY_RULES,
   BOUNDED_RULES,
+  POST_H7_GOVERNED_PATHS,
   architectureGuardPassed,
   defaultSourceRoot,
   reconcileFrontendPathLedger,
@@ -30,6 +32,14 @@ test('governed frontend passes with all authority counts at zero', () => {
   assert.equal(result.cleanForwardCounts.DELETE_SHADOW_PATH_RESIDUE_COUNT, 0)
   assert.equal(result.cleanForwardCounts.PATH_LEDGER_STALE_PATH_COUNT, 0)
   assert.equal(result.cleanForwardCounts.PATH_LEDGER_DUPLICATE_PATH_COUNT, 0)
+  assert.equal(result.cleanForwardCounts.POST_H7_GOVERNED_PATH_COUNT, POST_H7_GOVERNED_PATHS.length)
+  assert.equal(result.cleanForwardCounts.POST_H7_GOVERNED_PATH_EXPECTED_COUNT, 21)
+  assert.equal(result.cleanForwardCounts.POST_H7_GOVERNED_PATH_MISSING_COUNT, 0)
+  assert.equal(result.cleanForwardCounts.POST_H7_GOVERNED_PATH_UNEXPECTED_COUNT, 0)
+  assert.equal(result.cleanForwardCounts.API_APP_RUNTIME_PATH_COUNT, API_APP_RUNTIME_ALLOWLIST.length)
+  assert.equal(result.cleanForwardCounts.API_APP_RUNTIME_PATH_EXPECTED_COUNT, 9)
+  assert.equal(result.cleanForwardCounts.API_APP_RUNTIME_PATH_MISSING_COUNT, 0)
+  assert.equal(result.cleanForwardCounts.API_APP_RUNTIME_PATH_UNEXPECTED_COUNT, 0)
   console.log(`FRONTEND_ARCHITECTURE_POSITIVE_CONTROL=PASS files=${result.scannedFileCount}`)
 })
 
@@ -114,6 +124,254 @@ const mutations = [
   ['FRONTEND_ACTIVE_UNSCOPED_RENDER_API_COUNT', 'api/render-jobs.ts', "axios.patch(`/render/jobs/${jobId}/artifacts/${artifactId}`, payload)", 'nested unscoped artifact mutation'],
   ['FRONTEND_STALE_RENDER_STATUS_SHADOW_COUNT', 'routes/app/renders/List.tsx', 'const renderStatus = "CANCELED"', 'stale render status shadow'],
 ]
+
+const postH7Mutations = [
+  ['PRODUCT_CURRENT_REVISION_ID_FRONTEND_USAGE_COUNT', 'product/timeline/bad-head.ts', 'const currentRevisionId = product.current_revision_id'],
+  ['CLIENT_LATEST_HEAD_INFERENCE_COUNT', 'product/timeline/bad-latest.ts', 'const inferredHead = revisions[0]'],
+  ['CLIENT_CANONICAL_ACTOR_AUTHORITY_COUNT', 'product/timeline/bad-actor.ts', "const request = { actorId: 'admin' }"],
+  ['CLIENT_CANONICAL_TENANT_OVERRIDE_COUNT', 'product/timeline/bad-tenant.ts', 'const request = { tenantId: overrideTenantId }'],
+  ['NEW_FRONTEND_GENERIC_PATCH_USAGE_COUNT', 'product/timeline/bad-patch.ts', "transport.post('/timeline-git/products/p1/patch/apply', body)"],
+  ['PHYSICAL_STORAGE_URI_AS_ENTITY_ID_COUNT', 'product/timeline/bad-physical-id.ts', "const clip = { artifactId: 's3://bucket/item' }"],
+  ['PROVIDER_KEY_AS_ARTIFACT_ID_COUNT', 'product/timeline/bad-provider-id.ts', 'const clip = { artifactId: providerKey }'],
+  ['CLIENT_CANONICAL_MERGE_AUTHORITY_COUNT', 'product/review/bad-merge.ts', "transport.post('/render/projects/p1/timeline/revisions/merge', body)"],
+  ['H8_INTERNAL_IMPLEMENTATION_FRONTEND_DEPENDENCY_COUNT', 'product/timeline/bad-internal.ts', "import { timelineStore } from '../../timeline/store/timelineStore'"],
+  ['UNSTABLE_ROUTE_DIRECT_COMPONENT_CALL_COUNT', 'product/timeline/bad-route.tsx', "const route = '/timeline-git/products/p1/revisions/current'"],
+]
+
+for (const [ruleName, relativePath, source] of postH7Mutations) {
+  test(`${ruleName} rejects its post-H7 negative control and leaves zero residue`, () => {
+    const root = mkdtempSync(join(tmpdir(), 'post-h7-frontend-guard-'))
+    try {
+      const file = join(root, relativePath)
+      mkdirSync(join(file, '..'), { recursive: true })
+      writeFileSync(file, source)
+      const result = scanFrontendArchitecture(root)
+      assert.ok(result.counts[ruleName] > 0, `${ruleName} did not detect mutation`)
+      assert.equal(architectureGuardPassed(result), false)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+    assert.equal(existsSync(root), false)
+    console.log(`${ruleName}_NEGATIVE_CONTROL=PASS residue=0`)
+  })
+}
+
+test('post-H7 rules allow authenticated tenant path scope and read-only server compare', () => {
+  const root = mkdtempSync(join(tmpdir(), 'post-h7-frontend-legitimate-'))
+  try {
+    const file = join(root, 'api/app/operation.gateway.ts')
+    mkdirSync(join(file, '..'), { recursive: true })
+    writeFileSync(file, [
+      'export async function preview(tenantId, projectId, transport) {',
+      "  await transport.post(`/tenants/${tenantId}/projects/${projectId}/timeline-operations/add-media-clip/preview`, request)",
+      "  return transport.get(`/render/projects/${projectId}/timeline/revisions/compare`, { params: { from, to } })",
+      '}',
+    ].join('\n'))
+    const result = scanFrontendArchitecture(root)
+    assert.equal(result.counts.CLIENT_CANONICAL_TENANT_OVERRIDE_COUNT, 0)
+    assert.equal(result.counts.CLIENT_CANONICAL_MERGE_AUTHORITY_COUNT, 0)
+    assert.equal(result.counts.NEW_FRONTEND_GENERIC_PATCH_USAGE_COUNT, 0)
+    assert.equal(result.counts.UNSTABLE_ROUTE_DIRECT_COMPONENT_CALL_COUNT, 0)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+  assert.equal(existsSync(root), false)
+  console.log('POST_H7_AUTHENTICATED_TENANT_AND_READ_ONLY_COMPARE_CONTROL=PASS residue=0')
+})
+
+const multiFormPostH7Mutations = [
+  ['CLIENT_CANONICAL_ACTOR_AUTHORITY_COUNT', 'app/routeTree.tsx', 'const request = { actorId }', 'actor shorthand'],
+  ['CLIENT_CANONICAL_ACTOR_AUTHORITY_COUNT', 'foundation/projectContext.tsx', "const request = { 'principalRef': value }", 'quoted actor key'],
+  ['CLIENT_CANONICAL_ACTOR_AUTHORITY_COUNT', 'surfaces/FoundationPages.tsx', "const request = { ['createdBy']: value }", 'computed actor key'],
+  ['CLIENT_CANONICAL_ACTOR_AUTHORITY_COUNT', 'product/review/alias.ts', 'const localActor = actorId', 'actor alias'],
+  ['CLIENT_CANONICAL_TENANT_OVERRIDE_COUNT', 'app/routeTree.tsx', 'transport.post(path, { tenantId })', 'tenant shorthand request body'],
+  ['CLIENT_CANONICAL_TENANT_OVERRIDE_COUNT', 'foundation/projectContext.tsx', "const request = { ['tenantId']: overrideTenantId }", 'computed tenant override'],
+  ['CLIENT_CANONICAL_TENANT_OVERRIDE_COUNT', 'surfaces/FoundationPages.tsx', "const headers = { 'X-Tenant-ID': value }", 'quoted tenant header'],
+  ['CLIENT_CANONICAL_TENANT_OVERRIDE_COUNT', 'product/review/tenant-alias.ts', 'const localTenant = projectedTenant', 'tenant alias'],
+  ['CLIENT_CANONICAL_TENANT_OVERRIDE_COUNT', 'product/review/split-payload.ts', 'const payload = {\n  tenantId,\n  projectId,\n}', 'split tenant payload declaration'],
+  ['POST_H7_AXIOS_IMPORT_BYPASS_COUNT', 'product/review/alternate-client.tsx', "import httpClient from 'axios'\nhttpClient.post(path, payload)", 'aliased Axios import'],
+  ['POST_H7_VERSIONLESS_TRANSPORT_IMPORT_BYPASS_COUNT', 'product/timeline/versionless-bypass.tsx', "import { versionlessTransport as alternateClient } from '../../api/app/versionless-api'", 'aliased versionless transport import'],
+  ['UNSTABLE_ROUTE_DIRECT_COMPONENT_CALL_COUNT', 'product/timeline/raw-route.tsx', "const path = '/render/projects/p1/timeline/revisions'", 'raw unstable route'],
+  ['UNSTABLE_ROUTE_DIRECT_COMPONENT_CALL_COUNT', 'product/timeline/composed-route.tsx', "const routeRoot = '/timeline-git'\nconst path = routeRoot + '/products/' + projectId", 'composed unstable route'],
+  ['UNSTABLE_ROUTE_DIRECT_COMPONENT_CALL_COUNT', 'product/review/alternate-call.tsx', "import { client as alternateClient } from './transport'\nalternateClient.post(endpoint, payload)", 'alternate transport client call'],
+  ['UNSTABLE_ROUTE_DIRECT_COMPONENT_CALL_COUNT', 'foundation/projectContext.tsx', 'transport[method](path, body)', 'dynamic transport method'],
+  ['UNSTABLE_ROUTE_DIRECT_COMPONENT_CALL_COUNT', 'surfaces/FoundationPages.tsx', "const send = axios['post']", 'transport method alias'],
+  ['UNSTABLE_ROUTE_DIRECT_COMPONENT_CALL_COUNT', 'app/routeTree.tsx', 'const { post: send } = transport', 'destructured transport alias'],
+]
+
+for (const [ruleName, relativePath, source, form] of multiFormPostH7Mutations) {
+  test(`${ruleName} rejects ${form} on a governed runtime bridge`, () => {
+    const root = mkdtempSync(join(tmpdir(), 'post-h7-multiform-'))
+    try {
+      const file = join(root, relativePath)
+      mkdirSync(join(file, '..'), { recursive: true })
+      writeFileSync(file, source)
+      const result = scanFrontendArchitecture(root)
+      assert.ok(result.counts[ruleName] > 0, `${ruleName} did not detect ${form}`)
+      assert.equal(architectureGuardPassed(result), false)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+    assert.equal(existsSync(root), false)
+  })
+}
+
+test('tenant authority guard allows authenticated ProjectContext projection and gateway path scope', () => {
+  const root = mkdtempSync(join(tmpdir(), 'post-h7-tenant-scope-'))
+  try {
+    const sources = [
+      ['foundation/projectContext.tsx', 'const ProjectContext = { tenantId: authenticatedHome.tenantId }'],
+      ['api/app/operation.gateway.ts', "function operationPath(tenantId, projectId) { return `/tenants/${tenantId}/projects/${projectId}/timeline-operations/add-media-clip/apply` }"],
+    ]
+    for (const [relativePath, source] of sources) {
+      const file = join(root, relativePath)
+      mkdirSync(join(file, '..'), { recursive: true })
+      writeFileSync(file, source)
+    }
+    const result = scanFrontendArchitecture(root)
+    assert.equal(result.counts.CLIENT_CANONICAL_TENANT_OVERRIDE_COUNT, 0)
+    assert.equal(result.counts.UNSTABLE_ROUTE_DIRECT_COMPONENT_CALL_COUNT, 0)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+  assert.equal(existsSync(root), false)
+})
+
+function writeApiAppRuntimeAllowlist(root) {
+  for (const relativePath of API_APP_RUNTIME_ALLOWLIST) {
+    const file = join(root, relativePath)
+    mkdirSync(join(file, '..'), { recursive: true })
+    writeFileSync(file, 'export {}')
+  }
+}
+
+test('api/app runtime allowlist rejects an unexpected non-test TypeScript module', () => {
+  const root = mkdtempSync(join(tmpdir(), 'api-app-runtime-allowlist-'))
+  try {
+    writeApiAppRuntimeAllowlist(root)
+    const file = join(root, 'api/app/alternate-transport.ts')
+    writeFileSync(file, 'export {}')
+    const result = scanFrontendArchitecture(root)
+    assert.equal(result.cleanForwardCounts.API_APP_RUNTIME_PATH_COUNT, API_APP_RUNTIME_ALLOWLIST.length + 1)
+    assert.equal(result.cleanForwardCounts.API_APP_RUNTIME_PATH_MISSING_COUNT, 0)
+    assert.equal(result.cleanForwardCounts.API_APP_RUNTIME_PATH_UNEXPECTED_COUNT, 1)
+    assert.equal(architectureGuardPassed(result), false)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+  assert.equal(existsSync(root), false)
+})
+
+test('hostile A: an unallowlisted nested api/app .ts runtime fails closed', () => {
+  const root = mkdtempSync(join(tmpdir(), 'api-app-nested-ts-'))
+  try {
+    writeApiAppRuntimeAllowlist(root)
+    const file = join(root, 'api/app/nested/alternate-transport.ts')
+    mkdirSync(join(file, '..'), { recursive: true })
+    writeFileSync(file, 'export {}')
+    const result = scanFrontendArchitecture(root)
+    assert.equal(result.cleanForwardCounts.API_APP_RUNTIME_PATH_COUNT, API_APP_RUNTIME_ALLOWLIST.length + 1)
+    assert.equal(result.cleanForwardCounts.API_APP_RUNTIME_PATH_UNEXPECTED_COUNT, 1)
+    assert.equal(architectureGuardPassed(result), false)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('hostile B: an unallowlisted nested api/app .tsx runtime fails closed', () => {
+  const root = mkdtempSync(join(tmpdir(), 'api-app-nested-tsx-'))
+  try {
+    writeApiAppRuntimeAllowlist(root)
+    const file = join(root, 'api/app/nested/alternate-view.tsx')
+    mkdirSync(join(file, '..'), { recursive: true })
+    writeFileSync(file, 'export const AlternateView = () => null')
+    const result = scanFrontendArchitecture(root)
+    assert.equal(result.cleanForwardCounts.API_APP_RUNTIME_PATH_COUNT, API_APP_RUNTIME_ALLOWLIST.length + 1)
+    assert.equal(result.cleanForwardCounts.API_APP_RUNTIME_PATH_UNEXPECTED_COUNT, 1)
+    assert.equal(architectureGuardPassed(result), false)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('hostile C: post-H7 authority rules scan forbidden patterns in nested api/app runtime', () => {
+  const root = mkdtempSync(join(tmpdir(), 'api-app-nested-authority-'))
+  try {
+    const file = join(root, 'api/app/nested/deeper/bad-head.ts')
+    mkdirSync(join(file, '..'), { recursive: true })
+    writeFileSync(file, 'const currentRevisionId = product.current_revision_id')
+    const result = scanFrontendArchitecture(root)
+    assert.ok(result.counts.PRODUCT_CURRENT_REVISION_ID_FRONTEND_USAGE_COUNT > 0)
+    assert.equal(result.cleanForwardCounts.API_APP_RUNTIME_PATH_UNEXPECTED_COUNT, 1)
+    assert.equal(architectureGuardPassed(result), false)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('hostile D: nested api/app test modules are excluded from runtime inventory', () => {
+  const root = mkdtempSync(join(tmpdir(), 'api-app-nested-test-'))
+  try {
+    writeApiAppRuntimeAllowlist(root)
+    const file = join(root, 'api/app/nested/alternate.test.ts')
+    mkdirSync(join(file, '..'), { recursive: true })
+    writeFileSync(file, 'const currentRevisionId = product.current_revision_id')
+    const result = scanFrontendArchitecture(root)
+    assert.equal(result.cleanForwardCounts.API_APP_RUNTIME_PATH_COUNT, API_APP_RUNTIME_ALLOWLIST.length)
+    assert.equal(result.cleanForwardCounts.API_APP_RUNTIME_PATH_UNEXPECTED_COUNT, 0)
+    assert.equal(result.counts.PRODUCT_CURRENT_REVISION_ID_FRONTEND_USAGE_COUNT, 0)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('hostile E: nested api/app declaration modules are excluded from runtime inventory', () => {
+  const root = mkdtempSync(join(tmpdir(), 'api-app-nested-declaration-'))
+  try {
+    writeApiAppRuntimeAllowlist(root)
+    const file = join(root, 'api/app/nested/alternate.d.ts')
+    mkdirSync(join(file, '..'), { recursive: true })
+    writeFileSync(file, 'declare const currentRevisionId: string')
+    const result = scanFrontendArchitecture(root)
+    assert.equal(result.cleanForwardCounts.API_APP_RUNTIME_PATH_COUNT, API_APP_RUNTIME_ALLOWLIST.length)
+    assert.equal(result.cleanForwardCounts.API_APP_RUNTIME_PATH_UNEXPECTED_COUNT, 0)
+    assert.equal(result.counts.PRODUCT_CURRENT_REVISION_ID_FRONTEND_USAGE_COUNT, 0)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('hostile F: an unseen arbitrarily deep api/app directory cannot escape classification', () => {
+  const root = mkdtempSync(join(tmpdir(), 'api-app-unseen-depth-'))
+  try {
+    writeApiAppRuntimeAllowlist(root)
+    const file = join(root, 'api/app/unseen/one/two/three/runtime.ts')
+    mkdirSync(join(file, '..'), { recursive: true })
+    writeFileSync(file, 'export {}')
+    const result = scanFrontendArchitecture(root)
+    assert.deepEqual(result.cleanForwardCounts.API_APP_RUNTIME_PATH_UNEXPECTED_COUNT, 1)
+    assert.equal(architectureGuardPassed(result), false)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('post-H7 governed path manifest fails closed when one expected runtime path is omitted', () => {
+  const root = mkdtempSync(join(tmpdir(), 'post-h7-path-manifest-'))
+  try {
+    for (const relativePath of POST_H7_GOVERNED_PATHS.slice(0, -1)) {
+      const file = join(root, relativePath)
+      mkdirSync(join(file, '..'), { recursive: true })
+      writeFileSync(file, 'export {}')
+    }
+    const result = scanFrontendArchitecture(root)
+    assert.equal(result.cleanForwardCounts.POST_H7_GOVERNED_PATH_COUNT, POST_H7_GOVERNED_PATHS.length - 1)
+    assert.equal(result.cleanForwardCounts.POST_H7_GOVERNED_PATH_MISSING_COUNT, 1)
+    assert.equal(architectureGuardPassed(result), false)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
 
 for (const [ruleName, relativePath, source, mutationName = ruleName] of mutations) {
   test(`${ruleName} rejects ${mutationName} and leaves zero residue`, () => {

@@ -1,19 +1,18 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { useLocation, useParams } from '@tanstack/react-router'
 import { ProductAppShell } from '../components/app-shell/AppShell'
-import { Badge, Button, EmptyState, Input, Panel, PropertyRow, Search, Skeleton, Status, Tabs } from '../components/design-system'
+import { Badge, Button, EmptyState, Input, Panel, PropertyRow, Search, Skeleton, Status } from '../components/design-system'
 import { AsyncStatePanel, classifyPlatformError } from '../foundation/errors'
 import { AccessStatus, getEffectiveAccess } from '../foundation/effectiveAccess'
 import { ProjectContextProvider, useProjectContext } from '../foundation/projectContext'
 import { useEffectiveAccessCatalog, useWorkspaceHome } from '../foundation/platformClient'
-import type { CrossSurfaceReference } from '../foundation/references'
 import { getSurface, surfaceRegistry, type SurfaceId } from '../foundation/surfaceRegistry'
 
 function routeParams(): { workspaceId?: string; projectId?: string } {
   return useParams({ strict: false }) as { workspaceId?: string; projectId?: string }
 }
 
-function PageHeading({ eyebrow, title, description, actions }: { eyebrow: string; title: string; description: string; actions?: ReactNode }) {
+export function PageHeading({ eyebrow, title, description, actions }: { eyebrow: string; title: string; description: string; actions?: ReactNode }) {
   return <header className="ff-page-heading"><div><span>{eyebrow}</span><h1>{title}</h1><p>{description}</p></div>{actions ? <div className="ff-page-actions">{actions}</div> : null}</header>
 }
 
@@ -59,9 +58,10 @@ export function ProjectListPage() {
   return <ProductAppShell surfaceId="workspace" workspaceId={workspaceId}><div className="ff-page"><PageHeading eyebrow="Workspace" title="Projects" description="Recent Project projections for this authenticated Workspace. Opening remains fail-closed until scoped resolution exists." /><Search value={query} onChange={event => setQuery(event.target.value)} label="Search projects" />{home.isLoading ? <Skeleton /> : home.error ? <AsyncStatePanel state="ERROR" title="Projects unavailable"><p>The authenticated Workspace projection could not be loaded.</p></AsyncStatePanel> : projects.length ? <div className="ff-card-grid">{projects.map(project => <Panel key={project.id} title={project.name}><p>{project.description || 'No description projected.'}</p><Status label={project.status ?? 'Status unknown'} /><Button disabled title="FB-GAP-001">Open project</Button></Panel>)}</div> : <EmptyState title="No projects found" description={query ? 'No projected Project matches this search.' : 'No recent Projects were returned.'} />}</div></ProductAppShell>
 }
 
-function ProjectFrame({ surfaceId, children }: { surfaceId: SurfaceId; children: ReactNode }) {
+export function ProjectFrame({ surfaceId, children }: { surfaceId: SurfaceId; children: ReactNode }) {
   const { workspaceId = '', projectId = '' } = routeParams()
-  return <ProjectContextProvider workspaceId={workspaceId} projectId={projectId}><ProjectFrameInner surfaceId={surfaceId}>{children}</ProjectFrameInner></ProjectContextProvider>
+  const scopeKey = `${workspaceId}\u0000${projectId}`
+  return <ProjectContextProvider key={scopeKey} workspaceId={workspaceId} projectId={projectId}><ProjectFrameInner surfaceId={surfaceId}>{children}</ProjectFrameInner></ProjectContextProvider>
 }
 
 function ProjectFrameInner({ surfaceId, children }: { surfaceId: SurfaceId; children: ReactNode }) {
@@ -82,19 +82,6 @@ function BlockedCommand({ label, gap = 'FB-GAP-003' }: { label: string; gap?: st
   return <Button disabled title={`Canonical application command unavailable (${gap}).`}>{label}</Button>
 }
 
-export function NlePage() {
-  return <ProjectFrame surfaceId="nle"><PageHeading eyebrow="Creative · NLE" title="Timeline editor" description="A presentation shell for preview, Timeline viewport, selection, revision context, and canonical Operation invocation." actions={<><BlockedCommand label="Apply operation" /><BlockedCommand label="Render" gap="FB-GAP-002/005" /></>} /><div className="ff-creative-grid"><Panel title="Preview host"><div className="ff-preview-host"><span>Preview unavailable</span><p>No canonical editable revision has been resolved.</p></div></Panel><Panel title="Revision context"><Status label="Explicit revision required" tone="warning" /><p>The route never substitutes an implicit latest revision.</p></Panel><Panel title="Timeline viewport host" className="ff-timeline-panel"><div className="ff-timeline-ruler">00:00 <span>00:05</span><span>00:10</span><span>00:15</span></div><div className="ff-track"><span>V1</span><div aria-label="No canonical clips loaded">Canonical Timeline projection unavailable</div></div><div className="ff-track"><span>A1</span><div /></div></Panel></div></ProjectFrame>
-}
-
-export interface CanvasPresentationState { readonly zoom: number; readonly viewportX: number; readonly viewportY: number; readonly selectedPresentationId: string | null }
-export interface SemanticReference { readonly id: string; readonly target: CrossSurfaceReference }
-export interface SemanticRelationship { readonly id: string; readonly fromReferenceId: string; readonly toReferenceId: string; readonly canonicalRelationshipId: string }
-
-export function CanvasPage() {
-  const [view, setView] = useState<CanvasPresentationState>({ zoom: 1, viewportX: 0, viewportY: 0, selectedPresentationId: null })
-  return <ProjectFrame surfaceId="canvas"><PageHeading eyebrow="Creative · Canvas" title="Infinite canvas" description="Viewport and placement are local presentation state. References and relationships remain canonical, separate objects." actions={<BlockedCommand label="Create semantic relationship" />} /><div className="ff-canvas-toolbar"><Button onClick={() => setView(current => ({ ...current, zoom: Math.max(.5, current.zoom - .1) }))}>Zoom out</Button><output aria-live="polite">{Math.round(view.zoom * 100)}%</output><Button onClick={() => setView(current => ({ ...current, zoom: Math.min(2, current.zoom + .1) }))}>Zoom in</Button></div><div className="ff-canvas" style={{ backgroundSize: `${24 * view.zoom}px ${24 * view.zoom}px` }}><div className="ff-canvas-card"><Badge>Presentation only</Badge><strong>Canonical references appear here</strong><p>Drawing an edge never creates semantic truth.</p></div></div></ProjectFrame>
-}
-
 export const workflowNodeCategories = ['OPERATION', 'RENDER', 'REVIEW', 'WAIT', 'CONDITION', 'AGENT', 'INTEGRATION'] as const
 export function WorkflowPage() {
   return <ProjectFrame surfaceId="workflow"><PageHeading eyebrow="Creative · Workflow" title="Process composer" description="Node categories are presentation metadata over canonical Workflow definitions and executions." actions={<BlockedCommand label="Invoke workflow" gap="FB-GAP-002" />} /><div className="ff-graph-shell"><Panel title="Node palette"><ul>{workflowNodeCategories.map(category => <li key={category}><Badge>{category}</Badge></li>)}</ul></Panel><Panel title="Workflow graph"><EmptyState title="No definition loaded" description="Select a server-projected Workflow version. Invocation remains blocked without effective access." /></Panel><Panel title="Validation"><Status label="Not validated" tone="warning" /><p>No client-side graph is treated as workflow process truth.</p></Panel></div></ProjectFrame>
@@ -104,12 +91,6 @@ export type AgentActionState = 'REQUEST' | 'RESOLVED_PLAN' | 'PREVIEW' | 'AUTHOR
 export function AgentPage() {
   const states: readonly [AgentActionState, string][] = [['REQUEST', 'Conversation'], ['RESOLVED_PLAN', 'Plan'], ['PREVIEW', 'Preview'], ['AUTHORIZATION', 'Authorization'], ['RESULT', 'Execution / result']]
   return <ProjectFrame surfaceId="agent"><PageHeading eyebrow="Creative · Agent Studio" title="Agent workspace" description="Requests, resolved plans, previews, authorization, and results are visibly distinct. An Agent cannot mutate canonical state directly." actions={<BlockedCommand label="Authorize action" gap="FB-GAP-002/003" />} /><div className="ff-agent-grid"><Panel title="Conversation"><EmptyState title="No conversation" description="Free-form content is not logged by frontend telemetry." /></Panel><Panel title="Context & referenced objects"><p>Only typed safe references can be attached.</p></Panel>{states.slice(1).map(([state, label]) => <Panel key={state} title={label}><Badge tone={state === 'AUTHORIZATION' ? 'warning' : 'neutral'}>{state}</Badge><p>No server projection is available.</p></Panel>)}</div></ProjectFrame>
-}
-
-export function ReviewPage() {
-  const tabs = ['Overview', 'Visual Changes', 'Semantic Changes', 'Conversation', 'Checks']
-  const [active, setActive] = useState(tabs[0])
-  return <ProjectFrame surfaceId="review"><PageHeading eyebrow="Review & collaboration" title="Project review" description="Review records discussion and decisions; Timeline retains revision and merge authority." actions={<BlockedCommand label="Merge" gap="FB-GAP-003" />} /><Tabs label="Review sections" activeId={active} onChange={setActive} tabs={tabs.map(label => ({ id: label, label }))} /><Panel title={active}><EmptyState title={`${active} unavailable`} description={active === 'Semantic Changes' ? 'No semantic diff is fabricated without the canonical compare projection.' : 'A scoped review and revision projection is required.'} /></Panel></ProjectFrame>
 }
 
 export function ProductionPage() {

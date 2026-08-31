@@ -1,2 +1,6 @@
 export { createProductsClient } from './products.client'
 export { createArtifactsClient } from './artifacts.client'
+export { assetGateway } from './asset.gateway'
+export { capabilityGateway } from './capability.gateway'
+export { createOperationGateway, operationGateway } from './operation.gateway'
+export { createTimelineQueryGateway, timelineQueryGateway } from './timeline-query.gateway'
