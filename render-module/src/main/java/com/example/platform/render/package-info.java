@@ -20,6 +20,7 @@
             "extension :: domain",
             "media",
             "audio",
+            "operation :: invocation",
             "sandbox :: API"
         }
 )
