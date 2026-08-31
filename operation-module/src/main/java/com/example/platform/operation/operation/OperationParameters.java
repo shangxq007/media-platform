@@ -18,6 +18,7 @@ import java.util.TreeSet;
  * provider/FFmpeg strings. Temporal single-authority: SetRate has rate ONLY;
  * SetDirection has direction ONLY; Freeze has sourcePosition ONLY.
  */
+@org.springframework.modulith.NamedInterface("invocation")
 public sealed interface OperationParameters permits
         OperationParameters.AddMediaClipParameters,
         OperationParameters.NoParameters,
@@ -49,6 +50,7 @@ public sealed interface OperationParameters permits
      * pin owns the exact source range; placement owns the exact Timeline range;
      * TemporalMapping owns only the mapping between them.
      */
+    @org.springframework.modulith.NamedInterface("invocation")
     record AddMediaClipParameters(
             String trackId,
             com.example.platform.timeline.canonical.TimelineClipId clipId,
@@ -71,10 +73,12 @@ public sealed interface OperationParameters permits
         }
     }
 
+    @org.springframework.modulith.NamedInterface("invocation")
     record NoParameters() implements OperationParameters {
     }
 
     /** MOVE (OE1): exact MediaTime delta OR absolute destination; non-ripple intent. */
+    @org.springframework.modulith.NamedInterface("invocation")
     record MoveParameters(MediaTime delta, boolean absolute) implements OperationParameters {
         public MoveParameters {
             if (delta == null) {
@@ -84,6 +88,7 @@ public sealed interface OperationParameters permits
     }
 
     /** TRIM (OE3): bounded placement-edge trim, exactly one target, START or END edge. */
+    @org.springframework.modulith.NamedInterface("invocation")
     record TrimParameters(TrimEdge edge, MediaTime delta) implements OperationParameters {
         public TrimParameters {
             if (edge == null || delta == null) {
@@ -91,6 +96,7 @@ public sealed interface OperationParameters permits
             }
         }
 
+        @org.springframework.modulith.NamedInterface("invocation")
         public enum TrimEdge {
             START,
             END
@@ -98,6 +104,7 @@ public sealed interface OperationParameters permits
     }
 
     /** SET_TEMPORAL_RATE (OIR2): positive exact Rational rate ONLY — no direction. */
+    @org.springframework.modulith.NamedInterface("invocation")
     record SetTemporalRateParameters(com.example.platform.timeline.semantics.clip.MediaClip.Rational rate)
             implements OperationParameters {
         public SetTemporalRateParameters {
@@ -108,6 +115,7 @@ public sealed interface OperationParameters permits
     }
 
     /** SET_TEMPORAL_DIRECTION (OIR2): PlaybackDirection ONLY — no rate. */
+    @org.springframework.modulith.NamedInterface("invocation")
     record SetTemporalDirectionParameters(PlaybackDirection direction) implements OperationParameters {
         public SetTemporalDirectionParameters {
             if (direction == null) {
@@ -117,6 +125,7 @@ public sealed interface OperationParameters permits
     }
 
     /** FREEZE (OIR2): exact sourcePosition ONLY — no rate/direction/duration. */
+    @org.springframework.modulith.NamedInterface("invocation")
     record FreezeParameters(MediaTime sourcePosition) implements OperationParameters {
         public FreezeParameters {
             if (sourcePosition == null) {
@@ -125,6 +134,7 @@ public sealed interface OperationParameters permits
         }
     }
 
+    @org.springframework.modulith.NamedInterface("invocation")
     record AudioGainParameters(AudioGain gain) implements OperationParameters {
         public AudioGainParameters {
             if (gain == null) {
@@ -133,6 +143,7 @@ public sealed interface OperationParameters permits
         }
     }
 
+    @org.springframework.modulith.NamedInterface("invocation")
     record AudioMuteParameters(AudioMute mute) implements OperationParameters {
         public AudioMuteParameters {
             if (mute == null) {
@@ -141,6 +152,7 @@ public sealed interface OperationParameters permits
         }
     }
 
+    @org.springframework.modulith.NamedInterface("invocation")
     record StereoBalanceParameters(StereoBalance balance) implements OperationParameters {
         public StereoBalanceParameters {
             if (balance == null) {
@@ -150,6 +162,7 @@ public sealed interface OperationParameters permits
     }
 
     /** CREATE_GROUP: caller-supplied stable GroupId + >=2 typed members. */
+    @org.springframework.modulith.NamedInterface("invocation")
     record CreateGroupParameters(GroupId groupId, List<TimelineClipId> members) implements OperationParameters {
         public CreateGroupParameters {
             if (groupId == null || members == null || members.size() < 2) {
@@ -159,6 +172,7 @@ public sealed interface OperationParameters permits
     }
 
     /** UPDATE_GROUP_MEMBERSHIP: typed member delta (no generic patch collection). */
+    @org.springframework.modulith.NamedInterface("invocation")
     record UpdateGroupMembershipParameters(Set<TimelineClipId> membersToAdd,
                                            Set<TimelineClipId> membersToRemove)
             implements OperationParameters {
@@ -176,6 +190,7 @@ public sealed interface OperationParameters permits
     }
 
     /** CREATE_SYNC: two distinct clips + exact object-local anchors (no coincidence). */
+    @org.springframework.modulith.NamedInterface("invocation")
     record CreateSyncParameters(TimelineClipId endpointA, MediaTime localAnchorA,
                                 TimelineClipId endpointB, MediaTime localAnchorB)
             implements OperationParameters {
@@ -190,6 +205,7 @@ public sealed interface OperationParameters permits
     }
 
     /** UPDATE_SYNC_ANCHOR: same normalized pair + new exact anchors. */
+    @org.springframework.modulith.NamedInterface("invocation")
     record UpdateSyncAnchorParameters(MediaTime localAnchorA, MediaTime localAnchorB)
             implements OperationParameters {
         public UpdateSyncAnchorParameters {
@@ -202,6 +218,7 @@ public sealed interface OperationParameters permits
     // ============ ROADMAP_19 TEXT OPERATIONS (C37/FTG19; typed domain semantics) ============
 
     /** ADD_TEXT_ELEMENT: authored text + layout intent; font resolution freezes in plan. */
+    @org.springframework.modulith.NamedInterface("invocation")
     record AddTextElementParameters(
             com.example.platform.fonttext.text.StyledText styledText,
             com.example.platform.fonttext.typography.TextFrame frame,
@@ -211,17 +228,20 @@ public sealed interface OperationParameters permits
     }
 
     /** REMOVE_TEXT_ELEMENT: exact TextElementId target. */
+    @org.springframework.modulith.NamedInterface("invocation")
     record RemoveTextElementParameters(com.example.platform.timeline.canonical.TextElementId textElementId)
             implements OperationParameters {
     }
 
     /** REPLACE_TEXT_CONTENT: canonical authored Unicode content replacement (scalar-validated). */
+    @org.springframework.modulith.NamedInterface("invocation")
     record ReplaceTextContentParameters(
             com.example.platform.timeline.canonical.TextElementId textElementId,
             com.example.platform.fonttext.text.TextContent content) implements OperationParameters {
     }
 
     /** SET_TEXT_STYLE_RANGE: scalar TextRange + canonical TextStyle (no lineHeight/fill by construction). */
+    @org.springframework.modulith.NamedInterface("invocation")
     record SetTextStyleRangeParameters(
             com.example.platform.timeline.canonical.TextElementId textElementId,
             com.example.platform.fonttext.text.TextRange range,
@@ -229,12 +249,14 @@ public sealed interface OperationParameters permits
     }
 
     /** SET_PARAGRAPH_STYLE: sole lineHeight/baseDirection/alignment authority. */
+    @org.springframework.modulith.NamedInterface("invocation")
     record SetParagraphStyleParameters(
             com.example.platform.timeline.canonical.TextElementId textElementId,
             com.example.platform.fonttext.typography.ParagraphStyle paragraphStyle) implements OperationParameters {
     }
 
     /** SET_FONT_SELECTION: updates FontSelectionIntent (sole selection authority) over a scalar range. */
+    @org.springframework.modulith.NamedInterface("invocation")
     record SetFontSelectionParameters(
             com.example.platform.timeline.canonical.TextElementId textElementId,
             com.example.platform.fonttext.text.TextRange range,
@@ -242,18 +264,21 @@ public sealed interface OperationParameters permits
     }
 
     /** SET_FONT_FALLBACK_POLICY: explicit ordered canonical fallback intent. */
+    @org.springframework.modulith.NamedInterface("invocation")
     record SetFontFallbackPolicyParameters(
             com.example.platform.timeline.canonical.TextElementId textElementId,
             com.example.platform.fonttext.resolution.FontFallbackPolicy fallbackPolicy) implements OperationParameters {
     }
 
     /** SET_VARIABLE_FONT_AXIS: updates FontSelectionIntent explicit axis overrides (exact Rational). */
+    @org.springframework.modulith.NamedInterface("invocation")
     record SetVariableFontAxisParameters(
             com.example.platform.timeline.canonical.TextElementId textElementId,
             com.example.platform.fonttext.typography.VariationCoordinate coordinate) implements OperationParameters {
     }
 
     /** SET_TEXT_LAYOUT: authored layout intent (TextFrame) only; zero glyph geometry. */
+    @org.springframework.modulith.NamedInterface("invocation")
     record SetTextLayoutParameters(
             com.example.platform.timeline.canonical.TextElementId textElementId,
             com.example.platform.fonttext.typography.TextFrame frame) implements OperationParameters {

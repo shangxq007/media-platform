@@ -10,6 +10,7 @@ import java.util.Objects;
  * the extension domain. Typed, immutable, validated, with deterministic
  * equality and a canonical major.minor representation.</p>
  */
+@org.springframework.modulith.NamedInterface("invocation")
 public record OperationDefinitionVersion(int major, int minor) {
 
     public OperationDefinitionVersion {
