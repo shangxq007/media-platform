@@ -87,8 +87,7 @@ public class TimelineMediaClipOperationService {
     public AddMediaClipPreview preview(
             String tenantId, String projectId, AddMediaClipCommand command,
             CanonicalActor actor) {
-        requirePreparationAuthorization(tenantId, projectId, actor, TIMELINE_READ);
-        return prepare(tenantId, projectId, toOperationRequest(projectId, command)).preview();
+        return preparePublic(tenantId, projectId, command, actor).preview();
     }
 
     public AddMediaClipResult authorizeAndApply(
@@ -98,12 +97,9 @@ public class TimelineMediaClipOperationService {
             String expectedPlanDigest,
             String applyCommandId,
             CanonicalActor actor) {
-        Objects.requireNonNull(actor, "actor");
-        requirePreparationAuthorization(tenantId, projectId, actor, TIMELINE_READ);
-        ExecutionOutcome execution = execute(
-                tenantId, projectId, toOperationRequest(projectId, command),
-                expectedPlanDigest, applyCommandId, actor, true);
-        PreparedOperation prepared = execution.prepared();
+        PreparedOperation prepared = preparePublic(tenantId, projectId, command, actor);
+        ExecutionOutcome execution = executePrepared(
+                tenantId, projectId, prepared, expectedPlanDigest, applyCommandId, actor);
         ApplyResult result = execution.result();
         return new AddMediaClipResult(
                 result.status(), result.planDigest(), result.baseRevisionId(),
@@ -123,27 +119,41 @@ public class TimelineMediaClipOperationService {
                     TimelineOperationException.Code.TENANT_CONTEXT_MISMATCH,
                     List.of("authenticated actor tenant required"));
         }
-        ExecutionOutcome execution = execute(
-                tenantId, target.timelineId(), request, null,
-                context.invocationId(), context.actor(), false);
+        PreparedOperation prepared = prepareInternal(
+                tenantId, target.timelineId(), request, context.actor());
+        ExecutionOutcome execution = executePrepared(
+                tenantId, target.timelineId(), prepared,
+                prepared.plan().planDigest(), context.invocationId(), context.actor());
         return new InvocationOutcome(execution.result());
     }
 
-    private ExecutionOutcome execute(
+    private PreparedOperation preparePublic(
+            String tenantId,
+            String projectId,
+            AddMediaClipCommand command,
+            CanonicalActor actor) {
+        requirePreparationAuthorization(tenantId, projectId, actor, TIMELINE_READ);
+        return prepare(tenantId, projectId, toOperationRequest(projectId, command));
+    }
+
+    private PreparedOperation prepareInternal(
             String tenantId,
             String projectId,
             OperationRequest request,
+            CanonicalActor actor) {
+        requirePreparationAuthorization(tenantId, projectId, actor, TIMELINE_READ);
+        return prepare(tenantId, projectId, request);
+    }
+
+    private ExecutionOutcome executePrepared(
+            String tenantId,
+            String projectId,
+            PreparedOperation prepared,
             String expectedPlanDigest,
             String applyCommandId,
-            CanonicalActor actor,
-            boolean preparationAuthorized) {
+            CanonicalActor actor) {
         Objects.requireNonNull(actor, "actor");
-        if (!preparationAuthorized) {
-            requirePreparationAuthorization(tenantId, projectId, actor, TIMELINE_READ);
-        }
-        PreparedOperation prepared = prepare(tenantId, projectId, request);
-        if (expectedPlanDigest != null
-                && !prepared.plan().planDigest().equals(expectedPlanDigest)) {
+        if (!prepared.plan().planDigest().equals(expectedPlanDigest)) {
             throw new TimelineOperationException(TimelineOperationException.Code.PLAN_CHANGED,
                     List.of("expected plan digest does not match freshly validated plan"));
         }
