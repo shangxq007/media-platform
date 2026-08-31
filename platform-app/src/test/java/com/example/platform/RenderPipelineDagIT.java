@@ -6,7 +6,7 @@ import com.example.platform.entitlement.domain.EntitlementGrantCommand;
 import com.example.platform.shared.commercial.PrincipalRef;
 import com.example.platform.shared.commercial.PrincipalType;
 import java.time.Instant;
-import com.example.platform.identity.api.TenantProjectController;
+import com.example.platform.identity.app.TenantProjectService;
 import com.example.platform.identity.api.dto.CreateProjectRequest;
 import com.example.platform.identity.api.dto.CreateTenantRequest;
 import com.example.platform.render.api.RenderController;
@@ -47,7 +47,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class RenderPipelineDagIT extends PostgresTestContainerSupport {
 
     @Autowired
-    private TenantProjectController tenantProjectController;
+    private TenantProjectService tenantProjectService;
     @Autowired
     private RenderController renderController;
     @Autowired
@@ -89,9 +89,9 @@ class RenderPipelineDagIT extends PostgresTestContainerSupport {
     @Test
     @EnabledIf("ffmpegAvailable")
     void multiTrackTimeline_executesDagAndPersistsPlan() throws Exception {
-        var tenant = tenantProjectController.createTenant(new CreateTenantRequest("DAG E2E Tenant"));
+        var tenant = tenantProjectService.createTenant(new CreateTenantRequest("DAG E2E Tenant"));
         grant(tenant.id(), "render.job.create");
-        var project = tenantProjectController.createProject(tenant.id(),
+        var project = tenantProjectService.createProject(tenant.id(),
                 new CreateProjectRequest("DAG Project", "E2E"));
 
         String sourcePath = Path.of(storageRoot, "artifacts", "dag-e2e", "source.mp4").toAbsolutePath().toString();

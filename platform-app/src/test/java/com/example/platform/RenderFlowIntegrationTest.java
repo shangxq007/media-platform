@@ -1,7 +1,7 @@
 package com.example.platform;
 
-import com.example.platform.identity.api.TenantProjectController;
 import com.example.platform.identity.api.dto.*;
+import com.example.platform.identity.app.TenantProjectService;
 import com.example.platform.render.api.RenderController;
 import com.example.platform.render.app.RenderOrchestratorService;
 import org.junit.jupiter.api.Disabled;
@@ -33,7 +33,7 @@ class RenderFlowIntegrationTest extends PostgresTestContainerSupport {
     private ApplicationContext context;
 
     @Autowired
-    private TenantProjectController tenantProjectController;
+    private TenantProjectService tenantProjectService;
 
     @Autowired
     private RenderController renderController;
@@ -47,12 +47,12 @@ class RenderFlowIntegrationTest extends PostgresTestContainerSupport {
     private String currentTenantId;
 
     private String createTestProject(String name) {
-        TenantResponse tenant = tenantProjectController.createTenant(
+        TenantResponse tenant = tenantProjectService.createTenant(
                 new CreateTenantRequest(name + " Tenant"));
         this.currentTenantId = tenant.id();
         TestEntitlementGrantSupport.grant(
                 entitlementService, tenant.id(), "render.job.create");
-        ProjectResponse project = tenantProjectController.createProject(tenant.id(),
+        ProjectResponse project = tenantProjectService.createProject(tenant.id(),
                 new CreateProjectRequest(name, "Test project for " + name));
         return project.id();
     }
@@ -60,14 +60,14 @@ class RenderFlowIntegrationTest extends PostgresTestContainerSupport {
     @Test
     void contextLoads() {
         assertThat(context).isNotNull();
-        assertThat(context.containsBean("tenantProjectController")).isTrue();
+        assertThat(context.containsBean("tenantProjectService")).isTrue();
         assertThat(context.containsBean("renderController")).isTrue();
         assertThat(context.containsBean("renderOrchestratorService")).isTrue();
     }
 
     @Test
     void createTenant_shouldReturnActiveTenant() {
-        TenantResponse tenant = tenantProjectController.createTenant(
+        TenantResponse tenant = tenantProjectService.createTenant(
                 new CreateTenantRequest("My Tenant"));
         assertThat(tenant.id()).isNotBlank();
         assertThat(tenant.name()).isEqualTo("My Tenant");
@@ -77,38 +77,38 @@ class RenderFlowIntegrationTest extends PostgresTestContainerSupport {
 
     @Test
     void createProject_shouldBelongToTenant() {
-        TenantResponse tenant = tenantProjectController.createTenant(
+        TenantResponse tenant = tenantProjectService.createTenant(
                 new CreateTenantRequest("Project Tenant"));
-        ProjectResponse project = tenantProjectController.createProject(tenant.id(),
+        ProjectResponse project = tenantProjectService.createProject(tenant.id(),
                 new CreateProjectRequest("My Project", "A test project"));
         assertThat(project.tenantId()).isEqualTo(tenant.id());
         assertThat(project.name()).isEqualTo("My Project");
         assertThat(project.status()).isEqualTo("ACTIVE");
 
-        List<ProjectResponse> projects = tenantProjectController.listProjects(tenant.id());
+        List<ProjectResponse> projects = tenantProjectService.listProjects(tenant.id());
         assertThat(projects).hasSize(1);
         assertThat(projects.get(0).id()).isEqualTo(project.id());
     }
 
     @Test
     void createUser_shouldHaveCorrectRole() {
-        TenantResponse tenant = tenantProjectController.createTenant(
+        TenantResponse tenant = tenantProjectService.createTenant(
                 new CreateTenantRequest("User Tenant"));
-        UserResponse user = tenantProjectController.createUser(tenant.id(),
+        UserResponse user = tenantProjectService.createUser(tenant.id(),
                 new CreateUserRequest("adminuser", "admin@example.com", "ADMIN"));
         assertThat(user.role()).isEqualTo("ADMIN");
         assertThat(user.status()).isEqualTo("ACTIVE");
 
-        UserResponse member = tenantProjectController.createUser(tenant.id(),
+        UserResponse member = tenantProjectService.createUser(tenant.id(),
                 new CreateUserRequest("memberuser", "member@example.com", null));
         assertThat(member.role()).isEqualTo("MEMBER");
     }
 
     @Test
     void createApiKey_shouldReturnPlainKey() {
-        TenantResponse tenant = tenantProjectController.createTenant(
+        TenantResponse tenant = tenantProjectService.createTenant(
                 new CreateTenantRequest("ApiKey Tenant"));
-        CreateApiKeyResponse apiKey = tenantProjectController.createApiKey(tenant.id(),
+        CreateApiKeyResponse apiKey = tenantProjectService.createApiKey(tenant.id(),
                 new CreateApiKeyRequest("my-service"));
         assertThat(apiKey.apiKey()).isNotBlank();
         assertThat(apiKey.fingerprint()).isNotBlank();
@@ -174,19 +174,19 @@ class RenderFlowIntegrationTest extends PostgresTestContainerSupport {
     @Test
     void fullE2eFlow_tenantToRenderJob() {
         // Step 1: Create tenant
-        TenantResponse tenant = tenantProjectController.createTenant(
+        TenantResponse tenant = tenantProjectService.createTenant(
                 new CreateTenantRequest("E2E Flow Tenant"));
         assertThat(tenant.status()).isEqualTo("ACTIVE");
         TestEntitlementGrantSupport.grant(
                 entitlementService, tenant.id(), "render.job.create");
 
         // Step 2: Create project
-        ProjectResponse project = tenantProjectController.createProject(tenant.id(),
+        ProjectResponse project = tenantProjectService.createProject(tenant.id(),
                 new CreateProjectRequest("E2E Project", "End-to-end test"));
         assertThat(project.tenantId()).isEqualTo(tenant.id());
 
         // Step 3: Create API key
-        CreateApiKeyResponse apiKey = tenantProjectController.createApiKey(tenant.id(),
+        CreateApiKeyResponse apiKey = tenantProjectService.createApiKey(tenant.id(),
                 new CreateApiKeyRequest("e2e-service"));
         assertThat(apiKey.apiKey()).isNotBlank();
 

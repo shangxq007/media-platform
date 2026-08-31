@@ -9,6 +9,7 @@ import com.example.platform.entitlement.domain.WorkspaceMemberEntitlementGrant;
 import com.example.platform.identity.api.dto.*;
 import com.example.platform.identity.app.WorkspaceService;
 import com.example.platform.shared.audit.AdminAuditPublisher;
+import com.example.platform.shared.authorization.FailClosedAuthorization;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -41,10 +42,7 @@ public class WorkspaceController {
     public WorkspaceResponse createWorkspace(@RequestParam(required = false) String tenantId,
             @Valid @RequestBody CreateWorkspaceRequest request,
             jakarta.servlet.http.HttpServletRequest httpRequest) {
-        // Resolve tenant: use caller-supplied tenantId only if admin;
-        // otherwise derive from TenantContext (current authenticated tenant).
-        String effectiveTenant = resolveTenantId(tenantId, httpRequest);
-        return workspaceService.createWorkspace(effectiveTenant, request);
+        throw FailClosedAuthorization.unavailable("workspace creation");
     }
 
     @GetMapping("/{workspaceId}")
@@ -55,7 +53,7 @@ public class WorkspaceController {
     @PostMapping("/{workspaceId}/members")
     public WorkspaceMemberResponse addMember(@PathVariable String workspaceId,
             @Valid @RequestBody AddWorkspaceMemberRequest request) {
-        return workspaceService.addMember(workspaceId, request);
+        throw FailClosedAuthorization.unavailable("workspace member addition");
     }
 
     @GetMapping("/{workspaceId}/members")
@@ -67,20 +65,20 @@ public class WorkspaceController {
     public void assignRole(@PathVariable String workspaceId,
             @PathVariable String memberId,
             @Valid @RequestBody AssignRoleRequest request) {
-        workspaceService.assignRoleToMember(workspaceId, memberId, request);
+        throw FailClosedAuthorization.unavailable("workspace role assignment");
     }
 
     @DeleteMapping("/{workspaceId}/members/{memberId}/roles/{roleKey}")
     public void revokeRole(@PathVariable String workspaceId,
             @PathVariable String memberId,
             @PathVariable String roleKey) {
-        workspaceService.revokeRoleFromMember(workspaceId, memberId, roleKey);
+        throw FailClosedAuthorization.unavailable("workspace role revocation");
     }
 
     @PostMapping("/{workspaceId}/groups")
     public WorkspaceGroupResponse createGroup(@PathVariable String workspaceId,
             @Valid @RequestBody CreateWorkspaceGroupRequest request) {
-        return workspaceService.createGroup(workspaceId, request);
+        throw FailClosedAuthorization.unavailable("workspace group creation");
     }
 
     @GetMapping("/{workspaceId}/groups")
@@ -93,13 +91,7 @@ public class WorkspaceController {
             @PathVariable String workspaceId,
             @RequestBody CreateWorkspaceGrantRequest request,
             @RequestHeader(value = "X-User-ID", required = false) String actor) {
-        String effectiveActor = actor != null ? actor : "system";
-        String tenantId = requireTenantContext();
-        Instant startsAt = request.startsAt() != null ? request.startsAt() : Instant.now();
-        return poolService.allocateToMember(
-                tenantId, workspaceId, request.featureKey(), request.memberId(),
-                request.quotaAmount(), startsAt, request.expiresAt(), effectiveActor,
-                request.sourceRef(), request.idempotencyKey(), request.reason(), request.traceId());
+        throw FailClosedAuthorization.unavailable("workspace entitlement grant creation");
     }
 
     @GetMapping("/{workspaceId}/entitlements/grants")
@@ -113,12 +105,7 @@ public class WorkspaceController {
             @PathVariable String grantId,
             @RequestBody RevokeGrantRequest request,
             @RequestHeader(value = "X-User-ID", required = false) String actor) {
-        String effectiveActor = actor != null ? actor : "system";
-        EntitlementCommandResult result = poolService.revokeFromMember(
-                requireTenantContext(), workspaceId, grantId, request.memberId(),
-                request.expectedVersion(), effectiveActor, request.sourceRef(),
-                request.idempotencyKey(), request.reason(), request.traceId());
-        return Map.of("status", "revoked", "event", result);
+        throw FailClosedAuthorization.unavailable("workspace entitlement grant revocation");
     }
 
     @PostMapping("/{workspaceId}/entitlements/preview")
@@ -141,65 +128,6 @@ public class WorkspaceController {
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
         pd.setTitle("Resource Not Found");
         return pd;
-    }
-
-    /**
-     * Resolve tenant ID for workspace creation.
-     * If caller supplies a tenantId different from TenantContext, require admin role.
-     * Otherwise, use TenantContext (current authenticated tenant).
-     */
-    private String resolveTenantId(String requestedTenantId, jakarta.servlet.http.HttpServletRequest request) {
-        String contextTenant = requireTenantContext();
-        if (requestedTenantId != null && !requestedTenantId.isBlank()
-                && !requestedTenantId.equals(contextTenant)) {
-            // Cross-tenant workspace creation requires admin role
-            if (!isAdmin(request)) {
-                auditPublisher.publish(
-                        extractActor(request), extractRoles(request),
-                        "ADMIN_CREATE_WORKSPACE_CROSS_TENANT", "workspace", null, requestedTenantId, "DENIED");
-                throw new SecurityException("Admin role required to create workspace in another tenant");
-            }
-            return requestedTenantId;
-        }
-        return contextTenant;
-    }
-
-    private static String requireTenantContext() {
-        String tenantId = com.example.platform.shared.web.TenantContext.get();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new IllegalArgumentException("Tenant context is required");
-        }
-        return tenantId;
-    }
-
-    private boolean isAdmin(jakarta.servlet.http.HttpServletRequest request) {
-        // OAuth2 / Spring Security path
-        if (request.isUserInRole("ADMIN")) return true;
-        // Legacy HMAC JWT path: check jwt.roles request attribute
-        Object rolesAttr = request.getAttribute("jwt.roles");
-        if (rolesAttr instanceof java.util.List<?> roles) {
-            return roles.stream().anyMatch(r -> r != null && "ADMIN".equalsIgnoreCase(r.toString().trim()));
-        } else if (rolesAttr instanceof String rolesStr) {
-            for (String r : rolesStr.split(",")) {
-                if ("ADMIN".equalsIgnoreCase(r.trim())) return true;
-            }
-        }
-        return false;
-    }
-
-    private static String extractActor(jakarta.servlet.http.HttpServletRequest request) {
-        Object subject = request.getAttribute("jwt.subject");
-        return subject != null && !subject.toString().isBlank() ? subject.toString() : "anonymous";
-    }
-
-    private static String extractRoles(jakarta.servlet.http.HttpServletRequest request) {
-        Object rolesAttr = request.getAttribute("jwt.roles");
-        if (rolesAttr instanceof java.util.List<?> roles) {
-            return String.join(",", roles.stream().map(Object::toString).toList());
-        } else if (rolesAttr instanceof String rolesStr) {
-            return rolesStr;
-        }
-        return "none";
     }
 
     public record CreateWorkspaceGrantRequest(

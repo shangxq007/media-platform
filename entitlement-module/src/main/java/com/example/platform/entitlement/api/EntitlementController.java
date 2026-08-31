@@ -6,6 +6,7 @@ import com.example.platform.entitlement.app.EntitlementService;
 import com.example.platform.entitlement.domain.*;
 import com.example.platform.shared.commercial.PrincipalRef;
 import com.example.platform.shared.commercial.PrincipalType;
+import com.example.platform.shared.authorization.FailClosedAuthorization;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -98,17 +99,12 @@ public class EntitlementController {
 
     @PostMapping("/entitlements/policies/refresh")
     public Map<String, Object> refreshPolicies() {
-        entitlementPolicyService.refreshPolicies();
-        return Map.of("status", "refreshed");
+        throw FailClosedAuthorization.unavailable("global entitlement policy refresh");
     }
 
     @PutMapping("/tenants/{tenantId}/tier")
     public Map<String, Object> setTenantTier(@PathVariable String tenantId, @RequestBody TierUpdateRequest body) {
-        entitlementPolicyService.setTier(tenantId, body.tier());
-        return Map.of(
-                "tenantId", tenantId,
-                "tier", entitlementPolicyService.getTier(tenantId),
-                "decisionSource", entitlementPolicyService.getDecisionSource(tenantId));
+        throw FailClosedAuthorization.unavailable("tenant entitlement tier mutation");
     }
 
     @PostMapping("/entitlements/access-check")

@@ -1,13 +1,10 @@
 package com.example.platform.workflow.execution.api;
 
-import com.example.platform.shared.authorization.AuthorizationActions;
+import com.example.platform.shared.authorization.FailClosedAuthorization;
 import com.example.platform.workflow.execution.api.dto.WorkflowExecutionDto;
-import com.example.platform.workflow.execution.app.StartWorkflowExecutionCommand;
-import com.example.platform.workflow.execution.app.WorkflowExecutionApprovalCommand;
 import com.example.platform.workflow.execution.app.WorkflowExecutionService;
 import com.example.platform.workflow.execution.domain.WorkflowExecution;
 import com.example.platform.workflow.execution.domain.WorkflowExecutionId;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -15,8 +12,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import com.example.platform.shared.usage.CanonicalActorRef;
 
 /**
  * UWEV1-FV1 execution API — new resource, does NOT touch the 9 W2 definition
@@ -36,16 +31,7 @@ public class WorkflowExecutionController {
     public ResponseEntity<WorkflowExecutionDto> start(
             @PathVariable String tenantId,
             @RequestBody StartWorkflowExecutionRequest request) {
-        // authorize(tenantId, AuthorizationActions.WORKFLOW_EXECUTION_START); // wired via canonical port
-        WorkflowExecution e = service.start(new StartWorkflowExecutionCommand(
-                tenantId,
-                new CanonicalActorRef(request.actorId(), request.actorType()),
-                request.definitionId(),
-                request.definitionVersion(),
-                request.trigger(),
-                request.inputRefsJson(),
-                request.idempotencyKey()));
-        return ResponseEntity.status(HttpStatus.CREATED).body(WorkflowExecutionDto.from(e));
+        throw FailClosedAuthorization.unavailable("workflow execution start");
     }
 
     @GetMapping("/{executionId}")
@@ -62,12 +48,7 @@ public class WorkflowExecutionController {
             @PathVariable String tenantId,
             @PathVariable String executionId,
             @RequestBody(required = false) CancelRequest request) {
-        WorkflowExecution e = service.cancel(
-                new WorkflowExecutionId(executionId, tenantId),
-                new CanonicalActorRef(request == null ? "system" : request.actorId(),
-                        request == null ? "SYSTEM" : request.actorType()),
-                request == null ? null : request.reason());
-        return ResponseEntity.ok(WorkflowExecutionDto.from(e));
+        throw FailClosedAuthorization.unavailable("workflow execution cancellation");
     }
 
     @PostMapping("/{executionId}/approval")
@@ -75,10 +56,7 @@ public class WorkflowExecutionController {
             @PathVariable String tenantId,
             @PathVariable String executionId,
             @RequestBody ApprovalRequest request) {
-        service.approve(new WorkflowExecutionApprovalCommand(
-                tenantId, executionId, request.approved(), request.approverActorId(), request.comment()));
-        return ResponseEntity.ok(service.findById(new WorkflowExecutionId(executionId, tenantId))
-                .map(WorkflowExecutionDto::from).orElse(null));
+        throw FailClosedAuthorization.unavailable("workflow execution approval");
     }
 
     // ── request DTOs (bounded, typed; no raw payloads) ────────────────────

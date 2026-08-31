@@ -1,6 +1,6 @@
 package com.example.platform;
 
-import com.example.platform.identity.api.TenantProjectController;
+import com.example.platform.identity.app.TenantProjectService;
 import com.example.platform.identity.api.dto.CreateProjectRequest;
 import com.example.platform.identity.api.dto.CreateTenantRequest;
 import com.example.platform.render.api.RenderController;
@@ -45,7 +45,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class RenderNativeToolsIT extends PostgresTestContainerSupport {
 
     @Autowired
-    private TenantProjectController tenantProjectController;
+    private TenantProjectService tenantProjectService;
 
     @Autowired
     private RenderController renderController;
@@ -100,10 +100,10 @@ class RenderNativeToolsIT extends PostgresTestContainerSupport {
     @Test
     @EnabledIf("ffmpegAvailable")
     void ffmpegRenderJob_withTimelineSnapshot_completes() throws Exception {
-        var tenant = tenantProjectController.createTenant(new CreateTenantRequest("Native FFmpeg Tenant"));
+        var tenant = tenantProjectService.createTenant(new CreateTenantRequest("Native FFmpeg Tenant"));
         TestEntitlementGrantSupport.grant(
                 entitlementService, tenant.id(), "render.job.create");
-        var project = tenantProjectController.createProject(tenant.id(),
+        var project = tenantProjectService.createProject(tenant.id(),
                 new CreateProjectRequest("Native Project", "E2E"));
 
         String editorJson = """
@@ -144,10 +144,10 @@ class RenderNativeToolsIT extends PostgresTestContainerSupport {
         if (!ffmpegAvailable()) {
             return;
         }
-        var tenant = tenantProjectController.createTenant(new CreateTenantRequest("Native MLT Tenant"));
+        var tenant = tenantProjectService.createTenant(new CreateTenantRequest("Native MLT Tenant"));
         TestEntitlementGrantSupport.grant(
                 entitlementService, tenant.id(), "render.job.create");
-        var project = tenantProjectController.createProject(tenant.id(),
+        var project = tenantProjectService.createProject(tenant.id(),
                 new CreateProjectRequest("MLT Project", "E2E"));
 
         String sourcePath = Path.of(storageRoot, "artifacts", "native-e2e", "source.mp4").toString();

@@ -1,6 +1,6 @@
 package com.example.platform;
 
-import com.example.platform.identity.api.TenantProjectController;
+import com.example.platform.identity.app.TenantProjectService;
 import com.example.platform.identity.api.dto.CreateProjectRequest;
 import com.example.platform.identity.api.dto.CreateTenantRequest;
 import com.example.platform.render.api.RenderController;
@@ -52,7 +52,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class RenderNatronEffectsIT extends PostgresTestContainerSupport {
 
     @Autowired
-    private TenantProjectController tenantProjectController;
+    private TenantProjectService tenantProjectService;
 
     @Autowired
     private RenderController renderController;
@@ -102,10 +102,10 @@ class RenderNatronEffectsIT extends PostgresTestContainerSupport {
     @Test
     @EnabledIf("ffmpegAvailable")
     void natronVignetteEffect_autoProfileAndRender_completes() throws Exception {
-        var tenant = tenantProjectController.createTenant(new CreateTenantRequest("Natron E2E Tenant"));
+        var tenant = tenantProjectService.createTenant(new CreateTenantRequest("Natron E2E Tenant"));
         grant(tenant.id(), "render.job.create");
         grant(tenant.id(), "effect.video.natron_vignette");
-        var project = tenantProjectController.createProject(tenant.id(),
+        var project = tenantProjectService.createProject(tenant.id(),
                 new CreateProjectRequest("Natron Project", "E2E"));
 
         String sourcePath = Path.of(storageRoot, "artifacts", "natron-e2e", "source.mp4").toAbsolutePath().toString();
