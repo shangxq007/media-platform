@@ -7,9 +7,11 @@ package com.example.platform.typedschema.jooq.generated.tables;
 import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
+import com.example.platform.typedschema.jooq.generated.tables.ApplyCommand.ApplyCommandPath;
 import com.example.platform.typedschema.jooq.generated.tables.ArtifactPin.ArtifactPinPath;
 import com.example.platform.typedschema.jooq.generated.tables.ProjectImportMetadata.ProjectImportMetadataPath;
 import com.example.platform.typedschema.jooq.generated.tables.RenderJob.RenderJobPath;
+import com.example.platform.typedschema.jooq.generated.tables.Tenant.TenantPath;
 import com.example.platform.typedschema.jooq.generated.tables.TimelineRevision.TimelineRevisionPath;
 import com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot.TimelineSnapshotPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.ProjectRecord;
@@ -168,6 +170,41 @@ public class Project extends TableImpl<ProjectRecord> {
     @Override
     public UniqueKey<ProjectRecord> getPrimaryKey() {
         return Keys.PROJECT_PKEY;
+    }
+
+    @Override
+    public List<UniqueKey<ProjectRecord>> getUniqueKeys() {
+        return Arrays.asList(Keys.UQ_PROJECT_TENANT_ID);
+    }
+
+    @Override
+    public List<ForeignKey<ProjectRecord, ?>> getReferences() {
+        return Arrays.asList(Keys.PROJECT__FK_PROJECT_TENANT);
+    }
+
+    private transient TenantPath _tenant;
+
+    /**
+     * Get the implicit join path to the <code>public.tenant</code> table.
+     */
+    public TenantPath tenant() {
+        if (_tenant == null)
+            _tenant = new TenantPath(this, Keys.PROJECT__FK_PROJECT_TENANT, null);
+
+        return _tenant;
+    }
+
+    private transient ApplyCommandPath _applyCommand;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.apply_command</code> table
+     */
+    public ApplyCommandPath applyCommand() {
+        if (_applyCommand == null)
+            _applyCommand = new ApplyCommandPath(this, null, Keys.APPLY_COMMAND__FK_APPLY_COMMAND_PROJECT.getInverseKey());
+
+        return _applyCommand;
     }
 
     private transient ArtifactPinPath _artifactPin;

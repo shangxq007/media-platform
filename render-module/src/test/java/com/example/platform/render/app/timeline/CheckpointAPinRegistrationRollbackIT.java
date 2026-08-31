@@ -8,7 +8,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import com.example.platform.timeline.app.DefaultTimelineRevisionPersistence;
-import com.example.platform.timeline.app.ProductCurrentRevisionHeadUpdateAdapter;
+import com.example.platform.timeline.app.TimelineRevisionRefHeadUpdateAdapter;
 
 import com.example.platform.artifact.app.ArtifactPinService;
 import com.example.platform.artifact.domain.Artifact;
@@ -20,7 +20,7 @@ import com.example.platform.shared.digest.ContentDigest;
 import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.shared.time.MediaTime;
 import com.example.platform.shared.web.TenantContext;
-import com.example.platform.timeline.app.ProductCurrentRevisionService;
+import com.example.platform.timeline.app.TimelineRevisionRefMutation;
 import com.example.platform.timeline.app.TimelineArtifactPinValidator;
 import com.example.platform.timeline.app.TimelineRevisionSaveService;
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
@@ -59,7 +59,7 @@ class CheckpointAPinRegistrationRollbackIT extends PostgresTestContainerSupport 
     private static DataSource dataSource;
     private static DSLContext dsl;
     private TimelineRevisionSaveService saveService;
-    private ProductCurrentRevisionService currentRevisionService;
+    private TimelineRevisionRefMutation currentRevisionService;
     private TimelineSnapshotService snapshotService;
 
     @BeforeAll
@@ -77,17 +77,20 @@ class CheckpointAPinRegistrationRollbackIT extends PostgresTestContainerSupport 
     @BeforeEach
     void setUp() {
         RenderTestSchemaFixture.truncate(dsl);
-        currentRevisionService = new ProductCurrentRevisionService(dsl);
+        currentRevisionService = new TimelineRevisionRefMutation(dsl);
         snapshotService = new TimelineSnapshotService(dsl);
         TenantContext.set(TENANT);
     }
 
     private void insertProduct(String productId) {
+        RenderTestSchemaFixture.insertCanonicalProject(dsl, TENANT, productId);
         dsl.insertInto(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT)
                 .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.PRODUCT_ID, productId)
                 .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.PRODUCT_TYPE, "video")
                 .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.REPRESENTATION_KIND, "master")
                 .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.STATUS, "REGISTERED")
+                .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.TENANT_ID, TENANT)
+                .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.PROJECT_ID, productId)
                 .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.CREATED_AT, java.time.LocalDateTime.now())
                 .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.UPDATED_AT, java.time.LocalDateTime.now())
                 .execute();
@@ -129,10 +132,11 @@ class CheckpointAPinRegistrationRollbackIT extends PostgresTestContainerSupport 
 
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService,
                 new TimelineContentDigester(), snapshotService,
-                new TimelineArtifactPinValidator(query), pinService, effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new ProductCurrentRevisionHeadUpdateAdapter(currentRevisionService));
+                new TimelineArtifactPinValidator(query), pinService, effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
 
         assertThrows(IllegalStateException.class,
-                () -> saveService.saveRevision(productId, null, pinnedDoc(), "user-1"),
+                () -> com.example.platform.render.testsupport.TimelineMutationTestSupport.save(saveService,
+                        TENANT, productId, null, pinnedDoc(), RenderTestSchemaFixture.SERVER_ACTOR),
                 "pin registration failure must fail the save");
 
         // no durable revision row (transaction rolled back)
@@ -141,8 +145,8 @@ class CheckpointAPinRegistrationRollbackIT extends PostgresTestContainerSupport 
         assertEquals(0, revisionRows, "no revision may be durable after pin registration failure");
 
         // head/current unchanged (no current revision ever set)
-        assertTrue(currentRevisionService.getCurrentRevisionId(productId) == null
-                        || currentRevisionService.getCurrentRevisionId(productId).isBlank(),
+        assertTrue(currentRevisionService.currentHead(dsl, com.example.platform.timeline.revisioncommand.RevisionRef.main(com.example.platform.shared.web.TenantContext.get(), productId)) == null
+                        || currentRevisionService.currentHead(dsl, com.example.platform.timeline.revisioncommand.RevisionRef.main(com.example.platform.shared.web.TenantContext.get(), productId)).isBlank(),
                 "head/current must remain unchanged");
 
         // no partial pin rows for the product
@@ -169,12 +173,13 @@ class CheckpointAPinRegistrationRollbackIT extends PostgresTestContainerSupport 
 
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService,
                 new TimelineContentDigester(), snapshotService,
-                new TimelineArtifactPinValidator(query), pinService, effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new ProductCurrentRevisionHeadUpdateAdapter(currentRevisionService));
+                new TimelineArtifactPinValidator(query), pinService, effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
 
-        var revision = saveService.saveRevision(productId, null, pinnedDoc(), "user-1");
+        var revision = com.example.platform.render.testsupport.TimelineMutationTestSupport.save(saveService,
+                TENANT, productId, null, pinnedDoc(), RenderTestSchemaFixture.SERVER_ACTOR);
         assertEquals(1, dsl.fetchCount(DSL.selectFrom(TIMELINE_REVISION)
                 .where(TIMELINE_REVISION.PROJECT_ID.eq(productId))), "revision committed");
-        assertEquals(revision.revisionId(), currentRevisionService.getCurrentRevisionId(productId),
+        assertEquals(revision.revisionId(), currentRevisionService.currentHead(dsl, com.example.platform.timeline.revisioncommand.RevisionRef.main(com.example.platform.shared.web.TenantContext.get(), productId)),
                 "head updated");
         org.mockito.Mockito.verify(pinService).registerRevisionPinsTx(
                 org.mockito.ArgumentMatchers.any(org.jooq.DSLContext.class),

@@ -5,12 +5,12 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.example.platform.shared.test.PostgresTestContainerSupport;
-import com.example.platform.timeline.app.ProductCurrentRevisionService;
+import com.example.platform.timeline.app.TimelineRevisionRefHeadUpdateAdapter;
+import com.example.platform.timeline.app.TimelineRevisionRefMutation;
+import com.example.platform.timeline.revisioncommand.RevisionRef;
 import com.example.platform.timeline.version.TimelineConflictException;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.jooq.DSLContext;
@@ -19,31 +19,23 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-/**
- * POST_FINAL_REVIEW_P1: REAL database-enforced head CAS proof.
- *
- * ProductCurrentRevisionService.updateCurrentRevisionTx must put the expected
- * revision in the UPDATE predicate (null → IS NULL) and let affected-rows == 1
- * decide — NOT a SELECT → Java-compare → unconditional UPDATE check-then-act.
- *
- * Classifications:
- * - casSingleWriterSucceeds          REAL_DB_CAS_SINGLE_WRITER
- * - casStaleExpectationFailsClosed   REAL_DB_CAS_STALE_EXPECTATION
- * - concurrentWritersSingleWinner    REAL_DB_CAS_CONCURRENT_WRITERS
- */
+/** Real PostgreSQL proof for the sole tenant/project/main ref CAS authority. */
 class CheckpointAPostFinalReviewHeadCasIT extends PostgresTestContainerSupport {
 
+    private static final String TENANT = "tenant-head-cas";
     private javax.sql.DataSource dataSource;
     private DSLContext dsl;
-    private ProductCurrentRevisionService service;
+    private TimelineRevisionRefMutation mutation;
+    private TimelineRevisionRefHeadUpdateAdapter adapter;
 
     @BeforeEach
     void setUp() {
         dataSource = createDataSource();
         dsl = DSL.using(dataSource, org.jooq.SQLDialect.POSTGRES);
-        service = new ProductCurrentRevisionService(dsl);
         com.example.platform.render.testsupport.RenderTestSchemaFixture.createSchema(dsl);
         com.example.platform.render.testsupport.RenderTestSchemaFixture.truncate(dsl);
+        mutation = new TimelineRevisionRefMutation(dsl);
+        adapter = new TimelineRevisionRefHeadUpdateAdapter(mutation);
     }
 
     @AfterEach
@@ -51,95 +43,72 @@ class CheckpointAPostFinalReviewHeadCasIT extends PostgresTestContainerSupport {
         closeDataSource(dataSource);
     }
 
-    private void insertProduct(String productId) {
-        dsl.insertInto(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT)
-                .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.PRODUCT_ID, productId)
-                .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.PRODUCT_TYPE, "video")
-                .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.REPRESENTATION_KIND, "master")
-                .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.STATUS, "REGISTERED")
-                .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.CREATED_AT, java.time.LocalDateTime.now())
-                .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.UPDATED_AT, java.time.LocalDateTime.now())
-                .execute();
-    }
-
-    private String currentHead(String productId) {
-        return dsl.select(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.CURRENT_REVISION_ID)
-                .from(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT)
-                .where(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.PRODUCT_ID.eq(productId))
-                .fetchAny(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.CURRENT_REVISION_ID);
+    private RevisionRef seed(String projectId) {
+        com.example.platform.render.testsupport.RenderTestSchemaFixture.insertCanonicalProject(
+                dsl, TENANT, projectId);
+        int number = 1;
+        for (String revisionId : new String[] {"R100", "RA", "RB"}) {
+            dsl.execute("insert into timeline_snapshot "
+                            + "(id, project_id, tenant_id, payload_json) values (?, ?, ?, '{}')",
+                    projectId + "-snap-" + revisionId, projectId, TENANT);
+            dsl.execute("insert into timeline_revision "
+                            + "(id, project_id, tenant_id, revision_number, snapshot_id, "
+                            + "internal_revision, content_hash, source, created_at) "
+                            + "values (?, ?, ?, ?, ?, ?, ?, 'test', current_timestamp)",
+                    projectId + "-" + revisionId, projectId, TENANT, number,
+                    projectId + "-snap-" + revisionId, number, "hash-" + revisionId);
+            number++;
+        }
+        RevisionRef ref = RevisionRef.main(TENANT, projectId);
+        adapter.updateHeadTx(dsl, ref, null, projectId + "-R100");
+        return ref;
     }
 
     @Test
     void casSingleWriterSucceeds() {
-        String productId = "prod-cas-ok-" + java.util.UUID.randomUUID();
-        insertProduct(productId);
-        // seed head = R100 via the CAS API itself (expected null → IS NULL branch)
-        service.updateCurrentRevision(productId, null, "R100");
-        assertEquals("R100", currentHead(productId), "null expectation uses IS NULL and advances head");
-
-        // single writer with exact expectation advances again
-        service.updateCurrentRevision(productId, "R100", "RA");
-        assertEquals("RA", currentHead(productId), "expected==actual advances head");
+        RevisionRef ref = seed("head-cas-ok-" + java.util.UUID.randomUUID());
+        adapter.updateHeadTx(dsl, ref, ref.projectId() + "-R100", ref.projectId() + "-RA");
+        assertEquals(ref.projectId() + "-RA", mutation.currentHead(ref));
     }
 
     @Test
     void casStaleExpectationFailsClosed() {
-        String productId = "prod-cas-stale-" + java.util.UUID.randomUUID();
-        insertProduct(productId);
-        service.updateCurrentRevision(productId, null, "R100");
-
-        TimelineConflictException ex = assertThrows(TimelineConflictException.class,
-                () -> service.updateCurrentRevision(productId, "R101", "RA"),
-                "stale expectation must fail closed (0 affected rows)");
-        assertEquals("R100", currentHead(productId), "head unchanged after stale CAS");
-        assertTrue(ex.getMessage() != null && !ex.getMessage().isBlank());
+        RevisionRef ref = seed("head-cas-stale-" + java.util.UUID.randomUUID());
+        assertThrows(TimelineConflictException.class,
+                () -> adapter.updateHeadTx(
+                        dsl, ref, ref.projectId() + "-RB", ref.projectId() + "-RA"));
+        assertEquals(ref.projectId() + "-R100", mutation.currentHead(ref));
     }
 
     @Test
     void concurrentWritersSingleWinner() throws Exception {
-        String productId = "prod-cas-conc-" + java.util.UUID.randomUUID();
-        insertProduct(productId);
-        service.updateCurrentRevision(productId, null, "R100");
-
-        // TWO concurrent writers race the SAME persisted head R100:
-        //   writer A: expected=R100 → new=RA
-        //   writer B: expected=R100 → new=RB
-        // Exactly one conditional UPDATE may match; the loser gets 0 rows →
-        // TimelineConflictException. The final head is the winner's revision.
-        CountDownLatch startGate = new CountDownLatch(1);
-        ExecutorService pool = Executors.newFixedThreadPool(2);
+        RevisionRef ref = seed("head-cas-race-" + java.util.UUID.randomUUID());
+        CountDownLatch go = new CountDownLatch(1);
         AtomicInteger success = new AtomicInteger();
-        AtomicInteger conflicts = new AtomicInteger();
+        AtomicInteger conflict = new AtomicInteger();
+        try (var pool = Executors.newFixedThreadPool(2)) {
+            var a = pool.submit(() -> race(ref, "RA", go, success, conflict));
+            var b = pool.submit(() -> race(ref, "RB", go, success, conflict));
+            go.countDown();
+            a.get(20, TimeUnit.SECONDS);
+            b.get(20, TimeUnit.SECONDS);
+        }
+        assertEquals(1, success.get());
+        assertEquals(1, conflict.get());
+        assertTrue(java.util.Set.of(ref.projectId() + "-RA", ref.projectId() + "-RB")
+                .contains(mutation.currentHead(ref)));
+    }
 
-        Future<?> fA = pool.submit(() -> {
-            startGate.await();
-            try {
-                service.updateCurrentRevision(productId, "R100", "RA");
-                success.incrementAndGet();
-            } catch (TimelineConflictException e) {
-                conflicts.incrementAndGet();
-            }
-            return null;
-        });
-        Future<?> fB = pool.submit(() -> {
-            startGate.await();
-            try {
-                service.updateCurrentRevision(productId, "R100", "RB");
-                success.incrementAndGet();
-            } catch (TimelineConflictException e) {
-                conflicts.incrementAndGet();
-            }
-            return null;
-        });
-        startGate.countDown();
-        fA.get(30, TimeUnit.SECONDS);
-        fB.get(30, TimeUnit.SECONDS);
-        pool.shutdown();
-
-        assertEquals(1, success.get(), "exactly ONE concurrent writer may win");
-        assertEquals(1, conflicts.get(), "the other writer must observe a conflict");
-        String finalHead = currentHead(productId);
-        assertTrue("RA".equals(finalHead) || "RB".equals(finalHead),
-                "final head must be the winner's revision (was " + finalHead + ")");
+    private Void race(RevisionRef ref, String next, CountDownLatch go,
+                      AtomicInteger success, AtomicInteger conflict) throws Exception {
+        go.await();
+        try {
+            new TimelineRevisionRefHeadUpdateAdapter(new TimelineRevisionRefMutation(dsl))
+                    .updateHeadTx(dsl, ref, ref.projectId() + "-R100", ref.projectId() + "-" + next);
+            success.incrementAndGet();
+        } catch (TimelineConflictException expected) {
+            conflict.incrementAndGet();
+        }
+        return null;
     }
 }

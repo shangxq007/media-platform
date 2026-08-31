@@ -6,6 +6,8 @@ import com.example.platform.media.domain.identity.MediaAssetId;
 import com.example.platform.media.domain.stream.MediaStream;
 import com.example.platform.media.domain.stream.MediaStreamId;
 import com.example.platform.timeline.semantics.clip.MediaStreamSourceBinding;
+import com.example.platform.timeline.canonical.TrackType;
+import com.example.platform.media.domain.stream.StreamKind;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.stereotype.Component;
@@ -41,18 +43,42 @@ public class TimelineSourceReferenceValidator {
     }
 
     public ValidationResult validate(MediaStreamSourceBinding binding) {
+        return validate(binding, null, null, null);
+    }
+
+    /**
+     * Context-bound source resolution for canonical authoring. It proves that
+     * the exact immutable binding names an existing Media-owned asset/stream
+     * in the target ownership scope and that the stream kind is compatible
+     * with the target Timeline track. It never resolves mutable latest media.
+     */
+    public ValidationResult validate(MediaStreamSourceBinding binding,
+                                     String expectedTenantId,
+                                     String expectedProjectId,
+                                     TrackType expectedTrackType) {
         List<String> violations = new ArrayList<>();
 
         MediaAssetId assetId = binding.mediaAssetId();
-        if (!mediaAssetRepository.exists(assetId)) {
+        var asset = mediaAssetRepository.findById(assetId);
+        if (asset.isEmpty()) {
             violations.add("MediaAssetId does not exist: " + assetId.value());
         } else {
-            boolean streamBelongsToAsset = mediaStreamRepository
-                    .findByMediaAssetId(assetId).stream()
-                    .anyMatch(s -> s.id().equals(binding.mediaStreamId()));
-            if (!streamBelongsToAsset) {
+            if (expectedTenantId != null && !expectedTenantId.equals(asset.get().tenantId())) {
+                violations.add("MediaAssetId is outside target tenant: " + assetId.value());
+            }
+            if (expectedProjectId != null && !expectedProjectId.equals(asset.get().projectId())) {
+                violations.add("MediaAssetId is outside target project: " + assetId.value());
+            }
+            var stream = mediaStreamRepository.findByMediaAssetId(assetId).stream()
+                    .filter(s -> s.id().equals(binding.mediaStreamId()))
+                    .findFirst();
+            if (stream.isEmpty()) {
                 violations.add("MediaStreamId does not belong to MediaAsset: "
                         + binding.mediaStreamId().value() + " / " + assetId.value());
+            } else if (expectedTrackType != null
+                    && !compatible(expectedTrackType, stream.get().kind())) {
+                violations.add("MediaStream kind " + stream.get().kind()
+                        + " is incompatible with target track " + expectedTrackType);
             }
         }
 
@@ -62,6 +88,11 @@ public class TimelineSourceReferenceValidator {
         // MediaClip.TimeRange and MediaTime invariants.
 
         return new ValidationResult(violations.isEmpty(), List.copyOf(violations));
+    }
+
+    private static boolean compatible(TrackType trackType, StreamKind streamKind) {
+        return (trackType == TrackType.VIDEO && streamKind == StreamKind.VIDEO)
+                || (trackType == TrackType.AUDIO && streamKind == StreamKind.AUDIO);
     }
 
     public record ValidationResult(boolean valid, List<String> violations) {

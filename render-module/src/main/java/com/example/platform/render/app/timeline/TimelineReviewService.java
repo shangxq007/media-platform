@@ -36,8 +36,14 @@ public class TimelineReviewService {
         return reviewRepository.findById(reviewId);
     }
 
-    public List<TimelineReviewRepository.ReviewRow> listReviews(String projectId, int limit) {
-        return reviewRepository.listByProject(projectId, limit);
+    public Optional<TimelineReviewRepository.ReviewRow> getReview(
+            String projectId, String tenantId, String reviewId) {
+        return reviewRepository.findOwnedById(reviewId, projectId, tenantId);
+    }
+
+    public List<TimelineReviewRepository.ReviewRow> listReviews(
+            String projectId, String tenantId, int limit) {
+        return reviewRepository.listByProject(projectId, tenantId, limit);
     }
 
     @Transactional

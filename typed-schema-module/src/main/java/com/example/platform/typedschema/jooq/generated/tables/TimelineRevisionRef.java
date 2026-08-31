@@ -6,6 +6,7 @@ package com.example.platform.typedschema.jooq.generated.tables;
 
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
+import com.example.platform.typedschema.jooq.generated.tables.ApplyCommand.ApplyCommandPath;
 import com.example.platform.typedschema.jooq.generated.tables.TimelineRevision.TimelineRevisionPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.TimelineRevisionRefRecord;
 
@@ -56,6 +57,11 @@ public class TimelineRevisionRef extends TableImpl<TimelineRevisionRefRecord> {
     public Class<TimelineRevisionRefRecord> getRecordType() {
         return TimelineRevisionRefRecord.class;
     }
+
+    /**
+     * The column <code>public.timeline_revision_ref.tenant_id</code>.
+     */
+    public final TableField<TimelineRevisionRefRecord, String> TENANT_ID = createField(DSL.name("tenant_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
     /**
      * The column <code>public.timeline_revision_ref.project_id</code>.
@@ -172,6 +178,19 @@ public class TimelineRevisionRef extends TableImpl<TimelineRevisionRefRecord> {
             _timelineRevision = new TimelineRevisionPath(this, Keys.TIMELINE_REVISION_REF__FK_TIMELINE_REVISION_REF_HEAD, null);
 
         return _timelineRevision;
+    }
+
+    private transient ApplyCommandPath _applyCommand;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.apply_command</code> table
+     */
+    public ApplyCommandPath applyCommand() {
+        if (_applyCommand == null)
+            _applyCommand = new ApplyCommandPath(this, null, Keys.APPLY_COMMAND__FK_APPLY_COMMAND_TARGET_REF.getInverseKey());
+
+        return _applyCommand;
     }
 
     @Override

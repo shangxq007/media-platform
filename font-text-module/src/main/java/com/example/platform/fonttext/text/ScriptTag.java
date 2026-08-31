@@ -30,6 +30,7 @@ public ScriptTag(String tag) {
     public static final ScriptTag COMMON = new ScriptTag("Zyyy");
     public static final ScriptTag INHERITED = new ScriptTag("Zinh");
 
+    @com.fasterxml.jackson.annotation.JsonValue
     public String value() { return tag; }
 
     @Override

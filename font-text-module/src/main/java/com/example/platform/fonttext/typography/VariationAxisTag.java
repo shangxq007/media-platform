@@ -26,6 +26,7 @@ public VariationAxisTag(String tag) {
     public static final VariationAxisTag SLANT = new VariationAxisTag("slnt");
     public static final VariationAxisTag ITALIC = new VariationAxisTag("ital");
 
+    @com.fasterxml.jackson.annotation.JsonValue
     public String value() { return tag; }
 
     @Override

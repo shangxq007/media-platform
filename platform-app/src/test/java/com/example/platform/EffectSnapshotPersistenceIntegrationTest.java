@@ -40,6 +40,8 @@ import org.junit.jupiter.api.Test;
  */
 class EffectSnapshotPersistenceIntegrationTest extends PostgresTestContainerSupport {
 
+    private static final String TENANT_ID = "effect-snapshot-tenant";
+    private static final String PROJECT_ID = "effect-snapshot-project";
     private static DSLContext dsl;
 
     @BeforeAll
@@ -56,11 +58,13 @@ class EffectSnapshotPersistenceIntegrationTest extends PostgresTestContainerSupp
         ds.setUsername(username());
         ds.setPassword(password());
         dsl = DSL.using(ds, org.jooq.SQLDialect.POSTGRES);
-        // timeline_snapshot.project_id has an FK to project(id) — ensure the
-        // fixture project exists (idempotent).
+        // Exact V1 ownership: seed the tenant before its owned project.
+        dsl.execute("insert into tenant (id, name, status, created_at) "
+                + "values (?, 'effect-snapshot-tenant', 'ACTIVE', now()) "
+                + "on conflict (id) do nothing", TENANT_ID);
         dsl.execute("insert into project (id, tenant_id, name, status, created_at) "
-                + "values ('proj-1', 'tenant-1', 'effect-snapshot-fixture', 'ACTIVE', now()) "
-                + "on conflict (id) do nothing");
+                + "values (?, ?, 'effect-snapshot-fixture', 'ACTIVE', now()) "
+                + "on conflict (id) do nothing", PROJECT_ID, TENANT_ID);
     }
 
     private static MediaClip clip(String clipId) {
@@ -132,12 +136,12 @@ class EffectSnapshotPersistenceIntegrationTest extends PostgresTestContainerSupp
         // 1. persist S1 via store instance A
         EffectSemanticSnapshotId id = EffectSemanticSnapshotId.generate();
         EffectSemanticSnapshot s1 = mint(new EffectDefinitionVersionRegistry.InMemory(), id);
-        new JdbcEffectSemanticSnapshotStore(dsl).storeTx(dsl, "proj-1", "tenant-1", s1);
+        new JdbcEffectSemanticSnapshotStore(dsl).storeTx(dsl, PROJECT_ID, TENANT_ID, s1);
         // 2. "restart": NEW store instance (no in-memory state)
         JdbcEffectSemanticSnapshotStore fresh = new JdbcEffectSemanticSnapshotStore(dsl);
         // 3. reload exact S1 (by the AUTHORITY-generated id — B3: the caller
         // cannot choose the snapshot id)
-        EffectSemanticSnapshot reloaded = fresh.findById("proj-1", "tenant-1", s1.id()).orElseThrow();
+        EffectSemanticSnapshot reloaded = fresh.findById(PROJECT_ID, TENANT_ID, s1.id()).orElseThrow();
         assertEquals(s1.contentDigest(), reloaded.contentDigest(), "exact digest after restart");
         assertEquals(s1.semanticContractVersion(), reloaded.semanticContractVersion(), "exact version");
         assertEquals(s1.id(), reloaded.id(), "exact snapshot id");
@@ -151,7 +155,7 @@ class EffectSnapshotPersistenceIntegrationTest extends PostgresTestContainerSupp
     void snapshotImmutabilityEnforcedAcrossRestarts() {
         EffectSemanticSnapshotId id = EffectSemanticSnapshotId.generate();
         EffectSemanticSnapshot s1 = mint(new EffectDefinitionVersionRegistry.InMemory(), id);
-        new JdbcEffectSemanticSnapshotStore(dsl).storeTx(dsl, "proj-1", "tenant-1", s1);
+        new JdbcEffectSemanticSnapshotStore(dsl).storeTx(dsl, PROJECT_ID, TENANT_ID, s1);
         // different content under the SAME id -> FAIL CLOSED (BI4), durable
         EffectInstance tampered = new EffectInstance(
                 "eff-1", "def-blur", "1", EffectInstance.EffectMediaType.VIDEO, true,
@@ -162,7 +166,7 @@ class EffectSnapshotPersistenceIntegrationTest extends PostgresTestContainerSupp
         EffectSemanticSnapshot different = new EffectSemanticSnapshotAuthority(new EffectDefinitionVersionRegistry.InMemory(), new EffectSemanticSnapshotStore.InMemory()).mintFromAuthoredState(List.of(tampered), List.of(blurDef()), sampleDocument());
         JdbcEffectSemanticSnapshotStore fresh = new JdbcEffectSemanticSnapshotStore(dsl);
         // BI4: (a) re-storing the EXACT same snapshot is idempotent
-        fresh.storeTx(dsl, "proj-1", "tenant-1", s1);
+        fresh.storeTx(dsl, PROJECT_ID, TENANT_ID, s1);
         // (b) a caller CANNOT construct the same id with different content:
         // the EffectSemanticSnapshot constructor is package-private (B3 — ids
         // are authority-generated only), so the same-id/different-digest
@@ -180,7 +184,7 @@ class EffectSnapshotPersistenceIntegrationTest extends PostgresTestContainerSupp
         // registry (D1 cross-snapshot, restart-safe).
         EffectSemanticSnapshotId id1 = EffectSemanticSnapshotId.generate();
         EffectSemanticSnapshot s1 = mint(new EffectDefinitionVersionRegistry.InMemory(), id1);
-        new JdbcEffectSemanticSnapshotStore(dsl).storeTx(dsl, "proj-1", "tenant-1", s1);
+        new JdbcEffectSemanticSnapshotStore(dsl).storeTx(dsl, PROJECT_ID, TENANT_ID, s1);
         // def-blur@1 with DIFFERENT semantic content (different requiredCapabilities)
         EffectInstance.EffectDefinition defDiff = new EffectInstance.EffectDefinition(
                 "def-blur", "1", EffectInstance.EffectCategory.GAUSSIAN_BLUR,
@@ -215,15 +219,15 @@ class EffectSnapshotPersistenceIntegrationTest extends PostgresTestContainerSupp
         // version + id), distinct from legacy missing.
         EffectSemanticSnapshotId id = EffectSemanticSnapshotId.generate();
         EffectSemanticSnapshot empty = new EffectSemanticSnapshotAuthority(new EffectDefinitionVersionRegistry.InMemory(), new EffectSemanticSnapshotStore.InMemory()).mintFromAuthoredState(List.of(), List.of(), sampleDocument());
-        new JdbcEffectSemanticSnapshotStore(dsl).storeTx(dsl, "proj-1", "tenant-1", empty);
+        new JdbcEffectSemanticSnapshotStore(dsl).storeTx(dsl, PROJECT_ID, TENANT_ID, empty);
         JdbcEffectSemanticSnapshotStore fresh = new JdbcEffectSemanticSnapshotStore(dsl);
-        EffectSemanticSnapshot reloaded = fresh.findById("proj-1", "tenant-1", empty.id()).orElseThrow();
+        EffectSemanticSnapshot reloaded = fresh.findById(PROJECT_ID, TENANT_ID, empty.id()).orElseThrow();
         assertEquals(0, reloaded.entries().size(), "EMPTY3: authoritative empty after restart");
         assertEquals(empty.contentDigest(), reloaded.contentDigest(), "EMPTY3: exact empty digest");
         assertEquals(empty.semanticContractVersion(), reloaded.semanticContractVersion(),
                 "EMPTY3: exact contract version");
         // ownership-scoped MISSING snapshot (no row) is MISSING, not EMPTY:
-        assertTrue(fresh.findById("proj-1", "tenant-1",
+        assertTrue(fresh.findById(PROJECT_ID, TENANT_ID,
                 EffectSemanticSnapshotId.of("esnap_nonexistent_000000")).isEmpty(),
                 "EMPTY3: missing snapshot row is MISSING, not EMPTY");
     }

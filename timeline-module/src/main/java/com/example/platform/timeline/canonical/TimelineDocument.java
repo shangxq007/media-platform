@@ -2,6 +2,8 @@ package com.example.platform.timeline.canonical;
 
 import com.example.platform.audio.domain.mix.AudioMix;
 import com.example.platform.timeline.semantics.relationship.SemanticRelationship;
+import com.example.platform.timeline.canonicalmodel.CanonicalAutomationCurve;
+import com.example.platform.timeline.canonicalmodel.CanonicalTransition;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -43,12 +45,22 @@ public class TimelineDocument {
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
     private final List<TextElement> textElements;
 
+    /** First-class transition topology retained in the sole persisted document. */
+    @JsonProperty("transitions")
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    private final List<CanonicalTransition> transitions;
+
+    /** First-class authored automation retained in the sole persisted document. */
+    @JsonProperty("automations")
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    private final List<CanonicalAutomationCurve> automations;
+
     /** Convenience constructor: document without audio mix / relationships. */
     public TimelineDocument(
             String schemaVersion,
             List<TimelineTrack> tracks,
             TimelineMetadata metadata) {
-        this(schemaVersion, tracks, metadata, AudioMix.EMPTY, List.of(), List.of());
+        this(schemaVersion, tracks, metadata, AudioMix.EMPTY, List.of(), List.of(), List.of(), List.of());
     }
 
     /** Convenience constructor: document with audio mix, no relationships. */
@@ -57,7 +69,7 @@ public class TimelineDocument {
             List<TimelineTrack> tracks,
             TimelineMetadata metadata,
             AudioMix audioMix) {
-        this(schemaVersion, tracks, metadata, audioMix, List.of(), List.of());
+        this(schemaVersion, tracks, metadata, audioMix, List.of(), List.of(), List.of(), List.of());
     }
 
     /** Convenience constructor: document with audio mix + relationships. */
@@ -67,7 +79,19 @@ public class TimelineDocument {
             TimelineMetadata metadata,
             AudioMix audioMix,
             List<SemanticRelationship> semanticRelationships) {
-        this(schemaVersion, tracks, metadata, audioMix, semanticRelationships, List.of());
+        this(schemaVersion, tracks, metadata, audioMix, semanticRelationships, List.of(), List.of(), List.of());
+    }
+
+    /** Compatibility constructor for documents predating transition/automation fields. */
+    public TimelineDocument(
+            String schemaVersion,
+            List<TimelineTrack> tracks,
+            TimelineMetadata metadata,
+            AudioMix audioMix,
+            List<SemanticRelationship> semanticRelationships,
+            List<TextElement> textElements) {
+        this(schemaVersion, tracks, metadata, audioMix, semanticRelationships, textElements,
+                List.of(), List.of());
     }
 
     @JsonCreator
@@ -77,7 +101,9 @@ public class TimelineDocument {
             @JsonProperty("metadata") TimelineMetadata metadata,
             @JsonProperty("audioMix") AudioMix audioMix,
             @JsonProperty("semanticRelationships") List<SemanticRelationship> semanticRelationships,
-            @JsonProperty("textElements") List<TextElement> textElements) {
+            @JsonProperty("textElements") List<TextElement> textElements,
+            @JsonProperty("transitions") List<CanonicalTransition> transitions,
+            @JsonProperty("automations") List<CanonicalAutomationCurve> automations) {
         if (schemaVersion == null || schemaVersion.isBlank()) {
             throw new IllegalArgumentException("schemaVersion must not be blank");
         }
@@ -93,6 +119,12 @@ public class TimelineDocument {
                 : List.of();
         this.textElements = textElements != null
                 ? textElements.stream().sorted(TEXT_ELEMENT_ORDER).toList()
+                : List.of();
+        this.transitions = transitions != null
+                ? transitions.stream().sorted(java.util.Comparator.comparing(CanonicalTransition::canonicalKey)).toList()
+                : List.of();
+        this.automations = automations != null
+                ? automations.stream().sorted(java.util.Comparator.comparing(CanonicalAutomationCurve::canonicalKey)).toList()
                 : List.of();
         // ROADMAP #19 (A2): TextElement instance identity is aggregate-unique —
         // duplicate IDs fail closed at construction (canonical authored state).
@@ -125,4 +157,6 @@ public class TimelineDocument {
     public AudioMix getAudioMix() { return audioMix; }
     public List<SemanticRelationship> getSemanticRelationships() { return semanticRelationships; }
     public List<TextElement> getTextElements() { return textElements; }
+    public List<CanonicalTransition> getTransitions() { return transitions; }
+    public List<CanonicalAutomationCurve> getAutomations() { return automations; }
 }

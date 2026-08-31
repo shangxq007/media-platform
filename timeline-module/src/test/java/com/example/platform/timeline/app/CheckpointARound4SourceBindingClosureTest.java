@@ -143,14 +143,14 @@ class CheckpointARound4SourceBindingClosureTest {
         String theirsJson = payloadWithBinding(BINDING);
 
         TimelineMergeEngine engine = newEngine(baseJson, oursJson, theirsJson);
-        TimelineMergeResult result = engine.merge(new TimelineMergeRequest(
+        TimelineMergeResult result = engine.mergeSemantic(TestTimelineMutationContexts.mergeRequest(
                 PROJECT, TENANT, "base-rev", "src-rev", "tgt-rev", "u", "m"));
         assertEquals(TimelineMergeResult.MergeStatus.MERGED, result.status(),
                 "merge must succeed: " + result.summary());
 
         // canonical serialized payload → reload
-        TimelineCandidate reloaded = InternalTimelineCandidateAdapter.map(PROJECT,
-                result.mergedPayloadJson());
+        var mergedDocument = TimelineDocumentJsonSerializer.deserialize(result.mergedPayloadJson());
+        TimelineCandidate reloaded = TimelineDocumentCandidateMapper.map(PROJECT, mergedDocument);
         TimelineSourceBinding mergedBinding =
                 reloaded.tracks().get(0).clips().get(0).sourceBinding();
         assertTrue(mergedBinding instanceof MediaStreamSourceBinding,
@@ -159,11 +159,9 @@ class CheckpointARound4SourceBindingClosureTest {
         assertEquals(BINDING.contentDigest(), ((MediaStreamSourceBinding) mergedBinding).contentDigest());
 
         // wire shape: nested sourceBinding object with exact artifactId + digest
-        JsonNode wire = InternalTimelineJson.parse(result.mergedPayloadJson())
-                .path("composition").path("tracks").path(0).path("clips").path(0)
-                .path("sourceBinding");
-        assertEquals("art-1", wire.path("artifactId").asText());
-        assertEquals("a".repeat(64), wire.path("contentDigest").path("value").asText());
+        var wireClip = mergedDocument.getTracks().getFirst().clips().getFirst();
+        assertEquals("art-1", wireClip.getArtifactId());
+        assertEquals("a".repeat(64), wireClip.getContentDigest());
         TenantContext.clear();
     }
 
@@ -178,7 +176,7 @@ class CheckpointARound4SourceBindingClosureTest {
                         ContentDigest.sha256("c".repeat(64)),
                         new MediaClip.TimeRange(MediaTime.ZERO, MediaTime.ofTicks(60, 30))));
         TimelineMergeEngine engine = newEngine(baseJson, oursJson, theirsJson);
-        TimelineMergeResult result = engine.merge(new TimelineMergeRequest(
+        TimelineMergeResult result = engine.mergeSemantic(TestTimelineMutationContexts.mergeRequest(
                 PROJECT, TENANT, "base-rev", "src-rev", "tgt-rev", "u", "m"));
         assertEquals(TimelineMergeResult.MergeStatus.CONFLICTS, result.status(),
                 "divergent binding replacement must conflict through the REAL engine");
@@ -290,11 +288,14 @@ class CheckpointARound4SourceBindingClosureTest {
 
     private TimelineMergeEngine newEngine(String basePayload, String srcPayload,
             String tgtPayload) throws Exception {
+        basePayload = canonicalPayload(basePayload);
+        srcPayload = canonicalPayload(srcPayload);
+        tgtPayload = canonicalPayload(tgtPayload);
         ObjectMapper mapper = InternalTimelineJson.mapper();
         TimelineRevisionRepository repo = mock(TimelineRevisionRepository.class);
         TimelineSnapshotService snap = mock(TimelineSnapshotService.class);
-        com.example.platform.timeline.app.ProductCurrentRevisionService cur =
-                mock(com.example.platform.timeline.app.ProductCurrentRevisionService.class);
+        com.example.platform.timeline.app.TimelineRevisionRefMutation cur =
+                mock(com.example.platform.timeline.app.TimelineRevisionRefMutation.class);
         when(repo.findOwnedById("base-rev", PROJECT, TENANT)).thenReturn(Optional.of(row("base-rev", "snap-b")));
         when(repo.findOwnedById("src-rev", PROJECT, TENANT)).thenReturn(Optional.of(row("src-rev", "snap-s")));
         when(repo.findOwnedById("tgt-rev", PROJECT, TENANT)).thenReturn(Optional.of(row("tgt-rev", "snap-t")));
@@ -304,10 +305,8 @@ class CheckpointARound4SourceBindingClosureTest {
                 .thenReturn(Optional.of(info("snap-s", srcPayload)));
         when(snap.findOwnedById(PROJECT, TENANT, "snap-t"))
                 .thenReturn(Optional.of(info("snap-t", tgtPayload)));
-        when(snap.save(anyString(), anyString(), anyString(), anyString())).thenReturn("snap-m");
-        when(repo.nextRevisionNumber(PROJECT)).thenReturn(4);
         when(repo.listOwnedByProject(PROJECT, TENANT, null, null, null, 500)).thenReturn(List.of());
-        when(cur.getCurrentRevisionId(PROJECT)).thenReturn("tgt-rev");
+        when(cur.currentHead(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any())).thenReturn("tgt-rev");
         TimelineMergePreviewService pv = new TimelineMergePreviewService(new TimelineMergeConflictDetector());
         com.example.platform.timeline.app.TimelineArtifactPinValidator pinValidator =
                 org.mockito.Mockito.mock(com.example.platform.timeline.app.TimelineArtifactPinValidator.class);
@@ -326,7 +325,7 @@ class CheckpointARound4SourceBindingClosureTest {
                     org.jooq.TransactionalCallable<Object> callable = inv.getArgument(0);
                     return callable.run(cfgdslMockChec0);
                 });
-        return new TimelineMergeEngine(repo, snap, cur, pv,
+        return new TimelineMergeEngine(repo, snap, org.mockito.Mockito.mock(TimelineRevisionSaveService.class), pv,
                 new TimelineNonConflictingMergePlanner(pv), new TimelinePatchApplier(), mapper,
                 pinValidator,
                 org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class),
@@ -335,12 +334,19 @@ class CheckpointARound4SourceBindingClosureTest {
 
     private TimelineRevisionRepository.RevisionRow row(String rev, String snapId) {
         return new TimelineRevisionRepository.RevisionRow(
-                rev, PROJECT, TENANT, "base-rev", 1, snapId, 0, "h", "internal-1.0",
+                rev, PROJECT, TENANT, "base-rev", 1, snapId, 0, "h", "timeline-1.0",
                 "merge", "u", null, "m", null, null, null, false, null, null,
                 java.time.OffsetDateTime.now());
     }
 
     private TimelineSnapshotService.SnapshotInfo info(String id, String payload) {
-        return new TimelineSnapshotService.SnapshotInfo(id, PROJECT, TENANT, payload, "internal-1.0");
+        return new TimelineSnapshotService.SnapshotInfo(id, PROJECT, TENANT, payload, "timeline-1.0");
+    }
+
+    private static String canonicalPayload(String importPayload) {
+        TimelineCandidate candidate = InternalTimelineCandidateAdapter.map(PROJECT, importPayload);
+        var document = TimelineSnapshotConverter.toDocument(
+                TimelineSnapshotConverter.toSnapshot(candidate, "fixture"));
+        return TimelineDocumentJsonSerializer.serialize(document);
     }
 }

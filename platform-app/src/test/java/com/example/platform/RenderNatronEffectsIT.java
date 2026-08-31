@@ -63,6 +63,9 @@ class RenderNatronEffectsIT extends PostgresTestContainerSupport {
     @Autowired
     private TimelineSnapshotService timelineSnapshotService;
 
+    @Autowired
+    private org.jooq.DSLContext dsl;
+
     @Autowired(required = false)
     private RenderWorkerQueueService renderWorkerQueueService;
 
@@ -125,7 +128,8 @@ class RenderNatronEffectsIT extends PostgresTestContainerSupport {
                 }
                 """.formatted(sourcePath);
 
-        String snapshotId = timelineSnapshotService.save(project.id(), tenant.id(), timelineJson, "2.0.0");
+        String snapshotId = timelineSnapshotService.saveTx(
+                dsl, project.id(), tenant.id(), timelineJson, "2.0.0");
 
         RenderJobResponse job = renderController.createRenderJob(tenant.id(), project.id(), 
                 new CreateRenderJobRequest(project.id(), snapshotId, "default_1080p"));

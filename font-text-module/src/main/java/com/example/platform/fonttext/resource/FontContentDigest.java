@@ -42,6 +42,7 @@ public final class FontContentDigest {
         return ofBytes(text.getBytes(StandardCharsets.UTF_8));
     }
 
+    @com.fasterxml.jackson.annotation.JsonValue
     public String sha256Hex() {
         return sha256Hex;
     }
@@ -61,4 +62,3 @@ public final class FontContentDigest {
         return sha256Hex;
     }
 }
-

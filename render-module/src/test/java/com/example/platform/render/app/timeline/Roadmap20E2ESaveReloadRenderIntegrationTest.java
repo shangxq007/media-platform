@@ -4,7 +4,7 @@ import com.example.platform.shared.time.MediaTime;
 import com.example.platform.timeline.adapter.JdbcEffectDefinitionVersionRegistry;
 import com.example.platform.timeline.adapter.JdbcEffectSemanticSnapshotStore;
 import com.example.platform.timeline.adapter.JdbcTimelineRevisionSemanticContextStore;
-import com.example.platform.timeline.app.ProductCurrentRevisionService;
+import com.example.platform.timeline.app.TimelineRevisionRefMutation;
 import com.example.platform.timeline.app.TimelineRevisionSaveService;
 import com.example.platform.timeline.canonical.TimelineContentDigester;
 import com.example.platform.timeline.canonical.TimelineDocument;
@@ -36,7 +36,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import com.example.platform.timeline.app.DefaultTimelineRevisionPersistence;
-import com.example.platform.timeline.app.ProductCurrentRevisionHeadUpdateAdapter;
+import com.example.platform.timeline.app.TimelineRevisionRefHeadUpdateAdapter;
 
 import javax.sql.DataSource;
 import java.util.List;
@@ -61,7 +61,7 @@ class Roadmap20E2ESaveReloadRenderIntegrationTest extends PostgresTestContainerS
     private static DataSource dataSource;
     private static DSLContext dsl;
     private TimelineRevisionSaveService saveService;
-    private ProductCurrentRevisionService currentRevisionService;
+    private TimelineRevisionRefMutation currentRevisionService;
 
     @BeforeAll
     static void setUpDatabase() {
@@ -80,7 +80,7 @@ class Roadmap20E2ESaveReloadRenderIntegrationTest extends PostgresTestContainerS
     void setUp() {
         com.example.platform.render.testsupport.RenderTestSchemaFixture.truncate(dsl);
         com.example.platform.shared.web.TenantContext.set("tenant-1");
-        currentRevisionService = new ProductCurrentRevisionService(dsl);
+        currentRevisionService = new TimelineRevisionRefMutation(dsl);
         JdbcEffectSemanticSnapshotStore jdbcEffectStore = new JdbcEffectSemanticSnapshotStore(dsl);
         EffectSemanticSnapshotAuthority authority = new EffectSemanticSnapshotAuthority(
                 new JdbcEffectDefinitionVersionRegistry(dsl), jdbcEffectStore);
@@ -93,10 +93,12 @@ class Roadmap20E2ESaveReloadRenderIntegrationTest extends PostgresTestContainerS
                         new com.example.platform.artifact.app.ArtifactRelationRepository(dsl))),
                 new com.example.platform.artifact.app.ArtifactPinService(
                         new com.example.platform.artifact.infrastructure.ArtifactPinRepository(dsl)),
-                authority, new JdbcTimelineRevisionSemanticContextStore(dsl), new DefaultTimelineRevisionPersistence(), new ProductCurrentRevisionHeadUpdateAdapter(currentRevisionService));
+                authority, new JdbcTimelineRevisionSemanticContextStore(dsl), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
     }
 
     private void insertProduct(String productId) {
+        com.example.platform.render.testsupport.RenderTestSchemaFixture.insertCanonicalProject(
+                dsl, "tenant-1", productId);
         dsl.execute("insert into product (product_id, tenant_id, project_id, product_type, representation_kind, status, created_at, updated_at) "
                 + "values (?, 'tenant-1', ?, 'video', 'master', 'REGISTERED', now(), now()) on conflict (product_id) do nothing",
                 productId, productId);
@@ -149,19 +151,21 @@ class Roadmap20E2ESaveReloadRenderIntegrationTest extends PostgresTestContainerS
         TimelineDocument doc = sampleDocument();
 
         // 1. REAL canonical save path (no-Effect authoring)
-        TimelineRevision revision = saveService.saveRevision(productId, null, doc, "e2e-user");
+        TimelineRevision revision = com.example.platform.render.testsupport.TimelineMutationTestSupport.save(saveService,
+                "tenant-1", productId, null, doc,
+                com.example.platform.render.testsupport.RenderTestSchemaFixture.SERVER_ACTOR);
         // 2. authoritative EMPTY pinned + persisted
         assertNotNull(revision.effectSemanticSnapshotReference(),
                 "E2E-A: new no-Effect revision must own an exact Effect pin (never MISSING)");
         // 3. discard service objects — recreate the application layer
         EffectSemanticSnapshotStore freshStore = new JdbcEffectSemanticSnapshotStore(dsl);
         // 4. reload revision
-        TimelineRevision reloaded = saveService.findById(revision.revisionId());
+        TimelineRevision reloaded = saveService.findById("tenant-1", revision.revisionId());
         assertNotNull(reloaded, "E2E-A: reload");
         // hydrate the canonical document from the governed payload (production
         // read path) and rebuild the revision with its OWN persisted context
         TimelineRevision hydrated = reloaded.hydrate(
-                saveService.findPayloadDocument(reloaded.revisionId()).orElseThrow());
+                saveService.findPayloadDocument("tenant-1", reloaded.revisionId()).orElseThrow());
         // 5. exact pin comes FROM the revision
         var pin = hydrated.effectSemanticSnapshotReference();
         // 6. load exact snapshot from durable store
@@ -201,16 +205,17 @@ class Roadmap20E2ESaveReloadRenderIntegrationTest extends PostgresTestContainerS
         TimelineDocument doc = sampleDocument();
 
         // 1. REAL typed Effect-bearing canonical save path
-        TimelineRevision revision = saveService.saveRevisionWithEffects(
-                productId, null, doc, List.of(blurEffect()), List.of(blurDef()), "e2e-user");
+        TimelineRevision revision = com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(saveService,
+                "tenant-1", productId, null, doc, List.of(blurEffect()), List.of(blurDef()),
+                com.example.platform.render.testsupport.RenderTestSchemaFixture.SERVER_ACTOR);
         // 2. NON-EMPTY snapshot persisted + exact pin owned by the revision
         assertNotNull(revision.effectSemanticSnapshotReference());
         // 3. recreate application layer
         EffectSemanticSnapshotStore freshStore = new JdbcEffectSemanticSnapshotStore(dsl);
         // 4. reload revision
-        TimelineRevision reloaded = saveService.findById(revision.revisionId());
+        TimelineRevision reloaded = saveService.findById("tenant-1", revision.revisionId());
         TimelineRevision hydrated = reloaded.hydrate(
-                saveService.findPayloadDocument(reloaded.revisionId()).orElseThrow());
+                saveService.findPayloadDocument("tenant-1", reloaded.revisionId()).orElseThrow());
         // 5. pin FROM revision-owned persisted state
         var pin = hydrated.effectSemanticSnapshotReference();
         // 6. load exact snapshot by pin

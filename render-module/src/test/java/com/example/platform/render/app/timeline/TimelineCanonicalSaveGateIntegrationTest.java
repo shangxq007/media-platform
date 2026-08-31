@@ -1,9 +1,9 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.timeline.app.ProductCurrentRevisionService;import com.example.platform.timeline.app.TimelineCanonicalRejectionException;import com.example.platform.timeline.app.TimelineRevisionSaveService;
+import com.example.platform.timeline.app.TimelineRevisionRefMutation;import com.example.platform.timeline.app.TimelineCanonicalRejectionException;import com.example.platform.timeline.app.TimelineRevisionSaveService;
 import com.example.platform.shared.time.MediaTime;
 import com.example.platform.timeline.app.DefaultTimelineRevisionPersistence;
-import com.example.platform.timeline.app.ProductCurrentRevisionHeadUpdateAdapter;
+import com.example.platform.timeline.app.TimelineRevisionRefHeadUpdateAdapter;
 
 import com.example.platform.timeline.canonical.TimelineContentDigester;
 import com.example.platform.timeline.canonical.TimelineDocument;
@@ -37,10 +37,11 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class TimelineCanonicalSaveGateIntegrationTest extends PostgresTestContainerSupport {
 
+    private static final String TENANT = "tenant-canonical-gate";
     private static DataSource dataSource;
     private static DSLContext dsl;
     private TimelineRevisionSaveService saveService;
-    private ProductCurrentRevisionService currentRevisionService;
+    private TimelineRevisionRefMutation currentRevisionService;
     private TimelineContentDigester digester;
 
     @BeforeAll
@@ -58,12 +59,13 @@ class TimelineCanonicalSaveGateIntegrationTest extends PostgresTestContainerSupp
     @BeforeEach
     void setUp() {
         RenderTestSchemaFixture.truncate(dsl);
+        com.example.platform.shared.web.TenantContext.clear();
         digester = new TimelineContentDigester();
-        currentRevisionService = new ProductCurrentRevisionService(dsl);
+        currentRevisionService = new TimelineRevisionRefMutation(dsl);
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService, digester,
                 new com.example.platform.timeline.adapter.TimelineSnapshotService(dsl),
                 org.mockito.Mockito.mock(com.example.platform.timeline.app.TimelineArtifactPinValidator.class),
-                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class), effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new ProductCurrentRevisionHeadUpdateAdapter(currentRevisionService));
+                org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactPinService.class), effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
     }
 
     @Test
@@ -72,7 +74,8 @@ class TimelineCanonicalSaveGateIntegrationTest extends PostgresTestContainerSupp
         insertProduct(productId);
         var doc = createSampleDocument();
 
-        var revision = saveService.saveRevision(productId, null, doc, "gate-user");
+        var revision = com.example.platform.render.testsupport.TimelineMutationTestSupport.save(saveService,
+                TENANT, productId, null, doc, RenderTestSchemaFixture.SERVER_ACTOR);
 
         assertNotNull(revision.revisionId());
         assertNull(revision.parentRevisionId());
@@ -87,7 +90,8 @@ class TimelineCanonicalSaveGateIntegrationTest extends PostgresTestContainerSupp
         // context (contentDigest is the full revision semantic digest)
         assertEquals(digester.digest(doc), revision.semanticContext().timelineContentDigest());
         // current-revision updated after acceptance
-        assertEquals(revision.revisionId(), currentRevisionService.getCurrentRevisionId(productId));
+        assertEquals(revision.revisionId(), currentRevisionService.currentHead(dsl,
+                com.example.platform.timeline.revisioncommand.RevisionRef.main(TENANT, productId)));
     }
 
     @Test
@@ -107,7 +111,9 @@ class TimelineCanonicalSaveGateIntegrationTest extends PostgresTestContainerSupp
 
         TimelineCanonicalRejectionException ex =
                 assertThrows(TimelineCanonicalRejectionException.class, () ->
-                        saveService.saveRevision(productId, null, doc, "gate-user"));
+                        com.example.platform.render.testsupport.TimelineMutationTestSupport.save(saveService,
+                                TENANT, productId, null, doc,
+                                RenderTestSchemaFixture.SERVER_ACTOR));
 
         assertTrue(ex.hasCanonicalDiagnostics());
         List<TimelineDiagnosticCode> codes = ex.diagnostics().stream()
@@ -123,9 +129,13 @@ class TimelineCanonicalSaveGateIntegrationTest extends PostgresTestContainerSupp
                 .allMatch(d -> d.severity() == TimelineDiagnosticSeverity.ERROR));
         // zero durable writes
         assertEquals(0L, revisionRowCount(productId), "no revision row after rejection");
-        assertNull(currentRevisionService.getCurrentRevisionId(productId), "current revision unchanged");
+        assertNull(currentRevisionService.currentHead(dsl,
+                com.example.platform.timeline.revisioncommand.RevisionRef.main(TENANT, productId)),
+                "current revision unchanged");
         // transaction remains usable; subsequent valid save succeeds
-        var valid = saveService.saveRevision(productId, null, createSampleDocument(), "gate-user");
+        var valid = com.example.platform.render.testsupport.TimelineMutationTestSupport.save(saveService,
+                TENANT, productId, null, createSampleDocument(),
+                RenderTestSchemaFixture.SERVER_ACTOR);
         assertNotNull(valid.revisionId());
         assertEquals(1L, revisionRowCount(productId));
     }
@@ -142,13 +152,16 @@ class TimelineCanonicalSaveGateIntegrationTest extends PostgresTestContainerSupp
 
         TimelineCanonicalRejectionException ex =
                 assertThrows(TimelineCanonicalRejectionException.class, () ->
-                        saveService.saveRevision(productId, null, doc, "gate-user"));
+                        com.example.platform.render.testsupport.TimelineMutationTestSupport.save(saveService,
+                                TENANT, productId, null, doc,
+                                RenderTestSchemaFixture.SERVER_ACTOR));
 
         assertTrue(ex.hasAdapterDiagnostics());
         assertEquals(TimelineCanonicalRejectionException.Code.TIMELINE_TIMING_INVALID,
                 ex.adapterDiagnostics().get(0).code());
         assertEquals(0L, revisionRowCount(productId), "no revision row after rejection");
-        assertNull(currentRevisionService.getCurrentRevisionId(productId));
+        assertNull(currentRevisionService.currentHead(dsl,
+                com.example.platform.timeline.revisioncommand.RevisionRef.main(TENANT, productId)));
     }
 
     private long revisionRowCount(String productId) {
@@ -157,11 +170,14 @@ class TimelineCanonicalSaveGateIntegrationTest extends PostgresTestContainerSupp
     }
 
     private void insertProduct(String productId) {
+        RenderTestSchemaFixture.insertCanonicalProject(dsl, TENANT, productId);
         dsl.insertInto(PRODUCT)
                 .set(PRODUCT.PRODUCT_ID, productId)
                 .set(PRODUCT.PRODUCT_TYPE, "video")
                 .set(PRODUCT.REPRESENTATION_KIND, "master")
                 .set(PRODUCT.STATUS, "REGISTERED")
+                .set(PRODUCT.TENANT_ID, TENANT)
+                .set(PRODUCT.PROJECT_ID, productId)
                 .set(PRODUCT.CREATED_AT, java.time.LocalDateTime.now())
                 .set(PRODUCT.UPDATED_AT, java.time.LocalDateTime.now())
                 .execute();

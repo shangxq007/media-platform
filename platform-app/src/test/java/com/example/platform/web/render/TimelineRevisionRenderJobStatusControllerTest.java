@@ -43,6 +43,7 @@ class TimelineRevisionRenderJobStatusControllerTest {
     private TimelineRevisionRenderService renderService;
     private RenderJobStatusService renderJobStatusService;
     private TimelineRevisionController controller;
+    private TimelineProjectAuthorizationService projectAuthorization;
 
     @BeforeEach
     void setUp() {
@@ -52,9 +53,10 @@ class TimelineRevisionRenderJobStatusControllerTest {
         eventPublisher = mock(TimelineReviewEventPublisher.class);
         renderService = mock(TimelineRevisionRenderService.class);
         renderJobStatusService = mock(RenderJobStatusService.class);
+        projectAuthorization = mock(TimelineProjectAuthorizationService.class);
         controller = new TimelineRevisionController(
                 revisionQueryService, revisionDiffQuery, mergeEngine, eventPublisher,
-                renderService, renderJobStatusService, null, null, null);
+                renderService, renderJobStatusService, null, null, projectAuthorization);
     }
 
     // ─── Status endpoint tests ───
@@ -182,7 +184,7 @@ class TimelineRevisionRenderJobStatusControllerTest {
         // Arrange — controller with null renderJobStatusService
         TimelineRevisionController controllerNoService = new TimelineRevisionController(
                 revisionQueryService, revisionDiffQuery, mergeEngine, eventPublisher,
-                renderService, null, null, null, null);
+                renderService, null, null, null, projectAuthorization);
 
         // Act
         ResponseEntity<RenderJobStatusResponse> response =
@@ -322,7 +324,7 @@ class TimelineRevisionRenderJobStatusControllerTest {
         // Arrange — controller with null renderJobStatusService
         TimelineRevisionController controllerNoService = new TimelineRevisionController(
                 revisionQueryService, revisionDiffQuery, mergeEngine, eventPublisher,
-                renderService, null, null, null, null);
+                renderService, null, null, null, projectAuthorization);
 
         // Act
         ResponseEntity<RenderJobResultResponse> response =

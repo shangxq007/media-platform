@@ -17,6 +17,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.net.URI;
 import java.time.OffsetDateTime;
@@ -113,14 +114,60 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalStateException.class)
     public ProblemDetail handleIllegalState(IllegalStateException ex, HttpServletRequest request) {
         captureSentry(ex, "IllegalStateException");
-        var problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
-        problem.setTitle("Conflict");
-        problem.setType(URI.create("https://example.com/problems/CONFLICT"));
+        var problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.INTERNAL_SERVER_ERROR, "Internal server error");
+        problem.setTitle(CommonErrorCode.INTERNAL_ERROR.title());
+        problem.setType(URI.create(
+                "https://example.com/problems/" + CommonErrorCode.INTERNAL_ERROR.code()));
         problem.setInstance(URI.create(request.getRequestURI()));
-        problem.setProperty("errorCode", "CONFLICT");
+        problem.setProperty("errorCode", CommonErrorCode.INTERNAL_ERROR.code());
         problem.setProperty("traceId", MDC.get("traceId"));
         problem.setProperty("timestamp", OffsetDateTime.now().toString());
         return problem;
+    }
+
+    @ExceptionHandler({
+            com.example.platform.timeline.version.TimelineConflictException.class,
+            com.example.platform.timeline.app.TimelineRevisionCommandConflictException.class
+    })
+    public ProblemDetail handleTimelineConflict(
+            RuntimeException ex, HttpServletRequest request) {
+        return timelineProblem(
+                HttpStatus.CONFLICT, "TIMELINE_CONFLICT", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(com.example.platform.timeline.app.TimelineCanonicalRejectionException.class)
+    public ProblemDetail handleTimelineCanonicalRejection(
+            com.example.platform.timeline.app.TimelineCanonicalRejectionException ex,
+            HttpServletRequest request) {
+        ProblemDetail problem = timelineProblem(
+                HttpStatus.UNPROCESSABLE_ENTITY,
+                "TIMELINE_CANONICAL_REJECTED",
+                ex.getMessage(),
+                request);
+        problem.setProperty("diagnostics", java.util.stream.Stream.concat(
+                        ex.diagnostics().stream().map(diagnostic -> java.util.Map.of(
+                                "code", diagnostic.code().name(),
+                                "message", diagnostic.message())),
+                        ex.adapterDiagnostics().stream().map(diagnostic -> java.util.Map.of(
+                                "code", diagnostic.code().name(),
+                                "message", diagnostic.message())))
+                .toList());
+        return problem;
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ProblemDetail handleResponseStatus(
+            ResponseStatusException ex, HttpServletRequest request) {
+        HttpStatus status = HttpStatus.valueOf(ex.getStatusCode().value());
+        String code = switch (status) {
+            case UNAUTHORIZED -> "UNAUTHENTICATED";
+            case FORBIDDEN -> "FORBIDDEN";
+            case NOT_FOUND -> "NOT_FOUND";
+            default -> "HTTP_" + status.value();
+        };
+        return timelineProblem(status, code,
+                ex.getReason() == null ? status.getReasonPhrase() : ex.getReason(), request);
     }
 
     @ExceptionHandler(SecurityException.class)
@@ -167,6 +214,20 @@ public class GlobalExceptionHandler {
                 "type", type,
                 "module", "api"
         )));
+    }
+
+    private static ProblemDetail timelineProblem(
+            HttpStatus status, String errorCode, String detail,
+            HttpServletRequest request) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                status, detail == null ? status.getReasonPhrase() : detail);
+        problem.setTitle(status.getReasonPhrase());
+        problem.setType(URI.create("https://example.com/problems/" + errorCode));
+        problem.setInstance(URI.create(request.getRequestURI()));
+        problem.setProperty("errorCode", errorCode);
+        problem.setProperty("traceId", MDC.get("traceId"));
+        problem.setProperty("timestamp", OffsetDateTime.now().toString());
+        return problem;
     }
 
     private String getLocale(HttpServletRequest request) {

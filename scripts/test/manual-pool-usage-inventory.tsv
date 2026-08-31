@@ -51,7 +51,6 @@ render-module/src/test/java/com/example/platform/render/app/StaleRenderJobCompen
 render-module/src/test/java/com/example/platform/render/app/RenderPipelineE2ECharacterizationTest.java	RenderPipelineE2ECharacterizationTest	SIMPLE	single DSL; REQUIRES_NEW methods are Mockito-mocked (no real nested tx)
 render-module/src/test/java/com/example/platform/render/app/clientexport/ClientExportServiceTest.java	ClientExportServiceTest	SIMPLE	single DSL client export; no nested tx
 render-module/src/test/java/com/example/platform/render/app/mediaprobe/MediaAssetProbeServiceTest.java	MediaAssetProbeServiceTest	SIMPLE	single DSL media probe; no nested tx
-render-module/src/test/java/com/example/platform/render/app/timeline/ProductCurrentRevisionServiceIntegrationTest.java	ProductCurrentRevisionServiceIntegrationTest	SIMPLE	single DSL; no nested tx
 render-module/src/test/java/com/example/platform/render/app/timeline/RenderJobRevisionPinningServiceIntegrationTest.java	RenderJobRevisionPinningServiceIntegrationTest	SIMPLE	single DSL; no nested tx
 render-module/src/test/java/com/example/platform/render/app/timeline/TimelineAssetGcServiceTest.java	TimelineAssetGcServiceTest	SIMPLE	single DSL GC; no nested tx
 render-module/src/test/java/com/example/platform/render/app/timeline/TimelineCanonicalSaveGateIntegrationTest.java	TimelineCanonicalSaveGateIntegrationTest	SIMPLE	single DSL; no nested tx

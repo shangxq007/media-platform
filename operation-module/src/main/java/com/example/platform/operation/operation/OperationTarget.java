@@ -11,10 +11,19 @@ import com.example.platform.timeline.semantics.selection.ResolvedScope;
  * universal target authority; no raw String / god object / index target.
  */
 public sealed interface OperationTarget permits
+        OperationTarget.TimelineTarget,
         OperationTarget.ResolvedClipScopeTarget,
         OperationTarget.GroupTarget,
         OperationTarget.SyncTarget,
         OperationTarget.AudioTarget {
+
+    record TimelineTarget(String timelineId) implements OperationTarget {
+        public TimelineTarget {
+            if (timelineId == null || timelineId.isBlank()) {
+                throw new IllegalArgumentException("timelineId required");
+            }
+        }
+    }
 
     record ResolvedClipScopeTarget(ResolvedScope resolvedScope) implements OperationTarget {
         public ResolvedClipScopeTarget {

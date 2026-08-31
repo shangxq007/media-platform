@@ -31,6 +31,7 @@ public TextContent(String value) {
         this.value = value;
     }
 
+    @com.fasterxml.jackson.annotation.JsonValue
     public String value() { return value; }
 
     /** Unicode scalar (code point) count — canonical range unit (C11). */

@@ -12,7 +12,6 @@ import com.example.platform.typedschema.jooq.generated.tables.ArtifactRelation.A
 import com.example.platform.typedschema.jooq.generated.tables.ArtifactReplica.ArtifactReplicaPath;
 import com.example.platform.typedschema.jooq.generated.tables.MediaAsset.MediaAssetPath;
 import com.example.platform.typedschema.jooq.generated.tables.MediaAssetArtifact.MediaAssetArtifactPath;
-import com.example.platform.typedschema.jooq.generated.tables.TimelineRevision.TimelineRevisionPath;
 import com.example.platform.typedschema.jooq.generated.tables.WfArtifactReuseIndex.WfArtifactReuseIndexPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.ArtifactRecord;
 
@@ -204,7 +203,7 @@ public class Artifact extends TableImpl<ArtifactRecord> {
 
     @Override
     public List<UniqueKey<ArtifactRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.UQ_ARTIFACT_TENANT_DIGEST);
+        return Arrays.asList(Keys.UQ_ARTIFACT_TENANT_DIGEST, Keys.UQ_ARTIFACT_TENANT_ID);
     }
 
     private transient ArtifactPinPath _artifactPin;
@@ -285,14 +284,6 @@ public class Artifact extends TableImpl<ArtifactRecord> {
             _wfArtifactReuseIndex = new WfArtifactReuseIndexPath(this, null, Keys.WF_ARTIFACT_REUSE_INDEX__WF_ARTIFACT_REUSE_INDEX_ARTIFACT_ID_FKEY.getInverseKey());
 
         return _wfArtifactReuseIndex;
-    }
-
-    /**
-     * Get the implicit many-to-many join path to the
-     * <code>public.timeline_revision</code> table
-     */
-    public TimelineRevisionPath timelineRevision() {
-        return artifactPin().timelineRevision();
     }
 
     /**

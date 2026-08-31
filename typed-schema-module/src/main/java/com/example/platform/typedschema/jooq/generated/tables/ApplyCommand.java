@@ -7,6 +7,9 @@ package com.example.platform.typedschema.jooq.generated.tables;
 import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
+import com.example.platform.typedschema.jooq.generated.tables.Project.ProjectPath;
+import com.example.platform.typedschema.jooq.generated.tables.TimelineRevision.TimelineRevisionPath;
+import com.example.platform.typedschema.jooq.generated.tables.TimelineRevisionRef.TimelineRevisionRefPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.ApplyCommandRecord;
 
 import java.time.LocalDateTime;
@@ -16,10 +19,14 @@ import java.util.List;
 
 import org.jooq.Condition;
 import org.jooq.Field;
+import org.jooq.ForeignKey;
 import org.jooq.Index;
+import org.jooq.InverseForeignKey;
 import org.jooq.Name;
+import org.jooq.Path;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
+import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
 import org.jooq.Select;
@@ -90,14 +97,34 @@ public class ApplyCommand extends TableImpl<ApplyCommandRecord> {
     public final TableField<ApplyCommandRecord, String> RESULT_STATUS = createField(DSL.name("result_status"), SQLDataType.VARCHAR(16), this, "");
 
     /**
+     * The column <code>public.apply_command.tenant_id</code>.
+     */
+    public final TableField<ApplyCommandRecord, String> TENANT_ID = createField(DSL.name("tenant_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
+
+    /**
      * The column <code>public.apply_command.project_id</code>.
      */
-    public final TableField<ApplyCommandRecord, String> PROJECT_ID = createField(DSL.name("project_id"), SQLDataType.VARCHAR(64), this, "");
+    public final TableField<ApplyCommandRecord, String> PROJECT_ID = createField(DSL.name("project_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
     /**
      * The column <code>public.apply_command.command_domain</code>.
      */
     public final TableField<ApplyCommandRecord, String> COMMAND_DOMAIN = createField(DSL.name("command_domain"), SQLDataType.VARCHAR(32).nullable(false).defaultValue(DSL.field(DSL.raw("'OPERATION_PLAN'::character varying"), SQLDataType.VARCHAR)), this, "");
+
+    /**
+     * The column <code>public.apply_command.target_ref_id</code>.
+     */
+    public final TableField<ApplyCommandRecord, String> TARGET_REF_ID = createField(DSL.name("target_ref_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
+
+    /**
+     * The column <code>public.apply_command.expected_head_revision_id</code>.
+     */
+    public final TableField<ApplyCommandRecord, String> EXPECTED_HEAD_REVISION_ID = createField(DSL.name("expected_head_revision_id"), SQLDataType.VARCHAR(64), this, "");
+
+    /**
+     * The column <code>public.apply_command.expected_result_status</code>.
+     */
+    public final TableField<ApplyCommandRecord, String> EXPECTED_RESULT_STATUS = createField(DSL.name("expected_result_status"), SQLDataType.VARCHAR(32).nullable(false), this, "");
 
     /**
      * The column <code>public.apply_command.created_at</code>.
@@ -138,6 +165,39 @@ public class ApplyCommand extends TableImpl<ApplyCommandRecord> {
         this(DSL.name("apply_command"), null);
     }
 
+    public <O extends Record> ApplyCommand(Table<O> path, ForeignKey<O, ApplyCommandRecord> childPath, InverseForeignKey<O, ApplyCommandRecord> parentPath) {
+        super(path, childPath, parentPath, APPLY_COMMAND);
+    }
+
+    /**
+     * A subtype implementing {@link Path} for simplified path-based joins.
+     */
+    public static class ApplyCommandPath extends ApplyCommand implements Path<ApplyCommandRecord> {
+
+        private static final long serialVersionUID = 1L;
+        public <O extends Record> ApplyCommandPath(Table<O> path, ForeignKey<O, ApplyCommandRecord> childPath, InverseForeignKey<O, ApplyCommandRecord> parentPath) {
+            super(path, childPath, parentPath);
+        }
+        private ApplyCommandPath(Name alias, Table<ApplyCommandRecord> aliased) {
+            super(alias, aliased);
+        }
+
+        @Override
+        public ApplyCommandPath as(String alias) {
+            return new ApplyCommandPath(DSL.name(alias), this);
+        }
+
+        @Override
+        public ApplyCommandPath as(Name alias) {
+            return new ApplyCommandPath(alias, this);
+        }
+
+        @Override
+        public ApplyCommandPath as(Table<?> alias) {
+            return new ApplyCommandPath(alias.getQualifiedName(), this);
+        }
+    }
+
     @Override
     public Schema getSchema() {
         return aliased() ? null : Public.PUBLIC;
@@ -151,6 +211,62 @@ public class ApplyCommand extends TableImpl<ApplyCommandRecord> {
     @Override
     public UniqueKey<ApplyCommandRecord> getPrimaryKey() {
         return Keys.APPLY_COMMAND_PKEY;
+    }
+
+    @Override
+    public List<ForeignKey<ApplyCommandRecord, ?>> getReferences() {
+        return Arrays.asList(Keys.APPLY_COMMAND__FK_APPLY_COMMAND_EXPECTED_HEAD, Keys.APPLY_COMMAND__FK_APPLY_COMMAND_PROJECT, Keys.APPLY_COMMAND__FK_APPLY_COMMAND_RESULT_REVISION, Keys.APPLY_COMMAND__FK_APPLY_COMMAND_TARGET_REF);
+    }
+
+    private transient TimelineRevisionPath _fkApplyCommandExpectedHead;
+
+    /**
+     * Get the implicit join path to the <code>public.timeline_revision</code>
+     * table, via the <code>fk_apply_command_expected_head</code> key.
+     */
+    public TimelineRevisionPath fkApplyCommandExpectedHead() {
+        if (_fkApplyCommandExpectedHead == null)
+            _fkApplyCommandExpectedHead = new TimelineRevisionPath(this, Keys.APPLY_COMMAND__FK_APPLY_COMMAND_EXPECTED_HEAD, null);
+
+        return _fkApplyCommandExpectedHead;
+    }
+
+    private transient ProjectPath _project;
+
+    /**
+     * Get the implicit join path to the <code>public.project</code> table.
+     */
+    public ProjectPath project() {
+        if (_project == null)
+            _project = new ProjectPath(this, Keys.APPLY_COMMAND__FK_APPLY_COMMAND_PROJECT, null);
+
+        return _project;
+    }
+
+    private transient TimelineRevisionPath _fkApplyCommandResultRevision;
+
+    /**
+     * Get the implicit join path to the <code>public.timeline_revision</code>
+     * table, via the <code>fk_apply_command_result_revision</code> key.
+     */
+    public TimelineRevisionPath fkApplyCommandResultRevision() {
+        if (_fkApplyCommandResultRevision == null)
+            _fkApplyCommandResultRevision = new TimelineRevisionPath(this, Keys.APPLY_COMMAND__FK_APPLY_COMMAND_RESULT_REVISION, null);
+
+        return _fkApplyCommandResultRevision;
+    }
+
+    private transient TimelineRevisionRefPath _timelineRevisionRef;
+
+    /**
+     * Get the implicit join path to the
+     * <code>public.timeline_revision_ref</code> table.
+     */
+    public TimelineRevisionRefPath timelineRevisionRef() {
+        if (_timelineRevisionRef == null)
+            _timelineRevisionRef = new TimelineRevisionRefPath(this, Keys.APPLY_COMMAND__FK_APPLY_COMMAND_TARGET_REF, null);
+
+        return _timelineRevisionRef;
     }
 
     @Override

@@ -3,6 +3,7 @@ package com.example.platform.artifact.infrastructure;
 import static com.example.platform.typedschema.jooq.generated.tables.ArtifactPin.ARTIFACT_PIN;
 
 import com.example.platform.shared.digest.ContentDigest;
+import com.example.platform.artifact.app.ArtifactPinIdentity;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -25,11 +26,13 @@ public class ArtifactPinRepository {
         this.dsl = dsl;
     }
 
-    public void insert(String pinId, String revisionId, String projectId, String artifactId, ContentDigest digest, java.time.Instant pinnedAt) {
+    public void insert(String pinId, String revisionId, String projectId, String tenantId,
+            String artifactId, ContentDigest digest, java.time.Instant pinnedAt) {
         dsl.insertInto(ARTIFACT_PIN)
-                .columns(ARTIFACT_PIN.PIN_ID, ARTIFACT_PIN.REVISION_ID, ARTIFACT_PIN.PROJECT_ID,
+                .columns(ARTIFACT_PIN.PIN_ID, ARTIFACT_PIN.TENANT_ID,
+                        ARTIFACT_PIN.REVISION_ID, ARTIFACT_PIN.PROJECT_ID,
                         ARTIFACT_PIN.ARTIFACT_ID, ARTIFACT_PIN.CONTENT_DIGEST, ARTIFACT_PIN.PINNED_AT)
-                .values(pinId, revisionId, projectId, artifactId, digest.canonicalValue(),
+                .values(pinId, tenantId, revisionId, projectId, artifactId, digest.canonicalValue(),
                         LocalDateTime.ofInstant(pinnedAt, ZoneOffset.UTC))
                 .execute();
     }
@@ -41,11 +44,13 @@ public class ArtifactPinRepository {
      * authority (this SQL); Timeline never inserts ARTIFACT_PIN rows itself.
      */
     public void insertTx(org.jooq.DSLContext tx, String pinId, String revisionId,
-            String projectId, String artifactId, ContentDigest digest, java.time.Instant pinnedAt) {
+            String projectId, String tenantId, String artifactId,
+            ContentDigest digest, java.time.Instant pinnedAt) {
         tx.insertInto(ARTIFACT_PIN)
-                .columns(ARTIFACT_PIN.PIN_ID, ARTIFACT_PIN.REVISION_ID, ARTIFACT_PIN.PROJECT_ID,
+                .columns(ARTIFACT_PIN.PIN_ID, ARTIFACT_PIN.TENANT_ID,
+                        ARTIFACT_PIN.REVISION_ID, ARTIFACT_PIN.PROJECT_ID,
                         ARTIFACT_PIN.ARTIFACT_ID, ARTIFACT_PIN.CONTENT_DIGEST, ARTIFACT_PIN.PINNED_AT)
-                .values(pinId, revisionId, projectId, artifactId, digest.canonicalValue(),
+                .values(pinId, tenantId, revisionId, projectId, artifactId, digest.canonicalValue(),
                         LocalDateTime.ofInstant(pinnedAt, ZoneOffset.UTC))
                 .execute();
     }
@@ -56,23 +61,31 @@ public class ArtifactPinRepository {
      * transaction. Immutable historical pin contract is preserved — no
      * re-resolution of mutable latest Artifact state.
      */
-    public void copyPinsTx(org.jooq.DSLContext tx, String projectId,
+    public void copyPinsTx(org.jooq.DSLContext tx, String tenantId, String projectId,
             String fromRevisionId, String toRevisionId) {
-        tx.insertInto(ARTIFACT_PIN)
-                .columns(ARTIFACT_PIN.PIN_ID, ARTIFACT_PIN.REVISION_ID, ARTIFACT_PIN.PROJECT_ID,
-                        ARTIFACT_PIN.ARTIFACT_ID, ARTIFACT_PIN.CONTENT_DIGEST, ARTIFACT_PIN.PINNED_AT)
-                .select(tx.select(
-                                org.jooq.impl.DSL.concat(
-                                        ARTIFACT_PIN.ARTIFACT_ID, org.jooq.impl.DSL.val("|"), org.jooq.impl.DSL.val(toRevisionId)),
-                                org.jooq.impl.DSL.val(toRevisionId),
-                                ARTIFACT_PIN.PROJECT_ID,
-                                ARTIFACT_PIN.ARTIFACT_ID,
-                                ARTIFACT_PIN.CONTENT_DIGEST,
-                                ARTIFACT_PIN.PINNED_AT)
-                        .from(ARTIFACT_PIN)
-                        .where(ARTIFACT_PIN.REVISION_ID.eq(fromRevisionId))
-                        .and(ARTIFACT_PIN.PROJECT_ID.eq(projectId)))
-                .execute();
+        var sourcePins = tx.select(
+                        ARTIFACT_PIN.ARTIFACT_ID,
+                        ARTIFACT_PIN.CONTENT_DIGEST,
+                        ARTIFACT_PIN.PINNED_AT)
+                .from(ARTIFACT_PIN)
+                .where(ARTIFACT_PIN.REVISION_ID.eq(fromRevisionId))
+                .and(ARTIFACT_PIN.TENANT_ID.eq(tenantId))
+                .and(ARTIFACT_PIN.PROJECT_ID.eq(projectId))
+                .fetch();
+        for (var sourcePin : sourcePins) {
+            String artifactId = sourcePin.get(ARTIFACT_PIN.ARTIFACT_ID);
+            tx.insertInto(ARTIFACT_PIN)
+                    .columns(ARTIFACT_PIN.PIN_ID, ARTIFACT_PIN.TENANT_ID,
+                            ARTIFACT_PIN.REVISION_ID, ARTIFACT_PIN.PROJECT_ID,
+                            ARTIFACT_PIN.ARTIFACT_ID, ARTIFACT_PIN.CONTENT_DIGEST,
+                            ARTIFACT_PIN.PINNED_AT)
+                    .values(ArtifactPinIdentity.forRevisionArtifact(
+                                    tenantId, projectId, toRevisionId, artifactId),
+                            tenantId, toRevisionId, projectId, artifactId,
+                            sourcePin.get(ARTIFACT_PIN.CONTENT_DIGEST),
+                            sourcePin.get(ARTIFACT_PIN.PINNED_AT))
+                    .execute();
+        }
     }
 
     public boolean isPinned(String artifactId) {

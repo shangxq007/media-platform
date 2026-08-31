@@ -2,6 +2,7 @@ package com.example.platform.render.app.timeline;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
+
 import com.example.platform.timeline.app.SystemMaintenanceReader;
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.render.infrastructure.TimelineAssetGcProperties;
@@ -19,10 +20,15 @@ import org.junit.jupiter.api.Test;
 
 class TimelineAssetGcServiceTest extends PostgresTestContainerSupport {
 
+    private static final String PROJECT = "prj_gc";
+    private static final String TENANT = "ten_1";
+
     private static DataSource dataSource;
     private static DSLContext dsl;
     private TimelineAssetGcService gcService;
     private TimelineSnapshotService snapshotService;
+    private String legacySnapshotId;
+    private String legacyPayload;
 
     @BeforeAll
     static void setUpDatabase() {
@@ -49,8 +55,9 @@ class TimelineAssetGcServiceTest extends PostgresTestContainerSupport {
         props.setDeleteBlobOnPurge(false);
         gcService = new TimelineAssetGcService(
                 mock(SystemMaintenanceReader.class), snapshotService, lifecycleService, props, null);
+        RenderTestSchemaFixture.insertCanonicalProject(dsl, TENANT, PROJECT);
 
-        String json = """
+        legacyPayload = """
                 {
                   "schemaVersion": "1.0",
                   "revision": 1,
@@ -67,12 +74,39 @@ class TimelineAssetGcServiceTest extends PostgresTestContainerSupport {
                   "composition": { "tracks": [] }
                 }
                 """;
-        snapshotService.save("prj_gc", "ten_1", json, "1.0");
+        legacySnapshotId = snapshotService.saveTx(
+                dsl, PROJECT, TENANT, legacyPayload, "internal-1.0");
     }
 
     @Test
-    void purgesDeletableTombstonedAssets() {
-        TimelineAssetGcService.GcProjectResult result = gcService.runProjectGc("prj_gc", "ten_1");
-        assertEquals(1, result.purged());
+    void defersLegacyShadowAssetRegistryPurge() {
+        int snapshotsBefore = snapshotCount();
+        String payloadBefore = storedPayload(legacySnapshotId);
+
+        TimelineAssetGcService.GcProjectResult result = gcService.runProjectGc(PROJECT, TENANT);
+
+        assertEquals(PROJECT, result.projectId());
+        assertEquals(0, result.candidates());
+        assertEquals(0, result.purged());
+        assertEquals(0, result.skipped());
+        assertEquals(List.of(
+                "NEEDS_ARCHITECTURE_REVIEW: legacy internal asset-registry GC is retired"),
+                result.errors());
+        assertEquals(snapshotsBefore, snapshotCount(), "GC must not mint a shadow snapshot");
+        assertEquals(payloadBefore, storedPayload(legacySnapshotId), "legacy snapshot stays immutable");
+        assertEquals(legacyPayload, payloadBefore, "the exact owned fixture must be readable");
+        assertEquals(0, dsl.fetchOne(
+                        "select count(*) from timeline_snapshot where schema_version = 'timeline-1.0'")
+                .get(0, Integer.class), "GC must not claim a canonical TimelineDocument write");
+    }
+
+    private static int snapshotCount() {
+        return dsl.fetchOne("select count(*) from timeline_snapshot").get(0, Integer.class);
+    }
+
+    private static String storedPayload(String snapshotId) {
+        return dsl.fetchOne(
+                        "select payload_json from timeline_snapshot where id = ?", snapshotId)
+                .get(0, String.class);
     }
 }

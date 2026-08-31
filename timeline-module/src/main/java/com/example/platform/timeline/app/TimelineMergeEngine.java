@@ -3,25 +3,16 @@ package com.example.platform.timeline.app;
 import com.example.platform.timeline.adapter.RevisionGraphService;
 import com.example.platform.timeline.adapter.TimelineRevisionRepository;
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
-import com.example.platform.timeline.canonicalmodel.TimelineCandidate;
-import com.example.platform.timeline.canonicalmodel.TimelineCanonicalNormalizer;
-import com.example.platform.timeline.canonicalmodel.TimelineCanonicalValidator;
-import com.example.platform.timeline.canonicalmodel.TimelineValidationResult;
-import com.example.platform.shared.time.FrameRate;
-import com.example.platform.shared.time.MediaTime;
+import com.example.platform.timeline.canonical.TimelineDocument;
+import com.example.platform.timeline.canonical.TimelineContentDigester;
 import com.example.platform.timeline.diff.TimelineChangeOperation;
 import com.example.platform.timeline.diff.TimelinePatch;
 import com.example.platform.timeline.diff.TimelinePatchId;
 import com.example.platform.timeline.diff.application.TimelinePatchApplicationResult;
 import com.example.platform.timeline.diff.application.TimelinePatchApplicationStatus;
 import com.example.platform.timeline.diff.application.TimelinePatchApplier;
-import com.example.platform.timeline.diff.calculation.CanonicalTimelineClipSnapshot;
 import com.example.platform.timeline.diff.calculation.CanonicalTimelineSnapshot;
-import com.example.platform.timeline.diff.calculation.CanonicalTimelineTrackSnapshot;
-import com.example.platform.timeline.diff.calculation.CanonicalTimelineTransitionSnapshot;
-import com.example.platform.timeline.diff.calculation.CanonicalTimelineAutomationSnapshot;
 import java.util.Objects;
-import com.example.platform.timeline.diff.calculation.CanonicalTimelineAutomationKeyframe;
 import com.example.platform.timeline.diff.calculation.TimelineSnapshotConverter;
 import com.example.platform.timeline.diff.merge.plan.TimelineMergePlanOperation;
 import com.example.platform.timeline.diff.merge.plan.TimelineMergePlanOperationStatus;
@@ -52,18 +43,12 @@ import com.example.platform.shared.web.ConfigurableErrorCode;
 import com.example.platform.shared.web.ErrorCode;
 import com.example.platform.shared.web.PlatformException;
 import com.example.platform.shared.web.TenantGuard;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -97,7 +82,7 @@ public class TimelineMergeEngine {
 
     private final TimelineRevisionRepository revisionRepository;
     private final TimelineSnapshotService snapshotService;
-    private final ProductCurrentRevisionService currentRevisionService;
+    private final TimelineRevisionSaveService revisionSaveService;
     private final TimelineMergePreviewService previewService;
     private final TimelineNonConflictingMergePlanner mergePlanner;
     private final TimelinePatchApplier patchApplier;
@@ -130,7 +115,7 @@ public class TimelineMergeEngine {
     public TimelineMergeEngine(
             TimelineRevisionRepository revisionRepository,
             TimelineSnapshotService snapshotService,
-            ProductCurrentRevisionService currentRevisionService,
+            TimelineRevisionSaveService revisionSaveService,
             TimelineMergePreviewService previewService,
             TimelineNonConflictingMergePlanner mergePlanner,
             TimelinePatchApplier patchApplier,
@@ -140,7 +125,7 @@ public class TimelineMergeEngine {
             org.jooq.DSLContext dsl) {
         this.revisionRepository = Objects.requireNonNull(revisionRepository, "revisionRepository");
         this.snapshotService = Objects.requireNonNull(snapshotService, "snapshotService");
-        this.currentRevisionService = Objects.requireNonNull(currentRevisionService, "currentRevisionService");
+        this.revisionSaveService = Objects.requireNonNull(revisionSaveService, "revisionSaveService");
         this.previewService = Objects.requireNonNull(previewService, "previewService");
         this.mergePlanner = Objects.requireNonNull(mergePlanner, "mergePlanner");
         this.patchApplier = Objects.requireNonNull(patchApplier, "patchApplier");
@@ -164,39 +149,30 @@ public class TimelineMergeEngine {
      */
     public TimelineMergeResult mergeSemantic(TimelineMergeRequest request) {
         try {
-            String contextTenant = TenantGuard.requireTenantId();
             String effectiveTenant = request.effectiveTenant();
-            if (effectiveTenant == null || effectiveTenant.isBlank()) {
-                effectiveTenant = contextTenant;
-            } else {
-                TenantGuard.assertSameTenant(effectiveTenant);
-            }
+            requireNotBlank(effectiveTenant, "tenantId");
             requireNotBlank(request.projectId(), "projectId");
             requireNotBlank(request.baseRevisionId(), "baseRevisionId");
             requireNotBlank(request.sourceRevisionId(), "sourceRevisionId");
 
-            var baseRevision = loadRevision(request.baseRevisionId(), request.projectId(), contextTenant);
-            var sourceRevision = loadRevision(request.sourceRevisionId(), request.projectId(), contextTenant);
-            var targetRevision = loadRevision(request.targetRevisionId(), request.projectId(), contextTenant);
+            var baseRevision = loadRevision(request.baseRevisionId(), request.projectId(), effectiveTenant);
+            var sourceRevision = loadRevision(request.sourceRevisionId(), request.projectId(), effectiveTenant);
+            var targetRevision = loadRevision(request.targetRevisionId(), request.projectId(), effectiveTenant);
 
-            assertProjectAndTenant(request.projectId(), contextTenant, baseRevision);
-            assertProjectAndTenant(request.projectId(), contextTenant, sourceRevision);
-            assertProjectAndTenant(request.projectId(), contextTenant, targetRevision);
+            assertProjectAndTenant(request.projectId(), effectiveTenant, baseRevision);
+            assertProjectAndTenant(request.projectId(), effectiveTenant, sourceRevision);
+            assertProjectAndTenant(request.projectId(), effectiveTenant, targetRevision);
 
-            String basePayload = loadPayload(baseRevision, contextTenant);
-            String sourcePayload = loadPayload(sourceRevision, contextTenant);
-            String targetPayload = loadPayload(targetRevision, contextTenant);
-
-            TimelineCandidate baseCandidate = canonicalGate(request.projectId(), basePayload);
-            TimelineCandidate sourceCandidate = canonicalGate(request.projectId(), sourcePayload);
-            TimelineCandidate targetCandidate = canonicalGate(request.projectId(), targetPayload);
+            String basePayload = loadPayload(baseRevision, effectiveTenant);
+            String sourcePayload = loadPayload(sourceRevision, effectiveTenant);
+            String targetPayload = loadPayload(targetRevision, effectiveTenant);
 
             CanonicalTimelineSnapshot baseSnapshot =
-                    TimelineSnapshotConverter.toSnapshot(baseCandidate, request.baseRevisionId());
+                    canonicalSnapshot(basePayload, request.baseRevisionId());
             CanonicalTimelineSnapshot sourceSnapshot =
-                    TimelineSnapshotConverter.toSnapshot(sourceCandidate, request.sourceRevisionId());
+                    canonicalSnapshot(sourcePayload, request.sourceRevisionId());
             CanonicalTimelineSnapshot targetSnapshot =
-                    TimelineSnapshotConverter.toSnapshot(targetCandidate, request.targetRevisionId());
+                    canonicalSnapshot(targetPayload, request.targetRevisionId());
 
             TimelineMergePreviewRequest previewRequest = new TimelineMergePreviewRequest(
                     new TimelineMergePreviewRequestId("merge-" + request.baseRevisionId()
@@ -239,9 +215,8 @@ public class TimelineMergeEngine {
                         null, List.of(), List.of(), TimelineMergeSummary.empty(),
                         "Canonical merge application failed", null);
             }
-            String mergedPayload = toInternalPayload(targetPayload,
-                    application.patchedSnapshot(), request.targetRevisionId());
-            canonicalGate(request.projectId(), mergedPayload);
+            String mergedPayload = TimelineDocumentJsonSerializer.serializeWithCaptions(
+                    TimelineSnapshotConverter.toDocument(application.patchedSnapshot()));
             return new TimelineMergeResult(TimelineMergeResult.MergeStatus.MERGED,
                     request.baseRevisionId(), request.sourceRevisionId(), request.targetRevisionId(),
                     null, List.of(), List.of(), TimelineMergeSummary.empty(), null, mergedPayload);
@@ -266,44 +241,33 @@ public class TimelineMergeEngine {
             TimelineMergeRequest request,
             Map<String, TimelineResolutionIntent> resolutions) {
         try {
-            String contextTenant = TenantGuard.requireTenantId();
             String effectiveTenant = request.effectiveTenant();
-            if (effectiveTenant == null || effectiveTenant.isBlank()) {
-                effectiveTenant = contextTenant;
-            } else {
-                TenantGuard.assertSameTenant(effectiveTenant);
-            }
+            requireNotBlank(effectiveTenant, "tenantId");
             requireNotBlank(request.projectId(), "projectId");
             requireNotBlank(request.baseRevisionId(), "baseRevisionId");
             requireNotBlank(request.sourceRevisionId(), "sourceRevisionId");
             requireNotBlank(request.targetRevisionId(), "targetRevisionId");
 
-            var baseRevision = loadRevision(request.baseRevisionId(), request.projectId(), contextTenant);
-            var sourceRevision = loadRevision(request.sourceRevisionId(), request.projectId(), contextTenant);
-            var targetRevision = loadRevision(request.targetRevisionId(), request.projectId(), contextTenant);
+            var baseRevision = loadRevision(request.baseRevisionId(), request.projectId(), effectiveTenant);
+            var sourceRevision = loadRevision(request.sourceRevisionId(), request.projectId(), effectiveTenant);
+            var targetRevision = loadRevision(request.targetRevisionId(), request.projectId(), effectiveTenant);
 
-            assertProjectAndTenant(request.projectId(), contextTenant, baseRevision);
-            assertProjectAndTenant(request.projectId(), contextTenant, sourceRevision);
-            assertProjectAndTenant(request.projectId(), contextTenant, targetRevision);
+            assertProjectAndTenant(request.projectId(), effectiveTenant, baseRevision);
+            assertProjectAndTenant(request.projectId(), effectiveTenant, sourceRevision);
+            assertProjectAndTenant(request.projectId(), effectiveTenant, targetRevision);
 
-            String basePayload = loadPayload(baseRevision, contextTenant);
-            String sourcePayload = loadPayload(sourceRevision, contextTenant);
-            String targetPayload = loadPayload(targetRevision, contextTenant);
+            String basePayload = loadPayload(baseRevision, effectiveTenant);
+            String sourcePayload = loadPayload(sourceRevision, effectiveTenant);
+            String targetPayload = loadPayload(targetRevision, effectiveTenant);
 
-            // Canonical gate (C1 authority): internal-1.0 payload -> TimelineCandidate,
-            // validated + normalized. Always enabled (C1-CRR1: no bypass flag).
-            TimelineCandidate baseCandidate = canonicalGate(request.projectId(), basePayload);
-            TimelineCandidate sourceCandidate = canonicalGate(request.projectId(), sourcePayload);
-            TimelineCandidate targetCandidate = canonicalGate(request.projectId(), targetPayload);
-
-            // Single bounded conversion path (C1-CRR1): canonical persisted payload
-            // -> semantic merge snapshot via the gate's own candidate model.
+            // H7 V2: all three persisted payloads are decoded by the sole
+            // TimelineDocument reader and projected into the semantic merge model.
             CanonicalTimelineSnapshot baseSnapshot =
-                    TimelineSnapshotConverter.toSnapshot(baseCandidate, request.baseRevisionId());
+                    canonicalSnapshot(basePayload, request.baseRevisionId());
             CanonicalTimelineSnapshot sourceSnapshot =
-                    TimelineSnapshotConverter.toSnapshot(sourceCandidate, request.sourceRevisionId());
+                    canonicalSnapshot(sourcePayload, request.sourceRevisionId());
             CanonicalTimelineSnapshot targetSnapshot =
-                    TimelineSnapshotConverter.toSnapshot(targetCandidate, request.targetRevisionId());
+                    canonicalSnapshot(targetPayload, request.targetRevisionId());
 
             // Canonical preview + plan: typed-path conflict detection over both branches.
             TimelineMergePreviewRequest previewRequest = new TimelineMergePreviewRequest(
@@ -384,370 +348,52 @@ public class TimelineMergeEngine {
             }
 
             CanonicalTimelineSnapshot mergedSnapshot = application.patchedSnapshot();
-            // C1-CRR1: merged payload is rebuilt in the canonical persisted format
-            // (internal-1.0). The target JSON's document-level fields are preserved;
-            // composition.tracks are replaced by the merged semantic tracks so the
-            // persisted merged revision passes the canonical gate and remains
-            // consumable by the same save/load/merge authority.
-            String mergedPayload = toInternalPayload(targetPayload, mergedSnapshot, request.targetRevisionId());
-
-            canonicalGate(request.projectId(), mergedPayload);
-
-            // Frozen idempotency + stale-current contract (unchanged from legacy engine).
-            String mergedPayloadHash = computeMergeHash(
-                    request.sourceRevisionId(), request.targetRevisionId(), mergedPayload);
+            TimelineDocument mergedDocument = TimelineSnapshotConverter.toDocument(mergedSnapshot);
+            String mergedPayload = TimelineDocumentJsonSerializer.serializeWithCaptions(mergedDocument);
+            String mergedPayloadHash = new TimelineContentDigester().digest(mergedDocument);
             Optional<TimelineRevisionRepository.RevisionRow> existing =
-                    findAcceptedDuplicate(request, mergedPayloadHash, contextTenant);
+                    findAcceptedDuplicate(request, mergedPayloadHash, effectiveTenant);
             if (existing.isPresent()) {
                 return duplicateResult(request, existing.get());
-            }
-            String currentId = currentRevisionService.getCurrentRevisionId(request.projectId());
-            if (currentId != null && !request.targetRevisionId().equals(currentId)) {
-                throw new TimelineConflictException(
-                        request.projectId(), request.targetRevisionId(), currentId);
             }
 
             String message = request.message() != null ? request.message()
                     : "Merge " + request.sourceRevisionId() + " into " + request.targetRevisionId();
-
-            // R4-D4 + R5-C: pins are extracted from the merged payload and
-            // VALIDATED (existence/tenant/digest) BEFORE the write transaction
-            // opens — pure computation, fail-early. Registration runs inside
-            // the write transaction via registerRevisionPinsTx.
-            java.util.List<TimelineArtifactPinExtractor.ArtifactPin> mergedPins =
-                    TimelineArtifactPinExtractor.extract(mergedPayload);
-            if (!mergedPins.isEmpty()) {
-                TimelineArtifactPinValidator.ValidationResult pinValidation =
-                        artifactPinValidator.validate(effectiveTenant, mergedPins);
-                if (!pinValidation.valid()) {
-                    throw new TimelineCanonicalRejectionException(
-                            new TimelineCanonicalRejectionException.AdapterDiagnostic(
-                                    TimelineCanonicalRejectionException.Code.TIMELINE_SOURCE_REF_INVALID,
-                                    com.example.platform.timeline.canonicalmodel.TimelineModelPath.root()
-                                            .field("sourceBinding"),
-                                    "Merge artifact pin reference-integrity: "
-                                            + String.join("; ", pinValidation.violations())));
-                }
-            }
-
-            // FINAL_CLOSURE_F1: ONE explicit jOOQ write transaction covering
-            // snapshot write → merge revision insert → pin registration →
-            // head CAS. The transaction's OWN DSLContext flows through every
-            // write (saveTx / insertTx / registerRevisionPinsTx /
-            // updateCurrentRevisionTx). Pin persistence failure (real DB) rolls
-            // back snapshot + revision + pins + head together. The head CAS
-            // (updateCurrentRevisionTx) performs the authoritative
-            // expected-vs-actual check INSIDE the transaction — no
-            // check-then-act race.
-            // (effective-final copies for lambda capture)
-            final String effectiveTenantFinal = effectiveTenant;
-            final String mergedPayloadFinal = mergedPayload;
-            final String mergedPayloadHashFinal = mergedPayloadHash;
-            final String messageFinal = message;
-            final int sourceAppliedFinal = sourceApplied;
-            final int targetAppliedFinal = targetApplied;
-            final List<TimelineArtifactPinExtractor.ArtifactPin> mergedPinsFinal = mergedPins;
-            return dsl.transactionResult(tx -> {
-                String snapshotId = snapshotService.saveTx(
-                        tx.dsl(), request.projectId(), effectiveTenantFinal, mergedPayloadFinal, "internal-1.0");
-                String mergeRevisionId = Ids.newId("trev");
-                int revNum = revisionRepository.nextRevisionNumberTx(tx.dsl(), request.projectId());
-                String mergeParentIds = request.sourceRevisionId() + "," + request.targetRevisionId();
-                TimelineRevisionRepository.RevisionRow mergeRow = new TimelineRevisionRepository.RevisionRow(
-                        mergeRevisionId, request.projectId(), effectiveTenantFinal,
-                        request.targetRevisionId(), revNum, snapshotId, 0,
-                        mergedPayloadHashFinal,
-                        "internal-1.0", TimelineMergeRequest.SOURCE_MERGE,
-                        request.authorUserId(), null, message,
-                        null, null, null,
-                        true, mergeParentIds, request.baseRevisionId(),
-                        OffsetDateTime.now());
-                revisionRepository.insertTx(tx.dsl(), mergeRow);
-                log.info("Canonical merge revision created: id={} project={} rev={}",
-                        mergeRevisionId, request.projectId(), revNum);
-
-                // R4-D4 + R5-C + FINAL_CLOSURE_F1: the merge revision is a NEW
-                // historical identity — it must itself protect every exact
-                // artifact the merged payload consumes. Pins were extracted and
-                // VALIDATED before the write transaction opened (pure
-                // computation, fail-early); registration runs inside the SAME
-                // physical transaction via registerRevisionPinsTx. Zero pins is
-                // a normal no-op; a missing dependency is not (non-null by
-                // construction).
-                if (!mergedPinsFinal.isEmpty()) {
-                    artifactPinService.registerRevisionPinsTx(
-                            tx.dsl(), request.projectId(), mergeRevisionId, effectiveTenantFinal,
-                            mergedPinsFinal.stream()
-                                    .map(p -> new com.example.platform.artifact.app.ArtifactPinService.ArtifactPin(
-                                            p.artifactId(), p.contentDigest()))
-                                    .toList());
-                }
-
-                currentRevisionService.updateCurrentRevisionTx(
-                        tx.dsl(), request.projectId(), request.targetRevisionId(), mergeRevisionId);
-
-                List<SemanticChange> autoMerged = applyOps.stream()
+            com.example.platform.timeline.version.TimelineRevision persisted =
+                    revisionSaveService.saveMergeRevision(
+                            request.mutationContext(), request.targetRevisionId(),
+                            request.sourceRevisionId(), request.baseRevisionId(), mergedDocument);
+            List<SemanticChange> autoMerged = applyOps.stream()
                         .map(op -> SemanticChange.of(
                                 toSemanticChangeType(op),
                                 toEntityRef(op),
                                 "canonical merge applied " + op.type() + " on " + op.path().value()))
                         .toList();
-                List<String> entityIds = autoMerged.stream()
+            List<String> entityIds = autoMerged.stream()
                         .map(c -> c.entity().key())
                         .distinct()
                         .toList();
-                TimelineMergeSummary summary = TimelineMergeSummary.merged(
-                        sourceAppliedFinal, targetAppliedFinal, entityIds);
-
-                return new TimelineMergeResult(TimelineMergeResult.MergeStatus.MERGED,
-                        request.baseRevisionId(), request.sourceRevisionId(), request.targetRevisionId(),
-                        mergeRevisionId, autoMerged, List.of(), summary, messageFinal, mergedPayloadFinal);
-            });
+            TimelineMergeSummary summary = TimelineMergeSummary.merged(
+                    sourceApplied, targetApplied, entityIds);
+            return new TimelineMergeResult(TimelineMergeResult.MergeStatus.MERGED,
+                    request.baseRevisionId(), request.sourceRevisionId(), request.targetRevisionId(),
+                    persisted.revisionId(), autoMerged, List.of(), summary, message, mergedPayload);
         } catch (RuntimeException e) {
             log.error("Merge failed: base={} source={} target={}",
                     request.baseRevisionId(), request.sourceRevisionId(), request.targetRevisionId(), e);
             throw e;
         }
     }
-    // ── helpers (frozen contract preserved from legacy authority) ─────────────────
+    // ── helpers ───────────────────────────────────────────────────────────────
 
-    /**
-     * Rebuild the merged revision payload in the canonical persisted format
-     * (internal-1.0). Document-level fields of the target payload (id, name,
-     * project, assetRegistry, output, extensions, metadata) are preserved;
-     * {@code composition.tracks} are replaced by the merged semantic tracks
-     * (ms -> exact frame @ target rate).
-     *
-     * <p>C1-CRR1 frozen contract: the merged payload must pass the canonical
-     * gate (which it does — {@code merge} re-gates it immediately) and remain
-     * consumable by the same save/load/merge authority on the next merge.</p>
-     */
-    private String toInternalPayload(String targetPayload, CanonicalTimelineSnapshot mergedSnapshot,
-                                     String revisionId) {
+    private CanonicalTimelineSnapshot canonicalSnapshot(String payload, String revisionId) {
         try {
-            JsonNode targetRoot = InternalTimelineJson.parse(targetPayload);
-            if (!InternalTimelineJson.isInternalTimeline(targetRoot)) {
-                throw new IllegalStateException("Merge target payload is not internal-1.0");
-            }
-            ObjectNode composition = (ObjectNode) targetRoot.path("composition");
-            if (composition == null || composition.isMissingNode()) {
-                throw new IllegalStateException("Merge target payload has no composition block");
-            }
-            ObjectNode mergedRoot = (ObjectNode) InternalTimelineJson.mapper().valueToTree(targetRoot);
-            ObjectNode mergedComposition = (ObjectNode) mergedRoot.path("composition");
-            // C1-CNM1: merged tracks carry each clip's exact rational rate and
-            // opaque effect payload; no single target-fps projection is applied.
-            mergedComposition.set("tracks", tracksToJson(mergedSnapshot.tracks()));
-            // THIRD CORRECTION: the merged snapshot is authority for merge-owned
-            // fields. Canonical convention: absent field == empty collection
-            // (import writes no field for empty). Empty merged result REMOVES
-            // the field — never resurrects deleted target-authored semantics.
-            if (mergedSnapshot.transitions().isEmpty()) {
-                mergedComposition.remove("transitions");
-            } else {
-                mergedComposition.set("transitions", transitionsToJson(mergedSnapshot.transitions()));
-            }
-            if (mergedSnapshot.automations().isEmpty()) {
-                mergedComposition.remove("automations");
-            } else {
-                mergedComposition.set("automations", automationsToJson(mergedSnapshot.automations()));
-            }
-            // ROADMAP #19: merged snapshot is authority for TimedText too —
-            // absent==empty convention (import omits empty textElements).
-            if (mergedSnapshot.textElements().isEmpty()) {
-                mergedComposition.remove("textElements");
-            } else {
-                mergedComposition.set("textElements", textElementsToJson(mergedSnapshot.textElements()));
-            }
-            // CHECKPOINT_A: AudioMix + SemanticRelationships participate in the
-            // merged write-back (absent == empty convention, like the others).
-            if (mergedSnapshot.audioMix() == null
-                    || mergedSnapshot.audioMix().equals(com.example.platform.audio.domain.mix.AudioMix.empty())) {
-                mergedComposition.remove("audioMix");
-            } else {
-                // R4-A4: AudioMix canonical fragment delegated to the Audio-domain
-                // authority (Timeline never owns AudioMix field grammar).
-                mergedComposition.set("audioMix",
-                        com.example.platform.audio.domain.mix.AudioMixCanonicalSemantics
-                                .canonicalValue(mergedSnapshot.audioMix()));
-            }
-            if (mergedSnapshot.semanticRelationships().isEmpty()) {
-                mergedComposition.remove("semanticRelationships");
-            } else {
-                // R4-A3: merged relationship write-back delegated to the
-                // Relationship-local authority — valueToTree on the polymorphic
-                // root DROPS the kind discriminator (verified defect), so the
-                // canonical JSON codec is the only lossless write-back path.
-                ArrayNode rels = InternalTimelineJson.mapper().createArrayNode();
-                for (com.example.platform.timeline.semantics.relationship.SemanticRelationship r
-                        : mergedSnapshot.semanticRelationships()) {
-                    try {
-                        rels.add(InternalTimelineJson.mapper().readTree(
-                                com.example.platform.timeline.semantics.relationship
-                                        .RelationshipCanonicalSemantics.canonicalJson(r)));
-                    } catch (Exception e) {
-                        throw new IllegalStateException("Relationship canonical fragment decode failed", e);
-                    }
-                }
-                mergedComposition.set("semanticRelationships", rels);
-            }
-            // revision counter is a document-level field; the persistence layer
-            // re-assigns it on insert, so leave it untouched here.
-            return InternalTimelineJson.write(mergedRoot);
-        } catch (java.io.IOException e) {
-            throw new IllegalStateException("Failed to rebuild internal-1.0 merged payload", e);
+            TimelineDocument document = TimelineDocumentJsonSerializer.deserialize(payload);
+            return TimelineSnapshotConverter.toSnapshot(document, revisionId);
+        } catch (Exception failure) {
+            throw new IllegalArgumentException(
+                    "Revision payload is not canonical TimelineDocument: " + revisionId, failure);
         }
-    }
-
-    private ArrayNode tracksToJson(List<CanonicalTimelineTrackSnapshot> tracks) {
-        ObjectMapper mapper = InternalTimelineJson.mapper();
-
-        ArrayNode out = mapper.createArrayNode();
-        // Track order is semantic (TRACK_REORDERED materializes the order field);
-        // emit in order, mirroring TimelineSnapshotConverter.toDocument sorting.
-        List<CanonicalTimelineTrackSnapshot> ordered = new ArrayList<>(tracks);
-        ordered.sort(java.util.Comparator.comparingInt(CanonicalTimelineTrackSnapshot::order));
-        for (CanonicalTimelineTrackSnapshot track : ordered) {
-            ObjectNode trackNode = mapper.createObjectNode();
-            trackNode.put("id", track.trackId());
-            String type = track.kind() != null ? track.kind() : "VIDEO";
-            trackNode.put("type", type);
-            ArrayNode clips = mapper.createArrayNode();
-            for (CanonicalTimelineClipSnapshot clip : track.clips()) {
-                clips.add(clipToJson(clip, mapper));
-            }
-            trackNode.set("clips", clips);
-            out.add(trackNode);
-        }
-        return out;
-    }
-
-    /** CHECKPOINT_A Round 3: merged transitions → composition JSON, delegating
-     *  the Transition-local fragment to TransitionCanonicalSemantics (Timeline
-     *  only adds aggregate identity). */
-    private ArrayNode transitionsToJson(List<CanonicalTimelineTransitionSnapshot> transitions) {
-        ObjectMapper mapper = InternalTimelineJson.mapper();
-        ArrayNode out = mapper.createArrayNode();
-        List<CanonicalTimelineTransitionSnapshot> ordered = new ArrayList<>(transitions);
-        ordered.sort(java.util.Comparator.comparing(CanonicalTimelineTransitionSnapshot::transitionId));
-        for (CanonicalTimelineTransitionSnapshot t : ordered) {
-            ObjectNode node = com.example.platform.timeline.semantics.transition
-                    .TransitionCanonicalSemantics.canonicalValue(t);
-            node.put("id", t.transitionId());
-            out.add(node);
-        }
-        return out;
-    }
-
-    /** EFFECT_TRANSITION_CANONICALIZATION_V1: merged automations → composition JSON. */
-    /** ROADMAP #19 (CORRECTION 1): TimedText output construction delegates to
-     *  the local TimedText canonical authority — never independent field
-     *  serialization of TextElement domain objects. */
-    private ArrayNode textElementsToJson(List<com.example.platform.timeline.canonical.TextElement> elements) {
-        ArrayNode arr = InternalTimelineJson.mapper().createArrayNode();
-        for (com.example.platform.timeline.canonical.TextElement e : elements) {
-            arr.add(com.example.platform.timeline.canonical.TimedTextCanonicalSemantics.toCanonicalNode(e));
-        }
-        return arr;
-    }
-
-    /** CHECKPOINT_A Round 3: merged automations → composition JSON, delegating
-     *  the Automation-local fragment to AutomationCanonicalSemantics (Timeline
-     *  only adds aggregate identity). */
-    private ArrayNode automationsToJson(List<CanonicalTimelineAutomationSnapshot> automations) {
-        ObjectMapper mapper = InternalTimelineJson.mapper();
-        ArrayNode out = mapper.createArrayNode();
-        List<CanonicalTimelineAutomationSnapshot> ordered = new ArrayList<>(automations);
-        ordered.sort(java.util.Comparator.comparing(CanonicalTimelineAutomationSnapshot::automationId));
-        for (CanonicalTimelineAutomationSnapshot c : ordered) {
-            ObjectNode node = com.example.platform.timeline.semantics.automation
-                    .AutomationCanonicalSemantics.canonicalValue(c);
-            node.put("automationId", c.automationId());
-            out.add(node);
-        }
-        return out;
-    }
-
-    private ObjectNode clipToJson(CanonicalTimelineClipSnapshot clip, ObjectMapper mapper) {
-        ObjectNode node = mapper.createObjectNode();
-        node.put("id", clip.clipId());
-        node.put("assetId", clip.assetBindingId());
-        node.set("timelineRange", rangeToJson(clip.start(), clip.duration(), clip.rate(), mapper));
-        node.set("sourceRange", rangeToJson(clip.sourceStart(), clip.sourceDuration(), clip.rate(), mapper));
-        // CHECKPOINT_A: full typed source semantics survive the merged write-back.
-        // R4-B: the TYPED binding is emitted as the nested sourceBinding object
-        // (the wire shape the Artifact pin extractor reads); legacy flat fields
-        // remain projections for old consumers — never the semantic authority.
-        if (clip.sourceBinding() != null) {
-            node.set("sourceBinding", com.example.platform.timeline.semantics.clip
-                    .TimelineSourceBindingCanonicalSemantics.canonicalValue(clip.sourceBinding()));
-        }
-        if (clip.sourceKind() != null) {
-            node.put("sourceKind", clip.sourceKind());
-        }
-        if (clip.mediaStreamId() != null) {
-            node.put("mediaStreamId", clip.mediaStreamId());
-        }
-        if (clip.artifactId() != null) {
-            node.put("artifactId", clip.artifactId());
-        }
-        if (clip.contentDigest() != null) {
-            node.put("contentDigest", clip.contentDigest());
-        }
-        if (clip.temporalMapping() != null) {
-            node.set("temporalMapping", mapper.valueToTree(clip.temporalMapping()));
-        }
-        // CHECKPOINT_A Round 3: merged clips carry their authored Effect state —
-        // the Effect-local fragment is delegated to EffectCanonicalSemantics
-        // (Timeline orchestrates the clip, never the Effect field grammar).
-        if (clip.effects() != null && !clip.effects().isEmpty()) {
-            try {
-                node.set("effects", InternalTimelineJson.mapper().readTree(
-                        com.example.platform.timeline.canonicalmodel
-                                .EffectCanonicalSemantics.encodeEffects(clip.effects())));
-            } catch (Exception e) {
-                throw new IllegalStateException("Effect canonical fragment decode failed", e);
-            }
-        }
-        return node;
-    }
-
-    /**
-     * C1-CNM1: exact rational time -> frame @ exact rational rate.
-     *
-     * <p>{@code MediaTime.toFrameExact(rate)} computes
-     * frame = ticks * rate.num / (timeScale * rate.den) exactly (BigInteger).
-     * For canonical frame-derived values this is the exact inverse — no
-     * quantization, no integer-ms step, no denominator loss. A non-frame-
-     * aligned merged value throws (canonical merge output must never silently
-     * quantize); the merge machinery only ever produces frame-aligned values
-     * from frame-aligned inputs.</p>
-     */
-    private ObjectNode rangeToJson(MediaTime start, MediaTime duration, FrameRate rate, ObjectMapper mapper) {
-        ObjectNode rateNode = mapper.createObjectNode();
-        rateNode.put("num", rate.numerator());
-        rateNode.put("den", rate.denominator());
-        ObjectNode startNode = mapper.createObjectNode();
-        startNode.put("frame", start.toFrameExact(rate));
-        startNode.set("rate", rateNode);
-        ObjectNode durationNode = mapper.createObjectNode();
-        durationNode.put("frame", duration.toFrameExact(rate));
-        durationNode.set("rate", rateNode);
-        ObjectNode range = mapper.createObjectNode();
-        range.set("start", startNode);
-        range.set("duration", durationNode);
-        return range;
-    }
-
-    private TimelineCandidate canonicalGate(String projectId, String internalTimelineJson) {
-        TimelineCandidate candidate = InternalTimelineCandidateAdapter.map(projectId, internalTimelineJson);
-        TimelineValidationResult validation = TimelineCanonicalValidator.validate(candidate);
-        if (validation.hasFatalErrors()) {
-            throw new TimelineCanonicalRejectionException(validation.diagnostics());
-        }
-        TimelineCanonicalNormalizer.normalize(candidate)
-                .orElseThrow(() -> new TimelineCanonicalRejectionException(validation.diagnostics()));
-        return candidate;
     }
 
     private TimelineRevisionRepository.RevisionRow loadRevision(
@@ -772,7 +418,7 @@ public class TimelineMergeEngine {
 
     private Optional<TimelineRevisionRepository.RevisionRow> findAcceptedDuplicate(
             TimelineMergeRequest request, String mergedPayloadHash, String contextTenant) {
-        String expectedParents = request.sourceRevisionId() + "," + request.targetRevisionId();
+        String expectedParents = request.targetRevisionId() + "," + request.sourceRevisionId();
         return revisionRepository.listOwnedByProject(
                         request.projectId(), contextTenant, null, null, null, DEDUP_SCAN_LIMIT).stream()
                 .filter(TimelineRevisionRepository.RevisionRow::isMerge)
@@ -790,22 +436,6 @@ public class TimelineMergeEngine {
                 request.baseRevisionId(), request.sourceRevisionId(), request.targetRevisionId(),
                 existing.id(), List.of(), List.of(), TimelineMergeSummary.empty(),
                 "Duplicate merge request: existing merge revision returned", null);
-    }
-
-    private static String computeMergeHash(String sourceId, String targetId, String payload) {
-        String input = "merge:" + sourceId + ":" + targetId + ":" + (payload != null ? payload : "");
-        try {
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            byte[] hash = md.digest(input.getBytes(StandardCharsets.UTF_8));
-            StringBuilder sb = new StringBuilder(64);
-            for (byte b : hash) {
-                sb.append(Character.forDigit((b >> 4) & 0xF, 16));
-                sb.append(Character.forDigit(b & 0xF, 16));
-            }
-            return sb.toString();
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 is unavailable", e);
-        }
     }
 
     private static void assertProjectAndTenant(

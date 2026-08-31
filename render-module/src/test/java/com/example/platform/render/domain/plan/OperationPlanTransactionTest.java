@@ -88,7 +88,7 @@ class OperationPlanTransactionTest {
         String baseHash = new TimelineContentDigester().digest(base);
         OperationPlan plan = PLANNER.plan(instance(OperationDefinition.V1.MOVE,
                 new OperationParameters.MoveParameters(MediaTime.ofRational(2, 1), false),
-                clipTarget(TimelineClipId.of("clip-a")), baseHash), base);
+                clipTarget(TimelineClipId.of("clip-a")), baseHash), REV, base);
         assertFalse(plan.noOp());
         var replaced = plan.plannedChanges().stream().filter(c -> c instanceof PlannedChange.ClipReplaced)
                 .map(c -> (PlannedChange.ClipReplaced) c).findFirst().orElseThrow();
@@ -111,7 +111,7 @@ class OperationPlanTransactionTest {
         String baseHash = new TimelineContentDigester().digest(base);
         OperationPlan plan = PLANNER.plan(instance(OperationDefinition.V1.DELETE,
                 new OperationParameters.NoParameters(),
-                clipTarget(TimelineClipId.of("clip-a")), baseHash), base);
+                clipTarget(TimelineClipId.of("clip-a")), baseHash), REV, base);
         assertTrue(plan.plannedChanges().stream().anyMatch(c -> c instanceof PlannedChange.ClipRemoved));
         assertTrue(plan.plannedChanges().stream().anyMatch(c -> c instanceof PlannedChange.RelationshipRemoved
                 && ((PlannedChange.RelationshipRemoved) c).relationshipIdentity().equals(sync.identityKey())));
@@ -133,7 +133,7 @@ class OperationPlanTransactionTest {
         String baseHash = new TimelineContentDigester().digest(base);
         OperationPlan plan = PLANNER.plan(instance(OperationDefinition.V1.SET_TEMPORAL_RATE,
                 new OperationParameters.SetTemporalRateParameters(new com.example.platform.timeline.semantics.clip.MediaClip.Rational(2, 1)),
-                clipTarget(TimelineClipId.of("clip-a")), baseHash), base);
+                clipTarget(TimelineClipId.of("clip-a")), baseHash), REV, base);
         var replaced = plan.plannedChanges().stream().filter(c -> c instanceof PlannedChange.ClipReplaced)
                 .map(c -> (PlannedChange.ClipReplaced) c).findFirst().orElseThrow();
         // identity 1/1: sourceDur = 4s; new occupied = 4/2 = 2s
@@ -153,7 +153,7 @@ class OperationPlanTransactionTest {
         String baseHash = new TimelineContentDigester().digest(base);
         assertThrows(PlanException.class, () -> PLANNER.plan(instance(OperationDefinition.V1.SET_TEMPORAL_RATE,
                 new OperationParameters.SetTemporalRateParameters(new com.example.platform.timeline.semantics.clip.MediaClip.Rational(2, 1)),
-                clipTarget(TimelineClipId.of("clip-a")), baseHash), base));
+                clipTarget(TimelineClipId.of("clip-a")), baseHash), REV, base));
     }
 
     // ---- TRIM invalid sync anchor reject ----
@@ -166,7 +166,7 @@ class OperationPlanTransactionTest {
         assertThrows(PlanException.class, () -> PLANNER.plan(instance(OperationDefinition.V1.TRIM,
                 new OperationParameters.TrimParameters(OperationParameters.TrimParameters.TrimEdge.END,
                         MediaTime.ofRational(2, 1)),
-                clipTarget(TimelineClipId.of("clip-a")), baseHash), base));
+                clipTarget(TimelineClipId.of("clip-a")), baseHash), REV, base));
     }
 
     // ---- NO_OP ----
@@ -176,7 +176,7 @@ class OperationPlanTransactionTest {
         String baseHash = new TimelineContentDigester().digest(base);
         OperationPlan plan = PLANNER.plan(instance(OperationDefinition.V1.MOVE,
                 new OperationParameters.MoveParameters(MediaTime.ZERO, false),
-                clipTarget(TimelineClipId.of("clip-a")), baseHash), base);
+                clipTarget(TimelineClipId.of("clip-a")), baseHash), REV, base);
         assertTrue(plan.noOp());
         assertNotNull(plan.planDigest());
     }
@@ -188,10 +188,10 @@ class OperationPlanTransactionTest {
         String baseHash = new TimelineContentDigester().digest(base);
         OperationPlan p1 = PLANNER.plan(instance(OperationDefinition.V1.MOVE,
                 new OperationParameters.MoveParameters(MediaTime.ofRational(1, 1), false),
-                clipTarget(TimelineClipId.of("clip-a")), baseHash), base);
+                clipTarget(TimelineClipId.of("clip-a")), baseHash), REV, base);
         OperationPlan p2 = PLANNER.plan(instance(OperationDefinition.V1.MOVE,
                 new OperationParameters.MoveParameters(MediaTime.ofRational(2, 1), false),
-                clipTarget(TimelineClipId.of("clip-a")), baseHash), base);
+                clipTarget(TimelineClipId.of("clip-a")), baseHash), REV, base);
         assertNotEquals(p1.planDigest(), p2.planDigest(), "different delta -> different digest");
         // target ref/principal are NOT digest inputs (no targetRef field exists in digest computation)
         assertEquals(64, p1.planDigest().length());
@@ -204,7 +204,7 @@ class OperationPlanTransactionTest {
         String baseHash = new TimelineContentDigester().digest(base);
         OperationPlan plan = PLANNER.plan(instance(OperationDefinition.V1.MOVE,
                 new OperationParameters.MoveParameters(MediaTime.ofRational(1, 1), false),
-                clipTarget(TimelineClipId.of("clip-a")), baseHash), base);
+                clipTarget(TimelineClipId.of("clip-a")), baseHash), REV, base);
         OperationPlanPreview preview = OperationPlanPreview.of(plan);
         assertEquals(plan.planDigest(), preview.planDigest());
         assertFalse(preview.primaryChanges().isEmpty());
@@ -218,14 +218,14 @@ class OperationPlanTransactionTest {
         String baseHash = new TimelineContentDigester().digest(base);
         OperationPlan plan = PLANNER.plan(instance(OperationDefinition.V1.MOVE,
                 new OperationParameters.MoveParameters(MediaTime.ofRational(1, 1), false),
-                clipTarget(TimelineClipId.of("clip-a")), baseHash), base);
+                clipTarget(TimelineClipId.of("clip-a")), baseHash), REV, base);
         AuthorizationDecision decision = AuthorizationDecision.allow(plan.planDigest(),
-                "principal-a", "project-1", "main", "policy-v1");
+                "principal-a", "project-1", "tenant-1", "main", "policy-v1");
         assertTrue(decision.allowed());
         assertEquals(plan.planDigest(), decision.planDigest());
         // different target ref is NOT authorized by same decision
         AuthorizationDecision other = AuthorizationDecision.allow(plan.planDigest(),
-                "principal-a", "project-1", "protected-main", "policy-v1");
+                "principal-a", "project-1", "tenant-1", "protected-main", "policy-v1");
         assertNotEquals(decision.targetRefId(), other.targetRefId());
     }
 
@@ -239,7 +239,7 @@ class OperationPlanTransactionTest {
         String baseHash = new TimelineContentDigester().digest(base);
         OperationPlan plan = PLANNER.plan(instance(OperationDefinition.V1.SET_AUDIO_GAIN,
                 new OperationParameters.AudioGainParameters(AudioGain.of(0.5)),
-                new OperationTarget.AudioTarget(input), baseHash), base);
+                new OperationTarget.AudioTarget(input), baseHash), REV, base);
         assertFalse(plan.noOp(), "gain change must change candidate hash");
         assertTrue(plan.plannedChanges().stream().anyMatch(c -> c instanceof PlannedChange.AudioMixReplaced));
         assertEquals(0.5, plan.candidateTimeline().getAudioMix().routes().get(0).gain().linear());
@@ -252,7 +252,7 @@ class OperationPlanTransactionTest {
         String baseHash = new TimelineContentDigester().digest(base);
         OperationPlan plan = PLANNER.plan(instance(OperationDefinition.V1.MOVE,
                 new OperationParameters.MoveParameters(MediaTime.ofRational(1, 1), false),
-                clipTarget(TimelineClipId.of("clip-a")), baseHash), base);
+                clipTarget(TimelineClipId.of("clip-a")), baseHash), REV, base);
         assertEquals(OperationPlan.FORMAT_VERSION, plan.formatVersion());
         assertEquals(REV, plan.baseRevisionId());
     }

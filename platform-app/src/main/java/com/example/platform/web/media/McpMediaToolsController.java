@@ -2,7 +2,6 @@ package com.example.platform.web.media;
 
 import com.example.platform.render.api.dto.SubmitRenderJobRequest;
 import com.example.platform.render.api.port.RenderOrchestratorPort;
-import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.render.app.NleLayerCatalogService;
 import com.example.platform.timeline.app.TimelinePatchService;
 import com.example.platform.render.app.timeline.IncrementalPlanExplainer;
@@ -88,8 +87,8 @@ public class McpMediaToolsController {
     private final TimelineImportService timelineImportService;
     private final TimelineSpecResolver timelineSpecResolver;
     private final Optional<RenderOrchestratorPort> renderOrchestratorPort;
-    private final TimelineSnapshotService timelineSnapshotService;
     private final SegmentPlanFilter segmentPlanFilter;
+    private final com.example.platform.web.render.TimelineProjectAuthorizationService projectAuthorization;
 
     public McpMediaToolsController(InternalTimelineValidationService timelineValidationServiceParam,
                                    TimelineScriptParser timelineScriptParser,
@@ -111,8 +110,8 @@ public class McpMediaToolsController {
                                    TimelineImportService timelineImportService,
                                    TimelineSpecResolver timelineSpecResolver,
                                    Optional<RenderOrchestratorPort> renderOrchestratorPort,
-                                   TimelineSnapshotService timelineSnapshotService,
-                                   SegmentPlanFilter segmentPlanFilter) {
+                                   SegmentPlanFilter segmentPlanFilter,
+                                   com.example.platform.web.render.TimelineProjectAuthorizationService projectAuthorization) {
         this.timelineValidationService = timelineValidationServiceParam;
         this.timelineScriptParser = timelineScriptParser;
         this.renderPlannerService = renderPlannerService;
@@ -133,8 +132,8 @@ public class McpMediaToolsController {
         this.timelineImportService = timelineImportService;
         this.timelineSpecResolver = timelineSpecResolver;
         this.renderOrchestratorPort = renderOrchestratorPort;
-        this.timelineSnapshotService = timelineSnapshotService;
         this.segmentPlanFilter = segmentPlanFilter;
+        this.projectAuthorization = projectAuthorization;
     }
 
     @PostMapping("/render_timeline")
@@ -154,6 +153,7 @@ public class McpMediaToolsController {
         if (request.timelineJson() == null || request.timelineJson().isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("error", "timelineJson is required"));
         }
+        projectAuthorization.requireWrite(request.tenantId(), request.projectId());
         if (!timelineSpecResolver.isInternalTimelineJson(request.timelineJson())) {
             return ResponseEntity.badRequest().body(Map.of(
                     "error", "timelineJson must be Internal Timeline Schema 1.0"));
@@ -163,8 +163,8 @@ public class McpMediaToolsController {
             String timelineJson = canon.timelineJson();
             String snapshotId = request.timelineSnapshotId();
             if (snapshotId == null || snapshotId.isBlank()) {
-                snapshotId = timelineSnapshotService.save(
-                        request.projectId(), request.tenantId(), timelineJson, "1.0");
+                return ResponseEntity.badRequest().body(Map.of(
+                        "error", "timelineSnapshotId from a canonical Timeline revision is required"));
             }
             String profile = request.profile() != null && !request.profile().isBlank()
                     ? request.profile() : "default_1080p";
@@ -215,29 +215,8 @@ public class McpMediaToolsController {
                     .orElseThrow(() -> new IllegalArgumentException("Invalid Internal Timeline 1.0 JSON"));
 
             if (request.submitJob()) {
-                if (renderOrchestratorPort.isEmpty()) {
-                    return ResponseEntity.status(503).body(Map.of("error", "Render orchestrator not available"));
-                }
-                if (request.tenantId() == null || request.projectId() == null) {
-                    return ResponseEntity.badRequest().body(Map.of(
-                            "error", "tenantId and projectId required when submitJob=true"));
-                }
-                String snapshotId = timelineSnapshotService.save(
-                        request.projectId(), request.tenantId(), timelineJson, "1.0");
-                SubmitRenderJobRequest submit = SubmitRenderJobRequest.segmentRender(
-                        request.tenantId(),
-                        request.projectId(),
-                        snapshotId,
-                        request.profile() != null ? request.profile() : "default_1080p",
-                        request.baseJobId(),
-                        request.segmentIds());
-                String jobId = renderOrchestratorPort.get().submitRenderJob(submit);
-                Map<String, Object> body = new LinkedHashMap<>();
-                body.put("jobId", jobId);
-                body.put("status", "QUEUED");
-                body.put("segmentIds", request.segmentIds());
-                body.put("timelineSnapshotId", snapshotId);
-                return ResponseEntity.accepted().body(body);
+                return ResponseEntity.badRequest().body(Map.of(
+                        "error", "segment submission requires a pre-existing canonical revision snapshot"));
             }
 
             if (request.baseJobId() == null || request.oldTimelineJson() == null) {

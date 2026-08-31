@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.example.platform.timeline.app.DefaultTimelineRevisionPersistence;
-import com.example.platform.timeline.app.ProductCurrentRevisionHeadUpdateAdapter;
+import com.example.platform.timeline.app.TimelineRevisionRefHeadUpdateAdapter;
 
 import com.example.platform.artifact.app.ArtifactPinService;
 import com.example.platform.artifact.domain.Artifact;
@@ -19,7 +19,7 @@ import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.shared.time.MediaTime;
 import com.example.platform.shared.web.TenantContext;
 import com.example.platform.timeline.app.PatchApplyResult;
-import com.example.platform.timeline.app.ProductCurrentRevisionService;
+import com.example.platform.timeline.app.TimelineRevisionRefMutation;
 import com.example.platform.timeline.app.TimelineArtifactPinValidator;
 import com.example.platform.timeline.app.TimelinePatchApplicationService;
 import com.example.platform.timeline.app.TimelineRevisionSaveService;
@@ -73,7 +73,7 @@ class CheckpointARound4PatchPathPinIT extends PostgresTestContainerSupport {
     private static DataSource dataSource;
     private static DSLContext dsl;
     private TimelineRevisionSaveService saveService;
-    private ProductCurrentRevisionService currentRevisionService;
+    private TimelineRevisionRefMutation currentRevisionService;
     private ArtifactPinRepository pinRepository;
     private ArtifactPinService pinService;
     private TimelineSnapshotService snapshotService;
@@ -94,7 +94,7 @@ class CheckpointARound4PatchPathPinIT extends PostgresTestContainerSupport {
     @BeforeEach
     void setUp() {
         RenderTestSchemaFixture.truncate(dsl);
-        currentRevisionService = new ProductCurrentRevisionService(dsl);
+        currentRevisionService = new TimelineRevisionRefMutation(dsl);
         snapshotService = new TimelineSnapshotService(dsl);
         pinRepository = new ArtifactPinRepository(dsl);
         pinService = new ArtifactPinService(pinRepository);
@@ -102,11 +102,14 @@ class CheckpointARound4PatchPathPinIT extends PostgresTestContainerSupport {
     }
 
     private void insertProduct(String productId) {
+        RenderTestSchemaFixture.insertCanonicalProject(dsl, TENANT, productId);
         dsl.insertInto(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT)
                 .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.PRODUCT_ID, productId)
                 .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.PRODUCT_TYPE, "video")
                 .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.REPRESENTATION_KIND, "master")
                 .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.STATUS, "REGISTERED")
+                .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.TENANT_ID, TENANT)
+                .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.PROJECT_ID, productId)
                 .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.CREATED_AT, java.time.LocalDateTime.now())
                 .set(com.example.platform.typedschema.jooq.generated.tables.Product.PRODUCT.UPDATED_AT, java.time.LocalDateTime.now())
                 .execute();
@@ -154,7 +157,7 @@ class CheckpointARound4PatchPathPinIT extends PostgresTestContainerSupport {
 
     private void buildServices(ArtifactQueryService query, ArtifactPinService pinSvc) {
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService,
-                digester, snapshotService, new TimelineArtifactPinValidator(query), pinSvc, effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new ProductCurrentRevisionHeadUpdateAdapter(currentRevisionService));
+                digester, snapshotService, new TimelineArtifactPinValidator(query), pinSvc, effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
     }
 
     private TimelinePatch patchMove(String productId, TimelineRevision base,
@@ -190,11 +193,15 @@ class CheckpointARound4PatchPathPinIT extends PostgresTestContainerSupport {
         buildServices(queryFor("art-1", DIGEST_HEX), pinService);
 
         TimelineDocument baseDoc = pinnedDoc("clip-1", "0/1", "art-1", DIGEST_HEX);
-        TimelineRevision base = saveService.saveRevision(productId, null, baseDoc, "pphr-user");
+        TimelineRevision base = com.example.platform.render.testsupport.TimelineMutationTestSupport.save(saveService,
+                TENANT, productId, null, baseDoc, RenderTestSchemaFixture.SERVER_ACTOR);
         assertEquals(1, countPinsFor(productId, base.revisionId()), "base revision pinned");
 
         var patchService = new TimelinePatchApplicationService(saveService, currentRevisionService, digester);
-        PatchApplyResult result = patchService.apply(patchMove(productId, base, baseDoc, "2/1"));
+        PatchApplyResult result = patchService.apply(
+                com.example.platform.render.testsupport.TimelineMutationTestSupport.user(
+                        TENANT, productId, RenderTestSchemaFixture.SERVER_ACTOR),
+                patchMove(productId, base, baseDoc, "2/1"));
 
         assertTrue(result instanceof PatchApplyResult.Success,
                 "valid-pin patch must succeed (observed "
@@ -204,7 +211,7 @@ class CheckpointARound4PatchPathPinIT extends PostgresTestContainerSupport {
         assertEquals(2, countRevisions(productId), "new revision persisted");
         assertEquals(1, countPinsFor(productId, newRevisionId),
                 "NEW revision must receive its own pin rows");
-        assertEquals(newRevisionId, currentRevisionService.getCurrentRevisionId(productId),
+        assertEquals(newRevisionId, currentRevisionService.currentHead(dsl, com.example.platform.timeline.revisioncommand.RevisionRef.main(com.example.platform.shared.web.TenantContext.get(), productId)),
                 "head advanced to the patched revision");
     }
 
@@ -220,7 +227,8 @@ class CheckpointARound4PatchPathPinIT extends PostgresTestContainerSupport {
         // base save itself fails closed (digest mismatch at save) — so seed via
         // a no-pin save path is impossible; prove the INVARIANT at save:
         var thrown = org.junit.jupiter.api.Assertions.assertThrows(Exception.class,
-                () -> saveService.saveRevision(productId, null, baseDoc, "pphr-user"),
+                () -> com.example.platform.render.testsupport.TimelineMutationTestSupport.save(saveService,
+                        TENANT, productId, null, baseDoc, RenderTestSchemaFixture.SERVER_ACTOR),
                 "digest-mismatched pinned save must fail closed");
         assertNotNull(thrown);
         assertEquals(0, countRevisions(productId), "no revision committed");
@@ -235,8 +243,9 @@ class CheckpointARound4PatchPathPinIT extends PostgresTestContainerSupport {
         buildServices(queryFor("art-1", DIGEST_HEX), pinService);
 
         TimelineDocument baseDoc = pinnedDoc("clip-1", "0/1", "art-1", DIGEST_HEX);
-        TimelineRevision base = saveService.saveRevision(productId, null, baseDoc, "pphr-user");
-        String headBefore = currentRevisionService.getCurrentRevisionId(productId);
+        TimelineRevision base = com.example.platform.render.testsupport.TimelineMutationTestSupport.save(saveService,
+                TENANT, productId, null, baseDoc, RenderTestSchemaFixture.SERVER_ACTOR);
+        String headBefore = currentRevisionService.currentHead(dsl, com.example.platform.timeline.revisioncommand.RevisionRef.main(com.example.platform.shared.web.TenantContext.get(), productId));
 
         // pin persistence failure on the NEW revision: failing service
         ArtifactPinService failing = mock(ArtifactPinService.class);
@@ -247,11 +256,14 @@ class CheckpointARound4PatchPathPinIT extends PostgresTestContainerSupport {
         var patchService = new TimelinePatchApplicationService(saveService, currentRevisionService, digester);
 
         org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
-                () -> patchService.apply(patchMove(productId, base, baseDoc, "2/1")),
+                () -> patchService.apply(
+                        com.example.platform.render.testsupport.TimelineMutationTestSupport.user(
+                                TENANT, productId, RenderTestSchemaFixture.SERVER_ACTOR),
+                        patchMove(productId, base, baseDoc, "2/1")),
                 "pin persistence failure must fail the whole patch save");
 
         assertEquals(1, countRevisions(productId), "no new revision after pin failure");
-        assertEquals(headBefore, currentRevisionService.getCurrentRevisionId(productId),
+        assertEquals(headBefore, currentRevisionService.currentHead(dsl, com.example.platform.timeline.revisioncommand.RevisionRef.main(com.example.platform.shared.web.TenantContext.get(), productId)),
                 "head unchanged after pin failure");
         assertEquals(1, countPinsFor(productId, base.revisionId()),
                 "no partial new pins (only base pin remains)");

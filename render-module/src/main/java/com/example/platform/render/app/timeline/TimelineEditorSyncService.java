@@ -61,12 +61,8 @@ public class TimelineEditorSyncService {
         if (head.isPresent()) {
             return pullBySnapshotId(projectId, tenantId, head.get().snapshotId());
         }
-        Optional<SnapshotInfo> latest =
-                timelineSnapshotService.findLatestOwnedByProject(projectId, tenantId);
-        if (latest.isEmpty()) {
-            throw new IllegalArgumentException("No timeline snapshot for project: " + projectId);
-        }
-        return pullSnapshot(latest.get(), null);
+        throw new IllegalArgumentException(
+                "No canonical main Timeline revision for project: " + projectId);
     }
 
     public PullResult pullBySnapshotId(String projectId, String tenantId, String snapshotId) {

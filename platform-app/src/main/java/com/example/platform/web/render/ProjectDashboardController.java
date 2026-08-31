@@ -5,6 +5,7 @@ import com.example.platform.outbox.app.OutboxEventService;
 import com.example.platform.outbox.coordination.PlatformJobRepository;
 import com.example.platform.render.infrastructure.asset.*;
 import com.example.platform.render.app.timeline.*;
+import com.example.platform.shared.web.TenantContext;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.*;
@@ -46,6 +47,7 @@ public class ProjectDashboardController {
     public ResponseEntity<DashboardDto> dashboard(@PathVariable String projectId,
             @RequestParam(required = false, defaultValue = "tenant_1") String tenantId) {
         long start = System.currentTimeMillis();
+        tenantId = TenantContext.get();
 
         var assets = assetRepo.listByProject(tenantId, projectId);
         int publishedAssets = (int) assets.stream().filter(a -> "PUBLISHED".equals(a.publishStatus())).count();
@@ -56,7 +58,7 @@ public class ProjectDashboardController {
         int publishedListings = (int) marketplace.stream()
                 .filter(m -> m.status() != null && m.status().name().equals("PUBLISHED")).count();
 
-        var reviews = reviewRepo.listByProject(projectId, 200);
+        var reviews = reviewRepo.listByProject(projectId, tenantId, 200);
         int openReviews = (int) reviews.stream().filter(r -> "OPEN".equals(r.status())).count();
         int approvedReviews = (int) reviews.stream().filter(r -> "APPROVED".equals(r.status())).count();
 
@@ -87,7 +89,8 @@ public class ProjectDashboardController {
     @GetMapping("/pending")
     @Operation(summary = "Pending actions requiring attention")
     public PendingDto pending(@PathVariable String projectId) {
-        var reviews = reviewRepo.listByProject(projectId, 200);
+        String tenantId = TenantContext.get();
+        var reviews = reviewRepo.listByProject(projectId, tenantId, 200);
         int pendingReviews = (int) reviews.stream().filter(r -> "OPEN".equals(r.status())).count();
         int pendingChanges = (int) reviews.stream().filter(r -> "CHANGES_REQUESTED".equals(r.status())).count();
 

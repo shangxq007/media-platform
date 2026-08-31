@@ -2,8 +2,6 @@ package com.example.platform.timeline.app;
 
 import com.example.platform.timeline.adapter.TimelineRevisionRepository;
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
-import com.example.platform.timeline.diff.merge.SemanticDiffResult;
-import java.util.ArrayList;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
@@ -20,24 +18,15 @@ public class TimelineRevisionDiffQuery {
 
     private final TimelineRevisionRepository revisionRepository;
     private final TimelineSnapshotService snapshotService;
-    private final TimelineContentHasher contentHasher;
     private final TimelineRevisionDiffService diffService;
-    private final TimelinePatchService timelinePatchService;
-    private final TimelineSemanticDiffService semanticDiffService;
 
     public TimelineRevisionDiffQuery(
             TimelineRevisionRepository revisionRepository,
             TimelineSnapshotService snapshotService,
-            TimelineContentHasher contentHasher,
-            TimelineRevisionDiffService diffService,
-            TimelinePatchService timelinePatchService,
-            TimelineSemanticDiffService semanticDiffService) {
+            TimelineRevisionDiffService diffService) {
         this.revisionRepository = revisionRepository;
         this.snapshotService = snapshotService;
-        this.contentHasher = contentHasher;
         this.diffService = diffService;
-        this.timelinePatchService = timelinePatchService;
-        this.semanticDiffService = semanticDiffService;
     }
 
     public CompareResult compareRevisions(
@@ -57,111 +46,28 @@ public class TimelineRevisionDiffQuery {
                 .map(TimelineSnapshotService.SnapshotInfo::payloadJson)
                 .orElseThrow(() -> new IllegalArgumentException("Snapshot missing: " + to.snapshotId()));
         TimelineRevisionDiffService.DetailedCompare detailed = diffService.compare(fromPayload, toPayload);
-        List<PatchPathItem> patchPaths = toPatchPaths(TimelinePatchOpsJson.fromJson(to.patchOpsJson()));
-
-        // Add semantic diff for effects, text overlays, subtitles
-        SemanticDiffResult semanticResult = null;
-        try {
-            semanticResult = semanticDiffService.diff(fromPayload, toPayload);
-        } catch (Exception e) {
-            // Semantic diff is best-effort; structural diff is primary
-        }
+        // V2: compare output is derived solely from the requested from->to payloads.
+        // Stored target patch metadata is never substituted as compare authority.
+        List<PatchPathItem> patchPaths = detailed.entities().stream()
+                .map(TimelineRevisionDiffQuery::toActualPairPath)
+                .toList();
 
         return new CompareResult(
                 toInfo(from),
                 toInfo(to),
                 detailed.summary(),
                 detailed.entities(),
-                patchPaths,
-                semanticResult);
+                patchPaths);
     }
 
-    /**
-     * Dry-run stored RFC6902 ops against the parent revision snapshot (or this revision if no parent).
-     */
-    public PatchPreviewResult previewPatchReplay(String projectId, String tenantId, String revisionId) {
-        TimelineRevisionRepository.RevisionRow row = revisionRepository
-                .findOwnedById(revisionId, projectId, tenantId)
-                .orElseThrow(() -> new IllegalArgumentException("Revision not found: " + revisionId));
-        List<TimelinePatchService.PatchOperation> ops = TimelinePatchOpsJson.fromJson(row.patchOpsJson());
-        if (ops.isEmpty()) {
-            return PatchPreviewResult.noOps(revisionId);
-        }
-        String basePayload = resolvePatchBasePayload(row, projectId, tenantId);
-        String hashBefore = contentHasher.hashInternalTimeline(basePayload);
-        TimelinePatchService.PatchResult result = timelinePatchService.applyPatch(basePayload, ops);
-        String hashAfter = result.success() && result.timelineJson() != null
-                ? contentHasher.hashInternalTimeline(result.timelineJson())
-                : null;
-        return new PatchPreviewResult(
-                revisionId,
-                true,
-                result.success(),
-                toPatchPaths(ops),
-                result.appliedOps() != null ? result.appliedOps() : List.of(),
-                result.errors() != null ? result.errors() : List.of(),
-                hashBefore,
-                hashAfter,
-                row.contentHash());
-    }
-
-    /** Apply stored patch ops one at a time (cumulative dry-run). */
-    public PatchStepsResult previewPatchSteps(String projectId, String tenantId, String revisionId) {
-        TimelineRevisionRepository.RevisionRow row = revisionRepository
-                .findOwnedById(revisionId, projectId, tenantId)
-                .orElseThrow(() -> new IllegalArgumentException("Revision not found: " + revisionId));
-        List<TimelinePatchService.PatchOperation> ops = TimelinePatchOpsJson.fromJson(row.patchOpsJson());
-        if (ops.isEmpty()) {
-            return PatchStepsResult.noOps(revisionId);
-        }
-        String current = resolvePatchBasePayload(row, projectId, tenantId);
-        List<PatchStepPreview> steps = new ArrayList<>();
-        boolean allOk = true;
-        for (int i = 0; i < ops.size(); i++) {
-            TimelinePatchService.PatchOperation op = ops.get(i);
-            TimelinePatchService.PatchResult stepResult = timelinePatchService.applyPatch(current, List.of(op));
-            boolean ok = stepResult.success();
-            String hashAfter = ok && stepResult.timelineJson() != null
-                    ? contentHasher.hashInternalTimeline(stepResult.timelineJson())
-                    : null;
-            steps.add(new PatchStepPreview(
-                    i,
-                    op.op(),
-                    op.path(),
-                    ok,
-                    stepResult.appliedOps() != null ? stepResult.appliedOps() : List.of(),
-                    stepResult.errors() != null ? stepResult.errors() : List.of(),
-                    hashAfter));
-            if (!ok) {
-                allOk = false;
-                break;
-            }
-            current = stepResult.timelineJson();
-        }
-        return new PatchStepsResult(revisionId, true, allOk, steps);
-    }
-
-    private String resolvePatchBasePayload(
-            TimelineRevisionRepository.RevisionRow row, String projectId, String tenantId) {
-        if (row.parentRevisionId() != null) {
-            TimelineRevisionRepository.RevisionRow parent = revisionRepository
-                    .findOwnedById(row.parentRevisionId(), projectId, tenantId)
-                    .orElseThrow(() -> new IllegalArgumentException(
-                            "Parent revision not found: " + row.parentRevisionId()));
-            return snapshotService
-                    .findOwnedById(projectId, tenantId, parent.snapshotId())
-                    .map(TimelineSnapshotService.SnapshotInfo::payloadJson)
-                    .orElseThrow(() -> new IllegalArgumentException(
-                            "Parent snapshot missing: " + parent.snapshotId()));
-        }
-        return snapshotService
-                .findOwnedById(projectId, tenantId, row.snapshotId())
-                .map(TimelineSnapshotService.SnapshotInfo::payloadJson)
-                .orElseThrow(() -> new IllegalArgumentException("Snapshot missing: " + row.snapshotId()));
-    }
-
-    private static List<PatchPathItem> toPatchPaths(List<TimelinePatchService.PatchOperation> ops) {
-        return ops.stream().map(o -> new PatchPathItem(o.op(), o.path())).toList();
+    private static PatchPathItem toActualPairPath(
+            TimelineRevisionDiffService.EntityChange change) {
+        String op = switch (change.action()) {
+            case "added" -> "add";
+            case "removed" -> "remove";
+            default -> "replace";
+        };
+        return new PatchPathItem(op, "/" + change.kind() + "s/" + change.entityId());
     }
 
     private static TimelineRevisionQueryService.RevisionInfo toInfo(TimelineRevisionRepository.RevisionRow row) {
@@ -195,39 +101,6 @@ public class TimelineRevisionDiffQuery {
             TimelineRevisionQueryService.RevisionInfo toRevision,
             TimelineRevisionDiffService.ChangeSummary summary,
             List<TimelineRevisionDiffService.EntityChange> entityChanges,
-            List<PatchPathItem> patchPaths,
-            SemanticDiffResult semanticDiff) {}
+            List<PatchPathItem> patchPaths) {}
 
-    public record PatchPreviewResult(
-            String revisionId,
-            boolean hasPatchOps,
-            boolean success,
-            List<PatchPathItem> patchPaths,
-            List<String> appliedOps,
-            List<String> errors,
-            String contentHashBefore,
-            String contentHashAfter,
-            String revisionContentHash) {
-
-        static PatchPreviewResult noOps(String revisionId) {
-            return new PatchPreviewResult(revisionId, false, true, List.of(), List.of(), List.of(), null, null, null);
-        }
-    }
-
-    public record PatchStepPreview(
-            int stepIndex,
-            String op,
-            String path,
-            boolean success,
-            List<String> appliedOps,
-            List<String> errors,
-            String contentHashAfter) {}
-
-    public record PatchStepsResult(
-            String revisionId, boolean hasPatchOps, boolean allStepsSucceeded, List<PatchStepPreview> steps) {
-
-        static PatchStepsResult noOps(String revisionId) {
-            return new PatchStepsResult(revisionId, false, true, List.of());
-        }
-    }
 }

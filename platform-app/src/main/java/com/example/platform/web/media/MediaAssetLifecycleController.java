@@ -20,12 +20,15 @@ public class MediaAssetLifecycleController {
 
     private final TimelineAssetLifecycleService lifecycleService;
     private final TimelineAssetGcService timelineAssetGcService;
+    private final com.example.platform.web.render.TimelineProjectAuthorizationService projectAuthorization;
 
     public MediaAssetLifecycleController(
             TimelineAssetLifecycleService lifecycleService,
-            TimelineAssetGcService timelineAssetGcService) {
+            TimelineAssetGcService timelineAssetGcService,
+            com.example.platform.web.render.TimelineProjectAuthorizationService projectAuthorization) {
         this.lifecycleService = lifecycleService;
         this.timelineAssetGcService = timelineAssetGcService;
+        this.projectAuthorization = projectAuthorization;
     }
 
     @GetMapping("/{assetId}/delete-check")
@@ -33,6 +36,7 @@ public class MediaAssetLifecycleController {
     public TimelineAssetLifecycleService.DeleteCheckResult deleteCheck(
             @PathVariable String assetId,
             @RequestParam @NotBlank String projectId) {
+        projectAuthorization.requireRead(TenantContext.get(), projectId);
         return lifecycleService.deleteCheck(projectId, assetId);
     }
 
@@ -42,12 +46,14 @@ public class MediaAssetLifecycleController {
             @PathVariable String assetId,
             @RequestParam @NotBlank String projectId,
             @RequestParam @NotBlank String snapshotId) {
+        projectAuthorization.requireWrite(TenantContext.get(), projectId);
         return lifecycleService.tombstone(projectId, snapshotId, assetId, TenantContext.get());
     }
 
     @PostMapping("/gc/run")
     @Operation(summary = "时间线 assetRegistry GC", description = "清理超过保留期且无引用的 TOMBSTONED 条目")
     public TimelineAssetGcService.GcProjectResult runProjectGc(@RequestParam @NotBlank String projectId) {
+        projectAuthorization.requireWrite(TenantContext.get(), projectId);
         return timelineAssetGcService.runProjectGc(projectId, TenantContext.get());
     }
 }

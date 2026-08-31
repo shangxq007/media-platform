@@ -274,7 +274,9 @@ create table project (
     name varchar(255) not null,
     description text,
     status varchar(32) not null default 'ACTIVE',
-    created_at timestamp not null
+    created_at timestamp not null,
+    constraint fk_project_tenant foreign key (tenant_id) references tenant(id) on delete restrict,
+    constraint uq_project_tenant_id unique (tenant_id, id)
 );
 
 create index ix_project_tenant_id on project(tenant_id);
@@ -458,7 +460,8 @@ create table artifact (
     schema_version int not null default 1,
     created_at timestamp not null,
     tombstoned_at timestamp,
-    constraint uq_artifact_tenant_digest unique (tenant_id, content_digest, byte_length)
+    constraint uq_artifact_tenant_digest unique (tenant_id, content_digest, byte_length),
+    constraint uq_artifact_tenant_id unique (tenant_id, id)
 );
 
 create index ix_artifact_render_job_id on artifact(render_job_id);
@@ -483,13 +486,15 @@ create index ix_artifact_replica_storage on artifact_replica(storage_object_id);
 
 create table artifact_pin (
     pin_id varchar(64) primary key,
+    tenant_id varchar(64) not null,
     revision_id varchar(64) not null,
     project_id varchar(64) not null,
     artifact_id varchar(64) not null,
     content_digest varchar(128) not null,
     pinned_at timestamp not null,
-    constraint fk_artifact_pin_artifact foreign key (artifact_id) references artifact(id) on delete restrict,
-    constraint uq_artifact_pin_revision unique (revision_id, artifact_id)
+    constraint fk_artifact_pin_artifact
+        foreign key (tenant_id, artifact_id) references artifact(tenant_id, id) on delete restrict,
+    constraint uq_artifact_pin_revision unique (tenant_id, project_id, revision_id, artifact_id)
 );
 
 create index ix_artifact_pin_artifact on artifact_pin(artifact_id);
@@ -523,13 +528,17 @@ create index ix_rjsh_job_id on render_job_status_history(job_id);
 create table timeline_snapshot (
     id varchar(64) primary key,
     project_id varchar(64) not null,
-    tenant_id varchar(64),
+    tenant_id varchar(64) not null,
     payload_json text not null,
-    schema_version varchar(32) default '2.0.0',
+    schema_version varchar(32) not null default 'timeline-1.0',
     created_at timestamp not null default CURRENT_TIMESTAMP,
     content_hash varchar(64),
     revision_number int,
-    constraint fk_timeline_snapshot_project foreign key (project_id) references project(id) on delete restrict
+    semantic_revision_id varchar(64),
+    constraint uq_timeline_snapshot_owner_id unique (tenant_id, project_id, id),
+    constraint uq_timeline_snapshot_semantic_revision unique (tenant_id, project_id, semantic_revision_id),
+    constraint fk_timeline_snapshot_project
+        foreign key (tenant_id, project_id) references project(tenant_id, id) on delete restrict
 );
 
 create index idx_timeline_snapshot_project on timeline_snapshot(project_id);
@@ -537,13 +546,13 @@ create index idx_timeline_snapshot_project on timeline_snapshot(project_id);
 create table timeline_revision (
     id varchar(64) primary key,
     project_id varchar(64) not null,
-    tenant_id varchar(64),
+    tenant_id varchar(64) not null,
     parent_revision_id varchar(64),
     revision_number int not null,
     snapshot_id varchar(64) not null,
     internal_revision int not null default 0,
     content_hash varchar(64) not null,
-    schema_version varchar(32) not null default 'internal-1.0',
+    schema_version varchar(32) not null default 'timeline-1.0',
     source varchar(32) not null,
     author_user_id varchar(64),
     edit_session_id varchar(64),
@@ -555,10 +564,23 @@ create table timeline_revision (
     is_merge boolean not null default false,
     merge_parent_revision_ids text,
     merge_base_revision_id varchar(64),
-    constraint fk_timeline_revision_project foreign key (project_id) references project(id) on delete restrict,
-    constraint fk_timeline_revision_parent foreign key (parent_revision_id) references timeline_revision(id) on delete restrict,
-    constraint fk_timeline_revision_snapshot foreign key (snapshot_id) references timeline_snapshot(id) on delete restrict
+    constraint uq_timeline_revision_owner_id unique (tenant_id, project_id, id),
+    constraint uq_timeline_revision_project_id unique (project_id, id),
+    constraint fk_timeline_revision_project
+        foreign key (tenant_id, project_id) references project(tenant_id, id) on delete restrict,
+    constraint fk_timeline_revision_parent
+        foreign key (tenant_id, project_id, parent_revision_id)
+        references timeline_revision(tenant_id, project_id, id) on delete restrict
+        deferrable initially deferred,
+    constraint fk_timeline_revision_snapshot
+        foreign key (tenant_id, project_id, snapshot_id)
+        references timeline_snapshot(tenant_id, project_id, id) on delete restrict
 );
+
+alter table timeline_snapshot
+    add constraint fk_timeline_snapshot_semantic_revision
+        foreign key (tenant_id, project_id, semantic_revision_id)
+        references timeline_revision(tenant_id, project_id, id) on delete restrict;
 
 create unique index ux_timeline_revision_project_num on timeline_revision(project_id, revision_number);
 create index ix_timeline_revision_project_created on timeline_revision(project_id, created_at desc);
@@ -572,9 +594,10 @@ create index ix_timeline_revision_is_merge on timeline_revision(is_merge);
 -- because artifact_pin precedes timeline_revision in the script (forward FK).
 alter table artifact_pin
     add constraint fk_artifact_pin_revision
-        foreign key (revision_id) references timeline_revision(id) on delete restrict,
+        foreign key (tenant_id, project_id, revision_id)
+        references timeline_revision(tenant_id, project_id, id) on delete restrict,
     add constraint fk_artifact_pin_project
-        foreign key (project_id) references project(id) on delete restrict;
+        foreign key (tenant_id, project_id) references project(tenant_id, id) on delete restrict;
 
 create table timeline_review (
     id varchar(64) primary key,
@@ -3162,10 +3185,6 @@ CREATE TABLE ingest_preflight_safe_report_records (
     CONSTRAINT chk_expires_at CHECK (expires_at IS NOT NULL)
 );
 
--- V5: Add current_revision_id to product for optimistic concurrency
-ALTER TABLE product ADD COLUMN current_revision_id VARCHAR(64);
-CREATE INDEX ix_product_current_revision ON product(project_id, current_revision_id);
-
 -- V5: Add timeline_revision_id to render_job for revision pinning
 ALTER TABLE render_job ADD COLUMN timeline_revision_id VARCHAR(64);
 CREATE INDEX ix_render_job_timeline_revision ON render_job(timeline_revision_id);
@@ -3291,25 +3310,26 @@ alter table media_asset_artifact
     add constraint uq_maa_asset_artifact unique (media_asset_id, artifact_id);
 
 -- REVISION PARENT GRAPH (former V4): composite FK target + ordered parent edges.
-create unique index ux_timeline_revision_project_id on timeline_revision(project_id, id);
-
 create table timeline_revision_parent (
+    tenant_id          varchar(64) not null,
     project_id         varchar(64) not null,
     revision_id        varchar(64) not null,
     parent_revision_id varchar(64) not null,
     parent_order       int         not null,
-    primary key (revision_id, parent_order),
+    primary key (tenant_id, project_id, revision_id, parent_order),
     constraint ux_timeline_revision_parent_pair
-        unique (revision_id, parent_revision_id),
+        unique (tenant_id, project_id, revision_id, parent_revision_id),
     constraint ck_timeline_revision_parent_order_nonnegative
         check (parent_order >= 0),
     constraint ck_timeline_revision_parent_no_self
         check (revision_id <> parent_revision_id),
     constraint fk_timeline_revision_parent_revision
-        foreign key (revision_id) references timeline_revision(id),
+        foreign key (tenant_id, project_id, revision_id)
+        references timeline_revision(tenant_id, project_id, id),
     constraint fk_timeline_revision_parent_parent
-        foreign key (project_id, parent_revision_id)
-        references timeline_revision(project_id, id)
+        foreign key (tenant_id, project_id, parent_revision_id)
+        references timeline_revision(tenant_id, project_id, id)
+        deferrable initially deferred
 );
 
 create index ix_timeline_revision_parent_child on timeline_revision_parent(revision_id);
@@ -3326,14 +3346,16 @@ create table project_revision_counter (
 -- transaction may advance head before inserting the revision in the same tx
 -- (FK remains fully active: validated at COMMIT).
 create table timeline_revision_ref (
+    tenant_id          varchar(64)  not null,
     project_id         varchar(64)  not null,
     ref_id             varchar(64)  not null,
     head_revision_id   varchar(64),
     version            bigint       not null default 0,
     updated_at         timestamp    not null default current_timestamp,
-    primary key (project_id, ref_id),
+    primary key (tenant_id, project_id, ref_id),
     constraint fk_timeline_revision_ref_head
-        foreign key (head_revision_id) references timeline_revision(id)
+        foreign key (tenant_id, project_id, head_revision_id)
+        references timeline_revision(tenant_id, project_id, id)
         deferrable initially deferred
 );
 
@@ -3347,14 +3369,34 @@ create table apply_command (
     result_revision_id   varchar(64),
     result_content_hash  varchar(64),
     result_status        varchar(16),
-    project_id           varchar(64),
+    tenant_id            varchar(64)  not null,
+    project_id           varchar(64)  not null,
     command_domain       varchar(32)  not null default 'OPERATION_PLAN',
+    target_ref_id        varchar(64)  not null,
+    expected_head_revision_id varchar(64),
+    expected_result_status varchar(32) not null,
     created_at           timestamp    not null default current_timestamp,
     completed_at         timestamp,
     primary key (apply_command_id)
 );
 
 create index ix_apply_command_fingerprint on apply_command(fingerprint);
+
+alter table apply_command
+    add constraint fk_apply_command_project
+        foreign key (tenant_id, project_id) references project(tenant_id, id),
+    add constraint fk_apply_command_target_ref
+        foreign key (tenant_id, project_id, target_ref_id)
+        references timeline_revision_ref(tenant_id, project_id, ref_id)
+        deferrable initially deferred,
+    add constraint fk_apply_command_expected_head
+        foreign key (tenant_id, project_id, expected_head_revision_id)
+        references timeline_revision(tenant_id, project_id, id)
+        deferrable initially deferred,
+    add constraint fk_apply_command_result_revision
+        foreign key (tenant_id, project_id, result_revision_id)
+        references timeline_revision(tenant_id, project_id, id)
+        deferrable initially deferred;
 
 -- SOURCE VISUAL DESCRIPTION SNAPSHOT (former V5/V6/V7): durable canonical
 -- Media-owned snapshot, bound to immutable source content. Final shape:

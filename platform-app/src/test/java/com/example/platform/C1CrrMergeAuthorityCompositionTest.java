@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <p>Instantiate the actual production bean graph (PlatformApplication) and
  * prove the corrected merge authority is runtime-composable: the canonical
- * TimelineMergeEngine bean (with the corrected internal-1.0 payload contract,
+ * TimelineMergeEngine bean (with the canonical TimelineDocument payload contract,
  * no bypass flag) is uniquely present and its collaborators resolve through
  * the production context. No mocked-engine-only proof.</p>
  */
@@ -41,8 +41,8 @@ public class C1CrrMergeAuthorityCompositionTest extends PostgresTestContainerSup
         assertNotNull(mergeEngine, "canonical TimelineMergeEngine must be a production bean");
         String[] beanNames = applicationContext.getBeanNamesForType(TimelineMergeEngine.class);
         assertTrue(beanNames.length >= 1, "TimelineMergeEngine must be discoverable in the real context");
-        // Corrected contract: no bypass flag field; the engine consumes internal-1.0
-        // via the E1b gate adapter (proven by constructor composition, not by test mock).
+        // Corrected contract: no bypass flag field; the engine consumes persisted
+        // TimelineDocument JSON through the production reader.
         assertTrue(beanNames.length == 1 || beanNames.length >= 1, "no ambiguous engine bean count");
     }
 

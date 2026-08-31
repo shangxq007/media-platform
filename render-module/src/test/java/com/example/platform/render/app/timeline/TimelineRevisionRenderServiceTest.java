@@ -420,7 +420,7 @@ class TimelineRevisionRenderServiceTest {
         private final InMemoryTimelineRevisionRepository repo;
 
         StubTimelineRevisionService(InMemoryTimelineRevisionRepository repo) {
-            super(null, null, null, null);
+            super(null, null, null);
             this.repo = repo;
         }
 
@@ -451,7 +451,8 @@ class TimelineRevisionRenderServiceTest {
         }
 
         @Override
-        public String save(String projectId, String tenantId, String payloadJson, String schemaVersion) {
+        public String saveTx(org.jooq.DSLContext ignored, String projectId, String tenantId,
+                             String payloadJson, String schemaVersion) {
             String snapshotId = "snap-" + UUID.randomUUID().toString().substring(0, 8);
             store.put(snapshotId, new SnapshotInfo(snapshotId, projectId, tenantId, payloadJson, schemaVersion));
             return snapshotId;

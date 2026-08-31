@@ -272,20 +272,6 @@ public class ProductRecord extends UpdatableRecordImpl<ProductRecord> {
         return (LocalDateTime) get(17);
     }
 
-    /**
-     * Setter for <code>public.product.current_revision_id</code>.
-     */
-    public void setCurrentRevisionId(String value) {
-        set(18, value);
-    }
-
-    /**
-     * Getter for <code>public.product.current_revision_id</code>.
-     */
-    public String getCurrentRevisionId() {
-        return (String) get(18);
-    }
-
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -309,7 +295,7 @@ public class ProductRecord extends UpdatableRecordImpl<ProductRecord> {
     /**
      * Create a detached, initialised ProductRecord
      */
-    public ProductRecord(String productId, String tenantId, String projectId, String ownerAssetId, String productType, String representationKind, String producerType, String producerId, String sourceTimelineRevisionId, String status, String storageReferenceId, String checksum, String contentHash, String mimeType, Integer version, String metadataJson, LocalDateTime createdAt, LocalDateTime updatedAt, String currentRevisionId) {
+    public ProductRecord(String productId, String tenantId, String projectId, String ownerAssetId, String productType, String representationKind, String producerType, String producerId, String sourceTimelineRevisionId, String status, String storageReferenceId, String checksum, String contentHash, String mimeType, Integer version, String metadataJson, LocalDateTime createdAt, LocalDateTime updatedAt) {
         super(Product.PRODUCT);
 
         setProductId(productId);
@@ -330,7 +316,6 @@ public class ProductRecord extends UpdatableRecordImpl<ProductRecord> {
         setMetadataJson(metadataJson);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        setCurrentRevisionId(currentRevisionId);
         resetChangedOnNotNull();
     }
 }

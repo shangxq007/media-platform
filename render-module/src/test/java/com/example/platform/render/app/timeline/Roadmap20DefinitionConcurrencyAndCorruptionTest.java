@@ -4,7 +4,7 @@ import com.example.platform.shared.test.PostgresTestContainerSupport;
 import com.example.platform.timeline.adapter.JdbcEffectDefinitionVersionRegistry;
 import com.example.platform.timeline.adapter.JdbcEffectSemanticSnapshotStore;
 import com.example.platform.timeline.adapter.JdbcTimelineRevisionSemanticContextStore;
-import com.example.platform.timeline.app.ProductCurrentRevisionService;
+import com.example.platform.timeline.app.TimelineRevisionRefMutation;
 import com.example.platform.timeline.app.TimelineRevisionSaveService;
 import com.example.platform.timeline.canonical.TimelineContentDigester;
 import com.example.platform.timeline.semantics.effect.EffectDefinitionSnapshot;
@@ -18,7 +18,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import com.example.platform.timeline.app.DefaultTimelineRevisionPersistence;
-import com.example.platform.timeline.app.ProductCurrentRevisionHeadUpdateAdapter;
+import com.example.platform.timeline.app.TimelineRevisionRefHeadUpdateAdapter;
 
 import javax.sql.DataSource;
 import java.util.List;
@@ -46,7 +46,7 @@ class Roadmap20DefinitionConcurrencyAndCorruptionTest extends PostgresTestContai
     private static DataSource dataSource;
     private static DSLContext dsl;
     private TimelineRevisionSaveService saveService;
-    private ProductCurrentRevisionService currentRevisionService;
+    private TimelineRevisionRefMutation currentRevisionService;
 
     @BeforeAll
     static void setUpDatabase() {
@@ -64,7 +64,7 @@ class Roadmap20DefinitionConcurrencyAndCorruptionTest extends PostgresTestContai
     void setUp() {
         com.example.platform.render.testsupport.RenderTestSchemaFixture.truncate(dsl);
         com.example.platform.shared.web.TenantContext.set("tenant-1");
-        currentRevisionService = new ProductCurrentRevisionService(dsl);
+        currentRevisionService = new TimelineRevisionRefMutation(dsl);
         JdbcEffectSemanticSnapshotStore jdbcEffectStore = new JdbcEffectSemanticSnapshotStore(dsl);
         EffectSemanticSnapshotAuthority authority = new EffectSemanticSnapshotAuthority(
                 new JdbcEffectDefinitionVersionRegistry(dsl), jdbcEffectStore);
@@ -77,10 +77,12 @@ class Roadmap20DefinitionConcurrencyAndCorruptionTest extends PostgresTestContai
                                 new com.example.platform.artifact.app.ArtifactRelationRepository(dsl))),
                 new com.example.platform.artifact.app.ArtifactPinService(
                         new com.example.platform.artifact.infrastructure.ArtifactPinRepository(dsl)),
-                authority, new JdbcTimelineRevisionSemanticContextStore(dsl), new DefaultTimelineRevisionPersistence(), new ProductCurrentRevisionHeadUpdateAdapter(currentRevisionService));
+                authority, new JdbcTimelineRevisionSemanticContextStore(dsl), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
     }
 
     private void insertFixtures(String productId) {
+        com.example.platform.render.testsupport.RenderTestSchemaFixture.insertCanonicalProject(
+                dsl, "tenant-1", productId);
         dsl.execute("insert into product (product_id, tenant_id, project_id, product_type, representation_kind, status, created_at, updated_at) "
                 + "values (?, 'tenant-1', ?, 'video', 'master', 'REGISTERED', now(), now()) on conflict (product_id) do nothing",
                 productId, productId);
@@ -144,9 +146,10 @@ class Roadmap20DefinitionConcurrencyAndCorruptionTest extends PostgresTestContai
         // serial sanity: a SECOND write (different product) with a conflicting
         // definition digest must FAIL CLOSED (proves registerTx scanning works
         // before we test the concurrent variant)
-        saveService.saveRevisionWithEffects(
-                productA, null, doc, List.of(blurEffect("eff-a", "4")),
-                List.of(blurDef("4")), "tx-serial");
+        com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(saveService,
+                "tenant-1", productA, null, doc, List.of(blurEffect("eff-a", "4")),
+                List.of(blurDef("4")),
+                com.example.platform.render.testsupport.RenderTestSchemaFixture.SERVER_ACTOR);
         // DIAGNOSTIC: how many esnap_ rows exist after the first save?
         java.util.List<String> esnapPayloads = dsl.fetch(
                         "select payload_json from timeline_snapshot where id like 'esnap_%'")
@@ -155,9 +158,10 @@ class Roadmap20DefinitionConcurrencyAndCorruptionTest extends PostgresTestContai
                 + " first-payload-prefix=" + (esnapPayloads.isEmpty() ? "NONE"
                 : esnapPayloads.get(0).substring(0, Math.min(60, esnapPayloads.get(0).length()))));
         assertThrows(IllegalArgumentException.class,
-                () -> saveService.saveRevisionWithEffects(
-                        productB, null, doc, List.of(blurEffect("eff-a2", "77")),
-                        List.of(blurDef("77")), "tx-serial2"),
+                () -> com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(saveService,
+                        "tenant-1", productB, null, doc, List.of(blurEffect("eff-a2", "77")),
+                        List.of(blurDef("77")),
+                        com.example.platform.render.testsupport.RenderTestSchemaFixture.SERVER_ACTOR),
                 "AI18-serial: conflicting definition digest must FAIL CLOSED");
 
         ExecutorService pool = Executors.newFixedThreadPool(2);
@@ -167,9 +171,10 @@ class Roadmap20DefinitionConcurrencyAndCorruptionTest extends PostgresTestContai
                 try {
                     com.example.platform.shared.web.TenantContext.set("tenant-1");
                     start.await();
-                    saveService.saveRevisionWithEffects(
-                            productC, null, doc, List.of(blurEffect("eff-a", "4")),
-                            List.of(blurDef("4")), "tx-a");
+                    com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(saveService,
+                            "tenant-1", productC, null, doc, List.of(blurEffect("eff-a", "4")),
+                            List.of(blurDef("4")),
+                            com.example.platform.render.testsupport.RenderTestSchemaFixture.SERVER_ACTOR);
                     return "A-OK";
                 } catch (Exception e) {
                     return "A-FAIL:" + e.getClass().getSimpleName() + ":" + String.valueOf(e.getMessage()).substring(0, Math.min(60, String.valueOf(e.getMessage()).length()));
@@ -179,9 +184,10 @@ class Roadmap20DefinitionConcurrencyAndCorruptionTest extends PostgresTestContai
                 try {
                     com.example.platform.shared.web.TenantContext.set("tenant-1");
                     start.await();
-                    saveService.saveRevisionWithEffects(
-                            productD, null, doc, List.of(blurEffect("eff-b", "77")),
-                            List.of(blurDef("77")), "tx-b");
+                    com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(saveService,
+                            "tenant-1", productD, null, doc, List.of(blurEffect("eff-b", "77")),
+                            List.of(blurDef("77")),
+                            com.example.platform.render.testsupport.RenderTestSchemaFixture.SERVER_ACTOR);
                     return "B-OK";
                 } catch (Exception e) {
                     return "B-FAIL:" + e.getClass().getSimpleName() + ":" + String.valueOf(e.getMessage()).substring(0, Math.min(60, String.valueOf(e.getMessage()).length()));
@@ -205,9 +211,10 @@ class Roadmap20DefinitionConcurrencyAndCorruptionTest extends PostgresTestContai
         insertFixtures(productId);
         var doc = sampleDocument();
         // persist a valid Effect-bearing revision first
-        var revision = saveService.saveRevisionWithEffects(
-                productId, null, doc, List.of(blurEffect("eff-1", "4")),
-                List.of(blurDef("4")), "user");
+        var revision = com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(saveService,
+                "tenant-1", productId, null, doc, List.of(blurEffect("eff-1", "4")),
+                List.of(blurDef("4")),
+                com.example.platform.render.testsupport.RenderTestSchemaFixture.SERVER_ACTOR);
         // build the definition identity BEFORE corrupting (mint registers it
         // while the row is still valid)
         JdbcEffectDefinitionVersionRegistry registry = new JdbcEffectDefinitionVersionRegistry(dsl);

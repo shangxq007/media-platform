@@ -1,5 +1,5 @@
 package com.example.platform.timeline.app;
-import com.example.platform.timeline.adapter.TimelineRevisionRepository;import com.example.platform.timeline.app.InternalTimelineCandidateAdapter;import com.example.platform.timeline.app.InternalTimelineJson;import com.example.platform.timeline.app.ProductCurrentRevisionService;import com.example.platform.timeline.app.TimelineMergeEngine;
+import com.example.platform.timeline.adapter.TimelineRevisionRepository;import com.example.platform.timeline.app.InternalTimelineCandidateAdapter;import com.example.platform.timeline.app.InternalTimelineJson;import com.example.platform.timeline.app.TimelineRevisionRefMutation;import com.example.platform.timeline.app.TimelineMergeEngine;
 import com.example.platform.shared.time.MediaTime;
 
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
@@ -45,7 +45,7 @@ class TimelineRepeatedMergeStabilityTest {
 
     private TimelineRevisionRepository revisionRepository;
     private TimelineSnapshotService snapshotService;
-    private ProductCurrentRevisionService currentRevisionService;
+    private TimelineRevisionRefMutation currentRevisionService;
     private TimelineMergeEngine engine;
     private ObjectMapper mapper = InternalTimelineJson.mapper();
 
@@ -54,7 +54,7 @@ class TimelineRepeatedMergeStabilityTest {
         TenantContext.set(TENANT);
         revisionRepository = mock(TimelineRevisionRepository.class);
         snapshotService = mock(TimelineSnapshotService.class);
-        currentRevisionService = mock(ProductCurrentRevisionService.class);
+        currentRevisionService = mock(TimelineRevisionRefMutation.class);
         TimelineMergePreviewService previewService = new TimelineMergePreviewService(
                 new com.example.platform.timeline.diff.merge.TimelineMergeConflictDetector());
         TimelineNonConflictingMergePlanner planner = new TimelineNonConflictingMergePlanner(previewService);
@@ -67,7 +67,7 @@ org.jooq.Configuration cfgdslMockTime0 = org.mockito.Mockito.mock(org.jooq.Confi
                     org.jooq.TransactionalCallable<Object> callable = inv.getArgument(0);
                     return callable.run(cfgdslMockTime0);
                 });
-engine = new TimelineMergeEngine(revisionRepository, snapshotService, currentRevisionService,
+engine = new TimelineMergeEngine(revisionRepository, snapshotService, mock(TimelineRevisionSaveService.class),
                 previewService, planner,
                 new com.example.platform.timeline.diff.application.TimelinePatchApplier(),
                 mapper,
@@ -146,41 +146,42 @@ engine = new TimelineMergeEngine(revisionRepository, snapshotService, currentRev
     private TimelineRevisionRepository.RevisionRow row(String id, String snapshotId) {
         return new TimelineRevisionRepository.RevisionRow(
                 id, PROJECT, TENANT, null, 1, snapshotId, 0, "hash",
-                "internal-1.0", "merge", "user-1", null, null, null, null, null,
+                "timeline-1.0", "merge", "user-1", null, null, null, null, null,
                 false, null, null, OffsetDateTime.now());
     }
 
     private void stubRevisions(String base, String source, String target) {
+        base = canonicalPayload(base);
+        source = canonicalPayload(source);
+        target = canonicalPayload(target);
         when(revisionRepository.findOwnedById("rev-base", PROJECT, TENANT)).thenReturn(Optional.of(row("rev-base", "snap-base")));
         when(revisionRepository.findOwnedById("rev-source", PROJECT, TENANT)).thenReturn(Optional.of(row("rev-source", "snap-source")));
         when(revisionRepository.findOwnedById("rev-target", PROJECT, TENANT)).thenReturn(Optional.of(row("rev-target", "snap-target")));
                 when(snapshotService.findOwnedById(PROJECT, TENANT, "snap-base"))
-                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-base", PROJECT, TENANT, base, "internal-1.0")));
+                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-base", PROJECT, TENANT, base, "timeline-1.0")));
                 when(snapshotService.findOwnedById(PROJECT, TENANT, "snap-source"))
-                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-source", PROJECT, TENANT, source, "internal-1.0")));
+                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-source", PROJECT, TENANT, source, "timeline-1.0")));
                 when(snapshotService.findOwnedById(PROJECT, TENANT, "snap-target"))
-                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-target", PROJECT, TENANT, target, "internal-1.0")));
-        when(snapshotService.save(anyString(), anyString(), anyString(), anyString()))
-                .thenAnswer(inv -> "snap-merged-" + inv.getArgument(2).hashCode());
-        when(revisionRepository.nextRevisionNumber(PROJECT)).thenReturn(7);
+                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-target", PROJECT, TENANT, target, "timeline-1.0")));
         when(revisionRepository.listOwnedByProject(PROJECT, TENANT, null, null, null, 500)).thenReturn(List.of());
-        when(currentRevisionService.getCurrentRevisionId(PROJECT)).thenReturn("rev-target");
+        when(currentRevisionService.currentHead(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any())).thenReturn("rev-target");
     }
 
     private TimelineMergeRequest request(String message) {
-        return new TimelineMergeRequest(PROJECT, TENANT, "rev-base", "rev-source", "rev-target", "user-1", message);
+        return TestTimelineMutationContexts.mergeRequest(PROJECT, TENANT, "rev-base", "rev-source", "rev-target", "user-1", message);
     }
 
     private long firstClipStartFrame(String payload) throws Exception {
-        JsonNode root = InternalTimelineJson.parse(payload);
-        return root.path("composition").path("tracks").path(0).path("clips").path(0)
-                .path("timelineRange").path("start").path("frame").asLong();
+        return TimelineDocumentJsonSerializer.deserialize(payload).getTracks().getFirst()
+                .clips().getFirst().getStartTime().toFrameExact(
+                        com.example.platform.shared.time.FrameRate.of(FPS, 1));
     }
 
     private long firstClipDurFrame(String payload) throws Exception {
-        JsonNode root = InternalTimelineJson.parse(payload);
-        return root.path("composition").path("tracks").path(0).path("clips").path(0)
-                .path("timelineRange").path("duration").path("frame").asLong();
+        var clip = TimelineDocumentJsonSerializer.deserialize(payload).getTracks().getFirst()
+                .clips().getFirst();
+        return clip.getEndTime().subtract(clip.getStartTime()).toFrameExact(
+                com.example.platform.shared.time.FrameRate.of(FPS, 1));
     }
 
     @Test
@@ -197,7 +198,7 @@ engine = new TimelineMergeEngine(revisionRepository, snapshotService, currentRev
             String target = base;
             stubRevisions(base, source, target);
 
-            TimelineMergeResult merged = engine.merge(request("rm-" + frame));
+            TimelineMergeResult merged = engine.mergeSemantic(request("rm-" + frame));
             assertEquals(TimelineMergeResult.MergeStatus.MERGED, merged.status(),
                     "merge must materialize at frame=" + frame);
             assertEquals(frame, firstClipStartFrame(merged.mergedPayloadJson()),
@@ -218,12 +219,13 @@ engine = new TimelineMergeEngine(revisionRepository, snapshotService, currentRev
                 List.of(clip("c2", "ast-2", 0, 5)));
         stubRevisions(base, source, base);
 
-        TimelineMergeResult merged = engine.merge(request("reload"));
+        TimelineMergeResult merged = engine.mergeSemantic(request("reload"));
         assertEquals(TimelineMergeResult.MergeStatus.MERGED, merged.status());
 
         String mergedPayload = merged.mergedPayloadJson();
         // gate accepts the merged output (production validation path)
-        TimelineCandidate candidate = InternalTimelineCandidateAdapter.map(PROJECT, mergedPayload);
+        TimelineCandidate candidate = TimelineDocumentCandidateMapper.map(
+                PROJECT, TimelineDocumentJsonSerializer.deserialize(mergedPayload));
         assertNotNull(candidate);
         assertEquals("c1", candidate.tracks().get(0).clips().get(0).clipId());
         // C1-CNM1: conversion yields the same exact frame back (exact rational
@@ -233,5 +235,13 @@ engine = new TimelineMergeEngine(revisionRepository, snapshotService, currentRev
         var start = snap.tracks().get(0).clips().get(0).start();
         var rate = snap.tracks().get(0).clips().get(0).rate();
         assertEquals(frame, start.toFrameExact(rate), "reload roundtrip drifted at frame=" + frame);
+    }
+
+    private static String canonicalPayload(String importPayload) {
+        TimelineCandidate candidate = InternalTimelineCandidateAdapter.map(PROJECT, importPayload);
+        var document = com.example.platform.timeline.diff.calculation.TimelineSnapshotConverter
+                .toDocument(com.example.platform.timeline.diff.calculation.TimelineSnapshotConverter
+                        .toSnapshot(candidate, "fixture"));
+        return TimelineDocumentJsonSerializer.serialize(document);
     }
 }

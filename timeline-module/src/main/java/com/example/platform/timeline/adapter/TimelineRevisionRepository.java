@@ -11,6 +11,7 @@ import org.jooq.DSLContext;
 import org.jooq.Record;
 import org.springframework.stereotype.Repository;
 import static com.example.platform.typedschema.jooq.generated.tables.TimelineRevision.TIMELINE_REVISION;
+import static com.example.platform.typedschema.jooq.generated.tables.TimelineRevisionRef.TIMELINE_REVISION_REF;
 import org.jooq.impl.DSL;
 
 
@@ -52,9 +53,13 @@ public class TimelineRevisionRepository {
     public Optional<RevisionRow> findOwnedHead(String projectId, String tenantId) {
         Record row = dsl.select()
                 .from(TIMELINE_REVISION)
+                .join(TIMELINE_REVISION_REF)
+                .on(TIMELINE_REVISION_REF.HEAD_REVISION_ID.eq(TIMELINE_REVISION.ID))
+                .and(TIMELINE_REVISION_REF.PROJECT_ID.eq(TIMELINE_REVISION.PROJECT_ID))
+                .and(TIMELINE_REVISION_REF.TENANT_ID.eq(TIMELINE_REVISION.TENANT_ID))
                 .where(ownedScope(projectId, tenantId))
-                .orderBy(TIMELINE_REVISION.REVISION_NUMBER.desc())
-                .limit(1)
+                .and(TIMELINE_REVISION_REF.REF_ID.eq(
+                        com.example.platform.timeline.revisioncommand.RevisionRef.MAIN_REF))
                 .fetchOne();
         return row == null ? Optional.empty() : Optional.of(map(row));
     }
@@ -136,84 +141,6 @@ public class TimelineRevisionRepository {
                         r.get(TIMELINE_REVISION.EDIT_SESSION_ID),
                         toOffsetDateTime(r.get(maxCreatedAtField)),
                         r.get(revisionCountField, Integer.class)));
-    }
-
-    public int nextRevisionNumber(String projectId) {
-        return nextRevisionNumberTx(dsl, projectId);
-    }
-
-    /**
-     * FINAL_CLOSURE_F1: transaction-aware revision-number allocation — reads
-     * the max through the caller's DSLContext so the number allocation and the
-     * revision insert share one physical transaction (no gap between
-     * allocation and insert).
-     */
-    public int nextRevisionNumberTx(org.jooq.DSLContext tx, String projectId) {
-        Integer max = tx.select(TIMELINE_REVISION.REVISION_NUMBER)
-                .from(TIMELINE_REVISION)
-                .where(projectScope(projectId))
-                .orderBy(TIMELINE_REVISION.REVISION_NUMBER.desc())
-                .limit(1)
-                .fetchOne(TIMELINE_REVISION.REVISION_NUMBER);
-        return max == null ? 1 : max + 1;
-    }
-
-    public void insert(RevisionRow row) {
-        insertTx(dsl, row);
-    }
-
-    /**
-     * FINAL_CLOSURE_F1 (CHECKPOINT_A post-Round-5): transaction-aware insert —
-     * writes through the caller's DSLContext so the revision row joins the SAME
-     * physical DB transaction as snapshot/pin/head writes in the persistent
-     * merge path. Never assumed to participate in a caller transaction via the
-     * root DSLContext.
-     */
-    public void insertTx(org.jooq.DSLContext tx, RevisionRow row) {
-        tx.insertInto(TIMELINE_REVISION)
-                .columns(
-                        TIMELINE_REVISION.ID,
-                        TIMELINE_REVISION.PROJECT_ID,
-                        TIMELINE_REVISION.TENANT_ID,
-                        TIMELINE_REVISION.PARENT_REVISION_ID,
-                        TIMELINE_REVISION.REVISION_NUMBER,
-                        TIMELINE_REVISION.SNAPSHOT_ID,
-                        TIMELINE_REVISION.INTERNAL_REVISION,
-                        TIMELINE_REVISION.CONTENT_HASH,
-                        TIMELINE_REVISION.SCHEMA_VERSION,
-                        TIMELINE_REVISION.SOURCE,
-                        TIMELINE_REVISION.AUTHOR_USER_ID,
-                        TIMELINE_REVISION.EDIT_SESSION_ID,
-                        TIMELINE_REVISION.MESSAGE,
-                        TIMELINE_REVISION.CHANGE_SUMMARY_JSON,
-                        TIMELINE_REVISION.PATCH_OPS_JSON,
-                        TIMELINE_REVISION.LABELS_JSON,
-                        TIMELINE_REVISION.IS_MERGE,
-                        TIMELINE_REVISION.MERGE_PARENT_REVISION_IDS,
-                        TIMELINE_REVISION.MERGE_BASE_REVISION_ID,
-                        TIMELINE_REVISION.CREATED_AT)
-                .values(
-                        row.id(),
-                        row.projectId(),
-                        row.tenantId(),
-                        row.parentRevisionId(),
-                        row.revisionNumber(),
-                        row.snapshotId(),
-                        row.internalRevision(),
-                        row.contentHash(),
-                        row.schemaVersion(),
-                        row.source(),
-                        row.authorUserId(),
-                        row.editSessionId(),
-                        row.message(),
-                        row.changeSummaryJson(),
-                        row.patchOpsJson(),
-                        row.labelsJson(),
-                        row.isMerge(),
-                        row.mergeParentRevisionIds(),
-                        row.mergeBaseRevisionId(),
-                        row.createdAt().toLocalDateTime())
-                .execute();
     }
 
     private static RevisionRow map(Record row) {

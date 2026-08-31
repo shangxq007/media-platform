@@ -54,6 +54,15 @@ public final class ParameterDigest {
 
     /** Deterministic canonical semantic serialization of typed parameters. */
     static String serialize(OperationParameters p) {
+        if (p instanceof OperationParameters.AddMediaClipParameters a) {
+            var binding = a.sourceBinding();
+            return "media-clip(" + a.trackId() + "," + a.clipId().value()
+                    + ",sourceBinding="
+                    + com.example.platform.timeline.semantics.clip
+                            .TimelineSourceBindingCanonicalSemantics.encode(binding)
+                    + ",placement=" + a.placement().start() + ".." + a.placement().end()
+                    + ",mapping=" + temporalMapping(a.temporalMapping()) + ")";
+        }
         if (p instanceof OperationParameters.NoParameters) {
             return "none";
         }
@@ -103,5 +112,16 @@ public final class ParameterDigest {
             return "sync-anchor(" + ua.localAnchorA() + "," + ua.localAnchorB() + ")";
         }
         throw new IllegalArgumentException("unknown parameters: " + p.getClass());
+    }
+
+    private static String temporalMapping(
+            com.example.platform.timeline.semantics.temporal.TemporalMapping mapping) {
+        return switch (mapping) {
+            case com.example.platform.timeline.semantics.temporal.ConstantRateTemporalMapping rate ->
+                    "constant(" + rate.rate().numerator() + "/" + rate.rate().denominator()
+                            + "," + rate.direction() + ")";
+            case com.example.platform.timeline.semantics.temporal.FreezeTemporalMapping freeze ->
+                    "freeze(" + freeze.sourcePosition() + ")";
+        };
     }
 }

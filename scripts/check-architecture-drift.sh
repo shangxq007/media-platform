@@ -10,6 +10,271 @@ CHECKS=0
 pass() { printf "✅ PASS: %s\n" "$1"; CHECKS=$((CHECKS + 1)); }
 fail() { printf "❌ FAIL: %s\n" "$1" >&2; FAILED=1; CHECKS=$((CHECKS + 1)); }
 
+# Structural H7 V2 proofs shared by the legacy roadmap checks below. These
+# checks strip Java/SQL comments, fail closed when an input or unique authority
+# is missing, and inspect the current clean-forward runtime instead of retired
+# RevisionCommand writer files.
+h7_v2_structural_proof() {
+    python3 - "$1" <<'PY'
+from __future__ import annotations
+
+import re
+import sys
+from pathlib import Path
+
+
+ROOT = Path.cwd()
+
+
+def strip_java_comments(text: str) -> str:
+    pattern = re.compile(
+        r'("(?:\\.|[^"\\])*")|(/\*.*?\*/|//[^\n]*)',
+        flags=re.DOTALL,
+    )
+    return pattern.sub(lambda match: match.group(1) or " ", text)
+
+
+def strip_sql_comments(text: str) -> str:
+    return re.sub(r"--[^\n]*", " ", re.sub(r"/\*.*?\*/", " ", text, flags=re.DOTALL))
+
+
+def production_sources() -> dict[str, str]:
+    sources: dict[str, str] = {}
+    for path in ROOT.rglob("src/main/java/**/*.java"):
+        relative = path.relative_to(ROOT).as_posix()
+        if "/build/" not in f"/{relative}":
+            sources[relative] = strip_java_comments(path.read_text(encoding="utf-8"))
+    return sources
+
+
+def unique_suffix(sources: dict[str, str], suffix: str) -> tuple[str, str]:
+    matches = [(path, source) for path, source in sources.items() if path.endswith(suffix)]
+    if len(matches) != 1:
+        raise AssertionError(f"expected one {suffix}, found {len(matches)}")
+    return matches[0]
+
+
+def method_body(source: str, method_name: str) -> str:
+    structural = re.sub(
+        r'"(?:\\.|[^"\\])*"',
+        lambda match: " " * len(match.group(0)),
+        source,
+    )
+    declaration = re.compile(
+        r"\b(?:public|protected|private)\s+(?:static\s+)?[\w<>.?]+\s+"
+        + re.escape(method_name)
+        + r"\s*\("
+    )
+    matches = list(declaration.finditer(structural))
+    if len(matches) != 1:
+        raise AssertionError(f"expected one {method_name} method, found {len(matches)}")
+    opening = structural.find("{", matches[0].end())
+    if opening < 0:
+        raise AssertionError(f"missing body for {method_name}")
+    depth = 0
+    for index in range(opening, len(structural)):
+        if structural[index] == "{":
+            depth += 1
+        elif structural[index] == "}":
+            depth -= 1
+            if depth == 0:
+                return source[opening + 1:index]
+    raise AssertionError(f"unterminated body for {method_name}")
+
+
+def shadow_revision_command_runtime_absent(sources: dict[str, str]) -> bool:
+    names = re.compile(r"\b(?:RevisionCommandPlanner|RevisionCommandApplyService)\b")
+    named_files = {
+        "RevisionCommandPlanner.java",
+        "RevisionCommandApplyService.java",
+    }
+    return (
+        not any(path.name in named_files for path in ROOT.rglob("src/main/java/**/*.java"))
+        and not any(names.search(source) for source in sources.values())
+    )
+
+
+def fingerprint_proof(sources: dict[str, str]) -> bool:
+    _, apply_source = unique_suffix(sources, "OperationPlanApplyService.java")
+    _, framing_source = unique_suffix(sources, "CanonicalCommandFingerprint.java")
+    body = method_body(apply_source, "fingerprint")
+    chain = re.search(
+        r"return\s+CanonicalCommandFingerprint\s*\.\s*builder\s*"
+        r"\(\s*\"OPERATION_PLAN\"\s*\)(.*?)\.\s*sha256Hex\s*\(\s*\)\s*;",
+        body,
+        flags=re.DOTALL,
+    )
+    if chain is None:
+        return False
+    fields = [
+        (tag, re.sub(r"\s+", "", value))
+        for tag, value in re.findall(
+            r"\.\s*required\s*\(\s*\"([^\"]+)\"\s*,\s*"
+            r"([A-Za-z_]\w*(?:\s*\.\s*[A-Za-z_]\w*\s*\(\s*\))?)\s*\)",
+            chain.group(1),
+        )
+    ]
+    expected_fields = [
+        ("tenantId", "tenantId"),
+        ("projectId", "projectId"),
+        ("targetRefId", "ref.refId()"),
+        ("expectedHeadRevisionId", "expectedHead"),
+        ("operationIdentity", "operationIdentity"),
+        ("parameterDigest", "parameterDigest"),
+        ("planDigest", "planDigest"),
+        ("principalRef", "principalRef"),
+    ]
+    framing_markers = (
+        'DOMAIN_TAG = "CANONICAL_COMMAND_FINGERPRINT_V1"',
+        "ENCODING_VERSION = 1",
+        "writeNonNull(out, DOMAIN_TAG)",
+        "writeInt(out, ENCODING_VERSION)",
+        "writeNonNull(out, commandDomain)",
+        "writeInt(out, fields.size())",
+        "writeNonNull(out, field.tag())",
+        "writeInt(out, bytes.length)",
+        "MessageDigest.getInstance(\"SHA-256\").digest(framedBytes())",
+    )
+    raw_delimiter = re.search(r'\+\s*"\|"\s*\+|String\s*\.\s*join\s*\(\s*"\|"', body)
+    return (
+        fields == expected_fields
+        and all(marker in framing_source for marker in framing_markers)
+        and raw_delimiter is None
+    )
+
+
+def sole_boundary_proof(sources: dict[str, str]) -> bool:
+    save_path, save_source = unique_suffix(sources, "TimelineRevisionSaveService.java")
+    _, merge_source = unique_suffix(sources, "TimelineMergeEngine.java")
+    _, revision_controller = unique_suffix(sources, "TimelineRevisionController.java")
+    _, git_controller = unique_suffix(sources, "TimelineGitV1Controller.java")
+    boundary_definitions = sum(
+        len(re.findall(r"\bclass\s+TimelineRevisionSaveService\b", source))
+        for source in sources.values()
+    )
+    insert_revision_callers = {
+        path for path, source in sources.items()
+        if "revisionPersistence.insertRevisionTx" in source
+    }
+    direct_insert_callers = {
+        path for path, source in sources.items()
+        if re.search(r"insertInto\s*\(\s*TIMELINE_REVISION\s*\)", source)
+    }
+    return (
+        shadow_revision_command_runtime_absent(sources)
+        and boundary_definitions == 1
+        and insert_revision_callers == {save_path}
+        and len(direct_insert_callers) == 1
+        and next(iter(direct_insert_callers)).endswith("DefaultTimelineRevisionPersistence.java")
+        and re.search(r"\bTimelineRevision\s+saveMergeRevision\s*\(", save_source) is not None
+        and re.search(r"\bTimelineRevision\s+restoreRevision\s*\(", save_source) is not None
+        and re.search(
+            r"revisionSaveService\s*\.\s*saveMergeRevision\s*\(\s*"
+            r"request\.mutationContext\(\)\s*,\s*request\.targetRevisionId\(\)\s*,\s*"
+            r"request\.sourceRevisionId\(\)",
+            merge_source,
+            flags=re.DOTALL,
+        ) is not None
+        and "TimelineRevisionSaveService revisionSaveService" in revision_controller
+        and "revisionSaveService.restoreRevision" in revision_controller
+        and "TimelineRevisionSaveService saveService" in git_controller
+        and "saveService.restoreRevision" in git_controller
+    )
+
+
+def parent_fk_proof() -> bool:
+    schema_path = ROOT / "platform-app/src/main/resources/db/migration/V1__initial_schema.sql"
+    if not schema_path.is_file():
+        return False
+    schema = strip_sql_comments(schema_path.read_text(encoding="utf-8"))
+    child_fk = re.search(
+        r"constraint\s+fk_timeline_revision_parent_revision\s+"
+        r"foreign\s+key\s*\(\s*tenant_id\s*,\s*project_id\s*,\s*revision_id\s*\)\s*"
+        r"references\s+timeline_revision\s*\(\s*tenant_id\s*,\s*project_id\s*,\s*id\s*\)",
+        schema,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    parent_fk = re.search(
+        r"constraint\s+fk_timeline_revision_parent_parent\s+"
+        r"foreign\s+key\s*\(\s*tenant_id\s*,\s*project_id\s*,\s*parent_revision_id\s*\)\s*"
+        r"references\s+timeline_revision\s*\(\s*tenant_id\s*,\s*project_id\s*,\s*id\s*\)\s*"
+        r"deferrable\s+initially\s+deferred",
+        schema,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    owner_key = re.search(
+        r"constraint\s+uq_timeline_revision_owner_id\s+unique\s*"
+        r"\(\s*tenant_id\s*,\s*project_id\s*,\s*id\s*\)",
+        schema,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    return child_fk is not None and parent_fk is not None and owner_key is not None
+
+
+def no_op_proof(sources: dict[str, str]) -> bool:
+    _, apply_source = unique_suffix(sources, "OperationPlanApplyService.java")
+    _, save_source = unique_suffix(sources, "TimelineRevisionSaveService.java")
+    apply_body = method_body(apply_source, "apply")
+    no_op_body = method_body(save_source, "recordNoOpCommand")
+    return (
+        shadow_revision_command_runtime_absent(sources)
+        and re.search(
+            r"if\s*\(\s*plan\.noOp\(\)\s*\).*?"
+            r"revisionSaveService\.recordNoOpCommand\s*\(",
+            apply_body,
+            flags=re.DOTALL,
+        ) is not None
+        and "claimOrReplayCommand" in no_op_body
+        and '"NO_OP"' in no_op_body
+        and "revisionRefMutation.validateExpectedHead" in no_op_body
+        and "completeCommand" in no_op_body
+        and "revisionPersistence.insertRevisionTx" not in no_op_body
+        and "saveRevisionInternal" not in no_op_body
+    )
+
+
+def frozen_source_proof(sources: dict[str, str]) -> bool:
+    _, request_source = unique_suffix(sources, "TimelineMergeRequest.java")
+    _, merge_source = unique_suffix(sources, "TimelineMergeEngine.java")
+    return (
+        shadow_revision_command_runtime_absent(sources)
+        and re.search(
+            r"record\s+TimelineMergeRequest\s*\([^)]*\bsourceRevisionId\b[^)]*"
+            r"\btargetRevisionId\b",
+            request_source,
+            flags=re.DOTALL,
+        ) is not None
+        and "loadRevision(request.sourceRevisionId()" in merge_source
+        and re.search(
+            r"revisionSaveService\.saveMergeRevision\s*\([^;]*?"
+            r"request\.targetRevisionId\(\)\s*,\s*request\.sourceRevisionId\(\)",
+            merge_source,
+            flags=re.DOTALL,
+        ) is not None
+        and re.search(r"readRef\s*\(\s*sourceRef|resolveSourceRef\s*\(", merge_source) is None
+    )
+
+
+proofs = {
+    "fingerprint": fingerprint_proof,
+    "shadow-runtime-absent": shadow_revision_command_runtime_absent,
+    "sole-boundary": sole_boundary_proof,
+    "parent-fk": lambda sources: parent_fk_proof(),
+    "no-op": no_op_proof,
+    "frozen-source": frozen_source_proof,
+}
+
+try:
+    requested = sys.argv[1]
+    proof = proofs[requested]
+    ok = proof(production_sources())
+except (AssertionError, KeyError, OSError, StopIteration) as error:
+    print(f"H7 V2 structural proof failed closed: {error}", file=sys.stderr)
+    raise SystemExit(1)
+raise SystemExit(0 if ok else 1)
+PY
+}
+
 echo "=== Architecture Drift Guard ==="
 echo ""
 
@@ -797,35 +1062,14 @@ else
     fail "candidate hash authority wrong"
 fi
 
-# OPTG-11: parent = plan.baseRevisionId (single parent)
-if grep -q 'plan.baseRevisionId()' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java && grep -q 'parent_revision_id' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java; then
-    pass "normal edit parent = plan base"
+# OPTG-11/14-17/21-23, OPCG-1/2/10/11, RCG-34/36/37 and RCFG-7/8/9:
+# one invariant-oriented source guard owns H7 authorization, idempotency,
+# allocation, parent-edge, NO_OP, genesis and shared ref-mutation verification.
+# It strips comments before proof evaluation and fails closed on missing inputs.
+if python3 scripts/guards/h7-architecture-guard.py; then
+    pass "H7 canonical transaction authorities and zero-count laws"
 else
-    fail "parent semantics wrong"
-fi
-
-# OPTG-14/15: database-enforced CAS (conditional update affected rows)
-if grep -q 'where project_id = ? and ref_id = ? and head_revision_id = ?' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java; then
-    pass "database-enforced CAS conditional update"
-else
-    fail "CAS mechanism missing"
-fi
-if grep -q 'select head' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java; then
-    fail "check-then-act CAS"
-else
-    pass "no check-then-act CAS"
-fi
-
-# OPTG-16/17: authorization binds plan digest + apply context
-if grep -q 'authorization().planDigest().equals(plan.planDigest())' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java; then
-    pass "authorization binds exact PlanDigest"
-else
-    fail "authorization plan binding missing"
-fi
-if grep -q 'AUTHORIZATION_CONTEXT_MISMATCH' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java; then
-    pass "authorization binds exact apply context"
-else
-    fail "authorization context binding missing"
+    fail "H7 canonical transaction authority drift"
 fi
 
 # OPTG-18: AuthorizationDecision immutable record
@@ -833,25 +1077,6 @@ if grep -q 'record AuthorizationDecision(' operation-module/src/main/java/com/ex
     pass "immutable AuthorizationDecision"
 else
     fail "authorization not immutable"
-fi
-
-# OPTG-21/22: durable ApplyCommandId, not canonical semantics
-if grep -q 'apply_command' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java; then
-    pass "durable ApplyCommandId authority"
-else
-    fail "durable idempotency missing"
-fi
-if grep -q 'apply_command' timeline-module/src/main/java/com/example/platform/timeline/canonical/TimelineDocument.java 2>/dev/null; then
-    fail "ApplyCommandId in canonical model"
-else
-    pass "ApplyCommandId not canonical Timeline semantics"
-fi
-
-# OPTG-23: semantic no-op creates no revision
-if grep -q 'noOp()' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java && grep -q 'ApplyResult.NO_OP' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java; then
-    pass "semantic NO_OP no revision"
-else
-    fail "NO_OP handling missing"
 fi
 
 # OPTG-24: no independent generic JSON patch canonical write endpoints
@@ -903,23 +1128,12 @@ else
     fail "same-plan binding missing"
 fi
 
-# OPCG-1/2: first-time NO_OP apply validates expected head; stale => STALE_TARGET_REF
-if grep -q 'no-op still requires exact head' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java; then
-    pass "no-op first apply validates expected head"
+# OPCG-4/5/6: canonical fingerprint binds principal + complete apply context
+# through the shared versioned, length-framed field codec (never delimiters).
+if h7_v2_structural_proof fingerprint; then
+    pass "apply command fingerprint uses versioned framing and binds principal + context"
 else
-    fail "no-op head validation missing"
-fi
-
-# OPCG-4/5/6: fingerprint binds principal + project scope + target ref
-if grep -q 'principalRef' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java && grep -q 'projectId + "|" + ref.refId()' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java; then
-    pass "apply command fingerprint binds principal + context"
-else
-    fail "fingerprint missing principal/context binding"
-fi
-if grep -q 'policy' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java | grep -v policyVersion | grep -q .; then
-    fail "policy version in fingerprint"
-else
-    pass "policy version excluded from fingerprint"
+    fail "canonical framed fingerprint or required principal/context binding missing"
 fi
 
 # OPCG-8/9: OperationPlan semantics have zero PostgreSQL identity dependency
@@ -927,13 +1141,6 @@ if grep -q 'org.jooq\|PGobject\|postgres' operation-module/src/main/java/com/exa
     fail "postgres/jooq leakage into domain plan model"
 else
     pass "zero postgres/jooq leakage into domain plan model"
-fi
-
-# OPCG-10/11: CAS remains database-enforced, no check-then-act
-if grep -q 'where project_id = ? and ref_id = ? and head_revision_id = ?' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java; then
-    pass "CAS database-enforced conditional update"
-else
-    fail "CAS mechanism missing"
 fi
 
 # OPCG-13/14: no JGit, no alternative backend
@@ -985,10 +1192,10 @@ if grep -q 'mergeSemantic' timeline-module/src/main/java/com/example/platform/ti
 else
     fail "mergeSemantic missing"
 fi
-if grep -q 'mergeSemantic' timeline-module/src/main/java/com/example/platform/timeline/app/RevisionCommandPlanner.java; then
-    pass "planner uses pure semantic merge"
+if h7_v2_structural_proof shadow-runtime-absent; then
+    pass "deferred RevisionCommand planner/apply shadow runtime remains absent"
 else
-    fail "planner uses engine persistence path"
+    fail "RevisionCommand planner/apply shadow runtime reintroduced"
 fi
 
 # RCG-26/27/28: parent edge authority; legacy fields not authoritative
@@ -1004,29 +1211,10 @@ else
 fi
 
 # RCG-33: cross-project parent DB enforcement
-if grep -q 'references timeline_revision(project_id, id)' platform-app/src/main/resources/db/migration/V1__initial_schema.sql; then
-    pass "cross-project parent edge DB-enforced (composite FK)"
+if h7_v2_structural_proof parent-fk; then
+    pass "cross-tenant/project parent edges DB-enforced (exact composite FKs)"
 else
-    fail "RCI4 composite FK missing"
-fi
-
-# RCG-34: no MAX+1 production allocator
-if grep -rn 'max(revision_number)' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java render-module/src/main/java/com/example/platform/render/app/revisioncommand/ 2>/dev/null | grep -v '^\s*\*' | grep -q .; then
-    fail "MAX+1 allocator remains"
-else
-    pass "DB-safe revision-number allocator (counter, RCI2)"
-fi
-
-# RCG-36/37: apply_command domain separation, OperationPlan semantics preserved
-if grep -q 'command_domain' platform-app/src/main/resources/db/migration/V1__initial_schema.sql && grep -q "'OPERATION_PLAN'" platform-app/src/main/resources/db/migration/V1__initial_schema.sql; then
-    pass "apply_command domain separation (OP maps OPERATION_PLAN)"
-else
-    fail "command domain missing"
-fi
-if grep -q 'parent_order = 0\|parent_order)' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java; then
-    pass "normal edit writes single parent edge order 0"
-else
-    fail "normal edit parent edge missing"
+    fail "RCI4 tenant/project composite parent FK schema missing"
 fi
 
 # RCG-38/39: no JGit, no new backend
@@ -1043,44 +1231,35 @@ else
     pass "true revert/rebase/batch = 0"
 fi
 
-# RCG-44/45: legacy restore/merge bypass = 0 (authoritative path via RevisionCommand)
-if grep -q 'restoreRevision' timeline-module/src/main/java/com/example/platform/timeline/app/TimelineRevisionSaveService.java 2>/dev/null && grep -q 'revision-command-restore' timeline-module/src/main/java/com/example/platform/timeline/adapter/RevisionCommandApplyService.java; then
-    pass "restore rehomed through RevisionCommand path (legacy endpoint retained)"
+# RCG-44/45: legacy restore/merge bypass = 0. The retired RevisionCommand
+# writer stays absent; retained endpoints lower through the sole save boundary.
+if h7_v2_structural_proof sole-boundary; then
+    pass "merge/restore lower through sole TimelineRevisionSaveService boundary"
 else
-    fail "restore bypass unresolved"
+    fail "merge/restore bypass or shadow Timeline writer detected"
 fi
 
-# RCFG-1/2: exact same revision merge = NO_OP; expected head still checked
-if grep -q 'same frozen revision merge' timeline-module/src/main/java/com/example/platform/timeline/app/RevisionCommandPlanner.java; then
-    pass "same-revision merge plans NO_OP"
+# RCFG-1/2: RevisionCommand same-revision NO_OP remains deferred with its
+# shadow runtime; canonical H7 NO_OP still claims durably, validates the exact
+# expected ref through the shared authority, and completes without a revision.
+if h7_v2_structural_proof shadow-runtime-absent; then
+    pass "same-revision RevisionCommand NO_OP shadow runtime remains absent"
 else
-    fail "RCP1 same-revision NO_OP missing"
+    fail "same-revision RevisionCommand shadow runtime reintroduced"
 fi
-if grep -q 'same frozen revision merge' timeline-module/src/main/java/com/example/platform/timeline/adapter/RevisionCommandApplyService.java; then
-    pass "same-revision apply NO_OP after expected-head CAS"
+if h7_v2_structural_proof no-op; then
+    pass "canonical H7 NO_OP validates expected head at sole boundary"
 else
-    fail "RCP1 apply NO_OP missing"
-fi
-
-# RCFG-3/4: frozen sourceRevisionId is apply authority; no source ref reread
-if grep -q 'plan.sourceRevisionId()' timeline-module/src/main/java/com/example/platform/timeline/adapter/RevisionCommandApplyService.java && ! grep -q 'readRef(sourceRef)\|resolveSourceRef(' timeline-module/src/main/java/com/example/platform/timeline/adapter/RevisionCommandApplyService.java; then
-    pass "frozen source revision is apply authority (zero source-ref reread)"
-else
-    fail "RCP2 source pin violation"
+    fail "canonical H7 NO_OP expected-head/no-write proof missing"
 fi
 
-# RCFG-7/8/9: counter table exists in canonical V1; bootstrap is ON CONFLICT
-# DO NOTHING. The V4-era backfill formula (coalesce(max(revision_number),0)+1)
-# was a historical data migration — irrelevant for greenfield single-V1.
-if grep -q 'create table project_revision_counter' platform-app/src/main/resources/db/migration/V1__initial_schema.sql; then
-    pass "counter table defined in canonical V1"
+# RCFG-3/4: current merge execution consumes explicit frozen revision ids and
+# delegates them to the sole boundary; the deferred shadow apply runtime and
+# source-ref rereads remain absent.
+if h7_v2_structural_proof frozen-source; then
+    pass "frozen merge source revision retained with zero source-ref reread"
 else
-    fail "RCP3 migration formula missing"
-fi
-if grep -q 'on conflict (project_id) do nothing' render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java; then
-    pass "counter bootstrap atomic (ON CONFLICT DO NOTHING)"
-else
-    fail "RCP3 bootstrap not atomic"
+    fail "frozen merge source pin or shadow-runtime absence violated"
 fi
 
 # RCFG-12: parent edge remains graph authority

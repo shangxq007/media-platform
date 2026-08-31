@@ -23,6 +23,7 @@ public record OperationDefinition(
     }
 
     public enum TargetKind {
+        TIMELINE,
         CLIP_SCOPE,
         GROUP,
         SYNC,
@@ -42,6 +43,11 @@ public record OperationDefinition(
 
     /** Static code-owned V1 vocabulary (exactly 15, frozen). */
     public static final class V1 {
+        /** H7: first vertically complete real-media authoring operation. */
+        public static final OperationDefinition ADD_MEDIA_CLIP = new OperationDefinition(
+                OperationDefinitionId.of("timeline.media-clip.add"),
+                OperationDefinitionVersion.of(1, 0), Lifecycle.ACTIVE, TargetKind.TIMELINE,
+                1, 1, OperationParameters.AddMediaClipParameters.class);
         public static final OperationDefinition MOVE = def("timeline.move", 1, Integer.MAX_VALUE, OperationParameters.MoveParameters.class);
         public static final OperationDefinition DELETE = def("timeline.delete", 1, Integer.MAX_VALUE, OperationParameters.NoParameters.class);
         public static final OperationDefinition TRIM = def("timeline.trim", 1, 1, OperationParameters.TrimParameters.class);
@@ -80,6 +86,7 @@ public record OperationDefinition(
         }
 
         public static final java.util.List<OperationDefinition> ALL = java.util.List.of(
+                ADD_MEDIA_CLIP,
                 MOVE, DELETE, TRIM, SET_TEMPORAL_RATE, SET_TEMPORAL_DIRECTION, FREEZE,
                 SET_AUDIO_GAIN, SET_AUDIO_MUTE, SET_STEREO_BALANCE,
                 CREATE_GROUP, UPDATE_GROUP_MEMBERSHIP, REMOVE_GROUP,

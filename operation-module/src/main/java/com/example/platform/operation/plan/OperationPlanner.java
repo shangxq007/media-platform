@@ -41,13 +41,16 @@ public final class OperationPlanner {
 
     private final TimelineContentDigester digester = new TimelineContentDigester();
 
-    public OperationPlan plan(OperationInstance instance, TimelineDocument base) {
-        if (!instance.baseRevisionId().equals(baseRevisionIdOf(instance))) {
+    public OperationPlan plan(
+            OperationInstance instance, String hydratedBaseRevisionId, TimelineDocument base) {
+        if (!instance.baseRevisionId().equals(hydratedBaseRevisionId)) {
             throw new PlanException(PlanErrorCode.STALE_BASE_REVISION,
-                    "instance base " + instance.baseRevisionId() + " does not match supplied base");
+                    "instance base " + instance.baseRevisionId()
+                            + " does not match independently hydrated base " + hydratedBaseRevisionId);
         }
         List<PlannedChange> changes = new ArrayList<>();
         TimelineDocument candidate = switch (instance.definitionId().value()) {
+            case "timeline.media-clip.add" -> planAddMediaClip(instance, base, changes);
             case "timeline.move" -> planMove(instance, base, changes);
             case "timeline.delete" -> planDelete(instance, base, changes);
             case "timeline.trim" -> planTrim(instance, base, changes);
@@ -79,12 +82,9 @@ public final class OperationPlanner {
                 candidateHash, true, digest, noOp);
     }
 
-    private static String baseRevisionIdOf(OperationInstance instance) {
-        return instance.baseRevisionId();
-    }
-
     private static List<String> targetIdentities(OperationTarget target) {
         return switch (target) {
+            case OperationTarget.TimelineTarget t -> List.of("timeline:" + t.timelineId());
             case OperationTarget.ResolvedClipScopeTarget r ->
                     r.resolvedScope().resolvedClipIds().stream().map(TimelineClipId::value).toList();
             case OperationTarget.GroupTarget g -> List.of("group:" + g.groupId().value());
@@ -155,6 +155,51 @@ public final class OperationPlanner {
         return new TimelineClip(clip.getClipId().value(), clip.getMediaAssetId(), clip.getMediaStreamId(),
                 clip.getArtifactId(), clip.getContentDigest(), clip.getStartTime(), clip.getEndTime(),
                 clip.getTrimStart(), clip.getTrimEnd(), clip.getSourceKind(), mapping);
+    }
+
+    private TimelineDocument planAddMediaClip(
+            OperationInstance instance, TimelineDocument base, List<PlannedChange> changes) {
+        if (!(instance.target() instanceof OperationTarget.TimelineTarget)) {
+            throw new PlanException(PlanErrorCode.INVALID_PLAN,
+                    "ADD_MEDIA_CLIP requires Timeline target");
+        }
+        var parameters = (OperationParameters.AddMediaClipParameters) instance.parameters();
+        for (TimelineTrack track : base.getTracks()) {
+            for (TimelineClip existing : track.clips()) {
+                if (existing.getClipId().equals(parameters.clipId())) {
+                    throw new PlanException(PlanErrorCode.PLACEMENT_CONFLICT,
+                            "clip identity already exists: " + parameters.clipId().value());
+                }
+            }
+        }
+
+        var binding = parameters.sourceBinding();
+        // Reconstruct the typed aggregate at planning time so source range,
+        // placement and TemporalMapping invariants fail before preview/apply.
+        var semanticClip = new com.example.platform.timeline.semantics.clip.MediaClip(
+                parameters.clipId().value(), parameters.trackId(), parameters.placement(),
+                binding.sourceRange(), parameters.temporalMapping(), binding);
+        TimelineClip added = TimelineClip.fromSemanticClip(semanticClip);
+
+        boolean found = false;
+        List<TimelineTrack> tracks = new ArrayList<>();
+        for (TimelineTrack track : base.getTracks()) {
+            if (track.trackId().equals(parameters.trackId())) {
+                found = true;
+                List<TimelineClip> clips = new ArrayList<>(track.clips());
+                clips.add(added);
+                tracks.add(new TimelineTrack(track.trackId(), track.name(), track.type(), clips));
+            } else {
+                tracks.add(track);
+            }
+        }
+        if (!found) {
+            throw new PlanException(PlanErrorCode.TARGET_MISSING,
+                    "target track missing: " + parameters.trackId());
+        }
+        changes.add(new PlannedChange.ClipAdded(parameters.trackId(), added));
+        return new TimelineDocument(base.getSchemaVersion(), tracks, base.getMetadata(),
+                base.getAudioMix(), base.getSemanticRelationships(), base.getTextElements());
     }
 
     // ---- 15 operations ----

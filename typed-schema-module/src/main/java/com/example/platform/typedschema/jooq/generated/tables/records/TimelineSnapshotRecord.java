@@ -132,6 +132,20 @@ public class TimelineSnapshotRecord extends UpdatableRecordImpl<TimelineSnapshot
         return (Integer) get(7);
     }
 
+    /**
+     * Setter for <code>public.timeline_snapshot.semantic_revision_id</code>.
+     */
+    public void setSemanticRevisionId(String value) {
+        set(8, value);
+    }
+
+    /**
+     * Getter for <code>public.timeline_snapshot.semantic_revision_id</code>.
+     */
+    public String getSemanticRevisionId() {
+        return (String) get(8);
+    }
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -155,7 +169,7 @@ public class TimelineSnapshotRecord extends UpdatableRecordImpl<TimelineSnapshot
     /**
      * Create a detached, initialised TimelineSnapshotRecord
      */
-    public TimelineSnapshotRecord(String id, String projectId, String tenantId, String payloadJson, String schemaVersion, LocalDateTime createdAt, String contentHash, Integer revisionNumber) {
+    public TimelineSnapshotRecord(String id, String projectId, String tenantId, String payloadJson, String schemaVersion, LocalDateTime createdAt, String contentHash, Integer revisionNumber, String semanticRevisionId) {
         super(TimelineSnapshot.TIMELINE_SNAPSHOT);
 
         setId(id);
@@ -166,6 +180,7 @@ public class TimelineSnapshotRecord extends UpdatableRecordImpl<TimelineSnapshot
         setCreatedAt(createdAt);
         setContentHash(contentHash);
         setRevisionNumber(revisionNumber);
+        setSemanticRevisionId(semanticRevisionId);
         resetChangedOnNotNull();
     }
 }

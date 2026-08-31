@@ -142,6 +142,16 @@ tasks.register("verifyJooqVersionAlignment") {
     }
 }
 
+tasks.register<Exec>("verifyJooqRegenerationFailClosed") {
+    group = "verification"
+    description = "Verify jOOQ regeneration rejects missing dependencies and no-op generator output"
+    workingDir(rootDir)
+    commandLine(
+        "bash",
+        file("typed-schema-module/test/regenerate-jooq-schema-fail-closed-test.sh").absolutePath
+    )
+}
+
 tasks.register("regenerateJooqSchema") {
     group = "jooq"
     description = "Regenerate jOOQ schema from ephemeral PostgreSQL 16. Delegates to regenerate-jooq-schema.sh"
@@ -165,7 +175,7 @@ tasks.register("regenerateJooqSchema") {
 
 tasks.register("verifyJooqGeneratedSources") {
     group = "verification"
-    description = "Verify canonical V1 table identities exactly match committed jOOQ tables and records"
+    description = "Verify canonical V1 identities and exact GenerationTool inventory match committed jOOQ sources"
     doLast {
         val schemaFile = file("platform-app/src/main/resources/db/migration/V1__initial_schema.sql")
         val committedDir = file("typed-schema-module/src/main/java/com/example/platform/typedschema/jooq/generated")
@@ -190,6 +200,80 @@ tasks.register("verifyJooqGeneratedSources") {
         require(exitCode == 0) {
             "FAIL: jOOQ canonical/generated identity parity verifier exited with code $exitCode"
         }
+        val expectedTableCount = 189
+        val expectedRecordCount = 189
+        val expectedTopLevelFiles = setOf(
+            "DefaultCatalog.java",
+            "Indexes.java",
+            "Keys.java",
+            "Public.java",
+            "Tables.java"
+        )
+        val expectedGeneratedJavaFileCount = 383
+        require(expectedGeneratedJavaFileCount ==
+                expectedTableCount + expectedRecordCount + expectedTopLevelFiles.size) {
+            "FAIL: Generated-source inventory constants are internally inconsistent"
+        }
+
+        val generatedJavaFiles = committedDir.walkTopDown()
+            .filter { it.isFile && it.name.endsWith(".java") }
+            .toList()
+
+        // Table classes = all *.java directly under tables/ (jOOQ 3.19 names the table class
+        // after the table, e.g. UsageRecord.java; records/ holds the *Record.java companions).
+        val tablesDir = committedDir.resolve("tables")
+        val tableFiles = generatedJavaFiles.filter { it.parentFile == tablesDir }
+        val recordsDir = committedDir.resolve("tables/records")
+        val recordFiles = generatedJavaFiles.filter { it.parentFile == recordsDir }
+        val topLevelFileNames = generatedJavaFiles
+            .filter { it.parentFile == committedDir }
+            .map { it.name }
+            .toSet()
+        val classifiedFiles = tableFiles.toSet() + recordFiles +
+                generatedJavaFiles.filter { it.parentFile == committedDir }
+        val unexpectedGeneratedPaths = (generatedJavaFiles.toSet() - classifiedFiles)
+            .map { it.relativeTo(committedDir).invariantSeparatorsPath }
+            .sorted()
+        val tableClassNames = tableFiles.map { it.name.removeSuffix(".java") }.toSet()
+        val recordTableClassNames = recordFiles
+            .map { it.name.removeSuffix("Record.java") }
+            .toSet()
+        val tableCount = tableFiles.size
+        val recordCount = recordFiles.size
+        val totalFiles = generatedJavaFiles.size
+
+        println("Generated source inventory:")
+        println("  Table classes: " + tableCount)
+        println("  Record classes: " + recordCount)
+        println("  Total Java files: " + totalFiles)
+
+        // Reconciled canonical V1: real jOOQ 3.19.30 GenerationTool PostgreSQL readback is
+        // byte-exact at 5 top-level files + 189 table/record pairs = 383 Java files.
+        require(topLevelFileNames == expectedTopLevelFiles) {
+            "FAIL: Generated top-level files differ; missing=" +
+                    (expectedTopLevelFiles - topLevelFileNames).sorted() + ", extra=" +
+                    (topLevelFileNames - expectedTopLevelFiles).sorted()
+        }
+        require(unexpectedGeneratedPaths.isEmpty()) {
+            "FAIL: Generated Java files found outside the canonical root/tables/records layout: " +
+                    unexpectedGeneratedPaths
+        }
+        require(tableCount == expectedTableCount) {
+            "FAIL: Expected $expectedTableCount Table classes but found " + tableCount
+        }
+        require(recordCount == expectedRecordCount) {
+            "FAIL: Expected $expectedRecordCount Record classes but found " + recordCount
+        }
+        require(tableClassNames == recordTableClassNames) {
+            "FAIL: Generated Table/Record pairs differ; tables without records=" +
+                    (tableClassNames - recordTableClassNames).sorted() + ", records without tables=" +
+                    (recordTableClassNames - tableClassNames).sorted()
+        }
+        require(totalFiles == expectedGeneratedJavaFileCount) {
+            "FAIL: Expected exactly $expectedGeneratedJavaFileCount total Java files but found " + totalFiles
+        }
+
+        println("OK: Generated source verification passed")
     }
 }
 
@@ -400,8 +484,8 @@ tasks.register("verifyC1TimelineMergeConvergence") {
         // C1-RED-05/06: behavioral proofs must exist (JUnit)
         val engineTest = file("timeline-module/src/test/java/com/example/platform/timeline/app/TimelineMergeEngineTest.java")
         require(engineTest.exists()) { "FAIL: TimelineMergeEngineTest missing (C1-RED-05/06 behavioral proof)" }
-        require(engineTest.readText().contains("sameEntityDisjointPathsBothMaterialized")) { "FAIL: disjoint-path materialization proof missing" }
-        require(engineTest.readText().contains("deleteVsModifyConflict")) { "FAIL: delete-vs-modify proof missing" }
+        require(engineTest.readText().contains("semanticMergeReturnsReloadableTimelineDocumentForSourceChange")) { "FAIL: canonical merge materialization/reload proof missing" }
+        require(engineTest.readText().contains("persistentMergeLowersToSoleBoundaryWithTargetThenSourceParents")) { "FAIL: canonical merge parent-order lowering proof missing" }
         // C1-RED-08: workflow must not own Timeline semantic merge
         val workflowFiles = fileTree("workflow-module/src/main") { include("**/*.java") }.files
         val workflowMergeHits = workflowFiles.filter {
@@ -431,28 +515,23 @@ tasks.register("verifyC1CrrPayloadContract") {
         // C1-CRR-RED-04: no production gate bypass flag
         require(!engineSrc.contains("canonicalGatesEnabled")) { "FAIL: canonicalGatesEnabled bypass flag present" }
         require(!engineSrc.contains("canonical-gates-enabled")) { "FAIL: canonical-gates-enabled property present" }
-        // C1-CRR-RED-05: exactly one merge payload conversion path — internal-1.0 via the E1b gate adapter
-        require(engineSrc.contains("InternalTimelineCandidateAdapter.map")) { "FAIL: canonical gate adapter conversion missing" }
+        // C1-CRR-RED-05: exactly one persisted merge payload reader — TimelineDocument.
+        require(engineSrc.contains("TimelineDocumentJsonSerializer.deserialize")) { "FAIL: production TimelineDocument reader missing" }
         require(engineSrc.contains("TimelineSnapshotConverter.toSnapshot")) { "FAIL: candidate -> snapshot conversion missing" }
-        require(!engineSrc.contains("objectMapper.readValue(payload, TimelineDocument")) { "FAIL: legacy TimelineDocument parse path present" }
-        // C1-CRR-RED-09 (part): no dual-format fallback — the engine must not try-catch
-        // around a legacy parse then fall through to an alternate parser.
-        require(!engineSrc.contains("readValue(payload, TimelineDocument.class)")) { "FAIL: dual-format fallback parse present" }
+        require(!engineSrc.contains("InternalTimelineCandidateAdapter.map")) { "FAIL: internal-1.0 persisted merge reader present" }
         // C1-CRR-RED-06: engine remains sole semantic merge authority
         require(engineSrc.contains("class TimelineMergeEngine")) { "FAIL: TimelineMergeEngine missing" }
         // C1-CRR-RED-01/02/03: behavioral proofs must exist (JUnit, gates naturally active)
         val regression = file("timeline-module/src/test/java/com/example/platform/timeline/app/TimelineMergePayloadContractRegressionTest.java")
         require(regression.exists()) { "FAIL: payload contract regression missing" }
         val regSrc = regression.readText()
-        require(regSrc.contains("productionSavedPayloadIsAcceptedByCanonicalGate")) { "FAIL: C1-CRR-RED-01 proof missing" }
-        require(regSrc.contains("productionSavedPayloadCanBeConvertedToCanonicalMergeSnapshot")) { "FAIL: C1-CRR-RED-02 proof missing" }
-        require(regSrc.contains("validationAndConversionDomainsAreEqual")) { "FAIL: C1-CRR-RED-03 proof missing" }
+        require(regSrc.contains("productionPayloadUsesTimelineDocumentReaderValidatorAndMergeBridge")) { "FAIL: TimelineDocument payload authority proof missing" }
         // C1-CRR-RED-09: real application-context proof must exist
         val contextProof = file("platform-app/src/test/java/com/example/platform/C1CrrMergeAuthorityCompositionTest.java")
         require(contextProof.exists()) { "FAIL: real application-context proof missing" }
         // C1-CRR-RED-10: no schema/module change (jOOQ generated tables unchanged)
         require(!file("render-module/src/main/java/com/example/platform/render/app/timeline/TimelineRenderExecutionMode.java").exists()) { "note: baseline check" }
-        println("OK: C1-CRR payload contract verified (single internal-1.0 conversion path, gate domain == conversion domain, no bypass)")
+        println("OK: C1-CRR payload contract verified (single TimelineDocument reader/serializer, no fallback)")
     }
 }
 
@@ -500,8 +579,8 @@ tasks.register("verifyC1Cnm1RedGates") {
 
         // ── RED-06: effect preservation wiring (adapter -> converter -> engine) ──
         val adapter = file("timeline-module/src/main/java/com/example/platform/timeline/app/InternalTimelineCandidateAdapter.java")
-        require(adapter.readText().contains("mapEffects")) { "FAIL: adapter effect parse missing" }
-        require(e.contains("clip.effects()") && e.contains("node.set(\"effects\"")) { "FAIL: engine effect re-emit missing" }
+        require(adapter.readText().contains("mapEffects")) { "FAIL: import adapter effect parse missing" }
+        require(c.contains("clip.getEffects()") && c.contains("clip.effects()")) { "FAIL: TimelineDocument effect round-trip missing" }
 
         // ── RED-07: no unjustified canonical binary-float authorities ──
         require(!w.contains("double fps =") && !w.contains("(int) fps")) { "FAIL: canonical double fps residue in canonical import service" }
@@ -514,7 +593,8 @@ tasks.register("verifyC1Cnm1RedGates") {
 
         // ── RED-10: TimelineMergeEngine remains sole semantic merge authority ──
         require(e.contains("class TimelineMergeEngine")) { "FAIL: TimelineMergeEngine missing" }
-        require(!e.contains("readValue(payload, TimelineDocument.class)")) { "FAIL: TimelineDocument parse path present" }
+        require(e.contains("TimelineDocumentJsonSerializer.deserialize")) { "FAIL: sole TimelineDocument parse path missing" }
+        require(!e.contains("InternalTimelineCandidateAdapter.map")) { "FAIL: dual internal payload parser present" }
 
         // ── RED-11: schema/module zero delta ──
         require(!file("render-module/src/main/java/com/example/platform/render/app/timeline/TimelineRenderExecutionMode.java").exists()) { "note: baseline check" }
@@ -526,7 +606,7 @@ tasks.register("verifyC1Cnm1RedGates") {
         require(!file("render-module/src/main/java/com/example/platform/render/app/timeline/R1TimelineMigration.java").exists()) { "note: R1 residue baseline check" }
 
         // ── RED-13: source-binding preservation wiring ──
-        require(e.contains("clip.assetBindingId()")) { "FAIL: merged clip asset binding re-emit missing" }
+        require(c.contains("clip.assetBindingId()")) { "FAIL: merged clip asset binding re-emit missing" }
         require(adapter.readText().contains("TimelineSourceRef.of(assetId)")) { "FAIL: adapter asset identity binding missing" }
 
         println("OK: C1-CNM1-RED-01..13 verified (exact rational rate, no truncation, no ms authority, preservation proofs, identity distinction)")
@@ -589,6 +669,7 @@ tasks.register("jooqFoundationCheck") {
     description = "Run all jOOQ foundation verification checks"
     dependsOn(
         "verifyJooqVersionAlignment",
+        "verifyJooqRegenerationFailClosed",
         "verifyJooqGeneratedSources",
         "verifyJooqNamedInterfacePreservation",
         "verifyP1ProductLayerRetirement",
@@ -1313,12 +1394,89 @@ tasks.register("verifyTimelineEffectTransitionCanonicalization") {
                 && patchApplier.contains("applyAutomationChanged")) {
             "FAIL: production patch path must apply EFFECT/TRANSITION/AUTOMATION ops"
         }
-        // 11. Merge engine writes merged transitions/automations back to the
-        //     merged payload (no silent target-side preservation).
+        // 11. V2 canonical materialization is a typed, whole-document path:
+        //     applied snapshot -> TimelineDocument -> canonical payload.  The
+        //     converter must project transitions/automations explicitly and
+        //     every merge output path must serialize that projected document.
         val mergeEngine = file("timeline-module/src/main/java/com/example/platform/timeline/app/TimelineMergeEngine.java").readText()
-        require(mergeEngine.contains("transitionsToJson") && mergeEngine.contains("automationsToJson")) {
-            "FAIL: merge engine must materialize merged transition/automation state"
+        val snapshotConverter = file("timeline-module/src/main/java/com/example/platform/timeline/diff/calculation/TimelineSnapshotConverter.java").readText()
+        val documentSerializer = file("timeline-module/src/main/java/com/example/platform/timeline/app/TimelineDocumentJsonSerializer.java").readText()
+        val timelineDocument = file("timeline-module/src/main/java/com/example/platform/timeline/canonical/TimelineDocument.java").readText()
+        fun normalized(source: String) = source.replace(Regex("\\s+"), " ").trim()
+        fun hasCanonicalMaterializationPath(
+            engineSource: String,
+            converterSource: String,
+            serializerSource: String,
+            documentSource: String
+        ): Boolean {
+            val engine = normalized(engineSource)
+            val converter = normalized(converterSource)
+            val serializerSourceNormalized = normalized(serializerSource)
+            val document = normalized(documentSource)
+            val directMergePath = engine.contains(
+                "TimelineDocumentJsonSerializer.serializeWithCaptions( TimelineSnapshotConverter.toDocument(application.patchedSnapshot()));"
+            )
+            val persistedMergePath = engine.contains(
+                "CanonicalTimelineSnapshot mergedSnapshot = application.patchedSnapshot(); " +
+                    "TimelineDocument mergedDocument = TimelineSnapshotConverter.toDocument(mergedSnapshot); " +
+                    "String mergedPayload = TimelineDocumentJsonSerializer.serializeWithCaptions(mergedDocument);"
+            )
+            val transitionAutomationProjection = converter.contains(
+                "snapshot.textElements(), fromTransitionSnapshots(snapshot.transitions()), " +
+                    "fromAutomationSnapshots(snapshot.automations()));"
+            )
+            val wholeDocumentSerialization = serializerSourceNormalized.contains(
+                "public static String serializeWithCaptions(TimelineDocument document) { try { " +
+                    "ObjectNode root = (ObjectNode) MAPPER.valueToTree(document);"
+            ) && serializerSourceNormalized.contains("return MAPPER.writeValueAsString(root);")
+            val documentOwnsSemanticFields = document.contains("@JsonProperty(\"transitions\")")
+                && document.contains("private final List<CanonicalTransition> transitions;")
+                && document.contains("@JsonProperty(\"automations\")")
+                && document.contains("private final List<CanonicalAutomationCurve> automations;")
+                && document.contains("getTransitions() { return transitions; }")
+                && document.contains("getAutomations() { return automations; }")
+            return directMergePath && persistedMergePath && transitionAutomationProjection
+                && wholeDocumentSerialization && documentOwnsSemanticFields
         }
+        require(hasCanonicalMaterializationPath(
+            mergeEngine, snapshotConverter, documentSerializer, timelineDocument
+        )) {
+            "FAIL: merged snapshot must project transitions/automations into TimelineDocument and use canonical whole-document serialization"
+        }
+        fun requireMaterializationMutationRejected(
+            name: String,
+            engineSource: String = mergeEngine,
+            converterSource: String = snapshotConverter,
+            serializerSource: String = documentSerializer
+        ) {
+            require(!hasCanonicalMaterializationPath(
+                engineSource, converterSource, serializerSource, timelineDocument
+            )) {
+                "FAIL: RED mutation escaped canonical materialization guard: $name"
+            }
+        }
+        requireMaterializationMutationRejected(
+            "transition projection removed",
+            converterSource = snapshotConverter.replace(
+                "fromTransitionSnapshots(snapshot.transitions())", "List.of()")
+        )
+        requireMaterializationMutationRejected(
+            "automation projection removed",
+            converterSource = snapshotConverter.replace(
+                "fromAutomationSnapshots(snapshot.automations())", "List.of()")
+        )
+        requireMaterializationMutationRejected(
+            "canonical merge serializer removed",
+            engineSource = mergeEngine.replace(
+                "TimelineDocumentJsonSerializer.serializeWithCaptions(",
+                "TimelineDocumentJsonSerializer.serialize(")
+        )
+        requireMaterializationMutationRejected(
+            "whole-document serializer projection removed",
+            serializerSource = documentSerializer.replace(
+                "MAPPER.valueToTree(document)", "MAPPER.createObjectNode()")
+        )
+        println("OK: canonical materialization RED mutations rejected (4/4)")
         // 12. Field-level local semantics have one authoritative location:
         //     canonical snapshot records own local equality (no central switch
         //     duplication across serializer/diff/patch/merge).
@@ -1353,9 +1511,12 @@ tasks.register("verifyTimelineEffectTransitionCanonicalization") {
         require(patchApplier.contains("meta.get(\"deleted\")")) {
             "FAIL: patch applier must handle explicit deletion"
         }
-        require(mergeEngine.contains("mergedComposition.remove(\"transitions\")")
-                && mergeEngine.contains("mergedComposition.remove(\"automations\")")) {
-            "FAIL: merge materialization must represent empty semantic result (no target resurrection)"
+        require(normalized(timelineDocument).contains(
+            "@JsonProperty(\"transitions\") @JsonInclude(JsonInclude.Include.NON_EMPTY)"
+        ) && normalized(timelineDocument).contains(
+            "@JsonProperty(\"automations\") @JsonInclude(JsonInclude.Include.NON_EMPTY)"
+        )) {
+            "FAIL: empty merged transition/automation state must serialize without target resurrection"
         }
         // 16. FOURTH CORRECTION: Effect owns local semantic fingerprint
         //     (no central List.toString()/Map.toString() effect signatures).
@@ -1499,8 +1660,11 @@ tasks.register("verifyTimelineEffectTransitionCanonicalization") {
         require(diffCalc.contains("TimedTextCanonicalSemantics.semanticFingerprint(b)")) {
             "FAIL (TT-C1): DELETE must carry the complete canonical before payload"
         }
-        require(mergeEngine.contains("TimedTextCanonicalSemantics.toCanonicalNode")) {
-            "FAIL (TT-C2): merge output must delegate to the local TimedText authority"
+        require(normalized(snapshotConverter).contains(
+            "snapshot.semanticRelationships(), snapshot.textElements(), " +
+                "fromTransitionSnapshots(snapshot.transitions())"
+        )) {
+            "FAIL (TT-C2): merge output must project canonical TimedText through TimelineDocument"
         }
         require(timedTextE2E.contains("f7SourceOnlyTextElementAdd")) {
             "FAIL (TT-C1): source-only ADD real TimelineMergeEngine E2E missing"
@@ -1531,8 +1695,10 @@ tasks.register("verifyTimelineEffectTransitionCanonicalization") {
         require(diffCalc.contains("diffAudioMix") && diffCalc.contains("diffRelationships")) {
             "FAIL (G3): production diff must cover AudioMix + SemanticRelationships"
         }
-        require(mergeEngine.contains("\"audioMix\"") && mergeEngine.contains("\"semanticRelationships\"")) {
-            "FAIL (G3): production merge write-back must carry AudioMix + SemanticRelationships"
+        require(normalized(snapshotConverter).contains(
+            "snapshot.audioMix(), snapshot.semanticRelationships(), snapshot.textElements()"
+        )) {
+            "FAIL (G3): production merge write-back must project AudioMix + SemanticRelationships"
         }
         require(!diffCalc.contains("Map<String, Object>") || !diffCalc.contains("new HashMap")) {
             "FAIL (G5): no Map-based generic semantic payload authority"
@@ -1568,12 +1734,16 @@ tasks.register("verifyTimelineEffectTransitionCanonicalization") {
         require(!patchApplier.contains("kfEnc.split")) {
             "FAIL (H2): central patch must not own keyframe delimiter decode"
         }
-        require(mergeEngine.contains("TransitionCanonicalSemantics.canonicalValue")
-                && mergeEngine.contains("AutomationCanonicalSemantics.canonicalValue")) {
-            "FAIL (H3): merge output must delegate Transition/Automation local fragments"
+        require(normalized(snapshotConverter).contains(
+            "fromTransitionSnapshots(snapshot.transitions()), " +
+                "fromAutomationSnapshots(snapshot.automations())"
+        )) {
+            "FAIL (H3): merge output must project typed Transition/Automation state"
         }
-        require(mergeEngine.contains("EffectCanonicalSemantics.encodeEffects")) {
-            "FAIL (H3): merge output must delegate Effect local authority"
+        require(normalized(snapshotConverter).contains(
+            "clip.temporalMapping(), clip.effects()));"
+        )) {
+            "FAIL (H3): merge output must project typed Effect state"
         }
         require(relationshipAuthority.contains("canonicalKey") && relationshipAuthority.contains("canonicalJson")) {
             "FAIL (H4): Relationship identity/normalization must live in the relationship authority"
@@ -1786,32 +1956,22 @@ tasks.register("verifyTimelineEffectTransitionCanonicalization") {
             "FAIL (F23): TimelineMergeEngine must not depend on Spring @Transactional " +
                 "for the persistent merge entrypoint (self-invocation bypass)"
         }
-        // F23b: the write phase opens an EXPLICIT jOOQ transaction whose own
-        // DSLContext flows through every write.
-        require(mergeEngineSrc.contains("dsl.transactionResult(tx ->")) {
-            "FAIL (F23b): persistent merge must open an explicit jOOQ write transaction"
+        // V2 F23b/F24: merge is computation-only until it delegates the complete
+        // write contract to the sole canonical Timeline mutation boundary.
+        require(mergeEngineSrc.contains("revisionSaveService.saveMergeRevision(")) {
+            "FAIL (V2-F23b): persistent merge must delegate to saveMergeRevision"
         }
-        // F24: persistent merge pin registration is transaction-aware.
-        require(mergeEngineSrc.contains("artifactPinService.registerRevisionPinsTx(")) {
-            "FAIL (F24): persistent merge must use transaction-aware registerRevisionPinsTx"
+        require(!mergeEngineSrc.contains("dsl.transactionResult(tx ->")
+                && !mergeEngineSrc.contains("snapshotService.saveTx(")
+                && !mergeEngineSrc.contains("revisionRepository.insertTx(")
+                && !mergeEngineSrc.contains("revisionRefMutation.advance(")
+                && !mergeEngineSrc.contains("artifactPinService.registerRevisionPinsTx(")) {
+            "FAIL (V2-F24): merge must not reproduce snapshot/revision/pin/ref write semantics"
         }
-        require(!mergeEngineSrc.contains("artifactPinService.registerRevisionPins(\n")) {
-            "FAIL (F24b): persistent merge must NOT call the non-transactional registerRevisionPins"
-        }
-        // F24c/d/e: snapshot/revision/head writes are tx-aware inside the write phase.
-        require(mergeEngineSrc.contains("snapshotService.saveTx(")) {
-            "FAIL (F24c): persistent merge must use transaction-aware snapshotService.saveTx"
-        }
-        require(mergeEngineSrc.contains("revisionRepository.insertTx(tx.dsl(), mergeRow)")) {
-            "FAIL (F24d): persistent merge must use transaction-aware revisionRepository.insertTx"
-        }
-        require(mergeEngineSrc.contains("currentRevisionService.updateCurrentRevisionTx(")) {
-            "FAIL (F24e): persistent merge must use transaction-aware head CAS updateCurrentRevisionTx"
-        }
-        // F24f: repository exposes the tx-aware insert/nextRevisionNumber APIs.
+        // V2 F24f: the read repository exposes no revision writer or MAX+1 allocator.
         val revisionRepoSrc = file("timeline-module/src/main/java/com/example/platform/timeline/adapter/TimelineRevisionRepository.java").readText()
-        require(revisionRepoSrc.contains("public void insertTx(") && revisionRepoSrc.contains("public int nextRevisionNumberTx(")) {
-            "FAIL (F24f): TimelineRevisionRepository must expose insertTx and nextRevisionNumberTx"
+        require(!revisionRepoSrc.contains("public void insertTx(") && !revisionRepoSrc.contains("public int nextRevisionNumberTx(")) {
+            "FAIL (V2-F24f): TimelineRevisionRepository must remain read-only"
         }
         // F24g: the TRUE production-path failure test exists (calls merge(request)).
         val mergePinIt = file("render-module/src/test/java/com/example/platform/render/app/timeline/CheckpointARound5PersistentMergePinIT.java").readText()
@@ -1850,10 +2010,10 @@ tasks.register("verifyTimelineEffectTransitionCanonicalization") {
         }
 
         // ── POST_FINAL_REVIEW_P1 guards (post-final-review): DB-enforced head CAS ──
-        val currentRevSrc = file("timeline-module/src/main/java/com/example/platform/timeline/app/ProductCurrentRevisionService.java").readText()
+        val currentRevSrc = file("timeline-module/src/main/java/com/example/platform/timeline/app/TimelineRevisionRefMutation.java").readText()
         // G29: expected revision participates in the UPDATE predicate.
-        require(currentRevSrc.contains("CURRENT_REVISION_ID.eq(expectedCurrentRevisionId)")
-                && currentRevSrc.contains("CURRENT_REVISION_ID.isNull()")) {
+        require(currentRevSrc.contains("HEAD_REVISION_ID.eq(expectedHeadRevisionId)")
+                && currentRevSrc.contains("HEAD_REVISION_ID.isNull()")) {
             "FAIL (G29): head CAS must put expected revision in the UPDATE predicate (eq / IS NULL)"
         }
         // G30: NO check-then-act as correctness authority. The UPDATE (with the
@@ -1861,14 +2021,14 @@ tasks.register("verifyTimelineEffectTransitionCanonicalization") {
         // authority and must come BEFORE any diagnostic read. A diagnostic
         // SELECT after CAS failure is explicitly allowed (spec 4.2/4.5).
         val casMethodBody = currentRevSrc.substring(
-                currentRevSrc.indexOf("public void updateCurrentRevisionTx"),
-                currentRevSrc.indexOf("public void updateCurrentRevisionTx") + 1800)
+                currentRevSrc.indexOf("public boolean advance"),
+                currentRevSrc.indexOf("public boolean advance") + 1400)
         val firstUpdate = casMethodBody.indexOf("tx.update(")
         val firstSelect = casMethodBody.indexOf("tx.select(")
         require(firstUpdate != -1 && (firstSelect == -1 || firstUpdate < firstSelect)) {
             "FAIL (G30): head CAS must not read-then-act (SELECT before conditional UPDATE)"
         }
-        require(currentRevSrc.contains("if (updated != 1)")) {
+        require(currentRevSrc.contains(".execute() == 1")) {
             "FAIL (G30b): head CAS must enforce affected-row count == 1"
         }
         // G30c: the real-PG CAS concurrency test exists and uses the real service.
