@@ -2,6 +2,7 @@ package com.example.platform.render.app.asset;
 
 import com.example.platform.render.domain.asset.semantic.*;
 import com.example.platform.render.infrastructure.asset.AssetSemanticMetadataRepository;
+import com.example.platform.shared.authorization.FailClosedAuthorization;
 import java.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,15 +38,7 @@ public class AssetEnrichmentService {
     @Transactional
     public AssetSemanticMetadata enrich(String assetId, String assetVersion,
                                           String assetType, String storageUri) {
-        log.info("Starting enrichment for asset: {} type: {}", assetId, assetType);
-        AssetSemanticMetadata meta = initialize(assetId, assetVersion);
-
-        meta = runProvider(SemanticCapability.PROBE, assetId, assetVersion, assetType, storageUri, meta);
-        meta = runProvider(SemanticCapability.ASR, assetId, assetVersion, assetType, storageUri, meta);
-
-        meta = finalize(assetId, meta);
-        log.info("Enrichment complete for asset: {} status: {}", assetId, meta.status());
-        return meta;
+        throw FailClosedAuthorization.unavailable("asset enrichment");
     }
 
     /**
@@ -55,9 +48,7 @@ public class AssetEnrichmentService {
     public AssetSemanticMetadata enrichWith(SemanticCapability capability,
                                               String assetId, String assetVersion,
                                               String assetType, String storageUri) {
-        AssetSemanticMetadata meta = loadOrInit(assetId, assetVersion);
-        meta = runProvider(capability, assetId, assetVersion, assetType, storageUri, meta);
-        return finalize(assetId, meta);
+        throw FailClosedAuthorization.unavailable("asset enrichment capability execution");
     }
 
     private AssetSemanticMetadata runProvider(SemanticCapability capability,

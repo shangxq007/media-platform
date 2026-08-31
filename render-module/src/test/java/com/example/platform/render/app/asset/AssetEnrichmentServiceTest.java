@@ -6,6 +6,7 @@ import static org.mockito.Mockito.*;
 import com.example.platform.render.domain.asset.semantic.*;
 import com.example.platform.render.infrastructure.asset.AssetSemanticMetadataRepository;
 import com.example.platform.render.infrastructure.asset.provider.MockWhisperAsrProvider;
+import com.example.platform.shared.authorization.AuthorizationDeniedException;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,36 +34,35 @@ class AssetEnrichmentServiceTest {
     }
 
     @Test
-    void shouldRegisterProviderAndRunEnrichment() {
-        var whisper = new MockWhisperAsrProvider();
-        registry.register(whisper);
+    void callerStorageUriCannotAuthorizeEnrichment() {
+        AuthorizationDeniedException failure = assertThrows(AuthorizationDeniedException.class, () ->
+                service.enrich("asset_1", "v1", "VIDEO", "s3://caller-controlled/v.mp4"));
 
-        when(repository.findById("asset_1")).thenReturn(Optional.empty());
-
-        AssetSemanticMetadata meta = service.enrich("asset_1", "v1", "VIDEO", "s3://v.mp4");
-
-        assertNotNull(meta);
-        assertEquals("asset_1", meta.assetId());
-        assertEquals(AssetSemanticMetadata.EnrichmentStatus.COMPLETE, meta.status());
+        assertEquals("AUTHORIZATION_UNAVAILABLE", failure.decision().reasonCode());
+        verifyNoInteractions(repository);
     }
 
     @Test
-    void shouldHandleEmptyPipelineGracefully() {
-        AssetSemanticMetadata meta = service.enrich("asset_1", "v1", "VIDEO", "s3://v.mp4");
+    void absentProviderNeverPersistsComplete() {
+        AuthorizationDeniedException failure = assertThrows(AuthorizationDeniedException.class, () ->
+                service.enrich("asset_1", "v1", "VIDEO", null));
 
-        assertNotNull(meta);
-        assertEquals(AssetSemanticMetadata.EnrichmentStatus.COMPLETE, meta.status());
-        assertTrue(meta.transcripts().isEmpty());
+        assertEquals("AUTHORIZATION_UNAVAILABLE", failure.decision().reasonCode());
+        verifyNoInteractions(repository);
     }
 
     @Test
-    void shouldTrackStatusTransitions() {
-        registry.register(new MockWhisperAsrProvider());
+    void registeredProviderCannotBypassMissingArtifactAuthority() {
+        var provider = mock(SemanticMetadataProvider.class);
+        when(provider.providerName()).thenReturn("provider");
+        when(provider.capability()).thenReturn(SemanticCapability.ASR);
+        registry.register(provider);
+        clearInvocations(provider);
 
-        when(repository.findById("asset_1")).thenReturn(Optional.empty());
+        AuthorizationDeniedException failure = assertThrows(AuthorizationDeniedException.class, () ->
+                service.enrichWith(SemanticCapability.ASR, "asset_1", "v1", "VIDEO", "s3://v.mp4"));
 
-        AssetSemanticMetadata meta = service.enrich("asset_1", "v1", "VIDEO", "s3://v.mp4");
-
-        assertEquals(AssetSemanticMetadata.EnrichmentStatus.COMPLETE, meta.status());
+        assertEquals("AUTHORIZATION_UNAVAILABLE", failure.decision().reasonCode());
+        verifyNoInteractions(provider, repository);
     }
 }

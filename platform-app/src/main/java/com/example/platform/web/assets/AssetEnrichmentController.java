@@ -3,6 +3,7 @@ package com.example.platform.web.assets;
 import com.example.platform.render.app.asset.AssetEnrichmentService;
 import com.example.platform.render.app.asset.SemanticMetadataProviderRegistry;
 import com.example.platform.render.domain.asset.semantic.*;
+import com.example.platform.shared.authorization.FailClosedAuthorization;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.*;
@@ -30,10 +31,7 @@ public class AssetEnrichmentController {
             @PathVariable String projectId,
             @PathVariable String assetId,
             @RequestBody EnrichRequest body) {
-        AssetSemanticMetadata meta = enrichmentService.enrich(
-                assetId, body.assetVersion() != null ? body.assetVersion() : "v1",
-                body.assetType(), body.storageUri());
-        return ResponseEntity.status(HttpStatus.ACCEPTED).body(toResponse(meta));
+        throw FailClosedAuthorization.unavailable("asset enrichment");
     }
 
     @GetMapping("/enrichment-status")
@@ -41,10 +39,7 @@ public class AssetEnrichmentController {
     public ResponseEntity<EnrichmentStatusResponse> status(
             @PathVariable String projectId,
             @PathVariable String assetId) {
-        AssetSemanticMetadata meta = enrichmentService.enrich(
-                assetId, "v1", "VIDEO", null);
-        List<String> providerResults = registry.listProviders();
-        return ResponseEntity.ok(toStatusResponse(meta, providerResults));
+        throw FailClosedAuthorization.unavailable("asset enrichment status");
     }
 
     @GetMapping("/providers")
@@ -52,10 +47,7 @@ public class AssetEnrichmentController {
     public ResponseEntity<List<ProviderInfo>> listProviders(
             @PathVariable String projectId,
             @PathVariable String assetId) {
-        return ResponseEntity.ok(registry.listProviders().stream()
-                .map(n -> new ProviderInfo(n, registry.findFirst(SemanticCapability.PROBE)
-                        .map(p -> p.capability().name()).orElse("UNKNOWN")))
-                .toList());
+        throw FailClosedAuthorization.unavailable("asset enrichment provider listing");
     }
 
     private static EnrichmentResponse toResponse(AssetSemanticMetadata m) {

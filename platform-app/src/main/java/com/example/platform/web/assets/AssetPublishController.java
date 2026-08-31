@@ -5,6 +5,7 @@ import com.example.platform.render.app.timeline.TimelineReviewRepository;
 import com.example.platform.render.domain.asset.AssetPublishStatus;
 import com.example.platform.render.app.event.TimelineReviewEventPublisher;
 import com.example.platform.shared.events.*;
+import com.example.platform.shared.authorization.FailClosedAuthorization;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.*;
@@ -32,10 +33,7 @@ public class AssetPublishController {
             @PathVariable String projectId,
             @PathVariable String assetId,
             @RequestBody SubmitReviewRequest body) {
-        var review = reviewService.submitForReview(assetId,
-                body.authorUserId(), body.title(), body.description());
-        eventPublisher.publish(new AssetSubmittedForReviewEvent(assetId, projectId, review.id()));
-        return ResponseEntity.status(HttpStatus.CREATED).body(toDto(review));
+        throw FailClosedAuthorization.unavailable("asset review submission");
     }
 
     @GetMapping("/review")
@@ -54,9 +52,7 @@ public class AssetPublishController {
             @PathVariable String projectId,
             @PathVariable String assetId,
             @RequestParam String reviewerUserId) {
-        reviewService.approveAsset(assetId, reviewerUserId);
-        eventPublisher.publish(new AssetApprovedEvent(assetId, projectId, assetId));
-        return ResponseEntity.ok(Map.of("assetId", assetId, "status", "APPROVED"));
+        throw FailClosedAuthorization.unavailable("asset review approval");
     }
 
     @PostMapping("/reject-review")
@@ -64,8 +60,7 @@ public class AssetPublishController {
     public ResponseEntity<Map<String, Object>> reject(
             @PathVariable String projectId,
             @PathVariable String assetId) {
-        reviewService.rejectAsset(assetId);
-        return ResponseEntity.ok(Map.of("assetId", assetId, "status", "REJECTED"));
+        throw FailClosedAuthorization.unavailable("asset review rejection");
     }
 
     @PostMapping("/publish")
@@ -73,9 +68,7 @@ public class AssetPublishController {
     public ResponseEntity<Map<String, Object>> publish(
             @PathVariable String projectId,
             @PathVariable String assetId) {
-        reviewService.publishAsset(assetId);
-        eventPublisher.publish(new AssetPublishedEvent(assetId, "v1", "ASSET", projectId, "PUBLISHED"));
-        return ResponseEntity.ok(Map.of("assetId", assetId, "publishStatus", "PUBLISHED"));
+        throw FailClosedAuthorization.unavailable("asset publication");
     }
 
     @PostMapping("/archive")
@@ -83,9 +76,7 @@ public class AssetPublishController {
     public ResponseEntity<Map<String, Object>> archive(
             @PathVariable String projectId,
             @PathVariable String assetId) {
-        reviewService.archiveAsset(assetId);
-        eventPublisher.publish(new AssetArchivedEvent(assetId, "ASSET", projectId));
-        return ResponseEntity.ok(Map.of("assetId", assetId, "publishStatus", "ARCHIVED"));
+        throw FailClosedAuthorization.unavailable("asset archival");
     }
 
     @GetMapping("/publish-status")

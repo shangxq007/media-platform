@@ -1,5 +1,6 @@
 package com.example.platform.web.media;
 
+import com.example.platform.shared.authorization.FailClosedAuthorization;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.NotBlank;
@@ -26,7 +27,7 @@ public class AssetIntegrityScanController {
     @PostMapping("/scan")
     @Operation(summary = "扫描项目资产完整性", description = "检测悬空 assetId、孤儿 blob 等并写入问题数据审计")
     public AssetIntegrityScanService.ScanReport scan(@RequestParam @NotBlank String projectId) {
-        return scanService.scanProject(projectId);
+        throw FailClosedAuthorization.unavailable("project asset integrity scan");
     }
 
     @PostMapping("/scan-global")
