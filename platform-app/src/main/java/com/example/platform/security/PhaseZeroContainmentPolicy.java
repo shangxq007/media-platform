@@ -108,6 +108,8 @@ public final class PhaseZeroContainmentPolicy {
             "/api/asset-governance/**",
             "/api/artifacts/**",
             "/api/preview/**",
+            "/api/projects/*/dashboard",
+            "/api/projects/*/dashboard/**",
             "/api/notifications/**",
             "/api/tenants/*/notifications/**",
             "/api/admin/notifications/**",
@@ -120,7 +122,6 @@ public final class PhaseZeroContainmentPolicy {
     private static final List<String> AUTHENTICATED_FAMILIES = List.of(
             "/api/me/**",
             "/api/marketplace/**",
-            "/api/projects/*/dashboard/**",
             "/api/audit/compliance/**",
             "/api/datasources/**",
             "/api/effect-packs/**",

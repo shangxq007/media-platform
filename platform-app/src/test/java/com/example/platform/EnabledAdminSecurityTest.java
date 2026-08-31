@@ -55,6 +55,9 @@ class EnabledAdminSecurityTest extends PostgresTestContainerSupport {
     @MockitoBean
     private com.example.platform.notification.app.NotificationChannelBindingService notificationChannelBindingService;
 
+    @MockitoBean
+    private com.example.platform.outbox.app.OutboxEventService outboxEventService;
+
     @Autowired
     private JwtProperties jwtProperties;
 
@@ -208,6 +211,23 @@ class EnabledAdminSecurityTest extends PostgresTestContainerSupport {
                 httpPost("/api/internal/scheduler/run/demo", token, "{}").statusCode());
         Assertions.assertEquals(403,
                 httpPost("/api/media/tools/render_timeline", token, "{}").statusCode());
+    }
+
+    @Test
+    void projectDashboardAliasesAreDeniedWithoutGlobalOutboxDispatchWhenSecurityIsEnabled()
+            throws Exception {
+        String admin = jwtHelper.adminToken();
+        String[] paths = {
+            "/api/projects/project-1/dashboard",
+            "/api/projects/project-1/dashboard/activity",
+            "/api/projects/project-1/dashboard/pending",
+            "/api/projects/project-1/dashboard/health",
+        };
+        for (String path : paths) {
+            Assertions.assertEquals(403, httpGet(path, admin).statusCode(), path);
+        }
+
+        org.mockito.Mockito.verifyNoInteractions(outboxEventService);
     }
 
     // ========== Removed routes under security ==========

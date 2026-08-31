@@ -64,6 +64,10 @@ class PhaseZeroContainmentPolicyHttpTest {
                     .andExpect(status().isForbidden());
             test.mvc().perform(MockMvcRequestBuilders.post("/api/render/probe"))
                     .andExpect(status().isForbidden());
+            for (String path : projectDashboardAliases()) {
+                test.mvc().perform(MockMvcRequestBuilders.get(path))
+                        .andExpect(status().isForbidden());
+            }
             test.mvc().perform(MockMvcRequestBuilders.post("/api/dev/auth/token"))
                     .andExpect(status().isForbidden());
             test.mvc().perform(MockMvcRequestBuilders.options(
@@ -100,6 +104,11 @@ class PhaseZeroContainmentPolicyHttpTest {
             test.mvc().perform(MockMvcRequestBuilders.post("/api/render/probe")
                             .sessionAttr(ordinary, authenticated(true)))
                     .andExpect(status().isForbidden());
+            for (String path : projectDashboardAliases()) {
+                test.mvc().perform(MockMvcRequestBuilders.get(path)
+                                .sessionAttr(ordinary, authenticated(true)))
+                        .andExpect(status().isForbidden());
+            }
             test.mvc().perform(MockMvcRequestBuilders.post("/api/dev/auth/token"))
                     .andExpect(status().isOk());
             test.mvc().perform(MockMvcRequestBuilders.options(
@@ -153,6 +162,10 @@ class PhaseZeroContainmentPolicyHttpTest {
                     actual.get("POST /api/internal/outbox/probe"));
             assertEquals(Optional.of(PhaseZeroContainmentPolicy.Classification.DISABLED_CONTAINED),
                     actual.get("POST /api/render/probe"));
+            for (String path : projectDashboardMappings()) {
+                assertEquals(Optional.of(PhaseZeroContainmentPolicy.Classification.DISABLED_CONTAINED),
+                        actual.get("GET " + path));
+            }
             assertEquals(Optional.of(PhaseZeroContainmentPolicy.Classification.TEST_ONLY),
                     actual.get("POST /api/dev/auth/token"));
             assertEquals(Optional.empty(),
@@ -166,6 +179,22 @@ class PhaseZeroContainmentPolicyHttpTest {
                 : List.<SimpleGrantedAuthority>of();
         return new SecurityContextImpl(UsernamePasswordAuthenticationToken.authenticated(
                 "user", "n/a", authorities));
+    }
+
+    private static List<String> projectDashboardAliases() {
+        return List.of(
+                "/api/projects/project-1/dashboard",
+                "/api/projects/project-1/dashboard/activity",
+                "/api/projects/project-1/dashboard/pending",
+                "/api/projects/project-1/dashboard/health");
+    }
+
+    private static List<String> projectDashboardMappings() {
+        return List.of(
+                "/api/projects/{projectId}/dashboard",
+                "/api/projects/{projectId}/dashboard/activity",
+                "/api/projects/{projectId}/dashboard/pending",
+                "/api/projects/{projectId}/dashboard/health");
     }
 
     private static TestHttpContext context(Class<?> securityConfiguration) {
@@ -224,6 +253,14 @@ class PhaseZeroContainmentPolicyHttpTest {
             downstream.invoke("internal-outbox");
         }
         @PostMapping("/api/render/probe") void disabled() { downstream.invoke("disabled"); }
+        @GetMapping("/api/projects/{projectId}/dashboard")
+        void projectDashboard() { downstream.invoke("project-dashboard"); }
+        @GetMapping("/api/projects/{projectId}/dashboard/activity")
+        void projectDashboardActivity() { downstream.invoke("project-dashboard-activity"); }
+        @GetMapping("/api/projects/{projectId}/dashboard/pending")
+        void projectDashboardPending() { downstream.invoke("project-dashboard-pending"); }
+        @GetMapping("/api/projects/{projectId}/dashboard/health")
+        void projectDashboardHealth() { downstream.invoke("project-dashboard-health"); }
         @PostMapping("/api/dev/auth/token") void testOnly() { downstream.invoke("test"); }
         @RequestMapping(
                 path = "/api/runtime-policy-negative-control/execute-options",

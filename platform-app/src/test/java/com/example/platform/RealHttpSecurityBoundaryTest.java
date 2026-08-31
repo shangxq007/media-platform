@@ -45,6 +45,9 @@ class RealHttpSecurityBoundaryTest extends PostgresTestContainerSupport {
     @org.springframework.test.context.bean.override.mockito.MockitoBean
     private com.example.platform.notification.app.NotificationChannelBindingService notificationChannelBindingService;
 
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private com.example.platform.outbox.app.OutboxEventService outboxEventService;
+
     @LocalServerPort
     private int port;
 
@@ -94,6 +97,22 @@ class RealHttpSecurityBoundaryTest extends PostgresTestContainerSupport {
     @Test
     void removedRoute_oldListAlias_isDeniedBeforeDispatch() throws Exception {
         assertDeniedBeforeDispatch("GET", "/api/render/jobs");
+    }
+
+    @Test
+    void projectDashboardAliasesAreDeniedWithoutGlobalOutboxDispatchWhenSecurityIsDisabled()
+            throws Exception {
+        String[] paths = {
+            "/api/projects/project-1/dashboard",
+            "/api/projects/project-1/dashboard/activity",
+            "/api/projects/project-1/dashboard/pending",
+            "/api/projects/project-1/dashboard/health",
+        };
+        for (String path : paths) {
+            Assertions.assertEquals(403, httpGetReq(path).statusCode(), path);
+        }
+
+        org.mockito.Mockito.verifyNoInteractions(outboxEventService);
     }
 
     // ========== Canonical RenderJob routes ==========
