@@ -21,11 +21,14 @@ public final class CompositeResourceCanonicalSerializerV1 {
     }
 
     public static byte[] serialize(CompositeResourceVersion resource) {
+        return serializeSemanticContent(resource);
+    }
+
+    public static byte[] serializeSemanticContent(CompositeResourceVersion resource) {
         return encode(out -> {
             text(out, "COMPOSITE_RESOURCE");
             out.writeInt(SERIALIZATION_VERSION);
             text(out, resource.resourceId().value());
-            text(out, resource.versionId().value());
             out.writeBoolean(resource.parentVersionId().isPresent());
             if (resource.parentVersionId().isPresent()) {
                 text(out, resource.parentVersionId().orElseThrow().value());
@@ -90,7 +93,7 @@ public final class CompositeResourceCanonicalSerializerV1 {
     }
 
     public static ContentDigest digestResource(CompositeResourceVersion resource) {
-        return sha256(serialize(resource));
+        return sha256(serializeSemanticContent(resource));
     }
 
     public static ContentDigest digestFacet(SemanticFacet facet) {

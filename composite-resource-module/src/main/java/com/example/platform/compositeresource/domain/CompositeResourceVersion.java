@@ -91,8 +91,8 @@ public final class CompositeResourceVersion {
 
     public boolean semanticallyEquals(CompositeResourceVersion other) {
         return other != null && java.util.Arrays.equals(
-                CompositeResourceCanonicalSerializerV1.serialize(this),
-                CompositeResourceCanonicalSerializerV1.serialize(other));
+                CompositeResourceCanonicalSerializerV1.serializeSemanticContent(this),
+                CompositeResourceCanonicalSerializerV1.serializeSemanticContent(other));
     }
 
     public CompositeResourceAddress validateAddress(CompositeResourceAddress address) {

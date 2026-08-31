@@ -82,6 +82,26 @@ class CompositeResourceArchitectureGuardTest {
         assertThat(reverseImports).as("reverse/private bypass imports").isEmpty();
     }
 
+    @Test
+    void semanticSerializerHasOneAuthorityAndExcludesSubjectVersionIdentity() throws IOException {
+        Path serializerPath = moduleRoot().resolve(
+                "src/main/java/com/example/platform/compositeresource/domain/CompositeResourceCanonicalSerializerV1.java");
+        String serializer = COMMENTS_AND_LITERALS.matcher(Files.readString(serializerPath)).replaceAll(" ");
+
+        Pattern semanticAuthority = Pattern.compile(
+                "public\\s+static\\s+byte\\[\\]\\s+serializeSemanticContent\\s*\\(");
+        Pattern subjectVersionAccess = Pattern.compile("resource\\.versionId\\s*\\(");
+        Pattern semanticDigestInput = Pattern.compile(
+                "sha256\\s*\\(\\s*serializeSemanticContent\\s*\\(\\s*resource\\s*\\)\\s*\\)");
+
+        assertThat(semanticAuthority.matcher(serializer).results()).as("semantic serializer authority count")
+                .hasSize(1);
+        assertThat(subjectVersionAccess.matcher(serializer).results()).as("subject version semantic access count")
+                .isEmpty();
+        assertThat(semanticDigestInput.matcher(serializer).results()).as("semantic digest input authority count")
+                .hasSize(1);
+    }
+
     private static List<Path> mainSources() throws IOException {
         try (Stream<Path> paths = Files.walk(moduleRoot().resolve("src/main/java"))) {
             return paths.filter(path -> path.toString().endsWith(".java")).sorted().toList();
