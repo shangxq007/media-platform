@@ -12,6 +12,8 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpMethod;
 import org.springframework.mock.web.MockServletContext;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
@@ -65,6 +67,33 @@ class RuntimeRoutePolicyNegativeControlTest {
         }
     }
 
+    @Test
+    void actualInjectedDangerousOptionsMappingFailsWhenPolicyOmitsIt() {
+        try (AnnotationConfigWebApplicationContext context = new AnnotationConfigWebApplicationContext()) {
+            context.setServletContext(new MockServletContext());
+            context.getEnvironment().setActiveProfiles(PROFILE);
+            context.register(WebMvcConfiguration.class, OmittedOptionsControlController.class);
+            context.refresh();
+
+            var mapping = context.getBean("requestMappingHandlerMapping", RequestMappingHandlerMapping.class);
+            var discovery = new RuntimeMvcRouteDiscovery(mapping);
+            var actual = discovery.discoverApplicationRoutes();
+
+            assertEquals(1, actual.size());
+            assertEquals(HttpMethod.OPTIONS, actual.getFirst().method());
+            assertEquals("/api/runtime-policy-negative-control/execute-options", actual.getFirst().path());
+            assertEquals(OmittedOptionsControlController.class.getName(), actual.getFirst().controller());
+            assertTrue(actual.getFirst().handlerMethod().contains("executeOptions"));
+
+            var verifier = new RuntimeRoutePolicyVerifier(discovery);
+            RoutePolicyVerificationException failure = assertThrows(
+                    RoutePolicyVerificationException.class, verifier::verify);
+            assertTrue(failure.getMessage().contains(
+                    "OPTIONS /api/runtime-policy-negative-control/execute-options"));
+            assertTrue(failure.getMessage().contains(OmittedOptionsControlController.class.getName()));
+        }
+    }
+
     @Configuration(proxyBeanMethods = false)
     @EnableWebMvc
     static class WebMvcConfiguration {}
@@ -75,5 +104,15 @@ class RuntimeRoutePolicyNegativeControlTest {
     static class OmittedExternalControlController {
         @PostMapping("/api/runtime-policy-negative-control/execute")
         void execute() {}
+    }
+
+    @TestComponent
+    @RestController
+    @Profile(PROFILE)
+    static class OmittedOptionsControlController {
+        @RequestMapping(
+                path = "/api/runtime-policy-negative-control/execute-options",
+                method = RequestMethod.OPTIONS)
+        void executeOptions() {}
     }
 }

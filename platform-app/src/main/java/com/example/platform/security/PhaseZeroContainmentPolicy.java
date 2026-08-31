@@ -7,6 +7,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AuthorizeHttpRequestsConfigurer;
 import org.springframework.util.AntPathMatcher;
+import org.springframework.web.cors.CorsUtils;
 
 /**
  * Phase-0 classification and fail-closed authorization policy for MVC routes.
@@ -135,9 +136,6 @@ public final class PhaseZeroContainmentPolicy {
 
     public static Optional<Classification> classify(HttpMethod method, String mappingPath) {
         String path = normalize(mappingPath);
-        if (method == HttpMethod.OPTIONS) {
-            return Optional.of(Classification.PUBLIC_SAFE);
-        }
         if (READ_METHODS.contains(method) && matchesAny(PUBLIC_READ_FAMILIES, path)) {
             return Optional.of(Classification.PUBLIC_SAFE);
         }
@@ -165,7 +163,7 @@ public final class PhaseZeroContainmentPolicy {
     /** Apply the enabled-security rules in the same precedence order as {@link #classify}. */
     public static void applyEnabled(
             AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry auth) {
-        auth.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll();
+        auth.requestMatchers(CorsUtils::isPreFlightRequest).permitAll();
         requestMatchers(auth, DISABLED_FAMILIES).denyAll();
         requestMatchers(auth, INTERNAL_CONTROL_FAMILIES).denyAll();
         requestMatchers(auth, ADMIN_FAMILIES).hasAuthority("ROLE_ADMIN");
@@ -178,11 +176,11 @@ public final class PhaseZeroContainmentPolicy {
 
     /**
      * Security-disabled means authentication is unavailable, not that authority checks disappear.
-     * Only explicit public reads and pre-flight requests remain reachable.
+     * Only explicit public reads and genuine CORS pre-flight requests remain reachable.
      */
     public static void applySecurityDisabled(
             AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry auth) {
-        auth.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll();
+        auth.requestMatchers(CorsUtils::isPreFlightRequest).permitAll();
         requestMatchers(auth, HttpMethod.GET, PUBLIC_READ_FAMILIES).permitAll();
         requestMatchers(auth, HttpMethod.HEAD, PUBLIC_READ_FAMILIES).permitAll();
         auth.anyRequest().denyAll();
