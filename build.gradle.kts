@@ -200,8 +200,6 @@ tasks.register("verifyJooqGeneratedSources") {
         require(exitCode == 0) {
             "FAIL: jOOQ canonical/generated identity parity verifier exited with code $exitCode"
         }
-        val expectedTableCount = 189
-        val expectedRecordCount = 189
         val expectedTopLevelFiles = setOf(
             "DefaultCatalog.java",
             "Indexes.java",
@@ -209,11 +207,6 @@ tasks.register("verifyJooqGeneratedSources") {
             "Public.java",
             "Tables.java"
         )
-        val expectedGeneratedJavaFileCount = 383
-        require(expectedGeneratedJavaFileCount ==
-                expectedTableCount + expectedRecordCount + expectedTopLevelFiles.size) {
-            "FAIL: Generated-source inventory constants are internally inconsistent"
-        }
 
         val generatedJavaFiles = committedDir.walkTopDown()
             .filter { it.isFile && it.name.endsWith(".java") }
@@ -247,8 +240,8 @@ tasks.register("verifyJooqGeneratedSources") {
         println("  Record classes: " + recordCount)
         println("  Total Java files: " + totalFiles)
 
-        // Reconciled canonical V1: real jOOQ 3.19.30 GenerationTool PostgreSQL readback is
-        // byte-exact at 5 top-level files + 189 table/record pairs = 383 Java files.
+        // The parity verifier above binds both generated table and record identities to
+        // canonical V1; these checks retain exact generated-source layout invariants.
         require(topLevelFileNames == expectedTopLevelFiles) {
             "FAIL: Generated top-level files differ; missing=" +
                     (expectedTopLevelFiles - topLevelFileNames).sorted() + ", extra=" +
@@ -258,19 +251,20 @@ tasks.register("verifyJooqGeneratedSources") {
             "FAIL: Generated Java files found outside the canonical root/tables/records layout: " +
                     unexpectedGeneratedPaths
         }
-        require(tableCount == expectedTableCount) {
-            "FAIL: Expected $expectedTableCount Table classes but found " + tableCount
-        }
-        require(recordCount == expectedRecordCount) {
-            "FAIL: Expected $expectedRecordCount Record classes but found " + recordCount
+        require(tableCount == recordCount) {
+            "FAIL: Generated Table/Record counts differ; tables=" + tableCount +
+                    ", records=" + recordCount
         }
         require(tableClassNames == recordTableClassNames) {
             "FAIL: Generated Table/Record pairs differ; tables without records=" +
                     (tableClassNames - recordTableClassNames).sorted() + ", records without tables=" +
                     (recordTableClassNames - tableClassNames).sorted()
         }
-        require(totalFiles == expectedGeneratedJavaFileCount) {
-            "FAIL: Expected exactly $expectedGeneratedJavaFileCount total Java files but found " + totalFiles
+        val mechanicallyDerivedTotalFileCount =
+            tableCount + recordCount + expectedTopLevelFiles.size
+        require(totalFiles == mechanicallyDerivedTotalFileCount) {
+            "FAIL: Generated Java file count differs from the mechanically derived layout total; " +
+                    "expected=" + mechanicallyDerivedTotalFileCount + ", actual=" + totalFiles
         }
 
         println("OK: Generated source verification passed")

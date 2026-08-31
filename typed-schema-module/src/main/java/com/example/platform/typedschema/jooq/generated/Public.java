@@ -131,8 +131,13 @@ import com.example.platform.typedschema.jooq.generated.tables.SocialConnectedPla
 import com.example.platform.typedschema.jooq.generated.tables.SocialPost;
 import com.example.platform.typedschema.jooq.generated.tables.SocialPostAnalytics;
 import com.example.platform.typedschema.jooq.generated.tables.SourceVisualDescriptionSnapshot;
+import com.example.platform.typedschema.jooq.generated.tables.StorageDatabaseBinding;
+import com.example.platform.typedschema.jooq.generated.tables.StorageLogicalObject;
 import com.example.platform.typedschema.jooq.generated.tables.StorageObject;
+import com.example.platform.typedschema.jooq.generated.tables.StorageObjectPlacement;
+import com.example.platform.typedschema.jooq.generated.tables.StoragePlacementReceipt;
 import com.example.platform.typedschema.jooq.generated.tables.StorageReference;
+import com.example.platform.typedschema.jooq.generated.tables.StorageWriteIntent;
 import com.example.platform.typedschema.jooq.generated.tables.SubscriptionCommand;
 import com.example.platform.typedschema.jooq.generated.tables.SubscriptionContract;
 import com.example.platform.typedschema.jooq.generated.tables.SubscriptionPlan;
@@ -851,14 +856,39 @@ public class Public extends SchemaImpl {
     public final SourceVisualDescriptionSnapshot SOURCE_VISUAL_DESCRIPTION_SNAPSHOT = SourceVisualDescriptionSnapshot.SOURCE_VISUAL_DESCRIPTION_SNAPSHOT;
 
     /**
+     * The table <code>public.storage_database_binding</code>.
+     */
+    public final StorageDatabaseBinding STORAGE_DATABASE_BINDING = StorageDatabaseBinding.STORAGE_DATABASE_BINDING;
+
+    /**
+     * The table <code>public.storage_logical_object</code>.
+     */
+    public final StorageLogicalObject STORAGE_LOGICAL_OBJECT = StorageLogicalObject.STORAGE_LOGICAL_OBJECT;
+
+    /**
      * The table <code>public.storage_object</code>.
      */
     public final StorageObject STORAGE_OBJECT = StorageObject.STORAGE_OBJECT;
 
     /**
+     * The table <code>public.storage_object_placement</code>.
+     */
+    public final StorageObjectPlacement STORAGE_OBJECT_PLACEMENT = StorageObjectPlacement.STORAGE_OBJECT_PLACEMENT;
+
+    /**
+     * The table <code>public.storage_placement_receipt</code>.
+     */
+    public final StoragePlacementReceipt STORAGE_PLACEMENT_RECEIPT = StoragePlacementReceipt.STORAGE_PLACEMENT_RECEIPT;
+
+    /**
      * The table <code>public.storage_reference</code>.
      */
     public final StorageReference STORAGE_REFERENCE = StorageReference.STORAGE_REFERENCE;
+
+    /**
+     * The table <code>public.storage_write_intent</code>.
+     */
+    public final StorageWriteIntent STORAGE_WRITE_INTENT = StorageWriteIntent.STORAGE_WRITE_INTENT;
 
     /**
      * The table <code>public.subscription_command</code>.
@@ -1303,8 +1333,13 @@ public class Public extends SchemaImpl {
             SocialPost.SOCIAL_POST,
             SocialPostAnalytics.SOCIAL_POST_ANALYTICS,
             SourceVisualDescriptionSnapshot.SOURCE_VISUAL_DESCRIPTION_SNAPSHOT,
+            StorageDatabaseBinding.STORAGE_DATABASE_BINDING,
+            StorageLogicalObject.STORAGE_LOGICAL_OBJECT,
             StorageObject.STORAGE_OBJECT,
+            StorageObjectPlacement.STORAGE_OBJECT_PLACEMENT,
+            StoragePlacementReceipt.STORAGE_PLACEMENT_RECEIPT,
             StorageReference.STORAGE_REFERENCE,
+            StorageWriteIntent.STORAGE_WRITE_INTENT,
             SubscriptionCommand.SUBSCRIPTION_COMMAND,
             SubscriptionContract.SUBSCRIPTION_CONTRACT,
             SubscriptionPlan.SUBSCRIPTION_PLAN,

@@ -37,15 +37,31 @@ CI_SCRIPT_NAMES = {
     "check-api-contract-governance.sh",
     "check-architecture-drift.sh",
     "check-document-governance.sh",
+    "check-storage-identity-placement-m0-m1.py",
     "final-review-validate.sh",
     "infra-validate.sh",
     "local-docker-test.sh",
     "local-test.sh",
     "roadmap20-source-completeness-gate.sh",
+    "test-check-storage-identity-placement-m0-m1.py",
     "validate-production-readiness.sh",
     "verify-egress-smoke-config.sh",
     "verify-oidc-jwt.sh",
     "verify-pfirr1-jooq-authority-fail-closed.sh",
+}
+
+STORAGE_GOVERNANCE_CI_INFRASTRUCTURE_PATHS = {
+    "scripts/guards/validate-storage-object-identity-placement-migration-contract.py",
+}
+
+JOOQ_CI_INFRASTRUCTURE_PATHS = {
+    "scripts/test_verify_jooq_generated_schema_parity.py",
+    "scripts/verify-jooq-generated-schema-parity.py",
+    "typed-schema-module/regenerate-jooq-schema.sh",
+}
+
+JOOQ_BUILD_GRAPH_PATHS = {
+    "typed-schema-module/jooq-codegen.xml",
 }
 
 
@@ -108,6 +124,7 @@ def classify_path(raw_path: str) -> tuple[str, ...]:
 
     if not _under(path, "frontend/") and (
         path in {"settings.gradle.kts", "settings.gradle", "build.gradle.kts", "build.gradle", "gradle.properties", "gradlew", "gradlew.bat"}
+        or path in JOOQ_BUILD_GRAPH_PATHS
         or _under(path, "gradle/")
         or basename in {"build.gradle.kts", "build.gradle"}
     ):
@@ -138,6 +155,8 @@ def classify_path(raw_path: str) -> tuple[str, ...]:
         _under(path, "scripts/ci/")
         or _under(path, ".github/actions/")
         or (_under(path, "scripts/") and basename in CI_SCRIPT_NAMES)
+        or path in STORAGE_GOVERNANCE_CI_INFRASTRUCTURE_PATHS
+        or path in JOOQ_CI_INFRASTRUCTURE_PATHS
         or path in {".github/CODEOWNERS", ".pre-commit-config.yaml"}
     ):
         categories.add("ci_infrastructure")

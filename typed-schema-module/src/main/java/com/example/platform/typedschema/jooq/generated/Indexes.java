@@ -107,8 +107,12 @@ import com.example.platform.typedschema.jooq.generated.tables.SharedResourceGran
 import com.example.platform.typedschema.jooq.generated.tables.SocialConnectedPlatform;
 import com.example.platform.typedschema.jooq.generated.tables.SocialPost;
 import com.example.platform.typedschema.jooq.generated.tables.SocialPostAnalytics;
+import com.example.platform.typedschema.jooq.generated.tables.StorageDatabaseBinding;
 import com.example.platform.typedschema.jooq.generated.tables.StorageObject;
+import com.example.platform.typedschema.jooq.generated.tables.StorageObjectPlacement;
+import com.example.platform.typedschema.jooq.generated.tables.StoragePlacementReceipt;
 import com.example.platform.typedschema.jooq.generated.tables.StorageReference;
+import com.example.platform.typedschema.jooq.generated.tables.StorageWriteIntent;
 import com.example.platform.typedschema.jooq.generated.tables.SubscriptionContract;
 import com.example.platform.typedschema.jooq.generated.tables.SubscriptionPlan;
 import com.example.platform.typedschema.jooq.generated.tables.SystemCanonicalEdge;
@@ -402,8 +406,15 @@ public class Indexes {
     public static final Index IX_SP_TENANT = Internal.createIndex(DSL.name("ix_sp_tenant"), SearchProjection.SEARCH_PROJECTION, new OrderField[] { SearchProjection.SEARCH_PROJECTION.TENANT_ID }, false);
     public static final Index IX_STORAGE_CHECKSUM = Internal.createIndex(DSL.name("ix_storage_checksum"), StorageReference.STORAGE_REFERENCE, new OrderField[] { StorageReference.STORAGE_REFERENCE.CHECKSUM }, false);
     public static final Index IX_STORAGE_CONTENT_HASH = Internal.createIndex(DSL.name("ix_storage_content_hash"), StorageReference.STORAGE_REFERENCE, new OrderField[] { StorageReference.STORAGE_REFERENCE.CONTENT_HASH }, false);
+    public static final Index IX_STORAGE_DATABASE_BINDING_CANONICAL = Internal.createIndex(DSL.name("ix_storage_database_binding_canonical"), StorageDatabaseBinding.STORAGE_DATABASE_BINDING, new OrderField[] { StorageDatabaseBinding.STORAGE_DATABASE_BINDING.IS_CANONICAL, StorageDatabaseBinding.STORAGE_DATABASE_BINDING.LAST_OBSERVED_AT }, false);
     public static final Index IX_STORAGE_OBJECT_BUCKET = Internal.createIndex(DSL.name("ix_storage_object_bucket"), StorageObject.STORAGE_OBJECT, new OrderField[] { StorageObject.STORAGE_OBJECT.BUCKET }, false);
+    public static final Index IX_STORAGE_OBJECT_PLACEMENT_OBJECT = Internal.createIndex(DSL.name("ix_storage_object_placement_object"), StorageObjectPlacement.STORAGE_OBJECT_PLACEMENT, new OrderField[] { StorageObjectPlacement.STORAGE_OBJECT_PLACEMENT.OBJECT_ID }, false);
+    public static final Index IX_STORAGE_OBJECT_PLACEMENT_PROVIDER_NAMESPACE = Internal.createIndex(DSL.name("ix_storage_object_placement_provider_namespace"), StorageObjectPlacement.STORAGE_OBJECT_PLACEMENT, new OrderField[] { StorageObjectPlacement.STORAGE_OBJECT_PLACEMENT.PROVIDER_ID, StorageObjectPlacement.STORAGE_OBJECT_PLACEMENT.NAMESPACE_TENANT_ID, StorageObjectPlacement.STORAGE_OBJECT_PLACEMENT.NAMESPACE_PROJECT_ID }, false);
+    public static final Index IX_STORAGE_OBJECT_PLACEMENT_STATE = Internal.createIndex(DSL.name("ix_storage_object_placement_state"), StorageObjectPlacement.STORAGE_OBJECT_PLACEMENT, new OrderField[] { StorageObjectPlacement.STORAGE_OBJECT_PLACEMENT.PLACEMENT_STATE }, false);
     public static final Index IX_STORAGE_OBJECT_PROVIDER_CODE = Internal.createIndex(DSL.name("ix_storage_object_provider_code"), StorageObject.STORAGE_OBJECT, new OrderField[] { StorageObject.STORAGE_OBJECT.PROVIDER_CODE }, false);
+    public static final Index IX_STORAGE_PLACEMENT_RECEIPT_OBJECT = Internal.createIndex(DSL.name("ix_storage_placement_receipt_object"), StoragePlacementReceipt.STORAGE_PLACEMENT_RECEIPT, new OrderField[] { StoragePlacementReceipt.STORAGE_PLACEMENT_RECEIPT.OBJECT_ID }, false);
+    public static final Index IX_STORAGE_PLACEMENT_RECEIPT_REPLICA = Internal.createIndex(DSL.name("ix_storage_placement_receipt_replica"), StoragePlacementReceipt.STORAGE_PLACEMENT_RECEIPT, new OrderField[] { StoragePlacementReceipt.STORAGE_PLACEMENT_RECEIPT.REPLICA_ID }, false);
+    public static final Index IX_STORAGE_WRITE_INTENT_STATE = Internal.createIndex(DSL.name("ix_storage_write_intent_state"), StorageWriteIntent.STORAGE_WRITE_INTENT, new OrderField[] { StorageWriteIntent.STORAGE_WRITE_INTENT.INTENT_STATE, StorageWriteIntent.STORAGE_WRITE_INTENT.UPDATED_AT }, false);
     public static final Index IX_SUBSCRIPTION_CONTRACT_SUBJECT = Internal.createIndex(DSL.name("ix_subscription_contract_subject"), SubscriptionContract.SUBSCRIPTION_CONTRACT, new OrderField[] { SubscriptionContract.SUBSCRIPTION_CONTRACT.SUBJECT_TYPE, SubscriptionContract.SUBSCRIPTION_CONTRACT.SUBJECT_ID }, false);
     public static final Index IX_SUBSCRIPTION_CONTRACT_TENANT = Internal.createIndex(DSL.name("ix_subscription_contract_tenant"), SubscriptionContract.SUBSCRIPTION_CONTRACT, new OrderField[] { SubscriptionContract.SUBSCRIPTION_CONTRACT.TENANT_ID }, false);
     public static final Index IX_SUBSCRIPTION_PLAN_KEY = Internal.createIndex(DSL.name("ix_subscription_plan_key"), SubscriptionPlan.SUBSCRIPTION_PLAN, new OrderField[] { SubscriptionPlan.SUBSCRIPTION_PLAN.PLAN_KEY }, false);
@@ -455,6 +466,7 @@ public class Indexes {
     public static final Index IX_WORKSPACE_TENANT_ID = Internal.createIndex(DSL.name("ix_workspace_tenant_id"), Workspace.WORKSPACE, new OrderField[] { Workspace.WORKSPACE.TENANT_ID }, false);
     public static final Index UQ_EFFECT_PACK_EFFECT_KEY = Internal.createIndex(DSL.name("uq_effect_pack_effect_key"), EffectPackEffect.EFFECT_PACK_EFFECT, new OrderField[] { EffectPackEffect.EFFECT_PACK_EFFECT.PACK_ROW_ID, EffectPackEffect.EFFECT_PACK_EFFECT.EFFECT_KEY }, true);
     public static final Index UQ_EFFECT_PACK_IDENTITY = Internal.createIndex(DSL.name("uq_effect_pack_identity"), EffectPack.EFFECT_PACK, new OrderField[] { EffectPack.EFFECT_PACK.PACK_ID, EffectPack.EFFECT_PACK.VERSION, EffectPack.EFFECT_PACK.TENANT_ID }, true);
+    public static final Index UQ_STORAGE_PLACEMENT_RECEIPT_ORIGINAL_ISSUANCE = Internal.createIndex(DSL.name("uq_storage_placement_receipt_original_issuance"), StoragePlacementReceipt.STORAGE_PLACEMENT_RECEIPT, new OrderField[] { StoragePlacementReceipt.STORAGE_PLACEMENT_RECEIPT.OBJECT_ID }, true);
     public static final Index UQ_SUBSCRIPTION_CONTRACT_ACTIVE_BASE = Internal.createIndex(DSL.name("uq_subscription_contract_active_base"), SubscriptionContract.SUBSCRIPTION_CONTRACT, new OrderField[] { SubscriptionContract.SUBSCRIPTION_CONTRACT.TENANT_ID, SubscriptionContract.SUBSCRIPTION_CONTRACT.SUBJECT_TYPE, SubscriptionContract.SUBSCRIPTION_CONTRACT.SUBJECT_ID }, true);
     public static final Index UX_TIMELINE_REVISION_PROJECT_NUM = Internal.createIndex(DSL.name("ux_timeline_revision_project_num"), TimelineRevision.TIMELINE_REVISION, new OrderField[] { TimelineRevision.TIMELINE_REVISION.PROJECT_ID, TimelineRevision.TIMELINE_REVISION.REVISION_NUMBER }, true);
     public static final Index UX_WF_ONE_ACTIVE_BACKEND_SELECTION_PER_TASK = Internal.createIndex(DSL.name("ux_wf_one_active_backend_selection_per_task"), WfExecutionBackendSelection.WF_EXECUTION_BACKEND_SELECTION, new OrderField[] { WfExecutionBackendSelection.WF_EXECUTION_BACKEND_SELECTION.TASK_ID }, true);

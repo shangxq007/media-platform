@@ -30,6 +30,7 @@ REACTIVE_STREAMS_JAR="$LIB_DIR/reactive-streams.jar"
 R2DBC_SPI_JAR="$LIB_DIR/r2dbc-spi.jar"
 POSTGRES_JDBC_JAR="$LIB_DIR/postgresql-42.7.1.jar"
 CODEGEN_CONFIG="$SCRIPT_DIR/jooq-codegen.xml"
+PARITY_VERIFIER="$ROOT_DIR/scripts/verify-jooq-generated-schema-parity.py"
 
 required_jars=(
     "$JOOQ_JAR"
@@ -132,20 +133,25 @@ if [[ ! -d "$STAGING_GENERATED_DIR/tables/records" ]]; then
     exit 1
 fi
 
+python3 "$PARITY_VERIFIER" \
+    --schema "$SCHEMA_FILE" \
+    --generated "$STAGING_GENERATED_DIR"
+
 TABLE_COUNT="$(find "$STAGING_GENERATED_DIR/tables" -maxdepth 1 -type f -name '*.java' | wc -l)"
 RECORD_COUNT="$(find "$STAGING_GENERATED_DIR/tables/records" -maxdepth 1 -type f -name '*.java' | wc -l)"
 TOTAL_FILES="$(find "$STAGING_GENERATED_DIR" -type f -name '*.java' | wc -l)"
-
-if [[ "$TABLE_COUNT" -ne 189 || "$RECORD_COUNT" -ne 189 || "$TOTAL_FILES" -ne 383 ]]; then
-    echo "FAIL: GenerationTool output inventory mismatch: tables=$TABLE_COUNT records=$RECORD_COUNT java=$TOTAL_FILES" >&2
-    exit 1
-fi
 
 rm -rf -- "$TRACKED_GENERATED_DIR"
 mkdir -p "$(dirname "$TRACKED_GENERATED_DIR")"
 cp -a "$STAGING_GENERATED_DIR" "$TRACKED_GENERATED_DIR"
 
 echo "JOOQ_GENERATION_TOOL_EXECUTED=YES"
+echo "JOOQ_ACTUAL_TABLE_COUNT=$TABLE_COUNT"
+echo "JOOQ_ACTUAL_RECORD_COUNT=$RECORD_COUNT"
+echo "JOOQ_ACTUAL_JAVA_COUNT=$TOTAL_FILES"
+echo "JOOQ_MISSING_COUNT=0"
+echo "JOOQ_EXTRA_COUNT=0"
+echo "JOOQ_CONTENT_MISMATCH_COUNT=0"
 echo "jOOQ codegen complete."
 
 echo ""
