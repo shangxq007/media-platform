@@ -102,6 +102,7 @@ public final class PhaseZeroContainmentPolicy {
             "/api/tenants/*/projects/*/caption-template/**",
             "/api/products/**",
             "/api/projects/*/products/**",
+            "/api/marketplace/**",
             "/api/assets/**",
             "/api/projects/*/assets/**",
             "/api/media/assets/**",
@@ -121,7 +122,6 @@ public final class PhaseZeroContainmentPolicy {
     /** Known application families whose current boundary is ordinary authenticated access. */
     private static final List<String> AUTHENTICATED_FAMILIES = List.of(
             "/api/me/**",
-            "/api/marketplace/**",
             "/api/audit/compliance/**",
             "/api/datasources/**",
             "/api/effect-packs/**",

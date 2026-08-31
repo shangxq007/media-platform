@@ -1,16 +1,14 @@
 package com.example.platform.web.assets;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 
-import com.example.platform.render.domain.asset.marketplace.*;
 import com.example.platform.render.infrastructure.asset.MarketplaceListingRepository;
-import com.example.platform.render.infrastructure.asset.MarketplaceListingRepository.SearchResult;
-import java.util.*;
+import com.example.platform.shared.authorization.AuthorizationDeniedException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 
 class MarketplaceControllerTest {
 
@@ -24,42 +22,55 @@ class MarketplaceControllerTest {
     }
 
     @Test
-    void shouldSearchWithPagination() {
-        SearchResult result = new SearchResult(42, 0, 20, List.of());
-        when(listingRepo.search(any(), any(), any(), any(), any(), anyInt(), anyInt())).thenReturn(result);
-
-        var response = controller.search(null, null, "PUBLISHED", null, null, 0, 20);
-
-        assertEquals(42, response.total());
-        assertEquals(0, response.offset());
+    void marketplaceSearchIsContainedBeforeRepositoryDispatch() {
+        assertContainedBeforeRepositoryDispatch(
+                "marketplace listing search",
+                () -> controller.search(null, null, null, null, null, 0, 20));
     }
 
     @Test
-    void shouldRejectInvalidTransition() {
-        var listing = MarketplaceListing.draft("ml_1", "a1", "t1", "p1",
-                MarketplaceListingType.MEDIA, "test.mp4");
-        when(listingRepo.findByAssetId(eq("ml_1"), any())).thenReturn(Optional.of(listing));
-
-        var body = new MarketplaceController.StatusUpdateRequest("PUBLISHED");
-        ResponseEntity<MarketplaceController.MarketplaceListingDto> response =
-                controller.updateStatus("ml_1", body);
-
-        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+    void marketplaceListIsContainedBeforeRepositoryDispatch() {
+        assertContainedBeforeRepositoryDispatch(
+                "marketplace listing read", () -> controller.list(null, 50));
     }
 
     @Test
-    void shouldAllowDraftToReady() {
-        var draft = MarketplaceListing.draft("ml_1", "a1", "t1", "p1",
-                MarketplaceListingType.MEDIA, "test.mp4");
-        var ready = draft.withStatus(MarketplaceListingStatus.READY);
-        when(listingRepo.findByAssetId(eq("ml_1"), any()))
-                .thenReturn(Optional.of(draft), Optional.of(ready));
+    void marketplaceListingReadIsContainedBeforeRepositoryDispatch() {
+        assertContainedBeforeRepositoryDispatch(
+                "marketplace listing read", () -> controller.get("listing-1"));
+    }
 
-        var body = new MarketplaceController.StatusUpdateRequest("READY");
-        ResponseEntity<MarketplaceController.MarketplaceListingDto> response =
-                controller.updateStatus("ml_1", body);
+    @Test
+    void marketplaceAssetListingReadIsContainedBeforeRepositoryDispatch() {
+        assertContainedBeforeRepositoryDispatch(
+                "marketplace asset listing read",
+                () -> controller.getByAsset("asset-1", "caller-tenant"));
+    }
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals("READY", response.getBody().status());
+    @Test
+    void marketplaceStatusMutationIsContainedBeforeRepositoryDispatch() {
+        assertContainedBeforeRepositoryDispatch(
+                "marketplace listing status mutation",
+                () -> controller.updateStatus(
+                        "listing-1", new MarketplaceController.StatusUpdateRequest("PUBLISHED")));
+    }
+
+    @Test
+    void marketplaceDiscoveryIsContainedBeforeRepositoryDispatch() {
+        assertContainedBeforeRepositoryDispatch(
+                "marketplace discovery read", () -> controller.discovery(10));
+    }
+
+    private void assertContainedBeforeRepositoryDispatch(
+            String operation,
+            org.junit.jupiter.api.function.Executable invocation) {
+        AuthorizationDeniedException failure = assertThrows(
+                AuthorizationDeniedException.class, invocation);
+        assertEquals("AUTHORIZATION_UNAVAILABLE", failure.decision().reasonCode());
+        assertEquals("FAIL_CLOSED_CONTAINMENT", failure.decision().ruleRef());
+        assertEquals(
+                operation + " is unavailable until canonical authorization is established",
+                failure.decision().detail());
+        verifyNoInteractions(listingRepo);
     }
 }

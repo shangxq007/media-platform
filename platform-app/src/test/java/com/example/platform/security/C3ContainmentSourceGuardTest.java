@@ -53,7 +53,9 @@ class C3ContainmentSourceGuardTest {
                 pattern("platform-app/src/main/java/com/example/platform/web/assets/AssetPublishController.java",
                         "reviewService.submitForReview("),
                 pattern("platform-app/src/main/java/com/example/platform/web/assets/AssetPublishController.java",
-                        "reviewService.publishAsset("));
+                        "reviewService.publishAsset("),
+                pattern("platform-app/src/main/java/com/example/platform/web/assets/MarketplaceController.java",
+                        "listingRepo."));
 
         for (ForbiddenSourcePattern guard : forbidden) {
             assertEquals(0, occurrences(read(guard.path()), guard.token()),

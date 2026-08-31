@@ -3,6 +3,7 @@ package com.example.platform.render.app;
 import com.example.platform.render.app.dto.CreateRenderJobRequest;
 import com.example.platform.render.app.dto.RenderJobResponse;
 import com.example.platform.render.app.dto.StatusHistoryResponse;
+import com.example.platform.render.api.port.RenderJobCancellationContinuation;
 import com.example.platform.render.domain.RenderJobStateMachine;
 import com.example.platform.render.infrastructure.RenderJobRepository;
 import com.example.platform.render.policy.RenderPolicyDecision;
@@ -17,12 +18,15 @@ import java.util.*;
 import org.junit.jupiter.api.*;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 /**
  * VS.1 application service tests for {@link RenderJobService}.
  *
- * <p>Tests the core render job lifecycle operations using hand-written fakes.
- * No Mockito, no database, no H2, no Spring context.
+ * <p>Tests the core render job lifecycle operations using hand-written fakes,
+ * with dependency mocks reserved for fail-before-dispatch negative controls.
+ * No database, no H2, no Spring context.
  */
 class RenderJobServiceTest {
 
@@ -48,9 +52,57 @@ class RenderJobServiceTest {
 
     // ========== Job creation ==========
 
+    @Test
+    void createRejectsMissingCanonicalTenantBeforeAllDownstreamEffects() {
+        assertMissingTenantRejectedWithoutEffects(service -> service.create(
+                new CreateRenderJobRequest("proj-1", "snap-1", "default_1080p")));
+    }
+
+    @Test
+    void createForProjectRejectsMissingCanonicalTenantBeforeAllDownstreamEffects() {
+        assertMissingTenantRejectedWithoutEffects(service -> service.createForProject(
+                "caller-tenant", "proj-1",
+                new CreateRenderJobRequest("proj-1", "snap-1", "default_1080p")));
+    }
+
+    @Test
+    void cancelRejectsMissingCanonicalTenantBeforeAllDownstreamEffects() {
+        assertMissingTenantRejectedWithoutEffects(
+                service -> service.cancel("rj-1", "caller-tenant"));
+    }
+
+    @Test
+    void retryRejectsMissingCanonicalTenantBeforeAllDownstreamEffects() {
+        assertMissingTenantRejectedWithoutEffects(
+                service -> service.retry("rj-1", "caller-tenant"));
+    }
+
+    private static void assertMissingTenantRejectedWithoutEffects(
+            java.util.function.Consumer<RenderJobService> invocation) {
+        TenantContext.clear();
+        RenderJobRepository repository = mock(RenderJobRepository.class);
+        RenderPolicyEngine policy = mock(RenderPolicyEngine.class);
+        NotificationEventPublisher publisher = mock(NotificationEventPublisher.class);
+        RenderJobStatusHistoryRepository history = mock(RenderJobStatusHistoryRepository.class);
+        RenderJobCancellationContinuation continuation = mock(RenderJobCancellationContinuation.class);
+        RenderJobService guardedService = new RenderJobService(
+                repository, policy, publisher, history, continuation);
+
+        IllegalArgumentException failure = assertThrows(
+                IllegalArgumentException.class, () -> invocation.accept(guardedService));
+        assertEquals("Resource not found for tenant", failure.getMessage());
+
+        verifyNoInteractions(repository, policy, publisher, history, continuation);
+    }
+
     @Nested
     @DisplayName("Job creation")
     class JobCreation {
+
+        @BeforeEach
+        void establishCanonicalTenant() {
+            TenantContext.set("t-1");
+        }
 
         @Test
         @DisplayName("create() produces QUEUED job and publishes event")
@@ -219,6 +271,11 @@ class RenderJobServiceTest {
     @Nested
     @DisplayName("Cancel and retry transitions")
     class CancelAndRetry {
+
+        @BeforeEach
+        void establishCanonicalTenant() {
+            TenantContext.set("t-1");
+        }
 
         @Test
         @DisplayName("cancel() transitions QUEUED → CANCELLED")

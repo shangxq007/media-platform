@@ -245,7 +245,25 @@ class PhaseZeroContainmentPolicyHttpTest {
                         "/api/media/assets/integrity/scan"),
                 new C3Route(HttpMethod.POST,
                         "/api/projects/project-1/assets/asset-1/publish",
-                        "/api/projects/{projectId}/assets/{assetId}/publish"));
+                        "/api/projects/{projectId}/assets/{assetId}/publish"),
+                new C3Route(HttpMethod.GET,
+                        "/api/marketplace/search",
+                        "/api/marketplace/search"),
+                new C3Route(HttpMethod.GET,
+                        "/api/marketplace/listings",
+                        "/api/marketplace/listings"),
+                new C3Route(HttpMethod.GET,
+                        "/api/marketplace/listings/listing-1",
+                        "/api/marketplace/listings/{listingId}"),
+                new C3Route(HttpMethod.GET,
+                        "/api/marketplace/assets/asset-1/listing",
+                        "/api/marketplace/assets/{assetId}/listing"),
+                new C3Route(HttpMethod.PATCH,
+                        "/api/marketplace/listings/listing-1/status",
+                        "/api/marketplace/listings/{listingId}/status"),
+                new C3Route(HttpMethod.GET,
+                        "/api/marketplace/discovery",
+                        "/api/marketplace/discovery"));
     }
 
     private static TestHttpContext context(Class<?> securityConfiguration) {
@@ -334,6 +352,18 @@ class PhaseZeroContainmentPolicyHttpTest {
         void integrityScan() { downstream.invoke("c3-integrity"); }
         @PostMapping("/api/projects/{projectId}/assets/{assetId}/publish")
         void assetPublish() { downstream.invoke("c3-publish"); }
+        @GetMapping("/api/marketplace/search")
+        void marketplaceSearch() { downstream.invoke("c3-marketplace-search"); }
+        @GetMapping("/api/marketplace/listings")
+        void marketplaceListings() { downstream.invoke("c3-marketplace-listings"); }
+        @GetMapping("/api/marketplace/listings/{listingId}")
+        void marketplaceListing() { downstream.invoke("c3-marketplace-listing"); }
+        @GetMapping("/api/marketplace/assets/{assetId}/listing")
+        void marketplaceAssetListing() { downstream.invoke("c3-marketplace-asset-listing"); }
+        @RequestMapping(path = "/api/marketplace/listings/{listingId}/status", method = RequestMethod.PATCH)
+        void marketplaceStatus() { downstream.invoke("c3-marketplace-status"); }
+        @GetMapping("/api/marketplace/discovery")
+        void marketplaceDiscovery() { downstream.invoke("c3-marketplace-discovery"); }
         @PostMapping("/api/dev/auth/token") void testOnly() { downstream.invoke("test"); }
         @RequestMapping(
                 path = "/api/runtime-policy-negative-control/execute-options",

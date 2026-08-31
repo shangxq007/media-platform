@@ -54,9 +54,10 @@ public class RenderJobService {
     }
 
     public RenderJobResponse create(CreateRenderJobRequest request) {
+        String currentTenantId = requireCanonicalTenant();
         String projectTenantId = renderJobRepository.findProjectTenantId(request.projectId())
                 .orElseThrow(() -> new IllegalArgumentException("Project not found: " + request.projectId()));
-        assertTenantAccess(projectTenantId);
+        assertTenantMatch(currentTenantId, projectTenantId);
 
         var id = Ids.newId("rj");
         var decision = policyEngine.decide(request.profile());
@@ -68,7 +69,7 @@ public class RenderJobService {
     }
 
     public RenderJobResponse createForProject(String tenantId, String projectId, CreateRenderJobRequest request) {
-        assertTenantAccess(tenantId);
+        assertCanonicalTenantAccess(tenantId);
         String projectTenantId = renderJobRepository.findProjectTenantId(projectId)
                 .orElseThrow(() -> new IllegalArgumentException("Project not found: " + projectId));
         if (!tenantId.equals(projectTenantId)) {
@@ -114,7 +115,7 @@ public class RenderJobService {
 
     @Transactional
     public RenderJobResponse cancel(String jobId, String tenantId) {
-        assertTenantAccess(tenantId);
+        assertCanonicalTenantAccess(tenantId);
         RenderJobResponse job = getById(jobId);
         RenderJobStatus currentStatus = RenderJobStatus.valueOf(job.status());
         stateMachine.validateTransition(currentStatus, RenderJobStatus.CANCELLED);
@@ -132,7 +133,7 @@ public class RenderJobService {
 
     @Transactional
     public RenderJobResponse retry(String jobId, String tenantId) {
-        assertTenantAccess(tenantId);
+        assertCanonicalTenantAccess(tenantId);
         RenderJobResponse job = getById(jobId);
         RenderJobStatus currentStatus = RenderJobStatus.valueOf(job.status());
 
@@ -159,6 +160,24 @@ public class RenderJobService {
     private void assertTenantAccess(String tenantId) {
         String currentTenant = TenantContext.get();
         if (currentTenant != null && !currentTenant.equals(tenantId)) {
+            throw new IllegalArgumentException("Resource not found for tenant");
+        }
+    }
+
+    private void assertCanonicalTenantAccess(String tenantId) {
+        assertTenantMatch(requireCanonicalTenant(), tenantId);
+    }
+
+    private String requireCanonicalTenant() {
+        String currentTenant = TenantContext.get();
+        if (currentTenant == null) {
+            throw new IllegalArgumentException("Resource not found for tenant");
+        }
+        return currentTenant;
+    }
+
+    private void assertTenantMatch(String currentTenant, String resourceTenant) {
+        if (!currentTenant.equals(resourceTenant)) {
             throw new IllegalArgumentException("Resource not found for tenant");
         }
     }

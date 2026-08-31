@@ -11,6 +11,7 @@ import com.example.platform.shared.authorization.AuthorizationDeniedException;
 import com.example.platform.web.assets.AssetEnrichmentController;
 import com.example.platform.web.assets.AssetPublishController;
 import com.example.platform.web.assets.AssetWorkbenchController;
+import com.example.platform.web.assets.MarketplaceController;
 import com.example.platform.web.assets.ProductController;
 import com.example.platform.web.media.AssetIntegrityScanController;
 import com.example.platform.web.render.TimelineGitV1Controller;
@@ -80,7 +81,21 @@ class C3ControllerHttpContainmentTest {
                                 .param("projectId", "project-1")),
                 new HttpCase(AssetPublishController.class,
                         MockMvcRequestBuilders.post(
-                                "/api/projects/project-1/assets/asset-1/reject-review")));
+                                "/api/projects/project-1/assets/asset-1/reject-review")),
+                new HttpCase(MarketplaceController.class,
+                        MockMvcRequestBuilders.get("/api/marketplace/search")),
+                new HttpCase(MarketplaceController.class,
+                        MockMvcRequestBuilders.get("/api/marketplace/listings")),
+                new HttpCase(MarketplaceController.class,
+                        MockMvcRequestBuilders.get("/api/marketplace/listings/listing-1")),
+                new HttpCase(MarketplaceController.class,
+                        MockMvcRequestBuilders.get("/api/marketplace/assets/asset-1/listing")),
+                new HttpCase(MarketplaceController.class,
+                        MockMvcRequestBuilders.patch("/api/marketplace/listings/listing-1/status")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"status\":\"PUBLISHED\"}")),
+                new HttpCase(MarketplaceController.class,
+                        MockMvcRequestBuilders.get("/api/marketplace/discovery")));
     }
 
     private static ControllerFixture instantiate(Class<?> controllerType) throws Exception {
