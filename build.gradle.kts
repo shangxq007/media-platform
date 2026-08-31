@@ -142,6 +142,16 @@ tasks.register("verifyJooqVersionAlignment") {
     }
 }
 
+tasks.register<Exec>("verifyJooqRegenerationFailClosed") {
+    group = "verification"
+    description = "Verify jOOQ regeneration rejects missing dependencies and no-op generator output"
+    workingDir(rootDir)
+    commandLine(
+        "bash",
+        file("typed-schema-module/test/regenerate-jooq-schema-fail-closed-test.sh").absolutePath
+    )
+}
+
 tasks.register("regenerateJooqSchema") {
     group = "jooq"
     description = "Regenerate jOOQ schema from ephemeral PostgreSQL 16. Delegates to regenerate-jooq-schema.sh"
@@ -641,6 +651,7 @@ tasks.register("jooqFoundationCheck") {
     description = "Run all jOOQ foundation verification checks"
     dependsOn(
         "verifyJooqVersionAlignment",
+        "verifyJooqRegenerationFailClosed",
         "verifyJooqGeneratedSources",
         "verifyJooqNamedInterfacePreservation",
         "verifyP1ProductLayerRetirement",
