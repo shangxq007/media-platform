@@ -87,7 +87,8 @@ public class TimelineMediaClipOperationService {
     public AddMediaClipPreview preview(
             String tenantId, String projectId, AddMediaClipCommand command,
             CanonicalActor actor) {
-        return preparePublic(tenantId, projectId, command, actor).preview();
+        requirePreparationAuthorization(tenantId, projectId, actor, TIMELINE_READ);
+        return prepare(tenantId, projectId, toOperationRequest(projectId, command)).preview();
     }
 
     public AddMediaClipResult authorizeAndApply(
@@ -97,7 +98,9 @@ public class TimelineMediaClipOperationService {
             String expectedPlanDigest,
             String applyCommandId,
             CanonicalActor actor) {
-        PreparedOperation prepared = preparePublic(tenantId, projectId, command, actor);
+        requirePreparationAuthorization(tenantId, projectId, actor, TIMELINE_READ);
+        PreparedOperation prepared = prepare(
+                tenantId, projectId, toOperationRequest(projectId, command));
         ExecutionOutcome execution = executePrepared(
                 tenantId, projectId, prepared, expectedPlanDigest, applyCommandId, actor);
         ApplyResult result = execution.result();
@@ -125,15 +128,6 @@ public class TimelineMediaClipOperationService {
                 tenantId, target.timelineId(), prepared,
                 prepared.plan().planDigest(), context.invocationId(), context.actor());
         return new InvocationOutcome(execution.result());
-    }
-
-    private PreparedOperation preparePublic(
-            String tenantId,
-            String projectId,
-            AddMediaClipCommand command,
-            CanonicalActor actor) {
-        requirePreparationAuthorization(tenantId, projectId, actor, TIMELINE_READ);
-        return prepare(tenantId, projectId, toOperationRequest(projectId, command));
     }
 
     private PreparedOperation prepareInternal(
