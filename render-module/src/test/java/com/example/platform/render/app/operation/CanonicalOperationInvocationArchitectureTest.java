@@ -7,10 +7,10 @@ import com.example.platform.operation.operation.OperationRequest;
 import java.lang.reflect.Modifier;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Duration;
+import java.security.MessageDigest;
 import java.util.Arrays;
+import java.util.HexFormat;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -20,6 +20,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CanonicalOperationInvocationArchitectureTest {
 
+    private static final String FROZEN_H7_CONTROLLER_SHA256 =
+            "29f884f53d3b7adc640859bdf78cdab4fa0468cd6e303fef8131a6a4dc940702";
     private static final Path ROOT = repositoryRoot(Path.of(System.getProperty("user.dir")));
     private static final Path RENDER_MAIN = ROOT.resolve("render-module/src/main/java");
     private static final Path SERVICE = RENDER_MAIN.resolve(
@@ -74,17 +76,17 @@ class CanonicalOperationInvocationArchitectureTest {
     }
 
     @Test
-    void existingH7HttpControllerRemainsByteIdenticalToHead() throws Exception {
-        Process process = new ProcessBuilder(
-                "git", "show", "HEAD:" + ROOT.relativize(CONTROLLER))
-                .directory(ROOT.toFile())
-                .redirectErrorStream(true)
-                .start();
-        boolean completed = process.waitFor(Duration.ofSeconds(10).toMillis(), TimeUnit.MILLISECONDS);
-        assertTrue(completed, "git show timed out");
-        byte[] expected = process.getInputStream().readAllBytes();
-        assertEquals(0, process.exitValue(), new String(expected));
-        assertArrayEquals(expected, Files.readAllBytes(CONTROLLER));
+    void existingH7HttpControllerRemainsByteIdenticalToFrozenH7Baseline() throws Exception {
+        byte[] controllerBytes = Files.readAllBytes(CONTROLLER);
+        assertEquals(FROZEN_H7_CONTROLLER_SHA256, sha256(controllerBytes));
+
+        byte[] mutatedBytes = controllerBytes.clone();
+        mutatedBytes[0] ^= 1;
+        assertFalse(FROZEN_H7_CONTROLLER_SHA256.equals(sha256(mutatedBytes)));
+    }
+
+    private static String sha256(byte[] bytes) throws Exception {
+        return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
     }
 
     private static String read(Path path) {
