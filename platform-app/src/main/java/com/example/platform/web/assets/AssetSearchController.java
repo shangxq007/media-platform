@@ -60,7 +60,7 @@ public class AssetSearchController {
 
     private static SearchResultDto toDto(AssetSearchResult r) {
         return new SearchResultDto(r.assetId(), r.assetVersion(), r.assetType(), r.filename(),
-                r.storageKey(), r.checksum(), r.score(),
+                r.checksum(), r.score(),
                 r.matchedFields().stream().map(f -> new MatchedFieldDto(f.field(), f.value(), f.scoreContribution())).toList());
     }
 
@@ -72,7 +72,7 @@ public class AssetSearchController {
     public record SearchResponseDto(int total, int page, int pageSize, List<SearchResultDto> results) {}
 
     public record SearchResultDto(String assetId, String assetVersion, String assetType,
-                                    String filename, String storageKey, String checksum,
+                                    String filename, String checksum,
                                     int score, List<MatchedFieldDto> matchedFields) {}
 
     public record MatchedFieldDto(String field, String value, int scoreContribution) {}

@@ -4,7 +4,6 @@ import com.example.platform.artifact.domain.Artifact;
 import com.example.platform.artifact.infrastructure.ArtifactRepository;
 import com.example.platform.artifact.infrastructure.ArtifactGcProperties;
 import com.example.platform.shared.audit.AuditPort;
-import com.example.platform.storage.domain.BlobStorage;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -24,8 +23,8 @@ import org.springframework.stereotype.Service;
  * marking them DELETED. Every candidate passes {@link ArtifactLifecycleService}
  * deleteCheck, which FAILS CLOSED on historical pin protection — a pinned
  * Artifact (or its last usable replica) is never GC'd
- * (HISTORICAL_PIN_GC_BYPASS_COUNT = 0). Physical blob deletion is data-plane
- * (BlobStorage), not Artifact identity authority.</p>
+ * (HISTORICAL_PIN_GC_BYPASS_COUNT = 0). Physical placement deletion remains
+ * exclusively behind a Storage-owned lifecycle boundary.</p>
  */
 @Service
 public class ArtifactGcService {
@@ -34,38 +33,32 @@ public class ArtifactGcService {
 
     private final Optional<ArtifactRepository> artifactRepository;
     private final ArtifactLifecycleService lifecycleService;
-    private final Optional<BlobStorage> blobStorage;
     private final ArtifactGcProperties properties;
     private final AuditPort auditPort;
 
     public ArtifactGcService(
             @Autowired(required = false) ArtifactRepository artifactRepository,
             ArtifactLifecycleService lifecycleService,
-            @Autowired(required = false) BlobStorage blobStorage,
             ArtifactGcProperties properties,
             @Autowired(required = false) AuditPort auditPort) {
         this.artifactRepository = Optional.ofNullable(artifactRepository);
         this.lifecycleService = lifecycleService;
-        this.blobStorage = Optional.ofNullable(blobStorage);
         this.properties = properties;
         this.auditPort = auditPort;
     }
 
-    public GcResult runGc() {
-        return runGc(properties.getRetentionDays(), false, properties.getBatchSize());
+    public GcResult runGc(String tenantId, int retentionDays) {
+        return runGc(tenantId, retentionDays, false, properties.getBatchSize());
     }
 
-    public GcResult runGc(int retentionDays) {
-        return runGc(retentionDays, false, properties.getBatchSize());
-    }
-
-    public GcResult runGc(int retentionDays, boolean dryRun, int limit) {
+    public GcResult runGc(String tenantId, int retentionDays, boolean dryRun, int limit) {
+        requireTenantId(tenantId);
         if (artifactRepository.isEmpty()) {
             return new GcResult(0, 0, 0, 0, List.of(), List.of("persistent catalog unavailable"));
         }
 
         Instant cutoff = Instant.now().minus(Math.max(1, retentionDays), ChronoUnit.DAYS);
-        List<Artifact> candidates = artifactRepository.get().findTombstonedBefore(null, cutoff);
+        List<Artifact> candidates = artifactRepository.get().findTombstonedBefore(tenantId, cutoff);
         int scanned = candidates.size();
         int purged = 0;
         int skipped = 0;
@@ -76,7 +69,7 @@ public class ArtifactGcService {
 
         for (Artifact artifact : candidates.stream().limit(effectiveLimit).toList()) {
             try {
-                var check = lifecycleService.deleteCheck(artifact.artifactId().value());
+                var check = lifecycleService.deleteCheck(tenantId, artifact.artifactId().value());
                 if (!check.deletable()) {
                     skipped++;
                     actions.add("SKIP " + artifact.artifactId().value() + " (" + check.references() + ")");
@@ -87,9 +80,9 @@ public class ArtifactGcService {
                     actions.add("WOULD_PURGE " + artifact.artifactId().value());
                     log.info("[dry-run] Would purge artifact id={}", artifact.artifactId().value());
                 } else {
-                    // Physical blob deletion is data-plane (BlobStorage) by replica
-                    // location; canonical logical deletion is artifact-owned.
-                    artifactRepository.get().markPurged(artifact.artifactId().value());
+                    if (!artifactRepository.get().markPurged(tenantId, artifact.artifactId().value())) {
+                        throw new IllegalStateException("Artifact ownership changed before purge");
+                    }
                     purged++;
                     actions.add("PURGED " + artifact.artifactId().value());
                     log.info("Purged artifact id={}", artifact.artifactId().value());
@@ -106,6 +99,12 @@ public class ArtifactGcService {
         GcResult result = new GcResult(scanned, purged, skipped, failed, actions, errors);
         recordGcAudit(result, dryRun, retentionDays);
         return result;
+    }
+
+    private static void requireTenantId(String tenantId) {
+        if (tenantId == null || tenantId.isBlank() || "*".equals(tenantId)) {
+            throw new IllegalArgumentException("explicit tenantId is required");
+        }
     }
 
     @SuppressWarnings("unchecked")

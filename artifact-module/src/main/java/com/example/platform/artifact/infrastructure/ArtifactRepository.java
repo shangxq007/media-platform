@@ -119,6 +119,7 @@ public class ArtifactRepository {
         // observable cross-tenant.
         return dsl.selectFrom(ARTIFACT_REPLICA)
                 .where(ARTIFACT_REPLICA.ARTIFACT_ID.eq(artifactId.value())
+                        .and(ARTIFACT_REPLICA.STATE.eq("ACTIVE"))
                         .and(org.jooq.impl.DSL.exists(
                                 dsl.selectOne()
                                         .from(ARTIFACT)
@@ -141,6 +142,7 @@ public class ArtifactRepository {
         return dsl.selectFrom(ARTIFACT_REPLICA)
                 .where(ARTIFACT_REPLICA.ARTIFACT_ID.eq(artifactId.value())
                         .and(ARTIFACT_REPLICA.REPLICA_ID.eq(replicaId.value()))
+                        .and(ARTIFACT_REPLICA.STATE.eq("ACTIVE"))
                         .and(org.jooq.impl.DSL.exists(
                                 dsl.selectOne()
                                         .from(ARTIFACT)
@@ -158,15 +160,25 @@ public class ArtifactRepository {
                         r.get(ARTIFACT_REPLICA.CREATED_AT).toInstant(ZoneOffset.UTC)));
     }
 
-    public long countReplicas(String artifactId) {
-        return dsl.fetchCount(ARTIFACT_REPLICA.where(ARTIFACT_REPLICA.ARTIFACT_ID.eq(artifactId)));
+    public long countReplicas(String tenantId, String artifactId) {
+        requireTenantId(tenantId);
+        return dsl.fetchCount(ARTIFACT_REPLICA.where(ARTIFACT_REPLICA.ARTIFACT_ID.eq(artifactId)
+                .and(org.jooq.impl.DSL.exists(dsl.selectOne()
+                        .from(ARTIFACT)
+                        .where(ARTIFACT.ID.eq(ARTIFACT_REPLICA.ARTIFACT_ID)
+                                .and(ARTIFACT.TENANT_ID.eq(tenantId)))))));
     }
 
-    public void deleteReplica(String artifactId, String replicaId) {
-        dsl.deleteFrom(ARTIFACT_REPLICA)
+    public boolean deleteReplica(String tenantId, String artifactId, String replicaId) {
+        requireTenantId(tenantId);
+        return dsl.deleteFrom(ARTIFACT_REPLICA)
                 .where(ARTIFACT_REPLICA.ARTIFACT_ID.eq(artifactId)
-                        .and(ARTIFACT_REPLICA.REPLICA_ID.eq(replicaId)))
-                .execute();
+                        .and(ARTIFACT_REPLICA.REPLICA_ID.eq(replicaId))
+                        .and(org.jooq.impl.DSL.exists(dsl.selectOne()
+                                .from(ARTIFACT)
+                                .where(ARTIFACT.ID.eq(ARTIFACT_REPLICA.ARTIFACT_ID)
+                                        .and(ARTIFACT.TENANT_ID.eq(tenantId))))))
+                .execute() == 1;
     }
 
     public boolean exists(String tenantId, ArtifactId artifactId) {
@@ -174,21 +186,21 @@ public class ArtifactRepository {
                 .and(ARTIFACT.TENANT_ID.eq(tenantId))));
     }
 
-    public void updateState(String artifactId, ArtifactState state, LocalDateTime tombstonedAt) {
+    public boolean updateState(String tenantId, String artifactId, ArtifactState state, LocalDateTime tombstonedAt) {
+        requireTenantId(tenantId);
         var step = dsl.update(ARTIFACT)
                 .set(ARTIFACT.STATE, state.name())
                 .set(ARTIFACT.TOMBSTONED_AT, tombstonedAt)
-                .where(ARTIFACT.ID.eq(artifactId));
-        step.execute();
+                .where(ARTIFACT.ID.eq(artifactId).and(ARTIFACT.TENANT_ID.eq(tenantId)));
+        return step.execute() == 1;
     }
 
     public List<Artifact> findTombstonedBefore(String tenantId, Instant cutoff) {
+        requireTenantId(tenantId);
         var condition = ARTIFACT.STATE.eq(ArtifactState.DELETING.name())
                 .and(ARTIFACT.TOMBSTONED_AT.isNotNull())
-                .and(ARTIFACT.TOMBSTONED_AT.lt(toDb(cutoff)));
-        if (tenantId != null && !tenantId.equals("*")) {
-            condition = condition.and(ARTIFACT.TENANT_ID.eq(tenantId));
-        }
+                .and(ARTIFACT.TOMBSTONED_AT.lt(toDb(cutoff)))
+                .and(ARTIFACT.TENANT_ID.eq(tenantId));
         return dsl.selectFrom(ARTIFACT)
                 .where(condition)
                 .fetch()
@@ -204,12 +216,19 @@ public class ArtifactRepository {
                         r.get(ARTIFACT.CREATED_AT).toInstant(ZoneOffset.UTC)));
     }
 
-    public void markPurged(String artifactId) {
-        dsl.update(ARTIFACT)
+    public boolean markPurged(String tenantId, String artifactId) {
+        requireTenantId(tenantId);
+        return dsl.update(ARTIFACT)
                 .set(ARTIFACT.STATE, ArtifactState.DELETED.name())
                 .set(ARTIFACT.TOMBSTONED_AT, LocalDateTime.now(ZoneOffset.UTC))
-                .where(ARTIFACT.ID.eq(artifactId))
-                .execute();
+                .where(ARTIFACT.ID.eq(artifactId).and(ARTIFACT.TENANT_ID.eq(tenantId)))
+                .execute() == 1;
+    }
+
+    private static void requireTenantId(String tenantId) {
+        if (tenantId == null || tenantId.isBlank() || "*".equals(tenantId)) {
+            throw new IllegalArgumentException("explicit tenantId is required");
+        }
     }
 
     private static LocalDateTime toDb(java.time.Instant instant) {

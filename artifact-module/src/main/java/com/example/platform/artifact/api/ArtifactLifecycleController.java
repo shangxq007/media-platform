@@ -2,7 +2,7 @@ package com.example.platform.artifact.api;
 
 import com.example.platform.artifact.app.ArtifactGcService;
 import com.example.platform.artifact.app.ArtifactLifecycleService;
-import com.example.platform.artifact.domain.ArtifactCatalogEntry;
+import com.example.platform.shared.web.TenantContext;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -25,12 +25,14 @@ public class ArtifactLifecycleController {
 
     @GetMapping("/{artifactId}/delete-check")
     public ArtifactLifecycleService.DeleteCheckResult deleteCheck(@PathVariable String artifactId) {
-        return lifecycleService.deleteCheck(artifactId);
+        return lifecycleService.deleteCheck(requireCurrentTenant(), artifactId);
     }
 
     @PostMapping("/{artifactId}/tombstone")
-    public ArtifactCatalogEntry tombstone(@PathVariable String artifactId) {
-        return lifecycleService.tombstone(artifactId);
+    public TombstoneResponse tombstone(@PathVariable String artifactId) {
+        var result = lifecycleService.tombstone(requireCurrentTenant(), artifactId);
+        return new TombstoneResponse(
+                result.id(), result.projectId(), result.status().name(), result.tombstonedAt());
     }
 
     @PostMapping("/gc/run")
@@ -38,6 +40,18 @@ public class ArtifactLifecycleController {
             @RequestParam(value = "dryRun", defaultValue = "false") boolean dryRun,
             @RequestParam(value = "retentionDays", defaultValue = "7") int retentionDays,
             @RequestParam(value = "limit", defaultValue = "50") int limit) {
-        return gcService.runGc(retentionDays, dryRun, limit);
+        return gcService.runGc(requireCurrentTenant(), retentionDays, dryRun, limit);
     }
+
+    private static String requireCurrentTenant() {
+        String tenantId = TenantContext.get();
+        if (tenantId == null || tenantId.isBlank() || "*".equals(tenantId)) {
+            throw new IllegalStateException("Tenant context is required for Artifact lifecycle operations");
+        }
+        return tenantId;
+    }
+
+    /** Redacted lifecycle response; storage coordinates remain internal. */
+    public record TombstoneResponse(
+            String artifactId, String projectId, String state, java.time.Instant tombstonedAt) {}
 }

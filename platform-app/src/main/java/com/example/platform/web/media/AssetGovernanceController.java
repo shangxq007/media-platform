@@ -6,8 +6,6 @@ import com.example.platform.render.app.timeline.TimelineAssetGcService;
 import com.example.platform.security.AdminAuditHelper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.constraints.NotBlank;
-import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,8 +20,6 @@ public class AssetGovernanceController {
     private final GlobalAssetIntegrityService globalIntegrityService;
     private final TimelineAssetGcService timelineAssetGcService;
     private final ArtifactGcService artifactGcService;
-    private final StorageBucketOrphanScanner bucketOrphanScanner;
-    private final StorageOrphanPurgeService orphanPurgeService;
     private final RenderCacheCleanupService renderCacheCleanupService;
     private final AdminAuditHelper auditHelper;
 
@@ -31,16 +27,12 @@ public class AssetGovernanceController {
             GlobalAssetIntegrityService globalIntegrityService,
             TimelineAssetGcService timelineAssetGcService,
             ArtifactGcService artifactGcService,
-            StorageBucketOrphanScanner bucketOrphanScanner,
-            StorageOrphanPurgeService orphanPurgeService,
             @org.springframework.beans.factory.annotation.Autowired(required = false)
                     RenderCacheCleanupService renderCacheCleanupService,
             AdminAuditHelper auditHelper) {
         this.globalIntegrityService = globalIntegrityService;
         this.timelineAssetGcService = timelineAssetGcService;
         this.artifactGcService = artifactGcService;
-        this.bucketOrphanScanner = bucketOrphanScanner;
-        this.orphanPurgeService = orphanPurgeService;
         this.renderCacheCleanupService = renderCacheCleanupService;
         this.auditHelper = auditHelper;
     }
@@ -73,17 +65,6 @@ public class AssetGovernanceController {
         RenderCacheCleanupService.CleanupResult result = renderCacheCleanupService.runCleanup(tenantId, projectId);
         auditHelper.log(request, "ADMIN_SEGMENT_CACHE_CLEANUP", "render_cache", null, tenantId, "SUCCESS");
         return result;
-    }
-
-    @PostMapping("/storage-orphans/purge")
-    @Operation(
-            summary = "受控清理桶级孤儿对象",
-            description = "需配置 platform.storage.orphan-purge.approval-token；默认 dryRun=true")
-    public StorageOrphanPurgeService.PurgeResult purgeStorageOrphans(
-            @RequestParam @NotBlank String approvalToken,
-            @RequestParam(defaultValue = "true") boolean dryRun,
-            @RequestParam(required = false) List<String> storageUri) {
-        return orphanPurgeService.purge(dryRun, approvalToken, storageUri);
     }
 
     private static boolean isAdmin(jakarta.servlet.http.HttpServletRequest request) {

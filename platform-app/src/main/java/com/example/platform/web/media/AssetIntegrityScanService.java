@@ -1,6 +1,5 @@
 package com.example.platform.web.media;
 
-import com.example.platform.artifact.app.ArtifactStorageIntegrityScanner;
 import com.example.platform.audit.app.ProblematicDataDetectionService;
 import com.example.platform.audit.domain.ProblematicDataRecord;
 import com.example.platform.render.app.timeline.TimelineAssetIntegrityScanner;
@@ -15,15 +14,12 @@ import org.springframework.stereotype.Service;
 public class AssetIntegrityScanService {
 
     private final TimelineAssetIntegrityScanner timelineScanner;
-    private final ArtifactStorageIntegrityScanner storageScanner;
     private final ProblematicDataDetectionService problematicDataDetectionService;
 
     public AssetIntegrityScanService(
             TimelineAssetIntegrityScanner timelineScanner,
-            ArtifactStorageIntegrityScanner storageScanner,
             ProblematicDataDetectionService problematicDataDetectionService) {
         this.timelineScanner = timelineScanner;
-        this.storageScanner = storageScanner;
         this.problematicDataDetectionService = problematicDataDetectionService;
     }
 
@@ -38,16 +34,6 @@ public class AssetIntegrityScanService {
                     "snapshotId", f.snapshotId(),
                     "assetId", f.assetId(),
                     "clipRef", f.clipRef())));
-        }
-
-        for (ArtifactStorageIntegrityScanner.StorageFinding f : storageScanner.scanCatalog()) {
-            if (!projectId.equals(f.projectId())) {
-                continue;
-            }
-            findings.add(findingMap(f.ruleId(), f.artifactId(), f.message(), Map.of(
-                    "projectId", f.projectId(),
-                    "artifactId", f.artifactId(),
-                    "storageUri", f.storageUri())));
         }
 
         List<ProblematicDataRecord> records =

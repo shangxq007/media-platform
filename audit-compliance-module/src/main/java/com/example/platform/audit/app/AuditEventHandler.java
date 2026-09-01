@@ -78,8 +78,7 @@ public class AuditEventHandler {
         log.info("AuditEventHandler: recording audit for artifact created={}", event.artifactId());
         auditService.record("SYSTEM", "render-event-handler", "ARTIFACT_CREATED",
                 "ARTIFACT", event.artifactId(),
-                Map.of("renderJobId", event.renderJobId(), "storageUri", event.storageUri(),
-                        "projectId", event.projectId()),
+                Map.of("renderJobId", event.renderJobId(), "projectId", event.projectId()),
                 AuditCategory.CONFIG);
     }
 

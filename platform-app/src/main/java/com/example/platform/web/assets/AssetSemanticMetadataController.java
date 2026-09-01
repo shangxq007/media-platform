@@ -91,7 +91,7 @@ public class AssetSemanticMetadataController {
     }
 
     private static EmbeddingDto toDto(EmbeddingReference e) {
-        return new EmbeddingDto(e.embeddingId(), e.provider(), e.vectorDimension(), e.storageUri());
+        return new EmbeddingDto(e.embeddingId(), e.provider(), e.vectorDimension());
     }
 
     public record CreateSemanticMetadataRequest(String assetVersion) {}
@@ -119,5 +119,5 @@ public class AssetSemanticMetadataController {
 
     public record BrandDto(String brandName, double confidence, long startTimeMs, long endTimeMs) {}
 
-    public record EmbeddingDto(String embeddingId, String provider, int vectorDimension, String storageUri) {}
+    public record EmbeddingDto(String embeddingId, String provider, int vectorDimension) {}
 }

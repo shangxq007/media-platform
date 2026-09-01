@@ -389,15 +389,6 @@ platform:
         delete-blob-on-purge: true
         max-projects-per-run: 100
 
-  storage:
-    orphan-scan:
-      buckets: artifacts,render-cache
-      max-objects-per-bucket: 500
-    orphan-purge:
-      enabled: false
-      approval-token: ${STORAGE_ORPHAN_PURGE_TOKEN:}
-      max-deletes-per-run: 20
-
   lifecycle:
     shutdown:
       outbox-drain-enabled: true

@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import com.example.platform.render.app.asset.AssetRegistryService;
-import com.example.platform.render.app.event.TimelineReviewEventPublisher;
 import com.example.platform.render.domain.asset.AssetGovernanceMetadata;
 import com.example.platform.render.domain.asset.AssetRegistryRecord;
 import com.example.platform.render.infrastructure.asset.AssetService;
@@ -25,8 +24,7 @@ class AssetVersionGovernanceApiTest {
     void setUp() {
         assetService = mock(AssetService.class);
         assetRegistryService = mock(AssetRegistryService.class);
-        TimelineReviewEventPublisher ep = mock(TimelineReviewEventPublisher.class);
-        controller = new AssetController(assetService, assetRegistryService, ep);
+        controller = new AssetController(assetService, assetRegistryService);
     }
 
     @Test

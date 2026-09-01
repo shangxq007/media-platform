@@ -24,18 +24,6 @@ public class AssetEnrichmentController {
         this.registry = registry;
     }
 
-    @PostMapping("/enrich")
-    @Operation(summary = "Trigger enrichment pipeline (Probe → ASR)")
-    public ResponseEntity<EnrichmentResponse> enrich(
-            @PathVariable String projectId,
-            @PathVariable String assetId,
-            @RequestBody EnrichRequest body) {
-        AssetSemanticMetadata meta = enrichmentService.enrich(
-                assetId, body.assetVersion() != null ? body.assetVersion() : "v1",
-                body.assetType(), body.storageUri());
-        return ResponseEntity.status(HttpStatus.ACCEPTED).body(toResponse(meta));
-    }
-
     @GetMapping("/enrichment-status")
     @Operation(summary = "Get enrichment status and metadata")
     public ResponseEntity<EnrichmentStatusResponse> status(
@@ -68,8 +56,6 @@ public class AssetEnrichmentController {
         return new EnrichmentStatusResponse(m.assetId(), m.assetVersion(), m.status().name(),
                 providers);
     }
-
-    public record EnrichRequest(String assetVersion, String assetType, String storageUri) {}
 
     public record EnrichmentResponse(String assetId, String assetVersion, String status,
                                         String language, int transcriptCount, int sceneCount) {}

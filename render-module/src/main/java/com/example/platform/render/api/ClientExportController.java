@@ -70,9 +70,7 @@ public class ClientExportController {
     public Map<String, Object> uploadAndComplete(
             @PathVariable String sessionId,
             @RequestParam("file") MultipartFile file,
-            @RequestParam(value = "durationSeconds", required = false) Long durationSeconds,
-            @RequestParam(value = "checksum", required = false) String checksum,
-            @RequestParam(value = "registerArtifact", defaultValue = "true") boolean registerArtifact)
+            @RequestParam(value = "checksum", required = false) String checksum)
             throws Exception {
         String effectiveTenant = com.example.platform.shared.web.TenantContext.get();
         if (effectiveTenant == null || effectiveTenant.isBlank()) {
@@ -80,7 +78,7 @@ public class ClientExportController {
         }
         clientExportService.findSessionForTenant(sessionId, effectiveTenant);
         ClientExportSession session = clientExportService.uploadAndComplete(
-                sessionId, file, durationSeconds, checksum, registerArtifact);
+                sessionId, file, checksum);
         return Map.of(
                 "sessionId", session.id(),
                 "status", session.status(),

@@ -6,5 +6,4 @@ public record ArtifactCreatedEvent(
         String artifactId,
         String renderJobId,
         String projectId,
-        String storageUri,
         Instant createdAt) {}

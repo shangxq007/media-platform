@@ -71,7 +71,7 @@ class ClientExportServiceTest extends PostgresTestContainerSupport {
                     java.util.List.of(), "test-v1", request.traceId(), request.decidedAt());
         });
         service = new ClientExportService(
-                tempDir.toString(), repository, exportPolicy, commercialAdmission, null);
+                tempDir.toString(), repository, exportPolicy, commercialAdmission);
     }
 
     @Test
@@ -120,7 +120,7 @@ class ClientExportServiceTest extends PostgresTestContainerSupport {
                 "FREE", null, null);
 
         var newService = new ClientExportService(
-                tempDir.toString(), repository, exportPolicy, commercialAdmission, null);
+                tempDir.toString(), repository, exportPolicy, commercialAdmission);
         var found = newService.findSession(config.sessionId());
         assertTrue(found.isPresent());
         assertEquals("CREATED", found.get().status());
@@ -170,7 +170,7 @@ class ClientExportServiceTest extends PostgresTestContainerSupport {
 
         byte[] payload = new byte[]{1, 2, 3, 4};
         var file = new MockMultipartFile("file", "out.mp4", "video/mp4", payload);
-        var completed = service.uploadAndComplete(config.sessionId(), file, 10L, null, false);
+        var completed = service.uploadAndComplete(config.sessionId(), file, null);
 
         assertEquals("COMPLETED", completed.status());
         assertTrue(completed.outputUri().contains("tenant/tenant-1"));

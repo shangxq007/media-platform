@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import api from '../api/index'
+import type { ArtifactListResponse, ArtifactSummary } from '../contracts/app/artifact'
+
+const DEV_TENANT_ID = 'ten_307b8956545642a9a45097f2f480a7b4'
+const DEV_PROJECT_ID = 'prj_6802ca7a12c24aafa31cf77fa63890be'
 
 // Health check
 function useHealth() {
@@ -26,9 +30,9 @@ function useSubmitRender(token: string | undefined) {
   return useMutation({
     mutationFn: () => {
       if (!token) throw new Error('No token')
-      return api.post(`/tenants/${'ten_307b8956545642a9a45097f2f480a7b4'}/projects/${'prj_6802ca7a12c24aafa31cf77fa63890be'}/render-jobs/incremental/submit`, {
-        tenantId: 'ten_307b8956545642a9a45097f2f480a7b4',
-        projectId: 'prj_6802ca7a12c24aafa31cf77fa63890be',
+      return api.post(`/tenants/${DEV_TENANT_ID}/projects/${DEV_PROJECT_ID}/render-jobs/incremental/submit`, {
+        tenantId: DEV_TENANT_ID,
+        projectId: DEV_PROJECT_ID,
         prompt: JSON.stringify({
           version: '1.0',
           tracks: [{ id: 'v1', type: 'video', clips: [{ id: 'c1', source: 'testsrc', duration: 2 }] }]
@@ -61,7 +65,10 @@ function useArtifacts(token: string | undefined, jobId: string | null, jobStatus
     queryKey: ['artifacts', jobId],
     queryFn: () => {
       if (!token || !jobId) throw new Error('Missing')
-      return api.get(`/render/jobs/${jobId}/artifacts`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.data)
+      return api.get<ArtifactListResponse>(
+        `/tenants/${DEV_TENANT_ID}/projects/${DEV_PROJECT_ID}/render-jobs/${jobId}/artifacts`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      ).then(r => r.data)
     },
     enabled: !!token && !!jobId && jobStatus === 'COMPLETED',
   })
@@ -173,12 +180,12 @@ export function DevConsolePage() {
             {/* Artifacts */}
             {isCompleted && artifacts.data && (
               <div style={{ marginTop: '16px' }}>
-                <h3>📦 Artifacts ({artifacts.data.length})</h3>
-                {artifacts.data.length === 0 && (
+                <h3>📦 Artifacts ({artifacts.data.total})</h3>
+                {artifacts.data.items.length === 0 && (
                   <div style={{ color: '#eab308' }}>⚠️ No artifacts found</div>
                 )}
-                {artifacts.data.map((a: any) => (
-                  <ArtifactCard key={a.artifactId} artifact={a} jobId={jobId} token={token} />
+                {artifacts.data.items.map((artifact) => (
+                  <ArtifactCard key={artifact.id} artifact={artifact} jobId={jobId} token={token} />
                 ))}
               </div>
             )}
@@ -189,29 +196,28 @@ export function DevConsolePage() {
   )
 }
 
-function ArtifactCard({ artifact, jobId, token }: { artifact: any; jobId: string; token: string }) {
-  const contentUrl = `${import.meta.env.VITE_API_BASE_URL || 'https://api.render.cc.cd'}/render/jobs/${jobId}/artifacts/${artifact.artifactId}/content`
+function ArtifactCard({ artifact, jobId, token }: { artifact: ArtifactSummary; jobId: string; token: string }) {
+  const requestAccess = async () => {
+    const response = await api.get(
+      `/tenants/${DEV_TENANT_ID}/projects/${DEV_PROJECT_ID}/render-jobs/${jobId}/artifacts/${artifact.id}/access`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+    window.open(response.data.access.accessUrl, '_blank', 'noopener,noreferrer')
+  }
 
   return (
     <div style={{ marginTop: '12px', padding: '12px', background: '#111', borderRadius: '6px', border: '1px solid #333' }}>
       <div style={{ fontSize: '12px', color: '#888' }}>
-        <div>ID: <code>{artifact.artifactId}</code></div>
-        <div>Format: {artifact.format} | Resolution: {artifact.resolution} | Duration: {artifact.duration}s</div>
+        <div>ID: <code>{artifact.id}</code></div>
+        <div>Type: {artifact.type} | Kind: {artifact.kind} | State: {artifact.state}</div>
+        <div>Integrity: {artifact.integrityState} | Bytes: {artifact.byteLength}</div>
         <div>Created: {artifact.createdAt}</div>
       </div>
       <div style={{ marginTop: '12px' }}>
-        <video
-          controls
-          width="320"
-          style={{ borderRadius: '4px', background: '#000' }}
-          onError={(e) => { (e.target as HTMLVideoElement).style.display = 'none' }}
-        >
-          <source src={contentUrl} type="video/mp4" />
-        </video>
+        <button onClick={requestAccess} style={{ color: '#60a5fa', fontSize: '12px' }}>
+          Request ephemeral access
+        </button>
       </div>
-      <a href={contentUrl} download="output.mp4" style={{ color: '#60a5fa', fontSize: '12px', marginTop: '8px', display: 'inline-block' }}>
-        ⬇️ Download output.mp4
-      </a>
     </div>
   )
 }

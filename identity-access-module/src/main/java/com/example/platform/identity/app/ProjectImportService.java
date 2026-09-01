@@ -1,21 +1,10 @@
 package com.example.platform.identity.app;
 
-import com.example.platform.artifact.app.ArtifactCatalogService;
-import com.example.platform.artifact.app.ArtifactLifecycleService;
-import com.example.platform.artifact.domain.ArtifactCatalogEntry;
 import com.example.platform.identity.api.dto.*;
 import com.example.platform.shared.Ids;
 import com.example.platform.shared.audit.AuditPort;
 import com.example.platform.storage.contract.ChecksumFormat;
-import com.example.platform.identity.imports.AssetDownloadException;
-import com.example.platform.identity.imports.DownloadedAsset;
-import com.example.platform.identity.imports.ImportAssetDownloader;
-import com.example.platform.identity.imports.ImportCleanupTracker;
-import com.example.platform.identity.security.SafeDownloadUrlValidator;
 import com.example.platform.shared.web.TenantContext;
-import com.example.platform.storage.domain.BlobStorage;
-import com.example.platform.storage.domain.PutObjectCommand;
-import com.example.platform.storage.domain.StorageObjectRef;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,17 +22,7 @@ public class ProjectImportService {
     private static final String SUPPORTED_SCHEMA_VERSION = "project-export-v1";
     private static final Set<String> SUPPORTED_IMPORT_MODES = Set.of("metadata_only", "linked_assets");
 
-    public static final String REASON_UNSAFE_URL = "UNSAFE_URL";
-    public static final String REASON_MISSING_DOWNLOAD_URL = "MISSING_DOWNLOAD_URL";
-    public static final String REASON_HTTP_DOWNLOAD_FAILED = "HTTP_DOWNLOAD_FAILED";
-    public static final String REASON_DOWNLOAD_TOO_LARGE = "DOWNLOAD_TOO_LARGE";
-    public static final String REASON_CHECKSUM_REQUIRED = "CHECKSUM_REQUIRED";
     public static final String REASON_CHECKSUM_MISMATCH = "CHECKSUM_MISMATCH";
-    public static final String REASON_SIZE_MISMATCH = "SIZE_MISMATCH";
-    public static final String REASON_ARTIFACT_REGISTER_FAILED = "ARTIFACT_REGISTER_FAILED";
-    public static final String REASON_STORAGE_WRITE_FAILED = "STORAGE_WRITE_FAILED";
-    public static final String REASON_STORAGE_DELETE_FAILED = "STORAGE_DELETE_FAILED";
-    public static final String REASON_ROLLBACK_FAILED = "ROLLBACK_FAILED";
     public static final String REASON_UNEXPECTED_ERROR = "UNEXPECTED_ERROR";
 
     public static final String STATUS_SUCCEEDED = "SUCCEEDED";
@@ -51,26 +30,12 @@ public class ProjectImportService {
     public static final String STATUS_ROLLED_BACK = "ROLLED_BACK";
 
     private final TenantProjectService tenantProjectService;
-    private final ArtifactCatalogService artifactCatalogService;
-    private final ArtifactLifecycleService artifactLifecycleService;
     private final AuditPort auditPort;
-    private final ImportAssetDownloader assetDownloader;
-    private final BlobStorage blobStorage;
 
     public ProjectImportService(TenantProjectService tenantProjectService,
-                                 ArtifactCatalogService artifactCatalogService,
-                                 @Autowired(required = false) ArtifactLifecycleService artifactLifecycleService,
-                                 @Autowired(required = false) AuditPort auditPort,
-                                 @Autowired(required = false) ImportAssetDownloader assetDownloader,
-                                 @Autowired(required = false) BlobStorage blobStorage) {
+                                 @Autowired(required = false) AuditPort auditPort) {
         this.tenantProjectService = tenantProjectService;
-        this.artifactCatalogService = artifactCatalogService;
-        this.artifactLifecycleService = artifactLifecycleService != null
-                ? artifactLifecycleService
-                : new NoopArtifactLifecycle();
         this.auditPort = auditPort;
-        this.assetDownloader = assetDownloader;
-        this.blobStorage = blobStorage;
     }
 
     public ProjectImportResponse executeImport(String tenantId, ProjectImportRequest request) {
@@ -93,6 +58,11 @@ public class ProjectImportService {
             // 3. Determine import policy
             String assetPolicy = request.assetImportPolicy() != null
                     ? request.assetImportPolicy() : ProjectImportRequest.POLICY_METADATA_ONLY;
+            if (ProjectImportRequest.POLICY_DOWNLOAD_AND_REGISTER.equals(assetPolicy)) {
+                throw new UnsupportedOperationException(
+                        "download_and_register is unavailable until BlobStorage placement is materialized "
+                                + "through Storage-owned canonical issuance and the Artifact owner write boundary");
+            }
 
             // 4. Create or resolve target project
             String projectId = resolveTargetProject(tenantId, request, payload);
@@ -106,10 +76,6 @@ public class ProjectImportService {
                 assetMappings = result.mappings;
                 rebound = result.rebound;
                 skipped = result.skipped;
-            } else if (ProjectImportRequest.POLICY_DOWNLOAD_AND_REGISTER.equals(assetPolicy)) {
-                var result = processDownloadAndRegister(importId, tenantId, projectId, request, payload, warnings);
-                assetMappings = result.mappings;
-                imported = result.imported;
             } else {
                 log.info("Import metadata_only for tenant={} project={}", tenantId, projectId);
             }
@@ -130,9 +96,7 @@ public class ProjectImportService {
 
         } catch (Exception e) {
             String reasonCode = classifyFailureReason(e);
-            boolean rollbackAttempted = reasonCode != REASON_UNEXPECTED_ERROR
-                    && reasonCode != REASON_UNSAFE_URL
-                    && reasonCode != REASON_MISSING_DOWNLOAD_URL;
+            boolean rollbackAttempted = false;
             log.warn("Import {} failed: reason={} message={}", importId, reasonCode, e.getMessage());
 
             // Record failure audit (no sensitive data)
@@ -149,204 +113,6 @@ public class ProjectImportService {
         }
     }
 
-    private DownloadRegisterResult processDownloadAndRegister(String importId, String tenantId,
-                                                                String projectId,
-                                                                ProjectImportRequest request,
-                                                                ProjectExportPackageDto payload,
-                                                                List<ImportPreviewIssueDto> warnings) {
-        if (assetDownloader == null) {
-            throw new UnsupportedOperationException(
-                    "download_and_register requires a configured ImportAssetDownloader.");
-        }
-        if (blobStorage == null) {
-            throw new ImportFailureException(REASON_STORAGE_WRITE_FAILED,
-                    "download_and_register requires a configured BlobStorage.");
-        }
-
-        List<ProjectExportAssetDto> assets = payload.assets() != null && payload.assets().assets() != null
-                ? payload.assets().assets() : List.of();
-
-        Map<String, String> mappings = new LinkedHashMap<>();
-        ImportCleanupTracker tracker = new ImportCleanupTracker();
-
-        for (ProjectExportAssetDto asset : assets) {
-            String sourceId = asset.assetId();
-            String downloadUrl = asset.downloadUrl();
-            String storageUri = null;
-
-            try {
-                // Validate download URL exists
-                if (downloadUrl == null || downloadUrl.isBlank()) {
-                    throw new ImportFailureException(REASON_MISSING_DOWNLOAD_URL,
-                            "Asset " + sourceId + " has no downloadUrl for download_and_register policy.");
-                }
-
-                // SSRF validation
-                String urlError = SafeDownloadUrlValidator.validate(downloadUrl);
-                if (urlError != null) {
-                    throw new ImportFailureException(REASON_UNSAFE_URL,
-                            "Unsafe downloadUrl for asset " + sourceId + ": " + urlError);
-                }
-
-                // Validate checksum format if provided
-                if (asset.checksum() != null && !ChecksumFormat.isValid(asset.checksum())) {
-                    throw new ImportFailureException(REASON_CHECKSUM_MISMATCH,
-                            "Invalid checksum format for asset " + sourceId + ": " + asset.checksum());
-                }
-
-                // Require checksum if requested
-                if (Boolean.TRUE.equals(request.requireChecksum()) && asset.checksum() == null) {
-                    throw new ImportFailureException(REASON_CHECKSUM_REQUIRED,
-                            "Checksum is required for asset " + sourceId + " but not provided.");
-                }
-
-                // Download asset
-                DownloadedAsset downloaded;
-                try {
-                    downloaded = assetDownloader.download(downloadUrl);
-                } catch (AssetDownloadException e) {
-                    throw new ImportFailureException(REASON_HTTP_DOWNLOAD_FAILED,
-                            "Download failed for asset " + sourceId + ": " + e.reasonCode());
-                }
-                tracker.trackTempFile(downloaded.tempFile());
-
-                // Validate size if payload provides it
-                if (asset.sizeBytes() != null && asset.sizeBytes() > 0
-                        && downloaded.sizeBytes() != asset.sizeBytes()) {
-                    throw new ImportFailureException(REASON_SIZE_MISMATCH,
-                            "Size mismatch for asset " + sourceId
-                            + ": expected " + asset.sizeBytes() + ", got " + downloaded.sizeBytes());
-                }
-
-                // Validate checksum if payload provides it
-                if (asset.checksum() != null) {
-                    String normalizedPayload = ChecksumFormat.normalizeSha256(asset.checksum());
-                    if (!normalizedPayload.equals(downloaded.checksum())) {
-                        throw new ImportFailureException(REASON_CHECKSUM_MISMATCH,
-                                "Checksum mismatch for asset " + sourceId
-                                + ": expected " + normalizedPayload + ", got " + downloaded.checksum());
-                    }
-                }
-
-                // Determine format from mimeType or filename
-                String format = inferFormat(asset);
-                String resolution = asset.width() != null && asset.height() != null
-                        ? asset.width() + "x" + asset.height() : null;
-                long durationSeconds = asset.duration() != null ? asset.duration().longValue() : 0L;
-
-                // Write to BlobStorage using streaming Path (no full file read into memory)
-                String objectKey = buildStorageObjectKey(tenantId, projectId, importId, sourceId, asset.filename());
-                StorageObjectRef storedRef;
-                try {
-                    var cmd = PutObjectCommand.fromPath("imports", objectKey,
-                            downloaded.tempFile(), asset.mimeType());
-                    storedRef = blobStorage.put(cmd);
-                    storageUri = storedRef.toStorageUri();
-                } catch (Exception e) {
-                    throw new ImportFailureException(REASON_STORAGE_WRITE_FAILED,
-                            "Failed to write asset " + sourceId + " to storage: " + e.getMessage());
-                }
-                tracker.trackStoredBlob(storageUri);
-
-                // Register artifact with real storageUri
-                ArtifactCatalogEntry registered;
-                try {
-                    registered = artifactCatalogService.registerArtifact(
-                            "import:" + importId,
-                            projectId,
-                            storageUri,
-                            format,
-                            resolution,
-                            durationSeconds,
-                            downloaded.sizeBytes(),
-                            downloaded.checksum()
-                    );
-                } catch (Exception e) {
-                    throw new ImportFailureException(REASON_ARTIFACT_REGISTER_FAILED,
-                            "Failed to register artifact for asset " + sourceId + ": " + e.getMessage());
-                }
-
-                tracker.trackRegisteredArtifact(registered.id());
-                mappings.put(sourceId, registered.id());
-                log.info("Downloaded and registered: source={} target={} size={} checksum={}",
-                        sourceId, registered.id(), downloaded.sizeBytes(), downloaded.checksum());
-
-            } catch (ImportFailureException e) {
-                // Rollback all previously registered artifacts and blobs
-                List<String> rollbackErrors = tracker.rollback(this::deleteBlob, this::rollbackArtifact);
-                throw e;
-            } catch (Exception e) {
-                // Unexpected error — also rollback
-                List<String> rollbackErrors = tracker.rollback(this::deleteBlob, this::rollbackArtifact);
-                throw new ImportFailureException(REASON_UNEXPECTED_ERROR,
-                        "Unexpected error for asset " + sourceId + ": " + e.getMessage());
-            }
-        }
-
-        // All assets succeeded — commit (cleanup temp files only)
-        tracker.commit();
-        return new DownloadRegisterResult(mappings, assets.size());
-    }
-
-    /**
-     * Builds a safe, deterministic storage object key for an imported asset.
-     * Format: imports/{tenantId}/{projectId}/{importId}/{sourceAssetId}/{safeFilename}
-     */
-    private String buildStorageObjectKey(String tenantId, String projectId, String importId,
-                                          String sourceAssetId, String filename) {
-        String safeFilename = sanitizeFilename(filename, sourceAssetId);
-        return "imports/" + tenantId + "/" + projectId + "/" + importId + "/" + sourceAssetId + "/" + safeFilename;
-    }
-
-    /**
-     * Sanitizes a filename for safe use in a storage object key.
-     */
-    private String sanitizeFilename(String filename, String fallbackId) {
-        if (filename == null || filename.isBlank()) {
-            return "asset-" + fallbackId;
-        }
-        // Remove path separators and other unsafe characters
-        String safe = filename.replaceAll("[^a-zA-Z0-9._\\-]", "_");
-        // Remove leading dots and dashes
-        safe = safe.replaceAll("^[.\\-]+", "");
-        // Limit length to 128 chars
-        if (safe.length() > 128) {
-            safe = safe.substring(0, 128);
-        }
-        if (safe.isBlank()) {
-            return "asset-" + fallbackId;
-        }
-        return safe;
-    }
-
-    /**
-     * Delete a blob from storage for rollback cleanup.
-     */
-    private void deleteBlob(String storageUri) {
-        try {
-            blobStorage.deleteStorageUri(storageUri);
-            log.info("Deleted blob for rollback: {}", storageUri);
-        } catch (Exception e) {
-            log.warn("Failed to delete blob {}: {}", storageUri, e.getMessage());
-            throw e;
-        }
-    }
-
-    /**
-     * Rollback a registered artifact by tombstoning it.
-     */
-    private void rollbackArtifact(String artifactId) {
-        try {
-            // GCR-2: tombstone routes through Artifact-owned lifecycle (pin-aware
-            // fail-closed); catalog is projection-only.
-            artifactLifecycleService.tombstone(artifactId);
-            log.info("Tombstoned artifact for rollback: {}", artifactId);
-        } catch (Exception e) {
-            log.warn("Failed to tombstone artifact {}: {}", artifactId, e.getMessage());
-            throw e;
-        }
-    }
-
     private String classifyFailureReason(Exception e) {
         if (e instanceof ImportFailureException ife) {
             return ife.reasonCode();
@@ -354,8 +120,6 @@ public class ProjectImportService {
         if (e instanceof IllegalArgumentException) {
             String msg = e.getMessage();
             if (msg != null && msg.contains("checksum")) return REASON_CHECKSUM_MISMATCH;
-            if (msg != null && msg.contains("size")) return REASON_SIZE_MISMATCH;
-            if (msg != null && msg.contains("downloadUrl")) return REASON_MISSING_DOWNLOAD_URL;
         }
         return REASON_UNEXPECTED_ERROR;
     }
@@ -441,27 +205,6 @@ public class ProjectImportService {
         return new RebindResult(mappings, rebound, 0);
     }
 
-    private String inferFormat(ProjectExportAssetDto asset) {
-        if (asset.mimeType() != null) {
-            return switch (asset.mimeType()) {
-                case "video/mp4" -> "mp4";
-                case "video/quicktime" -> "mov";
-                case "video/webm" -> "webm";
-                case "image/png" -> "png";
-                case "image/jpeg" -> "jpg";
-                case "audio/wav" -> "wav";
-                case "audio/mpeg" -> "mp3";
-                case "audio/aac" -> "aac";
-                default -> "unknown";
-            };
-        }
-        if (asset.filename() != null) {
-            int dot = asset.filename().lastIndexOf('.');
-            if (dot > 0) return asset.filename().substring(dot + 1).toLowerCase();
-        }
-        return "unknown";
-    }
-
     private int countAssets(ProjectExportPackageDto payload) {
         if (payload.assets() == null || payload.assets().assets() == null) return 0;
         return payload.assets().assets().size();
@@ -509,7 +252,6 @@ public class ProjectImportService {
     }
 
     private record RebindResult(Map<String, String> mappings, int rebound, int skipped) {}
-    private record DownloadRegisterResult(Map<String, String> mappings, int imported) {}
 
     /**
      * Internal exception carrying a standardized reason code for failure classification.
@@ -524,18 +266,6 @@ public class ProjectImportService {
 
         String reasonCode() {
             return reasonCode;
-        }
-    }
-
-    /** Fallback used when the artifact lifecycle bean is not present (tests/embedded). */
-    private static final class NoopArtifactLifecycle extends com.example.platform.artifact.app.ArtifactLifecycleService {
-        NoopArtifactLifecycle() {
-            super(null, null, null, null, null, null, null, java.util.List.of());
-        }
-
-        @Override
-        public ArtifactCatalogEntry tombstone(String artifactId) {
-            return null;
         }
     }
 }

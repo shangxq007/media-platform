@@ -24,7 +24,6 @@ import com.example.platform.render.api.port.RenderOrchestratorPort;
 import com.example.platform.render.app.RenderJobService;
 import com.example.platform.render.app.cache.RenderCachePresignService;
 import com.example.platform.render.app.cache.RenderIncrementalApiService;
-import com.example.platform.render.app.dto.ArtifactInfoResponse;
 import com.example.platform.render.app.dto.StatusHistoryResponse;
 import com.example.platform.render.app.dto.CreateRenderJobRequest;
 import com.example.platform.render.app.dto.RenderJobResponse;
@@ -55,7 +54,6 @@ public class RenderController {
     private final AiTimelineProposalService aiTimelineProposalService;
     private final com.example.platform.render.app.product.ProductRuntimeService productRuntimeService;
     private final com.example.platform.render.infrastructure.storage.StorageReferenceRepository storageReferenceRepository;
-    private final com.example.platform.render.app.access.ArtifactAccessService artifactAccessService;
 
     @org.springframework.beans.factory.annotation.Autowired
     public RenderController(RenderJobService renderJobService,
@@ -68,8 +66,7 @@ public class RenderController {
             @org.springframework.beans.factory.annotation.Autowired(required = false) TimelineConversionService timelineConversionService,
             @org.springframework.beans.factory.annotation.Autowired(required = false) AiTimelineProposalService aiTimelineProposalService,
             @org.springframework.beans.factory.annotation.Autowired(required = false) com.example.platform.render.app.product.ProductRuntimeService productRuntimeService,
-            @org.springframework.beans.factory.annotation.Autowired(required = false) com.example.platform.render.infrastructure.storage.StorageReferenceRepository storageReferenceRepository,
-            @org.springframework.beans.factory.annotation.Autowired(required = false) com.example.platform.render.app.access.ArtifactAccessService artifactAccessService) {
+            @org.springframework.beans.factory.annotation.Autowired(required = false) com.example.platform.render.infrastructure.storage.StorageReferenceRepository storageReferenceRepository) {
         this.renderJobService = renderJobService;
         this.orchestratorPort = orchestratorPort;
         this.storageProviders = storageProviders;
@@ -81,7 +78,6 @@ public class RenderController {
         this.aiTimelineProposalService = aiTimelineProposalService;
         this.productRuntimeService = productRuntimeService;
         this.storageReferenceRepository = storageReferenceRepository;
-        this.artifactAccessService = artifactAccessService;
     }
 
 
@@ -351,14 +347,6 @@ public class RenderController {
     // User-context endpoints (tenant resolved from JWT or query param)
     // -------------------------------------------------------------------------
 
-    @GetMapping("/render/jobs/{jobId}/artifacts")
-    public List<ArtifactInfoResponse> getArtifacts(@PathVariable String jobId) {
-        if (orchestratorPort != null) {
-            return orchestratorPort.getArtifactsByJob(jobId);
-        }
-        return List.of();
-    }
-
     @PostMapping("/render/jobs/{jobId}/cancel")
     public RenderJobResponse cancelJob(@PathVariable String jobId, @RequestParam String tenantId) {
         String contextTenant = com.example.platform.shared.web.TenantContext.get();
@@ -392,15 +380,6 @@ public class RenderController {
     private void requireCacheCleanup() {
         if (cacheCleanupService == null) {
             throw new IllegalStateException("Render cache cleanup is not available");
-        }
-    }
-
-    private void requireArtifactAccess() {
-        if (artifactAccessService == null) {
-            throw new IllegalStateException("Artifact access service not available");
-        }
-        if (orchestratorPort == null) {
-            throw new IllegalStateException("Render orchestrator not available");
         }
     }
 
@@ -495,123 +474,10 @@ public class RenderController {
                 // Continue without Product - URI fallback will work
             }
 
-            return Map.of("mediaId", mediaId, "storageUri", storageUri, "size", String.valueOf(file.getSize()));
+            return Map.of("mediaId", mediaId, "size", String.valueOf(file.getSize()));
         } catch (java.io.IOException e) {
             throw new IllegalStateException("Failed to store media", e);
         }
     }
 
-    @GetMapping("/render/jobs/{jobId}/artifacts/{artifactId}/content")
-    @Operation(summary = "Get artifact content")
-    public ResponseEntity<byte[]> getArtifactContent(
-            @PathVariable String jobId,
-            @PathVariable String artifactId) {
-        if (orchestratorPort == null) {
-            throw new IllegalStateException("Render orchestrator not available");
-        }
-        List<ArtifactInfoResponse> artifacts = orchestratorPort.getArtifactsByJob(jobId);
-        boolean belongsToJob = artifacts.stream().anyMatch(a -> a.artifactId().equals(artifactId));
-        if (!belongsToJob) {
-            return ResponseEntity.notFound().build();
-        }
-        byte[] content = orchestratorPort.getArtifactContent(artifactId);
-        if (content == null || content.length == 0) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok()
-                .header("Content-Type", "video/mp4")
-                .header("Content-Disposition", "inline; filename=output.mp4")
-                .header("Content-Length", String.valueOf(content.length))
-                .body(content);
-    }
-
-    @GetMapping("/tenants/{tenantId}/projects/{projectId}/render-jobs/{jobId}/artifacts/{artifactId}/access")
-    @Operation(summary = "Get artifact access descriptor with signed download URL (tenant-scoped)",
-            description = "Returns an ephemeral access descriptor (signed URL) for downloading the artifact. "
-                    + "Verifies job belongs to the specified tenant and project before generating access. "
-                    + "The signed URL expires after a configured TTL. Does not expose storage internals.")
-    public ResponseEntity<?> getArtifactAccessScoped(
-            @PathVariable String tenantId,
-            @PathVariable String projectId,
-            @PathVariable String jobId,
-            @PathVariable String artifactId) {
-        requireArtifactAccess();
-
-        // Authorization: verify job belongs to tenant/project (throws IllegalArgumentException -> 404)
-        renderJobService.getByIdAndProject(tenantId, projectId, jobId);
-
-        // Verify artifact belongs to job, then build access response (never calls presigner before auth passes)
-        return resolveArtifactAndBuildAccess(jobId, artifactId);
-    }
-
-    @GetMapping("/render/jobs/{jobId}/artifacts/{artifactId}/access")
-    @Operation(summary = "Get artifact access descriptor with signed download URL",
-            description = "Returns an ephemeral access descriptor (signed URL) for downloading the artifact. "
-                    + "The signed URL expires after a configured TTL. Does not expose storage internals.")
-    public ResponseEntity<?> getArtifactAccess(
-            @PathVariable String jobId,
-            @PathVariable String artifactId) {
-        requireArtifactAccess();
-
-        // Authorization: verify job exists and tenant access is valid (throws IllegalArgumentException -> 404)
-        renderJobService.getById(jobId);
-
-        // Verify artifact belongs to job, then build access response (never calls presigner before auth passes)
-        return resolveArtifactAndBuildAccess(jobId, artifactId);
-    }
-
-    /**
-     * Resolves artifact from orchestrator, verifies it belongs to the job, and builds the access response.
-     * Called only after authorization has passed — the presigner is never invoked before auth.
-     */
-    private ResponseEntity<?> resolveArtifactAndBuildAccess(String jobId, String artifactId) {
-        List<ArtifactInfoResponse> artifacts = orchestratorPort.getArtifactsByJob(jobId);
-        var artifact = artifacts.stream()
-                .filter(a -> a.artifactId().equals(artifactId))
-                .findFirst();
-        if (artifact.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-
-        // Parse storageUri: "bucket/objectKey" format
-        String storageUri = artifact.get().storageUri();
-        if (storageUri == null || storageUri.isBlank()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("status", "NOT_FOUND", "message", "No storage location for artifact"));
-        }
-        String[] parts = storageUri.split("/", 2);
-        if (parts.length < 2) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("status", "ACCESS_FAILED", "message", "Invalid storage reference"));
-        }
-        String bucket = parts[0];
-        String objectKey = parts[1];
-
-        // Derive filename from objectKey (last path segment)
-        String filename = objectKey.contains("/")
-                ? objectKey.substring(objectKey.lastIndexOf('/') + 1)
-                : objectKey;
-
-        // Delegate to ArtifactAccessService (assumes S3/R2 for artifact storage)
-        var descriptor = artifactAccessService.createAccessDescriptor(
-                "S3", bucket, objectKey, null, filename, null);
-
-        // Map descriptor status to HTTP response
-        if (descriptor.accessType() == com.example.platform.render.app.access.ArtifactAccessService.AccessDescriptor.AccessType.SIGNED_URL) {
-            return ResponseEntity.ok(descriptor);
-        }
-        if (descriptor.accessType() == com.example.platform.render.app.access.ArtifactAccessService.AccessDescriptor.AccessType.NOT_FOUND) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(descriptor);
-        }
-        if (descriptor.accessType() == com.example.platform.render.app.access.ArtifactAccessService.AccessDescriptor.AccessType.UNSUPPORTED) {
-            return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).body(descriptor);
-        }
-        if (descriptor.accessType() == com.example.platform.render.app.access.ArtifactAccessService.AccessDescriptor.AccessType.ACCESS_FAILED) {
-            return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(descriptor);
-        }
-        if (descriptor.accessType() == com.example.platform.render.app.access.ArtifactAccessService.AccessDescriptor.AccessType.NOT_READY) {
-            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(descriptor);
-        }
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(descriptor);
-    }
 }

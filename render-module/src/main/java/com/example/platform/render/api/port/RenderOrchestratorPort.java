@@ -1,12 +1,9 @@
 package com.example.platform.render.api.port;
 
 import com.example.platform.render.api.dto.SubmitRenderJobRequest;
-import com.example.platform.render.app.dto.ArtifactInfoResponse;
-
-import java.util.List;
 
 /**
- * Port for submitting render jobs and querying artifacts from the render orchestrator.
+ * Port for submitting and continuing render jobs.
  *
  * <p>This interface is part of the render module's public API surface. Other
  * modules (such as workflow-module) should depend on this port rather than
@@ -47,16 +44,6 @@ public interface RenderOrchestratorPort {
      * Used by {@link com.example.platform.render.app.RenderNatronQueueProcessor} after deferred enqueue.
      */
     String finishRenderPhase(String tenantId, String jobId);
-
-    /**
-     * Get artifacts associated with a render job.
-     *
-     * @param jobId the render job identifier
-     * @return list of artifacts for the job
-     * @throws IllegalArgumentException if the job is not found or tenant access is denied
-     */
-    List<ArtifactInfoResponse> getArtifactsByJob(String jobId);
-    byte[] getArtifactContent(String artifactId);
 
     /**
      * Loads Internal Timeline 1.0 JSON (or best available script) for edit-and-rerender flows.

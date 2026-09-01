@@ -23,8 +23,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *   - No other production class may perform its own global TIMELINE_SNAPSHOT
  *     enumeration via direct jOOQ (pattern: selectDistinct + TIMELINE_SNAPSHOT
  *     .PROJECT_ID outside the snapshot service).
- *   - The three approved system-maintenance consumers (GlobalAssetIntegrity
- *     Service, KnownStorageUriIndexService, TimelineAssetGcService) must
+ *   - The approved system-maintenance consumers (GlobalAssetIntegrityService
+ *     and TimelineAssetGcService) must
  *     reference SystemMaintenanceReader.
  *
  * Guard scope is symbol-set bounded (frozen I2 contract): it detects the
@@ -37,7 +37,6 @@ class Cfrhi2SystemAuthorityGuardTest {
 
     private static final List<String> APPROVED_CONSUMERS = List.of(
             "GlobalAssetIntegrityService.java",
-            "KnownStorageUriIndexService.java",
             "TimelineAssetGcService.java");
 
     private static Path repoRoot() {
@@ -117,7 +116,7 @@ class Cfrhi2SystemAuthorityGuardTest {
     @Test
     void noUnexpectedSystemMaintenanceReaderConsumers() throws IOException {
         // F. mechanically detect ANY production consumer of SystemMaintenanceReader;
-        // the approved set must be exactly the three frozen consumers.
+        // the approved set must be exactly the frozen consumers.
         List<String> consumers = new ArrayList<>();
         for (Path f : productionJavaFiles()) {
             String name = f.getFileName().toString();
@@ -135,7 +134,7 @@ class Cfrhi2SystemAuthorityGuardTest {
         }
         assertEquals(APPROVED_CONSUMERS.stream().sorted().toList(),
                 consumers.stream().sorted().toList(),
-                "UNAUTHORIZED_SYSTEM_READER_CONSUMER_COUNT must be 0 (approved set = exactly 3)");
+                "UNAUTHORIZED_SYSTEM_READER_CONSUMER_COUNT must be 0 (approved set = exactly 2)");
     }
 
     @Test

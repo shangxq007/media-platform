@@ -2,12 +2,11 @@ import { useQuery } from '@tanstack/react-query'
 import api from './index'
 import { safeApiCall, type SafeApiResult } from './safeApiCall'
 import {
-  ArtifactAccessDescriptor,
   RenderJobSummary,
   RenderWorkspaceScope,
 } from '../contracts/app/render-job'
 
-export type { RenderJobSummary, ArtifactAccessDescriptor, RenderWorkspaceScope }
+export type { RenderJobSummary, RenderWorkspaceScope }
 
 // --- API ---
 
@@ -46,21 +45,6 @@ export const RenderJobsAPI = {
     return requireValidated(result)
   },
 
-  async getArtifactAccess(
-    tenantId: string,
-    projectId: string,
-    jobId: string,
-    artifactId: string
-  ): Promise<ArtifactAccessDescriptor | null> {
-    const result = await safeApiCall(
-      ArtifactAccessDescriptor,
-      () => api.get(
-        `/tenants/${tenantId}/projects/${projectId}/render-jobs/${jobId}/artifacts/${artifactId}/access`
-      ).then(r => r.data),
-      `RenderJobs.getArtifactAccess(${jobId}, ${artifactId})`
-    )
-    return requireValidated(result)
-  },
 }
 
 // --- Hooks ---

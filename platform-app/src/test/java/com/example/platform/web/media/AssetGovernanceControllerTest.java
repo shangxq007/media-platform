@@ -20,8 +20,6 @@ class AssetGovernanceControllerTest {
     private GlobalAssetIntegrityService integrityService;
     private TimelineAssetGcService timelineGcService;
     private ArtifactGcService artifactGcService;
-    private StorageBucketOrphanScanner bucketOrphanScanner;
-    private StorageOrphanPurgeService orphanPurgeService;
     private RenderCacheCleanupService cacheCleanupService;
     private AdminAuditHelper auditHelper;
     private AssetGovernanceController controller;
@@ -31,13 +29,11 @@ class AssetGovernanceControllerTest {
         integrityService = mock(GlobalAssetIntegrityService.class);
         timelineGcService = mock(TimelineAssetGcService.class);
         artifactGcService = mock(ArtifactGcService.class);
-        bucketOrphanScanner = mock(StorageBucketOrphanScanner.class);
-        orphanPurgeService = mock(StorageOrphanPurgeService.class);
         cacheCleanupService = mock(RenderCacheCleanupService.class);
         auditHelper = new AdminAuditHelper(mock(AdminAuditPublisher.class));
         controller = new AssetGovernanceController(
                 integrityService, timelineGcService, artifactGcService,
-                bucketOrphanScanner, orphanPurgeService, cacheCleanupService, auditHelper);
+                cacheCleanupService, auditHelper);
         TenantContext.clear();
     }
 

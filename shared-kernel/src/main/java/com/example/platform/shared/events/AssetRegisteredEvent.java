@@ -8,5 +8,4 @@ public record AssetRegisteredEvent(
         String assetVersion,
         String assetType,
         String projectId,
-        String tenantId,
-        String storageUri) {}
+        String tenantId) {}

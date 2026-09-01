@@ -423,7 +423,7 @@ public class RenderJobExecutionService {
         consumeRenderQuota(tenantId, jobId);
 
         notificationEventPublisher.publish(
-                new ArtifactCreatedEvent(artifactId, jobId, projectId, storageUri, Instant.now()));
+                new ArtifactCreatedEvent(artifactId, jobId, projectId, Instant.now()));
         eventPublisher.publishEvent(new RenderJobCompletedEvent(jobId, projectId, artifactId, storageUri, Instant.now()));
 
         log.info("Render job {} completed successfully with artifact graph {}", jobId, artifactGraph.graphId());

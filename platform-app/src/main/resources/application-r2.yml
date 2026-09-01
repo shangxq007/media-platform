@@ -15,8 +15,3 @@ render:
     cleanup-enabled: true
     retention-days: ${RENDER_CACHE_RETENTION_DAYS:30}
     cleanup-interval: ${RENDER_CACHE_CLEANUP_INTERVAL:PT24H}
-
-platform:
-  storage:
-    orphan-scan:
-      buckets: artifacts,render-cache

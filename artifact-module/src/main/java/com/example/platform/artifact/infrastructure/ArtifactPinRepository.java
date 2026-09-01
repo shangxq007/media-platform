@@ -92,6 +92,14 @@ public class ArtifactPinRepository {
         return dsl.fetchExists(ARTIFACT_PIN.where(ARTIFACT_PIN.ARTIFACT_ID.eq(artifactId)));
     }
 
+    public boolean isPinned(String tenantId, String artifactId) {
+        if (tenantId == null || tenantId.isBlank() || "*".equals(tenantId)) {
+            throw new IllegalArgumentException("explicit tenantId is required");
+        }
+        return dsl.fetchExists(ARTIFACT_PIN.where(ARTIFACT_PIN.ARTIFACT_ID.eq(artifactId)
+                .and(ARTIFACT_PIN.TENANT_ID.eq(tenantId))));
+    }
+
     public Optional<String> findPinnedDigest(String artifactId) {
         return dsl.select(ARTIFACT_PIN.CONTENT_DIGEST)
                 .from(ARTIFACT_PIN)

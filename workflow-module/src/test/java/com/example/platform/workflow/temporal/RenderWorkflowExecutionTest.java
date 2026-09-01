@@ -67,17 +67,6 @@ class RenderWorkflowExecutionTest {
             }
 
             @Override
-            public List<com.example.platform.render.app.dto.ArtifactInfoResponse> getArtifactsByJob(
-                    String jobId) {
-                return List.of();
-            }
-
-            @Override
-            public byte[] getArtifactContent(String artifactId) {
-                return new byte[0];
-            }
-
-            @Override
             public String loadJobTimelineJson(String tenantId, String jobId) {
                 return "{}";
             }
@@ -151,17 +140,6 @@ class RenderWorkflowExecutionTest {
         @Override
         public String finishRenderPhase(String tenantId, String jobId) {
             return jobId;
-        }
-
-        @Override
-        public List<com.example.platform.render.app.dto.ArtifactInfoResponse> getArtifactsByJob(
-                String jobId) {
-            return List.of();
-        }
-
-        @Override
-        public byte[] getArtifactContent(String artifactId) {
-            return new byte[0];
         }
 
         @Override

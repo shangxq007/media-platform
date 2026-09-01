@@ -1,6 +1,5 @@
 package com.example.platform.web.media;
 
-import com.example.platform.artifact.app.ArtifactStorageIntegrityScanner;
 import com.example.platform.artifact.app.AssetIntegrityMetrics;
 import com.example.platform.audit.app.ProblematicDataDetectionService;
 import com.example.platform.audit.domain.ProblematicDataRecord;
@@ -17,24 +16,18 @@ public class GlobalAssetIntegrityService {
 
     private final com.example.platform.timeline.app.SystemMaintenanceReader systemMaintenanceReader;
     private final TimelineAssetIntegrityScanner timelineScanner;
-    private final ArtifactStorageIntegrityScanner storageScanner;
     private final AssetIntegrityMetrics metrics;
     private final ProblematicDataDetectionService problematicDataDetectionService;
-    private final StorageBucketOrphanScanner bucketOrphanScanner;
 
     public GlobalAssetIntegrityService(
             com.example.platform.timeline.app.SystemMaintenanceReader systemMaintenanceReader,
             TimelineAssetIntegrityScanner timelineScanner,
-            ArtifactStorageIntegrityScanner storageScanner,
             AssetIntegrityMetrics metrics,
-            ProblematicDataDetectionService problematicDataDetectionService,
-            StorageBucketOrphanScanner bucketOrphanScanner) {
+            ProblematicDataDetectionService problematicDataDetectionService) {
         this.systemMaintenanceReader = systemMaintenanceReader;
         this.timelineScanner = timelineScanner;
-        this.storageScanner = storageScanner;
         this.metrics = metrics;
         this.problematicDataDetectionService = problematicDataDetectionService;
-        this.bucketOrphanScanner = bucketOrphanScanner;
     }
 
     public GlobalScanReport scanAll(boolean recordProblematicData) {
@@ -63,27 +56,7 @@ public class GlobalAssetIntegrityService {
             }
         }
 
-        for (ArtifactStorageIntegrityScanner.StorageFinding f : storageScanner.scanCatalog()) {
-            findings.add(findingMap(f.ruleId(), f.artifactId(), f.message(), Map.of(
-                    "projectId", f.projectId(),
-                    "artifactId", f.artifactId(),
-                    "storageUri", f.storageUri())));
-            if ("AST-002".equals(f.ruleId())) {
-                orphanBlobs++;
-            } else if ("AST-004".equals(f.ruleId())) {
-                missingBlobs++;
-            }
-        }
-
-        StorageBucketOrphanScanner.OrphanScanResult bucketScan = bucketOrphanScanner.scanBuckets();
-        int bucketOrphans = bucketScan.orphanCount();
-        for (StorageBucketOrphanScanner.OrphanFinding orphan : bucketScan.orphans()) {
-            findings.add(findingMap(orphan.ruleId(), orphan.storageUri(), orphan.message(), Map.of(
-                    "bucket", orphan.bucket(),
-                    "objectKey", orphan.objectKey(),
-                    "storageUri", orphan.storageUri(),
-                    "sizeBytes", orphan.sizeBytes())));
-        }
+        int bucketOrphans = 0;
 
         AssetIntegrityMetrics.GlobalScanSummary summary = new AssetIntegrityMetrics.GlobalScanSummary(
                 projectsScanned, orphanBlobs, missingBlobs, dangling, unresolved, bucketOrphans);

@@ -6,7 +6,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 
 import com.example.platform.artifact.domain.ArtifactCatalogEntry;
+import com.example.platform.artifact.domain.ArtifactCommitRequest;
+import com.example.platform.artifact.domain.ArtifactKind;
+import com.example.platform.artifact.domain.ArtifactMediaType;
 import com.example.platform.artifact.domain.ArtifactStatus;
+import com.example.platform.artifact.domain.ReplicaRole;
+import com.example.platform.shared.digest.ContentDigest;
+import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import com.example.platform.shared.web.ErrorCodeRegistry;
 import com.example.platform.shared.web.PlatformException;
@@ -23,8 +29,14 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.List;
+import java.time.Instant;
+import com.example.platform.storage.contract.StorageObjectId;
+import com.example.platform.storage.contract.StorageProviderId;
+import com.example.platform.storage.contract.StorageReplicaId;
 
 class ArtifactLifecycleServiceTest extends PostgresTestContainerSupport {
+
+    private static final String TENANT = "tenant-1";
 
     private static javax.sql.DataSource dataSource;
     private static DSLContext dsl;
@@ -32,6 +44,7 @@ class ArtifactLifecycleServiceTest extends PostgresTestContainerSupport {
     private static ArtifactRelationRepository relationRepository;
     private static ArtifactCatalogService catalogService;
     private static ArtifactLifecycleService lifecycleService;
+    private static com.example.platform.artifact.infrastructure.JooqArtifactCommitService commitService;
 
     @BeforeAll
     static void setUpDatabase() {
@@ -58,13 +71,13 @@ class ArtifactLifecycleServiceTest extends PostgresTestContainerSupport {
                 new com.example.platform.artifact.infrastructure.ArtifactRepository(dsl);
         com.example.platform.artifact.infrastructure.ArtifactPinRepository pinRepo =
                 new com.example.platform.artifact.infrastructure.ArtifactPinRepository(dsl);
-        com.example.platform.artifact.infrastructure.JooqArtifactCommitService commitService =
+        commitService =
                 new com.example.platform.artifact.infrastructure.JooqArtifactCommitService(
                         canonicalRepo, relationRepository, dsl);
-        catalogService = new ArtifactCatalogService(repository, relationRepository, commitService, registry);
+        catalogService = new ArtifactCatalogService(repository, relationRepository);
         ApplicationEventPublisher events = mock(ApplicationEventPublisher.class);
         lifecycleService = new ArtifactLifecycleService(
-                repository, catalogService, canonicalRepo, pinRepo, dsl, registry, events, List.of());
+                catalogService, canonicalRepo, pinRepo, registry);
     }
 
     @AfterAll
@@ -81,27 +94,39 @@ class ArtifactLifecycleServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void deleteCheckAllowsWhenNoReferences() {
-        ArtifactCatalogEntry artifact = catalogService.registerArtifact("rj_1", "prj_1", "s3://b/out.mp4", "mp4", "1080p", 10L, 100L, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-        var check = lifecycleService.deleteCheck(artifact.id());
+        ArtifactCatalogEntry artifact = register("art-1", "rj_1", "prj_1");
+        var check = lifecycleService.deleteCheck(TENANT, artifact.id());
         assertTrue(check.deletable());
     }
 
     @Test
     void tombstoneUpdatesStatus() {
-        ArtifactCatalogEntry artifact = catalogService.registerArtifact("rj_1", "prj_1", "s3://b/out.mp4", "mp4", "1080p", 10L, 100L, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-        ArtifactCatalogEntry tombstoned = lifecycleService.tombstone(artifact.id());
+        ArtifactCatalogEntry artifact = register("art-1", "rj_1", "prj_1");
+        ArtifactCatalogEntry tombstoned = lifecycleService.tombstone(TENANT, artifact.id());
         assertEquals(ArtifactStatus.TOMBSTONED, tombstoned.status());
         assertTrue(tombstoned.tombstonedAt() != null);
     }
 
     @Test
     void tombstoneBlockedWhenRelationExists() {
-        ArtifactCatalogEntry source = catalogService.registerArtifact("rj_1", "prj_1", "s3://b/a.mp4", "mp4", "1080p", 10L, 100L, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-        ArtifactCatalogEntry target = catalogService.registerArtifact("rj_2", "prj_1", "s3://b/b.srt", "srt", "sub", 0L, 100L, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-        catalogService.relateArtifacts(source.id(), target.id(), "HAS_SUBTITLE");
-        var check = lifecycleService.deleteCheck(source.id());
+        ArtifactCatalogEntry source = register("art-source", "rj_1", "prj_1");
+        ArtifactCatalogEntry target = register("art-target", "rj_2", "prj_1");
+        relationRepository.save(new com.example.platform.artifact.domain.ArtifactRelation(
+                "rel-test", source.id(), target.id(), "HAS_SUBTITLE"));
+        var check = lifecycleService.deleteCheck(TENANT, source.id());
         assertFalse(check.deletable());
         org.junit.jupiter.api.Assertions.assertThrows(PlatformException.class,
-                () -> lifecycleService.tombstone(source.id()));
+                () -> lifecycleService.tombstone(TENANT, source.id()));
+    }
+
+    private static ArtifactCatalogEntry register(String id, String jobId, String projectId) {
+        Instant now = Instant.now();
+        commitService.commit(new ArtifactCommitRequest(
+                new ArtifactId(id), TENANT, ContentDigest.sha256("a".repeat(64)), 100L,
+                ArtifactMediaType.VIDEO, ArtifactKind.RENDER_MASTER, 1,
+                new StorageObjectId("bucket/" + id), new StorageReplicaId("primary"),
+                new StorageProviderId("s3"), ReplicaRole.PRIMARY, "default", "commit:" + id,
+                List.of(), now, now, jobId, projectId));
+        return catalogService.findArtifact(TENANT, id).orElseThrow();
     }
 }

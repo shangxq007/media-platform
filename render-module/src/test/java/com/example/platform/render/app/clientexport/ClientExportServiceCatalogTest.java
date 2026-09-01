@@ -44,7 +44,7 @@ class ClientExportServiceCatalogTest {
                     List.of(), "test-v1", request.traceId(), request.decidedAt());
         };
         var service = new ClientExportService(
-                tempDir.toString(), mock(ClientExportSessionRepository.class), catalog, admission, null);
+                tempDir.toString(), mock(ClientExportSessionRepository.class), catalog, admission);
 
         var config = service.createSessionWithConfig(
                 "tenant-1", "workspace-1", "project-1", "user-1",

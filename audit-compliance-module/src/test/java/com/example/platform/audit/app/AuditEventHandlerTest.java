@@ -116,7 +116,7 @@ class AuditEventHandlerTest {
     @Test
     void onArtifactCreated_usesCorrectActorId() {
         ArtifactCreatedEvent event = new ArtifactCreatedEvent(
-                "artifact-1", "job-1", "proj-1", "s3://bucket/key", Instant.now());
+                "artifact-1", "job-1", "proj-1", Instant.now());
 
         handler.onArtifactCreated(event);
 

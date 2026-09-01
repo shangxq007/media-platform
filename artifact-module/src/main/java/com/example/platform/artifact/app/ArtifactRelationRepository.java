@@ -34,14 +34,6 @@ public class ArtifactRelationRepository {
         return relation;
     }
 
-    public List<ArtifactRelation> findByArtifactId(String artifactId) {
-        return dsl.select()
-                .from(ARTIFACT_RELATION)
-                .where(ARTIFACT_RELATION.SOURCE_ARTIFACT_ID.eq(artifactId)
-                        .or(ARTIFACT_RELATION.TARGET_ARTIFACT_ID.eq(artifactId)))
-                .fetch(this::mapRecord);
-    }
-
     /**
      * GCR2-CORRECTION-V1 (ARTIFACT_QUERY_TENANT_ARGUMENT_IS_SEMANTIC_NOT_DECORATIVE_V1):
      * tenant-scoped relation lookup. The root Artifact must belong to the requested
@@ -50,6 +42,7 @@ public class ArtifactRelationRepository {
      * canonical Artifact ownership — no tenant column added to artifact_relation.
      */
     public List<ArtifactRelation> findByArtifactIdScopedToTenant(String tenantId, String artifactId) {
+        requireTenantId(tenantId);
         var sourceArtifact = ARTIFACT.as("sa");
         var targetArtifact = ARTIFACT.as("ta");
         return dsl.select(ARTIFACT_RELATION.ID, ARTIFACT_RELATION.SOURCE_ARTIFACT_ID,
@@ -66,6 +59,7 @@ public class ArtifactRelationRepository {
 
     /** Whether a relation exists for the artifact with BOTH peers in the tenant. */
     public boolean hasRelationInTenant(String tenantId, String artifactId) {
+        requireTenantId(tenantId);
         var sourceArtifact = ARTIFACT.as("sa");
         var targetArtifact = ARTIFACT.as("ta");
         return dsl.fetchExists(dsl.selectOne()
@@ -78,9 +72,9 @@ public class ArtifactRelationRepository {
                         .and(targetArtifact.TENANT_ID.eq(tenantId))));
     }
 
-    public List<Map<String, Object>> findReferenceMaps(String artifactId) {
+    public List<Map<String, Object>> findReferenceMapsScopedToTenant(String tenantId, String artifactId) {
         List<Map<String, Object>> refs = new ArrayList<>();
-        for (ArtifactRelation relation : findByArtifactId(artifactId)) {
+        for (ArtifactRelation relation : findByArtifactIdScopedToTenant(tenantId, artifactId)) {
             if (artifactId.equals(relation.sourceId())) {
                 refs.add(Map.of(
                         "kind", "artifact_relation",
@@ -99,6 +93,12 @@ public class ArtifactRelationRepository {
             }
         }
         return refs;
+    }
+
+    private static void requireTenantId(String tenantId) {
+        if (tenantId == null || tenantId.isBlank() || "*".equals(tenantId)) {
+            throw new IllegalArgumentException("explicit tenantId is required");
+        }
     }
 
     private ArtifactRelation mapRecord(Record record) {

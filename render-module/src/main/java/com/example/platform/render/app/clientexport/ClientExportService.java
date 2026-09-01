@@ -1,6 +1,5 @@
 package com.example.platform.render.app.clientexport;
 
-import com.example.platform.render.api.port.ClientExportArtifactPort;
 import com.example.platform.render.app.clientexport.ClientExportPresetCatalog.Preset;
 import com.example.platform.render.domain.clientexport.ClientExportSession;
 import com.example.platform.render.infrastructure.clientexport.ClientExportSessionRepository;
@@ -25,7 +24,6 @@ import java.util.Map;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -39,19 +37,16 @@ public class ClientExportService {
     private final ClientExportSessionRepository repository;
     private final ClientExportPresetCatalog presetCatalog;
     private final CommercialAdmissionPort commercialAdmission;
-    private final Optional<ClientExportArtifactPort> artifactPort;
 
     public ClientExportService(
             @Value("${app.storage.local-root:/tmp/platform}") String storageRoot,
             ClientExportSessionRepository repository,
             ClientExportPresetCatalog presetCatalog,
-            CommercialAdmissionPort commercialAdmission,
-            @Autowired(required = false) ClientExportArtifactPort artifactPort) {
+            CommercialAdmissionPort commercialAdmission) {
         this.storageRoot = Path.of(storageRoot);
         this.repository = repository;
         this.presetCatalog = presetCatalog;
         this.commercialAdmission = commercialAdmission;
-        this.artifactPort = Optional.ofNullable(artifactPort);
     }
 
     public record ExportConfig(
@@ -202,8 +197,7 @@ public class ClientExportService {
     }
 
     public ClientExportSession uploadAndComplete(
-            String sessionId, MultipartFile file,
-            Long durationSeconds, String checksum, boolean registerArtifact) throws IOException {
+            String sessionId, MultipartFile file, String checksum) throws IOException {
 
         ClientExportSession session = findSessionOrThrow(sessionId);
 
@@ -235,19 +229,6 @@ public class ClientExportService {
         String storageUri = buildTenantPath(session).resolve(sessionId).resolve("output." + session.format()).toString();
         String artifactId = null;
         String downloadPath = "/api/render/client-exports/" + sessionId + "/download";
-
-        if (registerArtifact && artifactPort.isPresent()) {
-            var registered = artifactPort.get().register(
-                    sessionId, session.projectId(), storageUri,
-                    session.format(), session.resolution(),
-                    durationSeconds != null ? durationSeconds : 0L,
-                    computedSizeBytes,
-                    finalChecksum);
-            artifactId = registered.artifactId();
-            if (registered.downloadPath() != null) {
-                downloadPath = registered.downloadPath();
-            }
-        }
 
         repository.updateStatus(sessionId, ClientExportSession.STATUS_COMPLETED, 100,
                 storageUri, artifactId, downloadPath, null, null);
@@ -304,4 +285,5 @@ public class ClientExportService {
     private static int estimateAudioBitrate(Preset preset) {
         return preset.audioCodec().equals("opus") ? 128_000 : 192_000;
     }
+
 }

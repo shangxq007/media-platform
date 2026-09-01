@@ -107,8 +107,7 @@ public class OutboxBackedNotificationEventPublisher implements NotificationEvent
                     Map.of(
                             "artifactId", e.artifactId(),
                             "renderJobId", e.renderJobId(),
-                            "projectId", e.projectId(),
-                            "storageUri", e.storageUri()
+                            "projectId", e.projectId()
                     ),
                     idemKey
             );

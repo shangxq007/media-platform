@@ -3,10 +3,7 @@ package com.example.platform.artifact.app;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 
 import com.example.platform.artifact.domain.ArtifactKind;
 import com.example.platform.artifact.domain.ArtifactMediaType;
@@ -19,7 +16,6 @@ import com.example.platform.shared.digest.ContentDigest;
 import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import com.example.platform.shared.web.ErrorCodeRegistry;
-import com.example.platform.storage.domain.BlobStorage;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -47,7 +43,6 @@ class ArtifactGcServiceTest extends PostgresTestContainerSupport {
     private ArtifactRepository artifactRepository;
     private ArtifactPinRepository pinRepository;
     private ArtifactGcService gcService;
-    private BlobStorage blobStorage;
 
     @BeforeAll
     static void createDataSourceFixture() {
@@ -87,16 +82,15 @@ class ArtifactGcServiceTest extends PostgresTestContainerSupport {
                 new com.example.platform.artifact.infrastructure.JooqArtifactCommitService(
                         artifactRepository, relationRepo, dsl);
         ArtifactCatalogService catalog =
-                new ArtifactCatalogService(catalogRepo, relationRepo, commitService, registry);
+                new ArtifactCatalogService(catalogRepo, relationRepo);
         ApplicationEventPublisher events = mock(ApplicationEventPublisher.class);
         ArtifactLifecycleService lifecycle = new ArtifactLifecycleService(
-                catalogRepo, catalog, artifactRepository, pinRepository, dsl, registry, events, java.util.List.of());
-        blobStorage = mock(BlobStorage.class);
+                catalog, artifactRepository, pinRepository, registry);
         AuditPort auditPort = mock(AuditPort.class);
         ArtifactGcProperties props = new ArtifactGcProperties();
         props.setRetentionDays(1);
         props.setBatchSize(10);
-        gcService = new ArtifactGcService(artifactRepository, lifecycle, blobStorage, props, auditPort);
+        gcService = new ArtifactGcService(artifactRepository, lifecycle, props, auditPort);
     }
 
     private void insertTombstonedArtifact(String id, Instant tombstonedAt) {
@@ -109,7 +103,7 @@ class ArtifactGcServiceTest extends PostgresTestContainerSupport {
     void purgesOldUnpinnedTombstonedArtifacts() {
         insertTombstonedArtifact("art_gc1", Instant.now().minusSeconds(86400 * 10));
 
-        ArtifactGcService.GcResult result = gcService.runGc(1);
+        ArtifactGcService.GcResult result = gcService.runGc("t1", 1);
         assertEquals(1, result.purged());
         assertEquals(0, result.failed());
         // Logical purge marks the canonical Artifact DELETED (row remains as history).
@@ -123,10 +117,9 @@ class ArtifactGcServiceTest extends PostgresTestContainerSupport {
         pinRepository.insert("pin_1", "trev_1", "prj_1", "t1", "art_pinned",
                 ContentDigest.sha256("a".repeat(64)), Instant.now());
 
-        ArtifactGcService.GcResult result = gcService.runGc(1);
+        ArtifactGcService.GcResult result = gcService.runGc("t1", 1);
         assertEquals(0, result.purged());
         assertEquals(1, result.skipped());
-        verify(blobStorage, never()).deleteStorageUri(anyString());
         // Pinned artifact must remain present (not deleted).
         assertTrue(artifactRepository.findById("t1", new ArtifactId("art_pinned")).isPresent());
     }
@@ -135,7 +128,7 @@ class ArtifactGcServiceTest extends PostgresTestContainerSupport {
     void keepsYoungTombstonedArtifacts() {
         insertTombstonedArtifact("art_young", Instant.now().minusSeconds(60));
 
-        ArtifactGcService.GcResult result = gcService.runGc(1, false, 10);
+        ArtifactGcService.GcResult result = gcService.runGc("t1", 1, false, 10);
         // Young tombstoned artifact is outside the retention window: not a GC candidate.
         assertEquals(0, result.purged());
         assertEquals(0, result.scanned());

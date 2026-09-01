@@ -9,7 +9,6 @@ import static org.mockito.Mockito.*;
 
 import com.example.platform.ai.api.AiGatewayPort;
 import com.example.platform.render.api.dto.SubmitRenderJobRequest;
-import com.example.platform.render.app.dto.ArtifactInfoResponse;
 import com.example.platform.render.app.timeline.AiRenderScriptNormalizer;
 import com.example.platform.render.app.timeline.BaseJobTimelineLoader;
 import com.example.platform.render.app.timeline.IncrementalRenderOrchestrationService;
@@ -75,7 +74,6 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
     private EffectTimelineInspector effectTimelineInspector;
     private RenderProfileResolver renderProfileResolver;
     private StorageCatalogPort storageCatalogPort;
-    private com.example.platform.artifact.app.ArtifactCatalogService artifactCatalogService;
     private EditorTimelineConverter editorTimelineConverter;
     private ProviderRuntimeEngine providerRuntimeEngine;
 
@@ -107,7 +105,6 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
         effectTimelineInspector = mock(EffectTimelineInspector.class);
         renderProfileResolver = mock(RenderProfileResolver.class);
         storageCatalogPort = mock(StorageCatalogPort.class);
-        artifactCatalogService = mock(com.example.platform.artifact.app.ArtifactCatalogService.class);
         editorTimelineConverter = mock(EditorTimelineConverter.class);
         providerRuntimeEngine = mock(ProviderRuntimeEngine.class);
         when(commercialAdmission.decide(any())).thenAnswer(invocation -> {
@@ -153,9 +150,6 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
                 notificationEventPublisher, eventPublisher, timelineScriptParser,
                 effectTimelineInspector, renderProfileResolver,
                 null, null);
-        RenderArtifactQueryService artifactQueryService = new RenderArtifactQueryService(
-                renderJobRepository, mock(com.example.platform.artifact.domain.ArtifactQueryService.class),
-                artifactCatalogService, List.of());
         RenderJobExecutionService executionService = new RenderJobExecutionService(
                 renderJobRepository, quotaConsumption, null, renderProviderRouter,
                 providerRuntimeEngine,
@@ -172,8 +166,7 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
                 renderJobRepository, mock(BaseJobTimelineLoader.class));
 
         service = new RenderOrchestratorService(
-                submissionService, executionService, artifactQueryService,
-                timelineQueryService, null);
+                submissionService, executionService, timelineQueryService, null);
 
         TenantContext.clear();
     }
@@ -669,17 +662,6 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
         assertNotNull(jobRow.get(field("artifact_uri"), String.class));
         assertTrue(jobRow.get(field("artifact_uri"), String.class).contains("artifacts"));
 
-        // Verify artifact query works
-        com.example.platform.artifact.domain.ArtifactCatalogEntry artifactEntry =
-                new com.example.platform.artifact.domain.ArtifactCatalogEntry(
-                        "art-1", jobId, "proj-10", "localFsStorageProvider://artifacts/output.mp4",
-                        "mp4", "1920x1080", 10L, 1024L, "abc",
-                        com.example.platform.artifact.domain.ArtifactStatus.ACTIVE, null, java.time.Instant.now());
-        when(artifactCatalogService.listArtifactsByRenderJob(jobId)).thenReturn(List.of(artifactEntry));
-
-        List<ArtifactInfoResponse> artifacts = service.getArtifactsByJob(jobId);
-        assertEquals(1, artifacts.size());
-        assertEquals("art-1", artifacts.get(0).artifactId());
     }
 
     // =========================================================
