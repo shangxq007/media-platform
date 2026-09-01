@@ -50,6 +50,7 @@ include(
     "audio-module",
     "timeline-module",
     "operation-module",
+    "composite-resource-module",
 )
 
 // ── HOLD modules ────────────────────────────────────────────────────────────

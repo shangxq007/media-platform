@@ -1,0 +1,6 @@
+path	classification
+CR1_SEMANTIC_DIGEST_CORRECTION_LEDGER.tsv	GOVERNANCE
+composite-resource-module/src/main/java/com/example/platform/compositeresource/domain/CompositeResourceCanonicalSerializerV1.java	SEMANTIC_SERIALIZATION
+composite-resource-module/src/main/java/com/example/platform/compositeresource/domain/CompositeResourceVersion.java	SEMANTIC_EQUALITY
+composite-resource-module/src/test/java/com/example/platform/compositeresource/architecture/CompositeResourceArchitectureGuardTest.java	ARCHITECTURE_GUARD
+composite-resource-module/src/test/java/com/example/platform/compositeresource/domain/CompositeResourceCanonicalSerializerV1Test.java	REGRESSION_TEST
