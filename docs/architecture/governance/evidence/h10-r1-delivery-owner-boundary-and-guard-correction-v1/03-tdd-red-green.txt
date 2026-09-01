@@ -1,0 +1,10 @@
+RED_SHA=c77d41c194350adb643beef4e7055c434f3be7a1
+RED_TESTS=1
+RED_FAILURES=1
+RED_EXPECTED_FAILURE=ERROR: relation "public.render_job" does not exist
+GREEN_TESTS=1
+GREEN_FAILURES=0
+GREEN_ERRORS=0
+TEST=DeliveryCompletionOwnerBoundaryTest.completionAndFinalizationUseEventFactsAndDeliveryOwnedRowsWithoutRenderTable
+RENDER_TABLE_CREATED=NO
+RENDER_OWNER_READ_MOCKED=NO

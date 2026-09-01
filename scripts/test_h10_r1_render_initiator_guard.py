@@ -28,6 +28,22 @@ class H10R1RenderInitiatorGuardMutationTest(unittest.TestCase):
             "package example; final class Identity {}\n",
         )
         self.write(
+            "delivery-module/src/main/java/example/DeliveryCompletion.java",
+            "package example; final class DeliveryCompletion {}\n",
+        )
+        self.write(
+            "outbox-event-module/src/main/java/example/Outbox.java",
+            "package example; final class Outbox {}\n",
+        )
+        self.write(
+            "platform-app/src/main/java/example/PlatformApp.java",
+            "package example; final class PlatformApp {}\n",
+        )
+        self.write(
+            "shared-kernel/src/main/java/example/Shared.java",
+            "package example; final class Shared {}\n",
+        )
+        self.write(
             "platform-app/src/main/resources/db/migration/V1__initial_schema.sql",
             """create table render_job (
     id varchar(64) primary key,
@@ -87,12 +103,18 @@ class H10R1RenderInitiatorGuardMutationTest(unittest.TestCase):
         self.assert_red("IDENTITY_NOVU_REFERENCE_COUNT")
 
     def test_rejects_project_as_recipient(self) -> None:
-        self.write("render-module/src/main/java/example/RenderSubmission.java", "void recipient(String x) { recipient(projectId); }\n")
-        self.assert_red("PROJECT_ID_AS_SUBSCRIBER_COUNT")
+        self.write(
+            "render-module/src/main/java/example/RenderSubmission.java",
+            "void notifyProject() { NotificationAudience.recipient(projectId); }\n",
+        )
+        self.assert_red("PROJECT_ID_AS_NOTIFICATION_AUDIENCE_COUNT")
 
     def test_rejects_tenant_as_subscriber(self) -> None:
-        self.write("render-module/src/main/java/example/RenderSubmission.java", "void subscriber(String x) { subscriber(tenantId); }\n")
-        self.assert_red("TENANT_ID_AS_SUBSCRIBER_COUNT")
+        self.write(
+            "render-module/src/main/java/example/RenderSubmission.java",
+            "void notifyTenant() { NotificationAudience.subscriber(tenantId); }\n",
+        )
+        self.assert_red("TENANT_ID_AS_NOTIFICATION_AUDIENCE_COUNT")
 
     def test_rejects_arbitrary_tenant_user_fallback(self) -> None:
         self.write("render-module/src/main/java/example/RenderSubmission.java", "var user = tenantMembers.findFirst();\n")
@@ -106,12 +128,51 @@ class H10R1RenderInitiatorGuardMutationTest(unittest.TestCase):
         self.write("render-module/src/main/java/example/RenderSubmission.java", 'var actor = CanonicalActor.user("system@example.com", tenantId, roles, "fake");\n')
         self.assert_red("SYSTEM_RENDER_FAKE_PRINCIPAL_COUNT")
 
+    def test_rejects_fake_system_fallback(self) -> None:
+        self.write(
+            "render-module/src/main/java/example/RenderSubmission.java",
+            'var actor = RenderInitiator.restore(ActorType.SYSTEM, "system:missing", tenantId);\n',
+        )
+        self.assert_red("SYSTEM_RENDER_FAKE_PRINCIPAL_COUNT")
+
     def test_rejects_completion_time_ambient_actor(self) -> None:
         self.write(
             "render-module/src/main/java/example/RenderCompletion.java",
             "class RenderCompletion { CanonicalActorResolver resolver; void done() { resolver.resolveCurrentActor(); new RenderJobCompletedEvent(); } }\n",
         )
         self.assert_red("CURRENT_AMBIENT_ACTOR_AT_COMPLETION_COUNT")
+
+    def test_rejects_delivery_render_initiator_table_read(self) -> None:
+        self.write(
+            "delivery-module/src/main/java/example/DeliveryCompletion.java",
+            "class DeliveryCompletion { Object actor = RENDER_JOB.INITIATOR_ID; }\n",
+        )
+        self.assert_red("DELIVERY_RENDER_INITIATOR_RAW_TABLE_READ_COUNT")
+
+    def test_rejects_failure_time_security_context_access(self) -> None:
+        self.write(
+            "render-module/src/main/java/example/RenderFailure.java",
+            "class RenderFailure { void fail() { SecurityContextHolder.getContext(); new RenderJobFailedEvent(); } }\n",
+        )
+        self.assert_red("CURRENT_AMBIENT_ACTOR_AT_FAILURE_COUNT")
+
+    def test_rejects_missing_initiator_at_submission(self) -> None:
+        self.write(
+            "render-module/src/main/java/example/RenderSubmission.java",
+            "class RenderSubmission { void submit() { orchestrator.submitRenderJob(request, null); } }\n",
+        )
+        self.assert_red("MISSING_INITIATOR_AT_SUBMISSION_COUNT")
+
+    def test_rejects_new_render_initiator_schema_field(self) -> None:
+        schema = self.root / "platform-app/src/main/resources/db/migration/V1__initial_schema.sql"
+        schema.write_text(
+            schema.read_text().replace(
+                "    initiator_tenant_id varchar(64) not null\n",
+                "    initiator_tenant_id varchar(64) not null,\n    initiator_email varchar(255)\n",
+            ),
+            encoding="utf-8",
+        )
+        self.assert_red("NEW_SCHEMA_CHANGE_BEYOND_EXISTING_H10_R1_INITIATOR_COLUMNS")
 
     def test_rejects_missing_initiator_schema_column(self) -> None:
         schema = self.root / "platform-app/src/main/resources/db/migration/V1__initial_schema.sql"

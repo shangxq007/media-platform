@@ -1,0 +1,292 @@
+=== Architecture Drift Guard ===
+
+--- Required Classes ---
+✅ PASS: Required class exists: StorageDeliveryProfileRegistry
+✅ PASS: Required class exists: StorageDeliveryProfileCatalog
+✅ PASS: Required class exists: StorageDeliveryProfileRegistrySnapshot
+✅ PASS: Required class exists: StorageDeliveryProfileValidator
+✅ PASS: Required class exists: StorageDeliveryProfileConfigProperties
+✅ PASS: Required class exists: ReportOnlyPreflightPolicyEvaluator
+✅ PASS: Required class exists: PreflightPolicyEvaluationResult
+✅ PASS: Required class exists: SafePreflightReportSummary
+✅ PASS: Required class exists: UploadReportOnlyPreflightHook
+
+--- Runtime Profile Switching ---
+✅ PASS: No StorageDeliveryProfileResolver in production code
+
+--- Storage Exposure ---
+✅ PASS: StorageDelivery classes don't contain credential field: accessKey
+✅ PASS: StorageDelivery classes don't contain credential field: secretKey
+✅ PASS: StorageDelivery classes don't contain credential field: credentials
+
+--- Report-only Evaluator ---
+✅ PASS: Report-only evaluator does not emit REJECT
+
+--- Upload Rejection / Enforce ---
+✅ PASS: No PreflightRejected in production code
+
+--- Persistence ---
+✅ PASS: No persistence repository: PreflightPolicyEvaluationRepository
+✅ PASS: No persistence repository: PreflightReportRepository
+✅ PASS: No persistence repository: SafePreflightReportRepository
+
+--- Safe Preflight Report Persistence Guard ---
+✅ PASS: Approved persistence class: SafePreflightReportPersistenceWriter
+✅ PASS: No persistence class: PersistedPreflightReport
+✅ PASS: No persistence class: PreflightSafeReportEntity
+✅ PASS: No persistence class: PreflightPolicyResultEntity
+✅ PASS: No preflight Flyway migration
+✅ PASS: No JPA entity for preflight/policy
+✅ PASS: Enforce mode not enabled
+
+--- Deferred Status ---
+✅ PASS: OpenCue canonical status is NOT_STARTED
+✅ PASS: Artifact DAG canonical status is POSTPONED
+
+✅ PASS: spring-ai-adapter is HOLD (excluded from default graph, opt-in via includeHoldModules)
+✅ PASS: platform-app does not depend on spring-ai-adapter
+✅ PASS: Spring AI mainline approval remains NOT_FOUND
+✅ PASS: Admin routes require ROLE_ADMIN authority
+✅ PASS: SPA fallback restricted to /app/**
+
+--- MCMV2-C Media Canonical Model ---
+✅ PASS: media-module does not depend on render-module
+✅ PASS: media-module does not depend on worker/provider packages
+✅ PASS: media-module build has no render-module dependency
+✅ PASS: canonical media tables contain no double precision time/rate
+✅ PASS: legacy media_asset_metadata double authority removed
+✅ PASS: MediaStreamType retired
+--- TIMELINE_V2 SourceBinding / Exactness ---
+✅ PASS: mediaReference String retired from canonical Timeline domain
+✅ PASS: TimelineClip typed source binding fields only
+✅ PASS: canonical serializer exact rational rate
+✅ PASS: legacy parser alias retired
+=== Summary ===
+Checks: 42
+Failed: 0
+✅ PASS: legacy TimelineAudioSpec volume/normalize retired
+✅ PASS: canonical audio domain is provider-neutral
+✅ PASS: source metadata not duplicated into audio domain
+✅ PASS: AudioMix in TimelineDocument canonical content
+✅ PASS: capability namespace validation enforced (structural, no TLD allowlist)
+✅ PASS: capability-facing registry contract authority (CapabilityRegistryPort)
+✅ PASS: contract version canonical major.minor enforced
+✅ PASS: independent implementation identity + registry queries
+✅ PASS: registry contract interface is authority
+✅ PASS: no entitlement leakage in capability contract
+✅ PASS: multi-axis lifecycle separated (contract vs registration availability)
+✅ PASS: TimelineSourceBinding canonical source root
+✅ PASS: MediaStreamSourceBinding preserves #14 semantics
+✅ PASS: legacy SourceBinding retired (greenfield)
+✅ PASS: OTIO adapter boundary intact
+✅ PASS: source-kind aware serialization/hash
+✅ PASS: sealed typed source root (no god object)
+✅ PASS: TemporalMapping not implemented (deferred)
+✅ PASS: ReleaseVersion typed E.R.P
+✅ PASS: CanonicalFormatVersion typed E.R
+✅ PASS: typed VersionRange present
+✅ PASS: explicit lifecycle model
+✅ PASS: release channel explicit
+✅ PASS: execution provenance contract
+✅ PASS: API contract lifecycle governance
+✅ PASS: breaking-change machine gate (oasdiff)
+✅ PASS: zero legacy version compatibility code
+✅ PASS: single-segment ContractVersion support absent
+✅ PASS: no IdentityTemporalMapping subtype
+✅ PASS: no IDENTITY discriminator
+✅ PASS: identity factory present (normalized 1/1 FORWARD)
+✅ PASS: constant-rate + direction model
+✅ PASS: legacy playbackRate retired
+✅ PASS: sourceRange authority in binding
+✅ PASS: no duplicated sourceRange in TemporalMapping
+✅ PASS: duration consistency fail-closed
+✅ PASS: freeze = exact source position
+✅ PASS: temporalMapping in canonical serialization
+✅ PASS: no float rate in canonical temporal model
+✅ PASS: audio non-identity fail-closed guard
+✅ PASS: no piecewise/audio-behavior/legacy dual model
+✅ PASS: TimelineClipId typed canonical identity
+✅ PASS: no raw String clip identity
+✅ PASS: no universal TimelineObjectId
+✅ PASS: sealed SemanticRelationship root
+✅ PASS: sync normalized endpoint identity
+✅ PASS: typed GroupId
+✅ PASS: typed group members
+✅ PASS: relationships in Timeline revision content
+✅ PASS: exact object-local sync anchors
+✅ PASS: sync contains no temporal/source semantics
+✅ PASS: no generic relationship attribute map
+✅ PASS: revision-bound scope resolution
+✅ PASS: no mutable-latest fallback
+✅ PASS: no provenance/derived/source-association variants
+✅ PASS: typed namespaced OperationDefinitionId
+✅ PASS: OperationDefinitionVersion sole version authority (no extension ContractVersion)
+✅ PASS: no generic parameter maps
+✅ PASS: operation independent of patch/diff
+✅ PASS: operation absent from Timeline canonical model
+✅ PASS: variant-specific operation targets
+✅ PASS: no universal object id
+✅ PASS: definition-owned target/cardinality contract
+✅ PASS: set-rate rate-only
+✅ PASS: set-direction direction-only
+✅ PASS: freeze sourcePosition-only
+✅ PASS: request carries explicit base
+✅ PASS: stale base fail-closed
+✅ PASS: no mutable-latest fallback
+✅ PASS: flat single-base non-empty batch
+✅ PASS: no provider/FFmpeg semantics
+✅ PASS: no entitlement/tier semantics
+✅ PASS: no workflow semantics in batch
+✅ PASS: no generic CRUD operations
+✅ PASS: operation never in Timeline hash
+✅ PASS: frozen 15-operation vocabulary
+✅ PASS: plan is semantic transition model, not patch list
+✅ PASS: immutable OperationPlan record
+✅ PASS: deterministic domain-separated PlanDigest
+✅ PASS: PlanDigest excludes principal/auth/target ref
+✅ PASS: candidate hash uses TimelineContentDigester
+✅ PASS: normal edit parent = plan base
+✅ PASS: database-enforced CAS conditional update
+✅ PASS: no check-then-act CAS
+✅ PASS: authorization binds exact PlanDigest
+✅ PASS: authorization binds exact apply context
+✅ PASS: immutable AuthorizationDecision
+✅ PASS: durable ApplyCommandId authority
+✅ PASS: ApplyCommandId not canonical Timeline semantics
+✅ PASS: semantic NO_OP no revision
+✅ PASS: no generic JSON patch write endpoints
+✅ PASS: no JGit dependency
+✅ PASS: no revision command implementation
+✅ PASS: delete sync/group consequences planner-owned
+✅ PASS: trim invalid sync anchor -> reject
+✅ PASS: set-rate audio consequence typed
+✅ PASS: preview/authorization bind plan digest
+✅ PASS: no-op first apply validates expected head
+✅ PASS: apply command fingerprint binds principal + context
+✅ PASS: policy version excluded from fingerprint
+✅ PASS: zero postgres/jooq leakage into domain plan model
+✅ PASS: CAS database-enforced conditional update
+✅ PASS: no JGit
+✅ PASS: no revision command / integrity implementation
+✅ PASS: final FCV candidate governance recorded
+✅ PASS: RevisionCommandPlan independent of OperationPlan
+✅ PASS: RevisionContext outside RevisionCommand (RCI1)
+✅ PASS: V1 command plan variants bounded
+✅ PASS: no generic force/move ref command
+✅ PASS: pure semantic merge path present
+✅ PASS: planner uses pure semantic merge
+✅ PASS: graph reads timeline_revision_parent only
+✅ PASS: V4 migration retires legacy parent authority (edges single authority)
+✅ PASS: cross-project parent edge DB-enforced (composite FK)
+✅ PASS: DB-safe revision-number allocator (counter, RCI2)
+✅ PASS: apply_command domain separation (OP maps OPERATION_PLAN)
+✅ PASS: normal edit writes single parent edge order 0
+✅ PASS: no JGit
+✅ PASS: true revert/rebase/batch = 0
+✅ PASS: restore rehomed through RevisionCommand path (legacy endpoint retained)
+✅ PASS: same-revision merge plans NO_OP
+✅ PASS: same-revision apply NO_OP after expected-head CAS
+✅ PASS: frozen source revision is apply authority (zero source-ref reread)
+✅ PASS: counter table defined in canonical V1
+✅ PASS: counter bootstrap atomic (ON CONFLICT DO NOTHING)
+✅ PASS: parent edge graph authority preserved
+✅ PASS: merge engine purity preserved
+✅ PASS: CIG1 color-image-module exists
+✅ PASS: CIG2 zero outward domain dependencies
+✅ PASS: CIG3 sealed root
+✅ PASS: CIG4 profile is ColorDescription variant
+✅ PASS: CIG5 single color authority
+✅ PASS: CIG6 no profile sibling
+✅ PASS: CIG7 ProfileFormat required
+✅ PASS: CIG8 digest required
+✅ PASS: CIG11 explicit alpha presence
+✅ PASS: CIG12 alpha consistency enforced
+✅ PASS: CIG13 static HDR non-empty
+✅ PASS: CIG14 hdr boolean deleted
+✅ PASS: CIG15 Timeline leakage removed
+✅ PASS: CIG16 silent pix_fmt inference deleted
+✅ PASS: CIG17 zero source-color Timeline writes
+✅ PASS: CIG20 zero float/double authority in canonical module
+✅ PASS: CIG21-23 dynamic HDR/clean aperture/ICC execution = 0
+✅ PASS: CIG30 SourceBinding unchanged (no source metadata god object)
+✅ PASS: CIPG5/CIPG7 primaries UNSPECIFIED + UNKNOWN present
+✅ PASS: CIPG6 missing primaries = UNSPECIFIED (documented)
+✅ PASS: CIPG8/CIPG9 UNSPECIFIED != UNKNOWN (equality + serialization test)
+✅ PASS: CIPG2/CIPG3 reproducible description, zero mutable-latest dependency (structural test)
+✅ PASS: CIPG4 historical profile identity = exact digest
+✅ PASS: CIPG1 CREDENTIAL_RESIDUE_FINAL = 0 (numeric)
+✅ PASS: CIP2G1 durable snapshot persistence exists
+✅ PASS: CIP2G2/G3 historical reload: zero normalizer/probe dependency
+✅ PASS: CIP2G4 immutable content binding (artifact content version)
+✅ PASS: CIP2G5 SourceBinding unchanged
+✅ PASS: CIP2G6 Timeline production code has zero color-image authority imports
+✅ PASS: CIP2G9 color-image-module zero outward dependency
+✅ PASS: CIP2G13 primaries UNSPECIFIED/UNKNOWN retained
+✅ PASS: CIP2G14 zero Rational float DB conversion
+✅ PASS: CIP2DG1/2/3/4 DB-enforced stream+artifact ownership (composite FKs)
+✅ PASS: CIP2DG1/5/6/7 composite-FK prerequisite UNIQUE keys present
+✅ PASS: CIP2DG8 ARTIFACT_ID_CONTENT_REBINDABLE = NO (zero digest update paths)
+✅ PASS: CIP2DG10 zero renormalization (unchanged)
+✅ PASS: CIP2DG11 SourceBinding unchanged
+✅ PASS: CIP2DG12 Timeline module has zero production color-image dependency
+✅ PASS: CIP2EG1 CREDENTIAL_RESIDUE_FINAL = 0 (numeric)
+✅ PASS: CIP2FG1/2 F2 composite snapshot identity (media_stream_id, artifact_id)
+✅ PASS: CIP2FG3/4 direct SQL rebind/payload rewrite rejected (immutability trigger)
+✅ PASS: CIP2FG6 same-key conflicting description fails closed
+✅ PASS: CIP2FG8/GG2 zero upsert-by-stream; append-only snapshot write
+✅ PASS: CIP2GG1 artifact id = content identity (no digest column to rebind)
+✅ PASS: V6 regression: cross-asset ownership FKs retained
+✅ PASS: FTG2/34/35/36 zero path/url/host canonical authority in font-text domain
+✅ PASS: FTG3 raw font never enters resolver/shaper (type boundary)
+✅ PASS: FTG7 zero binary-float canonical typography values
+✅ PASS: FTG10 canonical scalar ranges (UTF-16 projection only)
+✅ PASS: FTG19 Timeline text affects hash (TextElement, backward-stable NON_EMPTY)
+✅ PASS: FTG14 ShapedGlyphRun excluded from Timeline canonical state
+✅ PASS: FTG25/26 lineHeight sole ParagraphStyle authority (TextStyle zero)
+✅ PASS: FTG27 selection properties only in FontSelectionIntent
+✅ PASS: FTG17/23/24 zero font-local Rights authority; resolver technical only
+✅ PASS: FTG31/32 no TextStyle fill; no duplicate color model
+--- ROADMAP_22_PHASE_16 Clean-Forward Guards ---
+LEGACY_HASH_TO_URI_ARTIFACT_CACHE_AUTHORITY_COUNT=0
+LEGACY_CONCURRENT_HASHMAP_ARTIFACT_REUSE_AUTHORITY_COUNT=0
+RAW_STORAGE_URI_AS_REUSE_IDENTITY_COUNT=0
+INCREMENTAL_PLAN_DIRECT_SKIP_WITHOUT_ARTIFACT_VALIDATION_COUNT=0
+INCREMENTAL_PLAN_DIRECT_REUSE_TRUTH_COUNT=0
+PROVIDER_DIRECT_OPENDAL_DEPENDENCY_COUNT=0
+PROVIDER_DIRECT_S3_RUSTFS_R2_DEPENDENCY_COUNT=0
+CACHE_AS_ARTIFACT_EXISTENCE_AUTHORITY_COUNT=0
+CACHE_EVICTION_DIRECT_ARTIFACT_DELETE_AUTHORITY_COUNT=0
+PLAN_LOWERER_MUTABLE_CACHE_READ_COUNT=0
+REDIS_EXECUTION_AUTHORITY_COUNT=0
+DISTRIBUTED_CACHE_EXECUTION_LOCK_AUTHORITY_COUNT=0
+STAGED_DIRECT_ARTIFACT_COMMIT_WITHOUT_DURABLE_BINDING_COUNT=0
+PROVIDER_DIRECT_STORAGE_OR_ARTIFACT_AUTHORITY_COUNT=0
+UNVALIDATED_REUSE_PRUNING_COUNT=0
+PHASE16_RUNTIME_ORCHESTRATION_BYPASS_COUNT=0
+UNSUPPORTED_MULTI_OUTPUT_SILENT_FIRST_OUTPUT_COUNT=0
+GENERIC_REUSE_INDEX_CAS_FRAMEWORK_COUNT=0
+MULTI_OUTPUT_RUNTIME_IMPLEMENTATION_COUNT=0
+CROSS_TENANT_REUSE_WITHOUT_AUTHORIZATION_COUNT=0
+FUTURE_ARTIFACT_PIN_REQUIRED_FOR_COMPUTED_REUSE_KEY_COUNT=0
+MEDIA_EXECUTION_PLAN_TO_WORKER_FABRIC_DEPENDENCY_COUNT=0
+OLD_RUNTIME_ADAPTER_MATERIALIZED_ARTIFACT_SIGNATURE_COUNT=0
+RUNTIME_INPUT_COMPATIBILITY_OVERLOAD_COUNT=0
+UNTYPED_RUNTIME_INPUT_COLLECTION_COUNT=0
+INPUT_ROLE_INFERRED_FROM_LIST_INDEX_COUNT=0
+LOGICAL_RUNTIME_INPUT_DEDUP_BY_ARTIFACT_PIN_COUNT=0
+WORKER_FABRIC_DIRECT_INTERNAL_EXECUTION_TYPE_DEPENDENCY_COUNT=0
+TASKGRAPH_DEPENDENCY_INPUT_BINDING_LEAK_COUNT=0
+STALE_GENERATION_WINNING_REUSE_PUBLICATION_AUTHORITY_COUNT=0
+PHASE16_CLEAN_FORWARD_GUARDS=PASS
+✅ PASS: Phase 16 clean-forward authority counters are zero
+--- CHANGE_IMPACT_DRIVEN_CI_GOVERNANCE_AMENDMENT_1 Guards ---
+CHANGE_IMPACT_CLASSIFIER_RED_MATRIX=PASS cases=19 workflow_mutations=15 governance_mutations=7 classifier_mutations=1
+✅ PASS: Change-impact classifier and workflow RED matrix is closed
+--- ROADMAP_22_PHASE_17 Sandbox Isolation Guards ---
+PHASE17_SANDBOX_LEDGER_RED_MATRIX=PASS mutations=44 exact_phase18_post_integration_pass=1 historical_closure_fixture_pass=1 pending_integration_state_red=1 wrong_gates_red=1 phase19_started_red=1 phase19_authorization_red=1 integrated_identity_red=1 accepted_identity_red=1 track_actions_red=1
+✅ PASS: Phase 17 ledger guard RED matrix rejects the fail-closed corruption set
+PHASE17_SANDBOX_LEDGER_GUARD=PASS rows=131 dispositions={'DEFER': 62, 'DELETE_SHADOW': 23, 'REUSE_AS_CANONICAL': 8, 'REUSE_MECHANICS_ONLY': 38} unclassified=0 duplicates=0 placeholders=0 globs=0
+✅ PASS: Phase 17 clean-forward ledger is closed
+PHASE17_SANDBOX_ARCHITECTURE_GUARD=PASS process_builder_sites=6 sandbox_sources=46 raw_workflow_resource_capability_assertion_count=0
+✅ PASS: Phase 17 sandbox boundary and authority guards are zero
+✅ All architecture drift checks passed

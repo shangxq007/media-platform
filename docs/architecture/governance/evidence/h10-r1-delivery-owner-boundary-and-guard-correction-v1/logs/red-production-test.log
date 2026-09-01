@@ -1,0 +1,57 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.1.0/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build
+> Task :shared-kernel:compileJava
+> Task :typed-schema-module:compileJava
+> Task :secrets-config-module:compileJava
+> Task :storage-module:compileJava
+> Task :storage-module:processResources NO-SOURCE
+> Task :storage-module:classes
+> Task :storage-module:jar
+> Task :delivery-module:compileJava
+> Task :delivery-module:processResources NO-SOURCE
+> Task :delivery-module:classes
+
+> Task :shared-kernel:compileTestFixturesJava
+Note: /home/user/Documents/workspace/audit-runs/h10-r1-delivery-owner-boundary-red-c77d41c/shared-kernel/src/testFixtures/java/com/example/platform/shared/test/PostgresTestContainerSupport.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+
+> Task :delivery-module:compileTestJava
+> Task :delivery-module:processTestResources NO-SOURCE
+> Task :delivery-module:testClasses
+> Task :secrets-config-module:processResources NO-SOURCE
+> Task :secrets-config-module:classes
+> Task :secrets-config-module:jar
+> Task :shared-kernel:processResources
+> Task :shared-kernel:classes
+> Task :shared-kernel:jar
+> Task :shared-kernel:processTestFixturesResources NO-SOURCE
+> Task :shared-kernel:testFixturesClasses
+> Task :shared-kernel:testFixturesJar
+> Task :typed-schema-module:processResources NO-SOURCE
+> Task :typed-schema-module:classes
+> Task :typed-schema-module:jar
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+
+> Task :delivery-module:test
+
+DeliveryCompletionOwnerBoundaryTest > completionAndFinalizationUseEventFactsAndDeliveryOwnedRowsWithoutRenderTable() FAILED
+    org.jooq.exception.DataAccessException at DeliveryCompletionOwnerBoundaryTest.java:167
+        Caused by: org.postgresql.util.PSQLException at DeliveryCompletionOwnerBoundaryTest.java:167
+
+1 test completed, 1 failed
+
+> Task :delivery-module:test FAILED
+
+[Incubating] Problems report is available at: file:///home/user/Documents/workspace/audit-runs/h10-r1-delivery-owner-boundary-red-c77d41c/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':delivery-module:test'.
+> There were failing tests. See the report at: file:///home/user/Documents/workspace/audit-runs/h10-r1-delivery-owner-boundary-red-c77d41c/delivery-module/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to generate a Build Scan (Powered by Develocity).
+
+BUILD FAILED in 37s
+14 actionable tasks: 14 executed

@@ -16,16 +16,30 @@ import sys
 
 EXCLUDED_PARTS = {".git", ".worktrees", "build", "generated", "node_modules"}
 
+PRODUCTION_SCOPE = (
+    "render-module/src/main",
+    "delivery-module/src/main",
+    "outbox-event-module/src/main",
+    "platform-app/src/main",
+    "identity-access-module/src/main",
+    "shared-kernel/src/main",
+    "platform-app/src/main/resources/db/migration/V1__initial_schema.sql",
+)
+
 ZERO_FIELDS = (
+    "DELIVERY_RENDER_INITIATOR_RAW_TABLE_READ_COUNT",
+    "CURRENT_AMBIENT_ACTOR_AT_COMPLETION_COUNT",
+    "CURRENT_AMBIENT_ACTOR_AT_FAILURE_COUNT",
     "RENDER_TO_NOTIFICATION_PRODUCTION_DEPENDENCY_COUNT",
-    "RENDER_NOVU_REFERENCE_COUNT",
-    "IDENTITY_NOVU_REFERENCE_COUNT",
-    "PROJECT_ID_AS_SUBSCRIBER_COUNT",
-    "TENANT_ID_AS_SUBSCRIBER_COUNT",
-    "ARBITRARY_TENANT_USER_FALLBACK_COUNT",
     "DUPLICATE_PRINCIPAL_ID_AUTHORITY_COUNT",
     "SYSTEM_RENDER_FAKE_PRINCIPAL_COUNT",
-    "CURRENT_AMBIENT_ACTOR_AT_COMPLETION_COUNT",
+    "PROJECT_ID_AS_NOTIFICATION_AUDIENCE_COUNT",
+    "TENANT_ID_AS_NOTIFICATION_AUDIENCE_COUNT",
+    "ARBITRARY_TENANT_USER_FALLBACK_COUNT",
+    "NEW_SCHEMA_CHANGE_BEYOND_EXISTING_H10_R1_INITIATOR_COLUMNS",
+    "RENDER_NOVU_REFERENCE_COUNT",
+    "IDENTITY_NOVU_REFERENCE_COUNT",
+    "MISSING_INITIATOR_AT_SUBMISSION_COUNT",
 )
 
 EXPECTED_FIELDS = {
@@ -46,13 +60,9 @@ def is_excluded(path: Path, root: Path) -> bool:
 
 def scan_files(root: Path) -> list[Path]:
     candidates: set[Path] = set()
-    for relative in (
-        "render-module/src/main",
+    for relative in (*PRODUCTION_SCOPE,
         "render-module/build.gradle.kts",
-        "identity-access-module/src/main",
         "identity-access-module/build.gradle.kts",
-        "platform-app/src/main/resources/db/migration/V1__initial_schema.sql",
-        "shared-kernel/src/main/java/com/example/platform/shared/events",
     ):
         path = root / relative
         if path.is_file() and not is_excluded(path, root):
@@ -105,9 +115,10 @@ def event_field_count(root: Path, event_name: str) -> int:
     return len(re.findall(r"\bRenderInitiator\s+initiator\b", header.group(1) if header else ""))
 
 
-def collect(root: Path) -> tuple[dict[str, int], dict[str, list[tuple[Path, int]]], int]:
+def collect(root: Path) -> tuple[dict[str, int], dict[str, list[tuple[Path, int]]], int, bool]:
     files = scan_files(root)
     render = source_files(files, root, "render-module/")
+    delivery = source_files(files, root, "delivery-module/src/main/")
     identity = source_files(files, root, "identity-access-module/")
     production_java = [
         path for path in files
@@ -115,47 +126,67 @@ def collect(root: Path) -> tuple[dict[str, int], dict[str, list[tuple[Path, int]
     ]
 
     details: dict[str, list[tuple[Path, int]]] = {}
-    details[ZERO_FIELDS[0]] = findings_for(
+    details["DELIVERY_RENDER_INITIATOR_RAW_TABLE_READ_COUNT"] = findings_for(
+        delivery,
+        r"\bRENDER_JOB\s*\.\s*INITIATOR_(?:TYPE|ID|TENANT_ID)\b",
+    )
+
+    ambient_expression = r"CanonicalActorResolver|SecurityContextHolder|resolveCurrentActor\s*\("
+    completion_files = []
+    failure_files = []
+    for path in production_java:
+        text = read(path)
+        if re.search(r"new\s+RenderJobCompletedEvent\s*\(", text) and re.search(ambient_expression, text):
+            completion_files.append((path, 0))
+        if re.search(r"new\s+RenderJobFailedEvent\s*\(", text) and re.search(ambient_expression, text):
+            failure_files.append((path, 0))
+    details["CURRENT_AMBIENT_ACTOR_AT_COMPLETION_COUNT"] = completion_files
+    details["CURRENT_AMBIENT_ACTOR_AT_FAILURE_COUNT"] = failure_files
+
+    details["RENDER_TO_NOTIFICATION_PRODUCTION_DEPENDENCY_COUNT"] = findings_for(
         render,
         r"com\.example\.platform\.notification|NotificationEventPublisher|project\(\s*[\"']?:notification-module|:notification-module",
     )
-    details[ZERO_FIELDS[1]] = findings_for(render, r"\bnovu")
-    details[ZERO_FIELDS[2]] = findings_for(identity, r"\bnovu")
-    details[ZERO_FIELDS[3]] = findings_for(
-        production_java,
-        r"(?:subscriber|recipient|audience)[A-Za-z0-9_]*\s*\([^\n)]*\bprojectId\b|\bprojectId\b[^\n]*(?:subscriber|recipient|audience)",
-    )
-    details[ZERO_FIELDS[4]] = findings_for(
-        production_java,
-        r"(?:subscriber|recipient|audience)[A-Za-z0-9_]*\s*\([^\n)]*\btenantId\b|\btenantId\b[^\n]*(?:subscriber|recipient|audience)",
-    )
-    details[ZERO_FIELDS[5]] = findings_for(
-        production_java,
-        r"(?:find|select|load|get)[A-Za-z0-9_]*(?:Tenant)?(?:User|Member)[A-Za-z0-9_]*(?:First|Any)|(?:tenant|member)[^\n]{0,80}findFirst\s*\(",
-    )
-    details[ZERO_FIELDS[6]] = findings_for(
+    details["DUPLICATE_PRINCIPAL_ID_AUTHORITY_COUNT"] = findings_for(
         production_java,
         r"\b(?:record|class|interface)\s+(?:PrincipalId|ActorId)\b",
     )
-    details[ZERO_FIELDS[7]] = findings_for(
+    details["SYSTEM_RENDER_FAKE_PRINCIPAL_COUNT"] = findings_for(
         render,
-        r"CanonicalActor\.user\s*\(|RenderInitiator\.principal\s*\([^\n]*(?:projectId|tenantId|@example\.)|new\s+Principal\s*\([^\n]*(?:projectId|tenantId|@example\.)",
+        r"CanonicalActor\.user\s*\(|RenderInitiator\.restore\s*\(\s*ActorType\.SYSTEM|RenderInitiator\.principal\s*\([^\n]*(?:projectId|tenantId|@example\.)|new\s+Principal\s*\([^\n]*(?:projectId|tenantId|@example\.)",
     )
-
-    completion_files = []
-    for path in render:
-        text = read(path)
-        if re.search(r"new\s+RenderJob(?:Completed|Failed)Event\s*\(", text) and re.search(
-            r"CanonicalActorResolver|SecurityContextHolder|resolveCurrentActor\s*\(", text
-        ):
-            completion_files.append((path, 0))
-    details[ZERO_FIELDS[8]] = completion_files
+    details["PROJECT_ID_AS_NOTIFICATION_AUDIENCE_COUNT"] = findings_for(
+        production_java,
+        r"(?=.*\b(?:notification|novu)[A-Za-z0-9_]*)(?=.*(?:subscriber|recipient|audience))(?=.*\bprojectId\b)",
+    )
+    details["TENANT_ID_AS_NOTIFICATION_AUDIENCE_COUNT"] = findings_for(
+        production_java,
+        r"(?=.*\b(?:notification|novu)[A-Za-z0-9_]*)(?=.*(?:subscriber|recipient|audience))(?=.*\btenantId\b)",
+    )
+    details["ARBITRARY_TENANT_USER_FALLBACK_COUNT"] = findings_for(
+        production_java,
+        r"(?:find|select|load|get)[A-Za-z0-9_]*(?:Tenant)?(?:User|Member)[A-Za-z0-9_]*(?:First|Any)|(?:tenant|member)[^\n]{0,80}findFirst\s*\(",
+    )
+    details["RENDER_NOVU_REFERENCE_COUNT"] = findings_for(render, r"\bnovu")
+    details["IDENTITY_NOVU_REFERENCE_COUNT"] = findings_for(identity, r"\bnovu")
+    details["MISSING_INITIATOR_AT_SUBMISSION_COUNT"] = findings_for(
+        production_java,
+        r"(?:submitRenderJob|submissionService\s*\.\s*submit)\s*\([^;\n]*,\s*null\s*\)",
+    )
 
     schema_path = root / "platform-app/src/main/resources/db/migration/V1__initial_schema.sql"
     schema = render_job_schema_block(read(schema_path)) if schema_path.is_file() else ""
     schema_count = len(re.findall(
         r"(?im)^\s*initiator_(?:type|id|tenant_id)\s+varchar\s*\(", schema
     ))
+    allowed_schema_fields = {"type", "id", "tenant_id"}
+    schema_change_lines = []
+    if schema_path.is_file():
+        for line_number, line in enumerate(schema.splitlines(), start=1):
+            match = re.search(r"(?i)^\s*initiator_([a-z0-9_]+)\b", line)
+            if match and match.group(1).lower() not in allowed_schema_fields:
+                schema_change_lines.append((schema_path, line_number))
+    details["NEW_SCHEMA_CHANGE_BEYOND_EXISTING_H10_R1_INITIATOR_COLUMNS"] = schema_change_lines
 
     counts = {name: len(details[name]) for name in ZERO_FIELDS}
     counts.update({
@@ -164,7 +195,15 @@ def collect(root: Path) -> tuple[dict[str, int], dict[str, list[tuple[Path, int]
         "RENDER_FAILED_EVENT_INITIATOR_FIELD_COUNT": event_field_count(root, "RenderJobFailedEvent"),
         "UNCLASSIFIED": 0,
     })
-    return counts, details, len(files)
+    scope_complete = all(
+        any(
+            path == root / relative
+            or path.relative_to(root).as_posix().startswith(relative.rstrip("/") + "/")
+            for path in files
+        )
+        for relative in PRODUCTION_SCOPE
+    )
+    return counts, details, len(files), scope_complete
 
 
 def main() -> int:
@@ -172,7 +211,7 @@ def main() -> int:
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
     args = parser.parse_args()
     root = args.root.resolve()
-    counts, details, universe = collect(root)
+    counts, details, universe, scope_complete = collect(root)
 
     print(f"SCAN_UNIVERSE_FILE_COUNT={universe}")
     for name in (*ZERO_FIELDS, *EXPECTED_FIELDS):
@@ -181,7 +220,13 @@ def main() -> int:
             relative = path.relative_to(root).as_posix()
             print(f"  HIT {relative}:{line}")
 
-    failed = universe == 0
+    scope_status = (
+        "COMPLETE_FOR_H10_R1_CHANGED_SURFACES"
+        if scope_complete else "INCOMPLETE_FOR_H10_R1_CHANGED_SURFACES"
+    )
+    print(f"H10_R1_GUARD_PRODUCTION_SCOPE={scope_status}")
+
+    failed = universe == 0 or not scope_complete
     if universe == 0:
         print("ERROR=EMPTY_SCAN_UNIVERSE")
     failed |= any(counts[name] != 0 for name in ZERO_FIELDS)

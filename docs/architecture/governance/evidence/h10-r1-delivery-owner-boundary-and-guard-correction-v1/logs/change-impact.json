@@ -1,0 +1,40 @@
+{
+  "categories": [
+    "backend_test",
+    "backend_runtime",
+    "unknown"
+  ],
+  "changed_path_count": 4,
+  "path_categories": {
+    "delivery-module/src/main/java/com/example/platform/delivery/app/DeliveryJobService.java": [
+      "backend_runtime"
+    ],
+    "delivery-module/src/test/java/com/example/platform/delivery/app/DeliveryCompletionOwnerBoundaryTest.java": [
+      "backend_test"
+    ],
+    "scripts/h10-r1-render-initiator-guard.py": [
+      "unknown"
+    ],
+    "scripts/test_h10_r1_render_initiator_guard.py": [
+      "unknown"
+    ]
+  },
+  "paths": [
+    "delivery-module/src/main/java/com/example/platform/delivery/app/DeliveryJobService.java",
+    "delivery-module/src/test/java/com/example/platform/delivery/app/DeliveryCompletionOwnerBoundaryTest.java",
+    "scripts/h10-r1-render-initiator-guard.py",
+    "scripts/test_h10_r1_render_initiator_guard.py"
+  ],
+  "policy": {
+    "architecture_drift": true,
+    "backend_ci": true,
+    "formal_verification": true,
+    "frontend_ci": true,
+    "full_ci": true,
+    "gitops_validation": true,
+    "runtime_image_publish": true,
+    "semgrep_validation": true
+  },
+  "reason": "explicit_paths",
+  "schema_version": 1
+}

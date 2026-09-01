@@ -1,0 +1,125 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.1.0/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build
+> Task :shared-kernel:compileJava
+> Task :typed-schema-module:compileJava
+> Task :secrets-config-module:compileJava
+> Task :storage-module:compileJava
+> Task :storage-module:processResources NO-SOURCE
+> Task :storage-module:classes
+> Task :storage-module:jar
+> Task :delivery-module:compileJava
+> Task :delivery-module:processResources NO-SOURCE
+> Task :delivery-module:classes
+
+> Task :shared-kernel:compileTestFixturesJava
+Note: /home/user/Documents/workspace/projects/media-platform/.worktrees/render-request-initiator-authority-reconciliation/shared-kernel/src/testFixtures/java/com/example/platform/shared/test/PostgresTestContainerSupport.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+
+> Task :delivery-module:compileTestJava
+
+> Task :notification-module:compileJava
+Note: /home/user/Documents/workspace/projects/media-platform/.worktrees/render-request-initiator-authority-reconciliation/notification-module/src/main/java/com/example/platform/notification/infrastructure/WebhookUrlValidator.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+Note: /home/user/Documents/workspace/projects/media-platform/.worktrees/render-request-initiator-authority-reconciliation/notification-module/src/main/java/com/example/platform/notification/app/NotificationSubscriptionService.java uses unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+
+> Task :sandbox-isolation-module:compileJava
+
+> Task :outbox-event-module:compileJava
+Note: /home/user/Documents/workspace/projects/media-platform/.worktrees/render-request-initiator-authority-reconciliation/outbox-event-module/src/main/java/com/example/platform/outbox/app/OutboxEventDispatcher.java uses unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+
+> Task :billing-module:compileJava
+> Task :ai-module:compileJava
+> Task :artifact-module:compileJava
+> Task :policy-governance-module:compileJava
+> Task :entitlement-module:compileJava
+> Task :extension-module:compileJava
+> Task :extension-module:processResources NO-SOURCE
+> Task :extension-module:classes
+> Task :extension-module:jar
+> Task :observability-module:compileJava
+
+> Task :audio-module:compileJava
+Note: /home/user/Documents/workspace/projects/media-platform/.worktrees/render-request-initiator-authority-reconciliation/audio-module/src/main/java/com/example/platform/audio/domain/mix/AudioMixCanonicalSemantics.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+
+> Task :font-text-module:compileJava
+> Task :color-image-module:compileJava
+> Task :media-module:compileJava
+
+> Task :timeline-module:compileJava
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+Note: /home/user/Documents/workspace/projects/media-platform/.worktrees/render-request-initiator-authority-reconciliation/timeline-module/src/main/java/com/example/platform/timeline/canonical/TimedTextCanonicalSemantics.java uses unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+
+> Task :operation-module:compileJava
+warning: unknown enum constant Visibility.ANY
+  reason: class file for com.fasterxml.jackson.annotation.JsonAutoDetect$Visibility not found
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Mode.DELEGATING
+  reason: class file for com.fasterxml.jackson.annotation.JsonCreator$Mode not found
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Mode.DELEGATING
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Include.NON_EMPTY
+  reason: class file for com.fasterxml.jackson.annotation.JsonInclude$Include not found
+warning: unknown enum constant Id.NAME
+  reason: class file for com.fasterxml.jackson.annotation.JsonTypeInfo$Id not found
+warning: unknown enum constant As.PROPERTY
+  reason: class file for com.fasterxml.jackson.annotation.JsonTypeInfo$As not found
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Id.NAME
+warning: unknown enum constant As.PROPERTY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Mode.DELEGATING
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Mode.DELEGATING
+31 warnings
+
+> Task :quota-billing-module:compileJava
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+
+> Task :platform-algorithms:graph:compileJava
+
+> Task :render-module:compileJava
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+Note: Some input files use unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+
+> Task :workflow-module:compileJava
+/home/user/Documents/workspace/projects/media-platform/.worktrees/render-request-initiator-authority-reconciliation/workflow-module/src/main/java/com/example/platform/workflow/temporal/TemporalNamespaceEnvironmentPostProcessor.java:13: warning: [removal] EnvironmentPostProcessor in org.springframework.boot.env has been deprecated and marked for removal
+public class TemporalNamespaceEnvironmentPostProcessor implements EnvironmentPostProcessor {
+                                                                  ^
+1 warning
+
+> Task :workflow-module:processResources
+> Task :workflow-module:classes
+
+> Task :workflow-module:compileTestJava
+Note: /home/user/Documents/workspace/projects/media-platform/.worktrees/render-request-initiator-authority-reconciliation/workflow-module/src/test/java/com/example/platform/workflow/temporal/RenderWorkflowMemoAndTimeoutTest.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+
+[Incubating] Problems report is available at: file:///home/user/Documents/workspace/projects/media-platform/.worktrees/render-request-initiator-authority-reconciliation/build/reports/problems/problems-report.html
+
+BUILD SUCCESSFUL in 40s
+31 actionable tasks: 31 executed
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.1.0/userguide/configuration_cache_enabling.html

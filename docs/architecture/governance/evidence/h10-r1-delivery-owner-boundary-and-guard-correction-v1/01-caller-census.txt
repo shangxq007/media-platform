@@ -1,0 +1,9 @@
+finalizeDeliveriesForRenderJob production external callers=1
+workflow-module/src/main/java/com/example/platform/workflow/temporal/RenderActivitiesImpl.java:98
+finalizeDeliveriesForRenderJob test callers=1
+delivery-module/src/test/java/com/example/platform/delivery/app/DeliveryCompletionOwnerBoundaryTest.java
+DeliveryJobService.onRenderJobCompleted production callers=1
+delivery-module/src/main/java/com/example/platform/delivery/app/DeliveryCompletionListener.java:18
+DeliveryJobService.onRenderJobCompleted test callers=1
+DeliveryCompletionOwnerBoundaryTest.java
+internal finalize-to-onRenderJobCompleted calls=0

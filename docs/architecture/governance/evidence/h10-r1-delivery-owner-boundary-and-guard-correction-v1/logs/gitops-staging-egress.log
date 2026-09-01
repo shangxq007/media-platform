@@ -1,0 +1,38 @@
+=== 1. Egress Proxy Resources ===
+  [PASS] egress-proxy Deployment exists
+  [PASS] egress-proxy Service exists
+  [PASS] egress-proxy ConfigMap exists
+  [PASS] egress-proxy NetworkPolicy exists
+
+=== 2. Smoke Configuration ===
+  [PASS] ConfigMap has EGRESS_PROXY_SMOKE_ENABLED
+  [WARN] Smoke test disabled (enable in staging before production)
+  [PASS] Smoke test NOT included in readiness (default)
+
+=== 3. JVM Proxy Configuration ===
+  [PASS] JVM proxy properties disabled (default)
+
+=== 4. Proxy Environment ===
+  [PASS] deployment-api has HTTP_PROXY
+  [PASS] deployment-api has HTTPS_PROXY
+  [PASS] deployment-api has NO_PROXY
+  [PASS] deployment-api NO_PROXY has all critical exclusions
+  [PASS] deployment-render-worker has HTTP_PROXY
+  [PASS] deployment-render-worker has NO_PROXY
+  [PASS] deployment-sandbox-worker has no proxy env (correct)
+
+=== 5. Allowed Domains ===
+  [PASS] allowed-domains.txt exists in egress-proxy ConfigMap
+  [WARN] allowed-domains.txt contains example.com placeholder — replace before production
+  [PASS] allowed-domains.txt has no wildcard
+  [PASS] allowed-domains.txt has 8 domain(s)
+  [PASS] Squid has 'http_access deny all' (no open proxy)
+  [PASS] Squid has allowed_domains ACL
+
+=== Summary ===
+  PASS:     19
+  FAIL:     0
+  WARN:     2
+
+✅ All critical checks passed.
+⚠️  2 warnings. Review before proceeding.

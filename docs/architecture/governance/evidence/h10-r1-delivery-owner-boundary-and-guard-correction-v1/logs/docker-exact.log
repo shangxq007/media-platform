@@ -1,0 +1,367 @@
+Emulate Docker CLI using podman. Create /etc/containers/nodocker to quiet msg.
+[1/3] STEP 1/18: FROM gradle:9.1-jdk25-noble AS deps
+[1/3] STEP 2/18: WORKDIR /workspace
+--> Using cache 6064a15750f94cc2f0d72c87c2a6e104138bb9f92f5eb62880e3c9a45cc1d872
+--> 6064a15750f9
+[1/3] STEP 3/18: COPY build.gradle* settings.gradle* ./
+--> Using cache 99244bdad8608e5e2f68ebad4e0978b631ed4922750f07c6a81fde75df90d790
+--> 99244bdad860
+[1/3] STEP 4/18: COPY gradle gradle
+--> Using cache 80871635172668b24f2465d5aa9a244f87d2e4abf4e06473f96d35939c42b408
+--> 808716351726
+[1/3] STEP 5/18: COPY gradlew .
+--> Using cache 67640ef378d5a87a6241fd6952794e75953d3879048c5d43895efd6e4e93c721
+--> 67640ef378d5
+[1/3] STEP 6/18: RUN chmod +x gradlew
+--> Using cache d9173723ac4d1ac91b49ca8ca7bd2b6c0365e6cea9cdbf4cc1fe98182d070814
+--> d9173723ac4d
+[1/3] STEP 7/18: COPY render-module/build.gradle* render-module/
+--> Using cache 0570f4e4539cdae3d38faa018a3d9c8641b5e08deb4dd8f5e94468c6a0b8aae7
+--> 0570f4e4539c
+[1/3] STEP 8/18: COPY platform-app/build.gradle* platform-app/
+--> Using cache 3bad3df3a59a74e1ec5316162866db0bdcadd122c3bc8a6101d591700608a611
+--> 3bad3df3a59a
+[1/3] STEP 9/18: COPY shared-kernel/build.gradle* shared-kernel/
+--> Using cache b02d921d15493f547399fd3bf06fc625680eb15c7db092e3e373fe9f01e8868b
+--> b02d921d1549
+[1/3] STEP 10/18: COPY ai-module/build.gradle* ai-module/
+--> Using cache 04e79950fc84119d3d75880d7b67b4734337d08abb8948ad8becccd7a15ec127
+--> 04e79950fc84
+[1/3] STEP 11/18: COPY storage-module/build.gradle* storage-module/
+--> Using cache 604e812ec9b27bc23895fcc5469c614f3c7650054a9bae20da17c4012d5f6065
+--> 604e812ec9b2
+[1/3] STEP 12/18: COPY extension-module/build.gradle* extension-module/
+--> Using cache edfb6b4a33ac7e874c7babed38f57acfcdc86623992a317112ddeda09038b51e
+--> edfb6b4a33ac
+[1/3] STEP 13/18: COPY entitlement-module/build.gradle* entitlement-module/
+--> Using cache 3793a4e4c7ef06bb67edf5060bb452dc59836db48cfb53ac880e1d8d291aac9f
+--> 3793a4e4c7ef
+[1/3] STEP 14/18: COPY billing-module/build.gradle* billing-module/
+--> Using cache 3693d36c9c055034fbcbfe16b1020ae2b838b42ed98c13ba2ca92e1578cbc281
+--> 3693d36c9c05
+[1/3] STEP 15/18: COPY quota-billing-module/build.gradle* quota-billing-module/
+--> Using cache 6541d9baea710e4906fefeebf931c057d6f6d75ccecdfdab71826617238105b9
+--> 6541d9baea71
+[1/3] STEP 16/18: COPY outbox-event-module/build.gradle* outbox-event-module/
+--> Using cache d255bc786265d380696bd563f65124a2e05abdbe144d808420fa66f9e4233199
+--> d255bc786265
+[1/3] STEP 17/18: COPY remote-render-worker/build.gradle* remote-render-worker/
+--> Using cache c8ba62ea344c1a34bb30642867da94e17df34b3b57644fafb6162433f7fde70d
+--> c8ba62ea344c
+[1/3] STEP 18/18: RUN ./gradlew dependencies --no-daemon 2>/dev/null || true
+--> Using cache d2552de916cad8af33e0a8d0f108e42e633516e631b96eaf2fb00a206bce9e17
+--> d2552de916ca
+[3/3] STEP 1/11: FROM eclipse-temurin:25-jre-jammy
+[3/3] STEP 2/11: WORKDIR /app
+--> Using cache 8f1f5a9645a6ba7f1a279f31cd645126bc27d6d277fd71f38f7f528cfe1b0bc0
+--> 8f1f5a9645a6
+[3/3] STEP 3/11: RUN apt-get update && apt-get install -y --no-install-recommends curl ffmpeg && rm -rf /var/lib/apt/*
+--> Using cache 923809488470ecfc35e69b7edb21d4c170612a53f4bf8f11b90397941131c363
+--> 923809488470
+[3/3] STEP 4/11: RUN groupadd --gid 10001 spring && useradd --uid 10001 --gid 10001 spring
+--> Using cache 9f66362dbfe672f6052309463821dab2af42d7b2c7f9af43d3643758926f9bf9
+--> 9f66362dbfe6
+[3/3] STEP 5/11: USER spring:spring
+--> Using cache 9df3bb04aed86de5dd2a09ee5599c30b8796c25e2771a40bfe63b21aafb578aa
+--> 9df3bb04aed8
+[3/3] STEP 6/11: COPY --from=build /workspace/app.jar /app/app.jar
+[2/3] STEP 1/3: FROM d2552de916cad8af33e0a8d0f108e42e633516e631b96eaf2fb00a206bce9e17 AS build
+[2/3] STEP 2/3: COPY . .
+--> ac1cfcdc9505
+[2/3] STEP 3/3: RUN ./gradlew :platform-app:bootJar --no-daemon -x test     && JAR=$(ls platform-app/build/libs/*.jar | grep -v plain | head -n1)     && test -n "$JAR"     && cp "$JAR" /workspace/app.jar
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.1.0/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build
+
+> Configure project :render-module
+w: file:///workspace/render-module/build.gradle.kts:159:17: Condition is always 'true'.
+w: file:///workspace/render-module/build.gradle.kts:164:17: Condition is always 'true'.
+w: file:///workspace/render-module/build.gradle.kts:174:17: Condition is always 'true'.
+w: file:///workspace/render-module/build.gradle.kts:197:17: Condition is always 'true'.
+w: file:///workspace/render-module/build.gradle.kts:211:17: Condition is always 'true'.
+w: file:///workspace/render-module/build.gradle.kts:255:17: Condition is always 'true'.
+w: file:///workspace/render-module/build.gradle.kts:290:17: Condition is always 'true'.
+w: file:///workspace/render-module/build.gradle.kts:301:17: Condition is always 'true'.
+w: file:///workspace/render-module/build.gradle.kts:329:17: Condition is always 'true'.
+w: file:///workspace/render-module/build.gradle.kts:332:17: Condition is always 'true'.
+w: file:///workspace/render-module/build.gradle.kts:338:17: Condition is always 'true'.
+w: file:///workspace/render-module/build.gradle.kts:396:17: Condition is always 'true'.
+
+> Task :shared-kernel:compileJava
+> Task :typed-schema-module:compileJava
+
+> Task :notification-module:compileJava
+Note: /workspace/notification-module/src/main/java/com/example/platform/notification/infrastructure/WebhookUrlValidator.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+Note: /workspace/notification-module/src/main/java/com/example/platform/notification/app/NotificationSubscriptionService.java uses unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+
+> Task :sandbox-isolation-module:compileJava
+
+> Task :outbox-event-module:compileJava
+Note: /workspace/outbox-event-module/src/main/java/com/example/platform/outbox/app/OutboxEventDispatcher.java uses unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+
+> Task :billing-module:compileJava
+> Task :ai-module:compileJava
+> Task :ai-module:processResources
+> Task :ai-module:classes
+> Task :ai-module:jar
+> Task :storage-module:compileJava
+> Task :storage-module:processResources NO-SOURCE
+> Task :storage-module:classes
+> Task :storage-module:jar
+> Task :artifact-module:compileJava
+> Task :artifact-module:processResources NO-SOURCE
+> Task :artifact-module:classes
+> Task :artifact-module:jar
+
+> Task :audio-module:compileJava
+Note: /workspace/audio-module/src/main/java/com/example/platform/audio/domain/mix/AudioMixCanonicalSemantics.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+
+> Task :audio-module:processResources NO-SOURCE
+> Task :audio-module:classes
+> Task :audio-module:jar
+> Task :observability-module:compileJava
+> Task :audit-compliance-module:compileJava
+> Task :audit-compliance-module:processResources NO-SOURCE
+> Task :audit-compliance-module:classes
+> Task :audit-compliance-module:jar
+> Task :billing-module:processResources NO-SOURCE
+> Task :billing-module:classes
+> Task :billing-module:jar
+> Task :cloud-resource-module:compileJava
+> Task :cloud-resource-module:processResources NO-SOURCE
+> Task :cloud-resource-module:classes
+> Task :cloud-resource-module:jar
+> Task :color-image-module:compileJava
+> Task :color-image-module:processResources NO-SOURCE
+> Task :color-image-module:classes
+> Task :color-image-module:jar
+> Task :commerce-module:compileJava
+> Task :commerce-module:processResources NO-SOURCE
+> Task :commerce-module:classes
+> Task :commerce-module:jar
+> Task :config-module:compileJava
+> Task :config-module:processResources NO-SOURCE
+> Task :config-module:classes
+> Task :config-module:jar
+> Task :datasource-module:compileJava
+> Task :datasource-module:processResources NO-SOURCE
+> Task :datasource-module:classes
+> Task :datasource-module:jar
+> Task :secrets-config-module:compileJava
+> Task :delivery-module:compileJava
+> Task :delivery-module:processResources NO-SOURCE
+> Task :delivery-module:classes
+> Task :delivery-module:jar
+> Task :policy-governance-module:compileJava
+> Task :entitlement-module:compileJava
+> Task :entitlement-module:processResources NO-SOURCE
+> Task :entitlement-module:classes
+> Task :entitlement-module:jar
+> Task :extension-module:compileJava
+> Task :extension-module:processResources NO-SOURCE
+> Task :extension-module:classes
+> Task :extension-module:jar
+
+> Task :identity-access-module:compileJava
+Note: /workspace/identity-access-module/src/main/java/com/example/platform/identity/app/MetadataScrubber.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+Note: /workspace/identity-access-module/src/main/java/com/example/platform/identity/app/ProjectImportExecuteService.java uses unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+
+> Task :font-text-module:compileJava
+> Task :media-module:compileJava
+
+> Task :timeline-module:compileJava
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+Note: /workspace/timeline-module/src/main/java/com/example/platform/timeline/canonical/TimedTextCanonicalSemantics.java uses unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+
+> Task :operation-module:compileJava
+warning: unknown enum constant Visibility.ANY
+  reason: class file for com.fasterxml.jackson.annotation.JsonAutoDetect$Visibility not found
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Mode.DELEGATING
+  reason: class file for com.fasterxml.jackson.annotation.JsonCreator$Mode not found
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Mode.DELEGATING
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Include.NON_EMPTY
+  reason: class file for com.fasterxml.jackson.annotation.JsonInclude$Include not found
+warning: unknown enum constant Id.NAME
+  reason: class file for com.fasterxml.jackson.annotation.JsonTypeInfo$Id not found
+warning: unknown enum constant As.PROPERTY
+  reason: class file for com.fasterxml.jackson.annotation.JsonTypeInfo$As not found
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Id.NAME
+warning: unknown enum constant As.PROPERTY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Mode.DELEGATING
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Mode.DELEGATING
+31 warnings
+
+> Task :prompt-module:compileJava
+> Task :prompt-module:processResources NO-SOURCE
+> Task :prompt-module:classes
+> Task :prompt-module:jar
+
+> Task :quota-billing-module:compileJava
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+
+> Task :platform-algorithms:graph:compileJava
+
+> Task :render-module:compileJava
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+Note: Some input files use unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+
+> Task :user-analytics-module:compileJava
+
+> Task :federation-query-module:compileJava
+Note: /workspace/federation-query-module/src/main/java/com/example/platform/federation/graphql/config/GraphQLScalarConfiguration.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+Note: /workspace/federation-query-module/src/main/java/com/example/platform/federation/graphql/config/GraphQLScalarConfiguration.java uses unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+
+> Task :federation-query-module:processResources
+> Task :federation-query-module:classes
+> Task :federation-query-module:jar
+> Task :font-text-module:processResources NO-SOURCE
+> Task :font-text-module:classes
+> Task :font-text-module:jar
+> Task :identity-access-module:processResources NO-SOURCE
+> Task :identity-access-module:classes
+> Task :identity-access-module:jar
+> Task :media-execution-plan-module:compileJava
+> Task :media-execution-plan-module:processResources NO-SOURCE
+> Task :media-execution-plan-module:classes
+> Task :media-execution-plan-module:jar
+> Task :media-module:processResources NO-SOURCE
+> Task :media-module:classes
+> Task :media-module:jar
+> Task :notification-module:processResources NO-SOURCE
+> Task :notification-module:classes
+> Task :notification-module:jar
+> Task :observability-module:processResources NO-SOURCE
+> Task :observability-module:classes
+> Task :observability-module:jar
+> Task :operation-module:processResources NO-SOURCE
+> Task :operation-module:classes
+> Task :operation-module:jar
+> Task :outbox-event-module:processResources NO-SOURCE
+> Task :outbox-event-module:classes
+> Task :outbox-event-module:jar
+> Task :payment-module:compileJava
+> Task :payment-module:processResources NO-SOURCE
+> Task :payment-module:classes
+> Task :payment-module:jar
+> Task :worker-fabric-module:compileJava
+> Task :provider-plugin-runtime-module:compileJava
+> Task :scheduler-module:compileJava
+> Task :social-publish-module:compileJava
+
+> Task :workflow-module:compileJava
+/workspace/workflow-module/src/main/java/com/example/platform/workflow/temporal/TemporalNamespaceEnvironmentPostProcessor.java:13: warning: [removal] EnvironmentPostProcessor in org.springframework.boot.env has been deprecated and marked for removal
+public class TemporalNamespaceEnvironmentPostProcessor implements EnvironmentPostProcessor {
+                                                                  ^
+1 warning
+
+> Task :platform-app:compileJava
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+Note: Some input files use unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+
+> Task :platform-app:processResources
+> Task :platform-app:classes
+> Task :platform-app:resolveMainClassName
+> Task :policy-governance-module:processResources NO-SOURCE
+> Task :policy-governance-module:classes
+> Task :policy-governance-module:jar
+> Task :provider-plugin-runtime-module:processResources NO-SOURCE
+> Task :provider-plugin-runtime-module:classes
+> Task :provider-plugin-runtime-module:jar
+> Task :quota-billing-module:processResources NO-SOURCE
+> Task :quota-billing-module:classes
+> Task :quota-billing-module:jar
+> Task :render-module:processResources
+> Task :render-module:classes
+> Task :render-module:jar
+> Task :sandbox-isolation-module:processResources NO-SOURCE
+> Task :sandbox-isolation-module:classes
+> Task :sandbox-isolation-module:jar
+> Task :scheduler-module:processResources NO-SOURCE
+> Task :scheduler-module:classes
+> Task :scheduler-module:jar
+> Task :secrets-config-module:processResources NO-SOURCE
+> Task :secrets-config-module:classes
+> Task :secrets-config-module:jar
+> Task :shared-kernel:processResources
+> Task :shared-kernel:classes
+> Task :shared-kernel:jar
+> Task :social-publish-module:processResources NO-SOURCE
+> Task :social-publish-module:classes
+> Task :social-publish-module:jar
+> Task :timeline-module:processResources NO-SOURCE
+> Task :timeline-module:classes
+> Task :timeline-module:jar
+> Task :typed-schema-module:processResources NO-SOURCE
+> Task :typed-schema-module:classes
+> Task :typed-schema-module:jar
+> Task :user-analytics-module:processResources NO-SOURCE
+> Task :user-analytics-module:classes
+> Task :user-analytics-module:jar
+> Task :worker-fabric-module:processResources NO-SOURCE
+> Task :worker-fabric-module:classes
+> Task :worker-fabric-module:jar
+> Task :workflow-module:processResources
+> Task :workflow-module:classes
+> Task :workflow-module:jar
+> Task :platform-algorithms:graph:processResources NO-SOURCE
+> Task :platform-algorithms:graph:classes
+> Task :platform-algorithms:graph:jar
+> Task :platform-app:bootJar
+
+[Incubating] Problems report is available at: file:///workspace/build/reports/problems/problems-report.html
+
+BUILD SUCCESSFUL in 3m 58s
+89 actionable tasks: 89 executed
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.1.0/userguide/configuration_cache_enabling.html
+--> e68e5fbb34ae
+--> 83caf8be5721
+[3/3] STEP 7/11: EXPOSE 8080
+--> f9371072286c
+[3/3] STEP 8/11: ENV JAVA_OPTS=""
+--> 3c768a2b9aa7
+[3/3] STEP 9/11: ENV SPRING_PROFILES_ACTIVE="preview"
+--> efe00da4d8f4
+[3/3] STEP 10/11: HEALTHCHECK --interval=10s --timeout=3s --retries=3 --start-period=30s CMD curl -f http://localhost:8080/healthz || exit 1
+time="2026-09-01T13:24:31+08:00" level=warning msg="HEALTHCHECK is not supported for OCI image format and will be ignored. Must use `docker` format"
+--> b36bfdb17b72
+[3/3] STEP 11/11: ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar /app/app.jar"]
+[3/3] COMMIT media-platform:h10-r1-delivery-correction-ci
+time="2026-09-01T13:24:31+08:00" level=warning msg="HEALTHCHECK is not supported for OCI image format and will be ignored. Must use `docker` format"
+--> 620b7f3a634e
+Successfully tagged localhost/media-platform:h10-r1-delivery-correction-ci
+620b7f3a634e25b8ebee052d2b48e21eae42d11bce755127908321a4f11ab500
