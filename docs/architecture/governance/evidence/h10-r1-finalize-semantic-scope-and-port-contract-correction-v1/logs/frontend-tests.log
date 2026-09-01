@@ -1,0 +1,12 @@
+
+ RUN  v3.2.6 /home/user/Documents/workspace/audit-runs/h10-r1-finalize-semantic-correction-frontend/frontend
+
+ ✓ src/contracts/app/render-job.test.ts (3 tests) 10ms
+ ✓ src/pages/CanonicalProjectionGapPages.test.tsx (3 tests) 52ms
+ ✓ src/editor/EditorPage.test.tsx (3 tests) 54ms
+ ✓ src/pages/H4BoundedCorrection.test.tsx (3 tests) 81ms
+
+ Test Files  4 passed (4)
+      Tests  12 passed (12)
+   Start at  15:24:46
+   Duration  1.79s (transform 664ms, setup 0ms, collect 1.48s, tests 197ms, environment 1.04s, prepare 1.75s)

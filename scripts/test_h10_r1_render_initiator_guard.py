@@ -32,6 +32,17 @@ class H10R1RenderInitiatorGuardMutationTest(unittest.TestCase):
             "package example; final class DeliveryCompletion {}\n",
         )
         self.write(
+            "delivery-module/src/main/java/com/example/platform/delivery/app/DeliveryJobService.java",
+            """package example;
+final class DeliveryJobService {
+    int finalizeDeliveriesForRenderJob(String renderJobId) {
+        var condition = DELIVERY_JOB.STATUS.eq(DeliveryJobStatus.QUEUED.name());
+        return 0;
+    }
+}
+""",
+        )
+        self.write(
             "outbox-event-module/src/main/java/example/Outbox.java",
             "package example; final class Outbox {}\n",
         )
@@ -148,6 +159,20 @@ class H10R1RenderInitiatorGuardMutationTest(unittest.TestCase):
             "class DeliveryCompletion { Object actor = RENDER_JOB.INITIATOR_ID; }\n",
         )
         self.assert_red("DELIVERY_RENDER_INITIATOR_RAW_TABLE_READ_COUNT")
+
+    def test_rejects_failed_delivery_selection_in_finalizer(self) -> None:
+        finalizer = self.root / (
+            "delivery-module/src/main/java/com/example/platform/delivery/app/DeliveryJobService.java"
+        )
+        finalizer.write_text(
+            finalizer.read_text(encoding="utf-8").replace(
+                "DeliveryJobStatus.QUEUED.name())",
+                "DeliveryJobStatus.QUEUED.name())\n"
+                "                .or(DELIVERY_JOB.STATUS.eq(DeliveryJobStatus.FAILED.name()))",
+            ),
+            encoding="utf-8",
+        )
+        self.assert_red("FINALIZE_FAILED_DELIVERY_AUTO_RETRY_COUNT")
 
     def test_rejects_failure_time_security_context_access(self) -> None:
         self.write(

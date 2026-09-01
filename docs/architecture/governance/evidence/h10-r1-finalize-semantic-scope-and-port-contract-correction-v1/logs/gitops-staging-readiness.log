@@ -1,0 +1,101 @@
+=== 1. Image Safety ===
+  [PASS] No ':latest' image tags
+  [PASS] No ':dev' image tags
+  [PASS] platform-api image present
+  [PASS] platform-render-worker image present
+  [PASS] platform-sandbox-worker image present
+  [PASS] Three core images use same tag: v1.0.0
+
+=== 2. Production Config Safety ===
+  [PASS] No 'allow-in-process-eval: true'
+  [PASS] No 'dev-auth-endpoint: true'
+  [PASS] No 'oidc-dev-bootstrap: true'
+  [PASS] No 'sandbox.execution-mode: in-process'
+  [PASS] No 'tenant-1' in production config
+
+=== 3. SecurityContext ===
+  [PASS] All 4 deployments have pod securityContext
+
+=== 4. Resource Limits ===
+  [PASS] Resource limits check complete
+
+=== 5. Health Probes ===
+  [PASS] Probe check complete
+
+=== 6. Network Isolation ===
+  [PASS] sandbox-worker NetworkPolicy exists
+  [PASS] sandbox-worker NetworkPolicy has Egress policyType
+  [PASS] sandbox-worker egress is deny-all
+  [PASS] platform-api egress NetworkPolicy exists
+  [PASS] render-worker egress NetworkPolicy exists
+  [PASS] networkpolicy-api-egress.yaml kube-dns egress limited to port 53
+  [PASS] networkpolicy-egress-proxy.yaml has 0.0.0.0/0 (allowed: egress proxy controlled egress point)
+  [PASS] networkpolicy-egress-proxy.yaml kube-dns egress limited to port 53
+  [PASS] networkpolicy-render-worker-egress.yaml kube-dns egress limited to port 53
+
+=== 6e. Egress Proxy ===
+  [PASS] egress-proxy Deployment exists
+  [PASS] egress-proxy Service exists
+  [PASS] egress-proxy ConfigMap exists
+  [PASS] egress-proxy NetworkPolicy exists
+  [PASS] egress-proxy ingress allows platform-api
+  [PASS] egress-proxy ingress allows render-worker
+  [PASS] egress-proxy ingress does not allow sandbox-worker
+  [PASS] platform-api egress allows egress-proxy:3128
+  [PASS] render-worker egress allows egress-proxy:3128
+  [PASS] egress-proxy Squid config blocks metadata IP
+  [PASS] egress-proxy Squid config denies metadata_ip ACL
+  [PASS] Squid config has allowed_domains ACL
+  [PASS] Squid config allows only allowed_domains
+  [PASS] Squid config has 'http_access deny all' (no open proxy)
+  [PASS] Squid metadata deny is before allow (correct order)
+
+=== 6f. Allowed Domains ===
+  [PASS] allowed-domains.txt exists in egress-proxy ConfigMap
+  [PASS] allowed-domains.txt has no wildcard '*'
+  [PASS] allowed-domains.txt has no bare '.'
+  [WARN] allowed-domains.txt contains example.com placeholder — replace before production
+  [PASS] allowed-domains.txt has 8 domain(s)
+
+=== 6g. Proxy Environment ===
+  [PASS] deployment-api has HTTP_PROXY
+  [PASS] deployment-api has HTTPS_PROXY
+  [PASS] deployment-api has NO_PROXY
+  [PASS] deployment-api has lowercase http_proxy
+  [PASS] deployment-api has lowercase https_proxy
+  [PASS] deployment-api has lowercase no_proxy
+  [PASS] deployment-api NO_PROXY contains .svc
+  [PASS] deployment-api NO_PROXY contains .cluster.local
+  [PASS] deployment-render-worker has HTTP_PROXY
+  [PASS] deployment-render-worker has HTTPS_PROXY
+  [PASS] deployment-render-worker has NO_PROXY
+  [PASS] deployment-render-worker has lowercase http_proxy
+  [PASS] deployment-render-worker has lowercase https_proxy
+  [PASS] deployment-render-worker has lowercase no_proxy
+  [PASS] deployment-sandbox-worker has no proxy env (correct — isolated)
+  [PASS] deployment-sandbox-worker has no JAVA_TOOL_OPTIONS (correct — isolated)
+
+=== 6h. JVM Proxy Options ===
+
+=== 6i. Smoke Test Configuration ===
+  [PASS] ConfigMap has EGRESS_PROXY_SMOKE_ENABLED
+  [PASS] JVM proxy properties disabled (default)
+
+=== 7. Secret Safety ===
+  [WARN] Secret contains placeholder values (expected before real deployment)
+  [PASS] No obvious real secrets in secret.yaml
+
+=== 8. Namespace ===
+  [PASS] Namespace: media-platform-staging
+
+=== 9. Ingress TLS ===
+  [PASS] Ingress TLS configured
+  [WARN] Ingress using placeholder hostname
+
+=== Summary ===
+  PASS:     63
+  FAIL:     0
+  WARN:     3
+
+✅ All critical checks passed.
+⚠️  3 warnings. Review before deploying.

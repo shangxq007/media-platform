@@ -1,0 +1,14 @@
+{
+  "xml_files": 999,
+  "totals": {
+    "tests": 8064,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 29
+  },
+  "duration": "24m 8s",
+  "actionable": [
+    "200",
+    "200"
+  ]
+}

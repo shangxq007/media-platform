@@ -1,0 +1,16 @@
+npm warn deprecated source-map@0.8.0-beta.0: The work that was done in this beta branch won't be included in future versions
+
+added 636 packages, and audited 637 packages in 12s
+
+191 packages are looking for funding
+  run `npm fund` for details
+
+15 vulnerabilities (1 low, 13 high, 1 critical)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.

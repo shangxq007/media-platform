@@ -339,9 +339,7 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
         List<String> deliveryJobIds = dsl.select(DELIVERY_JOB.ID)
                 .from(DELIVERY_JOB)
                 .where(DELIVERY_JOB.RENDER_JOB_ID.eq(requiredRenderJobId))
-                .and(DELIVERY_JOB.STATUS.eq(DeliveryJobStatus.QUEUED.name())
-                        .or(DELIVERY_JOB.STATUS.eq(DeliveryJobStatus.FAILED.name())
-                                .and(DELIVERY_JOB.ATTEMPT_COUNT.lt(maxAttempts))))
+                .and(DELIVERY_JOB.STATUS.eq(DeliveryJobStatus.QUEUED.name()))
                 .orderBy(DELIVERY_JOB.CREATED_AT.asc())
                 .fetch(DELIVERY_JOB.ID);
         int processed = 0;

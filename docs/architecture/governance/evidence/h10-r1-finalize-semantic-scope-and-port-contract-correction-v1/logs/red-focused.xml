@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.example.platform.delivery.app.DeliveryCompletionOwnerBoundaryTest" tests="1" skipped="0" failures="1" errors="0" timestamp="2026-09-01T06:44:47.395Z" hostname="localhost.localdomain" time="2.523">
+  <properties/>
+  <testcase name="completionAndFinalizationUseEventFactsAndDeliveryOwnedRowsWithoutRenderTable()" classname="com.example.platform.delivery.app.DeliveryCompletionOwnerBoundaryTest" time="2.523">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;1&gt; but was: &lt;2&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;1&gt; but was: &lt;2&gt;
+	at app//org.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:158)
+	at app//org.junit.jupiter.api.AssertionFailureBuilder.buildAndThrow(AssertionFailureBuilder.java:139)
+	at app//org.junit.jupiter.api.AssertEquals.failNotEqual(AssertEquals.java:201)
+	at app//org.junit.jupiter.api.AssertEquals.assertEquals(AssertEquals.java:152)
+	at app//org.junit.jupiter.api.AssertEquals.assertEquals(AssertEquals.java:147)
+	at app//org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:558)
+	at app//com.example.platform.delivery.app.DeliveryCompletionOwnerBoundaryTest.completionAndFinalizationUseEventFactsAndDeliveryOwnedRowsWithoutRenderTable(DeliveryCompletionOwnerBoundaryTest.java:204)
+</failure>
+  </testcase>
+  <system-out><![CDATA[14:44:41.226 [Test worker] INFO org.testcontainers.images.PullPolicy -- Image pull policy will be performed by: DefaultPullPolicy()
+14:44:41.237 [Test worker] INFO org.testcontainers.utility.ImageNameSubstitutor -- Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
+14:44:41.250 [Test worker] INFO org.testcontainers.DockerClientFactory -- Testcontainers version: 2.0.4
+14:44:41.598 [Test worker] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy -- Loaded org.testcontainers.dockerclient.RootlessDockerClientProviderStrategy from ~/.testcontainers.properties, will try it first
+14:44:42.454 [Test worker] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy -- Found Docker environment with Environment variables, system properties and defaults. Resolved dockerHost=unix:///run/user/1000/podman/podman.sock
+14:44:42.456 [Test worker] INFO org.testcontainers.DockerClientFactory -- Docker host IP address is localhost
+14:44:42.655 [Test worker] INFO org.testcontainers.DockerClientFactory -- Connected to docker:
+  Server Version: 5.4.2
+  API Version: 1.41
+  Operating System: opensuse-leap
+  Total Memory: 128494 MB
+14:44:42.660 [Test worker] WARN org.testcontainers.utility.ResourceReaper --
+********************************************************************************
+Ryuk has been disabled. This can cause unexpected behavior in your environment.
+********************************************************************************
+14:44:42.665 [Test worker] INFO org.testcontainers.DockerClientFactory -- Checking the system...
+14:44:42.666 [Test worker] INFO org.testcontainers.DockerClientFactory -- ✔︎ Docker server version should be at least 1.6.0
+14:44:44.173 [Test worker] INFO tc.postgres:15-alpine -- Creating container for image: postgres:15-alpine
+14:44:44.182 [Test worker] INFO org.testcontainers.utility.RegistryAuthLocator -- Failure when attempting to lookup auth config. Please ignore if you don't have images in an authenticated registry. Details: (dockerImageName: postgres:15-alpine, configFile: /home/user/.docker/config.json, configEnv: DOCKER_AUTH_CONFIG). Falling back to docker-java default behaviour. Exception message: Status 404: No config supplied. Checked in order: /home/user/.docker/config.json (file not found), DOCKER_AUTH_CONFIG (not set)
+14:44:44.399 [Test worker] INFO tc.postgres:15-alpine -- Container postgres:15-alpine is starting: 109ce1f0d061fc1e5fdebf3b468fec3f232efad0824672965cdd23d319db9858
+14:44:46.441 [Test worker] INFO tc.postgres:15-alpine -- Container postgres:15-alpine started in PT2.267362926S
+14:44:46.443 [Test worker] INFO tc.postgres:15-alpine -- Container is started (JDBC URL: jdbc:postgresql://localhost:41657/media_platform_test?loggerLevel=OFF)
+14:44:47.253 [Test worker] INFO org.jooq.Constants --
+
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@@@@@@@@  @@        @@@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@        @@@@@@@@@@
+@@@@@@@@@@@@@@@@  @@  @@    @@@@@@@@@@
+@@@@@@@@@@  @@@@  @@  @@    @@@@@@@@@@
+@@@@@@@@@@        @@        @@@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@@        @@        @@@@@@@@@@
+@@@@@@@@@@    @@  @@  @@@@  @@@@@@@@@@
+@@@@@@@@@@    @@  @@  @@@@  @@@@@@@@@@
+@@@@@@@@@@        @@  @  @  @@@@@@@@@@
+@@@@@@@@@@        @@        @@@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@  @@@@@@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@  Thank you for using jOOQ 3.19.30 (Build date: 2026-01-29T11:00:39Z)
+
+14:44:47.254 [Test worker] INFO org.jooq.Constants --
+
+jOOQ tip of the day: You can quickly navigate between child and parent records using TableRecord::fetchParent or TableRecord::parent and UpdatableRecord::fetchChildren or UpdatableRecord::children. Beware of N+1 problems, though!
+
+14:44:47.329 [Test worker] INFO org.jooq.impl.DefaultExecuteContext.logVersionSupport -- Version                  : Database version is supported by dialect SQLDialect.POSTGRES: 15.18
+14:44:49.719 [Test worker] INFO com.example.platform.delivery.app.DeliveryJobService -- Queued delivery job dlv_e1e6c53a7e6044e09d469b6279fd8e6d renderJob=render-1 destination=destination-1
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

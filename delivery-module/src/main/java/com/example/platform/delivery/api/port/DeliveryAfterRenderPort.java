@@ -1,12 +1,14 @@
 package com.example.platform.delivery.api.port;
 
 /**
- * Enqueues and optionally runs outbound delivery after a render job completes (Temporal activity / tests).
+ * Coordinates outbound delivery after a render job completes (Temporal activity / tests).
+ * {@code RenderJobCompletedEvent}, {@code DeliveryCompletionListener}, and
+ * {@code onRenderJobCompleted} apply AUTO policies and enqueue Delivery-owned rows.
  */
 public interface DeliveryAfterRenderPort {
 
     /**
-     * Applies AUTO delivery policies for the render job and processes queued delivery jobs.
+     * Processes already-enqueued QUEUED Delivery-owned rows for this render only.
      *
      * @return number of delivery jobs processed in this call
      */

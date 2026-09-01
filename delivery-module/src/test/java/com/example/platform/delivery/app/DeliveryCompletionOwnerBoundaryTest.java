@@ -193,11 +193,24 @@ class DeliveryCompletionOwnerBoundaryTest extends PostgresTestContainerSupport {
                 values ('delivery-unrelated', 'tenant-1', 'project-1', 'render-2', 'destination-1',
                         'QUEUED', 's3://render-output/render-2.mp4', 'unrelated/output.mp4', 0, current_timestamp)
                 """);
+        dsl.execute("""
+                insert into delivery_job
+                    (id, tenant_id, project_id, render_job_id, destination_id, status,
+                     source_uri, remote_path, attempt_count, created_at)
+                values ('delivery-failed', 'tenant-1', 'project-1', 'render-1', 'destination-1',
+                        'FAILED', 's3://render-output/render-1.mp4', 'failed/output.mp4', 1, current_timestamp)
+                """);
 
         assertEquals(1, service.finalizeDeliveriesForRenderJob("render-1"));
         assertEquals("COMPLETED", dsl.fetchValue(
-                "select status from delivery_job where render_job_id = 'render-1'"));
+                "select status from delivery_job where id <> 'delivery-failed' and render_job_id = 'render-1'"));
         assertEquals("QUEUED", dsl.fetchValue(
                 "select status from delivery_job where render_job_id = 'render-2'"));
+        assertEquals("FAILED", dsl.fetchValue(
+                "select status from delivery_job where id = 'delivery-failed'"));
+        assertEquals(1, dsl.fetchValue(
+                "select attempt_count from delivery_job where id = 'delivery-failed'"));
+        assertNull(dsl.fetchValue(
+                "select remote_uri from delivery_job where id = 'delivery-failed'"));
     }
 }

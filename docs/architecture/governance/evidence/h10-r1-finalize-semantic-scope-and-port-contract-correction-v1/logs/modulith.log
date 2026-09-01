@@ -1,0 +1,279 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.1.0/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build
+> Task :shared-kernel:compileJava
+> Task :typed-schema-module:compileJava
+
+> Task :notification-module:compileJava
+Note: /home/user/Documents/workspace/projects/media-platform/.worktrees/render-request-initiator-authority-reconciliation/notification-module/src/main/java/com/example/platform/notification/infrastructure/WebhookUrlValidator.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+Note: /home/user/Documents/workspace/projects/media-platform/.worktrees/render-request-initiator-authority-reconciliation/notification-module/src/main/java/com/example/platform/notification/app/NotificationSubscriptionService.java uses unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+
+> Task :sandbox-isolation-module:compileJava
+
+> Task :outbox-event-module:compileJava
+Note: /home/user/Documents/workspace/projects/media-platform/.worktrees/render-request-initiator-authority-reconciliation/outbox-event-module/src/main/java/com/example/platform/outbox/app/OutboxEventDispatcher.java uses unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+
+> Task :billing-module:compileJava
+> Task :ai-module:compileJava
+> Task :ai-module:processResources
+> Task :ai-module:classes
+> Task :ai-module:jar
+> Task :storage-module:compileJava
+> Task :storage-module:processResources NO-SOURCE
+> Task :storage-module:classes
+> Task :storage-module:jar
+> Task :artifact-module:compileJava
+> Task :artifact-module:processResources NO-SOURCE
+> Task :artifact-module:classes
+> Task :artifact-module:jar
+
+> Task :audio-module:compileJava
+Note: /home/user/Documents/workspace/projects/media-platform/.worktrees/render-request-initiator-authority-reconciliation/audio-module/src/main/java/com/example/platform/audio/domain/mix/AudioMixCanonicalSemantics.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+
+> Task :audio-module:processResources NO-SOURCE
+> Task :audio-module:classes
+> Task :audio-module:jar
+> Task :observability-module:compileJava
+> Task :audit-compliance-module:compileJava
+> Task :audit-compliance-module:processResources NO-SOURCE
+> Task :audit-compliance-module:classes
+> Task :audit-compliance-module:jar
+> Task :billing-module:processResources NO-SOURCE
+> Task :billing-module:classes
+> Task :billing-module:jar
+> Task :cloud-resource-module:compileJava
+> Task :cloud-resource-module:processResources NO-SOURCE
+> Task :cloud-resource-module:classes
+> Task :cloud-resource-module:jar
+> Task :color-image-module:compileJava
+> Task :color-image-module:processResources NO-SOURCE
+> Task :color-image-module:classes
+> Task :color-image-module:jar
+> Task :commerce-module:compileJava
+> Task :commerce-module:processResources NO-SOURCE
+> Task :commerce-module:classes
+> Task :commerce-module:jar
+> Task :config-module:compileJava
+> Task :config-module:processResources NO-SOURCE
+> Task :config-module:classes
+> Task :config-module:jar
+> Task :datasource-module:compileJava
+> Task :datasource-module:processResources NO-SOURCE
+> Task :datasource-module:classes
+> Task :datasource-module:jar
+> Task :secrets-config-module:compileJava
+> Task :delivery-module:compileJava
+> Task :delivery-module:processResources NO-SOURCE
+> Task :delivery-module:classes
+> Task :delivery-module:jar
+> Task :policy-governance-module:compileJava
+> Task :entitlement-module:compileJava
+> Task :entitlement-module:processResources NO-SOURCE
+> Task :entitlement-module:classes
+> Task :entitlement-module:jar
+> Task :extension-module:compileJava
+> Task :extension-module:processResources NO-SOURCE
+> Task :extension-module:classes
+> Task :extension-module:jar
+
+> Task :identity-access-module:compileJava
+Note: /home/user/Documents/workspace/projects/media-platform/.worktrees/render-request-initiator-authority-reconciliation/identity-access-module/src/main/java/com/example/platform/identity/app/MetadataScrubber.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+Note: /home/user/Documents/workspace/projects/media-platform/.worktrees/render-request-initiator-authority-reconciliation/identity-access-module/src/main/java/com/example/platform/identity/app/ProjectImportExecuteService.java uses unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+
+> Task :font-text-module:compileJava
+> Task :media-module:compileJava
+
+> Task :timeline-module:compileJava
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+Note: /home/user/Documents/workspace/projects/media-platform/.worktrees/render-request-initiator-authority-reconciliation/timeline-module/src/main/java/com/example/platform/timeline/canonical/TimedTextCanonicalSemantics.java uses unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+
+> Task :operation-module:compileJava
+warning: unknown enum constant Visibility.ANY
+  reason: class file for com.fasterxml.jackson.annotation.JsonAutoDetect$Visibility not found
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Mode.DELEGATING
+  reason: class file for com.fasterxml.jackson.annotation.JsonCreator$Mode not found
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Mode.DELEGATING
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Include.NON_EMPTY
+  reason: class file for com.fasterxml.jackson.annotation.JsonInclude$Include not found
+warning: unknown enum constant Id.NAME
+  reason: class file for com.fasterxml.jackson.annotation.JsonTypeInfo$Id not found
+warning: unknown enum constant As.PROPERTY
+  reason: class file for com.fasterxml.jackson.annotation.JsonTypeInfo$As not found
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Id.NAME
+warning: unknown enum constant As.PROPERTY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Mode.DELEGATING
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Mode.DELEGATING
+31 warnings
+
+> Task :prompt-module:compileJava
+> Task :prompt-module:processResources NO-SOURCE
+> Task :prompt-module:classes
+> Task :prompt-module:jar
+
+> Task :quota-billing-module:compileJava
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+
+> Task :platform-algorithms:graph:compileJava
+
+> Task :render-module:compileJava
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+Note: Some input files use unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+
+> Task :user-analytics-module:compileJava
+
+> Task :federation-query-module:compileJava
+Note: /home/user/Documents/workspace/projects/media-platform/.worktrees/render-request-initiator-authority-reconciliation/federation-query-module/src/main/java/com/example/platform/federation/graphql/config/GraphQLScalarConfiguration.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+Note: /home/user/Documents/workspace/projects/media-platform/.worktrees/render-request-initiator-authority-reconciliation/federation-query-module/src/main/java/com/example/platform/federation/graphql/config/GraphQLScalarConfiguration.java uses unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+
+> Task :federation-query-module:processResources
+> Task :federation-query-module:classes
+> Task :federation-query-module:jar
+> Task :font-text-module:processResources NO-SOURCE
+> Task :font-text-module:classes
+> Task :font-text-module:jar
+> Task :identity-access-module:processResources NO-SOURCE
+> Task :identity-access-module:classes
+> Task :identity-access-module:jar
+> Task :media-execution-plan-module:compileJava
+> Task :media-execution-plan-module:processResources NO-SOURCE
+> Task :media-execution-plan-module:classes
+> Task :media-execution-plan-module:jar
+> Task :media-module:processResources NO-SOURCE
+> Task :media-module:classes
+> Task :media-module:jar
+> Task :notification-module:processResources NO-SOURCE
+> Task :notification-module:classes
+> Task :notification-module:jar
+> Task :observability-module:processResources NO-SOURCE
+> Task :observability-module:classes
+> Task :observability-module:jar
+> Task :operation-module:processResources NO-SOURCE
+> Task :operation-module:classes
+> Task :operation-module:jar
+> Task :outbox-event-module:processResources NO-SOURCE
+> Task :outbox-event-module:classes
+> Task :outbox-event-module:jar
+> Task :payment-module:compileJava
+> Task :payment-module:processResources NO-SOURCE
+> Task :payment-module:classes
+> Task :payment-module:jar
+> Task :worker-fabric-module:compileJava
+> Task :provider-plugin-runtime-module:compileJava
+> Task :scheduler-module:compileJava
+> Task :social-publish-module:compileJava
+
+> Task :workflow-module:compileJava
+/home/user/Documents/workspace/projects/media-platform/.worktrees/render-request-initiator-authority-reconciliation/workflow-module/src/main/java/com/example/platform/workflow/temporal/TemporalNamespaceEnvironmentPostProcessor.java:13: warning: [removal] EnvironmentPostProcessor in org.springframework.boot.env has been deprecated and marked for removal
+public class TemporalNamespaceEnvironmentPostProcessor implements EnvironmentPostProcessor {
+                                                                  ^
+1 warning
+
+> Task :platform-app:compileJava
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+Note: Some input files use unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+
+> Task :platform-app:processResources
+> Task :platform-app:classes
+
+> Task :shared-kernel:compileTestFixturesJava
+Note: /home/user/Documents/workspace/projects/media-platform/.worktrees/render-request-initiator-authority-reconciliation/shared-kernel/src/testFixtures/java/com/example/platform/shared/test/PostgresTestContainerSupport.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+
+> Task :platform-app:compileTestJava
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+Note: Some input files use unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+
+> Task :platform-app:processTestResources
+> Task :platform-app:testClasses
+> Task :policy-governance-module:processResources NO-SOURCE
+> Task :policy-governance-module:classes
+> Task :policy-governance-module:jar
+> Task :provider-plugin-runtime-module:processResources NO-SOURCE
+> Task :provider-plugin-runtime-module:classes
+> Task :provider-plugin-runtime-module:jar
+> Task :quota-billing-module:processResources NO-SOURCE
+> Task :quota-billing-module:classes
+> Task :quota-billing-module:jar
+> Task :render-module:processResources
+> Task :render-module:classes
+> Task :render-module:jar
+> Task :sandbox-isolation-module:processResources NO-SOURCE
+> Task :sandbox-isolation-module:classes
+> Task :sandbox-isolation-module:jar
+> Task :scheduler-module:processResources NO-SOURCE
+> Task :scheduler-module:classes
+> Task :scheduler-module:jar
+> Task :secrets-config-module:processResources NO-SOURCE
+> Task :secrets-config-module:classes
+> Task :secrets-config-module:jar
+> Task :shared-kernel:processResources
+> Task :shared-kernel:classes
+> Task :shared-kernel:jar
+> Task :shared-kernel:processTestFixturesResources NO-SOURCE
+> Task :shared-kernel:testFixturesClasses
+> Task :shared-kernel:testFixturesJar
+> Task :social-publish-module:processResources NO-SOURCE
+> Task :social-publish-module:classes
+> Task :social-publish-module:jar
+> Task :timeline-module:processResources NO-SOURCE
+> Task :timeline-module:classes
+> Task :timeline-module:jar
+> Task :typed-schema-module:processResources NO-SOURCE
+> Task :typed-schema-module:classes
+> Task :typed-schema-module:jar
+> Task :user-analytics-module:processResources NO-SOURCE
+> Task :user-analytics-module:classes
+> Task :user-analytics-module:jar
+> Task :worker-fabric-module:processResources NO-SOURCE
+> Task :worker-fabric-module:classes
+> Task :worker-fabric-module:jar
+> Task :workflow-module:processResources
+> Task :workflow-module:classes
+> Task :workflow-module:jar
+> Task :platform-algorithms:graph:processResources NO-SOURCE
+> Task :platform-algorithms:graph:classes
+> Task :platform-algorithms:graph:jar
+> Task :platform-app:test
+
+[Incubating] Problems report is available at: file:///home/user/Documents/workspace/projects/media-platform/.worktrees/render-request-initiator-authority-reconciliation/build/reports/problems/problems-report.html
+
+BUILD SUCCESSFUL in 1m 10s
+92 actionable tasks: 92 executed
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.1.0/userguide/configuration_cache_enabling.html

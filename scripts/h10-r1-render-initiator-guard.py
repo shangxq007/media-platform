@@ -28,6 +28,9 @@ PRODUCTION_SCOPE = (
 
 ZERO_FIELDS = (
     "DELIVERY_RENDER_INITIATOR_RAW_TABLE_READ_COUNT",
+    "FINALIZE_FAILED_DELIVERY_AUTO_RETRY_COUNT",
+    "FINALIZE_RENDER_JOB_RAW_READ_COUNT",
+    "FINALIZE_INITIATOR_RECONSTRUCTION_COUNT",
     "CURRENT_AMBIENT_ACTOR_AT_COMPLETION_COUNT",
     "CURRENT_AMBIENT_ACTOR_AT_FAILURE_COUNT",
     "RENDER_TO_NOTIFICATION_PRODUCTION_DEPENDENCY_COUNT",
@@ -95,6 +98,89 @@ def findings_for(files: list[Path], expression: str) -> list[tuple[Path, int]]:
     return [(path, line) for path in files for line in matching_lines(path, expression)]
 
 
+def mask_java_comments_and_literals(text: str) -> str:
+    """Mask Java comments and literals while preserving offsets and newlines."""
+    masked = list(text)
+    index = 0
+    while index < len(text):
+        delimiter = None
+        if text.startswith("//", index):
+            end = text.find("\n", index + 2)
+            end = len(text) if end == -1 else end
+        elif text.startswith("/*", index):
+            closing = text.find("*/", index + 2)
+            end = len(text) if closing == -1 else closing + 2
+        elif text.startswith('\"\"\"', index):
+            delimiter = '\"\"\"'
+            closing = text.find(delimiter, index + len(delimiter))
+            end = len(text) if closing == -1 else closing + len(delimiter)
+        elif text[index] in {'\"', "'"}:
+            delimiter = text[index]
+            end = index + 1
+            while end < len(text):
+                if text[end] == "\\":
+                    end += 2
+                    continue
+                end += 1
+                if text[end - 1] == delimiter:
+                    break
+        else:
+            index += 1
+            continue
+        for masked_index in range(index, min(end, len(text))):
+            if masked[masked_index] != "\n":
+                masked[masked_index] = " "
+        index = end
+    return "".join(masked)
+
+
+def matching_delimiter(text: str, opening: int, open_char: str, close_char: str) -> int | None:
+    depth = 0
+    for index in range(opening, len(text)):
+        if text[index] == open_char:
+            depth += 1
+        elif text[index] == close_char:
+            depth -= 1
+            if depth == 0:
+                return index
+    return None
+
+
+def java_method_bodies(text: str, method_name: str) -> list[tuple[str, int]]:
+    """Return method bodies and source offsets using balanced Java delimiters."""
+    masked = mask_java_comments_and_literals(text)
+    bodies = []
+    for match in re.finditer(rf"\b{re.escape(method_name)}\s*\(", masked):
+        opening_parenthesis = masked.find("(", match.start())
+        closing_parenthesis = matching_delimiter(masked, opening_parenthesis, "(", ")")
+        if closing_parenthesis is None:
+            continue
+        declaration_end = re.search(r"[;{}]", masked[closing_parenthesis + 1:])
+        if declaration_end is None:
+            continue
+        opening_brace = closing_parenthesis + 1 + declaration_end.start()
+        if masked[opening_brace] != "{":
+            continue
+        closing_brace = matching_delimiter(masked, opening_brace, "{", "}")
+        if closing_brace is not None:
+            bodies.append((text[opening_brace + 1:closing_brace], opening_brace + 1))
+    return bodies
+
+
+def findings_in_regions(
+    path: Path,
+    text: str,
+    regions: list[tuple[str, int]],
+    expression: str,
+) -> list[tuple[Path, int]]:
+    pattern = re.compile(expression, re.IGNORECASE)
+    return [
+        (path, text.count("\n", 0, offset + match.start()) + 1)
+        for region, offset in regions
+        for match in pattern.finditer(region)
+    ]
+
+
 def render_job_schema_block(text: str) -> str:
     match = re.search(
         r"(?is)\bcreate\s+table\s+render_job\s*\((.*?)\)\s*;",
@@ -129,6 +215,34 @@ def collect(root: Path) -> tuple[dict[str, int], dict[str, list[tuple[Path, int]
     details["DELIVERY_RENDER_INITIATOR_RAW_TABLE_READ_COUNT"] = findings_for(
         delivery,
         r"\bRENDER_JOB\s*\.\s*INITIATOR_(?:TYPE|ID|TENANT_ID)\b",
+    )
+    delivery_service = root / (
+        "delivery-module/src/main/java/com/example/platform/delivery/app/DeliveryJobService.java"
+    )
+    delivery_service_text = read(delivery_service) if delivery_service.is_file() else ""
+    finalize_bodies = java_method_bodies(
+        delivery_service_text,
+        "finalizeDeliveriesForRenderJob",
+    )
+    details["FINALIZE_FAILED_DELIVERY_AUTO_RETRY_COUNT"] = findings_in_regions(
+        delivery_service,
+        delivery_service_text,
+        finalize_bodies,
+        r"\bDeliveryJobStatus\s*\.\s*FAILED\b|"
+        r"\bDELIVERY_JOB\s*\.\s*STATUS\b[^;\n]{0,160}(?:==|\.eq\s*\()\s*[\"']FAILED[\"']",
+    )
+    details["FINALIZE_RENDER_JOB_RAW_READ_COUNT"] = findings_in_regions(
+        delivery_service,
+        delivery_service_text,
+        finalize_bodies,
+        r"\bRENDER_JOB\b",
+    )
+    details["FINALIZE_INITIATOR_RECONSTRUCTION_COUNT"] = findings_in_regions(
+        delivery_service,
+        delivery_service_text,
+        finalize_bodies,
+        r"\bRenderInitiator\s*\.\s*(?:restore|principal)\s*\(|"
+        r"\bnew\s+RenderInitiator\b|\bCanonicalActor\b",
     )
 
     ambient_expression = r"CanonicalActorResolver|SecurityContextHolder|resolveCurrentActor\s*\("

@@ -1,0 +1,21 @@
+{
+  "schema_diff_path_count": 0,
+  "jooq_generated_change_count": 0,
+  "render_production_change_count": 0,
+  "notification_change_count": 0,
+  "identity_change_count": 0,
+  "outbox_change_count": 0,
+  "triggerManual_change_count": 0,
+  "triggerManual_sha_before": "324ba91627272bdb0c252b2f7dc60c0c8e813ebe960fb95f6bb6311734ec6b4d",
+  "triggerManual_sha_after": "324ba91627272bdb0c252b2f7dc60c0c8e813ebe960fb95f6bb6311734ec6b4d",
+  "retryDelivery_change_count": 0,
+  "retryDelivery_sha_before": "45ccaa1a32ebed6e3d84b97574c74217d8f3d986d69de0288a8fb132146358fc",
+  "retryDelivery_sha_after": "45ccaa1a32ebed6e3d84b97574c74217d8f3d986d69de0288a8fb132146358fc",
+  "runJob_change_count": 0,
+  "runJob_sha_before": "47df7c350c96eeae3c9492991e9f101c0f0e46c34e2e5efbb62119c69789b4af",
+  "runJob_sha_after": "47df7c350c96eeae3c9492991e9f101c0f0e46c34e2e5efbb62119c69789b4af",
+  "finalize_failed_delivery_auto_retry_count": 0,
+  "finalize_render_job_raw_read_count": 0,
+  "finalize_initiator_reconstruction_count": 0,
+  "finalize_queued_only": true
+}
