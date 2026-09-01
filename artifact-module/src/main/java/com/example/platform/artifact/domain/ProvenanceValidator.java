@@ -44,10 +44,13 @@ public final class ProvenanceValidator implements Serializable {
             Collection<ArtifactCommitRequest.ProvenanceEdgeDeclaration> declarations) {
         List<String> violations = new ArrayList<>();
         ArtifactErrorCode.Code firstCode = null;
+        DeclarationErrorContext firstContext = null;
         Set<String> canonicalEdgeIds = new HashSet<>();
         Set<DeclarationSemanticIdentity> semanticIdentities = new HashSet<>();
 
+        int declarationIndex = 0;
         for (ArtifactCommitRequest.ProvenanceEdgeDeclaration declaration : declarations) {
+            int violationCountBeforeDeclaration = violations.size();
             if (declaration.parentArtifactId().equals(childArtifactId)) {
                 firstCode = addViolation(firstCode, violations,
                         ArtifactErrorCode.Code.ARTIFACT_PROVENANCE_SELF_REFERENCE,
@@ -79,9 +82,14 @@ public final class ProvenanceValidator implements Serializable {
                         ArtifactErrorCode.Code.ARTIFACT_PROVENANCE_DUPLICATE,
                         "semantic edge declaration repeated");
             }
+
+            if (firstContext == null && violations.size() > violationCountBeforeDeclaration) {
+                firstContext = new DeclarationErrorContext(declarationIndex, declaration);
+            }
+            declarationIndex++;
         }
 
-        return result(firstCode, violations);
+        return result(firstCode, violations, firstContext);
     }
 
     /** Canonical identity shared by the domain edge and V1 relation row. */
@@ -178,8 +186,16 @@ public final class ProvenanceValidator implements Serializable {
     }
 
     private static ValidationResult result(ArtifactErrorCode.Code firstCode, List<String> violations) {
+        return result(firstCode, violations, null);
+    }
+
+    private static ValidationResult result(
+            ArtifactErrorCode.Code firstCode,
+            List<String> violations,
+            DeclarationErrorContext declarationErrorContext) {
         return new ValidationResult(
-                violations.isEmpty(), firstCode, Collections.unmodifiableList(violations));
+                violations.isEmpty(), firstCode, Collections.unmodifiableList(violations),
+                declarationErrorContext);
     }
 
     private static boolean isBlank(String value) {
@@ -280,14 +296,31 @@ public final class ProvenanceValidator implements Serializable {
     /**
      * Result of a validation operation.
      */
+    public record DeclarationErrorContext(
+            int declarationIndex,
+            ArtifactCommitRequest.ProvenanceEdgeDeclaration declaration) implements Serializable {
+        public DeclarationErrorContext {
+            if (declarationIndex < 0) {
+                throw new IllegalArgumentException("declaration index must not be negative");
+            }
+            if (declaration == null) {
+                throw new IllegalArgumentException("declaration must be present");
+            }
+        }
+    }
+
     public record ValidationResult(
             boolean valid,
             ArtifactErrorCode.Code errorCode,
-            List<String> violations) implements Serializable {
+            List<String> violations,
+            DeclarationErrorContext declarationErrorContext) implements Serializable {
         public ValidationResult {
             violations = violations != null ? List.copyOf(violations) : List.of();
             if (valid && errorCode != null) {
                 throw new IllegalArgumentException("valid result must not carry an error code");
+            }
+            if (valid && declarationErrorContext != null) {
+                throw new IllegalArgumentException("valid result must not carry declaration error context");
             }
             if (!valid && errorCode == null) {
                 throw new IllegalArgumentException("invalid result must carry an error code");

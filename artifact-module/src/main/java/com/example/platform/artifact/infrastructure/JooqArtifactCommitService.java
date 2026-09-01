@@ -156,9 +156,9 @@ public class JooqArtifactCommitService implements ArtifactCommitService {
             error.parentArtifactId(edge.parentArtifactId().value())
                     .operationId(edge.operationId())
                     .attemptId(edge.attemptId());
-        } else if (!request.provenanceDeclarations().isEmpty()) {
+        } else if (validation.declarationErrorContext() != null) {
             ArtifactCommitRequest.ProvenanceEdgeDeclaration declaration =
-                    request.provenanceDeclarations().getFirst();
+                    validation.declarationErrorContext().declaration();
             error.parentArtifactId(declaration.parentArtifactId().value())
                     .operationId(declaration.operationId())
                     .attemptId(declaration.attemptId());

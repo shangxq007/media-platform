@@ -743,6 +743,31 @@ tasks.register("verifyArtifactProvenanceValidationAuthority") {
             if (!commit.contains("throw new ArtifactErrorCode.ProvenanceException(")) {
                 failures += "provenance validation failure must throw the typed domain exception"
             }
+            if (Regex(
+                    "provenanceDeclarations\\s*\\(\\s*\\)\\s*\\.\\s*"
+                        + "(?:getFirst\\s*\\(\\s*\\)|get\\s*\\(\\s*0\\s*\\))"
+                ).containsMatchIn(commit)) {
+                failures += "request-local error context must not fall back to declaration zero"
+            }
+            if (!validator.contains(
+                    "public record DeclarationErrorContext( int declarationIndex, "
+                        + "ArtifactCommitRequest.ProvenanceEdgeDeclaration declaration)")
+                || !validator.contains("DeclarationErrorContext declarationErrorContext")
+                || !validator.contains(
+                    "firstContext = new DeclarationErrorContext(declarationIndex, declaration)")
+                || !commit.contains("validation.declarationErrorContext().declaration()")) {
+                failures += "validator-owned typed context must capture and supply the exact offending declaration"
+            }
+            val infrastructureValidationFragments = listOf(
+                "declaration.parentArtifactId().equals(request.artifactId())",
+                "isBlank(declaration.operationId())",
+                "declaration.operationVersion() < 1",
+                "!canonicalEdgeIds.add(",
+                "!semanticIdentities.add("
+            )
+            if (infrastructureValidationFragments.any(commit::contains)) {
+                failures += "infrastructure must not reimplement provenance declaration validation rules"
+            }
             if (Regex("\\bcatch\\s*\\(").containsMatchIn(commit)) {
                 failures += "canonical commit must not catch and continue after provenance rejection"
             }
@@ -850,8 +875,27 @@ tasks.register("verifyArtifactProvenanceValidationAuthority") {
                 .replace("ProvenanceValidator.validateDeclarations", "ControllerValidator.validateDeclarations")
                 .replace("ProvenanceValidator.validateEdge", "ControllerValidator.validateEdge")
         )
+        requireMutationRejected(
+            "request-local context replaced by first-declaration fallback",
+            commitMutation = canonicalSource.replace(
+                "validation.declarationErrorContext().declaration()",
+                "request.provenanceDeclarations().getFirst()")
+        )
+        requireMutationRejected(
+            "validator typed declaration context removed",
+            validatorMutation = validatorSource.replace(
+                "DeclarationErrorContext declarationErrorContext",
+                "Object declarationErrorContext")
+        )
+        requireMutationRejected(
+            "operation validation reimplemented in infrastructure",
+            commitMutation = canonicalSource +
+                "\nclass HostileInfrastructureValidation { " +
+                "boolean invalid(ArtifactCommitRequest.ProvenanceEdgeDeclaration declaration) { " +
+                "return declaration.operationVersion() < 1; } }\n"
+        )
 
-        println("OK: Artifact provenance validation authority verified; hostile mutations rejected (8/8)")
+        println("OK: Artifact provenance validation authority verified; hostile mutations rejected (11/11)")
     }
 }
 
