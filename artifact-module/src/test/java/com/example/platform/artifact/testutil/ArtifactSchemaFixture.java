@@ -5,7 +5,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 /**
  * GCR-2: canonical Artifact schema fixture for artifact-module DB tests.
  * Creates the Artifact-owned subset of the canonical artifact / artifact_replica /
- * artifact_pin schema idempotently. Cross-module pin ownership to project and
+ * artifact_pin / artifact_relation schema idempotently. The relation fixture mirrors
+ * both production endpoint foreign keys because they are part of the bounded
+ * new-child provenance proof. Cross-module pin ownership to project and
  * timeline_revision is covered by tests that apply the complete production V1 schema.
  */
 public final class ArtifactSchemaFixture {
@@ -52,6 +54,17 @@ public final class ArtifactSchemaFixture {
                 + "unique (tenant_id, project_id, revision_id, artifact_id),"
                 + "constraint fk_artifact_pin_artifact foreign key (tenant_id, artifact_id) "
                 + "references artifact(tenant_id, id)"
+                + ")");
+        jdbc.execute("CREATE TABLE IF NOT EXISTS artifact_relation ("
+                + "id varchar(64) primary key,"
+                + "source_artifact_id varchar(64) not null,"
+                + "target_artifact_id varchar(64) not null,"
+                + "relation_type varchar(64) not null,"
+                + "created_at timestamp not null,"
+                + "constraint fk_artifact_relation_source foreign key (source_artifact_id) "
+                + "references artifact(id),"
+                + "constraint fk_artifact_relation_target foreign key (target_artifact_id) "
+                + "references artifact(id)"
                 + ")");
     }
 }

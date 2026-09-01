@@ -670,6 +670,7 @@ tasks.register("jooqFoundationCheck") {
         "verifyC1TimelineMergeConvergence",
         "verifyGcr1CorrectionV2IngressAuthority",
         "verifyGcr2ArtifactAuthority",
+        "verifyArtifactProvenanceValidationAuthority",
         "verifyGcr2CorrectionV1",
         "verifyGcr5Gcr6DatabaseCanonicalization",
         "verifyTimelineEffectTransitionCanonicalization",
@@ -679,6 +680,179 @@ tasks.register("jooqFoundationCheck") {
         "verifyJooqAllowlistIntegrity",
         ":render-module:verifyC20RenderPlanBoundaryGuard"
     )
+}
+
+tasks.register("verifyArtifactProvenanceValidationAuthority") {
+    group = "verification"
+    description = "Artifact V1: fail-closed canonical provenance validation precedes the sole relation write"
+    doLast {
+        val canonicalPath =
+            "artifact-module/src/main/java/com/example/platform/artifact/infrastructure/JooqArtifactCommitService.java"
+        val validatorPath =
+            "artifact-module/src/main/java/com/example/platform/artifact/domain/ProvenanceValidator.java"
+        val canonicalSource = file(canonicalPath).readText()
+        val validatorSource = file(validatorPath).readText()
+        val productionSources = fileTree(".").matching {
+            include("*/src/main/**/*.java", "platform-app/src/main/**/*.java")
+            exclude("**/build/**", "**/.gradle/**", "**/.worktrees/**")
+        }.associate { it.relativeTo(projectDir).invariantSeparatorsPath to it.readText() }
+
+        fun codeOnly(source: String): String = source
+            .replace(Regex("(?s)/\\*.*?\\*/"), "")
+            .lineSequence()
+            .map { it.substringBefore("//") }
+            .joinToString("\n")
+
+        fun normalized(source: String): String = codeOnly(source).replace(Regex("\\s+"), " ").trim()
+
+        fun violations(
+            commitSource: String,
+            domainValidatorSource: String,
+            sources: Map<String, String>
+        ): List<String> {
+            val failures = mutableListOf<String>()
+            val commit = normalized(commitSource)
+            val validator = normalized(domainValidatorSource)
+
+            val declarationValidation = commit.indexOf(
+                "ProvenanceValidator.validateDeclarations( artifact.artifactId(), request.provenanceDeclarations())"
+            )
+            val existenceLookup = commit.indexOf("artifactRepository.exists(request.tenantId(), request.artifactId())")
+            val preparedEdges = commit.indexOf("prepareValidatedProvenance(artifact, request)")
+            val artifactInsert = commit.indexOf("artifactRepository.insert(artifact,")
+            val relationWrite = commit.indexOf("relationRepository.save(")
+            val relationWriteCount = Regex("relationRepository\\s*\\.\\s*save\\s*\\(")
+                .findAll(commit).count()
+            if (declarationValidation < 0 || existenceLookup < 0 || declarationValidation > existenceLookup) {
+                failures += "request-local validation must precede every repository call"
+            }
+            if (preparedEdges < 0 || artifactInsert < 0 || relationWrite < 0
+                || preparedEdges > artifactInsert || artifactInsert > relationWrite) {
+                failures += "canonical order must be VALIDATE -> ARTIFACT/REPLICA -> RELATION_WRITE"
+            }
+            if (relationWriteCount != 1) {
+                failures += "canonical commit must contain exactly one semantic relation write site"
+            }
+            if (!commit.contains(
+                    "artifactRepository.findById( request.tenantId(), declaration.parentArtifactId())")) {
+                failures += "parent lookup must remain tenant-scoped to request.tenantId()"
+            }
+            if (!commit.contains("ProvenanceValidator.validateEdge( edge, validatedEdges, endpointTenants)")) {
+                failures += "truthful candidate edges must pass the Artifact domain validator"
+            }
+            if (!commit.contains("throw new ArtifactErrorCode.ProvenanceException(")) {
+                failures += "provenance validation failure must throw the typed domain exception"
+            }
+            if (Regex("\\bcatch\\s*\\(").containsMatchIn(commit)) {
+                failures += "canonical commit must not catch and continue after provenance rejection"
+            }
+            if (commit.contains("TenantContext") || commit.contains("findById(null,")
+                || commit.contains("findById(\"*\",")) {
+                failures += "ambient, null, and wildcard tenant fallbacks are forbidden"
+            }
+            if (!validator.contains("declaration.parentArtifactId().equals(childArtifactId)")) {
+                failures += "request-local self-reference rejection is missing"
+            }
+            if (!validator.contains("isBlank(declaration.operationId())")
+                || !validator.contains("declaration.operationVersion() < 1")
+                || !validator.contains("isBlank(declaration.attemptId())")
+                || !validator.contains("ARTIFACT_PROVENANCE_OPERATION_INVALID")) {
+                failures += "typed operation-structure validation is missing"
+            }
+            if (!validator.contains("!canonicalEdgeIds.add(canonicalEdgeId)")
+                || !validator.contains("!semanticIdentities.add(semanticIdentity)")) {
+                failures += "canonical and semantic duplicate checks must both remain explicit"
+            }
+
+            val directRelationWriter = Regex(
+                "\\.save\\s*\\(\\s*new\\s+(?:[A-Za-z0-9_.]+\\.)?ArtifactRelation\\s*\\("
+            )
+            val outsideWriters = sources.filter { (path, source) ->
+                path != canonicalPath && directRelationWriter.containsMatchIn(codeOnly(source))
+            }.keys
+            if (outsideWriters.isNotEmpty()) {
+                failures += "direct production relation writer outside canonical commit: $outsideWriters"
+            }
+            val canonicalCommitAuthorities = sources.filter { (_, source) ->
+                val code = codeOnly(source)
+                code.contains("@Service")
+                    && code.contains("implements ArtifactCommitService")
+            }.keys
+            if (canonicalCommitAuthorities != setOf(canonicalPath)) {
+                failures += "canonical Artifact commit authority count/path changed: $canonicalCommitAuthorities"
+            }
+            return failures
+        }
+
+        val baselineFailures = violations(canonicalSource, validatorSource, productionSources)
+        require(baselineFailures.isEmpty()) {
+            "FAIL: Artifact provenance authority guard: ${baselineFailures.joinToString("; ")}"
+        }
+
+        fun requireMutationRejected(
+            name: String,
+            commitMutation: String = canonicalSource,
+            validatorMutation: String = validatorSource,
+            sourcesMutation: Map<String, String> = productionSources
+        ) {
+            require(commitMutation != canonicalSource
+                    || validatorMutation != validatorSource
+                    || sourcesMutation != productionSources) {
+                "FAIL: hostile mutation fixture did not change guard input: $name"
+            }
+            require(violations(commitMutation, validatorMutation, sourcesMutation).isNotEmpty()) {
+                "FAIL: hostile Artifact provenance mutation escaped guard: $name"
+            }
+        }
+
+        requireMutationRejected(
+            "validation removed before relation write",
+            commitMutation = canonicalSource.replace(
+                "prepareValidatedProvenance(artifact, request)", "List.of()")
+        )
+        requireMutationRejected(
+            "direct production relation writer added",
+            sourcesMutation = productionSources + (
+                "artifact-module/src/main/java/hostile/SecondRelationWriter.java" to
+                    "class SecondRelationWriter { void write() { relations.save(new ArtifactRelation()); } }")
+        )
+        requireMutationRejected(
+            "tenant-scoped parent lookup replaced by global lookup",
+            commitMutation = canonicalSource.replace(
+                "request.tenantId(), declaration.parentArtifactId()",
+                "declaration.parentArtifactId()")
+        )
+        requireMutationRejected(
+            "self-edge check removed",
+            validatorMutation = validatorSource.replace(
+                "declaration.parentArtifactId().equals(childArtifactId)", "false")
+        )
+        requireMutationRejected(
+            "provenance rejection caught and continued",
+            commitMutation = canonicalSource +
+                "\nclass HostileCatch { void ignore() { try {} catch (ArtifactErrorCode.ProvenanceException ignored) {} } }\n"
+        )
+        requireMutationRejected(
+            "typed rejection changed to warning-only",
+            commitMutation = canonicalSource.replace(
+                "throw new ArtifactErrorCode.ProvenanceException(error.build(), validation.violations());",
+                "System.getLogger(\"artifact\").log(System.Logger.Level.WARNING, validation.violations().toString());")
+        )
+        requireMutationRejected(
+            "wildcard tenant fallback added",
+            commitMutation = canonicalSource.replace(
+                "request.tenantId(), declaration.parentArtifactId()",
+                "\"*\", declaration.parentArtifactId()")
+        )
+        requireMutationRejected(
+            "validation moved out of canonical writer",
+            commitMutation = canonicalSource
+                .replace("ProvenanceValidator.validateDeclarations", "ControllerValidator.validateDeclarations")
+                .replace("ProvenanceValidator.validateEdge", "ControllerValidator.validateEdge")
+        )
+
+        println("OK: Artifact provenance validation authority verified; hostile mutations rejected (8/8)")
+    }
 }
 
 tasks.register("verifyPfirr1AuthenticationAuthority") {

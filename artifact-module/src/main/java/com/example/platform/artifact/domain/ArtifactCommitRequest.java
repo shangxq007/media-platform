@@ -74,11 +74,10 @@ public record ArtifactCommitRequest(
         public ProvenanceEdgeDeclaration {
             Objects.requireNonNull(parentArtifactId, "parentArtifactId");
             Objects.requireNonNull(relationType, "relationType");
-            Objects.requireNonNull(operationId, "operationId");
-            if (operationVersion < 1) throw new IllegalArgumentException("operationVersion must be >= 1");
-            Objects.requireNonNull(attemptId, "attemptId");
-            Objects.requireNonNull(requestDigest, "requestDigest");
-            Objects.requireNonNull(resultDigest, "resultDigest");
+            // Operation fields are deliberately retained as declared here. The canonical
+            // commit boundary validates them through ProvenanceValidator so malformed
+            // provenance is reported with ARTIFACT_PROVENANCE_OPERATION_INVALID rather
+            // than escaping as IllegalArgumentException during request construction.
         }
     }
 }

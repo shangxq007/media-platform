@@ -36,6 +36,40 @@ class ProvenanceValidatorTest {
     }
 
     @Test
+    @DisplayName("Malformed operation declaration has typed operation-invalid result")
+    void malformedOperationDeclarationHasTypedResult() {
+        var declaration = new ArtifactCommitRequest.ProvenanceEdgeDeclaration(
+                new ArtifactId("parent-1"), ProvenanceRelationType.GENERATED_FROM,
+                " ", 0, "", "", null);
+
+        ProvenanceValidator.ValidationResult result = ProvenanceValidator.validateDeclarations(
+                new ArtifactId("child-1"), List.of(declaration));
+
+        assertThat(result.valid()).isFalse();
+        assertThat(result.errorCode())
+                .isEqualTo(ArtifactErrorCode.Code.ARTIFACT_PROVENANCE_OPERATION_INVALID);
+    }
+
+    @Test
+    @DisplayName("Repeated persisted edge identity has typed duplicate result")
+    void repeatedCanonicalEdgeIdentityHasTypedResult() {
+        var first = new ArtifactCommitRequest.ProvenanceEdgeDeclaration(
+                new ArtifactId("parent-1"), ProvenanceRelationType.GENERATED_FROM,
+                "op-1", 1, "attempt-1", "request-1", "result-1");
+        var second = new ArtifactCommitRequest.ProvenanceEdgeDeclaration(
+                new ArtifactId("parent-1"), ProvenanceRelationType.TRANSCODED_FROM,
+                "op-2", 2, "attempt-2", "request-2", "result-2");
+
+        ProvenanceValidator.ValidationResult result = ProvenanceValidator.validateDeclarations(
+                new ArtifactId("child-1"), List.of(first, second));
+
+        assertThat(result.valid()).isFalse();
+        assertThat(result.errorCode())
+                .isEqualTo(ArtifactErrorCode.Code.ARTIFACT_PROVENANCE_DUPLICATE);
+        assertThat(result.violations()).anyMatch(v -> v.contains("canonical edge identity"));
+    }
+
+    @Test
     @DisplayName("Self-reference is rejected")
     void selfReferenceRejected() {
         ArtifactId artifact = new ArtifactId("art-1");

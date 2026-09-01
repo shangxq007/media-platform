@@ -1,5 +1,6 @@
 package com.example.platform.artifact.domain;
 
+import com.example.platform.shared.identity.ArtifactId;
 import java.io.Serializable;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -7,7 +8,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -32,6 +32,64 @@ public final class ProvenanceValidator implements Serializable {
     }
 
     /**
+     * Validates request-local facts before any endpoint lookup or persistence.
+     *
+     * <p>The persisted relation identity is {@code child-parent}; consequently a
+     * repeated parent is a duplicate canonical edge even if other declaration
+     * metadata differs. The semantic identity check is retained independently so
+     * the domain rule remains explicit if persistence mechanics evolve.
+     */
+    public static ValidationResult validateDeclarations(
+            ArtifactId childArtifactId,
+            Collection<ArtifactCommitRequest.ProvenanceEdgeDeclaration> declarations) {
+        List<String> violations = new ArrayList<>();
+        ArtifactErrorCode.Code firstCode = null;
+        Set<String> canonicalEdgeIds = new HashSet<>();
+        Set<DeclarationSemanticIdentity> semanticIdentities = new HashSet<>();
+
+        for (ArtifactCommitRequest.ProvenanceEdgeDeclaration declaration : declarations) {
+            if (declaration.parentArtifactId().equals(childArtifactId)) {
+                firstCode = addViolation(firstCode, violations,
+                        ArtifactErrorCode.Code.ARTIFACT_PROVENANCE_SELF_REFERENCE,
+                        "parent == child == " + childArtifactId.value());
+            }
+
+            if (isBlank(declaration.operationId())
+                    || declaration.operationVersion() < 1
+                    || isBlank(declaration.attemptId())
+                    || isBlank(declaration.requestDigest())
+                    || isBlank(declaration.resultDigest())) {
+                firstCode = addViolation(firstCode, violations,
+                        ArtifactErrorCode.Code.ARTIFACT_PROVENANCE_OPERATION_INVALID,
+                        "operationId, operationVersion, attemptId, requestDigest and resultDigest must be present and valid");
+            }
+
+            String canonicalEdgeId = canonicalEdgeId(childArtifactId, declaration.parentArtifactId());
+            if (!canonicalEdgeIds.add(canonicalEdgeId)) {
+                firstCode = addViolation(firstCode, violations,
+                        ArtifactErrorCode.Code.ARTIFACT_PROVENANCE_DUPLICATE,
+                        "canonical edge identity repeated: " + canonicalEdgeId);
+            }
+
+            DeclarationSemanticIdentity semanticIdentity = new DeclarationSemanticIdentity(
+                    declaration.parentArtifactId(), declaration.relationType(), declaration.operationId(),
+                    declaration.operationVersion(), declaration.attemptId());
+            if (!semanticIdentities.add(semanticIdentity)) {
+                firstCode = addViolation(firstCode, violations,
+                        ArtifactErrorCode.Code.ARTIFACT_PROVENANCE_DUPLICATE,
+                        "semantic edge declaration repeated");
+            }
+        }
+
+        return result(firstCode, violations);
+    }
+
+    /** Canonical identity shared by the domain edge and V1 relation row. */
+    public static String canonicalEdgeId(ArtifactId childArtifactId, ArtifactId parentArtifactId) {
+        return childArtifactId.value() + "-" + parentArtifactId.value();
+    }
+
+    /**
      * Validates a single edge against the existing graph.
      *
      * @param edge       the edge to validate
@@ -42,32 +100,45 @@ public final class ProvenanceValidator implements Serializable {
     public static ValidationResult validateEdge(ProvenanceEdge edge, Collection<ProvenanceEdge> existing,
                                                  Map<String, String> tenantIds) {
         List<String> violations = new ArrayList<>();
+        ArtifactErrorCode.Code firstCode = null;
 
         // Self-reference check
         if (edge.parentArtifactId().value().equals(edge.childArtifactId().value())) {
-            violations.add("ARTIFACT_PROVENANCE_SELF_REFERENCE: parent == child == " + edge.parentArtifactId().value());
+            firstCode = addViolation(firstCode, violations,
+                    ArtifactErrorCode.Code.ARTIFACT_PROVENANCE_SELF_REFERENCE,
+                    "parent == child == " + edge.parentArtifactId().value());
         }
 
         // Tenant ownership check
         String parentTenant = tenantIds.get(edge.parentArtifactId().value());
         String childTenant = tenantIds.get(edge.childArtifactId().value());
         if (parentTenant == null) {
-            violations.add("ARTIFACT_PROVENANCE_ENDPOINT_NOT_FOUND: parent " + edge.parentArtifactId().value());
+            firstCode = addViolation(firstCode, violations,
+                    ArtifactErrorCode.Code.ARTIFACT_PROVENANCE_ENDPOINT_NOT_FOUND,
+                    "parent " + edge.parentArtifactId().value());
         }
         if (childTenant == null) {
-            violations.add("ARTIFACT_PROVENANCE_ENDPOINT_NOT_FOUND: child " + edge.childArtifactId().value());
+            firstCode = addViolation(firstCode, violations,
+                    ArtifactErrorCode.Code.ARTIFACT_PROVENANCE_ENDPOINT_NOT_FOUND,
+                    "child " + edge.childArtifactId().value());
         }
         if (parentTenant != null && childTenant != null && !parentTenant.equals(childTenant)) {
-            violations.add("ARTIFACT_PROVENANCE_CROSS_TENANT: parent tenant=" + parentTenant + " child tenant=" + childTenant);
+            firstCode = addViolation(firstCode, violations,
+                    ArtifactErrorCode.Code.ARTIFACT_PROVENANCE_CROSS_TENANT,
+                    "parent tenant=" + parentTenant + " child tenant=" + childTenant);
         }
         if (parentTenant != null && !parentTenant.equals(edge.tenantId())) {
-            violations.add("ARTIFACT_PROVENANCE_CROSS_TENANT: edge tenant=" + edge.tenantId() + " != parent tenant=" + parentTenant);
+            firstCode = addViolation(firstCode, violations,
+                    ArtifactErrorCode.Code.ARTIFACT_PROVENANCE_CROSS_TENANT,
+                    "edge tenant=" + edge.tenantId() + " != parent tenant=" + parentTenant);
         }
 
         // Duplicate edgeId check
         for (ProvenanceEdge e : existing) {
             if (e.edgeId().equals(edge.edgeId())) {
-                violations.add("ARTIFACT_PROVENANCE_DUPLICATE: edgeId=" + edge.edgeId());
+                firstCode = addViolation(firstCode, violations,
+                        ArtifactErrorCode.Code.ARTIFACT_PROVENANCE_DUPLICATE,
+                        "edgeId=" + edge.edgeId());
                 break;
             }
         }
@@ -79,7 +150,9 @@ public final class ProvenanceValidator implements Serializable {
                 e.relationType() == edge.relationType() &&
                 e.operationId().equals(edge.operationId()) &&
                 e.attemptId().equals(edge.attemptId())) {
-                violations.add("ARTIFACT_PROVENANCE_DUPLICATE: semantic edge already exists");
+                firstCode = addViolation(firstCode, violations,
+                        ArtifactErrorCode.Code.ARTIFACT_PROVENANCE_DUPLICATE,
+                        "semantic edge already exists");
                 break;
             }
         }
@@ -87,10 +160,30 @@ public final class ProvenanceValidator implements Serializable {
         // Cycle detection: O(V+E) using BFS/DFS from child following parent links
         // If we can reach the parent from the child via existing edges, adding this edge creates a cycle
         if (violations.isEmpty() && wouldCreateCycle(edge, existing)) {
-            violations.add("ARTIFACT_PROVENANCE_CYCLE: adding edge " + edge.edgeId() + " would create a cycle");
+            firstCode = addViolation(firstCode, violations,
+                    ArtifactErrorCode.Code.ARTIFACT_PROVENANCE_CYCLE,
+                    "adding edge " + edge.edgeId() + " would create a cycle");
         }
 
-        return new ValidationResult(violations.isEmpty(), Collections.unmodifiableList(violations));
+        return result(firstCode, violations);
+    }
+
+    private static ArtifactErrorCode.Code addViolation(
+            ArtifactErrorCode.Code firstCode,
+            List<String> violations,
+            ArtifactErrorCode.Code code,
+            String detail) {
+        violations.add(code.name() + ": " + detail);
+        return firstCode == null ? code : firstCode;
+    }
+
+    private static ValidationResult result(ArtifactErrorCode.Code firstCode, List<String> violations) {
+        return new ValidationResult(
+                violations.isEmpty(), firstCode, Collections.unmodifiableList(violations));
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 
     /**
@@ -187,9 +280,26 @@ public final class ProvenanceValidator implements Serializable {
     /**
      * Result of a validation operation.
      */
-    public record ValidationResult(boolean valid, List<String> violations) implements Serializable {
+    public record ValidationResult(
+            boolean valid,
+            ArtifactErrorCode.Code errorCode,
+            List<String> violations) implements Serializable {
         public ValidationResult {
             violations = violations != null ? List.copyOf(violations) : List.of();
+            if (valid && errorCode != null) {
+                throw new IllegalArgumentException("valid result must not carry an error code");
+            }
+            if (!valid && errorCode == null) {
+                throw new IllegalArgumentException("invalid result must carry an error code");
+            }
         }
+    }
+
+    private record DeclarationSemanticIdentity(
+            ArtifactId parentArtifactId,
+            ProvenanceRelationType relationType,
+            String operationId,
+            int operationVersion,
+            String attemptId) {
     }
 }
