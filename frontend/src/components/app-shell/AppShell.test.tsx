@@ -5,7 +5,7 @@ import { ProductAppShell } from './AppShell'
 import type { ProjectContextValue } from '../../foundation/projectContext'
 
 const project: ProjectContextValue = {
-  workspaceId: 'workspace-1', projectId: 'project-1', project: { kind: 'PROJECT', id: 'project-1' },
+  workspaceId: 'workspace-1', tenantId: null, projectId: 'project-1', project: { kind: 'PROJECT', id: 'project-1' },
   status: 'BLOCKED', reason: 'Scoped relationship unavailable.',
 }
 

@@ -14,6 +14,45 @@ const PATH_LEDGER = resolve(repositoryRoot, 'docs/architecture/governance/fronte
 const FRONTEND_ROOT = resolve(repositoryRoot, 'frontend')
 const ACTIVE_PRODUCT_PATH_PATTERN = /^(?:api\/render-jobs\.ts|components\/render-jobs\/|editor\/|pages\/(?:RenderJobDashboard|SmokeEditorPage)\.tsx|routes\/app\/renders\/|shared\/CapabilitiesPage\.tsx)/
 const EXPLICIT_NON_PRODUCT_SURFACE_PATTERN = /^(?:api\/(?:admin|dev|operator)\/|components\/(?:admin|dev|operator)\/|pages\/(?:Admin|Dev|Observability|Operator)|routes\/(?:admin|dev|operator)\/|routes\/app\/(?:admin|dev|operator)\/)/i
+const POST_H7_PRODUCT_PATH_PATTERN = /^(?:api\/app\/|app\/routeTree\.tsx|foundation\/projectContext\.tsx|surfaces\/FoundationPages\.tsx|product\/(?:canvas|review|timeline)\/)/
+const POST_H7_COMPONENT_PATH_PATTERN = /^(?:app\/routeTree\.tsx|foundation\/projectContext\.tsx|surfaces\/FoundationPages\.tsx|product\/(?:canvas|review|timeline)\/)/
+const VERSIONLESS_TRANSPORT_MODULE_PATTERN = /^api\/app\/versionless-api\.ts$/
+
+export const API_APP_RUNTIME_ALLOWLIST = [
+  'api/app/artifacts.client.ts',
+  'api/app/asset.gateway.ts',
+  'api/app/capability.gateway.ts',
+  'api/app/gateway-error.ts',
+  'api/app/index.ts',
+  'api/app/operation.gateway.ts',
+  'api/app/products.client.ts',
+  'api/app/timeline-query.gateway.ts',
+  'api/app/versionless-api.ts',
+].sort()
+
+export const POST_H7_GOVERNED_PATHS = [
+  'api/app/artifacts.client.ts',
+  'api/app/index.ts',
+  'api/app/asset.gateway.ts',
+  'api/app/capability.gateway.ts',
+  'api/app/gateway-error.ts',
+  'api/app/operation.gateway.ts',
+  'api/app/products.client.ts',
+  'api/app/timeline-query.gateway.ts',
+  'api/app/versionless-api.ts',
+  'app/routeTree.tsx',
+  'foundation/projectContext.tsx',
+  'surfaces/FoundationPages.tsx',
+  'product/canvas/WorkspaceCanvas.tsx',
+  'product/canvas/model.ts',
+  'product/review/ReviewWorkspace.tsx',
+  'product/timeline/NleWorkspace.tsx',
+  'product/timeline/SemanticDiff.tsx',
+  'product/timeline/editor-state.ts',
+  'product/timeline/gateways.ts',
+  'product/timeline/testing/mocks.ts',
+  'product/timeline/types.ts',
+].sort()
 
 export const DELETE_SHADOW_PATHS = [
   'frontend/src/config/navigation.ts',
@@ -45,6 +84,112 @@ const OLD_IMPORT_TARGETS = [
 ]
 
 export const AUTHORITY_RULES = [
+  {
+    name: 'PRODUCT_CURRENT_REVISION_ID_FRONTEND_USAGE_COUNT',
+    governedPathPattern: POST_H7_PRODUCT_PATH_PATTERN,
+    patterns: [
+      /\bcurrent_revision_id\b/i,
+      /\bcurrentRevisionId\b/,
+    ],
+  },
+  {
+    name: 'CLIENT_LATEST_HEAD_INFERENCE_COUNT',
+    governedPathPattern: POST_H7_PRODUCT_PATH_PATTERN,
+    patterns: [
+      /\b(?:revisions|history)\s*\[\s*0\s*\]/,
+      /\b(?:revisions|history)\s*\.\s*at\(\s*0\s*\)/,
+      /\b(?:latest|newest)(?:Revision|Head)\b/,
+    ],
+  },
+  {
+    name: 'CLIENT_CANONICAL_ACTOR_AUTHORITY_COUNT',
+    governedPathPattern: POST_H7_PRODUCT_PATH_PATTERN,
+    patterns: [
+      /(?:[{,]\s*)(?:(?:['"](?:actorId|principalRef|createdBy)['"])|(?:\[\s*['"](?:actorId|principalRef|createdBy)['"]\s*\])|(?:actorId|principalRef|createdBy))\s*(?=[:,}])/,
+      /\b(?:actorId|principalRef|createdBy)\s*=/,
+      /\b(?:const|let|var)\s+[A-Za-z_$][\w$]*(?:actor|principal|creator)[\w$]*\s*=\s*(?:actorId|principalRef|createdBy)\b/i,
+    ],
+  },
+  {
+    name: 'CLIENT_CANONICAL_TENANT_OVERRIDE_COUNT',
+    governedPathPattern: POST_H7_PRODUCT_PATH_PATTERN,
+    patterns: [
+      /(?:(?:['"]tenantId['"])|(?:\[\s*['"]tenantId['"]\s*\])|\btenantId\b)\s*:\s*(?:override|draft|form|input|local|manual|selected|scoped)[A-Za-z0-9_$]*/i,
+      /(?:(?:['"]X-Tenant-ID['"])|(?:\[\s*['"]X-Tenant-ID['"]\s*\]))\s*(?::|=)/i,
+      /\b(?:api|axios|transport)\s*(?:\.\s*(?:post|put|patch|delete)|\[\s*['"](?:post|put|patch|delete)['"]\s*\])\s*\(\s*[^,\n]+,\s*\{[^}]*(?:(?:['"]tenantId['"])|(?:\[\s*['"]tenantId['"]\s*\])|\btenantId\b)\s*(?:[:,}])/i,
+      /\b(?:const|let|var)\s+(?:[A-Za-z_$][\w$]*)?(?:tenantOverride|overrideTenant|localTenant|draftTenant)[\w$]*\s*=/i,
+      /\b(?:const|let|var)\s+(?:payload|body|request)\s*=\s*\{[^}]*\btenantId\s*(?:,|\})/s,
+    ],
+  },
+  {
+    name: 'NEW_FRONTEND_GENERIC_PATCH_USAGE_COUNT',
+    governedPathPattern: POST_H7_PRODUCT_PATH_PATTERN,
+    patterns: [
+      /['"`]\/[^'"`\n]*(?:timeline-)?patch(?:\/|['"`])/i,
+      /\bTimelinePatch(?:API|Request|Operation)?\b/,
+    ],
+  },
+  {
+    name: 'PHYSICAL_STORAGE_URI_AS_ENTITY_ID_COUNT',
+    governedPathPattern: POST_H7_PRODUCT_PATH_PATTERN,
+    patterns: [
+      /\b(?:artifactId|mediaAssetId|mediaStreamId|clipId)\s*:\s*['"`](?:file|s3|gs|https?):\/\//i,
+      /\bartifactId\(\s*['"`](?:file|s3|gs|https?):\/\//i,
+    ],
+  },
+  {
+    name: 'PROVIDER_KEY_AS_ARTIFACT_ID_COUNT',
+    governedPathPattern: POST_H7_PRODUCT_PATH_PATTERN,
+    patterns: [
+      /\bartifactId\s*:\s*(?:providerKey|providerId|providerName)\b/,
+      /\bartifactId\(\s*(?:providerKey|providerId|providerName)\b/,
+    ],
+  },
+  {
+    name: 'CLIENT_CANONICAL_MERGE_AUTHORITY_COUNT',
+    governedPathPattern: POST_H7_PRODUCT_PATH_PATTERN,
+    patterns: [
+      /\b(?:api|axios|transport)\.post\([^\n]*['"`][^'"`]*\/merge['"`]/i,
+      /\b(?:function|const)\s+(?:canonicalMerge|mergeTimeline|resolveMerge)\b/,
+    ],
+  },
+  {
+    name: 'H8_INTERNAL_IMPLEMENTATION_FRONTEND_DEPENDENCY_COUNT',
+    governedPathPattern: POST_H7_PRODUCT_PATH_PATTERN,
+    patterns: [
+      /\b(?:OperationPlan|ApplyContext|TargetRevisionRef|RevisionWriteCommand)\b/,
+      /(?:from|import\s*)\s*['"][^'"]*(?:operation-module|\/timeline\/(?:commands|store|intelligence|engine)\/)[^'"]*['"]/,
+    ],
+  },
+  {
+    name: 'POST_H7_AXIOS_IMPORT_BYPASS_COUNT',
+    governedPathPattern: POST_H7_PRODUCT_PATH_PATTERN,
+    excludedPathPattern: VERSIONLESS_TRANSPORT_MODULE_PATTERN,
+    patterns: [
+      /(?:\bfrom\s*|\bimport\s*(?:\(\s*)?|\brequire\s*\(\s*)['"]axios(?:\/[^'"]*)?['"]/,
+    ],
+  },
+  {
+    name: 'POST_H7_VERSIONLESS_TRANSPORT_IMPORT_BYPASS_COUNT',
+    governedPathPattern: POST_H7_PRODUCT_PATH_PATTERN,
+    excludedPathPattern: /^(?:api\/app\/versionless-api\.ts|api\/app\/(?:asset|capability|operation|timeline-query)\.gateway\.ts)$/,
+    patterns: [
+      /(?:\bfrom\s*|\bimport\s*(?:\(\s*)?|\brequire\s*\(\s*)['"][^'"]*\/versionless-api['"]/,
+    ],
+  },
+  {
+    name: 'UNSTABLE_ROUTE_DIRECT_COMPONENT_CALL_COUNT',
+    governedPathPattern: POST_H7_COMPONENT_PATH_PATTERN,
+    patterns: [
+      /['"`]\/(?:timeline-git|render|tenants)(?:['"`]|\/)/,
+      /\b(?:api|axios|transport)\s*(?:\.\s*(?:get|post|put|patch|delete)|\[\s*['"](?:get|post|put|patch|delete)['"]\s*\])\s*\(/,
+      /\b(?:api|axios|transport)\s*\[[^\]\n]+\]\s*\(/,
+      /\b[A-Za-z_$][\w$]*\s*\.\s*(?:get|post|put|patch|delete)\s*\(/,
+      /\b(?:const|let|var)\s+[A-Za-z_$][\w$]*\s*=\s*(?:api|axios|transport)\s*(?:\.\s*(?:get|post|put|patch|delete)|\[\s*['"](?:get|post|put|patch|delete)['"]\s*\])/,
+      /\b(?:const|let|var)\s*\{[^}\n]*(?:get|post|put|patch|delete)[^}\n]*\}\s*=\s*(?:api|axios|transport)\b/,
+      /(?<![A-Za-z0-9_.])fetch\s*\(/,
+    ],
+  },
   {
     name: 'FRONTEND_CONCRETE_FFMPEG_AUTHORITY_COUNT',
     patterns: [
@@ -286,8 +431,20 @@ export function reconcileFrontendPathLedger(frontendRoot = FRONTEND_ROOT, ledger
   return { actualPaths, ledgerPaths, unclassifiedPaths, stalePaths, duplicatePaths }
 }
 
-function scanCleanForwardMetrics(sourceRoot, boundedCounts, authorityCounts) {
+function scanCleanForwardMetrics(sourceRoot, runtimeFiles, boundedCounts, authorityCounts) {
   const files = collectConsumerFiles(sourceRoot)
+  const runtimePaths = runtimeFiles
+    .map(file => relative(resolve(sourceRoot), file).replaceAll('\\', '/'))
+  const governedPaths = runtimePaths.filter(path => POST_H7_PRODUCT_PATH_PATTERN.test(path)).sort()
+  const apiAppRuntimePaths = runtimePaths.filter(path => /^api\/app\/.+\.(?:ts|tsx)$/.test(path)).sort()
+  const expectedApiAppPaths = new Set(API_APP_RUNTIME_ALLOWLIST)
+  const apiAppPathSet = new Set(apiAppRuntimePaths)
+  const missingApiAppPaths = API_APP_RUNTIME_ALLOWLIST.filter(path => !apiAppPathSet.has(path))
+  const unexpectedApiAppPaths = apiAppRuntimePaths.filter(path => !expectedApiAppPaths.has(path))
+  const expectedPostH7Paths = new Set(POST_H7_GOVERNED_PATHS)
+  const governedPathSet = new Set(governedPaths)
+  const missingPostH7Paths = POST_H7_GOVERNED_PATHS.filter(path => !governedPathSet.has(path))
+  const unexpectedPostH7Paths = governedPaths.filter(path => !expectedPostH7Paths.has(path))
   let oldComponentUsageCount = 0
   let oldSchemaUsageCount = 0
   for (const file of files) {
@@ -313,6 +470,14 @@ function scanCleanForwardMetrics(sourceRoot, boundedCounts, authorityCounts) {
       : 0,
     PATH_LEDGER_STALE_PATH_COUNT: reconciliation.stalePaths.length,
     PATH_LEDGER_DUPLICATE_PATH_COUNT: reconciliation.duplicatePaths.length,
+    POST_H7_GOVERNED_PATH_COUNT: governedPaths.length,
+    POST_H7_GOVERNED_PATH_EXPECTED_COUNT: POST_H7_GOVERNED_PATHS.length,
+    POST_H7_GOVERNED_PATH_MISSING_COUNT: missingPostH7Paths.length,
+    POST_H7_GOVERNED_PATH_UNEXPECTED_COUNT: unexpectedPostH7Paths.length,
+    API_APP_RUNTIME_PATH_COUNT: apiAppRuntimePaths.length,
+    API_APP_RUNTIME_PATH_EXPECTED_COUNT: API_APP_RUNTIME_ALLOWLIST.length,
+    API_APP_RUNTIME_PATH_MISSING_COUNT: missingApiAppPaths.length,
+    API_APP_RUNTIME_PATH_UNEXPECTED_COUNT: unexpectedApiAppPaths.length,
   }
 }
 
@@ -325,6 +490,12 @@ function cleanForwardMetricsPassed(metrics) {
     && metrics.DELETE_SHADOW_PATH_RESIDUE_COUNT === 0
     && metrics.PATH_LEDGER_STALE_PATH_COUNT === 0
     && metrics.PATH_LEDGER_DUPLICATE_PATH_COUNT === 0
+    && metrics.POST_H7_GOVERNED_PATH_COUNT === metrics.POST_H7_GOVERNED_PATH_EXPECTED_COUNT
+    && metrics.POST_H7_GOVERNED_PATH_MISSING_COUNT === 0
+    && metrics.POST_H7_GOVERNED_PATH_UNEXPECTED_COUNT === 0
+    && metrics.API_APP_RUNTIME_PATH_COUNT === metrics.API_APP_RUNTIME_PATH_EXPECTED_COUNT
+    && metrics.API_APP_RUNTIME_PATH_MISSING_COUNT === 0
+    && metrics.API_APP_RUNTIME_PATH_UNEXPECTED_COUNT === 0
 }
 
 function lineNumber(text, index) {
@@ -375,7 +546,7 @@ export function scanFrontendArchitecture(sourceRoot = defaultSourceRoot) {
     violations,
     counts,
     boundedCounts,
-    cleanForwardCounts: scanCleanForwardMetrics(absoluteRoot, boundedCounts, counts),
+    cleanForwardCounts: scanCleanForwardMetrics(absoluteRoot, files, boundedCounts, counts),
   }
 }
 
