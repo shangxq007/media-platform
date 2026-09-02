@@ -7,6 +7,7 @@ import java.util.Objects;
  * OperationDefinition. Namespaced semantic id (e.g. "timeline.move");
  * NEVER Java class name / controller method / UI label / provider identity.
  */
+@org.springframework.modulith.NamedInterface("invocation")
 public record OperationDefinitionId(String value) implements Comparable<OperationDefinitionId> {
 
     public OperationDefinitionId {

@@ -10,6 +10,7 @@ import java.util.Objects;
  * + optional non-semantic metadata. Base binding is explicit (baseRevisionId +
  * baseContentHash) so REQUEST->RESOLVE can never read mutable latest.
  */
+@org.springframework.modulith.NamedInterface("invocation")
 public record OperationRequest(
         OperationDefinitionId definitionId,
         OperationDefinitionVersion version,
@@ -26,6 +27,9 @@ public record OperationRequest(
         Objects.requireNonNull(parameters, "parameters");
         if (baseRevisionId == null || baseRevisionId.isBlank()) {
             throw new IllegalArgumentException("baseRevisionId required (no mutable-latest)");
+        }
+        if (baseContentHash == null || baseContentHash.isBlank()) {
+            throw new IllegalArgumentException("baseContentHash required (exact immutable base)");
         }
     }
 }

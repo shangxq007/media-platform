@@ -3,6 +3,7 @@ package com.example.platform.render.app.operation;
 import com.example.platform.media.domain.identity.MediaAssetId;
 import com.example.platform.media.domain.stream.MediaStreamId;
 import com.example.platform.operation.operation.OperationDefinition;
+import com.example.platform.operation.invocation.OperationInvocationContext;
 import com.example.platform.operation.operation.OperationParameters;
 import com.example.platform.operation.operation.OperationRequest;
 import com.example.platform.operation.operation.OperationRequestResolver;
@@ -97,10 +98,55 @@ public class TimelineMediaClipOperationService {
             String expectedPlanDigest,
             String applyCommandId,
             CanonicalActor actor) {
-        Objects.requireNonNull(actor, "actor");
         requirePreparationAuthorization(tenantId, projectId, actor, TIMELINE_READ);
         PreparedOperation prepared = prepare(
                 tenantId, projectId, toOperationRequest(projectId, command));
+        ExecutionOutcome execution = executePrepared(
+                tenantId, projectId, prepared, expectedPlanDigest, applyCommandId, actor);
+        ApplyResult result = execution.result();
+        return new AddMediaClipResult(
+                result.status(), result.planDigest(), result.baseRevisionId(),
+                result.newRevisionId(), result.newContentHash(), result.parentRevisionId(),
+                new AddMediaClipResult.TimelineRevisionRenderHandoff(
+                        projectId, result.newRevisionId(), result.newContentHash()),
+                prepared.preview().expectedChangedCanonicalObjects());
+    }
+
+    InvocationOutcome invoke(OperationRequest request, OperationInvocationContext context) {
+        Objects.requireNonNull(request, "request");
+        Objects.requireNonNull(context, "context");
+        var target = (OperationTargetRequest.TimelineTargetRequest) request.target();
+        String tenantId = context.actor().tenantId();
+        if (tenantId == null || tenantId.isBlank()) {
+            throw new TimelineOperationException(
+                    TimelineOperationException.Code.TENANT_CONTEXT_MISMATCH,
+                    List.of("authenticated actor tenant required"));
+        }
+        PreparedOperation prepared = prepareInternal(
+                tenantId, target.timelineId(), request, context.actor());
+        ExecutionOutcome execution = executePrepared(
+                tenantId, target.timelineId(), prepared,
+                prepared.plan().planDigest(), context.invocationId(), context.actor());
+        return new InvocationOutcome(execution.result());
+    }
+
+    private PreparedOperation prepareInternal(
+            String tenantId,
+            String projectId,
+            OperationRequest request,
+            CanonicalActor actor) {
+        requirePreparationAuthorization(tenantId, projectId, actor, TIMELINE_READ);
+        return prepare(tenantId, projectId, request);
+    }
+
+    private ExecutionOutcome executePrepared(
+            String tenantId,
+            String projectId,
+            PreparedOperation prepared,
+            String expectedPlanDigest,
+            String applyCommandId,
+            CanonicalActor actor) {
+        Objects.requireNonNull(actor, "actor");
         if (!prepared.plan().planDigest().equals(expectedPlanDigest)) {
             throw new TimelineOperationException(TimelineOperationException.Code.PLAN_CHANGED,
                     List.of("expected plan digest does not match freshly validated plan"));
@@ -144,12 +190,7 @@ public class TimelineMediaClipOperationService {
         } catch (PlanException failure) {
             throw translatePlanFailure(failure);
         }
-        return new AddMediaClipResult(
-                result.status(), result.planDigest(), result.baseRevisionId(),
-                result.newRevisionId(), result.newContentHash(), result.parentRevisionId(),
-                new AddMediaClipResult.TimelineRevisionRenderHandoff(
-                        projectId, result.newRevisionId(), result.newContentHash()),
-                prepared.preview().expectedChangedCanonicalObjects());
+        return new ExecutionOutcome(result, prepared);
     }
 
     private void requirePreparationAuthorization(
@@ -352,6 +393,15 @@ public class TimelineMediaClipOperationService {
             OperationPlan plan,
             AddMediaClipPreview preview,
             TimelineDocument exactBase) {
+    }
+
+    record InvocationOutcome(ApplyResult result) {
+        InvocationOutcome {
+            Objects.requireNonNull(result, "result");
+        }
+    }
+
+    private record ExecutionOutcome(ApplyResult result, PreparedOperation prepared) {
     }
 
 }

@@ -8,6 +8,6 @@
         // (PluginRuntime effect execution) and shared neutral usage references. These are
         // the narrow sanctioned surfaces; never runtime internals / provider SPI / sandbox engine.
         allowedDependencies = {"shared", "policy :: feature-flags", "render :: API", "delivery :: API",
-            "extension :: runtime"}
+            "extension :: runtime", "operation :: invocation"}
 )
 package com.example.platform.workflow;

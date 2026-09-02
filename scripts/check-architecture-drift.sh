@@ -1072,6 +1072,14 @@ else
     fail "H7 canonical transaction authority drift"
 fi
 
+# H8-I6: the public Operation invocation boundary remains narrow while its
+# implementation delegates the ordered H7 pipeline and canonical authorities.
+if PYTHONDONTWRITEBYTECODE=1 python3 scripts/guards/h8-operation-invocation-boundary-guard.py; then
+    pass "H8 Operation invocation boundary and delegated pipeline laws"
+else
+    fail "H8 Operation invocation boundary drift"
+fi
+
 # OPTG-18: AuthorizationDecision immutable record
 if grep -q 'record AuthorizationDecision(' operation-module/src/main/java/com/example/platform/operation/plan/AuthorizationDecision.java; then
     pass "immutable AuthorizationDecision"
