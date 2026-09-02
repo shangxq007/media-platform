@@ -1,6 +1,8 @@
 package com.example.platform;
 
 import com.example.platform.render.infrastructure.RenderProviderRegistry;
+import com.example.platform.shared.authorization.CanonicalActor;
+import com.example.platform.shared.authorization.CanonicalActorResolver;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import java.net.URI;
 import java.net.http.*;
@@ -15,6 +17,7 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 /**
  * RenderJob Selection Transition Validation.
@@ -35,6 +38,9 @@ import org.springframework.test.context.TestPropertySource;
 })
 class RenderJobSelectionTransitionTest extends PostgresTestContainerSupport {
 
+    @MockitoBean
+    private CanonicalActorResolver canonicalActorResolver;
+
     @LocalServerPort
     private int port;
 
@@ -49,12 +55,18 @@ class RenderJobSelectionTransitionTest extends PostgresTestContainerSupport {
 
     private HttpClient client;
     private String baseUrl;
+    private volatile String explicitTestTenant;
     private final ObjectMapper jsonMapper = new ObjectMapper();
 
     private static final StringBuilder evidence = new StringBuilder();
 
     @BeforeEach
     void setUp() {
+        explicitTestTenant = null;
+        org.mockito.Mockito.when(canonicalActorResolver.resolveCurrentActor())
+                .thenAnswer(invocation -> Optional.ofNullable(explicitTestTenant)
+                        .map(tenantId -> CanonicalActor.user(
+                                "test-principal-p1", tenantId, Set.of(), "test")));
         client = HttpClient.newHttpClient();
         baseUrl = "http://localhost:" + port;
     }
@@ -165,7 +177,9 @@ class RenderJobSelectionTransitionTest extends PostgresTestContainerSupport {
     private String createProject(String tenantId, String name) throws Exception {
         String body = "{\"name\":\"" + name + "-" + System.nanoTime() + "\",\"description\":\"test\"}";
         HttpResponse<String> resp = httpPost("/api/identity/tenants/" + tenantId + "/projects", body);
-        return jsonMapper.readTree(resp.body()).get("id").asText();
+        String projectId = jsonMapper.readTree(resp.body()).get("id").asText();
+        explicitTestTenant = tenantId;
+        return projectId;
     }
 
     private String createRenderJob(String tenantId, String projectId) throws Exception {

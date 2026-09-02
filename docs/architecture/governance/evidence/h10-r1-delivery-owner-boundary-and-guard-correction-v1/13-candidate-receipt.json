@@ -1,0 +1,21 @@
+{
+  "canonicalMainUpdate": false,
+  "ciEquivalent": "PASS",
+  "correctedParent": "c77d41c194350adb643beef4e7055c434f3be7a1",
+  "correctedSha": "COMMIT_CONTAINING_THIS_RECORD",
+  "correctedTree": "RESOLVE_FROM_GIT_COMMIT",
+  "decision": "H10_R1_DELIVERY_OWNER_BOUNDARY_AND_GUARD_CORRECTION_FROZEN_PENDING_INDEPENDENT_REVIEW",
+  "deliveryRawInitiatorReads": 0,
+  "fullSerial": {
+    "errors": 0,
+    "failures": 0,
+    "skipped": 29,
+    "tests": 8064
+  },
+  "h10Resumed": false,
+  "preCorrectionSha": "c77d41c194350adb643beef4e7055c434f3be7a1",
+  "preCorrectionTree": "16f992fcbd5fc54391ad126002f135c1f5305ceb",
+  "readyForCanonicalPublication": false,
+  "status": "PASS",
+  "task": "H10_R1_DELIVERY_OWNER_BOUNDARY_AND_GUARD_CORRECTION_V1"
+}

@@ -1,0 +1,628 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.1.0/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build
+> Task :shared-kernel:compileJava
+> Task :typed-schema-module:compileJava
+
+> Task :notification-module:compileJava
+Note: /home/user/Documents/workspace/projects/media-platform/.worktrees/render-request-initiator-authority-reconciliation/notification-module/src/main/java/com/example/platform/notification/infrastructure/WebhookUrlValidator.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+Note: /home/user/Documents/workspace/projects/media-platform/.worktrees/render-request-initiator-authority-reconciliation/notification-module/src/main/java/com/example/platform/notification/app/NotificationSubscriptionService.java uses unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+
+> Task :sandbox-isolation-module:compileJava
+
+> Task :outbox-event-module:compileJava
+Note: /home/user/Documents/workspace/projects/media-platform/.worktrees/render-request-initiator-authority-reconciliation/outbox-event-module/src/main/java/com/example/platform/outbox/app/OutboxEventDispatcher.java uses unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+
+> Task :billing-module:compileJava
+> Task :ai-module:compileJava
+> Task :ai-module:processResources
+> Task :ai-module:classes
+> Task :ai-module:jar
+> Task :ai-module:compileTestJava
+> Task :ai-module:processTestResources NO-SOURCE
+> Task :ai-module:testClasses
+> Task :billing-module:processResources NO-SOURCE
+> Task :billing-module:classes
+> Task :billing-module:jar
+> Task :notification-module:processResources NO-SOURCE
+> Task :notification-module:classes
+> Task :notification-module:jar
+> Task :outbox-event-module:processResources NO-SOURCE
+> Task :outbox-event-module:classes
+> Task :outbox-event-module:jar
+> Task :sandbox-isolation-module:processResources NO-SOURCE
+> Task :sandbox-isolation-module:classes
+> Task :sandbox-isolation-module:jar
+> Task :shared-kernel:processResources
+> Task :shared-kernel:classes
+> Task :shared-kernel:jar
+> Task :typed-schema-module:processResources NO-SOURCE
+> Task :typed-schema-module:classes
+> Task :typed-schema-module:jar
+> Task :ai-module:test
+> Task :storage-module:compileJava
+> Task :storage-module:processResources NO-SOURCE
+> Task :storage-module:classes
+> Task :storage-module:jar
+> Task :artifact-module:compileJava
+> Task :artifact-module:processResources NO-SOURCE
+> Task :artifact-module:classes
+> Task :artifact-module:jar
+> Task :policy-governance-module:compileJava
+> Task :entitlement-module:compileJava
+> Task :extension-module:compileJava
+> Task :extension-module:processResources NO-SOURCE
+> Task :extension-module:classes
+> Task :extension-module:jar
+
+> Task :audio-module:compileJava
+Note: /home/user/Documents/workspace/projects/media-platform/.worktrees/render-request-initiator-authority-reconciliation/audio-module/src/main/java/com/example/platform/audio/domain/mix/AudioMixCanonicalSemantics.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+
+> Task :font-text-module:compileJava
+> Task :color-image-module:compileJava
+> Task :media-module:compileJava
+
+> Task :timeline-module:compileJava
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+Note: /home/user/Documents/workspace/projects/media-platform/.worktrees/render-request-initiator-authority-reconciliation/timeline-module/src/main/java/com/example/platform/timeline/canonical/TimedTextCanonicalSemantics.java uses unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+
+> Task :operation-module:compileJava
+warning: unknown enum constant Visibility.ANY
+  reason: class file for com.fasterxml.jackson.annotation.JsonAutoDetect$Visibility not found
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Mode.DELEGATING
+  reason: class file for com.fasterxml.jackson.annotation.JsonCreator$Mode not found
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Mode.DELEGATING
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Include.NON_EMPTY
+  reason: class file for com.fasterxml.jackson.annotation.JsonInclude$Include not found
+warning: unknown enum constant Id.NAME
+  reason: class file for com.fasterxml.jackson.annotation.JsonTypeInfo$Id not found
+warning: unknown enum constant As.PROPERTY
+  reason: class file for com.fasterxml.jackson.annotation.JsonTypeInfo$As not found
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Id.NAME
+warning: unknown enum constant As.PROPERTY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Mode.DELEGATING
+warning: unknown enum constant Visibility.ANY
+warning: unknown enum constant Mode.DELEGATING
+31 warnings
+
+> Task :quota-billing-module:compileJava
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+
+> Task :platform-algorithms:graph:compileJava
+
+> Task :render-module:compileJava
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+Note: Some input files use unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+
+> Task :render-module:compileTestFixturesJava
+
+> Task :shared-kernel:compileTestFixturesJava
+Note: /home/user/Documents/workspace/projects/media-platform/.worktrees/render-request-initiator-authority-reconciliation/shared-kernel/src/testFixtures/java/com/example/platform/shared/test/PostgresTestContainerSupport.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+
+> Task :artifact-module:compileTestJava
+> Task :artifact-module:processTestResources
+> Task :artifact-module:testClasses
+> Task :audio-module:processResources NO-SOURCE
+> Task :audio-module:classes
+> Task :audio-module:jar
+> Task :color-image-module:processResources NO-SOURCE
+> Task :color-image-module:classes
+> Task :color-image-module:jar
+> Task :entitlement-module:processResources NO-SOURCE
+> Task :entitlement-module:classes
+> Task :entitlement-module:jar
+> Task :font-text-module:processResources NO-SOURCE
+> Task :font-text-module:classes
+> Task :font-text-module:jar
+> Task :media-module:processResources NO-SOURCE
+> Task :media-module:classes
+> Task :media-module:jar
+> Task :operation-module:processResources NO-SOURCE
+> Task :operation-module:classes
+> Task :operation-module:jar
+> Task :policy-governance-module:processResources NO-SOURCE
+> Task :policy-governance-module:classes
+> Task :policy-governance-module:jar
+> Task :quota-billing-module:processResources NO-SOURCE
+> Task :quota-billing-module:classes
+> Task :quota-billing-module:jar
+> Task :render-module:processResources
+> Task :render-module:classes
+> Task :render-module:jar
+> Task :render-module:processTestFixturesResources NO-SOURCE
+> Task :render-module:testFixturesClasses
+> Task :render-module:testFixturesJar
+> Task :shared-kernel:processTestFixturesResources NO-SOURCE
+> Task :shared-kernel:testFixturesClasses
+> Task :shared-kernel:testFixturesJar
+> Task :timeline-module:processResources NO-SOURCE
+> Task :timeline-module:classes
+> Task :timeline-module:jar
+> Task :platform-algorithms:graph:processResources NO-SOURCE
+> Task :platform-algorithms:graph:classes
+> Task :platform-algorithms:graph:jar
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by net.bytebuddy.dynamic.loading.ClassInjector$UsingUnsafe$Dispatcher$CreationAction (file:/home/user/.gradle/caches/modules-2/files-2.1/net.bytebuddy/byte-buddy/1.17.8/af5735f63d00ca47a9375fae5c7471a36331c6ed/byte-buddy-1.17.8.jar)
+WARNING: Please consider reporting this to the maintainers of class net.bytebuddy.dynamic.loading.ClassInjector$UsingUnsafe$Dispatcher$CreationAction
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+> Task :artifact-module:test
+> Task :audio-module:compileTestJava
+> Task :audio-module:processTestResources NO-SOURCE
+> Task :audio-module:testClasses
+> Task :audio-module:test
+> Task :observability-module:compileJava
+> Task :audit-compliance-module:compileJava
+> Task :audit-compliance-module:processResources NO-SOURCE
+> Task :audit-compliance-module:classes
+> Task :audit-compliance-module:jar
+> Task :audit-compliance-module:compileTestJava
+> Task :audit-compliance-module:processTestResources NO-SOURCE
+> Task :audit-compliance-module:testClasses
+> Task :observability-module:processResources NO-SOURCE
+> Task :observability-module:classes
+> Task :observability-module:jar
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+> Task :audit-compliance-module:test
+> Task :billing-module:compileTestJava
+> Task :billing-module:processTestResources NO-SOURCE
+> Task :billing-module:testClasses
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+2026-09-01T12:56:38.992+08:00  INFO 2986453 --- [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-10 - Shutdown initiated...
+2026-09-01T12:56:38.993+08:00  INFO 2986453 --- [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-10 - Shutdown completed.
+2026-09-01T12:56:38.995+08:00  INFO 2986453 --- [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-12 - Shutdown initiated...
+2026-09-01T12:56:38.996+08:00  INFO 2986453 --- [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-12 - Shutdown completed.
+2026-09-01T12:56:38.997+08:00  INFO 2986453 --- [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-14 - Shutdown initiated...
+2026-09-01T12:56:38.998+08:00  INFO 2986453 --- [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-14 - Shutdown completed.
+2026-09-01T12:56:39.000+08:00  INFO 2986453 --- [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-16 - Shutdown initiated...
+2026-09-01T12:56:39.001+08:00  INFO 2986453 --- [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-16 - Shutdown completed.
+> Task :billing-module:test
+> Task :cloud-resource-module:compileJava
+> Task :cloud-resource-module:processResources NO-SOURCE
+> Task :cloud-resource-module:classes
+> Task :cloud-resource-module:jar
+> Task :cloud-resource-module:compileTestJava
+> Task :cloud-resource-module:processTestResources NO-SOURCE
+> Task :cloud-resource-module:testClasses
+> Task :cloud-resource-module:test
+> Task :color-image-module:compileTestJava
+> Task :color-image-module:processTestResources NO-SOURCE
+> Task :color-image-module:testClasses
+> Task :color-image-module:test
+> Task :commerce-module:compileJava
+> Task :commerce-module:processResources NO-SOURCE
+> Task :commerce-module:classes
+> Task :commerce-module:jar
+> Task :commerce-module:compileTestJava
+> Task :commerce-module:processTestResources NO-SOURCE
+> Task :commerce-module:testClasses
+> Task :commerce-module:test
+> Task :config-module:compileJava
+> Task :config-module:processResources NO-SOURCE
+> Task :config-module:classes
+> Task :config-module:jar
+> Task :config-module:compileTestJava NO-SOURCE
+> Task :config-module:processTestResources NO-SOURCE
+> Task :config-module:testClasses UP-TO-DATE
+> Task :config-module:test NO-SOURCE
+> Task :datasource-module:compileJava
+> Task :datasource-module:processResources NO-SOURCE
+> Task :datasource-module:classes
+> Task :datasource-module:jar
+> Task :datasource-module:compileTestJava
+> Task :datasource-module:processTestResources NO-SOURCE
+> Task :datasource-module:testClasses
+> Task :datasource-module:test
+> Task :secrets-config-module:compileJava
+> Task :delivery-module:compileJava
+> Task :delivery-module:processResources NO-SOURCE
+> Task :delivery-module:classes
+> Task :delivery-module:jar
+> Task :delivery-module:compileTestJava
+> Task :delivery-module:processTestResources NO-SOURCE
+> Task :delivery-module:testClasses
+> Task :secrets-config-module:processResources NO-SOURCE
+> Task :secrets-config-module:classes
+> Task :secrets-config-module:jar
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+> Task :delivery-module:test
+> Task :entitlement-module:compileTestJava
+> Task :entitlement-module:processTestResources NO-SOURCE
+> Task :entitlement-module:testClasses
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+> Task :entitlement-module:test
+
+> Task :extension-module:compileTestJava
+Note: Some input files use unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+
+> Task :extension-module:processTestResources NO-SOURCE
+> Task :extension-module:testClasses
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+> Task :extension-module:test
+
+> Task :identity-access-module:compileJava
+Note: /home/user/Documents/workspace/projects/media-platform/.worktrees/render-request-initiator-authority-reconciliation/identity-access-module/src/main/java/com/example/platform/identity/app/MetadataScrubber.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+Note: /home/user/Documents/workspace/projects/media-platform/.worktrees/render-request-initiator-authority-reconciliation/identity-access-module/src/main/java/com/example/platform/identity/app/ProjectImportExecuteService.java uses unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+
+> Task :prompt-module:compileJava
+> Task :prompt-module:processResources NO-SOURCE
+> Task :prompt-module:classes
+> Task :prompt-module:jar
+> Task :user-analytics-module:compileJava
+
+> Task :federation-query-module:compileJava
+Note: /home/user/Documents/workspace/projects/media-platform/.worktrees/render-request-initiator-authority-reconciliation/federation-query-module/src/main/java/com/example/platform/federation/graphql/config/GraphQLScalarConfiguration.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+Note: /home/user/Documents/workspace/projects/media-platform/.worktrees/render-request-initiator-authority-reconciliation/federation-query-module/src/main/java/com/example/platform/federation/graphql/config/GraphQLScalarConfiguration.java uses unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+
+> Task :federation-query-module:processResources
+> Task :federation-query-module:classes
+> Task :federation-query-module:jar
+
+> Task :federation-query-module:compileTestJava
+Note: Some input files use unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+
+> Task :federation-query-module:processTestResources NO-SOURCE
+> Task :federation-query-module:testClasses
+> Task :identity-access-module:processResources NO-SOURCE
+> Task :identity-access-module:classes
+> Task :identity-access-module:jar
+> Task :user-analytics-module:processResources NO-SOURCE
+> Task :user-analytics-module:classes
+> Task :user-analytics-module:jar
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+> Task :federation-query-module:test
+> Task :media-execution-plan-module:compileJava
+> Task :worker-fabric-module:compileJava
+> Task :provider-plugin-runtime-module:compileJava
+
+> Task :ffmpeg-provider-module:compileJava
+Note: org.pf4j.processor.ExtensionAnnotationProcessor init
+Note: Options {}
+Note: Processing @org.pf4j.Extension
+Note: /home/user/Documents/workspace/projects/media-platform/.worktrees/render-request-initiator-authority-reconciliation/ffmpeg-provider-module/src/main/java/com/example/platform/ffmpeg/FfmpegProviderPlugin.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+
+> Task :ffmpeg-provider-module:processResources
+> Task :ffmpeg-provider-module:classes
+> Task :ffmpeg-provider-module:jar
+> Task :ffmpeg-provider-module:compileTestJava
+> Task :ffmpeg-provider-module:processTestResources NO-SOURCE
+> Task :ffmpeg-provider-module:testClasses
+> Task :media-execution-plan-module:processResources NO-SOURCE
+> Task :media-execution-plan-module:classes
+> Task :media-execution-plan-module:jar
+> Task :provider-plugin-runtime-module:processResources NO-SOURCE
+> Task :provider-plugin-runtime-module:classes
+> Task :provider-plugin-runtime-module:jar
+> Task :worker-fabric-module:processResources NO-SOURCE
+> Task :worker-fabric-module:classes
+> Task :worker-fabric-module:jar
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by net.bytebuddy.dynamic.loading.ClassInjector$UsingUnsafe$Dispatcher$CreationAction (file:/home/user/.gradle/caches/modules-2/files-2.1/net.bytebuddy/byte-buddy/1.17.8/af5735f63d00ca47a9375fae5c7471a36331c6ed/byte-buddy-1.17.8.jar)
+WARNING: Please consider reporting this to the maintainers of class net.bytebuddy.dynamic.loading.ClassInjector$UsingUnsafe$Dispatcher$CreationAction
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+> Task :ffmpeg-provider-module:test
+> Task :font-text-module:compileTestJava
+> Task :font-text-module:processTestResources NO-SOURCE
+> Task :font-text-module:testClasses
+> Task :font-text-module:test
+
+> Task :identity-access-module:compileTestJava
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+Note: Some input files use unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+
+> Task :identity-access-module:processTestResources NO-SOURCE
+> Task :identity-access-module:testClasses
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+> Task :identity-access-module:test
+> Task :media-execution-plan-module:compileTestJava
+> Task :media-execution-plan-module:processTestResources NO-SOURCE
+> Task :media-execution-plan-module:testClasses
+> Task :media-execution-plan-module:test
+
+> Task :media-module:compileTestJava
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+
+> Task :media-module:processTestResources NO-SOURCE
+> Task :media-module:testClasses
+> Task :media-module:test
+
+> Task :notification-module:compileTestJava
+Note: Some input files use unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+
+> Task :notification-module:processTestResources NO-SOURCE
+> Task :notification-module:testClasses
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+2026-09-01T12:58:50.079+08:00  INFO 2990620 --- [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-9 - Shutdown initiated...
+2026-09-01T12:58:50.081+08:00  INFO 2990620 --- [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-9 - Shutdown completed.
+> Task :notification-module:test
+> Task :observability-module:compileTestJava
+> Task :observability-module:processTestResources NO-SOURCE
+> Task :observability-module:testClasses
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+> Task :observability-module:test
+> Task :operation-module:compileTestJava
+> Task :operation-module:processTestResources NO-SOURCE
+> Task :operation-module:testClasses
+> Task :operation-module:test
+> Task :outbox-event-module:compileTestJava
+> Task :outbox-event-module:processTestResources
+> Task :outbox-event-module:testClasses
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+> Task :outbox-event-module:test
+> Task :payment-module:compileJava
+> Task :payment-module:processResources NO-SOURCE
+> Task :payment-module:classes
+> Task :payment-module:jar
+> Task :payment-module:compileTestJava
+> Task :payment-module:processTestResources NO-SOURCE
+> Task :payment-module:testClasses
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+> Task :payment-module:test
+> Task :platform-algorithms:compileJava NO-SOURCE
+> Task :platform-algorithms:processResources NO-SOURCE
+> Task :platform-algorithms:classes UP-TO-DATE
+> Task :platform-algorithms:compileTestJava NO-SOURCE
+> Task :platform-algorithms:processTestResources NO-SOURCE
+> Task :platform-algorithms:testClasses UP-TO-DATE
+> Task :platform-algorithms:test NO-SOURCE
+> Task :scheduler-module:compileJava
+> Task :social-publish-module:compileJava
+
+> Task :workflow-module:compileJava
+/home/user/Documents/workspace/projects/media-platform/.worktrees/render-request-initiator-authority-reconciliation/workflow-module/src/main/java/com/example/platform/workflow/temporal/TemporalNamespaceEnvironmentPostProcessor.java:13: warning: [removal] EnvironmentPostProcessor in org.springframework.boot.env has been deprecated and marked for removal
+public class TemporalNamespaceEnvironmentPostProcessor implements EnvironmentPostProcessor {
+                                                                  ^
+1 warning
+
+> Task :platform-app:compileJava
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+Note: Some input files use unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+
+> Task :platform-app:processResources
+> Task :platform-app:classes
+
+> Task :platform-app:compileTestJava
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+Note: Some input files use unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+
+> Task :platform-app:processTestResources
+> Task :platform-app:testClasses
+> Task :scheduler-module:processResources NO-SOURCE
+> Task :scheduler-module:classes
+> Task :scheduler-module:jar
+> Task :social-publish-module:processResources NO-SOURCE
+> Task :social-publish-module:classes
+> Task :social-publish-module:jar
+> Task :workflow-module:processResources
+> Task :workflow-module:classes
+> Task :workflow-module:jar
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+> Task :platform-app:test
+
+{"ts":"2026-09-01 13:12:26,398","level":"INFO","logger":"o.s.boot.tomcat.GracefulShutdown","thread":"SpringApplicationShutdownHook","traceId":"","requestId":"","tenantId":"","projectId":"","jobId":"","workflowId":"","eventId":"","errorCode":"","msg":"Commencing graceful shutdown. Waiting for active requests to complete"}
+{"ts":"2026-09-01 13:12:26,400","level":"INFO","logger":"o.s.boot.tomcat.GracefulShutdown","thread":"tomcat-shutdown","traceId":"","requestId":"","tenantId":"","projectId":"","jobId":"","workflowId":"","eventId":"","errorCode":"","msg":"Graceful shutdown complete"}
+{"ts":"2026-09-01 13:12:26,424","level":"INFO","logger":"com.zaxxer.hikari.HikariDataSource","thread":"SpringApplicationShutdownHook","traceId":"","requestId":"","tenantId":"","projectId":"","jobId":"","workflowId":"","eventId":"","errorCode":"","msg":"HikariPool-1 - Shutdown initiated..."}
+{"ts":"2026-09-01 13:12:26,425","level":"INFO","logger":"com.zaxxer.hikari.HikariDataSource","thread":"SpringApplicationShutdownHook","traceId":"","requestId":"","tenantId":"","projectId":"","jobId":"","workflowId":"","eventId":"","errorCode":"","msg":"HikariPool-1 - Shutdown completed."}
+{"ts":"2026-09-01 13:12:26,843","level":"INFO","logger":"o.s.boot.tomcat.GracefulShutdown","thread":"SpringApplicationShutdownHook","traceId":"","requestId":"","tenantId":"","projectId":"","jobId":"","workflowId":"","eventId":"","errorCode":"","msg":"Commencing graceful shutdown. Waiting for active requests to complete"}
+{"ts":"2026-09-01 13:12:26,844","level":"INFO","logger":"o.s.boot.tomcat.GracefulShutdown","thread":"tomcat-shutdown","traceId":"","requestId":"","tenantId":"","projectId":"","jobId":"","workflowId":"","eventId":"","errorCode":"","msg":"Graceful shutdown complete"}
+{"ts":"2026-09-01 13:12:26,855","level":"INFO","logger":"c.g.d.z.s.o.a.h.c.h.i.c.HttpRequestRetryExec","thread":"Thread-4","traceId":"","requestId":"","tenantId":"","projectId":"","jobId":"","workflowId":"","eventId":"","errorCode":"","msg":"ex-0000000073 recoverable I/O exception (java.io.IOException) caught when sending request to unix://localhost:2375;request will be automatically re-executed in 0 MILLISECONDS (exec count 2)"}
+{"ts":"2026-09-01 13:12:26,867","level":"INFO","logger":"com.zaxxer.hikari.HikariDataSource","thread":"SpringApplicationShutdownHook","traceId":"","requestId":"","tenantId":"","projectId":"","jobId":"","workflowId":"","eventId":"","errorCode":"","msg":"HikariPool-6 - Shutdown initiated..."}
+{"ts":"2026-09-01 13:12:26,868","level":"INFO","logger":"com.zaxxer.hikari.HikariDataSource","thread":"SpringApplicationShutdownHook","traceId":"","requestId":"","tenantId":"","projectId":"","jobId":"","workflowId":"","eventId":"","errorCode":"","msg":"HikariPool-6 - Shutdown completed."}
+{"ts":"2026-09-01 13:12:26,881","level":"INFO","logger":"com.zaxxer.hikari.HikariDataSource","thread":"SpringApplicationShutdownHook","traceId":"","requestId":"","tenantId":"","projectId":"","jobId":"","workflowId":"","eventId":"","errorCode":"","msg":"HikariPool-7 - Shutdown initiated..."}
+{"ts":"2026-09-01 13:12:26,882","level":"INFO","logger":"com.zaxxer.hikari.HikariDataSource","thread":"SpringApplicationShutdownHook","traceId":"","requestId":"","tenantId":"","projectId":"","jobId":"","workflowId":"","eventId":"","errorCode":"","msg":"HikariPool-7 - Shutdown completed."}
+{"ts":"2026-09-01 13:12:26,884","level":"INFO","logger":"o.s.boot.tomcat.GracefulShutdown","thread":"SpringApplicationShutdownHook","traceId":"","requestId":"","tenantId":"","projectId":"","jobId":"","workflowId":"","eventId":"","errorCode":"","msg":"Commencing graceful shutdown. Waiting for active requests to complete"}
+{"ts":"2026-09-01 13:12:26,886","level":"INFO","logger":"o.s.boot.tomcat.GracefulShutdown","thread":"tomcat-shutdown","traceId":"","requestId":"","tenantId":"","projectId":"","jobId":"","workflowId":"","eventId":"","errorCode":"","msg":"Graceful shutdown complete"}
+{"ts":"2026-09-01 13:12:26,898","level":"INFO","logger":"com.zaxxer.hikari.HikariDataSource","thread":"SpringApplicationShutdownHook","traceId":"","requestId":"","tenantId":"","projectId":"","jobId":"","workflowId":"","eventId":"","errorCode":"","msg":"HikariPool-8 - Shutdown initiated..."}
+{"ts":"2026-09-01 13:12:26,899","level":"INFO","logger":"com.zaxxer.hikari.HikariDataSource","thread":"SpringApplicationShutdownHook","traceId":"","requestId":"","tenantId":"","projectId":"","jobId":"","workflowId":"","eventId":"","errorCode":"","msg":"HikariPool-8 - Shutdown completed."}
+{"ts":"2026-09-01 13:12:26,904","level":"INFO","logger":"o.s.boot.tomcat.GracefulShutdown","thread":"SpringApplicationShutdownHook","traceId":"","requestId":"","tenantId":"","projectId":"","jobId":"","workflowId":"","eventId":"","errorCode":"","msg":"Commencing graceful shutdown. Waiting for active requests to complete"}
+{"ts":"2026-09-01 13:12:26,905","level":"INFO","logger":"o.s.boot.tomcat.GracefulShutdown","thread":"tomcat-shutdown","traceId":"","requestId":"","tenantId":"","projectId":"","jobId":"","workflowId":"","eventId":"","errorCode":"","msg":"Graceful shutdown complete"}
+{"ts":"2026-09-01 13:12:26,917","level":"INFO","logger":"com.zaxxer.hikari.HikariDataSource","thread":"SpringApplicationShutdownHook","traceId":"","requestId":"","tenantId":"","projectId":"","jobId":"","workflowId":"","eventId":"","errorCode":"","msg":"HikariPool-9 - Shutdown initiated..."}
+{"ts":"2026-09-01 13:12:26,918","level":"INFO","logger":"com.zaxxer.hikari.HikariDataSource","thread":"SpringApplicationShutdownHook","traceId":"","requestId":"","tenantId":"","projectId":"","jobId":"","workflowId":"","eventId":"","errorCode":"","msg":"HikariPool-9 - Shutdown completed."}
+{"ts":"2026-09-01 13:12:26,923","level":"INFO","logger":"o.s.boot.tomcat.GracefulShutdown","thread":"SpringApplicationShutdownHook","traceId":"","requestId":"","tenantId":"","projectId":"","jobId":"","workflowId":"","eventId":"","errorCode":"","msg":"Commencing graceful shutdown. Waiting for active requests to complete"}
+{"ts":"2026-09-01 13:12:26,924","level":"INFO","logger":"o.s.boot.tomcat.GracefulShutdown","thread":"tomcat-shutdown","traceId":"","requestId":"","tenantId":"","projectId":"","jobId":"","workflowId":"","eventId":"","errorCode":"","msg":"Graceful shutdown complete"}
+{"ts":"2026-09-01 13:12:26,937","level":"INFO","logger":"com.zaxxer.hikari.HikariDataSource","thread":"SpringApplicationShutdownHook","traceId":"","requestId":"","tenantId":"","projectId":"","jobId":"","workflowId":"","eventId":"","errorCode":"","msg":"HikariPool-10 - Shutdown initiated..."}
+{"ts":"2026-09-01 13:12:26,938","level":"INFO","logger":"com.zaxxer.hikari.HikariDataSource","thread":"SpringApplicationShutdownHook","traceId":"","requestId":"","tenantId":"","projectId":"","jobId":"","workflowId":"","eventId":"","errorCode":"","msg":"HikariPool-10 - Shutdown completed."}
+{"ts":"2026-09-01 13:12:26,951","level":"INFO","logger":"com.zaxxer.hikari.HikariDataSource","thread":"SpringApplicationShutdownHook","traceId":"","requestId":"","tenantId":"","projectId":"","jobId":"","workflowId":"","eventId":"","errorCode":"","msg":"HikariPool-11 - Shutdown initiated..."}
+{"ts":"2026-09-01 13:12:26,952","level":"INFO","logger":"com.zaxxer.hikari.HikariDataSource","thread":"SpringApplicationShutdownHook","traceId":"","requestId":"","tenantId":"","projectId":"","jobId":"","workflowId":"","eventId":"","errorCode":"","msg":"HikariPool-11 - Shutdown completed."}
+{"ts":"2026-09-01 13:12:26,955","level":"INFO","logger":"o.s.boot.tomcat.GracefulShutdown","thread":"SpringApplicationShutdownHook","traceId":"","requestId":"","tenantId":"","projectId":"","jobId":"","workflowId":"","eventId":"","errorCode":"","msg":"Commencing graceful shutdown. Waiting for active requests to complete"}
+{"ts":"2026-09-01 13:12:26,957","level":"INFO","logger":"o.s.boot.tomcat.GracefulShutdown","thread":"tomcat-shutdown","traceId":"","requestId":"","tenantId":"","projectId":"","jobId":"","workflowId":"","eventId":"","errorCode":"","msg":"Graceful shutdown complete"}
+{"ts":"2026-09-01 13:12:26,969","level":"INFO","logger":"com.zaxxer.hikari.HikariDataSource","thread":"SpringApplicationShutdownHook","traceId":"","requestId":"","tenantId":"","projectId":"","jobId":"","workflowId":"","eventId":"","errorCode":"","msg":"HikariPool-24 - Shutdown initiated..."}
+{"ts":"2026-09-01 13:12:26,971","level":"INFO","logger":"com.zaxxer.hikari.HikariDataSource","thread":"SpringApplicationShutdownHook","traceId":"","requestId":"","tenantId":"","projectId":"","jobId":"","workflowId":"","eventId":"","errorCode":"","msg":"HikariPool-24 - Shutdown completed."}
+{"ts":"2026-09-01 13:12:26,979","level":"INFO","logger":"o.s.boot.tomcat.GracefulShutdown","thread":"SpringApplicationShutdownHook","traceId":"","requestId":"","tenantId":"","projectId":"","jobId":"","workflowId":"","eventId":"","errorCode":"","msg":"Commencing graceful shutdown. Waiting for active requests to complete"}
+{"ts":"2026-09-01 13:12:26,981","level":"INFO","logger":"o.s.boot.tomcat.GracefulShutdown","thread":"tomcat-shutdown","traceId":"","requestId":"","tenantId":"","projectId":"","jobId":"","workflowId":"","eventId":"","errorCode":"","msg":"Graceful shutdown complete"}
+{"ts":"2026-09-01 13:12:26,993","level":"INFO","logger":"com.zaxxer.hikari.HikariDataSource","thread":"SpringApplicationShutdownHook","traceId":"","requestId":"","tenantId":"","projectId":"","jobId":"","workflowId":"","eventId":"","errorCode":"","msg":"HikariPool-25 - Shutdown initiated..."}
+{"ts":"2026-09-01 13:12:26,994","level":"INFO","logger":"com.zaxxer.hikari.HikariDataSource","thread":"SpringApplicationShutdownHook","traceId":"","requestId":"","tenantId":"","projectId":"","jobId":"","workflowId":"","eventId":"","errorCode":"","msg":"HikariPool-25 - Shutdown completed."}
+{"ts":"2026-09-01 13:12:27,009","level":"INFO","logger":"com.zaxxer.hikari.HikariDataSource","thread":"SpringApplicationShutdownHook","traceId":"","requestId":"","tenantId":"","projectId":"","jobId":"","workflowId":"","eventId":"","errorCode":"","msg":"HikariPool-26 - Shutdown initiated..."}
+{"ts":"2026-09-01 13:12:27,010","level":"INFO","logger":"com.zaxxer.hikari.HikariDataSource","thread":"SpringApplicationShutdownHook","traceId":"","requestId":"","tenantId":"","projectId":"","jobId":"","workflowId":"","eventId":"","errorCode":"","msg":"HikariPool-26 - Shutdown completed."}
+
+> Task :platform-distribution:compileJava
+> Task :platform-distribution:processResources NO-SOURCE
+> Task :platform-distribution:classes
+> Task :platform-distribution:bootJar
+> Task :platform-distribution:allInOneJar
+> Task :platform-distribution:compileTestJava
+> Task :platform-distribution:stageModularDistribution
+> Task :platform-distribution:processTestResources NO-SOURCE
+> Task :platform-distribution:testClasses
+> Task :platform-distribution:test
+> Task :policy-governance-module:compileTestJava
+> Task :policy-governance-module:processTestResources NO-SOURCE
+> Task :policy-governance-module:testClasses
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+> Task :policy-governance-module:test
+> Task :prompt-module:compileTestJava
+> Task :prompt-module:processTestResources NO-SOURCE
+> Task :prompt-module:testClasses
+> Task :prompt-module:test
+> Task :provider-plugin-runtime-module:compileTestJava
+> Task :provider-plugin-runtime-module:processTestResources NO-SOURCE
+> Task :provider-plugin-runtime-module:testClasses
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by net.bytebuddy.dynamic.loading.ClassInjector$UsingUnsafe$Dispatcher$CreationAction (file:/home/user/.gradle/caches/modules-2/files-2.1/net.bytebuddy/byte-buddy/1.17.8/af5735f63d00ca47a9375fae5c7471a36331c6ed/byte-buddy-1.17.8.jar)
+WARNING: Please consider reporting this to the maintainers of class net.bytebuddy.dynamic.loading.ClassInjector$UsingUnsafe$Dispatcher$CreationAction
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+> Task :provider-plugin-runtime-module:test
+
+> Task :quota-billing-module:compileTestJava
+Note: /home/user/Documents/workspace/projects/media-platform/.worktrees/render-request-initiator-authority-reconciliation/quota-billing-module/src/test/java/com/example/platform/quota/app/QuotaServiceTest.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+
+> Task :quota-billing-module:processTestResources NO-SOURCE
+> Task :quota-billing-module:testClasses
+> Task :quota-billing-module:test
+> Task :remote-render-worker:compileJava
+> Task :remote-render-worker:processResources
+> Task :remote-render-worker:classes
+> Task :remote-render-worker:compileTestJava
+> Task :remote-render-worker:processTestResources NO-SOURCE
+> Task :remote-render-worker:testClasses
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+> Task :remote-render-worker:test
+
+> Task :render-module:compileTestJava
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+Note: /home/user/Documents/workspace/projects/media-platform/.worktrees/render-request-initiator-authority-reconciliation/render-module/src/test/java/com/example/platform/render/domain/GoldenProjectManifestTest.java uses unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+
+> Task :render-module:processTestResources
+> Task :render-module:testClasses
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+> Task :render-module:test
+
+2026-09-01T13:14:48.581+08:00  INFO 3002414 --- [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-38 - Shutdown initiated...
+2026-09-01T13:14:48.583+08:00  INFO 3002414 --- [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-38 - Shutdown completed.
+
+> Task :sandbox-isolation-module:compileTestJava
+> Task :sandbox-isolation-module:processTestResources NO-SOURCE
+> Task :sandbox-isolation-module:testClasses
+> Task :sandbox-isolation-module:test
+> Task :sandbox-worker:compileJava
+> Task :sandbox-worker:processResources
+> Task :sandbox-worker:classes
+> Task :sandbox-worker:compileTestJava
+> Task :sandbox-worker:processTestResources NO-SOURCE
+> Task :sandbox-worker:testClasses
+> Task :sandbox-worker:test
+> Task :scheduler-module:compileTestJava
+> Task :scheduler-module:processTestResources NO-SOURCE
+> Task :scheduler-module:testClasses
+> Task :scheduler-module:test
+> Task :secrets-config-module:compileTestJava
+> Task :secrets-config-module:processTestResources NO-SOURCE
+> Task :secrets-config-module:testClasses
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+> Task :secrets-config-module:test
+> Task :shared-kernel:compileTestJava
+> Task :shared-kernel:processTestResources
+> Task :shared-kernel:testClasses
+> Task :shared-kernel:test
+> Task :social-publish-module:compileTestJava
+> Task :social-publish-module:processTestResources NO-SOURCE
+> Task :social-publish-module:testClasses
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+> Task :social-publish-module:test
+> Task :storage-module:compileTestJava
+> Task :storage-module:processTestResources NO-SOURCE
+> Task :storage-module:testClasses
+> Task :storage-module:test
+> Task :storage-provider-opendal:compileJava
+> Task :storage-provider-opendal:processResources
+> Task :storage-provider-opendal:classes
+> Task :storage-provider-opendal:compileTestJava
+> Task :storage-provider-opendal:processTestResources NO-SOURCE
+> Task :storage-provider-opendal:testClasses
+> Task :storage-provider-opendal:test
+> Task :timeline-module:compileTestJava
+> Task :timeline-module:processTestResources NO-SOURCE
+> Task :timeline-module:testClasses
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+> Task :timeline-module:test
+> Task :typed-schema-module:compileTestJava
+> Task :typed-schema-module:processTestResources
+> Task :typed-schema-module:testClasses
+> Task :typed-schema-module:test
+> Task :user-analytics-module:compileTestJava
+> Task :user-analytics-module:processTestResources NO-SOURCE
+> Task :user-analytics-module:testClasses
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+> Task :user-analytics-module:test
+> Task :worker-fabric-module:compileTestJava
+> Task :worker-fabric-module:processTestResources NO-SOURCE
+> Task :worker-fabric-module:testClasses
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by net.bytebuddy.dynamic.loading.ClassInjector$UsingUnsafe$Dispatcher$CreationAction (file:/home/user/.gradle/caches/modules-2/files-2.1/net.bytebuddy/byte-buddy/1.17.8/af5735f63d00ca47a9375fae5c7471a36331c6ed/byte-buddy-1.17.8.jar)
+WARNING: Please consider reporting this to the maintainers of class net.bytebuddy.dynamic.loading.ClassInjector$UsingUnsafe$Dispatcher$CreationAction
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+> Task :worker-fabric-module:test
+
+> Task :workflow-module:compileTestJava
+Note: /home/user/Documents/workspace/projects/media-platform/.worktrees/render-request-initiator-authority-reconciliation/workflow-module/src/test/java/com/example/platform/workflow/temporal/RenderWorkflowMemoAndTimeoutTest.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+
+> Task :workflow-module:processTestResources NO-SOURCE
+> Task :workflow-module:testClasses
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::arrayBaseOffset has been called by com.google.protobuf.UnsafeUtil$MemoryAccessor (file:/home/user/.gradle/caches/modules-2/files-2.1/com.google.protobuf/protobuf-java/3.25.8/2ba593767658038775b2ea9724c3686609874470/protobuf-java-3.25.8.jar)
+WARNING: Please consider reporting this to the maintainers of class com.google.protobuf.UnsafeUtil$MemoryAccessor
+WARNING: sun.misc.Unsafe::arrayBaseOffset will be removed in a future release
+> Task :workflow-module:test
+> Task :platform-algorithms:graph:compileTestJava
+> Task :platform-algorithms:graph:processTestResources NO-SOURCE
+> Task :platform-algorithms:graph:testClasses
+
+> Task :platform-algorithms:graph:test
+WARNING: Unknown module: ALL-ALL specified to --enable-native-access
+
+[Incubating] Problems report is available at: file:///home/user/Documents/workspace/projects/media-platform/.worktrees/render-request-initiator-authority-reconciliation/build/reports/problems/problems-report.html
+
+BUILD SUCCESSFUL in 23m 35s
+200 actionable tasks: 200 executed
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.1.0/userguide/configuration_cache_enabling.html

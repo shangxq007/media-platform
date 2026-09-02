@@ -73,7 +73,8 @@ public class OutboxBackedNotificationEventPublisher implements NotificationEvent
                             "renderJobId", e.renderJobId(),
                             "projectId", e.projectId(),
                             "artifactId", e.artifactId(),
-                            "storageUri", e.storageUri()
+                            "storageUri", e.storageUri(),
+                            "initiator", e.initiator()
                     ),
                     idemKey
             );
@@ -90,7 +91,8 @@ public class OutboxBackedNotificationEventPublisher implements NotificationEvent
                     Map.of(
                             "renderJobId", e.renderJobId(),
                             "projectId", e.projectId(),
-                            "error", e.error()
+                            "error", e.error(),
+                            "initiator", e.initiator()
                     ),
                     idemKey
             );

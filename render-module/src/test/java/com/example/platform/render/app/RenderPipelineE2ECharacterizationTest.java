@@ -27,7 +27,7 @@ import com.example.platform.shared.commercial.CommercialAdmissionPort;
 import com.example.platform.shared.commercial.CommercialDecision;
 import com.example.platform.shared.commercial.CommercialDecisionReason;
 import com.example.platform.shared.commercial.QuotaConsumptionPort;
-import com.example.platform.notification.app.NotificationEventPublisher;
+import com.example.platform.render.testsupport.RenderInitiatorFixtures;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import com.example.platform.shared.web.TenantContext;
 import com.example.platform.storage.api.StorageCatalogPort;
@@ -65,7 +65,6 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
     private CommercialAdmissionPort commercialAdmission;
     private QuotaConsumptionPort quotaConsumption;
     private RenderProviderRouter renderProviderRouter;
-    private NotificationEventPublisher notificationEventPublisher;
     private ApplicationEventPublisher eventPublisher;
     private RenderJobStatusHistoryRepository historyRepository;
     private TimelineScriptParser timelineScriptParser;
@@ -96,7 +95,6 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
         commercialAdmission = mock(CommercialAdmissionPort.class);
         quotaConsumption = mock(QuotaConsumptionPort.class);
         renderProviderRouter = mock(RenderProviderRouter.class);
-        notificationEventPublisher = mock(NotificationEventPublisher.class);
         eventPublisher = mock(ApplicationEventPublisher.class);
         historyRepository = new RenderJobStatusHistoryRepository(dsl);
         timelineScriptParser = mock(TimelineScriptParser.class);
@@ -147,13 +145,13 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
         RenderJobSubmissionService submissionService = new RenderJobSubmissionService(
                 dsl, renderJobRepository, commercialAdmission,
                 historyRepository,
-                notificationEventPublisher, eventPublisher, timelineScriptParser,
+                eventPublisher, timelineScriptParser,
                 effectTimelineInspector, renderProfileResolver,
                 null, null);
         RenderJobExecutionService executionService = new RenderJobExecutionService(
                 renderJobRepository, quotaConsumption, null, renderProviderRouter,
                 providerRuntimeEngine,
-                notificationEventPublisher, eventPublisher, historyRepository,
+                eventPublisher, historyRepository,
                 timelineScriptParser, mock(TimelineSpecResolver.class),
                 mock(IncrementalRenderOrchestrationService.class),
                 artifactStorageService, null /* artifactGraphRepository */,
@@ -177,6 +175,11 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
     }
 
     // --- Helpers ---
+
+    private String submit(SubmitRenderJobRequest request) {
+        return service.submitRenderJob(
+                request, RenderInitiatorFixtures.user(request.tenantId()));
+    }
 
     private void insertProject(String projectId, String tenantId) {
         dsl.insertInto(table("project"))
@@ -255,7 +258,7 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
         // 2. Submit render job
         SubmitRenderJobRequest request = SubmitRenderJobRequest.withSnapshot(
                 "tenant-1", "proj-1", "snap-1", "default_1080p");
-        String jobId = service.submitRenderJob(request);
+        String jobId = submit(request);
 
         // 3. Verify job created and completed
         assertNotNull(jobId);
@@ -272,7 +275,7 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
         verify(provider).render(eq(jobId), contains("tracks"), eq("default_1080p"));
 
         // 5. Verify notifications published
-        verify(notificationEventPublisher, atLeastOnce()).publish(any());
+        verify(eventPublisher, atLeastOnce()).publishEvent(any(Object.class));
     }
 
     // =========================================================
@@ -320,7 +323,7 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
 
         SubmitRenderJobRequest request = SubmitRenderJobRequest.withSnapshot(
                 "tenant-2", "proj-2", "snap-2", "default_1080p");
-        String jobId = service.submitRenderJob(request);
+        String jobId = submit(request);
 
         assertNotNull(jobId);
 
@@ -383,7 +386,7 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
 
         SubmitRenderJobRequest request = SubmitRenderJobRequest.withSnapshot(
                 "tenant-3", "proj-3", "snap-3", "default_1080p");
-        String jobId = service.submitRenderJob(request);
+        String jobId = submit(request);
 
         assertNotNull(jobId);
         var jobRow = dsl.select(field("status"))
@@ -442,7 +445,7 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
 
         SubmitRenderJobRequest request = SubmitRenderJobRequest.withSnapshot(
                 "tenant-4", "proj-4", "snap-4", "default_1080p");
-        String jobId = service.submitRenderJob(request);
+        String jobId = submit(request);
 
         assertNotNull(jobId);
         assertEquals("COMPLETED", renderJobRepository.findById(jobId).map(j -> j.status()).orElse("NOT_FOUND"));
@@ -477,7 +480,7 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
         SubmitRenderJobRequest request = SubmitRenderJobRequest.withSnapshot(
                 "tenant-5", "proj-5", "snap-5", "default_1080p");
 
-        String jobId = service.submitRenderJob(request);
+        String jobId = submit(request);
         assertNotNull(jobId);
     }
 
@@ -516,7 +519,7 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
                 "tenant-5b", "proj-5b", "snap-5b", "default_1080p");
 
         // Job is created even with invalid timeline (validation is at parse time)
-        String jobId = service.submitRenderJob(request);
+        String jobId = submit(request);
         assertNotNull(jobId);
     }
 
@@ -543,7 +546,7 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
                 "tenant-6", "proj-6", "snap-6", "unsupported_profile");
 
         // Should throw because no provider is available
-        assertThrows(IllegalStateException.class, () -> service.submitRenderJob(request));
+        assertThrows(IllegalStateException.class, () -> submit(request));
     }
 
     // =========================================================
@@ -567,7 +570,7 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
                 "tenant-7", "proj-7", "snap-7", "default_1080p");
 
         IllegalStateException ex = assertThrows(IllegalStateException.class,
-                () -> service.submitRenderJob(request));
+                () -> submit(request));
         assertTrue(ex.getMessage().contains("Quota exceeded"));
 
         // Verify REJECTED job persisted
@@ -592,7 +595,7 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
         SubmitRenderJobRequest request = SubmitRenderJobRequest.withSnapshot(
                 "tenant-a", "proj-x", "snap-x", "default_1080p");
 
-        assertThrows(IllegalArgumentException.class, () -> service.submitRenderJob(request));
+        assertThrows(IllegalArgumentException.class, () -> submit(request));
     }
 
     // =========================================================
@@ -616,7 +619,7 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
 
         SubmitRenderJobRequest request = SubmitRenderJobRequest.withSnapshot(
                 "tenant-9", "proj-9", "snap-9", "default_1080p");
-        String jobId = service.submitRenderJob(request);
+        String jobId = submit(request);
 
         // Verify status transitions were recorded
         var history = dsl.select(field("from_status"), field("to_status"))
@@ -652,7 +655,7 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
 
         SubmitRenderJobRequest request = SubmitRenderJobRequest.withSnapshot(
                 "tenant-10", "proj-10", "snap-10", "default_1080p");
-        String jobId = service.submitRenderJob(request);
+        String jobId = submit(request);
 
         // Verify artifact URI persisted
         var jobRow = dsl.select(field("artifact_uri"))
@@ -688,7 +691,7 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
         SubmitRenderJobRequest request = SubmitRenderJobRequest.withSnapshot(
                 "tenant-11", "proj-11", "snap-11", "default_1080p");
 
-        assertThrows(IllegalStateException.class, () -> service.submitRenderJob(request));
+        assertThrows(IllegalStateException.class, () -> submit(request));
 
         // Verify job marked FAILED
         var jobRow = dsl.select(field("status"), field("error_message"))
@@ -721,7 +724,7 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
 
         SubmitRenderJobRequest request = SubmitRenderJobRequest.withSnapshot(
                 "tenant-12", "proj-12", "snap-12", "default_1080p");
-        String jobId = service.submitRenderJob(request);
+        String jobId = submit(request);
 
         assertNotNull(jobId);
         assertEquals("COMPLETED", renderJobRepository.findById(jobId).map(j -> j.status()).orElse("NOT_FOUND"));
@@ -779,7 +782,7 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
 
         SubmitRenderJobRequest request = SubmitRenderJobRequest.withSnapshot(
                 "tenant-13", "proj-13", "snap-13", "default_1080p");
-        String jobId = service.submitRenderJob(request);
+        String jobId = submit(request);
 
         assertNotNull(jobId);
         assertEquals("COMPLETED", renderJobRepository.findById(jobId).map(j -> j.status()).orElse("NOT_FOUND"));
@@ -806,7 +809,7 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
 
         SubmitRenderJobRequest request = SubmitRenderJobRequest.withSnapshot(
                 "tenant-14", "proj-14", "snap-14", "default_1080p");
-        String jobId = service.submitRenderJob(request);
+        String jobId = submit(request);
 
         // Verify quota consumed exactly once
         verify(quotaConsumption).consume(argThat(command ->
@@ -831,7 +834,7 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
         SubmitRenderJobRequest request = SubmitRenderJobRequest.withPrompt(
                 "tenant-15", "proj-15", inlineTimeline, "default_1080p");
 
-        String jobId = service.submitRenderJob(request);
+        String jobId = submit(request);
 
         // Verify inline timeline persisted as ai_script
         var jobRow = dsl.select(field("ai_script"))

@@ -1,0 +1,8 @@
+FAOF2_PROOF_HOLE_CHECK=PASS sources=2
+FAOF2_WITNESS_MAPPING=PASS laws=8 witnesses=18 mappings=36
+FAOF2_FORMAL_CHECKS_RED_MATRIX=PASS proof_mutations=6 mapping_mutations=3
+Lean (version 4.19.0, x86_64-unknown-linux-gnu, commit 6caaee842e94, Release)
+Emulate Docker CLI using podman. Create /etc/containers/nodocker to quiet msg.
+The Coq Proof Assistant, version 8.20.1
+Emulate Docker CLI using podman. Create /etc/containers/nodocker to quiet msg.
+FAOF2_FORMAL_VALIDATION=PASS lean=4.19.0 coq=8.20.1

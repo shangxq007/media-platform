@@ -1,0 +1,102 @@
+{
+  "production": [
+    {
+      "method": "onRenderJobCompleted",
+      "path": "audit-compliance-module/src/main/java/com/example/platform/audit/app/AuditEventHandler.java",
+      "line": 58,
+      "text": "public void onRenderJobCompleted(RenderJobCompletedEvent event) {"
+    },
+    {
+      "method": "finalizeDeliveriesForRenderJob",
+      "path": "delivery-module/src/main/java/com/example/platform/delivery/api/port/DeliveryAfterRenderPort.java",
+      "line": 13,
+      "text": "int finalizeDeliveriesForRenderJob(String renderJobId);"
+    },
+    {
+      "method": "onRenderJobCompleted",
+      "path": "delivery-module/src/main/java/com/example/platform/delivery/app/DeliveryCompletionListener.java",
+      "line": 17,
+      "text": "public void onRenderJobCompleted(RenderJobCompletedEvent event) {"
+    },
+    {
+      "method": "onRenderJobCompleted",
+      "path": "delivery-module/src/main/java/com/example/platform/delivery/app/DeliveryCompletionListener.java",
+      "line": 18,
+      "text": "deliveryJobService.onRenderJobCompleted(event);"
+    },
+    {
+      "method": "onRenderJobCompleted",
+      "path": "delivery-module/src/main/java/com/example/platform/delivery/app/DeliveryJobService.java",
+      "line": 68,
+      "text": "public void onRenderJobCompleted(RenderJobCompletedEvent event) {"
+    },
+    {
+      "method": "finalizeDeliveriesForRenderJob",
+      "path": "delivery-module/src/main/java/com/example/platform/delivery/app/DeliveryJobService.java",
+      "line": 337,
+      "text": "public int finalizeDeliveriesForRenderJob(String renderJobId) {"
+    },
+    {
+      "method": "finalizeDeliveriesForRenderJob",
+      "path": "workflow-module/src/main/java/com/example/platform/workflow/temporal/RenderActivitiesImpl.java",
+      "line": 98,
+      "text": "return deliveryAfterRenderPort.finalizeDeliveriesForRenderJob(renderJobId);"
+    }
+  ],
+  "tests": [
+    {
+      "method": "onRenderJobCompleted",
+      "path": "audit-compliance-module/src/test/java/com/example/platform/audit/app/AuditEventHandlerTest.java",
+      "line": 103,
+      "text": "handler.onRenderJobCompleted(event);"
+    },
+    {
+      "method": "onRenderJobCompleted",
+      "path": "audit-compliance-module/src/test/java/com/example/platform/audit/app/AuditEventHandlerTest.java",
+      "line": 163,
+      "text": "handler.onRenderJobCompleted(event);"
+    },
+    {
+      "method": "onRenderJobCompleted",
+      "path": "delivery-module/src/test/java/com/example/platform/delivery/app/DeliveryCompletionOwnerBoundaryTest.java",
+      "line": 172,
+      "text": "listener.onRenderJobCompleted(new RenderJobCompletedEvent("
+    },
+    {
+      "method": "finalizeDeliveriesForRenderJob",
+      "path": "delivery-module/src/test/java/com/example/platform/delivery/app/DeliveryCompletionOwnerBoundaryTest.java",
+      "line": 197,
+      "text": "assertEquals(1, service.finalizeDeliveriesForRenderJob(\"render-1\"));"
+    }
+  ],
+  "production_finalize_external_calls": [
+    {
+      "method": "finalizeDeliveriesForRenderJob",
+      "path": "workflow-module/src/main/java/com/example/platform/workflow/temporal/RenderActivitiesImpl.java",
+      "line": 98,
+      "text": "return deliveryAfterRenderPort.finalizeDeliveriesForRenderJob(renderJobId);"
+    }
+  ],
+  "production_delivery_on_completed_calls": [
+    {
+      "method": "onRenderJobCompleted",
+      "path": "delivery-module/src/main/java/com/example/platform/delivery/app/DeliveryCompletionListener.java",
+      "line": 17,
+      "text": "public void onRenderJobCompleted(RenderJobCompletedEvent event) {"
+    },
+    {
+      "method": "onRenderJobCompleted",
+      "path": "delivery-module/src/main/java/com/example/platform/delivery/app/DeliveryCompletionListener.java",
+      "line": 18,
+      "text": "deliveryJobService.onRenderJobCompleted(event);"
+    },
+    {
+      "method": "onRenderJobCompleted",
+      "path": "delivery-module/src/main/java/com/example/platform/delivery/app/DeliveryJobService.java",
+      "line": 68,
+      "text": "public void onRenderJobCompleted(RenderJobCompletedEvent event) {"
+    }
+  ],
+  "internal_finalize_to_on_completed": 0,
+  "schema_paths_changed": []
+}

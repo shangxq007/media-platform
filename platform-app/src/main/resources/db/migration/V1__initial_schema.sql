@@ -29,7 +29,10 @@ create table render_job (
     pipeline_plan_json text,
     pipeline_execution_json text,
     base_job_id varchar(64),
-    trace_id varchar(128)
+    trace_id varchar(128),
+    initiator_type varchar(32) not null,
+    initiator_id varchar(128) not null,
+    initiator_tenant_id varchar(64) not null
 );
 
 create index ix_render_job_project_id on render_job(project_id);

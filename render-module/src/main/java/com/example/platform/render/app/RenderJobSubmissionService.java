@@ -16,8 +16,8 @@ import com.example.platform.shared.commercial.PrincipalRef;
 import com.example.platform.shared.commercial.PrincipalType;
 import com.example.platform.shared.events.RenderJobCreatedEvent;
 import com.example.platform.shared.events.RenderJobFailedEvent;
+import com.example.platform.shared.events.RenderInitiator;
 import com.example.platform.shared.Ids;
-import com.example.platform.notification.app.NotificationEventPublisher;
 import com.example.platform.shared.web.TenantContext;
 import com.example.platform.render.domain.interchange.TimelineScriptParser;
 import org.jooq.DSLContext;
@@ -54,7 +54,6 @@ public class RenderJobSubmissionService {
     private final RenderJobRepository renderJobRepository;
     private final CommercialAdmissionPort commercialAdmission;
     private final RenderJobStatusHistoryRepository historyRepository;
-    private final NotificationEventPublisher notificationEventPublisher;
     private final ApplicationEventPublisher eventPublisher;
     private final TimelineScriptParser timelineScriptParser;
     private final EffectTimelineInspector effectTimelineInspector;
@@ -66,7 +65,6 @@ public class RenderJobSubmissionService {
             RenderJobRepository renderJobRepository,
             CommercialAdmissionPort commercialAdmission,
             RenderJobStatusHistoryRepository historyRepository,
-            NotificationEventPublisher notificationEventPublisher,
             ApplicationEventPublisher eventPublisher,
             TimelineScriptParser timelineScriptParser,
             EffectTimelineInspector effectTimelineInspector,
@@ -79,7 +77,6 @@ public class RenderJobSubmissionService {
         this.renderJobRepository = renderJobRepository;
         this.commercialAdmission = commercialAdmission;
         this.historyRepository = historyRepository;
-        this.notificationEventPublisher = notificationEventPublisher;
         this.eventPublisher = eventPublisher;
         this.timelineScriptParser = timelineScriptParser;
         this.effectTimelineInspector = effectTimelineInspector;
@@ -100,10 +97,11 @@ public class RenderJobSubmissionService {
      * @throws IllegalArgumentException if tenant/project validation fails
      */
     @Transactional
-    public String submit(SubmitRenderJobRequest request) {
+    public String submit(SubmitRenderJobRequest request, RenderInitiator initiator) {
         log.info("Submitting render job: tenant={}, project={}, profile={}",
                 request.tenantId(), request.projectId(), request.profileOrDefault());
 
+        assertInitiatorScope(request.tenantId(), initiator);
         assertTenantAccess(request.tenantId());
         assertProjectBelongsToTenant(request.tenantId(), request.projectId());
 
@@ -120,13 +118,14 @@ public class RenderJobSubmissionService {
                 "render.submit", "render.job.create", "render.job.create", 1,
                 period.start(), period.end(), "render-submit:" + request.projectId(), now));
         if (!decision.allowed()) {
-            return handleCommercialDecisionRejected(request, decision);
+            return handleCommercialDecisionRejected(request, initiator, decision);
         }
 
-        return createQueuedJob(request);
+        return createQueuedJob(request, initiator);
     }
 
-    private String handleCommercialDecisionRejected(SubmitRenderJobRequest request, CommercialDecision decision) {
+    private String handleCommercialDecisionRejected(SubmitRenderJobRequest request,
+            RenderInitiator initiator, CommercialDecision decision) {
         String rejectedJobId = Ids.newId("rj");
         String profile = request.profileOrDefault();
         String code = decision.reason().name();
@@ -135,11 +134,11 @@ public class RenderJobSubmissionService {
                 : "Commercial admission denied: " + code;
 
         renderJobRepository.createRejected(rejectedJobId, request.projectId(), request.tenantId(),
-                "snap_" + rejectedJobId, profile, reason, OffsetDateTime.now());
+                "snap_" + rejectedJobId, profile, reason, initiator, OffsetDateTime.now());
         historyRepository.record(rejectedJobId, null, RenderJobStatus.REJECTED.name(),
                 reason, code);
         eventPublisher.publishEvent(new RenderJobFailedEvent(
-                rejectedJobId, request.projectId(), reason, Instant.now()));
+                rejectedJobId, request.projectId(), reason, Instant.now(), initiator));
 
         log.warn("Commercial decision rejected for tenant {}: {} - {}",
                 request.tenantId(), code, reason);
@@ -155,7 +154,7 @@ public class RenderJobSubmissionService {
 
     private record Period(Instant start, Instant end) {}
 
-    private String createQueuedJob(SubmitRenderJobRequest request) {
+    private String createQueuedJob(SubmitRenderJobRequest request, RenderInitiator initiator) {
         String jobId = Ids.newId("rj");
         String profile = request.profileOrDefault();
         String inlineScript = resolveInlineTimelineScript(request);
@@ -166,10 +165,10 @@ public class RenderJobSubmissionService {
         String snapshotId = resolveSnapshotId(request, jobId);
 
         renderJobRepository.create(jobId, request.projectId(), request.tenantId(),
-                snapshotId, profile, RenderJobStatus.QUEUED.name(), OffsetDateTime.now());
+                snapshotId, profile, RenderJobStatus.QUEUED.name(), initiator, OffsetDateTime.now());
         historyRepository.record(jobId, null, RenderJobStatus.QUEUED.name(), "Job created", null);
 
-        notificationEventPublisher.publish(
+        eventPublisher.publishEvent(
                 new RenderJobCreatedEvent(jobId, request.projectId(), snapshotId, profile, null));
 
         persistInlineScriptIfPresent(jobId, request);
@@ -245,6 +244,15 @@ public class RenderJobSubmissionService {
         String currentTenant = TenantContext.get();
         if (currentTenant != null && !currentTenant.equals(tenantId)) {
             throw new IllegalArgumentException("Resource not found for tenant");
+        }
+    }
+
+    private void assertInitiatorScope(String tenantId, RenderInitiator initiator) {
+        if (initiator == null) {
+            throw new NullPointerException("initiator must not be null");
+        }
+        if (!tenantId.equals(initiator.tenantId())) {
+            throw new IllegalArgumentException("Render initiator tenant does not match request tenant");
         }
     }
 

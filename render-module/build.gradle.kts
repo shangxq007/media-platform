@@ -14,7 +14,6 @@ dependencies {
     implementation(project(":platform-algorithms:graph")) // ROADMAP20: graph kernel mechanics for RenderGraph (C30)
     api(project(":timeline-module")) // GCR-1: canonical Timeline semantics (frozen direction: Render -> Timeline)
     api(project(":operation-module")) // GCR-1: canonical Operation semantics (frozen direction: Render -> Operation)
-    implementation(project(":notification-module")) // NotificationEventPublisher rehomed to notification (K2)
     api(project(":shared-kernel"))
     testImplementation(testFixtures(project(":shared-kernel")))
     testImplementation(project(":media-execution-plan-module")) // R21 C6-C guarded-entry boundary tests (test-only; no production cycle)

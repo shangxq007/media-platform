@@ -35,7 +35,7 @@ public class RenderCacheProperties {
     private String cleanupInterval = "PT24H";
 
     /**
-     * Optional outbound webhook URL for {@code render.cache.hash_invalidated} (in addition to notification-module).
+     * Optional outbound webhook URL for {@code render.cache.hash_invalidated}.
      */
     private boolean webhookEnabled = false;
 

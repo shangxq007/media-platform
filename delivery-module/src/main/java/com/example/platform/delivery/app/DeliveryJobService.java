@@ -69,26 +69,21 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
         if (!enabled) {
             return;
         }
-        Record job = dsl.select(
-                        RENDER_JOB.TENANT_ID,
-                        RENDER_JOB.PROJECT_ID,
-                        RENDER_JOB.ARTIFACT_URI)
-                .from(RENDER_JOB)
-                .where(RENDER_JOB.ID.eq(event.renderJobId()))
-                .fetchOne();
-        if (job == null) {
-            return;
-        }
-        String tenantId = job.get(RENDER_JOB.TENANT_ID);
-        String projectId = job.get(RENDER_JOB.PROJECT_ID);
-        String sourceUri = job.get(RENDER_JOB.ARTIFACT_URI);
-        if (sourceUri == null || sourceUri.isBlank()) {
-            sourceUri = event.storageUri();
-        }
+        String renderJobId = requireEventText(event.renderJobId(), "renderJobId");
+        String tenantId = requireEventText(event.initiator().tenantId(), "initiator.tenantId");
+        String projectId = requireEventText(event.projectId(), "projectId");
+        String sourceUri = requireEventText(event.storageUri(), "storageUri");
         List<Record> policies = resolvePolicies(tenantId, projectId);
         for (Record policy : policies) {
-            enqueueFromPolicy(tenantId, projectId, event.renderJobId(), sourceUri, policy);
+            enqueueFromPolicy(tenantId, projectId, renderJobId, sourceUri, policy);
         }
+    }
+
+    private static String requireEventText(String value, String field) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException("Render completion " + field + " must not be blank");
+        }
+        return value;
     }
 
     private List<Record> resolvePolicies(String tenantId, String projectId) {
@@ -340,22 +335,20 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
     @Override
     @Transactional
     public int finalizeDeliveriesForRenderJob(String renderJobId) {
-        Record job = dsl.select(
-                        RENDER_JOB.TENANT_ID,
-                        RENDER_JOB.PROJECT_ID,
-                        RENDER_JOB.ARTIFACT_URI)
-                .from(RENDER_JOB)
-                .where(RENDER_JOB.ID.eq(renderJobId))
-                .fetchOne();
-        if (job == null) {
-            return 0;
+        String requiredRenderJobId = requireEventText(renderJobId, "renderJobId");
+        List<String> deliveryJobIds = dsl.select(DELIVERY_JOB.ID)
+                .from(DELIVERY_JOB)
+                .where(DELIVERY_JOB.RENDER_JOB_ID.eq(requiredRenderJobId))
+                .and(DELIVERY_JOB.STATUS.eq(DeliveryJobStatus.QUEUED.name()))
+                .orderBy(DELIVERY_JOB.CREATED_AT.asc())
+                .fetch(DELIVERY_JOB.ID);
+        int processed = 0;
+        for (String deliveryJobId : deliveryJobIds) {
+            if (runJob(deliveryJobId)) {
+                processed++;
+            }
         }
-        String tenantId = job.get(RENDER_JOB.TENANT_ID);
-        String projectId = job.get(RENDER_JOB.PROJECT_ID);
-        String artifactUri = job.get(RENDER_JOB.ARTIFACT_URI);
-        onRenderJobCompleted(new RenderJobCompletedEvent(
-                renderJobId, projectId, null, artifactUri, Instant.now()));
-        return processQueued(32);
+        return processed;
     }
 
     @Transactional

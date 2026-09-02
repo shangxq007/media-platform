@@ -1,0 +1,22 @@
+{
+  "canonicalMainUpdate": false,
+  "ciEquivalent": "PASS_EXECUTED",
+  "correctedParent": "773f8a4e4625036ec5d2a2eceea7c22df6fcfa75",
+  "correctedSha": "COMMIT_CONTAINING_THIS_RECORD",
+  "correctedTree": "RESOLVE_FROM_GIT_COMMIT",
+  "decision": "H10_R1_FINALIZE_SEMANTIC_SCOPE_AND_PORT_CONTRACT_CORRECTION_FROZEN_PENDING_INDEPENDENT_REVIEW",
+  "failedAutoRetryCount": 0,
+  "finalizeQueuedOnly": true,
+  "fullSerial": {
+    "errors": 0,
+    "failures": 0,
+    "skipped": 29,
+    "tests": 8064
+  },
+  "h10Resumed": false,
+  "preCorrectionSha": "773f8a4e4625036ec5d2a2eceea7c22df6fcfa75",
+  "preCorrectionTree": "8396c9e2ec4ce7fd9027973fcf00bf627fb1cb80",
+  "status": "PASS",
+  "targetedTests": 164,
+  "task": "H10_R1_FINALIZE_SEMANTIC_SCOPE_AND_PORT_CONTRACT_CORRECTION_V1"
+}

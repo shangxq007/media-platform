@@ -1,0 +1,11 @@
+TARGETED_TESTS=207
+TARGETED_FAILURES=0
+TARGETED_ERRORS=0
+TARGETED_SKIPPED=0
+shared-kernel=4
+render-module=110
+platform-app=21
+audit-compliance-module=11
+outbox-event-module=50
+workflow-module=11
+RESULT=PASS

@@ -7,6 +7,7 @@ import com.example.platform.render.app.dto.StatusHistoryResponse;
 import com.example.platform.render.domain.RenderJobStateMachine;
 import com.example.platform.render.domain.RenderJobStatus;
 import com.example.platform.shared.Ids;
+import com.example.platform.shared.events.RenderInitiator;
 
 import java.time.OffsetDateTime;
 import java.util.*;
@@ -30,7 +31,7 @@ public class FakeRenderJobService extends RenderJobService {
     private final RenderJobStateMachine stateMachine = new RenderJobStateMachine();
 
     public FakeRenderJobService() {
-        super(null, null, null, null);
+        super(null, null, null, null, null);
     }
 
     // ─── Configuration helpers ───
@@ -53,14 +54,15 @@ public class FakeRenderJobService extends RenderJobService {
     // ─── Overridden service methods ───
 
     @Override
-    public RenderJobResponse create(CreateRenderJobRequest request) {
+    public RenderJobResponse create(CreateRenderJobRequest request, RenderInitiator initiator) {
         String tenantId = projectTenantIds.getOrDefault(request.projectId(), "default-tenant");
         return doCreate(tenantId, request.projectId(), request.timelineSnapshotId(), request.profile());
     }
 
     @Override
     public RenderJobResponse createForProject(String tenantId, String projectId,
-                                               CreateRenderJobRequest request) {
+                                               CreateRenderJobRequest request,
+                                               RenderInitiator initiator) {
         String projectTenant = projectTenantIds.get(projectId);
         if (projectTenant == null) {
             throw new IllegalArgumentException("Project not found: " + projectId);

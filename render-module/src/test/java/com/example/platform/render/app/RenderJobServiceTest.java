@@ -8,7 +8,9 @@ import com.example.platform.render.infrastructure.RenderJobRepository;
 import com.example.platform.render.policy.RenderPolicyDecision;
 import com.example.platform.render.policy.RenderPolicyEngine;
 import com.example.platform.shared.events.RenderJobCreatedEvent;
-import com.example.platform.notification.app.NotificationEventPublisher;
+import com.example.platform.render.testsupport.RenderInitiatorFixtures;
+import com.example.platform.shared.events.RenderInitiator;
+import org.springframework.context.ApplicationEventPublisher;
 import com.example.platform.shared.web.PlatformException;
 import com.example.platform.shared.web.TenantContext;
 import java.time.OffsetDateTime;
@@ -34,11 +36,12 @@ class RenderJobServiceTest {
 
     @BeforeEach
     void setUp() {
+        TenantContext.clear();
         fakeRepo = new FakeJobRepository();
         fakePolicy = new FakePolicyEngine();
         fakePublisher = new FakeEventPublisher();
         fakeHistory = new FakeHistoryRepository();
-        service = new RenderJobService(fakeRepo, fakePolicy, fakePublisher, fakeHistory);
+        service = new RenderJobService(fakeRepo, fakePolicy, fakePublisher, fakeHistory, null);
     }
 
     @AfterEach
@@ -58,7 +61,8 @@ class RenderJobServiceTest {
             fakeRepo.projectTenants.put("proj-1", "t-1");
 
             RenderJobResponse result = service.create(
-                    new CreateRenderJobRequest("proj-1", "snap-1", "default_1080p"));
+                    new CreateRenderJobRequest("proj-1", "snap-1", "default_1080p"),
+                    RenderInitiatorFixtures.user("t-1"));
 
             assertNotNull(result);
             assertEquals("QUEUED", result.status());
@@ -75,7 +79,8 @@ class RenderJobServiceTest {
             fakeRepo.projectTenants.put("proj-1", "t-1");
 
             RenderJobResponse result = service.createForProject("t-1", "proj-1",
-                    new CreateRenderJobRequest("proj-1", "snap-1", "default_1080p"));
+                    new CreateRenderJobRequest("proj-1", "snap-1", "default_1080p"),
+                    RenderInitiatorFixtures.user("t-1"));
 
             assertNotNull(result);
             assertEquals("QUEUED", result.status());
@@ -86,7 +91,8 @@ class RenderJobServiceTest {
         void createForProjectThrowsWhenProjectNotFound() {
             assertThrows(IllegalArgumentException.class,
                     () -> service.createForProject("t-1", "proj-missing",
-                            new CreateRenderJobRequest("proj-missing", "snap-1", "default_1080p")));
+                            new CreateRenderJobRequest("proj-missing", "snap-1", "default_1080p"),
+                            RenderInitiatorFixtures.user("t-1")));
         }
 
         @Test
@@ -96,7 +102,8 @@ class RenderJobServiceTest {
 
             assertThrows(IllegalArgumentException.class,
                     () -> service.createForProject("t-1", "proj-1",
-                            new CreateRenderJobRequest("proj-1", "snap-1", "default_1080p")));
+                            new CreateRenderJobRequest("proj-1", "snap-1", "default_1080p"),
+                            RenderInitiatorFixtures.user("t-1")));
         }
 
         @Test
@@ -104,7 +111,8 @@ class RenderJobServiceTest {
         void createUsesPolicyEngine() {
             fakeRepo.projectTenants.put("proj-1", "t-1");
 
-            service.create(new CreateRenderJobRequest("proj-1", "snap-1", "social_1080p"));
+            service.create(new CreateRenderJobRequest("proj-1", "snap-1", "social_1080p"),
+                    RenderInitiatorFixtures.user("t-1"));
 
             assertEquals("social_1080p", fakePolicy.lastProfile);
             assertEquals("provider-a", fakePublisher.events.get(0).primaryBackend());
@@ -115,7 +123,8 @@ class RenderJobServiceTest {
         void createRecordsStatusHistory() {
             fakeRepo.projectTenants.put("proj-1", "t-1");
 
-            service.create(new CreateRenderJobRequest("proj-1", "snap-1", "default_1080p"));
+            service.create(new CreateRenderJobRequest("proj-1", "snap-1", "default_1080p"),
+                    RenderInitiatorFixtures.user("t-1"));
 
             assertEquals(1, fakeHistory.records.size());
             assertEquals("QUEUED", fakeHistory.records.get(0).toStatus);
@@ -306,7 +315,8 @@ class RenderJobServiceTest {
 
         @Override
         public void create(String id, String projectId, String tenantId,
-                String timelineSnapshotId, String profile, String status, OffsetDateTime createdAt) {
+                String timelineSnapshotId, String profile, String status,
+                RenderInitiator initiator, OffsetDateTime createdAt) {
             createCalls.add(new String[]{id, projectId, tenantId});
             storedJobs.put(id, new RenderJobResponse(id, projectId, timelineSnapshotId, profile, status));
             tenants.put(id, tenantId);
@@ -366,10 +376,12 @@ class RenderJobServiceTest {
         }
 
         @Override
-        public void createRetryJob(String newId, String failedJobId, String projectId,
-                String tenantId, String timelineSnapshotId, String profile) {
-            createCalls.add(new String[]{newId, projectId, tenantId});
-            storedJobs.put(newId, new RenderJobResponse(newId, projectId, timelineSnapshotId, profile, "QUEUED"));
+        public void createRetryJob(String newId, String failedJobId) {
+            RenderJobResponse original = storedJobs.get(failedJobId);
+            String tenantId = tenants.get(failedJobId);
+            createCalls.add(new String[]{newId, original.projectId(), tenantId});
+            storedJobs.put(newId, new RenderJobResponse(newId, original.projectId(),
+                    original.timelineSnapshotId(), original.profile(), "QUEUED"));
             tenants.put(newId, tenantId);
         }
     }
@@ -383,10 +395,10 @@ class RenderJobServiceTest {
         }
     }
 
-    static class FakeEventPublisher implements NotificationEventPublisher {
+    static class FakeEventPublisher implements ApplicationEventPublisher {
         final List<RenderJobCreatedEvent> events = new ArrayList<>();
         @Override
-        public void publish(Object event) {
+        public void publishEvent(Object event) {
             if (event instanceof RenderJobCreatedEvent e) events.add(e);
         }
     }

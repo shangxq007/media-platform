@@ -21,7 +21,8 @@ import com.example.platform.render.infrastructure.RenderProviderRouter;
 import com.example.platform.render.infrastructure.timeline.EditorTimelineConverter;
 import com.example.platform.render.infrastructure.providerruntime.engine.ProviderRuntimeEngine;
 import com.example.platform.render.testsupport.RenderTestSchemaFixture;
-import com.example.platform.notification.app.NotificationEventPublisher;
+import com.example.platform.render.testsupport.RenderInitiatorFixtures;
+import com.example.platform.shared.events.RenderJobCompletedEvent;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import com.example.platform.shared.web.TenantContext;
 import com.example.platform.shared.commercial.CommercialAdmissionPort;
@@ -59,7 +60,6 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
     private CommercialAdmissionPort commercialAdmission;
     private QuotaConsumptionPort quotaConsumption;
     private RenderProviderRouter renderProviderRouter;
-    private NotificationEventPublisher notificationEventPublisher;
     private ApplicationEventPublisher eventPublisher;
     private RenderJobStatusHistoryRepository historyRepository;
     private TimelineScriptParser timelineScriptParser;
@@ -90,7 +90,6 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
         commercialAdmission = mock(CommercialAdmissionPort.class);
         quotaConsumption = mock(QuotaConsumptionPort.class);
         renderProviderRouter = mock(RenderProviderRouter.class);
-        notificationEventPublisher = mock(NotificationEventPublisher.class);
         eventPublisher = mock(ApplicationEventPublisher.class);
         historyRepository = new RenderJobStatusHistoryRepository(dsl);
         timelineScriptParser = mock(TimelineScriptParser.class);
@@ -147,13 +146,13 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
         RenderJobSubmissionService submissionService = new RenderJobSubmissionService(
                 dsl, renderJobRepository, commercialAdmission,
                 historyRepository,
-                notificationEventPublisher, eventPublisher, timelineScriptParser,
+                eventPublisher, timelineScriptParser,
                 effectTimelineInspector, renderProfileResolver,
                 null, null);
         RenderJobExecutionService executionService = new RenderJobExecutionService(
                 renderJobRepository, quotaConsumption, null, renderProviderRouter,
                 providerRuntimeEngine,
-                notificationEventPublisher, eventPublisher, historyRepository,
+                eventPublisher, historyRepository,
                 timelineScriptParser, mock(TimelineSpecResolver.class),
                 mock(IncrementalRenderOrchestrationService.class),
                 artifactStorageService, null,
@@ -188,8 +187,10 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
             String snapshotId, String profile, String status) {
         dsl.insertInto(table("render_job"))
                 .columns(field("id"), field("project_id"), field("tenant_id"),
-                        field("timeline_snapshot_id"), field("profile"), field("status"), field("created_at"))
-                .values(jobId, projectId, tenantId, snapshotId, profile, status, OffsetDateTime.now())
+                        field("timeline_snapshot_id"), field("profile"), field("status"), field("created_at"),
+                        field("initiator_type"), field("initiator_id"), field("initiator_tenant_id"))
+                .values(jobId, projectId, tenantId, snapshotId, profile, status, OffsetDateTime.now(),
+                        "USER", "test-principal-p1", tenantId)
                 .execute();
     }
 
@@ -221,12 +222,13 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
         SubmitRenderJobRequest request = SubmitRenderJobRequest.withSnapshot(
                 "tenant-1", "proj-1", "snap-1", "default_1080p");
 
-        String jobId = service.submitRenderJob(request);
+        String jobId = service.submitRenderJob(request, RenderInitiatorFixtures.user("tenant-1"));
 
         assertNotNull(jobId);
         assertTrue(jobId.startsWith("rj_"));
 
-        var jobRow = dsl.select(field("status"), field("tenant_id"), field("project_id"))
+        var jobRow = dsl.select(field("status"), field("tenant_id"), field("project_id"),
+                        field("initiator_type"), field("initiator_id"), field("initiator_tenant_id"))
                 .from(table("render_job"))
                 .where(field("id").eq(jobId))
                 .fetchOne();
@@ -234,9 +236,16 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
         assertEquals("COMPLETED", jobRow.get(field("status"), String.class));
         assertEquals("tenant-1", jobRow.get(field("tenant_id"), String.class));
         assertEquals("proj-1", jobRow.get(field("project_id"), String.class));
+        assertEquals("USER", jobRow.get(field("initiator_type"), String.class));
+        assertEquals("test-principal-p1", jobRow.get(field("initiator_id"), String.class));
+        assertEquals("tenant-1", jobRow.get(field("initiator_tenant_id"), String.class));
 
         verify(provider).render(eq(jobId), anyString(), anyString());
-        verify(notificationEventPublisher, atLeastOnce()).publish(any());
+        verify(eventPublisher, atLeastOnce()).publishEvent(any(Object.class));
+        verify(eventPublisher).publishEvent(argThat((Object event) ->
+                event instanceof RenderJobCompletedEvent completed
+                        && "test-principal-p1".equals(completed.initiator().actorId())
+                        && "tenant-1".equals(completed.initiator().tenantId())));
     }
 
     @Test
@@ -255,7 +264,7 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
                 "tenant-2", "proj-2", "snap-2", "default_1080p");
 
         IllegalStateException ex = assertThrows(IllegalStateException.class,
-                () -> service.submitRenderJob(request));
+                () -> service.submitRenderJob(request, RenderInitiatorFixtures.user("tenant-2")));
         assertTrue(ex.getMessage().contains("Quota exceeded"));
 
         var rejectedJob = dsl.select(field("status"), field("error_message"))
@@ -330,7 +339,7 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
                 "tenant-a", "proj-x", "snap-x", "default_1080p");
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-                () -> service.submitRenderJob(request));
+                () -> service.submitRenderJob(request, RenderInitiatorFixtures.user("tenant-a")));
         assertTrue(ex.getMessage().contains("Project not found for tenant"));
     }
 
@@ -359,7 +368,7 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
         SubmitRenderJobRequest request = SubmitRenderJobRequest.withSnapshot(
                 "tenant-5", "proj-5", "snap-5", "default_1080p");
 
-        String jobId = service.submitRenderJob(request);
+        String jobId = service.submitRenderJob(request, RenderInitiatorFixtures.user("tenant-5"));
 
         verify(provider).render(eq(jobId), contains("tracks"), eq("default_1080p"));
     }
@@ -377,7 +386,7 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
         SubmitRenderJobRequest request = SubmitRenderJobRequest.withPrompt(
                 "tenant-6", "proj-6", inlineTimeline, "default_1080p");
 
-        String jobId = service.submitRenderJob(request);
+        String jobId = service.submitRenderJob(request, RenderInitiatorFixtures.user("tenant-6"));
 
         var jobRow = dsl.select(field("ai_script"))
                 .from(table("render_job"))

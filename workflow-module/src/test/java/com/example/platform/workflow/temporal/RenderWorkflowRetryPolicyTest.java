@@ -76,7 +76,7 @@ class RenderWorkflowRetryPolicyTest {
         AtomicInteger attempts = new AtomicInteger();
         RenderOrchestratorPort failing = new RenderOrchestratorPort() {
             @Override
-            public String submitRenderJob(SubmitRenderJobRequest request) {
+            public String submitRenderJob(SubmitRenderJobRequest request, com.example.platform.shared.events.RenderInitiator initiator) {
                 return request.tenantId();
             }
 
@@ -114,7 +114,7 @@ class RenderWorkflowRetryPolicyTest {
         AtomicInteger attempts = new AtomicInteger();
         RenderOrchestratorPort nonRetryable = new RenderOrchestratorPort() {
             @Override
-            public String submitRenderJob(SubmitRenderJobRequest request) {
+            public String submitRenderJob(SubmitRenderJobRequest request, com.example.platform.shared.events.RenderInitiator initiator) {
                 return request.tenantId();
             }
 

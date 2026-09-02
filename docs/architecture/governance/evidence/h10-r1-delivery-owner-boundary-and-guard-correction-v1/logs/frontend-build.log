@@ -1,0 +1,18 @@
+
+> media-platform-frontend@0.1.0 build
+> vite build
+
+vite v6.4.3 building for production...
+transforming...
+✓ 340 modules transformed.
+rendering chunks...
+computing gzip size...
+../platform-app/src/main/resources/static/index.html                   0.51 kB │ gzip:   0.34 kB
+../platform-app/src/main/resources/static/assets/index-CNo6lZCV.css   20.40 kB │ gzip:   4.49 kB
+../platform-app/src/main/resources/static/assets/index-CiQ1nz4Q.js   591.78 kB │ gzip: 172.26 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 3.98s

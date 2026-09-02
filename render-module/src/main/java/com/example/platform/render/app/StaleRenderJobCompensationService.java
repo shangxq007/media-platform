@@ -3,6 +3,7 @@ package com.example.platform.render.app;
 import com.example.platform.render.domain.RenderJobStateMachine;
 import com.example.platform.render.domain.RenderJobStatus;
 import com.example.platform.shared.events.RenderJobFailedEvent;
+import com.example.platform.render.infrastructure.RenderJobRepository;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -55,7 +56,9 @@ public class StaleRenderJobCompensationService {
             condition = condition.and(RENDER_JOB.CREATED_AT.lessThan(request.cutoff().toLocalDateTime()));
         }
 
-        var staleJobs = dsl.select(RENDER_JOB.ID, RENDER_JOB.PROJECT_ID, RENDER_JOB.STATUS)
+        var staleJobs = dsl.select(RENDER_JOB.ID, RENDER_JOB.PROJECT_ID, RENDER_JOB.STATUS,
+                        RENDER_JOB.INITIATOR_TYPE, RENDER_JOB.INITIATOR_ID,
+                        RENDER_JOB.INITIATOR_TENANT_ID)
                 .from(RENDER_JOB)
                 .where(condition)
                 .fetch();
@@ -79,7 +82,8 @@ public class StaleRenderJobCompensationService {
                 historyRepository.record(
                         jobId, statusStr, RenderJobStatus.FAILED.name(), reason, "STALE_TIMEOUT");
                 eventPublisher.publishEvent(new RenderJobFailedEvent(
-                        jobId, projectId, request.errorMessage(), Instant.now()));
+                        jobId, projectId, request.errorMessage(), Instant.now(),
+                        RenderJobRepository.initiatorFrom(job)));
                 compensated++;
                 log.warn("Compensated stale job {} (was {}, reason={})", jobId, statusStr, reason);
             } catch (Exception e) {

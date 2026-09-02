@@ -59,7 +59,8 @@ class TimelineMutationControllersMockMvcTest {
                 new TimelineContentDigester(),
                 mock(TimelineRevisionDiffQuery.class),
                 patchService,
-                authorization);
+                authorization,
+                () -> Optional.of(actor()));
         gitMvc = mvc(controller);
     }
 

@@ -60,8 +60,11 @@ class RenderJobLeaseServiceTest extends PostgresTestContainerSupport {
         dsl.insertInto(DSL.table("render_job"))
                 .columns(DSL.field("id"), DSL.field("project_id"), DSL.field("tenant_id"),
                         DSL.field("timeline_snapshot_id"), DSL.field("profile"),
-                        DSL.field("status"), DSL.field("created_at"))
-                .values(jobId, "proj-1", "tenant-1", "snap-1", "default_1080p", status, LocalDateTime.now(ZoneOffset.UTC))
+                        DSL.field("status"), DSL.field("created_at"),
+                        DSL.field("initiator_type"), DSL.field("initiator_id"),
+                        DSL.field("initiator_tenant_id"))
+                .values(jobId, "proj-1", "tenant-1", "snap-1", "default_1080p", status,
+                        LocalDateTime.now(ZoneOffset.UTC), "SYSTEM", "test-render-farm", "tenant-1")
                 .execute();
     }
 

@@ -1,6 +1,8 @@
 package com.example.platform.web.render;
 
 import com.example.platform.shared.time.MediaTime;
+import com.example.platform.shared.authorization.CanonicalActorResolver;
+import com.example.platform.shared.events.RenderInitiator;
 import com.example.platform.timeline.app.PatchApplyResult;
 import com.example.platform.timeline.app.PatchPreviewResult;
 import com.example.platform.timeline.app.TimelineRevisionQueryService;
@@ -53,6 +55,7 @@ public class TimelineGitV1Controller {
     private final TimelineRevisionDiffQuery diffQuery;
     private final TimelinePatchApplicationService patchService;
     private final TimelineProjectAuthorizationService projectAuthorization;
+    private final CanonicalActorResolver canonicalActorResolver;
 
     public TimelineGitV1Controller(TimelineRevisionSaveService saveService,
                                    TimelineRevisionQueryService revisionQueryService,
@@ -60,7 +63,8 @@ public class TimelineGitV1Controller {
                                    TimelineContentDigester contentDigester,
                                    TimelineRevisionDiffQuery diffQuery,
                                    TimelinePatchApplicationService patchService,
-                                   TimelineProjectAuthorizationService projectAuthorization) {
+                                   TimelineProjectAuthorizationService projectAuthorization,
+                                   CanonicalActorResolver canonicalActorResolver) {
         this.saveService = saveService;
         this.revisionQueryService = revisionQueryService;
         this.pinningService = pinningService;
@@ -68,6 +72,7 @@ public class TimelineGitV1Controller {
         this.diffQuery = diffQuery;
         this.patchService = patchService;
         this.projectAuthorization = projectAuthorization;
+        this.canonicalActorResolver = canonicalActorResolver;
     }
 
     @PostMapping("/products/{productId}/revisions")
@@ -136,8 +141,11 @@ public class TimelineGitV1Controller {
             @RequestBody CreateRenderJobRequest request) {
         projectAuthorization.requireWrite(TenantContext.get(), request.productId());
         String jobId = UUID.randomUUID().toString();
+        RenderInitiator initiator = canonicalActorResolver.resolveCurrentActor()
+                .map(RenderInitiator::from)
+                .orElseThrow(() -> new IllegalStateException("Authenticated render initiator is required"));
         pinningService.createRenderJobWithRevision(jobId, request.productId(),
-                request.timelineRevisionId(), request.backend());
+                request.timelineRevisionId(), request.backend(), initiator);
         return ResponseEntity.status(HttpStatus.CREATED).body(new RenderJobResponse(jobId));
     }
 
@@ -419,5 +427,4 @@ public class TimelineGitV1Controller {
     public record PatchPreviewResponse(String error, String message, String resultDigest, boolean persisted) {}
 
     public record PatchApplyResponse(String error, String message, String revisionId, String parentRevisionId, String resultDigest, boolean persisted) {}
-
 }

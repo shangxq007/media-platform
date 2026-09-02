@@ -1,0 +1,48 @@
+{
+  "finalizeDeliveriesForRenderJob": [
+    {
+      "path": "delivery-module/src/main/java/com/example/platform/delivery/api/port/DeliveryAfterRenderPort.java",
+      "line": 13,
+      "text": "int finalizeDeliveriesForRenderJob(String renderJobId);"
+    },
+    {
+      "path": "delivery-module/src/main/java/com/example/platform/delivery/app/DeliveryJobService.java",
+      "line": 347,
+      "text": "public int finalizeDeliveriesForRenderJob(String renderJobId) {"
+    },
+    {
+      "path": "workflow-module/src/main/java/com/example/platform/workflow/temporal/RenderActivitiesImpl.java",
+      "line": 98,
+      "text": "return deliveryAfterRenderPort.finalizeDeliveriesForRenderJob(renderJobId);"
+    }
+  ],
+  "onRenderJobCompleted": [
+    {
+      "path": "audit-compliance-module/src/main/java/com/example/platform/audit/app/AuditEventHandler.java",
+      "line": 58,
+      "text": "public void onRenderJobCompleted(RenderJobCompletedEvent event) {"
+    },
+    {
+      "path": "delivery-module/src/main/java/com/example/platform/delivery/app/DeliveryCompletionListener.java",
+      "line": 17,
+      "text": "public void onRenderJobCompleted(RenderJobCompletedEvent event) {"
+    },
+    {
+      "path": "delivery-module/src/main/java/com/example/platform/delivery/app/DeliveryCompletionListener.java",
+      "line": 18,
+      "text": "deliveryJobService.onRenderJobCompleted(event);"
+    },
+    {
+      "path": "delivery-module/src/main/java/com/example/platform/delivery/app/DeliveryJobService.java",
+      "line": 70,
+      "text": "public void onRenderJobCompleted(RenderJobCompletedEvent event) {"
+    },
+    {
+      "path": "delivery-module/src/main/java/com/example/platform/delivery/app/DeliveryJobService.java",
+      "line": 361,
+      "text": "onRenderJobCompleted(new RenderJobCompletedEvent("
+    }
+  ],
+  "raw_initiator_field_occurrences": 6,
+  "schema_diff_from_pre": 0
+}

@@ -4,6 +4,9 @@ import com.example.platform.render.api.RenderController;
 import com.example.platform.render.app.RenderJobService;
 import com.example.platform.render.app.dto.CreateRenderJobRequest;
 import com.example.platform.render.app.dto.RenderJobResponse;
+import com.example.platform.shared.authorization.CanonicalActor;
+import com.example.platform.shared.events.RenderInitiator;
+import java.util.Set;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,21 +23,25 @@ class RenderControllerTest {
     void setUp() {
         renderJobService = mock(RenderJobService.class);
         controller = new RenderController(renderJobService, null, java.util.List.of(),
-                null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null,
+                () -> java.util.Optional.of(CanonicalActor.user(
+                        "test-principal-p1", "tenant-1", Set.of(), "test")));
     }
 
     @Test
     void shouldCreateJob() {
         CreateRenderJobRequest request = new CreateRenderJobRequest("proj-1", "snap-1", "default_1080p");
         RenderJobResponse expected = new RenderJobResponse("rj-1", "proj-1", "snap-1", "default_1080p", "QUEUED");
-        when(renderJobService.createForProject("tenant-1", "proj-1", request)).thenReturn(expected);
+        RenderInitiator initiator = RenderInitiator.from(CanonicalActor.user(
+                "test-principal-p1", "tenant-1", Set.of(), "test"));
+        when(renderJobService.createForProject("tenant-1", "proj-1", request, initiator)).thenReturn(expected);
 
         RenderJobResponse response = controller.createRenderJob("tenant-1", "proj-1", request);
 
         assertNotNull(response);
         assertEquals("rj-1", response.id());
         assertEquals("QUEUED", response.status());
-        verify(renderJobService).createForProject("tenant-1", "proj-1", request);
+        verify(renderJobService).createForProject("tenant-1", "proj-1", request, initiator);
     }
 
     @Test

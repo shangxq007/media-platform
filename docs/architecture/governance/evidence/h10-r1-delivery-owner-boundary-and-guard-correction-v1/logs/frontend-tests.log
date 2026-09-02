@@ -1,0 +1,12 @@
+
+ RUN  v3.2.6 /home/user/Documents/workspace/audit-runs/h10-r1-delivery-correction-frontend/frontend
+
+ ✓ src/contracts/app/render-job.test.ts (3 tests) 10ms
+ ✓ src/pages/CanonicalProjectionGapPages.test.tsx (3 tests) 46ms
+ ✓ src/editor/EditorPage.test.tsx (3 tests) 57ms
+ ✓ src/pages/H4BoundedCorrection.test.tsx (3 tests) 85ms
+
+ Test Files  4 passed (4)
+      Tests  12 passed (12)
+   Start at  12:53:01
+   Duration  1.72s (transform 627ms, setup 0ms, collect 1.37s, tests 197ms, environment 1.01s, prepare 1.62s)

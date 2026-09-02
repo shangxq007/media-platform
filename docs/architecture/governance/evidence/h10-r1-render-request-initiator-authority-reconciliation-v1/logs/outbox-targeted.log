@@ -1,0 +1,50 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.1.0/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build
+> Task :shared-kernel:compileJava
+> Task :typed-schema-module:compileJava
+
+> Task :notification-module:compileJava
+Note: /home/user/Documents/workspace/projects/media-platform/.worktrees/render-request-initiator-authority-reconciliation/notification-module/src/main/java/com/example/platform/notification/infrastructure/WebhookUrlValidator.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+Note: /home/user/Documents/workspace/projects/media-platform/.worktrees/render-request-initiator-authority-reconciliation/notification-module/src/main/java/com/example/platform/notification/app/NotificationSubscriptionService.java uses unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+
+> Task :notification-module:processResources NO-SOURCE
+> Task :notification-module:classes
+> Task :notification-module:jar
+> Task :sandbox-isolation-module:compileJava
+
+> Task :outbox-event-module:compileJava
+Note: /home/user/Documents/workspace/projects/media-platform/.worktrees/render-request-initiator-authority-reconciliation/outbox-event-module/src/main/java/com/example/platform/outbox/app/OutboxEventDispatcher.java uses unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+
+> Task :outbox-event-module:processResources NO-SOURCE
+> Task :outbox-event-module:classes
+
+> Task :shared-kernel:compileTestFixturesJava
+Note: /home/user/Documents/workspace/projects/media-platform/.worktrees/render-request-initiator-authority-reconciliation/shared-kernel/src/testFixtures/java/com/example/platform/shared/test/PostgresTestContainerSupport.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+
+> Task :outbox-event-module:compileTestJava
+> Task :outbox-event-module:processTestResources
+> Task :outbox-event-module:testClasses
+> Task :sandbox-isolation-module:processResources NO-SOURCE
+> Task :sandbox-isolation-module:classes
+> Task :sandbox-isolation-module:jar
+> Task :shared-kernel:processResources
+> Task :shared-kernel:classes
+> Task :shared-kernel:jar
+> Task :shared-kernel:processTestFixturesResources NO-SOURCE
+> Task :shared-kernel:testFixturesClasses
+> Task :shared-kernel:testFixturesJar
+> Task :typed-schema-module:processResources NO-SOURCE
+> Task :typed-schema-module:classes
+> Task :typed-schema-module:jar
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+> Task :outbox-event-module:test
+
+[Incubating] Problems report is available at: file:///home/user/Documents/workspace/projects/media-platform/.worktrees/render-request-initiator-authority-reconciliation/build/reports/problems/problems-report.html
+
+BUILD SUCCESSFUL in 36s
+15 actionable tasks: 15 executed
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.1.0/userguide/configuration_cache_enabling.html

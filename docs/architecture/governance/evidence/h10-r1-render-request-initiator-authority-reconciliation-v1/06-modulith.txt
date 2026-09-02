@@ -1,0 +1,5 @@
+MODULITH_GATE=PASS
+COMMAND=./gradlew --no-daemon --max-workers=1 --rerun-tasks :platform-app:test --tests com.example.platform.ModularityTest
+ACTIONABLE_TASKS=92
+EXECUTED_TASKS=92
+DURATION=1m 9s

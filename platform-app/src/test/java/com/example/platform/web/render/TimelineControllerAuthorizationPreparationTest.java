@@ -54,7 +54,8 @@ class TimelineControllerAuthorizationPreparationTest {
                 new com.example.platform.timeline.canonical.TimelineContentDigester(),
                 mock(com.example.platform.timeline.app.TimelineRevisionDiffQuery.class),
                 mock(com.example.platform.timeline.app.TimelinePatchApplicationService.class),
-                authorization);
+                authorization,
+                java.util.Optional::empty);
 
         assertThrows(ResponseStatusException.class,
                 () -> controller.getCurrentRevision("project-1"));

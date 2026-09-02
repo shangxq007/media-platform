@@ -1,0 +1,44 @@
+Emulate Docker CLI using podman. Create /etc/containers/nodocker to quiet msg.
+Semgrep failed to set the safe.directory Git config option. Git commands might fail: Command failed with exit code: 128
+-----
+Command failed with output:
+fatal: not a git repository: /home/user/Documents/workspace/projects/media-platform/.git/worktrees/render-request-initiator-authority-reconciliation
+
+
+Failed to run 'git config --global --add safe.directory *'. Possible reasons:
+
+- the git binary is not available
+- the current working directory is not a git repository
+- the baseline commit is not a parent of the current commit
+    (if you are running through semgrep-app, check if you are setting `SEMGREP_BRANCH` or `SEMGREP_BASELINE_COMMIT` properly)
+- the current working directory is not marked as safe
+    (fix with `git config --global --add safe.directory $(pwd)`)
+
+Try running the command yourself to debug the issue.
+
+
+┌─────────────┐
+│ Scan Status │
+└─────────────┘
+  Scanning 6324 files tracked by git with 7 Code rules:
+
+  Language      Rules   Files          Origin   Rules
+ ─────────────────────────────        ────────────────
+  java              6    3697          Custom       7
+  <multilang>       1       1
+
+
+
+┌──────────────┐
+│ Scan Summary │
+└──────────────┘
+✅ Scan completed successfully.
+ • Findings: 0 (0 blocking)
+ • Rules run: 7
+ • Targets scanned: 3698
+ • Parsed lines: ~100.0%
+ • Scan skipped:
+   ◦ Files larger than  files 1.0 MB: 3
+   ◦ Files matching .semgrepignore patterns: 393
+ • For a detailed list of skipped files and lines, run semgrep with the --verbose flag
+Ran 7 rules on 3698 files: 0 findings.

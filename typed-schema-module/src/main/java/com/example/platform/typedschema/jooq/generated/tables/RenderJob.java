@@ -136,6 +136,21 @@ public class RenderJob extends TableImpl<RenderJobRecord> {
     public final TableField<RenderJobRecord, String> TRACE_ID = createField(DSL.name("trace_id"), SQLDataType.VARCHAR(128), this, "");
 
     /**
+     * The column <code>public.render_job.initiator_type</code>.
+     */
+    public final TableField<RenderJobRecord, String> INITIATOR_TYPE = createField(DSL.name("initiator_type"), SQLDataType.VARCHAR(32).nullable(false), this, "");
+
+    /**
+     * The column <code>public.render_job.initiator_id</code>.
+     */
+    public final TableField<RenderJobRecord, String> INITIATOR_ID = createField(DSL.name("initiator_id"), SQLDataType.VARCHAR(128).nullable(false), this, "");
+
+    /**
+     * The column <code>public.render_job.initiator_tenant_id</code>.
+     */
+    public final TableField<RenderJobRecord, String> INITIATOR_TENANT_ID = createField(DSL.name("initiator_tenant_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
+
+    /**
      * The column <code>public.render_job.timeline_revision_id</code>.
      */
     public final TableField<RenderJobRecord, String> TIMELINE_REVISION_ID = createField(DSL.name("timeline_revision_id"), SQLDataType.VARCHAR(64), this, "");

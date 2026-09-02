@@ -197,9 +197,10 @@ class RenderJobFailureDurabilityIntegrationTest extends PostgresTestContainerSup
         dsl.insertInto(DSL.table("render_job"))
                 .columns(DSL.field("id"), DSL.field("project_id"), DSL.field("tenant_id"),
                         DSL.field("timeline_snapshot_id"), DSL.field("profile"),
-                        DSL.field("status"), DSL.field("created_at"))
+                        DSL.field("status"), DSL.field("created_at"), DSL.field("initiator_type"),
+                        DSL.field("initiator_id"), DSL.field("initiator_tenant_id"))
                 .values(jobId, "proj-1", "tenant-1", "snap-1", "default_1080p",
-                        status, OffsetDateTime.now())
+                        status, OffsetDateTime.now(), "USER", "test-principal-p1", "tenant-1")
                 .execute();
     }
 
@@ -251,7 +252,8 @@ class RenderJobFailureDurabilityIntegrationTest extends PostgresTestContainerSup
 
         @Bean
         public RenderJobFailureService failureService(RenderJobRepository repo) {
-            return new RenderJobFailureService(repo);
+            return new RenderJobFailureService(
+                    repo, org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class));
         }
     }
 }

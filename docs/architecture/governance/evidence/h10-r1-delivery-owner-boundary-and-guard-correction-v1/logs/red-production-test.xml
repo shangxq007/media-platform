@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.example.platform.delivery.app.DeliveryCompletionOwnerBoundaryTest" tests="1" skipped="0" failures="1" errors="0" timestamp="2026-09-01T04:26:25.112Z" hostname="localhost.localdomain" time="2.2">
+  <properties/>
+  <testcase name="completionAndFinalizationUseEventFactsAndDeliveryOwnedRowsWithoutRenderTable()" classname="com.example.platform.delivery.app.DeliveryCompletionOwnerBoundaryTest" time="2.2">
+    <failure message="org.jooq.exception.DataAccessException: SQL [select &quot;public&quot;.&quot;render_job&quot;.&quot;tenant_id&quot;, &quot;public&quot;.&quot;render_job&quot;.&quot;project_id&quot;, &quot;public&quot;.&quot;render_job&quot;.&quot;artifact_uri&quot;, &quot;public&quot;.&quot;render_job&quot;.&quot;initiator_type&quot;, &quot;public&quot;.&quot;render_job&quot;.&quot;initiator_id&quot;, &quot;public&quot;.&quot;render_job&quot;.&quot;initiator_tenant_id&quot; from &quot;public&quot;.&quot;render_job&quot; where &quot;public&quot;.&quot;render_job&quot;.&quot;id&quot; = ?]; ERROR: relation &quot;public.render_job&quot; does not exist&#10;  Position: 244" type="org.jooq.exception.DataAccessException">org.jooq.exception.DataAccessException: SQL [select &quot;public&quot;.&quot;render_job&quot;.&quot;tenant_id&quot;, &quot;public&quot;.&quot;render_job&quot;.&quot;project_id&quot;, &quot;public&quot;.&quot;render_job&quot;.&quot;artifact_uri&quot;, &quot;public&quot;.&quot;render_job&quot;.&quot;initiator_type&quot;, &quot;public&quot;.&quot;render_job&quot;.&quot;initiator_id&quot;, &quot;public&quot;.&quot;render_job&quot;.&quot;initiator_tenant_id&quot; from &quot;public&quot;.&quot;render_job&quot; where &quot;public&quot;.&quot;render_job&quot;.&quot;id&quot; = ?]; ERROR: relation &quot;public.render_job&quot; does not exist
+  Position: 244
+	at org.jooq_3.19.30.POSTGRES.debug(Unknown Source)
+	at app//org.jooq.impl.Tools.translate(Tools.java:3637)
+	at app//org.jooq.impl.Tools.translate(Tools.java:3625)
+	at app//org.jooq.impl.DefaultExecuteContext.sqlException(DefaultExecuteContext.java:878)
+	at app//org.jooq.impl.AbstractQuery.execute(AbstractQuery.java:362)
+	at app//org.jooq.impl.AbstractResultQuery.fetchLazy(AbstractResultQuery.java:301)
+	at app//org.jooq.impl.AbstractResultQuery.fetchLazyNonAutoClosing(AbstractResultQuery.java:322)
+	at app//org.jooq.impl.SelectImpl.fetchLazyNonAutoClosing(SelectImpl.java:3256)
+	at app//org.jooq.impl.ResultQueryTrait.fetchOne(ResultQueryTrait.java:509)
+	at app//com.example.platform.delivery.app.DeliveryJobService.onRenderJobCompleted(DeliveryJobService.java:83)
+	at app//com.example.platform.delivery.app.DeliveryCompletionListener.onRenderJobCompleted(DeliveryCompletionListener.java:18)
+	at app//com.example.platform.delivery.app.DeliveryCompletionOwnerBoundaryTest.completionAndFinalizationUseEventFactsAndDeliveryOwnedRowsWithoutRenderTable(DeliveryCompletionOwnerBoundaryTest.java:167)
+Caused by: org.postgresql.util.PSQLException: ERROR: relation &quot;public.render_job&quot; does not exist
+  Position: 244
+	at app//org.postgresql.core.v3.QueryExecutorImpl.receiveErrorResponse(QueryExecutorImpl.java:2875)
+	at app//org.postgresql.core.v3.QueryExecutorImpl.processResults(QueryExecutorImpl.java:2560)
+	at app//org.postgresql.core.v3.QueryExecutorImpl.execute(QueryExecutorImpl.java:429)
+	at app//org.postgresql.jdbc.PgStatement.executeInternal(PgStatement.java:526)
+	at app//org.postgresql.jdbc.PgStatement.execute(PgStatement.java:436)
+	at app//org.postgresql.jdbc.PgPreparedStatement.executeWithFlags(PgPreparedStatement.java:196)
+	at app//org.postgresql.jdbc.PgPreparedStatement.execute(PgPreparedStatement.java:182)
+	at app//org.jooq.tools.jdbc.DefaultPreparedStatement.execute(DefaultPreparedStatement.java:219)
+	at app//org.jooq.impl.Tools.lambda$executeStatementAndGetFirstResultSet$109(Tools.java:5039)
+	at app//org.jooq.impl.Tools.consumeExceptions(Tools.java:4926)
+	at app//org.jooq.impl.Tools.executeStatementAndGetFirstResultSet(Tools.java:4954)
+	at app//org.jooq.impl.AbstractResultQuery.execute(AbstractResultQuery.java:236)
+	at app//org.jooq.impl.AbstractQuery.execute(AbstractQuery.java:348)
+	... 7 more
+</failure>
+  </testcase>
+  <system-out><![CDATA[12:26:19.089 [Test worker] INFO org.testcontainers.images.PullPolicy -- Image pull policy will be performed by: DefaultPullPolicy()
+12:26:19.101 [Test worker] INFO org.testcontainers.utility.ImageNameSubstitutor -- Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
+12:26:19.114 [Test worker] INFO org.testcontainers.DockerClientFactory -- Testcontainers version: 2.0.4
+12:26:19.441 [Test worker] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy -- Loaded org.testcontainers.dockerclient.RootlessDockerClientProviderStrategy from ~/.testcontainers.properties, will try it first
+12:26:20.284 [Test worker] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy -- Found Docker environment with Environment variables, system properties and defaults. Resolved dockerHost=unix:///run/user/1000/podman/podman.sock
+12:26:20.286 [Test worker] INFO org.testcontainers.DockerClientFactory -- Docker host IP address is localhost
+12:26:20.466 [Test worker] INFO org.testcontainers.DockerClientFactory -- Connected to docker:
+  Server Version: 5.4.2
+  API Version: 1.41
+  Operating System: opensuse-leap
+  Total Memory: 128494 MB
+12:26:20.470 [Test worker] WARN org.testcontainers.utility.ResourceReaper --
+********************************************************************************
+Ryuk has been disabled. This can cause unexpected behavior in your environment.
+********************************************************************************
+12:26:20.475 [Test worker] INFO org.testcontainers.DockerClientFactory -- Checking the system...
+12:26:20.476 [Test worker] INFO org.testcontainers.DockerClientFactory -- ✔︎ Docker server version should be at least 1.6.0
+12:26:21.867 [Test worker] INFO tc.postgres:15-alpine -- Creating container for image: postgres:15-alpine
+12:26:21.875 [Test worker] INFO org.testcontainers.utility.RegistryAuthLocator -- Failure when attempting to lookup auth config. Please ignore if you don't have images in an authenticated registry. Details: (dockerImageName: postgres:15-alpine, configFile: /home/user/.docker/config.json, configEnv: DOCKER_AUTH_CONFIG). Falling back to docker-java default behaviour. Exception message: Status 404: No config supplied. Checked in order: /home/user/.docker/config.json (file not found), DOCKER_AUTH_CONFIG (not set)
+12:26:22.103 [Test worker] INFO tc.postgres:15-alpine -- Container postgres:15-alpine is starting: eaebe1db28fb0af6eef6509e8e27ff5cf4f9abd60a21ab179dab4461995dd6ed
+12:26:24.137 [Test worker] INFO tc.postgres:15-alpine -- Container postgres:15-alpine started in PT2.270489867S
+12:26:24.139 [Test worker] INFO tc.postgres:15-alpine -- Container is started (JDBC URL: jdbc:postgresql://localhost:39193/media_platform_test?loggerLevel=OFF)
+12:26:24.967 [Test worker] INFO org.jooq.Constants --
+
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@@@@@@@@  @@        @@@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@        @@@@@@@@@@
+@@@@@@@@@@@@@@@@  @@  @@    @@@@@@@@@@
+@@@@@@@@@@  @@@@  @@  @@    @@@@@@@@@@
+@@@@@@@@@@        @@        @@@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@@        @@        @@@@@@@@@@
+@@@@@@@@@@    @@  @@  @@@@  @@@@@@@@@@
+@@@@@@@@@@    @@  @@  @@@@  @@@@@@@@@@
+@@@@@@@@@@        @@  @  @  @@@@@@@@@@
+@@@@@@@@@@        @@        @@@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@  @@@@@@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@  Thank you for using jOOQ 3.19.30 (Build date: 2026-01-29T11:00:39Z)
+
+12:26:24.969 [Test worker] INFO org.jooq.Constants --
+
+jOOQ tip of the day: A ResultQuery<R> extends Iterable<R>, so you can just foreach your queries! See: https://blog.jooq.org/a-hidden-jooq-gem-foreach-loop-over-resultquery/
+
+12:26:25.044 [Test worker] INFO org.jooq.impl.DefaultExecuteContext.logVersionSupport -- Version                  : Database version is supported by dialect SQLDialect.POSTGRES: 15.18
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
