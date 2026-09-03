@@ -179,6 +179,13 @@ class H8OperationInvocationBoundaryGuardTest {
             "unrelated_unchanged_source_absent_from_changed_paths",
             "governed_runtime_source_hash_all_files",
             "guard_rule_removed_runtime_validation");
+    private static final List<String> REQUIRED_SCOPE_LIFECYCLE_CONTROLS = List.of(
+            "current_frontend_descendant_head",
+            "historical_h8_delta_exact_authorized_22_paths",
+            "missing_and_invalid_accepted_checkpoint_fail_closed",
+            "checkout_not_descended_from_accepted_fails_closed",
+            "legitimate_descendant_paths_excluded_from_historical_scope",
+            "unauthorized_h8_candidate_scope_mutation");
 
     @Test
     void guardReportsTheExactCensusAndPasses() throws Exception {
@@ -201,6 +208,10 @@ class H8OperationInvocationBoundaryGuardTest {
         REQUIRED_RECOVERY_CONTROLS.forEach(control -> assertTrue(result.output().lines()
                 .anyMatch(line -> line.startsWith("H8_MUTATION " + control + "=PASS")),
                 "missing recovery negative control: " + control + "\n" + result.output()));
+        REQUIRED_SCOPE_LIFECYCLE_CONTROLS.forEach(control -> assertTrue(
+                result.output().lines()
+                        .anyMatch(line -> line.startsWith("H8_MUTATION " + control + "=PASS")),
+                "missing scope lifecycle control: " + control + "\n" + result.output()));
         assertTrue(result.output().lines()
                 .anyMatch("OLD_H8_MUTATION_REGRESSION_COUNT=0"::equals), result.output());
         assertTrue(result.output().lines()
@@ -254,6 +265,39 @@ class H8OperationInvocationBoundaryGuardTest {
                 result.output());
     }
 
+    @Test
+    void missingAcceptedCanonicalCheckpointFailsClosedWithUnclassified() throws Exception {
+        String acceptedCheckpoint = "H8_ACCEPTED_CANONICAL_SHA = "
+                + "\"16e0022e91e384fc05dfd8497c29640c8deec195\"";
+        String original = Files.readString(GUARD);
+        assertTrue(original.contains(acceptedCheckpoint),
+                "immutable accepted-checkpoint anchor must exist");
+        Path temporaryDirectory = Files.createTempDirectory("h8-missing-accepted-checkpoint-");
+        Path mutatedGuard = temporaryDirectory.resolve(GUARD.getFileName());
+        try {
+            Files.writeString(mutatedGuard, original.replace(
+                    acceptedCheckpoint,
+                    "H8_ACCEPTED_CANONICAL_SHA = \"0000000000000000000000000000000000000000\""));
+            Result result = run(List.of(
+                    "python3", mutatedGuard.toString(), "--root", ROOT.toString()));
+
+            assertNotEquals(0, result.exitCode(), result.output());
+            var unclassified = Pattern.compile("(?m)^UNCLASSIFIED=(\\d+)$")
+                    .matcher(result.output());
+            assertTrue(unclassified.find(), result.output());
+            assertTrue(Integer.parseInt(unclassified.group(1)) > 0, result.output());
+            assertTrue(result.output().contains(
+                    "H8_SCOPE_ATTESTATION_CURRENT_HEAD_DESCENDANT=FAIL"), result.output());
+            assertTrue(result.output().contains(
+                    "H8 accepted canonical commit does not exist"), result.output());
+            assertFalse(result.output().contains("H8_OPERATION_INVOCATION_BOUNDARY_GUARD=PASS"),
+                    result.output());
+        } finally {
+            Files.deleteIfExists(mutatedGuard);
+            Files.deleteIfExists(temporaryDirectory);
+        }
+    }
+
     private static Result run(List<String> command) throws IOException, InterruptedException {
         ProcessBuilder builder = new ProcessBuilder(command)
                 .directory(ROOT.toFile())
@@ -286,6 +330,18 @@ class H8OperationInvocationBoundaryGuardTest {
 
     private static void assertExactCensus(Result result) {
         assertEquals(0, result.exitCode(), result.output());
+        assertTrue(result.output().lines().anyMatch(
+                "H8_SCOPE_ATTESTATION_BASE_SHA=b82b0dadfbee56e0436c7623e8ebc18971dc953a"
+                        ::equals),
+                result.output());
+        assertTrue(result.output().lines().anyMatch(
+                "H8_SCOPE_ATTESTATION_ACCEPTED_SHA=16e0022e91e384fc05dfd8497c29640c8deec195"
+                        ::equals),
+                result.output());
+        assertTrue(result.output().lines().anyMatch(
+                "H8_SCOPE_ATTESTATION_CURRENT_HEAD_DESCENDANT=PASS"::equals), result.output());
+        assertTrue(result.output().lines().anyMatch(
+                "H8_HISTORICAL_CHANGED_PATH_COUNT=22"::equals), result.output());
         EXACT_CENSUS.forEach(line -> assertTrue(result.output().lines()
                 .anyMatch(line::equals), "missing exact census: " + line + "\n" + result.output()));
         assertTrue(result.output().lines()

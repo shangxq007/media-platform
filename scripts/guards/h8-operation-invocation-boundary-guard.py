@@ -17,7 +17,8 @@ FROZEN_EXECUTABLE_DEFINITIONS = {
     "ADD_MEDIA_CLIP": "timeline.media-clip.add@1.0",
 }
 
-H8_BASE_SHA = "b82b0dadfbee56e0436c7623e8ebc18971dc953a"
+H8_PRE_CANONICAL_BASE_SHA = "b82b0dadfbee56e0436c7623e8ebc18971dc953a"
+H8_ACCEPTED_CANONICAL_SHA = "16e0022e91e384fc05dfd8497c29640c8deec195"
 
 H8_AUTHORIZED_CHANGED_PATHS = frozenset({
     "operation-module/src/main/java/com/example/platform/operation/invocation/OperationInvocationContext.java",
@@ -1008,47 +1009,88 @@ def governed_runtime_hash_mismatches(
     return mismatch_count, tuple(details)
 
 
-def changed_paths_from_h8_base(root: Path) -> tuple[set[str], list[str]]:
+def historical_h8_changed_paths(
+        root: Path,
+        pre_canonical_base_sha: str = H8_PRE_CANONICAL_BASE_SHA,
+        accepted_canonical_sha: str = H8_ACCEPTED_CANONICAL_SHA,
+        current_head: str = "HEAD") -> tuple[set[str], list[str], bool]:
+    """Attest the immutable accepted H8 delta and the current checkout lineage."""
     errors: list[str] = []
     changed: set[str] = set()
-    try:
-        base_commit = subprocess.run(
-            ("git", "cat-file", "-e", f"{H8_BASE_SHA}^{{commit}}"),
-            cwd=root, check=False, capture_output=True, timeout=30)
-    except (OSError, subprocess.SubprocessError) as failure:
-        return changed, [f"cannot verify H8 base commit {H8_BASE_SHA}: {failure}"]
-    if base_commit.returncode != 0:
-        return changed, [f"H8 base commit does not exist: {H8_BASE_SHA}"]
-    commands = (
-        ("git", "diff", "--name-only", "--no-renames", "-z", H8_BASE_SHA, "--"),
-        ("git", "ls-files", "--others", "--exclude-standard", "-z"),
-    )
-    for command in commands:
+    commits_exist = True
+    for label, commit in (
+            ("pre-canonical base", pre_canonical_base_sha),
+            ("accepted canonical", accepted_canonical_sha)):
+        command = ("git", "cat-file", "-e", f"{commit}^{{commit}}")
         try:
             completed = subprocess.run(
                 command, cwd=root, check=False, capture_output=True, timeout=30)
         except (OSError, subprocess.SubprocessError) as failure:
-            errors.append(f"cannot inspect H8 base changes with {' '.join(command)}: {failure}")
+            errors.append(f"cannot verify H8 {label} commit {commit}: {failure}")
+            commits_exist = False
             continue
         if completed.returncode != 0:
+            errors.append(f"H8 {label} commit does not exist: {commit}")
+            commits_exist = False
+    if not commits_exist:
+        return changed, errors, False
+
+    ancestry_checks = (
+        (pre_canonical_base_sha, accepted_canonical_sha,
+         "H8 pre-canonical base is not an ancestor of accepted canonical checkpoint"),
+        (accepted_canonical_sha, current_head,
+         "current HEAD is not descended from accepted H8 canonical checkpoint"),
+    )
+    current_head_descendant = False
+    for ancestor, descendant, not_ancestor_error in ancestry_checks:
+        command = ("git", "merge-base", "--is-ancestor", ancestor, descendant)
+        try:
+            completed = subprocess.run(
+                command, cwd=root, check=False, capture_output=True, timeout=30)
+        except (OSError, subprocess.SubprocessError) as failure:
             errors.append(
-                f"cannot inspect H8 base changes with {' '.join(command)}: "
-                f"exit {completed.returncode}")
+                f"cannot verify H8 ancestry with {' '.join(command)}: {failure}")
             continue
-        for encoded_path in completed.stdout.split(b"\0"):
-            if not encoded_path:
-                continue
-            try:
-                changed.add(encoded_path.decode("utf-8"))
-            except UnicodeDecodeError as failure:
-                errors.append(f"cannot decode changed Git path as UTF-8: {failure}")
-    return changed, errors
+        if completed.returncode == 0:
+            if ancestor == accepted_canonical_sha and descendant == current_head:
+                current_head_descendant = True
+        elif completed.returncode == 1:
+            errors.append(
+                f"{not_ancestor_error}: {ancestor} !<= {descendant}")
+        else:
+            errors.append(
+                f"cannot verify H8 ancestry with {' '.join(command)}: "
+                f"exit {completed.returncode}")
+
+    command = (
+        "git", "diff", "--name-only", "--no-renames", "-z",
+        pre_canonical_base_sha, accepted_canonical_sha, "--")
+    try:
+        completed = subprocess.run(
+            command, cwd=root, check=False, capture_output=True, timeout=30)
+    except (OSError, subprocess.SubprocessError) as failure:
+        errors.append(
+            f"cannot inspect historical H8 changes with {' '.join(command)}: {failure}")
+        return changed, errors, current_head_descendant
+    if completed.returncode != 0:
+        errors.append(
+            f"cannot inspect historical H8 changes with {' '.join(command)}: "
+            f"exit {completed.returncode}")
+        return changed, errors, current_head_descendant
+    for encoded_path in completed.stdout.split(b"\0"):
+        if not encoded_path:
+            continue
+        try:
+            changed.add(encoded_path.decode("utf-8"))
+        except UnicodeDecodeError as failure:
+            errors.append(f"cannot decode historical H8 Git path as UTF-8: {failure}")
+    return changed, errors, current_head_descendant
 
 
-def sources_at(root: Path) -> tuple[dict[str, str], list[str], set[str]]:
+def sources_at(root: Path) -> tuple[dict[str, str], list[str], set[str], bool]:
     errors: list[str] = []
     if not root.is_dir():
-        return {}, [f"repository root is missing: {root}"], set()
+        return {}, [f"repository root is missing: {root}"], set(), False
     sources: dict[str, str] = {}
     candidates: list[tuple[Path, str]] = []
     for path in root.rglob("*.java"):
@@ -1080,9 +1122,10 @@ def sources_at(root: Path) -> tuple[dict[str, str], list[str], set[str]]:
             errors.append(f"empty governed production scope: {governed}")
     if not sources:
         errors.append("production Java census is empty")
-    changed_paths, change_errors = changed_paths_from_h8_base(root)
+    changed_paths, change_errors, current_head_descendant = (
+        historical_h8_changed_paths(root))
     errors.extend(change_errors)
-    return sources, errors, changed_paths
+    return sources, errors, changed_paths, current_head_descendant
 
 
 def source_ending(sources: dict[str, str], suffix: str, details: list[str]) -> str:
@@ -2228,7 +2271,98 @@ def append_to_existing_source(
     return with_source(sources, path, sources[path] + addition)
 
 
-def run_self_test(sources: dict[str, str], changed_paths: set[str]) -> bool:
+def run_scope_lifecycle_controls(
+        root: Path, sources: dict[str, str],
+        changed_paths: set[str]) -> tuple[int, int]:
+    """Exercise immutable checkpoint and descendant lifecycle invariants."""
+    controls: list[tuple[str, bool, str]] = []
+
+    current_paths, current_errors, current_descendant = (
+        historical_h8_changed_paths(root))
+    current_evaluation = evaluate(
+        sources, current_errors, changed_paths=current_paths)
+    controls.append((
+        "current_frontend_descendant_head",
+        current_descendant and not current_errors and current_evaluation.passed,
+        "H8_ACCEPTED_CANONICAL_SHA_ANCESTOR_OF_HEAD"))
+    controls.append((
+        "historical_h8_delta_exact_authorized_22_paths",
+        current_paths == H8_AUTHORIZED_CHANGED_PATHS
+        and len(current_paths) == 22,
+        "H8_CHANGED_PATH_SCOPE_VIOLATION_COUNT"))
+
+    invalid_checkpoint_detected = True
+    for invalid_checkpoint in ("0" * 40, "not-a-commit"):
+        invalid_paths, invalid_errors, invalid_descendant = (
+            historical_h8_changed_paths(
+                root, accepted_canonical_sha=invalid_checkpoint))
+        invalid_evaluation = evaluate(
+            sources, invalid_errors, changed_paths=invalid_paths)
+        invalid_checkpoint_detected = invalid_checkpoint_detected and (
+            bool(invalid_errors)
+            and not invalid_descendant
+            and invalid_evaluation.counts["UNCLASSIFIED"] > 0
+            and not invalid_evaluation.passed)
+    controls.append((
+        "missing_and_invalid_accepted_checkpoint_fail_closed",
+        invalid_checkpoint_detected,
+        "UNCLASSIFIED"))
+
+    non_descendant_paths, non_descendant_errors, non_descendant = (
+        historical_h8_changed_paths(
+            root, current_head=H8_PRE_CANONICAL_BASE_SHA))
+    non_descendant_evaluation = evaluate(
+        sources, non_descendant_errors, changed_paths=non_descendant_paths)
+    controls.append((
+        "checkout_not_descended_from_accepted_fails_closed",
+        not non_descendant
+        and bool(non_descendant_errors)
+        and non_descendant_evaluation.counts["UNCLASSIFIED"] > 0
+        and not non_descendant_evaluation.passed,
+        "UNCLASSIFIED"))
+
+    checkpoint_paths, checkpoint_errors, checkpoint_descendant = (
+        historical_h8_changed_paths(
+            root, current_head=H8_ACCEPTED_CANONICAL_SHA))
+    descendant_delta_present = False
+    command = (
+        "git", "diff", "--quiet", H8_ACCEPTED_CANONICAL_SHA, "HEAD", "--")
+    try:
+        completed = subprocess.run(
+            command, cwd=root, check=False, capture_output=True, timeout=30)
+        descendant_delta_present = completed.returncode == 1
+    except (OSError, subprocess.SubprocessError):
+        descendant_delta_present = False
+    controls.append((
+        "legitimate_descendant_paths_excluded_from_historical_scope",
+        descendant_delta_present
+        and checkpoint_descendant
+        and not checkpoint_errors
+        and checkpoint_paths == current_paths == changed_paths
+        and evaluate(sources, changed_paths=current_paths).passed,
+        "H8_CHANGED_PATH_SCOPE_VIOLATION_COUNT"))
+
+    unauthorized_scope = set(changed_paths)
+    unauthorized_scope.add(
+        "frontend/src/main/typescript/h8-unauthorized-candidate-scope.ts")
+    unauthorized_evaluation = evaluate(
+        sources, changed_paths=unauthorized_scope)
+    controls.append((
+        "unauthorized_h8_candidate_scope_mutation",
+        unauthorized_evaluation.counts[
+            "H8_CHANGED_PATH_SCOPE_VIOLATION_COUNT"] > 0
+        and not unauthorized_evaluation.passed,
+        "H8_CHANGED_PATH_SCOPE_VIOLATION_COUNT"))
+
+    failures = 0
+    for name, detected, law in controls:
+        print(f"H8_MUTATION {name}={'PASS' if detected else 'FAIL'} {law}")
+        failures += int(not detected)
+    return len(controls), failures
+
+
+def run_self_test(
+        root: Path, sources: dict[str, str], changed_paths: set[str]) -> bool:
     baseline = evaluate(sources, changed_paths=changed_paths)
     if not baseline.passed:
         print("H8_MUTATION baseline=FAIL")
@@ -2996,6 +3130,10 @@ def run_self_test(sources: dict[str, str], changed_paths: set[str]) -> bool:
         print(f"H8_MUTATION {name}={'PASS' if detected else 'FAIL'} BASELINE_PASS")
         new_failures += int(not detected)
 
+    lifecycle_total, lifecycle_failures = run_scope_lifecycle_controls(
+        root, sources, changed_paths)
+    new_failures += lifecycle_failures
+
     governed_hash_failures = 0
     for index, path in enumerate(sorted(GOVERNED_RUNTIME_SOURCE_SHA256), start=1):
         mutated = dict(sources)
@@ -3028,7 +3166,7 @@ def run_self_test(sources: dict[str, str], changed_paths: set[str]) -> bool:
     failures = old_failures + new_failures
     mutation_matrix_total = (
         len(cases) + len(passing_controls)
-        + len(GOVERNED_RUNTIME_SOURCE_SHA256) + 2)
+        + len(GOVERNED_RUNTIME_SOURCE_SHA256) + lifecycle_total + 2)
     print(f"OLD_H8_MUTATION_REGRESSION_COUNT={old_failures}")
     print(f"NEW_H8_HOSTILE_MUTATION_FAILURES={new_failures}")
     print(f"H8_MUTATION_MATRIX_TOTAL={mutation_matrix_total}")
@@ -3049,13 +3187,19 @@ def main() -> int:
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
 
-    sources, errors, changed_paths = sources_at(args.root.resolve())
+    root = args.root.resolve()
+    sources, errors, changed_paths, current_head_descendant = sources_at(root)
+    print(f"H8_SCOPE_ATTESTATION_BASE_SHA={H8_PRE_CANONICAL_BASE_SHA}")
+    print(f"H8_SCOPE_ATTESTATION_ACCEPTED_SHA={H8_ACCEPTED_CANONICAL_SHA}")
+    print("H8_SCOPE_ATTESTATION_CURRENT_HEAD_DESCENDANT="
+          f"{'PASS' if current_head_descendant else 'FAIL'}")
+    print(f"H8_HISTORICAL_CHANGED_PATH_COUNT={len(changed_paths)}")
     result = evaluate(sources, errors, changed_paths)
     print_evaluation(result)
     self_test_passed = True
     if args.self_test:
         try:
-            self_test_passed = run_self_test(sources, changed_paths)
+            self_test_passed = run_self_test(root, sources, changed_paths)
         except (RuntimeError, ValueError) as failure:
             print("H8_MUTATION_MATRIX_TOTAL=0")
             print("H8_MUTATION_MATRIX_FAILURES=1")
