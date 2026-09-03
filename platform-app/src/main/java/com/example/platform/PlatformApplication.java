@@ -42,6 +42,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
     "com.example.platform.ingest",
     "com.example.platform.timeline",
     "com.example.platform.operation",
+    "com.example.platform.health",
     "com.example.platform.workerfabric"
 })
 @EnableScheduling

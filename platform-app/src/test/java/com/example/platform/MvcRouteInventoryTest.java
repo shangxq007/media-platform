@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
@@ -59,6 +60,49 @@ class MvcRouteInventoryTest extends PostgresTestContainerSupport {
         assertEquals((long) EXPECTED_W2_ROUTE_COUNT, w2Routes,
                 "W2 public route count must be exactly " + EXPECTED_W2_ROUTE_COUNT
                         + " (public-api-contract.tsv); see /tmp/mvc-route-inventory.txt");
+
+        assertSingleGetRoute(handlerMethods, "/healthz",
+                "com.example.platform.health.HealthController", "liveness");
+        assertSingleGetRoute(handlerMethods, "/readyz",
+                "com.example.platform.health.HealthController", "readiness");
+    }
+
+    private static void assertSingleGetRoute(
+            Map<RequestMappingInfo, HandlerMethod> handlerMethods,
+            String path,
+            String controllerType,
+            String handlerMethod) {
+        List<Map.Entry<RequestMappingInfo, HandlerMethod>> matchingRoutes = handlerMethods.entrySet()
+                .stream()
+                .filter(entry -> routePatterns(entry.getKey()).contains(path))
+                .filter(entry -> {
+                    Set<RequestMethod> methods = entry.getKey().getMethodsCondition().getMethods();
+                    return methods.isEmpty() || methods.contains(RequestMethod.GET);
+                })
+                .toList();
+
+        assertEquals(1, matchingRoutes.size(),
+                "effective application route inventory must contain exactly one GET " + path);
+
+        Map.Entry<RequestMappingInfo, HandlerMethod> route = matchingRoutes.get(0);
+        assertEquals(Set.of(path), routePatterns(route.getKey()),
+                "route must declare exactly path " + path);
+        assertEquals(Set.of(RequestMethod.GET), route.getKey().getMethodsCondition().getMethods(),
+                path + " must declare exactly the GET method");
+        assertEquals(controllerType, route.getValue().getBeanType().getName(),
+                path + " must be owned by " + controllerType);
+        assertEquals(handlerMethod, route.getValue().getMethod().getName(),
+                path + " must be handled by " + controllerType + "." + handlerMethod);
+    }
+
+    private static Set<String> routePatterns(RequestMappingInfo info) {
+        if (info.getPathPatternsCondition() != null) {
+            return info.getPathPatternsCondition().getPatternValues();
+        }
+        if (info.getPatternsCondition() != null) {
+            return info.getPatternsCondition().getPatterns();
+        }
+        return Set.of();
     }
 
     private static final int EXPECTED_W2_ROUTE_COUNT = 9;
