@@ -639,53 +639,186 @@ else
     pass "TemporalMapping not implemented (deferred)"
 fi
 
-# VG-1: ReleaseVersion typed E.R.P, distinct from contract versions
-if grep -q 'record ReleaseVersion' shared-kernel/src/main/java/com/example/platform/shared/version/ReleaseVersion.java && grep -q 'EPOCH.RELEASE.PATCH' shared-kernel/src/main/java/com/example/platform/shared/version/ReleaseVersion.java; then
-    pass "ReleaseVersion typed E.R.P"
-else
-    fail "ReleaseVersion missing"
-fi
+# EP-31: the former shared version/provenance authority is retired. Inspect
+# source semantics, rather than filenames, so a renamed file cannot hide a
+# recreated type or caller. Comments and ordinary literals are masked; exact
+# FQCN literals used by Class.forName/loadClass remain runtime callers.
+if python3 - <<'PY'
+from __future__ import annotations
 
-# VG-2: contract/format versions use E.R (no PATCH)
-if grep -q 'record CanonicalFormatVersion' shared-kernel/src/main/java/com/example/platform/shared/version/CanonicalFormatVersion.java && grep -q 'EPOCH.RELEASE' shared-kernel/src/main/java/com/example/platform/shared/version/CanonicalFormatVersion.java; then
-    pass "CanonicalFormatVersion typed E.R"
-else
-    fail "CanonicalFormatVersion missing"
-fi
+import re
+import sys
+from collections import Counter
+from pathlib import Path
 
-# VG-3: VersionRange typed + numeric
-if grep -q 'record VersionRange' shared-kernel/src/main/java/com/example/platform/shared/version/VersionRange.java; then
-    pass "typed VersionRange present"
-else
-    fail "VersionRange missing"
-fi
 
-# VG-5: lifecycle explicit, not version-parity
-if grep -q 'enum Lifecycle' shared-kernel/src/main/java/com/example/platform/shared/version/Lifecycle.java && grep -q 'DRAFT' shared-kernel/src/main/java/com/example/platform/shared/version/Lifecycle.java; then
-    pass "explicit lifecycle model"
-else
-    fail "lifecycle model missing"
-fi
+ROOT = Path.cwd()
+PACKAGE = "com.example.platform.shared.version"
+RETIRED = (
+    "ExecutionProvenance",
+    "RolloutPolicy",
+    "CompatibilityAdvisory",
+    "ApiContract",
+    "CanonicalFormatVersion",
+    "Lifecycle",
+    "ReleaseChannel",
+    "ReleaseVersion",
+    "VersionRange",
+)
+TYPE = re.compile(r"\b(?:class|interface|enum|record)\s+([A-Za-z_$][\w$]*)\b")
+PACKAGE_DECLARATION = re.compile(r"(?m)^\s*package\s+([\w.]+)\s*;")
 
-# VG-6: ReleaseChannel distinct type
-if grep -q 'enum ReleaseChannel' shared-kernel/src/main/java/com/example/platform/shared/version/ReleaseChannel.java; then
-    pass "release channel explicit"
-else
-    fail "release channel missing"
-fi
 
-# VG-8/9: execution provenance pins resolved versions
-if grep -q 'record ExecutionProvenance' shared-kernel/src/main/java/com/example/platform/shared/version/ExecutionProvenance.java; then
-    pass "execution provenance contract"
-else
-    fail "execution provenance missing"
-fi
+def source_files() -> list[Path]:
+    files: list[Path] = []
+    for path in ROOT.rglob("*.java"):
+        relative = path.relative_to(ROOT)
+        parts = relative.parts
+        if any(part in {"build", ".git", ".worktrees"} for part in parts):
+            continue
+        if not any(parts[index:index + 2] in [("src", "main"), ("src", "test")]
+                   for index in range(len(parts) - 1)):
+            continue
+        if relative.as_posix() == "platform-app/src/test/java/com/example/platform/Ep31SharedVersionRetirementGuardTest.java":
+            continue
+        files.append(path)
+    return sorted(files)
 
-# VG-10: ApiContract independent from platform release
-if grep -q 'record ApiContract' shared-kernel/src/main/java/com/example/platform/shared/version/ApiContract.java; then
-    pass "API contract lifecycle governance"
+
+def mask_comments_and_literals(source: str) -> tuple[str, list[tuple[int, str]]]:
+    """Retain code offsets and retain only literals available to runtime APIs."""
+    masked: list[str] = []
+    literals: list[tuple[int, str]] = []
+    index = 0
+    while index < len(source):
+        current = source[index]
+        following = source[index + 1] if index + 1 < len(source) else ""
+        if current == "/" and following == "/":
+            end = source.find("\n", index)
+            end = len(source) if end < 0 else end
+            masked.append(" " * (end - index))
+            index = end
+        elif current == "/" and following == "*":
+            end = source.find("*/", index + 2)
+            end = len(source) if end < 0 else end + 2
+            masked.append("".join("\n" if char == "\n" else " " for char in source[index:end]))
+            index = end
+        elif source.startswith('\"\"\"', index):
+            end = source.find('\"\"\"', index + 3)
+            end = len(source) if end < 0 else end + 3
+            masked.append("".join("\n" if char == "\n" else " " for char in source[index:end]))
+            index = end
+        elif current in {'\"', "'"}:
+            quote = current
+            start = index
+            index += 1
+            value: list[str] = []
+            while index < len(source):
+                char = source[index]
+                if char == "\\" and index + 1 < len(source):
+                    value.append(source[index:index + 2])
+                    index += 2
+                elif char == quote:
+                    index += 1
+                    break
+                else:
+                    value.append(char)
+                    index += 1
+            if quote == '\"':
+                literals.append((start, "".join(value)))
+            masked.append("".join("\n" if char == "\n" else " " for char in source[start:index]))
+        else:
+            masked.append(current)
+            index += 1
+    return "".join(masked), literals
+
+
+def runtime_reflection_count(code: str, literals: list[tuple[int, str]], fqcn: str) -> int:
+    invocation = re.compile(r"(?:\bClass\s*\.\s*forName|\.\s*loadClass)\s*\(\s*$")
+    return sum(
+        literal == fqcn and invocation.search(code[:start]) is not None
+        for start, literal in literals
+    )
+
+
+def replacement_counts(code: str) -> tuple[int, int, int]:
+    global_version = global_provenance = compatibility = 0
+    for match in TYPE.finditer(code):
+        name = match.group(1).lower()
+        global_prefix = name.startswith(("global", "shared", "platform", "common", "canonical"))
+        authority = any(token in name for token in ("registry", "authority", "catalog", "service", "policy"))
+        version_concern = any(token in name for token in ("version", "release", "format", "contract", "lifecycle"))
+        compatibility_marker = any(token in name for token in ("compat", "legacy", "wrapper", "alias", "facade", "bridge", "shim"))
+        provenance_concern = "provenance" in name
+        if name in {"versionregistry", "releaseversionregistry"} or (global_prefix and authority and version_concern):
+            global_version += 1
+        if name in {"globalexecutionprovenance", "executionprovenanceregistry"} or (global_prefix and provenance_concern):
+            global_provenance += 1
+        if compatibility_marker and (version_concern or provenance_concern or "rollout" in name):
+            compatibility += 1
+    return global_version, global_provenance, compatibility
+
+
+definitions = Counter({name: 0 for name in RETIRED})
+callers = Counter({name: 0 for name in RETIRED})
+global_version = global_provenance = compatibility = 0
+for path in source_files():
+    source = path.read_text(encoding="utf-8")
+    code, literals = mask_comments_and_literals(source)
+    package = PACKAGE_DECLARATION.search(code)
+    package_name = package.group(1) if package else ""
+    for name in RETIRED:
+        fqcn = f"{PACKAGE}.{name}"
+        declaration = re.compile(r"\b(?:class|interface|enum|record)\s+(" + re.escape(name) + r")\b")
+        if package_name == PACKAGE:
+            declared = list(declaration.finditer(code))
+            definitions[name] += len(declared)
+            declaration_offsets = {match.start(1) for match in declared}
+            callers[name] += sum(
+                match.start() not in declaration_offsets
+                for match in re.finditer(r"(?<![\w.])" + re.escape(name) + r"\b", code)
+            )
+        callers[name] += len(re.findall(r"(?<![\w.])" + re.escape(fqcn) + r"\b", code))
+        callers[name] += runtime_reflection_count(code, literals, fqcn)
+    version, provenance, surface = replacement_counts(code)
+    global_version += version
+    global_provenance += provenance
+    compatibility += surface
+
+for name in RETIRED:
+    print(f"ZG_EP31_{name}_DEFINITION_COUNT={definitions[name]}")
+    print(f"ZG_EP31_{name}_CALLER_COUNT={callers[name]}")
+print(f"ZG_EP31_GLOBAL_VERSION_REPLACEMENT_COUNT={global_version}")
+print(f"ZG_EP31_GLOBAL_PROVENANCE_REPLACEMENT_COUNT={global_provenance}")
+print(f"ZG_EP31_COMPATIBILITY_SURFACE_COUNT={compatibility}")
+
+retired = all(definitions[name] == 0 and callers[name] == 0 for name in RETIRED)
+operation_version = (
+    (ROOT / "operation-module/src/main/java/com/example/platform/operation/operation/OperationDefinitionVersion.java").is_file()
+    and re.search(r"\brecord\s+OperationDefinitionVersion\b", (ROOT / "operation-module/src/main/java/com/example/platform/operation/operation/OperationDefinitionVersion.java").read_text(encoding="utf-8")) is not None
+    and re.search(r"\bOperationDefinitionVersion\b", (ROOT / "operation-module/src/main/java/com/example/platform/operation/operation/OperationDefinition.java").read_text(encoding="utf-8")) is not None
+    and not any("com.example.platform.extension.domain.ContractVersion" in path.read_text(encoding="utf-8")
+                for path in (ROOT / "operation-module").rglob("*.java"))
+)
+local_provenance = (
+    re.search(r"\brecord\s+ProviderVersion\b", (ROOT / "media-execution-plan-module/src/main/java/com/example/platform/execution/domain/provider/ProviderVersion.java").read_text(encoding="utf-8")) is not None
+    and re.search(r"\brecord\s+WorkerRuntimeReporterRef\b", (ROOT / "worker-fabric-module/src/main/java/com/example/platform/workerfabric/domain/WorkerRuntimeReporterRef.java").read_text(encoding="utf-8")) is not None
+)
+results = {
+    "GRD_G_RETIRED": retired,
+    "GRD_V3_COMPATIBILITY": compatibility == 0,
+    "GRD_V3_OPERATION_VERSION": operation_version,
+    "GRD_V3_PROVENANCE": local_provenance,
+    "GRD_V3_SHARED_VERSION": global_version == 0 and global_provenance == 0,
+}
+for marker, passed in results.items():
+    print(f"{marker}={'PASS' if passed else 'FAIL'}")
+raise SystemExit(0 if all(results.values()) else 1)
+PY
+then
+    pass "EP-31 shared version retirement authority"
 else
-    fail "API contract governance missing"
+    fail "EP-31 shared version retirement authority drifted"
 fi
 
 # VG-12: HTTP breaking change machine-gated (oasdiff gate present)

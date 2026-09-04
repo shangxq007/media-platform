@@ -20,7 +20,6 @@ import com.example.platform.timeline.semantics.clip.MediaStreamSourceBinding;
 import com.example.platform.timeline.semantics.clip.TimelineSourceBinding;
 import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.shared.time.MediaTime;
-import com.example.platform.shared.version.ReleaseVersion;
 import com.example.platform.shared.digest.ContentDigest;
 import org.junit.jupiter.api.Test;
 
@@ -32,7 +31,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * FIRST_REAL_MEDIA_CUT_V1 (FRMC-2/3/7): the golden edit is expressible in the
  * canonical model — MediaStreamSourceBinding immutable pins, exact MediaTime,
  * Audio V2 gain/mute/balance semantics, deterministic Timeline hash, and
- * Version Governance release identity. Actual H.264/AAC execution evidence is
+ * Actual H.264/AAC execution evidence is
  * produced and recorded by the FIRST_REAL_MEDIA_CUT CLI validation.
  */
 class FirstRealMediaCutTest {
@@ -120,11 +119,4 @@ class FirstRealMediaCutTest {
         assertNotEquals(mix.routes().get(1).mute(), mix.routes().get(2).mute());
     }
 
-    @Test
-    void versionGovernanceIdentityPresent() {
-        ReleaseVersion v = ReleaseVersion.parse("0.1.0");
-        assertEquals(0, v.epoch());
-        assertEquals(1, v.release());
-        assertEquals(0, v.patch());
-    }
 }

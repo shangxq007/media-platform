@@ -3083,7 +3083,7 @@ def run_self_test(
     cases.append(("changed_unrelated_production_source", scope_law,
                   append_to_existing_source(
                       sources,
-                      "shared-kernel/src/main/java/com/example/platform/shared/version/VersionRange.java",
+                      "shared-kernel/src/main/java/com/example/platform/shared/Ids.java",
                       "\n// hostile changed-path control\n")))
 
     passing_controls: list[tuple[str, dict[str, str]]] = []
