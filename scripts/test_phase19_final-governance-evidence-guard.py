@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import copy
+import importlib.util
 import json
 import shutil
 import subprocess
@@ -50,12 +51,25 @@ class TestFailure(Exception):
     pass
 
 
+def load_guard_module() -> Any:
+    spec = importlib.util.spec_from_file_location("phase19_final_governance_evidence_guard", GUARD)
+    if spec is None or spec.loader is None:
+        raise TestFailure("cannot load guard module")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+GUARD_MODULE = load_guard_module()
+
+
 class Fixture:
     """Copied evidence plus an isolated repository with a staged candidate."""
 
     def __init__(self) -> None:
         self._temporary = tempfile.TemporaryDirectory(prefix="phase19-final-evidence-")
         self.root = Path(self._temporary.name)
+        self.historical_identity: tuple[str, str] | None = None
         for relative in ARTIFACTS:
             destination = self.root / relative
             destination.parent.mkdir(parents=True, exist_ok=True)
@@ -138,9 +152,9 @@ class Fixture:
             json.dump(value, stream, indent=2, ensure_ascii=False)
             stream.write("\n")
 
-    def run_guard(self) -> subprocess.CompletedProcess[str]:
+    def run_guard(self, *arguments: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
-            [sys.executable, str(GUARD), "--root", str(self.root)],
+            [sys.executable, str(GUARD), "--root", str(self.root), *arguments],
             cwd=self.root,
             text=True,
             stdout=subprocess.PIPE,
@@ -148,11 +162,53 @@ class Fixture:
             check=False,
         )
 
-    def commit_candidate_for_fallback(self) -> None:
+    def run_historical_guard(self, reviewed_sha: str, reviewed_tree: str) -> subprocess.CompletedProcess[str]:
+        arguments = [str(GUARD), "validate", str(self.root), reviewed_sha, reviewed_tree]
+        try:
+            GUARD_MODULE.validate(self.root, reviewed_sha, reviewed_tree)
+        except (GUARD_MODULE.GuardError, OSError, RuntimeError) as exc:
+            return subprocess.CompletedProcess(
+                arguments,
+                1,
+                "",
+                f"FINAL_GOVERNANCE_EVIDENCE_GATE=FAIL: {exc}\n",
+            )
+        return subprocess.CompletedProcess(arguments, 0, EXPECTED_PASS, "")
+
+    def commit_candidate_for_fallback(self) -> tuple[str, str]:
+        clean = self.read(CLEAN_FORWARD)
+        clean["paths"].append(
+            {
+                "path": str(CLEAN_FORWARD),
+                "finding_tuple_count": 0,
+                "category_counts": {},
+                "disposition": "ADD_GOVERNANCE_EVIDENCE",
+                "rationale": "isolated historical candidate-scope fixture",
+                "line_count": 0,
+                "pattern_ids": [],
+                "initial_finding_path": False,
+                "supplemental_candidate_scope": True,
+                "candidate_status": "M",
+            }
+        )
+        clean["path_count"] = len(clean["paths"])
+        clean["candidate_scope_path_count"] = 2
+        clean["supplemental_candidate_scope_path_count"] = 2
+        self.write(CLEAN_FORWARD, clean)
+        self.git("add", str(CLEAN_FORWARD))
         self.git("commit", "-q", "-m", "candidate commit")
         staged = self.git("diff", "--cached", "--name-only").stdout
         if staged:
             raise TestFailure("post-commit fallback fixture still has staged paths")
+        reviewed_sha = self.git("rev-parse", "HEAD").stdout.strip()
+        reviewed_tree = self.git("rev-parse", "HEAD^{tree}").stdout.strip()
+        self.historical_identity = (reviewed_sha, reviewed_tree)
+        return reviewed_sha, reviewed_tree
+
+    def add_descendant_commit(self) -> None:
+        (self.root / ".fixture-descendant").write_text("descendant\n", encoding="utf-8")
+        self.git("add", ".fixture-descendant")
+        self.git("commit", "-q", "-m", "descendant commit")
 
 
 Mutation = Callable[[Fixture], None]
@@ -167,8 +223,8 @@ def mutate_json(relative: Path, mutation: Callable[[dict[str, Any]], None]) -> M
     return apply
 
 
-def assert_pass(name: str, fixture: Fixture) -> None:
-    completed = fixture.run_guard()
+def assert_pass(name: str, fixture: Fixture, *arguments: str) -> None:
+    completed = fixture.run_guard(*arguments)
     if completed.returncode != 0 or completed.stdout != EXPECTED_PASS or completed.stderr:
         raise TestFailure(
             f"{name} did not pass exactly; rc={completed.returncode}; "
@@ -176,10 +232,83 @@ def assert_pass(name: str, fixture: Fixture) -> None:
         )
 
 
+def assert_historical_pass(name: str, fixture: Fixture, reviewed_sha: str, reviewed_tree: str) -> None:
+    completed = fixture.run_historical_guard(reviewed_sha, reviewed_tree)
+    if completed.returncode != 0 or completed.stdout != EXPECTED_PASS or completed.stderr:
+        raise TestFailure(
+            f"{name} did not pass exactly; rc={completed.returncode}; "
+            f"stdout={completed.stdout!r}; stderr={completed.stderr!r}"
+        )
+
+
+def assert_historical_guard_fails(
+    name: str,
+    fixture: Fixture,
+    expected: str,
+    reviewed_sha: str,
+    reviewed_tree: str,
+) -> None:
+    completed = fixture.run_historical_guard(reviewed_sha, reviewed_tree)
+    if completed.returncode == 0:
+        raise TestFailure(f"guard unexpectedly passed: {name}")
+    if "FINAL_GOVERNANCE_EVIDENCE_GATE=FAIL:" not in completed.stderr:
+        raise TestFailure(f"guard did not fail closed: {name}: {completed.stderr!r}")
+    if expected not in completed.stderr:
+        raise TestFailure(
+            f"guard failed for the wrong reason: {name}; "
+            f"expected={expected!r}; stderr={completed.stderr!r}"
+        )
+
+
+def assert_cli_authority_overrides_rejected() -> None:
+    with Fixture() as fixture:
+        completed = fixture.run_guard(
+            "--historical-evidence-sha",
+            "0" * 40,
+            "--historical-evidence-tree",
+            "f" * 40,
+        )
+        if completed.returncode == 0:
+            raise TestFailure("public historical evidence authority overrides unexpectedly accepted")
+        for option in ("--historical-evidence-sha", "--historical-evidence-tree"):
+            if option not in completed.stderr:
+                raise TestFailure(f"CLI did not reject public authority override: {option}")
+
+
+def assert_clean_production_descendant_passes() -> None:
+    with tempfile.TemporaryDirectory(prefix="phase19-production-descendant-") as temporary:
+        checkout = Path(temporary) / "checkout"
+        completed = subprocess.run(
+            ["git", "clone", "-q", "--no-hardlinks", str(REPOSITORY_ROOT), str(checkout)],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+        if completed.returncode != 0:
+            raise TestFailure(f"clean descendant clone failed: {completed.stderr.strip()}")
+        completed = subprocess.run(
+            [sys.executable, str(GUARD), "--root", str(checkout)],
+            cwd=checkout,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+        if completed.returncode != 0 or completed.stdout != EXPECTED_PASS or completed.stderr:
+            raise TestFailure(
+                "clean production descendant did not pass exactly; "
+                f"rc={completed.returncode}; stdout={completed.stdout!r}; stderr={completed.stderr!r}"
+            )
+
+
 def assert_mutation_fails(name: str, mutation: Mutation) -> None:
     with Fixture() as fixture:
         mutation(fixture)
-        completed = fixture.run_guard()
+        if fixture.historical_identity is None:
+            completed = fixture.run_guard()
+        else:
+            completed = fixture.run_historical_guard(*fixture.historical_identity)
         if completed.returncode == 0:
             raise TestFailure(f"mutation unexpectedly passed: {name}")
         if "FINAL_GOVERNANCE_EVIDENCE_GATE=FAIL:" not in completed.stderr:
@@ -296,11 +425,10 @@ def missing_input(fixture: Fixture) -> None:
 
 
 def fallback_uncovered(fixture: Fixture) -> None:
-    fixture.commit_candidate_for_fallback()
     path = fixture.root / FALLBACK_UNCOVERED_PATH
     path.write_text("fallback uncovered\n", encoding="utf-8")
     fixture.git("add", str(FALLBACK_UNCOVERED_PATH))
-    fixture.git("commit", "-q", "-m", "uncovered fallback candidate")
+    fixture.commit_candidate_for_fallback()
 
 
 def main() -> int:
@@ -310,9 +438,95 @@ def main() -> int:
     with Fixture() as fixture:
         assert_pass("staged-index scope mode", fixture)
 
+    assert_cli_authority_overrides_rejected()
+    assert_clean_production_descendant_passes()
+
     with Fixture() as fixture:
-        fixture.commit_candidate_for_fallback()
-        assert_pass("post-commit fallback diff mode", fixture)
+        reviewed_sha, reviewed_tree = fixture.commit_candidate_for_fallback()
+        assert_historical_pass(
+            "reviewed SHA equal to current HEAD",
+            fixture,
+            reviewed_sha,
+            reviewed_tree,
+        )
+
+    with Fixture() as fixture:
+        reviewed_sha, reviewed_tree = fixture.commit_candidate_for_fallback()
+        fixture.add_descendant_commit()
+        assert_historical_pass(
+            "reviewed SHA is an ancestor of current HEAD",
+            fixture,
+            reviewed_sha,
+            reviewed_tree,
+        )
+
+    with Fixture() as fixture:
+        reviewed_sha, reviewed_tree = fixture.commit_candidate_for_fallback()
+        diverged_sha = fixture.git(
+            "commit-tree", reviewed_tree, "-p", fixture.base_sha, "-m", "diverged candidate"
+        ).stdout.strip()
+        fixture.git("branch", "fixture-diverged-local", diverged_sha)
+        branch_sha = fixture.git("rev-parse", "--verify", "refs/heads/fixture-diverged-local").stdout.strip()
+        if branch_sha != diverged_sha:
+            raise TestFailure("diverged local branch does not point at the reviewed fixture commit")
+        assert_historical_guard_fails(
+            "reviewed SHA is unreachable from current HEAD",
+            fixture,
+            "reviewed evidence commit is not an ancestor of current HEAD",
+            diverged_sha,
+            reviewed_tree,
+        )
+
+    with Fixture() as fixture:
+        _, reviewed_tree = fixture.commit_candidate_for_fallback()
+        assert_historical_guard_fails(
+            "reviewed SHA is unknown",
+            fixture,
+            "reviewed evidence commit is unknown or is not a commit",
+            "0" * 40,
+            reviewed_tree,
+        )
+
+    with Fixture() as fixture:
+        _, reviewed_tree = fixture.commit_candidate_for_fallback()
+        assert_historical_guard_fails(
+            "reviewed SHA is malformed",
+            fixture,
+            "historical evidence SHA must be a 40-character lowercase hexadecimal object ID",
+            "not-a-sha",
+            reviewed_tree,
+        )
+
+    with Fixture() as fixture:
+        reviewed_sha, _ = fixture.commit_candidate_for_fallback()
+        assert_historical_guard_fails(
+            "reviewed tree is malformed",
+            fixture,
+            "historical evidence tree must be a 40-character lowercase hexadecimal object ID",
+            reviewed_sha,
+            "not-a-tree",
+        )
+
+    with Fixture() as fixture:
+        reviewed_sha, reviewed_tree = fixture.commit_candidate_for_fallback()
+        (fixture.root / ".fixture-base").write_text("dirty\n", encoding="utf-8")
+        assert_historical_guard_fails(
+            "dirty repository in historical mode",
+            fixture,
+            "historical evidence validation requires a clean repository",
+            reviewed_sha,
+            reviewed_tree,
+        )
+
+    with Fixture() as fixture:
+        reviewed_sha, _ = fixture.commit_candidate_for_fallback()
+        assert_historical_guard_fails(
+            "correct ancestor SHA with wrong tree",
+            fixture,
+            "reviewed evidence tree mismatch",
+            reviewed_sha,
+            "f" * 40,
+        )
 
     mutations: list[tuple[str, Mutation]] = [
         ("duplicate CapabilityKey", mutate_json(CAPABILITY, duplicate_capability_key)),

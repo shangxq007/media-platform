@@ -33,6 +33,8 @@ CLEAN_FORWARD_LEDGER = Path(
     "docs/architecture/governance/"
     "roadmap-22-phase-19-render-zero-awareness-clean-forward-path-ledger-v2.json"
 )
+HISTORICAL_EVIDENCE_SHA = "989ee911341157570220837f326c886c4ab2163b"
+HISTORICAL_EVIDENCE_TREE = "8f80089e7ee40c5a065f38c56f0a6cb1a517d0d1"
 
 DISPOSITIONS = [
     "MIGRATED_TO_FFMPEG_PROVIDER",
@@ -429,21 +431,86 @@ def decode_git_paths(raw: bytes) -> set[str]:
     return set(paths)
 
 
-def candidate_scope(root: Path, base_sha: str) -> set[str]:
+def git_returncode(root: Path, arguments: list[str]) -> int:
+    try:
+        completed = subprocess.run(
+            ["git", *arguments],
+            cwd=root,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+    except OSError as exc:
+        fail(f"cannot execute Git: {exc.strerror or type(exc).__name__}")
+    return completed.returncode
+
+
+def require_object_id(value: Any, label: str) -> str:
+    object_id = require_string(value, label)
+    require(
+        len(object_id) == 40 and all(character in "0123456789abcdef" for character in object_id),
+        f"{label} must be a 40-character lowercase hexadecimal object ID",
+    )
+    return object_id
+
+
+def decoded_object_id(raw: bytes, label: str) -> str:
+    try:
+        value = raw.decode("ascii").strip()
+    except UnicodeDecodeError:
+        fail(f"Git returned a non-ASCII {label}")
+    return require_object_id(value, label)
+
+
+def historical_candidate_scope(
+    root: Path,
+    base_sha: str,
+    reviewed_sha: str,
+    reviewed_tree: str,
+) -> set[str]:
+    require(
+        not git_output(root, ["status", "--porcelain=v1", "-z", "--untracked-files=all"]),
+        "historical evidence validation requires a clean repository",
+    )
+    base_sha = require_object_id(base_sha, "clean-forward base_sha")
+    reviewed_sha = require_object_id(reviewed_sha, "historical evidence SHA")
+    reviewed_tree = require_object_id(reviewed_tree, "historical evidence tree")
+    current_head = decoded_object_id(
+        git_output(root, ["rev-parse", "--verify", "HEAD^{commit}"]),
+        "current HEAD commit",
+    )
+
+    if git_returncode(root, ["cat-file", "-e", f"{reviewed_sha}^{{commit}}"]):
+        fail("reviewed evidence commit is unknown or is not a commit")
+    actual_tree = decoded_object_id(
+        git_output(root, ["rev-parse", "--verify", f"{reviewed_sha}^{{tree}}"]),
+        "reviewed evidence commit tree",
+    )
+    require(actual_tree == reviewed_tree, "reviewed evidence tree mismatch")
+
+    base_ancestor_result = git_returncode(root, ["merge-base", "--is-ancestor", base_sha, reviewed_sha])
+    require(base_ancestor_result == 0, "clean-forward base is not an ancestor of reviewed evidence commit")
+    if reviewed_sha != current_head:
+        head_ancestor_result = git_returncode(root, ["merge-base", "--is-ancestor", reviewed_sha, current_head])
+        require(head_ancestor_result == 0, "reviewed evidence commit is not an ancestor of current HEAD")
+
+    return decode_git_paths(git_output(root, ["diff", "--name-only", "-z", base_sha, reviewed_sha, "--"]))
+
+
+def candidate_scope(root: Path, base_sha: str, reviewed_sha: str, reviewed_tree: str) -> set[str]:
     staged = decode_git_paths(git_output(root, ["diff", "--cached", "--name-only", "-z", "--"]))
     if staged:
         return staged
-    require_string(base_sha, "clean-forward base_sha")
-    return decode_git_paths(git_output(root, ["diff", "--name-only", "-z", base_sha, "HEAD", "--"]))
+    return historical_candidate_scope(root, base_sha, reviewed_sha, reviewed_tree)
 
 
-def validate_clean_forward(root: Path) -> None:
+def validate_clean_forward(root: Path, reviewed_sha: str, reviewed_tree: str) -> None:
     data, _ = load_json(root, CLEAN_FORWARD_LEDGER)
     strict_equal(data.get("raw_finding_tuple_count"), 5177, "clean-forward raw tuple count")
     strict_equal(data.get("initial_finding_path_count"), 311, "clean-forward initial path count")
     paths_data = require_list(data.get("paths"), "clean-forward.paths")
     base_sha = require_string(data.get("base_sha"), "clean-forward base_sha")
-    candidate_paths = candidate_scope(root, base_sha)
+    candidate_paths = candidate_scope(root, base_sha, reviewed_sha, reviewed_tree)
 
     ledger_paths: set[str] = set()
     initial_paths: set[str] = set()
@@ -502,12 +569,12 @@ def validate_clean_forward(root: Path) -> None:
             require("supplemental_candidate_scope" not in entry, f"unexpected supplemental marker for {path}")
 
 
-def validate(root: Path) -> None:
+def validate(root: Path, reviewed_sha: str, reviewed_tree: str) -> None:
     root = root.resolve(strict=True)
     validate_capabilities(root)
     validate_test_accounting(root)
     validate_semgrep_accounting(root)
-    validate_clean_forward(root)
+    validate_clean_forward(root, reviewed_sha, reviewed_tree)
 
 
 def parse_args() -> argparse.Namespace:
@@ -520,7 +587,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     try:
-        validate(args.root)
+        validate(args.root, HISTORICAL_EVIDENCE_SHA, HISTORICAL_EVIDENCE_TREE)
     except (GuardError, OSError, RuntimeError) as exc:
         print(f"FINAL_GOVERNANCE_EVIDENCE_GATE=FAIL: {exc}", file=sys.stderr)
         return 1
