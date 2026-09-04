@@ -1,7 +1,6 @@
 package com.example.platform.analytics.infrastructure;
 
 import com.example.platform.analytics.domain.UserHabits;
-import com.example.platform.shared.Jsons;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import org.springframework.context.annotation.Primary;
@@ -33,7 +32,7 @@ public class JdbcUserHabitsRepository implements UserHabitsRepository {
                 UPDATE user_habits SET habits_json = ?, computed_at = ?
                 WHERE tenant_id = ? AND user_id = ?
                 """,
-                Jsons.toJson(HabitsPayload.from(habits)),
+                AnalyticsPersistenceJson.toJson(HabitsPayload.from(habits)),
                 Timestamp.from(habits.computedAt()),
                 habits.tenantId(),
                 habits.userId());
@@ -44,7 +43,7 @@ public class JdbcUserHabitsRepository implements UserHabitsRepository {
                     """,
                     habits.tenantId(),
                     habits.userId(),
-                    Jsons.toJson(HabitsPayload.from(habits)),
+                    AnalyticsPersistenceJson.toJson(HabitsPayload.from(habits)),
                     Timestamp.from(habits.computedAt()));
         }
         return habits;
@@ -70,7 +69,7 @@ public class JdbcUserHabitsRepository implements UserHabitsRepository {
     }
 
     private UserHabits map(ResultSet rs, int rowNum) throws SQLException {
-        HabitsPayload payload = Jsons.fromJson(rs.getString("habits_json"), HabitsPayload.class);
+        HabitsPayload payload = AnalyticsPersistenceJson.fromJson(rs.getString("habits_json"), HabitsPayload.class);
         return payload.toHabits(rs.getString("tenant_id"), rs.getString("user_id"), rs.getTimestamp("computed_at").toInstant());
     }
 

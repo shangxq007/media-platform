@@ -12,7 +12,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.example.platform.observability.monitoring.SentryMonitoringService;
 import com.example.platform.render.app.timeline.RenderJobRevisionPinningService;
 import com.example.platform.shared.authorization.CanonicalActor;
-import com.example.platform.shared.web.ErrorCodeRegistry;
 import com.example.platform.shared.web.TenantContext;
 import com.example.platform.timeline.app.PatchApplyResult;
 import com.example.platform.timeline.app.TimelineCanonicalRejectionException;
@@ -264,8 +263,7 @@ class TimelineMutationControllersMockMvcTest {
 
     private static MockMvc mvc(Object controller) {
         return MockMvcBuilders.standaloneSetup(controller)
-                .setControllerAdvice(new GlobalExceptionHandler(
-                        mock(ErrorCodeRegistry.class), Optional.<SentryMonitoringService>empty()))
+                .setControllerAdvice(new GlobalExceptionHandler(Optional.<SentryMonitoringService>empty()))
                 .build();
     }
 

@@ -3,7 +3,6 @@ package com.example.platform.audit.app;
 import static com.example.platform.typedschema.jooq.generated.tables.AuditRecords.AUDIT_RECORDS;
 
 import com.example.platform.shared.Ids;
-import com.example.platform.shared.Jsons;
 import com.example.platform.shared.web.TenantContext;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -76,7 +75,7 @@ public class AuditService {
                         action,
                         resourceType,
                         resourceId,
-                        payload == null ? null : Jsons.toJson(payload),
+                        payload == null ? null : AuditPayloadJson.toJson(payload),
                         categoryName,
                         LocalDateTime.now()
                 )

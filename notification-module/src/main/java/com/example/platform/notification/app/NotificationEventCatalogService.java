@@ -2,7 +2,6 @@ package com.example.platform.notification.app;
 
 import com.example.platform.notification.domain.NotificationEventDefinition;
 import com.example.platform.shared.Ids;
-import com.example.platform.shared.Jsons;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -107,8 +106,8 @@ public class NotificationEventCatalogService {
                 .values(id, definition.eventKey(), definition.name(), definition.description(),
                         definition.category(), definition.severity(), definition.visibility(),
                         definition.userConfigurable(), definition.critical(), definition.defaultEnabled(),
-                        Jsons.toJson(definition.supportedChannels()), Jsons.toJson(definition.requiredPermissions()),
-                        Jsons.toJson(definition.requiredEntitlements()), definition.featureFlagKey(),
+                        NotificationPayloadJson.toJson(definition.supportedChannels()), NotificationPayloadJson.toJson(definition.requiredPermissions()),
+                        NotificationPayloadJson.toJson(definition.requiredEntitlements()), definition.featureFlagKey(),
                         definition.novuWorkflowId(), definition.localTemplateKey(),
                         false, now, now)
                 .execute();
@@ -135,9 +134,9 @@ public class NotificationEventCatalogService {
                 .set(NOTIFICATION_EVENT_DEFINITION.USER_CONFIGURABLE, definition.userConfigurable())
                 .set(NOTIFICATION_EVENT_DEFINITION.CRITICAL, definition.critical())
                 .set(NOTIFICATION_EVENT_DEFINITION.DEFAULT_ENABLED, definition.defaultEnabled())
-                .set(NOTIFICATION_EVENT_DEFINITION.SUPPORTED_CHANNELS, Jsons.toJson(definition.supportedChannels()))
-                .set(NOTIFICATION_EVENT_DEFINITION.REQUIRED_PERMISSIONS, Jsons.toJson(definition.requiredPermissions()))
-                .set(NOTIFICATION_EVENT_DEFINITION.REQUIRED_ENTITLEMENTS, Jsons.toJson(definition.requiredEntitlements()))
+                .set(NOTIFICATION_EVENT_DEFINITION.SUPPORTED_CHANNELS, NotificationPayloadJson.toJson(definition.supportedChannels()))
+                .set(NOTIFICATION_EVENT_DEFINITION.REQUIRED_PERMISSIONS, NotificationPayloadJson.toJson(definition.requiredPermissions()))
+                .set(NOTIFICATION_EVENT_DEFINITION.REQUIRED_ENTITLEMENTS, NotificationPayloadJson.toJson(definition.requiredEntitlements()))
                 .set(NOTIFICATION_EVENT_DEFINITION.FEATURE_FLAG_KEY, definition.featureFlagKey())
                 .set(NOTIFICATION_EVENT_DEFINITION.NOVU_WORKFLOW_ID, definition.novuWorkflowId())
                 .set(NOTIFICATION_EVENT_DEFINITION.LOCAL_TEMPLATE_KEY, definition.localTemplateKey())
@@ -294,15 +293,15 @@ public class NotificationEventCatalogService {
     private NotificationEventDefinition mapRecord(org.jooq.Record rec) {
         String supportedChannelsRaw = rec.get(NOTIFICATION_EVENT_DEFINITION.SUPPORTED_CHANNELS, String.class);
         List<String> supportedChannels = supportedChannelsRaw != null && !supportedChannelsRaw.isBlank()
-                ? Jsons.fromJson(supportedChannelsRaw, List.class) : ALL_CHANNELS;
+                ? NotificationPayloadJson.fromJson(supportedChannelsRaw, List.class) : ALL_CHANNELS;
 
         String requiredPermsRaw = rec.get(NOTIFICATION_EVENT_DEFINITION.REQUIRED_PERMISSIONS, String.class);
         List<String> requiredPerms = requiredPermsRaw != null && !requiredPermsRaw.isBlank()
-                ? Jsons.fromJson(requiredPermsRaw, List.class) : List.of();
+                ? NotificationPayloadJson.fromJson(requiredPermsRaw, List.class) : List.of();
 
         String requiredEntitlementsRaw = rec.get(NOTIFICATION_EVENT_DEFINITION.REQUIRED_ENTITLEMENTS, String.class);
         List<String> requiredEntitlements = requiredEntitlementsRaw != null && !requiredEntitlementsRaw.isBlank()
-                ? Jsons.fromJson(requiredEntitlementsRaw, List.class) : List.of();
+                ? NotificationPayloadJson.fromJson(requiredEntitlementsRaw, List.class) : List.of();
 
         return new NotificationEventDefinition(
                 rec.get(NOTIFICATION_EVENT_DEFINITION.EVENT_KEY, String.class),

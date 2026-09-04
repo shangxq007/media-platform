@@ -15,7 +15,6 @@ import com.example.platform.shared.audit.AuditPort;
 import com.example.platform.shared.digest.ContentDigest;
 import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
-import com.example.platform.shared.web.ErrorCodeRegistry;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -72,8 +71,6 @@ class ArtifactGcServiceTest extends PostgresTestContainerSupport {
 
         artifactRepository = new ArtifactRepository(dsl);
         pinRepository = new ArtifactPinRepository(dsl);
-        ErrorCodeRegistry registry = new ErrorCodeRegistry();
-        registry.loadErrorCodes();
         com.example.platform.artifact.app.ArtifactCatalogRepository catalogRepo =
                 new com.example.platform.artifact.app.ArtifactCatalogRepository(dsl);
         com.example.platform.artifact.app.ArtifactRelationRepository relationRepo =
@@ -85,7 +82,7 @@ class ArtifactGcServiceTest extends PostgresTestContainerSupport {
                 new ArtifactCatalogService(catalogRepo, relationRepo);
         ApplicationEventPublisher events = mock(ApplicationEventPublisher.class);
         ArtifactLifecycleService lifecycle = new ArtifactLifecycleService(
-                catalog, artifactRepository, pinRepository, registry);
+                catalog, artifactRepository, pinRepository);
         AuditPort auditPort = mock(AuditPort.class);
         ArtifactGcProperties props = new ArtifactGcProperties();
         props.setRetentionDays(1);

@@ -23,7 +23,6 @@ import com.example.platform.shared.events.AssetPublishedEvent;
 import com.example.platform.shared.events.AssetArchivedEvent;
 import com.example.platform.shared.events.AssetEnrichedEvent;
 import com.example.platform.shared.Ids;
-import com.example.platform.shared.Jsons;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -147,7 +146,7 @@ public class NotificationEventHandler {
         var eventId = Ids.newId("nev");
         dsl.insertInto(NOTIFICATION_EVENT)
                 .columns(NOTIFICATION_EVENT.ID, NOTIFICATION_EVENT.EVENT_TYPE, NOTIFICATION_EVENT.SUBJECT_ID, NOTIFICATION_EVENT.PAYLOAD, NOTIFICATION_EVENT.CREATED_AT)
-                .values(eventId, event.eventType(), event.subjectId(), Jsons.toJson(event.payload()), LocalDateTime.now(ZoneOffset.UTC))
+                .values(eventId, event.eventType(), event.subjectId(), NotificationPayloadJson.toJson(event.payload()), LocalDateTime.now(ZoneOffset.UTC))
                 .execute();
 
         var templateCode = NotificationTemplateCode.fromEventType(event.eventType());

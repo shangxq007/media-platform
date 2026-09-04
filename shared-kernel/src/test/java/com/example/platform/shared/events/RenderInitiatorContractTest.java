@@ -1,19 +1,20 @@
 package com.example.platform.shared.events;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 
-import com.example.platform.shared.Jsons;
 import com.example.platform.shared.authorization.ActorType;
 import com.example.platform.shared.authorization.CanonicalActor;
+import java.lang.reflect.RecordComponent;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 
 class RenderInitiatorContractTest {
-
     @Test
     void authenticatedPrincipalIsSnapshottedWithoutRolesOrAuthProvider() {
         CanonicalActor actor = CanonicalActor.user(
@@ -52,22 +53,22 @@ class RenderInitiatorContractTest {
     }
 
     @Test
-    void jsonAndEventsRoundTripPreserveExactInitiator() {
+    void eventsPreserveExactInitiatorWithoutAuthorizationOrAudienceData() {
         RenderInitiator initiator = RenderInitiator.from(
                 CanonicalActor.user("principal-p1", "tenant-1", Set.of("ADMIN"), "jwt"));
         RenderJobCompletedEvent event = new RenderJobCompletedEvent(
                 "rj-1", "project-1", "artifact-1", "storage://artifact-1",
                 Instant.parse("2026-08-29T00:00:00Z"), initiator);
 
-        String json = Jsons.toJson(event);
-        assertFalse(json.contains("ADMIN"));
-        assertFalse(json.contains("authSource"));
-        assertFalse(json.contains("email"));
-        assertFalse(json.contains("subscriber"));
-        RenderJobCompletedEvent restored = Jsons.fromJson(json, RenderJobCompletedEvent.class);
+        Set<String> snapshotFields = Arrays.stream(initiator.getClass().getRecordComponents())
+                .map(RecordComponent::getName)
+                .collect(Collectors.toSet());
+        assertFalse(snapshotFields.contains("roles"));
+        assertFalse(snapshotFields.contains("authSource"));
+        assertFalse(snapshotFields.contains("email"));
+        assertFalse(snapshotFields.contains("subscriber"));
 
-        assertEquals(initiator, restored.initiator());
-        assertEquals(event, restored);
+        assertEquals(initiator, event.initiator());
         assertEquals(initiator, new RenderJobFailedEvent(
                 "rj-1", "project-1", "failed", Instant.EPOCH, initiator).initiator());
     }

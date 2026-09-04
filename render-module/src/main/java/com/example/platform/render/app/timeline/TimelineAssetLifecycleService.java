@@ -5,8 +5,6 @@ import com.example.platform.shared.web.TenantContext;
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.shared.asset.StorageUriReferenceContributor;
 import com.example.platform.shared.asset.StorageUriReferenceHit;
-import com.example.platform.shared.web.ErrorCodeRegistry;
-import com.example.platform.shared.web.MediaAssetErrors;
 import com.example.platform.shared.web.PlatformException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -35,17 +33,14 @@ public class TimelineAssetLifecycleService {
 
     private final DSLContext dsl;
     private final TimelineSnapshotService timelineSnapshotService;
-    private final ErrorCodeRegistry errorCodeRegistry;
     private final List<StorageUriReferenceContributor> referenceContributors;
 
     public TimelineAssetLifecycleService(DSLContext dsl,
                                          TimelineSnapshotService timelineSnapshotService,
-                                         ErrorCodeRegistry errorCodeRegistry,
                                          @Autowired(required = false)
                                          List<StorageUriReferenceContributor> referenceContributors) {
         this.dsl = dsl;
         this.timelineSnapshotService = timelineSnapshotService;
-        this.errorCodeRegistry = errorCodeRegistry;
         this.referenceContributors = referenceContributors != null ? referenceContributors : List.of();
     }
 
@@ -116,7 +111,7 @@ public class TimelineAssetLifecycleService {
         Optional<TimelineSnapshotService.SnapshotInfo> info =
                 timelineSnapshotService.findOwnedById(projectId, tenantId, snapshotId);
         if (info.isEmpty()) {
-            throw MediaAssetErrors.assetNotFound(errorCodeRegistry, assetId);
+            throw RenderAssetErrors.assetNotFound(assetId);
         }
         try {
             JsonNode root = InternalTimelineJson.parse(info.get().payloadJson());
@@ -126,11 +121,11 @@ public class TimelineAssetLifecycleService {
             ObjectNode doc = (ObjectNode) root;
             ObjectNode assets = doc.with("assetRegistry").with("assets");
             if (!assets.has(assetId)) {
-                throw MediaAssetErrors.assetNotFound(errorCodeRegistry, assetId);
+                throw RenderAssetErrors.assetNotFound(assetId);
             }
             DeleteCheckResult check = deleteCheck(projectId, assetId);
             if (!check.deletable()) {
-                throw MediaAssetErrors.assetStillReferenced(errorCodeRegistry, assetId);
+                throw RenderAssetErrors.assetStillReferenced(assetId);
             }
             ObjectNode entry = (ObjectNode) assets.get(assetId);
             entry.put("status", "TOMBSTONED");

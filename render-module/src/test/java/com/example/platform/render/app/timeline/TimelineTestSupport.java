@@ -1,7 +1,6 @@
 package com.example.platform.render.app.timeline;
 
 import com.example.platform.render.domain.interchange.TimelineExtensionsReader;
-import com.example.platform.shared.web.ErrorCodeRegistry;
 
 /** Shared fixtures for timeline unit tests. */
 public final class TimelineTestSupport {
@@ -13,8 +12,6 @@ public final class TimelineTestSupport {
     }
 
     public static InternalTimelineAdapter internalTimelineAdapter(TimelineExtensionsReader extensionsReader) {
-        ErrorCodeRegistry registry = new ErrorCodeRegistry();
-        registry.loadErrorCodes();
-        return new InternalTimelineAdapter(extensionsReader, new TimelineAssetUriResolver(registry));
+        return new InternalTimelineAdapter(extensionsReader, new TimelineAssetUriResolver());
     }
 }

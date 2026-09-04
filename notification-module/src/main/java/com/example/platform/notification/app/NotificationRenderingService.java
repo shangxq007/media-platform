@@ -4,7 +4,6 @@ import static com.example.platform.typedschema.jooq.generated.tables.Notificatio
 
 import com.example.platform.notification.domain.NotificationTemplateCode;
 import com.example.platform.notification.domain.NotificationTemplatePayload;
-import com.example.platform.shared.Jsons;
 import java.util.Map;
 import org.jooq.DSLContext;
 import org.springframework.stereotype.Service;
@@ -23,8 +22,8 @@ public class NotificationRenderingService {
                 .limit(1)
                 .fetchOne();
         String subject = rec != null ? rec.get(NOTIFICATION_TEMPLATE.SUBJECT_TEMPLATE) : eventType;
-        String body = rec != null ? rec.get(NOTIFICATION_TEMPLATE.BODY_TEMPLATE) : Jsons.toJson(payload);
-        body = body.replace("{{eventType}}", eventType).replace("{{subjectId}}", subjectId).replace("{{payloadJson}}", Jsons.toJson(payload));
+        String body = rec != null ? rec.get(NOTIFICATION_TEMPLATE.BODY_TEMPLATE) : NotificationPayloadJson.toJson(payload);
+        body = body.replace("{{eventType}}", eventType).replace("{{subjectId}}", subjectId).replace("{{payloadJson}}", NotificationPayloadJson.toJson(payload));
         return new NotificationTemplatePayload(subject, body);
     }
 }

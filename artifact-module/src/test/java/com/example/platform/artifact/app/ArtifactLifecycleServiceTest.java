@@ -14,7 +14,6 @@ import com.example.platform.artifact.domain.ReplicaRole;
 import com.example.platform.shared.digest.ContentDigest;
 import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
-import com.example.platform.shared.web.ErrorCodeRegistry;
 import com.example.platform.shared.web.PlatformException;
 import org.jooq.DSLContext;
 import org.jooq.SQLDialect;
@@ -65,8 +64,6 @@ class ArtifactLifecycleServiceTest extends PostgresTestContainerSupport {
         dsl = DSL.using(dataSource, SQLDialect.POSTGRES, settings);
         repository = new ArtifactCatalogRepository(dsl);
         relationRepository = new ArtifactRelationRepository(dsl);
-        ErrorCodeRegistry registry = new ErrorCodeRegistry();
-        registry.loadErrorCodes();
         com.example.platform.artifact.infrastructure.ArtifactRepository canonicalRepo =
                 new com.example.platform.artifact.infrastructure.ArtifactRepository(dsl);
         com.example.platform.artifact.infrastructure.ArtifactPinRepository pinRepo =
@@ -77,7 +74,7 @@ class ArtifactLifecycleServiceTest extends PostgresTestContainerSupport {
         catalogService = new ArtifactCatalogService(repository, relationRepository);
         ApplicationEventPublisher events = mock(ApplicationEventPublisher.class);
         lifecycleService = new ArtifactLifecycleService(
-                catalogService, canonicalRepo, pinRepo, registry);
+                catalogService, canonicalRepo, pinRepo);
     }
 
     @AfterAll

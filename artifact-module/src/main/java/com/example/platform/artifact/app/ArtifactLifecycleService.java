@@ -7,8 +7,6 @@ import com.example.platform.artifact.domain.ArtifactStatus;
 import com.example.platform.artifact.infrastructure.ArtifactPinRepository;
 import com.example.platform.artifact.infrastructure.ArtifactRepository;
 import com.example.platform.shared.identity.ArtifactId;
-import com.example.platform.shared.web.ErrorCodeRegistry;
-import com.example.platform.shared.web.MediaAssetErrors;
 import com.example.platform.shared.web.PlatformException;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -36,23 +34,20 @@ public class ArtifactLifecycleService {
     private final ArtifactCatalogService catalogService;
     private final ArtifactRepository canonicalArtifactRepository;
     private final ArtifactPinRepository pinRepository;
-    private final ErrorCodeRegistry errorCodeRegistry;
 
     public ArtifactLifecycleService(
             ArtifactCatalogService catalogService,
             ArtifactRepository canonicalArtifactRepository,
-            ArtifactPinRepository pinRepository,
-            ErrorCodeRegistry errorCodeRegistry) {
+            ArtifactPinRepository pinRepository) {
         this.catalogService = catalogService;
         this.canonicalArtifactRepository = canonicalArtifactRepository;
         this.pinRepository = pinRepository;
-        this.errorCodeRegistry = errorCodeRegistry;
     }
 
     public DeleteCheckResult deleteCheck(String tenantId, String artifactId) {
         requireTenantId(tenantId);
         ArtifactCatalogEntry artifact = catalogService.findArtifact(tenantId, artifactId)
-                .orElseThrow(() -> MediaAssetErrors.artifactNotFound(errorCodeRegistry, artifactId));
+                .orElseThrow(() -> ArtifactLifecycleErrors.notFound(artifactId));
 
         // C14: historical pin protection — pinned Artifact cannot be logically deleted.
         if (pinRepository.isPinned(tenantId, artifactId)) {
@@ -76,7 +71,7 @@ public class ArtifactLifecycleService {
     public ReplicaDeleteCheckResult replicaDeleteCheck(String tenantId, String artifactId, String replicaId) {
         requireTenantId(tenantId);
         if (catalogService.findArtifact(tenantId, artifactId).isEmpty()) {
-            throw MediaAssetErrors.artifactNotFound(errorCodeRegistry, artifactId);
+            throw ArtifactLifecycleErrors.notFound(artifactId);
         }
         boolean pinned = pinRepository.isPinned(tenantId, artifactId);
         if (!pinned) {
@@ -97,13 +92,13 @@ public class ArtifactLifecycleService {
         ArtifactCatalogEntry artifact = requireActiveCatalogEntry(tenantId, artifactId);
         DeleteCheckResult check = deleteCheck(tenantId, artifactId);
         if (!check.deletable()) {
-            throw MediaAssetErrors.artifactStillReferenced(errorCodeRegistry, artifactId);
+            throw ArtifactLifecycleErrors.stillReferenced(artifactId);
         }
         Instant now = Instant.now();
         ArtifactCatalogEntry tombstoned;
         if (!canonicalArtifactRepository.updateState(tenantId, artifactId, ArtifactState.DELETING,
                 java.time.LocalDateTime.ofInstant(now, java.time.ZoneOffset.UTC))) {
-            throw MediaAssetErrors.artifactNotFound(errorCodeRegistry, artifactId);
+            throw ArtifactLifecycleErrors.notFound(artifactId);
         }
         ArtifactCatalogEntry existing = catalogService.findArtifact(tenantId, artifactId).orElse(artifact);
         tombstoned = new ArtifactCatalogEntry(
@@ -115,21 +110,21 @@ public class ArtifactLifecycleService {
 
     public void assertUsable(ArtifactCatalogEntry artifact) {
         if (artifact == null) {
-            throw MediaAssetErrors.artifactNotFound(errorCodeRegistry, "unknown");
+            throw ArtifactLifecycleErrors.notFound("unknown");
         }
         if (artifact.status() == ArtifactStatus.TOMBSTONED || artifact.status() == ArtifactStatus.PURGED) {
-            throw MediaAssetErrors.artifactTombstoned(errorCodeRegistry, artifact.id());
+            throw ArtifactLifecycleErrors.tombstoned(artifact.id());
         }
     }
 
     private ArtifactCatalogEntry requireActiveCatalogEntry(String tenantId, String artifactId) {
         java.util.Optional<ArtifactCatalogEntry> found = catalogService.findArtifact(tenantId, artifactId);
         if (found.isEmpty()) {
-            throw MediaAssetErrors.artifactNotFound(errorCodeRegistry, artifactId);
+            throw ArtifactLifecycleErrors.notFound(artifactId);
         }
         ArtifactCatalogEntry artifact = found.get();
         if (artifact.status() == ArtifactStatus.TOMBSTONED || artifact.status() == ArtifactStatus.PURGED) {
-            throw MediaAssetErrors.artifactTombstoned(errorCodeRegistry, artifactId);
+            throw ArtifactLifecycleErrors.tombstoned(artifactId);
         }
         return artifact;
     }

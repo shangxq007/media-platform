@@ -1,24 +1,28 @@
 package com.example.platform.outbox.app;
 
-import com.example.platform.shared.test.PostgresTestContainerSupport;
-import com.example.platform.outbox.testsupport.OutboxEventTestSchemaFixture;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.JdbcTemplate;
+import static org.mockito.Mockito.verify;
 
+import com.example.platform.outbox.testsupport.OutboxEventTestSchemaFixture;
+import com.example.platform.shared.events.ArtifactCreatedEvent;
+import com.example.platform.shared.test.PostgresTestContainerSupport;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import org.jooq.DSLContext;
 import org.jooq.impl.DSL;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.springframework.context.ApplicationEventPublisher;
 
 class OutboxEventServiceTest extends PostgresTestContainerSupport {
 
@@ -62,6 +66,28 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
         assertEquals("order", rows.get(0).get("aggregate_type"));
         assertEquals("ord-1", rows.get(0).get("aggregate_id"));
         assertEquals("order.created", rows.get(0).get("event_type"));
+    }
+
+    @Test
+    void persistedArtifactCreatedPayloadRoundTripsThroughOutboxDispatch() {
+        ArtifactCreatedEvent event = new ArtifactCreatedEvent(
+                "art-1", "job-1", "proj-1", Instant.parse("2026-08-13T03:16:09Z"));
+        String id = service.appendEvent("artifact", event.artifactId(), "artifact.created", 1, event);
+
+        assertEquals(
+                "{\"artifactId\":\"art-1\",\"renderJobId\":\"job-1\",\"projectId\":\"proj-1\",\"createdAt\":\"2026-08-13T03:16:09Z\"}",
+                service.readEvent(id).get("payload"));
+
+        ApplicationEventPublisher publisher = mock(ApplicationEventPublisher.class);
+        OutboxEventRouter router = new OutboxEventRouter();
+        router.register("artifact.created", ArtifactCreatedEvent.class);
+        OutboxEventDispatcher dispatcher = new OutboxEventDispatcher(
+                service, publisher, router, 3, new SimpleMeterRegistry());
+
+        assertTrue(dispatcher.processOnce(id));
+        ArgumentCaptor<Object> published = ArgumentCaptor.forClass(Object.class);
+        verify(publisher).publishEvent(published.capture());
+        assertEquals(event, assertInstanceOf(ArtifactCreatedEvent.class, published.getValue()));
     }
 
     @Test

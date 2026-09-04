@@ -3,7 +3,6 @@ package com.example.platform.web;
 import com.example.platform.observability.monitoring.SentryMonitoringService;
 import com.example.platform.shared.web.CommonErrorCode;
 import com.example.platform.shared.web.ConfigurableErrorCode;
-import com.example.platform.shared.web.ErrorCodeRegistry;
 import com.example.platform.shared.web.PlatformException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
@@ -26,7 +25,7 @@ import java.util.Optional;
 
 /**
  * Global exception handler returning ProblemDetail with errorCode + message + details.
- * Supports configurable error codes from error-codes.json and i18n messages.
+ * Uses the error code carried by each exception, including its i18n behavior.
  * Also captures exceptions via Sentry for monitoring.
  */
 @RestControllerAdvice
@@ -35,12 +34,9 @@ public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
-    private final ErrorCodeRegistry errorCodeRegistry;
     private final Optional<SentryMonitoringService> sentryMonitoringService;
 
-    public GlobalExceptionHandler(ErrorCodeRegistry errorCodeRegistry,
-            Optional<SentryMonitoringService> sentryMonitoringService) {
-        this.errorCodeRegistry = errorCodeRegistry;
+    public GlobalExceptionHandler(Optional<SentryMonitoringService> sentryMonitoringService) {
         this.sentryMonitoringService = sentryMonitoringService;
     }
 
@@ -61,13 +57,7 @@ public class GlobalExceptionHandler {
         var code = ex.getErrorCode();
         String message = ex.getLocalizedMessage();
 
-        if (errorCodeRegistry != null) {
-            var configurableCode = errorCodeRegistry.getErrorCode(code.code());
-            if (configurableCode.isPresent()) {
-                message = configurableCode.get().message(getLocale(request));
-            }
-        }
-        if (code instanceof ConfigurableErrorCode cce && message.equals(ex.getMessage())) {
+        if (code instanceof ConfigurableErrorCode cce) {
             message = cce.message(getLocale(request));
         }
 

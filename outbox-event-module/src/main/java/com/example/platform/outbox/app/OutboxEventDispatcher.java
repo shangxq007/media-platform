@@ -1,6 +1,7 @@
 package com.example.platform.outbox.app;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
@@ -32,7 +33,8 @@ public class OutboxEventDispatcher {
     private final OutboxEventService service;
     private final ApplicationEventPublisher publisher;
     private final OutboxEventRouter router;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    // This is the outbox read boundary for payloads written by OutboxPayloadJson.
+    private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
     private final int maxRetries;
 
     private final Counter eventsDispatchedCounter;

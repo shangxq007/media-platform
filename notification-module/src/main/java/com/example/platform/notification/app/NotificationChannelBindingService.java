@@ -6,8 +6,6 @@ import com.example.platform.notification.domain.NotificationChannelBinding;
 import com.example.platform.notification.infrastructure.WebhookUrlValidator;
 import com.example.platform.shared.Ids;
 import com.example.platform.shared.audit.AuditPort;
-import com.example.platform.shared.web.ConfigurableErrorCode;
-import com.example.platform.shared.web.ErrorCodeRegistry;
 import com.example.platform.shared.web.PlatformException;
 import com.example.platform.shared.web.TenantContext;
 import java.time.Instant;
@@ -30,14 +28,12 @@ public class NotificationChannelBindingService {
 
     private final DSLContext dsl;
     private final AuditPort audit;
-    private final ErrorCodeRegistry errorCodeRegistry;
     private final WebhookUrlValidator webhookUrlValidator;
 
     public NotificationChannelBindingService(DSLContext dsl, AuditPort audit,
-            ErrorCodeRegistry errorCodeRegistry, WebhookUrlValidator webhookUrlValidator) {
+            WebhookUrlValidator webhookUrlValidator) {
         this.dsl = dsl;
         this.audit = audit;
-        this.errorCodeRegistry = errorCodeRegistry;
         this.webhookUrlValidator = webhookUrlValidator;
     }
 
@@ -61,14 +57,14 @@ public class NotificationChannelBindingService {
 
     public NotificationChannelBinding createBinding(String userId, String channelType, String destination) {
         if (!SUPPORTED_CHANNELS.contains(channelType)) {
-            throw new PlatformException(getErrorCode("NOTIFICATION_CHANNEL_UNSUPPORTED"),
+            throw new PlatformException(NotificationErrorCodes.CHANNEL_UNSUPPORTED,
                     "Unsupported channel: " + channelType);
         }
 
         if ("WEBHOOK".equals(channelType)) {
             webhookUrlValidator.validate(destination,
-                    getErrorCode("NOTIFICATION_WEBHOOK_URL_INVALID"),
-                    getErrorCode("NOTIFICATION_WEBHOOK_PRIVATE_IP_BLOCKED"));
+                    NotificationErrorCodes.WEBHOOK_URL_INVALID,
+                    NotificationErrorCodes.WEBHOOK_PRIVATE_IP_BLOCKED);
         }
 
         String bindingId = Ids.newId("ncb");
@@ -100,14 +96,14 @@ public class NotificationChannelBindingService {
 
     public NotificationChannelBinding updateBinding(String bindingId, String userId, String destination) {
         NotificationChannelBinding existing = findBinding(bindingId, userId)
-                .orElseThrow(() -> new PlatformException(getErrorCode("NOTIFICATION_CHANNEL_NOT_FOUND"),
+                .orElseThrow(() -> new PlatformException(NotificationErrorCodes.CHANNEL_NOT_FOUND,
                         "Channel binding not found: " + bindingId));
 
         if (destination != null && !destination.isBlank()) {
             if ("WEBHOOK".equals(existing.channelType())) {
                 webhookUrlValidator.validate(destination,
-                        getErrorCode("NOTIFICATION_WEBHOOK_URL_INVALID"),
-                        getErrorCode("NOTIFICATION_WEBHOOK_PRIVATE_IP_BLOCKED"));
+                        NotificationErrorCodes.WEBHOOK_URL_INVALID,
+                        NotificationErrorCodes.WEBHOOK_PRIVATE_IP_BLOCKED);
             }
             String masked = maskDestination(existing.channelType(), destination);
             dsl.update(NOTIFICATION_CHANNEL_BINDING)
@@ -129,7 +125,7 @@ public class NotificationChannelBindingService {
 
     public NotificationChannelBinding verifyBinding(String bindingId, String userId) {
         NotificationChannelBinding existing = findBinding(bindingId, userId)
-                .orElseThrow(() -> new PlatformException(getErrorCode("NOTIFICATION_CHANNEL_NOT_FOUND"),
+                .orElseThrow(() -> new PlatformException(NotificationErrorCodes.CHANNEL_NOT_FOUND,
                         "Channel binding not found: " + bindingId));
 
         dsl.update(NOTIFICATION_CHANNEL_BINDING)
@@ -154,11 +150,11 @@ public class NotificationChannelBindingService {
 
     public NotificationChannelBinding testBinding(String bindingId, String userId) {
         NotificationChannelBinding existing = findBinding(bindingId, userId)
-                .orElseThrow(() -> new PlatformException(getErrorCode("NOTIFICATION_CHANNEL_NOT_FOUND"),
+                .orElseThrow(() -> new PlatformException(NotificationErrorCodes.CHANNEL_NOT_FOUND,
                         "Channel binding not found: " + bindingId));
 
         if (!existing.verified()) {
-            throw new PlatformException(getErrorCode("NOTIFICATION_CHANNEL_TEST_FAILED"),
+            throw new PlatformException(NotificationErrorCodes.CHANNEL_TEST_FAILED,
                     "Channel must be tested after verification");
         }
 
@@ -171,7 +167,7 @@ public class NotificationChannelBindingService {
 
     public NotificationChannelBinding disableBinding(String bindingId, String userId, String reason) {
         NotificationChannelBinding existing = findBinding(bindingId, userId)
-                .orElseThrow(() -> new PlatformException(getErrorCode("NOTIFICATION_CHANNEL_NOT_FOUND"),
+                .orElseThrow(() -> new PlatformException(NotificationErrorCodes.CHANNEL_NOT_FOUND,
                         "Channel binding not found: " + bindingId));
 
         dsl.update(NOTIFICATION_CHANNEL_BINDING)
@@ -195,7 +191,7 @@ public class NotificationChannelBindingService {
 
     public void deleteBinding(String bindingId, String userId) {
         NotificationChannelBinding existing = findBinding(bindingId, userId)
-                .orElseThrow(() -> new PlatformException(getErrorCode("NOTIFICATION_CHANNEL_NOT_FOUND"),
+                .orElseThrow(() -> new PlatformException(NotificationErrorCodes.CHANNEL_NOT_FOUND,
                         "Channel binding not found: " + bindingId));
 
         dsl.deleteFrom(NOTIFICATION_CHANNEL_BINDING)
@@ -244,7 +240,4 @@ public class NotificationChannelBindingService {
         );
     }
 
-    private ConfigurableErrorCode getErrorCode(String code) {
-        return errorCodeRegistry.getRequiredErrorCode(code);
-    }
 }

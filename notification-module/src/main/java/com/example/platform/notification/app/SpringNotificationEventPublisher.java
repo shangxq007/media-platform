@@ -6,7 +6,6 @@ import static com.example.platform.typedschema.jooq.generated.tables.Notificatio
 import com.example.platform.notification.domain.*;
 import com.example.platform.notification.infrastructure.NotificationProviderRouter;
 import com.example.platform.shared.Ids;
-import com.example.platform.shared.Jsons;
 import com.example.platform.shared.audit.AuditPort;
 import com.example.platform.notification.app.NotificationEventPublisher;
 import java.time.LocalDateTime;
@@ -106,7 +105,7 @@ public class SpringNotificationEventPublisher implements NotificationEventPublis
 
         dsl.insertInto(NOTIFICATION_EVENT)
                 .columns(NOTIFICATION_EVENT.ID, NOTIFICATION_EVENT.EVENT_TYPE, NOTIFICATION_EVENT.SUBJECT_ID, NOTIFICATION_EVENT.PAYLOAD, NOTIFICATION_EVENT.CREATED_AT)
-                .values(eventId, eventKey, userId, Jsons.toJson(payload), now)
+                .values(eventId, eventKey, userId, NotificationPayloadJson.toJson(payload), now)
                 .execute();
 
         var templateCode = NotificationTemplateCode.fromEventType(eventKey);
@@ -155,7 +154,7 @@ public class SpringNotificationEventPublisher implements NotificationEventPublis
             meta.put("subscriberId", userId);
             DeliveryCommand command = new DeliveryCommand(eventId, channel,
                     subject != null ? subject : eventKey,
-                    body != null ? body : Jsons.toJson(payload),
+                    body != null ? body : NotificationPayloadJson.toJson(payload),
                     meta);
 
             DeliveryResult result = providerRouter.route(command, channel);
@@ -216,7 +215,7 @@ public class SpringNotificationEventPublisher implements NotificationEventPublis
     private String extractMessageId(String responsePayload) {
         if (responsePayload == null || responsePayload.isBlank()) return null;
         try {
-            Map<?, ?> map = Jsons.fromJson(responsePayload, Map.class);
+            Map<?, ?> map = NotificationPayloadJson.fromJson(responsePayload, Map.class);
             Object id = map.get("id");
             return id != null ? id.toString() : null;
         } catch (Exception e) {

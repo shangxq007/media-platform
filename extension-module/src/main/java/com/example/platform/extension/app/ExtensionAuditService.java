@@ -2,7 +2,6 @@ package com.example.platform.extension.app;
 
 import com.example.platform.extension.domain.*;
 import com.example.platform.shared.Ids;
-import com.example.platform.shared.Jsons;
 import com.example.platform.shared.audit.AuditPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,7 +42,7 @@ public class ExtensionAuditService {
                                             String traceId, String trustLevel,
                                             Map<String, Object> details, String severity) {
         String id = Ids.newId("extaud");
-        String detailsJson = details != null ? Jsons.toJson(details) : null;
+        String detailsJson = details != null ? ExtensionAuditJson.toJson(details) : null;
         ExtensionAuditEvent event = new ExtensionAuditEvent(
                 id, extensionCode, extensionVersion, eventType.name(),
                 actor, tenantId, userId, traceId, trustLevel,

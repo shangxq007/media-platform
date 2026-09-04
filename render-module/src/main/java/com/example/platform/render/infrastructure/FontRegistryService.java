@@ -2,7 +2,6 @@ package com.example.platform.render.infrastructure;
 
 import com.example.platform.render.infrastructure.font.FontIdPolicy;
 import com.example.platform.shared.web.ConfigurableErrorCode;
-import com.example.platform.shared.web.ErrorCodeRegistry;
 import com.example.platform.shared.web.PlatformException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,12 +28,6 @@ public class FontRegistryService {
 
     @Value("${app.fonts.dir:/tmp/platform/fonts}")
     private String fontsDir;
-
-    private final ErrorCodeRegistry errorCodeRegistry;
-
-    public FontRegistryService(ErrorCodeRegistry errorCodeRegistry) {
-        this.errorCodeRegistry = errorCodeRegistry;
-    }
 
     /**
      * Register a font file and return font metadata.

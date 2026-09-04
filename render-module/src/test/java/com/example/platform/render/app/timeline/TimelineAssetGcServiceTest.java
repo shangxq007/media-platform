@@ -8,7 +8,6 @@ import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.render.infrastructure.TimelineAssetGcProperties;
 import com.example.platform.render.testsupport.RenderTestSchemaFixture;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
-import com.example.platform.shared.web.ErrorCodeRegistry;
 import java.util.List;
 import javax.sql.DataSource;
 import org.jooq.DSLContext;
@@ -46,10 +45,8 @@ class TimelineAssetGcServiceTest extends PostgresTestContainerSupport {
     void setUp() {
         RenderTestSchemaFixture.truncate(dsl);
         snapshotService = new TimelineSnapshotService(dsl);
-        ErrorCodeRegistry registry = new ErrorCodeRegistry();
-        registry.loadErrorCodes();
         TimelineAssetLifecycleService lifecycleService =
-                new TimelineAssetLifecycleService(dsl, snapshotService, registry, List.of());
+                new TimelineAssetLifecycleService(dsl, snapshotService, List.of());
         TimelineAssetGcProperties props = new TimelineAssetGcProperties();
         props.setRetentionDays(0);
         props.setDeleteBlobOnPurge(false);

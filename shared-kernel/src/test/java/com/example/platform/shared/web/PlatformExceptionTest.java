@@ -1,6 +1,5 @@
 package com.example.platform.shared.web;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -8,11 +7,6 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
 class PlatformExceptionTest {
-
-    @BeforeEach
-    void setUp() {
-        // Registry loads from error-codes.json in test resources
-    }
 
     @Test
     void platformExceptionHasErrorCode() {
@@ -65,18 +59,4 @@ class PlatformExceptionTest {
         assertEquals(404, CommonErrorCode.RESOURCE_NOT_FOUND.status());
     }
 
-    @Test
-    void errorCodeRegistryLoadsFromConfig() {
-        ErrorCodeRegistry registry = new ErrorCodeRegistry();
-        registry.loadErrorCodes();
-
-        assertTrue(registry.getErrorCode("SUBTITLE-400-001").isPresent());
-        assertTrue(registry.getErrorCode("COMMON-400-001").isPresent());
-        assertTrue(registry.getErrorCode("RENDER-500-001").isPresent());
-        assertTrue(registry.getErrorCode("nonexistent").isEmpty());
-
-        ConfigurableErrorCode code = registry.getRequiredErrorCode("SUBTITLE-400-001");
-        assertEquals("SUBTITLE-400-001", code.code());
-        assertEquals("subtitle", code.module());
-    }
 }

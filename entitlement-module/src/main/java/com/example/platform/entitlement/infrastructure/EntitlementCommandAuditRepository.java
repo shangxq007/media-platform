@@ -3,7 +3,6 @@ package com.example.platform.entitlement.infrastructure;
 import com.example.platform.entitlement.domain.EntitlementCommandResult;
 import com.example.platform.entitlement.domain.EntitlementGrantCommand;
 import com.example.platform.entitlement.domain.EntitlementGrantView;
-import com.example.platform.shared.Jsons;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
@@ -42,7 +41,7 @@ public class EntitlementCommandAuditRepository {
                     String snapshot = rs.getString("result_snapshot");
                     if (snapshot == null) throw new IllegalStateException("Entitlement command has no committed result");
                     return new EntitlementCommandResult(rs.getString("id"),
-                            Jsons.fromJson(snapshot, EntitlementGrantView.class));
+                            EntitlementPersistenceJson.fromJson(snapshot, EntitlementGrantView.class));
                 }, command.principal().tenantId(), command.idempotencyKey());
         if (rows.size() != 1) throw new IllegalStateException("Entitlement command claim not found");
         return rows.get(0);
@@ -52,7 +51,7 @@ public class EntitlementCommandAuditRepository {
         int updated = jdbc.update("""
                 UPDATE entitlement_command_audit SET result_snapshot = ?, completed_at = ?
                 WHERE id = ? AND result_snapshot IS NULL
-                """, Jsons.toJson(result), Timestamp.from(completedAt), commandId);
+                """, EntitlementPersistenceJson.toJson(result), Timestamp.from(completedAt), commandId);
         if (updated != 1) throw new IllegalStateException("Entitlement command audit completion failed");
     }
 }

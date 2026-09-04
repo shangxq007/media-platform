@@ -7,10 +7,12 @@ import com.example.platform.shared.usage.ProviderRef;
 import com.example.platform.billing.infrastructure.ProviderCostObservationJdbcRepository;
 import com.example.platform.outbox.app.OutboxEventService;
 import com.example.platform.outbox.app.PostgresNotificationService;
-import com.example.platform.shared.Jsons;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.jooq.DSLContext;
 import org.jooq.SQLDialect;
 import org.jooq.impl.DSL;
@@ -44,6 +46,8 @@ class CostObservationEmissionServiceTest extends PostgresTestContainerSupport {
 
     private static final Instant NOW = Instant.parse("2026-08-09T10:00:00Z");
     private static final TypeReference<Map<String, Object>> MAP_REF = new TypeReference<>() {};
+    private static final ObjectMapper PAYLOAD_MAPPER = new ObjectMapper().registerModule(new JavaTimeModule())
+            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
     private static DataSource dataSource;
     private static DSLContext dsl;
@@ -134,7 +138,7 @@ class CostObservationEmissionServiceTest extends PostgresTestContainerSupport {
     }
 
     @Test
-    void persistCostWithOutbox_persistsCostAndOutboxEvent() {
+    void persistCostWithOutbox_persistsCostAndOutboxEvent() throws Exception {
         ProviderCostObservation saved = emissionService.persistCostWithOutbox(
                 observation("tenant-1", "idem-cost-happy", CostType.REPORTED, "usg-123"));
 
@@ -152,7 +156,7 @@ class CostObservationEmissionServiceTest extends PostgresTestContainerSupport {
         assertEquals("COST_OBSERVED", event.get("event_type"));
 
         // Bounded payload carries stable, non-secret data only.
-        Map<String, Object> payload = Jsons.fromJson((String) event.get("payload"), MAP_REF);
+        Map<String, Object> payload = PAYLOAD_MAPPER.readValue((String) event.get("payload"), MAP_REF);
         assertEquals(saved.observationId(), payload.get("costObservationId"));
         assertEquals("tenant-1", payload.get("tenantId"));
         assertEquals("op-1", payload.get("operationRef"));

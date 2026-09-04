@@ -2,7 +2,8 @@ package com.example.platform.app;
 
 import com.example.platform.observability.monitoring.SentryMonitoringService;
 import com.example.platform.shared.web.CommonErrorCode;
-import com.example.platform.shared.web.ErrorCodeRegistry;
+import com.example.platform.shared.web.ConfigurableErrorCode;
+import com.example.platform.shared.web.PlatformException;
 import com.example.platform.web.GlobalExceptionHandler;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.Test;
@@ -18,8 +19,7 @@ import static org.mockito.Mockito.*;
 class GlobalExceptionHandlerSentryTest {
 
     private final SentryMonitoringService sentryService = mock(SentryMonitoringService.class);
-    private final ErrorCodeRegistry errorCodeRegistry = mock(ErrorCodeRegistry.class);
-    private final GlobalExceptionHandler handler = new GlobalExceptionHandler(errorCodeRegistry, Optional.of(sentryService));
+    private final GlobalExceptionHandler handler = new GlobalExceptionHandler(Optional.of(sentryService));
     private final HttpServletRequest request = mock(HttpServletRequest.class);
 
     @Test
@@ -68,7 +68,7 @@ class GlobalExceptionHandlerSentryTest {
 
     @Test
     void shouldWorkWithoutSentryService() {
-        GlobalExceptionHandler noSentry = new GlobalExceptionHandler(errorCodeRegistry, Optional.empty());
+        GlobalExceptionHandler noSentry = new GlobalExceptionHandler(Optional.empty());
         when(request.getHeader("Accept-Language")).thenReturn(null);
         when(request.getRequestURI()).thenReturn("/test");
         assertDoesNotThrow(() -> noSentry.handleUnknown(new RuntimeException("test"), request));
@@ -88,5 +88,22 @@ class GlobalExceptionHandlerSentryTest {
         } finally {
             org.slf4j.MDC.clear();
         }
+    }
+
+    @Test
+    void mapsTheExceptionCarriedLocalizedCodeWithoutARegistry() {
+        when(request.getHeader("Accept-Language")).thenReturn("zh-CN");
+        when(request.getRequestURI()).thenReturn("/test");
+        ConfigurableErrorCode code = new ConfigurableErrorCode("NOTIFICATION-400-010", 4002010,
+                Map.of("en", "Critical notification event cannot be disabled", "zh", "关键通知事件不可关闭"),
+                "notification", HttpStatus.BAD_REQUEST.value());
+
+        ProblemDetail pd = handler.handlePlatform(
+                new PlatformException(code, "detail", Map.of("eventKey", "security.alert"), "en"), request);
+
+        assertEquals(HttpStatus.BAD_REQUEST.value(), pd.getStatus());
+        assertEquals("关键通知事件不可关闭", pd.getDetail());
+        assertEquals("NOTIFICATION-400-010", pd.getProperties().get("errorCode"));
+        assertEquals(Map.of("eventKey", "security.alert"), pd.getProperties().get("details"));
     }
 }

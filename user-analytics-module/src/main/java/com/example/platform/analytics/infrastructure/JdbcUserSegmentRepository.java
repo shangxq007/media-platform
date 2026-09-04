@@ -1,7 +1,6 @@
 package com.example.platform.analytics.infrastructure;
 
 import com.example.platform.analytics.domain.UserSegment;
-import com.example.platform.shared.Jsons;
 import com.fasterxml.jackson.core.type.TypeReference;
 
 import org.springframework.context.annotation.Primary;
@@ -40,8 +39,8 @@ public class JdbcUserSegmentRepository implements UserSegmentRepository {
                 """,
                 segment.name(),
                 segment.description(),
-                Jsons.toJson(segment.criteria()),
-                Jsons.toJson(segment.userIds()),
+                AnalyticsPersistenceJson.toJson(segment.criteria()),
+                AnalyticsPersistenceJson.toJson(segment.userIds()),
                 segment.userCount(),
                 Timestamp.from(segment.computedAt()),
                 segment.segmentId());
@@ -55,8 +54,8 @@ public class JdbcUserSegmentRepository implements UserSegmentRepository {
                     segment.tenantId(),
                     segment.name(),
                     segment.description(),
-                    Jsons.toJson(segment.criteria()),
-                    Jsons.toJson(segment.userIds()),
+                    AnalyticsPersistenceJson.toJson(segment.criteria()),
+                    AnalyticsPersistenceJson.toJson(segment.userIds()),
                     segment.userCount(),
                     Timestamp.from(segment.computedAt()));
         }
@@ -95,11 +94,11 @@ public class JdbcUserSegmentRepository implements UserSegmentRepository {
 
     private static Map<String, String> parseCriteria(String json) {
         if (json == null || json.isBlank()) return Map.of();
-        return Jsons.fromJson(json, CRITERIA_MAP);
+        return AnalyticsPersistenceJson.fromJson(json, CRITERIA_MAP);
     }
 
     private static List<String> parseUserIds(String json) {
         if (json == null || json.isBlank()) return List.of();
-        return Jsons.fromJson(json, STRING_LIST);
+        return AnalyticsPersistenceJson.fromJson(json, STRING_LIST);
     }
 }

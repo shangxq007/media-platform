@@ -1,8 +1,6 @@
 package com.example.platform.render.app.timeline;
 
 import com.example.platform.render.domain.interchange.TimelineScriptParser;
-import com.example.platform.shared.web.ErrorCodeRegistry;
-import com.example.platform.shared.web.MediaAssetErrors;
 import com.example.platform.storage.domain.BlobStorage;
 import java.util.Optional;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,17 +14,14 @@ public class RenderCacheArtifactFetcher {
 
     private final BlobStorage blobStorage;
     private final TimelineScriptParser timelineScriptParser;
-    private final ErrorCodeRegistry errorCodeRegistry;
 
     @Value("${app.storage.local-root:/tmp/platform}")
     private String storageRoot;
 
     public RenderCacheArtifactFetcher(BlobStorage blobStorage,
-                                        TimelineScriptParser timelineScriptParser,
-                                        ErrorCodeRegistry errorCodeRegistry) {
+                                        TimelineScriptParser timelineScriptParser) {
         this.blobStorage = blobStorage;
         this.timelineScriptParser = timelineScriptParser;
-        this.errorCodeRegistry = errorCodeRegistry;
     }
 
     /**
@@ -42,7 +37,7 @@ public class RenderCacheArtifactFetcher {
             var ref = remoteRef.get();
             Optional<byte[]> bytes = blobStorage.get(ref.bucket(), ref.objectKey());
             if (bytes.isEmpty()) {
-                throw MediaAssetErrors.storageNotFound(errorCodeRegistry, storageUri);
+                throw RenderAssetErrors.storageNotFound(storageUri);
             }
             return bytes;
         }
@@ -60,6 +55,6 @@ public class RenderCacheArtifactFetcher {
     /** Strict fetch: propagates {@code STORAGE-404-001} for missing remote objects. */
     public byte[] requireBytes(String storageUri) {
         return fetchBytes(storageUri).orElseThrow(() ->
-                MediaAssetErrors.storageNotFound(errorCodeRegistry, storageUri));
+                RenderAssetErrors.storageNotFound(storageUri));
     }
 }

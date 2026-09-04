@@ -13,7 +13,6 @@ import com.example.platform.artifact.infrastructure.ArtifactRepository;
 import com.example.platform.shared.digest.ContentDigest;
 import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
-import com.example.platform.shared.web.ErrorCodeRegistry;
 import java.time.Instant;
 import javax.sql.DataSource;
 import org.jooq.DSLContext;
@@ -73,8 +72,6 @@ class ArtifactPinProtectionTest extends PostgresTestContainerSupport {
 
         artifactRepository = new ArtifactRepository(dsl);
         pinRepository = new ArtifactPinRepository(dsl);
-        ErrorCodeRegistry registry = new ErrorCodeRegistry();
-        registry.loadErrorCodes();
         ArtifactCatalogRepository catalogRepo = new ArtifactCatalogRepository(dsl);
         ArtifactRelationRepository relationRepo = new ArtifactRelationRepository(dsl);
         com.example.platform.artifact.infrastructure.JooqArtifactCommitService commitService =
@@ -83,7 +80,7 @@ class ArtifactPinProtectionTest extends PostgresTestContainerSupport {
         ArtifactCatalogService catalog = new ArtifactCatalogService(catalogRepo, relationRepo);
         ApplicationEventPublisher events = mock(ApplicationEventPublisher.class);
         lifecycleService = new ArtifactLifecycleService(
-                catalog, artifactRepository, pinRepository, registry);
+                catalog, artifactRepository, pinRepository);
     }
 
     private void seedPinnedArtifactWithReplica(String replicaId) {

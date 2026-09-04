@@ -13,7 +13,6 @@ import com.example.platform.render.app.operation.TimelineMediaClipOperationServi
 import com.example.platform.render.app.operation.TimelineOperationException;
 import com.example.platform.shared.authorization.CanonicalActor;
 import com.example.platform.shared.authorization.CanonicalActorResolver;
-import com.example.platform.shared.web.ErrorCodeRegistry;
 import com.example.platform.shared.web.TenantContext;
 import com.example.platform.web.GlobalExceptionHandler;
 import java.util.List;
@@ -69,8 +68,7 @@ class TimelineMediaClipOperationControllerMockMvcTest {
                 CanonicalActor.user("actor-a", "tenant-a", Set.of(), "test")));
         var controller = new TimelineMediaClipOperationController(service, actorResolver);
         mvc = MockMvcBuilders.standaloneSetup(controller)
-                .setControllerAdvice(new GlobalExceptionHandler(
-                        mock(ErrorCodeRegistry.class), Optional.<SentryMonitoringService>empty()))
+                .setControllerAdvice(new GlobalExceptionHandler(Optional.<SentryMonitoringService>empty()))
                 .build();
     }
 

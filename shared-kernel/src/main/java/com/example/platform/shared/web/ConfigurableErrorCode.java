@@ -3,7 +3,7 @@ package com.example.platform.shared.web;
 import java.util.Map;
 
 /**
- * Configurable error code loaded from error-codes.json.
+ * Localized error code value.
  */
 public record ConfigurableErrorCode(
         String code,

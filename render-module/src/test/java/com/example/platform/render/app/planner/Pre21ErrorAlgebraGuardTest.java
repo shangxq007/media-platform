@@ -20,11 +20,9 @@ import static org.junit.jupiter.api.Assertions.*;
  *   OperationErrorCode, ...)
  * - provider adapters map provider-native errors (OpenDalErrorMapper, ...)
  * - API layer owns transport mapping (GlobalExceptionHandler, GraphQLExceptionMapper)
- * - shared ErrorCodeRegistry is a CONFIG-DRIVEN TRANSPORT code registry
- *   (error-codes.json), not a semantic mega authority
  *
  * Guards: no global mega ErrorCode type; no semantic switch inside the
- * registry; provider-native code types stay in provider modules.
+ * provider-native code types stay in provider modules.
  */
 class Pre21ErrorAlgebraGuardTest {
 
@@ -62,17 +60,6 @@ class Pre21ErrorAlgebraGuardTest {
         }
         assertEquals(List.of(), violations,
                 "GLOBAL_MEGA_ERROR_CODE_AUTHORITY_COUNT must be 0 — no Global/Mega/Universal ErrorCode type");
-    }
-
-    @Test
-    void sharedErrorCodeRegistryIsConfigDrivenTransportOnly() throws IOException {
-        Path registry = repoRoot().resolve("shared-kernel/src/main/java/com/example/platform/shared/web/ErrorCodeRegistry.java");
-        assertTrue(Files.exists(registry));
-        String c = Files.readString(registry);
-        // must load from config (error-codes.json) — not encode semantic switches
-        assertTrue(c.contains("error-codes.json"), "registry must be config-driven");
-        assertTrue(c.contains("ConfigurableErrorCode"), "registry holds configurable transport codes");
-        assertFalse(c.contains("switch ("), "registry must not contain semantic mapping switches");
     }
 
     @Test

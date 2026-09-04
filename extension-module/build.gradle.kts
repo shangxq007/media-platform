@@ -5,6 +5,7 @@ dependencies {
     // Direct Jackson 2.x usage (HttpSandboxWorkerAdapter); previously obtained
     // transitively via shared-kernel's removed databind export — K2-03
     implementation("com.fasterxml.jackson.core:jackson-databind")
+    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
     implementation("org.apache.commons:commons-exec:1.6.0")
     implementation("org.pf4j:pf4j:3.15.0")
     testImplementation("org.springframework.boot:spring-boot-starter-test")

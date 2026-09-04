@@ -2,7 +2,6 @@ package com.example.platform.payment.infrastructure;
 
 import com.example.platform.payment.domain.WebhookParseResult;
 import com.example.platform.payment.domain.PaymentState;
-import com.example.platform.shared.Jsons;
 import com.fasterxml.jackson.core.type.TypeReference;
 
 import java.time.Instant;
@@ -17,7 +16,7 @@ public final class WebhookPayloadSupport {
     public static WebhookParseResult parseCommerceWebhook(String body) {
         if (body == null || body.isBlank()) throw new IllegalArgumentException("Webhook body is required");
         try {
-            Map<String, Object> payload = Jsons.fromJson(body, MAP);
+            Map<String, Object> payload = PaymentWebhookJson.fromJson(body, MAP);
             Map<String, Object> object = nestedObject(payload);
             Map<String, Object> metadata = nestedMap(object.get("metadata"));
             String eventId = stringOr(payload.get("eventId"), payload.get("event_id"), payload.get("id"));

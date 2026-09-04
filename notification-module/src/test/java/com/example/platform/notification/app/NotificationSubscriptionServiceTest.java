@@ -10,7 +10,6 @@ import com.example.platform.notification.domain.NotificationEventDefinition;
 import com.example.platform.notification.domain.NotificationSubscription;
 import com.example.platform.shared.audit.AuditPort;
 import com.example.platform.shared.web.ConfigurableErrorCode;
-import com.example.platform.shared.web.ErrorCodeRegistry;
 import com.example.platform.shared.web.PlatformException;
 import java.util.List;
 import java.util.Map;
@@ -32,7 +31,6 @@ class NotificationSubscriptionServiceTest extends PostgresTestContainerSupport {
     private NotificationSubscriptionService subscriptionService;
     private NotificationEventCatalogService catalogService;
     private AuditPort audit;
-    private ErrorCodeRegistry errorCodeRegistry;
 
     private static final ConfigurableErrorCode SUBSCRIBABLE_ERROR = new ConfigurableErrorCode(
             "NOTIFICATION-400-001", 4002001,
@@ -69,15 +67,7 @@ class NotificationSubscriptionServiceTest extends PostgresTestContainerSupport {
         catalogService.init();
 
         audit = mock(AuditPort.class);
-        errorCodeRegistry = mock(ErrorCodeRegistry.class);
-        when(errorCodeRegistry.getRequiredErrorCode("NOTIFICATION_EVENT_NOT_SUBSCRIBABLE"))
-                .thenReturn(SUBSCRIBABLE_ERROR);
-        when(errorCodeRegistry.getRequiredErrorCode("NOTIFICATION_CRITICAL_CANNOT_DISABLE"))
-                .thenReturn(CRITICAL_DISABLE_ERROR);
-        when(errorCodeRegistry.getRequiredErrorCode("NOTIFICATION_SUBSCRIPTION_NOT_FOUND"))
-                .thenReturn(SUBSCRIPTION_NOT_FOUND_ERROR);
-
-        subscriptionService = new NotificationSubscriptionService(dsl, audit, errorCodeRegistry, catalogService);
+        subscriptionService = new NotificationSubscriptionService(dsl, audit, catalogService);
     }
 
     @Test

@@ -1,7 +1,6 @@
 package com.example.platform.analytics.infrastructure;
 
 import com.example.platform.analytics.domain.UserProfile;
-import com.example.platform.shared.Jsons;
 import com.fasterxml.jackson.core.type.TypeReference;
 
 import org.springframework.context.annotation.Primary;
@@ -39,9 +38,9 @@ public class JdbcUserProfileRepository implements UserProfileRepository {
                 WHERE tenant_id = ? AND user_id = ?
                 """,
                 profile.displayName(),
-                Jsons.toJson(profile.preferredLanguages()),
-                Jsons.toJson(profile.featureUsageCounts()),
-                Jsons.toJson(profile.actionCounts()),
+                AnalyticsPersistenceJson.toJson(profile.preferredLanguages()),
+                AnalyticsPersistenceJson.toJson(profile.featureUsageCounts()),
+                AnalyticsPersistenceJson.toJson(profile.actionCounts()),
                 profile.totalSessions(),
                 profile.totalActions(),
                 profile.firstSeenAt() != null ? Timestamp.from(profile.firstSeenAt()) : null,
@@ -61,9 +60,9 @@ public class JdbcUserProfileRepository implements UserProfileRepository {
                     profile.tenantId(),
                     profile.userId(),
                     profile.displayName(),
-                    Jsons.toJson(profile.preferredLanguages()),
-                    Jsons.toJson(profile.featureUsageCounts()),
-                    Jsons.toJson(profile.actionCounts()),
+                    AnalyticsPersistenceJson.toJson(profile.preferredLanguages()),
+                    AnalyticsPersistenceJson.toJson(profile.featureUsageCounts()),
+                    AnalyticsPersistenceJson.toJson(profile.actionCounts()),
                     profile.totalSessions(),
                     profile.totalActions(),
                     profile.firstSeenAt() != null ? Timestamp.from(profile.firstSeenAt()) : null,
@@ -126,12 +125,12 @@ public class JdbcUserProfileRepository implements UserProfileRepository {
 
     private static Set<String> parseSet(String json) {
         if (json == null || json.isBlank()) return Set.of();
-        return Jsons.fromJson(json, STRING_SET);
+        return AnalyticsPersistenceJson.fromJson(json, STRING_SET);
     }
 
     private static Map<String, Integer> parseIntMap(String json) {
         if (json == null || json.isBlank()) return Map.of();
-        return Jsons.fromJson(json, INT_MAP);
+        return AnalyticsPersistenceJson.fromJson(json, INT_MAP);
     }
 
     private static Instant toInstant(Timestamp ts) {

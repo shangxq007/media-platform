@@ -5,7 +5,6 @@ import com.example.platform.federation.nlq.domain.ReportDefinition;
 import com.example.platform.federation.nlq.domain.ReportExecution;
 import com.example.platform.federation.nlq.domain.ReportSchedule;
 import com.example.platform.federation.nlq.domain.ReportWidget;
-import com.example.platform.shared.Jsons;
 import com.fasterxml.jackson.core.type.TypeReference;
 
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -44,11 +43,11 @@ public class NlqJdbcRepository {
                 report.workspaceId(),
                 report.name(),
                 report.description(),
-                Jsons.toJson(report.widgets()),
-                Jsons.toJson(report.queryDefinitions()),
+                NlqPersistenceJson.toJson(report.widgets()),
+                NlqPersistenceJson.toJson(report.queryDefinitions()),
                 report.createdBy(),
                 report.visibility(),
-                report.schedule() != null ? Jsons.toJson(report.schedule()) : null,
+                report.schedule() != null ? NlqPersistenceJson.toJson(report.schedule()) : null,
                 Timestamp.from(report.updatedAt()),
                 report.archived(),
                 report.reportId());
@@ -65,11 +64,11 @@ public class NlqJdbcRepository {
                     report.workspaceId(),
                     report.name(),
                     report.description(),
-                    Jsons.toJson(report.widgets()),
-                    Jsons.toJson(report.queryDefinitions()),
+                    NlqPersistenceJson.toJson(report.widgets()),
+                    NlqPersistenceJson.toJson(report.queryDefinitions()),
                     report.createdBy(),
                     report.visibility(),
-                    report.schedule() != null ? Jsons.toJson(report.schedule()) : null,
+                    report.schedule() != null ? NlqPersistenceJson.toJson(report.schedule()) : null,
                     Timestamp.from(report.createdAt()),
                     Timestamp.from(report.updatedAt()),
                     report.archived());
@@ -89,7 +88,7 @@ public class NlqJdbcRepository {
                 record.workspaceId(),
                 record.questionRedacted(),
                 record.sqlHash(),
-                Jsons.toJson(record.datasets()),
+                NlqPersistenceJson.toJson(record.datasets()),
                 record.rowCount(),
                 record.durationMs(),
                 record.riskLevel(),
@@ -128,7 +127,7 @@ public class NlqJdbcRepository {
     private ReportDefinition mapReport(ResultSet rs, int rowNum) throws SQLException {
         String scheduleJson = rs.getString("schedule_json");
         ReportSchedule schedule = scheduleJson != null && !scheduleJson.isBlank()
-                ? Jsons.fromJson(scheduleJson, ReportSchedule.class)
+                ? NlqPersistenceJson.fromJson(scheduleJson, ReportSchedule.class)
                 : null;
         return new ReportDefinition(
                 rs.getString("report_id"),
@@ -178,14 +177,14 @@ public class NlqJdbcRepository {
         if (json == null || json.isBlank()) {
             return List.of();
         }
-        return Jsons.fromJson(json, WIDGET_LIST);
+        return NlqPersistenceJson.fromJson(json, WIDGET_LIST);
     }
 
     private static List<String> parseStringList(String json) {
         if (json == null || json.isBlank()) {
             return List.of();
         }
-        return Jsons.fromJson(json, STRING_LIST);
+        return NlqPersistenceJson.fromJson(json, STRING_LIST);
     }
 
     private static Instant toInstant(Timestamp ts) {

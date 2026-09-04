@@ -4,7 +4,6 @@ import static com.example.platform.typedschema.jooq.generated.tables.Notificatio
 
 import com.example.platform.notification.domain.NotificationPreference;
 import com.example.platform.shared.Ids;
-import com.example.platform.shared.Jsons;
 import com.example.platform.shared.audit.AuditPort;
 import com.example.platform.shared.web.TenantContext;
 import java.time.LocalDateTime;
@@ -50,8 +49,8 @@ public class NotificationPreferenceService {
                 .set(NOTIFICATION_PREFERENCE.TENANT_ID, tenantId)
                 .set(NOTIFICATION_PREFERENCE.USER_ID, userId)
                 .set(NOTIFICATION_PREFERENCE.GLOBAL_ENABLED, globalEnabled)
-                .set(NOTIFICATION_PREFERENCE.CHANNEL_ENABLED, Jsons.toJson(channelEnabled != null ? channelEnabled : Map.of()))
-                .set(NOTIFICATION_PREFERENCE.EVENT_ENABLED, Jsons.toJson(eventEnabled != null ? eventEnabled : Map.of()))
+                .set(NOTIFICATION_PREFERENCE.CHANNEL_ENABLED, NotificationPayloadJson.toJson(channelEnabled != null ? channelEnabled : Map.of()))
+                .set(NOTIFICATION_PREFERENCE.EVENT_ENABLED, NotificationPayloadJson.toJson(eventEnabled != null ? eventEnabled : Map.of()))
                 .set(NOTIFICATION_PREFERENCE.QUIET_HOURS_START, quietHoursStart)
                 .set(NOTIFICATION_PREFERENCE.QUIET_HOURS_END, quietHoursEnd)
                 .set(NOTIFICATION_PREFERENCE.QUIET_HOURS_TIMEZONE, quietHoursTimezone)
@@ -62,8 +61,8 @@ public class NotificationPreferenceService {
                 .onConflict(NOTIFICATION_PREFERENCE.TENANT_ID, NOTIFICATION_PREFERENCE.USER_ID)
                 .doUpdate()
                 .set(NOTIFICATION_PREFERENCE.GLOBAL_ENABLED, globalEnabled)
-                .set(NOTIFICATION_PREFERENCE.CHANNEL_ENABLED, Jsons.toJson(channelEnabled != null ? channelEnabled : Map.of()))
-                .set(NOTIFICATION_PREFERENCE.EVENT_ENABLED, Jsons.toJson(eventEnabled != null ? eventEnabled : Map.of()))
+                .set(NOTIFICATION_PREFERENCE.CHANNEL_ENABLED, NotificationPayloadJson.toJson(channelEnabled != null ? channelEnabled : Map.of()))
+                .set(NOTIFICATION_PREFERENCE.EVENT_ENABLED, NotificationPayloadJson.toJson(eventEnabled != null ? eventEnabled : Map.of()))
                 .set(NOTIFICATION_PREFERENCE.QUIET_HOURS_START, quietHoursStart)
                 .set(NOTIFICATION_PREFERENCE.QUIET_HOURS_END, quietHoursEnd)
                 .set(NOTIFICATION_PREFERENCE.QUIET_HOURS_TIMEZONE, quietHoursTimezone)
@@ -97,8 +96,8 @@ public class NotificationPreferenceService {
                 .set(NOTIFICATION_PREFERENCE.TENANT_ID, tenantId)
                 .set(NOTIFICATION_PREFERENCE.USER_ID, userId)
                 .set(NOTIFICATION_PREFERENCE.GLOBAL_ENABLED, true)
-                .set(NOTIFICATION_PREFERENCE.CHANNEL_ENABLED, Jsons.toJson(defaultChannels))
-                .set(NOTIFICATION_PREFERENCE.EVENT_ENABLED, Jsons.toJson(Map.of()))
+                .set(NOTIFICATION_PREFERENCE.CHANNEL_ENABLED, NotificationPayloadJson.toJson(defaultChannels))
+                .set(NOTIFICATION_PREFERENCE.EVENT_ENABLED, NotificationPayloadJson.toJson(Map.of()))
                 .set(NOTIFICATION_PREFERENCE.DIGEST_MODE, "IMMEDIATE")
                 .set(NOTIFICATION_PREFERENCE.CRITICAL_OVERRIDE, true)
                 .set(NOTIFICATION_PREFERENCE.CREATED_AT, now)
@@ -117,11 +116,11 @@ public class NotificationPreferenceService {
     private NotificationPreference mapRecord(Record rec) {
         String channelEnabledRaw = rec.get(NOTIFICATION_PREFERENCE.CHANNEL_ENABLED);
         Map<String, Boolean> channelEnabled = channelEnabledRaw != null && !channelEnabledRaw.isBlank()
-                ? Jsons.fromJson(channelEnabledRaw, Map.class) : Map.of();
+                ? NotificationPayloadJson.fromJson(channelEnabledRaw, Map.class) : Map.of();
 
         String eventEnabledRaw = rec.get(NOTIFICATION_PREFERENCE.EVENT_ENABLED);
         Map<String, Boolean> eventEnabled = eventEnabledRaw != null && !eventEnabledRaw.isBlank()
-                ? Jsons.fromJson(eventEnabledRaw, Map.class) : Map.of();
+                ? NotificationPayloadJson.fromJson(eventEnabledRaw, Map.class) : Map.of();
 
         LocalDateTime createdAtLdt = rec.get(NOTIFICATION_PREFERENCE.CREATED_AT);
         LocalDateTime updatedAtLdt = rec.get(NOTIFICATION_PREFERENCE.UPDATED_AT);

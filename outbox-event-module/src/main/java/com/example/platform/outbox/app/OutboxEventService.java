@@ -1,7 +1,6 @@
 package com.example.platform.outbox.app;
 
 import com.example.platform.shared.Ids;
-import com.example.platform.shared.Jsons;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -226,7 +225,7 @@ public class OutboxEventService {
                 // If PENDING or FAILED, update payload and reset to PENDING
                 if (STATUS_PENDING.equals(existingStatus) || STATUS_FAILED.equals(existingStatus)) {
                     dsl.update(OUTBOX_EVENTS)
-                            .set(OUTBOX_EVENTS.PAYLOAD, Jsons.toJson(payload))
+                            .set(OUTBOX_EVENTS.PAYLOAD, OutboxPayloadJson.toJson(payload))
                             .set(OUTBOX_EVENTS.STATUS, STATUS_PENDING)
                             .set(OUTBOX_EVENTS.RETRY_COUNT, 0)
                             .set(OUTBOX_EVENTS.NEXT_ATTEMPT_AT, (LocalDateTime) null)
@@ -267,7 +266,7 @@ public class OutboxEventService {
                             aggregateId,
                             eventType,
                             eventVersion,
-                            Jsons.toJson(payload),
+                            OutboxPayloadJson.toJson(payload),
                             STATUS_PENDING,
                             0,
                             maxRetries,
@@ -301,7 +300,7 @@ public class OutboxEventService {
                             aggregateId,
                             eventType,
                             eventVersion,
-                            Jsons.toJson(payload),
+                            OutboxPayloadJson.toJson(payload),
                             STATUS_PENDING,
                             0,
                             (LocalDateTime) null,

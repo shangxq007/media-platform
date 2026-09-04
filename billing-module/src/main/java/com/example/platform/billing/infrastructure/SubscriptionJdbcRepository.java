@@ -5,7 +5,6 @@ import com.example.platform.billing.domain.SubscriptionCommandResult;
 import com.example.platform.billing.domain.SubscriptionContract;
 import com.example.platform.billing.domain.SubscriptionContractRole;
 import com.example.platform.billing.domain.SubscriptionPlan;
-import com.example.platform.shared.Jsons;
 import com.example.platform.shared.commercial.PrincipalRef;
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.sql.ResultSet;
@@ -29,7 +28,7 @@ public class SubscriptionJdbcRepository {
     public SubscriptionJdbcRepository(JdbcTemplate jdbc) { this.jdbc = jdbc; }
 
     public void savePlan(SubscriptionPlan plan) {
-        String quotaJson = plan.includedQuota() == null ? null : Jsons.toJson(plan.includedQuota());
+        String quotaJson = plan.includedQuota() == null ? null : BillingPersistenceJson.toJson(plan.includedQuota());
         int updated = jdbc.update("""
                 UPDATE subscription_plan SET name = ?, description = ?, billing_interval = ?,
                     base_price_minor = ?, currency_code = ?, included_quota = ?, status = ?, updated_at = ?
@@ -75,7 +74,7 @@ public class SubscriptionJdbcRepository {
                         throw new IllegalStateException("Subscription command has no committed result");
                     }
                     return new SubscriptionCommandResult(rs.getString("id"),
-                            Jsons.fromJson(snapshot, SubscriptionContract.class));
+                            BillingPersistenceJson.fromJson(snapshot, SubscriptionContract.class));
                 }, command.principal().tenantId(), command.idempotencyKey());
         if (rows.size() != 1) throw new IllegalStateException("Subscription command claim not found");
         return rows.get(0);
@@ -85,7 +84,7 @@ public class SubscriptionJdbcRepository {
         int updated = jdbc.update("""
                 UPDATE subscription_command SET result_snapshot = ?, completed_at = ?
                 WHERE id = ? AND result_snapshot IS NULL
-                """, Jsons.toJson(contract), Timestamp.from(completedAt), commandId);
+                """, BillingPersistenceJson.toJson(contract), Timestamp.from(completedAt), commandId);
         if (updated != 1) throw new IllegalStateException("Subscription command audit completion failed");
     }
 
@@ -177,7 +176,7 @@ public class SubscriptionJdbcRepository {
     private SubscriptionPlan mapPlan(ResultSet rs, int rowNum) throws SQLException {
         String quotaRaw = rs.getString("included_quota");
         Map<String, Long> quota = quotaRaw == null || quotaRaw.isBlank()
-                ? Map.of() : Jsons.fromJson(quotaRaw, QUOTA_MAP);
+                ? Map.of() : BillingPersistenceJson.fromJson(quotaRaw, QUOTA_MAP);
         return new SubscriptionPlan(rs.getString("id"), rs.getString("plan_key"),
                 rs.getString("name"), rs.getString("description"), rs.getString("billing_interval"),
                 rs.getLong("base_price_minor"), rs.getString("currency_code"), quota,
@@ -188,7 +187,7 @@ public class SubscriptionJdbcRepository {
     private SubscriptionContract mapContract(ResultSet rs, int rowNum) throws SQLException {
         String raw = rs.getString("included_quota_used");
         Map<String, Object> meta = raw == null || raw.isBlank()
-                ? Map.of() : Jsons.fromJson(raw, CONTRACT_META);
+                ? Map.of() : BillingPersistenceJson.fromJson(raw, CONTRACT_META);
         Timestamp end = rs.getTimestamp("period_end_at");
         return new SubscriptionContract(rs.getString("id"), rs.getString("tenant_id"),
                 rs.getString("subject_id"), rs.getString("plan_key"),
@@ -201,7 +200,7 @@ public class SubscriptionJdbcRepository {
     }
 
     private static String metadata(SubscriptionContract contract) {
-        return Jsons.toJson(Map.of(
+        return BillingPersistenceJson.toJson(Map.of(
                 "basePriceMinor", contract.basePriceMinor(),
                 "currencyCode", contract.currencyCode(),
                 "includedQuota", contract.includedQuota() == null ? Map.of() : contract.includedQuota(),

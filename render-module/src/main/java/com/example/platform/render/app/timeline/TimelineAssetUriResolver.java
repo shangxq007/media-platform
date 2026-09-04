@@ -1,7 +1,5 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.shared.web.ErrorCodeRegistry;
-import com.example.platform.shared.web.MediaAssetErrors;
 import com.example.platform.shared.web.PlatformException;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.stereotype.Component;
@@ -13,11 +11,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class TimelineAssetUriResolver {
 
-    private final ErrorCodeRegistry errorCodeRegistry;
-
-    public TimelineAssetUriResolver(ErrorCodeRegistry errorCodeRegistry) {
-        this.errorCodeRegistry = errorCodeRegistry;
-    }
+    public TimelineAssetUriResolver() {}
 
     public String resolve(JsonNode clipNode, String assetId, JsonNode assetRegistry) {
         if (clipNode != null && clipNode.has("uri")) {
@@ -27,16 +21,16 @@ public class TimelineAssetUriResolver {
             }
         }
         if (assetRegistry == null || !assetRegistry.isObject() || !assetRegistry.has(assetId)) {
-            throw MediaAssetErrors.assetNotFound(errorCodeRegistry, assetId);
+            throw RenderAssetErrors.assetNotFound(assetId);
         }
         JsonNode entry = assetRegistry.get(assetId);
         String status = entry.path("status").asText("ACTIVE");
         if ("TOMBSTONED".equalsIgnoreCase(status) || "PURGED".equalsIgnoreCase(status)) {
-            throw MediaAssetErrors.assetTombstoned(errorCodeRegistry, assetId);
+            throw RenderAssetErrors.assetTombstoned(assetId);
         }
         String uri = entry.path("uri").asText("");
         if (uri.isBlank() || uri.startsWith("asset://")) {
-            throw MediaAssetErrors.assetNotFound(errorCodeRegistry, assetId);
+            throw RenderAssetErrors.assetNotFound(assetId);
         }
         return uri;
     }

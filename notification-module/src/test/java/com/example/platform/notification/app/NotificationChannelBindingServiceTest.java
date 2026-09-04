@@ -9,7 +9,6 @@ import com.example.platform.notification.domain.NotificationChannelBinding;
 import com.example.platform.notification.infrastructure.WebhookUrlValidator;
 import com.example.platform.shared.audit.AuditPort;
 import com.example.platform.shared.web.ConfigurableErrorCode;
-import com.example.platform.shared.web.ErrorCodeRegistry;
 import com.example.platform.shared.web.PlatformException;
 import java.util.List;
 import java.util.Map;
@@ -21,7 +20,6 @@ class NotificationChannelBindingServiceTest extends NotificationTestBase {
 
     private NotificationChannelBindingService bindingService;
     private AuditPort audit;
-    private ErrorCodeRegistry errorCodeRegistry;
     private WebhookUrlValidator webhookUrlValidator;
 
     private static final ConfigurableErrorCode CHANNEL_UNSUPPORTED = new ConfigurableErrorCode(
@@ -52,21 +50,9 @@ class NotificationChannelBindingServiceTest extends NotificationTestBase {
     @BeforeEach
     void setUp() {
         audit = mock(AuditPort.class);
-        errorCodeRegistry = mock(ErrorCodeRegistry.class);
         webhookUrlValidator = mock(WebhookUrlValidator.class);
 
-        when(errorCodeRegistry.getRequiredErrorCode("NOTIFICATION_CHANNEL_UNSUPPORTED"))
-                .thenReturn(CHANNEL_UNSUPPORTED);
-        when(errorCodeRegistry.getRequiredErrorCode("NOTIFICATION_CHANNEL_NOT_FOUND"))
-                .thenReturn(CHANNEL_NOT_FOUND);
-        when(errorCodeRegistry.getRequiredErrorCode("NOTIFICATION_WEBHOOK_URL_INVALID"))
-                .thenReturn(WEBHOOK_URL_INVALID);
-        when(errorCodeRegistry.getRequiredErrorCode("NOTIFICATION_WEBHOOK_PRIVATE_IP_BLOCKED"))
-                .thenReturn(WEBHOOK_PRIVATE_IP_BLOCKED);
-        when(errorCodeRegistry.getRequiredErrorCode("NOTIFICATION_CHANNEL_TEST_FAILED"))
-                .thenReturn(CHANNEL_TEST_FAILED);
-
-        bindingService = new NotificationChannelBindingService(dsl, audit, errorCodeRegistry, webhookUrlValidator);
+        bindingService = new NotificationChannelBindingService(dsl, audit, webhookUrlValidator);
     }
 
     @Test

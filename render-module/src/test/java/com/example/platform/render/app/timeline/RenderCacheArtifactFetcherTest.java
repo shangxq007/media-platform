@@ -7,8 +7,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.example.platform.render.domain.interchange.TimelineScriptParser;
-import com.example.platform.shared.web.ErrorCodeRegistry;
-import com.example.platform.shared.web.MediaAssetErrors;
 import com.example.platform.shared.web.PlatformException;
 import com.example.platform.storage.domain.BlobStorage;
 import java.util.Optional;
@@ -23,9 +21,7 @@ class RenderCacheArtifactFetcherTest {
     @BeforeEach
     void setUp() {
         blobStorage = mock(BlobStorage.class);
-        ErrorCodeRegistry registry = new ErrorCodeRegistry();
-        registry.loadErrorCodes();
-        fetcher = new RenderCacheArtifactFetcher(blobStorage, new TimelineScriptParser(), registry);
+        fetcher = new RenderCacheArtifactFetcher(blobStorage, new TimelineScriptParser());
     }
 
     @Test
@@ -33,6 +29,6 @@ class RenderCacheArtifactFetcherTest {
         when(blobStorage.get(anyString(), anyString())).thenReturn(Optional.empty());
         PlatformException ex = assertThrows(PlatformException.class,
                 () -> fetcher.fetchBytes("s3://bucket/missing.mp4"));
-        assertEquals(MediaAssetErrors.STORAGE_NOT_FOUND, ex.getErrorCode().code());
+        assertEquals(RenderAssetErrors.STORAGE_NOT_FOUND, ex.getErrorCode().code());
     }
 }

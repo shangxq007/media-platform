@@ -5,10 +5,7 @@ import static com.example.platform.typedschema.jooq.generated.tables.Notificatio
 import com.example.platform.notification.domain.NotificationEventDefinition;
 import com.example.platform.notification.domain.NotificationSubscription;
 import com.example.platform.shared.Ids;
-import com.example.platform.shared.Jsons;
 import com.example.platform.shared.audit.AuditPort;
-import com.example.platform.shared.web.ConfigurableErrorCode;
-import com.example.platform.shared.web.ErrorCodeRegistry;
 import com.example.platform.shared.web.PlatformException;
 import com.example.platform.shared.web.TenantContext;
 import java.time.LocalDateTime;
@@ -27,14 +24,12 @@ public class NotificationSubscriptionService {
 
     private final DSLContext dsl;
     private final AuditPort audit;
-    private final ErrorCodeRegistry errorCodeRegistry;
     private final NotificationEventCatalogService catalogService;
 
     public NotificationSubscriptionService(DSLContext dsl, AuditPort audit,
-            ErrorCodeRegistry errorCodeRegistry, NotificationEventCatalogService catalogService) {
+            NotificationEventCatalogService catalogService) {
         this.dsl = dsl;
         this.audit = audit;
-        this.errorCodeRegistry = errorCodeRegistry;
         this.catalogService = catalogService;
     }
 
@@ -73,12 +68,12 @@ public class NotificationSubscriptionService {
 
     public NotificationSubscription upsertSubscription(String userId, String eventKey, boolean enabled, List<String> channels) {
         if (!catalogService.isSubscribable(eventKey)) {
-            throw new PlatformException(getErrorCode("NOTIFICATION_EVENT_NOT_SUBSCRIBABLE"),
+            throw new PlatformException(NotificationErrorCodes.EVENT_NOT_SUBSCRIBABLE,
                     "Event is not subscribable: " + eventKey);
         }
 
         if (catalogService.isCritical(eventKey) && !enabled) {
-            throw new PlatformException(getErrorCode("NOTIFICATION_CRITICAL_CANNOT_DISABLE"),
+            throw new PlatformException(NotificationErrorCodes.CRITICAL_CANNOT_DISABLE,
                     "Critical event cannot be disabled: " + eventKey);
         }
 
@@ -91,12 +86,12 @@ public class NotificationSubscriptionService {
 
     public NotificationSubscription createSubscription(String userId, String eventKey, boolean enabled, List<String> channels) {
         if (!catalogService.isSubscribable(eventKey)) {
-            throw new PlatformException(getErrorCode("NOTIFICATION_EVENT_NOT_SUBSCRIBABLE"),
+            throw new PlatformException(NotificationErrorCodes.EVENT_NOT_SUBSCRIBABLE,
                     "Event is not subscribable: " + eventKey);
         }
 
         if (catalogService.isCritical(eventKey) && !enabled) {
-            throw new PlatformException(getErrorCode("NOTIFICATION_CRITICAL_CANNOT_DISABLE"),
+            throw new PlatformException(NotificationErrorCodes.CRITICAL_CANNOT_DISABLE,
                     "Critical event cannot be disabled: " + eventKey);
         }
 
@@ -110,7 +105,7 @@ public class NotificationSubscriptionService {
                         NOTIFICATION_SUBSCRIPTION.FREQUENCY, NOTIFICATION_SUBSCRIPTION.CREATED_AT, NOTIFICATION_SUBSCRIPTION.UPDATED_AT)
                 .values(subscriptionId, tenantId, userId,
                         eventKey, enabled,
-                        Jsons.toJson(channels != null && !channels.isEmpty() ? channels : List.of("IN_APP", "EMAIL")),
+                        NotificationPayloadJson.toJson(channels != null && !channels.isEmpty() ? channels : List.of("IN_APP", "EMAIL")),
                         "IMMEDIATE", now, now)
                 .execute();
 
@@ -125,18 +120,18 @@ public class NotificationSubscriptionService {
 
     public NotificationSubscription updateSubscription(String userId, String eventKey, boolean enabled, List<String> channels) {
         NotificationSubscription existing = findSubscription(userId, eventKey)
-                .orElseThrow(() -> new PlatformException(getErrorCode("NOTIFICATION_SUBSCRIPTION_NOT_FOUND"),
+                .orElseThrow(() -> new PlatformException(NotificationErrorCodes.SUBSCRIPTION_NOT_FOUND,
                         "Subscription not found for event: " + eventKey));
 
         if (catalogService.isCritical(eventKey) && !enabled) {
-            throw new PlatformException(getErrorCode("NOTIFICATION_CRITICAL_CANNOT_DISABLE"),
+            throw new PlatformException(NotificationErrorCodes.CRITICAL_CANNOT_DISABLE,
                     "Critical event cannot be disabled: " + eventKey);
         }
 
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
         dsl.update(NOTIFICATION_SUBSCRIPTION)
                 .set(NOTIFICATION_SUBSCRIPTION.ENABLED, enabled)
-                .set(NOTIFICATION_SUBSCRIPTION.CHANNELS, Jsons.toJson(channels != null && !channels.isEmpty() ? channels : existing.channels()))
+                .set(NOTIFICATION_SUBSCRIPTION.CHANNELS, NotificationPayloadJson.toJson(channels != null && !channels.isEmpty() ? channels : existing.channels()))
                 .set(NOTIFICATION_SUBSCRIPTION.UPDATED_AT, now)
                 .where(NOTIFICATION_SUBSCRIPTION.ID.eq(existing.subscriptionId()))
                 .execute();
@@ -167,11 +162,11 @@ public class NotificationSubscriptionService {
     private NotificationSubscription mapRecord(org.jooq.Record rec) {
         String channelsRaw = rec.get(NOTIFICATION_SUBSCRIPTION.CHANNELS);
         List<String> channels = channelsRaw != null && !channelsRaw.isBlank()
-                ? Jsons.fromJson(channelsRaw, List.class) : List.of("IN_APP", "EMAIL");
+                ? NotificationPayloadJson.fromJson(channelsRaw, List.class) : List.of("IN_APP", "EMAIL");
 
         String filtersRaw = rec.get(NOTIFICATION_SUBSCRIPTION.FILTERS);
         Map<String, String> filters = filtersRaw != null && !filtersRaw.isBlank()
-                ? Jsons.fromJson(filtersRaw, Map.class) : Map.of();
+                ? NotificationPayloadJson.fromJson(filtersRaw, Map.class) : Map.of();
 
         return new NotificationSubscription(
                 rec.get(NOTIFICATION_SUBSCRIPTION.ID),
@@ -191,7 +186,4 @@ public class NotificationSubscriptionService {
         );
     }
 
-    private ConfigurableErrorCode getErrorCode(String code) {
-        return errorCodeRegistry.getRequiredErrorCode(code);
-    }
 }

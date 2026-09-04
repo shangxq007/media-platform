@@ -24,12 +24,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class K1RedSharedKernelSkeletonAbsenceTest {
 
-    private static final List<String> KNOWN_RETAINED_SHARED_KERNEL_BEANS = List.of(
-            // Legitimate retained infrastructure: loads error-codes.json. NOT part of the
-            // capability skeleton. Has ~28 consumers across the platform.
-            "com.example.platform.shared.web.ErrorCodeRegistry"
-    );
-
     private Path repoRoot() {
         Path p = Path.of("").toAbsolutePath();
         while (p != null && !Files.exists(p.resolve("settings.gradle.kts"))) {
@@ -134,7 +128,6 @@ class K1RedSharedKernelSkeletonAbsenceTest {
                     String fqcn = (dot >= 0 ? rel.substring(0, dot) : rel).replace('/', '.');
                     return fqcn;
                 })
-                .filter(fqcn -> KNOWN_RETAINED_SHARED_KERNEL_BEANS.stream().noneMatch(fqcn::endsWith))
                 .toList();
         assertTrue(nonRetained.isEmpty(),
                 "K1-RED-04: shared-kernel must contain no skeleton spring beans; unexpected: " + nonRetained);

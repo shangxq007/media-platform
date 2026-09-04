@@ -4,7 +4,6 @@ import com.example.platform.policy.featureflag.domain.FeatureFlagDefinition;
 import com.example.platform.policy.featureflag.domain.FeatureFlagTargetingRule;
 import com.example.platform.policy.featureflag.domain.FeatureFlagType;
 import com.example.platform.shared.Ids;
-import com.example.platform.shared.Jsons;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -67,9 +66,9 @@ public class FeatureFlagJdbcStore implements FeatureFlagPersistence {
                     definition.description(),
                     definition.flagType().name(),
                     definition.enabled(),
-                    Jsons.toJson(definition.defaultValue()),
-                    Jsons.toJson(definition.variants()),
-                    Jsons.toJson(definition.tags()),
+                    FeatureFlagPersistenceJson.toJson(definition.defaultValue()),
+                    FeatureFlagPersistenceJson.toJson(definition.variants()),
+                    FeatureFlagPersistenceJson.toJson(definition.tags()),
                     definition.owner(),
                     definition.archived(),
                     Timestamp.from(definition.createdAt() != null ? definition.createdAt() : Instant.now()),
@@ -85,9 +84,9 @@ public class FeatureFlagJdbcStore implements FeatureFlagPersistence {
                     definition.description(),
                     definition.flagType().name(),
                     definition.enabled(),
-                    Jsons.toJson(definition.defaultValue()),
-                    Jsons.toJson(definition.variants()),
-                    Jsons.toJson(definition.tags()),
+                    FeatureFlagPersistenceJson.toJson(definition.defaultValue()),
+                    FeatureFlagPersistenceJson.toJson(definition.variants()),
+                    FeatureFlagPersistenceJson.toJson(definition.tags()),
                     definition.owner(),
                     definition.archived(),
                     Timestamp.from(Instant.now()),
@@ -123,14 +122,14 @@ public class FeatureFlagJdbcStore implements FeatureFlagPersistence {
                 rule.percentage(),
                 rule.priority() != null ? rule.priority() : 0,
                 rule.enabled(),
-                Jsons.toJson(rule),
+                FeatureFlagPersistenceJson.toJson(rule),
                 Timestamp.from(Instant.now()));
     }
 
     public List<FeatureFlagTargetingRule> findRules(String flagKey) {
         return jdbc.query(
                 "SELECT rule_json FROM feature_flag_targeting_rule WHERE flag_key = ? ORDER BY priority",
-                (rs, rowNum) -> Jsons.fromJson(rs.getString("rule_json"), FeatureFlagTargetingRule.class),
+                (rs, rowNum) -> FeatureFlagPersistenceJson.fromJson(rs.getString("rule_json"), FeatureFlagTargetingRule.class),
                 flagKey);
     }
 
@@ -148,11 +147,11 @@ public class FeatureFlagJdbcStore implements FeatureFlagPersistence {
                 rs.getString("description"),
                 flagType != null ? FeatureFlagType.valueOf(flagType) : FeatureFlagType.BOOLEAN,
                 parseDefaultValue(rs.getString("default_value_json")),
-                Jsons.fromJsonList(rs.getString("variants_json"), com.example.platform.policy.featureflag.domain.FeatureFlagVariant.class),
+                FeatureFlagPersistenceJson.fromJsonList(rs.getString("variants_json"), com.example.platform.policy.featureflag.domain.FeatureFlagVariant.class),
                 new ArrayList<>(),
                 rs.getBoolean("enabled"),
                 rs.getString("owner"),
-                Jsons.fromJsonList(rs.getString("tags_json"), String.class),
+                FeatureFlagPersistenceJson.fromJsonList(rs.getString("tags_json"), String.class),
                 created != null ? created.toInstant() : Instant.now(),
                 updated != null ? updated.toInstant() : Instant.now(),
                 rs.getBoolean("archived"));
@@ -162,7 +161,7 @@ public class FeatureFlagJdbcStore implements FeatureFlagPersistence {
         if (json == null || json.isBlank()) {
             return false;
         }
-        return Jsons.fromJson(json, Object.class);
+        return FeatureFlagPersistenceJson.fromJson(json, Object.class);
     }
 
     private static FeatureFlagDefinition copyWithRules(FeatureFlagDefinition def, List<FeatureFlagTargetingRule> rules) {

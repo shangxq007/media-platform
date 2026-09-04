@@ -1,7 +1,6 @@
 package com.example.platform.analytics.infrastructure;
 
 import com.example.platform.analytics.domain.UserBehaviorEvent;
-import com.example.platform.shared.Jsons;
 import com.fasterxml.jackson.core.type.TypeReference;
 
 import org.springframework.context.annotation.Primary;
@@ -45,7 +44,7 @@ public class JdbcUserBehaviorEventRepository implements UserBehaviorEventReposit
                 event.action(),
                 event.resourceType(),
                 event.resourceId(),
-                Jsons.toJson(event.metadata()),
+                AnalyticsPersistenceJson.toJson(event.metadata()),
                 Timestamp.from(event.occurredAt()));
         return event;
     }
@@ -100,7 +99,7 @@ public class JdbcUserBehaviorEventRepository implements UserBehaviorEventReposit
     private UserBehaviorEvent map(ResultSet rs, int rowNum) throws SQLException {
         String metaRaw = rs.getString("metadata_json");
         Map<String, String> metadata = metaRaw != null && !metaRaw.isBlank()
-                ? Jsons.fromJson(metaRaw, METADATA_MAP)
+                ? AnalyticsPersistenceJson.fromJson(metaRaw, METADATA_MAP)
                 : Map.of();
         Timestamp occurred = rs.getTimestamp("occurred_at");
         return new UserBehaviorEvent(

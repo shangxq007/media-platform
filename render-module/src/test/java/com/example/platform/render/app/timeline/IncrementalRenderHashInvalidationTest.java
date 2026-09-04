@@ -51,10 +51,7 @@ class IncrementalRenderHashInvalidationTest {
         com.example.platform.storage.domain.BlobStorage blobStorage =
                 mock(com.example.platform.storage.domain.BlobStorage.class);
         TimelineScriptParser parser = new TimelineScriptParser();
-        com.example.platform.shared.web.ErrorCodeRegistry registry =
-                new com.example.platform.shared.web.ErrorCodeRegistry();
-        registry.loadErrorCodes();
-        RenderCacheArtifactFetcher fetcher = new RenderCacheArtifactFetcher(blobStorage, parser, registry);
+        RenderCacheArtifactFetcher fetcher = new RenderCacheArtifactFetcher(blobStorage, parser);
         RenderCacheReuseValidator validator = new RenderCacheReuseValidator(cacheProps, parser, fetcher);
 
         service = new IncrementalRenderPlanService(
