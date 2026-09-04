@@ -35,6 +35,16 @@ CLEAN_FORWARD_LEDGER = Path(
 )
 HISTORICAL_EVIDENCE_SHA = "989ee911341157570220837f326c886c4ab2163b"
 HISTORICAL_EVIDENCE_TREE = "8f80089e7ee40c5a065f38c56f0a6cb1a517d0d1"
+CANONICAL_LINEAGE_ANCHOR_SHA = "a52b3b1c67ce049dc7c500d7f38f49efd386267d"
+CANONICAL_LINEAGE_ANCHOR_TREE = "4c76dfcf3108a2dcc9bf0cdc525ade79b86229c5"
+
+# GRD-I01 invariants:
+# DESCENDANT_SAFE_HISTORICAL_EVIDENCE_VALIDATION
+# AUTHORIZED_CANONICAL_LINEAGE_ANCHORING
+# CURRENT_HEAD_ONLY_HISTORICAL_SCOPE=FORBIDDEN
+# ARBITRARY_PRE_ANCHOR_LOCAL_DESCENDANT=FORBIDDEN
+# BRANCH_NAME_AS_CANONICAL_AUTHORITY=FORBIDDEN
+# PUBLIC_IDENTITY_OVERRIDE=FORBIDDEN
 
 DISPOSITIONS = [
     "MIGRATED_TO_FFMPEG_PROVIDER",
@@ -445,6 +455,13 @@ def git_returncode(root: Path, arguments: list[str]) -> int:
     return completed.returncode
 
 
+def require_ancestor(root: Path, ancestor: str, descendant: str, failure_message: str) -> None:
+    result = git_returncode(root, ["merge-base", "--is-ancestor", ancestor, descendant])
+    if result == 1:
+        fail(failure_message)
+    require(result == 0, "Git could not determine required commit ancestry")
+
+
 def require_object_id(value: Any, label: str) -> str:
     object_id = require_string(value, label)
     require(
@@ -462,11 +479,39 @@ def decoded_object_id(raw: bytes, label: str) -> str:
     return require_object_id(value, label)
 
 
+def validated_canonical_anchor(root: Path, anchor_sha: str, anchor_tree: str) -> str:
+    anchor_sha = require_object_id(anchor_sha, "canonical lineage anchor SHA")
+    anchor_tree = require_object_id(anchor_tree, "canonical lineage anchor tree")
+    if git_returncode(root, ["cat-file", "-e", f"{anchor_sha}^{{commit}}"]):
+        fail("canonical lineage anchor commit is unknown or is not a commit")
+    actual_tree = decoded_object_id(
+        git_output(root, ["rev-parse", "--verify", f"{anchor_sha}^{{tree}}"]),
+        "canonical lineage anchor commit tree",
+    )
+    require(actual_tree == anchor_tree, "canonical lineage anchor tree mismatch")
+    return anchor_sha
+
+
+def require_anchor_at_current_head_or_ancestor(root: Path, anchor_sha: str) -> None:
+    current_head = decoded_object_id(
+        git_output(root, ["rev-parse", "--verify", "HEAD^{commit}"]),
+        "current HEAD commit",
+    )
+    require_ancestor(
+        root,
+        anchor_sha,
+        current_head,
+        "canonical lineage anchor is not an ancestor of current HEAD",
+    )
+
+
 def historical_candidate_scope(
     root: Path,
     base_sha: str,
     reviewed_sha: str,
     reviewed_tree: str,
+    anchor_sha: str,
+    anchor_tree: str,
 ) -> set[str]:
     require(
         not git_output(root, ["status", "--porcelain=v1", "-z", "--untracked-files=all"]),
@@ -475,10 +520,6 @@ def historical_candidate_scope(
     base_sha = require_object_id(base_sha, "clean-forward base_sha")
     reviewed_sha = require_object_id(reviewed_sha, "historical evidence SHA")
     reviewed_tree = require_object_id(reviewed_tree, "historical evidence tree")
-    current_head = decoded_object_id(
-        git_output(root, ["rev-parse", "--verify", "HEAD^{commit}"]),
-        "current HEAD commit",
-    )
 
     if git_returncode(root, ["cat-file", "-e", f"{reviewed_sha}^{{commit}}"]):
         fail("reviewed evidence commit is unknown or is not a commit")
@@ -487,30 +528,54 @@ def historical_candidate_scope(
         "reviewed evidence commit tree",
     )
     require(actual_tree == reviewed_tree, "reviewed evidence tree mismatch")
+    anchor_sha = validated_canonical_anchor(root, anchor_sha, anchor_tree)
 
-    base_ancestor_result = git_returncode(root, ["merge-base", "--is-ancestor", base_sha, reviewed_sha])
-    require(base_ancestor_result == 0, "clean-forward base is not an ancestor of reviewed evidence commit")
-    if reviewed_sha != current_head:
-        head_ancestor_result = git_returncode(root, ["merge-base", "--is-ancestor", reviewed_sha, current_head])
-        require(head_ancestor_result == 0, "reviewed evidence commit is not an ancestor of current HEAD")
+    require_ancestor(
+        root,
+        base_sha,
+        reviewed_sha,
+        "clean-forward base is not an ancestor of reviewed evidence commit",
+    )
+    require_ancestor(
+        root,
+        reviewed_sha,
+        anchor_sha,
+        "reviewed evidence commit is not an ancestor of canonical lineage anchor",
+    )
+    require_anchor_at_current_head_or_ancestor(root, anchor_sha)
 
     return decode_git_paths(git_output(root, ["diff", "--name-only", "-z", base_sha, reviewed_sha, "--"]))
 
 
-def candidate_scope(root: Path, base_sha: str, reviewed_sha: str, reviewed_tree: str) -> set[str]:
+def candidate_scope(
+    root: Path,
+    base_sha: str,
+    reviewed_sha: str,
+    reviewed_tree: str,
+    anchor_sha: str,
+    anchor_tree: str,
+) -> set[str]:
     staged = decode_git_paths(git_output(root, ["diff", "--cached", "--name-only", "-z", "--"]))
     if staged:
+        anchor_sha = validated_canonical_anchor(root, anchor_sha, anchor_tree)
+        require_anchor_at_current_head_or_ancestor(root, anchor_sha)
         return staged
-    return historical_candidate_scope(root, base_sha, reviewed_sha, reviewed_tree)
+    return historical_candidate_scope(root, base_sha, reviewed_sha, reviewed_tree, anchor_sha, anchor_tree)
 
 
-def validate_clean_forward(root: Path, reviewed_sha: str, reviewed_tree: str) -> None:
+def validate_clean_forward(
+    root: Path,
+    reviewed_sha: str,
+    reviewed_tree: str,
+    anchor_sha: str,
+    anchor_tree: str,
+) -> None:
     data, _ = load_json(root, CLEAN_FORWARD_LEDGER)
     strict_equal(data.get("raw_finding_tuple_count"), 5177, "clean-forward raw tuple count")
     strict_equal(data.get("initial_finding_path_count"), 311, "clean-forward initial path count")
     paths_data = require_list(data.get("paths"), "clean-forward.paths")
     base_sha = require_string(data.get("base_sha"), "clean-forward base_sha")
-    candidate_paths = candidate_scope(root, base_sha, reviewed_sha, reviewed_tree)
+    candidate_paths = candidate_scope(root, base_sha, reviewed_sha, reviewed_tree, anchor_sha, anchor_tree)
 
     ledger_paths: set[str] = set()
     initial_paths: set[str] = set()
@@ -569,12 +634,18 @@ def validate_clean_forward(root: Path, reviewed_sha: str, reviewed_tree: str) ->
             require("supplemental_candidate_scope" not in entry, f"unexpected supplemental marker for {path}")
 
 
-def validate(root: Path, reviewed_sha: str, reviewed_tree: str) -> None:
+def validate(
+    root: Path,
+    reviewed_sha: str,
+    reviewed_tree: str,
+    anchor_sha: str,
+    anchor_tree: str,
+) -> None:
     root = root.resolve(strict=True)
     validate_capabilities(root)
     validate_test_accounting(root)
     validate_semgrep_accounting(root)
-    validate_clean_forward(root, reviewed_sha, reviewed_tree)
+    validate_clean_forward(root, reviewed_sha, reviewed_tree, anchor_sha, anchor_tree)
 
 
 def parse_args() -> argparse.Namespace:
@@ -587,7 +658,13 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     try:
-        validate(args.root, HISTORICAL_EVIDENCE_SHA, HISTORICAL_EVIDENCE_TREE)
+        validate(
+            args.root,
+            HISTORICAL_EVIDENCE_SHA,
+            HISTORICAL_EVIDENCE_TREE,
+            CANONICAL_LINEAGE_ANCHOR_SHA,
+            CANONICAL_LINEAGE_ANCHOR_TREE,
+        )
     except (GuardError, OSError, RuntimeError) as exc:
         print(f"FINAL_GOVERNANCE_EVIDENCE_GATE=FAIL: {exc}", file=sys.stderr)
         return 1

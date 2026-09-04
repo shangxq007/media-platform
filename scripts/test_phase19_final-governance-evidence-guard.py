@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import copy
 import importlib.util
+import inspect
 import json
 import shutil
 import subprocess
@@ -30,6 +31,14 @@ SEMGREP = ARTIFACTS[3]
 CLEAN_FORWARD = ARTIFACTS[4]
 CANDIDATE_PATH = Path("candidate/staged-change.txt")
 FALLBACK_UNCOVERED_PATH = Path("candidate/post-commit-uncovered.txt")
+GRD_I01_CONCEPTS = (
+    "DESCENDANT_SAFE_HISTORICAL_EVIDENCE_VALIDATION",
+    "AUTHORIZED_CANONICAL_LINEAGE_ANCHORING",
+    "CURRENT_HEAD_ONLY_HISTORICAL_SCOPE=FORBIDDEN",
+    "ARBITRARY_PRE_ANCHOR_LOCAL_DESCENDANT=FORBIDDEN",
+    "BRANCH_NAME_AS_CANONICAL_AUTHORITY=FORBIDDEN",
+    "PUBLIC_IDENTITY_OVERRIDE=FORBIDDEN",
+)
 
 EXPECTED_PASS = "\n".join(
     [
@@ -70,6 +79,7 @@ class Fixture:
         self._temporary = tempfile.TemporaryDirectory(prefix="phase19-final-evidence-")
         self.root = Path(self._temporary.name)
         self.historical_identity: tuple[str, str] | None = None
+        self.anchor_identity: tuple[str, str] | None = None
         for relative in ARTIFACTS:
             destination = self.root / relative
             destination.parent.mkdir(parents=True, exist_ok=True)
@@ -82,6 +92,8 @@ class Fixture:
         self.git("add", ".fixture-base", *(str(path) for path in ARTIFACTS))
         self.git("commit", "-q", "-m", "fixture base")
         self.base_sha = self.git("rev-parse", "HEAD").stdout.strip()
+        self.base_tree = self.git("rev-parse", "HEAD^{tree}").stdout.strip()
+        self.anchor_identity = (self.base_sha, self.base_tree)
 
         clean = self.read(CLEAN_FORWARD)
         initial_entries = [
@@ -162,10 +174,31 @@ class Fixture:
             check=False,
         )
 
-    def run_historical_guard(self, reviewed_sha: str, reviewed_tree: str) -> subprocess.CompletedProcess[str]:
-        arguments = [str(GUARD), "validate", str(self.root), reviewed_sha, reviewed_tree]
+    def run_historical_guard(
+        self,
+        reviewed_sha: str,
+        reviewed_tree: str,
+        anchor_sha: str | None = None,
+        anchor_tree: str | None = None,
+    ) -> subprocess.CompletedProcess[str]:
+        if anchor_sha is None or anchor_tree is None:
+            if self.anchor_identity is None:
+                raise TestFailure("fixture canonical anchor identity is unavailable")
+            anchor_sha, anchor_tree = self.anchor_identity
+        arguments = [
+            str(GUARD),
+            "validate",
+            str(self.root),
+            reviewed_sha,
+            reviewed_tree,
+            anchor_sha,
+            anchor_tree,
+        ]
         try:
-            GUARD_MODULE.validate(self.root, reviewed_sha, reviewed_tree)
+            if len(inspect.signature(GUARD_MODULE.validate).parameters) == 3:
+                GUARD_MODULE.validate(self.root, reviewed_sha, reviewed_tree)
+            else:
+                GUARD_MODULE.validate(self.root, reviewed_sha, reviewed_tree, anchor_sha, anchor_tree)
         except (GUARD_MODULE.GuardError, OSError, RuntimeError) as exc:
             return subprocess.CompletedProcess(
                 arguments,
@@ -174,6 +207,10 @@ class Fixture:
                 f"FINAL_GOVERNANCE_EVIDENCE_GATE=FAIL: {exc}\n",
             )
         return subprocess.CompletedProcess(arguments, 0, EXPECTED_PASS, "")
+
+    def run_internal_guard(self) -> subprocess.CompletedProcess[str]:
+        reviewed_sha, reviewed_tree = self.historical_identity or (self.base_sha, self.base_tree)
+        return self.run_historical_guard(reviewed_sha, reviewed_tree)
 
     def commit_candidate_for_fallback(self) -> tuple[str, str]:
         clean = self.read(CLEAN_FORWARD)
@@ -203,7 +240,20 @@ class Fixture:
         reviewed_sha = self.git("rev-parse", "HEAD").stdout.strip()
         reviewed_tree = self.git("rev-parse", "HEAD^{tree}").stdout.strip()
         self.historical_identity = (reviewed_sha, reviewed_tree)
+        self.add_canonical_anchor_commit()
         return reviewed_sha, reviewed_tree
+
+    def add_canonical_anchor_commit(self) -> tuple[str, str]:
+        (self.root / ".fixture-anchor").write_text("anchor\n", encoding="utf-8")
+        self.git("add", ".fixture-anchor")
+        self.git("commit", "-q", "-m", "canonical anchor")
+        anchor_sha = self.git("rev-parse", "HEAD").stdout.strip()
+        anchor_tree = self.git("rev-parse", "HEAD^{tree}").stdout.strip()
+        self.anchor_identity = (anchor_sha, anchor_tree)
+        return anchor_sha, anchor_tree
+
+    def make_empty_descendant(self, parent_sha: str, tree: str, message: str) -> str:
+        return self.git("commit-tree", tree, "-p", parent_sha, "-m", message).stdout.strip()
 
     def add_descendant_commit(self) -> None:
         (self.root / ".fixture-descendant").write_text("descendant\n", encoding="utf-8")
@@ -224,7 +274,9 @@ def mutate_json(relative: Path, mutation: Callable[[dict[str, Any]], None]) -> M
 
 
 def assert_pass(name: str, fixture: Fixture, *arguments: str) -> None:
-    completed = fixture.run_guard(*arguments)
+    if arguments:
+        raise TestFailure(f"internal fixture pass does not accept CLI arguments: {name}")
+    completed = fixture.run_internal_guard()
     if completed.returncode != 0 or completed.stdout != EXPECTED_PASS or completed.stderr:
         raise TestFailure(
             f"{name} did not pass exactly; rc={completed.returncode}; "
@@ -247,8 +299,10 @@ def assert_historical_guard_fails(
     expected: str,
     reviewed_sha: str,
     reviewed_tree: str,
+    anchor_sha: str | None = None,
+    anchor_tree: str | None = None,
 ) -> None:
-    completed = fixture.run_historical_guard(reviewed_sha, reviewed_tree)
+    completed = fixture.run_historical_guard(reviewed_sha, reviewed_tree, anchor_sha, anchor_tree)
     if completed.returncode == 0:
         raise TestFailure(f"guard unexpectedly passed: {name}")
     if "FINAL_GOVERNANCE_EVIDENCE_GATE=FAIL:" not in completed.stderr:
@@ -262,15 +316,16 @@ def assert_historical_guard_fails(
 
 def assert_cli_authority_overrides_rejected() -> None:
     with Fixture() as fixture:
-        completed = fixture.run_guard(
-            "--historical-evidence-sha",
-            "0" * 40,
-            "--historical-evidence-tree",
-            "f" * 40,
-        )
-        if completed.returncode == 0:
-            raise TestFailure("public historical evidence authority overrides unexpectedly accepted")
-        for option in ("--historical-evidence-sha", "--historical-evidence-tree"):
+        overrides = {
+            "--historical-evidence-sha": "0" * 40,
+            "--historical-evidence-tree": "f" * 40,
+            "--canonical-lineage-anchor-sha": "0" * 40,
+            "--canonical-lineage-anchor-tree": "f" * 40,
+        }
+        for option, value in overrides.items():
+            completed = fixture.run_guard(option, value)
+            if completed.returncode == 0:
+                raise TestFailure(f"public identity authority override unexpectedly accepted: {option}")
             if option not in completed.stderr:
                 raise TestFailure(f"CLI did not reject public authority override: {option}")
 
@@ -306,7 +361,7 @@ def assert_mutation_fails(name: str, mutation: Mutation) -> None:
     with Fixture() as fixture:
         mutation(fixture)
         if fixture.historical_identity is None:
-            completed = fixture.run_guard()
+            completed = fixture.run_internal_guard()
         else:
             completed = fixture.run_historical_guard(*fixture.historical_identity)
         if completed.returncode == 0:
@@ -434,6 +489,10 @@ def fallback_uncovered(fixture: Fixture) -> None:
 def main() -> int:
     compile(GUARD.read_bytes(), str(GUARD), "exec")
     compile(Path(__file__).read_bytes(), str(Path(__file__)), "exec")
+    guard_source = GUARD.read_text(encoding="utf-8")
+    for concept in GRD_I01_CONCEPTS:
+        if concept not in guard_source:
+            raise TestFailure(f"guard is missing GRD-I01 protection marker: {concept}")
 
     with Fixture() as fixture:
         assert_pass("staged-index scope mode", fixture)
@@ -444,7 +503,7 @@ def main() -> int:
     with Fixture() as fixture:
         reviewed_sha, reviewed_tree = fixture.commit_candidate_for_fallback()
         assert_historical_pass(
-            "reviewed SHA equal to current HEAD",
+            "current HEAD equals exact canonical anchor",
             fixture,
             reviewed_sha,
             reviewed_tree,
@@ -454,7 +513,7 @@ def main() -> int:
         reviewed_sha, reviewed_tree = fixture.commit_candidate_for_fallback()
         fixture.add_descendant_commit()
         assert_historical_pass(
-            "reviewed SHA is an ancestor of current HEAD",
+            "current HEAD is a legitimate canonical-anchor descendant",
             fixture,
             reviewed_sha,
             reviewed_tree,
@@ -462,19 +521,57 @@ def main() -> int:
 
     with Fixture() as fixture:
         reviewed_sha, reviewed_tree = fixture.commit_candidate_for_fallback()
+        if fixture.anchor_identity is None:
+            raise TestFailure("fixture canonical anchor identity is unavailable")
+        anchor_sha, anchor_tree = fixture.anchor_identity
+        fixture.git("switch", "-q", "--detach", reviewed_sha)
+        fixture.add_descendant_commit()
+        assert_historical_guard_fails(
+            "arbitrary pre-anchor local descendant was accepted",
+            fixture,
+            "canonical lineage anchor is not an ancestor of current HEAD",
+            reviewed_sha,
+            reviewed_tree,
+            anchor_sha,
+            anchor_tree,
+        )
+
+    with Fixture() as fixture:
+        reviewed_sha, reviewed_tree = fixture.commit_candidate_for_fallback()
         diverged_sha = fixture.git(
             "commit-tree", reviewed_tree, "-p", fixture.base_sha, "-m", "diverged candidate"
         ).stdout.strip()
-        fixture.git("branch", "fixture-diverged-local", diverged_sha)
-        branch_sha = fixture.git("rev-parse", "--verify", "refs/heads/fixture-diverged-local").stdout.strip()
-        if branch_sha != diverged_sha:
-            raise TestFailure("diverged local branch does not point at the reviewed fixture commit")
+        fixture.git("merge", "-q", "--no-ff", "-m", "merge sibling history", diverged_sha)
         assert_historical_guard_fails(
-            "reviewed SHA is unreachable from current HEAD",
+            "sibling reviewed history is outside the canonical anchor lineage",
             fixture,
-            "reviewed evidence commit is not an ancestor of current HEAD",
+            "reviewed evidence commit is not an ancestor of canonical lineage anchor",
             diverged_sha,
             reviewed_tree,
+        )
+
+    with Fixture() as fixture:
+        descendant_sha = fixture.make_empty_descendant(
+            fixture.base_sha,
+            fixture.base_tree,
+            "staged canonical-anchor descendant",
+        )
+        fixture.git("switch", "-q", "--detach", descendant_sha)
+        assert_pass("staged candidate on canonical-anchor descendant", fixture)
+
+    with Fixture() as fixture:
+        anchor_sha = fixture.make_empty_descendant(
+            fixture.base_sha,
+            fixture.base_tree,
+            "separate canonical anchor",
+        )
+        fixture.anchor_identity = (anchor_sha, fixture.base_tree)
+        assert_historical_guard_fails(
+            "staged candidate on pre-anchor lineage",
+            fixture,
+            "canonical lineage anchor is not an ancestor of current HEAD",
+            fixture.base_sha,
+            fixture.base_tree,
         )
 
     with Fixture() as fixture:
@@ -526,6 +623,58 @@ def main() -> int:
             "reviewed evidence tree mismatch",
             reviewed_sha,
             "f" * 40,
+        )
+
+    with Fixture() as fixture:
+        reviewed_sha, reviewed_tree = fixture.commit_candidate_for_fallback()
+        assert_historical_guard_fails(
+            "canonical anchor SHA is unknown",
+            fixture,
+            "canonical lineage anchor commit is unknown or is not a commit",
+            reviewed_sha,
+            reviewed_tree,
+            "0" * 40,
+            fixture.anchor_identity[1] if fixture.anchor_identity is not None else "",
+        )
+
+    with Fixture() as fixture:
+        reviewed_sha, reviewed_tree = fixture.commit_candidate_for_fallback()
+        if fixture.anchor_identity is None:
+            raise TestFailure("fixture canonical anchor identity is unavailable")
+        assert_historical_guard_fails(
+            "canonical anchor tree is wrong",
+            fixture,
+            "canonical lineage anchor tree mismatch",
+            reviewed_sha,
+            reviewed_tree,
+            fixture.anchor_identity[0],
+            "f" * 40,
+        )
+
+    with Fixture() as fixture:
+        reviewed_sha, reviewed_tree = fixture.commit_candidate_for_fallback()
+        assert_historical_guard_fails(
+            "canonical anchor SHA is malformed",
+            fixture,
+            "canonical lineage anchor SHA must be a 40-character lowercase hexadecimal object ID",
+            reviewed_sha,
+            reviewed_tree,
+            "not-an-anchor-sha",
+            fixture.anchor_identity[1] if fixture.anchor_identity is not None else "",
+        )
+
+    with Fixture() as fixture:
+        reviewed_sha, reviewed_tree = fixture.commit_candidate_for_fallback()
+        if fixture.anchor_identity is None:
+            raise TestFailure("fixture canonical anchor identity is unavailable")
+        assert_historical_guard_fails(
+            "canonical anchor tree is malformed",
+            fixture,
+            "canonical lineage anchor tree must be a 40-character lowercase hexadecimal object ID",
+            reviewed_sha,
+            reviewed_tree,
+            fixture.anchor_identity[0],
+            "not-an-anchor-tree",
         )
 
     mutations: list[tuple[str, Mutation]] = [
