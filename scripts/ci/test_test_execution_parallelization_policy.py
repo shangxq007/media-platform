@@ -12,6 +12,33 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 STANDARD_CI = ROOT / ".github/workflows/ci.yml"
 TEST_EXECUTION_VALIDATION_CI = ROOT / ".github/workflows/test-execution-validation.yml"
+EXPECTED_TEST_EXECUTION_VALIDATION_PATHS = (
+    "build.gradle.kts",
+    "governance/TEST_EXECUTION_TOPOLOGY_LEDGER.tsv",
+    "governance/TEST_EXECUTION_SERIAL_ONLY_LEDGER.tsv",
+    "governance/TEST_EXECUTION_ACCOUNTING_BASELINE.tsv",
+    "governance/TEST_EXECUTION_CANDIDATE_ENROLLMENT.tsv",
+    "governance/TEST_EXECUTION_DECLARED_OVERLAPS.tsv",
+    "governance/TEST_EXECUTION_PARALLELIZATION_PROMOTION_RECEIPT_V1.tsv",
+    "governance/TEST_EXECUTION_VALIDATION_LEVELS.tsv",
+    "governance/CI_VALIDATION_DEPENDENCY_GRAPH.tsv",
+    "governance/NEXT_DEBT_PARALLELIZATION_PLAN.tsv",
+    "scripts/ci/census_test_execution_topology.py",
+    "scripts/ci/run_full_deterministic_backend_suite.py",
+    "scripts/ci/run_test_execution_benchmark.py",
+    "scripts/ci/test_execution_accounting.py",
+    "scripts/ci/test_execution_policy.py",
+    "scripts/ci/test_test_execution_parallelization_policy.py",
+    ".github/workflows/test-execution-validation.yml",
+)
+
+MUTATION_REMOVALS = (
+    "governance/TEST_EXECUTION_TOPOLOGY_LEDGER.tsv",
+    "governance/TEST_EXECUTION_SERIAL_ONLY_LEDGER.tsv",
+    "governance/TEST_EXECUTION_PARALLELIZATION_PROMOTION_RECEIPT_V1.tsv",
+    "governance/CI_VALIDATION_DEPENDENCY_GRAPH.tsv",
+    "scripts/ci/test_execution_policy.py",
+)
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from test_execution_policy import (  # noqa: E402 - intentionally absent during TDD RED
@@ -25,6 +52,79 @@ from test_execution_policy import (  # noqa: E402 - intentionally absent during 
     REQUIRED_SERIAL_COLUMNS,
     validate_repository,
 )
+
+
+def parse_pull_request_paths(workflow_text: str) -> list[str]:
+    lines = workflow_text.splitlines()
+    pull_request_indent: int | None = None
+    paths_indent: int | None = None
+    in_paths = False
+    paths: list[str] = []
+    for raw_line in lines:
+        stripped = raw_line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        indent = len(raw_line) - len(raw_line.lstrip(" "))
+        if pull_request_indent is None:
+            if stripped == "pull_request:":
+                pull_request_indent = indent
+            continue
+        if indent <= pull_request_indent:
+            break
+        if in_paths:
+            if indent <= paths_indent:
+                in_paths = False
+                continue
+            if stripped.startswith("- "):
+                paths.append(stripped[2:])
+            continue
+        if stripped == "paths:" and indent > pull_request_indent:
+            paths_indent = indent
+            in_paths = True
+    return paths
+
+
+def remove_pull_request_path(workflow_text: str, removed: str) -> tuple[str, bool]:
+    lines = workflow_text.splitlines()
+    pull_request_indent: int | None = None
+    paths_indent: int | None = None
+    in_paths = False
+    removed_once = False
+    output: list[str] = []
+    for raw_line in lines:
+        stripped = raw_line.strip()
+        indent = len(raw_line) - len(raw_line.lstrip(" "))
+        if pull_request_indent is None:
+            if stripped == "pull_request:":
+                pull_request_indent = indent
+            output.append(raw_line)
+            continue
+        if indent <= pull_request_indent:
+            if not raw_line.strip() or stripped == "":
+                output.append(raw_line)
+                continue
+            pull_request_indent = None
+            in_paths = False
+            paths_indent = None
+            output.append(raw_line)
+            continue
+        if in_paths:
+            if indent <= paths_indent:
+                in_paths = False
+                output.append(raw_line)
+                continue
+            if stripped.startswith("- "):
+                candidate = stripped[2:]
+                if not removed_once and candidate == removed:
+                    removed_once = True
+                    continue
+            output.append(raw_line)
+            continue
+        if stripped == "paths:" and indent > pull_request_indent:
+            paths_indent = indent
+            in_paths = True
+        output.append(raw_line)
+    return "\n".join(output), removed_once
 
 
 def require(condition: bool, message: str) -> None:
@@ -338,6 +438,26 @@ def test_benchmark_uses_controlled_matrix_then_winner_replay() -> None:
                   "RESOURCE_COLLISIONS", "FLAKY_FAILURES", "STDOUT_STDERR_PATH", "TIME_V_PATH",
                   "MEASUREMENT_CONFIDENCE"):
         require(field in REPORT_COLUMNS, f"benchmark report is missing {field}")
+
+
+def test_test_execution_validation_workflow_paths_match_authoritative_input_set() -> None:
+    workflow = TEST_EXECUTION_VALIDATION_CI.read_text(encoding="utf-8")
+    detected_paths = parse_pull_request_paths(workflow)
+    require(tuple(detected_paths) == EXPECTED_TEST_EXECUTION_VALIDATION_PATHS,
+            "test execution validation workflow paths drifted from authoritative input set")
+
+
+def test_test_execution_validation_path_mutation_controls() -> None:
+    original = TEST_EXECUTION_VALIDATION_CI.read_text(encoding="utf-8")
+    require(tuple(parse_pull_request_paths(original)) == EXPECTED_TEST_EXECUTION_VALIDATION_PATHS,
+            "cannot establish mutation-control baseline: current workflow path block is not canonical")
+
+    for removed in MUTATION_REMOVALS:
+        mutated, removed_ok = remove_pull_request_path(original, removed)
+        require(removed_ok, f"mutation setup failed for {removed}")
+        mutated_paths = parse_pull_request_paths(mutated)
+        require(tuple(mutated_paths) != EXPECTED_TEST_EXECUTION_VALIDATION_PATHS,
+                f"mutation without {removed} did not fail")
 
 
 def main() -> None:

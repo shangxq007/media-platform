@@ -4,8 +4,17 @@ on:
   pull_request:
     paths:
       - build.gradle.kts
-      - governance/test-execution/**
+      - governance/TEST_EXECUTION_TOPOLOGY_LEDGER.tsv
+      - governance/TEST_EXECUTION_SERIAL_ONLY_LEDGER.tsv
+      - governance/TEST_EXECUTION_ACCOUNTING_BASELINE.tsv
+      - governance/TEST_EXECUTION_CANDIDATE_ENROLLMENT.tsv
+      - governance/TEST_EXECUTION_DECLARED_OVERLAPS.tsv
+      - governance/TEST_EXECUTION_PARALLELIZATION_PROMOTION_RECEIPT_V1.tsv
+      - governance/TEST_EXECUTION_VALIDATION_LEVELS.tsv
+      - governance/CI_VALIDATION_DEPENDENCY_GRAPH.tsv
+      - governance/NEXT_DEBT_PARALLELIZATION_PLAN.tsv
       - scripts/ci/census_test_execution_topology.py
+      - scripts/ci/run_full_deterministic_backend_suite.py
       - scripts/ci/run_test_execution_benchmark.py
       - scripts/ci/test_execution_accounting.py
       - scripts/ci/test_execution_policy.py
