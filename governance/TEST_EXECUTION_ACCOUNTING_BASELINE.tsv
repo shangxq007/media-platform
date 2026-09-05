@@ -1,0 +1,6 @@
+METRIC	VALUE	DESCRIPTION
+TOP_LEVEL_EXPECTED_UNIVERSE	8094	Canonical top-level expected JUnit identity universe.
+RAW_RECURSIVE_EXPECTED_UNIVERSE	8209	Raw recursive JUnit identity universe before custom-task duplicate selections.
+EXPECTED_SKIPPED	29	Expected skipped tests in the raw recursive universe.
+TASK_TOPOLOGY_GROSS_COUNT	8215	Sum of topology task selections, including declared custom-task overlaps.
+DECLARED_OVERLAP_COUNT	6	Intentional duplicate selections declared in TEST_EXECUTION_DECLARED_OVERLAPS.tsv.

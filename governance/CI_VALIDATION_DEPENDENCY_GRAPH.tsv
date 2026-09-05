@@ -1,0 +1,8 @@
+LANE	DEPENDS_ON	SHARED_OUTPUTS	CAN_RUN_IN_PARALLEL	CONFLICT_REASON
+BACKEND	change-impact classification	Gradle build/, JUnit XML	NO	Backend compile, local image build, and policy accounting share Gradle/build outputs when colocated.
+ARCHITECTURE_STATIC	change-impact classification	None; read-only source and generated reports	YES	Static architecture checks write isolated CI artifacts only.
+FRONTEND	change-impact classification	frontend/node_modules, frontend/dist	YES	Frontend outputs are isolated from backend Gradle outputs.
+SEMGREP	change-impact classification	None; read-only source and action-owned report	YES	Semgrep consumes source without repository output mutation.
+FORMAL_LEAN_COQ	change-impact classification	Lean download and Docker image cache	YES	Formal tooling uses runner-local caches and no repository output authority.
+GITOPS	change-impact classification	None; read-only committed manifests	YES	GitOps validation is read-only and isolated.
+RUNTIME_IMAGE_LOCAL_BUILD	BACKEND	Docker daemon image store, repository Docker context	NO	Local image build shares Docker daemon capacity and backend workspace context.

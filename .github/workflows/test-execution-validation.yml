@@ -1,0 +1,42 @@
+name: Test Execution Validation
+
+on:
+  pull_request:
+    paths:
+      - build.gradle.kts
+      - governance/test-execution/**
+      - scripts/ci/census_test_execution_topology.py
+      - scripts/ci/run_test_execution_benchmark.py
+      - scripts/ci/test_execution_accounting.py
+      - scripts/ci/test_execution_policy.py
+      - scripts/ci/test_test_execution_parallelization_policy.py
+      - .github/workflows/test-execution-validation.yml
+  workflow_dispatch:
+
+# Validation only. Canonical publication remains serialized and subject to publication review.
+permissions:
+  contents: read
+
+concurrency:
+  group: test-execution-validation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  static-policy:
+    name: Focused static policy gates
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate test execution policy
+        run: |
+          set -euo pipefail
+          PYTHONDONTWRITEBYTECODE=1 python3 -B scripts/ci/test_execution_policy.py
+          PYTHONDONTWRITEBYTECODE=1 python3 -B scripts/ci/test_test_execution_parallelization_policy.py
+
+      - name: Validate Standard CI policy contract
+        run: PYTHONDONTWRITEBYTECODE=1 python3 -B scripts/ci/test_change_impact_classifier.py

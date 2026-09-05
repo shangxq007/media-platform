@@ -1,6 +1,7 @@
 import io.spring.gradle.dependencymanagement.dsl.DependencyManagementExtension
 import org.gradle.api.plugins.JavaPluginExtension
 import org.gradle.api.tasks.SourceSetContainer
+import org.gradle.api.tasks.testing.Test
 import org.gradle.jvm.toolchain.JavaLanguageVersion
 import java.io.ByteArrayOutputStream
 
@@ -112,6 +113,163 @@ subprojects {
                 }
             })
         )
+    }
+}
+
+// ── TEST_EXECUTION_PARALLELIZATION_AND_VALIDATION_POLICY_V1 ───────────────
+// The checked-in ledger is the only authority for test JVM fork counts.  This
+// deliberately controls Gradle task scheduling, not global JUnit concurrency.
+data class TestExecutionTopology(val maxParallelForks: Int, val classification: String)
+
+val testExecutionTopologyLedger = rootProject.file("governance/TEST_EXECUTION_TOPOLOGY_LEDGER.tsv")
+require(testExecutionTopologyLedger.isFile) {
+    "Missing TEST_EXECUTION_TOPOLOGY_LEDGER.tsv; refusing unclassified test execution"
+}
+val testExecutionTopologyRows = testExecutionTopologyLedger.readLines()
+    .drop(1)
+    .filter { it.isNotBlank() }
+    .map { line ->
+        val fields = line.split('\t')
+        require(fields.size == 22) { "Malformed test execution topology row: $line" }
+        val taskPath = "${fields[0]}:${fields[1]}"
+        require(fields[18].toInt() in 1..2) { "Unsafe fork bound for $taskPath" }
+        taskPath to TestExecutionTopology(fields[18].toInt(), fields[20])
+    }
+val testExecutionTopology = testExecutionTopologyRows.toMap()
+require(testExecutionTopology.size == testExecutionTopologyRows.size) {
+    "Duplicate Test task entries in TEST_EXECUTION_TOPOLOGY_LEDGER.tsv"
+}
+val testExecutionCandidateProfile = providers.gradleProperty("testExecutionCandidateProfile")
+    .map { value ->
+        require(value == "true" || value == "false") {
+            "testExecutionCandidateProfile must be explicitly true or false"
+        }
+        value == "true"
+    }
+    .orElse(false)
+// This source is read once at configuration time and never written by Gradle.
+// It is the frozen candidate authority shared by the canonical and benchmark profiles.
+val testExecutionCandidateEnrollmentLedger = rootProject.file("governance/TEST_EXECUTION_CANDIDATE_ENROLLMENT.tsv")
+require(testExecutionCandidateEnrollmentLedger.isFile) {
+    "Missing TEST_EXECUTION_CANDIDATE_ENROLLMENT.tsv; refusing candidate benchmark profile"
+}
+val testExecutionCandidateEnrollmentRows = testExecutionCandidateEnrollmentLedger.readLines()
+    .drop(1)
+    .filter { it.isNotBlank() }
+    .map { line ->
+        val fields = line.split('\t')
+        require(fields.size == 6) { "Malformed test execution candidate enrollment row: $line" }
+        require(fields[2] == "PURE_PARALLEL_SAFE") {
+            "Candidate enrollment must only propose PURE_PARALLEL_SAFE: $line"
+        }
+        "${fields[0]}:${fields[1]}" to fields[5]
+    }
+val testExecutionCandidateEnrollment = testExecutionCandidateEnrollmentRows.toMap()
+require(testExecutionCandidateEnrollment.size == testExecutionCandidateEnrollmentRows.size) {
+    "Duplicate Test task entries in TEST_EXECUTION_CANDIDATE_ENROLLMENT.tsv"
+}
+require(testExecutionCandidateEnrollment.keys.all { taskPath -> taskPath in testExecutionTopology }) {
+    "Candidate enrollment contains an unknown Test task"
+}
+val canonicalPureTaskPaths = testExecutionTopology
+    .filterValues { topology -> topology.classification == "PURE_PARALLEL_SAFE" }
+    .keys
+require(canonicalPureTaskPaths.all { taskPath ->
+    testExecutionCandidateEnrollment[taskPath] == "SEALED_PROMOTION"
+}) {
+    "Canonical PURE_PARALLEL_SAFE task is not sealed in candidate enrollment"
+}
+val candidateProfileTaskPaths = testExecutionCandidateEnrollment
+    .filterValues { status -> status == "CANDIDATE_ONLY" }
+    .keys
+if (testExecutionCandidateProfile.get()) {
+    require(candidateProfileTaskPaths.all { taskPath ->
+        testExecutionTopology[taskPath]?.classification == "REVIEW_REQUIRED"
+    }) {
+        "Candidate benchmark profile contains an unknown, sealed, or canonically non-review task"
+    }
+}
+val effectiveTestExecutionTopology: (String) -> TestExecutionTopology = { taskPath ->
+    val canonical = testExecutionTopology[taskPath]
+        ?: error("No TEST_EXECUTION_TOPOLOGY_LEDGER.tsv entry for active Test task $taskPath")
+    if (testExecutionCandidateProfile.get() && taskPath in candidateProfileTaskPaths) {
+        // Benchmark-only in-memory overlay for future unsealed enrollment only. Sealed
+        // rows are already canonical and never receive a second promotion overlay.
+        TestExecutionTopology(maxParallelForks = 2, classification = "PURE_PARALLEL_SAFE")
+    } else {
+        canonical
+    }
+}
+
+allprojects {
+    tasks.withType<Test>().configureEach {
+        val taskPath = "${project.path}:${name}"
+        val topology = effectiveTestExecutionTopology(taskPath)
+        check(topology.classification in setOf(
+            "PURE_PARALLEL_SAFE", "SPRING_HEAVY_BOUNDED", "REVIEW_REQUIRED", "SERIAL_ONLY",
+        )) {
+            "Unknown test execution classification for $taskPath: ${topology.classification}"
+        }
+        // Only sealed PURE_PARALLEL_SAFE tasks may use two JVM forks. Spring-heavy,
+        // review-required, and exclusive-resource tasks remain one fork.
+        check(topology.classification == "PURE_PARALLEL_SAFE" || topology.maxParallelForks == 1) {
+            "$taskPath is not affirmatively PURE_PARALLEL_SAFE and must remain one fork"
+        }
+        maxParallelForks = topology.maxParallelForks
+        systemProperty("junit.jupiter.execution.parallel.enabled", "false")
+    }
+}
+
+gradle.projectsEvaluated {
+    val allTestTasks = allprojects.flatMap { project -> project.tasks.withType<Test>().toList() }
+        .sortedBy { it.path }
+    val parallelEligibleTestTasks = allTestTasks.filter { task ->
+        effectiveTestExecutionTopology(task.path).classification in setOf("PURE_PARALLEL_SAFE", "SPRING_HEAVY_BOUNDED")
+    }
+    val restrictedTestTasks = allTestTasks.filter { task ->
+        effectiveTestExecutionTopology(task.path).classification in setOf("REVIEW_REQUIRED", "SERIAL_ONLY")
+    }
+    check(parallelEligibleTestTasks.size + restrictedTestTasks.size == allTestTasks.size) {
+        "Every active Test task must be assigned to exactly one execution phase"
+    }
+    // The eligible phase may use Gradle module-level --parallel scheduling. Every
+    // restricted task waits for it, then each restricted task waits for its prior
+    // peer. This is mechanically enforced even when Gradle is invoked with --parallel.
+    restrictedTestTasks.forEach { task -> task.mustRunAfter(parallelEligibleTestTasks) }
+    restrictedTestTasks.zipWithNext().forEach { (previous, task) -> task.mustRunAfter(previous) }
+}
+
+tasks.register("testExecutionTopologyCensus") {
+    group = "verification"
+    description = "Print the active Gradle Test task universe governed by the checked-in topology ledger"
+    doLast {
+        val active = rootProject.allprojects.flatMap { candidate ->
+            candidate.tasks.withType<Test>().map { test -> "${candidate.path}:${test.name}" }
+        }.sorted()
+        val activeTaskPaths = active.toSet()
+        require(activeTaskPaths == testExecutionTopology.keys) {
+            "Active Test task universe differs from topology ledger: " +
+                "missing=${testExecutionTopology.keys - activeTaskPaths}, " +
+                "extra=${activeTaskPaths - testExecutionTopology.keys}"
+        }
+        active.forEach(::println)
+    }
+}
+
+tasks.register("testExecutionSchedulingCensus") {
+    group = "verification"
+    description = "Print the effective configured fork and classification for every governed Test task"
+    doLast {
+        val active = rootProject.allprojects.flatMap { candidate ->
+            candidate.tasks.withType<Test>().map { test ->
+                val topology = effectiveTestExecutionTopology(test.path)
+                "${test.path}\t${topology.maxParallelForks}\t${topology.classification}"
+            }
+        }.sorted()
+        require(active.map { line -> line.substringBefore('\t') }.toSet() == testExecutionTopology.keys) {
+            "Effective test execution scheduling census differs from topology ledger"
+        }
+        active.forEach(::println)
     }
 }
 

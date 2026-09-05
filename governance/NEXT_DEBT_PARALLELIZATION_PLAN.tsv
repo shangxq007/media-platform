@@ -1,0 +1,4 @@
+EPOCH	MUST_WAIT_FOR	CAN_RUN_IN_PARALLEL_WITH	CONFLICTING_EPOCHS	SHARED_AUTHORITY_CONFLICT	SHARED_FILE_CONFLICT	SAFE_ENGINEERING_LANE	RECOMMENDED_PUBLICATION_ORDER
+NEXT_DEBT_REVIEW_REQUIRED_ENROLLMENT	Sealed benchmark matrix and winner replay for each candidate	ARCHITECTURE_STATIC, FRONTEND	NEXT_DEBT_CANONICAL_PROMOTION	Topology classification authority cannot be changed by benchmark exit code	Candidate evidence paths must be unique and immutable	2_OR_3	1
+NEXT_DEBT_CANONICAL_PROMOTION	Owner review of sealed candidate enrollment	ARCHITECTURE_STATIC, GITOPS	NEXT_DEBT_REVIEW_REQUIRED_ENROLLMENT	Owner approval is the sole promotion authority	Topology ledger and enrollment ledger change together	2_OR_3	2
+REVIEW_REQUIRED	No grounded upcoming candidate label is currently available	ARCHITECTURE_STATIC	NEXT_DEBT_CANONICAL_PROMOTION	No authority may infer a new candidate	No shared file mutation is authorized	2_OR_3	3

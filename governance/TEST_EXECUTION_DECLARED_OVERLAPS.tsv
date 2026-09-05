@@ -1,0 +1,4 @@
+PROJECT	TEST_TASK	OVERLAPS_WITH_TASK	DUPLICATE_TEST_COUNT	SELECTION_MECHANISM	RATIONALE
+:platform-app	phase17SandboxConformanceTest	:platform-app:test	2	EXPLICIT_CUSTOM_TEST_TASK	The custom conformance task selects two tests also discovered by platform-app:test.
+:platform-app	renderIntegrationTest	:platform-app:test	2	EXPLICIT_CUSTOM_TEST_TASK	The tagged render task selects two tests also discovered by platform-app:test.
+:sandbox-isolation-module	phase17SandboxConformanceTest	:sandbox-isolation-module:test	2	EXPLICIT_CUSTOM_TEST_TASK	The custom conformance task selects two tests also discovered by sandbox-isolation-module:test.

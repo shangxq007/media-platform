@@ -1,0 +1,5 @@
+VALIDATION_LEVEL	REQUIRED_GATE	EXECUTION_AUTHORITY	PROMOTION_EFFECT
+V0_PRE_COMMIT	Static ledger and forbidden-parallelism validation	Developer and CI	No execution-policy promotion
+V1_IMPLEMENTATION	Focused policy tests and negative controls	Developer and CI	No execution-policy promotion
+V2_CANDIDATE_FCV	FULL_DETERMINISTIC_BACKEND_SUITE plus JUnit accounting	Hermes control plane	Candidate evidence only
+V3_CHECKPOINT	Selected serial replay and benchmark review	Hermes control plane	Owner review; canonical publication remains serialized

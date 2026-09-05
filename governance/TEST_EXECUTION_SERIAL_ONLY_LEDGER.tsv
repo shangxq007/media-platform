@@ -1,0 +1,11 @@
+PROJECT	TEST_TASK	SERIAL_REASON	OWNER_REVIEW_REQUIRED
+:media-module	test	Native media tools and filesystem fixtures share host process resources	YES
+:platform-app	test	Spring-heavy platform application uses shared Docker/database/Temporal/context resources	YES
+:platform-app	phase17SandboxConformanceTest	Authoritative sandbox conformance touches host binaries, environment and Spring context	YES
+:platform-app	renderIntegrationTest	Tagged render integration tests use native pipeline, fixed resources and application context	YES
+:platform-distribution	test	Distribution assembly tests use host tools and shared filesystem artifacts	YES
+:render-module	test	Render tests use native binaries, fixed ports, filesystem and mutable static state	YES
+:sandbox-isolation-module	test	Sandbox integration tests invoke container and host isolation resources	YES
+:sandbox-isolation-module	phase17SandboxConformanceTest	Authoritative sandbox conformance invokes container and host isolation resources	YES
+:storage-provider-opendal	test	OpenDAL provider tests use native/filesystem and mutable process resources	YES
+:workflow-module	test	Temporal worker lifecycle and static controls are an exclusive shared resource	YES
