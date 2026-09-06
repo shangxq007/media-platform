@@ -37,12 +37,13 @@ TOTAL_ROWS=131
 REUSE_AS_CANONICAL_COUNT=8
 REUSE_MECHANICS_ONLY_COUNT=35
 MIGRATE_REDESIGN_COUNT=0
-DELETE_SHADOW_COUNT=26
-DEFER_COUNT=62
+DELETE_SHADOW_COUNT=40
+DEFER_COUNT=48
 UNCLASSIFIED_COUNT=0
 DUPLICATE_ROW_COUNT=0
 PLACEHOLDER_PATH_COUNT=0
 GLOB_PATH_COUNT=0
+APPEND_FORWARD_NOTE: EP06 CAR-0054/CAR-0058 decisions supersede the earlier DEFER classifications for the seven OpenCue rows `P17-L-076` through `P17-L-082` and the additional seven rows `P17-L-090` through `P17-L-092` and `P17-L-101` through `P17-L-104`, now retained as `DELETE_SHADOW` (14 total rows).
 
 The counts above are derived from the TSV by `docs/architecture/governance/automated-guards/check-phase17-sandbox-ledger.py`; they are not hand-maintained independently.
 

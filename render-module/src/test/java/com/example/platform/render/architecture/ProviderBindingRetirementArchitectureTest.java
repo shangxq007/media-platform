@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -33,13 +34,47 @@ class ProviderBindingRetirementArchitectureTest {
                 "render-module/src/main/java/com/example/platform/render/domain/execution/LocalProcessExecutionSpec.java",
                 "render-module/src/main/java/com/example/platform/render/domain/execution/RemotionExecutionSpec.java",
                 "render-module/src/main/java/com/example/platform/render/domain/visual/ProviderVisualCapabilitySupport.java",
-                "render-module/src/main/java/com/example/platform/render/domain/visual/ProviderVisualCapabilityMatrix.java");
+                "render-module/src/main/java/com/example/platform/render/domain/visual/ProviderVisualCapabilityMatrix.java",
+                "render-module/src/main/java/com/example/platform/render/app/environment/EnvironmentRuntimeService.java",
+                "render-module/src/main/java/com/example/platform/render/app/execution/ExecutionControlService.java",
+                "render-module/src/main/java/com/example/platform/render/app/execution/ExecutionJobRegistry.java",
+                "render-module/src/main/java/com/example/platform/render/domain/environment/EnvironmentCompiler.java",
+                "render-module/src/main/java/com/example/platform/render/domain/environment/ExecutionEnvironment.java",
+                "render-module/src/main/java/com/example/platform/render/domain/environment/OpenCueJobSpec.java",
+                "render-module/src/main/java/com/example/platform/render/domain/environment/OpenCueJobSpecValidator.java",
+                "render-module/src/main/java/com/example/platform/render/domain/environment/OpenCueProperties.java",
+                "render-module/src/main/java/com/example/platform/render/domain/environment/OpenCueSubmissionClient.java",
+                "render-module/src/main/java/com/example/platform/render/domain/environment/OpenCueSubmissionError.java",
+                "render-module/src/main/java/com/example/platform/render/domain/environment/OpenCueSubmissionRequest.java",
+                "render-module/src/main/java/com/example/platform/render/domain/environment/OpenCueSubmissionResult.java",
+                "render-module/src/main/java/com/example/platform/render/domain/execution/ExecutionJob.java",
+                "render-module/src/main/java/com/example/platform/render/domain/execution/ExecutionStatus.java",
+                "render-module/src/main/java/com/example/platform/render/domain/execution/ExecutionTask.java",
+                "render-module/src/main/java/com/example/platform/render/infrastructure/environment/DefaultOpenCueSubmissionClient.java",
+                "render-module/src/main/java/com/example/platform/render/infrastructure/environment/LocalEnvironmentCompiler.java",
+                "render-module/src/main/java/com/example/platform/render/infrastructure/environment/LocalExecutionEnvironment.java",
+                "render-module/src/main/java/com/example/platform/render/infrastructure/environment/OpenCueEnvironmentCompiler.java",
+                "render-module/src/main/java/com/example/platform/render/infrastructure/environment/OpenCueExecutionEnvironment.java");
 
         List<String> present = retiredPaths.stream()
                 .filter(path -> Files.exists(root.resolve(path)))
                 .toList();
 
-        assertEquals(List.of(), present,
+        List<String> retiredDefinitionFamilies;
+        Path productionRoot = root.resolve("render-module/src/main/java");
+        try (Stream<Path> productionFiles = Files.walk(productionRoot)) {
+            retiredDefinitionFamilies = productionFiles
+                    .filter(Files::isRegularFile)
+                    .map(Path::getFileName)
+                    .map(Path::toString)
+                    .filter(name -> name.startsWith("ExecutionJob") || name.startsWith("OpenCue"))
+                    .toList();
+        }
+
+        List<String> violations = new ArrayList<>(present);
+        violations.addAll(retiredDefinitionFamilies);
+
+        assertEquals(List.of(), violations,
                 "GRD-A02: render provider-binding/execution shadows must be physically absent");
     }
 
