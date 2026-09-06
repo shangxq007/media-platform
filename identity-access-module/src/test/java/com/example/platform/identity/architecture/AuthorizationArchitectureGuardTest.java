@@ -161,6 +161,16 @@ class AuthorizationArchitectureGuardTest {
                 "AR-AUTH-06: RBAC port must not use QuotaDecisionService");
     }
 
+    @Test
+    void ep19_workspaceEntitlementPreviewUsesPublishedEntitlementQueryNotInternalAppService() {
+        Path controller = IDENTITY_ACCESS.resolve("api/WorkspaceController.java");
+        String src = read(controller);
+        assertTrue(src.contains("EntitlementDecisionQuery"),
+                "EP-19: workspace entitlement preview must use the published entitlement query");
+        assertFalse(src.contains("EntitlementDecisionService"),
+                "EP-19: identity-access must not call entitlement's internal decision service");
+    }
+
     // ── AR-AUTH-07: delegation cannot exceed grantor ───────────────────────
     // Delegation/impersonation runtime is ABSENT (out of scope). Prove there is no
     // ad-hoc escalation path: no impersonation/delegation concept exists anywhere.

@@ -1,6 +1,6 @@
 package com.example.platform.federation.graphql.resolver;
 
-import com.example.platform.entitlement.app.EntitlementDecisionService;
+import com.example.platform.entitlement.api.EntitlementDecisionQuery;
 import com.example.platform.entitlement.domain.AccessCheckRequest;
 import com.example.platform.entitlement.domain.EntitlementDecision;
 import com.example.platform.federation.graphql.context.GraphQLRequestContext;
@@ -26,12 +26,12 @@ public class ExportPanelGraphQLResolver {
 
     private final RenderJobService renderJobService;
     private final ExportPolicyService exportPolicyService;
-    private final EntitlementDecisionService entitlementDecisionService;
+    private final EntitlementDecisionQuery entitlementDecisionService;
     private final ProjectRepository projectRepository;
 
     public ExportPanelGraphQLResolver(RenderJobService renderJobService,
                                       ExportPolicyService exportPolicyService,
-                                      EntitlementDecisionService entitlementDecisionService,
+                                      EntitlementDecisionQuery entitlementDecisionService,
                                       ProjectRepository projectRepository) {
         this.renderJobService = renderJobService;
         this.exportPolicyService = exportPolicyService;

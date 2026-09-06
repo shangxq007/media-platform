@@ -1,5 +1,9 @@
 package com.example.platform.federation.graphql;
 
+import com.example.platform.entitlement.api.EntitlementDecisionQuery;
+import com.example.platform.entitlement.domain.AccessCheckRequest;
+import com.example.platform.entitlement.domain.EntitlementDecision;
+import com.example.platform.federation.graphql.dataloader.EntitlementGrantDataLoader;
 import com.example.platform.federation.graphql.dataloader.UserDataLoader;
 import com.example.platform.identity.app.IdentityAccessService;
 import org.junit.jupiter.api.Test;
@@ -13,6 +17,24 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class GraphQLDataLoaderTest {
+
+    @Test
+    void entitlementGrantDataLoaderQueriesThePublishedDecisionBoundary() throws Exception {
+        EntitlementDecisionQuery entitlementQuery = mock(EntitlementDecisionQuery.class);
+        when(entitlementQuery.evaluate(any(AccessCheckRequest.class))).thenReturn(new EntitlementDecision(
+                true, "ALLOW", "TIER", "Access granted", "PRO",
+                java.util.List.of(), null, null, null, null,
+                null, java.util.List.of(), null, false));
+
+        EntitlementGrantDataLoader loader = new EntitlementGrantDataLoader(entitlementQuery);
+        Map<String, Map<String, Object>> result = loader.load(Set.of("export"))
+                .toCompletableFuture().get();
+
+        assertEquals(true, result.get("export").get("allowed"));
+        assertEquals("TIER", result.get("export").get("reasonCode"));
+        assertEquals("PRO", result.get("export").get("tier"));
+        verify(entitlementQuery).evaluate(any(AccessCheckRequest.class));
+    }
 
     @Test
     void userDataLoaderLoadsMultipleUsersInBatch() throws Exception {

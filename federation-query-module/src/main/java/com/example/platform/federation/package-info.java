@@ -15,7 +15,7 @@
             "billing :: app",
             "billing :: domain",
             "billing :: usage",
-            "entitlement :: app",
+            "entitlement :: API",
             "entitlement :: domain",
             "prompt :: app",
             "prompt :: domain",

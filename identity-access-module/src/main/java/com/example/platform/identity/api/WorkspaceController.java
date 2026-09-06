@@ -1,6 +1,6 @@
 package com.example.platform.identity.api;
 
-import com.example.platform.entitlement.app.EntitlementDecisionService;
+import com.example.platform.entitlement.api.EntitlementDecisionQuery;
 import com.example.platform.entitlement.app.WorkspaceEntitlementPoolService;
 import com.example.platform.entitlement.domain.EntitlementCommandResult;
 import com.example.platform.entitlement.domain.EntitlementDecision;
@@ -24,16 +24,16 @@ public class WorkspaceController {
 
     private final WorkspaceService workspaceService;
     private final WorkspaceEntitlementPoolService poolService;
-    private final EntitlementDecisionService entitlementDecisionService;
+    private final EntitlementDecisionQuery entitlementDecisionQuery;
     private final AdminAuditPublisher auditPublisher;
 
     public WorkspaceController(WorkspaceService workspaceService,
             WorkspaceEntitlementPoolService poolService,
-            EntitlementDecisionService entitlementDecisionService,
+            EntitlementDecisionQuery entitlementDecisionQuery,
             AdminAuditPublisher auditPublisher) {
         this.workspaceService = workspaceService;
         this.poolService = poolService;
-        this.entitlementDecisionService = entitlementDecisionService;
+        this.entitlementDecisionQuery = entitlementDecisionQuery;
         this.auditPublisher = auditPublisher;
     }
 
@@ -129,7 +129,7 @@ public class WorkspaceController {
         if (tenantId == null || tenantId.isBlank()) {
             throw new IllegalArgumentException("Tenant context is required");
         }
-        return entitlementDecisionService.evaluate(new AccessCheckRequest(
+        return entitlementDecisionQuery.evaluate(new AccessCheckRequest(
                 tenantId, workspaceId, request.userId(), "USER", request.userId(),
                 "export", "workspace", workspaceId,
                 "export.preset." + request.preset(), request.preset(), null,

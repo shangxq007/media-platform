@@ -1,6 +1,6 @@
 package com.example.platform.federation.graphql;
 
-import com.example.platform.entitlement.app.EntitlementDecisionService;
+import com.example.platform.entitlement.api.EntitlementDecisionQuery;
 import com.example.platform.entitlement.domain.AccessCheckRequest;
 import com.example.platform.entitlement.domain.EntitlementDecision;
 import com.example.platform.federation.graphql.context.GraphQLRequestContext;
@@ -32,7 +32,7 @@ class ExportPanelStateQueryTest {
     void returnsExportPanelStateForValidProject() throws Exception {
         RenderJobService renderJobService = mock(RenderJobService.class);
         ExportPolicyService exportPolicyService = mock(ExportPolicyService.class);
-        EntitlementDecisionService entitlementService = mock(EntitlementDecisionService.class);
+        EntitlementDecisionQuery entitlementService = mock(EntitlementDecisionQuery.class);
         ProjectRepository projectRepository = mock(ProjectRepository.class);
 
         GraphQLRequestContext ctx = new GraphQLRequestContext(
@@ -79,7 +79,7 @@ class ExportPanelStateQueryTest {
     void throwsForProjectNotInTenant() throws Exception {
         RenderJobService renderJobService = mock(RenderJobService.class);
         ExportPolicyService exportPolicyService = mock(ExportPolicyService.class);
-        EntitlementDecisionService entitlementService = mock(EntitlementDecisionService.class);
+        EntitlementDecisionQuery entitlementService = mock(EntitlementDecisionQuery.class);
         ProjectRepository projectRepository = mock(ProjectRepository.class);
 
         GraphQLRequestContext ctx = new GraphQLRequestContext(
@@ -103,7 +103,7 @@ class ExportPanelStateQueryTest {
     void throwsForMissingProject() throws Exception {
         RenderJobService renderJobService = mock(RenderJobService.class);
         ExportPolicyService exportPolicyService = mock(ExportPolicyService.class);
-        EntitlementDecisionService entitlementService = mock(EntitlementDecisionService.class);
+        EntitlementDecisionQuery entitlementService = mock(EntitlementDecisionQuery.class);
         ProjectRepository projectRepository = mock(ProjectRepository.class);
 
         GraphQLRequestContext ctx = new GraphQLRequestContext(
@@ -125,7 +125,7 @@ class ExportPanelStateQueryTest {
     void returnsValidationWithViolationsForRestrictedPresets() throws Exception {
         RenderJobService renderJobService = mock(RenderJobService.class);
         ExportPolicyService exportPolicyService = mock(ExportPolicyService.class);
-        EntitlementDecisionService entitlementService = mock(EntitlementDecisionService.class);
+        EntitlementDecisionQuery entitlementService = mock(EntitlementDecisionQuery.class);
         ProjectRepository projectRepository = mock(ProjectRepository.class);
 
         GraphQLRequestContext ctx = new GraphQLRequestContext(
@@ -171,7 +171,7 @@ class ExportPanelStateQueryTest {
     void returnsWorkerStatuses() throws Exception {
         RenderJobService renderJobService = mock(RenderJobService.class);
         ExportPolicyService exportPolicyService = mock(ExportPolicyService.class);
-        EntitlementDecisionService entitlementService = mock(EntitlementDecisionService.class);
+        EntitlementDecisionQuery entitlementService = mock(EntitlementDecisionQuery.class);
         ProjectRepository projectRepository = mock(ProjectRepository.class);
 
         GraphQLRequestContext ctx = new GraphQLRequestContext(

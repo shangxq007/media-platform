@@ -1,6 +1,6 @@
 package com.example.platform.federation.graphql.dataloader;
 
-import com.example.platform.entitlement.app.EntitlementDecisionService;
+import com.example.platform.entitlement.api.EntitlementDecisionQuery;
 import com.example.platform.entitlement.domain.AccessCheckRequest;
 import org.dataloader.MappedBatchLoader;
 import org.slf4j.Logger;
@@ -17,9 +17,9 @@ import java.util.concurrent.CompletionStage;
 public class EntitlementGrantDataLoader implements MappedBatchLoader<String, Map<String, Object>> {
     private static final Logger log = LoggerFactory.getLogger(EntitlementGrantDataLoader.class);
 
-    private final EntitlementDecisionService entitlementDecisionService;
+    private final EntitlementDecisionQuery entitlementDecisionService;
 
-    public EntitlementGrantDataLoader(EntitlementDecisionService entitlementDecisionService) {
+    public EntitlementGrantDataLoader(EntitlementDecisionQuery entitlementDecisionService) {
         this.entitlementDecisionService = entitlementDecisionService;
     }
 

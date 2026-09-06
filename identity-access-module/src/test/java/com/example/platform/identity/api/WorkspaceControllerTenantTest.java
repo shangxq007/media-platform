@@ -3,7 +3,7 @@ package com.example.platform.identity.api;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-import com.example.platform.entitlement.app.EntitlementDecisionService;
+import com.example.platform.entitlement.api.EntitlementDecisionQuery;
 import com.example.platform.entitlement.app.EntitlementService;
 import com.example.platform.entitlement.app.WorkspaceEntitlementPoolService;
 import com.example.platform.entitlement.domain.EntitlementCommandType;
@@ -42,7 +42,7 @@ class WorkspaceControllerTenantTest {
     private EntitlementService entitlementService;
 
     @Mock
-    private EntitlementDecisionService entitlementDecisionService;
+    private EntitlementDecisionQuery entitlementDecisionQuery;
 
     @Mock
     private AdminAuditPublisher auditPublisher;
@@ -52,7 +52,7 @@ class WorkspaceControllerTenantTest {
     @BeforeEach
     void setUp() {
         controller = new WorkspaceController(
-                workspaceService, poolService, entitlementDecisionService, auditPublisher);
+                workspaceService, poolService, entitlementDecisionQuery, auditPublisher);
         TenantContext.clear();
     }
 
@@ -69,13 +69,13 @@ class WorkspaceControllerTenantTest {
     @Test
     void previewEntitlementsUsesTenantContext() {
         TenantContext.set("tenant-a");
-        when(entitlementDecisionService.evaluate(any())).thenReturn(sampleDecision());
+        when(entitlementDecisionQuery.evaluate(any())).thenReturn(sampleDecision());
 
         WorkspaceController.PreviewRequest request = new WorkspaceController.PreviewRequest("user-1", "default_720p", "mp4", 60L);
         EntitlementDecision result = controller.previewEntitlements("ws-1", request);
 
         assertNotNull(result);
-        verify(entitlementDecisionService).evaluate(argThat(decisionRequest ->
+        verify(entitlementDecisionQuery).evaluate(argThat(decisionRequest ->
                 "tenant-a".equals(decisionRequest.tenantId())
                         && "user-1".equals(decisionRequest.subjectId())));
     }
@@ -92,24 +92,24 @@ class WorkspaceControllerTenantTest {
     @Test
     void previewEntitlementsUsesTenantContextNotWorkspaceId() {
         TenantContext.set("tenant-a");
-        when(entitlementDecisionService.evaluate(any())).thenReturn(sampleDecision());
+        when(entitlementDecisionQuery.evaluate(any())).thenReturn(sampleDecision());
 
         WorkspaceController.PreviewRequest request = new WorkspaceController.PreviewRequest("user-1", "default_720p", "mp4", 60L);
         controller.previewEntitlements("tenant-b", request);
 
-        verify(entitlementDecisionService).evaluate(argThat(decisionRequest ->
+        verify(entitlementDecisionQuery).evaluate(argThat(decisionRequest ->
                 "tenant-a".equals(decisionRequest.tenantId())));
     }
 
     @Test
     void fakeXTenantIdHeaderDoesNotChangeTenant() {
         TenantContext.set("tenant-a");
-        when(entitlementDecisionService.evaluate(any())).thenReturn(sampleDecision());
+        when(entitlementDecisionQuery.evaluate(any())).thenReturn(sampleDecision());
 
         WorkspaceController.PreviewRequest request = new WorkspaceController.PreviewRequest("user-1", "default_720p", "mp4", 60L);
         controller.previewEntitlements("ws-1", request);
 
-        verify(entitlementDecisionService).evaluate(argThat(decisionRequest ->
+        verify(entitlementDecisionQuery).evaluate(argThat(decisionRequest ->
                 "tenant-a".equals(decisionRequest.tenantId())));
     }
 
@@ -148,7 +148,7 @@ class WorkspaceControllerTenantTest {
         WorkspaceEntitlementPoolService canonicalPoolService =
                 new WorkspaceEntitlementPoolService(null, entitlementService, null);
         WorkspaceController canonicalController = new WorkspaceController(
-                workspaceService, canonicalPoolService, entitlementDecisionService, auditPublisher);
+                workspaceService, canonicalPoolService, entitlementDecisionQuery, auditPublisher);
         WorkspaceController.RevokeGrantRequest request = new WorkspaceController.RevokeGrantRequest(
                 "member-1", 7L, "admin-request-2", "revoke-grant-1",
                 "member removed", "trace-2");

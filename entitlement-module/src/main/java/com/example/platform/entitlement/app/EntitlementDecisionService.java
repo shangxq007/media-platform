@@ -1,5 +1,6 @@
 package com.example.platform.entitlement.app;
 
+import com.example.platform.entitlement.api.EntitlementDecisionQuery;
 import com.example.platform.entitlement.domain.*;
 import com.example.platform.entitlement.infrastructure.EntitlementOverrideRepository;
 import com.example.platform.entitlement.infrastructure.WorkspaceEntitlementPoolRepository;
@@ -16,7 +17,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
-public class EntitlementDecisionService {
+class EntitlementDecisionService implements EntitlementDecisionQuery {
 
     private static final Logger log = LoggerFactory.getLogger(EntitlementDecisionService.class);
 
@@ -39,6 +40,7 @@ public class EntitlementDecisionService {
         this.collaborationAccessPort = collaborationAccessPort.orElse(null);
     }
 
+    @Override
     public EntitlementDecision evaluate(AccessCheckRequest request) {
         List<String> matchedPolicies = new ArrayList<>();
         Instant now = Instant.now();

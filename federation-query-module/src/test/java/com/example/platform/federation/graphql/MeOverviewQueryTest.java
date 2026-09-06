@@ -2,7 +2,7 @@ package com.example.platform.federation.graphql;
 
 import com.example.platform.billing.app.BillingDecisionService;
 import com.example.platform.billing.domain.BillingDecision;
-import com.example.platform.entitlement.app.EntitlementDecisionService;
+import com.example.platform.entitlement.api.EntitlementDecisionQuery;
 import com.example.platform.entitlement.domain.AccessCheckRequest;
 import com.example.platform.entitlement.domain.EntitlementDecision;
 import com.example.platform.federation.graphql.context.GraphQLRequestContext;
@@ -33,7 +33,7 @@ class MeOverviewQueryTest {
 
     @Test
     void returnsMeOverviewWithUserInfo() throws Exception {
-        EntitlementDecisionService entitlementService = mock(EntitlementDecisionService.class);
+        EntitlementDecisionQuery entitlementService = mock(EntitlementDecisionQuery.class);
         BillingDecisionService billingService = mock(BillingDecisionService.class);
         TenantRepository tenantRepository = mock(TenantRepository.class);
         UserRepository userRepository = mock(UserRepository.class);
@@ -81,7 +81,7 @@ class MeOverviewQueryTest {
 
     @Test
     void handlesNullUser() throws Exception {
-        EntitlementDecisionService entitlementService = mock(EntitlementDecisionService.class);
+        EntitlementDecisionQuery entitlementService = mock(EntitlementDecisionQuery.class);
         BillingDecisionService billingService = mock(BillingDecisionService.class);
         TenantRepository tenantRepository = mock(TenantRepository.class);
         UserRepository userRepository = mock(UserRepository.class);
@@ -115,7 +115,7 @@ class MeOverviewQueryTest {
 
     @Test
     void returnsCapabilitiesForAuthenticatedUser() throws Exception {
-        EntitlementDecisionService entitlementService = mock(EntitlementDecisionService.class);
+        EntitlementDecisionQuery entitlementService = mock(EntitlementDecisionQuery.class);
         BillingDecisionService billingService = mock(BillingDecisionService.class);
         TenantRepository tenantRepository = mock(TenantRepository.class);
         UserRepository userRepository = mock(UserRepository.class);
@@ -157,7 +157,7 @@ class MeOverviewQueryTest {
 
     @Test
     void returnsNavigationRoutes() throws Exception {
-        EntitlementDecisionService entitlementService = mock(EntitlementDecisionService.class);
+        EntitlementDecisionQuery entitlementService = mock(EntitlementDecisionQuery.class);
         BillingDecisionService billingService = mock(BillingDecisionService.class);
         TenantRepository tenantRepository = mock(TenantRepository.class);
         UserRepository userRepository = mock(UserRepository.class);
@@ -198,7 +198,7 @@ class MeOverviewQueryTest {
 
     @Test
     void returnsBillingSummary() throws Exception {
-        EntitlementDecisionService entitlementService = mock(EntitlementDecisionService.class);
+        EntitlementDecisionQuery entitlementService = mock(EntitlementDecisionQuery.class);
         BillingDecisionService billingService = mock(BillingDecisionService.class);
         TenantRepository tenantRepository = mock(TenantRepository.class);
         UserRepository userRepository = mock(UserRepository.class);

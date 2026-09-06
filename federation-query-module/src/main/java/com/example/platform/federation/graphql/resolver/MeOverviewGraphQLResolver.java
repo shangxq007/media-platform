@@ -3,7 +3,7 @@ package com.example.platform.federation.graphql.resolver;
 import com.example.platform.billing.app.BillingDecisionService;
 import com.example.platform.billing.app.BillingDecisionService.BillingContext;
 import com.example.platform.billing.domain.PricingModel;
-import com.example.platform.entitlement.app.EntitlementDecisionService;
+import com.example.platform.entitlement.api.EntitlementDecisionQuery;
 import com.example.platform.entitlement.domain.AccessCheckRequest;
 import com.example.platform.entitlement.domain.EntitlementDecision;
 import com.example.platform.federation.graphql.context.GraphQLRequestContext;
@@ -24,12 +24,12 @@ public class MeOverviewGraphQLResolver {
 
     private static final Logger log = LoggerFactory.getLogger(MeOverviewGraphQLResolver.class);
 
-    private final EntitlementDecisionService entitlementDecisionService;
+    private final EntitlementDecisionQuery entitlementDecisionService;
     private final BillingDecisionService billingDecisionService;
     private final TenantRepository tenantRepository;
     private final UserRepository userRepository;
 
-    public MeOverviewGraphQLResolver(EntitlementDecisionService entitlementDecisionService,
+    public MeOverviewGraphQLResolver(EntitlementDecisionQuery entitlementDecisionService,
                                      BillingDecisionService billingDecisionService,
                                      TenantRepository tenantRepository,
                                      UserRepository userRepository) {
