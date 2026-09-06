@@ -232,8 +232,6 @@ class TimelineRevisionRenderModeParityTest {
         TimelineNormalizationService normalizer = new TimelineNormalizationService();
         ArtifactGraphCompiler artifactCompiler = new ArtifactGraphCompiler();
         CapabilityGraphCompiler capCompiler = new CapabilityGraphCompiler();
-        ProviderBindingCompiler bindingCompiler = new ProviderBindingCompiler();
-        ProviderExecutionDocumentDraftCompiler draftCompiler = new ProviderExecutionDocumentDraftCompiler();
         RenderExecutionPlanCompiler planCompiler = new RenderExecutionPlanCompiler();
         RenderPlanPolicyGuard policyGuard = new RenderPlanPolicyGuard();
         RenderExecutionStepExecutor stepExecutor = new RenderExecutionStepExecutor(
@@ -242,8 +240,7 @@ class TimelineRevisionRenderModeParityTest {
         return new PlanBasedTimelineRevisionRenderService(
                 new StubTimelineRevisionService(revisionRepo), snapshotService,
                 mapper, parser, inputProductResolver, normalizer,
-                artifactCompiler, capCompiler, bindingCompiler, draftCompiler,
-                planCompiler, policyGuard, planRunner, matService,
+                artifactCompiler, capCompiler, planCompiler, policyGuard, planRunner, matService,
                 regService, productRuntime, storageRuntime, tempDir, auditRecorder);
     }
 

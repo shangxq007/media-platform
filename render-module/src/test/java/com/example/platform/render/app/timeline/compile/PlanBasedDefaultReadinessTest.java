@@ -1,6 +1,9 @@
 package com.example.platform.render.app.timeline.compile;
 
 import com.example.platform.render.app.timeline.compile.audit.*;
+import com.example.platform.render.domain.compile.ArtifactRequirement;
+import com.example.platform.render.domain.compile.LogicalCapabilityGraph;
+import com.example.platform.render.domain.compile.LogicalCapabilityNode;
 import com.example.platform.render.domain.compile.executionplan.*;
 import com.example.platform.render.infrastructure.ProviderStatus;
 import com.example.platform.render.infrastructure.ProviderType;
@@ -53,7 +56,7 @@ class PlanBasedDefaultReadinessTest {
                 "mlt", mltRef, null, List.of(), false,
                 ExecutionEnvironmentTarget.LOCAL, "MLT exec", Map.of());
         RenderExecutionPlan plan = new RenderExecutionPlan(
-                RenderExecutionPlanId.fromBindingPlan("bp-1", "PRODUCTION"),
+                RenderExecutionPlanId.fromCapabilityGraph("cg-1", "PRODUCTION"),
                 "bp-1", "tl-1", ExecutionPolicy.production(),
                 ExecutionEnvironmentTarget.LOCAL, List.of(exec), false, List.of());
         LocalExecutionPlanContext ctx = createContext();
@@ -73,7 +76,7 @@ class PlanBasedDefaultReadinessTest {
                 "provider-a", providerRef, null, List.of(), false,
                 ExecutionEnvironmentTarget.OPENCUE, "Provider OpenCue", Map.of());
         RenderExecutionPlan plan = new RenderExecutionPlan(
-                RenderExecutionPlanId.fromBindingPlan("bp-1", "PRODUCTION"),
+                RenderExecutionPlanId.fromCapabilityGraph("cg-1", "PRODUCTION"),
                 "bp-1", "tl-1", ExecutionPolicy.production(),
                 ExecutionEnvironmentTarget.OPENCUE, List.of(exec), false, List.of());
         LocalExecutionPlanContext ctx = createContext();
@@ -113,12 +116,40 @@ class PlanBasedDefaultReadinessTest {
                 RenderExecutionStepStatus.PENDING, null, null, null, null, null,
                 List.of("s4"), false, ExecutionEnvironmentTarget.LOCAL, "Finalize", Map.of());
         RenderExecutionPlan plan = new RenderExecutionPlan(
-                RenderExecutionPlanId.fromBindingPlan("bp-1", "PRODUCTION"),
+                RenderExecutionPlanId.fromCapabilityGraph("cg-1", "PRODUCTION"),
                 "bp-1", "tl-1", ExecutionPolicy.production(),
                 ExecutionEnvironmentTarget.LOCAL,
                 List.of(exec, verify, register, link, finalize), false, List.of());
         RenderPlanPolicyResult result = guard.evaluate(plan, plan.policy());
         assertTrue(result.isValid());
+    }
+
+    @Test
+    @DisplayName("Provider-neutral execution fails closed with one binding violation")
+    void providerNeutralExecutionFailsClosedWithOneBindingViolation() {
+        LogicalCapabilityGraph capabilityGraph = new LogicalCapabilityGraph(
+                "cg-provider-neutral", "tl-1",
+                List.of(
+                        LogicalCapabilityNode.of("input", ArtifactNodeType.INPUT_MEDIA,
+                                "Input", ArtifactRequirement.empty()),
+                        LogicalCapabilityNode.of("overlay", ArtifactNodeType.SUBTITLE_OVERLAY,
+                                "Overlay", ArtifactRequirement.of("caption.render")),
+                        LogicalCapabilityNode.of("render", ArtifactNodeType.FINAL_RENDER,
+                                "Final render", ArtifactRequirement.of("video.render"))),
+                List.of());
+
+        RenderExecutionPlan plan = new RenderExecutionPlanCompiler().compile(
+                capabilityGraph, ExecutionPolicy.production());
+        RenderPlanPolicyResult result = new RenderPlanPolicyGuard().evaluate(plan, plan.policy());
+
+        assertEquals(3, plan.providerExecutionSteps().size());
+        assertTrue(result.isRejected());
+        assertEquals("Plan has 1 policy violations", result.explanation());
+        assertEquals(1, result.violations().size());
+        assertEquals(RenderPlanPolicyViolationType.UNBOUND_NODE_EXECUTABLE,
+                result.violations().getFirst().type());
+        assertNull(result.violations().getFirst().stepId());
+        assertNull(result.violations().getFirst().nodeId());
     }
 
     @Test

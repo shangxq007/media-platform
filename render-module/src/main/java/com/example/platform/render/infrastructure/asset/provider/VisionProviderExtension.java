@@ -3,7 +3,6 @@ package com.example.platform.render.infrastructure.asset.provider;
 import com.example.platform.extension.app.ExtensionRegistryService;
 import com.example.platform.extension.domain.*;
 import com.example.platform.extension.runtime.PluginRuntimeProviderBinding;
-import com.example.platform.render.domain.asset.semantic.AiProviderDescriptor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
@@ -21,26 +20,24 @@ public class VisionProviderExtension implements PluginRuntimeProviderBinding {
 
     private static final Logger log = LoggerFactory.getLogger(VisionProviderExtension.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
-    private final AiProviderDescriptor descriptor;
+    private static final String PROVIDER_KEY = "vision-default";
+    private static final String VERSION = "1.0";
     private final ExtensionRegistryService extensionRegistry;
 
     public VisionProviderExtension(ExtensionRegistryService extensionRegistry) {
         this.extensionRegistry = extensionRegistry;
-        this.descriptor = AiProviderDescriptor.of("vision-default", "Vision Provider",
-                List.of("VISION", "OBJECT_DETECTION", "SCENE_DETECTION", "BRAND_DETECTION", "PEOPLE_DETECTION"));
     }
 
     @EventListener(ApplicationReadyEvent.class)
     void registerInPlatform() {
         extensionRegistry.registerProviderExtension(providerKey(), this,
                 ExtensionTrustLevel.FULLY_TRUSTED, "system");
-        log.info("Vision provider registered: key={} capabilities={}", providerKey(), descriptor().capabilities());
+        log.info("Vision provider registered: key={}", providerKey());
     }
 
-    public AiProviderDescriptor descriptor() { return descriptor; }
-    @Override public String providerKey() { return descriptor.providerId(); }
+    @Override public String providerKey() { return PROVIDER_KEY; }
     @Override public String providerType() { return "ai.provider.vision"; }
-    @Override public String version() { return descriptor.version(); }
+    @Override public String version() { return VERSION; }
     @Override public String inputSchema() { return "{\"type\":\"object\",\"properties\":{\"videoFile\":{\"type\":\"string\"}}}"; }
     @Override public String outputSchema() { return "{\"type\":\"object\",\"properties\":{\"objects\":{\"type\":\"array\"},\"scenes\":{\"type\":\"array\"}}}"; }
     @Override public ExtensionTrustLevel trustLevel() { return ExtensionTrustLevel.FULLY_TRUSTED; }

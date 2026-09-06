@@ -202,8 +202,6 @@ class TimelineRevisionRenderExecutionModeTest {
         TimelineNormalizationService normalizer = new TimelineNormalizationService();
         ArtifactGraphCompiler artifactCompiler = new ArtifactGraphCompiler();
         CapabilityGraphCompiler capabilityCompiler = new CapabilityGraphCompiler();
-        ProviderBindingCompiler bindingCompiler = new ProviderBindingCompiler();
-        ProviderExecutionDocumentDraftCompiler draftCompiler = new ProviderExecutionDocumentDraftCompiler();
         RenderExecutionPlanCompiler planCompiler = new RenderExecutionPlanCompiler();
         RenderPlanPolicyGuard policyGuard = new RenderPlanPolicyGuard();
         RenderAuditRecorder auditRecorder = new RenderAuditRecorder(new NoopRenderAuditEventSink());
@@ -217,7 +215,7 @@ class TimelineRevisionRenderExecutionModeTest {
                         new StubTimelineRevisionService(revisionRepo),
                         snapshotService, mapper, parser, inputProductResolver,
                         normalizer, artifactCompiler, capabilityCompiler,
-                        bindingCompiler, draftCompiler, planCompiler,
+                        planCompiler,
                         policyGuard, planRunner,
                         materializationService, registrationService,
                         productRuntime, storageRuntime, tempDir);

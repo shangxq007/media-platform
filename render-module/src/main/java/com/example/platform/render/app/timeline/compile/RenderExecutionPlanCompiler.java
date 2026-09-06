@@ -1,8 +1,8 @@
 package com.example.platform.render.app.timeline.compile;
 
 import com.example.platform.render.domain.compile.ArtifactNodeType;
-import com.example.platform.render.domain.compile.binding.*;
-import com.example.platform.render.domain.compile.execution.*;
+import com.example.platform.render.domain.compile.LogicalCapabilityGraph;
+import com.example.platform.render.domain.compile.LogicalCapabilityNode;
 import com.example.platform.render.domain.compile.executionplan.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -12,8 +12,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
- * Compiles a ProviderBindingPlan and ProviderExecutionDocumentDrafts
- * into a RenderExecutionPlan.
+ * Compiles a provider-neutral LogicalCapabilityGraph into a RenderExecutionPlan.
  *
  * <p>v0: All steps are planning placeholders with executionReady=false.
  * The compiler does NOT execute providers, does NOT generate commands,
@@ -27,40 +26,28 @@ public class RenderExecutionPlanCompiler {
     private static final Logger log = LoggerFactory.getLogger(RenderExecutionPlanCompiler.class);
 
     /**
-     * Compile a binding plan into an execution plan.
+     * Compile a capability graph into an execution plan.
      *
-     * @param bindingPlan   the provider binding plan
-     * @param drafts        execution document drafts for bound nodes
+     * @param capabilityGraph the provider-neutral capability graph
      * @param policy        execution policy
      * @return the render execution plan
      */
     public RenderExecutionPlan compile(
-            ProviderBindingPlan bindingPlan,
-            List<ProviderExecutionDocumentDraft> drafts,
+            LogicalCapabilityGraph capabilityGraph,
             ExecutionPolicy policy) {
 
-        if (bindingPlan == null) {
-            throw new IllegalArgumentException("ProviderBindingPlan must not be null");
-        }
-        if (drafts == null) {
-            drafts = List.of();
+        if (capabilityGraph == null) {
+            throw new IllegalArgumentException("LogicalCapabilityGraph must not be null");
         }
         if (policy == null) {
             policy = ExecutionPolicy.dryRun();
         }
 
-        RenderExecutionPlanId planId = RenderExecutionPlanId.fromBindingPlan(
-                bindingPlan.planId().toString(), policy.mode());
+        RenderExecutionPlanId planId = RenderExecutionPlanId.fromCapabilityGraph(
+                capabilityGraph.graphId(), policy.mode());
 
         List<RenderExecutionStep> steps = new ArrayList<>();
         List<RenderExecutionPlanFailureReason> failureReasons = new ArrayList<>();
-
-        // Index drafts by binding node ID
-        var draftIndex = drafts.stream()
-                .collect(java.util.stream.Collectors.toMap(
-                        ProviderExecutionDocumentDraft::bindingNodeId,
-                        d -> d,
-                        (a, b) -> a));
 
         String finalizeStepId = RenderExecutionStepId.of(
                 planId.toString(), "FINALIZE_RENDER", null).toString();
@@ -69,10 +56,10 @@ public class RenderExecutionPlanCompiler {
         String finalRegisterStepId = null;
         String finalLinkStepId = null;
 
-        // Process each bound node
-        for (ProviderBindingNode node : bindingPlan.nodes()) {
-            if (node.isBound() && node.decision() != null && node.decision().selectedProvider() != null) {
-                BoundProviderRef providerRef = node.decision().selectedProvider();
+        // Render owns the provider-neutral plan. Concrete provider documents and
+        // bindings are produced only after provider-runtime selects an exact
+        // Roadmap-22 executable task graph.
+        for (LogicalCapabilityNode node : capabilityGraph.nodes()) {
                 ExecutionEnvironmentTarget target = resolveTarget(policy);
 
                 // Step 1: MATERIALIZE_INPUT for INPUT_MEDIA nodes
@@ -93,29 +80,7 @@ public class RenderExecutionPlanCompiler {
                             Map.of()));
                 }
 
-                // Step 2: PREPARE_PROVIDER_DOCUMENT
-                String prepareStepId = RenderExecutionStepId.of(
-                        planId.toString(), "PREPARE_PROVIDER_DOCUMENT", node.nodeId()).toString();
-                ProviderExecutionDocumentDraft draft = draftIndex.get(node.nodeId());
-                List<String> prepareDeps = new ArrayList<>();
-                if (materializeStepId != null) {
-                    prepareDeps.add(materializeStepId);
-                }
-                steps.add(new RenderExecutionStep(
-                        prepareStepId,
-                        RenderExecutionStepType.PREPARE_PROVIDER_DOCUMENT,
-                        RenderExecutionStepStatus.PENDING,
-                        node.nodeId(),
-                        node.artifactNodeType(),
-                        providerRef.providerName(),
-                        providerRef,
-                        draft,
-                        List.copyOf(prepareDeps),
-                        false, target,
-                        "Prepare document: " + providerRef.providerName() + " / " + node.label(),
-                        Map.of()));
-
-                // Step 3: EXECUTE_PROVIDER (placeholder, executionReady=false)
+                // Provider execution remains an explicit boundary placeholder.
                 String executeStepId = RenderExecutionStepId.of(
                         planId.toString(), "EXECUTE_PROVIDER", node.nodeId()).toString();
                 steps.add(new RenderExecutionStep(
@@ -124,12 +89,12 @@ public class RenderExecutionPlanCompiler {
                         RenderExecutionStepStatus.PENDING,
                         node.nodeId(),
                         node.artifactNodeType(),
-                        providerRef.providerName(),
-                        providerRef,
                         null,
-                        List.of(prepareStepId),
+                        null,
+                        null,
+                        materializeStepId == null ? List.of() : List.of(materializeStepId),
                         false, target,
-                        "Execute: " + providerRef.providerName() + " / " + node.label(),
+                        "Provider-runtime execution required: " + node.label(),
                         Map.of()));
 
                 // Step 4-6: Output steps for FINAL_RENDER nodes
@@ -142,8 +107,8 @@ public class RenderExecutionPlanCompiler {
                             RenderExecutionStepStatus.PENDING,
                             node.nodeId(),
                             node.artifactNodeType(),
-                            providerRef.providerName(),
-                            providerRef, null,
+                            null,
+                            null, null,
                             List.of(executeStepId),
                             false, target,
                             "Verify output: " + node.label(),
@@ -157,8 +122,8 @@ public class RenderExecutionPlanCompiler {
                             RenderExecutionStepStatus.PENDING,
                             node.nodeId(),
                             node.artifactNodeType(),
-                            providerRef.providerName(),
-                            providerRef, null,
+                            null,
+                            null, null,
                             List.of(finalVerifyStepId),
                             false, target,
                             "Register output: " + node.label(),
@@ -178,10 +143,6 @@ public class RenderExecutionPlanCompiler {
                             "Link product dependency: " + node.label(),
                             Map.of()));
                 }
-            } else {
-                // Failed/unbound node
-                failureReasons.add(RenderExecutionPlanFailureReason.UNBOUND_CAPABILITY_NODE);
-            }
         }
 
         // Step 7: FINALIZE_RENDER (depends on all output steps)
@@ -200,25 +161,16 @@ public class RenderExecutionPlanCompiler {
                 "Finalize render",
                 Map.of()));
 
-        // Check for missing document drafts
-        for (ProviderBindingNode node : bindingPlan.boundNodes()) {
-            if (!draftIndex.containsKey(node.nodeId())
-                    && node.artifactNodeType() != ArtifactNodeType.INPUT_MEDIA) {
-                failureReasons.add(RenderExecutionPlanFailureReason.MISSING_DOCUMENT_DRAFT);
-            }
-        }
-
-        boolean hasUnboundFailures = bindingPlan.hasFailures();
         boolean allStepsReady = steps.stream().allMatch(s -> s.executionReady());
-        boolean executionReady = !hasUnboundFailures && failureReasons.isEmpty() && allStepsReady;
+        boolean executionReady = failureReasons.isEmpty() && allStepsReady;
 
         log.info("Render execution plan compiled: planId={} mode={} steps={} failures={} execReady={}",
                 planId, policy.mode(), steps.size(), failureReasons.size(), executionReady);
 
         return new RenderExecutionPlan(
                 planId,
-                bindingPlan.planId().toString(),
-                bindingPlan.timelineId(),
+                capabilityGraph.graphId(),
+                capabilityGraph.timelineId(),
                 policy,
                 ExecutionEnvironmentTarget.LOCAL,
                 List.copyOf(steps),

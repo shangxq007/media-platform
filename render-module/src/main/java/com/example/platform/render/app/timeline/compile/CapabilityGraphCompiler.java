@@ -12,7 +12,7 @@ import org.springframework.stereotype.Service;
  *
  * <p>Provider-neutral: maps artifact nodes to capability requirements
  * without selecting any specific provider. The capability graph can
- * later feed into ProviderBindingPlan (future work).</p>
+ * later feed into the provider-neutral render execution plan.</p>
  *
  * <p>v0 capability mapping:
  * <ul>

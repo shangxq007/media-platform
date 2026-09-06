@@ -7,8 +7,8 @@ import java.util.List;
  *
  * <p>Each artifact node is annotated with capability requirements describing
  * what capabilities are needed to produce that artifact. This graph is
- * deterministic, provider-neutral, and feeds into ProviderBindingPlan
- * (future work).</p>
+ * deterministic, provider-neutral, and is the render-side planning input.
+ * Provider binding occurs only at the provider-runtime boundary.</p>
  *
  * @param graphId    deterministic graph identifier
  * @param timelineId source timeline identifier

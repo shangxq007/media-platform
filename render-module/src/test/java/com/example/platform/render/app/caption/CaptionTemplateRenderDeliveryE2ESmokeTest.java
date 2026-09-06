@@ -77,8 +77,7 @@ class CaptionTemplateRenderDeliveryE2ESmokeTest {
                 new CaptionTemplateTimelineAdapter(),
                 new CaptionTemplateRenderResultMapper(),
                 new TimelineNormalizationService(), new ArtifactGraphCompiler(),
-                new CapabilityGraphCompiler(), new ProviderBindingCompiler(),
-                new ProviderExecutionDocumentDraftCompiler(), new RenderExecutionPlanCompiler(),
+                new CapabilityGraphCompiler(), new RenderExecutionPlanCompiler(),
                 new RenderPlanPolicyGuard(), planRunner, matService, regService,
                 productRuntime, storageRuntime,
                 new TimelineInputProductResolver(productRuntime), tempDir);

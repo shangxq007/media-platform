@@ -7,8 +7,8 @@ import java.util.Set;
  * PLUGIN_CAPABILITY_REGISTRY_V1_CONTRACT_V1).
  *
  * <p>False-by-default guarantee vocabulary. {@code producesCanonicalTimeline}
- * and {@code producesReadyProduct} MUST be {@code false} for the FFmpeg
- * self-description; {@code writesRevision} has NO enum constant and therefore
+ * and {@code producesReadyProduct} MUST be {@code false}; {@code writesRevision}
+ * has NO enum constant and therefore
  * cannot be declared (a plugin declaration cannot grant platform authority).
  * Optional guarantees (deterministic, idempotent, cancelable, streaming,
  * duration/audio/video preservation) default to NOT_DECLARED unless the exact
@@ -34,8 +34,8 @@ public record PluginGuarantee(
         PRESERVES_VIDEO
     }
 
-    /** Frozen FFmpeg declaration: no timeline/READY authority, nothing else declared. */
-    public static PluginGuarantee ffmpegDefaults() {
+    /** Neutral declaration with no optional guarantees. */
+    public static PluginGuarantee noneDeclared() {
         return new PluginGuarantee(false, false, Set.of());
     }
 

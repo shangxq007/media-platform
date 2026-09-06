@@ -55,15 +55,23 @@ class OpenCueSubmissionSliceTest {
     }
 
     private ExecutionJob createJobWithBackendAndId(String backendId, String jobId) {
-        BackendExecutionSpec spec = LocalProcessExecutionSpec.of(
-                backendId, backendId + "-producer",
+        BackendExecutionSpec spec = new TestBackendExecutionSpec(
+                backendId, backendId + "-producer", List.of("prod-1"),
                 List.of(ExecutionInput.of("prod-1", "ref-1")),
-                List.of(ExecutionOutput.of("MEDIA_FILE", "mp4")),
-                "provider-a", List.of("-i", "input.mp4", "output.mp4"));
+                List.of(ExecutionOutput.of("MEDIA_FILE", "mp4")));
         ExecutionTask task = ExecutionTask.of(spec);
         return new ExecutionJob(jobId, "opencue", backendId, "local-process", 50,
                 Map.of("cpu", 1, "memoryMb", 1024), Map.of(), List.of(task),
                 ExecutionStatus.CREATED, java.time.Instant.now(), null, null, null);
+    }
+
+    private record TestBackendExecutionSpec(
+            String backendId, String producerId, List<String> inputProductIds,
+            List<ExecutionInput> materializedInputs,
+            List<ExecutionOutput> expectedOutputs) implements BackendExecutionSpec {
+        @Override public String executionSpecId() { return "test-" + backendId + '-' + producerId; }
+        @Override public String backendType() { return "test"; }
+        @Override public Map<String, String> executionHints() { return Map.of(); }
     }
 
     // ── Bound-identity preservation without a concrete backend allowlist ──

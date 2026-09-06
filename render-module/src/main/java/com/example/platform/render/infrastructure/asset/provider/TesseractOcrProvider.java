@@ -1,7 +1,6 @@
 package com.example.platform.render.infrastructure.asset.provider;
 
 import com.example.platform.extension.domain.*;
-import com.example.platform.render.domain.asset.semantic.AiProviderDescriptor;
 import java.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

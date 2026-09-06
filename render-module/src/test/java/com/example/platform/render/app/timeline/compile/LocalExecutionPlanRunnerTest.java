@@ -214,7 +214,7 @@ class LocalExecutionPlanRunnerTest {
                 ExecutionEnvironmentTarget.LOCAL, "Finalize", Map.of());
 
         return new RenderExecutionPlan(
-                RenderExecutionPlanId.fromBindingPlan("bp-test", "PRODUCTION"),
+                RenderExecutionPlanId.fromCapabilityGraph("cg-test", "PRODUCTION"),
                 "bp-test", "tl-test",
                 ExecutionPolicy.production(),
                 ExecutionEnvironmentTarget.LOCAL,
@@ -235,7 +235,7 @@ class LocalExecutionPlanRunnerTest {
                 ExecutionEnvironmentTarget.LOCAL, "Execute " + providerName, Map.of());
 
         return new RenderExecutionPlan(
-                RenderExecutionPlanId.fromBindingPlan("bp-test", "PRODUCTION"),
+                RenderExecutionPlanId.fromCapabilityGraph("cg-test", "PRODUCTION"),
                 "bp-test", "tl-test",
                 ExecutionPolicy.production(),
                 ExecutionEnvironmentTarget.LOCAL,
@@ -255,7 +255,7 @@ class LocalExecutionPlanRunnerTest {
                 target, "Execute Provider", Map.of());
 
         return new RenderExecutionPlan(
-                RenderExecutionPlanId.fromBindingPlan("bp-test", "PRODUCTION"),
+                RenderExecutionPlanId.fromCapabilityGraph("cg-test", "PRODUCTION"),
                 "bp-test", "tl-test",
                 ExecutionPolicy.production(), target,
                 List.of(execute), false, List.of());
@@ -270,7 +270,7 @@ class LocalExecutionPlanRunnerTest {
                 ExecutionEnvironmentTarget.LOCAL, "Execute Provider", Map.of());
 
         return new RenderExecutionPlan(
-                RenderExecutionPlanId.fromBindingPlan("bp-test", "PRODUCTION"),
+                RenderExecutionPlanId.fromCapabilityGraph("cg-test", "PRODUCTION"),
                 "bp-test", "tl-test",
                 ExecutionPolicy.production(),
                 ExecutionEnvironmentTarget.LOCAL,

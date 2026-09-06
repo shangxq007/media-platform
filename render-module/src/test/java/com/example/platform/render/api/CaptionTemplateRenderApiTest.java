@@ -311,7 +311,7 @@ class CaptionTemplateRenderApiTest {
         CaptionTemplateRenderResult result;
         MockCaptionService() {
             super(null, null, null, null, null, null, null, null,
-                    null, null, null, null, null, null, null, null, null);
+                    null, null, null, null, null, null, null);
         }
         @Override
         public CaptionTemplateRenderResult render(CaptionTemplateRenderRequest request) {

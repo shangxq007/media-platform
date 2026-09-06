@@ -47,10 +47,19 @@ class OpenCueEnvironmentTest {
 
     private static BackendExecutionSpec createTestSpec(String backendId, String producerId,
                                                         String executable, List<String> args) {
-        return LocalProcessExecutionSpec.of(backendId, producerId,
+        return new TestBackendExecutionSpec(
+                backendId, producerId, List.of("prod-1"),
                 List.of(ExecutionInput.of("prod-1", "ref-1")),
                 List.of(ExecutionOutput.of("MEDIA_FILE", "mp4")),
-                executable, args);
+                Map.of("executable", executable, "arguments", String.join(" ", args)));
+    }
+
+    private record TestBackendExecutionSpec(
+            String backendId, String producerId, List<String> inputProductIds,
+            List<ExecutionInput> materializedInputs, List<ExecutionOutput> expectedOutputs,
+            Map<String, String> executionHints) implements BackendExecutionSpec {
+        @Override public String executionSpecId() { return "test-" + backendId + '-' + producerId; }
+        @Override public String backendType() { return "test"; }
     }
 
     @Test

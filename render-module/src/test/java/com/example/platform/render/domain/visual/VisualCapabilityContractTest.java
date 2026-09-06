@@ -246,127 +246,7 @@ class VisualCapabilityContractTest {
         assertNotNull(VisualFallbackBehavior.PROVIDER_SPECIFIC_ONLY);
     }
 
-    // --- Stage 7: Provider Visual Support ---
-
-    @Test @DisplayName("Typed timed-text composition support can be represented")
-    void providerBaselineSupportCanBeRepresented() {
-        ProviderVisualCapabilitySupport support = new ProviderVisualCapabilitySupport(
-                "provider-a", new VisualCapabilityId("CAPTION_OVERLAY"),
-                VisualCapabilityCategory.CAPTION,
-                VisualCapabilityStatus.PRODUCTION,
-                VisualConsistencyLevel.EXACT,
-                VisualFallbackBehavior.NO_FALLBACK,
-                true, true, Map.of());
-
-        assertTrue(support.isProductionEligible());
-        assertTrue(support.isAutoDispatchEligible());
-        assertEquals("provider-a", support.providerId());
-    }
-
-    @Test @DisplayName("Remotion is not production allowed")
-    void remotionIsNotProductionAllowed() {
-        ProviderVisualCapabilitySupport support = new ProviderVisualCapabilitySupport(
-                "remotion", new VisualCapabilityId("REMOTION_COMPONENT_EXECUTION"),
-                VisualCapabilityCategory.EFFECT,
-                VisualCapabilityStatus.FORBIDDEN,
-                VisualConsistencyLevel.FORBIDDEN,
-                VisualFallbackBehavior.REJECT_REQUEST,
-                false, false, Map.of());
-
-        assertFalse(support.isProductionEligible());
-        assertFalse(support.isAutoDispatchEligible());
-    }
-
-    @Test @DisplayName("POC provider is not auto-dispatch allowed")
-    void pocProviderIsNotAutoDispatchAllowed() {
-        ProviderVisualCapabilitySupport support = new ProviderVisualCapabilitySupport(
-                "natron", new VisualCapabilityId("NATRON_NODE_GRAPH"),
-                VisualCapabilityCategory.EFFECT,
-                VisualCapabilityStatus.POC,
-                VisualConsistencyLevel.PROVIDER_SPECIFIC,
-                VisualFallbackBehavior.REJECT_REQUEST,
-                false, false, Map.of());
-
-        assertFalse(support.isAutoDispatchEligible());
-        assertFalse(support.isProductionEligible());
-    }
-
-    @Test @DisplayName("FORBIDDEN capability cannot be auto-dispatch allowed")
-    void forbiddenCapabilityCannotBeAutoDispatchAllowed() {
-        ProviderVisualCapabilitySupport support = new ProviderVisualCapabilitySupport(
-                "test", new VisualCapabilityId("ARBITRARY_PROVIDER_EXPRESSION"),
-                VisualCapabilityCategory.EFFECT,
-                VisualCapabilityStatus.FORBIDDEN,
-                VisualConsistencyLevel.FORBIDDEN,
-                VisualFallbackBehavior.REJECT_REQUEST,
-                true, true, Map.of()); // even if declared true
-
-        assertFalse(support.isAutoDispatchEligible());
-        assertFalse(support.isProductionEligible());
-    }
-
-    @Test @DisplayName("Provider consistency level is explicit")
-    void providerConsistencyLevelIsExplicit() {
-        ProviderVisualCapabilitySupport support = new ProviderVisualCapabilitySupport(
-                "provider-a", new VisualCapabilityId("BLUR"),
-                VisualCapabilityCategory.EFFECT,
-                VisualCapabilityStatus.POC,
-                VisualConsistencyLevel.APPROX,
-                VisualFallbackBehavior.DISABLE_EFFECT,
-                false, false, Map.of());
-
-        assertEquals(VisualConsistencyLevel.APPROX, support.consistencyLevel());
-    }
-
-    @Test @DisplayName("Fallback behavior is explicit")
-    void fallbackBehaviorIsExplicit() {
-        ProviderVisualCapabilitySupport support = new ProviderVisualCapabilitySupport(
-                "provider-a", new VisualCapabilityId("CROSSFADE"),
-                VisualCapabilityCategory.TRANSITION,
-                VisualCapabilityStatus.PRODUCTION,
-                VisualConsistencyLevel.EXACT,
-                VisualFallbackBehavior.FADE_OUT_IN,
-                true, true, Map.of());
-
-        assertEquals(VisualFallbackBehavior.FADE_OUT_IN, support.fallbackBehavior());
-    }
-
-    // --- Stage 8: Provider Matrix ---
-
-    @Test @DisplayName("Provider matrix can find support")
-    void providerMatrixCanFindSupport() {
-        ProviderVisualCapabilitySupport support = new ProviderVisualCapabilitySupport(
-                "provider-a", new VisualCapabilityId("SCALE"),
-                VisualCapabilityCategory.TRANSFORM,
-                VisualCapabilityStatus.PRODUCTION,
-                VisualConsistencyLevel.EXACT,
-                VisualFallbackBehavior.NO_FALLBACK,
-                true, true, Map.of());
-
-        ProviderVisualCapabilityMatrix matrix = new ProviderVisualCapabilityMatrix(
-                List.of(support), Map.of());
-
-        assertTrue(matrix.findSupport("provider-a", new VisualCapabilityId("SCALE")).isPresent());
-        assertFalse(matrix.findSupport("provider-a", new VisualCapabilityId("BLUR")).isPresent());
-    }
-
-    @Test @DisplayName("Matrix has forbidden capabilities check")
-    void matrixHasForbiddenCapabilitiesCheck() {
-        ProviderVisualCapabilitySupport forbidden = new ProviderVisualCapabilitySupport(
-                "test", new VisualCapabilityId("ARBITRARY_PROVIDER_EXPRESSION"),
-                VisualCapabilityCategory.EFFECT,
-                VisualCapabilityStatus.FORBIDDEN,
-                VisualConsistencyLevel.FORBIDDEN,
-                VisualFallbackBehavior.REJECT_REQUEST,
-                false, false, Map.of());
-
-        ProviderVisualCapabilityMatrix matrix = new ProviderVisualCapabilityMatrix(
-                List.of(forbidden), Map.of());
-
-        assertTrue(matrix.hasForbiddenCapabilities());
-    }
-
-    // --- Stage 9: Policy and Validation ---
+    // --- Policy and Validation ---
 
     @Test @DisplayName("Forbidden capability is rejected by policy")
     void forbiddenCapabilityIsRejectedByPolicy() {
@@ -402,34 +282,7 @@ class VisualCapabilityContractTest {
         assertTrue(VisualCapabilityPolicy.mayBeProductionEligible(cap));
     }
 
-    @Test @DisplayName("Unknown provider support is not production allowed")
-    void unknownProviderSupportIsNotProductionAllowed() {
-        ProviderVisualCapabilitySupport support = new ProviderVisualCapabilitySupport(
-                "unknown", new VisualCapabilityId("SCALE"),
-                VisualCapabilityCategory.TRANSFORM,
-                VisualCapabilityStatus.POC,
-                VisualConsistencyLevel.UNKNOWN,
-                VisualFallbackBehavior.REJECT_REQUEST,
-                false, false, Map.of());
-
-        assertFalse(VisualCapabilityPolicy.isProductionAllowed(support));
-    }
-
-    @Test @DisplayName("Safe metadata only")
-    void safeMetadataOnly() {
-        ProviderVisualCapabilitySupport support = new ProviderVisualCapabilitySupport(
-                "provider-a", new VisualCapabilityId("SCALE"),
-                VisualCapabilityCategory.TRANSFORM,
-                VisualCapabilityStatus.PRODUCTION,
-                VisualConsistencyLevel.EXACT,
-                VisualFallbackBehavior.NO_FALLBACK,
-                true, true, Map.of("key", "value"));
-
-        assertNotNull(support.safeMetadata());
-        assertEquals("value", support.safeMetadata().get("key"));
-    }
-
-    // --- Stage 10: Validator ---
+    // --- Validator ---
 
     @Test @DisplayName("Validator rejects null definition")
     void validatorRejectsNullDefinition() {
@@ -451,27 +304,6 @@ class VisualCapabilityContractTest {
         List<VisualCapabilityIssue> issues = VisualCapabilityValidator.validateDefinition(
                 EffectCapabilityProfile.scale());
         assertTrue(issues.isEmpty());
-    }
-
-    @Test @DisplayName("Validator rejects null provider support")
-    void validatorRejectsNullProviderSupport() {
-        List<VisualCapabilityIssue> issues = VisualCapabilityValidator.validateProviderSupport(null);
-        assertFalse(issues.isEmpty());
-    }
-
-    @Test @DisplayName("Validator warns on unknown consistency")
-    void validatorWarnsOnUnknownConsistency() {
-        ProviderVisualCapabilitySupport support = new ProviderVisualCapabilitySupport(
-                "test", new VisualCapabilityId("SCALE"),
-                VisualCapabilityCategory.TRANSFORM,
-                VisualCapabilityStatus.PRODUCTION,
-                VisualConsistencyLevel.UNKNOWN,
-                VisualFallbackBehavior.NO_FALLBACK,
-                true, true, Map.of());
-
-        List<VisualCapabilityIssue> issues = VisualCapabilityValidator.validateProviderSupport(support);
-        assertTrue(issues.stream().anyMatch(i ->
-                i.code() == VisualCapabilityIssueCode.CONSISTENCY_LEVEL_UNKNOWN));
     }
 
     @Test @DisplayName("Validator checks forbidden metadata keywords")
@@ -499,21 +331,6 @@ class VisualCapabilityContractTest {
         assertFalse(repr.contains("objectKey"));
         assertFalse(repr.contains("signedUrl"));
         assertFalse(repr.contains("providerName"));
-    }
-
-    @Test @DisplayName("No provider/storage fields in support")
-    void noProviderStorageFieldsInSupport() {
-        ProviderVisualCapabilitySupport support = new ProviderVisualCapabilitySupport(
-                "provider-a", new VisualCapabilityId("SCALE"),
-                VisualCapabilityCategory.TRANSFORM,
-                VisualCapabilityStatus.PRODUCTION,
-                VisualConsistencyLevel.EXACT,
-                VisualFallbackBehavior.NO_FALLBACK,
-                true, true, Map.of());
-
-        String repr = support.toString();
-        assertFalse(repr.contains("bucket"));
-        assertFalse(repr.contains("signedUrl"));
     }
 
     @Test @DisplayName("Issue fields are safe")

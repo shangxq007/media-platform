@@ -45,7 +45,8 @@ public class RenderPlanPolicyGuard {
 
         List<RenderPlanPolicyViolation> violations = new ArrayList<>();
 
-        // Check 1: No unbound required capability node may become executable
+        // Check 1: Provider-neutral placeholders require one provider-runtime
+        // binding decision before any plan execution can proceed.
         checkUnboundNodes(plan, violations);
 
         // Check 2: No non-production provider in PRODUCTION mode
@@ -102,14 +103,14 @@ public class RenderPlanPolicyGuard {
     }
 
     private void checkUnboundNodes(RenderExecutionPlan plan, List<RenderPlanPolicyViolation> violations) {
-        for (RenderExecutionStep step : plan.steps()) {
-            if (step.isProviderExecution() && step.providerRef() == null) {
-                violations.add(new RenderPlanPolicyViolation(
-                        RenderPlanPolicyViolationType.UNBOUND_NODE_EXECUTABLE,
-                        step.stepId(),
-                        step.nodeId(),
-                        "Provider execution step has no bound provider: " + step.stepId()));
-            }
+        boolean hasUnboundProviderExecution = plan.steps().stream()
+                .anyMatch(step -> step.isProviderExecution() && step.providerRef() == null);
+        if (hasUnboundProviderExecution) {
+            violations.add(new RenderPlanPolicyViolation(
+                    RenderPlanPolicyViolationType.UNBOUND_NODE_EXECUTABLE,
+                    null,
+                    null,
+                    "Provider-runtime binding is required before execution"));
         }
     }
 

@@ -10,16 +10,16 @@ package com.example.platform.extension.domain;
  * scheduling and no hard resource enforcement (except where an existing check
  * is reused exactly).</p>
  *
- * @param maxConcurrency       required (FFmpeg self-description: 1)
+ * @param maxConcurrency       required declared concurrency bound
  * @param maxMemoryMb          declared bound
  * @param maxCpuPercent        declared bound
- * @param maxQueueSize         required (FFmpeg: 0)
+ * @param maxQueueSize         required declared queue bound
  * @param maxInputBytes        declared bound
  * @param maxOutputBytes       declared bound
- * @param timeoutMs            declared bound (FFmpeg: 60000 — ToolExecutionSafetyPolicy default)
- * @param gpu                  required (FFmpeg local: false)
+ * @param timeoutMs            declared bound
+ * @param gpu                  required GPU availability declaration
  * @param temporaryDiskMb      declared temporary-disk bound
- * @param networkAllowed       declared network flag (FFmpeg: false — ToolExecutionSafetyPolicy default)
+ * @param networkAllowed       declared network flag
  * @param executionDurationMs  declared execution duration (&lt;= timeoutMs)
  */
 public record ResourceRequirement(
@@ -57,13 +57,6 @@ public record ResourceRequirement(
                 temporaryDiskMb,
                 networkAllowed,
                 executionDurationMs);
-    }
-
-    /** Frozen FFmpeg self-description resource declaration. */
-    public static ResourceRequirement ffmpegDefaults() {
-        return new ResourceRequirement(
-                1, 256, 50, 0, 64L * 1024 * 1024, 64L * 1024 * 1024, 60_000L,
-                false, 4096, false, 60_000L);
     }
 
     /**

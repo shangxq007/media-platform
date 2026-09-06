@@ -10,6 +10,7 @@ import com.example.platform.extension.domain.InvocationContract;
 import com.example.platform.extension.domain.OperationRequest;
 import com.example.platform.extension.domain.PermissionDescriptor;
 import com.example.platform.extension.domain.PluginDescriptor;
+import com.example.platform.extension.domain.PluginDescriptorFixtures;
 import com.example.platform.extension.domain.PluginGuarantee;
 import com.example.platform.extension.domain.PluginRuntimeRequirement;
 import com.example.platform.extension.domain.ResourceRequirement;
@@ -49,10 +50,10 @@ class PluginSelectionAmbiguityTest {
                         List.of("profile", "timelineSnapshotId"), List.of(),
                         HandledObjectDescriptor.TenantBehavior.TENANT_SCOPED)),
                 InvocationContract.syncOnlyDefault(),
-                List.of(new PermissionDescriptor("ffmpeg.execute")),
-                ResourceRequirement.ffmpegDefaults(),
+                List.of(new PermissionDescriptor("media.execute")),
+                PluginDescriptorFixtures.resourceRequirements(),
                 PluginRuntimeRequirement.trustedInProcess(),
-                PluginGuarantee.ffmpegDefaults());
+                PluginDescriptorFixtures.guarantees());
     }
 
     @Test

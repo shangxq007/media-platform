@@ -9,7 +9,7 @@ import java.util.List;
  * provider internals, storage paths, or commands.</p>
  *
  * @param planId            plan identifier
- * @param bindingPlanId     source binding plan identifier
+ * @param capabilityGraphId source provider-neutral capability graph identifier
  * @param timelineId        source timeline identifier
  * @param mode              execution mode
  * @param environmentTarget execution environment target
@@ -23,7 +23,7 @@ import java.util.List;
  */
 public record RenderExecutionPlanSummary(
         String planId,
-        String bindingPlanId,
+        String capabilityGraphId,
         String timelineId,
         String mode,
         ExecutionEnvironmentTarget environmentTarget,

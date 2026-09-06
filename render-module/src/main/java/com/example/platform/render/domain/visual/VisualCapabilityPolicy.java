@@ -51,22 +51,6 @@ public final class VisualCapabilityPolicy {
     }
 
     /**
-     * Returns true if auto-dispatch is allowed for this provider support.
-     */
-    public static boolean isAutoDispatchAllowed(ProviderVisualCapabilitySupport support) {
-        if (support == null) return false;
-        return support.isAutoDispatchEligible();
-    }
-
-    /**
-     * Returns true if the provider support is production-eligible.
-     */
-    public static boolean isProductionAllowed(ProviderVisualCapabilitySupport support) {
-        if (support == null) return false;
-        return support.isProductionEligible();
-    }
-
-    /**
      * Validates that a capability definition is safe.
      * Returns empty list if valid, or issues if invalid.
      */
@@ -92,37 +76,4 @@ public final class VisualCapabilityPolicy {
         return List.of();
     }
 
-    /**
-     * Validates provider support for a capability.
-     * Returns empty list if valid, or issues if invalid.
-     */
-    public static List<VisualCapabilityIssue> validateProviderSupport(
-            VisualCapabilityDefinition capability,
-            ProviderVisualCapabilitySupport support) {
-        if (capability == null || support == null) {
-            return List.of(VisualCapabilityIssue.blocking(
-                    VisualCapabilityIssueCode.INVALID_CAPABILITY_ID,
-                    "Capability and support must not be null"));
-        }
-
-        if (isForbidden(capability)) {
-            return List.of(VisualCapabilityIssue.blocking(
-                    VisualCapabilityIssueCode.FORBIDDEN_CAPABILITY,
-                    "Capability is forbidden: " + capability.id().value()));
-        }
-
-        if (!support.isProductionEligible() && capability.isProductionAllowed()) {
-            return List.of(VisualCapabilityIssue.warning(
-                    VisualCapabilityIssueCode.PROVIDER_NOT_PRODUCTION_ALLOWED,
-                    "Provider does not support production use for: " + capability.id().value()));
-        }
-
-        if (support.consistencyLevel() == VisualConsistencyLevel.UNKNOWN) {
-            return List.of(VisualCapabilityIssue.warning(
-                    VisualCapabilityIssueCode.CONSISTENCY_LEVEL_UNKNOWN,
-                    "Consistency level unknown for: " + capability.id().value()));
-        }
-
-        return List.of();
-    }
 }

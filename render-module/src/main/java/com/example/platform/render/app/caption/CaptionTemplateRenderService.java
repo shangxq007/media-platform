@@ -10,8 +10,6 @@ import com.example.platform.render.domain.caption.*;
 import com.example.platform.render.domain.product.Product;
 import com.example.platform.render.domain.interchange.TimelineSpec;
 import com.example.platform.render.domain.compile.*;
-import com.example.platform.render.domain.compile.binding.*;
-import com.example.platform.render.domain.compile.execution.*;
 import com.example.platform.render.domain.compile.executionplan.*;
 import com.example.platform.shared.Ids;
 import org.slf4j.Logger;
@@ -38,8 +36,6 @@ public class CaptionTemplateRenderService {
     private final TimelineNormalizationService normalizer;
     private final ArtifactGraphCompiler artifactCompiler;
     private final CapabilityGraphCompiler capabilityCompiler;
-    private final ProviderBindingCompiler bindingCompiler;
-    private final ProviderExecutionDocumentDraftCompiler draftCompiler;
     private final RenderExecutionPlanCompiler planCompiler;
     private final RenderPlanPolicyGuard policyGuard;
     private final LocalExecutionPlanRunner planRunner;
@@ -57,8 +53,6 @@ public class CaptionTemplateRenderService {
             TimelineNormalizationService normalizer,
             ArtifactGraphCompiler artifactCompiler,
             CapabilityGraphCompiler capabilityCompiler,
-            ProviderBindingCompiler bindingCompiler,
-            ProviderExecutionDocumentDraftCompiler draftCompiler,
             RenderExecutionPlanCompiler planCompiler,
             RenderPlanPolicyGuard policyGuard,
             LocalExecutionPlanRunner planRunner,
@@ -74,8 +68,6 @@ public class CaptionTemplateRenderService {
         this.normalizer = normalizer;
         this.artifactCompiler = artifactCompiler;
         this.capabilityCompiler = capabilityCompiler;
-        this.bindingCompiler = bindingCompiler;
-        this.draftCompiler = draftCompiler;
         this.planCompiler = planCompiler;
         this.policyGuard = policyGuard;
         this.planRunner = planRunner;
@@ -112,11 +104,8 @@ public class CaptionTemplateRenderService {
         ArtifactDependencyGraph artifactGraph = artifactCompiler.compile(timeline);
         LogicalCapabilityGraph capGraph = capabilityCompiler.compile(artifactGraph);
 
-        ProviderBindingPlan bindingPlan = bindingCompiler.compile(
-                capGraph, List.of(), "PRODUCTION");
-        List<ProviderExecutionDocumentDraft> drafts = draftCompiler.compile(bindingPlan);
         RenderExecutionPlan executionPlan = planCompiler.compile(
-                bindingPlan, drafts, ExecutionPolicy.production());
+                capGraph, ExecutionPolicy.production());
 
         // 4. Build execution context
         CaptionOutputProfileSpec profile = request.effectiveOutputProfile();

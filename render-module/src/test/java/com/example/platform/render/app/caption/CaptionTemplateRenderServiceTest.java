@@ -75,8 +75,6 @@ class CaptionTemplateRenderServiceTest {
                 new TimelineNormalizationService(),
                 new ArtifactGraphCompiler(),
                 new CapabilityGraphCompiler(),
-                new ProviderBindingCompiler(),
-                new ProviderExecutionDocumentDraftCompiler(),
                 new RenderExecutionPlanCompiler(),
                 new RenderPlanPolicyGuard(),
                 planRunner, matService, regService,

@@ -181,7 +181,7 @@ class RenderCorrelationPropagationTest {
     static class MockPlanBasedService extends PlanBasedTimelineRevisionRenderService {
         boolean called = false;
         MockPlanBasedService() { super(null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null); }
+                null, null, null, null, null, null, null); }
         @Override
         public TimelineRevisionRenderService.RevisionRenderResult render(String p, String r, String o) {
             called = true; return null;

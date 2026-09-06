@@ -44,9 +44,9 @@ public final class FfmpegProviderPluginContribution implements ProviderPluginCon
                     new PermissionDescriptor("ffmpeg.execute"),
                     new PermissionDescriptor("asset.read"),
                     new PermissionDescriptor("temporary-file.write")),
-            ResourceRequirement.ffmpegDefaults(),
+            ffmpegResourceRequirements(),
             PluginRuntimeRequirement.trustedInProcess(),
-            PluginGuarantee.ffmpegDefaults());
+            ffmpegGuarantees());
 
     @Override
     public String pluginId() {
@@ -97,5 +97,16 @@ public final class FfmpegProviderPluginContribution implements ProviderPluginCon
                 context.timeout(),
                 context.captureBytes(),
                 context.cancellation());
+    }
+
+    private static ResourceRequirement ffmpegResourceRequirements() {
+        return new ResourceRequirement(
+                1, 256, 50, 0,
+                64L * 1024 * 1024, 64L * 1024 * 1024, 60_000L,
+                false, 4096, false, 60_000L);
+    }
+
+    private static PluginGuarantee ffmpegGuarantees() {
+        return PluginGuarantee.noneDeclared();
     }
 }

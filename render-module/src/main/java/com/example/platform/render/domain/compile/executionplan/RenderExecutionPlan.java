@@ -1,13 +1,11 @@
 package com.example.platform.render.domain.compile.executionplan;
 
-import com.example.platform.render.domain.compile.binding.ProviderBindingPlan;
-import com.example.platform.render.domain.compile.execution.ProviderExecutionDocumentDraft;
 import java.util.List;
 import java.util.stream.Collectors;
 
 /**
  * Render execution plan — the deterministic planning structure that
- * maps a ProviderBindingPlan into executable steps.
+ * maps a provider-neutral capability graph into executable steps.
  *
  * <p>Internal only — not exposed in public APIs.</p>
  *
@@ -16,7 +14,7 @@ import java.util.stream.Collectors;
  * and does not mutate StorageRuntime or ProductRuntime.</p>
  *
  * @param planId          deterministic plan identifier
- * @param bindingPlanId   source ProviderBindingPlan ID
+ * @param capabilityGraphId source LogicalCapabilityGraph ID
  * @param timelineId      source timeline identifier
  * @param policy          execution policy used for this plan
  * @param environmentTarget execution environment target
@@ -26,7 +24,7 @@ import java.util.stream.Collectors;
  */
 public record RenderExecutionPlan(
         RenderExecutionPlanId planId,
-        String bindingPlanId,
+        String capabilityGraphId,
         String timelineId,
         ExecutionPolicy policy,
         ExecutionEnvironmentTarget environmentTarget,
@@ -108,7 +106,7 @@ public record RenderExecutionPlan(
 
         return new RenderExecutionPlanSummary(
                 planId.toString(),
-                bindingPlanId,
+                capabilityGraphId,
                 timelineId,
                 policy.mode(),
                 environmentTarget,

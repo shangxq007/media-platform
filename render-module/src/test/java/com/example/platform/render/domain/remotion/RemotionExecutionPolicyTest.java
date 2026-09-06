@@ -352,7 +352,7 @@ class RemotionExecutionPolicyTest {
                 "remotion", remotionRef, null, List.of(), false,
                 ExecutionEnvironmentTarget.LOCAL, "Remotion", Map.of());
         RenderExecutionPlan plan = new RenderExecutionPlan(
-                RenderExecutionPlanId.fromBindingPlan("bp-1", "PRODUCTION"),
+                RenderExecutionPlanId.fromCapabilityGraph("cg-1", "PRODUCTION"),
                 "bp-1", "tl-1", ExecutionPolicy.production(),
                 ExecutionEnvironmentTarget.LOCAL, List.of(exec), false, List.of());
 

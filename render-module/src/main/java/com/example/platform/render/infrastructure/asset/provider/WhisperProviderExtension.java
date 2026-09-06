@@ -3,7 +3,6 @@ package com.example.platform.render.infrastructure.asset.provider;
 import com.example.platform.extension.app.ExtensionRegistryService;
 import com.example.platform.extension.domain.*;
 import com.example.platform.extension.runtime.PluginRuntimeProviderBinding;
-import com.example.platform.render.domain.asset.semantic.AiProviderDescriptor;
 import com.example.platform.render.domain.asset.semantic.AsrResult;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -23,7 +22,8 @@ public class WhisperProviderExtension implements PluginRuntimeProviderBinding {
 
     private static final Logger log = LoggerFactory.getLogger(WhisperProviderExtension.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
-    private final AiProviderDescriptor descriptor;
+    private static final String PROVIDER_KEY = "whisper";
+    private static final String VERSION = "1.0";
     private final WhisperAsrProvider whisperProvider;
     private final ExtensionRegistryService extensionRegistry;
 
@@ -31,8 +31,6 @@ public class WhisperProviderExtension implements PluginRuntimeProviderBinding {
                                       ExtensionRegistryService extensionRegistry) {
         this.whisperProvider = whisperProvider;
         this.extensionRegistry = extensionRegistry;
-        this.descriptor = AiProviderDescriptor.of("whisper", "Whisper ASR",
-                List.of("ASR", "TRANSCRIBE", "LANGUAGE_DETECTION"));
     }
 
     @EventListener(ApplicationReadyEvent.class)
@@ -42,11 +40,9 @@ public class WhisperProviderExtension implements PluginRuntimeProviderBinding {
         log.info("Whisper registered in platform extension runtime as provider={}", providerKey());
     }
 
-    public AiProviderDescriptor descriptor() { return descriptor; }
-
-    @Override public String providerKey() { return descriptor.providerId(); }
+    @Override public String providerKey() { return PROVIDER_KEY; }
     @Override public String providerType() { return "ai.provider.asr.whisper"; }
-    @Override public String version() { return descriptor.version(); }
+    @Override public String version() { return VERSION; }
     @Override public String inputSchema() { return "{\"type\":\"object\",\"properties\":{\"audioFile\":{\"type\":\"string\"},\"model\":{\"type\":\"string\"},\"language\":{\"type\":\"string\"}}}"; }
     @Override public String outputSchema() { return "{\"type\":\"object\",\"properties\":{\"transcript\":{\"type\":\"string\"},\"segments\":{\"type\":\"array\"},\"language\":{\"type\":\"string\"}}}"; }
     @Override public ExtensionTrustLevel trustLevel() { return ExtensionTrustLevel.FULLY_TRUSTED; }

@@ -57,54 +57,10 @@ public final class VisualCapabilityValidator {
     }
 
     /**
-     * Validates provider support declaration.
-     */
-    public static List<VisualCapabilityIssue> validateProviderSupport(
-            ProviderVisualCapabilitySupport support) {
-        if (support == null) {
-            return List.of(VisualCapabilityIssue.blocking(
-                    VisualCapabilityIssueCode.UNSUPPORTED_PROVIDER,
-                    "Support declaration must not be null"));
-        }
-
-        List<VisualCapabilityIssue> issues = new ArrayList<>();
-
-        // Auto-dispatch check
-        if (support.autoDispatchAllowed() && !support.isAutoDispatchEligible()) {
-            issues.add(VisualCapabilityIssue.error(
-                    VisualCapabilityIssueCode.AUTO_DISPATCH_NOT_ALLOWED,
-                    "Auto-dispatch not allowed for: " + support.visualCapabilityId().value()));
-        }
-
-        // Production check
-        if (support.productionAllowed() && !support.isProductionEligible()) {
-            issues.add(VisualCapabilityIssue.error(
-                    VisualCapabilityIssueCode.PROVIDER_NOT_PRODUCTION_ALLOWED,
-                    "Production not allowed for: " + support.visualCapabilityId().value()));
-        }
-
-        // Consistency check
-        if (support.consistencyLevel() == VisualConsistencyLevel.UNKNOWN) {
-            issues.add(VisualCapabilityIssue.warning(
-                    VisualCapabilityIssueCode.CONSISTENCY_LEVEL_UNKNOWN,
-                    "Consistency level unknown for: " + support.visualCapabilityId().value()));
-        }
-
-        return issues;
-    }
-
-    /**
      * Returns true if the capability is production-allowed.
      */
     public static boolean isProductionAllowed(VisualCapabilityDefinition capability) {
         return VisualCapabilityPolicy.mayBeProductionEligible(capability);
-    }
-
-    /**
-     * Returns true if auto-dispatch is allowed for the provider support.
-     */
-    public static boolean isAutoDispatchAllowed(ProviderVisualCapabilitySupport support) {
-        return VisualCapabilityPolicy.isAutoDispatchAllowed(support);
     }
 
     /**

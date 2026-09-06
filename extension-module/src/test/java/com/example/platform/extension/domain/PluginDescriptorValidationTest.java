@@ -26,10 +26,10 @@ class PluginDescriptorValidationTest {
                 List.of(capability("media.render"), capability("subtitle.burn-in")),
                 List.of(handledObject()),
                 InvocationContract.syncOnlyDefault(),
-                List.of(new PermissionDescriptor("ffmpeg.execute")),
-                ResourceRequirement.ffmpegDefaults(),
+                List.of(new PermissionDescriptor("media.execute")),
+                PluginDescriptorFixtures.resourceRequirements(),
                 PluginRuntimeRequirement.trustedInProcess(),
-                PluginGuarantee.ffmpegDefaults());
+                PluginDescriptorFixtures.guarantees());
     }
 
     private static CapabilityDescriptor capability(String id) {
@@ -65,10 +65,10 @@ class PluginDescriptorValidationTest {
                         List.of("providerBindingPin"), List.of(),
                         HandledObjectDescriptor.TenantBehavior.TENANT_SCOPED)),
                 InvocationContract.syncOnlyDefault(),
-                List.of(new PermissionDescriptor("ffmpeg.execute")),
-                ResourceRequirement.ffmpegDefaults(),
+                List.of(new PermissionDescriptor("media.execute")),
+                PluginDescriptorFixtures.resourceRequirements(),
                 PluginRuntimeRequirement.trustedInProcess(),
-                PluginGuarantee.ffmpegDefaults());
+                PluginDescriptorFixtures.guarantees());
 
         var issues = new PluginDescriptorValidator().validate(executableTaskPlugin);
 
@@ -82,8 +82,8 @@ class PluginDescriptorValidationTest {
         PluginDescriptor blank = new PluginDescriptor(" ", "1.0.0", "1", "vendor",
                 List.of(capability("media.render")), List.of(handledObject()),
                 InvocationContract.syncOnlyDefault(), List.of(),
-                ResourceRequirement.ffmpegDefaults(),
-                PluginRuntimeRequirement.trustedInProcess(), PluginGuarantee.ffmpegDefaults());
+                PluginDescriptorFixtures.resourceRequirements(),
+                PluginRuntimeRequirement.trustedInProcess(), PluginDescriptorFixtures.guarantees());
         var blankIssues = new PluginDescriptorValidator().validate(blank);
         assertEquals(PluginDiagnosticCode.PLG_001, blankIssues.get(0).code());
         assertEquals("pluginId", blankIssues.get(0).fieldPath());
@@ -95,8 +95,8 @@ class PluginDescriptorValidationTest {
         PluginDescriptor javaClassNameId = new PluginDescriptor("FfmpegRenderProviderExtension", "1.0.0",
                 "1", "vendor", List.of(capability("media.render")), List.of(handledObject()),
                 InvocationContract.syncOnlyDefault(), List.of(),
-                ResourceRequirement.ffmpegDefaults(),
-                PluginRuntimeRequirement.trustedInProcess(), PluginGuarantee.ffmpegDefaults());
+                PluginDescriptorFixtures.resourceRequirements(),
+                PluginRuntimeRequirement.trustedInProcess(), PluginDescriptorFixtures.guarantees());
         var issues = new PluginDescriptorValidator().validate(javaClassNameId);
         assertEquals(PluginDiagnosticCode.PLG_001, issues.get(0).code());
         assertEquals("pluginId", issues.get(0).fieldPath());
@@ -107,8 +107,8 @@ class PluginDescriptorValidationTest {
         PluginDescriptor bad = new PluginDescriptor("media.render.ffmpeg", "not-a-semver",
                 "1", "vendor", List.of(capability("media.render")), List.of(handledObject()),
                 InvocationContract.syncOnlyDefault(), List.of(),
-                ResourceRequirement.ffmpegDefaults(),
-                PluginRuntimeRequirement.trustedInProcess(), PluginGuarantee.ffmpegDefaults());
+                PluginDescriptorFixtures.resourceRequirements(),
+                PluginRuntimeRequirement.trustedInProcess(), PluginDescriptorFixtures.guarantees());
         var issues = new PluginDescriptorValidator().validate(bad);
         assertEquals(PluginDiagnosticCode.PLG_002, issues.get(0).code());
     }
@@ -118,8 +118,8 @@ class PluginDescriptorValidationTest {
         PluginDescriptor bad = new PluginDescriptor("media.render.ffmpeg", "1.0.0",
                 "99", "vendor", List.of(capability("media.render")), List.of(handledObject()),
                 InvocationContract.syncOnlyDefault(), List.of(),
-                ResourceRequirement.ffmpegDefaults(),
-                PluginRuntimeRequirement.trustedInProcess(), PluginGuarantee.ffmpegDefaults());
+                PluginDescriptorFixtures.resourceRequirements(),
+                PluginRuntimeRequirement.trustedInProcess(), PluginDescriptorFixtures.guarantees());
         var issues = new PluginDescriptorValidator().validate(bad);
         assertEquals(PluginDiagnosticCode.PLG_003, issues.get(0).code());
     }
@@ -129,8 +129,8 @@ class PluginDescriptorValidationTest {
         PluginDescriptor bad = new PluginDescriptor("media.render.ffmpeg", "1.0.0",
                 "1", "vendor", List.of(), List.of(handledObject()),
                 InvocationContract.syncOnlyDefault(), List.of(),
-                ResourceRequirement.ffmpegDefaults(),
-                PluginRuntimeRequirement.trustedInProcess(), PluginGuarantee.ffmpegDefaults());
+                PluginDescriptorFixtures.resourceRequirements(),
+                PluginRuntimeRequirement.trustedInProcess(), PluginDescriptorFixtures.guarantees());
         var issues = new PluginDescriptorValidator().validate(bad);
         assertEquals(PluginDiagnosticCode.PLG_005, issues.get(0).code());
     }
@@ -141,22 +141,22 @@ class PluginDescriptorValidationTest {
                 "1", "vendor", List.of(capability("media.render"), capability("media.render")),
                 List.of(handledObject()),
                 InvocationContract.syncOnlyDefault(), List.of(),
-                ResourceRequirement.ffmpegDefaults(),
-                PluginRuntimeRequirement.trustedInProcess(), PluginGuarantee.ffmpegDefaults());
+                PluginDescriptorFixtures.resourceRequirements(),
+                PluginRuntimeRequirement.trustedInProcess(), PluginDescriptorFixtures.guarantees());
         var issues = new PluginDescriptorValidator().validate(bad);
         assertEquals(PluginDiagnosticCode.PLG_006, issues.get(0).code());
     }
 
     @Test
-    void unknownPermissionRejectedPlg010() {
-        PluginDescriptor bad = new PluginDescriptor("media.render.ffmpeg", "1.0.0",
+    void namespacedProviderPermissionIsAcceptedWithoutCentralAllowlist() {
+        PluginDescriptor descriptor = new PluginDescriptor("media.render.test", "1.0.0",
                 "1", "vendor", List.of(capability("media.render")), List.of(handledObject()),
                 InvocationContract.syncOnlyDefault(),
                 List.of(new PermissionDescriptor("network.egress")),
-                ResourceRequirement.ffmpegDefaults(),
-                PluginRuntimeRequirement.trustedInProcess(), PluginGuarantee.ffmpegDefaults());
-        var issues = new PluginDescriptorValidator().validate(bad);
-        assertEquals(PluginDiagnosticCode.PLG_010, issues.get(0).code());
+                PluginDescriptorFixtures.resourceRequirements(),
+                PluginRuntimeRequirement.trustedInProcess(), PluginDescriptorFixtures.guarantees());
+        var issues = new PluginDescriptorValidator().validate(descriptor);
+        assertTrue(issues.isEmpty(), "provider permission declarations remain provider-owned: " + issues);
     }
 
     @Test
@@ -166,7 +166,7 @@ class PluginDescriptorValidationTest {
         PluginDescriptor bad = new PluginDescriptor("media.render.ffmpeg", "1.0.0",
                 "1", "vendor", List.of(capability("media.render")), List.of(handledObject()),
                 InvocationContract.syncOnlyDefault(), List.of(), badResource,
-                PluginRuntimeRequirement.trustedInProcess(), PluginGuarantee.ffmpegDefaults());
+                PluginRuntimeRequirement.trustedInProcess(), PluginDescriptorFixtures.guarantees());
         var issues = new PluginDescriptorValidator().validate(bad);
         assertEquals(PluginDiagnosticCode.PLG_011, issues.get(0).code());
     }
@@ -177,7 +177,7 @@ class PluginDescriptorValidationTest {
         PluginDescriptor bad = new PluginDescriptor("media.render.ffmpeg", "1.0.0",
                 "1", "vendor", List.of(capability("media.render")), List.of(handledObject()),
                 InvocationContract.syncOnlyDefault(), List.of(),
-                ResourceRequirement.ffmpegDefaults(),
+                PluginDescriptorFixtures.resourceRequirements(),
                 PluginRuntimeRequirement.trustedInProcess(), illegal);
         var issues = new PluginDescriptorValidator().validate(bad);
         assertEquals(PluginDiagnosticCode.PLG_013, issues.get(0).code());
@@ -188,11 +188,11 @@ class PluginDescriptorValidationTest {
         PluginDescriptor bad = new PluginDescriptor("media.render.ffmpeg", "1.0.0",
                 "1", "vendor", List.of(capability("media.render")), List.of(handledObject()),
                 InvocationContract.syncOnlyDefault(), List.of(),
-                ResourceRequirement.ffmpegDefaults(),
+                PluginDescriptorFixtures.resourceRequirements(),
                 new PluginRuntimeRequirement(PluginRuntimeRequirement.RuntimeMode.TRUSTED_IN_PROCESS,
                         PluginRuntimeRequirement.ExecutionEnvironment.LOCAL_PROCESS,
                         ExtensionTrustLevel.UNTRUSTED),
-                PluginGuarantee.ffmpegDefaults());
+                PluginDescriptorFixtures.guarantees());
         var issues = new PluginDescriptorValidator().validate(bad);
         assertEquals(PluginDiagnosticCode.PLG_016, issues.get(0).code());
     }
@@ -211,8 +211,8 @@ class PluginDescriptorValidationTest {
         PluginDescriptor bad = new PluginDescriptor(" ", "bad", "99", "vendor",
                 List.of(capability("media.render")), List.of(handledObject()),
                 InvocationContract.syncOnlyDefault(), List.of(),
-                ResourceRequirement.ffmpegDefaults(),
-                PluginRuntimeRequirement.trustedInProcess(), PluginGuarantee.ffmpegDefaults());
+                PluginDescriptorFixtures.resourceRequirements(),
+                PluginRuntimeRequirement.trustedInProcess(), PluginDescriptorFixtures.guarantees());
         var issues = new PluginDescriptorValidator().validate(bad);
         assertEquals(List.of(PluginDiagnosticCode.PLG_001, PluginDiagnosticCode.PLG_002,
                 PluginDiagnosticCode.PLG_003),
@@ -226,8 +226,8 @@ class PluginDescriptorValidationTest {
         PluginDescriptor invalid = new PluginDescriptor(" ", "1.0.0", "1", "vendor",
                 List.of(capability("media.render")), List.of(handledObject()),
                 InvocationContract.syncOnlyDefault(), List.of(),
-                ResourceRequirement.ffmpegDefaults(),
-                PluginRuntimeRequirement.trustedInProcess(), PluginGuarantee.ffmpegDefaults());
+                PluginDescriptorFixtures.resourceRequirements(),
+                PluginRuntimeRequirement.trustedInProcess(), PluginDescriptorFixtures.guarantees());
         var issues = registry.register(invalid);
         assertEquals(PluginDiagnosticCode.PLG_001, issues.get(0).code());
         assertTrue(registry.enumerate().isEmpty(), "zero mutation after rejection");

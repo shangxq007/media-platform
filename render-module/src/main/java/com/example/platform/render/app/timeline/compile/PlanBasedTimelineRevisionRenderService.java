@@ -17,8 +17,6 @@ import com.example.platform.render.domain.interchange.TimelineScriptParser;
 import com.example.platform.render.domain.compile.ArtifactDependencyGraph;
 import com.example.platform.render.domain.compile.LogicalCapabilityGraph;
 import com.example.platform.render.domain.compile.NormalizedTimeline;
-import com.example.platform.render.domain.compile.binding.ProviderBindingPlan;
-import com.example.platform.render.domain.compile.execution.ProviderExecutionDocumentDraft;
 import com.example.platform.render.domain.compile.executionplan.ExecutionEnvironmentTarget;
 import com.example.platform.render.domain.compile.executionplan.ExecutionPolicy;
 import com.example.platform.render.domain.compile.executionplan.RenderExecutionPlan;
@@ -55,8 +53,6 @@ public class PlanBasedTimelineRevisionRenderService {
     private final TimelineNormalizationService normalizer;
     private final ArtifactGraphCompiler artifactCompiler;
     private final CapabilityGraphCompiler capabilityCompiler;
-    private final ProviderBindingCompiler bindingCompiler;
-    private final ProviderExecutionDocumentDraftCompiler draftCompiler;
     private final RenderExecutionPlanCompiler planCompiler;
     private final RenderPlanPolicyGuard policyGuard;
     private final LocalExecutionPlanRunner planRunner;
@@ -78,8 +74,6 @@ public class PlanBasedTimelineRevisionRenderService {
             TimelineNormalizationService normalizer,
             ArtifactGraphCompiler artifactCompiler,
             CapabilityGraphCompiler capabilityCompiler,
-            ProviderBindingCompiler bindingCompiler,
-            ProviderExecutionDocumentDraftCompiler draftCompiler,
             RenderExecutionPlanCompiler planCompiler,
             RenderPlanPolicyGuard policyGuard,
             LocalExecutionPlanRunner planRunner,
@@ -89,8 +83,7 @@ public class PlanBasedTimelineRevisionRenderService {
             StorageRuntimeService storageRuntime,
             Path storageRoot) {
         this(revisionQueryService, snapshotService, mapper, parser, inputProductResolver,
-                normalizer, artifactCompiler, capabilityCompiler, bindingCompiler,
-                draftCompiler, planCompiler, policyGuard, planRunner,
+                normalizer, artifactCompiler, capabilityCompiler, planCompiler, policyGuard, planRunner,
                 materializationService, registrationService, productRuntime,
                 storageRuntime, storageRoot, null);
     }
@@ -104,8 +97,6 @@ public class PlanBasedTimelineRevisionRenderService {
             TimelineNormalizationService normalizer,
             ArtifactGraphCompiler artifactCompiler,
             CapabilityGraphCompiler capabilityCompiler,
-            ProviderBindingCompiler bindingCompiler,
-            ProviderExecutionDocumentDraftCompiler draftCompiler,
             RenderExecutionPlanCompiler planCompiler,
             RenderPlanPolicyGuard policyGuard,
             LocalExecutionPlanRunner planRunner,
@@ -123,8 +114,6 @@ public class PlanBasedTimelineRevisionRenderService {
         this.normalizer = normalizer;
         this.artifactCompiler = artifactCompiler;
         this.capabilityCompiler = capabilityCompiler;
-        this.bindingCompiler = bindingCompiler;
-        this.draftCompiler = draftCompiler;
         this.planCompiler = planCompiler;
         this.policyGuard = policyGuard;
         this.planRunner = planRunner;
@@ -216,35 +205,11 @@ public class PlanBasedTimelineRevisionRenderService {
         emitAudit(RenderAuditEventType.CAPABILITY_GRAPH_COMPILED, corr,
                 "Capability graph compiled: " + capGraph.graphId());
 
-        // 6. No typed provider plugin is bound in this render-module path.
-        ProviderBindingPlan bindingPlan = bindingCompiler.compile(
-                capGraph, List.of(), "PRODUCTION");
-        corr = corr.withPlanIds(bindingPlan.planId().toString(), null);
-        emitAudit(RenderAuditEventType.PROVIDER_BINDING_COMPLETED, corr,
-                "Provider binding completed: " + bindingPlan.planId());
-
-        List<ProviderExecutionDocumentDraft> drafts = draftCompiler.compile(bindingPlan);
-
-        // 6b. Generate execution documents for drafts (diagnostic/planning only)
-        var docResults = docGenerationService.generate(drafts, timeline);
-        for (var docResult : docResults) {
-            if (docResult.isGenerated()) {
-                emitAudit(RenderAuditEventType.PROVIDER_EXECUTION_DOCUMENT_GENERATED, corr,
-                        "Document generated: provider=" + docResult.providerName()
-                                + " type=" + docResult.documentType()
-                                + " ready=" + docResult.generationReady());
-            } else if (docResult.isRejected()) {
-                emitAudit(RenderAuditEventType.PROVIDER_EXECUTION_DOCUMENT_REJECTED, corr,
-                        "Document rejected: provider=" + docResult.providerName()
-                                + " type=" + docResult.documentType()
-                                + " issues=" + docResult.validationIssues());
-            }
-        }
-
-        // 7. Compile execution plan
+        // 6. Compile the provider-neutral execution plan. Provider document
+        // generation remains available at the provider-runtime boundary.
         RenderExecutionPlan executionPlan = planCompiler.compile(
-                bindingPlan, drafts, ExecutionPolicy.production());
-        corr = corr.withPlanIds(bindingPlan.planId().toString(), executionPlan.planId().toString());
+                capGraph, ExecutionPolicy.production());
+        corr = corr.withPlanIds(capGraph.graphId(), executionPlan.planId().toString());
         emitAudit(RenderAuditEventType.RENDER_EXECUTION_PLAN_COMPILED, corr,
                 "Execution plan compiled: " + executionPlan.planId());
 

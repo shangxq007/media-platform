@@ -17,7 +17,7 @@ public enum TimelineRenderExecutionMode {
     /**
      * Plan-based execution path through compile pipeline
      * (NormalizedTimeline → ArtifactDependencyGraph → LogicalCapabilityGraph
-     *  → ProviderBindingPlan → RenderExecutionPlan → LocalExecutionPlanRunner).
+     *  → LogicalCapabilityGraph → RenderExecutionPlan → LocalExecutionPlanRunner).
      */
     PLAN_BASED
 }

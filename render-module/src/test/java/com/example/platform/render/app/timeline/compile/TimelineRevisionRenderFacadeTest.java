@@ -189,7 +189,7 @@ class TimelineRevisionRenderFacadeTest {
         boolean called = false;
         TimelineRevisionRenderService.RevisionRenderResult result;
         MockPlanBasedService() { super(null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null); }
+                null, null, null, null, null, null, null); }
         @Override
         public TimelineRevisionRenderService.RevisionRenderResult render(
                 String projectId, String revisionId, String outputProfile) {

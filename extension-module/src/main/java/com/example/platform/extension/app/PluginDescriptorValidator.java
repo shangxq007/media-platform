@@ -156,13 +156,13 @@ public class PluginDescriptorValidator {
                     PluginDiagnosticCode.PLG_009, "invocationContract", issues.size() + 1));
         }
 
-        // 9. permissions (recognized IDs)
+        // 9. permissions are concrete provider declarations. PermissionDescriptor
+        // enforces the provider-neutral namespaced identifier shape.
         if (descriptor.permissions() != null) {
             for (PermissionDescriptor permission : descriptor.permissions()) {
-                if (!PermissionDescriptor.KNOWN_PERMISSION_IDS.contains(permission.permissionId())) {
+                if (permission == null) {
                     issues.add(PluginDescriptorValidationIssue.error(
-                            PluginDiagnosticCode.PLG_010,
-                            "permissions[" + permission.permissionId() + "].permissionId",
+                            PluginDiagnosticCode.PLG_010, "permissions",
                             issues.size() + 1));
                 }
             }

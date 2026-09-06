@@ -64,8 +64,6 @@ class PlanBasedTimelineRevisionRenderSmokeTest {
     private TimelineNormalizationService normalizer;
     private ArtifactGraphCompiler artifactCompiler;
     private CapabilityGraphCompiler capabilityCompiler;
-    private ProviderBindingCompiler bindingCompiler;
-    private ProviderExecutionDocumentDraftCompiler draftCompiler;
     private RenderExecutionPlanCompiler planCompiler;
     private RenderPlanPolicyGuard policyGuard;
     private LocalExecutionPlanRunner planRunner;
@@ -99,8 +97,6 @@ class PlanBasedTimelineRevisionRenderSmokeTest {
         normalizer = new TimelineNormalizationService();
         artifactCompiler = new ArtifactGraphCompiler();
         capabilityCompiler = new CapabilityGraphCompiler();
-        bindingCompiler = new ProviderBindingCompiler();
-        draftCompiler = new ProviderExecutionDocumentDraftCompiler();
         planCompiler = new RenderExecutionPlanCompiler();
         policyGuard = new RenderPlanPolicyGuard();
 
@@ -113,7 +109,7 @@ class PlanBasedTimelineRevisionRenderSmokeTest {
                 new StubTimelineRevisionService(revisionRepo),
                 snapshotService, mapper, parser, inputProductResolver,
                 normalizer, artifactCompiler, capabilityCompiler,
-                bindingCompiler, draftCompiler, planCompiler,
+                planCompiler,
                 policyGuard, planRunner,
                 materializationService, registrationService,
                 productRuntime, storageRuntime, tempDir);
