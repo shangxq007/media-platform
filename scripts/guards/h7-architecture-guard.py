@@ -10,7 +10,10 @@ to those types inside Timeline-owned transactions.
 from __future__ import annotations
 
 import argparse
+import json
+import os
 import re
+from h7_input_boundary import Snapshot
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -216,15 +219,14 @@ def occurrences(pattern: str, source: str) -> int:
     return len(re.findall(pattern, source, flags=re.IGNORECASE | re.MULTILINE | re.DOTALL))
 
 
-def production_sources(root: Path) -> dict[str, str]:
+def production_sources(root: Path, snapshot: Snapshot | None = None) -> dict[str, str]:
+    snapshot = snapshot or Snapshot(root, os.environ.get("H7_SOURCE_TREE", "HEAD"))
     sources: dict[str, str] = {}
-    for path in root.rglob("*.java"):
-        relative = path.relative_to(root).as_posix()
+    for relative, source in snapshot.sources.items():
         qualified = f"/{relative}"
         if ("/src/main/java/" not in qualified or "/build/" in qualified
                 or "/generated/" in qualified):
             continue
-        source = path.read_text(encoding="utf-8")
         relevant_render_source = (
             relative.startswith("render-module/src/main/java/com/example/platform/render/app/")
             and re.search(
@@ -728,22 +730,27 @@ def run_self_test(sources: dict[str, str]) -> bool:
 
 
 def repository_root(start: Path) -> Path:
-    current = start.resolve()
-    for candidate in (current, *current.parents):
-        if (candidate / "settings.gradle.kts").is_file():
-            return candidate
-    raise RuntimeError(f"repository root not found from {start}")
+    # No ancestor search: callers bind the actual repository top level.
+    return start.absolute()
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--root", type=Path, default=Path.cwd())
+    parser.add_argument("--tree", default=os.environ.get("H7_SOURCE_TREE", "HEAD"))
+    parser.add_argument("--receipt", type=Path)
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
     try:
         root = repository_root(args.root)
-        sources = production_sources(root)
+        snapshot = Snapshot(root, args.tree)
+        sources = production_sources(root, snapshot)
         baseline = evaluate(sources)
+        snapshot.verify()
+        if args.receipt:
+            with args.receipt.open("x", encoding="utf-8") as output:
+                json.dump(snapshot.receipt(sources), output, indent=2, sort_keys=True)
+                output.write("\n")
     except (OSError, RuntimeError) as failure:
         print(f"UNCLASSIFIED=1", file=sys.stderr)
         print(f"H7_GUARD_ERROR={failure}", file=sys.stderr)
