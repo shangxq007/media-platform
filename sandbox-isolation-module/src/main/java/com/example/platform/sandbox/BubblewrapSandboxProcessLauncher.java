@@ -301,11 +301,12 @@ public final class BubblewrapSandboxProcessLauncher implements BoundedProcessLau
     private static SandboxCleanupObservation cleanupObservation(
             long processId, SandboxCleanupObservation localCleanup, boolean capturesComplete) {
         boolean processReaped = !localCleanup.survivors().contains(processId);
-        boolean workloadContained = localCleanup.survivors().isEmpty();
+        boolean workloadContained = localCleanup.completed() && localCleanup.survivors().isEmpty();
         boolean completed = processReaped && workloadContained && capturesComplete;
         List<String> failures = new ArrayList<>();
         if (!processReaped) failures.add("bubblewrap process remains alive");
-        if (!workloadContained) failures.add("bubblewrap workload descendants remain alive");
+        if (!localCleanup.survivors().isEmpty()) failures.add("bubblewrap workload descendants remain alive");
+        localCleanup.failure().ifPresent(value -> failures.add(value.message()));
         if (!capturesComplete) failures.add("bubblewrap capture streams remain open");
         Optional<SandboxFailure> failure = completed
                 ? Optional.empty()

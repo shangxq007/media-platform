@@ -177,7 +177,7 @@ public final class ContainerSandboxProcessLauncher implements BoundedProcessLaun
         boolean capturesComplete = closeAndJoinCaptures(
                 stdout, outThread, stderr, errThread);
         SandboxCleanupObservation cleanup = cleanupObservation(
-                name, process.pid(), removal, finalTermination.observation(), capturesComplete);
+                name, process.pid(), removal, preliminaryTermination, finalTermination, capturesComplete);
         OptionalInt exit = OptionalInt.empty();
         if (!process.isAlive()) {
             try { exit = OptionalInt.of(process.exitValue()); }
@@ -516,13 +516,38 @@ public final class ContainerSandboxProcessLauncher implements BoundedProcessLaun
     }
 
     static SandboxCleanupObservation cleanupObservation(
+            String containerName, long engineClientPid, ContainerRemovalObservation removal,
+            LocalBoundedProcessLauncher.TreeTermination preliminary,
+            LocalBoundedProcessLauncher.TreeTermination last, boolean capturesComplete) {
+        // A later exit can resolve an earlier survivor, but cannot erase a signal,
+        // identity, enumeration, observation or interrupted-wait failure.
+        List<String> operationFailures = new ArrayList<>(preliminary.operationFailures());
+        operationFailures.addAll(last.operationFailures());
+        return cleanupObservation(containerName, engineClientPid, removal,
+                last.observation(), capturesComplete, operationFailures);
+    }
+
+    static SandboxCleanupObservation cleanupObservation(
             String containerName,
             long engineClientPid,
             ContainerRemovalObservation removal,
             SandboxCleanupObservation localCleanup,
             boolean capturesComplete) {
+        return cleanupObservation(containerName, engineClientPid, removal, localCleanup,
+                capturesComplete, List.of());
+    }
+
+    private static SandboxCleanupObservation cleanupObservation(
+            String containerName, long engineClientPid, ContainerRemovalObservation removal,
+            SandboxCleanupObservation localCleanup, boolean capturesComplete,
+            List<String> operationFailures) {
+        List<String> failures = new ArrayList<>(operationFailures);
+        if (!localCleanup.completed() && localCleanup.survivors().isEmpty()) {
+            failures.add(localCleanup.failureMessage());
+        }
+        boolean observationsReliable = failures.isEmpty();
         boolean engineClientReaped = !localCleanup.survivors().contains(engineClientPid);
-        boolean workloadContained = removal.completed();
+        boolean workloadContained = removal.completed() && observationsReliable;
         List<Long> detachedHelpers = localCleanup.survivors().stream()
                 .filter(pid -> pid != engineClientPid)
                 .toList();
@@ -531,7 +556,6 @@ public final class ContainerSandboxProcessLauncher implements BoundedProcessLaun
         if (!workloadContained) blockingSurvivors.addAll(detachedHelpers);
         boolean completed = removal.completed() && engineClientReaped
                 && workloadContained && capturesComplete;
-        List<String> failures = new ArrayList<>();
         if (!removal.completed()) failures.add(removal.failureMessage());
         if (!engineClientReaped) failures.add("container engine client remains alive");
         if (!workloadContained) failures.add("sandbox workload containment is not proven");
@@ -543,7 +567,7 @@ public final class ContainerSandboxProcessLauncher implements BoundedProcessLaun
         return new SandboxCleanupObservation(
                 completed, removal.completed(), engineClientReaped, workloadContained,
                 capturesComplete, localCleanup.descendantsObserved(), blockingSurvivors,
-                removal.completed() ? detachedHelpers : List.of(),
+                workloadContained ? detachedHelpers : List.of(),
                 OptionalLong.of(engineClientPid), containerName, removal.lastStatus(), failure);
     }
 

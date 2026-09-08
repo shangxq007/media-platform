@@ -10,11 +10,13 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BooleanSupplier;
 
 /** Canonical local ProcessBuilder.start() boundary. */
 @org.springframework.modulith.NamedInterface("API")
@@ -102,11 +104,6 @@ public final class LocalBoundedProcessLauncher implements BoundedProcessLauncher
                     Optional.of(SandboxFailure.of(SandboxFailureCode.SANDBOX_CLEANUP_FAILED,
                             failureMessage, Set.of())));
         }
-        if (!cleanup.completed()) {
-            processFailure = SandboxFailure.of(
-                    SandboxFailureCode.SANDBOX_CLEANUP_FAILED,
-                    "process-tree cleanup left survivors", Set.of());
-        }
         OptionalInt exit = OptionalInt.empty();
         if (!process.isAlive()) {
             try { exit = OptionalInt.of(process.exitValue()); } catch (IllegalThreadStateException ignored) { }
@@ -116,9 +113,14 @@ public final class LocalBoundedProcessLauncher implements BoundedProcessLauncher
                     SandboxFailureCode.PROCESS_CRASHED, "process exited non-zero", Set.of());
         }
         return new SandboxExecutionResult(
-                exit, stdout.capture(), stderr.capture(), Optional.ofNullable(processFailure),
+                exit, stdout.capture(), stderr.capture(), selectResultFailure(processFailure, cleanup),
                 new SandboxExecutionObservation(handle, working.toRealPath(),
                         Duration.between(launchedAt, Instant.now()), cleanup));
+    }
+
+    static Optional<SandboxFailure> selectResultFailure(
+            SandboxFailure primaryFailure, SandboxCleanupObservation cleanup) {
+        return primaryFailure == null ? cleanup.failure() : Optional.of(primaryFailure);
     }
 
     private void requireCapabilitiesMatch(EffectiveSandboxExecutionSpecification spec) {
@@ -150,33 +152,108 @@ public final class LocalBoundedProcessLauncher implements BoundedProcessLauncher
             Process process,
             Duration terminationGrace,
             List<ProcessHandle> previouslyObserved) {
+        CleanupAttempts attempts = new CleanupAttempts();
         LinkedHashMap<Long, ProcessHandle> observed = new LinkedHashMap<>();
-        previouslyObserved.forEach(handle -> observed.put(handle.pid(), handle));
-        process.descendants().forEach(handle -> observed.put(handle.pid(), handle));
+        for (ProcessHandle handle : previouslyObserved) retainHandle(observed, handle, true, attempts);
+        try (var fresh = process.descendants()) {
+            fresh.forEach(handle -> retainHandle(observed, handle, false, attempts));
+        } catch (RuntimeException failure) {
+            attempts.failed("descendant enumeration", failure);
+        }
         List<ProcessHandle> descendants = observed.values().stream()
                 .sorted(Comparator.comparingLong(ProcessHandle::pid).reversed()).toList();
-        descendants.forEach(ProcessHandle::destroy);
-        process.destroy();
-        waitUntilDead(process.toHandle(), descendants, terminationGrace);
-        descendants.stream().filter(ProcessHandle::isAlive).forEach(ProcessHandle::destroyForcibly);
-        if (process.isAlive()) process.destroyForcibly();
-        waitUntilDead(process.toHandle(), descendants, terminationGrace);
+        for (ProcessHandle handle : descendants) signal(handle, false, attempts);
+        attempts.run("root TERM", process::destroy);
+        waitUntilDead(process, descendants, terminationGrace, attempts);
+        for (ProcessHandle handle : descendants) {
+            if (attempts.alive("descendant " + handle.pid(), handle::isAlive)) {
+                signal(handle, true, attempts);
+            }
+        }
+        if (attempts.alive("root", process::isAlive)) {
+            attempts.run("root KILL", process::destroyForcibly);
+        }
+        waitUntilDead(process, descendants, terminationGrace, attempts);
         List<Long> survivors = new ArrayList<>();
-        descendants.stream().filter(ProcessHandle::isAlive).map(ProcessHandle::pid).forEach(survivors::add);
-        if (process.isAlive()) survivors.add(process.pid());
+        for (ProcessHandle handle : descendants) {
+            if (attempts.alive("descendant " + handle.pid(), handle::isAlive)) survivors.add(handle.pid());
+        }
+        if (attempts.alive("root", process::isAlive)) survivors.add(process.pid());
+        List<String> failures = new ArrayList<>(attempts.failures);
+        if (!survivors.isEmpty()) failures.add("processes remain alive after forced termination");
         SandboxCleanupObservation observation = new SandboxCleanupObservation(
-                survivors.isEmpty(), descendants.size(), survivors,
-                survivors.isEmpty() ? "" : "processes remain alive after forced termination");
-        return new TreeTermination(observation, descendants);
+                failures.isEmpty(), descendants.size(), survivors, String.join("; ", failures));
+        return new TreeTermination(observation, descendants, List.copyOf(attempts.failures));
+    }
+
+    private static void retainHandle(
+            LinkedHashMap<Long, ProcessHandle> observed, ProcessHandle handle,
+            boolean retained, CleanupAttempts attempts) {
+        try {
+            long pid = handle.pid();
+            ProcessHandle existing = observed.putIfAbsent(pid, handle);
+            // Exited retained handles may no longer have live-process Info. Their own
+            // liveness observation still refers to the retained identity, never a PID lookup.
+            if (retained && handle.isAlive() && handle.info().startInstant().isEmpty()) {
+                attempts.failures.add("retained descendant " + pid + " identity unavailable");
+            }
+            if (existing != null && existing != handle) {
+                Optional<Instant> original = existing.info().startInstant();
+                Optional<Instant> fresh = handle.info().startInstant();
+                if (original.isEmpty() || fresh.isEmpty() || !original.equals(fresh)) {
+                    attempts.failures.add("descendant " + pid + " identity conflict or unavailable");
+                }
+                // Keep the owned object even when a fresh enumeration returns the same PID.
+            }
+        } catch (RuntimeException failure) {
+            attempts.failed("descendant identity", failure);
+        }
+    }
+
+    private static void signal(ProcessHandle handle, boolean force, CleanupAttempts attempts) {
+        String target = "descendant " + handle.pid();
+        attempts.run(target + (force ? " KILL" : " TERM"), () -> {
+            boolean accepted = force ? handle.destroyForcibly() : handle.destroy();
+            // A false return can also mean exit raced with the request. Only confirmed exit
+            // resolves that case; an exception or a still-live/unknown target remains a failure.
+            if (!accepted && attempts.alive(target, handle::isAlive)) {
+                attempts.failures.add(target + (force ? " KILL" : " TERM") + " rejected while live or unknown");
+            }
+        });
     }
 
     private static void waitUntilDead(
-            ProcessHandle parent, List<ProcessHandle> descendants, Duration duration) {
+            Process parent, List<ProcessHandle> descendants, Duration duration, CleanupAttempts attempts) {
         long deadline = System.nanoTime() + duration.toNanos();
-        while (System.nanoTime() < deadline
-                && (parent.isAlive() || descendants.stream().anyMatch(ProcessHandle::isAlive))) {
+        while (System.nanoTime() < deadline) {
+            boolean alive = attempts.alive("root", parent::isAlive);
+            for (ProcessHandle handle : descendants) {
+                alive |= attempts.alive("descendant " + handle.pid(), handle::isAlive);
+            }
+            if (!alive) return;
             try { Thread.sleep(10); } catch (InterruptedException interrupted) {
+                attempts.failures.add("process cleanup wait interrupted");
                 Thread.currentThread().interrupt(); return;
+            }
+        }
+    }
+
+    /** Operation uncertainty is sticky, separate from an acceptance-time survivor snapshot. */
+    private static final class CleanupAttempts {
+        private final Set<String> failures = new LinkedHashSet<>();
+
+        private void failed(String operation, RuntimeException failure) {
+            failures.add(operation + " failed: " + failure.getClass().getSimpleName());
+        }
+
+        private void run(String operation, Runnable action) {
+            try { action.run(); } catch (RuntimeException failure) { failed(operation, failure); }
+        }
+
+        private boolean alive(String target, BooleanSupplier observation) {
+            try { return observation.getAsBoolean(); } catch (RuntimeException failure) {
+                failed(target + " observation", failure);
+                return true;
             }
         }
     }
@@ -199,8 +276,12 @@ public final class LocalBoundedProcessLauncher implements BoundedProcessLauncher
     }
 
     record TreeTermination(
-            SandboxCleanupObservation observation, List<ProcessHandle> descendants) {
-        TreeTermination { descendants = List.copyOf(descendants); }
+            SandboxCleanupObservation observation, List<ProcessHandle> descendants,
+            List<String> operationFailures) {
+        TreeTermination {
+            descendants = List.copyOf(descendants);
+            operationFailures = List.copyOf(operationFailures);
+        }
     }
 
     private static final class CaptureReader implements Runnable, AutoCloseable {
