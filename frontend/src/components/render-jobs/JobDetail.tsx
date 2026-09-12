@@ -26,9 +26,9 @@ export function JobDetail({ job }: Props) {
 
 function DetailRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
-    <div className="flex justify-between">
+    <div className="grid min-w-0 gap-1 sm:grid-cols-[5rem_minmax(0,1fr)] sm:gap-3">
       <span className="text-gray-500">{label}</span>
-      <span className={`text-gray-200 ${mono ? 'font-mono text-xs' : ''}`}>{value || '—'}</span>
+      <span className={`min-w-0 break-all text-gray-200 sm:text-right ${mono ? 'font-mono text-xs' : ''}`}>{value || '—'}</span>
     </div>
   )
 }
