@@ -1,6 +1,7 @@
 plugins { id("java-library") }
 
 dependencies {
+    implementation(project(":outbox-event-module"))
     implementation(project(":shared-kernel"))
     implementation(project(":typed-schema-module"))
     implementation("org.springframework.boot:spring-boot-starter")

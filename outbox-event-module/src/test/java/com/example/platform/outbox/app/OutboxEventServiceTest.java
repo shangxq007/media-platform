@@ -8,6 +8,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 import com.example.platform.outbox.testsupport.OutboxEventTestSchemaFixture;
+import com.example.platform.outbox.testsupport.OutboxTestEvents;
 import com.example.platform.shared.events.ArtifactCreatedEvent;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -45,13 +46,12 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
     @BeforeEach
     void setUp() {
         OutboxEventTestSchemaFixture.truncate(dsl);
-        service = new OutboxEventService(dsl, 3, new PostgresNotificationService(null));
+        service = new OutboxEventService(dsl, 3, new PostgresNotificationService(null), OutboxTestEvents.router());
     }
 
     @Test
     void appendEventCreatesPendingEvent() {
-        String id = service.appendEvent("order", "ord-1", "order.created", 1,
-                Map.of("key", "value"));
+        String id = service.append(OutboxTestEvents.order("ord-1", "value", null));
 
         assertNotNull(id);
         assertTrue(id.startsWith("obx_"));
@@ -69,18 +69,17 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
     }
 
     @Test
-    void persistedArtifactCreatedPayloadRoundTripsThroughOutboxDispatch() {
+    void persistedArtifactCreatedPayloadRoundTripsThroughOutboxDispatch() throws Exception {
         ArtifactCreatedEvent event = new ArtifactCreatedEvent(
                 "art-1", "job-1", "proj-1", Instant.parse("2026-08-13T03:16:09Z"));
-        String id = service.appendEvent("artifact", event.artifactId(), "artifact.created", 1, event);
+        String id = service.append(OutboxTestEvents.ARTIFACT.append("tenant-test", event, null));
 
         assertEquals(
                 "{\"artifactId\":\"art-1\",\"renderJobId\":\"job-1\",\"projectId\":\"proj-1\",\"createdAt\":\"2026-08-13T03:16:09Z\"}",
-                service.readEvent(id).get("payload"));
+                new com.fasterxml.jackson.databind.ObjectMapper().readTree((String) service.readEvent(id).get("payload")).get("payload").toString());
 
         ApplicationEventPublisher publisher = mock(ApplicationEventPublisher.class);
-        OutboxEventRouter router = new OutboxEventRouter();
-        router.register("artifact.created", ArtifactCreatedEvent.class);
+        OutboxEventRouter router = OutboxTestEvents.router();
         OutboxEventDispatcher dispatcher = new OutboxEventDispatcher(
                 service, publisher, router, 3, new SimpleMeterRegistry());
 
@@ -92,11 +91,9 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void appendEventWithIdempotencyKeyReturnsExistingId() {
-        String id1 = service.appendEvent("order", "ord-1", "order.created", 1,
-                Map.of("key", "value"), "idem-key-123");
+        String id1 = service.append(OutboxTestEvents.order("ord-1", "value", "idem-key-123"));
 
-        String id2 = service.appendEvent("order", "ord-1", "order.created", 1,
-                Map.of("key", "value"), "idem-key-123");
+        String id2 = service.append(OutboxTestEvents.order("ord-1", "value", "idem-key-123"));
 
         assertEquals(id1, id2);
 
@@ -106,11 +103,9 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void appendEventWithNullIdempotencyKeyCreatesNewEvent() {
-        String id1 = service.appendEvent("order", "ord-1", "order.created", 1,
-                Map.of("key", "value"), null);
+        String id1 = service.append(OutboxTestEvents.order("ord-1", "value", null));
 
-        String id2 = service.appendEvent("order", "ord-1", "order.created", 1,
-                Map.of("key", "value"), null);
+        String id2 = service.append(OutboxTestEvents.order("ord-1", "value", null));
 
         assertTrue(!id1.equals(id2));
         int count = dsl.fetchCount(DSL.table("outbox_events"));
@@ -119,8 +114,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void markPublishedUpdatesStatus() {
-        String id = service.appendEvent("order", "ord-1", "order.created", 1,
-                Map.of("key", "value"));
+        String id = service.append(OutboxTestEvents.order("ord-1", "value", null));
 
         service.markProcessed(id);
 
@@ -135,8 +129,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void markFailedIncrementsRetryCountAndSetsNextAttempt() {
-        String id = service.appendEvent("order", "ord-1", "order.created", 1,
-                Map.of("key", "value"));
+        String id = service.append(OutboxTestEvents.order("ord-1", "value", null));
 
         service.markFailedWithDetails(id, "TEST", "test error");
 
@@ -152,8 +145,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void markFailedExceedingMaxRetriesSetsStatusDeadLetter() {
-        String id = service.appendEvent("order", "ord-1", "order.created", 1,
-                Map.of("key", "value"));
+        String id = service.append(OutboxTestEvents.order("ord-1", "value", null));
 
         service.markFailedWithDetails(id, "TEST", "test error");
         service.markFailedWithDetails(id, "TEST", "test error");
@@ -170,8 +162,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void markDeadLetterSetsStatus() {
-        String id = service.appendEvent("order", "ord-1", "order.created", 1,
-                Map.of("key", "value"));
+        String id = service.append(OutboxTestEvents.order("ord-1", "value", null));
 
         service.markDeadLetter(id, "test reason");
 
@@ -185,8 +176,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void markDeadLetterDoesNotOverrideProcessed() {
-        String id = service.appendEvent("order", "ord-1", "order.created", 1,
-                Map.of("key", "value"));
+        String id = service.append(OutboxTestEvents.order("ord-1", "value", null));
         service.markProcessed(id);
 
         service.markDeadLetter(id, "test reason");
@@ -201,8 +191,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void pendingForDispatchExcludesFutureNextAttempt() {
-        String id = service.appendEvent("order", "ord-1", "order.created", 1,
-                Map.of("key", "value"));
+        String id = service.append(OutboxTestEvents.order("ord-1", "value", null));
 
         service.markFailedWithDetails(id, "TEST", "test error");
 
@@ -212,8 +201,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void pendingForDispatchIncludesNullNextAttempt() {
-        String id = service.appendEvent("order", "ord-1", "order.created", 1,
-                Map.of("key", "value"));
+        String id = service.append(OutboxTestEvents.order("ord-1", "value", null));
 
         List<Map<String, Object>> pending = service.pendingForDispatch(100);
         assertTrue(pending.stream().anyMatch(r -> id.equals(String.valueOf(r.get("id")))));
@@ -221,8 +209,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void overviewReturnsDeadLetterCount() {
-        String id = service.appendEvent("order", "ord-1", "order.created", 1,
-                Map.of("key", "value"));
+        String id = service.append(OutboxTestEvents.order("ord-1", "value", null));
         service.markDeadLetter(id, "test reason");
 
         Map<String, Object> overview = service.overview();
@@ -232,8 +219,8 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void recentReturnsEventsInDescendingOrder() {
-        service.appendEvent("order", "ord-1", "order.created", 1, Map.of("k", "v1"));
-        service.appendEvent("order", "ord-2", "order.created", 1, Map.of("k", "v2"));
+        service.append(OutboxTestEvents.order("ord-1", "v1", null));
+        service.append(OutboxTestEvents.order("ord-2", "v2", null));
 
         List<Map<String, Object>> recent = service.recent(10);
         assertTrue(recent.size() >= 2);
@@ -241,8 +228,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void markProcessedSetsStatusToProcessed() {
-        String id = service.appendEvent("order", "ord-1", "order.created", 1,
-                Map.of("key", "value"));
+        String id = service.append(OutboxTestEvents.order("ord-1", "value", null));
 
         service.markProcessed(id);
 
@@ -257,8 +243,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void markFailedWithDetailsRecordsErrorCodeAndMessage() {
-        String id = service.appendEvent("order", "ord-1", "order.created", 1,
-                Map.of("key", "value"));
+        String id = service.append(OutboxTestEvents.order("ord-1", "value", null));
 
         service.markFailedWithDetails(id, "TIMEOUT", "Connection timed out");
 
@@ -275,8 +260,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void markFailedWithDetailsExceedingMaxRetriesGoesToDeadLetter() {
-        String id = service.appendEvent("order", "ord-1", "order.created", 1,
-                Map.of("key", "value"));
+        String id = service.append(OutboxTestEvents.order("ord-1", "value", null));
 
         service.markFailedWithDetails(id, "ERR", "e1");
         service.markFailedWithDetails(id, "ERR", "e2");
@@ -295,15 +279,14 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void exponentialBackoffIncreasesWithRetryCount() {
-        String id = service.appendEvent("order", "ord-1", "order.created", 1,
-                Map.of("key", "value"));
+        String id = service.append(OutboxTestEvents.order("ord-1", "value", null));
 
         service.markFailedWithDetails(id, "ERR", "e1");
         List<Map<String, Object>> rows1 = dsl.select()
                 .from(DSL.table("outbox_events"))
                 .where(DSL.field("id").eq(id))
                 .fetchMaps();
-        OffsetDateTime next1 = (OffsetDateTime) rows1.get(0).get("next_attempt_at");
+        java.time.LocalDateTime next1 = ((java.sql.Timestamp) rows1.get(0).get("next_attempt_at")).toLocalDateTime();
         assertNotNull(next1);
 
         try { Thread.sleep(10); } catch (InterruptedException ignored) {}
@@ -312,7 +295,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
                 .from(DSL.table("outbox_events"))
                 .where(DSL.field("id").eq(id))
                 .fetchMaps();
-        OffsetDateTime next2 = (OffsetDateTime) rows2.get(0).get("next_attempt_at");
+        java.time.LocalDateTime next2 = ((java.sql.Timestamp) rows2.get(0).get("next_attempt_at")).toLocalDateTime();
         assertNotNull(next2);
 
         assertTrue(next2.isAfter(next1), "Second backoff should be longer than first");
@@ -320,11 +303,9 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void idempotencyKeyProcessedDoesNotDuplicate() {
-        String id1 = service.appendEvent("order", "ord-1", "order.created", 1,
-                Map.of("key", "v1"), "idem-proc-1");
+        String id1 = service.append(OutboxTestEvents.order("ord-1", "v1", "idem-proc-1"));
         service.markProcessed(id1);
-        String id2 = service.appendEvent("order", "ord-1", "order.created", 1,
-                Map.of("key", "v2"), "idem-proc-1");
+        String id2 = service.append(OutboxTestEvents.order("ord-1", "v2", "idem-proc-1"));
 
         assertEquals(id1, id2);
         int count = dsl.fetchCount(DSL.table("outbox_events"));
@@ -333,10 +314,8 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void idempotencyKeyPendingResetsPayload() {
-        String id1 = service.appendEvent("order", "ord-1", "order.created", 1,
-                Map.of("key", "v1"), "idem-pend-1");
-        String id2 = service.appendEvent("order", "ord-1", "order.created", 1,
-                Map.of("key", "v2"), "idem-pend-1");
+        String id1 = service.append(OutboxTestEvents.order("ord-1", "v1", "idem-pend-1"));
+        String id2 = service.append(OutboxTestEvents.order("ord-1", "v2", "idem-pend-1"));
 
         assertEquals(id1, id2);
         int count = dsl.fetchCount(DSL.table("outbox_events"));
@@ -352,8 +331,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void lockForProcessingSetsProcessingStatus() {
-        String id = service.appendEvent("order", "ord-1", "order.created", 1,
-                Map.of("key", "value"));
+        String id = service.append(OutboxTestEvents.order("ord-1", "value", null));
 
         boolean locked = service.lockForProcessing(id, "test-processor-1");
 
@@ -371,8 +349,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void lockForProcessingReturnsFalseForProcessedEvent() {
-        String id = service.appendEvent("order", "ord-1", "order.created", 1,
-                Map.of("key", "value"));
+        String id = service.append(OutboxTestEvents.order("ord-1", "value", null));
         service.markProcessed(id);
 
         boolean locked = service.lockForProcessing(id, "test-processor-1");
@@ -382,8 +359,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void resetDueFailedEventsResetsExpiredEvents() {
-        String id = service.appendEvent("order", "ord-1", "order.created", 1,
-                Map.of("key", "value"));
+        String id = service.append(OutboxTestEvents.order("ord-1", "value", null));
         dsl.update(DSL.table("outbox_events"))
                 .set(DSL.field("status"), "FAILED")
                 .set(DSL.field("next_attempt_at"), OffsetDateTime.now().minusSeconds(60))
@@ -404,8 +380,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void overviewIncludesProcessingCount() {
-        String id = service.appendEvent("order", "ord-1", "order.created", 1,
-                Map.of("key", "value"));
+        String id = service.append(OutboxTestEvents.order("ord-1", "value", null));
         service.lockForProcessing(id, "test-processor");
 
         Map<String, Object> overview = service.overview();

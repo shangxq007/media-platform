@@ -20,6 +20,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
 public class PlatformBeanConfiguration {
 
     @Bean
+    public com.example.platform.usage.api.ObservedUsageEvents observedUsageEvents() {
+        return new com.example.platform.usage.api.ObservedUsageEvents();
+    }
+
+    @Bean
     @ConditionalOnMissingBean
     public SentryMonitoringService sentryMonitoringService() {
         return new SentryMonitoringService(false, "development", 1.0);

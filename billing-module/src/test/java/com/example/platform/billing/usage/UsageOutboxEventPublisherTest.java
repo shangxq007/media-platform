@@ -37,13 +37,12 @@ class UsageOutboxEventPublisherTest {
 
         assertSame(saved, publisher.appendWithOutbox(attempted));
 
-        @SuppressWarnings("unchecked")
-        ArgumentCaptor<Map<String, Object>> payload = ArgumentCaptor.forClass(Map.class);
-        verify(outbox).appendEvent(
-                eq("OBSERVED_RUNTIME_USAGE"), eq("observed-existing"),
-                eq("RUNTIME_USAGE_OBSERVED"), eq(1), payload.capture(),
-                eq("observed-usage:tenant-a:observation-key"));
-        assertEquals("observed-existing", payload.getValue().get("observedUsageId"));
-        assertEquals("attempt-a", payload.getValue().get("attemptRef"));
+        ArgumentCaptor<com.example.platform.outbox.api.event.OutboxAppend<?>> payload = ArgumentCaptor.forClass(com.example.platform.outbox.api.event.OutboxAppend.class);
+        verify(outbox).append(payload.capture());
+        assertEquals(com.example.platform.usage.api.ObservedUsageEvents.RUNTIME_USAGE_OBSERVED, payload.getValue().type());
+        assertEquals("observed-usage:tenant-a:observation-key", payload.getValue().idempotencyKey());
+        var fact = (com.example.platform.usage.api.ObservedUsageEvents.RuntimeUsageObserved) payload.getValue().payload();
+        assertEquals("observed-existing", fact.observedUsageId());
+        assertEquals("attempt-a", fact.attemptRef());
     }
 }

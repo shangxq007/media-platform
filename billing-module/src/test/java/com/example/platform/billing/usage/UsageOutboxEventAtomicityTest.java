@@ -94,12 +94,10 @@ class UsageOutboxEventAtomicityTest extends PostgresTestContainerSupport {
     }
 
     static class ThrowingOutbox extends OutboxEventService {
-        ThrowingOutbox() { super(null, 3, null); }
+        ThrowingOutbox() { super(null, 3, null, null); }
 
         @Override
-        public String appendEvent(
-                String aggregateType, String aggregateId, String eventType, int eventVersion,
-                Object payload, String idempotencyKey) {
+        public String append(com.example.platform.outbox.api.event.OutboxAppend<?> event) {
             throw new RuntimeException("forced outbox failure");
         }
     }

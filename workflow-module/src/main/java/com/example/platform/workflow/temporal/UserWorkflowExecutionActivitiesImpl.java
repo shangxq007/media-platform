@@ -43,7 +43,7 @@ public class UserWorkflowExecutionActivitiesImpl implements UserWorkflowExecutio
     private final com.example.platform.workflow.definition.app.UserWorkflowDefinitionService definitionService;
     // Outbox emission is a bounded adapter point; the FV1 activity records the
     // transition via the product authority. Durable outbox routing is wired
-    // through the existing OutboxEventRegistration mechanism where the event
+    // through the existing domain-owned OutboxEventCatalog mechanism where the event
     // type is registered.
 
     public UserWorkflowExecutionActivitiesImpl(
@@ -131,7 +131,7 @@ public class UserWorkflowExecutionActivitiesImpl implements UserWorkflowExecutio
     public void emitOutboxEvent(String tenantId, String executionId, String eventType, String payloadJson) {
         // Durable terminal outbox transitions (UWEV1-ARSF frozen: Started/
         // Completed/Failed/Cancelled). The event type is registered with the
-        // existing OutboxEventRegistration routing; FV1 wires the transition
+        // existing domain-owned OutboxEventCatalog routing; FV1 wires the transition
         // marker through the product authority record (see WorkflowExecution
         // terminal projection). Full outbox publish adapter is a bounded
         // integration point exercised in focused tests.

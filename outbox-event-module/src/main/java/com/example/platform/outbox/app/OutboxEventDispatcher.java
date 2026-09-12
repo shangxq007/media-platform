@@ -1,7 +1,5 @@
 package com.example.platform.outbox.app;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
@@ -22,7 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
  * them as Spring application events via registration-based routing.
  *
  * <p>Event type → Java class mapping is managed by {@link OutboxEventRouter}
- * and registered via {@link OutboxEventRegistration}. New event types no longer
+ * and registered by domain-owned catalogs. New event types no longer
  * require dispatcher code changes.</p>
  */
 @Component
@@ -33,8 +31,6 @@ public class OutboxEventDispatcher {
     private final OutboxEventService service;
     private final ApplicationEventPublisher publisher;
     private final OutboxEventRouter router;
-    // This is the outbox read boundary for payloads written by OutboxPayloadJson.
-    private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
     private final int maxRetries;
 
     private final Counter eventsDispatchedCounter;
@@ -96,19 +92,26 @@ public class OutboxEventDispatcher {
         if (row == null) return false;
 
         try {
-            Object event = toSpringEvent(row);
-            if (event == null) {
-                service.markFailedWithDetails(outboxId, "UNKNOWN_EVENT_TYPE",
-                        "No handler for event type: " + row.get("event_type"));
-                eventsFailedCounter.increment();
-                log.warn("Failed outbox event {}: unknown event type {}", outboxId, row.get("event_type"));
-                return false;
+            var event = router.decode((String) row.get("event_type"), ((Number) row.get("event_version")).intValue(),
+                    (String) row.get("aggregate_type"), (String) row.get("aggregate_id"), (String) row.get("payload"));
+            String previousTenant = com.example.platform.shared.web.TenantContext.get();
+            try {
+                if (previousTenant != null && !previousTenant.equals(event.tenantId()))
+                    throw new OutboxEventRouter.InvalidEvent("INVALID_EVENT_SCOPE", "Dispatch tenant differs from envelope");
+                com.example.platform.shared.web.TenantContext.set(event.tenantId());
+                publisher.publishEvent(event.payload());
+            } finally {
+                if (previousTenant == null) com.example.platform.shared.web.TenantContext.clear();
+                else com.example.platform.shared.web.TenantContext.set(previousTenant);
             }
-            publisher.publishEvent(event);
             service.markProcessed(outboxId);
             eventsDispatchedCounter.increment();
             log.info("Successfully dispatched outbox event {}", outboxId);
             return true;
+        } catch (OutboxEventRouter.InvalidEvent ex) {
+            service.quarantine(outboxId, ex.code(), ex.getMessage());
+            eventsFailedCounter.increment();
+            return false;
         } catch (Exception ex) {
             service.markFailedWithDetails(outboxId, "DISPATCH_ERROR", ex.getMessage());
             eventsFailedCounter.increment();
@@ -146,31 +149,4 @@ public class OutboxEventDispatcher {
         log.info("Manually dead-lettered outbox event {}: {}", outboxId, reason);
     }
 
-    /**
-     * Convert an outbox row to a Spring event via the OutboxEventRouter.
-     * The "notification.event.published" marker is handled as a special case
-     * (it's not a typed event — it's a string marker for notification delivery).
-     */
-    private Object toSpringEvent(Map<String, Object> row) {
-        String eventType = String.valueOf(row.get("event_type"));
-        String payload = String.valueOf(row.get("payload"));
-
-        if ("notification.event.published".equals(eventType)) {
-            return "notification.event.published:" + payload;
-        }
-
-        try {
-            Class<?> eventClass = router.resolve(eventType);
-            if (eventClass == null) {
-                log.error("Unknown event type '{}' — not registered in OutboxEventRouter. "
-                        + "Register it in OutboxEventRegistration.", eventType);
-                return null;
-            }
-            Map<String, Object> payloadMap = objectMapper.readValue(payload, Map.class);
-            return objectMapper.convertValue(payloadMap, eventClass);
-        } catch (Exception ex) {
-            throw new IllegalStateException(
-                    "Failed to parse outbox event payload for type " + eventType, ex);
-        }
-    }
 }

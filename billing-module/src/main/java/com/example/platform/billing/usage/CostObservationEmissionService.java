@@ -6,8 +6,8 @@ import com.example.platform.outbox.app.OutboxEventService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
+
+
 
 /**
  * Durable propagation boundary for canonical provider cost observations.
@@ -43,21 +43,9 @@ public class CostObservationEmissionService {
     public ProviderCostObservation persistCostWithOutbox(ProviderCostObservation observation) {
         ProviderCostObservation saved = providerCostObservationJdbcRepository.insert(observation);
 
-        Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("costObservationId", observation.observationId());
-        payload.put("tenantId", observation.tenantId());
-        payload.put("operationRef", observation.operationRef().operationId());
-        payload.put("costType", observation.costType().name());
-        payload.put("currencyCode", observation.currencyCode());
-        payload.put("amountMinor", observation.amountMinor());
-
-        outboxEventService.appendEvent(
-                "PROVIDER_COST",
-                observation.observationId(),
-                "COST_OBSERVED",
-                1,
-                payload,
-                observation.idempotencyKey());
+        var payload = new BillingOutboxEvents.CostObserved(saved.observationId(), saved.tenantId(),
+                saved.operationRef().operationId(), saved.costType(), saved.currencyCode(), saved.amountMinor());
+        outboxEventService.append(BillingOutboxEvents.COST_OBSERVED.append(saved.tenantId(), payload, saved.idempotencyKey()));
 
         return saved;
     }

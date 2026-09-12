@@ -156,14 +156,15 @@ class CostObservationEmissionServiceTest extends PostgresTestContainerSupport {
         assertEquals("COST_OBSERVED", event.get("event_type"));
 
         // Bounded payload carries stable, non-secret data only.
-        Map<String, Object> payload = PAYLOAD_MAPPER.readValue((String) event.get("payload"), MAP_REF);
-        assertEquals(saved.observationId(), payload.get("costObservationId"));
-        assertEquals("tenant-1", payload.get("tenantId"));
-        assertEquals("op-1", payload.get("operationRef"));
-        assertEquals("REPORTED", payload.get("costType"));
-        assertEquals("USD", payload.get("currencyCode"));
-        // JSON number deserializes to Integer in a raw Map; compare by numeric value.
-        assertEquals(new BigDecimal("1999"), new BigDecimal(String.valueOf(payload.get("amountMinor"))));
+        var router = new com.example.platform.outbox.app.OutboxEventRouter(java.util.List.of(new BillingOutboxEvents()));
+        var payload = (BillingOutboxEvents.CostObserved) router.decode("COST_OBSERVED", 1, "PROVIDER_COST", saved.observationId(), (String) event.get("payload")).payload();
+        assertEquals(saved.observationId(), payload.costObservationId());
+        assertEquals("tenant-1", payload.tenantId());
+        assertEquals("op-1", payload.operationRef());
+        assertEquals(CostType.REPORTED, payload.costType());
+        assertEquals("USD", payload.currencyCode());
+        assertEquals(new BigDecimal("1999"), payload.amountMinor());
+
     }
 
     @Test
@@ -239,7 +240,7 @@ class CostObservationEmissionServiceTest extends PostgresTestContainerSupport {
         @Bean
         public OutboxEventService outboxEventService(DSLContext dslContext,
                 PostgresNotificationService postgresNotificationService) {
-            return new OutboxEventService(dslContext, 3, postgresNotificationService);
+            return new OutboxEventService(dslContext, 3, postgresNotificationService, new com.example.platform.outbox.app.OutboxEventRouter(java.util.List.of(new BillingOutboxEvents())));
         }
 
         @Bean
