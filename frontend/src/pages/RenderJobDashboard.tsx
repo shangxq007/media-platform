@@ -106,15 +106,15 @@ function ProjectJobs({ source, tenant, projectId, prefix, read }: { source: Rend
     {query.isFetching ? <p role="status">Resolving Project and loading jobs…</p> : query.error ? <><p role="alert">{renderHttpStatus(query.error) === 404 ? 'Project not found in the current scope.' : 'Could not read Render jobs.'}</p><Button onClick={() => void query.refetch()}>Retry job read</Button></> : null}
     {data ? <><p>Filtering applies to returned records only. The API does not provide pagination or an inventory completeness guarantee.</p>
       <div className="ff-table-toolbar">
-        <label>Search returned jobs<input type="search" value={search} onChange={event => { close(); setSearch(event.target.value) }} /></label>
+        <label>Search returned jobs<input className="ff-input" type="search" value={search} onChange={event => { close(); setSearch(event.target.value) }} /></label>
         <label>Status<select aria-label="Status" value={filter} onChange={event => { close(); setFilter(event.target.value) }}><option value="ALL">All statuses</option>{RENDER_JOB_STATUSES.map(status => <option key={status} value={status}>{status}</option>)}</select></label>
         <label>Sort by job ID<select aria-label="Sort by job ID" value={descending ? 'descending' : 'ascending'} onChange={event => setDescending(event.target.value === 'descending')}><option value="ascending">Ascending</option><option value="descending">Descending</option></select></label>
       </div><p role="status">Showing {jobs.length} of {data.jobs.length} returned jobs.</p>
-      {!data.jobs.length ? <p role="status">No Render jobs were returned for this authorized Project.</p> : !jobs.length ? <p role="status">No returned jobs match these filters.</p> : <ul>{jobs.map(job => <li key={job.id}><Button aria-pressed={selection.primarySelectedObject?.id === job.id} onClick={() => {
+      {!data.jobs.length ? <p role="status">No Render jobs were returned for this authorized Project.</p> : !jobs.length ? <p role="status">No returned jobs match these filters.</p> : <ul className="space-y-2">{jobs.map(job => <li key={job.id}><Button aria-pressed={selection.primarySelectedObject?.id === job.id} onClick={() => {
         store.dispatch({ category: 'LOCAL_EPHEMERAL', type: 'select', ids: [job.id] }); store.dispatch({ category: 'LOCAL_EPHEMERAL', type: 'inspect', open: true }); setDetail(job.id)
       }}>Inspect {job.id}</Button> <span>{job.profile} · {job.status}</span></li>)}</ul>}
     </> : null}
-    {detail && data ? <InteractionDialog title="Render job details" onClose={close}><RenderDetail key={detail} source={source} tenant={tenant} projectId={projectId} jobId={detail} prefix={key} read={read} missing={() => {
+    {detail && data ? <InteractionDialog title="Render job details" onClose={close} className="w-[min(40rem,calc(100vw-2rem))] max-h-[76vh] overflow-y-auto rounded-xl border border-gray-700 bg-gray-950 p-4 shadow-xl [&_.ff-dialog-heading]:mb-4 [&_.ff-dialog-heading]:flex [&_.ff-dialog-heading]:justify-between"><RenderDetail key={detail} source={source} tenant={tenant} projectId={projectId} jobId={detail} prefix={key} read={read} missing={() => {
       store.dispatch({ category: 'LOCAL_EPHEMERAL', type: 'select', ids: [] })
       client.setQueryData<typeof query.data>([...key, 'list'], value => value ? { ...value, jobs: value.jobs.filter(job => job.id !== detail) } : value)
     }} /></InteractionDialog> : null}
