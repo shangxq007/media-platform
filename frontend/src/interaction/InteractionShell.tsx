@@ -8,7 +8,7 @@ import { isWorkflowSketchTitleValid } from '../product/workflow-sketch/model'
 import { WorkflowTitleField, WorkflowPlacementFields } from '../product/workflow-sketch/WorkflowSketch'
 import { useTranslation } from '../localization'
 
-export function SelectionActionBar() {
+export function SelectionActionBar({ readOnly = false, onClear }: { readOnly?: boolean; onClear?: () => void } = {}) {
   const store = useInteractionStore(), selection = useSelection()
   const { t } = useTranslation()
   const selected = selection.primarySelectedObject
@@ -24,20 +24,25 @@ export function SelectionActionBar() {
     <span className="ff-selection-title">{selectedCount > 1 ? t('agent.selectedPrimary', { count: selectedCount, kind: t(`agent.kind${selected.kind}`), title }) : t('agent.singleSelection', { kind: t(`agent.kind${selected.kind}`), title })}</span>
     <Button aria-expanded={selection.inspectorOpen} aria-controls="selection-inspector" onClick={() => dispatch({ category: 'LOCAL_EPHEMERAL', type: 'inspect', open: !selection.inspectorOpen })}>{selection.inspectorOpen ? t('agent.hideInspector') : t('agent.showInspector')}</Button>
     {selection.supported.includes('reveal') ? <Button onClick={() => dispatch({ category: 'WORKSPACE_PRESENTATION', type: 'reveal', targetId: selected.id })}>{t('agent.revealPrimary', { kind: t(`agent.kindLower${selected.kind}`) })}</Button> : null}
-    <Button onClick={() => dispatch({ category: 'LOCAL_EPHEMERAL', type: 'select', ids: [] })}>{t('agent.clearSelection')}</Button>
-    <details><summary>{t('agent.more')}</summary><div className="ff-selection-more"><p>{t('agent.localOnly')}</p><Button onClick={() => dispatch({ category: 'LOCAL_EPHEMERAL', type: 'inspect', open: true })}>{t('agent.editProperties')}</Button><UnavailableAction /></div></details>
-    <Button onClick={() => dispatch({ category: 'LOCAL_EPHEMERAL', type: 'agent', open: true })}>{t('agent.ask')}</Button>
+    <Button onClick={() => { dispatch({ category: 'LOCAL_EPHEMERAL', type: 'select', ids: [] }); onClear?.() }}>{t('agent.clearSelection')}</Button>
+    {!readOnly ? <><details><summary>{t('agent.more')}</summary><div className="ff-selection-more"><p>{t('agent.localOnly')}</p><Button onClick={() => dispatch({ category: 'LOCAL_EPHEMERAL', type: 'inspect', open: true })}>{t('agent.editProperties')}</Button><UnavailableAction /></div></details>
+    <Button onClick={() => dispatch({ category: 'LOCAL_EPHEMERAL', type: 'agent', open: true })}>{t('agent.ask')}</Button></> : null}
   </div>
 }
 export function UnavailableAction() {
   const { t } = useTranslation()
   return <div className="ff-unavailable-action"><Button disabled>{t('agent.applyCanonical')}</Button><p>{t('agent.canonicalUnavailable')}</p><details><summary>{t('agent.technicalDetails')}</summary><code>No generic application gateway contract · CANONICAL_SEMANTIC rejected</code></details></div>
 }
-function InspectorProperties() {
+function InspectorProperties({ readOnly = false }: { readOnly?: boolean } = {}) {
   const selection = useSelection(), store = useInteractionStore()
   const { t } = useTranslation()
   const selected = selection.primarySelectedObject
   if (!selected) return null
+  if (readOnly) return <>
+    <h3>{t('canvas.selectionSummary', { count: selection.selectedObjects.length })}</h3>
+    <p>{t('canvas.summaryHelp')}</p>
+    <ul>{selection.selectedObjects.map(object => <li key={object.id}><strong>{object.title}</strong> · {object.logicalRef?.kind ?? object.kind}<PropertyRow label={t('canvas.position')}>{object.x}, {object.y}</PropertyRow></li>)}</ul>
+  </>
   return <>
     <h3>{selected.kind === 'NODE' ? t('agent.localNodeInspector') : t('agent.presentationSelection')}</h3>
     <p>{selected.synthetic ? t('agent.syntheticFixture') : t('agent.localPresentationLifetime')}</p>
@@ -55,7 +60,7 @@ function InspectorProperties() {
     {selected.kind === 'LANE' ? <Button onClick={() => store.dispatch({ category: 'LOCAL_EPHEMERAL', type: 'select', ids: [] }, 'INSPECTOR')}>{t('agent.clearTrackSelection')}</Button> : null}
   </>
 }
-export function SelectionInspector() {
+export function SelectionInspector({ readOnly = false }: { readOnly?: boolean } = {}) {
   const store = useInteractionStore(), selection = useSelection()
   const { t } = useTranslation()
   const id = selection.primarySelectedObject?.id
@@ -94,6 +99,7 @@ export function SelectionInspector() {
     if (hide) store.dispatch({ category: 'LOCAL_EPHEMERAL', type: 'inspect', open: false }, 'INSPECTOR')
   }
   if (!selection.primarySelectedObject || !selection.inspectorOpen) return null
+  if (readOnly) return <aside id="selection-inspector" className="ff-canvas-summary" aria-label={t('agent.selectionInspector')}><InspectorProperties readOnly /></aside>
   if (selection.surfaceId === 'workflow') return <WorkflowSelectionInspector />
   return <aside id="selection-inspector" className="ff-selection-inspector" aria-label={t('agent.selectionInspector')}>
     <div className="ff-desktop-inspector"><InspectorProperties /></div>

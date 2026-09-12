@@ -1,8 +1,10 @@
+import type { ComponentProps } from 'react'
+import { WorkspaceSessionProvider } from '../../foundation/workspaceSession'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { platformClient } from '../../foundation/platformClient'
-import { ProjectContextProvider } from '../../foundation/projectContext'
+import { ProjectContextProvider as ProjectProvider } from '../../foundation/projectContext'
 import type { GatewayResult, RevisionComparison, RevisionDetail, RevisionListEntry } from '../timeline/gateways'
 import { ScriptedTimelineQueryGateway } from '../timeline/testing/mocks'
 import { contentHash, projectId, revisionId, timelineId } from '../timeline/types'
@@ -107,3 +109,7 @@ describe('Review comparison request ownership', () => {
     expect(document.activeElement).toBe(checks)
   })
 })
+
+function ProjectContextProvider(props: ComponentProps<typeof ProjectProvider>) {
+  return <WorkspaceSessionProvider workspaceId={props.workspaceId} projectId={props.projectId}><ProjectProvider {...props} /></WorkspaceSessionProvider>
+}

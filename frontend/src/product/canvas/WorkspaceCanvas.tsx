@@ -1,11 +1,13 @@
+import { useWorkspaceBinding } from '../../foundation/workspaceSession'
+import { AsyncStatePanel } from '../../foundation/errors'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent } from 'react'
 import { flushSync } from 'react-dom'
-import { Badge, Button } from '../../components/design-system'
+import { Badge, Button, EmptyState } from '../../components/design-system'
 import { useProjectContext } from '../../foundation/projectContext'
 import { PageHeading, ProjectFrame } from '../../surfaces/FoundationPages'
 import { SelectionProvider, useInteractionStore, useSelection, useSurfaceAdapter } from '../../interaction/SelectionContext'
 import type { InteractionStore, SelectionState, PresentationSelectionRef } from '../../interaction/model'
-import { SelectionActionBar } from '../../interaction/InteractionShell'
+import { SelectionActionBar, SelectionInspector } from '../../interaction/InteractionShell'
 import { emptyCanvasHistory, recordCanvasEdit, restoreCanvasEdit, canvasMarqueeRefs, isMarqueeArea, CANVAS_NODE_SIZE, CANVAS_GESTURE_THRESHOLD, screenToCanvas, moveCanvasGroup, type CanvasPoint, type CanvasNode, type WorkspaceCanvasState, changeZoom, fitCanvasViewport, createCanvasState, moveViewport, placeCanvasNode, renameCanvasNode, resetViewport } from './model'
 import { useTranslation } from '../../localization'
 
@@ -42,13 +44,26 @@ function gestureBoundsCurrent(active: CanvasGesture, element: HTMLDivElement | n
 
 export function CanvasContent() {
   const project = useProjectContext()
-  return <SelectionProvider scope={{ surfaceId: 'canvas', workspaceId: project.workspaceId, projectId: project.projectId }}><CanvasSession key={JSON.stringify([project.workspaceId, project.projectId])} /></SelectionProvider>
+  const { binding, retired } = useWorkspaceBinding()
+  const { t } = useTranslation()
+  if (retired) return <AsyncStatePanel state="UNAVAILABLE" title={t('canvas.accessUnavailable')}><p>{t('canvas.reopen')}</p></AsyncStatePanel>
+  return <SelectionProvider scope={{ surfaceId: 'canvas', workspaceId: project.workspaceId, projectId: project.projectId }}><CanvasSession key={JSON.stringify([binding?.id, project.workspaceId, project.projectId])} /></SelectionProvider>
 }
 
 function CanvasSession() {
   const project = useProjectContext()
   const { t } = useTranslation()
-  const [canvas, updateCanvas] = useState(() => createCanvasState(project.projectId))
+  const { binding } = useWorkspaceBinding()
+  const restored = useRef(binding?.canvasView?.projectId === project.projectId ? binding.canvasView : null)
+  const [canvas, updateCanvas] = useState(() => {
+    const initial = createCanvasState(project.projectId)
+    const view = restored.current
+    return view ? { ...initial, zoom: view.zoom, viewportX: view.viewportX, viewportY: view.viewportY } : initial
+  })
+  const viewMode = useRef<'all' | 'selection' | 'manual'>(restored.current ? 'manual' : 'all')
+  useLayoutEffect(() => {
+    if (binding && !binding.getSnapshot()) binding.canvasView = { projectId: project.projectId, zoom: canvas.zoom, viewportX: canvas.viewportX, viewportY: canvas.viewportY }
+  }, [binding, project.projectId, canvas.zoom, canvas.viewportX, canvas.viewportY])
   const canvasRef = useRef(canvas)
   const history = useRef(emptyCanvasHistory())
   const historyOwner = useRef<object | null>(null)
@@ -131,11 +146,12 @@ function CanvasSession() {
     completedNodeClick.current = null
     if (event.button !== 0 || event.isPrimary === false || event.pointerType === 'touch' || event.altKey || event.shiftKey) return
     const target = event.target as HTMLElement
-    if (target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])')) return
+    if (target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="dialog"], dialog') || document.querySelector('[aria-modal="true"], dialog[open]')) return
     const nodeId = target.closest<HTMLElement>('[data-canvas-node]')?.dataset.canvasNode
     if (nodeId && (event.ctrlKey || event.metaKey || multiSelect)) return
     if (!nodeId && !isEmptyTarget(target)) return
     const kind = nodeId ? 'drag' : mode === 'select' ? 'marquee' : 'pan'
+    if (kind === 'pan') viewMode.current = 'manual'
     store.reconcile()
     let context = store.getSnapshot()
     if (context.surfaceId !== 'canvas' || context.workspaceId !== project.workspaceId || context.projectId !== project.projectId) return
@@ -226,19 +242,22 @@ function CanvasSession() {
     width: Math.abs(previewPoint.x - active.startScreen.x), height: Math.abs(previewPoint.y - active.startScreen.y),
   } : null
   const selected = canvas.nodes.find(node => node.presentationId === selection.primarySelectedObject?.id)
-  const pan = (x: number, y: number) => setCanvas(current => moveViewport(current, x, y))
-  const zoom = (delta: number) => setCanvas(current => changeZoom(current, delta))
+  const pan = (x: number, y: number) => { viewMode.current = 'manual'; return setCanvas(current => moveViewport(current, x, y)) }
+  const zoom = (delta: number) => { viewMode.current = 'manual'; return setCanvas(current => changeZoom(current, delta)) }
   const clear = () => { store.dispatch({ category: 'LOCAL_EPHEMERAL', type: 'select', ids: [] }); stage.current?.focus() }
-  const fit = () => { const bounds = stage.current?.getBoundingClientRect(); if (bounds) setCanvas(current => fitCanvasViewport(current, bounds.width, bounds.height)) }
-  const reveal = () => {
+  const fit = (selectionOnly = false) => {
     const bounds = stage.current?.getBoundingClientRect()
-    if (!bounds) return
-    setCanvas(current => {
-      const node = current.nodes.find(item => item.presentationId === selection.primarySelectedObject?.id)
-      if (!node) return current
-      const zoom = Math.min(1, (bounds.width - 32) / 230, (bounds.height - 32) / 160)
-      return { ...current, zoom, viewportX: (bounds.width - 230 * zoom) / 2 - node.x * zoom, viewportY: (bounds.height - 160 * zoom) / 2 - node.y * zoom }
-    })
+    const ids = selectionOnly ? store.getSnapshot().selectedRefs.map(ref => ref.localId) : undefined
+    if (!bounds || (selectionOnly && !ids?.length)) return
+    viewMode.current = selectionOnly ? 'selection' : 'all'
+    setCanvas(current => fitCanvasViewport(current, bounds.width, bounds.height, ids))
+  }
+  const reset = () => { viewMode.current = 'manual'; setCanvas(resetViewport) }
+  const reveal = () => {
+    const bounds = stage.current?.getBoundingClientRect(), id = store.getSnapshot().primarySelectedObject?.id
+    if (!bounds || !id) return
+    viewMode.current = 'manual'
+    setCanvas(current => fitCanvasViewport(current, bounds.width, bounds.height, [id]))
   }
   useSurfaceAdapter({
     objects: () => canvasRef.current.nodes.map(node => {
@@ -269,27 +288,34 @@ function CanvasSession() {
       return true
     },
   })
-  useEffect(() => { fit() }, [])
+  const navigation = useRef({ fit, setCanvas })
+  navigation.current = { fit, setCanvas }
   useEffect(() => {
+    if (!restored.current) navigation.current.fit()
     if (typeof ResizeObserver === 'undefined' || !stage.current) return
+    let previous = stage.current.getBoundingClientRect()
     const observer = new ResizeObserver(() => {
+      const bounds = stage.current?.getBoundingClientRect()
+      if (!bounds || bounds.width <= 32 || bounds.height <= 32) return
       const active = gesture.current
-      // Selection's queued resize already matches the committed capture geometry.
-      // A later external resize still cancels, including width/height-only changes.
       if (active) {
         if (gestureBoundsCurrent(active, stage.current)) return
         cancelGesture()
       }
-      if (selected) reveal(); else fit()
+      if (bounds.width === previous.width && bounds.height === previous.height) return
+      if (viewMode.current === 'all') navigation.current.fit()
+      else if (viewMode.current === 'selection') navigation.current.fit(true)
+      else if (previous.width > 32 && previous.height > 32) navigation.current.setCanvas(current => moveViewport(current, (bounds.width - previous.width) / 2, (bounds.height - previous.height) / 2))
+      previous = bounds
     })
     observer.observe(stage.current)
     return () => observer.disconnect()
-  }, [selection.primarySelectedObject?.id])
+  }, [cancelGesture])
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     completedNodeClick.current = null
     if (!gesture.current) suppressClick.current = false
     const target = event.target as HTMLElement
-    if (target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])')) return
+    if (target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="dialog"], dialog') || document.querySelector('[aria-modal="true"], dialog[open]')) return
     const nodeId = target.closest<HTMLButtonElement>('[data-canvas-node]')?.dataset.canvasNode
     if (event.nativeEvent.isComposing || event.keyCode === 229) {
       // Returning alone still permits native button activation during composition.
@@ -302,7 +328,15 @@ function CanvasSession() {
       if (!event.repeat) selectNode(nodeId, true)
       return
     }
-    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
+    if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === 'z') {
+      event.preventDefault()
+      if (!event.repeat) store.dispatch({ category: 'WORKSPACE_PRESENTATION', type: event.shiftKey ? 'redo-local' : 'undo-local' }, 'TOOLBAR')
+      return
+    }
+    if (event.altKey || event.ctrlKey || event.metaKey) return
+    if (event.key.toLowerCase() === 'f') { event.preventDefault(); fit(!event.shiftKey); return }
+    if (event.shiftKey) return
+    if (event.key === '0') { event.preventDefault(); reset(); return }
     const delta: Record<string, readonly [number, number]> = { ArrowLeft: [-24, 0], ArrowRight: [24, 0], ArrowUp: [0, -24], ArrowDown: [0, 24] }
     if (delta[event.key]) {
       event.preventDefault()
@@ -322,7 +356,8 @@ function CanvasSession() {
 
   return <>
     <PageHeading eyebrow={t('canvas.eyebrow')} title={t('canvas.title')} description={t('canvas.description')} />
-    <SelectionActionBar />
+    <p className="ff-canvas-guidance" role="note">{t('canvas.localDemo')}</p>
+    <SelectionActionBar readOnly onClear={() => stage.current?.focus()} />
     <Button aria-pressed={multiSelect} onClick={() => { cancelGesture(); setMultiSelect(value => !value) }}>{multiSelect ? t('canvas.done') : t('canvas.multiSelect')}</Button>
     <div className="ff-canvas-toolbar" role="group" aria-label={t('canvas.historyControls')}>
       <Button data-canvas-history="undo" aria-disabled={!selection.supported.includes('undo-local')} aria-describedby="canvas-history-status" onClick={() => store.dispatch({ category: 'WORKSPACE_PRESENTATION', type: 'undo-local' }, 'TOOLBAR')}>{t('canvas.undoLocal')}</Button>
@@ -333,18 +368,20 @@ function CanvasSession() {
     <div className="ff-canvas-toolbar" aria-label={t('canvas.viewportControls')}>
       <Button aria-pressed={mode === 'select'} onClick={() => { cancelGesture(); setMode('select') }}>{t('canvas.selectMode')}</Button>
       <Button aria-pressed={mode === 'pan'} onClick={() => { cancelGesture(); setMode('pan') }}>{t('canvas.panMode')}</Button>
-      <Button onClick={fit}>{t('canvas.fit')}</Button>
+      <Button disabled={!canvas.nodes.length} onClick={() => fit()} aria-keyshortcuts="Shift+F">{t('canvas.fit')}</Button>
+      <Button disabled={!selection.selectedRefs.length} onClick={() => fit(true)} aria-keyshortcuts="F">{t('canvas.fitSelection')}</Button>
+      <Button onClick={reset} aria-keyshortcuts="0">{t('canvas.resetViewport')}</Button>
       <details><summary>{t('canvas.moreViewport')}</summary><div className="ff-viewport-more">
         <Button onClick={() => pan(24, 0)}>{t('canvas.panLeft')}</Button><Button onClick={() => pan(-24, 0)}>{t('canvas.panRight')}</Button>
         <Button onClick={() => pan(0, 24)}>{t('canvas.panUp')}</Button><Button onClick={() => pan(0, -24)}>{t('canvas.panDown')}</Button>
         <Button disabled={canvas.zoom <= 0.5} onClick={() => zoom(-0.1)}>{t('canvas.zoomOut')}</Button><Button disabled={canvas.zoom >= 2} onClick={() => zoom(0.1)}>{t('canvas.zoomIn')}</Button>
-        <Button onClick={() => setCanvas(resetViewport)}>{t('canvas.resetViewport')}</Button>
       </div></details><output aria-live="polite">{Math.round(canvas.zoom * 100)}%</output>
     </div>
     <details className="ff-compact-details"><summary>{t('canvas.controls')}</summary><p className="ff-canvas-guidance" id="canvas-keyboard-help"><Badge>{t('agent.localOnly')}</Badge> {t('canvas.keyboardHelp')}</p><Button disabled title={t('canvas.relationshipUnavailable')}>{t('canvas.relationship')}</Button></details>
     <p className="ff-canvas-guidance" id="canvas-pointer-help">{t('canvas.pointerHelp')}</p>
     <div className="ff-canvas-layout" data-selected={Boolean(selected)}>
       <div ref={stage} className="ff-workspace-canvas" role="region" aria-label={t('canvas.workspace')} aria-describedby="canvas-keyboard-help canvas-pointer-help" tabIndex={0} onKeyDown={onKeyDown} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={event => { if (gesture.current?.pointerId === event.pointerId) cancelGesture() }} onLostPointerCapture={event => { if (gesture.current?.pointerId === event.pointerId) cancelGesture() }} onClickCapture={onClickCapture} onClick={event => { if (isEmptyTarget(event.target)) clear() }} style={{ backgroundSize: `${24 * canvas.zoom}px ${24 * canvas.zoom}px` }}>
+        {!canvas.nodes.length ? <EmptyState title={t('canvas.empty')} description={t('canvas.emptyHelp')} /> : null}
         {/* Keep the rendered transform equal to the camera, even when pointerdown follows a camera command. */}
         <div ref={viewport} className="ff-canvas-viewport" style={{ transition: 'none', transform: `translate(${canvas.viewportX + previewPan.x}px, ${canvas.viewportY + previewPan.y}px) scale(${canvas.zoom})` }}>
           {canvas.edges.map(edge => {
@@ -358,13 +395,15 @@ function CanvasSession() {
             return <button key={node.presentationId} data-canvas-node={node.presentationId} type="button" className="ff-canvas-node" style={{ left: node.x, top: node.y, width: CANVAS_NODE_SIZE.width, height: CANVAS_NODE_SIZE.height, overflow: 'hidden' }} aria-label={node.title || t('canvas.untitledNode')} aria-pressed={selection.selectedRefs.some(ref => ref.kind === 'NODE' && ref.localId === node.presentationId)} onFocus={event => {
               const bounds = stage.current?.getBoundingClientRect()
               const rect = event.currentTarget.getBoundingClientRect()
-              if (bounds && (rect.left < bounds.left || rect.right > bounds.right || rect.top < bounds.top || rect.bottom > bounds.bottom)) setCanvas(current => ({ ...current, viewportX: 24 - node.x * current.zoom, viewportY: 24 - node.y * current.zoom }))
+              if (bounds && (rect.left < bounds.left || rect.right > bounds.right || rect.top < bounds.top || rect.bottom > bounds.bottom)) { viewMode.current = 'manual'; setCanvas(current => ({ ...current, viewportX: 24 - node.x * current.zoom, viewportY: 24 - node.y * current.zoom })) }
             }} onClick={event => selectNode(node.presentationId, multiSelect || event.ctrlKey || event.metaKey)}><Badge tone={reference ? 'info' : 'neutral'}>{reference?.kind ?? 'LOCAL'}</Badge><strong>{node.title || t('canvas.untitledNode')}</strong><span>{reference ? project.projectName ?? reference.label : t('canvas.noReference')}</span>{reference ? <code>{reference.entityId}</code> : null}</button>
           })}
         </div>
         {marquee ? <div data-canvas-marquee aria-hidden="true" style={{ ...marquee, position: 'absolute', pointerEvents: 'none', zIndex: 3, border: '1px solid var(--accent-400)', background: 'color-mix(in srgb, var(--accent-400) 15%, transparent)' }} /> : null}
       </div>
+      <SelectionInspector readOnly />
     </div>
+    {canvas.zoom <= 0.5 ? <p className="ff-canvas-guidance">{t('canvas.fitLimit')}</p> : null}
     <div className="ff-canvas-status" role="status">{previewNodes ? <span>{t('canvas.dragPreview')} </span> : marquee ? <span>{t('canvas.marqueePreview')} </span> : previewPoint && active?.kind === 'pan' ? <span>{t('canvas.panPreview')} </span> : null}{t('canvas.selectionStatus', { count: selection.selectedRefs.length, title: selected?.title || t('common.none') })} · {t('canvas.viewportStatus', { x: canvas.viewportX, y: canvas.viewportY })}</div>
   </>
 }
