@@ -5,7 +5,6 @@ import com.example.platform.render.api.rawmedia.RawMediaProductRegistrationFacad
 import com.example.platform.render.api.rawmedia.RawMediaProductRegistrationResult;
 import com.example.platform.render.domain.asset.Asset;
 import com.example.platform.render.infrastructure.asset.AssetRepository;
-import com.example.platform.shared.Ids;
 import com.example.platform.storage.contract.StorageKeyPolicy;
 import com.example.platform.storage.domain.BlobStorage;
 import com.example.platform.storage.domain.PutObjectCommand;
@@ -64,7 +63,7 @@ public class RawMediaUploadService {
     public RawMediaUploadResult upload(String tenantId, String projectId, byte[] fileBytes,
                           String filename, String contentType, String displayName) {
         // 1. Generate IDs
-        String assetId = Ids.newId("asset");
+        String assetId = ("asset_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         String safeFilename = sanitizeFilename(filename);
 
         // 2. Generate storage key and write to blob storage

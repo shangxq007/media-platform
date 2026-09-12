@@ -3,7 +3,6 @@ package com.example.platform.render.infrastructure.farm;
 import com.example.platform.render.domain.RenderJobStatus;
 import com.example.platform.render.infrastructure.ProviderStatus;
 import com.example.platform.render.infrastructure.RenderJobRepository;
-import com.example.platform.shared.Ids;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -105,8 +104,8 @@ public class RenderJobLeaseService {
 
         // Create lease
         RenderJobLeaseRecord lease = new RenderJobLeaseRecord(
-                Ids.newId("lease"),
-                Ids.newId("lease"),
+                ("lease_" + java.util.UUID.randomUUID().toString().replace("-", "")),
+                ("lease_" + java.util.UUID.randomUUID().toString().replace("-", "")),
                 jobId,
                 tenantId,
                 workerId,

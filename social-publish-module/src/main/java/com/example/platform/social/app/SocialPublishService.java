@@ -1,6 +1,5 @@
 package com.example.platform.social.app;
 
-import com.example.platform.shared.Ids;
 import com.example.platform.social.api.dto.*;
 import com.example.platform.social.domain.*;
 import com.example.platform.social.infrastructure.persistence.ConnectedPlatformRepository;
@@ -37,7 +36,7 @@ public class SocialPublishService {
     public PublishPostResponse createPost(String tenantId, String userId, CreatePostRequest request) {
         Instant now = Instant.now();
         SocialPost post = new SocialPost(
-                Ids.newId("pst"), tenantId, userId,
+                ("pst_" + java.util.UUID.randomUUID().toString().replace("-", "")), tenantId, userId,
                 null, null, null, null,
                 request.contentText(), request.mediaUrls() != null ? request.mediaUrls() : List.of(),
                 PlatformType.valueOf(request.platformType()),

@@ -9,9 +9,9 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.example.platform.shared.authorization.AuthorizationDecision;
-import com.example.platform.shared.authorization.AuthorizationDecisionPort;
+import com.example.platform.identity.api.authorization.AuthorizationDecisionPort;
 import com.example.platform.shared.authorization.CanonicalActor;
-import com.example.platform.shared.authorization.CanonicalActorResolver;
+import com.example.platform.identity.api.authorization.CanonicalActorResolver;
 import com.example.platform.social.api.dto.PublicationAccountResponse;
 import com.example.platform.social.infrastructure.persistence.ConnectedPlatformRepository;
 import java.util.List;

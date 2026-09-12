@@ -1,6 +1,5 @@
 package com.example.platform.shared.usage;
 
-import com.example.platform.shared.Ids;
 import java.time.Instant;
 import java.util.Objects;
 
@@ -76,7 +75,7 @@ public record ObservedRuntimeUsage(
             String traceId,
             String idempotencyKey) {
         return new ObservedRuntimeUsage(
-                Ids.newId("oru"), tenantId, projectId, principalRef, operationRef,
+                ("oru_" + java.util.UUID.randomUUID().toString().replace("-", "")), tenantId, projectId, principalRef, operationRef,
                 executionRef, providerRef, capability, dimension, quantity, outcome,
                 occurredAt, observedAt, recordedAt, provenance, source, sourceReference,
                 traceId, idempotencyKey);

@@ -1,6 +1,5 @@
 package com.example.platform.timeline.adapter;
 
-import com.example.platform.shared.Ids;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -28,7 +27,7 @@ public class TimelineSnapshotService {
      *  caller's jOOQ transaction (rollback-safe with revision + pins). */
     public String saveTx(org.jooq.DSLContext tx, String projectId, String tenantId,
                          String payloadJson, String schemaVersion) {
-        String snapshotId = Ids.newId("snap");
+        String snapshotId = ("snap_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         if (tenantId == null || tenantId.isBlank()) {
             throw new IllegalArgumentException("explicit tenantId required for Timeline snapshot persistence");
         }

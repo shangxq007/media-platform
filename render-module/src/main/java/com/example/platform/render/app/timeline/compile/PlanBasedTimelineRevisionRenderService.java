@@ -21,7 +21,6 @@ import com.example.platform.render.domain.compile.executionplan.ExecutionEnviron
 import com.example.platform.render.domain.compile.executionplan.ExecutionPolicy;
 import com.example.platform.render.domain.compile.executionplan.RenderExecutionPlan;
 import com.example.platform.shared.web.TenantContext;
-import com.example.platform.shared.Ids;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -181,7 +180,7 @@ public class PlanBasedTimelineRevisionRenderService {
         // 3. Map to render job request
         var mappingResult = mapper.toRenderJobRequest(
                 tenantId, projectId, spec, outputProfile, revisionId, snapshotId);
-        String renderJobId = Ids.newId("rj");
+        String renderJobId = ("rj_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         corr = corr.withRenderJobId(renderJobId);
 
         // 4. Resolve input Products

@@ -10,7 +10,6 @@ import com.example.platform.render.infrastructure.RenderProviderRegistry;
 import com.example.platform.render.infrastructure.mlt.MLTCommandFactory;
 import com.example.platform.render.infrastructure.mlt.MltEnvironmentValidator;
 import com.example.platform.render.infrastructure.mlt.MltProjectXmlBuilder;
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.web.ConfigurableErrorCode;
 import com.example.platform.shared.web.PlatformException;
 import java.io.FileWriter;
@@ -135,7 +134,7 @@ public class SegmentStitchComposeService {
 
         String storageUri = "localFsStorageProvider://artifacts/" + jobId + "/segment-stitch-output.mp4";
         log.info("Segment stitch (mlt) complete job={} segments={} uri={}", jobId, entries.size(), storageUri);
-        return new StitchResult(Ids.newId("art"), storageUri, entries.size(), "mlt");
+        return new StitchResult(("art_" + java.util.UUID.randomUUID().toString().replace("-", "")), storageUri, entries.size(), "mlt");
     }
 
     private static String toFileUri(String localPath) {

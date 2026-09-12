@@ -5,7 +5,6 @@ import com.example.platform.render.domain.interchange.TimelineSpec;
 import com.example.platform.render.domain.legacy.TimelineStickerReader;
 import com.example.platform.render.infrastructure.RenderProvider;
 import com.example.platform.render.infrastructure.RenderProviderCapability;
-import com.example.platform.shared.Ids;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -60,7 +59,7 @@ public class SkiaStickerOverlayProvider implements RenderProvider {
                 Files.copy(input, output, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
             }
             return new RenderResult(
-                    Ids.newId("art"),
+                    ("art_" + java.util.UUID.randomUUID().toString().replace("-", "")),
                     "localFsStorageProvider://artifacts/" + jobId + "/skia-output.mp4",
                     30L,
                     "mp4",

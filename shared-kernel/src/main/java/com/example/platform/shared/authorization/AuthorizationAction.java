@@ -8,7 +8,7 @@ import java.util.Objects;
  * <p>Unlike a raw string, an {@code AuthorizationAction} carries its permission-key
  * and a bounded {@link AuthorizationResourceType}. Callers construct these from the
  * sealed, typed permission keys seeded by the identity-access authority (e.g. via
- * {@link AuthorizationActions}) — they are never built from arbitrary user-supplied
+ * the defining domain's action vocabulary) — they are never built from arbitrary user-supplied
  * strings. The concrete permission key is the single source of truth consumed by the
  * RBAC adapter.</p>
  *

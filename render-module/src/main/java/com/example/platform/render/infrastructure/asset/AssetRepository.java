@@ -1,7 +1,6 @@
 package com.example.platform.render.infrastructure.asset;
 
 import com.example.platform.render.domain.asset.Asset;
-import com.example.platform.shared.Ids;
 import com.example.platform.storage.contract.StorageKeyPolicy;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -41,7 +40,7 @@ public class AssetRepository {
         // Validate storage key via policy
         StorageKeyPolicy.assertValidPath(storageKey);
 
-        String id = Ids.newId("asset");
+        String id = ("asset_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
 
         dsl.insertInto(MEDIA_ASSET)

@@ -17,7 +17,6 @@ import com.example.platform.entitlement.domain.EntitlementGrantStatus;
 import com.example.platform.entitlement.domain.EntitlementCommandType;
 import com.example.platform.entitlement.domain.EntitlementGrantCommand;
 import com.example.platform.entitlement.domain.WorkspaceEntitlementPool;
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.commercial.PrincipalRef;
 import com.example.platform.shared.commercial.PrincipalType;
 import com.example.platform.commerce.app.PurchaseFulfillmentCommand;

@@ -12,7 +12,6 @@ import com.example.platform.render.infrastructure.RenderJob;
 import com.example.platform.render.infrastructure.RenderProvider;
 import com.example.platform.render.infrastructure.font.FontPreflightResult;
 import com.example.platform.render.infrastructure.font.RenderJobFontPreflight;
-import com.example.platform.shared.Ids;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -107,7 +106,7 @@ public class RemotionRenderProvider implements RenderProvider {
                     .orElse(30L);
 
             return new RenderResult(
-                    Ids.newId("art"),
+                    ("art_" + java.util.UUID.randomUUID().toString().replace("-", "")),
                     "localFsStorageProvider://artifacts/" + jobId + "/remotion-output.mp4",
                     duration,
                     "mp4",

@@ -1,7 +1,6 @@
 package com.example.platform.render.app.timeline;
 
 import com.example.platform.timeline.diff.merge.ReviewDecision;
-import com.example.platform.shared.Ids;
 import java.time.OffsetDateTime;
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -19,7 +18,7 @@ public class ReviewDecisionService {
     @Transactional
     public ReviewDecision recordDecision(String reviewId, String reviewerUserId,
                                            ReviewDecision.Decision decision) {
-        String decisionId = Ids.newId("rdec");
+        String decisionId = ("rdec_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         OffsetDateTime now = OffsetDateTime.now();
 
         reviewRepository.insertDecision(decisionId, reviewId, reviewerUserId,

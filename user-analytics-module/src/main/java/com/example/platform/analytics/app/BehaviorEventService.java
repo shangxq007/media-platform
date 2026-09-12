@@ -2,7 +2,6 @@ package com.example.platform.analytics.app;
 
 import com.example.platform.analytics.domain.UserBehaviorEvent;
 import com.example.platform.analytics.infrastructure.UserBehaviorEventRepository;
-import com.example.platform.shared.Ids;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
@@ -32,7 +31,7 @@ public class BehaviorEventService {
                                           String action, String resourceType, String resourceId,
                                           Map<String, String> metadata) {
         UserBehaviorEvent event = new UserBehaviorEvent(
-                Ids.newId("evt"),
+                ("evt_" + java.util.UUID.randomUUID().toString().replace("-", "")),
                 tenantId,
                 userId,
                 eventType,

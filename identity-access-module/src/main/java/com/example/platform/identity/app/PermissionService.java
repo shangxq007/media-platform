@@ -2,7 +2,6 @@ package com.example.platform.identity.app;
 
 import com.example.platform.identity.domain.Permission;
 import com.example.platform.identity.infrastructure.RoleRepository;
-import com.example.platform.shared.Ids;
 import java.time.Instant;
 import java.util.List;
 import java.util.Set;
@@ -20,7 +19,7 @@ public class PermissionService {
 
     public Permission createPermission(String permissionKey, String name,
             String description, String resourceType) {
-        String id = Ids.newId("perm");
+        String id = ("perm_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         Instant now = Instant.now();
         Permission permission = new Permission(id, permissionKey, name, description, resourceType, now);
         return roleRepository.savePermission(permission);

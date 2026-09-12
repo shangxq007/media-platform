@@ -3,7 +3,6 @@ package com.example.platform.policy.featureflag;
 import com.example.platform.policy.featureflag.domain.FeatureFlagDefinition;
 import com.example.platform.policy.featureflag.domain.FeatureFlagDecision;
 import com.example.platform.policy.featureflag.domain.FeatureFlagTargetingRule;
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.audit.AuditPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -188,7 +187,7 @@ public class FeatureFlagAuditService {
     }
 
     private void recordEvent(String eventType, String flagKey, String actor, Map<String, Object> details) {
-        String id = Ids.newId("ffaud");
+        String id = ("ffaud_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         FeatureFlagAuditEvent event = new FeatureFlagAuditEvent(
                 id, eventType, flagKey, actor, details, OffsetDateTime.now()
         );

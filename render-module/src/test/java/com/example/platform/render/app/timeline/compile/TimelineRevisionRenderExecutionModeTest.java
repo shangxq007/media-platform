@@ -19,7 +19,6 @@ import com.example.platform.render.infrastructure.product.ProductDependencyRepos
 import com.example.platform.render.infrastructure.product.ProductRepository;
 import com.example.platform.render.infrastructure.storage.StorageReferenceRepository;
 import com.example.platform.render.testsupport.TimelineCoreSmokeFixture;
-import com.example.platform.shared.Ids;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -237,7 +236,7 @@ class TimelineRevisionRenderExecutionModeTest {
                 checksum, checksum, Files.size(inputVideo), "video/mp4",
                 Instant.now(), Instant.now()));
 
-        String productId = Ids.newId("prod");
+        String productId = ("prod_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         Product product = new Product(
                 productId, TimelineCoreSmokeFixture.TENANT_ID,
                 TimelineCoreSmokeFixture.PROJECT_ID, TimelineCoreSmokeFixture.ASSET_ID,

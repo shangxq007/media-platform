@@ -4,6 +4,7 @@ plugins {
 }
 
 dependencies {
+    implementation(project(":identity-access-module")) // published authorization contract
     implementation(project(":sandbox-isolation-module"))
     implementation(project(":typed-schema-module"))
     implementation(project(":entitlement-module")) // EP28: consume the owner's published admission/quota contracts

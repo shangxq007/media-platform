@@ -7,7 +7,6 @@ import com.example.platform.render.app.dto.EffectPackDtos.UpdateEffectPackReques
 import com.example.platform.render.infrastructure.EffectDescriptor;
 import com.example.platform.render.infrastructure.EffectMappingService;
 import com.example.platform.render.infrastructure.EffectParameterSchema;
-import com.example.platform.shared.Ids;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
@@ -55,7 +54,7 @@ public class EffectPackCatalogService {
             syncMappingFromDatabase();
             return;
         }
-        String rowId = Ids.newId("epk");
+        String rowId = ("epk_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         List<String> tiers = List.of("FREE", "PRO", "TEAM", "ENTERPRISE");
         dsl.insertInto(EFFECT_PACK)
                 .columns(EFFECT_PACK.ID, EFFECT_PACK.PACK_ID, EFFECT_PACK.VERSION, EFFECT_PACK.NAME,
@@ -107,7 +106,7 @@ public class EffectPackCatalogService {
         if (BUILTIN_PACK_ID.equals(request.packId())) {
             throw new IllegalArgumentException("Cannot create pack with reserved id: " + BUILTIN_PACK_ID);
         }
-        String rowId = Ids.newId("epk");
+        String rowId = ("epk_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         String version = request.version() != null ? request.version() : "1.0.0";
         dsl.insertInto(EFFECT_PACK)
                 .columns(EFFECT_PACK.ID, EFFECT_PACK.PACK_ID, EFFECT_PACK.VERSION, EFFECT_PACK.NAME,
@@ -208,7 +207,7 @@ public class EffectPackCatalogService {
                         EFFECT_PACK_EFFECT.DISPLAY_NAME, EFFECT_PACK_EFFECT.CATEGORY, EFFECT_PACK.DESCRIPTION,
                         EFFECT_PACK_EFFECT.PARAMETER_SCHEMA, EFFECT_PACK_EFFECT.DEFAULT_VALUES,
                         EFFECT_PACK_EFFECT.PROVIDER_MAPPINGS, EFFECT_PACK.ALLOWED_TIERS, EFFECT_PACK_EFFECT.SORT_ORDER)
-                .values(Ids.newId("efx"), packRowId, descriptor.effectKey(),
+                .values(("efx_" + java.util.UUID.randomUUID().toString().replace("-", "")), packRowId, descriptor.effectKey(),
                         descriptor.displayName(), descriptor.category(), descriptor.description(),
                         writeJson(schema), writeJson(descriptor.defaultParams()),
                         writeJson(descriptor.providerKeys()), writeJson(defaultTiers), sortOrder)
@@ -221,7 +220,7 @@ public class EffectPackCatalogService {
                         EFFECT_PACK_EFFECT.DISPLAY_NAME, EFFECT_PACK_EFFECT.CATEGORY, EFFECT_PACK.DESCRIPTION,
                         EFFECT_PACK_EFFECT.PARAMETER_SCHEMA, EFFECT_PACK_EFFECT.DEFAULT_VALUES,
                         EFFECT_PACK_EFFECT.PROVIDER_MAPPINGS, EFFECT_PACK.ALLOWED_TIERS, EFFECT_PACK_EFFECT.SORT_ORDER)
-                .values(Ids.newId("efx"), packRowId, effect.effectKey(),
+                .values(("efx_" + java.util.UUID.randomUUID().toString().replace("-", "")), packRowId, effect.effectKey(),
                         effect.displayName(), effect.category(), effect.description(),
                         writeJson(effect.parameterSchema()), writeJson(effect.defaultValues()),
                         writeJson(effect.providerMappings()), writeJson(effect.allowedTiers()),

@@ -1,5 +1,7 @@
 package com.example.platform.delivery.app;
 
+import com.example.platform.identity.api.authorization.CanonicalActorResolver;
+import com.example.platform.identity.api.authorization.AuthorizationDecisionPort;
 import com.example.platform.shared.authorization.*;
 import java.util.Map;
 import org.springframework.http.HttpStatus;

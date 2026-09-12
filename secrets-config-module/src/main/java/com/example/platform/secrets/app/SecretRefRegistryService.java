@@ -3,7 +3,6 @@ package com.example.platform.secrets.app;
 import static com.example.platform.typedschema.jooq.generated.tables.SecretRef.SECRET_REF;
 
 import com.example.platform.secrets.api.port.SecretRefRegistryPort;
-import com.example.platform.shared.Ids;
 import java.time.LocalDateTime;
 import org.jooq.DSLContext;
 import org.springframework.stereotype.Service;
@@ -27,7 +26,7 @@ public class SecretRefRegistryService implements SecretRefRegistryPort {
                 .and(SECRET_REF.SECRET_KEY.eq(secretKey))
                 .execute();
         if (updated == 0) {
-            String id = Ids.newId("sec");
+            String id = ("sec_" + java.util.UUID.randomUUID().toString().replace("-", ""));
             dsl.insertInto(SECRET_REF)
                     .columns(SECRET_REF.ID, SECRET_REF.NAMESPACE_KEY, SECRET_REF.SECRET_KEY,
                             SECRET_REF.BACKEND_TYPE, SECRET_REF.BACKEND_REF, SECRET_REF.CREATED_AT)

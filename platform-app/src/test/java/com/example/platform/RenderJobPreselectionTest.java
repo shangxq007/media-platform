@@ -2,7 +2,7 @@ package com.example.platform;
 
 import com.example.platform.render.infrastructure.RenderProviderRegistry;
 import com.example.platform.shared.authorization.CanonicalActor;
-import com.example.platform.shared.authorization.CanonicalActorResolver;
+import com.example.platform.identity.api.authorization.CanonicalActorResolver;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

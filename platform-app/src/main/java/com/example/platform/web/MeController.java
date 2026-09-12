@@ -9,7 +9,6 @@ import com.example.platform.identity.app.TenantRepository;
 import com.example.platform.identity.domain.Project;
 import com.example.platform.policy.featureflag.FeatureFlagService;
 import com.example.platform.policy.featureflag.domain.FeatureFlagDefinition;
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.audit.AuditPort;
 import com.example.platform.shared.web.TenantContext;
 import com.example.platform.web.collaboration.SharedResourceService;
@@ -254,7 +253,7 @@ public class MeController {
             ));
         }
 
-        String id = Ids.newId("fb");
+        String id = ("fb_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         auditPort.record("USER", "SUBMIT_FEEDBACK", AuditCategory.IDENTITY.name(), "FEEDBACK", id,
                 Map.of("type", type, "severity", severity));
 

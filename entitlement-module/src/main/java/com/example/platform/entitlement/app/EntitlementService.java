@@ -12,7 +12,6 @@ import com.example.platform.entitlement.infrastructure.EntitlementCommandAuditRe
 import com.example.platform.entitlement.infrastructure.EntitlementGrantRepository;
 import com.example.platform.entitlement.infrastructure.InMemoryEntitlementCache;
 import com.example.platform.entitlement.infrastructure.WorkspaceMemberEntitlementGrantRepository;
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.commercial.PrincipalRef;
 import java.time.Instant;
 import java.util.List;
@@ -44,7 +43,7 @@ public class EntitlementService {
     /** Idempotency claim, state mutation, and durable audit completion are one transaction. */
     @Transactional
     public EntitlementCommandResult execute(EntitlementGrantCommand command) {
-        String commandId = Ids.newId("ent_cmd");
+        String commandId = ("ent_cmd_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         if (!audit.claim(commandId, command, Instant.now())) return audit.replay(command);
         EntitlementGrantView result = switch (command.commandType()) {
             case GRANT -> grants.insert(command, Instant.now());

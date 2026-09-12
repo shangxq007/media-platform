@@ -4,7 +4,6 @@ import static com.example.platform.typedschema.jooq.generated.tables.Notificatio
 
 import com.example.platform.notification.domain.NotificationChannelBinding;
 import com.example.platform.notification.infrastructure.WebhookUrlValidator;
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.audit.AuditPort;
 import com.example.platform.shared.web.PlatformException;
 import com.example.platform.shared.web.TenantContext;
@@ -67,7 +66,7 @@ public class NotificationChannelBindingService {
                     NotificationErrorCodes.WEBHOOK_PRIVATE_IP_BLOCKED);
         }
 
-        String bindingId = Ids.newId("ncb");
+        String bindingId = ("ncb_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         String tenantId = TenantContext.get();
         LocalDateTime now = LocalDateTime.now();
         String masked = maskDestination(channelType, destination);

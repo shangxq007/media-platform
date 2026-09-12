@@ -2,7 +2,7 @@ package com.example.platform.entitlement.app;
 
 import com.example.platform.entitlement.domain.AccessCheckRequest;
 import com.example.platform.entitlement.domain.EntitlementDecision;
-import com.example.platform.shared.collaboration.CollaborationAccessPort;
+import com.example.platform.entitlement.api.collaboration.CollaborationAccessPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

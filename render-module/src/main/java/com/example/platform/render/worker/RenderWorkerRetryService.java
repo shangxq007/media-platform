@@ -44,7 +44,7 @@ public class RenderWorkerRetryService {
 
         for (Record job : jobs) {
             String failedJobId = job.get("id", String.class);
-            String newJobId = com.example.platform.shared.Ids.newId("rj");
+            String newJobId = ("rj_" + java.util.UUID.randomUUID().toString().replace("-", ""));
             renderJobRepository.createRetryJob(newJobId, failedJobId);
             log.info("Created retry job {} for failed job {}", newJobId, failedJobId);
             retried++;

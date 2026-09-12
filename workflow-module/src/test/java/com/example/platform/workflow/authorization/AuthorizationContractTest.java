@@ -1,4 +1,7 @@
-package com.example.platform.shared.authorization;
+package com.example.platform.workflow.authorization;
+
+import com.example.platform.shared.authorization.*;
+import com.example.platform.identity.api.authorization.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -92,7 +95,7 @@ class AuthorizationContractTest {
         assertFalse(ex.decision().allowed());
         assertEquals("RBAC_DENY", ex.decision().reasonCode());
         assertFalse(ex.isTenantBoundary());
-        assertEquals(403, ex.getErrorCode().status());
+        assertEquals("no perm", ex.getMessage());
     }
 
     @Test

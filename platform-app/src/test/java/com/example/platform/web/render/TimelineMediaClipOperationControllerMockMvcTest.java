@@ -12,7 +12,7 @@ import com.example.platform.observability.monitoring.SentryMonitoringService;
 import com.example.platform.render.app.operation.TimelineMediaClipOperationService;
 import com.example.platform.render.app.operation.TimelineOperationException;
 import com.example.platform.shared.authorization.CanonicalActor;
-import com.example.platform.shared.authorization.CanonicalActorResolver;
+import com.example.platform.identity.api.authorization.CanonicalActorResolver;
 import com.example.platform.shared.web.TenantContext;
 import com.example.platform.web.GlobalExceptionHandler;
 import java.util.List;

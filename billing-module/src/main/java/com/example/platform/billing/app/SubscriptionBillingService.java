@@ -6,7 +6,6 @@ import com.example.platform.billing.domain.SubscriptionContract;
 import com.example.platform.billing.domain.SubscriptionContractRole;
 import com.example.platform.billing.domain.SubscriptionPlan;
 import com.example.platform.billing.infrastructure.SubscriptionJdbcRepository;
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.commercial.PrincipalRef;
 import com.example.platform.shared.commercial.PrincipalType;
 import java.time.Instant;
@@ -33,7 +32,7 @@ public class SubscriptionBillingService {
             String billingInterval, long basePriceMinor, String currencyCode,
             Map<String, Long> includedQuota) {
         Instant now = Instant.now();
-        SubscriptionPlan plan = new SubscriptionPlan(Ids.newId("plan"), planKey, name, description,
+        SubscriptionPlan plan = new SubscriptionPlan(("plan_" + java.util.UUID.randomUUID().toString().replace("-", "")), planKey, name, description,
                 billingInterval, basePriceMinor, currencyCode, includedQuota, "ACTIVE", now, now);
         repository.savePlan(plan);
         planProjection.put(planKey, plan);
@@ -58,7 +57,7 @@ public class SubscriptionBillingService {
     /** Claim, mutation, replacement cancellation, and audit completion share one transaction. */
     @Transactional
     public SubscriptionCommandResult execute(SubscriptionCommand command) {
-        String commandId = Ids.newId("sub_cmd");
+        String commandId = ("sub_cmd_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         if (!repository.claim(commandId, command, Instant.now())) return repository.replay(command);
         SubscriptionContract result = switch (command.commandType()) {
             case CREATE -> create(command);

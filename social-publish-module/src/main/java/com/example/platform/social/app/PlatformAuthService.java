@@ -1,6 +1,5 @@
 package com.example.platform.social.app;
 
-import com.example.platform.shared.Ids;
 import com.example.platform.social.api.dto.ConnectedPlatformResponse;
 import com.example.platform.social.domain.ConnectedPlatform;
 import com.example.platform.social.infrastructure.persistence.ConnectedPlatformRepository;
@@ -42,7 +41,7 @@ public class PlatformAuthService {
 
         Instant now = Instant.now();
         ConnectedPlatform connected = new ConnectedPlatform(
-                Ids.newId("cn"), tenantId, userId, canonicalPlatform,
+                ("cn_" + java.util.UUID.randomUUID().toString().replace("-", "")), tenantId, userId, canonicalPlatform,
                 "stub_user_" + platform.toLowerCase(), "@stub_" + platform.toLowerCase(),
                 "ACTIVE", 1L, now, now);
         connected = platformRepository.save(connected);

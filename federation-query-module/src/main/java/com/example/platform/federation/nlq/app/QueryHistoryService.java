@@ -2,7 +2,6 @@ package com.example.platform.federation.nlq.app;
 
 import com.example.platform.federation.nlq.domain.QueryHistoryRecord;
 import com.example.platform.federation.nlq.infrastructure.NlqJdbcRepository;
-import com.example.platform.shared.Ids;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,7 +37,7 @@ public class QueryHistoryService {
     public QueryHistoryRecord record(String userId, String tenantId, String workspaceId,
             String questionRedacted, String sql, List<String> datasets,
             int rowCount, long durationMs, String riskLevel, String status, String errorCode) {
-        String queryId = Ids.newId("qry");
+        String queryId = ("qry_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         String sqlHash = hashSql(sql);
 
         QueryHistoryRecord record = new QueryHistoryRecord(

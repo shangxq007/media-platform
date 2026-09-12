@@ -2,7 +2,6 @@ package com.example.platform.federation.nlq.app;
 
 import com.example.platform.ai.api.AiGatewayPort;
 import com.example.platform.federation.nlq.domain.SqlDraft;
-import com.example.platform.shared.Ids;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -65,7 +64,7 @@ public class SqlGenerationService {
 
     SqlDraft generateDeterministicSql(String question, String intent, List<String> allowedDatasets,
             Map<String, Object> context) {
-        String draftId = Ids.newId("sql");
+        String draftId = ("sql_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         String dataset = resolvePrimaryDataset(question, allowedDatasets);
         String sql = buildSqlForIntent(intent, dataset, context);
         Map<String, Object> parameters = buildDefaultParameters(context);
@@ -257,7 +256,7 @@ public class SqlGenerationService {
 
     private SqlDraft parseAiResponse(String content, String question, String intent,
             List<String> allowedDatasets) {
-        String draftId = Ids.newId("sql");
+        String draftId = ("sql_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         List<String> chartSuggestions = suggestCharts(intent);
         return new SqlDraft(
             draftId, question, intent, allowedDatasets,

@@ -8,7 +8,7 @@ import java.util.Objects;
  * <p>Composed of a {@link CanonicalActor} (who), an {@link AuthorizationAction}
  * (what), an {@link AuthorizableResourceRef} (on what), and an
  * {@link AuthorizationContext} (advisory signals). This is the sole input to
- * {@link AuthorizationDecisionPort#decide}.</p>
+ * the published Identity authorization port.</p>
  */
 public record AuthorizationRequest(
         CanonicalActor actor,

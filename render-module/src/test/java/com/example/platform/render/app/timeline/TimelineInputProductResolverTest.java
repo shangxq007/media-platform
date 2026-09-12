@@ -4,7 +4,6 @@ import com.example.platform.render.app.product.ProductRuntimeService;
 import com.example.platform.render.domain.product.*;
 import com.example.platform.render.infrastructure.product.ProductDependencyRepository;
 import com.example.platform.render.infrastructure.product.ProductRepository;
-import com.example.platform.shared.Ids;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -134,7 +133,7 @@ class TimelineInputProductResolverTest {
     @Test
     @DisplayName("Fails when Product is not RAW_MEDIA")
     void failsWhenProductNotRawMedia() {
-        String productId = Ids.newId("prod");
+        String productId = ("prod_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         Product product = new Product(
                 productId, "ten_1", "prj_1", "ast_final",
                 ProductType.FINAL_RENDER, RepresentationKind.MEDIA_FILE,
@@ -332,7 +331,7 @@ class TimelineInputProductResolverTest {
     // ─── Helpers ───
 
     private Product createReadyRawMediaProduct(String assetId, String tenantId, String projectId) {
-        String productId = Ids.newId("prod");
+        String productId = ("prod_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         Product product = new Product(
                 productId, tenantId, projectId, assetId,
                 ProductType.RAW_MEDIA, RepresentationKind.MEDIA_FILE,
@@ -345,7 +344,7 @@ class TimelineInputProductResolverTest {
     }
 
     private Product createRegisteredNotReadyProduct(String assetId, String tenantId, String projectId) {
-        String productId = Ids.newId("prod");
+        String productId = ("prod_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         Product product = new Product(
                 productId, tenantId, projectId, assetId,
                 ProductType.RAW_MEDIA, RepresentationKind.MEDIA_FILE,

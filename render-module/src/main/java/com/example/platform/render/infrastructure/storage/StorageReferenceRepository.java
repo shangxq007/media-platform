@@ -2,7 +2,6 @@ package com.example.platform.render.infrastructure.storage;
 
 import static org.jooq.impl.DSL.*;
 import com.example.platform.storage.contract.*;
-import com.example.platform.shared.Ids;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -25,7 +24,7 @@ public class StorageReferenceRepository {
     public StorageReferenceRepository(DSLContext dsl) { this.dsl = dsl; }
 
     public StorageReference save(StorageReference r) {
-        var id = r.storageReferenceId() != null ? r.storageReferenceId() : Ids.newId("stor");
+        var id = r.storageReferenceId() != null ? r.storageReferenceId() : ("stor_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         var now = LocalDateTime.now();
         dsl.insertInto(STORAGE_REFERENCE)
                 .columns(STORAGE_REFERENCE.STORAGE_REFERENCE_ID, STORAGE_REFERENCE.PROVIDER_TYPE, STORAGE_REFERENCE.STORAGE_CLASS,

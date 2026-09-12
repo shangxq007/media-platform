@@ -1,4 +1,4 @@
 @org.springframework.modulith.ApplicationModule(
         displayName = "Delivery",
-        allowedDependencies = {"shared", "secrets :: API", "storage :: domain"})
+        allowedDependencies = {"shared", "identity :: authorization", "secrets :: API", "storage :: domain"})
 package com.example.platform.delivery;

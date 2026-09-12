@@ -76,6 +76,13 @@ public class GlobalExceptionHandler {
         return problem;
     }
 
+    @ExceptionHandler(com.example.platform.identity.api.authorization.AuthorizationDeniedException.class)
+    public ProblemDetail handleAuthorizationDenied(
+            com.example.platform.identity.api.authorization.AuthorizationDeniedException ex,
+            HttpServletRequest request) {
+        return timelineProblem(HttpStatus.FORBIDDEN, "SECURITY-403-001", ex.getMessage(), request);
+    }
+
     @ExceptionHandler({MethodArgumentNotValidException.class, BindException.class})
     public ProblemDetail handleValidation(Exception ex, HttpServletRequest request) {
         var problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());

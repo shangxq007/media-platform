@@ -1,6 +1,6 @@
 package com.example.platform.web.collaboration;
 
-import com.example.platform.shared.collaboration.CollaborationAccessPort;
+import com.example.platform.entitlement.api.collaboration.CollaborationAccessPort;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;

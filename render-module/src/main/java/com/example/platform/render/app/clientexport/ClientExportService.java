@@ -3,7 +3,6 @@ package com.example.platform.render.app.clientexport;
 import com.example.platform.render.app.clientexport.ClientExportPresetCatalog.Preset;
 import com.example.platform.render.domain.clientexport.ClientExportSession;
 import com.example.platform.render.infrastructure.clientexport.ClientExportSessionRepository;
-import com.example.platform.shared.Ids;
 import com.example.platform.entitlement.api.commercial.CommercialAdmissionPort;
 import com.example.platform.entitlement.api.commercial.CommercialAdmissionRequest;
 import com.example.platform.entitlement.api.commercial.CommercialDecision;
@@ -90,7 +89,7 @@ public class ClientExportService {
         boolean watermark = preset.watermark();
         String renderLocation = "client".equals(preset.providerKey()) ? "CLIENT" : "SERVER";
 
-        String sessionId = Ids.newId("cex");
+        String sessionId = ("cex_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         ClientExportSession session = new ClientExportSession(
                 sessionId, tenantId, workspaceId, projectId, userId,
                 timelineSnapshotId, "CLIENT_BROWSER", preset.name(),

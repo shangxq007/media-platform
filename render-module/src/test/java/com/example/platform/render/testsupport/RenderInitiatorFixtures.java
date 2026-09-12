@@ -1,7 +1,7 @@
 package com.example.platform.render.testsupport;
 
 import com.example.platform.shared.authorization.CanonicalActor;
-import com.example.platform.shared.authorization.CanonicalActorResolver;
+import com.example.platform.identity.api.authorization.CanonicalActorResolver;
 import com.example.platform.shared.events.RenderInitiator;
 import java.util.Optional;
 import java.util.Set;

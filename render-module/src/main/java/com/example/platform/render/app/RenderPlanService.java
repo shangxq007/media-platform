@@ -5,7 +5,6 @@ import com.example.platform.render.domain.RenderProfile;
 import com.example.platform.render.domain.RenderStep;
 import com.example.platform.render.domain.RenderStepStatus;
 import com.example.platform.render.domain.RenderStepType;
-import com.example.platform.shared.Ids;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -38,11 +37,11 @@ public class RenderPlanService {
      * @return the created render plan
      */
     public RenderJobPlan createDefaultPlan(String renderJobId, RenderProfile profile) {
-        String planId = Ids.newId("rp");
+        String planId = ("rp_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         List<RenderStep> steps = List.of(
-                RenderStep.pending(Ids.newId("rs"), planId, RenderStepType.BUILD_TIMELINE),
-                RenderStep.pending(Ids.newId("rs"), planId, RenderStepType.PROVIDER_TRANSCODE),
-                RenderStep.pending(Ids.newId("rs"), planId, RenderStepType.REGISTER_ARTIFACT)
+                RenderStep.pending(("rs_" + java.util.UUID.randomUUID().toString().replace("-", "")), planId, RenderStepType.BUILD_TIMELINE),
+                RenderStep.pending(("rs_" + java.util.UUID.randomUUID().toString().replace("-", "")), planId, RenderStepType.PROVIDER_TRANSCODE),
+                RenderStep.pending(("rs_" + java.util.UUID.randomUUID().toString().replace("-", "")), planId, RenderStepType.REGISTER_ARTIFACT)
         );
         RenderJobPlan plan = RenderJobPlan.create(planId, renderJobId, profile, steps);
         plans.put(planId, plan);
@@ -60,10 +59,10 @@ public class RenderPlanService {
      */
     public RenderJobPlan createCustomPlan(String renderJobId, RenderProfile profile,
             List<RenderStepType> stepTypes) {
-        String planId = Ids.newId("rp");
+        String planId = ("rp_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         List<RenderStep> steps = new ArrayList<>();
         for (RenderStepType type : stepTypes) {
-            steps.add(RenderStep.pending(Ids.newId("rs"), planId, type));
+            steps.add(RenderStep.pending(("rs_" + java.util.UUID.randomUUID().toString().replace("-", "")), planId, type));
         }
         RenderJobPlan plan = RenderJobPlan.create(planId, renderJobId, profile, steps);
         plans.put(planId, plan);
@@ -80,11 +79,11 @@ public class RenderPlanService {
      * @return the created render plan
      */
     public RenderJobPlan createMltPlan(String renderJobId, RenderProfile profile) {
-        String planId = Ids.newId("rp");
+        String planId = ("rp_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         List<RenderStep> steps = List.of(
-                RenderStep.pending(Ids.newId("rs"), planId, RenderStepType.BUILD_TIMELINE),
-                RenderStep.pending(Ids.newId("rs"), planId, RenderStepType.MLT_RENDER_TIMELINE),
-                RenderStep.pending(Ids.newId("rs"), planId, RenderStepType.REGISTER_ARTIFACT)
+                RenderStep.pending(("rs_" + java.util.UUID.randomUUID().toString().replace("-", "")), planId, RenderStepType.BUILD_TIMELINE),
+                RenderStep.pending(("rs_" + java.util.UUID.randomUUID().toString().replace("-", "")), planId, RenderStepType.MLT_RENDER_TIMELINE),
+                RenderStep.pending(("rs_" + java.util.UUID.randomUUID().toString().replace("-", "")), planId, RenderStepType.REGISTER_ARTIFACT)
         );
         RenderJobPlan plan = RenderJobPlan.create(planId, renderJobId, profile, steps);
         plans.put(planId, plan);
@@ -102,17 +101,17 @@ public class RenderPlanService {
      */
     public RenderJobPlan createPackagingPlan(String renderJobId, RenderProfile profile,
             boolean packageHls, boolean packageDash) {
-        String planId = Ids.newId("rp");
+        String planId = ("rp_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         List<RenderStep> steps = new ArrayList<>();
-        steps.add(RenderStep.pending(Ids.newId("rs"), planId, RenderStepType.BUILD_TIMELINE));
-        steps.add(RenderStep.pending(Ids.newId("rs"), planId, RenderStepType.PROVIDER_TRANSCODE));
+        steps.add(RenderStep.pending(("rs_" + java.util.UUID.randomUUID().toString().replace("-", "")), planId, RenderStepType.BUILD_TIMELINE));
+        steps.add(RenderStep.pending(("rs_" + java.util.UUID.randomUUID().toString().replace("-", "")), planId, RenderStepType.PROVIDER_TRANSCODE));
         if (packageHls) {
-            steps.add(RenderStep.pending(Ids.newId("rs"), planId, RenderStepType.GPAC_PACKAGE_HLS));
+            steps.add(RenderStep.pending(("rs_" + java.util.UUID.randomUUID().toString().replace("-", "")), planId, RenderStepType.GPAC_PACKAGE_HLS));
         }
         if (packageDash) {
-            steps.add(RenderStep.pending(Ids.newId("rs"), planId, RenderStepType.GPAC_PACKAGE_DASH));
+            steps.add(RenderStep.pending(("rs_" + java.util.UUID.randomUUID().toString().replace("-", "")), planId, RenderStepType.GPAC_PACKAGE_DASH));
         }
-        steps.add(RenderStep.pending(Ids.newId("rs"), planId, RenderStepType.REGISTER_ARTIFACT));
+        steps.add(RenderStep.pending(("rs_" + java.util.UUID.randomUUID().toString().replace("-", "")), planId, RenderStepType.REGISTER_ARTIFACT));
         RenderJobPlan plan = RenderJobPlan.create(planId, renderJobId, profile, steps);
         plans.put(planId, plan);
         return plan;

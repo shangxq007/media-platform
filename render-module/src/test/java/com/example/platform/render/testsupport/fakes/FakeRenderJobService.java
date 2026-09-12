@@ -6,7 +6,6 @@ import com.example.platform.render.app.dto.RenderJobResponse;
 import com.example.platform.render.app.dto.StatusHistoryResponse;
 import com.example.platform.render.domain.RenderJobStateMachine;
 import com.example.platform.render.domain.RenderJobStatus;
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.events.RenderInitiator;
 
 import java.time.OffsetDateTime;
@@ -135,7 +134,7 @@ public class FakeRenderJobService extends RenderJobService {
         return history.stream()
                 .filter(h -> h.jobId.equals(jobId))
                 .map(h -> new StatusHistoryResponse(
-                        Ids.newId("rsh"), h.jobId, h.fromStatus, h.toStatus,
+                        ("rsh_" + java.util.UUID.randomUUID().toString().replace("-", "")), h.jobId, h.fromStatus, h.toStatus,
                         h.reason, h.errorCode, OffsetDateTime.now()))
                 .toList();
     }
@@ -144,7 +143,7 @@ public class FakeRenderJobService extends RenderJobService {
 
     private RenderJobResponse doCreate(String tenantId, String projectId,
                                         String snapshotId, String profile) {
-        String id = Ids.newId("rj");
+        String id = ("rj_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         JobRecord record = new JobRecord(id, projectId, tenantId, snapshotId,
                 (profile == null || profile.isBlank()) ? "default_1080p" : profile,
                 "QUEUED");

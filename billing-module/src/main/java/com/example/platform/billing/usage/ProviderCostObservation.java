@@ -1,6 +1,5 @@
 package com.example.platform.billing.usage;
 
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.usage.CanonicalActorRef;
 import com.example.platform.shared.usage.OperationRef;
 import com.example.platform.shared.usage.ProviderRef;
@@ -80,7 +79,7 @@ public record ProviderCostObservation(
         }
 
         return new ProviderCostObservation(
-                Ids.newId("pco"),
+                ("pco_" + java.util.UUID.randomUUID().toString().replace("-", "")),
                 tenantId,
                 projectId,
                 actorRef,

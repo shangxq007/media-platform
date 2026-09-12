@@ -1,7 +1,6 @@
 package com.example.platform.outbox.coordination;
 
 import com.example.platform.outbox.coordination.*;
-import com.example.platform.shared.Ids;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -23,7 +22,7 @@ public class PlatformTaskRepository {
 
     public PlatformTask create(String jobId, String taskType, TaskCapability capability,
                                  String provider, int bitPosition) {
-        String id = Ids.newId("ptsk");
+        String id = ("ptsk_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         LocalDateTime now = LocalDateTime.now();
         dsl.insertInto(PLATFORM_TASK)
                 .columns(PLATFORM_TASK.ID, PLATFORM_TASK.JOB_ID, PLATFORM_TASK.TASK_TYPE,

@@ -2,7 +2,6 @@ package com.example.platform.extension.app;
 
 import com.example.platform.extension.domain.*;
 import com.example.platform.extension.runtime.PluginRuntimeProviderBinding;
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.audit.AuditPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -180,7 +179,7 @@ public class ExtensionRegistryService {
 
         if (holder == null) return null;
 
-        String id = Ids.newId("rbp");
+        String id = ("rbp_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         List<RoutingRule> rules = router.getRules(extensionKey);
         String ruleIds = rules.stream().map(RoutingRule::id).reduce("", (a, b) -> a.isEmpty() ? b : a + "," + b);
 
@@ -255,7 +254,7 @@ public class ExtensionRegistryService {
     }
 
     private void createRollbackPoint(String key, ExtensionHolder holder) {
-        String id = Ids.newId("rbp");
+        String id = ("rbp_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         RollbackPoint point = new RollbackPoint(
                 id, key, holder.version(), null, null, null,
                 OffsetDateTime.now(), "system", true);

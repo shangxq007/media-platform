@@ -1,6 +1,5 @@
 package com.example.platform.render.infrastructure.productization.workspace;
 
-import com.example.platform.shared.Ids;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -24,7 +23,7 @@ public class ProductWorkspaceService {
      * Create a new workspace.
      */
     public Workspace createWorkspace(String name, String description, String ownerId) {
-        String workspaceId = Ids.newId("ws");
+        String workspaceId = ("ws_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         Workspace workspace = Workspace.create(workspaceId, name, description, ownerId);
         workspaces.put(workspaceId, workspace);
         log.info("Created workspace: {} ({}) by {}", name, workspaceId, ownerId);
@@ -102,7 +101,7 @@ public class ProductWorkspaceService {
             throw new IllegalArgumentException("Workspace not found: " + workspaceId);
         }
 
-        String sessionId = Ids.newId("session");
+        String sessionId = ("session_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         Workspace.ActiveSession session = new Workspace.ActiveSession(
                 sessionId, projectId, participantIds, Instant.now()
         );

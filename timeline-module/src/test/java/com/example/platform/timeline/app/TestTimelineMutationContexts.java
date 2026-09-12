@@ -1,7 +1,7 @@
 package com.example.platform.timeline.app;
 
 import com.example.platform.shared.authorization.AuthorizationDecision;
-import com.example.platform.shared.authorization.AuthorizationDecisionPort;
+import com.example.platform.identity.api.authorization.AuthorizationDecisionPort;
 import com.example.platform.shared.authorization.CanonicalActor;
 import java.util.Set;
 

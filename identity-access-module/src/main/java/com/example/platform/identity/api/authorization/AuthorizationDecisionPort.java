@@ -1,4 +1,6 @@
-package com.example.platform.shared.authorization;
+package com.example.platform.identity.api.authorization;
+
+import com.example.platform.shared.authorization.*;
 
 /**
  * Canonical authorization port — the single entry point through which the
@@ -9,9 +11,7 @@ package com.example.platform.shared.authorization;
  * Entitlement → FeatureFlag → Capability → Quota composition. Entitlement, feature
  * flags, and quotas can never grant authorization (AR-AUTH-003/004/005/007/009).</p>
  *
- * <p>The port interface lives in shared-kernel so any module can depend on it. The
- * RBAC-backed implementation lives in identity-access-module (consuming the existing
- * {@code PermissionService}) and is injected at runtime.</p>
+ * <p>The contract is published by Identity; its existing RBAC implementation is injected at runtime.</p>
  */
 public interface AuthorizationDecisionPort {
 

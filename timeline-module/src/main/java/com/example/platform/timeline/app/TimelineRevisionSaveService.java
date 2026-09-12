@@ -4,7 +4,7 @@ import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.shared.authorization.AuthorizableResourceRef;
 import com.example.platform.shared.authorization.AuthorizationAction;
 import com.example.platform.shared.authorization.AuthorizationContext;
-import com.example.platform.shared.authorization.AuthorizationDecisionPort;
+import com.example.platform.identity.api.authorization.AuthorizationDecisionPort;
 import com.example.platform.shared.authorization.AuthorizationRequest;
 import com.example.platform.shared.authorization.AuthorizationResourceType;
 import com.example.platform.timeline.canonical.TimelineContentDigester;

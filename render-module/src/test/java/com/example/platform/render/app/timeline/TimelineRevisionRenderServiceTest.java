@@ -16,7 +16,6 @@ import com.example.platform.render.infrastructure.product.ProductDependencyRepos
 import com.example.platform.render.infrastructure.product.ProductRepository;
 import com.example.platform.render.infrastructure.storage.StorageReferenceRepository;
 import com.example.platform.render.testsupport.TimelineCoreSmokeFixture;
-import com.example.platform.shared.Ids;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -236,7 +235,7 @@ class TimelineRevisionRenderServiceTest {
     @DisplayName("R6.1: input Product not READY fails closed")
     void r61InputProductNotReadyFailsClosed() {
         // Register Product but don't mark READY
-        String productId = Ids.newId("prod");
+        String productId = ("prod_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         Product product = new Product(
                 productId, TimelineCoreSmokeFixture.TENANT_ID,
                 TimelineCoreSmokeFixture.PROJECT_ID,
@@ -272,7 +271,7 @@ class TimelineRevisionRenderServiceTest {
     @DisplayName("R6.1: input Product missing StorageReference fails closed")
     void r61InputProductMissingStorageReferenceFailsClosed() {
         // Register READY RAW_MEDIA Product but with no storageReferenceId
-        String productId = Ids.newId("prod");
+        String productId = ("prod_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         Product product = new Product(
                 productId, TimelineCoreSmokeFixture.TENANT_ID,
                 TimelineCoreSmokeFixture.PROJECT_ID,
@@ -367,7 +366,7 @@ class TimelineRevisionRenderServiceTest {
                 Instant.now(), Instant.now()));
 
         // Register RAW_MEDIA Product with ownerAssetId matching timeline clip assetId
-        String productId = Ids.newId("prod");
+        String productId = ("prod_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         Product product = new Product(
                 productId, tenantId, projectId, assetId,
                 ProductType.RAW_MEDIA, RepresentationKind.MEDIA_FILE,

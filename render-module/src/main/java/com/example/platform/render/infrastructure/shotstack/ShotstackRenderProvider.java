@@ -7,7 +7,6 @@ import com.example.platform.render.infrastructure.ProviderStatus;
 import com.example.platform.render.infrastructure.ProviderType;
 import com.example.platform.render.infrastructure.RenderPreset;
 import com.example.platform.render.infrastructure.RenderProvider;
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.web.ConfigurableErrorCode;
 import com.example.platform.shared.web.PlatformException;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -93,7 +92,7 @@ public class ShotstackRenderProvider implements RenderProvider {
             long durationSec = 30L;
 
             return new RenderResult(
-                    Ids.newId("art"),
+                    ("art_" + java.util.UUID.randomUUID().toString().replace("-", "")),
                     "localFsStorageProvider://artifacts/" + jobId + "/output.mp4",
                     durationSec,
                     "mp4",

@@ -1,7 +1,6 @@
 package com.example.platform.social.infrastructure.platform;
 
 import com.example.platform.social.domain.*;
-import com.example.platform.shared.Ids;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -40,7 +39,7 @@ public class StubPlatformAdapter implements PlatformAdapter {
     @Override
     public PublishResult publish(SocialPost post, ConnectedPlatform platform) {
         log.info("StubPlatformAdapter: publishing post={} to platform={}", post.id(), platform.platformType());
-        String stubPostId = Ids.newId("stub");
+        String stubPostId = ("stub_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         String stubUrl = "https://stub.example.com/post/" + stubPostId;
         return new PublishResult(true, stubPostId, stubUrl, null, null);
     }
@@ -49,7 +48,7 @@ public class StubPlatformAdapter implements PlatformAdapter {
     public PostAnalytics fetchAnalytics(SocialPost post, ConnectedPlatform platform) {
         log.info("StubPlatformAdapter: fetching analytics for post={}", post.id());
         return new PostAnalytics(
-                Ids.newId("anl"),
+                ("anl_" + java.util.UUID.randomUUID().toString().replace("-", "")),
                 post.id(),
                 platform.platformType(),
                 0, 0, 0, 0, 0, 0,

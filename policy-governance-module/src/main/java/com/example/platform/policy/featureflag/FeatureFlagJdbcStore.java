@@ -3,7 +3,6 @@ package com.example.platform.policy.featureflag;
 import com.example.platform.policy.featureflag.domain.FeatureFlagDefinition;
 import com.example.platform.policy.featureflag.domain.FeatureFlagTargetingRule;
 import com.example.platform.policy.featureflag.domain.FeatureFlagType;
-import com.example.platform.shared.Ids;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -53,7 +52,7 @@ public class FeatureFlagJdbcStore implements FeatureFlagPersistence {
                 rs -> rs.next() ? rs.getString("id") : null,
                 definition.flagKey());
         if (id == null) {
-            id = Ids.newId("ffd");
+            id = ("ffd_" + java.util.UUID.randomUUID().toString().replace("-", ""));
             jdbc.update("""
                     INSERT INTO feature_flag_definition
                     (id, flag_key, name, description, flag_type, enabled, default_value_json,
@@ -105,13 +104,13 @@ public class FeatureFlagJdbcStore implements FeatureFlagPersistence {
     }
 
     public void saveRule(String flagKey, FeatureFlagTargetingRule rule) {
-        String ruleId = rule.ruleId() != null ? rule.ruleId() : Ids.newId("ffr");
+        String ruleId = rule.ruleId() != null ? rule.ruleId() : ("ffr_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         jdbc.update("""
                 INSERT INTO feature_flag_targeting_rule
                 (id, flag_key, rule_id, tenant_id, workspace_id, user_id, role, tier, percentage, priority, enabled, rule_json, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                Ids.newId("fftr"),
+                ("fftr_" + java.util.UUID.randomUUID().toString().replace("-", "")),
                 flagKey,
                 ruleId,
                 rule.tenantId(),

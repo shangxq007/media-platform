@@ -6,7 +6,6 @@ import com.example.platform.billing.domain.PricingModel;
 import com.example.platform.billing.domain.PricingRule;
 import com.example.platform.billing.domain.PricingTier;
 import com.example.platform.billing.infrastructure.CommercialPricingJdbcRepository;
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.commercial.Money;
 import java.math.BigInteger;
 import java.time.Instant;
@@ -44,7 +43,7 @@ public class PricingRuleService {
                                          List<PricingTier> tiers,
                                          Instant effectiveFrom, Instant effectiveTo) {
         Instant now = Instant.now().truncatedTo(ChronoUnit.MICROS);
-        PricingRule rule = new PricingRule(Ids.newId("prr"), "GLOBAL", ruleKey, 1,
+        PricingRule rule = new PricingRule(("prr_" + java.util.UUID.randomUUID().toString().replace("-", "")), "GLOBAL", ruleKey, 1,
                 name, description, pricingModel, meterKey,
                 new Money(unitPriceMinor, currencyCode), tiers, "ACTIVE",
                 effectiveFrom == null ? now : effectiveFrom, effectiveTo, now, now);
@@ -80,7 +79,7 @@ public class PricingRuleService {
                                                   long discountDenominator,
                                                   Instant effectiveFrom, Instant effectiveTo) {
         Instant now = Instant.now().truncatedTo(ChronoUnit.MICROS);
-        CustomPricingRule rule = new CustomPricingRule(Ids.newId("cpr"), tenantId,
+        CustomPricingRule rule = new CustomPricingRule(("cpr_" + java.util.UUID.randomUUID().toString().replace("-", "")), tenantId,
                 workspaceId, meterKey, 1,
                 overridePriceMinor == null ? null : new Money(overridePriceMinor, currencyCode),
                 discountNumerator, discountDenominator,
@@ -107,7 +106,7 @@ public class PricingRuleService {
                                                 Map<String, String> conditions,
                                                 Instant effectiveFrom, Instant effectiveTo) {
         Instant now = Instant.now().truncatedTo(ChronoUnit.MICROS);
-        return repository.saveDiscount(new DiscountPolicy(Ids.newId("dsc"), tenantId,
+        return repository.saveDiscount(new DiscountPolicy(("dsc_" + java.util.UUID.randomUUID().toString().replace("-", "")), tenantId,
                 policyKey, version, meterKey, currencyCode, name, description,
                 discountType, discountNumerator, discountDenominator,
                 flatAmountMinor, conditions, "ACTIVE", effectiveFrom == null ? now : effectiveFrom,

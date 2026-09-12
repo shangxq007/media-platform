@@ -8,7 +8,6 @@ import com.example.platform.render.domain.previewjob.PreviewRenderJobStatus;
 import com.example.platform.render.domain.product.Product;
 import com.example.platform.render.domain.product.ProductStatus;
 import com.example.platform.render.infrastructure.product.ProductDependencyRepository;
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.web.TenantContext;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -78,7 +77,7 @@ public class PreviewRenderJobService {
 
         assertTenantAccess(request.tenantId());
 
-        PreviewRenderJobId jobId = new PreviewRenderJobId(Ids.newId("prj"));
+        PreviewRenderJobId jobId = new PreviewRenderJobId(("prj_" + java.util.UUID.randomUUID().toString().replace("-", "")));
         PreviewRenderJob job = PreviewRenderJob.create(
                 jobId,
                 request.tenantId(),

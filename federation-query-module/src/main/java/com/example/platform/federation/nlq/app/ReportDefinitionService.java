@@ -4,7 +4,6 @@ import com.example.platform.federation.nlq.domain.ReportDefinition;
 import com.example.platform.federation.nlq.domain.ReportSchedule;
 import com.example.platform.federation.nlq.domain.ReportWidget;
 import com.example.platform.federation.nlq.infrastructure.NlqJdbcRepository;
-import com.example.platform.shared.Ids;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,7 +46,7 @@ public class ReportDefinitionService {
     public ReportDefinition create(String tenantId, String workspaceId, String name, String description,
             List<ReportWidget> widgets, List<String> queryDefinitions, String createdBy,
             String visibility, ReportSchedule schedule) {
-        String reportId = Ids.newId("rpt");
+        String reportId = ("rpt_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         Instant now = Instant.now();
 
         ReportDefinition report = new ReportDefinition(

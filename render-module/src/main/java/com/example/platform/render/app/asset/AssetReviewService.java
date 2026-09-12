@@ -5,7 +5,6 @@ import com.example.platform.render.app.timeline.TimelineReviewService;
 import com.example.platform.render.domain.asset.AssetPublishStatus;
 import com.example.platform.timeline.diff.merge.ReviewTargetType;
 import com.example.platform.render.infrastructure.asset.AssetRepository;
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.web.TenantContext;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -38,7 +37,7 @@ public class AssetReviewService {
         var asset = assetRepository.findById(TenantContext.get(), assetId)
                 .orElseThrow(() -> new IllegalArgumentException("Asset not found: " + assetId));
 
-        String reviewId = Ids.newId("arev");
+        String reviewId = ("arev_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         String tenantId = TenantContext.get();
         OffsetDateTime now = OffsetDateTime.now();
 

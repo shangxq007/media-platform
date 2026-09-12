@@ -1,6 +1,5 @@
 package com.example.platform.render.infrastructure.productization.marketplace;
 
-import com.example.platform.shared.Ids;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -42,7 +41,7 @@ public class MarketplaceService {
             String version,
             List<String> tags) {
         
-        String itemId = Ids.newId("mkt");
+        String itemId = ("mkt_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         Marketplace.MarketplaceItem item = new Marketplace.MarketplaceItem(
                 itemId, name, description, type, category,
                 authorId, authorName, version, tags,

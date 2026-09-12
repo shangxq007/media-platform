@@ -22,7 +22,6 @@ import com.example.platform.shared.events.AssetApprovedEvent;
 import com.example.platform.shared.events.AssetPublishedEvent;
 import com.example.platform.shared.events.AssetArchivedEvent;
 import com.example.platform.shared.events.AssetEnrichedEvent;
-import com.example.platform.shared.Ids;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -143,7 +142,7 @@ public class NotificationEventHandler {
 
     @EventListener
     public void handle(NotificationInboundEvent event) {
-        var eventId = Ids.newId("nev");
+        var eventId = ("nev_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         dsl.insertInto(NOTIFICATION_EVENT)
                 .columns(NOTIFICATION_EVENT.ID, NOTIFICATION_EVENT.EVENT_TYPE, NOTIFICATION_EVENT.SUBJECT_ID, NOTIFICATION_EVENT.PAYLOAD, NOTIFICATION_EVENT.CREATED_AT)
                 .values(eventId, event.eventType(), event.subjectId(), NotificationPayloadJson.toJson(event.payload()), LocalDateTime.now(ZoneOffset.UTC))
@@ -156,7 +155,7 @@ public class NotificationEventHandler {
             var result = provider.send(new DeliveryCommand(eventId, provider.channel(), rendered.subject(), rendered.body(), Map.of("subjectId", event.subjectId())));
             dsl.insertInto(NOTIFICATION_DELIVERY)
                     .columns(NOTIFICATION_DELIVERY.ID, NOTIFICATION_DELIVERY.EVENT_ID, NOTIFICATION_DELIVERY.CHANNEL, NOTIFICATION_DELIVERY.PROVIDER_CODE, NOTIFICATION_DELIVERY.STATUS, NOTIFICATION_DELIVERY.REQUEST_PAYLOAD, NOTIFICATION_DELIVERY.RESPONSE_PAYLOAD, NOTIFICATION_DELIVERY.ATTEMPT_COUNT, NOTIFICATION_DELIVERY.CREATED_AT)
-                    .values(Ids.newId("ndl"), eventId, provider.channel(), provider.providerCode(), result.status(), rendered.body(), result.responsePayload(), 1, LocalDateTime.now(ZoneOffset.UTC))
+                    .values(("ndl_" + java.util.UUID.randomUUID().toString().replace("-", "")), eventId, provider.channel(), provider.providerCode(), result.status(), rendered.body(), result.responsePayload(), 1, LocalDateTime.now(ZoneOffset.UTC))
                     .execute();
         }
     }

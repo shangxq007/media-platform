@@ -2,7 +2,6 @@ package com.example.platform.render.infrastructure.product;
 
 import static org.jooq.impl.DSL.*;
 import com.example.platform.render.domain.product.*;
-import com.example.platform.shared.Ids;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -25,7 +24,7 @@ public class ProductRepository {
     public ProductRepository(DSLContext dsl) { this.dsl = dsl; }
 
     public Product save(Product p) {
-        var id = p.productId() != null ? p.productId() : Ids.newId("prod");
+        var id = p.productId() != null ? p.productId() : ("prod_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         var now = LocalDateTime.now();
         dsl.insertInto(PRODUCT)
                 .columns(PRODUCT.PRODUCT_ID, PRODUCT.TENANT_ID, PRODUCT.PROJECT_ID,

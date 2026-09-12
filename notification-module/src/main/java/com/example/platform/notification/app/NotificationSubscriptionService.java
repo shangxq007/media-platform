@@ -4,7 +4,6 @@ import static com.example.platform.typedschema.jooq.generated.tables.Notificatio
 
 import com.example.platform.notification.domain.NotificationEventDefinition;
 import com.example.platform.notification.domain.NotificationSubscription;
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.audit.AuditPort;
 import com.example.platform.shared.web.PlatformException;
 import com.example.platform.shared.web.TenantContext;
@@ -95,7 +94,7 @@ public class NotificationSubscriptionService {
                     "Critical event cannot be disabled: " + eventKey);
         }
 
-        String subscriptionId = Ids.newId("nsu");
+        String subscriptionId = ("nsu_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         String tenantId = TenantContext.get();
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
 

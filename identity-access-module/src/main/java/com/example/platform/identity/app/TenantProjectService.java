@@ -2,7 +2,6 @@ package com.example.platform.identity.app;
 
 import com.example.platform.identity.api.dto.*;
 import com.example.platform.identity.domain.*;
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.web.TenantContext;
 import org.springframework.stereotype.Service;
 
@@ -29,7 +28,7 @@ public class TenantProjectService {
     }
 
     public TenantResponse createTenant(CreateTenantRequest request) {
-        String id = Ids.newId("ten");
+        String id = ("ten_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         Tenant tenant = new Tenant(id, request.name(), Tenant.TenantStatus.ACTIVE, Instant.now());
         tenantRepository.save(tenant);
         return TenantResponse.from(tenant);
@@ -46,7 +45,7 @@ public class TenantProjectService {
         assertTenantAccess(tenantId);
         Tenant tenant = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new IllegalArgumentException("Tenant not found: " + tenantId));
-        String id = Ids.newId("prj");
+        String id = ("prj_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         Project project = new Project(id, tenantId, request.name(),
                 request.description() != null ? request.description() : "",
                 Project.ProjectStatus.ACTIVE, Instant.now());
@@ -72,7 +71,7 @@ public class TenantProjectService {
         assertTenantAccess(tenantId);
         Tenant tenant = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new IllegalArgumentException("Tenant not found: " + tenantId));
-        String id = Ids.newId("usr");
+        String id = ("usr_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         User user = new User(id, tenantId, request.username(), request.email(),
                 request.roleOrDefault(), User.UserStatus.ACTIVE, Instant.now());
         userRepository.save(user);
@@ -94,7 +93,7 @@ public class TenantProjectService {
                 + UUID.randomUUID().toString().replace("-", "");
         String hashedKey = identityAccessService.hashApiKey(plainKey);
         String fingerprint = identityAccessService.fingerprint(plainKey);
-        String id = Ids.newId("ak");
+        String id = ("ak_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         ApiKeyRecord record = new ApiKeyRecord(id, tenantId, fingerprint, hashedKey,
                 request.principal(), Instant.now(), null, null);
         identityAccessService.storeRecord(record);

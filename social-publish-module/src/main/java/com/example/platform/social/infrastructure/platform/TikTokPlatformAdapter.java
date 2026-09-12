@@ -1,7 +1,6 @@
 package com.example.platform.social.infrastructure.platform;
 
 import com.example.platform.social.domain.*;
-import com.example.platform.shared.Ids;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -26,14 +25,14 @@ public class TikTokPlatformAdapter implements PlatformAdapter {
     @Override
     public PublishResult publish(SocialPost post, ConnectedPlatform platform) {
         log.info("TikTokPlatformAdapter: publishing post={} for user={}", post.id(), platform.platformUsername());
-        String stubPostId = Ids.newId("tt");
+        String stubPostId = ("tt_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         return new PublishResult(true, stubPostId, "https://tiktok.com/@" + platform.platformUsername() + "/video/" + stubPostId, null, null);
     }
 
     @Override
     public PostAnalytics fetchAnalytics(SocialPost post, ConnectedPlatform platform) {
         log.info("TikTokPlatformAdapter: fetching analytics for post={}", post.id());
-        return new PostAnalytics(Ids.newId("anl"), post.id(), platform.platformType(),
+        return new PostAnalytics(("anl_" + java.util.UUID.randomUUID().toString().replace("-", "")), post.id(), platform.platformType(),
                 0, 0, 0, 0, 0, 0, Instant.now(), Instant.now());
     }
 

@@ -1,7 +1,6 @@
 package com.example.platform.extension.app;
 
 import com.example.platform.extension.domain.*;
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.audit.AuditPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -114,7 +113,7 @@ public class ExtensionRouter {
                                    String targetVersion, String tenantId, String userId,
                                    String scene, int priority, int trafficPercent,
                                    String createdBy) {
-        String id = Ids.newId("route");
+        String id = ("route_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         RoutingRule rule = new RoutingRule(id, ruleName, extensionCode, sourceVersion,
                 targetVersion, tenantId, userId, scene, priority, trafficPercent, true);
         addRule(rule);

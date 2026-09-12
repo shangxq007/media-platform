@@ -64,7 +64,7 @@ public class RenderWorkerRecoveryService {
                             jobId, projectId, reason, Instant.now(),
                             RenderJobRepository.initiatorFrom(job)));
 
-                    String newJobId = com.example.platform.shared.Ids.newId("rj");
+                    String newJobId = ("rj_" + java.util.UUID.randomUUID().toString().replace("-", ""));
                     renderJobRepository.createRetryJob(newJobId, jobId);
                     log.info("Created retry job {} for stale job {}", newJobId, jobId);
                     recovered++;

@@ -7,7 +7,6 @@ import com.example.platform.storage.contract.StorageReference;
 import com.example.platform.render.infrastructure.product.ProductDependencyRepository;
 import com.example.platform.render.infrastructure.product.ProductRepository;
 import com.example.platform.render.infrastructure.storage.StorageReferenceRepository;
-import com.example.platform.shared.Ids;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -388,7 +387,7 @@ class PreviewArtifactQueryServiceTest {
 
     private Product createReadyProduct(String tenantId, String projectId,
                                          ProductType type, String idPrefix) {
-        String productId = Ids.newId(idPrefix);
+        String productId = (idPrefix + "_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         Product product = new Product(
                 productId, tenantId, projectId, null,
                 type, RepresentationKind.MEDIA_FILE,
@@ -402,7 +401,7 @@ class PreviewArtifactQueryServiceTest {
 
     private Product createReadyProductWithStorage(String tenantId, String projectId,
                                                     ProductType type, String storageRefId) {
-        String productId = Ids.newId("prod");
+        String productId = ("prod_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         Product product = new Product(
                 productId, tenantId, projectId, null,
                 type, RepresentationKind.MEDIA_FILE,
@@ -417,7 +416,7 @@ class PreviewArtifactQueryServiceTest {
     private Product createReadyProductWithStorageAndAsset(String tenantId, String projectId,
                                                             String assetId, ProductType type,
                                                             String storageRefId) {
-        String productId = Ids.newId("prod");
+        String productId = ("prod_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         Product product = new Product(
                 productId, tenantId, projectId, assetId,
                 type, RepresentationKind.MEDIA_FILE,
@@ -433,7 +432,7 @@ class PreviewArtifactQueryServiceTest {
                                                                String timelineRevisionId,
                                                                ProductType type,
                                                                String storageRefId) {
-        String productId = Ids.newId("prod");
+        String productId = ("prod_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         Product product = new Product(
                 productId, tenantId, projectId, null,
                 type, RepresentationKind.MEDIA_FILE,
@@ -447,7 +446,7 @@ class PreviewArtifactQueryServiceTest {
 
     private Product createFailedProduct(String tenantId, String projectId,
                                           ProductType type, String idPrefix) {
-        String productId = Ids.newId(idPrefix);
+        String productId = (idPrefix + "_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         Product product = new Product(
                 productId, tenantId, projectId, null,
                 type, RepresentationKind.MEDIA_FILE,

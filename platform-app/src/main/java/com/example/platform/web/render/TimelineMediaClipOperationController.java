@@ -5,7 +5,7 @@ import com.example.platform.render.app.operation.AddMediaClipPreview;
 import com.example.platform.render.app.operation.AddMediaClipResult;
 import com.example.platform.render.app.operation.TimelineMediaClipOperationService;
 import com.example.platform.render.app.operation.TimelineOperationException;
-import com.example.platform.shared.authorization.CanonicalActorResolver;
+import com.example.platform.identity.api.authorization.CanonicalActorResolver;
 import com.example.platform.shared.authorization.CanonicalActor;
 import com.example.platform.shared.web.TenantContext;
 import java.net.URI;

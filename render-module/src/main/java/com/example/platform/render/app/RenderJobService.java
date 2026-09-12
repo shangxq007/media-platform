@@ -10,7 +10,6 @@ import com.example.platform.render.infrastructure.RenderJobRepository;
 import com.example.platform.shared.events.RenderJobCreatedEvent;
 import com.example.platform.shared.events.RenderInitiator;
 import com.example.platform.render.policy.RenderPolicyEngine;
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.web.CommonErrorCode;
 import com.example.platform.shared.web.PlatformException;
 import com.example.platform.shared.web.TenantContext;
@@ -48,7 +47,7 @@ public class RenderJobService {
                 .orElseThrow(() -> new IllegalArgumentException("Project not found: " + request.projectId()));
         assertTenantAccess(projectTenantId);
 
-        var id = Ids.newId("rj");
+        var id = ("rj_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         var decision = policyEngine.decide(request.profile());
         assertInitiatorScope(projectTenantId, initiator);
         renderJobRepository.create(id, request.projectId(), projectTenantId,
@@ -68,7 +67,7 @@ public class RenderJobService {
             throw new IllegalArgumentException("Project not found for tenant");
         }
 
-        var id = Ids.newId("rj");
+        var id = ("rj_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         var decision = policyEngine.decide(request.profile());
         renderJobRepository.create(id, projectId, tenantId,
                 request.timelineSnapshotId(), request.profile(), "QUEUED", initiator, OffsetDateTime.now());
@@ -135,7 +134,7 @@ public class RenderJobService {
                     "Cannot retry non-terminal job: " + currentStatus);
         }
 
-        var newId = Ids.newId("rj");
+        var newId = ("rj_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         renderJobRepository.createRetryJob(newId, jobId);
         historyRepository.record(newId, null, "QUEUED",
                 "Retry of failed job " + jobId, null);

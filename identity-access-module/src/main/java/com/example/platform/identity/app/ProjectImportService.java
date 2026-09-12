@@ -1,7 +1,6 @@
 package com.example.platform.identity.app;
 
 import com.example.platform.identity.api.dto.*;
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.audit.AuditPort;
 import com.example.platform.storage.contract.ChecksumFormat;
 import com.example.platform.shared.web.TenantContext;
@@ -43,7 +42,7 @@ public class ProjectImportService {
 
         ProjectExportPackageDto payload = request.payload();
         List<ImportPreviewIssueDto> warnings = new ArrayList<>();
-        String importId = Ids.newId("imp");
+        String importId = ("imp_" + java.util.UUID.randomUUID().toString().replace("-", ""));
 
         try {
             // 1. Validate schema version

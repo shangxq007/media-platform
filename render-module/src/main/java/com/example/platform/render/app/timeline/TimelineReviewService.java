@@ -3,7 +3,6 @@ package com.example.platform.render.app.timeline;
 import com.example.platform.timeline.diff.merge.ReviewDecision;
 import com.example.platform.timeline.diff.merge.TimelineReview;
 import com.example.platform.timeline.diff.merge.TimelineReview.ReviewStatus;
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.web.TenantContext;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -24,7 +23,7 @@ public class TimelineReviewService {
     public TimelineReview createReview(String projectId, String revisionId,
                                           String authorUserId, String title, String description) {
         String tenantId = TenantContext.get();
-        String reviewId = Ids.newId("trev");
+        String reviewId = ("trev_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         OffsetDateTime now = OffsetDateTime.now();
         reviewRepository.insertReview(reviewId, projectId, tenantId, revisionId,
                 authorUserId, title, description, "OPEN", now);

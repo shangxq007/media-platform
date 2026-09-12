@@ -1,7 +1,6 @@
 package com.example.platform.outbox.coordination;
 
 import com.example.platform.outbox.coordination.*;
-import com.example.platform.shared.Ids;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -22,7 +21,7 @@ public class PlatformJobRepository {
 
     public PlatformJob create(JobType jobType, String aggregateType, String aggregateId,
                                 String tenantId, String projectId, String payloadJson) {
-        String id = Ids.newId("pjob");
+        String id = ("pjob_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         LocalDateTime now = LocalDateTime.now();
         dsl.insertInto(PLATFORM_JOB)
                 .columns(PLATFORM_JOB.ID, PLATFORM_JOB.JOB_TYPE, PLATFORM_JOB.AGGREGATE_TYPE,

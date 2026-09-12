@@ -7,7 +7,6 @@ import com.example.platform.render.domain.product.*;
 import com.example.platform.render.infrastructure.product.ProductDependencyRepository;
 import com.example.platform.render.infrastructure.product.ProductRepository;
 import com.example.platform.render.testsupport.TimelineCoreSmokeFixture;
-import com.example.platform.shared.Ids;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
 import java.nio.file.Path;
@@ -153,7 +152,7 @@ class CaptionTemplateRenderDeliveryContractTest {
     // --- Helpers ---
 
     private String registerProduct(ProductType type, ProductStatus status) {
-        String productId = Ids.newId("prod");
+        String productId = ("prod_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         Product product = new Product(productId, TimelineCoreSmokeFixture.TENANT_ID,
                 TimelineCoreSmokeFixture.PROJECT_ID, "asset-1",
                 type, RepresentationKind.MEDIA_FILE,

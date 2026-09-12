@@ -1,4 +1,6 @@
-package com.example.platform.shared.collaboration;
+package com.example.platform.entitlement.api.collaboration;
+
+import com.example.platform.shared.authorization.*;
 
 /**
  * Port for shared-resource (collaboration) access checks used in the ABAC decision chain.

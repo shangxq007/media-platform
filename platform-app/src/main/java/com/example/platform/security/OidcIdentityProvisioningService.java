@@ -6,7 +6,6 @@ import com.example.platform.identity.domain.Tenant;
 import com.example.platform.identity.domain.User;
 import com.example.platform.identity.domain.UserRoleAssignment;
 import com.example.platform.identity.infrastructure.RoleRepository;
-import com.example.platform.shared.Ids;
 import java.time.Instant;
 import java.util.List;
 import org.slf4j.Logger;
@@ -140,7 +139,7 @@ public class OidcIdentityProvisioningService {
         for (String roleKey : platformRoleKeys) {
             roleRepository.findByKey(roleKey).ifPresent(role -> {
                 UserRoleAssignment assignment = new UserRoleAssignment(
-                        Ids.newId("ura"),
+                        ("ura_" + java.util.UUID.randomUUID().toString().replace("-", "")),
                         null,
                         workspaceId,
                         userId,

@@ -3,7 +3,6 @@ package com.example.platform.render.app.timeline;
 import com.example.platform.timeline.diff.merge.EntityKind;
 import com.example.platform.timeline.diff.merge.EntityRef;
 import com.example.platform.timeline.diff.merge.TimelineComment;
-import com.example.platform.shared.Ids;
 import java.time.OffsetDateTime;
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -22,12 +21,12 @@ public class TimelineCommentService {
     public TimelineComment addComment(String reviewId, String revisionId,
                                         String threadId, EntityRef entityRef,
                                         String authorUserId, String content) {
-        String commentId = Ids.newId("tcom");
+        String commentId = ("tcom_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         OffsetDateTime now = OffsetDateTime.now();
 
         String effectiveThreadId = threadId;
         if (effectiveThreadId == null && entityRef != null) {
-            effectiveThreadId = Ids.newId("tthr");
+            effectiveThreadId = ("tthr_" + java.util.UUID.randomUUID().toString().replace("-", ""));
             reviewRepository.insertThread(effectiveThreadId, reviewId,
                     entityRef.key(), null, "OPEN", now);
         }

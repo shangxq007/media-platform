@@ -5,7 +5,6 @@ import com.example.platform.commerce.api.dto.CreateCheckoutSessionRequest;
 import com.example.platform.commerce.domain.*;
 import com.example.platform.commerce.infrastructure.CheckoutSessionRepository;
 import com.example.platform.commerce.infrastructure.PurchaseOrderRepository;
-import com.example.platform.shared.Ids;
 import com.example.platform.commerce.app.CheckoutPaymentPort;
 import com.example.platform.commerce.app.PurchaseFulfillmentCommand;
 import com.example.platform.commerce.app.PurchaseFulfillmentPort;
@@ -139,7 +138,7 @@ public class CheckoutOrchestrator {
         String tenantId = TenantGuard.tenantOrDefault(intent.tenantId());
         CommercialOffering offering = catalogService.requireOffering(CatalogReadScope.tenant(tenantId), "GLOBAL", intent.canonicalProductCode(), java.time.Instant.now());
 
-        String sessionId = Ids.newId("chk");
+        String sessionId = ("chk_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         CheckoutSession session = new CheckoutSession(sessionId, tenantId, intent.canonicalProductCode(),
                 offering.productId(), offering.offeringId(), offering.offeringVersion(), offering.commercialPriceReference(),
                 offering.priceSnapshot(), intent.successUrl(), "internal");
@@ -171,7 +170,7 @@ public class CheckoutOrchestrator {
                     CatalogReadScope.tenant(session.tenantId()), session.offeringId(), session.offeringVersion()));
             String userId = resolveUserId(session, userIdOverride);
 
-            String orderId = Ids.newId("ord");
+            String orderId = ("ord_" + java.util.UUID.randomUUID().toString().replace("-", ""));
             long orderValue = session.amountSnapshot().amountMinor();
 
             PurchaseOrderCreatedEvent event = new PurchaseOrderCreatedEvent(orderId, session.tenantId(),
@@ -233,7 +232,7 @@ public class CheckoutOrchestrator {
     public PurchaseOrderCreatedEvent cancelCheckout(String sessionId) {
         CheckoutSession session = requireSession(sessionId);
         TenantGuard.assertSameTenantIfContextPresent(session.tenantId());
-        PurchaseOrderCreatedEvent cancelledEvent = new PurchaseOrderCreatedEvent(Ids.newId("ord"), session.tenantId(),
+        PurchaseOrderCreatedEvent cancelledEvent = new PurchaseOrderCreatedEvent(("ord_" + java.util.UUID.randomUUID().toString().replace("-", "")), session.tenantId(),
                 session.canonicalProductCode(), "CANCELLED", session.offeringId(), session.offeringVersion(),
                 session.commercialPriceReference(), 0, session.amountSnapshot().currency());
         persistCancelledOrder(cancelledEvent, session);

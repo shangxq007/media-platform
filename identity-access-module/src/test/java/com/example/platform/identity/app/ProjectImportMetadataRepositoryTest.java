@@ -1,6 +1,5 @@
 package com.example.platform.identity.app;
 
-import com.example.platform.shared.Ids;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -23,7 +22,7 @@ class ProjectImportMetadataRepositoryTest {
     @Test
     void metadataRecordShouldContainAllFields() {
         // Given
-        String id = Ids.newId("imp-meta");
+        String id = ("imp-meta_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         String tenantId = "tenant-1";
         String projectId = "prj-123";
         String importId = "imp-456";
@@ -89,7 +88,7 @@ class ProjectImportMetadataRepositoryTest {
         // When
         ProjectImportMetadataRepository.MetadataRecord record =
                 new ProjectImportMetadataRepository.MetadataRecord(
-                        Ids.newId("imp-meta"), tenantId, projectId, "imp-1", null, null,
+                        ("imp-meta_" + java.util.UUID.randomUUID().toString().replace("-", "")), tenantId, projectId, "imp-1", null, null,
                         "v1", null, null, null, null,
                         null, null, null, null, Instant.now()
                 );
@@ -107,7 +106,7 @@ class ProjectImportMetadataRepositoryTest {
         // When
         ProjectImportMetadataRepository.MetadataRecord record =
                 new ProjectImportMetadataRepository.MetadataRecord(
-                        Ids.newId("imp-meta"), "tenant", "project", "imp-1", null, null,
+                        ("imp-meta_" + java.util.UUID.randomUUID().toString().replace("-", "")), "tenant", "project", "imp-1", null, null,
                         "v1", scrubbedTimelineJson, null, null, null,
                         null, null, null, null, Instant.now()
                 );
@@ -127,7 +126,7 @@ class ProjectImportMetadataRepositoryTest {
         // When
         ProjectImportMetadataRepository.MetadataRecord record =
                 new ProjectImportMetadataRepository.MetadataRecord(
-                        Ids.newId("imp-meta"), "tenant", "project", "imp-1", null, null,
+                        ("imp-meta_" + java.util.UUID.randomUUID().toString().replace("-", "")), "tenant", "project", "imp-1", null, null,
                         "v1", null, null, scrubbedRenderPlanJson, null,
                         null, null, null, null, Instant.now()
                 );
@@ -147,7 +146,7 @@ class ProjectImportMetadataRepositoryTest {
         // When
         ProjectImportMetadataRepository.MetadataRecord record =
                 new ProjectImportMetadataRepository.MetadataRecord(
-                        Ids.newId("imp-meta"), "tenant", "project", "imp-1", null, null,
+                        ("imp-meta_" + java.util.UUID.randomUUID().toString().replace("-", "")), "tenant", "project", "imp-1", null, null,
                         "v1", null, null, null, scrubbedSpatialPlanJson,
                         null, null, null, null, Instant.now()
                 );
@@ -167,7 +166,7 @@ class ProjectImportMetadataRepositoryTest {
         // When
         ProjectImportMetadataRepository.MetadataRecord record =
                 new ProjectImportMetadataRepository.MetadataRecord(
-                        Ids.newId("imp-meta"), "tenant", "project", "imp-1", null, null,
+                        ("imp-meta_" + java.util.UUID.randomUUID().toString().replace("-", "")), "tenant", "project", "imp-1", null, null,
                         "v1", null, null, null, null,
                         null, null, null, assetMappingJson, Instant.now()
                 );
@@ -190,7 +189,7 @@ class ProjectImportMetadataRepositoryTest {
         // When
         ProjectImportMetadataRepository.MetadataRecord record =
                 new ProjectImportMetadataRepository.MetadataRecord(
-                        Ids.newId("imp-meta"), "tenant", "project", "imp-1", null, null,
+                        ("imp-meta_" + java.util.UUID.randomUUID().toString().replace("-", "")), "tenant", "project", "imp-1", null, null,
                         "v1", cleanTimelineJson, null, cleanRenderPlanJson, null,
                         null, null, null, null, Instant.now()
                 );
@@ -211,7 +210,7 @@ class ProjectImportMetadataRepositoryTest {
         // When
         ProjectImportMetadataRepository.MetadataRecord record =
                 new ProjectImportMetadataRepository.MetadataRecord(
-                        Ids.newId("imp-meta"), "tenant", "project", "imp-1",
+                        ("imp-meta_" + java.util.UUID.randomUUID().toString().replace("-", "")), "tenant", "project", "imp-1",
                         sourceProjectId, sourceExportId,
                         "v1", null, null, null, null,
                         null, null, null, null, Instant.now()

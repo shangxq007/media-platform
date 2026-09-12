@@ -1,6 +1,6 @@
 package com.example.platform.workflow.execution.api;
 
-import com.example.platform.shared.authorization.AuthorizationActions;
+import com.example.platform.workflow.authorization.AuthorizationActions;
 import com.example.platform.workflow.execution.api.dto.WorkflowExecutionDto;
 import com.example.platform.workflow.execution.app.StartWorkflowExecutionCommand;
 import com.example.platform.workflow.execution.app.WorkflowExecutionApprovalCommand;

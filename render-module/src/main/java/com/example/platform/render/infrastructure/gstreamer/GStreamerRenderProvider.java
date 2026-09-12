@@ -10,7 +10,6 @@ import com.example.platform.render.infrastructure.ProviderStatus;
 import com.example.platform.render.infrastructure.ProviderType;
 import com.example.platform.render.infrastructure.RenderProvider;
 import com.example.platform.render.infrastructure.RenderPreset;
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.web.ConfigurableErrorCode;
 import com.example.platform.shared.web.PlatformException;
 import org.slf4j.Logger;
@@ -84,7 +83,7 @@ public class GStreamerRenderProvider implements RenderProvider {
             ToolExecutionResult result = processToolRunner.execute(request);
 
             if (result.isSuccess()) {
-                String artifactId = Ids.newId("art");
+                String artifactId = ("art_" + java.util.UUID.randomUUID().toString().replace("-", ""));
                 String resolution = preset.width() + "x" + preset.height();
                 log.info("GStreamerRenderProvider: render complete, artifact={}", artifactId);
                 return new RenderResult(

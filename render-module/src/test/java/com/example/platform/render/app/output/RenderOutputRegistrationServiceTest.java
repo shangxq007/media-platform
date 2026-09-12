@@ -7,7 +7,6 @@ import com.example.platform.storage.contract.*;
 import com.example.platform.render.infrastructure.product.ProductRepository;
 import com.example.platform.render.infrastructure.product.ProductDependencyRepository;
 import com.example.platform.render.infrastructure.storage.StorageReferenceRepository;
-import com.example.platform.shared.Ids;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -629,7 +628,7 @@ class RenderOutputRegistrationServiceTest {
     // ─── Helper: create a READY Product ───
 
     private Product createReadyProduct(String tenantId, String projectId, ProductType type, String idPrefix) {
-        String productId = Ids.newId(idPrefix);
+        String productId = (idPrefix + "_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         Product product = new Product(
                 productId, tenantId, projectId, null,
                 type, RepresentationKind.MEDIA_FILE,

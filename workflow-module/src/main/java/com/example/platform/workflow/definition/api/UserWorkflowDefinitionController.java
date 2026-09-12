@@ -1,13 +1,13 @@
 package com.example.platform.workflow.definition.api;
 
-import com.example.platform.shared.authorization.AuthorizationActions;
+import com.example.platform.workflow.authorization.AuthorizationActions;
 import com.example.platform.shared.authorization.AuthorizationContext;
-import com.example.platform.shared.authorization.AuthorizationDecisionPort;
-import com.example.platform.shared.authorization.AuthorizationDeniedException;
+import com.example.platform.identity.api.authorization.AuthorizationDecisionPort;
+import com.example.platform.identity.api.authorization.AuthorizationDeniedException;
 import com.example.platform.shared.authorization.AuthorizationRequest;
 import com.example.platform.shared.authorization.AuthorizationResourceType;
 import com.example.platform.shared.authorization.CanonicalActor;
-import com.example.platform.shared.authorization.CanonicalActorResolver;
+import com.example.platform.identity.api.authorization.CanonicalActorResolver;
 import com.example.platform.shared.authorization.AuthorizableResourceRef;
 import com.example.platform.workflow.definition.api.dto.UserWorkflowDefinitionArchiveRequest;
 import com.example.platform.workflow.definition.api.dto.UserWorkflowDefinitionCreateRequest;

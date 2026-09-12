@@ -7,7 +7,7 @@ import java.util.Set;
 /**
  * The normalized, authorization-model-agnostic representation of the caller.
  *
- * <p>Produced by a {@link CanonicalActorResolver} from whatever fragmented source
+ * <p>Produced by a Identity's published actor resolver from whatever fragmented source
  * exists (JWT request attributes, Spring Security context, API key MDC, explicit
  * system context). All downstream authorization decisions consume this canonical
  * form — business services never read {@code jwt.subject} or the SecurityContext

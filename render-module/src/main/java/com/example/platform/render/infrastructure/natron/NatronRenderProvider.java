@@ -3,7 +3,6 @@ package com.example.platform.render.infrastructure.natron;
 import com.example.platform.extension.app.ProcessToolRunner;
 import com.example.platform.extension.domain.ToolExecutionRequest;
 import com.example.platform.extension.domain.ToolExecutionResult;
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.web.ConfigurableErrorCode;
 import com.example.platform.shared.web.PlatformException;
 import com.example.platform.render.infrastructure.ProviderStatus;
@@ -122,7 +121,7 @@ public class NatronRenderProvider implements RenderProvider {
             }
 
             RenderPreset preset = RenderPreset.fromProfile(profile);
-            String artifactId = Ids.newId("art");
+            String artifactId = ("art_" + java.util.UUID.randomUUID().toString().replace("-", ""));
             String resolution = preset.width() + "x" + preset.height();
             log.info("NatronRenderProvider: complete artifact={}", artifactId);
 

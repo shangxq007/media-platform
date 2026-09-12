@@ -6,7 +6,6 @@ import com.example.platform.entitlement.domain.EntitlementCommandType;
 import com.example.platform.entitlement.domain.EntitlementCommandResult;
 import com.example.platform.entitlement.domain.EntitlementGrantCommand;
 import com.example.platform.entitlement.infrastructure.WorkspaceEntitlementPoolRepository;
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.audit.AuditPort;
 import com.example.platform.shared.commercial.PrincipalRef;
 import com.example.platform.shared.commercial.PrincipalType;
@@ -72,7 +71,7 @@ public class WorkspaceEntitlementPoolService {
 
     public WorkspaceEntitlementPool createPool(String workspaceId, String featureKey,
             long totalQuota, String period, String actor) {
-        String id = Ids.newId("ws_pool");
+        String id = ("ws_pool_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         Instant now = Instant.now();
         WorkspaceEntitlementPool pool = new WorkspaceEntitlementPool(
                 id, workspaceId, featureKey, totalQuota, 0L, period, now, now);
@@ -94,7 +93,7 @@ public class WorkspaceEntitlementPoolService {
             throw new IllegalArgumentException(
                     "Insufficient pool quota. Requested: " + quotaAmount + ", Available: " + available);
         }
-        String grantId = Ids.newId("ws_grant");
+        String grantId = ("ws_grant_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         Instant now = Instant.now();
         WorkspaceMemberEntitlementGrant grant = new WorkspaceMemberEntitlementGrant(
                 grantId, workspaceId, memberId, featureKey, quotaAmount,

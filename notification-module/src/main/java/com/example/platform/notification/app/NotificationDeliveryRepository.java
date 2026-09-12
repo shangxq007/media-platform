@@ -20,7 +20,7 @@ public class NotificationDeliveryRepository {
     }
 
     public String recordDelivery(SentNotification sent) {
-        String id = com.example.platform.shared.Ids.newId("ndr");
+        String id = ("ndr_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         dsl.insertInto(NOTIFICATION_RECORD)
                 .columns(NOTIFICATION_RECORD.ID, NOTIFICATION_RECORD.EVENT_ID, NOTIFICATION_RECORD.CHANNEL,
                         NOTIFICATION_RECORD.PROVIDER_CODE, NOTIFICATION_RECORD.STATUS, NOTIFICATION_RECORD.SUBJECT,

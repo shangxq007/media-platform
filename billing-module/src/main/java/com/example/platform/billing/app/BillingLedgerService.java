@@ -2,7 +2,6 @@ package com.example.platform.billing.app;
 
 import com.example.platform.billing.domain.BillingLedgerEntry;
 import com.example.platform.billing.infrastructure.BillingLedgerJdbcRepository;
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.commercial.Money;
 import com.example.platform.shared.commercial.PrincipalRef;
 import com.example.platform.shared.commercial.PrincipalType;
@@ -32,7 +31,7 @@ public class BillingLedgerService {
         PrincipalRef principal = new PrincipalRef(tenantId, PrincipalType.USER, userId,
                 workspaceId, null);
         Instant now = Instant.now();
-        BillingLedgerEntry entry = new BillingLedgerEntry(Ids.newId("ble"), principal,
+        BillingLedgerEntry entry = new BillingLedgerEntry(("ble_" + java.util.UUID.randomUUID().toString().replace("-", "")), principal,
                 entryType, new Money(amountMinor, currencyCode), referenceType, referenceId,
                 description, "ledger:" + tenantId + ":" + referenceType + ":" + referenceId
                 + ":" + entryType, null, now);

@@ -6,7 +6,6 @@ import com.example.platform.billing.domain.CreditWallet;
 import com.example.platform.billing.domain.CreditWalletCommand;
 import com.example.platform.billing.domain.CreditWalletCommandResult;
 import com.example.platform.billing.infrastructure.CreditWalletJdbcRepository;
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.commercial.Money;
 import com.example.platform.shared.commercial.PrincipalRef;
 import com.example.platform.shared.commercial.PrincipalType;
@@ -177,7 +176,7 @@ public class CreditWalletService {
                                      String currencyCode) {
         PrincipalRef principal = new PrincipalRef(tenantId, PrincipalType.USER, userId,
                 workspaceId, null);
-        String walletId = Ids.newId("wlt");
+        String walletId = ("wlt_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         return execute(CreditWalletCommand.create(principal, walletId, currencyCode,
                 "wallet:create:" + tenantId + ":" + userId + ":"
                         + (workspaceId == null ? "" : workspaceId) + ":" + currencyCode,

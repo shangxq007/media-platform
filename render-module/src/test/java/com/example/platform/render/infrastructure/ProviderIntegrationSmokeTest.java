@@ -15,7 +15,6 @@ import com.example.platform.storage.contract.*;
 import com.example.platform.render.infrastructure.product.ProductDependencyRepository;
 import com.example.platform.render.infrastructure.product.ProductRepository;
 import com.example.platform.render.infrastructure.storage.StorageReferenceRepository;
-import com.example.platform.shared.Ids;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -226,7 +225,7 @@ class ProviderIntegrationSmokeTest {
                 Instant.now(), Instant.now()));
 
         // Register input Product
-        String inputProductId = Ids.newId("prod");
+        String inputProductId = ("prod_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         Product inputProduct = productRuntime.register(new Product(
                 inputProductId, "tenant-1", "project-1", "asset-1",
                 ProductType.RAW_MEDIA, RepresentationKind.MEDIA_FILE,
@@ -334,7 +333,7 @@ class ProviderIntegrationSmokeTest {
 
         @Override
         public StorageReference save(StorageReference ref) {
-            String id = ref.storageReferenceId() != null ? ref.storageReferenceId() : Ids.newId("stor");
+            String id = ref.storageReferenceId() != null ? ref.storageReferenceId() : ("stor_" + java.util.UUID.randomUUID().toString().replace("-", ""));
             StorageReference saved = new StorageReference(id, ref.providerType(), ref.storageClass(),
                     ref.rootPath(), ref.relativePath(), ref.checksum(), ref.contentHash(),
                     ref.fileSize(), ref.mimeType(), ref.createdAt(), ref.updatedAt());
@@ -364,7 +363,7 @@ class ProviderIntegrationSmokeTest {
 
         @Override
         public Product save(Product p) {
-            String id = p.productId() != null ? p.productId() : Ids.newId("prod");
+            String id = p.productId() != null ? p.productId() : ("prod_" + java.util.UUID.randomUUID().toString().replace("-", ""));
             Product saved = new Product(id, p.tenantId(), p.projectId(), p.ownerAssetId(),
                     p.productType(), p.representationKind(), p.producerType(), p.producerId(),
                     p.sourceTimelineRevisionId(), p.status(), p.storageReferenceId(),
@@ -402,7 +401,7 @@ class ProviderIntegrationSmokeTest {
 
         @Override
         public ProductDependency save(ProductDependency d) {
-            String id = d.dependencyId() != null ? d.dependencyId() : Ids.newId("dep");
+            String id = d.dependencyId() != null ? d.dependencyId() : ("dep_" + java.util.UUID.randomUUID().toString().replace("-", ""));
             ProductDependency saved = new ProductDependency(id, d.tenantId(), d.projectId(),
                     d.productId(), d.dependsOnProductId(), d.dependencyType(), d.createdAt());
             store.put(id, saved);

@@ -2,7 +2,6 @@ package com.example.platform.web.collaboration;
 
 import com.example.platform.identity.app.ProjectRepository;
 import com.example.platform.identity.domain.Project;
-import com.example.platform.shared.Ids;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -77,7 +76,7 @@ public class SharedResourceService {
         String type = resourceType != null ? resourceType : "project";
         SharedResourceJdbcRepository.SharedResourceGrant grant =
                 new SharedResourceJdbcRepository.SharedResourceGrant(
-                        Ids.newId("srg"),
+                        ("srg_" + java.util.UUID.randomUUID().toString().replace("-", "")),
                         tenantId,
                         type,
                         resourceId,

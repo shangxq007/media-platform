@@ -1,7 +1,6 @@
 package com.example.platform.ai.infrastructure;
 
 import com.example.platform.ai.domain.*;
-import com.example.platform.shared.Ids;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -150,7 +149,7 @@ public class StubChatProvider implements ChatProvider {
                     }
                     """;
         }
-        String scriptId = Ids.newId("scr");
+        String scriptId = ("scr_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         String scenesJson = generateScenesForCapability(capability);
         
         return """

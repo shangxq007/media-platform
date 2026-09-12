@@ -1,7 +1,7 @@
 package com.example.platform.web.render;
 
 import com.example.platform.shared.time.MediaTime;
-import com.example.platform.shared.authorization.CanonicalActorResolver;
+import com.example.platform.identity.api.authorization.CanonicalActorResolver;
 import com.example.platform.shared.events.RenderInitiator;
 import com.example.platform.timeline.app.PatchApplyResult;
 import com.example.platform.timeline.app.PatchPreviewResult;

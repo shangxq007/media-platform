@@ -14,7 +14,7 @@ import com.example.platform.operation.operation.OperationTargetRequest;
 import com.example.platform.operation.plan.ApplyResult;
 import com.example.platform.render.app.plan.OperationPlanApplyService;
 import com.example.platform.render.testsupport.TestSourceBindings;
-import com.example.platform.shared.authorization.AuthorizationDecisionPort;
+import com.example.platform.identity.api.authorization.AuthorizationDecisionPort;
 import com.example.platform.shared.authorization.CanonicalActor;
 import com.example.platform.shared.time.MediaTime;
 import com.example.platform.timeline.app.InternalTimelineValidationService;

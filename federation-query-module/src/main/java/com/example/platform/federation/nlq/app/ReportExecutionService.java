@@ -4,7 +4,6 @@ import com.example.platform.federation.nlq.domain.ReportDefinition;
 import com.example.platform.federation.nlq.domain.ReportExecution;
 import com.example.platform.federation.nlq.domain.SqlSafetyResult;
 import com.example.platform.federation.nlq.infrastructure.NlqJdbcRepository;
-import com.example.platform.shared.Ids;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -61,7 +60,7 @@ public class ReportExecutionService {
 
     public ReportExecution execute(String reportId, String userId, String tenantId,
             String workspaceId, boolean isAdmin) {
-        String executionId = Ids.newId("rpx");
+        String executionId = ("rpx_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         long start = System.currentTimeMillis();
 
         Optional<ReportDefinition> reportOpt = reportDefinitionService.getById(reportId);

@@ -4,7 +4,7 @@ import com.example.platform.entitlement.api.EntitlementDecisionQuery;
 import com.example.platform.entitlement.domain.*;
 import com.example.platform.entitlement.infrastructure.EntitlementOverrideRepository;
 import com.example.platform.entitlement.infrastructure.WorkspaceEntitlementPoolRepository;
-import com.example.platform.shared.collaboration.CollaborationAccessPort;
+import com.example.platform.entitlement.api.collaboration.CollaborationAccessPort;
 import com.example.platform.shared.commercial.PrincipalRef;
 import com.example.platform.shared.commercial.PrincipalType;
 import org.slf4j.Logger;

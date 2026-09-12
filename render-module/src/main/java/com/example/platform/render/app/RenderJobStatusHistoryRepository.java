@@ -1,7 +1,6 @@
 package com.example.platform.render.app;
 
 import com.example.platform.render.app.dto.StatusHistoryResponse;
-import com.example.platform.shared.Ids;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -21,7 +20,7 @@ public class RenderJobStatusHistoryRepository {
     }
 
     public void record(String jobId, String fromStatus, String toStatus, String reason, String errorCode) {
-        String id = Ids.newId("rsh");
+        String id = ("rsh_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         dsl.insertInto(RENDER_JOB_STATUS_HISTORY)
                 .columns(RENDER_JOB_STATUS_HISTORY.ID, RENDER_JOB_STATUS_HISTORY.JOB_ID, RENDER_JOB_STATUS_HISTORY.FROM_STATUS, RENDER_JOB_STATUS_HISTORY.TO_STATUS,
                         RENDER_JOB_STATUS_HISTORY.REASON, RENDER_JOB_STATUS_HISTORY.ERROR_CODE, RENDER_JOB_STATUS_HISTORY.OCCURRED_AT)

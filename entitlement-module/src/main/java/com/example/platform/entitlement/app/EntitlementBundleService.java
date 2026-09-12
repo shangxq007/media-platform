@@ -2,7 +2,6 @@ package com.example.platform.entitlement.app;
 
 import com.example.platform.entitlement.domain.EntitlementBundle;
 import com.example.platform.entitlement.infrastructure.EntitlementBundleRepository;
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.audit.AuditPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,7 +36,7 @@ public class EntitlementBundleService {
             boolean apiAccessAllowed, boolean mcpAccessAllowed, String actor) {
         Instant now = Instant.now();
         EntitlementBundle bundle = new EntitlementBundle(
-                Ids.newId("ent_bndl"), bundleKey, name, description, "ACTIVE",
+                ("ent_bndl_" + java.util.UUID.randomUUID().toString().replace("-", "")), bundleKey, name, description, "ACTIVE",
                 null, null, gpuAllowed, remoteWorkerAllowed, customFontsAllowed,
                 maxSubtitleTracks, maxConcurrentJobs, monthlyRenderMinutes,
                 storageLimitBytes, watermarkRequired, priorityQueueAllowed,

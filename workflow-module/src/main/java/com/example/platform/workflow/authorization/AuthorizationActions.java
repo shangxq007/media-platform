@@ -1,4 +1,6 @@
-package com.example.platform.shared.authorization;
+package com.example.platform.workflow.authorization;
+
+import com.example.platform.shared.authorization.*;
 
 /**
  * Sealed, typed catalogue of the W2 workflow-definition security actions mapped to

@@ -27,7 +27,7 @@ import com.example.platform.render.app.cache.RenderIncrementalApiService;
 import com.example.platform.render.app.dto.StatusHistoryResponse;
 import com.example.platform.render.app.dto.CreateRenderJobRequest;
 import com.example.platform.render.app.dto.RenderJobResponse;
-import com.example.platform.shared.authorization.CanonicalActorResolver;
+import com.example.platform.identity.api.authorization.CanonicalActorResolver;
 import com.example.platform.shared.events.RenderInitiator;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -460,7 +460,7 @@ public class RenderController {
                     var existing = productRuntimeService.findByAsset(mediaId);
                     if (existing.isEmpty()) {
                         // Create StorageReference
-                        String storageRefId = com.example.platform.shared.Ids.newId("stor");
+                        String storageRefId = ("stor_" + java.util.UUID.randomUUID().toString().replace("-", ""));
                         var storageRef = new com.example.platform.storage.contract.StorageReference(
                                 storageRefId, "localFsStorageProvider",
                                 com.example.platform.storage.contract.StorageClass.STANDARD,
@@ -470,7 +470,7 @@ public class RenderController {
                         storageReferenceRepository.save(storageRef);
 
                         // Create RAW_MEDIA Product with storageReferenceId
-                        String productId = com.example.platform.shared.Ids.newId("prod");
+                        String productId = ("prod_" + java.util.UUID.randomUUID().toString().replace("-", ""));
                         var product = new com.example.platform.render.domain.product.Product(
                                 productId, tenantId, null, mediaId,
                                 com.example.platform.render.domain.product.ProductType.RAW_MEDIA,

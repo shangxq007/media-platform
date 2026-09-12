@@ -11,7 +11,6 @@ import com.example.platform.render.app.timeline.InternalTimelineAdapter;
 import com.example.platform.render.domain.interchange.TimelineScriptParser;
 import java.util.Map;
 import com.example.platform.shared.web.TenantContext;
-import com.example.platform.shared.Ids;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -133,7 +132,7 @@ public class TimelineRevisionRenderService {
         var mappingResult = mapper.toRenderJobRequest(
                 tenantId, projectId, spec, outputProfile, revisionId, snapshotId);
 
-        String renderJobId = Ids.newId("rj");
+        String renderJobId = ("rj_" + java.util.UUID.randomUUID().toString().replace("-", ""));
 
         // 6. Resolve input media — try Product-backed, fall back to URI-based (preview/bootstrap)
         Path materializedInput;

@@ -5,7 +5,7 @@ import com.example.platform.operation.plan.PlanErrorCode;
 import com.example.platform.operation.plan.PlanException;
 import com.example.platform.render.app.plan.OperationPlanApplyService;
 import com.example.platform.render.domain.renderplan.VerifiedTimelineRevisionFactory;
-import com.example.platform.shared.authorization.AuthorizationDecisionPort;
+import com.example.platform.identity.api.authorization.AuthorizationDecisionPort;
 import com.example.platform.shared.authorization.CanonicalActor;
 import com.example.platform.shared.time.MediaTime;
 import com.example.platform.timeline.app.InternalTimelineValidationService;

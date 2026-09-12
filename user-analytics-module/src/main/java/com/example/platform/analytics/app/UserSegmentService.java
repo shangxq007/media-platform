@@ -4,7 +4,6 @@ import com.example.platform.analytics.domain.*;
 import com.example.platform.analytics.infrastructure.UserBehaviorEventRepository;
 import com.example.platform.analytics.infrastructure.UserProfileRepository;
 import com.example.platform.analytics.infrastructure.UserSegmentRepository;
-import com.example.platform.shared.Ids;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -41,7 +40,7 @@ public class UserSegmentService {
                 .collect(Collectors.toList());
 
         UserSegment segment = new UserSegment(
-                Ids.newId("seg"),
+                ("seg_" + java.util.UUID.randomUUID().toString().replace("-", "")),
                 tenantId,
                 name,
                 description,
@@ -66,7 +65,7 @@ public class UserSegmentService {
                 .collect(Collectors.toList());
 
         UserSegment segment = new UserSegment(
-                Ids.newId("seg"),
+                ("seg_" + java.util.UUID.randomUUID().toString().replace("-", "")),
                 tenantId,
                 "active_last_" + activeWithinDays + "d",
                 "Users active in the last " + activeWithinDays + " days",
@@ -89,7 +88,7 @@ public class UserSegmentService {
                 .collect(Collectors.toList());
 
         UserSegment segment = new UserSegment(
-                Ids.newId("seg"),
+                ("seg_" + java.util.UUID.randomUUID().toString().replace("-", "")),
                 tenantId,
                 "power_users",
                 "Users with at least " + minActions + " actions",
@@ -113,7 +112,7 @@ public class UserSegmentService {
                 .collect(Collectors.toList());
 
         UserSegment segment = new UserSegment(
-                Ids.newId("seg"), tenantId,
+                ("seg_" + java.util.UUID.randomUUID().toString().replace("-", "")), tenantId,
                 "new_users", "Users who signed up in the last " + withinDays + " days",
                 Map.of("withinDays", String.valueOf(withinDays)),
                 newUserIds, newUserIds.size(), Instant.now());
@@ -133,7 +132,7 @@ public class UserSegmentService {
                 .collect(Collectors.toList());
 
         UserSegment segment = new UserSegment(
-                Ids.newId("seg"), tenantId,
+                ("seg_" + java.util.UUID.randomUUID().toString().replace("-", "")), tenantId,
                 "at_risk_users", "Previously active users inactive for " + inactiveDays + "+ days",
                 Map.of("inactiveDays", String.valueOf(inactiveDays)),
                 atRiskUserIds, atRiskUserIds.size(), Instant.now());
@@ -151,7 +150,7 @@ public class UserSegmentService {
                 .collect(Collectors.toList());
 
         UserSegment segment = new UserSegment(
-                Ids.newId("seg"), tenantId,
+                ("seg_" + java.util.UUID.randomUUID().toString().replace("-", "")), tenantId,
                 "dormant_users", "Users with no activity in " + dormantDays + "+ days",
                 Map.of("dormantDays", String.valueOf(dormantDays)),
                 dormantUserIds, dormantUserIds.size(), Instant.now());
@@ -173,7 +172,7 @@ public class UserSegmentService {
                 .collect(Collectors.toList());
 
         UserSegment segment = new UserSegment(
-                Ids.newId("seg"), tenantId,
+                ("seg_" + java.util.UUID.randomUUID().toString().replace("-", "")), tenantId,
                 "failed_render_users", "Users with " + minFailures + "+ failed render jobs",
                 Map.of("minFailures", String.valueOf(minFailures)),
                 failedUserIds, failedUserIds.size(), Instant.now());

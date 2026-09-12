@@ -1,6 +1,5 @@
 package com.example.platform.web.navigation;
 
-import com.example.platform.shared.Ids;
 import com.example.platform.web.CallerContext;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

@@ -12,7 +12,6 @@ import com.example.platform.shared.usage.UsageQuantity;
 import com.example.platform.shared.usage.UsageUnit;
 import com.example.platform.render.domain.RenderJobPlan;
 import com.example.platform.render.domain.RenderStep;
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.web.TenantContext;
 import java.time.Duration;
 import java.time.Instant;
@@ -107,7 +106,7 @@ public class RenderStepExecutionService {
         try {
             // Skeleton: simulate execution
             log.info("Executing step type: {}", step.type());
-            return step.markCompleted(List.of(Ids.newId("art")));
+            return step.markCompleted(List.of(("art_" + java.util.UUID.randomUUID().toString().replace("-", ""))));
         } catch (Exception e) {
             log.error("Step execution failed: {}", step.type(), e);
             return step.markFailed("EXECUTION_FAILED", e.getMessage());

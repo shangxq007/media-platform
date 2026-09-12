@@ -11,7 +11,6 @@ import com.example.platform.render.domain.product.Product;
 import com.example.platform.render.domain.interchange.TimelineSpec;
 import com.example.platform.render.domain.compile.*;
 import com.example.platform.render.domain.compile.executionplan.*;
-import com.example.platform.shared.Ids;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -88,7 +87,7 @@ public class CaptionTemplateRenderService {
 
         // 2. Adapt to TimelineSpec
         TimelineSpec spec = adapter.adapt(request);
-        String renderJobId = Ids.newId("rj");
+        String renderJobId = ("rj_" + java.util.UUID.randomUUID().toString().replace("-", ""));
 
         // Resolve sourceProductId (asset ID) to actual Product IDs
         var resolverResult = inputProductResolver.resolve(List.of(request.sourceProductId()));

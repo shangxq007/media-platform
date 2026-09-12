@@ -15,7 +15,6 @@ import com.example.platform.render.infrastructure.bento4.Bento4PackagingProvider
 import com.example.platform.render.infrastructure.gpac.GPACPackagingProvider;
 import com.example.platform.render.infrastructure.gpac.PackagingProvider;
 import com.example.platform.render.infrastructure.gpac.PackagingRequest;
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.web.ConfigurableErrorCode;
 import com.example.platform.shared.web.PlatformException;
 import org.slf4j.Logger;
@@ -419,7 +418,7 @@ public class MultiProviderPipelineService {
             String storageUri
     ) {
         public static PipelineResult success(String jobId, List<PipelineStageResult> stages, long duration) {
-            String artifactId = Ids.newId("art");
+            String artifactId = ("art_" + java.util.UUID.randomUUID().toString().replace("-", ""));
             String storageUri = stages.isEmpty() ? null :
                     stages.get(stages.size() - 1).storageUri();
             return new PipelineResult(jobId, true, stages, null, null, duration, artifactId, storageUri);

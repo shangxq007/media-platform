@@ -31,7 +31,6 @@ import com.example.platform.shared.events.RenderJobCompletedEvent;
 import com.example.platform.shared.events.RenderJobFailedEvent;
 import com.example.platform.shared.events.RenderJobStatusChangedEvent;
 import com.example.platform.shared.events.RenderInitiator;
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.commercial.PrincipalRef;
 import com.example.platform.shared.commercial.PrincipalType;
 import com.example.platform.entitlement.api.commercial.QuotaConsumptionPort;
@@ -393,7 +392,7 @@ public class RenderJobExecutionService {
         // Add additional artifacts if available (e.g., thumbnail, timeline JSON)
         if (renderResult.duration() > 0) {
             // Create timeline JSON artifact
-            String timelineArtifactId = Ids.newId("art-timeline");
+            String timelineArtifactId = ("art-timeline_" + java.util.UUID.randomUUID().toString().replace("-", ""));
             ArtifactNode timelineNode = ArtifactNode.create(
                     timelineArtifactId,
                     jobId,
@@ -462,7 +461,7 @@ public class RenderJobExecutionService {
             }
             String artifactId = dag.pipelineResult() != null && dag.pipelineResult().artifactId() != null
                     ? dag.pipelineResult().artifactId()
-                    : Ids.newId("art");
+                    : ("art_" + java.util.UUID.randomUUID().toString().replace("-", ""));
             String storageUri = dag.finalStorageUri() != null ? dag.finalStorageUri()
                     : "localFsStorageProvider://artifacts/" + jobId + "/transcode-output.mp4";
             String format = spec.outputSpec() != null ? spec.outputSpec().format() : "mp4";

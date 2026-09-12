@@ -20,6 +20,7 @@ tasks.withType<JavaCompile>().configureEach {
 }
 
 dependencies {
+    implementation(project(":identity-access-module")) // published authorization contract
     implementation(project(":shared-kernel"))
     implementation(project(":media-module"))
     implementation(project(":audio-module"))

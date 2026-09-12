@@ -8,7 +8,6 @@ import com.example.platform.render.infrastructure.ExternalRenderScriptParser;
 import com.example.platform.render.infrastructure.ProviderStatus;
 import com.example.platform.render.infrastructure.ProviderType;
 import com.example.platform.render.infrastructure.RenderProvider;
-import com.example.platform.shared.Ids;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -79,7 +78,7 @@ public class BlenderRenderProvider implements RenderProvider {
             }
 
             return new RenderResult(
-                    Ids.newId("art"),
+                    ("art_" + java.util.UUID.randomUUID().toString().replace("-", "")),
                     "localFsStorageProvider://artifacts/" + jobId + "/blender-output.mp4",
                     30L,
                     "mp4",

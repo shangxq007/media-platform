@@ -15,7 +15,6 @@ import com.example.platform.delivery.api.dto.UpdateDeliveryDestinationRequest;
 import com.example.platform.delivery.infrastructure.DeliveryConfigParser;
 import com.example.platform.delivery.spi.DeliveryAdapter;
 import com.example.platform.secrets.api.port.CredentialBundlePort;
-import com.example.platform.shared.Ids;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -56,7 +55,7 @@ public class DeliveryAdministrationService {
     public DeliveryDestinationResponse createDestination(
             String tenantId, CreateDeliveryDestinationRequest request) {
         access.require(tenantId, null, true);
-        String id = Ids.newId("dst");
+        String id = ("dst_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         var stored = destinationCredentialService.persist(
                 tenantId, id, request.credentialRef(), request.credentials());
         boolean enabled = request.enabled() == null || request.enabled();
@@ -157,7 +156,7 @@ public class DeliveryAdministrationService {
     public String createPolicy(String tenantId, String projectId, CreateDeliveryPolicyRequest request) {
         access.require(tenantId, projectId, true);
         requireDestination(tenantId, request.destinationId());
-        String id = Ids.newId("dlp");
+        String id = ("dlp_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         dsl.insertInto(DELIVERY_POLICY)
                 .columns(DELIVERY_POLICY.ID, DELIVERY_POLICY.TENANT_ID, DELIVERY_POLICY.PROJECT_ID,
                         DELIVERY_POLICY.DESTINATION_ID, DELIVERY_POLICY.ARTIFACT_SELECTOR,

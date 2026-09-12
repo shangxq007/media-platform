@@ -1,7 +1,6 @@
 package com.example.platform.billing.app;
 
 import com.example.platform.billing.domain.*;
-import com.example.platform.shared.Ids;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -25,7 +24,7 @@ public class BillingDecisionService {
             throw new IllegalArgumentException("context is required");
         }
 
-        String decisionId = Ids.newId("dec");
+        String decisionId = ("dec_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         String pricingModel = context.pricingModel() != null ? context.pricingModel().name() : "USAGE_BASED";
         long estimatedAmountMinor = context.estimatedAmountMinor();
         String currencyCode = context.currencyCode() != null ? context.currencyCode() : "USD";

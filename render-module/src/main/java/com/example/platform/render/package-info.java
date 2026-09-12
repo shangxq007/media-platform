@@ -12,6 +12,7 @@
             "entitlement :: domain",
             "entitlement :: commercial",
             "shared",
+            "identity :: authorization",
             "storage",
             "storage :: API",
             "storage :: domain",

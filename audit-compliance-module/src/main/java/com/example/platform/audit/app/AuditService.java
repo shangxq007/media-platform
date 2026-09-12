@@ -2,7 +2,6 @@ package com.example.platform.audit.app;
 
 import static com.example.platform.typedschema.jooq.generated.tables.AuditRecords.AUDIT_RECORDS;
 
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.web.TenantContext;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -54,7 +53,7 @@ public class AuditService {
 
     public String record(String actorType, String actorId, String action,
             String resourceType, String resourceId, Object payload, AuditCategory category) {
-        String id = Ids.newId("aud");
+        String id = ("aud_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         String categoryName = category == null ? AuditCategory.UNKNOWN.name() : category.name();
         dsl.insertInto(AUDIT_RECORDS)
                 .columns(

@@ -2,7 +2,7 @@ package com.example.platform.security;
 
 import com.example.platform.shared.authorization.ActorType;
 import com.example.platform.shared.authorization.CanonicalActor;
-import com.example.platform.shared.authorization.CanonicalActorResolver;
+import com.example.platform.identity.api.authorization.CanonicalActorResolver;
 import com.example.platform.shared.web.TenantContext;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Component;

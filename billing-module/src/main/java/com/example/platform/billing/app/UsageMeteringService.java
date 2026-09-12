@@ -8,7 +8,6 @@ import com.example.platform.billing.usage.MeterUsageCommand;
 import com.example.platform.billing.usage.MeteringRule;
 import com.example.platform.billing.usage.MeteringRuleRegistry;
 import com.example.platform.billing.usage.UsageRecord;
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.usage.ObservedRuntimeUsage;
 import com.example.platform.shared.usage.UsageQuantity;
 import com.example.platform.usage.infrastructure.ObservedRuntimeUsageJdbcRepository;
@@ -107,7 +106,7 @@ public class UsageMeteringService {
             String meterKey, String name, String description, String unit,
             String aggregationType) {
         UsageMeter meter = new UsageMeter(
-                Ids.newId("mtr"), meterKey, name, description, unit, aggregationType, "ACTIVE");
+                ("mtr_" + java.util.UUID.randomUUID().toString().replace("-", "")), meterKey, name, description, unit, aggregationType, "ACTIVE");
         meters.put(meterKey, meter);
         return meter;
     }

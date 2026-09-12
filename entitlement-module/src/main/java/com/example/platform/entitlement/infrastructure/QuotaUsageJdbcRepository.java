@@ -6,7 +6,6 @@ import com.example.platform.entitlement.domain.QuotaUsageOutcome;
 import com.example.platform.entitlement.domain.QuotaUsageQuery;
 import com.example.platform.entitlement.domain.QuotaUsageRejectionReason;
 import com.example.platform.entitlement.domain.QuotaUsageResult;
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.commercial.PrincipalRef;
 import com.example.platform.shared.commercial.PrincipalType;
 import java.math.BigInteger;
@@ -32,7 +31,7 @@ public class QuotaUsageJdbcRepository {
 
     public QuotaUsageResult apply(QuotaUsageCommand command) {
         Instant recordedAt = Instant.now();
-        String operationId = Ids.newId("qop");
+        String operationId = ("qop_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         List<String> claimed = jdbc.query("""
                 INSERT INTO quota_usage_operation (
                     id, tenant_id, principal_type, principal_id, workspace_scope,
@@ -152,7 +151,7 @@ public class QuotaUsageJdbcRepository {
                 RETURNING usage_value
                 """,
                 (resultSet, rowNumber) -> resultSet.getLong("usage_value"),
-                Ids.newId("qu"),
+                ("qu_" + java.util.UUID.randomUUID().toString().replace("-", "")),
                 command.principal().tenantId(),
                 command.principal().principalType().name(),
                 command.principal().principalId(),

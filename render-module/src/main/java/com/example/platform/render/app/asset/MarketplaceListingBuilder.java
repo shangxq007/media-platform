@@ -4,7 +4,6 @@ import com.example.platform.render.domain.asset.marketplace.*;
 import com.example.platform.render.infrastructure.asset.AssetRepository;
 import com.example.platform.render.infrastructure.asset.AssetSemanticMetadataRepository;
 import com.example.platform.render.infrastructure.asset.SearchProjectionRepository;
-import com.example.platform.shared.Ids;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -46,7 +45,7 @@ public class MarketplaceListingBuilder {
                     default -> MarketplaceListingType.MEDIA;
                 }).orElse(MarketplaceListingType.MEDIA);
 
-        String id = Ids.newId("mlst");
+        String id = ("mlst_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         String previewUrl = "/preview/" + assetId;
         String coverUrl = "/cover/" + assetId;
 

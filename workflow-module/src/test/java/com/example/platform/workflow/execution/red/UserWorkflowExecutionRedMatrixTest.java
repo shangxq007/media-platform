@@ -92,7 +92,7 @@ class UserWorkflowExecutionRedMatrixTest {
     void red004_unauthorizedStartRejected() {
         // Authorization is enforced at the API boundary via APPD actions; the
         // action enum exists and the controller authorizes before service call.
-        assertTrue(com.example.platform.shared.authorization.AuthorizationActions.WORKFLOW_EXECUTION_START
+        assertTrue(com.example.platform.workflow.authorization.AuthorizationActions.WORKFLOW_EXECUTION_START
                 .permissionKey().equals("workflow.execution.start"));
     }
 

@@ -1,7 +1,6 @@
 package com.example.platform.notification.app;
 
 import com.example.platform.notification.domain.NotificationEventDefinition;
-import com.example.platform.shared.Ids;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -93,7 +92,7 @@ public class NotificationEventCatalogService {
     }
 
     public NotificationEventDefinition create(NotificationEventDefinition definition) {
-        String id = Ids.newId("nevdef");
+        String id = ("nevdef_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         LocalDateTime now = LocalDateTime.now();
         dsl.insertInto(NOTIFICATION_EVENT_DEFINITION)
                 .columns(NOTIFICATION_EVENT_DEFINITION.ID, NOTIFICATION_EVENT_DEFINITION.EVENT_KEY, NOTIFICATION_EVENT_DEFINITION.NAME, NOTIFICATION_EVENT_DEFINITION.DESCRIPTION,

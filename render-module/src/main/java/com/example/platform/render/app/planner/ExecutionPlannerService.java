@@ -1,7 +1,6 @@
 package com.example.platform.render.app.planner;
 
 import com.example.platform.render.domain.planner.*;
-import com.example.platform.shared.Ids;
 import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
@@ -37,7 +36,7 @@ public class ExecutionPlannerService {
     public ExecutionPlan plan(FrozenPlanningContext ctx) {
         log.info("Planner: planning target={} type={}", ctx.targetProductId(), ctx.targetProductType());
         if (ctx.targetAlreadyReady()) {
-            return ExecutionPlan.of(Ids.newId("eplan"), ctx.tenantId(), ctx.projectId(),
+            return ExecutionPlan.of(("eplan_" + java.util.UUID.randomUUID().toString().replace("-", "")), ctx.tenantId(), ctx.projectId(),
                     ctx.targetProductId(), ctx.targetProductType(), List.of());
         }
 
@@ -52,8 +51,8 @@ public class ExecutionPlannerService {
         }
 
         boolean parallel = steps.size() > 1;
-        ExecutionStage stage = ExecutionStage.of(Ids.newId("estg"), 0, parallel, steps);
-        ExecutionPlan plan = ExecutionPlan.of(Ids.newId("eplan"), ctx.tenantId(), ctx.projectId(),
+        ExecutionStage stage = ExecutionStage.of(("estg_" + java.util.UUID.randomUUID().toString().replace("-", "")), 0, parallel, steps);
+        ExecutionPlan plan = ExecutionPlan.of(("eplan_" + java.util.UUID.randomUUID().toString().replace("-", "")), ctx.tenantId(), ctx.projectId(),
                 ctx.targetProductId(), ctx.targetProductType(), List.of(stage));
         log.info("Planner: plan created id={} steps={} parallel={}", plan.planId(), steps.size(), parallel);
         return plan;

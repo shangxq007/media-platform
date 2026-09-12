@@ -5,7 +5,6 @@ import com.example.platform.render.domain.RenderProfile;
 import com.example.platform.render.domain.RenderStep;
 import com.example.platform.render.domain.RenderStepType;
 import com.example.platform.render.domain.interchange.TimelineSpec;
-import com.example.platform.shared.Ids;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -19,19 +18,19 @@ public class RenderPlanBridgeService {
 
     public RenderJobPlan toDomainRenderPlan(String renderJobId, RenderProfile profile,
                                          TimelineSpec timeline, PipelineExecutionPlan pipeline) {
-        String planId = Ids.newId("rp");
+        String planId = ("rp_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         List<RenderStep> steps = new ArrayList<>();
-        steps.add(RenderStep.pending(Ids.newId("rs"), planId, RenderStepType.BUILD_TIMELINE));
+        steps.add(RenderStep.pending(("rs_" + java.util.UUID.randomUUID().toString().replace("-", "")), planId, RenderStepType.BUILD_TIMELINE));
 
         for (PipelineTask task : pipeline.tasks()) {
             RenderStepType stepType = mapTaskType(task);
             if (stepType != null) {
-                steps.add(RenderStep.pending(Ids.newId("rs"), planId, stepType));
+                steps.add(RenderStep.pending(("rs_" + java.util.UUID.randomUUID().toString().replace("-", "")), planId, stepType));
             }
         }
 
         if (steps.stream().noneMatch(s -> s.type() == RenderStepType.REGISTER_ARTIFACT)) {
-            steps.add(RenderStep.pending(Ids.newId("rs"), planId, RenderStepType.REGISTER_ARTIFACT));
+            steps.add(RenderStep.pending(("rs_" + java.util.UUID.randomUUID().toString().replace("-", "")), planId, RenderStepType.REGISTER_ARTIFACT));
         }
 
         Map<String, String> params = Map.of(

@@ -1,7 +1,6 @@
 package com.example.platform.identity.app;
 
 import com.example.platform.identity.api.dto.*;
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.audit.AuditPort;
 import com.example.platform.storage.contract.ChecksumFormat;
 import com.example.platform.identity.security.SafeDownloadUrlValidator;
@@ -92,7 +91,7 @@ public class ProjectImportExecuteService {
                                                     ProjectExportPackageDto exportPackage) {
         assertTenantAccess(tenantId);
 
-        String importId = Ids.newId("imp");
+        String importId = ("imp_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         String sourceProjectId = exportPackage.project() != null ? exportPackage.project().projectId() : null;
         String projectId = null;
 
@@ -200,7 +199,7 @@ public class ProjectImportExecuteService {
                 // Save import metadata record
                 ProjectImportMetadataRepository.MetadataRecord metadataRecord =
                         new ProjectImportMetadataRepository.MetadataRecord(
-                                Ids.newId("imp-meta"),
+                                ("imp-meta_" + java.util.UUID.randomUUID().toString().replace("-", "")),
                                 tenantId,
                                 projectId,
                                 importId,

@@ -165,7 +165,7 @@ class H7V2CanonicalOwnershipInvariantTest {
     }
 
     private TimelineRevisionSaveService newSaveService(
-            com.example.platform.shared.authorization.AuthorizationDecisionPort authorization) {
+            com.example.platform.identity.api.authorization.AuthorizationDecisionPort authorization) {
         var artifactQuery = new JooqArtifactQueryService(
                 new ArtifactRepository(dsl), new ArtifactRelationRepository(dsl));
         return new TimelineRevisionSaveService(
@@ -245,7 +245,7 @@ class H7V2CanonicalOwnershipInvariantTest {
                         : com.example.platform.shared.authorization.AuthorizationDecision.deny(
                                 "RBAC_DENY", "test"));
 
-        assertThrows(com.example.platform.shared.authorization.AuthorizationDeniedException.class,
+        assertThrows(com.example.platform.identity.api.authorization.AuthorizationDeniedException.class,
                 () -> guarded.saveRevision(
                         mutation("ta", project, "forged-author"),
                         null,

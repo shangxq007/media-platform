@@ -1,7 +1,6 @@
 package com.example.platform.identity.app;
 
 import com.example.platform.shared.authorization.ActorType;
-import com.example.platform.shared.authorization.AuthorizationActions;
 import com.example.platform.shared.authorization.AuthorizationContext;
 import com.example.platform.shared.authorization.AuthorizationDecision;
 import com.example.platform.shared.authorization.AuthorizationRequest;
@@ -32,7 +31,7 @@ class RbacAuthorizationDecisionPortTest {
         AuthorizableResourceRef resource = new AuthorizableResourceRef(
                 AuthorizationResourceType.WORKFLOW_DEFINITION, "def-1", "tenant-b");
         AuthorizationRequest request = new AuthorizationRequest(actor,
-                AuthorizationActions.WORKFLOW_DEFINITION_READ.action(), resource, new AuthorizationContext("web"));
+                new com.example.platform.shared.authorization.AuthorizationAction("workflow-definition.read", com.example.platform.shared.authorization.AuthorizationResourceType.WORKFLOW_DEFINITION, "read"), resource, new AuthorizationContext("web"));
 
         // Even though RBAC would grant it, cross-tenant must be DENY.
         when(permissionService.hasPermission("u-1", "tenant-b", "workflow-definition.read")).thenReturn(true);
@@ -50,7 +49,7 @@ class RbacAuthorizationDecisionPortTest {
         AuthorizableResourceRef resource = new AuthorizableResourceRef(
                 AuthorizationResourceType.WORKFLOW_DEFINITION, "def-1", "tenant-a");
         AuthorizationRequest request = new AuthorizationRequest(actor,
-                AuthorizationActions.WORKFLOW_DEFINITION_PUBLISH.action(), resource, new AuthorizationContext("web"));
+                new com.example.platform.shared.authorization.AuthorizationAction("workflow-definition.publish", com.example.platform.shared.authorization.AuthorizationResourceType.WORKFLOW_DEFINITION, "publish"), resource, new AuthorizationContext("web"));
 
         when(permissionService.hasPermission("u-1", "tenant-a", "workflow-definition.publish")).thenReturn(false);
 
@@ -66,7 +65,7 @@ class RbacAuthorizationDecisionPortTest {
         AuthorizableResourceRef resource = new AuthorizableResourceRef(
                 AuthorizationResourceType.WORKFLOW_DEFINITION, "def-1", "tenant-a");
         AuthorizationRequest request = new AuthorizationRequest(actor,
-                AuthorizationActions.WORKFLOW_DEFINITION_EDIT.action(), resource, new AuthorizationContext("web"));
+                new com.example.platform.shared.authorization.AuthorizationAction("workflow-definition.edit", com.example.platform.shared.authorization.AuthorizationResourceType.WORKFLOW_DEFINITION, "edit"), resource, new AuthorizationContext("web"));
 
         when(permissionService.hasPermission("admin-1", "tenant-a", "workflow-definition.edit")).thenReturn(true);
 
@@ -86,7 +85,7 @@ class RbacAuthorizationDecisionPortTest {
         AuthorizationContext ctx = new AuthorizationContext("web", "ws-1",
                 Map.of("entitlement.granted", "true", "feature.enabled", "true"));
         AuthorizationRequest request = new AuthorizationRequest(actor,
-                AuthorizationActions.WORKFLOW_DEFINITION_PUBLISH.action(), resource, ctx);
+                new com.example.platform.shared.authorization.AuthorizationAction("workflow-definition.publish", com.example.platform.shared.authorization.AuthorizationResourceType.WORKFLOW_DEFINITION, "publish"), resource, ctx);
 
         when(permissionService.hasPermission("u-1", "tenant-a", "workflow-definition.publish")).thenReturn(false);
 
@@ -103,7 +102,7 @@ class RbacAuthorizationDecisionPortTest {
         AuthorizationContext ctx = new AuthorizationContext("web", null,
                 Map.of("feature-flag:workflow.publish", "true"));
         AuthorizationRequest request = new AuthorizationRequest(actor,
-                AuthorizationActions.WORKFLOW_DEFINITION_PUBLISH.action(), resource, ctx);
+                new com.example.platform.shared.authorization.AuthorizationAction("workflow-definition.publish", com.example.platform.shared.authorization.AuthorizationResourceType.WORKFLOW_DEFINITION, "publish"), resource, ctx);
 
         when(permissionService.hasPermission("u-1", "tenant-a", "workflow-definition.publish")).thenReturn(false);
 
@@ -118,7 +117,7 @@ class RbacAuthorizationDecisionPortTest {
         AuthorizationContext ctx = new AuthorizationContext("web", null,
                 Map.of("capability", "workflow.publish"));
         AuthorizationRequest request = new AuthorizationRequest(actor,
-                AuthorizationActions.WORKFLOW_DEFINITION_PUBLISH.action(), resource, ctx);
+                new com.example.platform.shared.authorization.AuthorizationAction("workflow-definition.publish", com.example.platform.shared.authorization.AuthorizationResourceType.WORKFLOW_DEFINITION, "publish"), resource, ctx);
 
         when(permissionService.hasPermission("u-1", "tenant-a", "workflow-definition.publish")).thenReturn(false);
 
@@ -132,7 +131,7 @@ class RbacAuthorizationDecisionPortTest {
         AuthorizableResourceRef resource = new AuthorizableResourceRef(
                 AuthorizationResourceType.WORKFLOW_DEFINITION, "def-1", "tenant-a");
         AuthorizationRequest request = new AuthorizationRequest(system,
-                AuthorizationActions.WORKFLOW_DEFINITION_ARCHIVE.action(), resource, new AuthorizationContext("system"));
+                new com.example.platform.shared.authorization.AuthorizationAction("workflow-definition.archive", com.example.platform.shared.authorization.AuthorizationResourceType.WORKFLOW_DEFINITION, "archive"), resource, new AuthorizationContext("system"));
 
         AuthorizationDecision decision = port.decide(request);
         assertFalse(decision.allowed());
@@ -145,8 +144,7 @@ class RbacAuthorizationDecisionPortTest {
         AuthorizableResourceRef resource = new AuthorizableResourceRef(
                 AuthorizationResourceType.WORKFLOW_DEFINITION, "def-1", "tenant-a");
         AuthorizationRequest request = new AuthorizationRequest(system,
-                com.example.platform.shared.authorization.AuthorizationActions
-                        .WORKFLOW_DEFINITION_READ.action(),
+                new com.example.platform.shared.authorization.AuthorizationAction("workflow-definition.read", com.example.platform.shared.authorization.AuthorizationResourceType.WORKFLOW_DEFINITION, "read"),
                 resource, new AuthorizationContext("system"));
         // Use a system. key to exercise the explicit system policy path.
         var systemAction = new com.example.platform.shared.authorization.AuthorizationAction(
@@ -165,7 +163,7 @@ class RbacAuthorizationDecisionPortTest {
         AuthorizableResourceRef resource = new AuthorizableResourceRef(
                 AuthorizationResourceType.WORKFLOW_DEFINITION, "def-1", "tenant-a");
         AuthorizationRequest request = new AuthorizationRequest(actor,
-                AuthorizationActions.WORKFLOW_DEFINITION_READ.action(), resource, new AuthorizationContext("web"));
+                new com.example.platform.shared.authorization.AuthorizationAction("workflow-definition.read", com.example.platform.shared.authorization.AuthorizationResourceType.WORKFLOW_DEFINITION, "read"), resource, new AuthorizationContext("web"));
 
         assertFalse(port.decide(request).allowed());
         assertEquals("TENANT_BOUNDARY", decisionReason(port, request));
@@ -177,7 +175,7 @@ class RbacAuthorizationDecisionPortTest {
         AuthorizableResourceRef resource = new AuthorizableResourceRef(
                 AuthorizationResourceType.WORKFLOW_DEFINITION, "def-1", "tenant-a");
         AuthorizationRequest request = new AuthorizationRequest(actor,
-                AuthorizationActions.WORKFLOW_DEFINITION_READ.action(), resource, new AuthorizationContext("web"));
+                new com.example.platform.shared.authorization.AuthorizationAction("workflow-definition.read", com.example.platform.shared.authorization.AuthorizationResourceType.WORKFLOW_DEFINITION, "read"), resource, new AuthorizationContext("web"));
         when(permissionService.hasPermission(anyString(), anyString(), anyString()))
                 .thenThrow(new RuntimeException("DB down"));
 

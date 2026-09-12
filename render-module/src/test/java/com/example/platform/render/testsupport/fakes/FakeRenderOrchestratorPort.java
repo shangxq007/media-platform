@@ -2,7 +2,6 @@ package com.example.platform.render.testsupport.fakes;
 
 import com.example.platform.render.api.dto.SubmitRenderJobRequest;
 import com.example.platform.render.api.port.RenderOrchestratorPort;
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.events.RenderInitiator;
 
 import java.util.*;
@@ -44,7 +43,7 @@ public class FakeRenderOrchestratorPort implements RenderOrchestratorPort {
     @Override
     public String submitRenderJob(SubmitRenderJobRequest request, RenderInitiator initiator) {
         submittedJobs.add(request);
-        return Ids.newId("rj-sub");
+        return ("rj-sub_" + java.util.UUID.randomUUID().toString().replace("-", ""));
     }
 
     @Override

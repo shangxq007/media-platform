@@ -53,6 +53,9 @@ REQUIRED_GOVERNED_RUNTIME_SOURCE_COUNT = 91
 # and invocation contracts, the canonical adapter/coordinator/apply/writer
 # boundaries, and the exact direct authority dependencies that can change
 # dispatch, base, authorization, result, or canonical-writer semantics.
+# EP27A: seven reviewed entries follow the published Identity port, associated
+# imports/Javadoc, and domain-local snapshot UUID construction. The census and
+# every semantic/negative-control law remain enforced; no blanket hash exemption.
 GOVERNED_RUNTIME_SOURCE_SHA256 = {
     "artifact-module/src/main/java/com/example/platform/artifact/app/ArtifactPinService.java": "34f5b57c43c1c8710adaf01c1166d491ec5b7e31172cda555cf4fde438e1d348",
     "media-module/src/main/java/com/example/platform/media/domain/identity/MediaAssetId.java": "4512f45c34dc5d502c424a585a9330eef99680ebe31d6f9ba23df09316679e0e",
@@ -86,22 +89,22 @@ GOVERNED_RUNTIME_SOURCE_SHA256 = {
     "render-module/src/main/java/com/example/platform/render/app/operation/AddMediaClipPreview.java": "64d37917bdc866d6a842d981e60e8a013f0d1cd77c3e678a6eb8b22ce062474c",
     "render-module/src/main/java/com/example/platform/render/app/operation/AddMediaClipResult.java": "58a0ed832754c16151e45382d853dc16f86767dbd92b998c2e18e7d6ef9df7de",
     "render-module/src/main/java/com/example/platform/render/app/operation/CanonicalOperationInvocationService.java": "3ab1c0d6f44151d3017a834c0461b17677ae7945c4ccef583d2551d8a4657507",
-    "render-module/src/main/java/com/example/platform/render/app/operation/TimelineMediaClipOperationService.java": "b48fcd9c11203fdaeca071e43f4a5eefe2cad649067210d1c74f50b60d63ea33",
+    "render-module/src/main/java/com/example/platform/render/app/operation/TimelineMediaClipOperationService.java": "8d18ca17ab27fb98a7aca99d7666078b3d53217d782c9fe357927eff834e36c1",
     "render-module/src/main/java/com/example/platform/render/app/operation/TimelineOperationException.java": "5d2a381fab95085537c6e50db781f96a540ba706ecbea9831a8a545438fa7195",
     "render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java": "3db037395ff70b2f8c27abb3101bc4bcd00ce9505f257a0954b608e446cbed5e",
     "shared-kernel/src/main/java/com/example/platform/shared/authorization/AuthorizableResourceRef.java": "0d5480a73113dad46a460df734c8f78e2af85f0a29a105dc6bde729dc94a4dfd",
-    "shared-kernel/src/main/java/com/example/platform/shared/authorization/AuthorizationAction.java": "f3e24e6788c4282e429b77c20a658ed4f41e399a1eee673ec941f837e5728b49",
+    "shared-kernel/src/main/java/com/example/platform/shared/authorization/AuthorizationAction.java": "d81d141a81d6ee48df1c8a8d07bcbfd6fb0091f15a35d7ffd74e9540fb1c2b06",
     "shared-kernel/src/main/java/com/example/platform/shared/authorization/AuthorizationContext.java": "e83057cb025fa05a001732e1dd0ae83ac81478e1f1807dafae03529ddb41b6f0",
     "shared-kernel/src/main/java/com/example/platform/shared/authorization/AuthorizationDecision.java": "f91212d6ab675f6b79630066a5fb2c4b835fce5d4e2aeee5c3555e46f8617b6a",
-    "shared-kernel/src/main/java/com/example/platform/shared/authorization/AuthorizationDecisionPort.java": "e77e2da54652a27d6d80b1acf1d7ace27d2377d45d2fe9d6cae4364ac3024e4d",
-    "shared-kernel/src/main/java/com/example/platform/shared/authorization/AuthorizationRequest.java": "7c684da3228dcbb1ae02828c7bd2ea4eb6828f02b03ed4a27649c797c34d6d1a",
+    "identity-access-module/src/main/java/com/example/platform/identity/api/authorization/AuthorizationDecisionPort.java": "410bab27d6eada22316af5e9bf60b357db2f4adebb56c74c8687c995d822cc48",
+    "shared-kernel/src/main/java/com/example/platform/shared/authorization/AuthorizationRequest.java": "073cea2503ab79e5a43fd40d0a7fd56105d47457c818a0e79ee81ece49b2a743",
     "shared-kernel/src/main/java/com/example/platform/shared/authorization/AuthorizationResourceType.java": "93507e3282ba2e3bb3129912f233ef6528bcf58014cf0b916f8dc3df3f0324b9",
-    "shared-kernel/src/main/java/com/example/platform/shared/authorization/CanonicalActor.java": "3438cb431bd0d66b00c26d764858549d42d6244eb4eebf20c459ce0956648b90",
+    "shared-kernel/src/main/java/com/example/platform/shared/authorization/CanonicalActor.java": "cebe2ff0d2fa1538a7d38fd0169202e527146d4163b71a239e902b06575a8d39",
     "shared-kernel/src/main/java/com/example/platform/shared/digest/CanonicalCommandFingerprint.java": "2806a006f7f840ffdcc9b3fe7d7545f5455534646e52aef759247c79f240707c",
     "shared-kernel/src/main/java/com/example/platform/shared/digest/ContentDigest.java": "9b909f58acf190e50ff2ac1c47a9c305e8780173f1d8db8e5e96d34fc0fd9d14",
     "shared-kernel/src/main/java/com/example/platform/shared/identity/ArtifactId.java": "84ba3f0930448050e7bb462999f0c6c0c2733d756a323c887c2b9edbfa6d5f97",
     "shared-kernel/src/main/java/com/example/platform/shared/time/MediaTime.java": "623b6c99ad371987fb9fceb427e7c8290e0cb4eac6f36dc10a2a70c8a1d33942",
-    "timeline-module/src/main/java/com/example/platform/timeline/adapter/TimelineSnapshotService.java": "1fde2d9a724b31164e3281750ebb8be4604bbb8996a44e5744dd6d08eae01e4a",
+    "timeline-module/src/main/java/com/example/platform/timeline/adapter/TimelineSnapshotService.java": "ded05d3823612d198be1a705dffdc9b891162c1deff1bddbae7e3629c843e413",
     "timeline-module/src/main/java/com/example/platform/timeline/app/HeadUpdatePort.java": "97a4ef46cb8c7aaf87d421ee40f1bf638d53573f40e2ea3a7e1873c49641f911",
     "timeline-module/src/main/java/com/example/platform/timeline/app/HistoricalRevisionRestoreVerifier.java": "a808b4804be60cec2c23f5ddd8a92589c124c05f126960530265b9bc0c6270a5",
     "timeline-module/src/main/java/com/example/platform/timeline/app/InternalTimelineValidationService.java": "2a99d221b7b43b4aff00ad782874e83479f8743e17c1c71929e36e6d62521156",
@@ -116,7 +119,7 @@ GOVERNED_RUNTIME_SOURCE_SHA256 = {
     "timeline-module/src/main/java/com/example/platform/timeline/app/TimelineRevisionPersistencePort.java": "75687b44fa1bcc7881b75077dd376adafe481dcddd2d5caef163a9e25bae87d7",
     "timeline-module/src/main/java/com/example/platform/timeline/app/TimelineRevisionRefHeadUpdateAdapter.java": "6aaac36d7e5dbc73100d04c1ab6c6b8adceeb9c1c801cedcd1f440f6db54ea9b",
     "timeline-module/src/main/java/com/example/platform/timeline/app/TimelineRevisionRefMutation.java": "9cde6e2dc5d8f90e6903fd5a755c6a55406659cd85ab58ea08f61ee78d00389c",
-    "timeline-module/src/main/java/com/example/platform/timeline/app/TimelineRevisionSaveService.java": "ed0d2ff6c6b7d73d51acf7ceb54fb66a5f7fc3a6b1ca438557ef1e4086ab3245",
+    "timeline-module/src/main/java/com/example/platform/timeline/app/TimelineRevisionSaveService.java": "a55b0c3d60fb76ee47c28b24b7ab5384e9793f0535f15211381b876be14d9c6b",
     "timeline-module/src/main/java/com/example/platform/timeline/app/TimelineSourceReferenceValidator.java": "0f322c14fb89c3a577b66c432e9f4785db09882024e934ad1584ea214b112185",
     "timeline-module/src/main/java/com/example/platform/timeline/canonical/TimelineClip.java": "c3284017dbdf634144962e0e5df52ff503c9309fb65e8ca293242e0b4ac22d6c",
     "timeline-module/src/main/java/com/example/platform/timeline/canonical/TimelineClipId.java": "fbbe75799ec35aedd0fa7c98024185bb7b49a76dee73ee1b16f6711b90a7dd1a",
@@ -314,7 +317,7 @@ KNOWN_RUNTIME_DIRECT_DEPENDENCY_FQ_TYPES = {
     "com.example.platform.shared.authorization.AuthorizationAction",
     "com.example.platform.shared.authorization.AuthorizationContext",
     "com.example.platform.shared.authorization.AuthorizationDecision",
-    "com.example.platform.shared.authorization.AuthorizationDecisionPort",
+    "com.example.platform.identity.api.authorization.AuthorizationDecisionPort",
     "com.example.platform.shared.authorization.AuthorizationRequest",
     "com.example.platform.shared.authorization.AuthorizationResourceType",
     "com.example.platform.shared.authorization.CanonicalActor",
@@ -3074,7 +3077,7 @@ def run_self_test(
         "PermitAllDecisionPort.java",
         "package com.example.platform.identity.app; "
         "import com.example.platform.shared.authorization.AuthorizationDecision; "
-        "import com.example.platform.shared.authorization.AuthorizationDecisionPort; "
+        "import com.example.platform.identity.api.authorization.AuthorizationDecisionPort; "
         "import com.example.platform.shared.authorization.AuthorizationRequest; "
         "import org.springframework.context.annotation.Primary; "
         "@Primary final class PermitAllDecisionPort implements AuthorizationDecisionPort { "
@@ -3083,7 +3086,7 @@ def run_self_test(
     cases.append(("changed_unrelated_production_source", scope_law,
                   append_to_existing_source(
                       sources,
-                      "shared-kernel/src/main/java/com/example/platform/shared/Ids.java",
+                      "shared-kernel/src/main/java/com/example/platform/shared/web/TenantContext.java",
                       "\n// hostile changed-path control\n")))
 
     passing_controls: list[tuple[str, dict[str, str]]] = []

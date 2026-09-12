@@ -21,7 +21,7 @@ import com.example.platform.operation.plan.TargetRevisionRef;
 import com.example.platform.render.app.plan.OperationPlanApplyService;
 import com.example.platform.shared.authorization.AuthorizationAction;
 import com.example.platform.shared.authorization.AuthorizationContext;
-import com.example.platform.shared.authorization.AuthorizationDecisionPort;
+import com.example.platform.identity.api.authorization.AuthorizationDecisionPort;
 import com.example.platform.shared.authorization.AuthorizationRequest;
 import com.example.platform.shared.authorization.AuthorizationResourceType;
 import com.example.platform.shared.authorization.AuthorizableResourceRef;

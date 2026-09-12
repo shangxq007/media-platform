@@ -1,7 +1,6 @@
 package com.example.platform.identity.app;
 
 import com.example.platform.identity.api.dto.*;
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.audit.AuditPort;
 import com.example.platform.shared.web.TenantContext;
 import org.slf4j.Logger;
@@ -42,10 +41,10 @@ public class ProjectExportService {
             throw new IllegalArgumentException("Project not found for tenant: " + tenantId);
         }
 
-        String exportId = Ids.newId("exp");
+        String exportId = ("exp_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         Instant now = Instant.now();
         String exportedBy = "tenant:" + tenantId;
-        String auditEventId = Ids.newId("aud");
+        String auditEventId = ("aud_" + java.util.UUID.randomUUID().toString().replace("-", ""));
 
         ProjectExportResponse response;
         if (ProjectExportRequest.MODE_LINKED_ASSETS.equals(request.mode())) {
@@ -117,7 +116,7 @@ public class ProjectExportService {
     }
 
     private ProjectExportAuditDto buildAuditDto(String exportId, Instant now, String exportedBy) {
-        return new ProjectExportAuditDto("project-export-v1", Ids.newId("aud"), now, exportedBy,
+        return new ProjectExportAuditDto("project-export-v1", ("aud_" + java.util.UUID.randomUUID().toString().replace("-", "")), now, exportedBy,
                 "PROJECT_EXPORT");
     }
 

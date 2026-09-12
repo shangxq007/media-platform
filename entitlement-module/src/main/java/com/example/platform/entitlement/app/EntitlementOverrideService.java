@@ -2,7 +2,6 @@ package com.example.platform.entitlement.app;
 
 import com.example.platform.entitlement.domain.EntitlementOverride;
 import com.example.platform.entitlement.infrastructure.EntitlementOverrideRepository;
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.audit.AuditPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,7 +31,7 @@ public class EntitlementOverrideService {
     public EntitlementOverride createOverride(String subjectType, String subjectId,
             String overrideKind, String overridePayload,
             Instant effectiveAt, Instant expiresAt, String actor) {
-        String id = Ids.newId("ent_ovr");
+        String id = ("ent_ovr_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         EntitlementOverride override = new EntitlementOverride(
                 id, subjectType, subjectId, overrideKind, overridePayload,
                 effectiveAt, expiresAt, "ACTIVE", null, null);

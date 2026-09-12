@@ -2,7 +2,6 @@ package com.example.platform.identity.app;
 
 import com.example.platform.identity.domain.Role;
 import com.example.platform.identity.infrastructure.RoleRepository;
-import com.example.platform.shared.Ids;
 import java.time.Instant;
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -17,7 +16,7 @@ public class RoleService {
     }
 
     public Role createRole(String roleKey, String name, String description, Role.RoleScope scope) {
-        String id = Ids.newId("rol");
+        String id = ("rol_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         Instant now = Instant.now();
         Role role = new Role(id, roleKey, name, description, scope, now);
         return roleRepository.save(role);

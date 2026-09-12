@@ -2,7 +2,6 @@ package com.example.platform.federation.nlq.app;
 
 import com.example.platform.federation.nlq.domain.QueryCostEstimate;
 import com.example.platform.federation.nlq.domain.QueryResult;
-import com.example.platform.shared.Ids;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -42,7 +41,7 @@ public class QueryExecutionService {
     }
 
     public QueryResult execute(String sql, Map<String, Object> parameters, int maxRows, int timeoutSeconds) {
-        String queryId = Ids.newId("qry");
+        String queryId = ("qry_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         long start = System.currentTimeMillis();
 
         log.info("QueryExecutionService: executing queryId={}, maxRows={}, timeout={}s", queryId, maxRows, timeoutSeconds);

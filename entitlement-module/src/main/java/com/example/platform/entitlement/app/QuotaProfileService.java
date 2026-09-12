@@ -2,7 +2,6 @@ package com.example.platform.entitlement.app;
 
 import com.example.platform.entitlement.domain.QuotaProfile;
 import com.example.platform.entitlement.infrastructure.QuotaProfileRepository;
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.audit.AuditPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,7 +35,7 @@ public class QuotaProfileService {
             int apiCallsPerMinute, int mcpCallsPerMinute, String actor) {
         Instant now = Instant.now();
         QuotaProfile profile = new QuotaProfile(
-                Ids.newId("quota_prof"), profileKey, name, description,
+                ("quota_prof_" + java.util.UUID.randomUUID().toString().replace("-", "")), profileKey, name, description,
                 monthlyRenderMinutes, dailyRenderJobs, concurrentRenderJobs,
                 storageBytes, gpuMinutes, remoteWorkerJobs,
                 promptExecutions, extensionExecutions,

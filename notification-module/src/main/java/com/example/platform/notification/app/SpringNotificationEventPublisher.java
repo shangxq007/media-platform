@@ -5,7 +5,6 @@ import static com.example.platform.typedschema.jooq.generated.tables.Notificatio
 
 import com.example.platform.notification.domain.*;
 import com.example.platform.notification.infrastructure.NotificationProviderRouter;
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.audit.AuditPort;
 import com.example.platform.notification.app.NotificationEventPublisher;
 import java.time.LocalDateTime;
@@ -99,7 +98,7 @@ public class SpringNotificationEventPublisher implements NotificationEventPublis
             return;
         }
 
-        String eventId = Ids.newId("nev");
+        String eventId = ("nev_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         String tenantId = com.example.platform.shared.web.TenantContext.get();
         LocalDateTime now = LocalDateTime.now();
 
@@ -128,7 +127,7 @@ public class SpringNotificationEventPublisher implements NotificationEventPublis
 
     private void deliver(String eventId, String eventKey, String tenantId, String userId,
             String channel, String subject, String body, Map<String, Object> payload) {
-        String deliveryId = Ids.newId("ndr");
+        String deliveryId = ("ndr_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         LocalDateTime now = LocalDateTime.now();
 
         dsl.insertInto(NOTIFICATION_DELIVERY_RECORD)

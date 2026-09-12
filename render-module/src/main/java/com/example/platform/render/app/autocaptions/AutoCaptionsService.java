@@ -2,7 +2,6 @@ package com.example.platform.render.app.autocaptions;
 
 import com.example.platform.ai.api.video.SpeechToTextPort;
 import com.example.platform.render.domain.interchange.TimelineTextOverlay;
-import com.example.platform.shared.Ids;
 import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
@@ -54,7 +53,7 @@ public class AutoCaptionsService {
             double durationSec = (seg.endTimeMs() - seg.startTimeMs()) / 1000.0;
 
             TimelineTextOverlay overlay = new TimelineTextOverlay(
-                    Ids.newId("sub"),
+                    ("sub_" + java.util.UUID.randomUUID().toString().replace("-", "")),
                     seg.text(),
                     fontFamily, fontSize, fontColor,
                     posX, posY,

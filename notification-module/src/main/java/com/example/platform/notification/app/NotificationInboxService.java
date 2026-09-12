@@ -1,7 +1,6 @@
 package com.example.platform.notification.app;
 
 import com.example.platform.notification.domain.NotificationInboxItem;
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.web.TenantContext;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -28,7 +27,7 @@ public class NotificationInboxService {
     public NotificationInboxItem createInboxItem(String userId, String eventKey, String type,
             String title, String message, String link, String actorId,
             String resourceType, String resourceId) {
-        String id = Ids.newId("ninb");
+        String id = ("ninb_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         String tenantId = TenantContext.get();
         LocalDateTime now = LocalDateTime.now();
 

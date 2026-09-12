@@ -21,7 +21,7 @@ import com.example.platform.render.domain.planning.RenderImpactResult;
 import com.example.platform.render.domain.planning.ReusableArtifact;
 import com.example.platform.timeline.diff.merge.SemanticDiffResult;
 import com.example.platform.render.app.aaf.AafConversionService;
-import com.example.platform.shared.authorization.CanonicalActorResolver;
+import com.example.platform.identity.api.authorization.CanonicalActorResolver;
 import com.example.platform.shared.events.RenderInitiator;
 
 import com.example.platform.render.domain.standards.AafTimelineAdapter;

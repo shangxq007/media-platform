@@ -8,7 +8,6 @@ import com.example.platform.delivery.infrastructure.DeliveryConfigParser;
 import com.example.platform.delivery.spi.DeliveryAdapter;
 import com.example.platform.secrets.api.port.CredentialBundlePort;
 import com.example.platform.delivery.spi.DeliveryContext;
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.events.RenderDeliveryCompletedEvent;
 import com.example.platform.shared.events.RenderDeliveryFailedEvent;
 import com.example.platform.shared.events.RenderJobCompletedEvent;
@@ -119,7 +118,7 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
         String remotePath = DeliveryPathRenderer.render(
                 pathTemplate,
                 DeliveryPathRenderer.vars(tenantId, projectId, renderJobId, filename));
-        String jobId = Ids.newId("dlv");
+        String jobId = ("dlv_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         dsl.insertInto(DELIVERY_JOB)
                 .columns(DELIVERY_JOB.ID, DELIVERY_JOB.TENANT_ID, DELIVERY_JOB.PROJECT_ID, DELIVERY_JOB.RENDER_JOB_ID,
                         DELIVERY_JOB.DESTINATION_ID, DELIVERY_JOB.STATUS, DELIVERY_JOB.SOURCE_URI, DELIVERY_JOB.REMOTE_PATH,
@@ -265,7 +264,7 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
         String pathTemplate = "{tenantId}/{projectId}/{jobId}/output.mp4";
         String remotePath = DeliveryPathRenderer.render(
                 pathTemplate, DeliveryPathRenderer.vars(tenantId, projectId, renderJobId, "output.mp4"));
-        String dlvId = Ids.newId("dlv");
+        String dlvId = ("dlv_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         dsl.insertInto(DELIVERY_JOB)
                 .columns(DELIVERY_JOB.ID, DELIVERY_JOB.TENANT_ID, DELIVERY_JOB.PROJECT_ID, DELIVERY_JOB.RENDER_JOB_ID,
                         DELIVERY_JOB.DESTINATION_ID, DELIVERY_JOB.STATUS, DELIVERY_JOB.SOURCE_URI, DELIVERY_JOB.REMOTE_PATH,

@@ -2,7 +2,7 @@ package com.example.platform.identity.app;
 
 import com.example.platform.shared.authorization.ActorType;
 import com.example.platform.shared.authorization.AuthorizationDecision;
-import com.example.platform.shared.authorization.AuthorizationDecisionPort;
+import com.example.platform.identity.api.authorization.AuthorizationDecisionPort;
 import com.example.platform.shared.authorization.AuthorizationRequest;
 import com.example.platform.shared.web.TenantContext;
 import org.slf4j.Logger;

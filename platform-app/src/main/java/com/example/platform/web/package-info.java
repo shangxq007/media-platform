@@ -1,6 +1,8 @@
 @org.springframework.modulith.ApplicationModule(
         allowedDependencies = {
             "shared",
+            "identity :: authorization",
+            "entitlement :: collaboration",
             "render",
             "render :: API",
             "render :: app",

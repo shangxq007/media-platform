@@ -3,7 +3,6 @@ package com.example.platform.identity.app;
 import com.example.platform.identity.api.dto.*;
 import com.example.platform.identity.domain.*;
 import com.example.platform.identity.infrastructure.*;
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.audit.AuditPort;
 import java.time.Instant;
 import java.util.List;
@@ -32,7 +31,7 @@ public class WorkspaceService {
     }
 
     public WorkspaceResponse createWorkspace(String tenantId, CreateWorkspaceRequest request) {
-        String id = Ids.newId("ws");
+        String id = ("ws_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         Instant now = Instant.now();
         String planTier = request.planTier() != null ? request.planTier() : "FREE";
         Workspace workspace = new Workspace(id, tenantId, request.name(),
@@ -50,7 +49,7 @@ public class WorkspaceService {
     }
 
     public WorkspaceMemberResponse addMember(String workspaceId, AddWorkspaceMemberRequest request) {
-        String id = Ids.newId("wsm");
+        String id = ("wsm_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         Instant now = Instant.now();
         WorkspaceMember member = new WorkspaceMember(id, workspaceId, request.userId(),
                 request.role(), WorkspaceMember.MemberStatus.ACTIVE, now, now);
@@ -71,7 +70,7 @@ public class WorkspaceService {
                 .orElseThrow(() -> new IllegalArgumentException("Member not found: " + memberId));
         Role role = roleRepository.findByKey(request.roleKey())
                 .orElseThrow(() -> new IllegalArgumentException("Role not found: " + request.roleKey()));
-        String assignmentId = Ids.newId("ura");
+        String assignmentId = ("ura_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         UserRoleAssignment assignment = new UserRoleAssignment(
                 assignmentId, null, workspaceId, member.userId(),
                 role.id(), request.assignedBy(), Instant.now());
@@ -92,7 +91,7 @@ public class WorkspaceService {
     }
 
     public WorkspaceGroupResponse createGroup(String workspaceId, CreateWorkspaceGroupRequest request) {
-        String id = Ids.newId("wsg");
+        String id = ("wsg_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         Instant now = Instant.now();
         WorkspaceGroup group = new WorkspaceGroup(id, workspaceId, request.name(),
                 request.description(), now);

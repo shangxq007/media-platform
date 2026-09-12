@@ -1,6 +1,7 @@
 plugins { id("java-library") }
 
 dependencies {
+    implementation(project(":identity-access-module")) // published authorization contract
     api(project(":shared-kernel"))
     api(project(":policy-governance-module"))
     api(project(":render-module"))

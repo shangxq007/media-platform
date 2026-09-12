@@ -5,7 +5,6 @@ import com.example.platform.render.app.storage.RenderOutputStorageProperties;
 import com.example.platform.render.app.storage.StorageRuntimeService;
 import com.example.platform.render.domain.product.*;
 import com.example.platform.storage.contract.*;
-import com.example.platform.shared.Ids;
 import com.example.platform.storage.infrastructure.S3ObjectWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -265,7 +264,7 @@ public class RenderOutputRegistrationService {
                                              String storageReferenceId,
                                              RenderProductProvenance provenance) {
         String metadataJson = buildMetadataJson(jobId, producerId, outputFile, fileSize, mimeType, checksum, provenance);
-        String productId = Ids.newId("prod");
+        String productId = ("prod_" + java.util.UUID.randomUUID().toString().replace("-", ""));
 
         // Resolve sourceTimelineRevisionId from provenance if available
         String sourceTimelineRevisionId = (provenance != null) ? provenance.timelineRevisionId() : null;
@@ -382,7 +381,7 @@ public class RenderOutputRegistrationService {
     @Transactional
     public Product registerFailedOutput(String jobId, String tenantId, String projectId,
                                          String producerId, String errorMessage) {
-        String productId = Ids.newId("prod");
+        String productId = ("prod_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         String metadataJson = "{\"jobId\":\"" + jobId + "\",\"error\":\""
                 + escapeJson(errorMessage) + "\",\"status\":\"failed\"}";
         Product product = new Product(

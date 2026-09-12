@@ -2,7 +2,6 @@ package com.example.platform.commerce.app;
 
 import com.example.platform.commerce.domain.*;
 import com.example.platform.commerce.infrastructure.CommerceCartRepository;
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.web.TenantGuard;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -39,7 +38,7 @@ public class CommerceCartService {
     public CommerceCart createCart(String tenantId, String userId) {
         String effectiveTenant = TenantGuard.tenantOrDefault(tenantId);
         Instant now = Instant.now();
-        CommerceCart cart = new CommerceCart(Ids.newId("cart"), effectiveTenant, userId, List.of(), now, now);
+        CommerceCart cart = new CommerceCart(("cart_" + java.util.UUID.randomUUID().toString().replace("-", "")), effectiveTenant, userId, List.of(), now, now);
         if (dbBacked()) {
             return cartRepository.get().save(cart);
         }

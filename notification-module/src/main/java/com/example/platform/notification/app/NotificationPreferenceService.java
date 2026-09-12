@@ -3,7 +3,6 @@ package com.example.platform.notification.app;
 import static com.example.platform.typedschema.jooq.generated.tables.NotificationPreference.NOTIFICATION_PREFERENCE;
 
 import com.example.platform.notification.domain.NotificationPreference;
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.audit.AuditPort;
 import com.example.platform.shared.web.TenantContext;
 import java.time.LocalDateTime;
@@ -41,7 +40,7 @@ public class NotificationPreferenceService {
             String quietHoursStart, String quietHoursEnd, String quietHoursTimezone,
             String digestMode, boolean criticalOverride) {
         String tenantId = TenantContext.get();
-        String preferenceId = Ids.newId("npr");
+        String preferenceId = ("npr_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
 
         dsl.insertInto(NOTIFICATION_PREFERENCE)
@@ -86,7 +85,7 @@ public class NotificationPreferenceService {
     }
 
     private NotificationPreference createDefaultPreferences(String userId) {
-        String preferenceId = Ids.newId("npr");
+        String preferenceId = ("npr_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         String tenantId = TenantContext.get();
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
         Map<String, Boolean> defaultChannels = Map.of("IN_APP", true, "EMAIL", true, "SMS", false, "WEBHOOK", false);

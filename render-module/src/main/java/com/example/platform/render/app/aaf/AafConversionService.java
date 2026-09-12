@@ -2,7 +2,6 @@ package com.example.platform.render.app.aaf;
 
 import com.example.platform.render.domain.interchange.TimelineSpec;
 import com.example.platform.render.domain.standards.AafTimelineAdapter;
-import com.example.platform.shared.Ids;
 import com.example.platform.sandbox.LocalSandboxProcess;
 import com.example.platform.sandbox.SandboxCancellation;
 import java.nio.file.Files;
@@ -40,7 +39,7 @@ public class AafConversionService {
     private int maxDepth;
 
     public String enqueue(String aafPath, String defaultMediaUri, String tenantId) {
-        String conversionId = Ids.newId("aaf");
+        String conversionId = ("aaf_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         queue.offer(new AafConversionJob(conversionId, aafPath, defaultMediaUri, tenantId, Instant.now()));
         log.info("Enqueued AAF conversion {} path={} depth={}", conversionId, aafPath, queue.size());
         return conversionId;

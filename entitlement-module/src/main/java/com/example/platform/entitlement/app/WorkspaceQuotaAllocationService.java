@@ -2,7 +2,6 @@ package com.example.platform.entitlement.app;
 
 import com.example.platform.entitlement.domain.WorkspaceQuotaAllocation;
 import com.example.platform.entitlement.infrastructure.WorkspaceQuotaAllocationRepository;
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.audit.AuditPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,7 +30,7 @@ public class WorkspaceQuotaAllocationService {
 
     public WorkspaceQuotaAllocation allocate(String workspaceId, String memberId,
             String quotaProfileKey, long allocatedAmount, String period, String actor) {
-        String id = Ids.newId("ws_qa");
+        String id = ("ws_qa_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         Instant now = Instant.now();
         WorkspaceQuotaAllocation allocation = new WorkspaceQuotaAllocation(
                 id, workspaceId, memberId, quotaProfileKey, allocatedAmount, 0L, period, now, now);

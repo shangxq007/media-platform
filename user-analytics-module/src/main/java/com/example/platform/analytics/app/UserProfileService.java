@@ -3,7 +3,6 @@ package com.example.platform.analytics.app;
 import com.example.platform.analytics.domain.*;
 import com.example.platform.analytics.infrastructure.UserBehaviorEventRepository;
 import com.example.platform.analytics.infrastructure.UserProfileRepository;
-import com.example.platform.shared.Ids;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -65,7 +64,7 @@ public class UserProfileService {
         }
 
         UserProfile profile = new UserProfile(
-                Ids.newId("prof"),
+                ("prof_" + java.util.UUID.randomUUID().toString().replace("-", "")),
                 tenantId,
                 userId,
                 null,
@@ -102,7 +101,7 @@ public class UserProfileService {
 
     private UserProfile createDefaultProfile(String tenantId, String userId) {
         UserProfile profile = new UserProfile(
-                Ids.newId("prof"),
+                ("prof_" + java.util.UUID.randomUUID().toString().replace("-", "")),
                 tenantId,
                 userId,
                 null,

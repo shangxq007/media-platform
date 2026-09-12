@@ -2,7 +2,6 @@ package com.example.platform.commerce.infrastructure;
 
 import com.example.platform.commerce.domain.CartLineItem;
 import com.example.platform.commerce.domain.CommerceCart;
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.web.TenantGuard;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -55,7 +54,7 @@ public class CommerceCartRepository {
                             DSL.field("offering_version", Long.class), DSL.field("commercial_price_ref", String.class),
                             DSL.field("commercial_price_version", Long.class), DSL.field("amount_minor_snapshot", Long.class),
                             DSL.field("currency_code_snapshot", String.class), COMMERCE_CART_LINE.QUANTITY, COMMERCE_CART_LINE.CREATED_AT)
-                    .values(Ids.newId("cline"), cart.cartId(), line.productCode(), line.productId(), line.offeringId(),
+                    .values(("cline_" + java.util.UUID.randomUUID().toString().replace("-", "")), cart.cartId(), line.productCode(), line.productId(), line.offeringId(),
                             line.offeringVersion(), line.commercialPriceReference().key(), line.commercialPriceReference().version(),
                             line.amountMinorSnapshot(), line.currencyCodeSnapshot(), line.quantity(), now)
                     .execute();

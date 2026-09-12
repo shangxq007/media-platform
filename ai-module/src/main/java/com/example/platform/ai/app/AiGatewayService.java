@@ -17,7 +17,6 @@ import com.example.platform.ai.domain.ChatResult;
 import com.example.platform.ai.domain.ModelRouter;
 import com.example.platform.ai.domain.RoutePlan;
 import com.example.platform.ai.domain.RouteTarget;
-import com.example.platform.shared.Ids;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -94,7 +93,7 @@ public class AiGatewayService implements AiGatewayPort {
             return;
         }
         try {
-            String operationId = Ids.newId("aiop");
+            String operationId = ("aiop_" + java.util.UUID.randomUUID().toString().replace("-", ""));
             Instant occurredAt = Instant.now();
             ObservedRuntimeUsage record = ObservedRuntimeUsage.observe(
                     tenantId,

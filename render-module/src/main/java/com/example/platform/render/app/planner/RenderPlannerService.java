@@ -11,7 +11,6 @@ import com.example.platform.render.domain.interchange.TimelineExtensionsReader;
 import com.example.platform.render.domain.interchange.TimelineSpec;
 import com.example.platform.render.domain.legacy.TimelineStickerReader;
 import com.example.platform.render.domain.legacy.TimelineTrack;
-import com.example.platform.shared.Ids;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
@@ -62,7 +61,7 @@ public class RenderPlannerService {
         TimelineExtensions ext = extensionsReader.fromSpec(timeline);
         FinalComposerHint finalComposer = finalComposerSelector.resolve(timeline, ext);
 
-        String planId = Ids.newId("pep");
+        String planId = ("pep_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         List<PipelineTask> tasks = new ArrayList<>();
         List<String> segmentTaskIds = new ArrayList<>();
         Map<String, String> meta = new LinkedHashMap<>();
@@ -313,7 +312,7 @@ public class RenderPlannerService {
             }
             return HexFormat.of().formatHex(md.digest()).substring(0, 16);
         } catch (Exception e) {
-            return Ids.newId("ck");
+            return ("ck_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         }
     }
 

@@ -14,7 +14,6 @@ import com.example.platform.render.infrastructure.product.ProductDependencyRepos
 import com.example.platform.render.infrastructure.product.ProductRepository;
 import com.example.platform.render.infrastructure.storage.StorageReferenceRepository;
 import com.example.platform.render.testsupport.TimelineCoreSmokeFixture;
-import com.example.platform.shared.Ids;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -225,7 +224,7 @@ class CaptionTemplateRenderE2ESmokeTest {
                 null, StorageProviderType.LOCAL.name(), StorageClass.STANDARD,
                 tempDir.toString(), tempDir.relativize(inputVideo).toString(),
                 checksum, checksum, Files.size(inputVideo), "video/mp4", Instant.now(), Instant.now()));
-        String productId = Ids.newId("prod");
+        String productId = ("prod_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         productRuntime.register(new Product(productId, TimelineCoreSmokeFixture.TENANT_ID,
                 TimelineCoreSmokeFixture.PROJECT_ID, SOURCE_ASSET_ID,
                 ProductType.RAW_MEDIA, RepresentationKind.MEDIA_FILE,

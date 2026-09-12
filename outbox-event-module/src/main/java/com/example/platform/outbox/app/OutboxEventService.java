@@ -1,6 +1,5 @@
 package com.example.platform.outbox.app;
 
-import com.example.platform.shared.Ids;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -242,7 +241,7 @@ public class OutboxEventService {
             }
         }
 
-        String id = Ids.newId("obx");
+        String id = ("obx_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         try {
             dsl.insertInto(OUTBOX_EVENTS)
                     .columns(

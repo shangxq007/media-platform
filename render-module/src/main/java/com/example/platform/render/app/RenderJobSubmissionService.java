@@ -17,7 +17,6 @@ import com.example.platform.shared.commercial.PrincipalType;
 import com.example.platform.shared.events.RenderJobCreatedEvent;
 import com.example.platform.shared.events.RenderJobFailedEvent;
 import com.example.platform.shared.events.RenderInitiator;
-import com.example.platform.shared.Ids;
 import com.example.platform.shared.web.TenantContext;
 import com.example.platform.render.domain.interchange.TimelineScriptParser;
 import org.jooq.DSLContext;
@@ -126,7 +125,7 @@ public class RenderJobSubmissionService {
 
     private String handleCommercialDecisionRejected(SubmitRenderJobRequest request,
             RenderInitiator initiator, CommercialDecision decision) {
-        String rejectedJobId = Ids.newId("rj");
+        String rejectedJobId = ("rj_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         String profile = request.profileOrDefault();
         String code = decision.reason().name();
         String reason = decision.reason() == CommercialDecisionReason.QUOTA_EXCEEDED
@@ -155,7 +154,7 @@ public class RenderJobSubmissionService {
     private record Period(Instant start, Instant end) {}
 
     private String createQueuedJob(SubmitRenderJobRequest request, RenderInitiator initiator) {
-        String jobId = Ids.newId("rj");
+        String jobId = ("rj_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         String profile = request.profileOrDefault();
         String inlineScript = resolveInlineTimelineScript(request);
         if (inlineScript != null) {

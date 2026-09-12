@@ -81,6 +81,21 @@ class AuthorizationArchitectureGuardTest {
     }
 
     // ── AR-AUTH-01: authz != entitlement ─────────────────────────────────────
+    @Test
+    void publishedAuthorizationHasOneOwnerAndNoTransportDependency() {
+        for (String type : List.of("AuthorizationDecisionPort", "CanonicalActorResolver", "AuthorizationDeniedException")) {
+            assertTrue(Files.exists(IDENTITY_ACCESS.resolve("api/authorization/" + type + ".java")));
+            assertFalse(Files.exists(SHARED_KERNEL.resolve("authorization/" + type + ".java")));
+        }
+        assertNoFileContains(IDENTITY_ACCESS.resolve("api/authorization"),
+                "com.example.platform.shared.web", "EP27A transport independence");
+        assertFalse(Files.exists(SHARED_KERNEL.resolve("authorization/AuthorizationActions.java")));
+        assertTrue(Files.exists(WORKFLOW.resolve("authorization/AuthorizationActions.java")));
+        assertFalse(Files.exists(SHARED_KERNEL.resolve("collaboration/CollaborationAccessPort.java")));
+        assertTrue(Files.exists(ENTITLEMENT.resolve("api/collaboration/CollaborationAccessPort.java")));
+        assertFalse(Files.exists(SHARED_KERNEL.resolve("Ids.java")));
+    }
+
     // The canonical authorization port/contract must not depend on the entitlement
     // module. Authorization and entitlement are independent concerns.
 
@@ -91,6 +106,8 @@ class AuthorizationArchitectureGuardTest {
         // (identity-access as a whole is allowed to integrate entitlement via its
         // package-info allowedDependencies; that is a separate, non-authz concern.)
         assertNoFileContains(SHARED_KERNEL.resolve("authorization"),
+                "com.example.platform.entitlement", "AR-AUTH-01");
+        assertNoFileContains(IDENTITY_ACCESS.resolve("api/authorization"),
                 "com.example.platform.entitlement", "AR-AUTH-01");
         Path port = IDENTITY_ACCESS.resolve("app/RbacAuthorizationDecisionPort.java");
         assertFalse(read(port).contains("com.example.platform.entitlement"),
@@ -105,6 +122,8 @@ class AuthorizationArchitectureGuardTest {
         // The canonical authorization contract must not depend on the feature-flag
         // module. The authorization decision is independent of flag evaluation.
         assertNoFileContains(SHARED_KERNEL.resolve("authorization"),
+                "com.example.platform.policy", "AR-AUTH-02");
+        assertNoFileContains(IDENTITY_ACCESS.resolve("api/authorization"),
                 "com.example.platform.policy", "AR-AUTH-02");
         Path port = IDENTITY_ACCESS.resolve("app/RbacAuthorizationDecisionPort.java");
         assertFalse(read(port).contains("com.example.platform.policy"),

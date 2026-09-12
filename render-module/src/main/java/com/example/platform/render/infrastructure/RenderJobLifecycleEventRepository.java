@@ -1,6 +1,5 @@
 package com.example.platform.render.infrastructure;
 
-import com.example.platform.shared.Ids;
 import org.jooq.DSLContext;
 import org.jooq.Record;
 import org.jooq.impl.DSL;
@@ -30,7 +29,7 @@ public class RenderJobLifecycleEventRepository {
                        String workerId, int attempt, String outputProductId,
                        String reasonCode, String reason, boolean retryable,
                        Long durationMs) {
-        String id = Ids.newId("evt");
+        String id = ("evt_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         dsl.insertInto(RENDER_JOB_LIFECYCLE_EVENTS)
                 .columns(
                         RENDER_JOB.ID,
