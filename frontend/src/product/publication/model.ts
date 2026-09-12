@@ -21,7 +21,8 @@ export function shiftMonth(month: string, delta: number): string {
 /** The backend range is an absolute UTC half-open month; display timezone remains presentation-only. */
 export function monthWindow(month: string): PublicationWindow | null {
   if (!monthDays(month).length) return null
-  return { start: `${month}-01T00:00:00.000Z`, end: `${shiftMonth(month, 1)}-01T00:00:00.000Z` }
+  const next = shiftMonth(month, 1)
+  return next === month ? null : { start: `${month}-01T00:00:00.000Z`, end: `${next}-01T00:00:00.000Z` }
 }
 
 /** Dates without an explicit offset are deliberately never parsed. */
@@ -50,10 +51,13 @@ export function calendarDay(value: unknown, zone: string): string | null {
 
 export function filterPosts(posts: readonly PublicationPost[], filters: PublicationFilters): PublicationPost[] {
   const query = filters.query.trim().toLowerCase()
-  return [...posts].filter(post => !query || post.id.toLowerCase().includes(query) || post.contentText?.toLowerCase().includes(query))
+  return posts.filter(post => (!query || post.id.toLowerCase().includes(query) || (post.contentAvailability === 'AVAILABLE' && post.contentText?.toLowerCase().includes(query)))
+    && (!filters.content || post.contentAvailability === filters.content) && (!filters.artifact || post.artifactRelationState === filters.artifact))
     .sort((left, right) => {
       const leftInstant = absoluteInstant(left.scheduledAt)
       const rightInstant = absoluteInstant(right.scheduledAt)
+      if (leftInstant === null && rightInstant !== null) return 1
+      if (rightInstant === null && leftInstant !== null) return -1
       const timeDifference = leftInstant !== null && rightInstant !== null ? (leftInstant - rightInstant) * (filters.order === 'asc' ? 1 : -1) : 0
       return timeDifference || (left.id < right.id ? -1 : left.id > right.id ? 1 : 0)
     })

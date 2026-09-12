@@ -127,3 +127,13 @@ describe('publication planned-time model', () => {
     expect(fixtureAccount().globalEffectiveAccess).toBe('UNKNOWN_FAIL_CLOSED')
   })
 })
+
+
+it('places missing/invalid planned times last in either direction with deterministic ID ties', () => {
+  const posts = [fixturePost({ id: 'a', scheduledAt: undefined }), fixturePost({ id: 'b', scheduledAt: 'invalid' }), fixturePost({ id: 'c', scheduledAt: '2026-09-11T00:00:00Z' }), fixturePost({ id: 'd', scheduledAt: '2026-09-10T00:00:00Z' })]
+  for (const input of [posts, [...posts].reverse()]) {
+    expect(filterPosts(input, { query: '', order: 'asc' }).map(post => post.id)).toEqual(['d', 'c', 'a', 'b'])
+    expect(filterPosts(input, { query: '', order: 'desc' }).map(post => post.id)).toEqual(['c', 'd', 'a', 'b'])
+  }
+  expect(monthWindow('9999-12')).toBeNull()
+})

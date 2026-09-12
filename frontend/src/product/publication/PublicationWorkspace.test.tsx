@@ -223,3 +223,71 @@ describe('authorized Publication workspace', () => {
     expect(screen.getByRole('searchbox', { name: '搜索已提供的发布内容' }).getAttribute('placeholder')).toBe('搜索已提供的发布内容')
   })
 })
+
+
+describe('Publication read recovery and available-field browsing', () => {
+  it('retries initial account reads and refreshes an empty account response', async () => {
+    const value = source(); value.getAccounts.mockRejectedValue(new Error('PRIVATE_BACKEND_ERROR'))
+    render(host(value)); await screen.findByText('Could not load publications')
+    expect(document.body.textContent).not.toContain('PRIVATE_BACKEND_ERROR')
+    value.getAccounts.mockResolvedValue([])
+    fireEvent.click(button('Retry account read')); await screen.findByRole('button', { name: 'Refresh accounts' })
+    value.getAccounts.mockResolvedValue([fixtureAccount()])
+    fireEvent.click(button('Refresh accounts')); await ready()
+  })
+
+  it('composes availability filters with search and resets them without sending invented server filters', async () => {
+    const value = source({ list: fixtureList({ items: [fixturePost(), fixturePost({ id: 'absent', contentText: undefined, contentAvailability: 'NOT_PROVIDED', artifactId: undefined, artifactRelationState: 'NOT_PROVIDED' })] }) })
+    render(host(value)); await ready()
+    fireEvent.change(screen.getByLabelText('Content availability'), { target: { value: 'NOT_PROVIDED' } })
+    fireEvent.change(screen.getByLabelText('Artifact availability'), { target: { value: 'AVAILABLE' } })
+    expect(screen.getByText('No publications match these filters')).toBeTruthy()
+    fireEvent.click(button('Reset filters'))
+    expect(button('Opening story')).toBeTruthy()
+    expect(value.getPosts.mock.calls.every(([request]) => !('status' in request) && !('query' in request))).toBe(true)
+  })
+
+  it('keeps month navigation available with no rows and after a recoverable month read failure', async () => {
+    const value = source({ list: fixtureList({ items: [] }) })
+    render(host(value)); await screen.findByText('No planned publications in this bounded window')
+    value.getPosts.mockRejectedValueOnce(new Error('offline'))
+    fireEvent.click(button('Next month')); await screen.findByText('Could not load publications')
+    expect(button('Previous month')).toBeTruthy()
+    fireEvent.click(button('Previous month')); await screen.findByText('No planned publications in this bounded window')
+    expect(value.getPosts).toHaveBeenLastCalledWith(expect.objectContaining({ start: '2026-09-01T00:00:00.000Z' }), expect.any(AbortSignal))
+  })
+
+  it('retries only a failed detail read, retaining browse conditions and explicitly absent lifecycle facts', async () => {
+    const value = source(); value.getPost.mockRejectedValueOnce(new Error('PRIVATE_DIAGNOSTICS'))
+    render(host(value)); await ready()
+    const row = button('Opening story'); row.focus(); fireEvent.click(row)
+    await screen.findByRole('button', { name: 'Retry detail read' })
+    expect(document.body.textContent).not.toContain('PRIVATE_DIAGNOSTICS')
+    fireEvent.click(button('Retry detail read')); await screen.findByText('Post ID')
+    expect(value.getPost).toHaveBeenCalledTimes(2)
+    expect(screen.getByRole('dialog').textContent).toContain('Publication statusNot provided by this read contract')
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
+    expect(document.activeElement).toBe(row)
+  })
+
+  it.each([401, 403, 404])('clears all account/list/detail/selection data on a detail %s without disclosing errors', async code => {
+    const value = source(); value.getPost.mockRejectedValue({ response: { status: code, data: 'SECRET' } })
+    let store!: InteractionStore
+    render(host(value, 'owner', current => { store = current })); await ready(); fireEvent.click(button('Opening story'))
+    await screen.findByText('Access or the current account binding is unavailable. Reopen the workspace with current access.')
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Opening story' })).toBeNull()
+    expect(screen.queryByLabelText('Account')).toBeNull()
+    expect(store.getSnapshot().selectedObjects).toEqual([])
+    expect(document.body.textContent).not.toContain('SECRET')
+  })
+
+  it('makes timezone spillover records reachable without silently changing the UTC source query', async () => {
+    const value = source({ list: fixtureList({ items: [fixturePost({ scheduledAt: '2026-09-01T00:30:00Z' })] }) })
+    render(host(value)); await ready(); fireEvent.click(button('Calendar'))
+    fireEvent.change(screen.getByLabelText('Display timezone'), { target: { value: 'America/Los_Angeles' } })
+    fireEvent.click(button('View 2026-08-31'))
+    expect(within(screen.getByRole('region', { name: 'Selected day agenda' })).getByRole('button', { name: 'Opening story' })).toBeTruthy()
+    expect(value.getPosts.mock.calls.every(([request]) => request.start === '2026-09-01T00:00:00.000Z')).toBe(true)
+  })
+})

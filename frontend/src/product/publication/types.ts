@@ -11,6 +11,8 @@ export type PublicationReadSource = PlatformPublicationReadSource
 export interface PublicationFilters {
   readonly query: string
   readonly order: 'asc' | 'desc'
+  readonly content?: PublicationPost['contentAvailability'] | ''
+  readonly artifact?: PublicationPost['artifactRelationState'] | ''
 }
 
 export interface PublicationWindow {
