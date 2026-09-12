@@ -3,6 +3,9 @@ package com.example.platform.extension.infrastructure;
 import com.example.platform.extension.app.ExtensionRegistryService;
 import com.example.platform.extension.runtime.PluginRuntime;
 import com.example.platform.extension.runtime.internal.DefaultPluginRuntime;
+import com.example.platform.extension.runtime.internal.RuntimeUsageEmitter;
+import com.example.platform.extension.runtime.internal.SecretRefResolver;
+import com.example.platform.shared.usage.ObservedRuntimeUsageEmissionPort;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -20,7 +23,8 @@ import org.springframework.context.annotation.Configuration;
 public class PluginRuntimeConfiguration {
 
     @Bean
-    public PluginRuntime pluginRuntime(ExtensionRegistryService registry) {
-        return new DefaultPluginRuntime(registry);
+    public PluginRuntime pluginRuntime(ExtensionRegistryService registry, ObservedRuntimeUsageEmissionPort usagePort) {
+        return new DefaultPluginRuntime(registry, SecretRefResolver.NOOP, progress -> {}, observation -> {},
+                new RuntimeUsageEmitter(usagePort));
     }
 }

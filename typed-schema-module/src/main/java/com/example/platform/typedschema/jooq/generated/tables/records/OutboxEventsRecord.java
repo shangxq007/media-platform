@@ -231,6 +231,34 @@ public class OutboxEventsRecord extends UpdatableRecordImpl<OutboxEventsRecord> 
         return (Integer) get(14);
     }
 
+    /**
+     * Setter for <code>public.outbox_events.last_error_code</code>.
+     */
+    public void setLastErrorCode(String value) {
+        set(15, value);
+    }
+
+    /**
+     * Getter for <code>public.outbox_events.last_error_code</code>.
+     */
+    public String getLastErrorCode() {
+        return (String) get(15);
+    }
+
+    /**
+     * Setter for <code>public.outbox_events.last_error_message</code>.
+     */
+    public void setLastErrorMessage(String value) {
+        set(16, value);
+    }
+
+    /**
+     * Getter for <code>public.outbox_events.last_error_message</code>.
+     */
+    public String getLastErrorMessage() {
+        return (String) get(16);
+    }
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -254,7 +282,7 @@ public class OutboxEventsRecord extends UpdatableRecordImpl<OutboxEventsRecord> 
     /**
      * Create a detached, initialised OutboxEventsRecord
      */
-    public OutboxEventsRecord(String id, String aggregateType, String aggregateId, String eventType, Integer eventVersion, String payload, String status, LocalDateTime createdAt, LocalDateTime publishedAt, Integer retryCount, LocalDateTime nextAttemptAt, String idempotencyKey, Instant lockedAt, String lockedBy, Integer maxRetries) {
+    public OutboxEventsRecord(String id, String aggregateType, String aggregateId, String eventType, Integer eventVersion, String payload, String status, LocalDateTime createdAt, LocalDateTime publishedAt, Integer retryCount, LocalDateTime nextAttemptAt, String idempotencyKey, Instant lockedAt, String lockedBy, Integer maxRetries, String lastErrorCode, String lastErrorMessage) {
         super(OutboxEvents.OUTBOX_EVENTS);
 
         setId(id);
@@ -272,6 +300,8 @@ public class OutboxEventsRecord extends UpdatableRecordImpl<OutboxEventsRecord> 
         setLockedAt(lockedAt);
         setLockedBy(lockedBy);
         setMaxRetries(maxRetries);
+        setLastErrorCode(lastErrorCode);
+        setLastErrorMessage(lastErrorMessage);
         resetChangedOnNotNull();
     }
 }

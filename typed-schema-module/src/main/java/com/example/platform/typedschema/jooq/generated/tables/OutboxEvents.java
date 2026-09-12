@@ -131,6 +131,16 @@ public class OutboxEvents extends TableImpl<OutboxEventsRecord> {
      */
     public final TableField<OutboxEventsRecord, Integer> MAX_RETRIES = createField(DSL.name("max_retries"), SQLDataType.INTEGER.nullable(false).defaultValue(DSL.field(DSL.raw("3"), SQLDataType.INTEGER)), this, "");
 
+    /**
+     * The column <code>public.outbox_events.last_error_code</code>.
+     */
+    public final TableField<OutboxEventsRecord, String> LAST_ERROR_CODE = createField(DSL.name("last_error_code"), SQLDataType.VARCHAR(100), this, "");
+
+    /**
+     * The column <code>public.outbox_events.last_error_message</code>.
+     */
+    public final TableField<OutboxEventsRecord, String> LAST_ERROR_MESSAGE = createField(DSL.name("last_error_message"), SQLDataType.CLOB, this, "");
+
     private OutboxEvents(Name alias, Table<OutboxEventsRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
     }

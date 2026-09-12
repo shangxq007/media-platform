@@ -55,7 +55,9 @@ create table outbox_events (
     idempotency_key varchar(255),
     locked_at TIMESTAMPTZ,
     locked_by VARCHAR(100),
-    max_retries INTEGER NOT NULL DEFAULT 3
+    max_retries INTEGER NOT NULL DEFAULT 3,
+    last_error_code varchar(100),
+    last_error_message text
 );
 
 create index ix_outbox_events_status_created_at on outbox_events(status, created_at);

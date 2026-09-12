@@ -25,8 +25,18 @@ case "${1:-}" in
         --tests '*OAuth2RequestContextFilterTest' --tests '*DeliverySecurityChainTest' \
         --tests '*EnabledAdminSecurityTest' --tests '*AdminAuditHelperTest' --tests '*ModularityTest'
     ;;
+  billing)
+    ./gradlew --no-daemon --console=plain \
+      :billing-module:test --tests '*Usage*' --tests '*BillingConsumptionBoundaryTest' \
+      :outbox-event-module:test --tests '*OutboxEventServiceTest' \
+      :ai-module:test --tests '*AiUsageEmissionTest' \
+      :render-module:test --tests '*RenderUsageEmissionTest' \
+      :extension-module:test --tests '*RuntimeUsageEmitterTest' --tests '*RuntimeObservedUsageEmitterTest' \
+        --tests '*PluginRuntimeRedMatrixTest' --tests '*PluginRuntimeArchitectureGuardTest' \
+      :platform-app:test --tests '*BillingUsageCompositionTest' --tests '*SandboxRuntimeConvergenceTest' --tests '*ModularityTest'
+    ;;
   compile)
     ./gradlew --no-daemon --console=plain compileJava compileTestJava pfirr1RemediationCheck :platform-app:bootJar
     ;;
-  *) echo 'Usage: bash scripts/test-authority-modules.sh identity|observation|compile' >&2; exit 2 ;;
+  *) echo 'Usage: bash scripts/test-authority-modules.sh identity|observation|billing|compile' >&2; exit 2 ;;
 esac
