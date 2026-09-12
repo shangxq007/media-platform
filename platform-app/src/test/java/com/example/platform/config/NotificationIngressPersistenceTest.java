@@ -36,7 +36,7 @@ import static org.mockito.Mockito.*;
  */
 @SpringJUnitConfig(NotificationIngressPersistenceTest.Config.class)
 class NotificationIngressPersistenceTest extends PostgresTestContainerSupport {
-    @Configuration @EnableTransactionManagement
+    @org.springframework.boot.test.context.TestConfiguration @EnableTransactionManagement
     @Import({OutboxBackedNotificationEventPublisher.class, NotificationOutboxEvents.class})
     static class Config {
         @Bean(destroyMethod="close") DataSource dataSource() {
