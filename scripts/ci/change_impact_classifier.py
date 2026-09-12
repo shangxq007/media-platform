@@ -18,6 +18,7 @@ CATEGORY_ORDER = (
     "docs",
     "frontend",
     "backend_test",
+    "backend_verification",
     "backend_runtime",
     "build_graph",
     "container",
@@ -29,7 +30,7 @@ CATEGORY_ORDER = (
     "unknown",
 )
 
-BACKEND_CATEGORIES = {"backend_test", "backend_runtime", "build_graph", "container"}
+BACKEND_CATEGORIES = {"backend_verification", "backend_test", "backend_runtime", "build_graph", "container"}
 FULL_CI_CATEGORIES = {"workflow", "ci_infrastructure", "unknown"}
 RUNTIME_IMAGE_INPUT_CATEGORIES = {"backend_runtime", "build_graph", "container"}
 
@@ -63,6 +64,14 @@ JOOQ_CI_INFRASTRUCTURE_PATHS = {
 JOOQ_BUILD_GRAPH_PATHS = {
     "typed-schema-module/jooq-codegen.xml",
 }
+
+
+# Exact known entrypoints, not a blanket scripts/ exemption. Hosted runtime execution
+# remains delegated; these selections are consumed by the existing local module runner.
+AUTHORITY_GROUPS = ("identity", "observation", "billing", "execution", "outbox")
+AUTHORITY_TEST_ENTRYPOINT = "scripts/test-authority-modules.sh"
+H8_GUARD_PATH = "scripts/guards/h8-operation-invocation-boundary-guard.py"
+KNOWN_BACKEND_VERIFICATION_PATHS = {AUTHORITY_TEST_ENTRYPOINT, H8_GUARD_PATH}
 
 
 def _under(path: str, prefix: str) -> bool:
@@ -115,6 +124,9 @@ def classify_path(raw_path: str) -> tuple[str, ...]:
 
     if _under(path, "formal/") or _under(path, "scripts/formal/"):
         categories.add("formal_verification")
+
+    if path in KNOWN_BACKEND_VERIFICATION_PATHS:
+        categories.add("backend_verification")
 
     if "/src/test/" in f"/{path}" or _under(path, "scripts/test/"):
         categories.add("backend_test")
@@ -196,13 +208,35 @@ class Classification:
             "backend_ci": full_ci or bool(categories & BACKEND_CATEGORIES),
             "frontend_ci": full_ci or "frontend" in categories,
             "architecture_drift": full_ci
-            or bool(categories & {"governance", "backend_runtime", "build_graph"}),
+            or bool(categories & {"governance", "backend_runtime", "backend_verification", "build_graph"}),
             "gitops_validation": full_ci or "gitops" in categories,
             "semgrep_validation": full_ci
             or bool(categories & {"backend_runtime", "build_graph", "semgrep"}),
             "formal_verification": full_ci or "formal_verification" in categories,
             "runtime_image_publish": bool(categories & RUNTIME_IMAGE_INPUT_CATEGORIES),
         }
+
+    def authority_test_groups(self) -> tuple[str, ...]:
+        if self.policy()["full_ci"] or "build_graph" in self.categories:
+            return AUTHORITY_GROUPS
+        selected: set[str] = set()
+        for raw in self.paths:
+            path = _normalise_path(raw)
+            if path == AUTHORITY_TEST_ENTRYPOINT or path.startswith(("shared-kernel/", "typed-schema-module/", "platform-app/src/main/java/com/example/platform/security/")):
+                return AUTHORITY_GROUPS
+            if path == H8_GUARD_PATH:
+                selected.add("identity")
+            for prefixes, groups in (
+                (("identity-access-module/", "delivery-module/", "workflow-module/"), ("identity",)),
+                (("observability-module/", "audit-compliance-module/"), ("observation",)),
+                (("billing-module/", "entitlement-module/", "ai-module/", "extension-module/"), ("billing",)),
+                (("bmf-provider-module/", "provider-plugin-runtime-module/", "worker-fabric-module/", "sandbox-isolation-module/"), ("execution",)),
+                (("outbox-event-module/", "notification-module/"), ("outbox",)),
+                (("render-module/",), ("identity", "execution", "outbox")),
+                (("platform-app/",), AUTHORITY_GROUPS),
+            ):
+                if path.startswith(prefixes): selected.update(groups)
+        return tuple(group for group in AUTHORITY_GROUPS if group in selected)
 
     def as_dict(self) -> dict[str, object]:
         return {
@@ -213,6 +247,7 @@ class Classification:
             "path_categories": {path: list(values) for path, values in self.path_categories.items()},
             "categories": list(self.categories),
             "policy": self.policy(),
+            "authority_test_groups": list(self.authority_test_groups()),
         }
 
 
@@ -221,19 +256,22 @@ def changed_paths_from_git(root: Path, base: str, head: str) -> tuple[str, ...]:
     if not revision.fullmatch(base) or not revision.fullmatch(head) or set(base) == {"0"}:
         raise ValueError("base/head must be non-zero Git revisions")
     result = subprocess.run(
-        ["git", "diff", "--name-only", "-z", "--diff-filter=ACDMRTUXB", base, head, "--"],
-        cwd=root,
-        capture_output=True,
-        check=False,
+        ["git", "diff", "--name-status", "-z", "--find-renames", "--diff-filter=ACDMRTUXB", base, head, "--"],
+        cwd=root, capture_output=True, check=False,
     )
     if result.returncode != 0:
-        detail = result.stderr.decode("utf-8", errors="replace").strip()
-        raise RuntimeError(f"git diff failed: {detail or result.returncode}")
-    return tuple(
-        item.decode("utf-8", errors="surrogateescape")
-        for item in result.stdout.split(b"\x00")
-        if item
-    )
+        raise RuntimeError("git diff failed: " + result.stderr.decode("utf-8", errors="replace").strip())
+    fields = result.stdout.split(b"\x00")
+    paths: list[str] = []
+    index = 0
+    while index < len(fields) and fields[index]:
+        status = fields[index].decode("ascii"); index += 1
+        count = 2 if status.startswith(("R", "C")) else 1
+        if index + count > len(fields) or any(not field for field in fields[index:index + count]):
+            raise ValueError("malformed git name-status output")
+        paths.extend(field.decode("utf-8", errors="surrogateescape") for field in fields[index:index + count])
+        index += count
+    return tuple(dict.fromkeys(paths))
 
 
 def write_github_output(path: Path, classification: Classification) -> None:
@@ -244,6 +282,7 @@ def write_github_output(path: Path, classification: Classification) -> None:
         "categories": ",".join(classification.categories),
         "changed_path_count": str(data["changed_path_count"]),
         "reason": classification.reason,
+        "authority_test_groups": " ".join(classification.authority_test_groups()),
     }
     with path.open("a", encoding="utf-8") as output:
         for name, value in outputs.items():
@@ -257,6 +296,7 @@ def write_summary(path: Path, classification: Classification) -> None:
         summary.write(f"Reason: `{classification.reason}`  \n")
         summary.write(f"Categories: `{', '.join(classification.categories)}`  \n")
         summary.write(f"Changed paths: `{len(classification.paths)}`\n\n")
+        summary.write(f"Local authority test groups: `{' '.join(classification.authority_test_groups()) or 'none'}`\n\n")
         summary.write("| Decision | Run |\n|---|---|\n")
         for name, enabled in policy.items():
             summary.write(f"| `{name}` | `{'true' if enabled else 'false'}` |\n")

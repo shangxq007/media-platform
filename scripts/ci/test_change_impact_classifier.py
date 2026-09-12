@@ -565,5 +565,48 @@ def main() -> None:
     )
 
 
+def assert_authority_test_selection() -> None:
+    import subprocess
+    import tempfile
+    h8 = classifier.Classification.from_paths([classifier.H8_GUARD_PATH])
+    assert set(h8.categories) == {"backend_verification"}
+    assert h8.policy()["backend_ci"] and h8.policy()["architecture_drift"]
+    assert not h8.policy()["full_ci"] and not h8.policy()["frontend_ci"]
+    assert h8.authority_test_groups() == ("identity",)
+    entry = classifier.Classification.from_paths([classifier.AUTHORITY_TEST_ENTRYPOINT])
+    assert entry.authority_test_groups() == classifier.AUTHORITY_GROUPS
+    assert not entry.policy()["full_ci"] and "docs" not in entry.categories
+    mixed = classifier.Classification.from_paths([classifier.H8_GUARD_PATH, "notification-module/src/main/java/Notification.java", "frontend/src/app.tsx"])
+    assert mixed.authority_test_groups() == ("identity", "outbox")
+    assert mixed.policy()["frontend_ci"] and mixed.policy()["backend_ci"]
+    for path in ["scripts/guards/new-unknown-guard.py", "scripts/test-new-unknown.sh"]:
+        unknown = classifier.Classification.from_paths([path])
+        assert unknown.policy()["full_ci"] and unknown.authority_test_groups() == classifier.AUTHORITY_GROUPS
+    for path in ["build.gradle.kts", "shared-kernel/src/main/java/Shared.java", "typed-schema-module/src/main/java/Schema.java", "platform-app/src/main/java/com/example/platform/security/JwtAuthFilter.java"]:
+        broad = classifier.Classification.from_paths([path])
+        assert broad.policy()["backend_ci"] and broad.authority_test_groups() == classifier.AUTHORITY_GROUPS
+    runner = (ROOT / classifier.AUTHORITY_TEST_ENTRYPOINT).read_text()
+    assert 'change_impact_classifier.py --base' in runner and '["authority_test_groups"]' in runner
+    for group in classifier.AUTHORITY_GROUPS:
+        assert f"  {group})" in runner
+    # Real Git statuses exercise added/deleted and both sides of a rename.
+    with tempfile.TemporaryDirectory(prefix="ep08-classifier-") as tmp:
+        root = Path(tmp)
+        def git(*args: str) -> str:
+            return subprocess.check_output(["git", *args], cwd=root, text=True, stderr=subprocess.DEVNULL).strip()
+        git("init"); git("config", "user.email", "classifier@example.invalid"); git("config", "user.name", "Classifier test")
+        source = root / classifier.H8_GUARD_PATH; source.parent.mkdir(parents=True); source.write_text("guard content\n" * 20)
+        unknown = root / "unknown.rule"; unknown.write_text("retired unknown\n")
+        git("add", "."); git("commit", "-m", "base"); base = git("rev-parse", "HEAD")
+        target = root / "docs/renamed.md"; target.parent.mkdir(); source.rename(target); unknown.unlink()
+        frontend = root / "frontend/new.ts"; frontend.parent.mkdir(); frontend.write_text("export const value = 1\n")
+        git("add", "-A"); git("commit", "-m", "rename delete add"); head = git("rev-parse", "HEAD")
+        paths = classifier.changed_paths_from_git(root, base, head)
+        assert set(paths) == {classifier.H8_GUARD_PATH, "docs/renamed.md", "unknown.rule", "frontend/new.ts"}
+        assert classifier.Classification.from_paths(paths).policy()["full_ci"]
+    print("AUTHORITY_TEST_SELECTION=PASS known/mixed/unknown/cross-cutting/add/delete/rename")
+
+
 if __name__ == "__main__":
     main()
+    assert_authority_test_selection()

@@ -48,8 +48,14 @@ case "${1:-}" in
       :notification-module:test :render-module:test --tests '*RenderOutboxEventsTest' \
       :platform-app:test --tests '*BillingUsageCompositionTest' --tests '*OutboxNotificationCompositionTest' --tests '*ModularityTest'
     ;;
+  affected)
+    authority_selection=$(python3 scripts/ci/change_impact_classifier.py --base "${2:?base required}" --head "${3:?head required}" --json)
+    while read -r authority_group; do
+      [[ -z "$authority_group" ]] || bash scripts/test-authority-modules.sh "$authority_group"
+    done < <(printf '%s' "$authority_selection" | python3 -c 'import json,sys; print("\n".join(json.load(sys.stdin)["authority_test_groups"]))')
+    ;;
   compile)
     ./gradlew --no-daemon --console=plain compileJava compileTestJava pfirr1RemediationCheck :platform-app:bootJar
     ;;
-  *) echo 'Usage: bash scripts/test-authority-modules.sh identity|observation|billing|execution|outbox|compile' >&2; exit 2 ;;
+  *) echo 'Usage: bash scripts/test-authority-modules.sh identity|observation|billing|execution|outbox|compile|affected BASE HEAD' >&2; exit 2 ;;
 esac
