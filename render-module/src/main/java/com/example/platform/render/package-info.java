@@ -12,7 +12,7 @@
             "entitlement :: domain",
             "entitlement :: commercial",
             "shared",
-            "identity :: authorization",
+            "identity :: authorization", "identity :: projects",
             "storage",
             "storage :: API",
             "storage :: domain",

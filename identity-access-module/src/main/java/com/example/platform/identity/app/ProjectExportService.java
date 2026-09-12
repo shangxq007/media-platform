@@ -33,7 +33,7 @@ public class ProjectExportService {
                                                ProjectExportRequest request) {
         assertTenantAccess(tenantId);
 
-        ProjectResponse projectResp = tenantProjectService.getProject(projectId);
+        ProjectResponse projectResp = tenantProjectService.getProject(tenantId, projectId);
         if (projectResp == null) {
             throw new IllegalArgumentException("Project not found: " + projectId);
         }

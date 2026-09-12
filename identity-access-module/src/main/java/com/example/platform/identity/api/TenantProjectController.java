@@ -45,7 +45,7 @@ public class TenantProjectController {
 
     @GetMapping("/projects/{projectId}")
     public ProjectResponse getProject(@PathVariable String projectId) {
-        return service.getProject(projectId);
+        return service.getProject(com.example.platform.shared.web.TenantContext.get(), projectId);
     }
 
     @PostMapping("/tenants/{tenantId}/users")

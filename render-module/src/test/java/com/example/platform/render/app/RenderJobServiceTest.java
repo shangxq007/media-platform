@@ -41,7 +41,18 @@ class RenderJobServiceTest {
         fakePolicy = new FakePolicyEngine();
         fakePublisher = new FakeEventPublisher();
         fakeHistory = new FakeHistoryRepository();
-        service = new RenderJobService(fakeRepo, fakePolicy, fakePublisher, fakeHistory, null);
+        service = new RenderJobService(fakeRepo, fakePolicy, fakePublisher, fakeHistory, null,
+                new com.example.platform.identity.api.project.ProjectReadQuery() {
+                    public List<com.example.platform.identity.api.dto.ProjectResponse> listProjects(String tenant) {
+                        return fakeRepo.storedJobs.values().stream().filter(job -> tenant.equals(fakeRepo.tenants.get(job.id())))
+                                .map(RenderJobResponse::projectId).distinct().map(id -> getProject(tenant, id)).toList();
+                    }
+                    public com.example.platform.identity.api.dto.ProjectResponse getProject(String tenant, String project) {
+                        return new com.example.platform.identity.api.dto.ProjectResponse(project, tenant, "fixture", "", "ACTIVE", java.time.Instant.EPOCH);
+                    }
+                },
+                () -> Optional.ofNullable(TenantContext.get()).map(tenant -> com.example.platform.shared.authorization.CanonicalActor.user("fixture", tenant, Set.of(), "unit")),
+                request -> com.example.platform.shared.authorization.AuthorizationDecision.allow("lifecycle-unit-only"));
     }
 
     @AfterEach
@@ -153,7 +164,8 @@ class RenderJobServiceTest {
         @Test
         @DisplayName("getById() throws when job not found")
         void getByIdThrowsWhenNotFound() {
-            assertThrows(IllegalArgumentException.class, () -> service.getById("rj-missing"));
+            TenantContext.set("t-1");
+            assertThrows(PlatformException.class, () -> service.getById("rj-missing"));
         }
 
         @Test
@@ -164,12 +176,14 @@ class RenderJobServiceTest {
                     new RenderJobResponse("rj-1", "proj-1", "snap-1", "default_1080p", "QUEUED"));
             fakeRepo.tenants.put("rj-1", "t-other");
 
-            assertThrows(IllegalArgumentException.class, () -> service.getById("rj-1"));
+            assertThrows(PlatformException.class, () -> service.getById("rj-1"));
         }
 
         @Test
         @DisplayName("getByIdAndProject() delegates to repository with tenant filter")
         void getByIdAndProjectDelegates() {
+            TenantContext.set("t-1");
+            fakeRepo.tenants.put("rj-1", "t-1");
             fakeRepo.storedJobs.put("rj-1",
                     new RenderJobResponse("rj-1", "proj-1", "snap-1", "default_1080p", "COMPLETED"));
 
@@ -199,21 +213,21 @@ class RenderJobServiceTest {
         }
 
         @Test
-        @DisplayName("list() returns all when no tenant context")
-        void listReturnsAllWhenNoTenant() {
+        @DisplayName("list() rejects missing authenticated context")
+        void listRejectsMissingTenant() {
             fakeRepo.storedJobs.put("rj-1",
                     new RenderJobResponse("rj-1", "proj-1", "snap-1", "default_1080p", "QUEUED"));
             fakeRepo.storedJobs.put("rj-2",
                     new RenderJobResponse("rj-2", "proj-2", "snap-2", "social_1080p", "COMPLETED"));
 
-            List<RenderJobResponse> result = service.list();
-
-            assertEquals(2, result.size());
+            assertThrows(PlatformException.class, () -> service.list());
         }
 
         @Test
         @DisplayName("listByProject() delegates with tenant filter")
         void listByProjectDelegates() {
+            TenantContext.set("t-1");
+            fakeRepo.tenants.put("rj-1", "t-1");
             fakeRepo.storedJobs.put("rj-1",
                     new RenderJobResponse("rj-1", "proj-1", "snap-1", "default_1080p", "QUEUED"));
 
@@ -289,6 +303,7 @@ class RenderJobServiceTest {
         @Test
         @DisplayName("getStatusHistory() delegates to history repository")
         void getStatusHistoryDelegates() {
+            TenantContext.set("t-1");
             fakeRepo.storedJobs.put("rj-1",
                     new RenderJobResponse("rj-1", "proj-1", "snap-1", "default_1080p", "COMPLETED"));
             fakeRepo.tenants.put("rj-1", "t-1");
@@ -330,7 +345,7 @@ class RenderJobServiceTest {
         @Override
         public Optional<RenderJobResponse> findByIdAndProjectAndTenant(String jobId, String projectId, String tenantId) {
             RenderJobResponse job = storedJobs.get(jobId);
-            if (job == null || !job.projectId().equals(projectId)) return Optional.empty();
+            if (job == null || !job.projectId().equals(projectId) || !tenantId.equals(tenants.get(jobId))) return Optional.empty();
             return Optional.of(job);
         }
 
@@ -344,7 +359,7 @@ class RenderJobServiceTest {
         @Override
         public List<RenderJobResponse> listByProjectAndTenant(String projectId, String tenantId) {
             return storedJobs.values().stream()
-                    .filter(j -> j.projectId().equals(projectId)).toList();
+                    .filter(j -> j.projectId().equals(projectId) && tenantId.equals(tenants.get(j.id()))).toList();
         }
 
         @Override

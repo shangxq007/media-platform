@@ -97,7 +97,9 @@ class MultiTenancyIsolationTest extends PostgresTestContainerSupport {
         properties.setApiKeys(new LinkedHashMap<>());
         identityAccessService = new IdentityAccessService(properties, apiKeyRepository);
         tenantProjectService = new TenantProjectService(tenantRepository, projectRepository,
-                userRepository, identityAccessService);
+                userRepository, identityAccessService,
+                () -> java.util.Optional.ofNullable(TenantContext.get()).map(tenant -> com.example.platform.shared.authorization.CanonicalActor.user("fixture", tenant, java.util.Set.of(), "test")),
+                request -> com.example.platform.shared.authorization.AuthorizationDecision.allow("tenant-repository-test-only"));
     }
 
     @Test
@@ -131,8 +133,8 @@ class MultiTenancyIsolationTest extends PostgresTestContainerSupport {
 
         TenantContext.set(tenantA.id());
 
-        assertThrows(IllegalArgumentException.class, () -> {
-            tenantProjectService.getProject(projectB.id());
+        assertThrows(com.example.platform.shared.web.PlatformException.class, () -> {
+            tenantProjectService.getProject(tenantA.id(), projectB.id());
         });
     }
 
@@ -163,7 +165,7 @@ class MultiTenancyIsolationTest extends PostgresTestContainerSupport {
 
         TenantContext.set(tenantA.id());
 
-        var retrieved = tenantProjectService.getProject(project.id());
+        var retrieved = tenantProjectService.getProject(tenantA.id(), project.id());
         assertEquals("My Project", retrieved.name());
         assertEquals(tenantA.id(), retrieved.tenantId());
     }
@@ -184,15 +186,14 @@ class MultiTenancyIsolationTest extends PostgresTestContainerSupport {
     }
 
     @Test
-    void noTenantContext_allowsAccessToAnyTenant() {
+    void noTenantContext_rejectsProjectDisclosure() {
         TenantContext.clear();
 
         var tenantA = tenantProjectService.createTenant(new CreateTenantRequest("Tenant A"));
         var project = tenantProjectService.createProject(tenantA.id(),
                 new CreateProjectRequest("Project A", "desc"));
 
-        var retrieved = tenantProjectService.getProject(project.id());
-        assertEquals("Project A", retrieved.name());
+        assertThrows(com.example.platform.shared.web.PlatformException.class, () -> tenantProjectService.getProject(tenantA.id(), project.id()));
     }
 
     @Test

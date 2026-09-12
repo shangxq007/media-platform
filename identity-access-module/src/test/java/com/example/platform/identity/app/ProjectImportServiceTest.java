@@ -133,7 +133,7 @@ class ProjectImportServiceTest {
         TenantContext.set("tenant-1");
         ProjectResponse wrongTenant = new ProjectResponse(
                 "target-prj-1", "tenant-2", "Target", "desc", "ACTIVE", Instant.now());
-        when(tenantProjectService.getProject("target-prj-1")).thenReturn(wrongTenant);
+        when(tenantProjectService.getProject("tenant-1", "target-prj-1")).thenReturn(wrongTenant);
         ProjectImportRequest request = new ProjectImportRequest(
                 linkedAssetsPayload(), "linked_assets", "target-prj-1", false, null,
                 ProjectImportRequest.POLICY_REQUIRE_EXISTING_MAPPING,

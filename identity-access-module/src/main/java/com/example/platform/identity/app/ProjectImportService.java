@@ -154,7 +154,7 @@ public class ProjectImportService {
                     "Either createNewProject=true or targetProjectId must be specified.");
         }
 
-        ProjectResponse target = tenantProjectService.getProject(targetProjectId);
+        ProjectResponse target = tenantProjectService.getProject(tenantId, targetProjectId);
         if (target == null) {
             throw new IllegalArgumentException("Target project not found: " + targetProjectId);
         }

@@ -30,7 +30,11 @@ public class FakeRenderJobService extends RenderJobService {
     private final RenderJobStateMachine stateMachine = new RenderJobStateMachine();
 
     public FakeRenderJobService() {
-        super(null, null, null, null, null);
+        super(null, null, null, null, null,
+                    new com.example.platform.identity.api.project.ProjectReadQuery() {
+                        public java.util.List<com.example.platform.identity.api.dto.ProjectResponse> listProjects(String tenant) { throw new UnsupportedOperationException("Test double overrides reads"); }
+                        public com.example.platform.identity.api.dto.ProjectResponse getProject(String tenant, String project) { throw new UnsupportedOperationException("Test double overrides reads"); }
+                    }, () -> java.util.Optional.empty(), request -> com.example.platform.shared.authorization.AuthorizationDecision.deny("TEST_DOUBLE", "test"));
     }
 
     // ─── Configuration helpers ───

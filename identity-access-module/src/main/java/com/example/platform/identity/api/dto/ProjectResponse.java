@@ -2,6 +2,7 @@ package com.example.platform.identity.api.dto;
 
 import com.example.platform.identity.domain.Project;
 
+@org.springframework.modulith.NamedInterface("projects")
 public record ProjectResponse(
         String id,
         String tenantId,

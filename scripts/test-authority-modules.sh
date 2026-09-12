@@ -48,6 +48,13 @@ case "${1:-}" in
       :notification-module:test :render-module:test --tests '*RenderOutboxEventsTest' \
       :platform-app:test --tests '*BillingUsageCompositionTest' --tests '*OutboxNotificationCompositionTest' --tests '*ModularityTest'
     ;;
+  render-read)
+    ./gradlew --no-daemon --console=plain \
+      :identity-access-module:test --tests '*ProjectReadAuthorizationTest' --tests '*MultiTenancyIsolationTest' --tests '*ProjectImportServiceTest' --tests '*ProjectExportServiceTest' \
+      :render-module:test --tests '*RenderJobServiceTest' --tests '*RenderJobReadAuthorizationTest' --tests '*RenderControllerContractTest' \
+      :federation-query-module:test --tests '*AdminDashboardGraphQLResolverTest' --tests '*MonitoringFeedbackGraphQLResolverTest' --tests '*ExportPanelGraphQLResolverTest' --tests '*ExportPanelStateQueryTest' \
+      :platform-app:test --tests '*RenderReadHttpTest' --tests '*RenderControllerTest' --tests '*ModularityTest'
+    ;;
   affected)
     authority_selection=$(python3 scripts/ci/change_impact_classifier.py --base "${2:?base required}" --head "${3:?head required}" --json)
     while read -r authority_group; do
@@ -57,5 +64,5 @@ case "${1:-}" in
   compile)
     ./gradlew --no-daemon --console=plain compileJava compileTestJava pfirr1RemediationCheck :platform-app:bootJar
     ;;
-  *) echo 'Usage: bash scripts/test-authority-modules.sh identity|observation|billing|execution|outbox|compile|affected BASE HEAD' >&2; exit 2 ;;
+  *) echo 'Usage: bash scripts/test-authority-modules.sh identity|observation|billing|execution|outbox|render-read|compile|affected BASE HEAD' >&2; exit 2 ;;
 esac

@@ -41,11 +41,17 @@ public class ProjectRepository {
         return Optional.ofNullable(record).map(this::mapRecord);
     }
 
+    public Optional<Project> findByIdAndTenant(String id, String tenantId) {
+        Record record = dsl.select().from(PROJECT)
+                .where(PROJECT.ID.eq(id)).and(PROJECT.TENANT_ID.eq(tenantId)).fetchOne();
+        return Optional.ofNullable(record).map(this::mapRecord);
+    }
+
     public List<Project> findByTenantId(String tenantId) {
         return dsl.select()
                 .from(PROJECT)
                 .where(PROJECT.TENANT_ID.eq(tenantId))
-                .orderBy(PROJECT.CREATED_AT.desc())
+                .orderBy(PROJECT.CREATED_AT.desc(), PROJECT.ID.asc())
                 .fetch(this::mapRecord);
     }
 

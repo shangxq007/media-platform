@@ -25,7 +25,7 @@ class ProjectExportServiceTest {
         projects = mock(TenantProjectService.class);
         service = new ProjectExportService(projects, mock(AuditPort.class));
         TenantContext.set("tenant-1");
-        when(projects.getProject("project-1")).thenReturn(new ProjectResponse(
+        when(projects.getProject("tenant-1", "project-1")).thenReturn(new ProjectResponse(
                 "project-1", "tenant-1", "Project", "Description", "ACTIVE", Instant.now()));
     }
 

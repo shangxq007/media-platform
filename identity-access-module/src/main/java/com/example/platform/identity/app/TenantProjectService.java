@@ -3,6 +3,11 @@ package com.example.platform.identity.app;
 import com.example.platform.identity.api.dto.*;
 import com.example.platform.identity.domain.*;
 import com.example.platform.shared.web.TenantContext;
+import com.example.platform.shared.web.PlatformException;
+import com.example.platform.shared.web.CommonErrorCode;
+import com.example.platform.identity.api.authorization.*;
+import com.example.platform.identity.api.project.ProjectReadQuery;
+import com.example.platform.shared.authorization.*;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -10,7 +15,10 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
-public class TenantProjectService {
+public class TenantProjectService implements ProjectReadQuery {
+    private final CanonicalActorResolver actors;
+    private final AuthorizationDecisionPort authorization;
+    private static final AuthorizationAction READ = new AuthorizationAction("READ", AuthorizationResourceType.PROJECT, "Read Project");
 
     private final TenantRepository tenantRepository;
     private final ProjectRepository projectRepository;
@@ -20,11 +28,13 @@ public class TenantProjectService {
     public TenantProjectService(TenantRepository tenantRepository,
             ProjectRepository projectRepository,
             UserRepository userRepository,
-            IdentityAccessService identityAccessService) {
+            IdentityAccessService identityAccessService, CanonicalActorResolver actors, AuthorizationDecisionPort authorization) {
         this.tenantRepository = tenantRepository;
         this.projectRepository = projectRepository;
         this.userRepository = userRepository;
         this.identityAccessService = identityAccessService;
+        this.actors = java.util.Objects.requireNonNull(actors);
+        this.authorization = java.util.Objects.requireNonNull(authorization);
     }
 
     public TenantResponse createTenant(CreateTenantRequest request) {
@@ -53,18 +63,35 @@ public class TenantProjectService {
         return ProjectResponse.from(project);
     }
 
+    @Override
     public List<ProjectResponse> listProjects(String tenantId) {
-        assertTenantAccess(tenantId);
+        CanonicalActor actor = requireReadActor(tenantId);
         return projectRepository.findByTenantId(tenantId).stream()
-                .map(ProjectResponse::from)
-                .collect(Collectors.toList());
+                .filter(project -> authorization.decide(readRequest(actor, tenantId, project.id())).allowed())
+                .map(ProjectResponse::from).toList();
     }
 
-    public ProjectResponse getProject(String projectId) {
-        Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new IllegalArgumentException("Project not found: " + projectId));
-        assertTenantAccess(project.tenantId());
+    @Override
+    public ProjectResponse getProject(String tenantId, String projectId) {
+        CanonicalActor actor = requireReadActor(tenantId);
+        if (projectId == null || projectId.isBlank()) throw new PlatformException(CommonErrorCode.RESOURCE_NOT_FOUND, "Resource not found");
+        authorization.requireAuthorized(readRequest(actor, tenantId, projectId));
+        Project project = projectRepository.findByIdAndTenant(projectId, tenantId)
+                .orElseThrow(() -> new PlatformException(CommonErrorCode.RESOURCE_NOT_FOUND, "Resource not found"));
         return ProjectResponse.from(project);
+    }
+
+    private CanonicalActor requireReadActor(String tenantId) {
+        CanonicalActor actor = actors.resolveCurrentActor().orElseThrow(() -> new PlatformException(CommonErrorCode.AUTHENTICATION_REQUIRED, "Authentication required"));
+        if (tenantId == null || tenantId.isBlank() || !tenantId.equals(TenantContext.get()) || !tenantId.equals(actor.tenantId()))
+            throw new AuthorizationDeniedException(AuthorizationDecision.deny("TENANT_BOUNDARY", "IDENTITY", "Resource unavailable"));
+        return actor;
+    }
+
+    private AuthorizationRequest readRequest(CanonicalActor actor, String tenantId, String projectId) {
+        return new AuthorizationRequest(actor, READ,
+                new AuthorizableResourceRef(AuthorizationResourceType.PROJECT, projectId, tenantId, projectId, null),
+                new AuthorizationContext("project-read", projectId, Map.of()));
     }
 
     public UserResponse createUser(String tenantId, CreateUserRequest request) {

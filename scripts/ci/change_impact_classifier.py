@@ -68,7 +68,7 @@ JOOQ_BUILD_GRAPH_PATHS = {
 
 # Exact known entrypoints, not a blanket scripts/ exemption. Hosted runtime execution
 # remains delegated; these selections are consumed by the existing local module runner.
-AUTHORITY_GROUPS = ("identity", "observation", "billing", "execution", "outbox")
+AUTHORITY_GROUPS = ("identity", "observation", "billing", "execution", "outbox", "render-read")
 AUTHORITY_TEST_ENTRYPOINT = "scripts/test-authority-modules.sh"
 H8_GUARD_PATH = "scripts/guards/h8-operation-invocation-boundary-guard.py"
 KNOWN_BACKEND_VERIFICATION_PATHS = {AUTHORITY_TEST_ENTRYPOINT, H8_GUARD_PATH}
@@ -224,6 +224,8 @@ class Classification:
             path = _normalise_path(raw)
             if path == AUTHORITY_TEST_ENTRYPOINT or path.startswith(("shared-kernel/", "typed-schema-module/", "platform-app/src/main/java/com/example/platform/security/")):
                 return AUTHORITY_GROUPS
+            if path.startswith("identity-access-module/"):
+                selected.add("render-read")
             if path == H8_GUARD_PATH:
                 selected.add("identity")
             for prefixes, groups in (
@@ -232,7 +234,7 @@ class Classification:
                 (("billing-module/", "entitlement-module/", "ai-module/", "extension-module/"), ("billing",)),
                 (("bmf-provider-module/", "provider-plugin-runtime-module/", "worker-fabric-module/", "sandbox-isolation-module/"), ("execution",)),
                 (("outbox-event-module/", "notification-module/"), ("outbox",)),
-                (("render-module/",), ("identity", "execution", "outbox")),
+                (("render-module/",), ("identity", "execution", "outbox", "render-read")),
                 (("platform-app/",), AUTHORITY_GROUPS),
             ):
                 if path.startswith(prefixes): selected.update(groups)
