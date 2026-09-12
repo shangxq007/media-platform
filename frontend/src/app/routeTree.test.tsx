@@ -11,6 +11,7 @@ import { fixtureAccount, fixtureList, fixturePost, source } from '../product/pub
 import { implementedRouteInventory, legacyRouteInventory, routeTree } from './routeTree'
 import { timelineQueryGateway } from '../api/app/timeline-query.gateway'
 import { contentHash, projectId, revisionId, timelineId } from '../product/timeline/types'
+import { renderReadSource } from '../api/render-jobs'
 
 const oidcRetirement = vi.hoisted(() => ({ listeners: new Set<() => void>() }))
 vi.mock('../auth/oidcClient', async importOriginal => ({
@@ -34,6 +35,18 @@ describe('runtime route registration and deep-link restoration', () => {
     for (const surface of surfaceRegistry) expect(implementedRouteInventory).toContain(surface.routeTemplate as typeof implementedRouteInventory[number])
     const registered = (routeTree.children ?? []).map(child => (child.options as { path?: string }).path)
     for (const path of [...implementedRouteInventory, ...legacyRouteInventory]) expect(registered).toContain(path)
+  })
+
+  it('redirects the legacy Render entry to authorized discovery without choosing a Project', async () => {
+    vi.spyOn(renderReadSource, 'tenant').mockResolvedValue('render-tenant')
+    vi.spyOn(renderReadSource, 'projects').mockResolvedValue([])
+    const jobs = vi.spyOn(renderReadSource, 'jobs')
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const router = createRouter({ routeTree, history: createMemoryHistory({ initialEntries: ['/render-jobs'] }), context: { queryClient } })
+    render(<QueryClientProvider client={queryClient}><RouterProvider router={router} /></QueryClientProvider>)
+    await screen.findByText('No authorized projects were returned.')
+    expect(router.state.location.pathname).toBe('/operations/renders')
+    expect(jobs).not.toHaveBeenCalled()
   })
 
   it('restores Workspace, Project, and surface identity from a creative deep link and fails unauthorized commands closed', async () => {
