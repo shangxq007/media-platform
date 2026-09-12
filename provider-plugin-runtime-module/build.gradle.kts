@@ -25,6 +25,10 @@ dependencies {
     api(project(":media-execution-plan-module"))
     api(project(":sandbox-isolation-module"))
     api("org.pf4j:pf4j:3.15.0")
+    implementation(project(":artifact-module"))
+    implementation(project(":shared-kernel"))
+    implementation("com.fasterxml.jackson.core:jackson-databind")
+    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jdk8")
 
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.3")
     testImplementation("org.assertj:assertj-core:3.26.3")

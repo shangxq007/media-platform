@@ -7,6 +7,7 @@ import com.example.platform.workerfabric.domain.ExecutionOwnershipGeneration;
 import java.util.Objects;
 
 /** Minimal runtime mechanics context after upstream execution ownership has been established. */
+@org.springframework.modulith.NamedInterface("runtime")
 public record RuntimeExecutionContext(
         ExecutableTaskId executableTaskId,
         ProviderBindingPin providerBindingPin,

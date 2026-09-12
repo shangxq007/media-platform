@@ -1,54 +1,14 @@
 server:
   port: 8090
-
 spring:
   application:
     name: remote-render-worker
-  datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/platform}
-    username: ${SPRING_DATASOURCE_USERNAME:platform}
-    password: ${SPRING_DATASOURCE_PASSWORD:platform}
-    driver-class-name: org.postgresql.Driver
-  flyway:
-    enabled: true
-    baseline-on-migrate: true
-    url: ${SPRING_FLYWAY_URL:${SPRING_DATASOURCE_URL}}
-    user: ${SPRING_FLYWAY_USER:${SPRING_DATASOURCE_USERNAME}}
-    password: ${SPRING_FLYWAY_PASSWORD:${SPRING_DATASOURCE_PASSWORD}}
 
+# Runtime/incarnation, provider executables and credentials must be supplied by the deployment.
+# Inputs must already be materialized under this host's root; this endpoint does not transfer Assets.
 app:
-  storage:
-    local-root: ${APP_STORAGE_LOCAL_ROOT:/tmp/platform-remote-worker}
-
-render:
-  providers:
-    javacv:
-      enabled: true
-    ffmpeg:
-      enabled: true
-    mlt:
-      enabled: true
-    natron:
-      enabled: true
-    gstreamer:
-      enabled: true
-    gpac:
-      enabled: true
-    shotstack:
-      enabled: true
-    remotion:
-      enabled: true
-    blender:
-      enabled: true
-    vapoursynth:
-      enabled: true
-    libass:
-      enabled: true
-    skia:
-      enabled: true
-    ofx:
-      enabled: true
-  stale-compensator:
-    enabled: true
-    threshold: PT30M
-    interval: PT5M
+  remote-worker:
+    workspace-root: ${APP_REMOTE_WORKER_ROOT:/tmp/platform-remote-worker}
+    plugins-directory: ${APP_REMOTE_WORKER_PLUGINS:plugins}
+    timeout: PT1M
+    capture-bytes: 67108864

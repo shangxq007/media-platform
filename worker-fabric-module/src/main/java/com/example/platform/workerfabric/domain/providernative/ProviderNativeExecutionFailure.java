@@ -10,6 +10,7 @@ import java.util.TreeMap;
  * <p>Provider-native stderr/API bodies may be attached only as bounded diagnostics; the typed
  * failure code remains the architecture-level identity.
  */
+@org.springframework.modulith.NamedInterface("runtime")
 public final class ProviderNativeExecutionFailure extends RuntimeException {
 
     private final ProviderNativeFailureCode code;

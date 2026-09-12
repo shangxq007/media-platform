@@ -3,6 +3,7 @@ package com.example.platform.workerfabric.domain;
 import java.io.Serializable;
 
 /** Stable identity of one executable runtime endpoint. */
+@org.springframework.modulith.NamedInterface("runtime")
 public record WorkerRuntimeId(String value) implements Serializable {
 
     public WorkerRuntimeId {

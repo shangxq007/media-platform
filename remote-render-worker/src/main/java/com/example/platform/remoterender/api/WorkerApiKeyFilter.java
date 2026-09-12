@@ -18,14 +18,16 @@ public class WorkerApiKeyFilter implements Filter {
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
             throws IOException, ServletException {
         if (configuredApiKey == null || configuredApiKey.isBlank()) {
-            chain.doFilter(request, response);
+            ((HttpServletResponse) response).sendError(503, "Worker credentials are not configured");
             return;
         }
 
         HttpServletRequest httpRequest = (HttpServletRequest) request;
         String providedKey = httpRequest.getHeader("X-Worker-Api-Key");
 
-        if (configuredApiKey.equals(providedKey)) {
+        if (providedKey != null && java.security.MessageDigest.isEqual(
+                configuredApiKey.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                providedKey.getBytes(java.nio.charset.StandardCharsets.UTF_8))) {
             chain.doFilter(request, response);
         } else {
             HttpServletResponse httpResponse = (HttpServletResponse) response;

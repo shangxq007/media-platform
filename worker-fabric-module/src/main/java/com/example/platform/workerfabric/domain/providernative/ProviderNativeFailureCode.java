@@ -1,6 +1,7 @@
 package com.example.platform.workerfabric.domain.providernative;
 
 /** Typed fail-closed architecture-level failures for generic provider-native lowering/runtime adaptation. */
+@org.springframework.modulith.NamedInterface("runtime")
 public enum ProviderNativeFailureCode {
     UNSUPPORTED_EXECUTABLE_TASK_SEMANTICS,
     PROVIDER_BINDING_MISMATCH,

@@ -12,6 +12,7 @@ import java.util.Objects;
  * <p>It is runtime mechanics only, not canonical media state, operation authority, scheduler
  * identity, lease identity, or an independent execution lifecycle authority.
  */
+@org.springframework.modulith.NamedInterface("runtime")
 public record ExecutionCommand(
         ExecutableTaskId executableTaskId,
         ProviderBindingPin providerBindingPin,

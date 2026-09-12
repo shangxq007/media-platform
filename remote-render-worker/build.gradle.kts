@@ -5,14 +5,14 @@ plugins {
 
 dependencies {
     api(project(":shared-kernel"))
-    api(project(":render-module"))
-    api(project(":storage-module"))
-    api(project(":ai-module"))
+    api(project(":worker-fabric-module"))
+    implementation(project(":provider-plugin-runtime-module"))
+    implementation(project(":media-execution-plan-module"))
+    implementation(project(":artifact-module"))
+    implementation(project(":sandbox-isolation-module"))
 
     api("org.springframework.boot:spring-boot-starter")
     api("org.springframework.boot:spring-boot-starter-web")
-    api("org.springframework.boot:spring-boot-starter-jdbc")
-    api("org.springframework.boot:spring-boot-starter-jooq")
     api("org.springframework.boot:spring-boot-starter-validation")
     api("org.springframework.boot:spring-boot-starter-actuator")
 

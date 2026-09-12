@@ -13,6 +13,7 @@ import java.util.TreeMap;
  *
  * <p>The authority is never a single shell-interpreted string.
  */
+@org.springframework.modulith.NamedInterface("runtime")
 public record ProcessInvocationSpec(
         String executable,
         List<String> arguments,

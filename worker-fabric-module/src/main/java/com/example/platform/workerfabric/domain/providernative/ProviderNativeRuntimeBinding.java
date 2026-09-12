@@ -46,7 +46,30 @@ public final class ProviderNativeRuntimeBinding<P extends ProviderNativeExecutio
                 task.providerBindingPin(),
                 ProviderNativeFailureCode.PROVIDER_BINDING_MISMATCH);
         RuntimeExecutionBundle bundle = runtimeAdapter.adapt(nativePlan, runtimeContext);
+        if (!bundle.executableTaskId().equals(runtimeContext.executableTaskId())
+                || !bundle.providerBindingPin().equals(runtimeContext.providerBindingPin())
+                || !bundle.platformExecutionAttemptId().equals(runtimeContext.platformExecutionAttemptId())
+                || !bundle.platformOwnershipGeneration().equals(runtimeContext.platformOwnershipGeneration())) {
+            throw new ProviderNativeExecutionFailure(ProviderNativeFailureCode.RUNTIME_BINDING_MISMATCH,
+                    "runtime adapter changed the platform execution identity");
+        }
         return commandExecutor.execute(bundle, List.copyOf(runtimeLocalInputs));
+    }
+
+    /** Platform-side composition: preserve lowering/adaptation while placing command execution remotely. */
+    public ProviderNativeRuntimeBinding<P> withCommandExecutor(RuntimeCommandExecutor executor) {
+        return new ProviderNativeRuntimeBinding<>(planLowerer, runtimeAdapter, executor);
+    }
+
+    /** Worker-side mechanics only: the platform has already lowered and adapted this exact bundle. */
+    public ProviderExecutionOutput executePrepared(RuntimeExecutionBundle bundle,
+            List<MaterializedExecutionInput> inputs) throws IOException {
+        Objects.requireNonNull(bundle, "bundle");
+        if (bundle.commands().isEmpty()) {
+            throw new ProviderNativeExecutionFailure(ProviderNativeFailureCode.MALFORMED_NATIVE_PLAN,
+                    "prepared execution requires commands");
+        }
+        return commandExecutor.execute(bundle, List.copyOf(inputs));
     }
 
     private static void validateRuntimeInputIdentities(

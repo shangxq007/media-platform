@@ -23,6 +23,12 @@ public final class ProviderPluginHost implements AutoCloseable {
     private final ProviderPluginCatalog catalog = new ProviderPluginCatalog();
     private boolean loaded;
 
+    /** Standalone host composition uses the same canonical plugin validator and registry. */
+    public static ProviderPluginHost open(Path pluginsDirectory) {
+        return new ProviderPluginHost(pluginsDirectory, new PluginRegistryImpl(
+                new PluginDescriptorValidator(), new com.example.platform.extension.app.PluginHealthRegistry()));
+    }
+
     public ProviderPluginHost(Path pluginsDirectory, PluginRegistryImpl pluginRegistry) {
         this(new DefaultPluginManager(Objects.requireNonNull(pluginsDirectory, "pluginsDirectory")),
                 pluginRegistry);

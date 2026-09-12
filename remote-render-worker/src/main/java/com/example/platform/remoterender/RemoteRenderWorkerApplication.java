@@ -2,18 +2,9 @@ package com.example.platform.remoterender;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.scheduling.annotation.EnableScheduling;
 
-@SpringBootApplication
-@ComponentScan(basePackages = {
-        "com.example.platform.remoterender",
-        "com.example.platform.render.infrastructure",
-        "com.example.platform.storage"
-})
-@EnableScheduling
+/** Thin runtime host; canonical persistence and lifecycle stay in the platform. */
+@SpringBootApplication(excludeName = "org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration")
 public class RemoteRenderWorkerApplication {
-    public static void main(String[] args) {
-        SpringApplication.run(RemoteRenderWorkerApplication.class, args);
-    }
+    public static void main(String[] args) { SpringApplication.run(RemoteRenderWorkerApplication.class, args); }
 }

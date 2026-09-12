@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.util.Objects;
 
 /** Provider-produced bytes before platform staging, durable publication, or Artifact commit. */
+@org.springframework.modulith.NamedInterface("runtime")
 public record ProviderExecutionOutput(InputStream content) implements AutoCloseable {
 
     public ProviderExecutionOutput {

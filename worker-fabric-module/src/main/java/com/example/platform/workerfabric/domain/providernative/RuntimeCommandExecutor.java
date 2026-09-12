@@ -6,6 +6,7 @@ import java.util.List;
 
 /** Executes already-adapted runtime commands without acquiring lifecycle or output authority. */
 @FunctionalInterface
+@org.springframework.modulith.NamedInterface("runtime")
 public interface RuntimeCommandExecutor {
     ProviderExecutionOutput execute(
             RuntimeExecutionBundle executionBundle,

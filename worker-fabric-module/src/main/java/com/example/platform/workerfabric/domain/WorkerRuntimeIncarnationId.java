@@ -3,6 +3,7 @@ package com.example.platform.workerfabric.domain;
 import java.io.Serializable;
 
 /** Identity of one registration incarnation of a worker runtime. */
+@org.springframework.modulith.NamedInterface("runtime")
 public record WorkerRuntimeIncarnationId(String value) implements Serializable {
 
     public WorkerRuntimeIncarnationId {

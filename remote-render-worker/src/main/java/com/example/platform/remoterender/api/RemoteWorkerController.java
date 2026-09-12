@@ -1,127 +1,57 @@
 package com.example.platform.remoterender.api;
 
 import com.example.platform.remoterender.app.RemoteRenderService;
-import com.example.platform.remoterender.app.WorkerRegistryService;
-import com.example.platform.remoterender.domain.RemoteRenderJob;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
+import com.example.platform.providerplugin.remote.*;
+import com.example.platform.workerfabric.domain.providernative.*;
+import java.io.IOException;
 import java.util.Map;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.*;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
-/**
- * REST API for remote render worker operations.
- */
+/** Authenticated fixed-command transport. No registration, scheduling, job status or completion authority. */
 @RestController
 @RequestMapping("/api/remote-worker")
 public class RemoteWorkerController {
+    private final RemoteRenderService execution;
+    public RemoteWorkerController(RemoteRenderService execution) { this.execution = execution; }
 
-    private static final Logger log = LoggerFactory.getLogger(RemoteWorkerController.class);
-
-    private final RemoteRenderService renderService;
-    private final WorkerRegistryService workerRegistry;
-
-    public RemoteWorkerController(RemoteRenderService renderService, WorkerRegistryService workerRegistry) {
-        this.renderService = renderService;
-        this.workerRegistry = workerRegistry;
+    @PostMapping("/executions")
+    public ResponseEntity<StreamingResponseBody> execute(HttpServletRequest request) throws IOException {
+        execution.requireRuntime(request.getHeader("X-Worker-Runtime-Id"), request.getHeader("X-Worker-Incarnation"));
+        var invocation = WorkerInvocationCodec.decode(body(request), RemoteWorkerInvocation.class);
+        var output = execution.execute(request.getHeader("X-Worker-Runtime-Id"),
+                request.getHeader("X-Worker-Incarnation"), invocation);
+        StreamingResponseBody stream = target -> { try (output) { output.content().transferTo(target); } };
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .header("X-Execution-Context", WorkerInvocationCodec.correlation(WorkerInvocationCodec.context(invocation.bundle())))
+                .body(stream);
     }
 
-    /**
-     * Register a new worker.
-     */
-    @PostMapping("/register")
-    public ResponseEntity<Map<String, String>> registerWorker(
-            @RequestBody Map<String, Object> request) {
-        String address = (String) request.getOrDefault("address", "unknown");
-        int maxJobs = (int) request.getOrDefault("maxConcurrentJobs", 4);
-        String workerId = workerRegistry.registerWorker(address, maxJobs);
-        return ResponseEntity.ok(Map.of("workerId", workerId, "status", "REGISTERED"));
-    }
-
-    /**
-     * Deregister a worker.
-     */
-    @PostMapping("/deregister/{workerId}")
-    public ResponseEntity<Map<String, String>> deregisterWorker(@PathVariable String workerId) {
-        workerRegistry.deregisterWorker(workerId);
-        return ResponseEntity.ok(Map.of("workerId", workerId, "status", "DEREGISTERED"));
-    }
-
-    /**
-     * Worker heartbeat.
-     */
-    @PostMapping("/heartbeat/{workerId}")
-    public ResponseEntity<Map<String, String>> heartbeat(@PathVariable String workerId) {
-        workerRegistry.heartbeat(workerId);
-        return ResponseEntity.ok(Map.of("workerId", workerId, "status", "ALIVE"));
-    }
-
-    /**
-     * Get all registered workers.
-     */
-    @GetMapping("/workers")
-    public ResponseEntity<Map<String, Object>> listWorkers() {
-        return ResponseEntity.ok(Map.of(
-                "workers", workerRegistry.getAllWorkers(),
-                "count", workerRegistry.getAllWorkers().size()
-        ));
-    }
-
-    /**
-     * Get worker status.
-     */
-    @GetMapping("/workers/{workerId}")
-    public ResponseEntity<?> getWorkerStatus(@PathVariable String workerId) {
-        WorkerRegistryService.WorkerInfo info = workerRegistry.getWorker(workerId);
-        if (info == null) {
+    @PostMapping("/executions/cancel")
+    public ResponseEntity<Map<String, String>> cancel(HttpServletRequest request) throws IOException {
+        execution.requireRuntime(request.getHeader("X-Worker-Runtime-Id"), request.getHeader("X-Worker-Incarnation"));
+        var context = WorkerInvocationCodec.decode(body(request), RuntimeExecutionContext.class);
+        if (!execution.cancel(request.getHeader("X-Worker-Runtime-Id"), request.getHeader("X-Worker-Incarnation"), context)) {
             return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok(info);
+        return ResponseEntity.accepted().body(Map.of("observation", "CANCELLATION_REQUESTED"));
     }
 
-    /**
-     * Submit a render job to this worker.
-     */
-    @PostMapping("/workers/{workerId}/jobs")
-    public ResponseEntity<RemoteRenderJob> submitJob(
-            @PathVariable String workerId,
-            @RequestBody Map<String, Object> request) {
-        String profile = (String) request.getOrDefault("profile", "default_1080p");
-        String timelineJson = (String) request.getOrDefault("timelineJson", "{}");
-
-        RemoteRenderJob job = renderService.submitJob(workerId, profile, timelineJson);
-        log.info("RemoteWorkerController: job submitted: {} to worker: {}", job.jobId(), workerId);
-        return ResponseEntity.ok(job);
+    private static byte[] body(HttpServletRequest request) throws IOException {
+        byte[] bytes = request.getInputStream().readNBytes(4 * 1024 * 1024 + 1);
+        if (bytes.length > 4 * 1024 * 1024) throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE);
+        return bytes;
     }
-
-    /**
-     * Get job status.
-     */
-    @GetMapping("/jobs/{jobId}")
-    public ResponseEntity<RemoteRenderJob> getJobStatus(@PathVariable String jobId) {
-        RemoteRenderJob job = renderService.getJobStatus(jobId);
-        if (job == null) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(job);
+    @ExceptionHandler(ProviderNativeExecutionFailure.class)
+    ResponseEntity<Map<String, String>> failure(ProviderNativeExecutionFailure failure) {
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).header("X-Runtime-Failure", failure.code().name())
+                .body(Map.of("code", failure.code().name()));
     }
-
-    /**
-     * Get all jobs for a worker.
-     */
-    @GetMapping("/workers/{workerId}/jobs")
-    public ResponseEntity<List<RemoteRenderJob>> getWorkerJobs(@PathVariable String workerId) {
-        return ResponseEntity.ok(renderService.getWorkerJobs(workerId));
-    }
-
-    /**
-     * Cancel a job.
-     */
-    @PostMapping("/jobs/{jobId}/cancel")
-    public ResponseEntity<RemoteRenderJob> cancelJob(@PathVariable String jobId) {
-        RemoteRenderJob job = renderService.cancelJob(jobId);
-        return ResponseEntity.ok(job);
+    @ExceptionHandler({IllegalArgumentException.class, com.fasterxml.jackson.core.JsonProcessingException.class})
+    ResponseEntity<Map<String, String>> malformed(Exception failure) {
+        return ResponseEntity.badRequest().body(Map.of("code", "MALFORMED_RUNTIME_INVOCATION"));
     }
 }

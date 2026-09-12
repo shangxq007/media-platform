@@ -5,6 +5,7 @@ import com.example.platform.execution.domain.ExecutionInputId;
 import java.util.Objects;
 
 /** One typed logical runtime input bound to an immutable worker-local Artifact handle. */
+@org.springframework.modulith.NamedInterface("runtime")
 public record MaterializedExecutionInput(
         ExecutionInputId inputId,
         ArtifactPin artifactPin,

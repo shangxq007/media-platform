@@ -1,173 +1,129 @@
 package com.example.platform.remoterender.app;
 
-import com.example.platform.remoterender.domain.RemoteRenderJob;
-import com.example.platform.remoterender.domain.WorkerStatus;
-import com.example.platform.render.infrastructure.RenderProvider;
-import com.example.platform.render.infrastructure.RenderProvider.RenderResult;
-import com.example.platform.render.infrastructure.RenderProviderRouter;
-import com.example.platform.shared.web.ConfigurableErrorCode;
-import com.example.platform.shared.web.PlatformException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.time.Duration;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
+import com.example.platform.providerplugin.*;
+import com.example.platform.providerplugin.remote.*;
+import com.example.platform.workerfabric.domain.*;
+import com.example.platform.workerfabric.domain.providernative.*;
+import com.example.platform.sandbox.SandboxCancellation;
+import java.io.*;
+import java.nio.file.*;
+import java.security.MessageDigest;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-@Service
-public class RemoteRenderService {
+/** Worker-local execution handles only. Task, attempt, generation and completion belong to the platform. */
+public final class RemoteRenderService {
+    @FunctionalInterface public interface RuntimeContextFactory {
+        ProviderPluginRuntimeContext create(ProviderPluginContribution contribution, SandboxCancellation cancellation);
+    }
+    private final WorkerRuntimeDescriptor runtime;
+    private final WorkerRuntimeIncarnationId incarnation;
+    private final WorkerRuntimeSupportAdvertisement advertisement;
+    private final ProviderPluginCatalog catalog;
+    private final RuntimeContextFactory contexts;
+    private final Path inputRoot;
+    private final ConcurrentHashMap<RuntimeExecutionContext, AtomicBoolean> active = new ConcurrentHashMap<>();
 
-    private static final Logger log = LoggerFactory.getLogger(RemoteRenderService.class);
-
-    @Value("${app.storage.local-root:/tmp/platform}")
-    private String storageRoot;
-
-    @Value("${app.remote-worker.callback-url:}")
-    private String callbackUrl;
-
-    private final RenderProviderRouter providerRouter;
-    private final WorkerRegistryService workerRegistry;
-    private final Map<String, RemoteRenderJob> activeJobs = new ConcurrentHashMap<>();
-    private final HttpClient httpClient = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(10))
-            .build();
-
-    public RemoteRenderService(RenderProviderRouter providerRouter,
-                                WorkerRegistryService workerRegistry) {
-        this.providerRouter = providerRouter;
-        this.workerRegistry = workerRegistry;
+    public RemoteRenderService(WorkerRuntimeDescriptor runtime, WorkerRuntimeIncarnationId incarnation,
+            WorkerRuntimeSupportAdvertisement advertisement, ProviderPluginCatalog catalog,
+            RuntimeContextFactory contexts, Path inputRoot) {
+        this.runtime = Objects.requireNonNull(runtime);
+        this.incarnation = Objects.requireNonNull(incarnation);
+        this.advertisement = Objects.requireNonNull(advertisement);
+        this.catalog = Objects.requireNonNull(catalog);
+        this.contexts = Objects.requireNonNull(contexts);
+        this.inputRoot = inputRoot.toAbsolutePath().normalize();
     }
 
-    public RemoteRenderJob submitJob(String workerId, String profile, String timelineJson) {
-        log.info("RemoteRenderService: submitting job worker={} profile={}", workerId, profile);
-
-        RemoteRenderJob job = RemoteRenderJob.create(workerId, profile, timelineJson);
-        activeJobs.put(job.jobId(), job);
-
-        CompletableFuture.runAsync(() -> executeJob(job.jobId()));
-
-        return job;
-    }
-
-    private void executeJob(String jobId) {
-        RemoteRenderJob job = activeJobs.get(jobId);
-        if (job == null) {
-            log.warn("RemoteRenderService: job not found: {}", jobId);
-            return;
+    public void requireRuntime(String runtimeId, String incarnationId) {
+        if (!runtime.id().value().equals(runtimeId) || !incarnation.value().equals(incarnationId)) {
+            throw failure(ProviderNativeFailureCode.RUNTIME_BINDING_MISMATCH, "Worker runtime identity mismatch");
         }
+    }
 
-        try {
-            job = job.withStarted();
-            activeJobs.put(jobId, job);
-            workerRegistry.updateWorkerStatus(job.workerId(), WorkerStatus.BUSY);
-            notifyCallback(job, 10);
-
-            String profile = job.profile();
-            String timelineJson = job.timelineJson();
-
-            // Route to the correct provider based on profile
-            RenderProvider provider = providerRouter.route(profile);
-            String providerName = provider.getClass().getSimpleName();
-            log.info("RemoteRenderService: job={} routed to provider={} profile={}",
-                    jobId, providerName, profile);
-
-            notifyCallback(job, 30);
-
-            // Execute render via the selected provider
-            RenderResult result = provider.render(jobId, timelineJson, profile);
-
-            notifyCallback(job, 80);
-
-            // Verify output exists
-            if (result.storageUri() != null && result.storageUri().startsWith("localFsStorageProvider://")) {
-                String relative = result.storageUri().substring("localFsStorageProvider://".length());
-                Path localPath = Path.of(storageRoot, relative);
-                if (!Files.exists(localPath)) {
-                    throw new IllegalStateException("Provider " + providerName
-                            + " produced no output: " + localPath);
-                }
-                log.info("RemoteRenderService: output verified: {} ({} bytes)",
-                        localPath, Files.size(localPath));
+    public ProviderExecutionOutput execute(String runtimeId, String incarnationId, RemoteWorkerInvocation invocation) throws IOException {
+        requireRuntime(runtimeId, incarnationId);
+        var bundle = invocation.bundle();
+        var context = WorkerInvocationCodec.context(bundle);
+        var contribution = catalog.find(bundle.providerBindingPin()).orElseThrow(() ->
+                failure(ProviderNativeFailureCode.PROVIDER_BINDING_MISMATCH, "Exact provider binding unavailable"));
+        var requirement = contribution.workerRuntimeSupportRequirement();
+        if (requirement == null || !requirement.providerBindingPin().equals(bundle.providerBindingPin())
+                || !RuntimeSupportAdvertisementEvaluator.evaluate(runtime, Optional.of(advertisement), Optional.of(requirement))
+                        .acceptedAsCandidateEvidence()) {
+            throw failure(ProviderNativeFailureCode.SANDBOX_POLICY_REJECTED, "Installed runtime support does not match requirement");
+        }
+        // Inputs are already staged by the platform materialization path, never fetched from a caller URL.
+        for (var input : invocation.inputs()) {
+            Path path = input.materializedArtifact().path();
+            if (Files.isSymbolicLink(path) || !path.toRealPath().startsWith(inputRoot.toRealPath())
+                    || Files.size(path) != input.materializedArtifact().byteLength()) {
+                throw failure(ProviderNativeFailureCode.INVALID_MATERIALIZED_INPUT_BINDING, "Input outside worker materialization scope");
             }
-
-            // Complete
-            job = job.withCompleted(result.artifactId(), result.storageUri());
-            activeJobs.put(jobId, job);
-            notifyCallback(job, 100);
-
-            log.info("RemoteRenderService: job completed: {} provider={} artifact={}",
-                    jobId, providerName, result.artifactId());
-
-        } catch (Exception e) {
-            log.error("RemoteRenderService: job execution failed: {}", jobId, e);
-            job = job.withFailed("RENDER-500-001", "Remote render failed: " + e.getMessage());
-            activeJobs.put(jobId, job);
-            notifyCallback(job, 0);
-        } finally {
-            workerRegistry.updateWorkerStatus(job.workerId(), WorkerStatus.IDLE);
+            try (var bytes = Files.newInputStream(path)) {
+                var hash = MessageDigest.getInstance("SHA-256");
+                byte[] buffer = new byte[8192];
+                int count;
+                while ((count = bytes.read(buffer)) != -1) hash.update(buffer, 0, count);
+                if (!HexFormat.of().formatHex(hash.digest()).equals(input.artifactPin().contentDigest().canonicalValue())) {
+                    throw failure(ProviderNativeFailureCode.INVALID_MATERIALIZED_INPUT_BINDING, "Materialized input digest mismatch");
+                }
+            } catch (java.security.NoSuchAlgorithmException impossible) { throw new IllegalStateException(impossible); }
         }
-    }
-
-    private void notifyCallback(RemoteRenderJob job, int progress) {
-        if (callbackUrl == null || callbackUrl.isBlank()) return;
+        var cancellation = new AtomicBoolean();
+        if (active.putIfAbsent(context, cancellation) != null) {
+            throw failure(ProviderNativeFailureCode.RUNTIME_BINDING_MISMATCH, "Execution context already active");
+        }
+        Path scratch = null;
         try {
-            String payload = String.format(
-                    "{\"jobId\":\"%s\",\"status\":\"%s\",\"progress\":%d,\"artifactId\":\"%s\",\"storageUri\":\"%s\",\"errorCode\":\"%s\",\"errorMessage\":\"%s\"}",
-                    job.jobId(), job.status(), progress,
-                    job.artifactId() != null ? job.artifactId() : "",
-                    job.storageUri() != null ? job.storageUri() : "",
-                    job.errorCode() != null ? job.errorCode() : "",
-                    job.errorMessage() != null ? job.errorMessage().replace("\"", "'") : "");
-
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(callbackUrl + "/api/remote-worker/jobs/" + job.jobId() + "/callback"))
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(payload))
-                    .timeout(Duration.ofSeconds(5))
-                    .build();
-
-            httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-                    .exceptionally(ex -> {
-                        log.warn("Callback error for job={}: {}", job.jobId(), ex.getMessage());
-                        return null;
-                    });
-        } catch (Exception e) {
-            log.warn("Failed to send callback for job={}: {}", job.jobId(), e.getMessage());
+            var hostContext = contexts.create(contribution, cancellation::get);
+            scratch = hostContext.workspaceRoot();
+            final Path ownedScratch = scratch;
+            var binding = contribution.createRuntimeBinding(hostContext);
+            var output = binding.executePrepared(bundle, invocation.inputs());
+            if (cancellation.get()) {
+                output.close();
+                throw failure(ProviderNativeFailureCode.PROCESS_CANCELLED, "Execution cancellation requested");
+            }
+            return new ProviderExecutionOutput(new FilterInputStream(output.content()) {
+                @Override public void close() throws IOException {
+                    Exception failure = null;
+                    try { super.close(); } catch (IOException | RuntimeException error) { failure = error; }
+                    try { cleanupScratch(ownedScratch); }
+                    catch (IOException | RuntimeException cleanup) {
+                        if (failure == null) failure = cleanup; else failure.addSuppressed(cleanup);
+                    } finally { active.remove(context, cancellation); }
+                    if (failure instanceof IOException io) throw io;
+                    if (failure instanceof RuntimeException runtimeFailure) throw runtimeFailure;
+                }
+            });
+        } catch (IOException | RuntimeException failure) {
+            active.remove(context, cancellation);
+            try { cleanupScratch(scratch); } catch (IOException | RuntimeException cleanup) { failure.addSuppressed(cleanup); }
+            throw failure;
         }
     }
 
-    public RemoteRenderJob getJobStatus(String jobId) {
-        return activeJobs.get(jobId);
+    public boolean cancel(String runtimeId, String incarnationId, RuntimeExecutionContext context) {
+        requireRuntime(runtimeId, incarnationId);
+        var handle = active.get(context);
+        if (handle == null) return false;
+        handle.set(true);
+        return true; // request acknowledgement, never canonical task cancellation
     }
 
-    public List<RemoteRenderJob> getWorkerJobs(String workerId) {
-        return activeJobs.values().stream()
-                .filter(j -> j.workerId().equals(workerId))
-                .toList();
+    private static ProviderNativeExecutionFailure failure(ProviderNativeFailureCode code, String message) {
+        return new ProviderNativeExecutionFailure(code, message);
     }
 
-    public RemoteRenderJob cancelJob(String jobId) {
-        RemoteRenderJob job = activeJobs.get(jobId);
-        if (job == null) {
-            throw new PlatformException(
-                    new ConfigurableErrorCode("RENDER-404-001", 500404,
-                            Map.of("en", "Render job not found", "zh", "渲染任务不存在"),
-                            "render", 404),
-                    "Job not found: " + jobId, Map.of("jobId", jobId), "en");
+    private void cleanupScratch(Path directory) throws IOException {
+        // Only the deployment factory's fresh, private execution directories belong to this handle.
+        // The materialization root and caller-owned input files are never cleanup targets.
+        if (directory == null || !inputRoot.equals(directory.getParent())
+                || !directory.getFileName().toString().startsWith("execution-")) return;
+        try (var files = Files.walk(directory)) {
+            for (Path file : files.sorted(Comparator.reverseOrder()).toList()) Files.deleteIfExists(file);
         }
-        job = job.withStatus("CANCELLED");
-        activeJobs.put(jobId, job);
-        notifyCallback(job, 0);
-        return job;
     }
 }

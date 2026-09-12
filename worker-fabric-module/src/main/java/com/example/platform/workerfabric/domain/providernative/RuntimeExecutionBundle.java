@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Objects;
 
 /** Ordered typed runtime commands sharing one platform attempt/generation. */
+@org.springframework.modulith.NamedInterface("runtime")
 public record RuntimeExecutionBundle(
         ExecutableTaskId executableTaskId,
         ProviderBindingPin providerBindingPin,
