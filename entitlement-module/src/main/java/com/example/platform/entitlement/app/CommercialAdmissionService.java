@@ -1,12 +1,12 @@
 package com.example.platform.entitlement.app;
 
 import com.example.platform.entitlement.domain.AccessDecision;
-import com.example.platform.shared.commercial.CommercialAdmissionPort;
-import com.example.platform.shared.commercial.CommercialAdmissionRequest;
-import com.example.platform.shared.commercial.CommercialDecision;
-import com.example.platform.shared.commercial.CommercialDecisionReason;
+import com.example.platform.entitlement.api.commercial.CommercialAdmissionPort;
+import com.example.platform.entitlement.api.commercial.CommercialAdmissionRequest;
+import com.example.platform.entitlement.api.commercial.CommercialDecision;
+import com.example.platform.entitlement.api.commercial.CommercialDecisionReason;
 import com.example.platform.shared.commercial.CommercialEvidenceRef;
-import com.example.platform.shared.commercial.QuotaDecision;
+import com.example.platform.entitlement.api.commercial.QuotaDecision;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.stereotype.Service;

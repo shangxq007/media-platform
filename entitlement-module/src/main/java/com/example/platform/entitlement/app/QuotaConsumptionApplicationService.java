@@ -3,11 +3,11 @@ package com.example.platform.entitlement.app;
 import com.example.platform.entitlement.domain.QuotaOperationKind;
 import com.example.platform.entitlement.domain.QuotaUsageCommand;
 import com.example.platform.entitlement.domain.QuotaUsageResult;
-import com.example.platform.shared.commercial.CommercialDecisionReason;
+import com.example.platform.entitlement.api.commercial.CommercialDecisionReason;
 import com.example.platform.shared.commercial.CommercialEvidenceRef;
-import com.example.platform.shared.commercial.QuotaConsumptionPort;
-import com.example.platform.shared.commercial.QuotaConsumptionRequest;
-import com.example.platform.shared.commercial.QuotaDecision;
+import com.example.platform.entitlement.api.commercial.QuotaConsumptionPort;
+import com.example.platform.entitlement.api.commercial.QuotaConsumptionRequest;
+import com.example.platform.entitlement.api.commercial.QuotaDecision;
 import java.util.List;
 import org.springframework.stereotype.Service;
 

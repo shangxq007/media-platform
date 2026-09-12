@@ -74,7 +74,7 @@ public class AccessDecisionService {
             Instant periodStart = month.atDay(1).atStartOfDay(ZoneOffset.UTC).toInstant();
             Instant periodEnd = month.plusMonths(1).atDay(1).atStartOfDay(ZoneOffset.UTC).toInstant();
             PrincipalRef principal = principal(request);
-            com.example.platform.shared.commercial.QuotaDecision quotaDecision =
+            com.example.platform.entitlement.api.commercial.QuotaDecision quotaDecision =
                     quotaDecisionService.evaluate(
                             principal, request.featureKey(), periodStart, periodEnd,
                             request.requestedQuota(),

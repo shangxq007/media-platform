@@ -4,9 +4,9 @@ import com.example.platform.render.app.clientexport.ClientExportPresetCatalog.Pr
 import com.example.platform.render.domain.clientexport.ClientExportSession;
 import com.example.platform.render.infrastructure.clientexport.ClientExportSessionRepository;
 import com.example.platform.shared.Ids;
-import com.example.platform.shared.commercial.CommercialAdmissionPort;
-import com.example.platform.shared.commercial.CommercialAdmissionRequest;
-import com.example.platform.shared.commercial.CommercialDecision;
+import com.example.platform.entitlement.api.commercial.CommercialAdmissionPort;
+import com.example.platform.entitlement.api.commercial.CommercialAdmissionRequest;
+import com.example.platform.entitlement.api.commercial.CommercialDecision;
 import com.example.platform.shared.commercial.PrincipalRef;
 import com.example.platform.shared.commercial.PrincipalType;
 import com.example.platform.storage.contract.ChecksummingInputStream;

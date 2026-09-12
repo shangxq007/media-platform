@@ -1,4 +1,4 @@
-package com.example.platform.shared.commercial;
+package com.example.platform.entitlement.api.commercial;
 
 /** Generic provider-neutral commercial decision reasons accepted by H5. */
 public enum CommercialDecisionReason {

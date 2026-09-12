@@ -10,6 +10,7 @@
             "billing :: usage",
             "entitlement",
             "entitlement :: domain",
+            "entitlement :: commercial",
             "shared",
             "storage",
             "storage :: API",

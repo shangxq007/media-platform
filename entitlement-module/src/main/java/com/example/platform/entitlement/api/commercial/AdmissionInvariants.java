@@ -1,10 +1,12 @@
-package com.example.platform.shared.commercial;
+package com.example.platform.entitlement.api.commercial;
+
+import com.example.platform.shared.commercial.CommercialEvidenceRef;
 
 import java.util.List;
 
-final class CommercialValidation {
+final class AdmissionInvariants {
 
-    private CommercialValidation() {
+    private AdmissionInvariants() {
     }
 
     static String requireNonBlank(String value, String field) {

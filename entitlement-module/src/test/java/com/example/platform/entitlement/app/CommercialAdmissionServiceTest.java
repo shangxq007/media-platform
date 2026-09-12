@@ -8,11 +8,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.example.platform.entitlement.domain.AccessDecision;
-import com.example.platform.shared.commercial.CommercialAdmissionRequest;
-import com.example.platform.shared.commercial.CommercialDecisionReason;
+import com.example.platform.entitlement.api.commercial.CommercialAdmissionRequest;
+import com.example.platform.entitlement.api.commercial.CommercialDecisionReason;
 import com.example.platform.shared.commercial.PrincipalRef;
 import com.example.platform.shared.commercial.PrincipalType;
-import com.example.platform.shared.commercial.QuotaDecision;
+import com.example.platform.entitlement.api.commercial.QuotaDecision;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;

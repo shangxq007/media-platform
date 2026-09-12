@@ -6,8 +6,8 @@ import static org.mockito.Mockito.mock;
 
 import com.example.platform.render.app.clientexport.ClientExportPresetCatalog.Preset;
 import com.example.platform.render.infrastructure.clientexport.ClientExportSessionRepository;
-import com.example.platform.shared.commercial.CommercialDecision;
-import com.example.platform.shared.commercial.CommercialDecisionReason;
+import com.example.platform.entitlement.api.commercial.CommercialDecision;
+import com.example.platform.entitlement.api.commercial.CommercialDecisionReason;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -36,7 +36,7 @@ class ClientExportServiceCatalogTest {
                 return presets;
             }
         };
-        var admission = (com.example.platform.shared.commercial.CommercialAdmissionPort) request -> {
+        var admission = (com.example.platform.entitlement.api.commercial.CommercialAdmissionPort) request -> {
             boolean allowed = !request.entitlementKey().endsWith("team_4k");
             return new CommercialDecision(
                     request.principal(), request.action(), allowed,

@@ -1,4 +1,8 @@
-package com.example.platform.shared.commercial;
+package com.example.platform.entitlement.api.commercial;
+
+import com.example.platform.shared.commercial.PrincipalRef;
+import com.example.platform.shared.commercial.PrincipalType;
+import com.example.platform.shared.commercial.CommercialEvidenceRef;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;

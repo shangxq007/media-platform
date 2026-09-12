@@ -1,4 +1,7 @@
-package com.example.platform.shared.commercial;
+package com.example.platform.entitlement.api.commercial;
+
+import com.example.platform.shared.commercial.PrincipalRef;
+import com.example.platform.shared.commercial.CommercialEvidenceRef;
 
 import java.time.Instant;
 import java.util.List;
@@ -20,12 +23,12 @@ public record QuotaDecision(
 
     public QuotaDecision {
         Objects.requireNonNull(principal, "principal must not be null");
-        quotaKey = CommercialValidation.requireNonBlank(quotaKey, "quotaKey");
+        quotaKey = AdmissionInvariants.requireNonBlank(quotaKey, "quotaKey");
         Objects.requireNonNull(reason, "reason must not be null");
-        evidence = CommercialValidation.immutableEvidence(evidence);
-        authorityVersion = CommercialValidation.requireNonBlank(authorityVersion, "authorityVersion");
-        traceId = CommercialValidation.requireNonBlank(traceId, "traceId");
+        evidence = AdmissionInvariants.immutableEvidence(evidence);
+        authorityVersion = AdmissionInvariants.requireNonBlank(authorityVersion, "authorityVersion");
+        traceId = AdmissionInvariants.requireNonBlank(traceId, "traceId");
         Objects.requireNonNull(decidedAt, "decidedAt must not be null");
-        CommercialValidation.requireAllowedReasonConsistency(allowed, reason);
+        AdmissionInvariants.requireAllowedReasonConsistency(allowed, reason);
     }
 }

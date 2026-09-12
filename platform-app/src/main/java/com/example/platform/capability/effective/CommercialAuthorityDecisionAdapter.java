@@ -1,8 +1,8 @@
 package com.example.platform.capability.effective;
 
 import com.example.platform.shared.commercial.CommercialEvidenceRef;
-import com.example.platform.shared.commercial.EntitlementDecision;
-import com.example.platform.shared.commercial.QuotaDecision;
+import com.example.platform.entitlement.api.commercial.EntitlementDecision;
+import com.example.platform.entitlement.api.commercial.QuotaDecision;
 import java.util.List;
 import java.util.Objects;
 

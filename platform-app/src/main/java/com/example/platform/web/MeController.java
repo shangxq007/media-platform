@@ -122,7 +122,7 @@ public class MeController {
 
         Map<String, Object> usage = new LinkedHashMap<>();
         usage.put("period", java.time.YearMonth.now().toString());
-        usage.put("authority", "QuotaDecisionProjection");
+        usage.put("authority", "entitlement.quota");
         dashboard.put("usage", usage);
 
         Map<String, Object> onboarding = new LinkedHashMap<>();

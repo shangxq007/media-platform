@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.example.platform.entitlement.domain.*;
 import com.example.platform.entitlement.domain.QuotaUsageQuery;
-import com.example.platform.shared.commercial.CommercialDecisionReason;
+import com.example.platform.entitlement.api.commercial.CommercialDecisionReason;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -41,7 +41,7 @@ class AccessDecisionServiceTest {
         when(quotaUsageAuthority.decide(any(QuotaUsageQuery.class))).thenAnswer(invocation -> {
             QuotaUsageQuery query = invocation.getArgument(0);
             boolean allowed = query.requestedUnits() <= query.limitUnits();
-            return new com.example.platform.shared.commercial.QuotaDecision(
+            return new com.example.platform.entitlement.api.commercial.QuotaDecision(
                     query.principal(), query.quotaKey(), query.requestedUnits(),
                     query.limitUnits(), 0, allowed,
                     allowed ? CommercialDecisionReason.ALLOWED : CommercialDecisionReason.QUOTA_EXCEEDED,

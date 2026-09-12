@@ -3,7 +3,7 @@ package com.example.platform.render.infrastructure.unified;
 import com.example.platform.render.domain.RenderJobStateMachine;
 import com.example.platform.render.domain.RenderJobStatus;
 import com.example.platform.render.infrastructure.providerruntime.engine.ProviderRuntimeEngine;
-import com.example.platform.shared.commercial.CommercialDecision;
+import com.example.platform.entitlement.api.commercial.CommercialDecision;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;

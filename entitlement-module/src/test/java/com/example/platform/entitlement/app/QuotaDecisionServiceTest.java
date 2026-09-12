@@ -1,10 +1,10 @@
 package com.example.platform.entitlement.app;
 
 import com.example.platform.entitlement.domain.QuotaUsageQuery;
-import com.example.platform.shared.commercial.CommercialDecisionReason;
+import com.example.platform.entitlement.api.commercial.CommercialDecisionReason;
 import com.example.platform.shared.commercial.PrincipalRef;
 import com.example.platform.shared.commercial.PrincipalType;
-import com.example.platform.shared.commercial.QuotaDecision;
+import com.example.platform.entitlement.api.commercial.QuotaDecision;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;

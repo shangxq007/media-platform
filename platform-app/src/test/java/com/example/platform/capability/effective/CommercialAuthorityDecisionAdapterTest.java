@@ -4,12 +4,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
-import com.example.platform.shared.commercial.CommercialDecisionReason;
+import com.example.platform.entitlement.api.commercial.CommercialDecisionReason;
 import com.example.platform.shared.commercial.CommercialEvidenceRef;
-import com.example.platform.shared.commercial.EntitlementDecision;
+import com.example.platform.entitlement.api.commercial.EntitlementDecision;
 import com.example.platform.shared.commercial.PrincipalRef;
 import com.example.platform.shared.commercial.PrincipalType;
-import com.example.platform.shared.commercial.QuotaDecision;
+import com.example.platform.entitlement.api.commercial.QuotaDecision;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;

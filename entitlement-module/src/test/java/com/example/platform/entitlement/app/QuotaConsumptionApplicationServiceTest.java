@@ -10,10 +10,10 @@ import com.example.platform.entitlement.domain.QuotaOperationKind;
 import com.example.platform.entitlement.domain.QuotaPolicy;
 import com.example.platform.entitlement.domain.QuotaUsageOutcome;
 import com.example.platform.entitlement.domain.QuotaUsageResult;
-import com.example.platform.shared.commercial.CommercialDecisionReason;
+import com.example.platform.entitlement.api.commercial.CommercialDecisionReason;
 import com.example.platform.shared.commercial.PrincipalRef;
 import com.example.platform.shared.commercial.PrincipalType;
-import com.example.platform.shared.commercial.QuotaConsumptionRequest;
+import com.example.platform.entitlement.api.commercial.QuotaConsumptionRequest;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
 

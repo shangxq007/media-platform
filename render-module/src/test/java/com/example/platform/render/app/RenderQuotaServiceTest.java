@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.example.platform.shared.commercial.PrincipalRef;
 import com.example.platform.shared.commercial.PrincipalType;
-import com.example.platform.shared.commercial.QuotaConsumptionRequest;
+import com.example.platform.entitlement.api.commercial.QuotaConsumptionRequest;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;

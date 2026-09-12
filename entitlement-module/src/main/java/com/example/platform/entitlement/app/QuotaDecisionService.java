@@ -3,7 +3,7 @@ package com.example.platform.entitlement.app;
 import com.example.platform.entitlement.domain.QuotaProfile;
 import com.example.platform.entitlement.domain.QuotaUsageQuery;
 import com.example.platform.shared.commercial.PrincipalRef;
-import com.example.platform.shared.commercial.QuotaDecision;
+import com.example.platform.entitlement.api.commercial.QuotaDecision;
 import java.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -16,9 +16,9 @@ import com.example.platform.render.infrastructure.ExportPolicyService;
 import com.example.platform.render.infrastructure.clientexport.ClientExportSessionRepository;
 import com.example.platform.render.testsupport.RenderTestSchemaFixture;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
-import com.example.platform.shared.commercial.CommercialAdmissionPort;
-import com.example.platform.shared.commercial.CommercialDecision;
-import com.example.platform.shared.commercial.CommercialDecisionReason;
+import com.example.platform.entitlement.api.commercial.CommercialAdmissionPort;
+import com.example.platform.entitlement.api.commercial.CommercialDecision;
+import com.example.platform.entitlement.api.commercial.CommercialDecisionReason;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import javax.sql.DataSource;
@@ -64,7 +64,7 @@ class ClientExportServiceTest extends PostgresTestContainerSupport {
         exportPolicy = new ExportPolicyService();
         commercialAdmission = mock(CommercialAdmissionPort.class);
         when(commercialAdmission.decide(any())).thenAnswer(invocation -> {
-            var request = invocation.getArgument(0, com.example.platform.shared.commercial.CommercialAdmissionRequest.class);
+            var request = invocation.getArgument(0, com.example.platform.entitlement.api.commercial.CommercialAdmissionRequest.class);
             boolean allowed = !request.entitlementKey().endsWith("team_4k");
             return new CommercialDecision(request.principal(), request.action(), allowed,
                     allowed ? CommercialDecisionReason.ALLOWED : CommercialDecisionReason.NOT_ENTITLED,

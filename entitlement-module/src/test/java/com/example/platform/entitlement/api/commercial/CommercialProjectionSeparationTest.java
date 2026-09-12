@@ -1,4 +1,8 @@
-package com.example.platform.shared.commercial;
+package com.example.platform.entitlement.api.commercial;
+
+import com.example.platform.shared.commercial.PrincipalRef;
+import com.example.platform.shared.commercial.PrincipalType;
+import com.example.platform.shared.commercial.Money;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -38,31 +42,23 @@ class CommercialProjectionSeparationTest {
     }
 
     @Test
-    void typedProjectionPortsReturnTheirOwnDecisionSurfaces() throws Exception {
-        assertEquals(EntitlementDecision.class,
-                EntitlementDecisionProjection.class
-                        .getMethod("decide", PrincipalRef.class, String.class)
+    void actualPublishedPortsReturnTheirOwnDecisionSurfaces() throws Exception {
+        assertEquals(CommercialDecision.class,
+                CommercialAdmissionPort.class
+                        .getMethod("decide", CommercialAdmissionRequest.class)
                         .getReturnType());
         assertEquals(QuotaDecision.class,
-                QuotaDecisionProjection.class
-                        .getMethod("decide", PrincipalRef.class, String.class, long.class)
+                QuotaConsumptionPort.class
+                        .getMethod("consume", QuotaConsumptionRequest.class)
                         .getReturnType());
     }
 
     @Test
-    void executionCostInputRemainsDistinctFromCommercialPriceAndMoney() {
-        Money technicalAmount = new Money(800L, "USD");
-        ExecutionCostProjection cost = new ExecutionCostProjection(
-                "execution-1", technicalAmount, "worker-fabric", "cost-v3", DECIDED_AT);
-        CommercialPrice price = new CommercialPrice(
-                new Money(1200L, "USD"), "pricing-v9", List.of());
-
-        assertSame(technicalAmount, cost.technicalCost());
-        assertEquals("worker-fabric", cost.costAuthority());
-        assertFalse(Money.class.isAssignableFrom(ExecutionCostProjection.class));
-        assertFalse(CommercialPrice.class.isAssignableFrom(ExecutionCostProjection.class));
-        assertFalse(ExecutionCostProjection.class.isAssignableFrom(CommercialPrice.class));
-        assertNotEquals(cost.technicalCost(), price.amount());
+    void decisionsDoNotBecomeMoneyOrRawUsage() {
+        assertFalse(componentNames(CommercialDecision.class).contains("price"));
+        assertFalse(componentNames(QuotaDecision.class).contains("observedUsage"));
+        assertFalse(componentNames(Money.class).contains("allowed"));
+        assertFalse(Money.class.isAssignableFrom(CommercialDecision.class));
     }
 
     private static Set<String> componentNames(Class<?> recordType) {

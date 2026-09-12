@@ -1,6 +1,6 @@
 /**
- * Canonical H5 commercial contract values shared by the independent Billing,
- * Payment, Subscription, Entitlement, Quota, UsageMetering, and Commerce authorities.
+ * Stable principal, monetary and evidence-reference values shared across domain boundaries.
+ * Admission and quota application contracts belong to entitlement-module, not this package.
  *
  * <p>This package defines no writer, provider state, runtime eligibility,
  * compatibility, capacity, reservation, or EffectiveCapabilityView semantics.</p>

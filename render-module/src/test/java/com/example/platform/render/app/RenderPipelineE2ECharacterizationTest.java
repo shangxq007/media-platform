@@ -23,10 +23,10 @@ import com.example.platform.render.infrastructure.RenderProviderRouter;
 import com.example.platform.render.infrastructure.timeline.EditorTimelineConverter;
 import com.example.platform.render.infrastructure.providerruntime.engine.ProviderRuntimeEngine;
 import com.example.platform.render.testsupport.RenderTestSchemaFixture;
-import com.example.platform.shared.commercial.CommercialAdmissionPort;
-import com.example.platform.shared.commercial.CommercialDecision;
-import com.example.platform.shared.commercial.CommercialDecisionReason;
-import com.example.platform.shared.commercial.QuotaConsumptionPort;
+import com.example.platform.entitlement.api.commercial.CommercialAdmissionPort;
+import com.example.platform.entitlement.api.commercial.CommercialDecision;
+import com.example.platform.entitlement.api.commercial.CommercialDecisionReason;
+import com.example.platform.entitlement.api.commercial.QuotaConsumptionPort;
 import com.example.platform.render.testsupport.RenderInitiatorFixtures;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import com.example.platform.shared.web.TenantContext;
@@ -106,7 +106,7 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
         editorTimelineConverter = mock(EditorTimelineConverter.class);
         providerRuntimeEngine = mock(ProviderRuntimeEngine.class);
         when(commercialAdmission.decide(any())).thenAnswer(invocation -> {
-            var request = invocation.getArgument(0, com.example.platform.shared.commercial.CommercialAdmissionRequest.class);
+            var request = invocation.getArgument(0, com.example.platform.entitlement.api.commercial.CommercialAdmissionRequest.class);
             return new CommercialDecision(request.principal(), request.action(), true,
                     CommercialDecisionReason.ALLOWED, List.of(), "test-v1", request.traceId(), request.decidedAt());
         });
@@ -559,7 +559,7 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
         TenantContext.set("tenant-7");
         insertProject("proj-7", "tenant-7");
         doAnswer(invocation -> {
-            var request = invocation.getArgument(0, com.example.platform.shared.commercial.CommercialAdmissionRequest.class);
+            var request = invocation.getArgument(0, com.example.platform.entitlement.api.commercial.CommercialAdmissionRequest.class);
             return new CommercialDecision(request.principal(), request.action(), false,
                     CommercialDecisionReason.QUOTA_EXCEEDED, List.of(), "test-v1",
                     request.traceId(), request.decidedAt());

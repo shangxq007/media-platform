@@ -25,10 +25,10 @@ import com.example.platform.render.testsupport.RenderInitiatorFixtures;
 import com.example.platform.shared.events.RenderJobCompletedEvent;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import com.example.platform.shared.web.TenantContext;
-import com.example.platform.shared.commercial.CommercialAdmissionPort;
-import com.example.platform.shared.commercial.CommercialDecision;
-import com.example.platform.shared.commercial.CommercialDecisionReason;
-import com.example.platform.shared.commercial.QuotaConsumptionPort;
+import com.example.platform.entitlement.api.commercial.CommercialAdmissionPort;
+import com.example.platform.entitlement.api.commercial.CommercialDecision;
+import com.example.platform.entitlement.api.commercial.CommercialDecisionReason;
+import com.example.platform.entitlement.api.commercial.QuotaConsumptionPort;
 import com.example.platform.storage.api.StorageCatalogPort;
 import org.jooq.DSLContext;
 import org.jooq.impl.DSL;
@@ -101,7 +101,7 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
         editorTimelineConverter = mock(EditorTimelineConverter.class);
 
         when(commercialAdmission.decide(any())).thenAnswer(invocation -> {
-            var request = invocation.getArgument(0, com.example.platform.shared.commercial.CommercialAdmissionRequest.class);
+            var request = invocation.getArgument(0, com.example.platform.entitlement.api.commercial.CommercialAdmissionRequest.class);
             return new CommercialDecision(request.principal(), request.action(), true,
                     CommercialDecisionReason.ALLOWED, List.of(), "test-v1", request.traceId(), request.decidedAt());
         });
@@ -253,7 +253,7 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
         TenantContext.set("tenant-2");
         insertProject("proj-2", "tenant-2");
         doAnswer(invocation -> {
-            var request = invocation.getArgument(0, com.example.platform.shared.commercial.CommercialAdmissionRequest.class);
+            var request = invocation.getArgument(0, com.example.platform.entitlement.api.commercial.CommercialAdmissionRequest.class);
             return new CommercialDecision(request.principal(), request.action(), false,
                     CommercialDecisionReason.QUOTA_EXCEEDED, List.of(), "test-v1",
                     request.traceId(), request.decidedAt());

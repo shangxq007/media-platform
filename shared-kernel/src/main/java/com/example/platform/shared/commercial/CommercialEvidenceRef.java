@@ -7,8 +7,12 @@ public record CommercialEvidenceRef(
         String evidenceId) {
 
     public CommercialEvidenceRef {
-        authority = CommercialValidation.requireNonBlank(authority, "authority");
-        evidenceType = CommercialValidation.requireNonBlank(evidenceType, "evidenceType");
-        evidenceId = CommercialValidation.requireNonBlank(evidenceId, "evidenceId");
+        authority = requireNonBlank(authority, "authority");
+        evidenceType = requireNonBlank(evidenceType, "evidenceType");
+        evidenceId = requireNonBlank(evidenceId, "evidenceId");
+    }
+    private static String requireNonBlank(String value, String field) {
+        if (value == null || value.isBlank()) throw new IllegalArgumentException(field + " must not be null/blank");
+        return value;
     }
 }

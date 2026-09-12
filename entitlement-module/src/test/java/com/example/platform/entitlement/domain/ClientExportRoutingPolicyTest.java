@@ -3,7 +3,7 @@ package com.example.platform.entitlement.domain;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.example.platform.shared.commercial.CommercialAdmissionPort;
+import com.example.platform.entitlement.api.commercial.CommercialAdmissionPort;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
