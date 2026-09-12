@@ -105,8 +105,7 @@ public class UsageMeteringService {
     public UsageMeter registerMeter(
             String meterKey, String name, String description, String unit,
             String aggregationType) {
-        UsageMeter meter = new UsageMeter(
-                ("mtr_" + java.util.UUID.randomUUID().toString().replace("-", "")), meterKey, name, description, unit, aggregationType, "ACTIVE");
+        UsageMeter meter = UsageMeter.create(meterKey, name, description, unit, aggregationType);
         meters.put(meterKey, meter);
         return meter;
     }
