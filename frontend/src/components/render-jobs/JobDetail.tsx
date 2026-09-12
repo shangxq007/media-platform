@@ -1,4 +1,4 @@
-import type { RenderJobSummary } from '../../api/render-jobs'
+import type { RenderJobSummary } from '../../contracts/app/render-job'
 
 interface Props {
   job: RenderJobSummary
@@ -18,7 +18,7 @@ export function JobDetail({ job }: Props) {
       </div>
 
       <p className="mt-4 text-xs text-gray-500">
-        Job actions will appear when the application projection reports the allowed actions for this attempt.
+        Read-only platform job record. This status does not describe provider outcomes or Artifact availability.
       </p>
     </div>
   )

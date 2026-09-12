@@ -1,11 +1,11 @@
 import type { SurfaceId } from '../foundation/surfaceRegistry'
 
 export interface SelectionScope { readonly surfaceId: SurfaceId; readonly workspaceId?: string; readonly projectId?: string }
-export interface PresentationSelectionRef extends SelectionScope { readonly kind: 'NODE' | 'CLIP' | 'LANE' | 'PUBLICATION'; readonly localId: string }
+export interface PresentationSelectionRef extends SelectionScope { readonly kind: 'NODE' | 'CLIP' | 'LANE' | 'PUBLICATION' | 'RENDER_JOB'; readonly localId: string }
 // Application projection only; neither presentation identity nor canonical operation authority.
 export interface ApplicationLogicalRef { readonly kind: 'PROJECT' | 'TIMELINE_REVISION' | 'MEDIA_ASSET'; readonly referenceId: string; readonly entityId: string }
 export interface SelectionRequest { mode: 'replace' | 'toggle' | 'remove' | 'clear'; refs: readonly PresentationSelectionRef[]; primary?: PresentationSelectionRef; lifetime: object; revision: number }
-export interface SelectedObject { id: string; kind: 'NODE' | 'CLIP' | 'LANE' | 'PUBLICATION'; title: string; x?: number; y?: number; reference?: string; logicalRef?: ApplicationLogicalRef; synthetic?: boolean }
+export interface SelectedObject { id: string; kind: 'NODE' | 'CLIP' | 'LANE' | 'PUBLICATION' | 'RENDER_JOB'; title: string; x?: number; y?: number; reference?: string; logicalRef?: ApplicationLogicalRef; synthetic?: boolean }
 export interface SimulationTime { unit: 'SIMULATED_STEP_0_20'; playhead: number; range?: readonly [number, number] }
 export interface RevisionPair { from: string; to: string }
 export type InvocationSource = 'DIRECT' | 'TOOLBAR' | 'INSPECTOR' | 'COMMAND' | 'AGENT'

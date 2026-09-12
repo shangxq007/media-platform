@@ -21,7 +21,7 @@ export const RenderJobSummary = z.object({
   timelineSnapshotId: IdString,
   profile: z.string(),
   status: RenderJobStatusSchema,
-})
+}).strict()
 
 export const RenderWorkspaceScope = z.object({
   tenantId: IdString.nullable(),

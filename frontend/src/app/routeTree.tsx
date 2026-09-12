@@ -1,8 +1,7 @@
 import { Suspense, lazy, type ComponentType } from 'react'
-import { createRoute, createRootRoute, type RouteComponent } from '@tanstack/react-router'
+import { createRoute, createRootRoute, redirect, type RouteComponent } from '@tanstack/react-router'
 import RootLayout from './RootLayout.js'
 import { EditorPage } from '../editor/EditorPage.js'
-import { RenderJobDashboard } from '../pages/RenderJobDashboard.js'
 import { CapabilitiesPage } from '../shared/CapabilitiesPage.js'
 import { SmokeEditorPage } from '../pages/SmokeEditorPage.js'
 import { ObservabilityDashboard } from '../pages/ObservabilityDashboard.js'
@@ -28,6 +27,7 @@ const ReviewPage = lazy(() => import('../product/review/ReviewWorkspace.js').the
 const PublicationPage = lazy(() => import('../surfaces/FoundationPages.js').then(module => ({ default: module.PublicationPage })))
 const ProductionPage = lazy(() => import('../surfaces/FoundationPages.js').then(module => ({ default: module.ProductionPage })))
 const OperationsOverviewPage = lazy(() => import('../surfaces/FoundationPages.js').then(module => ({ default: module.OperationsOverviewPage })))
+const RenderPage = lazy(() => import('../pages/RenderJobDashboard.js').then(module => ({ default: module.RenderPage })))
 const OperationsProjectionPage = lazy(() => import('../surfaces/FoundationPages.js').then(module => ({ default: module.OperationsProjectionPage })))
 const ManagementFoundationPage = lazy(() => import('../surfaces/FoundationPages.js').then(module => ({ default: module.ManagementFoundationPage })))
 const HiddenCreativeFoundationPage = lazy(() => import('../surfaces/FoundationPages.js').then(module => ({ default: module.HiddenCreativeFoundationPage })))
@@ -84,7 +84,7 @@ const foundationRoutes = [
   route('/w/$workspaceId/projects/$projectId/production', lazyPage(ProductionPage)),
   route('/w/$workspaceId/projects/$projectId/publication', lazyPage(PublicationPage)),
   route('/operations/overview', lazyPage(OperationsOverviewPage)),
-  route('/operations/renders', lazyPage(OperationsProjectionPage)),
+  route('/operations/renders', lazyPage(RenderPage)),
   route('/operations/storage', lazyPage(OperationsProjectionPage)),
   route('/admin/organization', lazyPage(ManagementFoundationPage)),
   ...additionalAdminSegments.map(segment => route(`/admin/${segment}`, lazyPage(ManagementFoundationPage))),
@@ -93,7 +93,7 @@ const foundationRoutes = [
 ]
 
 const legacyRoutes = [
-  route('/legacy/editor', EditorPage), route('/render-jobs', RenderJobDashboard),
+  route('/legacy/editor', EditorPage), createRoute({ getParentRoute: () => rootRoute, path: '/render-jobs', beforeLoad: () => { throw redirect({ to: '/operations/renders', replace: true }) } }),
   route('/capabilities', CapabilitiesPage), route('/smoke-editor', SmokeEditorPage),
   route('/observability', ObservabilityDashboard), route('/dev/timeline-git', TimelineGitConsolePage),
   route('/app/renders/$productId', RenderResultDetailPage), route('/admin/storage-health', AdminStorageHealthPage),
