@@ -68,11 +68,6 @@ class ModularityTest {
         // ROADMAP_19 CORR-2: web MCP controller supplies explicit SRT import font
         // policy (application-layer); font-text value semantics consumed at API boundary.
         "web' depends on module 'fonttext",
-        // K2 (K2-11): NotificationEventPublisher rehomed from shared-kernel to notification;
-        // outbox implements the notification publisher port (outbox -> notification, leaf owner).
-        "outbox' depends on non-exposed type com.example.platform.notification.app.NotificationEventPublisher",
-        // K2 (K2-11): render consumes NotificationEventPublisher at its notification owner.
-        "render' depends on module 'notification",
         // K2 (K2-05): EntitlementPort rehomed from shared-kernel to entitlement::app — render
         // consumes the entitlement validation contract at its owner (render -> entitlement was
         // already an allowed module edge; the port now lives in the app named interface).

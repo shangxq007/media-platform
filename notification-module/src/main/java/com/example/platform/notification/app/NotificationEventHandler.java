@@ -4,6 +4,7 @@ import static com.example.platform.typedschema.jooq.generated.tables.Notificatio
 import static com.example.platform.typedschema.jooq.generated.tables.NotificationEvent.NOTIFICATION_EVENT;
 
 import com.example.platform.notification.domain.*;
+import com.example.platform.notification.api.ingress.NotificationInboundEvent;
 import com.example.platform.notification.infrastructure.MockNotificationProvider;
 import com.example.platform.shared.events.ArtifactCreatedEvent;
 import com.example.platform.shared.events.RenderCacheHashInvalidatedEvent;
@@ -34,6 +35,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 @Component
+@org.springframework.transaction.annotation.Transactional
 public class NotificationEventHandler {
     private static final Logger log = LoggerFactory.getLogger(NotificationEventHandler.class);
 

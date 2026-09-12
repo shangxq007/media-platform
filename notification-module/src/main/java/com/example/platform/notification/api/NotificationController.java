@@ -5,8 +5,8 @@ import com.example.platform.notification.app.*;
 import com.example.platform.notification.domain.NotificationEventDefinition;
 import com.example.platform.notification.infrastructure.MockNotificationProvider;
 import com.example.platform.notification.infrastructure.NovuNotificationProvider;
-import com.example.platform.notification.app.NotificationEventPublisher;
-import com.example.platform.notification.domain.NotificationInboundEvent;
+import com.example.platform.notification.api.ingress.NotificationEventPublisher;
+import com.example.platform.notification.api.ingress.NotificationInboundEvent;
 import com.example.platform.shared.web.TenantGuard;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -119,8 +119,9 @@ public class NotificationController {
         @ApiResponse(responseCode = "200", description = "Event published successfully"),
         @ApiResponse(responseCode = "400", description = "Invalid request body")
     })
-    public void publish(@Valid @RequestBody CreateNotificationEventRequest request) {
-        publisher.publish(new NotificationInboundEvent(request.eventType(), request.subjectId(), request.payload()));
+    public void publish(@Valid @RequestBody CreateNotificationEventRequest request,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
+        publisher.publish(new NotificationInboundEvent(request.eventType(), request.subjectId(), request.payload()), idempotencyKey);
     }
 
     @GetMapping("/notifications/deliveries")

@@ -46,7 +46,7 @@ case "${1:-}" in
       :outbox-event-module:test \
       :billing-module:test --tests '*Usage*' --tests '*CostObservationEmissionServiceTest' --tests '*BillingConsumptionBoundaryTest' \
       :notification-module:test :render-module:test --tests '*RenderOutboxEventsTest' \
-      :platform-app:test --tests '*BillingUsageCompositionTest' --tests '*OutboxNotificationCompositionTest' --tests '*ModularityTest'
+      :platform-app:test --tests '*BillingUsageCompositionTest' --tests '*OutboxNotificationCompositionTest' --tests '*NotificationIngressPersistenceTest' --tests '*ModularityTest'
     ;;
   render-read)
     ./gradlew --no-daemon --console=plain \

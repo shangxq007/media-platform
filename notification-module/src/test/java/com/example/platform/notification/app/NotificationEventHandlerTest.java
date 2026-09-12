@@ -13,7 +13,7 @@ import static org.mockito.Mockito.when;
 
 import com.example.platform.notification.domain.DeliveryCommand;
 import com.example.platform.notification.domain.DeliveryResult;
-import com.example.platform.notification.domain.NotificationInboundEvent;
+import com.example.platform.notification.api.ingress.NotificationInboundEvent;
 import com.example.platform.notification.domain.NotificationProvider;
 import com.example.platform.notification.domain.NotificationTemplateCode;
 import com.example.platform.notification.domain.NotificationTemplatePayload;

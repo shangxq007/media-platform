@@ -1,5 +1,5 @@
-package com.example.platform.notification.app;
-import com.example.platform.notification.domain.NotificationInboundEvent;
+package com.example.platform.notification.api.event;
+import com.example.platform.notification.api.ingress.NotificationInboundEvent;
 import com.example.platform.outbox.api.event.*;
 import java.util.List;
 import org.springframework.stereotype.Component;

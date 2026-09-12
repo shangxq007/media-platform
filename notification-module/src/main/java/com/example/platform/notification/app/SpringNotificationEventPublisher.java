@@ -6,21 +6,18 @@ import static com.example.platform.typedschema.jooq.generated.tables.Notificatio
 import com.example.platform.notification.domain.*;
 import com.example.platform.notification.infrastructure.NotificationProviderRouter;
 import com.example.platform.shared.audit.AuditPort;
-import com.example.platform.notification.app.NotificationEventPublisher;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import org.jooq.DSLContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 @Component
-public class SpringNotificationEventPublisher implements NotificationEventPublisher {
+public class SpringNotificationEventPublisher {
     private static final Logger log = LoggerFactory.getLogger(SpringNotificationEventPublisher.class);
 
-    private final ApplicationEventPublisher publisher;
     private final DSLContext dsl;
     private final NotificationEventCatalogService catalogService;
     private final NotificationSubscriptionService subscriptionService;
@@ -30,7 +27,7 @@ public class SpringNotificationEventPublisher implements NotificationEventPublis
     private final NotificationRenderingService renderingService;
     private final AuditPort audit;
 
-    public SpringNotificationEventPublisher(ApplicationEventPublisher publisher, DSLContext dsl,
+    public SpringNotificationEventPublisher(DSLContext dsl,
             NotificationEventCatalogService catalogService,
             NotificationSubscriptionService subscriptionService,
             NotificationPreferenceService preferenceService,
@@ -38,7 +35,6 @@ public class SpringNotificationEventPublisher implements NotificationEventPublis
             NotificationProviderRouter providerRouter,
             NotificationRenderingService renderingService,
             AuditPort audit) {
-        this.publisher = publisher;
         this.dsl = dsl;
         this.catalogService = catalogService;
         this.subscriptionService = subscriptionService;
@@ -47,11 +43,6 @@ public class SpringNotificationEventPublisher implements NotificationEventPublis
         this.providerRouter = providerRouter;
         this.renderingService = renderingService;
         this.audit = audit;
-    }
-
-    @Override
-    public void publish(Object event) {
-        publisher.publishEvent(event);
     }
 
     public void publishToUser(String userId, String eventKey, Map<String, Object> payload) {
