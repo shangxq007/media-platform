@@ -29,3 +29,13 @@
   .ff-publication-day > button { padding: 4px; font-size: 11px; }
   .ff-publication-results { max-height: none; }
 }
+
+.ff-publication-details { padding: var(--space-4); border: 1px solid var(--border-default); border-radius: var(--radius-lg); background: var(--surface-1); color: var(--text-primary); max-height: 76dvh; }
+.ff-publication-details .ff-dialog-heading { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); margin-bottom: var(--space-4); }
+.ff-publication-details .ff-dialog-heading button { min-width: 40px; min-height: 40px; border: 1px solid var(--border-default); border-radius: var(--radius-md); }
+.ff-publication-toolbar > *, .ff-publication-toolbar input, .ff-publication-toolbar select { min-width: 0; max-width: 100%; }
+.ff-publication-day > button { min-height: 36px; }
+@media (max-width: 760px) {
+  .ff-publication-toolbar > label { width: 100%; }
+  .ff-publication-details .ff-property-row { grid-template-columns: minmax(0, 1fr); gap: var(--space-1); }
+}

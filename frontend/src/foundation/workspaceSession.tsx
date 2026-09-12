@@ -1,3 +1,4 @@
+import type { PublicationBrowsing } from '../product/publication/types'
 import { createContext, useContext, useLayoutEffect, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { flushSync } from 'react-dom'
@@ -12,6 +13,7 @@ function createBinding(workspaceId: string) {
     workspaceId,
     id: ++nextBinding,
     browsing: defaultProjectBrowsing() as ProjectBrowsing,
+    publicationBrowsing: null as PublicationBrowsing | null,
     canvasView: null as { projectId: string; zoom: number; viewportX: number; viewportY: number } | null,
     projectId: undefined as string | undefined,
     getSnapshot: () => retired,
@@ -20,6 +22,7 @@ function createBinding(workspaceId: string) {
       retired = true
       this.browsing = defaultProjectBrowsing()
       this.canvasView = null
+      this.publicationBrowsing = null
       listeners.forEach(listener => listener())
     },
   }
@@ -41,6 +44,7 @@ export function WorkspaceSessionProvider({ workspaceId, projectId, children }: {
   if (projectId && binding.projectId !== projectId) {
     binding.projectId = projectId
     binding.canvasView = null
+    binding.publicationBrowsing = null
   }
   useLayoutEffect(() => {
     const discard = () => {
