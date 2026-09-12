@@ -3,6 +3,7 @@ package com.example.platform.workerfabric.domain;
 import java.io.Serializable;
 
 /** Normalized implementation-local name of one runtime dependency. */
+@org.springframework.modulith.NamedInterface("ProviderRuntime")
 public record RuntimeDependencyCoordinate(String value)
         implements Comparable<RuntimeDependencyCoordinate>, Serializable {
 

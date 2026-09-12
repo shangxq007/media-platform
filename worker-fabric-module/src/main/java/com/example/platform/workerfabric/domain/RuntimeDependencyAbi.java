@@ -3,6 +3,7 @@ package com.example.platform.workerfabric.domain;
 import java.io.Serializable;
 
 /** Canonical implementation-local ABI label for an observed dependency. */
+@org.springframework.modulith.NamedInterface("ProviderRuntime")
 public record RuntimeDependencyAbi(String value) implements Serializable {
 
     private static final String NORMALIZED_ABI = "[a-z0-9]+(?:[._+-][a-z0-9]+)*";

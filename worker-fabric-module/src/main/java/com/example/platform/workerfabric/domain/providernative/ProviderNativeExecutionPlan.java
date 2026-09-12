@@ -9,6 +9,7 @@ import com.example.platform.execution.taskgraph.ExecutableTaskId;
  * <p>This is not canonical domain state, Timeline state, RenderPlan state, PhysicalExecutionPlan
  * authority, scheduler state, worker assignment state, or a provider selection authority.
  */
+@org.springframework.modulith.NamedInterface("ProviderRuntime")
 public interface ProviderNativeExecutionPlan {
 
     ExecutableTaskId executableTaskId();

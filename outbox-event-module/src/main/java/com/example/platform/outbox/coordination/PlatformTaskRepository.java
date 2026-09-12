@@ -1,5 +1,7 @@
 package com.example.platform.outbox.coordination;
 
+import com.example.platform.sandbox.execution.TaskCapability;
+
 import com.example.platform.outbox.coordination.*;
 import java.time.Instant;
 import java.time.LocalDateTime;

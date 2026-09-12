@@ -2,7 +2,7 @@ package com.example.platform.render.app.asset;
 
 import com.example.platform.outbox.coordination.TaskHandler;
 import com.example.platform.outbox.coordination.TaskExecutionContext;
-import com.example.platform.outbox.coordination.TaskCapability;
+import com.example.platform.sandbox.execution.TaskCapability;
 import com.example.platform.render.infrastructure.asset.AssetRepository;
 import com.example.platform.render.infrastructure.asset.SearchProjectionRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;

@@ -1,4 +1,8 @@
-package com.example.platform.outbox.coordination;
+package com.example.platform.providerplugin.execution;
+
+import com.example.platform.sandbox.execution.*;
+
+import com.example.platform.sandbox.execution.TaskCapability;
 
 import com.example.platform.sandbox.LocalSandboxProcess;
 import com.example.platform.sandbox.SandboxCancellation;
@@ -8,13 +12,12 @@ import java.time.Duration;
 import java.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
+
 
 /**
  * Executes tasks through the canonical bounded local sandbox boundary.
  * Used for ffprobe, ffmpeg, and other CLI-based tasks.
  */
-@Component
 public class LocalProcessExecutionBackend implements ExecutionBackend {
 
     private static final Logger log = LoggerFactory.getLogger(LocalProcessExecutionBackend.class);

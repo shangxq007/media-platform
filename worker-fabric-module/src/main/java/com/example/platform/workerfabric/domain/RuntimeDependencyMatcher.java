@@ -12,6 +12,7 @@ import java.util.Optional;
 import java.util.TreeSet;
 
 /** Pure exact matcher for implementation-local requirements and freshness-bound observations. */
+@org.springframework.modulith.NamedInterface("ProviderRuntime")
 public final class RuntimeDependencyMatcher {
 
     private RuntimeDependencyMatcher() {}

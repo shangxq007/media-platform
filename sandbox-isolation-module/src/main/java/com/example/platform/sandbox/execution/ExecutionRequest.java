@@ -1,6 +1,6 @@
-package com.example.platform.outbox.coordination;
+package com.example.platform.sandbox.execution;
 
-import com.example.platform.outbox.coordination.TaskCapability;
+import com.example.platform.sandbox.execution.TaskCapability;
 import java.util.List;
 import java.util.Map;
 

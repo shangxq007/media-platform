@@ -9,6 +9,7 @@ import com.example.platform.execution.taskgraph.ExecutableTask;
  * ProviderBindingPin exactly, and must not read mutable runtime placement/device/lease/probe state.
  */
 @FunctionalInterface
+@org.springframework.modulith.NamedInterface("ProviderRuntime")
 public interface PlanLowerer<P extends ProviderNativeExecutionPlan> {
 
     P lower(ExecutableTask task, StaticProviderExecutionContext context)

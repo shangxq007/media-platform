@@ -10,6 +10,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 /** Immutable, freshness-bound evidence for one exact provider/runtime/device probe. */
+@org.springframework.modulith.NamedInterface("ProviderRuntime")
 public record RuntimeDependencyObservation(
         ProviderImplementationId providerImplementationId,
         WorkerRuntimeId workerRuntimeId,

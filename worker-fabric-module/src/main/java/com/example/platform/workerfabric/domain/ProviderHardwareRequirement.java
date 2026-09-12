@@ -7,6 +7,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 /** Immutable implementation-local hardware/runtime declaration for technical CAN_RUN. */
+@org.springframework.modulith.NamedInterface("ProviderRuntime")
 public record ProviderHardwareRequirement(
         ProviderImplementationId providerImplementationId,
         CpuArchitecture cpuArchitecture,

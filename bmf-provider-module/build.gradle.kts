@@ -20,6 +20,7 @@ tasks.withType<JavaCompile>().configureEach {
 }
 
 dependencies {
+    implementation(project(":sandbox-isolation-module"))
     implementation(project(":media-execution-plan-module"))
     implementation(project(":worker-fabric-module"))
     // ABI companions referenced by canonical execution-plan signatures.

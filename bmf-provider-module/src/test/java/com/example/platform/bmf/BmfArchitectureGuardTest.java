@@ -166,8 +166,17 @@ class BmfArchitectureGuardTest {
     @Test
     void canonical_and_h1_modules_have_no_reverse_bmf_dependency_or_import() throws Exception {
         Path root = repositoryRoot();
+        // EP05: runtime composition owns the one task-facing BMF binding; core/H1 stay neutral.
+        assertThat(Files.readString(root.resolve("provider-plugin-runtime-module/build.gradle.kts")))
+                .contains("implementation(project(\":bmf-provider-module\"))");
         for (String module : CORE_MODULES) {
             Path moduleRoot = root.resolve(module);
+            if (module.equals("provider-plugin-runtime-module")) {
+                assertThat(readJava(moduleRoot.resolve("src/main/java"))
+                        .replace("import com.example.platform.bmf.BmfExecutionBackend;", ""))
+                        .doesNotContain("com.example.platform.bmf");
+                continue;
+            }
             assertThat(Files.readString(moduleRoot.resolve("build.gradle.kts")))
                     .as("%s build dependency", module)
                     .doesNotContain("bmf-provider-module");
@@ -232,6 +241,7 @@ class BmfArchitectureGuardTest {
                         root.resolve("bmf-provider-module")))
                 .containsExactlyInAnyOrder(
                         "src/main/java/com/example/platform/bmf/BmfCpuProvider.java",
+                        "src/main/java/com/example/platform/bmf/BmfExecutionBackend.java",
                         "src/main/java/com/example/platform/bmf/BmfCpuNativePlan.java",
                         "src/main/java/com/example/platform/bmf/BmfCpuUnsupportedLowerer.java",
                         "src/main/java/com/example/platform/bmf/BmfCpuUnsupportedRuntimeAdapter.java",

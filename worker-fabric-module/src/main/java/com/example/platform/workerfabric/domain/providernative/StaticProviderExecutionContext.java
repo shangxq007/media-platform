@@ -13,6 +13,7 @@ import java.util.Objects;
  * <p>No worker registry, device inventory, runtime availability, probe, scheduler, reservation,
  * heartbeat, filesystem discovery, network discovery, or mutable placement state is exposed here.
  */
+@org.springframework.modulith.NamedInterface("ProviderRuntime")
 public record StaticProviderExecutionContext(
         ProviderBindingPin providerBindingPin,
         ProviderImplementationId providerImplementationId,

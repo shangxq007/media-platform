@@ -4,6 +4,7 @@ import java.io.Serializable;
 import java.util.Arrays;
 
 /** Canonical bounded numeric dependency version used only for conformance matching. */
+@org.springframework.modulith.NamedInterface("ProviderRuntime")
 public record RuntimeDependencyVersion(String value)
         implements Comparable<RuntimeDependencyVersion>, Serializable {
 

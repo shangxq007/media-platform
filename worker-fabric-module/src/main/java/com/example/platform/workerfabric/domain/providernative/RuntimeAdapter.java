@@ -8,6 +8,7 @@ package com.example.platform.workerfabric.domain.providernative;
  * completion. Runtime inputs are immutable worker-local handles; storage providers and locations
  * are deliberately absent.
  */
+@org.springframework.modulith.NamedInterface("ProviderRuntime")
 public interface RuntimeAdapter<P extends ProviderNativeExecutionPlan> {
 
     RuntimeExecutionBundle adapt(P nativePlan, RuntimeExecutionContext context)

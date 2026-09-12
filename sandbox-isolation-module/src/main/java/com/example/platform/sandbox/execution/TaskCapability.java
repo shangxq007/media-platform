@@ -1,4 +1,4 @@
-package com.example.platform.outbox.coordination;
+package com.example.platform.sandbox.execution;
 
 /**
  * Task capability types for the platform coordination layer.

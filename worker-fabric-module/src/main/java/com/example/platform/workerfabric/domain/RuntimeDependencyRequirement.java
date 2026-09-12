@@ -7,6 +7,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 /** Immutable dependency requirement owned by one exact provider implementation. */
+@org.springframework.modulith.NamedInterface("ProviderRuntime")
 public record RuntimeDependencyRequirement(
         ProviderImplementationId providerImplementationId,
         RuntimeDependencyCoordinate coordinate,

@@ -1,6 +1,6 @@
 package com.example.platform.outbox.coordination;
 
-import com.example.platform.outbox.coordination.TaskCapability;
+import com.example.platform.sandbox.execution.TaskCapability;
 import com.example.platform.outbox.coordination.PlatformJob;
 import com.example.platform.outbox.coordination.PlatformTask;
 

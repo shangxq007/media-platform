@@ -3,6 +3,7 @@ package com.example.platform.outbox.app;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.example.platform.outbox.coordination.*;
+import com.example.platform.sandbox.execution.TaskCapability;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 

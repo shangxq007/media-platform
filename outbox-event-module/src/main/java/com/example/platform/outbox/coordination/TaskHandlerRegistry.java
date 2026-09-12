@@ -1,5 +1,7 @@
 package com.example.platform.outbox.coordination;
 
+import com.example.platform.sandbox.execution.TaskCapability;
+
 import jakarta.annotation.PostConstruct;
 import java.util.HashMap;
 import java.util.List;

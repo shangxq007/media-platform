@@ -5,6 +5,7 @@ import static org.mockito.Mockito.*;
 
 import com.example.platform.outbox.coordination.TaskExecutionContext;
 import com.example.platform.outbox.coordination.*;
+import com.example.platform.sandbox.execution.TaskCapability;
 import com.example.platform.render.domain.asset.marketplace.*;
 import com.example.platform.render.infrastructure.asset.*;
 import java.time.Instant;

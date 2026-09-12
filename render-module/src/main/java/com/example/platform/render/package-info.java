@@ -23,7 +23,7 @@
             "media",
             "audio",
             "operation :: invocation",
-            "sandbox :: API"
+            "sandbox :: API", "sandbox :: Execution"
         }
 )
 package com.example.platform.render;

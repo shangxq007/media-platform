@@ -35,8 +35,14 @@ case "${1:-}" in
         --tests '*PluginRuntimeRedMatrixTest' --tests '*PluginRuntimeArchitectureGuardTest' \
       :platform-app:test --tests '*BillingUsageCompositionTest' --tests '*SandboxRuntimeConvergenceTest' --tests '*ModularityTest'
     ;;
+  execution)
+    ./gradlew --no-daemon --console=plain \
+      :bmf-provider-module:test :provider-plugin-runtime-module:test :outbox-event-module:test \
+      :render-module:compileTestJava \
+      :platform-app:test --tests '*ProviderRuntimeExecutionCompositionTest' --tests '*ModularityTest'
+    ;;
   compile)
     ./gradlew --no-daemon --console=plain compileJava compileTestJava pfirr1RemediationCheck :platform-app:bootJar
     ;;
-  *) echo 'Usage: bash scripts/test-authority-modules.sh identity|observation|billing|compile' >&2; exit 2 ;;
+  *) echo 'Usage: bash scripts/test-authority-modules.sh identity|observation|billing|execution|compile' >&2; exit 2 ;;
 esac

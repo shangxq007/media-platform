@@ -2,6 +2,8 @@ package com.example.platform.config;
 
 import com.example.platform.extension.app.PluginRegistryImpl;
 import com.example.platform.providerplugin.ProviderPluginHost;
+import com.example.platform.providerplugin.execution.RuntimeExecutionBackends;
+import com.example.platform.sandbox.execution.ExecutionBackendRegistry;
 import java.nio.file.Path;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -10,6 +12,11 @@ import org.springframework.context.annotation.Configuration;
 /** Starts the canonical typed PF4J provider host without concrete provider dependencies. */
 @Configuration
 public class ProviderPluginManagerConfiguration {
+
+    @Bean
+    ExecutionBackendRegistry executionBackendRegistry() {
+        return RuntimeExecutionBackends.create();
+    }
 
     @Bean(destroyMethod = "close")
     ProviderPluginHost providerPluginHost(

@@ -9,6 +9,7 @@ import java.util.HexFormat;
 import java.util.Objects;
 
 /** SHA-256 operational evidence for exact dependency bundle content and its runtime binding. */
+@org.springframework.modulith.NamedInterface("ProviderRuntime")
 public record RuntimeDependencyFingerprint(String value) implements Serializable {
 
     private static final String SHA_256_PREFIX = "sha256:";

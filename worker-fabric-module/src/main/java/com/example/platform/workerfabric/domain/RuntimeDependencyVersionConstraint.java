@@ -4,6 +4,7 @@ import java.io.Serializable;
 import java.util.Objects;
 
 /** Exact version or bounded half-open compatibility range; never a package resolver request. */
+@org.springframework.modulith.NamedInterface("ProviderRuntime")
 public record RuntimeDependencyVersionConstraint(
         Kind kind,
         RuntimeDependencyVersion lowerBound,

@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Objects;
 
 /** Immutable fail-closed result from pure runtime dependency matching. */
+@org.springframework.modulith.NamedInterface("ProviderRuntime")
 public record RuntimeDependencyMatchResult(
         RuntimeDependencyMatchStatus status,
         List<RuntimeDependencyMatchReason> reasons)

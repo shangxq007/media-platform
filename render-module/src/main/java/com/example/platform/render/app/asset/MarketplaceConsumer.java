@@ -2,6 +2,7 @@ package com.example.platform.render.app.asset;
 
 import com.example.platform.outbox.coordination.PlatformCoordinationService;
 import com.example.platform.outbox.coordination.*;
+import com.example.platform.sandbox.execution.TaskCapability;
 import com.example.platform.shared.events.AssetPublishedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

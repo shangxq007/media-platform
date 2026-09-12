@@ -4,7 +4,7 @@ import com.example.platform.extension.app.ExtensionRegistryService;
 import com.example.platform.extension.domain.*;
 import com.example.platform.outbox.coordination.TaskHandler;
 import com.example.platform.outbox.coordination.TaskExecutionContext;
-import com.example.platform.outbox.coordination.TaskCapability;
+import com.example.platform.sandbox.execution.TaskCapability;
 import com.example.platform.render.app.asset.AssetSemanticMetadataService;
 import com.example.platform.render.app.event.TimelineReviewEventPublisher;
 import com.example.platform.render.domain.asset.semantic.*;
