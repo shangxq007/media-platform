@@ -4,6 +4,7 @@ import { commandRegistry, getCommandAvailability, getShortcut, type ShortcutOver
 import { useEffectiveAccessCatalog } from '../../foundation/platformClient'
 import { surfaceRegistry, getSurface, type SurfaceId } from '../../foundation/surfaceRegistry'
 import type { ProjectContextValue } from '../../foundation/projectContext'
+import { useTranslation } from '../../localization'
 
 export function WorkspaceHeader({ workspaceId, project }: { workspaceId?: string; project?: ProjectContextValue }) {
   return (
@@ -48,6 +49,7 @@ export function ProductAppShell({ surfaceId, workspaceId, project, children, sho
   children: ReactNode
   shortcutOverrides?: ShortcutOverrides
 }) {
+  const { t } = useTranslation()
   const surface = getSurface(surfaceId)
   const accessKeys = useMemo(() => commandRegistry.flatMap(command => command.requiredAccessKey ? [command.requiredAccessKey] : []), [])
   const access = useEffectiveAccessCatalog(accessKeys)
@@ -80,7 +82,7 @@ export function ProductAppShell({ surfaceId, workspaceId, project, children, sho
         {surface.shellRegions['asset-browser'] !== 'HIDDEN' ? <Button variant="ghost" aria-pressed={leftVisible} onClick={() => setLeftVisible(value => !value)}>Toggle asset browser</Button> : null}
         {surface.shellRegions.inspector !== 'HIDDEN' ? <Button variant="ghost" aria-pressed={rightVisible} onClick={() => setRightVisible(value => !value)}>Toggle inspector</Button> : null}
         {surface.shellRegions['bottom-panel'] !== 'HIDDEN' ? <Button variant="ghost" aria-pressed={bottomVisible} onClick={() => setBottomVisible(value => !value)}>Toggle bottom panel</Button> : null}
-        <Button variant="ghost" onClick={() => setPaletteOpen(true)}>Commands <kbd>⌘K</kbd></Button>
+        <Button variant="ghost" onClick={() => setPaletteOpen(true)}>{t('shell.commands')} <kbd>⌘K</kbd></Button>
       </div>
       <div className="ff-shell-body">
         {leftVisible ? <ResizablePanel title="Asset browser" side="left"><AssetBrowserHost /></ResizablePanel> : null}

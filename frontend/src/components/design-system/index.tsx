@@ -7,6 +7,7 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from 'react'
+import { useTranslation } from '../../localization'
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger'
 
@@ -151,12 +152,13 @@ export interface PaletteAction { id: string; label: string; shortcut?: string; d
 export function CommandPalette({ open, actions, onClose }: { open: boolean; actions: readonly PaletteAction[]; onClose: () => void }) {
   const [query, setQuery] = useState('')
   const headingId = useId()
+  const { t } = useTranslation()
   if (!open) return null
   const visible = actions.filter(action => action.label.toLowerCase().includes(query.toLowerCase()))
   return (
     <div className="ff-dialog-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) onClose() }}>
       <section className="ff-command-palette" role="dialog" aria-modal="true" aria-labelledby={headingId} onKeyDown={event => { if (event.key === 'Escape') onClose() }}>
-        <h2 id={headingId} className="sr-only">Command palette</h2>
+        <h2 id={headingId} className="sr-only">{t('shell.commandPalette')}</h2>
         <Search autoFocus label="Search commands" value={query} onChange={event => setQuery(event.target.value)} placeholder="Type a command…" />
         <ul>
           {visible.map(action => <li key={action.id}><button type="button" disabled={Boolean(action.disabledReason)} title={action.disabledReason} onClick={action.onSelect}><span>{action.label}</span>{action.shortcut ? <kbd>{action.shortcut}</kbd> : null}</button></li>)}

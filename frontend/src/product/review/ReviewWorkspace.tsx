@@ -6,10 +6,12 @@ import { PageHeading, ProjectFrame } from '../../surfaces/FoundationPages'
 import { SemanticDiff } from '../timeline/SemanticDiff'
 import type { RevisionComparison, RevisionListEntry, TimelineQueryGateway } from '../timeline/gateways'
 import { projectId } from '../timeline/types'
+import { useTranslation } from '../../localization'
 
 const sections = ['Overview', 'Visual Changes', 'Semantic Changes', 'Conversation', 'Checks'] as const
 
 export function ReviewWorkspace({ queryGateway }: { queryGateway: TimelineQueryGateway }) {
+  const { t } = useTranslation()
   const project = useProjectContext()
   const [active, setActive] = useState<string>('Semantic Changes')
   const [history, setHistory] = useState<readonly RevisionListEntry[]>([])
@@ -73,7 +75,7 @@ export function ReviewWorkspace({ queryGateway }: { queryGateway: TimelineQueryG
     else setTo(value)
   }
 
-  return <><PageHeading eyebrow="Review & collaboration" title="Project review" description="Semantic changes are a formatted server comparison. Timeline retains revision and merge authority." actions={<Button disabled title="Canonical merge resolution is not exposed by this bounded surface.">Merge resolution unavailable</Button>} /><Tabs label="Review sections" activeId={active} onChange={setActive} tabs={sections.map(label => ({ id: label, label }))} /><Panel title={active}>{active === 'Semantic Changes' ? <><div className="ff-review-compare-controls"><label>From revision<select aria-label="From revision" value={from} onChange={event => changeRevision('from', event.target.value)}><option value="">Select revision</option>{history.map(item => <option key={item.id} value={item.id}>r{item.revisionNumber} · {item.id}</option>)}</select></label><label>To revision<select aria-label="To revision" value={to} onChange={event => changeRevision('to', event.target.value)}><option value="">Select revision</option>{history.map(item => <option key={item.id} value={item.id}>r{item.revisionNumber} · {item.id}</option>)}</select></label><Button onClick={() => void compare()}>Compare on server</Button><Badge tone="warning">MERGE DISABLED</Badge></div><p role="status">{message}</p><SemanticDiff comparison={comparison} actionFilter={filter} onActionFilterChange={setFilter} /></> : <EmptyState title={`${active} unavailable`} description="This bounded product slice does not fabricate a review projection." />}</Panel></>
+  return <><PageHeading eyebrow="Review & collaboration" title={t('review.title')} description="Semantic changes are a formatted server comparison. Timeline retains revision and merge authority." actions={<Button disabled title="Canonical merge resolution is not exposed by this bounded surface.">Merge resolution unavailable</Button>} /><Tabs label="Review sections" activeId={active} onChange={setActive} tabs={sections.map(label => ({ id: label, label }))} /><Panel title={active}>{active === 'Semantic Changes' ? <><div className="ff-review-compare-controls"><label>From revision<select aria-label="From revision" value={from} onChange={event => changeRevision('from', event.target.value)}><option value="">Select revision</option>{history.map(item => <option key={item.id} value={item.id}>r{item.revisionNumber} · {item.id}</option>)}</select></label><label>To revision<select aria-label="To revision" value={to} onChange={event => changeRevision('to', event.target.value)}><option value="">Select revision</option>{history.map(item => <option key={item.id} value={item.id}>r{item.revisionNumber} · {item.id}</option>)}</select></label><Button onClick={() => void compare()}>Compare on server</Button><Badge tone="warning">MERGE DISABLED</Badge></div><p role="status">{message}</p><SemanticDiff comparison={comparison} actionFilter={filter} onActionFilterChange={setFilter} /></> : <EmptyState title={`${active} unavailable`} description="This bounded product slice does not fabricate a review projection." />}</Panel></>
 }
 
 export function ReviewPage({ queryGateway = defaultTimelineQueryGateway }: { queryGateway?: TimelineQueryGateway }) {

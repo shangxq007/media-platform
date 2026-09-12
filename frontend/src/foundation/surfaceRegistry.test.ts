@@ -5,7 +5,7 @@ describe('presentation-only surface registry', () => {
   it('covers every frozen product surface with unique IDs and routes', () => {
     expect(surfaceRegistry.map(surface => surface.id)).toEqual([
       'workspace', 'project-overview', 'nle', 'canvas', 'storyboard', 'screenplay',
-      'agent', 'workflow', 'recipe', 'review', 'production', 'operations', 'admin', 'developer',
+      'agent', 'workflow', 'recipe', 'review', 'production', 'publication', 'operations', 'admin', 'developer',
     ])
     expect(detectRegistryConflicts()).toEqual([])
     expect(surfaceRegistry.every(surface => Boolean(surface.displayName && surface.icon && surface.routeTemplate))).toBe(true)

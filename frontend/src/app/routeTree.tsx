@@ -25,6 +25,7 @@ const CanvasPage = lazy(() => import('../product/canvas/WorkspaceCanvas.js').the
 const WorkflowPage = lazy(() => import('../surfaces/FoundationPages.js').then(module => ({ default: module.WorkflowPage })))
 const AgentPage = lazy(() => import('../surfaces/FoundationPages.js').then(module => ({ default: module.AgentPage })))
 const ReviewPage = lazy(() => import('../product/review/ReviewWorkspace.js').then(module => ({ default: module.ReviewPage })))
+const PublicationPage = lazy(() => import('../surfaces/FoundationPages.js').then(module => ({ default: module.PublicationPage })))
 const ProductionPage = lazy(() => import('../surfaces/FoundationPages.js').then(module => ({ default: module.ProductionPage })))
 const OperationsOverviewPage = lazy(() => import('../surfaces/FoundationPages.js').then(module => ({ default: module.OperationsOverviewPage })))
 const OperationsProjectionPage = lazy(() => import('../surfaces/FoundationPages.js').then(module => ({ default: module.OperationsProjectionPage })))
@@ -45,7 +46,7 @@ export const implementedRouteInventory = [
   '/w/$workspaceId/projects/$projectId/script', '/w/$workspaceId/projects/$projectId/workflow',
   '/w/$workspaceId/projects/$projectId/recipe',
   '/w/$workspaceId/projects/$projectId/agent', '/w/$workspaceId/projects/$projectId/review',
-  '/w/$workspaceId/projects/$projectId/production', '/operations/overview', '/operations/renders',
+  '/w/$workspaceId/projects/$projectId/production', '/w/$workspaceId/projects/$projectId/publication', '/operations/overview', '/operations/renders',
   '/operations/storage', '/admin/organization', '/admin/members', '/admin/workspaces', '/admin/roles',
   '/admin/security', '/admin/billing', '/admin/entitlements', '/admin/usage', '/admin/quota',
   '/admin/policies', '/admin/audit', '/developer/capabilities', '/developer/plugins',
@@ -81,6 +82,7 @@ const foundationRoutes = [
   route('/w/$workspaceId/projects/$projectId/agent', lazyPage(AgentPage)),
   route('/w/$workspaceId/projects/$projectId/review', lazyPage(ReviewPage)),
   route('/w/$workspaceId/projects/$projectId/production', lazyPage(ProductionPage)),
+  route('/w/$workspaceId/projects/$projectId/publication', lazyPage(PublicationPage)),
   route('/operations/overview', lazyPage(OperationsOverviewPage)),
   route('/operations/renders', lazyPage(OperationsProjectionPage)),
   route('/operations/storage', lazyPage(OperationsProjectionPage)),

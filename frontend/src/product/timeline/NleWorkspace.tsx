@@ -20,6 +20,7 @@ import type {
   TimelineQueryGateway,
 } from './gateways'
 import { SemanticDiff } from './SemanticDiff'
+import { useTranslation } from '../../localization'
 import {
   ADD_MEDIA_CLIP_DEFINITION,
   ADD_MEDIA_CLIP_PRESENTATION_VERSION,
@@ -203,6 +204,7 @@ export function NleWorkspace({
   sourceGateway?: AssetGateway
   capabilityGateway?: CapabilityGateway
 }) {
+  const { t } = useTranslation()
   const project = useProjectContext()
   const [state, dispatch] = useReducer(timelineEditorReducer, initialTimelineEditorState)
   const [fields, setFields] = useState<ManualFields>(emptyFields)
@@ -461,7 +463,7 @@ export function NleWorkspace({
           {queryMessage ? <p role="status">{queryMessage}</p> : null}
           {state.server.selected ? <div className="ff-revision-detail"><h3>Selected revision detail</h3><PropertyRow label="Revision"><code>{state.server.selected.revision.id}</code></PropertyRow><PropertyRow label="Source"><span>{state.server.selected.revision.source}</span></PropertyRow><PropertyRow label="Server change count"><span>{state.server.selected.changeCount}</span></PropertyRow></div> : <p>Select a revision explicitly to load detail.</p>}
         </Panel>
-        <Panel title="Timeline workspace" className="ff-nle-workspace-panel">
+        <Panel title={t('timeline.workspace')} className="ff-nle-workspace-panel">
           <TimelinePresentation
             playhead={state.presentation.playheadStep} playing={state.presentation.playing}
             selectedTrackId={state.presentation.selectedTrackId} ghost={fields.timelineStart && fields.timelineEnd ? fields : null}

@@ -22,6 +22,7 @@ export type SurfaceId =
   | 'recipe'
   | 'review'
   | 'production'
+  | 'publication'
   | 'operations'
   | 'admin'
   | 'developer'
@@ -107,6 +108,7 @@ export const surfaceRegistry = [
   { id: 'recipe', displayName: 'Recipe / Template', icon: 'recipe', routeTemplate: '/w/$workspaceId/projects/$projectId/recipe', buildRoute: scopedRoute('recipe'), category: 'CREATIVE', projectScoped: true, requiredBackendCapabilityIds: ['workflow.definition.query'], requiredEffectiveAccessKey: 'surface.recipe.view', shellRegions: creativeRegions, compatibleReferenceKinds: allCreativeReferences, maturity: 'HIDDEN' },
   { id: 'review', displayName: 'Review', icon: 'review', routeTemplate: '/w/$workspaceId/projects/$projectId/review', buildRoute: scopedRoute('review'), category: 'REVIEW', projectScoped: true, requiredBackendCapabilityIds: ['timeline.revision.compare', 'review.query'], requiredEffectiveAccessKey: 'surface.review.view', shellRegions: creativeRegions, compatibleReferenceKinds: allCreativeReferences, maturity: 'PREVIEW' },
   { id: 'production', displayName: 'Production', icon: 'production', routeTemplate: '/w/$workspaceId/projects/$projectId/production', buildRoute: scopedRoute('production'), category: 'PRODUCTION', projectScoped: true, requiredBackendCapabilityIds: [], requiredEffectiveAccessKey: 'surface.production.view', shellRegions: creativeRegions, compatibleReferenceKinds: allCreativeReferences, maturity: 'PREVIEW' },
+  { id: 'publication', displayName: 'Publication', icon: 'publication', routeTemplate: '/w/$workspaceId/projects/$projectId/publication', buildRoute: scopedRoute('publication'), category: 'PRODUCTION', projectScoped: true, requiredBackendCapabilityIds: [], requiredEffectiveAccessKey: null, shellRegions: creativeRegions, compatibleReferenceKinds: ['PROJECT', 'ARTIFACT'], maturity: 'PREVIEW' },
   { id: 'operations', displayName: 'Operations', icon: 'operations', routeTemplate: '/operations/overview', buildRoute: () => '/operations/overview', category: 'OPERATIONS', projectScoped: false, requiredBackendCapabilityIds: ['render.job.query'], requiredEffectiveAccessKey: 'surface.operations.view', shellRegions: workspaceRegions, compatibleReferenceKinds: ['PROJECT', 'ARTIFACT', 'RENDER', 'WORKFLOW'], maturity: 'FOUNDATION' },
   { id: 'admin', displayName: 'Admin', icon: 'admin', routeTemplate: '/admin/organization', buildRoute: () => '/admin/organization', category: 'ADMIN', projectScoped: false, requiredBackendCapabilityIds: [], requiredEffectiveAccessKey: 'surface.admin.view', shellRegions: workspaceRegions, compatibleReferenceKinds: ['PROJECT'], maturity: 'FOUNDATION' },
   { id: 'developer', displayName: 'Developer', icon: 'developer', routeTemplate: '/developer/capabilities', buildRoute: () => '/developer/capabilities', category: 'DEVELOPER', projectScoped: false, requiredBackendCapabilityIds: ['capability.catalog.query'], requiredEffectiveAccessKey: 'surface.developer.view', shellRegions: workspaceRegions, compatibleReferenceKinds: ['WORKFLOW'], maturity: 'PREVIEW' },

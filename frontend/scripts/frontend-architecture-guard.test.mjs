@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, relative } from 'node:path'
 import test from 'node:test'
@@ -13,6 +14,7 @@ import {
   reconcileFrontendPathLedger,
   repositoryRoot,
   scanFrontendArchitecture,
+  validateLocalizationSourceManifest,
 } from './frontend-architecture-guard.mjs'
 
 test('governed frontend passes with all authority counts at zero', () => {
@@ -33,14 +35,206 @@ test('governed frontend passes with all authority counts at zero', () => {
   assert.equal(result.cleanForwardCounts.PATH_LEDGER_STALE_PATH_COUNT, 0)
   assert.equal(result.cleanForwardCounts.PATH_LEDGER_DUPLICATE_PATH_COUNT, 0)
   assert.equal(result.cleanForwardCounts.POST_H7_GOVERNED_PATH_COUNT, POST_H7_GOVERNED_PATHS.length)
-  assert.equal(result.cleanForwardCounts.POST_H7_GOVERNED_PATH_EXPECTED_COUNT, 21)
+  assert.equal(result.cleanForwardCounts.POST_H7_GOVERNED_PATH_EXPECTED_COUNT, 23)
   assert.equal(result.cleanForwardCounts.POST_H7_GOVERNED_PATH_MISSING_COUNT, 0)
   assert.equal(result.cleanForwardCounts.POST_H7_GOVERNED_PATH_UNEXPECTED_COUNT, 0)
   assert.equal(result.cleanForwardCounts.API_APP_RUNTIME_PATH_COUNT, API_APP_RUNTIME_ALLOWLIST.length)
   assert.equal(result.cleanForwardCounts.API_APP_RUNTIME_PATH_EXPECTED_COUNT, 9)
   assert.equal(result.cleanForwardCounts.API_APP_RUNTIME_PATH_MISSING_COUNT, 0)
   assert.equal(result.cleanForwardCounts.API_APP_RUNTIME_PATH_UNEXPECTED_COUNT, 0)
+  assert.equal(result.cleanForwardCounts.LOCALIZATION_SOURCE_MANIFEST_INVALID_COUNT, 0)
+  assert.equal(result.cleanForwardCounts.LOCALIZATION_REQUIRED_SOURCE_KEY_MISSING_COUNT, 0)
   console.log(`FRONTEND_ARCHITECTURE_POSITIVE_CONTROL=PASS files=${result.scannedFileCount}`)
+})
+
+const navigationRuntimePaths = [
+  'product/timeline/TimelineNavigation.tsx',
+  'product/timeline/navigation.ts',
+]
+
+test('NLE navigation runtime paths are explicitly governed, physically present, and classified', () => {
+  const reconciliation = reconcileFrontendPathLedger()
+  const ledgerRows = readFileSync(join(repositoryRoot, 'docs/architecture/governance/frontend-product-path-classification-v1.tsv'), 'utf8')
+    .trimEnd().split('\n').slice(1).map(line => line.split('\t'))
+  for (const path of navigationRuntimePaths) {
+    assert.equal(POST_H7_GOVERNED_PATHS.filter(entry => entry === path).length, 1, path)
+    assert.equal(existsSync(join(defaultSourceRoot, path)), true, path)
+    const repositoryPath = `frontend/src/${path}`
+    assert.ok(reconciliation.actualPaths.includes(repositoryPath), repositoryPath)
+    const rows = ledgerRows.filter(row => row[0] === repositoryPath)
+    assert.equal(rows.length, 1, repositoryPath)
+    assert.equal(rows[0][1], 'REUSE', repositoryPath)
+    assert.ok(rows[0][2], repositoryPath)
+  }
+})
+
+for (const path of navigationRuntimePaths) {
+  test(`governed inventory rejects replacing ${path} even when the total is unchanged`, () => {
+    const root = mkdtempSync(join(tmpdir(), 'nle-navigation-inventory-'))
+    try {
+      for (const entry of POST_H7_GOVERNED_PATHS) {
+        const file = join(root, entry)
+        mkdirSync(join(file, '..'), { recursive: true })
+        writeFileSync(file, 'export {}')
+      }
+      const initial = scanFrontendArchitecture(root)
+      assert.equal(initial.cleanForwardCounts.POST_H7_GOVERNED_PATH_COUNT, 23)
+      assert.equal(initial.cleanForwardCounts.POST_H7_GOVERNED_PATH_MISSING_COUNT, 0)
+      assert.equal(initial.cleanForwardCounts.POST_H7_GOVERNED_PATH_UNEXPECTED_COUNT, 0)
+      rmSync(join(root, path))
+      const missing = scanFrontendArchitecture(root)
+      assert.equal(missing.cleanForwardCounts.POST_H7_GOVERNED_PATH_MISSING_COUNT, 1)
+      assert.equal(architectureGuardPassed(missing), false)
+      writeFileSync(join(root, 'product/timeline/UnapprovedNavigation.tsx'), 'export {}')
+      const replaced = scanFrontendArchitecture(root)
+      assert.equal(replaced.cleanForwardCounts.POST_H7_GOVERNED_PATH_COUNT, 23)
+      assert.equal(replaced.cleanForwardCounts.POST_H7_GOVERNED_PATH_MISSING_COUNT, 1)
+      assert.equal(replaced.cleanForwardCounts.POST_H7_GOVERNED_PATH_UNEXPECTED_COUNT, 1)
+      assert.equal(architectureGuardPassed(replaced), false)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  for (const [ruleName, source] of [
+    ['UNSTABLE_ROUTE_DIRECT_COMPONENT_CALL_COUNT', "const route = '/timeline-git/products/p1/revisions/current'"],
+    ['UNSTABLE_ROUTE_DIRECT_COMPONENT_CALL_COUNT', 'alternateClient.get(endpoint)'],
+    ['POST_H7_AXIOS_IMPORT_BYPASS_COUNT', "import alternateClient from 'axios'"],
+    ['POST_H7_VERSIONLESS_TRANSPORT_IMPORT_BYPASS_COUNT', "import { versionlessTransport } from '../../api/app/versionless-api'"],
+  ]) {
+    test(`NLE governed path ${path} still rejects ${source}`, () => {
+      const root = mkdtempSync(join(tmpdir(), 'nle-navigation-authority-'))
+      try {
+        const file = join(root, path)
+        mkdirSync(join(file, '..'), { recursive: true })
+        writeFileSync(file, source)
+        const result = scanFrontendArchitecture(root)
+        assert.ok(result.counts[ruleName] > 0, ruleName)
+        assert.ok(result.violations[ruleName].some(violation => violation.path === path), path)
+        assert.equal(architectureGuardPassed(result), false)
+      } finally {
+        rmSync(root, { recursive: true, force: true })
+      }
+    })
+  }
+}
+
+test('localization guard rejects direct vendor imports and migrated hardcoded chrome', () => {
+  const root = mkdtempSync(join(tmpdir(), 'frontend-localization-boundary-'))
+  try {
+    mkdirSync(join(root, 'components/app-shell'), { recursive: true })
+    writeFileSync(join(root, 'components/app-shell/AppShell.tsx'), "import { Tolgee } from '@tolgee/react'\nconst label = 'Commands'")
+    const result = scanFrontendArchitecture(root)
+    assert.equal(result.boundedCounts.FRONTEND_DIRECT_TOLGEE_PRODUCT_IMPORT_COUNT, 1)
+    assert.equal(result.boundedCounts.FRONTEND_MIGRATED_HARDCODED_UI_COPY_COUNT, 1)
+    assert.equal(architectureGuardPassed(result), false)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('localization boundary rejects product integration imports, dynamic imports, public re-exports, and JSX copy', () => {
+  const root = mkdtempSync(join(tmpdir(), 'frontend-localization-structural-boundary-'))
+  try {
+    const sources = [
+      ['product/canvas/DirectAdapter.tsx', "import { TolgeeRemoteCatalogAdapter } from '../../integrations/localization/adapters/TolgeeRemoteCatalogAdapter'"],
+      ['product/review/DirectConfig.tsx', "const config = import('../../integrations/localization/config')"],
+      ['localization/index.ts', "export * from '../integrations/localization/adapters/TolgeeRemoteCatalogAdapter'"],
+      ['components/app-shell/AppShell.tsx', '<button>Commands</button>'],
+    ]
+    for (const [relativePath, source] of sources) {
+      const file = join(root, relativePath)
+      mkdirSync(join(file, '..'), { recursive: true })
+      writeFileSync(file, source)
+    }
+    const result = scanFrontendArchitecture(root)
+    assert.equal(result.boundedCounts.FRONTEND_DIRECT_TOLGEE_PRODUCT_IMPORT_COUNT, 3)
+    assert.equal(result.boundedCounts.FRONTEND_MIGRATED_HARDCODED_UI_COPY_COUNT, 1)
+    assert.equal(architectureGuardPassed(result), false)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('localization boundary permits only main composition to config and bounded integration internals', () => {
+  const root = mkdtempSync(join(tmpdir(), 'frontend-localization-allowed-boundary-'))
+  try {
+    const sources = [
+      ['main.tsx', "import { createConfiguredRemoteCatalogProvider } from './integrations/localization/config'"],
+      ['integrations/localization/config.ts', "import { Adapter } from './adapters/Adapter'"],
+      ['integrations/localization/adapters/Adapter.ts', "import { Tolgee } from '@tolgee/react'"],
+    ]
+    for (const [relativePath, source] of sources) {
+      const file = join(root, relativePath)
+      mkdirSync(join(file, '..'), { recursive: true })
+      writeFileSync(file, source)
+    }
+    const result = scanFrontendArchitecture(root)
+    assert.equal(result.boundedCounts.FRONTEND_DIRECT_TOLGEE_PRODUCT_IMPORT_COUNT, 0)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('localization source manifest is strict and detects a missing required English key', () => {
+  const root = mkdtempSync(join(tmpdir(), 'frontend-localization-manifest-'))
+  try {
+    mkdirSync(join(root, 'localization'), { recursive: true })
+    const manifest = {
+      schemaVersion: 1,
+      catalogVersion: '2026.09.0',
+      sourceLocale: 'en',
+      fallbackLocale: 'en',
+      namespaces: ['common', 'shell', 'agent', 'canvas', 'timeline', 'review', 'workflow', 'render', 'settings', 'errors'],
+      requiredSourceKeys: ['shell.commands'],
+    }
+    writeFileSync(join(root, 'localization/source-manifest.json'), JSON.stringify(manifest))
+    writeFileSync(join(root, 'localization/catalogs.ts'), "const englishNamespaces = { shell: { commands: message('Commands') } }")
+    assert.deepEqual(validateLocalizationSourceManifest(root), { invalidCount: 0, missingKeys: [] })
+    writeFileSync(join(root, 'localization/catalogs.ts'), 'const englishNamespaces = { shell: {} }')
+    assert.deepEqual(validateLocalizationSourceManifest(root), { invalidCount: 0, missingKeys: ['shell.commands'] })
+    writeFileSync(join(root, 'localization/source-manifest.json'), JSON.stringify({ ...manifest, unknown: true }))
+    assert.deepEqual(validateLocalizationSourceManifest(root), { invalidCount: 1, missingKeys: [] })
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('localization source-key validation is namespace-aware, English-only, comment-safe, and fail-closed', () => {
+  const root = mkdtempSync(join(tmpdir(), 'frontend-localization-source-ast-'))
+  try {
+    mkdirSync(join(root, 'localization'), { recursive: true })
+    const manifest = {
+      schemaVersion: 1,
+      catalogVersion: '2026.09.0',
+      sourceLocale: 'en',
+      fallbackLocale: 'en',
+      namespaces: ['common', 'shell', 'agent', 'canvas', 'timeline', 'review', 'workflow', 'render', 'settings', 'errors'],
+      requiredSourceKeys: ['shell.commands'],
+    }
+    writeFileSync(join(root, 'localization/source-manifest.json'), JSON.stringify(manifest))
+    const sourcePath = join(root, 'localization/catalogs.ts')
+    writeFileSync(sourcePath, [
+      'const englishNamespaces = {',
+      "  common: { commands: message('Wrong namespace') },",
+      '  shell: {},',
+      '}',
+      "const chineseNamespaces = { shell: { commands: message('命令') } }",
+      "// shell: { commands: message('Comment only') }",
+    ].join('\n'))
+    assert.deepEqual(validateLocalizationSourceManifest(root), { invalidCount: 0, missingKeys: ['shell.commands'] })
+
+    writeFileSync(sourcePath, "const englishNamespaces = { shell: { commands: message('Commands') } }")
+    assert.deepEqual(validateLocalizationSourceManifest(root), { invalidCount: 0, missingKeys: [] })
+
+    rmSync(sourcePath)
+    assert.deepEqual(validateLocalizationSourceManifest(root), { invalidCount: 1, missingKeys: [] })
+    rmSync(join(root, 'localization/source-manifest.json'))
+    assert.deepEqual(validateLocalizationSourceManifest(root), { invalidCount: 1, missingKeys: [] })
+    assert.deepEqual(validateLocalizationSourceManifest(root, { allowMissingLocalization: true }), { invalidCount: 0, missingKeys: [] })
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
 })
 
 const cleanForwardMutations = [
@@ -106,6 +300,131 @@ test('path ledger reconciliation detects unclassified, stale, and duplicate path
     assert.equal(result.duplicatePaths.length, 1)
   } finally {
     rmSync(root, { recursive: true, force: true })
+  }
+})
+
+function createGitLedgerFixture() {
+  const root = mkdtempSync(join(tmpdir(), 'frontend-path-ledger-git-'))
+  const frontendRoot = join(root, 'frontend')
+  const ledgerPath = join(root, 'ledger.tsv')
+  mkdirSync(frontendRoot)
+  runGit(root, ['init', '--quiet'])
+  writeFileSync(join(root, '.gitignore'), 'frontend/**/*.log\n')
+  writeFileSync(join(frontendRoot, 'kept.ts'), 'export {}')
+  runGit(root, ['add', '.gitignore', 'frontend/kept.ts'])
+  writeFileSync(ledgerPath, [
+    'path\tclassification\trationale',
+    'frontend/kept.ts\tREUSE\tTEST',
+  ].join('\n'))
+  return { root, frontendRoot, ledgerPath }
+}
+
+function runGit(root, arguments_) {
+  const result = spawnSync('git', arguments_, { cwd: root, encoding: 'utf8' })
+  assert.equal(result.status, 0, result.stderr || result.error?.message)
+}
+
+test('ignored physical log is not ledger-required', () => {
+  const fixture = createGitLedgerFixture()
+  try {
+    const ignoredLog = join(fixture.frontendRoot, 'governance/evidence.log')
+    mkdirSync(join(ignoredLog, '..'), { recursive: true })
+    writeFileSync(ignoredLog, 'ignored residue')
+    const result = reconcileFrontendPathLedger(fixture.frontendRoot, fixture.ledgerPath)
+    assert.deepEqual(result.actualPaths, ['frontend/kept.ts'])
+    assert.deepEqual(result.unclassifiedPaths, [])
+    assert.deepEqual(result.stalePaths, [])
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true })
+  }
+})
+
+test('absent ignored log with a correct ledger does not create a stale row', () => {
+  const fixture = createGitLedgerFixture()
+  try {
+    const result = reconcileFrontendPathLedger(fixture.frontendRoot, fixture.ledgerPath)
+    assert.deepEqual(result.actualPaths, ['frontend/kept.ts'])
+    assert.deepEqual(result.unclassifiedPaths, [])
+    assert.deepEqual(result.stalePaths, [])
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true })
+  }
+})
+
+test('nonignored unclassified path still fails reconciliation', () => {
+  const fixture = createGitLedgerFixture()
+  try {
+    writeFileSync(join(fixture.frontendRoot, 'unclassified.ts'), 'export {}')
+    const result = reconcileFrontendPathLedger(fixture.frontendRoot, fixture.ledgerPath)
+    assert.deepEqual(result.actualPaths, ['frontend/kept.ts', 'frontend/unclassified.ts'])
+    assert.deepEqual(result.unclassifiedPaths, ['frontend/unclassified.ts'])
+    assert.deepEqual(result.stalePaths, [])
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true })
+  }
+})
+
+test('tracked path missing from the ledger still fails reconciliation', () => {
+  const fixture = createGitLedgerFixture()
+  try {
+    writeFileSync(join(fixture.frontendRoot, 'tracked.ts'), 'export {}')
+    runGit(fixture.root, ['add', 'frontend/tracked.ts'])
+    const result = reconcileFrontendPathLedger(fixture.frontendRoot, fixture.ledgerPath)
+    assert.deepEqual(result.unclassifiedPaths, ['frontend/tracked.ts'])
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true })
+  }
+})
+
+test('ledger row for a tracked but physically missing path stays stale', () => {
+  const fixture = createGitLedgerFixture()
+  try {
+    const staleFile = join(fixture.frontendRoot, 'stale.ts')
+    writeFileSync(staleFile, 'export {}')
+    runGit(fixture.root, ['add', 'frontend/stale.ts'])
+    rmSync(staleFile)
+    writeFileSync(fixture.ledgerPath, [
+      'path\tclassification\trationale',
+      'frontend/kept.ts\tREUSE\tTEST',
+      'frontend/stale.ts\tREUSE\tTEST_STALE',
+    ].join('\n'))
+    const result = reconcileFrontendPathLedger(fixture.frontendRoot, fixture.ledgerPath)
+    assert.deepEqual(result.unclassifiedPaths, [])
+    assert.deepEqual(result.stalePaths, ['frontend/stale.ts'])
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true })
+  }
+})
+
+test('duplicate ledger path still fails reconciliation', () => {
+  const fixture = createGitLedgerFixture()
+  try {
+    writeFileSync(fixture.ledgerPath, [
+      'path\tclassification\trationale',
+      'frontend/kept.ts\tREUSE\tTEST',
+      'frontend/kept.ts\tREUSE\tTEST_DUPLICATE',
+    ].join('\n'))
+    const result = reconcileFrontendPathLedger(fixture.frontendRoot, fixture.ledgerPath)
+    assert.deepEqual(result.unclassifiedPaths, [])
+    assert.deepEqual(result.stalePaths, [])
+    assert.deepEqual(result.duplicatePaths, ['frontend/kept.ts'])
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true })
+  }
+})
+
+test('explicitly tracked ignored-name file remains governed', () => {
+  const fixture = createGitLedgerFixture()
+  try {
+    const trackedLog = join(fixture.frontendRoot, 'governance/tracked.log')
+    mkdirSync(join(trackedLog, '..'), { recursive: true })
+    writeFileSync(trackedLog, 'tracked evidence')
+    runGit(fixture.root, ['add', '--force', 'frontend/governance/tracked.log'])
+    const result = reconcileFrontendPathLedger(fixture.frontendRoot, fixture.ledgerPath)
+    assert.deepEqual(result.actualPaths, ['frontend/governance/tracked.log', 'frontend/kept.ts'])
+    assert.deepEqual(result.unclassifiedPaths, ['frontend/governance/tracked.log'])
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true })
   }
 })
 
@@ -481,4 +800,110 @@ test('guard fails closed on an empty scan universe', () => {
   }
   assert.equal(existsSync(root), false)
   console.log('FRONTEND_ARCHITECTURE_EMPTY_UNIVERSE_NEGATIVE_CONTROL=PASS residue=0')
+})
+
+const selectionBoundaryMutations = [
+  ['product/another/Untyped.tsx', "import { useState as state } from 'react'; const [selectedIds, setSelectedIds] = state([])"],
+  ['product/canvas/Other.ts', "function relabel(reference) { reference.label = 'Canonical' }"],
+  ['product/canvas/Other.ts', "const edge = { meaning: 'DEPENDENCY' }"],
+  ['product/another/Panel.tsx', "import { createInteractionStore as make } from '../../interaction/model'; const privateStore = make({ surfaceId: 'canvas' })"],
+  ['interaction/Other.tsx', "import { createContext } from 'react'; import type { InteractionStore } from './model'; const another = createContext<InteractionStore | null>(null)"],
+  ['product/another/Panel.tsx', "import { useState } from 'react'; import type { SelectionState } from '../../interaction/model'; const [privateSelection] = useState<SelectionState>()"],
+  ['product/canvas/Model.ts', 'interface ExtraState { selectedPresentationId: string | null }'],
+  ['product/canvas/Model.ts', 'function rename(state, title) { return { ...state, references: state.references.map(ref => ({ ...ref, label: title })) } }'],
+  ['product/canvas/Other.ts', "import { apply } from '../../api/app/operation.gateway'"],
+  ['interaction/Other.ts', "export { ApplyContext } from '../../workflow-module/internal'"],
+  ['interaction/Other.ts', "const result = { status: 'APPLIED', planDigest: 'fake' }"],
+  ['interaction/Other.tsx', "const control = <Button>{t('agent.apply')}</Button>"],
+  ['product/canvas/Other.ts', "const entity = { kind: 'EDGE', id: 'visual' }"],
+]
+for (const [path, source] of selectionBoundaryMutations) test(`selection structural boundary rejects ${path}: ${source}`, () => {
+  const root = mkdtempSync(join(tmpdir(), 'selection-boundary-'))
+  try {
+    const file = join(root, path)
+    mkdirSync(join(file, '..'), { recursive: true })
+    writeFileSync(file, source)
+    const result = scanFrontendArchitecture(root)
+    assert.ok(result.boundedCounts.FRONTEND_SELECTION_BOUNDARY_VIOLATION_COUNT > 0)
+    assert.equal(architectureGuardPassed(result), false)
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
+
+const directManipulationMutations = [
+  ['DOM collection authority', 'const hits = stage.querySelectorAll("[data-canvas-node]")'],
+  ['DOM mount authority', 'const nodes = document.getElementsByClassName("ff-canvas-node")'],
+  ['semantic ID sorting', 'const hits = nodes.sort((a, b) => a.presentationId.localeCompare(b.presentationId))'],
+  ['route persistence', 'history.replaceState(null, "", "?selected=node")'],
+  ['storage persistence', 'window.localStorage.setItem("selected", "node")'],
+  ['route parsing', 'const refs = new URLSearchParams(location.search)'],
+  ['direct backend', "import { platformClient } from '../../foundation/platformClient'"],
+  ['second store', "import { create as privateStore } from 'zustand'; const state = privateStore(() => ({}))"],
+]
+for (const [label, source] of directManipulationMutations) test(`Slice1B structural control rejects ${label}`, () => {
+  const root = mkdtempSync(join(tmpdir(), 'canvas-gesture-boundary-'))
+  try {
+    mkdirSync(join(root, 'product/canvas'), { recursive: true })
+    writeFileSync(join(root, 'product/canvas/Gesture.ts'), source)
+    const result = scanFrontendArchitecture(root)
+    assert.ok(result.boundedCounts.FRONTEND_SELECTION_BOUNDARY_VIOLATION_COUNT > 0)
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
+test('Slice1B structural control permits model filtering, captured context and viewport/focus measurement', () => {
+  const root = mkdtempSync(join(tmpdir(), 'canvas-gesture-positive-'))
+  try {
+    mkdirSync(join(root, 'product/canvas'), { recursive: true })
+    writeFileSync(join(root, 'product/canvas/Gesture.ts'), `
+      // document.querySelectorAll, localStorage and sorting in comments are not executable evidence.
+      const origin = stage.getBoundingClientRect()
+      const focused = event.target.closest('[data-canvas-node]')
+      const hits = nodes.filter(node => node.x < right)
+      const gesture = useRef<CanvasGesture | null>(null)
+      const preview = moveCanvasGroup(canvas, originals, delta)
+    `)
+    assert.equal(scanFrontendArchitecture(root).boundedCounts.FRONTEND_SELECTION_BOUNDARY_VIOLATION_COUNT, 0)
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
+
+// Slice1C: bounded AST/syntax negative controls. These do not prove arbitrary dataflow or timing.
+const routeLifetimeMutations = [
+  ['G01', 'app/routeTree.tsx', 'const routeState = { selectedRefs: [], primaryRef: null, lifetime: {} }'],
+  ['G01', 'app/routes/Nested.tsx', "import { useSelection as own } from '../../interaction/SelectionContext'; const state = own()"],
+  ['G02', 'app/routes/Nested.tsx', "import { createInteractionStore as make } from '../../interaction/model'; const store = make(scope)"],
+  ['G03', 'app/routeTree.tsx', "const id = new URLSearchParams(location.search).get('selectedPresentationId')"],
+  ['G03', 'app/routeTree.tsx', 'navigate({ search: { selectedIds: refs } })'],
+  ['G04', 'surfaces/Panel.tsx', "localStorage.setItem('selection', JSON.stringify(store.getSnapshot()))"],
+  ['G04', 'surfaces/Panel.tsx', "sessionStorage.setItem('selectedRefs', JSON.stringify(selectedRefs))"],
+  ['G04', 'app/routeTree.tsx', "new BroadcastChannel('selection')"],
+  ['G05', 'app/routeTree.tsx', "history.pushState({ selectionSnapshot: store.getSnapshot() }, '', target)"],
+  ['G05', 'app/routeTree.tsx', 'const selectedRefs = history.state.selectedRefs'],
+  ['G06', 'surfaces/Panel.tsx', "const next = { ...selectedRef, surfaceId: 'nle' }"],
+  ['G07', 'components/app-shell/DocumentLifecycleBridge.tsx', 'interface BridgeState { membership: string[]; revision: number; lifetime: object }'],
+  ['G07', 'components/app-shell/AppShell.tsx', 'function LifecycleBridge() { const state = { primaryRef: ref, revision: 4 } }'],
+  ['G08', 'surfaces/Panel.tsx', "useEffect(() => { store.select({ mode: 'clear', refs: [] }) }, [projectId])"],
+  ['G08', 'components/app-shell/AppShell.tsx', '<SelectionProvider key={location.pathname} scope={scope}>{children}</SelectionProvider>'],
+]
+for (const [guard, path, source] of routeLifetimeMutations) test(`Slice1C ${guard} rejects ${path}: ${source}`, () => {
+  const root = mkdtempSync(join(tmpdir(), 'route-selection-lifetime-'))
+  try {
+    mkdirSync(join(root, path.slice(0, path.lastIndexOf('/'))), { recursive: true })
+    writeFileSync(join(root, path), source)
+    const result = scanFrontendArchitecture(root)
+    assert.ok(result.violations.FRONTEND_ROUTE_SELECTION_LIFETIME_VIOLATION_COUNT?.some(item => item.evidence.startsWith(guard)), `${guard}: expected bounded detection`)
+    assert.equal(architectureGuardPassed(result), false)
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
+test('Slice1C allows navigation identity, ordinary auth storage, comments and Selection-owned retirement', () => {
+  const root = mkdtempSync(join(tmpdir(), 'route-selection-legitimate-'))
+  try {
+    for (const [path, source] of [
+      ['app/routeTree.tsx', "// selectedRefs history snapshots are forbidden\nconst scope = { workspaceId, projectId, surfaceId }; navigate({ search: { view: 'wide' }, hash: 'main-content' }); sessionStorage.setItem('auth-status', 'pending')"],
+      ['interaction/SelectionContext.tsx', "const store = createInteractionStore(scope); window.addEventListener('pagehide', () => store.retireSelectionOwner('document'))"],
+      ['product/canvas/Panel.tsx', 'const ref = { workspaceId, projectId, surfaceId, kind: "NODE", localId }; store.select({ refs: [ref], lifetime: current.lifetime, revision: current.revision })'],
+    ]) {
+      mkdirSync(join(root, path.slice(0, path.lastIndexOf('/'))), { recursive: true })
+      writeFileSync(join(root, path), source)
+    }
+    const result = scanFrontendArchitecture(root)
+    assert.equal(result.boundedCounts.FRONTEND_ROUTE_SELECTION_LIFETIME_VIOLATION_COUNT, 0)
+  } finally { rmSync(root, { recursive: true, force: true }) }
 })

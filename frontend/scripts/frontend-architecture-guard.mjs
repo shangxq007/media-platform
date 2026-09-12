@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 
+import { spawnSync } from 'node:child_process'
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
-import { dirname, relative, resolve } from 'node:path'
+import { dirname, posix, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import ts from 'typescript'
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url))
 export const repositoryRoot = resolve(scriptDirectory, '../..')
@@ -48,8 +50,10 @@ export const POST_H7_GOVERNED_PATHS = [
   'product/review/ReviewWorkspace.tsx',
   'product/timeline/NleWorkspace.tsx',
   'product/timeline/SemanticDiff.tsx',
+  'product/timeline/TimelineNavigation.tsx',
   'product/timeline/editor-state.ts',
   'product/timeline/gateways.ts',
+  'product/timeline/navigation.ts',
   'product/timeline/testing/mocks.ts',
   'product/timeline/types.ts',
 ].sort()
@@ -280,6 +284,22 @@ export const AUTHORITY_RULES = [
 // CLEAN FORWARD baselines are semantic residue ceilings, not file-count
 // allowlists. Existing legacy residue may decrease, but any increase fails.
 export const BOUNDED_RULES = [
+  { name: 'FRONTEND_ROUTE_SELECTION_LIFETIME_VIOLATION_COUNT', maximum: 0, patterns: [] },
+  { name: 'FRONTEND_SELECTION_BOUNDARY_VIOLATION_COUNT', maximum: 0, patterns: [] },
+  {
+    name: 'FRONTEND_DIRECT_TOLGEE_PRODUCT_IMPORT_COUNT',
+    maximum: 0,
+    patterns: [],
+  },
+  {
+    name: 'FRONTEND_MIGRATED_HARDCODED_UI_COPY_COUNT',
+    maximum: 0,
+    governedPathPattern: /^(?:components\/(?:app-shell\/AppShell|design-system\/index)\.tsx|interaction\/InteractionShell\.tsx|product\/(?:canvas\/WorkspaceCanvas|timeline\/NleWorkspace|review\/ReviewWorkspace)\.tsx)$/,
+    patterns: [
+      /['"`](?:Commands|Command palette|Ask Agent|Agent conversation|Preview|Modify|Apply canonical change|Selection inspector|Infinite canvas workspace|Timeline workspace|Project review)['"`]/,
+      />\s*(?:Commands|Command palette|Ask Agent|Agent conversation|Preview|Modify|Apply canonical change|Selection inspector|Infinite canvas workspace|Timeline workspace|Project review)\s*</,
+    ],
+  },
   {
     name: 'FRONTEND_RAW_STORAGE_PRODUCT_FIELD_COUNT',
     maximum: 0,
@@ -402,7 +422,7 @@ function countLegacyRoutes(sourceRoot) {
   }, 0)
 }
 
-function collectFrontendPaths(root) {
+function collectPhysicalFrontendPaths(root, pathRoot) {
   const paths = []
   const visit = path => {
     const entry = statSync(path)
@@ -413,10 +433,34 @@ function collectFrontendPaths(root) {
       }
       return
     }
-    paths.push(relative(repositoryRoot, path).replaceAll('\\', '/'))
+    paths.push(relative(pathRoot, path).replaceAll('\\', '/'))
   }
   visit(root)
   return paths.sort()
+}
+
+export function collectFrontendPaths(root) {
+  const gitRootResult = spawnSync(
+    'git',
+    ['-C', root, 'rev-parse', '--show-toplevel'],
+    { encoding: 'utf8' },
+  )
+  if (gitRootResult.status !== 0 || !gitRootResult.stdout.trim()) {
+    return collectPhysicalFrontendPaths(root, repositoryRoot)
+  }
+
+  const gitRoot = resolve(gitRootResult.stdout.trim())
+  const physicalPaths = collectPhysicalFrontendPaths(root, gitRoot)
+  const rootPathspec = relative(gitRoot, root).replaceAll('\\', '/') || '.'
+  const governedResult = spawnSync(
+    'git',
+    ['-C', gitRoot, 'ls-files', '--cached', '--others', '--exclude-standard', '-z', '--', rootPathspec],
+    { encoding: 'utf8' },
+  )
+  if (governedResult.status !== 0) return physicalPaths
+
+  const governedPaths = new Set(governedResult.stdout.split('\0').filter(Boolean))
+  return physicalPaths.filter(path => governedPaths.has(path))
 }
 
 export function reconcileFrontendPathLedger(frontendRoot = FRONTEND_ROOT, ledgerPath = PATH_LEDGER) {
@@ -456,6 +500,7 @@ function scanCleanForwardMetrics(sourceRoot, runtimeFiles, boundedCounts, author
   const reconciliation = isRepositorySource
     ? reconcileFrontendPathLedger()
     : { unclassifiedPaths: [], stalePaths: [], duplicatePaths: [] }
+  const localization = validateLocalizationSourceManifest(sourceRoot)
   return {
     OLD_IMPORT_COUNT: countOldImports(files),
     OLD_ROUTE_COUNT: countLegacyRoutes(sourceRoot),
@@ -478,7 +523,265 @@ function scanCleanForwardMetrics(sourceRoot, runtimeFiles, boundedCounts, author
     API_APP_RUNTIME_PATH_EXPECTED_COUNT: API_APP_RUNTIME_ALLOWLIST.length,
     API_APP_RUNTIME_PATH_MISSING_COUNT: missingApiAppPaths.length,
     API_APP_RUNTIME_PATH_UNEXPECTED_COUNT: unexpectedApiAppPaths.length,
+    LOCALIZATION_SOURCE_MANIFEST_INVALID_COUNT: localization.invalidCount,
+    LOCALIZATION_REQUIRED_SOURCE_KEY_MISSING_COUNT: localization.missingKeys.length,
   }
+}
+
+function unwrapExpression(node) {
+  let current = node
+  while (ts.isParenthesizedExpression(current) || ts.isAsExpression(current) || ts.isTypeAssertionExpression(current) || ts.isSatisfiesExpression(current)) current = current.expression
+  return current
+}
+
+function propertyName(node) {
+  if (ts.isIdentifier(node) || ts.isStringLiteral(node) || ts.isNumericLiteral(node)) return node.text
+  return undefined
+}
+
+function collectEnglishSourceKeys(sourceText, fileName) {
+  const sourceFile = ts.createSourceFile(fileName, sourceText, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+  if (sourceFile.parseDiagnostics.length) return { ok: false, keys: new Set() }
+  const englishInitializers = []
+  for (const statement of sourceFile.statements) {
+    if (!ts.isVariableStatement(statement)) continue
+    for (const declaration of statement.declarationList.declarations) {
+      if (ts.isIdentifier(declaration.name) && declaration.name.text === 'englishNamespaces' && declaration.initializer) englishInitializers.push(unwrapExpression(declaration.initializer))
+    }
+  }
+  if (englishInitializers.length !== 1 || !ts.isObjectLiteralExpression(englishInitializers[0])) return { ok: false, keys: new Set() }
+  const englishInitializer = englishInitializers[0]
+  const keys = new Set()
+  for (const namespaceProperty of englishInitializer.properties) {
+    if (!ts.isPropertyAssignment(namespaceProperty)) continue
+    const namespace = propertyName(namespaceProperty.name)
+    const messages = unwrapExpression(namespaceProperty.initializer)
+    if (!namespace || !ts.isObjectLiteralExpression(messages)) continue
+    for (const messageProperty of messages.properties) {
+      if (!ts.isPropertyAssignment(messageProperty)) continue
+      const key = propertyName(messageProperty.name)
+      const initializer = unwrapExpression(messageProperty.initializer)
+      if (!key || !ts.isCallExpression(initializer) || !ts.isIdentifier(initializer.expression) || initializer.expression.text !== 'message') continue
+      keys.add(`${namespace}.${key}`)
+    }
+  }
+  return { ok: true, keys }
+}
+
+export function validateLocalizationSourceManifest(sourceRoot = defaultSourceRoot, { allowMissingLocalization = false } = {}) {
+  const manifestPath = resolve(sourceRoot, 'localization/source-manifest.json')
+  const catalogsPath = resolve(sourceRoot, 'localization/catalogs.ts')
+  if (!existsSync(manifestPath) && !existsSync(catalogsPath)) return { invalidCount: allowMissingLocalization ? 0 : 1, missingKeys: [] }
+  if (!existsSync(manifestPath) || !existsSync(catalogsPath)) return { invalidCount: 1, missingKeys: [] }
+  try {
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
+    const exactFields = ['schemaVersion', 'catalogVersion', 'sourceLocale', 'fallbackLocale', 'namespaces', 'requiredSourceKeys'].sort()
+    const fields = Object.keys(manifest).sort()
+    const validFields = fields.length === exactFields.length && fields.every((field, index) => field === exactFields[index])
+    const namespaces = manifest.namespaces
+    const expectedNamespaces = ['common', 'shell', 'agent', 'canvas', 'timeline', 'review', 'workflow', 'render', 'settings', 'errors']
+    const validNamespaces = Array.isArray(namespaces) && namespaces.length === expectedNamespaces.length && new Set(namespaces).size === namespaces.length && expectedNamespaces.every(namespace => namespaces.includes(namespace))
+    const keys = manifest.requiredSourceKeys
+    const validKeys = Array.isArray(keys) && keys.length > 0 && new Set(keys).size === keys.length && keys.every(key => typeof key === 'string' && /^[a-z][a-zA-Z0-9]*(?:[._-][a-zA-Z0-9]+)+$/.test(key) && namespaces?.includes(key.split('.')[0]))
+    const valid = validFields && manifest.schemaVersion === 1 && manifest.catalogVersion === '2026.09.0' && manifest.sourceLocale === 'en' && manifest.fallbackLocale === 'en' && validNamespaces && validKeys
+    if (!valid) return { invalidCount: 1, missingKeys: [] }
+    const sourceKeys = collectEnglishSourceKeys(readFileSync(catalogsPath, 'utf8'), catalogsPath)
+    if (!sourceKeys.ok) return { invalidCount: 1, missingKeys: [] }
+    const missingKeys = keys.filter(key => !sourceKeys.keys.has(key))
+    return { invalidCount: 0, missingKeys }
+  } catch {
+    return { invalidCount: 1, missingKeys: [] }
+  }
+}
+
+function normalizeModuleTarget(importerPath, specifier) {
+  let target
+  if (specifier.startsWith('.')) target = posix.normalize(posix.join(posix.dirname(importerPath), specifier))
+  else if (specifier.startsWith('@/')) target = posix.normalize(specifier.slice(2))
+  else return specifier
+  return target.replace(/\.(?:[cm]?[jt]sx?)$/, '').replace(/\/index$/, '')
+}
+
+function moduleReferences(sourceFile) {
+  const references = []
+  const visit = node => {
+    let specifier
+    if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier && ts.isStringLiteralLike(node.moduleSpecifier)) {
+      specifier = node.moduleSpecifier
+    } else if (ts.isCallExpression(node) && node.arguments.length === 1 && ts.isStringLiteralLike(node.arguments[0])) {
+      if (node.expression.kind === ts.SyntaxKind.ImportKeyword || (ts.isIdentifier(node.expression) && node.expression.text === 'require')) specifier = node.arguments[0]
+    }
+    if (specifier) references.push({ value: specifier.text, position: specifier.getStart(sourceFile) })
+    ts.forEachChild(node, visit)
+  }
+  visit(sourceFile)
+  return references
+}
+
+function scanLocalizationBoundaryImports(files, sourceRoot) {
+  const violations = []
+  for (const file of files) {
+    const importerPath = relative(sourceRoot, file).replaceAll('\\', '/')
+    const sourceText = readFileSync(file, 'utf8')
+    const sourceFile = ts.createSourceFile(file, sourceText, ts.ScriptTarget.Latest, true, importerPath.endsWith('x') ? ts.ScriptKind.TSX : ts.ScriptKind.TS)
+    for (const reference of moduleReferences(sourceFile)) {
+      const target = normalizeModuleTarget(importerPath, reference.value)
+      const vendorTarget = /^(?:@tolgee\/|tolgee(?:\/|$))/.test(reference.value)
+      const integrationTarget = target === 'integrations/localization' || target.startsWith('integrations/localization/')
+      const integrationInternal = importerPath.startsWith('integrations/localization/')
+      const mainComposition = importerPath === 'main.tsx' && target === 'integrations/localization/config'
+      if ((vendorTarget && !integrationInternal) || (integrationTarget && !integrationInternal && !mainComposition)) {
+        violations.push({
+          path: importerPath,
+          line: sourceFile.getLineAndCharacterOfPosition(reference.position).line + 1,
+          evidence: reference.value,
+        })
+      }
+    }
+  }
+  return violations
+}
+
+// Parse runtime source, including aliases and arbitrary product descendants. Comments are not evidence.
+function scanSelectionBoundaries(files, sourceRoot) {
+  const violations = []
+  for (const file of files) {
+    const path = relative(sourceRoot, file).replaceAll('\\', '/')
+    if (!/^(?:product|interaction)\//.test(path)) continue
+    const source = ts.createSourceFile(file, readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true, path.endsWith('x') ? ts.ScriptKind.TSX : ts.ScriptKind.TS)
+    const aliases = new Map()
+    for (const statement of source.statements) {
+      if (!ts.isImportDeclaration(statement)) continue
+      const bindings = statement.importClause?.namedBindings
+      if (bindings && ts.isNamedImports(bindings)) for (const binding of bindings.elements) aliases.set(binding.name.text, binding.propertyName?.text ?? binding.name.text)
+    }
+    const nameOf = expression => ts.isIdentifier(expression) ? aliases.get(expression.text) ?? expression.text : ts.isPropertyAccessExpression(expression) ? expression.name.text : ''
+    const record = (node, reason) => violations.push({ path, line: source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1, evidence: reason })
+    for (const reference of moduleReferences(source)) {
+      const target = normalizeModuleTarget(path, reference.value)
+      if (/(?:^|\/)[^/]+-module(?:\/|$)|(?:^|\/)(?:backend|internal)(?:\/|$)/.test(target)
+        || (path.startsWith('product/canvas/') && /(?:operation\.gateway|timeline\/(?:commands|store|engine)|(?:^|\/)api\/|foundation\/platformClient|(?:^|\/)(?:zustand|redux|jotai|mobx)(?:\/|$)|@tanstack\/react-router)/.test(target))
+        || (path.startsWith('interaction/') && /(?:operation\.gateway|timeline\/(?:commands|store|engine))/.test(target))) {
+        violations.push({ path, line: source.getLineAndCharacterOfPosition(reference.position).line + 1, evidence: reference.value })
+      }
+    }
+    const visit = node => {
+      // Slice1B: model-order hit testing, no persisted gesture authority. Reuse the existing counter.
+      // Deliberately bounded syntax controls: viewport/focus rects and closest() remain legal.
+      // They do not prove arbitrary helper dataflow or native pointer behavior; behavioral tests do that.
+      if (path.startsWith('product/canvas/')) {
+        if (ts.isCallExpression(node) && ['querySelectorAll', 'getElementsByClassName', 'getElementsByTagName', 'sort', 'toSorted', 'pushState', 'replaceState'].includes(nameOf(node.expression))) record(node, 'Canvas gestures use model order, not DOM collections, sorting or route persistence')
+        if (ts.isNewExpression(node) && nameOf(node.expression) === 'URLSearchParams') record(node, 'No Canvas route selection persistence')
+        if (ts.isPropertyAccessExpression(node) && (['localStorage', 'sessionStorage'].includes(node.name.text) || (ts.isIdentifier(node.expression) && ['localStorage', 'sessionStorage'].includes(node.expression.text)))) record(node, 'No Canvas gesture storage')
+      }
+      if (ts.isVariableDeclaration(node) && ts.isArrayBindingPattern(node.name) && node.initializer && ts.isCallExpression(node.initializer) && ['useState', 'useReducer'].includes(nameOf(node.initializer.expression))) {
+        const binding = node.name.elements[0]
+        if (binding && ts.isBindingElement(binding) && ts.isIdentifier(binding.name) && /^(?:selection|selectedIds|selectedObjects|selectedRefs|primarySelectedObject|primaryRef)$/.test(binding.name.text)) record(node, 'No untyped private membership state')
+      }
+      if (ts.isCallExpression(node)) {
+        const name = nameOf(node.expression)
+        if (name === 'createInteractionStore' && path !== 'interaction/SelectionContext.tsx') record(node, 'Selection stores belong only to the shell provider')
+        if (['createContext', 'useState', 'useReducer', 'create', 'createStore'].includes(name)) {
+          const typeNames = []
+          const collectTypes = child => { if (ts.isTypeReferenceNode(child) && ts.isIdentifier(child.typeName)) typeNames.push(nameOf(child.typeName)); ts.forEachChild(child, collectTypes) }
+          for (const argument of node.typeArguments ?? []) collectTypes(argument)
+          if (typeNames.some(type => ['InteractionStore', 'SelectionState', 'PresentationSelectionRef'].includes(type)) && path !== 'interaction/SelectionContext.tsx') record(node, 'No private selection state or context')
+        }
+      }
+      if ((ts.isPropertySignature(node) || ts.isPropertyAssignment(node)) && node.name) {
+        const name = propertyName(node.name)
+        if (['selectedPresentationId', 'selectedIds', 'selectedObjects', 'primarySelectedObject', 'selectedRefs', 'primaryRef'].includes(name) && path !== 'interaction/model.ts') record(node, 'Selection membership is owned by the interaction model')
+        if (ts.isPropertyAssignment(node) && ['planDigest', 'authorization', 'authorizationReceipt', 'canonicalRevision', 'permissionGranted', 'entitlementGranted'].includes(name)) record(node, 'Selection cannot mint application authority')
+        if (ts.isPropertyAssignment(node) && ts.isStringLiteralLike(node.initializer) && ((name === 'status' && node.initializer.text === 'APPLIED') || (name === 'kind' && node.initializer.text === 'EDGE'))) record(node, 'No canonical receipt or selectable edge')
+        if (path.startsWith('product/canvas/') && ts.isPropertyAssignment(node) && name === 'meaning' && (!ts.isStringLiteralLike(node.initializer) || node.initializer.text !== 'VISUAL_ONLY')) record(node, 'Canvas edges are visual only')
+        if (path.startsWith('product/canvas/') && ts.isPropertyAssignment(node) && ['references', 'semanticReferenceId'].includes(name)) {
+          let owner = node.parent
+          while (owner && !ts.isFunctionDeclaration(owner)) owner = owner.parent
+          if (owner?.name?.text !== 'createCanvasState') record(node, 'Canvas may project references but cannot rewrite semantic reference authority')
+        }
+      }
+      if (ts.isBinaryExpression(node) && path.startsWith('product/canvas/') && node.operatorToken.kind === ts.SyntaxKind.EqualsToken && ts.isPropertyAccessExpression(node.left) && ['references', 'semanticReferenceId', 'entityId', 'referenceId', 'label'].includes(node.left.name.text)) record(node, 'No Canvas semantic identity assignment')
+      if (ts.isJsxElement(node)) {
+        const canonicalLabel = node.children.some(child => ts.isJsxExpression(child) && child.expression && ts.isCallExpression(child.expression) && child.expression.arguments.some(argument => ts.isStringLiteralLike(argument) && ['agent.apply', 'agent.applyCanonical'].includes(argument.text)))
+        if (canonicalLabel) {
+          const disabled = node.openingElement.attributes.properties.find(attribute => ts.isJsxAttribute(attribute) && attribute.name.text === 'disabled')
+          if (!disabled || (disabled.initializer && !(ts.isJsxExpression(disabled.initializer) && disabled.initializer.expression?.kind === ts.SyntaxKind.TrueKeyword))) record(node, 'Generic canonical Apply must be unconditionally disabled')
+        }
+      }
+      ts.forEachChild(node, visit)
+    }
+    visit(source)
+  }
+  return violations
+}
+
+// Slice1C: heuristic syntax boundaries, not a proof of dataflow, matched-target ordering,
+// history behavior or native bfcache. Actual application consumer tests cover observed ordering.
+function scanRouteSelectionLifetimes(files, sourceRoot) {
+  const violations = []
+  const membership = /^(?:selection|selectionSnapshot|selectedPresentationId|selectedIds|selectedRefs|selectedObjects|primaryRef|primarySelectedObject|membership)$/
+  const lifetimeFields = /^(?:lifetime|revision|revisionPair|history)$/
+  const forbiddenMutation = /^(?:clearSelection|setSelectedRefs|restoreSelection|setRevision|setLifetime|setScope)$/
+  for (const file of files) {
+    const path = relative(sourceRoot, file).replaceAll('\\', '/')
+    const router = /^(?:app|routes)\//.test(path)
+    const boundary = router || /^(?:components\/app-shell|surfaces)\//.test(path)
+    const governed = boundary || /^(?:interaction|product)\//.test(path)
+    const selectionOwned = /^interaction\/(?:model\.ts|SelectionContext\.tsx)$/.test(path)
+    const source = ts.createSourceFile(file, readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true, path.endsWith('x') ? ts.ScriptKind.TSX : ts.ScriptKind.TS)
+    const aliases = new Map()
+    for (const statement of source.statements) {
+      if (!ts.isImportDeclaration(statement)) continue
+      const bindings = statement.importClause?.namedBindings
+      if (bindings && ts.isNamedImports(bindings)) for (const binding of bindings.elements) aliases.set(binding.name.text, binding.propertyName?.text ?? binding.name.text)
+    }
+    const nameOf = node => ts.isIdentifier(node) ? aliases.get(node.text) ?? node.text : ts.isPropertyAccessExpression(node) ? node.name.text : ts.isElementAccessExpression(node) && ts.isStringLiteralLike(node.argumentExpression) ? node.argumentExpression.text : ''
+    const record = (node, guard, reason) => violations.push({ path, line: source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1, evidence: `${guard}: ${reason}` })
+    const contains = (node, predicate) => {
+      if (predicate(node)) return true
+      return Boolean(ts.forEachChild(node, child => contains(child, predicate) || undefined))
+    }
+    const hasSelection = node => contains(node, child => (ts.isIdentifier(child) || ts.isStringLiteralLike(child)) && membership.test(child.text))
+    const bridgeNode = node => {
+      if (/(?:lifecycle|bridge)/i.test(path)) return true
+      for (let current = node.parent; current; current = current.parent) {
+        if ((ts.isFunctionDeclaration(current) || ts.isVariableDeclaration(current) || ts.isInterfaceDeclaration(current)) && current.name && /(?:lifecycle|bridge)/i.test(current.name.getText(source))) return true
+      }
+      return false
+    }
+    const visit = node => {
+      if (ts.isCallExpression(node)) {
+        const name = nameOf(node.expression)
+        // G02 scans every runtime source path, including arbitrary helper descendants.
+        if (name === 'createInteractionStore' && path !== 'interaction/SelectionContext.tsx') record(node, 'G02', 'Only SelectionProvider creates product stores')
+        if (router && (['useSelection', 'useInteractionStore', 'useSurfaceAdapter', 'applyProposal', 'retireSelectionOwner'].includes(name) || forbiddenMutation.test(name))) record(node, 'G01', 'Router is navigation-only')
+        if (governed && hasSelection(node)) {
+          if (boundary && (['navigate', 'get', 'getAll', 'parse', 'parseSearch', 'parseHash'].includes(name) || contains(node.expression, child => ts.isNewExpression(child) && nameOf(child.expression) === 'URLSearchParams'))) record(node, 'G03', 'URL must not transport presentation Selection IDs')
+          if (contains(node.expression, child => ts.isIdentifier(child) && ['localStorage', 'sessionStorage', 'indexedDB'].includes(child.text)) || name === 'postMessage') record(node, 'G04', 'No persisted or broadcast Selection')
+          if (['pushState', 'replaceState'].includes(name)) record(node, 'G05', 'No history Selection snapshots')
+        }
+        if (boundary && ['useEffect', 'useLayoutEffect'].includes(name) && node.arguments.some(argument => contains(argument, child => ts.isCallExpression(child) && (forbiddenMutation.test(nameOf(child.expression)) || (nameOf(child.expression) === 'select' && ts.isPropertyAccessExpression(child.expression)))))) record(node, 'G08', 'No effect-time Selection repair after target rendering')
+      }
+      if (governed && ts.isNewExpression(node) && ['BroadcastChannel', 'URLSearchParams'].includes(nameOf(node.expression)) && hasSelection(node)) record(node, nameOf(node.expression) === 'BroadcastChannel' ? 'G04' : 'G03', 'No Selection transport')
+      if (governed && (ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node)) && hasSelection(node) && contains(node, child => ts.isPropertyAccessExpression(child) && nameOf(child) === 'state' && nameOf(child.expression) === 'history')) record(node, 'G05', 'No history Selection restoration')
+      if (governed && ts.isObjectLiteralExpression(node) && !selectionOwned) {
+        const overridesScope = node.properties.some(property => ts.isPropertyAssignment(property) && ['surfaceId', 'workspaceId', 'projectId'].includes(propertyName(property.name)))
+        if (overridesScope && node.properties.some(property => ts.isSpreadAssignment(property) && /ref|selection/i.test(property.expression.getText(source)))) record(node, 'G06', 'Do not relabel refs into another scope')
+      }
+      if (ts.isPropertySignature(node) || ts.isPropertyAssignment(node) || ts.isVariableDeclaration(node)) {
+        const name = node.name ? propertyName(node.name) : ''
+        if (router && (membership.test(name) || lifetimeFields.test(name))) record(node, 'G01', 'Router cannot own membership or lifetime fields')
+        if (governed && !selectionOwned && bridgeNode(node) && (membership.test(name) || lifetimeFields.test(name))) record(node, 'G07', 'Lifecycle bridges cannot store Selection authority')
+      }
+      if (boundary && ts.isJsxAttribute(node)) {
+        if (node.name.text === 'role' && node.initializer && ts.isStringLiteralLike(node.initializer) && node.initializer.text === 'application') record(node, 'G01', 'No route keyboard authority')
+        if (node.name.text === 'key' && node.parent.parent.tagName?.getText(source) === 'SelectionProvider' && node.initializer && contains(node.initializer, child => ts.isIdentifier(child) && ['pathname', 'location', 'history'].includes(child.text))) record(node, 'G08', 'Route identity is not Selection scope')
+      }
+      ts.forEachChild(node, visit)
+    }
+    visit(source)
+  }
+  return violations
 }
 
 function cleanForwardMetricsPassed(metrics) {
@@ -496,6 +799,8 @@ function cleanForwardMetricsPassed(metrics) {
     && metrics.API_APP_RUNTIME_PATH_COUNT === metrics.API_APP_RUNTIME_PATH_EXPECTED_COUNT
     && metrics.API_APP_RUNTIME_PATH_MISSING_COUNT === 0
     && metrics.API_APP_RUNTIME_PATH_UNEXPECTED_COUNT === 0
+    && metrics.LOCALIZATION_SOURCE_MANIFEST_INVALID_COUNT === 0
+    && metrics.LOCALIZATION_REQUIRED_SOURCE_KEY_MISSING_COUNT === 0
 }
 
 function lineNumber(text, index) {
@@ -511,6 +816,9 @@ export function scanFrontendArchitecture(sourceRoot = defaultSourceRoot) {
 
   const allRules = [...AUTHORITY_RULES, ...BOUNDED_RULES]
   const violations = Object.fromEntries(allRules.map(rule => [rule.name, []]))
+  violations.FRONTEND_ROUTE_SELECTION_LIFETIME_VIOLATION_COUNT.push(...scanRouteSelectionLifetimes(files, absoluteRoot))
+  violations.FRONTEND_SELECTION_BOUNDARY_VIOLATION_COUNT.push(...scanSelectionBoundaries(files, absoluteRoot))
+  violations.FRONTEND_DIRECT_TOLGEE_PRODUCT_IMPORT_COUNT.push(...scanLocalizationBoundaryImports(files, absoluteRoot))
   for (const file of files) {
     const path = relative(absoluteRoot, file).replaceAll('\\', '/')
     const text = readFileSync(file, 'utf8')
