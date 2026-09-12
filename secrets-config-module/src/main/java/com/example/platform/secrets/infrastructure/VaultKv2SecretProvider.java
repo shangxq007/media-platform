@@ -97,7 +97,7 @@ public class VaultKv2SecretProvider implements SecretProvider {
             vaultTemplate.opsForVersionedKeyValue(kvMount).delete(path);
             log.info("Vault KV metadata deleted path={}", path);
         } catch (Exception e) {
-            log.warn("Vault KV delete path={}: {}", path, e.getMessage());
+            throw new IllegalStateException("Vault credential deletion failed", e);
         }
     }
 

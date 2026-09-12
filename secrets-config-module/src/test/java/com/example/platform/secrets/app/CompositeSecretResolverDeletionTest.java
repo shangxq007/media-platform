@@ -10,6 +10,15 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class CompositeSecretResolverDeletionTest {
+    @Test void actualVaultAdapterDoesNotSwallowExternalDeleteFailure() {
+        var vault = mock(org.springframework.vault.core.VaultTemplate.class, RETURNS_DEEP_STUBS);
+        var properties = new SecretsProperties();
+        var operations = vault.opsForVersionedKeyValue(properties.getVault().getKvMount());
+        doThrow(new IllegalStateException("external client failure")).when(operations).delete("test-only/ref");
+        var provider = new com.example.platform.secrets.infrastructure.VaultKv2SecretProvider(vault, properties);
+        var resolver = new CompositeSecretResolver(List.of(provider), properties);
+        assertThrows(IllegalStateException.class, () -> resolver.deleteByRef("vault:test-only/ref"));
+    }
     @Test void unsupportedDeletionMustNotReportSuccess() {
         SecretProvider provider = mock(SecretProvider.class);
         when(provider.supports(any())).thenReturn(true);
