@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { z } from 'zod'
 import api from '../api'
+import { PublicationReadAPI, type PublicationAccountDto, type PublicationDetailRequest, type PublicationListRequest, type PublicationPostDto, type PublicationPostListDto } from '../api/publish'
 import type { EffectiveAccessCatalog } from './effectiveAccess'
 import { unknownAccess } from './effectiveAccess'
 
@@ -54,12 +55,23 @@ export interface PlatformClient {
   readonly effectiveAccess: {
     getCatalog(keys: readonly string[]): Promise<EffectiveAccessCatalog>
   }
+  readonly publication: PublicationReadSource
 }
+
+export interface PublicationReadSource {
+  readonly origin: 'platform-authenticated' | 'fixture-verification'
+  readonly owner: object
+  getAccounts(projectId: string, signal: AbortSignal): Promise<PublicationAccountDto[]>
+  getPosts(request: PublicationListRequest, signal: AbortSignal): Promise<PublicationPostListDto>
+  getPost(request: PublicationDetailRequest, signal: AbortSignal): Promise<PublicationPostDto>
+}
+
+const publicationOwner = {}
 
 export const platformClient: PlatformClient = {
   workspace: {
     async getHome(workspaceId) {
-      const { data } = await api.get('/me/dashboard')
+      const { data } = await api.get('/api/me/dashboard', { baseURL: '' })
       const parsed = DashboardSchema.parse(data)
       if (!parsed.workspace.id || parsed.workspace.id !== workspaceId) {
         const mismatch = new Error('The requested Workspace is not available in the authenticated dashboard projection.')
@@ -84,6 +96,13 @@ export const platformClient: PlatformClient = {
       // The isolated adapter is deliberately fail-closed in every environment.
       return Object.fromEntries(keys.map(key => [key, unknownAccess(key)]))
     },
+  },
+  publication: {
+    origin: 'platform-authenticated',
+    owner: publicationOwner,
+    getAccounts: (projectId, signal) => PublicationReadAPI.getAccounts(projectId, signal),
+    getPosts: (request, signal) => PublicationReadAPI.getPosts(request, signal),
+    getPost: (request, signal) => PublicationReadAPI.getPost(request, signal),
   },
 }
 

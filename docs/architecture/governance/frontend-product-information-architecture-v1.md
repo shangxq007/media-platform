@@ -127,6 +127,12 @@ devices, providers, runtime dependencies, reservations, artifacts, storage,
 incidents, and metrics. Detail tabs are Summary, Graph, Tasks, Artifacts,
 Runtime, Logs, Metrics, and Provenance only when their real typed APIs exist.
 
+The bounded V7 `/operations/renders` increment is a read-only exception to the
+broader control-plane target: it exposes only source-supplied Project Render
+observability metadata through the existing route and Shell. Task visibility
+does not grant Artifact access, and unknown status does not imply an action.
+No missing tab, query, or command is fabricated as available.
+
 ### 6. Organization / Admin / Developer
 
 Purpose: administer members, groups, workspaces, roles, identity, security,
@@ -475,6 +481,10 @@ documents are complete.
 
 ## Known limits
 
+### Owner-adopted Product/UX priority order
+
+The adopted priority is: **Scene/Shot discovery and inspection > Render observability > Workflow UX > bounded NLE editing > Agent-assisted creative**. The first item was the bounded V6 implementation; only the second item is authorized for the current bounded V7 implementation. Workflow UX and later items remain unauthorized. This ordering neither creates a second roadmap nor authorizes backend work, integration, or publication.
+
 - The accepted Project response is tenant-scoped and does not expose an
   explicit Workspace relationship; the target nested route therefore requires
   a server-authorized relationship projection before Project surfaces load.
@@ -482,8 +492,15 @@ documents are complete.
   effective-access intersection as separate typed outcomes.
 - Canonical Timeline authoring/application commands and a scoped redacted
   artifact list are missing for key creative/render flows.
-- Production Management is an IA reservation, not a claim that its API or UI
-  exists.
+- Production Management now has a bounded read-only frontend Scene/Shot
+  consumer with an explicit injected simulation boundary. No accepted API,
+  real adapter, authentication, authorization, or backend integration is
+  established by that consumer.
+- Operations now has a bounded read-only frontend Render observability
+  consumer with explicit injected simulation, strict task/attempt/Artifact
+  relationships, and no actions. Its richer receipt is an unagreed frontend
+  proposal; no real adapter, Artifact access, backend acceptance, or write is
+  established.
 - Runtime adoption was not tested or inferred from source presence in this
   documentation-only run.
 
@@ -494,3 +511,37 @@ shared shell, project-context fail-closed loader, and platform-client boundary
 first. Migrate one thin vertical slice (Workspace → Projects → Project Overview)
 before creative mutation surfaces. Backend-owner gaps proceed in their own
 authorized lanes; F2 must not add endpoints or frontend semantic substitutes.
+
+
+## Current Owner priority status — V9 bounded NLE navigation and inspection
+
+This current authorized implementation status supersedes the historical V7-only authorization wording above without changing the adopted priority order: Scene/Shot discovery/inspection > Render observability > Workflow UX > bounded NLE editing > Agent-assisted creative. Owner has adopted the bounded V8 Workflow session/title continuation. V9 implements only the next NLE navigation/inspection portion, not canonical editing or Agent-assisted creative. Further authoring and Agent work remain unauthorized.
+
+The existing `/w/$workspaceId/projects/$projectId/edit` route now presents queried Project/Timeline/Revision and truthful load boundaries, with a structured loaded track/clip list, local filtering, exact-time/selected-clip location, shared selection and full metadata dialog through an explicit isolated verification source. Ordinary geometry is unavailable because TimelineQueryGateway has no track/clip method; no synthetic tracks/playback are supplied by entry. New English/Chinese keyboard and narrow presentation follow the existing accessibility/list alternative requirement. Existing Operation preview/confirm/apply remains separate and unchanged in authority.
+
+Frontend behavior is implemented for writer verification; final parent gates/browser and overall acceptance remain pending. Existing UXW1-003/004 and FB-GAP-001/002/003 own real geometry/time/identity/access/version integration. The exact future minimum scenario is one fixed-version frontend/backend, one controlled Project/Timeline/Revision, separately agreed read adapter, allowed/denied identities, exact rational semantics, complete/bounded results and stale/failure/retirement checks with zero writes. Full-platform readiness is not a prerequisite, and this status establishes no real integration, new endpoint or permission. H4/debt/static policy is unchanged.
+
+
+## Current Owner priority amendment — V10 Publication workspace
+
+The Owner **newly prioritizes Publication workspace first after bounded V9 acceptance**. This amends the prior order above; it does not claim that original planning already put Publication ahead of NLE. Full NLE editing and Agent-assisted creative work follow later authorization. A Postiz single-channel technical pilot and real publication are separate work. Heatmaps and cross-platform analytics remain deferred. This appendix extends the existing priority authority; it creates no parallel roadmap.
+
+Recover **DOM-PUBLICATION-001 — PROPOSAL**: OutputArtifact → PublicationAttempt → ExternalPublication, with separately identified publication plans/intents and explicit account/content-version relationships. Multiple attempts and account outcomes remain separate, and platform identity never substitutes for account identity. Historical metrics would be ObservationSet records with `observedAt` and retained raw platform semantics; V10 implements no metrics, normalization, scoring or analytics.
+
+Publication uses the existing Project shell at `/w/$workspaceId/projects/$projectId/publication`, PREVIEW maturity. Ordinary entry states that the source is not connected. An explicit isolated host enables read-only supplied-content search, account/source-status filters, stable explicit-time sort, refresh/retry, list/month/calendar/day agenda and permitted metadata inspection. List and calendar share a bounded Project snapshot and local filters. Display timezone is explicit and presentation-only. Calendar intervals use local dates, inclusive start/exclusive end; a selected timestamp field is required, strict offset instants are validated, and unscheduled/unknown/invalid dates do not become today or published events. There are no write/schedule/cancel/retry-send/approval/bulk controls, live channels, media/public links, persistence, reminders or metrics.
+
+`FRONTEND_CONSUMPTION_PROPOSAL` and `REAL_BACKEND_CONTRACT_NOT_ESTABLISHED`: actual platformClient has no publication query or access contract. The source interface and test-only EffectiveAccess keys are frontend verification contracts only, not backend DTO/enums/permissions. The host supplies principal/tenant/session/Workspace/Project/source identity, an owner lifetime, read adapter and independently keyed list/content/artifact grants. Source self-allowed flags are not authorization. Response scope/query/IDs/explicit relationships/completeness are validated; only separately permitted copy and artifact metadata reaches Selection or DOM. Backend trimming remains mandatory for future confidentiality. No supported Artifact destination/access predicate exists for publication, so permitted OutputArtifact logical refs are inert metadata with an explicit limitation. External URLs are omitted entirely.
+
+Existing SelectionProvider/dispatcher and InteractionDialog own selection and focus. Same valid native SDK renewal and semantically equal access observations preserve browsing. True source/access/identity/Project/owner replacement retires content, requests and callbacks; details never revive from same-ID reuse. Native session retirement additionally requires a fresh explicit host binding before verification data may be read again. SDK detection limits from V8 remain; no real IdP or backend lifecycle integration is claimed. See FB-GAP-014 and the existing backend enablement requests. Formal Slice1C and historical H4 Proposal A decisions remain separate; no product/EP19/debt closure.
+
+### V11 NON-SOCKET clarification — external observations are not adopted Publication plans
+
+The repository contains legacy social post/platform reads and core `SocialPost`, `ConnectedPlatform` and `PostStatus` authority, while the Project publication binding, access projection, relation availability and plan/attempt/outcome semantics remain pending. V10 list/calendar/time/inspection/lifecycle behavior remains the adopted frontend preparation; its graph is now explicitly fixture-only and does not become a backend contract through reuse.
+
+The V11 offline adapter produces only scoped provider/instance/account/post observations with `PENDING_CORE_CONTRACT`. External references are not core IDs, owner-local pilot access is narrower than EffectiveAccess, unknown provider state is a safe bounded-display `unknown`, and unavailable/restricted relationships never become blank or authoritative empty arrays. The pure second mapping shape demonstrates only synthetic unresolved projection. The ordinary route stays unconfigured, and no legacy social endpoint, provider branch, socket, HTTP, browser, account, credential, send or real publication integration is connected or accepted. Formal Slice1C, H4 Proposal A, backend/EP19 and real publication remain separate gates.
+
+### V11 authorized local-record first slice — current amendment
+
+The later corrected backend source establishes a narrower Project/account-bound local-record contract and supersedes the preceding “ordinary route stays unconfigured” statement for this slice only. Publication now discovers exact active bound accounts from `GET /api/social/platforms?projectId`, lists planned records for one selected account and an absolute half-open UTC month, and reads detail from the scoped post endpoint. Endpoint `social.read` authorization is represented by the DTO itself and remains separate from the unavailable global EffectiveAccess catalog. Missing source, Project, authentication or bound account fails closed; explicit fixture verification is never a runtime fallback.
+
+List/calendar/search/sort/display-timezone/details/Selection retirement and abort/generation protection remain. Refresh retains already verified same-source data while a replacement read is pending or transiently fails. Calendar placement uses only `scheduledAt` as planned publish time. The ranged result is always `BOUNDED_PARTIAL`; an empty result is not a complete-history assertion, and unscheduled records are explicitly disclosed as detail-only. Content/time omission remains `NOT_PROVIDED`; Artifact, attempt, outcome, provider status/diagnostic, retry and actual publication facts remain unknown and absent. No write, schedule, cancel, retry-send, provider, analytics or Artifact operation is introduced.

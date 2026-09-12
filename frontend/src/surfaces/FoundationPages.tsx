@@ -5,8 +5,10 @@ import { Badge, Button, EmptyState, Input, Panel, PropertyRow, Search, Skeleton,
 import { AsyncStatePanel, classifyPlatformError } from '../foundation/errors'
 import { AccessStatus, getEffectiveAccess } from '../foundation/effectiveAccess'
 import { ProjectContextProvider, useProjectContext } from '../foundation/projectContext'
-import { useEffectiveAccessCatalog, useWorkspaceHome } from '../foundation/platformClient'
+import { platformClient, useEffectiveAccessCatalog, useWorkspaceHome } from '../foundation/platformClient'
 import { getSurface, surfaceRegistry, type SurfaceId } from '../foundation/surfaceRegistry'
+import { SelectionProvider } from '../interaction/SelectionContext'
+import { PublicationWorkspace } from '../product/publication/PublicationWorkspace'
 
 function routeParams(): { workspaceId?: string; projectId?: string } {
   return useParams({ strict: false }) as { workspaceId?: string; projectId?: string }
@@ -91,6 +93,15 @@ export type AgentActionState = 'REQUEST' | 'RESOLVED_PLAN' | 'PREVIEW' | 'AUTHOR
 export function AgentPage() {
   const states: readonly [AgentActionState, string][] = [['REQUEST', 'Conversation'], ['RESOLVED_PLAN', 'Plan'], ['PREVIEW', 'Preview'], ['AUTHORIZATION', 'Authorization'], ['RESULT', 'Execution / result']]
   return <ProjectFrame surfaceId="agent"><PageHeading eyebrow="Creative · Agent Studio" title="Agent workspace" description="Requests, resolved plans, previews, authorization, and results are visibly distinct. An Agent cannot mutate canonical state directly." actions={<BlockedCommand label="Authorize action" gap="FB-GAP-002/003" />} /><div className="ff-agent-grid"><Panel title="Conversation"><EmptyState title="No conversation" description="Free-form content is not logged by frontend telemetry." /></Panel><Panel title="Context & referenced objects"><p>Only typed safe references can be attached.</p></Panel>{states.slice(1).map(([state, label]) => <Panel key={state} title={label}><Badge tone={state === 'AUTHORIZATION' ? 'warning' : 'neutral'}>{state}</Badge><p>No server projection is available.</p></Panel>)}</div></ProjectFrame>
+}
+
+export function PublicationPage() {
+  return <ProjectFrame surfaceId="publication"><PublicationPageContent /></ProjectFrame>
+}
+
+function PublicationPageContent() {
+  const project = useProjectContext()
+  return <SelectionProvider scope={{ surfaceId: 'publication', workspaceId: project.workspaceId, projectId: project.projectId }}><PublicationWorkspace workspaceId={project.workspaceId} projectId={project.projectId} tenantId={project.tenantId ?? null} source={platformClient.publication} /></SelectionProvider>
 }
 
 export function ProductionPage() {

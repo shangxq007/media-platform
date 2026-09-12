@@ -10,27 +10,30 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' }
 })
 
-let devAuthBootstrapped = false
+let devAuthBootstrap: Promise<void> | null = null
 
 /** Attach dev JWT when backend runs with app.security.enabled=true and profile dev. */
 export async function bootstrapDevAuth(): Promise<void> {
   if (isOidcEnabled()) return
-  if (devAuthBootstrapped) return
-  devAuthBootstrapped = true
-  const cached = localStorage.getItem('dev_access_token')
-  if (cached) {
-    api.defaults.headers.common.Authorization = `Bearer ${cached}`
-    return
+  if (!devAuthBootstrap) {
+    devAuthBootstrap = (async () => {
+      const cached = localStorage.getItem('dev_access_token')
+      if (cached) {
+        api.defaults.headers.common.Authorization = `Bearer ${cached}`
+        return
+      }
+      try {
+        const { data } = await axios.post('/api/dev/auth/token', { userId: 'user-1' })
+        if (data?.accessToken) {
+          localStorage.setItem('dev_access_token', data.accessToken)
+          api.defaults.headers.common.Authorization = `Bearer ${data.accessToken}`
+        }
+      } catch {
+        /* security disabled or dev endpoint unavailable */
+      }
+    })()
   }
-  try {
-    const { data } = await axios.post('/api/v1/dev/auth/token', { userId: 'user-1' })
-    if (data?.accessToken) {
-      localStorage.setItem('dev_access_token', data.accessToken)
-      api.defaults.headers.common.Authorization = `Bearer ${data.accessToken}`
-    }
-  } catch {
-    /* security disabled or dev endpoint unavailable */
-  }
+  await devAuthBootstrap
 }
 
 api.interceptors.request.use(async config => {
@@ -41,6 +44,13 @@ api.interceptors.request.use(async config => {
     }
   } else if (import.meta.env.DEV) {
     await bootstrapDevAuth()
+    // Axios materializes request headers before interceptors run. Bind the
+    // token to this in-flight config as well as the defaults used by later
+    // requests, so a direct product deep link cannot race dev bootstrap.
+    const token = localStorage.getItem('dev_access_token')
+    if (token && !config.headers.Authorization) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
   }
   return config
 })
@@ -253,13 +263,20 @@ export const UsageAlertAPI = {
 }
 
 export { PromptAPI } from './prompt'
+export { PublicationReadAPI } from './publish'
+export type {
+  PublicationAccountDto,
+  PublicationDetailRequest,
+  PublicationListRequest,
+  PublicationPostDto,
+  PublicationPostListDto,
+} from './publish'
 
-// Additive typed application boundary. The default Axios export remains
-// compatible for established consumers while new product surfaces depend on
-// the intentionally projected platform client.
+// Canonical typed application boundary backed by the private shared transport.
 export { platformClient } from '../foundation/platformClient'
 export type {
   PlatformClient,
+  PublicationReadSource,
   ProjectSummary as PlatformProjectSummary,
   WorkspaceHomeProjection,
   WorkspaceSummary,
