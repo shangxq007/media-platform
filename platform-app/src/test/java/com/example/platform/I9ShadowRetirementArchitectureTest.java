@@ -72,13 +72,21 @@ class I9ShadowRetirementArchitectureTest {
                 "render-module/src/main/java/com/example/platform/render/app/RenderJobValidationService.java")));
         String build = read(root.resolve("render-module/build.gradle.kts"));
         assertFalse(build.contains("project(\":billing-module\")"));
-        assertFalse(build.contains("project(\":entitlement-module\")"));
+        assertTrue(build.contains("project(\":entitlement-module\")"),
+                "EP28 requires the Entitlement owner's published admission/quota contracts");
+        String submission = read(root.resolve("render-module/src/main/java/com/example/platform/render/app/RenderJobSubmissionService.java"));
+        String execution = read(root.resolve("render-module/src/main/java/com/example/platform/render/app/RenderJobExecutionService.java"));
+        assertTrue(submission.contains("com.example.platform.entitlement.api.commercial.CommercialAdmissionPort"));
+        assertTrue(execution.contains("com.example.platform.entitlement.api.commercial.QuotaConsumptionPort"));
+        assertFalse(submission.contains("import com.example.platform.entitlement.app."));
+        assertFalse(execution.contains("import com.example.platform.entitlement.app."));
         Path main = root.resolve("render-module/src/main/java");
         try (Stream<Path> paths = Files.walk(main)) {
             for (Path path : paths.filter(p -> p.toString().endsWith(".java")).toList()) {
                 String source = read(path);
-                assertFalse(source.matches("(?sm).*^import com\\.example\\.platform\\.(billing|entitlement|payment|commerce|quota)\\..*"),
-                        () -> "Render imports H5 authority instead of a neutral contract: " + path);
+                assertFalse(source.matches("(?sm).*^import (?:static )?com\\.example\\.platform\\.(billing|payment|commerce|quota)\\..*")
+                                || source.matches("(?sm).*^import (?:static )?com\\.example\\.platform\\.entitlement\\.(?!api\\.commercial\\.).*"),
+                        () -> "Render imports H5 implementation instead of the published neutral contract: " + path);
             }
         } catch (IOException error) {
             throw new UncheckedIOException(error);

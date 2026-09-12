@@ -32,6 +32,7 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 /** Real JWT signature/filter chain, canonical actor, RBAC adapter, controller and application access checks. */
 @SpringJUnitConfig(DeliverySecurityChainTest.Config.class)
 @WebAppConfiguration
+@org.springframework.test.context.ActiveProfiles("ep14-security-chain")
 class DeliverySecurityChainTest {
     static final JwtProperties JWT = new JwtProperties("test-only-delivery-chain-key-with-at-least-256-bits!", 3600000);
     @Autowired WebApplicationContext context;
@@ -84,7 +85,8 @@ class DeliverySecurityChainTest {
         mvc.perform(get(path).header("Authorization", token("admin", "tenant-z", "ADMIN"))).andExpect(status().isOk());
     }
 
-    @Configuration @EnableWebMvc @EnableWebSecurity
+    @org.springframework.boot.test.context.TestConfiguration
+    @Profile("ep14-security-chain") @EnableWebMvc @EnableWebSecurity
     static class Config {
         @Bean JwtAuthFilter jwt() { return new JwtAuthFilter(JWT); }
         @Bean SecurityFilterChain chain(HttpSecurity http, JwtAuthFilter jwt) throws Exception {

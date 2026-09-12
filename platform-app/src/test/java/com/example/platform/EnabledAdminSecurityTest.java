@@ -135,6 +135,13 @@ class EnabledAdminSecurityTest extends PostgresTestContainerSupport {
     // ========== Security-enabled baseline ==========
 
     @Test
+    void deliveryAdministratorUsesProductionActorCompositionAcrossTenantScope() throws Exception {
+        HttpResponse<String> response = httpGet("/api/admin/delivery/jobs?tenantId=other-tenant", jwtHelper.adminToken());
+        Assertions.assertEquals(200, response.statusCode(),
+                "Canonical authenticated ADMIN must reach the Delivery application boundary: " + response.body());
+    }
+
+    @Test
     void securityEnabled_serverStarts() throws Exception {
         HttpResponse<String> response = httpGet("/actuator/health", null);
         evidence.append(String.format("HEALTH: %d%n", response.statusCode()));
