@@ -4,7 +4,6 @@ import com.example.platform.observability.domain.*;
 import com.example.platform.shared.audit.AuditPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.context.ApplicationEventPublisher;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -12,13 +11,11 @@ import static org.mockito.Mockito.*;
 class ThirdPartyProviderHealthServiceTest {
 
     private ThirdPartyProviderHealthService service;
-    private ApplicationEventPublisher eventPublisher;
 
     @BeforeEach
     void setUp() {
-        eventPublisher = mock(ApplicationEventPublisher.class);
         AuditPort auditPort = mock(AuditPort.class);
-        service = new ThirdPartyProviderHealthService(eventPublisher, auditPort);
+        service = new ThirdPartyProviderHealthService(auditPort);
     }
 
     @Test
@@ -108,6 +105,5 @@ class ThirdPartyProviderHealthServiceTest {
     @Test
     void shouldNotEmitEventForHealthyProvider() {
         service.recordProviderResult("javacv", true, 100, 0.01);
-        verify(eventPublisher, never()).publishEvent(any());
     }
 }

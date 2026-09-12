@@ -1,11 +1,9 @@
 package com.example.platform.billing.app;
 
 import com.example.platform.billing.domain.*;
-import com.example.platform.shared.events.ReconciliationCompletedEvent;
 import com.example.platform.shared.commercial.Money;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.time.OffsetDateTime;
@@ -24,12 +22,6 @@ public class ReconciliationService {
     private final ConcurrentHashMap<String, ThirdPartyInvoiceImport> importedInvoices = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, ReconciliationDifference> differences = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, CostLedgerEntry> costLedger = new ConcurrentHashMap<>();
-
-    private final ApplicationEventPublisher eventPublisher;
-
-    public ReconciliationService(ApplicationEventPublisher eventPublisher) {
-        this.eventPublisher = eventPublisher;
-    }
 
     /**
      * Import a third-party invoice (CSV/JSON simulation).
@@ -122,13 +114,6 @@ public class ReconciliationService {
         ReconciliationRun completed = run.complete(
                 internalRecords.size() + externalRecords.size(), matched, diffCount, summary);
         runs.put(run.runId(), completed);
-
-        // Publish event (audit module listens and records)
-        eventPublisher.publishEvent(new ReconciliationCompletedEvent(
-                run.runId(), sourceType,
-                internalRecords.size() + externalRecords.size(),
-                matched, diffCount, "COMPLETED",
-                summary, java.time.Instant.now()));
 
         log.info("ReconciliationService: completed run={} matched={} diffs={}",
                 run.runId(), matched, diffCount);

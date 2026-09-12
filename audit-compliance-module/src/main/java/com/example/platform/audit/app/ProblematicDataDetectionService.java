@@ -1,10 +1,8 @@
 package com.example.platform.audit.app;
 
 import com.example.platform.audit.domain.*;
-import com.example.platform.shared.events.ProblematicDataDetectedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -26,13 +24,10 @@ public class ProblematicDataDetectionService {
     private static final Logger log = LoggerFactory.getLogger(ProblematicDataDetectionService.class);
 
     private final AuditService auditService;
-    private final ApplicationEventPublisher eventPublisher;
     private final List<ProblematicDataRule> detectionRules;
 
-    public ProblematicDataDetectionService(AuditService auditService,
-            ApplicationEventPublisher eventPublisher) {
+    public ProblematicDataDetectionService(AuditService auditService) {
         this.auditService = auditService;
-        this.eventPublisher = eventPublisher;
         this.detectionRules = initializeRules();
     }
 
@@ -71,11 +66,6 @@ public class ProblematicDataDetectionService {
                     type, severity, ruleId, description, finding, projectId, null, null));
         }
         for (ProblematicDataRecord record : detected) {
-            eventPublisher.publishEvent(new ProblematicDataDetectedEvent(
-                    record.recordId(), record.dataType(), record.dataId(),
-                    record.problematicType().name(), record.severity().name(),
-                    record.detectionRule(), record.description(),
-                    record.context(), record.detectedAt().toInstant()));
             auditService.record("SYSTEM", "problematic-data-detector", "PROBLEMATIC_DATA_DETECTED",
                     "problematic_data", record.recordId(), Map.of(
                             "dataType", record.dataType(),
@@ -146,13 +136,8 @@ public class ProblematicDataDetectionService {
                     renderJobData, null, null, null));
         }
 
-        // Publish events and audit
+        // Retain domain detection and its existing audit record
         for (ProblematicDataRecord record : detected) {
-            eventPublisher.publishEvent(new ProblematicDataDetectedEvent(
-                    record.recordId(), record.dataType(), record.dataId(),
-                    record.problematicType().name(), record.severity().name(),
-                    record.detectionRule(), record.description(),
-                    record.context(), record.detectedAt().toInstant()));
             auditService.record("SYSTEM", "problematic-data-detector", "PROBLEMATIC_DATA_DETECTED",
                     "problematic_data", record.recordId(), Map.of(
                             "dataType", record.dataType(),
@@ -195,11 +180,6 @@ public class ProblematicDataDetectionService {
         }
 
         for (ProblematicDataRecord record : detected) {
-            eventPublisher.publishEvent(new ProblematicDataDetectedEvent(
-                    record.recordId(), record.dataType(), record.dataId(),
-                    record.problematicType().name(), record.severity().name(),
-                    record.detectionRule(), record.description(),
-                    record.context(), record.detectedAt().toInstant()));
             auditService.record("SYSTEM", "problematic-data-detector", "PROBLEMATIC_DATA_DETECTED",
                     "problematic_data", record.recordId(), Map.of(
                             "dataType", record.dataType(),
@@ -235,11 +215,6 @@ public class ProblematicDataDetectionService {
         }
 
         for (ProblematicDataRecord record : detected) {
-            eventPublisher.publishEvent(new ProblematicDataDetectedEvent(
-                    record.recordId(), record.dataType(), record.dataId(),
-                    record.problematicType().name(), record.severity().name(),
-                    record.detectionRule(), record.description(),
-                    record.context(), record.detectedAt().toInstant()));
             auditService.record("SYSTEM", "problematic-data-detector", "PROBLEMATIC_DATA_DETECTED",
                     "problematic_data", record.recordId(), Map.of(
                             "dataType", record.dataType(),

@@ -1,10 +1,8 @@
 package com.example.platform.audit.app;
 
 import com.example.platform.audit.domain.*;
-import com.example.platform.shared.events.ProblematicDataDetectedEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Map;
 
@@ -14,14 +12,12 @@ import static org.mockito.Mockito.*;
 class ProblematicDataDetectionServiceTest {
 
     private AuditService auditService;
-    private ApplicationEventPublisher eventPublisher;
     private ProblematicDataDetectionService service;
 
     @BeforeEach
     void setUp() {
         auditService = mock(AuditService.class);
-        eventPublisher = mock(ApplicationEventPublisher.class);
-        service = new ProblematicDataDetectionService(auditService, eventPublisher);
+        service = new ProblematicDataDetectionService(auditService);
     }
 
     @Test
@@ -34,7 +30,8 @@ class ProblematicDataDetectionServiceTest {
 
         assertFalse(detected.isEmpty());
         assertTrue(detected.stream().anyMatch(r -> r.problematicType() == ProblematicDataType.MISSING_FIELD));
-        verify(eventPublisher, atLeastOnce()).publishEvent(any(ProblematicDataDetectedEvent.class));
+        verify(auditService, atLeastOnce()).record(eq("SYSTEM"), eq("problematic-data-detector"),
+                eq("PROBLEMATIC_DATA_DETECTED"), eq("problematic_data"), anyString(), anyMap());
     }
 
     @Test

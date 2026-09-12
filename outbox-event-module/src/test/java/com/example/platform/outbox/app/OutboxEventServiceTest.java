@@ -50,6 +50,20 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
     }
 
     @Test
+    void retiredEventTypesFollowTheCanonicalDeadLetterPolicy() {
+        ApplicationEventPublisher publisher = mock(ApplicationEventPublisher.class);
+        var dispatcher = new OutboxEventDispatcher(service, publisher, OutboxTestEvents.router(), 3, new SimpleMeterRegistry());
+        for (String name : java.util.stream.Stream.concat(RetiredEventContractsTest.TYPES.stream(), RetiredEventContractsTest.KEYS.stream()).toList()) {
+            String id = service.append(OutboxTestEvents.order("ep29b", "value", null));
+            dsl.execute("update outbox_events set event_type = ? where id = ?", name, id);
+            org.junit.jupiter.api.Assertions.assertFalse(dispatcher.processOnce(id), name);
+            assertEquals("DEAD_LETTER", service.readEvent(id).get("status"));
+            assertEquals("UNSUPPORTED_EVENT_VERSION", dsl.fetchOne("select last_error_code from outbox_events where id = ?", id).get(0));
+        }
+        org.mockito.Mockito.verifyNoInteractions(publisher);
+    }
+
+    @Test
     void appendEventCreatesPendingEvent() {
         String id = service.append(OutboxTestEvents.order("ord-1", "value", null));
 

@@ -1,10 +1,8 @@
 package com.example.platform.billing.app;
 
 import com.example.platform.billing.domain.*;
-import com.example.platform.shared.events.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.context.ApplicationEventPublisher;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -12,12 +10,10 @@ import static org.mockito.Mockito.*;
 class CostReservationServiceTest {
 
     private CostReservationService service;
-    private ApplicationEventPublisher eventPublisher;
 
     @BeforeEach
     void setUp() {
-        eventPublisher = mock(ApplicationEventPublisher.class);
-        service = new CostReservationService(eventPublisher);
+        service = new CostReservationService();
     }
 
     @Test
@@ -30,7 +26,8 @@ class CostReservationServiceTest {
         assertEquals(5.0, reservation.reservedAmount());
         assertEquals("USD", reservation.currency());
         assertEquals("RESERVED", reservation.status());
-        verify(eventPublisher).publishEvent(any(com.example.platform.shared.events.CostReservationCreatedEvent.class));
+        assertSame(reservation, service.getReservation(reservation.reservationId()));
+        assertSame(reservation, service.getReservationByJob("job-1"));
     }
 
     @Test
@@ -41,6 +38,7 @@ class CostReservationServiceTest {
         assertEquals(4.5, finalized.reservedAmount());
         assertEquals("ADJUSTED", finalized.status());
         assertNotNull(finalized.finalizedAt());
+        assertSame(finalized, service.getReservationByJob("job-1"));
     }
 
     @Test

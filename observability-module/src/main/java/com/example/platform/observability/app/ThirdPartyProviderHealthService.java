@@ -2,10 +2,8 @@ package com.example.platform.observability.app;
 
 import com.example.platform.observability.domain.*;
 import com.example.platform.shared.audit.AuditPort;
-import com.example.platform.shared.events.ProviderHealthDegradedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -26,7 +24,6 @@ public class ThirdPartyProviderHealthService {
     private final ConcurrentHashMap<String, ProviderIncidentRecord> incidents = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, ProviderCircuitBreakerState> circuitBreakers = new ConcurrentHashMap<>();
 
-    private final ApplicationEventPublisher eventPublisher;
     private final AuditPort auditPort;
 
     public static final List<String> MONITORED_PROVIDERS = List.of(
@@ -34,9 +31,7 @@ public class ThirdPartyProviderHealthService {
             "remote-render-worker", "javacv", "ofx", "gpac", "mlt", "gstreamer",
             "payment-provider", "notification-provider");
 
-    public ThirdPartyProviderHealthService(ApplicationEventPublisher eventPublisher,
-            AuditPort auditPort) {
-        this.eventPublisher = eventPublisher;
+    public ThirdPartyProviderHealthService(AuditPort auditPort) {
         this.auditPort = auditPort;
         initializeProviders();
     }
@@ -133,15 +128,6 @@ public class ThirdPartyProviderHealthService {
                 Math.max(0, currentUsage.quotaRemaining() - 1),
                 cost, OffsetDateTime.now());
         usageMetrics.put(providerKey, updatedUsage);
-
-        // Emit event if unhealthy
-        if (!updatedSla.isHealthy()) {
-            eventPublisher.publishEvent(new ProviderHealthDegradedEvent(
-                    providerKey, resolveProviderType(providerKey),
-                    updatedSla.healthStatus(), updatedSla.successRate() * 100,
-                    (long) updatedSla.avgLatencyMs(), "SLA below threshold",
-                    java.time.Instant.now()));
-        }
     }
 
     /**

@@ -99,8 +99,8 @@ class NotificationEventCatalogServiceTest extends PostgresTestContainerSupport {
 
         assertFalse(userEventKeys.contains("render.job.requires_review"),
                 "ADMIN_CONTROLLED event should not be user-configurable");
-        assertFalse(userEventKeys.contains("provider.health.degraded"),
-                "ADMIN_CONTROLLED event should not be user-configurable");
+        assertTrue(service.findByKey("provider.health.degraded").isEmpty(),
+                "Retired provider event must not be advertised as an available notification");
     }
 
     @Test

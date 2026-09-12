@@ -41,3 +41,7 @@ Identity ProjectReadQuery is implemented by the existing TenantProjectService, u
 `bash scripts/test-authority-modules.sh outbox` 包含全部 Notification、Outbox、Usage/Billing 直接消费者，以及平台 `OutboxNotificationCompositionTest` / `NotificationIngressPersistenceTest` / Modularity。无需另一通知测试框架。后者使用当前 Flyway V1、任务 JVM 独立 PostgreSQL Testcontainers、真实 Spring transaction / typed codec / dispatcher / listener，只有 provider effect 与模板 rendering 是隔离替身；不证明外部交付或 exactly-once。
 
 公开入口为 `notification.api.ingress.NotificationEventPublisher.publish(NotificationInboundEvent, String idempotencyKey)`，当前 tenant 必须存在；载荷版本1三字段不变，扩展Map仅为模板数据。null key保留独立事件；非空key复用既有Outbox同scope pending/failed更新、processed去重语义，不把接收成功当发送成功。修改入口、catalog、codec、监听器事务、Notification provider contract或平台装配即使前次结果失效；Outbox/schema更改还需真实迁移与所有事件消费者。现有入口脚本改变按classifier要求选择所有authority组，不缩窄policy。Render读合同/前端未改时复用既有验收；选中的render-read组仍按当前policy执行。
+
+### EP29B 精确事件退休
+
+稳定 `outbox` 组包含 `RetiredEventContractsTest`（七类型/注册残留及负控制）和真实Flyway V1 `OutboxEventServiceTest`（退休持久事件通过现有生产dispatcher进入DEAD_LETTER，绝不翻译成新事件）。直接业务组命令：`./gradlew --no-daemon :audit-compliance-module:test :observability-module:test :billing-module:test --tests '*CostReservationServiceTest' --tests '*ReconciliationServiceTest' :notification-module:test --tests '*NotificationEventCatalogServiceTest' :outbox-event-module:test`。这些测试沿用任务隔离Testcontainers；Notification旧目录单元fixture不作为生产schema证据，Outbox测试使用真实V1。删除事件不删除Audit检测/审计、Billing预留/调整/对账、Observability健康/断路器/用量。共享kernel变更按现有classifier选择所有authority组；修改任何退休定义/生产者/catalog、领域计算或Outbox解码/重试均使相应结果失效。没有新schema或生产DB改动。

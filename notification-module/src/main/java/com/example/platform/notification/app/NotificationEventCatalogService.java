@@ -252,8 +252,6 @@ public class NotificationEventCatalogService {
                         "SYSTEM", "WARNING", "ADMIN_CONTROLLED", false, false, true),
                 builtin("extension.execution.failed", "Extension Execution Failed", "An extension execution has failed",
                         "SYSTEM", "ERROR", "USER_CONFIGURABLE", true, false, true),
-                builtin("provider.health.degraded", "Provider Health Degraded", "A provider's health has degraded",
-                        "PROVIDER", "WARNING", "ADMIN_CONTROLLED", false, false, true),
                 builtin("worker.offline", "Worker Offline", "A worker node has gone offline",
                         "WORKER", "ERROR", "ADMIN_CONTROLLED", false, false, true),
                 builtin("security.suspicious_activity", "Suspicious Activity", "Suspicious activity detected",

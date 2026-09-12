@@ -1,11 +1,9 @@
 package com.example.platform.billing.app;
 
 import com.example.platform.billing.domain.*;
-import com.example.platform.shared.events.ReconciliationCompletedEvent;
 import com.example.platform.shared.commercial.Money;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.OffsetDateTime;
 
@@ -15,12 +13,10 @@ import static org.mockito.Mockito.*;
 class ReconciliationServiceTest {
 
     private ReconciliationService service;
-    private ApplicationEventPublisher eventPublisher;
 
     @BeforeEach
     void setUp() {
-        eventPublisher = mock(ApplicationEventPublisher.class);
-        service = new ReconciliationService(eventPublisher);
+        service = new ReconciliationService();
     }
 
     @Test
@@ -55,8 +51,9 @@ class ReconciliationServiceTest {
 
         assertNotNull(run);
         assertEquals("COMPLETED", run.status());
-        assertTrue(run.matchedCount() > 0 || run.differenceCount() >= 0);
-        verify(eventPublisher).publishEvent(any(ReconciliationCompletedEvent.class));
+        assertEquals(1, run.matchedCount());
+        assertEquals(0, run.differenceCount());
+        assertEquals(2, run.totalRecords());
     }
 
     @Test
