@@ -1,4 +1,7 @@
-import { StrictMode, useLayoutEffect } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { WorkspaceSessionProvider } from '../../foundation/workspaceSession'
+import type { ReactNode } from 'react'
+import { StrictMode, useLayoutEffect, useState } from 'react'
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { SelectionProvider, useInteractionStore } from '../../interaction/SelectionContext'
@@ -12,7 +15,7 @@ function Probe({ capture }: { capture?: (store: InteractionStore) => void }) {
   const store = useInteractionStore(); useLayoutEffect(() => { capture?.(store) }, [capture, store]); return null
 }
 function host(value?: PublicationReadSource, owner = 'owner', capture?: (store: InteractionStore) => void) {
-  return <StrictMode><LocalizationProvider initialLocale="en"><SelectionProvider key={owner} scope={{ surfaceId: 'publication', workspaceId: 'w', projectId: 'p' }}><Probe capture={capture} /><PublicationWorkspace workspaceId="w" projectId="p" tenantId="tenant" source={value} now={() => new Date('2026-09-10T12:00:00Z')} /></SelectionProvider></LocalizationProvider></StrictMode>
+  return <PublicationTestSession><StrictMode><LocalizationProvider initialLocale="en"><SelectionProvider key={owner} scope={{ surfaceId: 'publication', workspaceId: 'w', projectId: 'p' }}><Probe capture={capture} /><PublicationWorkspace workspaceId="w" projectId="p" tenantId="tenant" source={value} now={() => new Date('2026-09-10T12:00:00Z')} /></SelectionProvider></LocalizationProvider></StrictMode></PublicationTestSession>
 }
 const button = (name: string) => screen.getByRole('button', { name })
 async function ready() { await screen.findByRole('button', { name: 'Opening story' }) }
@@ -218,7 +221,7 @@ describe('authorized Publication workspace', () => {
   })
 
   it('uses the supplied Chinese search translation in an explicitly localized host', async () => {
-    render(<LocalizationProvider initialLocale="zh-CN"><SelectionProvider scope={{ surfaceId: 'publication', workspaceId: 'w', projectId: 'p' }}><PublicationWorkspace workspaceId="w" projectId="p" tenantId="tenant" source={source()} now={() => new Date('2026-09-10T12:00:00Z')} /></SelectionProvider></LocalizationProvider>)
+    render(<PublicationTestSession><LocalizationProvider initialLocale="zh-CN"><SelectionProvider scope={{ surfaceId: 'publication', workspaceId: 'w', projectId: 'p' }}><PublicationWorkspace workspaceId="w" projectId="p" tenantId="tenant" source={source()} now={() => new Date('2026-09-10T12:00:00Z')} /></SelectionProvider></LocalizationProvider></PublicationTestSession>)
     await screen.findByRole('button', { name: 'Opening story' })
     expect(screen.getByRole('searchbox', { name: '搜索已提供的发布内容' }).getAttribute('placeholder')).toBe('搜索已提供的发布内容')
   })
@@ -290,4 +293,35 @@ describe('Publication read recovery and available-field browsing', () => {
     expect(within(screen.getByRole('region', { name: 'Selected day agenda' })).getByRole('button', { name: 'Opening story' })).toBeTruthy()
     expect(value.getPosts.mock.calls.every(([request]) => request.start === '2026-09-01T00:00:00.000Z')).toBe(true)
   })
+})
+
+function PublicationTestSession({ children }: { children: ReactNode }) {
+  const [client] = useState(() => new QueryClient({ defaultOptions: { queries: { retry: false } } }))
+  return <QueryClientProvider client={client}><WorkspaceSessionProvider workspaceId="w" projectId="p">{children}</WorkspaceSessionProvider></QueryClientProvider>
+}
+
+
+it('accepts only the newest same-scope refresh and ignores a detail read completed after dismissal', async () => {
+  const value = source(); render(host(value)); await ready()
+  let resolveDetail!: (post: ReturnType<typeof fixturePost>) => void
+  value.getPost.mockImplementationOnce(() => new Promise(resolve => { resolveDetail = resolve }))
+  fireEvent.click(button('Opening story')); fireEvent.click(button('Close publication details'))
+  await act(async () => resolveDetail(fixturePost({ contentText: 'LATE_DETAIL' })))
+  expect(screen.queryByRole('dialog')).toBeNull(); expect(document.body.textContent).not.toContain('LATE_DETAIL')
+  const pending: ((posts: ReturnType<typeof fixtureList>) => void)[] = []
+  value.getPosts.mockImplementation(() => new Promise(resolve => pending.push(resolve)))
+  fireEvent.click(button('Refresh publications')); await vi.waitFor(() => expect(pending).toHaveLength(1))
+  fireEvent.click(button('Refresh publications')); await vi.waitFor(() => expect(pending).toHaveLength(2))
+  await act(async () => pending[1](fixtureList({ items: [fixturePost({ contentText: 'Current response' })] })))
+  await screen.findByRole('button', { name: 'Current response' })
+  await act(async () => pending[0](fixtureList({ items: [fixturePost({ contentText: 'LATE_REFRESH' })] })))
+  expect(document.body.textContent).not.toContain('LATE_REFRESH')
+})
+
+
+it('gives an available but blank content record a meaningful inspectable name', async () => {
+  render(host(source({ list: fixtureList({ items: [fixturePost({ contentText: '   ' })] }) })))
+  const row = await screen.findByRole('button', { name: 'Empty content · one' })
+  fireEvent.click(row)
+  await screen.findByText('Post ID')
 })
