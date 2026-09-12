@@ -32,7 +32,6 @@ class EffectiveCapabilityArchitectureTest {
         String sources = productionSources();
         List<String> forbiddenImports = List.of(
                 "com.example.platform.billing.",
-                "com.example.platform.entitlement.",
                 "com.example.platform.payment.",
                 "com.example.platform.quota.",
                 "com.example.platform.render.",
@@ -46,6 +45,11 @@ class EffectiveCapabilityArchitectureTest {
                 "jakarta.persistence");
         forbiddenImports.forEach(token -> assertFalse(
                 sources.contains("import " + token), "forbidden import token: " + token));
+        Pattern entitlementImports = Pattern.compile("(?m)^import (?:static )?(com\\.example\\.platform\\.entitlement\\.[^;]+);");
+        entitlementImports.matcher(sources).results().forEach(match -> assertTrue(
+                java.util.Set.of("com.example.platform.entitlement.api.commercial.EntitlementDecision",
+                        "com.example.platform.entitlement.api.commercial.QuotaDecision").contains(match.group(1)),
+                "projection may consume only published Entitlement decision values: " + match.group(1)));
     }
 
     @Test
