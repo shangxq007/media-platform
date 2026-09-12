@@ -50,7 +50,7 @@ can ship without the projection.
 | FB-GAP-002 | All restricted surfaces/actions | Explain and enforce effective access | Blocking | Capability + Identity/Entitlement/Policy/Quota application |
 | FB-GAP-003 | Creative | Query and apply typed Timeline edits | Blocking | Timeline + Operation application |
 | FB-GAP-004 | Render / Assets / Operations | List safe artifacts for a scoped render job | Blocking | Render + Artifact application query |
-| FB-GAP-005 | Render / Operations | Present typed job state, failures, and allowed actions | Nonblocking | Render / Execution application query |
+| FB-GAP-005 | Render / Operations | Present typed job state, failures, and allowed actions | Blocking for authenticated job browsing; see 2026-09-12 assessment | Render / Execution application query |
 | FB-GAP-006 | Platform Operations | Inspect coherent execution/runtime/provider operations detail | Blocking | Observability + Execution/Worker Fabric query |
 | FB-GAP-007 | Production Management | View and manage production projections | Blocking for Production; nonblocking for shell foundation | Future authorized Production application lane |
 | FB-GAP-008 | Render Result | Navigate from output Product to producing job/artifacts/provenance | Blocking for composed result detail | Render Output / Product application query |
@@ -157,12 +157,39 @@ list/access methods, `frontend/src/pages/RenderJobDashboard.tsx`, and
 | Existing backend owner | Scoped render create/get/list/execution endpoints exist. `RenderJobResponse` is exactly `id`, `projectId`, `timelineSnapshotId`, `profile`, and string `status`; other status-history/metrics endpoints are separate. |
 | Missing projection/command | A separately agreed Project-scoped query for coherent Render/source/task/attempt/progress/failure/version/time/completeness relationships, plus independent Artifact-target access. Action commands, provider/runtime detail, and canonical writes remain separate and unavailable. |
 | Temporary frontend behavior | A strict FRONTEND UNAGREED read projection shows only supplied safe fields and explicit links. Artifact collection availability does not authorize item metadata: only explicit inspectable metadataAccess emits name/id/type/availability/version/taskId; denied/unknown/unavailable/stale items emit a generic state-only placeholder. Restricted backend responses MUST trim protected fields; DOM omission is not a confidentiality boundary. Unknown literal status remains visible but never implies success/failure/action. Invalid progress is not clamped; no progress/ETA/order/history is synthesized. |
-| Blocking/nonblocking | **Nonblocking** for basic list/detail status; blocks richer action controls and Operations tabs. |
+| Blocking/nonblocking | Five-field DTO availability alone is insufficient: authenticated basic browsing is **blocked** by the scope and read-authorization findings below. Richer action controls and Operations tabs remain separate gaps. |
 | Recommended owner lane | Render / Execution application query |
 
 Evidence: `render-module/src/main/java/com/example/platform/render/app/dto/RenderJobResponse.java`,
 `render-module/.../api/RenderController.java`, and
 `frontend/src/contracts/app/render-job.ts`.
+
+#### Render read-only readiness assessment (2026-09-12)
+
+Baseline: `6aca5112bb3c5e68ac7b11e8b52a02bbafdd3401`. This bounded source assessment supersedes the earlier unconditional “nonblocking basic list/detail” claim. It does not change a backend contract or authorize backend implementation. The frontend Render slice stops at **CORE_PATH_BLOCKED**; no fixture screen or alternate feature is substituted.
+
+| Capability | Actual path and meaning | Readiness |
+|---|---|---|
+| Normal entry and Project scope | Operations navigation reaches `/operations/renders`, whose `OperationsProjectionPage` deliberately has no Project scope. `ProjectBrowser` keeps Open disabled; `ProjectContextProvider` remains BLOCKED after loading the Dashboard. | FB-GAP-001 remains blocking. Dashboard recent Projects are discovery metadata, not proof of the requested Workspace→Project relationship or job-read permission. |
+| Platform job discovery/detail | `GET /api/tenants/{tenantId}/projects/{projectId}/render-jobs` and `GET /api/tenants/{tenantId}/projects/{projectId}/render-jobs/{jobId}` → `RenderController` → `RenderJobService` → `RenderJobRepository`. | Repository predicates bind tenant/project/job, but service reads only compare a non-null ambient tenant. They do not resolve an actor or require Project/job read authorization before disclosure; missing ambient tenant is not rejected there. Global `/api/**.authenticated()` is authentication, not Project membership/read permission. These reads cannot independently discharge the missing shell authorization. |
+| List fields and ordering | `RenderJobResponse`: `id`, `projectId`, `timelineSnapshotId`, `profile`, `status`. List repository query has no `ORDER BY`, limit, cursor or total. | Local field filtering and deterministic sorting would be possible only after safe access exists. No server filtering/paging/completeness contract, progress, timestamps or safe failure DTO is supplied by this list/detail response. |
+| Job state | Backend `RenderJobStatus` defines QUEUED, SELECTING_PROVIDER, PROVIDER_SELECTED, EXECUTING, COMPLETING, COMPLETED, FAILED, CANCELLED, REJECTED. The current frontend enum validates these and rejects PROCESSING. | Platform job state is distinct from attempt/provider/worker state and Artifact availability. DTO validation is not authorization. |
+| Revision-linked status/result | `GET /api/render/projects/{projectId}/timeline/revisions/{revisionId}/render-jobs/{renderJobId}` and its `/result` sibling call `TimelineProjectAuthorizationService.requireRead`. | An explicitly authorized boundary exists here, but the caller needs an already-known Project/revision/job tuple. `RenderJobStatusService` derives these responses from output Product metadata/lineage (bounded Product scan), not the platform `render_job` inventory. No normal job-discovery path was established; it cannot replace the requested platform-job browser or justify rendering to obtain a job ID. |
+| Artifacts and worker data | The five-field platform job DTO has no Artifact references. Legacy JobDashboard already withholds artifact listing; FB-GAP-004 remains unresolved. `/api/render/worker-queue/natron` is a conditional worker queue diagnostic. | Neither Product ID, worker queue item nor cache/access URL is a safe platform-job Artifact inventory. No artifact URL or cross-owner lifecycle join is introduced. |
+
+The legacy `/render-jobs` route is not a safe independent subset. `RenderJobDashboard` chooses `recentProjects[0]`; `RenderJobsAPI` inherits Axios `/api/v1` while inspected backend mappings are `/api/me/dashboard` and `/api/tenants/...` (no corresponding rewrite found in the inspected backend/Vite configuration). The hooks omit AbortSignal consumption, use binding-independent query keys and 10s/5s polling. `safeApiCall` converts HTTP errors to NETWORK_ERROR and `requireValidated` drops HTTP status, preventing reliable terminal-access handling. These are concrete future frontend migration requirements; repairing their URL or presentation alone would not fix the backend read boundary.
+
+Smallest prerequisite for this slice: **Identity / Workspace application** supplies an authorized selectable/resolvable Project context (FB-GAP-001), and **Render application with Identity authorization** makes the existing list/detail reads fail closed for missing/mismatched authenticated context and unauthorized Project/job access before returning records. A server-authorized Render discovery entry returning usable scope could be an owner-agreed alternative; it is not a new endpoint specification from this frontend task. Existing five-field summaries can support an initial useful read-only slice once that path is established; progress, provider operations and richer Artifact projections are not prerequisites for basic browsing.
+
+Evidence locations at this baseline:
+
+- `frontend/src/surfaces/FoundationPages.tsx` (`OperationsProjectionPage`), `frontend/src/product/projects/ProjectBrowser.tsx`, `frontend/src/foundation/projectContext.tsx`.
+- `frontend/src/pages/RenderJobDashboard.tsx`, `frontend/src/api/render-jobs.ts`, `frontend/src/api/index.ts`, `frontend/src/api/safeApiCall.ts`, `frontend/src/contracts/app/render-job.ts`.
+- `render-module/src/main/java/com/example/platform/render/api/RenderController.java` (list/detail), `render-module/src/main/java/com/example/platform/render/app/RenderJobService.java` (`assertTenantAccess`), `render-module/src/main/java/com/example/platform/render/infrastructure/RenderJobRepository.java` (scoped predicates).
+- `platform-app/src/main/java/com/example/platform/security/SecurityHttpRules.java`, `platform-app/src/main/java/com/example/platform/web/MeController.java` (tenant-derived, at most five recent Projects).
+- `platform-app/src/main/java/com/example/platform/web/render/TimelineRevisionController.java`, `platform-app/src/main/java/com/example/platform/web/render/TimelineProjectAuthorizationService.java`, `render-module/src/main/java/com/example/platform/render/app/timeline/RenderJobStatusService.java`.
+
+Validation scope: source/contract/route review only, not a runtime disclosure test. Existing frontend schema tests and `H4BoundedCorrection.test.tsx` use isolated data/mocked hooks and do not prove this read authority. Browser/real-backend acceptance is NOT_RUN because the core product prerequisite failed, not because an isolated environment could make an unsafe contract acceptable. No rendering or provider operation, backend/schema change, shared coordinator ledger edit, or historical Wave2 import was performed.
 
 ### FB-GAP-006 — Coherent Platform Operations projections
 
