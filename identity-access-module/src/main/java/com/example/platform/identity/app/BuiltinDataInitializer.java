@@ -45,6 +45,9 @@ public class BuiltinDataInitializer {
         createPermIfNotExists("audit.view", "View audit logs", "View audit trail and compliance logs", "AUDIT");
         createPermIfNotExists("navigation.manage", "Manage navigation", "Manage workspace navigation items", "NAVIGATION");
         createPermIfNotExists("notification.manage", "Manage notifications", "Manage notification subscriptions and settings", "NOTIFICATION");
+        createPermIfNotExists("social.read", "Social read", "Read Project-scoped social publication records", "SOCIAL");
+        createPermIfNotExists("social.content.read", "Social content read", "Read Project-scoped social publication content fields", "SOCIAL");
+        createPermIfNotExists("social.artifact.read", "Social Artifact read", "Read Project-scoped social publication Artifact relationships", "SOCIAL");
         createPermIfNotExists("social.publish", "Social publish", "Publish to social media platforms", "SOCIAL");
 
         // APPD-CHV1: W2 workflow-definition authorization keys (typed, frozen vocabulary).
@@ -63,6 +66,15 @@ public class BuiltinDataInitializer {
         linkRolePermissionIfNotExists("ADMIN", "WRITE");
         linkRolePermissionIfNotExists("EDITOR", "WRITE");
         linkRolePermissionIfNotExists("VIEWER", "render.submit");
+        linkRolePermissionIfNotExists("ADMIN", "social.read");
+        linkRolePermissionIfNotExists("EDITOR", "social.read");
+        linkRolePermissionIfNotExists("VIEWER", "social.read");
+        linkRolePermissionIfNotExists("ADMIN", "social.content.read");
+        linkRolePermissionIfNotExists("EDITOR", "social.content.read");
+        linkRolePermissionIfNotExists("VIEWER", "social.content.read");
+        linkRolePermissionIfNotExists("ADMIN", "social.artifact.read");
+        linkRolePermissionIfNotExists("EDITOR", "social.artifact.read");
+        linkRolePermissionIfNotExists("VIEWER", "social.artifact.read");
 
         // APPD-CHV1: W2 role → permission mappings (tenant owner/editor/admin may publish;
         // member may read; viewer baseline).

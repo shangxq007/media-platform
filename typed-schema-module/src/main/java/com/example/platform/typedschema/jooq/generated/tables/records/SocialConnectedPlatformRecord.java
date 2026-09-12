@@ -171,31 +171,45 @@ public class SocialConnectedPlatformRecord extends UpdatableRecordImpl<SocialCon
     }
 
     /**
+     * Setter for <code>public.social_connected_platform.binding_version</code>.
+     */
+    public void setBindingVersion(Long value) {
+        set(10, value);
+    }
+
+    /**
+     * Getter for <code>public.social_connected_platform.binding_version</code>.
+     */
+    public Long getBindingVersion() {
+        return (Long) get(10);
+    }
+
+    /**
      * Setter for <code>public.social_connected_platform.created_at</code>.
      */
     public void setCreatedAt(LocalDateTime value) {
-        set(10, value);
+        set(11, value);
     }
 
     /**
      * Getter for <code>public.social_connected_platform.created_at</code>.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(10);
+        return (LocalDateTime) get(11);
     }
 
     /**
      * Setter for <code>public.social_connected_platform.updated_at</code>.
      */
     public void setUpdatedAt(LocalDateTime value) {
-        set(11, value);
+        set(12, value);
     }
 
     /**
      * Getter for <code>public.social_connected_platform.updated_at</code>.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(11);
+        return (LocalDateTime) get(12);
     }
 
     // -------------------------------------------------------------------------
@@ -221,7 +235,7 @@ public class SocialConnectedPlatformRecord extends UpdatableRecordImpl<SocialCon
     /**
      * Create a detached, initialised SocialConnectedPlatformRecord
      */
-    public SocialConnectedPlatformRecord(String id, String tenantId, String userId, String platformType, String platformUserId, String platformUsername, String accessTokenEncrypted, String refreshTokenEncrypted, LocalDateTime tokenExpiresAt, String status, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public SocialConnectedPlatformRecord(String id, String tenantId, String userId, String platformType, String platformUserId, String platformUsername, String accessTokenEncrypted, String refreshTokenEncrypted, LocalDateTime tokenExpiresAt, String status, Long bindingVersion, LocalDateTime createdAt, LocalDateTime updatedAt) {
         super(SocialConnectedPlatform.SOCIAL_CONNECTED_PLATFORM);
 
         setId(id);
@@ -234,6 +248,7 @@ public class SocialConnectedPlatformRecord extends UpdatableRecordImpl<SocialCon
         setRefreshTokenEncrypted(refreshTokenEncrypted);
         setTokenExpiresAt(tokenExpiresAt);
         setStatus(status);
+        setBindingVersion(bindingVersion);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
         resetChangedOnNotNull();

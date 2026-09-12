@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import javax.crypto.SecretKey;
 import java.io.PrintWriter;
@@ -110,6 +111,25 @@ class JwtAuthFilterTest {
     }
 
     @Test
+    void shouldNotSkipSocialPaths() {
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getRequestURI()).thenReturn("/api/social/posts");
+
+        assertFalse(filter.shouldNotFilter(request));
+    }
+
+    @Test
+    void shouldNotSkipProjectDiscoveryPaths() {
+        HttpServletRequest meRequest = mock(HttpServletRequest.class);
+        when(meRequest.getRequestURI()).thenReturn("/api/me/projects");
+        HttpServletRequest identityRequest = mock(HttpServletRequest.class);
+        when(identityRequest.getRequestURI()).thenReturn("/api/identity/projects/project-1");
+
+        assertFalse(filter.shouldNotFilter(meRequest));
+        assertFalse(filter.shouldNotFilter(identityRequest));
+    }
+
+    @Test
     void shouldRejectMissingToken() throws Exception {
         HttpServletRequest request = mock(HttpServletRequest.class);
         when(request.getRequestURI()).thenReturn("/api/render/jobs");
@@ -153,6 +173,16 @@ class JwtAuthFilterTest {
         HttpServletResponse response = mock(HttpServletResponse.class);
         when(response.getWriter()).thenReturn(new PrintWriter(sw));
 
+        doAnswer(invocation -> {
+            var authentication = SecurityContextHolder.getContext().getAuthentication();
+            assertNotNull(authentication);
+            assertTrue(authentication.isAuthenticated());
+            assertEquals("user-1", authentication.getName());
+            assertTrue(authentication.getAuthorities().stream()
+                    .anyMatch(authority -> authority.getAuthority().equals("ROLE_USER")));
+            return null;
+        }).when(filterChain).doFilter(request, response);
+
         filter.doFilterInternal(request, response, filterChain);
 
         verify(filterChain).doFilter(request, response);
@@ -161,6 +191,7 @@ class JwtAuthFilterTest {
         verify(request).setAttribute(eq("jwt.roles"), any(List.class));
         verify(request).setAttribute("request.source", "WEB");
         assertNull(TenantContext.get());
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
     }
 
     @Test

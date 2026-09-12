@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Locale;
 
 @Service
 public class PlatformAuthService {
@@ -33,16 +34,17 @@ public class PlatformAuthService {
 
     public ConnectedPlatformResponse connectPlatform(String tenantId, String userId, String platform, String authCode) {
         log.info("PlatformAuthService: connecting platform={} for user={}", platform, userId);
-        PlatformAdapter adapter = adapterByPlatform.get(platform);
+        String canonicalPlatform = platform.toUpperCase(Locale.ROOT);
+        PlatformAdapter adapter = adapterByPlatform.get(canonicalPlatform);
         if (adapter == null) {
             throw new IllegalArgumentException("Unsupported platform: " + platform);
         }
 
         Instant now = Instant.now();
         ConnectedPlatform connected = new ConnectedPlatform(
-                Ids.newId("cn"), tenantId, userId, platform,
+                Ids.newId("cn"), tenantId, userId, canonicalPlatform,
                 "stub_user_" + platform.toLowerCase(), "@stub_" + platform.toLowerCase(),
-                "ACTIVE", now, now);
+                "ACTIVE", 1L, now, now);
         connected = platformRepository.save(connected);
         log.info("PlatformAuthService: connected platform={} as id={}", platform, connected.id());
         return toResponse(connected);

@@ -36,6 +36,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
     "com.example.platform.outbox",
     "com.example.platform.scheduler",
     "com.example.platform.prompt",
+    "com.example.platform.social",
     "com.example.platform.federation",
     "com.example.platform.secrets",
     "com.example.platform.web",

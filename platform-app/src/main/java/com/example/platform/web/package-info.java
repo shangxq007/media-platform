@@ -32,6 +32,8 @@
             "delivery",
             "delivery :: API",
             "delivery :: app",
+            "social",
+            "social :: app",
             "policy",
             "policy :: feature-flags",
             "commerce",

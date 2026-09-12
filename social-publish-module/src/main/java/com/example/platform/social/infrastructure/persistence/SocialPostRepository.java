@@ -4,12 +4,14 @@ import com.example.platform.shared.web.TenantGuard;
 import com.example.platform.social.domain.PlatformType;
 import com.example.platform.social.domain.PostStatus;
 import com.example.platform.social.domain.SocialPost;
+import com.example.platform.social.app.SocialPostReadModel;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -27,13 +29,16 @@ public class SocialPostRepository {
     public SocialPost save(SocialPost post) {
         TenantGuard.assertSameTenant(post.tenantId());
         String sql = """
-                INSERT INTO social_post (id, tenant_id, user_id, content_text, media_urls, platform_type,
+                INSERT INTO social_post (id, tenant_id, user_id, project_id, connected_platform_id,
+                    connected_platform_binding_version, artifact_id,
+                    content_text, media_urls, platform_type,
                     status, platform_post_id, platform_post_url, scheduled_at, published_at, failed_at,
                     error_code, error_message, retry_count, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
         jdbc.update(sql,
-                post.id(), post.tenantId(), post.userId(), post.contentText(),
+                post.id(), post.tenantId(), post.userId(), post.projectId(), post.connectedPlatformId(),
+                post.connectedPlatformBindingVersion(), post.artifactId(), post.contentText(),
                 toJsonArray(post.mediaUrls()), post.platformType().name(),
                 post.status().name(), post.platformPostId(), post.platformPostUrl(),
                 post.scheduledAt(), post.publishedAt(), post.failedAt(),
@@ -70,8 +75,81 @@ public class SocialPostRepository {
 
     public long countByTenantAndUser(String tenantId, String userId) {
         Long count = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM social_post WHERE tenant_id = ? AND user_id = ?", Long.class, tenantId, userId);
+                "SELECT COUNT(*) FROM social_post WHERE tenant_id = ? AND user_id = ?",
+                Long.class, tenantId, userId);
         return count != null ? count : 0;
+    }
+
+    /**
+     * Safe first-slice query. Every identity and binding predicate is applied in SQL before
+     * projection. The half-open range is the sourced planned time in {@code scheduled_at};
+     * record creation time is never substituted. Unbound rows and rows without a plan
+     * are excluded. The canonical {@code social_post.artifact_id} relationship is
+     * selected; provider and operational fields remain excluded.
+     */
+    public List<SocialPostReadModel> findReadProjection(
+            String tenantId,
+            String actorId,
+            String projectId,
+            String connectedAccountId,
+            long bindingVersion,
+            Instant start,
+            Instant end,
+            int limit) {
+        return jdbc.query("""
+                SELECT p.id AS post_id, p.project_id, p.connected_platform_id,
+                       p.connected_platform_binding_version, p.content_text,
+                       p.artifact_id, p.platform_type, p.scheduled_at
+                FROM social_post p
+                JOIN social_connected_platform a
+                  ON a.id = p.connected_platform_id
+                 AND a.tenant_id = p.tenant_id
+                 AND a.user_id = p.user_id
+                 AND a.binding_version = p.connected_platform_binding_version
+                 AND a.platform_type = p.platform_type
+                 AND a.status = 'ACTIVE'
+                WHERE p.tenant_id = ?
+                  AND p.user_id = ?
+                  AND p.project_id = ?
+                  AND p.connected_platform_id = ?
+                  AND p.connected_platform_binding_version = ?
+                  AND p.scheduled_at >= ?
+                  AND p.scheduled_at < ?
+                ORDER BY p.scheduled_at ASC, p.id ASC
+                LIMIT ?
+                """, (rs, rowNum) -> mapReadRow(rs),
+                tenantId, actorId, projectId, connectedAccountId, bindingVersion,
+                Timestamp.from(start), Timestamp.from(end), limit);
+    }
+
+    public Optional<SocialPostReadModel> findReadProjectionById(
+            String tenantId,
+            String actorId,
+            String projectId,
+            String connectedAccountId,
+            long bindingVersion,
+            String postId) {
+        List<SocialPostReadModel> rows = jdbc.query("""
+                SELECT p.id AS post_id, p.project_id, p.connected_platform_id,
+                       p.connected_platform_binding_version, p.content_text,
+                       p.artifact_id, p.platform_type, p.scheduled_at
+                FROM social_post p
+                JOIN social_connected_platform a
+                  ON a.id = p.connected_platform_id
+                 AND a.tenant_id = p.tenant_id
+                 AND a.user_id = p.user_id
+                 AND a.binding_version = p.connected_platform_binding_version
+                 AND a.platform_type = p.platform_type
+                 AND a.status = 'ACTIVE'
+                WHERE p.id = ?
+                  AND p.tenant_id = ?
+                  AND p.user_id = ?
+                  AND p.project_id = ?
+                  AND p.connected_platform_id = ?
+                  AND p.connected_platform_binding_version = ?
+                """, (rs, rowNum) -> mapReadRow(rs),
+                postId, tenantId, actorId, projectId, connectedAccountId, bindingVersion);
+        return rows.isEmpty() ? Optional.empty() : Optional.of(rows.getFirst());
     }
 
     public void updateStatus(String id, PostStatus status, Instant updatedAt) {
@@ -100,6 +178,10 @@ public class SocialPostRepository {
                 rs.getString("id"),
                 rs.getString("tenant_id"),
                 rs.getString("user_id"),
+                rs.getString("project_id"),
+                rs.getString("connected_platform_id"),
+                rs.getObject("connected_platform_binding_version", Long.class),
+                rs.getString("artifact_id"),
                 rs.getString("content_text"),
                 parseJsonArray(rs.getString("media_urls")),
                 PlatformType.valueOf(rs.getString("platform_type")),
@@ -115,6 +197,20 @@ public class SocialPostRepository {
                 rs.getTimestamp("created_at").toInstant(),
                 rs.getTimestamp("updated_at").toInstant()
         );
+    }
+
+    private SocialPostReadModel mapReadRow(ResultSet rs) throws SQLException {
+        return new SocialPostReadModel(
+                rs.getString("post_id"),
+                rs.getString("project_id"),
+                rs.getString("connected_platform_id"),
+                rs.getLong("connected_platform_binding_version"),
+                rs.getString("content_text"),
+                rs.getString("artifact_id"),
+                rs.getString("platform_type"),
+                rs.getTimestamp("scheduled_at") != null
+                        ? rs.getTimestamp("scheduled_at").toInstant()
+                        : null);
     }
 
     private String toJsonArray(List<String> items) {

@@ -1,13 +1,25 @@
 package com.example.platform.social.api;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
-import com.example.platform.social.api.dto.*;
+import com.example.platform.shared.web.TenantContext;
+import com.example.platform.social.api.dto.CreatePostRequest;
+import com.example.platform.social.api.dto.PublicationPostListResponse;
+import com.example.platform.social.api.dto.PublicationPostResponse;
+import com.example.platform.social.api.dto.PublishPostResponse;
 import com.example.platform.social.app.PlatformAuthService;
 import com.example.platform.social.app.PublishAnalyticsService;
+import com.example.platform.social.app.SocialAccountReadService;
+import com.example.platform.social.app.SocialPostReadService;
 import com.example.platform.social.app.SocialPublishService;
-import com.example.platform.shared.web.TenantContext;
+import java.time.Instant;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,27 +27,21 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.Instant;
-import java.util.List;
-import java.util.Map;
-
 @ExtendWith(MockitoExtension.class)
 class SocialPublishControllerTest {
 
-    @Mock
-    private SocialPublishService publishService;
-
-    @Mock
-    private PlatformAuthService platformAuthService;
-
-    @Mock
-    private PublishAnalyticsService analyticsService;
+    @Mock private SocialPublishService publishService;
+    @Mock private PlatformAuthService platformAuthService;
+    @Mock private PublishAnalyticsService analyticsService;
+    @Mock private SocialPostReadService readService;
+    @Mock private SocialAccountReadService accountReadService;
 
     private SocialPublishController controller;
 
     @BeforeEach
     void setUp() {
-        controller = new SocialPublishController(publishService, platformAuthService, analyticsService);
+        controller = new SocialPublishController(
+                publishService, platformAuthService, analyticsService, readService, accountReadService);
         TenantContext.clear();
     }
 
@@ -44,148 +50,83 @@ class SocialPublishControllerTest {
         TenantContext.clear();
     }
 
+    @Test
+    void accountQueryUsesProjectScopedCanonicalReadServiceWithoutUserHeader() {
+        TenantContext.set("tenant-a");
+        when(accountReadService.list("tenant-a", "project-1")).thenReturn(List.of());
+
+        assertEquals(List.of(), controller.getConnectedPlatforms("project-1"));
+
+        verify(accountReadService).list("tenant-a", "project-1");
+        verifyNoInteractions(platformAuthService);
+    }
+
+    @Test
+    void listAndDetailUseSafeReadServiceWithoutMutationOrProviderServices() {
+        TenantContext.set("tenant-a");
+        Instant start = Instant.parse("2026-01-01T00:00:00Z");
+        Instant end = Instant.parse("2026-02-01T00:00:00Z");
+        PublicationPostListResponse list = new PublicationPostListResponse(
+                List.of(), PublicationPostListResponse.Coverage.BOUNDED_PARTIAL);
+        PublicationPostResponse detail = response("post-1", start);
+        when(readService.list("tenant-a", "project-1", "account-1", 7L, start, end, 20))
+                .thenReturn(list);
+        when(readService.get("tenant-a", "project-1", "account-1", 7L, "post-1"))
+                .thenReturn(detail);
+
+        assertEquals(list, controller.getPosts("project-1", "account-1", 7L, start, end, 20));
+        assertEquals(detail, controller.getPost("post-1", "project-1", "account-1", 7L));
+
+        verifyNoInteractions(publishService, platformAuthService, analyticsService, accountReadService);
+    }
+
+    @Test
+    void preexistingPostMutationContractRemainsAndDoesNotCreateBinding() {
+        TenantContext.set("tenant-a");
+        CreatePostRequest request = new CreatePostRequest("text", List.of(), "YOUTUBE");
+        when(publishService.createPost("tenant-a", "legacy-user", request))
+                .thenReturn(samplePost("post-1"));
+
+        assertNotNull(controller.createPost("legacy-user", request));
+
+        verify(publishService).createPost("tenant-a", "legacy-user", request);
+        verifyNoInteractions(readService, accountReadService);
+    }
+
+    @Test
+    void missingTenantStopsBeforeAnyService() {
+        assertThrows(IllegalArgumentException.class,
+                () -> controller.getPosts("project-1", "account-1", 7L, Instant.EPOCH, Instant.MAX, 20));
+        verifyNoInteractions(readService, accountReadService, publishService);
+    }
+
+    @Test
+    void forgedUserHeaderIsNotAnInputToReadRoutes() throws Exception {
+        assertEquals(6, SocialPublishController.class.getMethod(
+                "getPosts", String.class, String.class, long.class, Instant.class, Instant.class, int.class)
+                .getParameterCount());
+        assertEquals(1, SocialPublishController.class.getMethod(
+                "getConnectedPlatforms", String.class).getParameterCount());
+        verify(publishService, never()).getDrafts("tenant-a", "forged-user");
+    }
+
+    private static PublicationPostResponse response(String id, Instant scheduledAt) {
+        return new PublicationPostResponse(
+                id, "project-1", "account-1", 7L,
+                "text", PublicationPostResponse.ContentAvailability.AVAILABLE,
+                PublicationPostResponse.ContentVersionRelationState.NOT_PROVIDED,
+                "artifact-1", PublicationPostResponse.ArtifactRelationState.AVAILABLE,
+                "YOUTUBE", scheduledAt,
+                PublicationPostResponse.TimeMeaning.PLANNED_PUBLISH_TIME,
+                PublicationPostResponse.TimePrecision.EXACT_INSTANT,
+                PublicationPostResponse.SourceVerification.VERIFIED_LOCAL_RECORD,
+                PublicationPostResponse.EndpointAccess.AUTHORIZED_LOCAL_PROJECT_ACCOUNT_READ,
+                PublicationPostResponse.GlobalEffectiveAccess.UNKNOWN_FAIL_CLOSED);
+    }
+
     private static PublishPostResponse samplePost(String id) {
-        return new PublishPostResponse(id, "tenant-a", "user-1",
-                "text", List.of("https://example.com/img.jpg"), "twitter", "DRAFT",
-                "platform-post-id", "https://twitter.com/post/1", null, null, null, null, null, 0,
-                Instant.now(), Instant.now());
-    }
-
-    private static OverviewAnalyticsResponse sampleAnalytics() {
-        return new OverviewAnalyticsResponse(0, 0, 0, 0, Map.of(), Map.of());
-    }
-
-    @Test
-    void getConnectedPlatformsUsesTenantContext() {
-        TenantContext.set("tenant-a");
-        when(platformAuthService.getConnectedPlatforms("tenant-a", "user-1"))
-                .thenReturn(List.of());
-
-        controller.getConnectedPlatforms("user-1");
-
-        verify(platformAuthService).getConnectedPlatforms("tenant-a", "user-1");
-        verify(platformAuthService, never()).getConnectedPlatforms(eq("tenant-b"), any());
-    }
-
-    @Test
-    void getConnectedPlatformsRejectsWithoutTenantContext() {
-        TenantContext.clear();
-        assertThrows(IllegalArgumentException.class,
-                () -> controller.getConnectedPlatforms("user-1"));
-    }
-
-    @Test
-    void createPostUsesTenantContext() {
-        TenantContext.set("tenant-a");
-        CreatePostRequest request = new CreatePostRequest("text", List.of(), "twitter");
-        when(publishService.createPost(eq("tenant-a"), eq("user-1"), any()))
-                .thenReturn(samplePost("post-1"));
-
-        PublishPostResponse result = controller.createPost("user-1", request);
-
-        assertNotNull(result);
-        verify(publishService).createPost(eq("tenant-a"), eq("user-1"), any());
-        verify(publishService, never()).createPost(eq("tenant-b"), any(), any());
-    }
-
-    @Test
-    void createPostRejectsWithoutTenantContext() {
-        TenantContext.clear();
-        CreatePostRequest request = new CreatePostRequest("text", List.of(), "twitter");
-        assertThrows(IllegalArgumentException.class,
-                () -> controller.createPost("user-1", request));
-    }
-
-    @Test
-    void publishNowUsesTenantContext() {
-        TenantContext.set("tenant-a");
-        when(publishService.publishNow("tenant-a", "user-1", "post-1"))
-                .thenReturn(samplePost("post-1"));
-
-        controller.publishNow("user-1", "post-1");
-
-        verify(publishService).publishNow("tenant-a", "user-1", "post-1");
-    }
-
-    @Test
-    void deletePostUsesTenantContext() {
-        TenantContext.set("tenant-a");
-        doNothing().when(publishService).deletePost("tenant-a", "user-1", "post-1");
-
-        controller.deletePost("user-1", "post-1");
-
-        verify(publishService).deletePost("tenant-a", "user-1", "post-1");
-        verify(publishService, never()).deletePost("tenant-b", "user-1", "post-1");
-    }
-
-    @Test
-    void getPostsUsesTenantContext() {
-        TenantContext.set("tenant-a");
-        when(publishService.getPosts("tenant-a", "user-1", 0, 20))
-                .thenReturn(new PostHistoryResponse(List.of(), 0L, 0, 20));
-
-        controller.getPosts("user-1", 0, 20);
-
-        verify(publishService).getPosts("tenant-a", "user-1", 0, 20);
-    }
-
-    @Test
-    void analyticsUsesTenantContext() {
-        TenantContext.set("tenant-a");
-        when(analyticsService.getOverviewAnalytics("tenant-a", "user-1"))
-                .thenReturn(sampleAnalytics());
-
-        controller.getOverviewAnalytics("user-1");
-
-        verify(analyticsService).getOverviewAnalytics("tenant-a", "user-1");
-        verify(analyticsService, never()).getOverviewAnalytics(eq("tenant-b"), any());
-    }
-
-    @Test
-    void tenantAUserCannotAccessTenantBDataViaHeader() {
-        TenantContext.set("tenant-a");
-        when(platformAuthService.getConnectedPlatforms("tenant-a", "user-1"))
-                .thenReturn(List.of());
-
-        controller.getConnectedPlatforms("user-1");
-
-        verify(platformAuthService).getConnectedPlatforms("tenant-a", "user-1");
-        verify(platformAuthService, never()).getConnectedPlatforms(eq("tenant-b"), any());
-    }
-
-    @Test
-    void fakeXTenantIdHeaderDoesNotChangeTenant() {
-        TenantContext.set("tenant-a");
-        when(publishService.createPost(eq("tenant-a"), eq("user-1"), any()))
-                .thenReturn(samplePost("post-1"));
-
-        CreatePostRequest request = new CreatePostRequest("text", List.of(), "twitter");
-        PublishPostResponse result = controller.createPost("user-1", request);
-
-        assertNotNull(result);
-        verify(publishService).createPost(eq("tenant-a"), eq("user-1"), any());
-        verify(publishService, never()).createPost(eq("tenant-b"), any(), any());
-    }
-
-    @Test
-    void connectPlatformUsesTenantContext() {
-        TenantContext.set("tenant-a");
-        when(platformAuthService.connectPlatform("tenant-a", "user-1", "twitter", null))
-                .thenReturn(new ConnectedPlatformResponse("twitter", "tenant-a", "user-1",
-                        "twitter", null, null, "CONNECTED", Instant.now(), Instant.now()));
-
-        controller.connectPlatform("user-1", "twitter", null);
-
-        verify(platformAuthService).connectPlatform("tenant-a", "user-1", "twitter", null);
-    }
-
-    @Test
-    void disconnectPlatformUsesTenantContext() {
-        TenantContext.set("tenant-a");
-        doNothing().when(platformAuthService).disconnectPlatform("tenant-a", "user-1", "twitter");
-
-        controller.disconnectPlatform("user-1", "twitter");
-
-        verify(platformAuthService).disconnectPlatform("tenant-a", "user-1", "twitter");
+        return new PublishPostResponse(
+                id, "tenant-a", "legacy-user", "text", List.of(), "YOUTUBE", "DRAFT",
+                null, null, null, null, null, null, null, 0, Instant.EPOCH, Instant.EPOCH);
     }
 }

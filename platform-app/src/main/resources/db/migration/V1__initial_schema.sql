@@ -2761,8 +2761,11 @@ create table social_connected_platform (
     refresh_token_encrypted text,
     token_expires_at timestamp,
     status varchar(16) default 'ACTIVE',
+    binding_version bigint not null default 1 check (binding_version > 0),
     created_at timestamp not null default now(),
-    updated_at timestamp not null default now()
+    updated_at timestamp not null default now(),
+    constraint uq_social_connected_binding unique
+        (tenant_id, user_id, id, binding_version, platform_type)
 );
 
 create index ix_social_connected_platform_tenant_user on social_connected_platform(tenant_id, user_id);
@@ -2771,6 +2774,12 @@ create table social_post (
     id varchar(36) primary key,
     tenant_id varchar(36) not null,
     user_id varchar(36) not null,
+    -- Nullable for existing mutation-created rows. Publication reads require every
+    -- binding field below; NULL never implies a Project/account from platform_type.
+    project_id varchar(64),
+    connected_platform_id varchar(36),
+    connected_platform_binding_version bigint,
+    artifact_id varchar(64),
     content_text text,
     media_urls varchar(4000),
     platform_type varchar(32) not null,
@@ -2784,11 +2793,34 @@ create table social_post (
     error_message text,
     retry_count int default 0,
     created_at timestamp not null default now(),
-    updated_at timestamp not null default now()
+    updated_at timestamp not null default now(),
+    constraint fk_social_post_project foreign key (tenant_id, project_id)
+        references project(tenant_id, id) on delete restrict,
+    constraint fk_social_post_account_binding foreign key
+        (tenant_id, user_id, connected_platform_id,
+         connected_platform_binding_version, platform_type)
+        references social_connected_platform
+        (tenant_id, user_id, id, binding_version, platform_type) on delete restrict,
+    constraint fk_social_post_artifact foreign key (tenant_id, artifact_id)
+        references artifact(tenant_id, id) on delete restrict,
+    constraint ck_social_post_binding_complete check (
+        (project_id is null and connected_platform_id is null
+            and connected_platform_binding_version is null)
+        or
+        (project_id is not null and connected_platform_id is not null
+            and connected_platform_binding_version is not null
+            and connected_platform_binding_version > 0)
+    )
 );
 
 create index ix_social_post_tenant_user on social_post(tenant_id, user_id);
 create index ix_social_post_status on social_post(status);
+create index ix_social_post_publication_read on social_post
+    (tenant_id, user_id, project_id, connected_platform_id,
+     connected_platform_binding_version, scheduled_at, id)
+    where project_id is not null
+      and connected_platform_id is not null
+      and connected_platform_binding_version is not null;
 
 create table social_post_analytics (
     id varchar(36) primary key,

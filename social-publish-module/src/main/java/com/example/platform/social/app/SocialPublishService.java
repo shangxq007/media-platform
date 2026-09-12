@@ -38,6 +38,7 @@ public class SocialPublishService {
         Instant now = Instant.now();
         SocialPost post = new SocialPost(
                 Ids.newId("pst"), tenantId, userId,
+                null, null, null, null,
                 request.contentText(), request.mediaUrls() != null ? request.mediaUrls() : List.of(),
                 PlatformType.valueOf(request.platformType()),
                 PostStatus.DRAFT, null, null, null, null, null,
@@ -51,9 +52,12 @@ public class SocialPublishService {
     public PublishPostResponse schedulePost(String tenantId, String userId, String postId, SchedulePostRequest request) {
         SocialPost post = postRepository.findById(postId)
                 .orElseThrow(() -> new IllegalArgumentException("Post not found: " + postId));
+
         Instant scheduledAt = Instant.parse(request.scheduledAt());
         SocialPost updated = new SocialPost(
-                post.id(), post.tenantId(), post.userId(), post.contentText(), post.mediaUrls(),
+                post.id(), post.tenantId(), post.userId(), post.projectId(), post.connectedPlatformId(),
+                post.connectedPlatformBindingVersion(), post.artifactId(),
+                post.contentText(), post.mediaUrls(),
                 post.platformType(), PostStatus.SCHEDULED, post.platformPostId(), post.platformPostUrl(),
                 scheduledAt, null, null, null, null, post.retryCount(),
                 post.createdAt(), Instant.now());
@@ -66,7 +70,6 @@ public class SocialPublishService {
     public PublishPostResponse publishNow(String tenantId, String userId, String postId) {
         SocialPost post = postRepository.findById(postId)
                 .orElseThrow(() -> new IllegalArgumentException("Post not found: " + postId));
-
         PlatformType platformType = post.platformType();
         PlatformAdapter adapter = adapters.get(platformType);
         if (adapter == null) {
@@ -82,13 +85,17 @@ public class SocialPublishService {
         SocialPost updated;
         if (result.success()) {
             updated = new SocialPost(
-                    post.id(), post.tenantId(), post.userId(), post.contentText(), post.mediaUrls(),
+                    post.id(), post.tenantId(), post.userId(), post.projectId(), post.connectedPlatformId(),
+                    post.connectedPlatformBindingVersion(), post.artifactId(),
+                    post.contentText(), post.mediaUrls(),
                     post.platformType(), PostStatus.PUBLISHED, result.platformPostId(), result.platformPostUrl(),
                     post.scheduledAt(), now, null, null, null, post.retryCount(),
                     post.createdAt(), now);
         } else {
             updated = new SocialPost(
-                    post.id(), post.tenantId(), post.userId(), post.contentText(), post.mediaUrls(),
+                    post.id(), post.tenantId(), post.userId(), post.projectId(), post.connectedPlatformId(),
+                    post.connectedPlatformBindingVersion(), post.artifactId(),
+                    post.contentText(), post.mediaUrls(),
                     post.platformType(), PostStatus.FAILED, null, null,
                     post.scheduledAt(), null, now, result.errorCode(), result.errorMessage(), post.retryCount() + 1,
                     post.createdAt(), now);
@@ -103,7 +110,9 @@ public class SocialPublishService {
         SocialPost post = postRepository.findById(postId)
                 .orElseThrow(() -> new IllegalArgumentException("Post not found: " + postId));
         SocialPost updated = new SocialPost(
-                post.id(), post.tenantId(), post.userId(), post.contentText(), post.mediaUrls(),
+                post.id(), post.tenantId(), post.userId(), post.projectId(), post.connectedPlatformId(),
+                post.connectedPlatformBindingVersion(), post.artifactId(),
+                post.contentText(), post.mediaUrls(),
                 post.platformType(), PostStatus.CANCELLED, post.platformPostId(), post.platformPostUrl(),
                 null, null, null, null, null, post.retryCount(),
                 post.createdAt(), Instant.now());
@@ -127,20 +136,6 @@ public class SocialPublishService {
                 .orElseThrow(() -> new IllegalArgumentException("Post not found: " + postId));
         postRepository.deleteById(postId);
         log.info("SocialPublishService: deleted post={}", postId);
-    }
-
-    public PublishPostResponse getPost(String tenantId, String userId, String postId) {
-        SocialPost post = postRepository.findById(postId)
-                .orElseThrow(() -> new IllegalArgumentException("Post not found: " + postId));
-        return toResponse(post);
-    }
-
-    public PostHistoryResponse getPosts(String tenantId, String userId, int page, int size) {
-        int offset = page * size;
-        List<SocialPost> posts = postRepository.findByTenantAndUser(tenantId, userId, offset, size);
-        long total = postRepository.countByTenantAndUser(tenantId, userId);
-        List<PublishPostResponse> responses = posts.stream().map(this::toResponse).toList();
-        return new PostHistoryResponse(responses, total, page, size);
     }
 
     public List<PublishPostResponse> getDrafts(String tenantId, String userId) {

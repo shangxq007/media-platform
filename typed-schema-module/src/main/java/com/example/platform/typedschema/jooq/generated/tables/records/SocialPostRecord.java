@@ -63,199 +63,257 @@ public class SocialPostRecord extends UpdatableRecordImpl<SocialPostRecord> {
     }
 
     /**
+     * Setter for <code>public.social_post.project_id</code>.
+     */
+    public void setProjectId(String value) {
+        set(3, value);
+    }
+
+    /**
+     * Getter for <code>public.social_post.project_id</code>.
+     */
+    public String getProjectId() {
+        return (String) get(3);
+    }
+
+    /**
+     * Setter for <code>public.social_post.connected_platform_id</code>.
+     */
+    public void setConnectedPlatformId(String value) {
+        set(4, value);
+    }
+
+    /**
+     * Getter for <code>public.social_post.connected_platform_id</code>.
+     */
+    public String getConnectedPlatformId() {
+        return (String) get(4);
+    }
+
+    /**
+     * Setter for
+     * <code>public.social_post.connected_platform_binding_version</code>.
+     */
+    public void setConnectedPlatformBindingVersion(Long value) {
+        set(5, value);
+    }
+
+    /**
+     * Getter for
+     * <code>public.social_post.connected_platform_binding_version</code>.
+     */
+    public Long getConnectedPlatformBindingVersion() {
+        return (Long) get(5);
+    }
+
+    /**
+     * Setter for <code>public.social_post.artifact_id</code>.
+     */
+    public void setArtifactId(String value) {
+        set(6, value);
+    }
+
+    /**
+     * Getter for <code>public.social_post.artifact_id</code>.
+     */
+    public String getArtifactId() {
+        return (String) get(6);
+    }
+
+    /**
      * Setter for <code>public.social_post.content_text</code>.
      */
     public void setContentText(String value) {
-        set(3, value);
+        set(7, value);
     }
 
     /**
      * Getter for <code>public.social_post.content_text</code>.
      */
     public String getContentText() {
-        return (String) get(3);
+        return (String) get(7);
     }
 
     /**
      * Setter for <code>public.social_post.media_urls</code>.
      */
     public void setMediaUrls(String value) {
-        set(4, value);
+        set(8, value);
     }
 
     /**
      * Getter for <code>public.social_post.media_urls</code>.
      */
     public String getMediaUrls() {
-        return (String) get(4);
+        return (String) get(8);
     }
 
     /**
      * Setter for <code>public.social_post.platform_type</code>.
      */
     public void setPlatformType(String value) {
-        set(5, value);
+        set(9, value);
     }
 
     /**
      * Getter for <code>public.social_post.platform_type</code>.
      */
     public String getPlatformType() {
-        return (String) get(5);
+        return (String) get(9);
     }
 
     /**
      * Setter for <code>public.social_post.status</code>.
      */
     public void setStatus(String value) {
-        set(6, value);
+        set(10, value);
     }
 
     /**
      * Getter for <code>public.social_post.status</code>.
      */
     public String getStatus() {
-        return (String) get(6);
+        return (String) get(10);
     }
 
     /**
      * Setter for <code>public.social_post.platform_post_id</code>.
      */
     public void setPlatformPostId(String value) {
-        set(7, value);
+        set(11, value);
     }
 
     /**
      * Getter for <code>public.social_post.platform_post_id</code>.
      */
     public String getPlatformPostId() {
-        return (String) get(7);
+        return (String) get(11);
     }
 
     /**
      * Setter for <code>public.social_post.platform_post_url</code>.
      */
     public void setPlatformPostUrl(String value) {
-        set(8, value);
+        set(12, value);
     }
 
     /**
      * Getter for <code>public.social_post.platform_post_url</code>.
      */
     public String getPlatformPostUrl() {
-        return (String) get(8);
+        return (String) get(12);
     }
 
     /**
      * Setter for <code>public.social_post.scheduled_at</code>.
      */
     public void setScheduledAt(LocalDateTime value) {
-        set(9, value);
+        set(13, value);
     }
 
     /**
      * Getter for <code>public.social_post.scheduled_at</code>.
      */
     public LocalDateTime getScheduledAt() {
-        return (LocalDateTime) get(9);
+        return (LocalDateTime) get(13);
     }
 
     /**
      * Setter for <code>public.social_post.published_at</code>.
      */
     public void setPublishedAt(LocalDateTime value) {
-        set(10, value);
+        set(14, value);
     }
 
     /**
      * Getter for <code>public.social_post.published_at</code>.
      */
     public LocalDateTime getPublishedAt() {
-        return (LocalDateTime) get(10);
+        return (LocalDateTime) get(14);
     }
 
     /**
      * Setter for <code>public.social_post.failed_at</code>.
      */
     public void setFailedAt(LocalDateTime value) {
-        set(11, value);
+        set(15, value);
     }
 
     /**
      * Getter for <code>public.social_post.failed_at</code>.
      */
     public LocalDateTime getFailedAt() {
-        return (LocalDateTime) get(11);
+        return (LocalDateTime) get(15);
     }
 
     /**
      * Setter for <code>public.social_post.error_code</code>.
      */
     public void setErrorCode(String value) {
-        set(12, value);
+        set(16, value);
     }
 
     /**
      * Getter for <code>public.social_post.error_code</code>.
      */
     public String getErrorCode() {
-        return (String) get(12);
+        return (String) get(16);
     }
 
     /**
      * Setter for <code>public.social_post.error_message</code>.
      */
     public void setErrorMessage(String value) {
-        set(13, value);
+        set(17, value);
     }
 
     /**
      * Getter for <code>public.social_post.error_message</code>.
      */
     public String getErrorMessage() {
-        return (String) get(13);
+        return (String) get(17);
     }
 
     /**
      * Setter for <code>public.social_post.retry_count</code>.
      */
     public void setRetryCount(Integer value) {
-        set(14, value);
+        set(18, value);
     }
 
     /**
      * Getter for <code>public.social_post.retry_count</code>.
      */
     public Integer getRetryCount() {
-        return (Integer) get(14);
+        return (Integer) get(18);
     }
 
     /**
      * Setter for <code>public.social_post.created_at</code>.
      */
     public void setCreatedAt(LocalDateTime value) {
-        set(15, value);
+        set(19, value);
     }
 
     /**
      * Getter for <code>public.social_post.created_at</code>.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(15);
+        return (LocalDateTime) get(19);
     }
 
     /**
      * Setter for <code>public.social_post.updated_at</code>.
      */
     public void setUpdatedAt(LocalDateTime value) {
-        set(16, value);
+        set(20, value);
     }
 
     /**
      * Getter for <code>public.social_post.updated_at</code>.
      */
     public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(16);
+        return (LocalDateTime) get(20);
     }
 
     // -------------------------------------------------------------------------
@@ -281,12 +339,16 @@ public class SocialPostRecord extends UpdatableRecordImpl<SocialPostRecord> {
     /**
      * Create a detached, initialised SocialPostRecord
      */
-    public SocialPostRecord(String id, String tenantId, String userId, String contentText, String mediaUrls, String platformType, String status, String platformPostId, String platformPostUrl, LocalDateTime scheduledAt, LocalDateTime publishedAt, LocalDateTime failedAt, String errorCode, String errorMessage, Integer retryCount, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public SocialPostRecord(String id, String tenantId, String userId, String projectId, String connectedPlatformId, Long connectedPlatformBindingVersion, String artifactId, String contentText, String mediaUrls, String platformType, String status, String platformPostId, String platformPostUrl, LocalDateTime scheduledAt, LocalDateTime publishedAt, LocalDateTime failedAt, String errorCode, String errorMessage, Integer retryCount, LocalDateTime createdAt, LocalDateTime updatedAt) {
         super(SocialPost.SOCIAL_POST);
 
         setId(id);
         setTenantId(tenantId);
         setUserId(userId);
+        setProjectId(projectId);
+        setConnectedPlatformId(connectedPlatformId);
+        setConnectedPlatformBindingVersion(connectedPlatformBindingVersion);
+        setArtifactId(artifactId);
         setContentText(contentText);
         setMediaUrls(mediaUrls);
         setPlatformType(platformType);

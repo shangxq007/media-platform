@@ -4,19 +4,20 @@ import com.example.platform.social.api.dto.*;
 import com.example.platform.social.app.PlatformAuthService;
 import com.example.platform.social.app.PublishAnalyticsService;
 import com.example.platform.social.app.SocialPublishService;
+import com.example.platform.social.app.SocialPostReadService;
+import com.example.platform.social.app.SocialAccountReadService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.time.Instant;
 
 @RestController
 @RequestMapping("/api/social")
@@ -27,13 +28,19 @@ public class SocialPublishController {
     private final SocialPublishService publishService;
     private final PlatformAuthService platformAuthService;
     private final PublishAnalyticsService analyticsService;
+    private final SocialPostReadService readService;
+    private final SocialAccountReadService accountReadService;
 
     public SocialPublishController(SocialPublishService publishService,
                                     PlatformAuthService platformAuthService,
-                                    PublishAnalyticsService analyticsService) {
+                                    PublishAnalyticsService analyticsService,
+                                    SocialPostReadService readService,
+                                    SocialAccountReadService accountReadService) {
         this.publishService = publishService;
         this.platformAuthService = platformAuthService;
         this.analyticsService = analyticsService;
+        this.readService = readService;
+        this.accountReadService = accountReadService;
     }
 
     private static String requireTenantId() {
@@ -51,11 +58,11 @@ public class SocialPublishController {
         @ApiResponse(responseCode = "200", description = "Successfully retrieved connected platforms"),
         @ApiResponse(responseCode = "401", description = "Unauthorized")
     })
-    public List<ConnectedPlatformResponse> getConnectedPlatforms(
-            @RequestHeader("X-User-ID") String userId) {
+    public List<PublicationAccountResponse> getConnectedPlatforms(
+            @RequestParam String projectId) {
         String tenantId = requireTenantId();
-        log.info("GET /api/social/platforms tenant={}", tenantId);
-        return platformAuthService.getConnectedPlatforms(tenantId, userId);
+        log.info("GET /api/social/platforms tenant={} project={}", tenantId, projectId);
+        return accountReadService.list(tenantId, projectId);
     }
 
     @PostMapping("/platforms/{platform}/connect")
@@ -160,35 +167,42 @@ public class SocialPublishController {
     }
 
     @GetMapping("/posts")
-    @Operation(summary = "List posts",
-               description = "Retrieve paginated list of social media posts for the current user")
+    @Operation(summary = "List publication records",
+               description = "Returns explicitly bound local records whose planned publish time is in [start,end)")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Successfully retrieved posts"),
         @ApiResponse(responseCode = "401", description = "Unauthorized")
     })
-    public PostHistoryResponse getPosts(
-            @RequestHeader("X-User-ID") String userId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+    public PublicationPostListResponse getPosts(
+            @RequestParam String projectId,
+            @RequestParam String connectedAccountId,
+            @RequestParam long bindingVersion,
+            @RequestParam Instant start,
+            @RequestParam Instant end,
+            @RequestParam(defaultValue = "50") int limit) {
         String tenantId = requireTenantId();
-        log.info("GET /api/social/posts tenant={} page={} size={}", tenantId, page, size);
-        return publishService.getPosts(tenantId, userId, page, size);
+        log.info("GET /api/social/posts tenant={} project={}", tenantId, projectId);
+        return readService.list(
+                tenantId, projectId, connectedAccountId, bindingVersion, start, end, limit);
     }
 
     @GetMapping("/posts/{id}")
-    @Operation(summary = "Get post details",
-               description = "Retrieve details of a specific social media post")
+    @Operation(summary = "Get publication record",
+               description = "Returns one safe local source snapshot for an exact Project/account binding")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Successfully retrieved post"),
         @ApiResponse(responseCode = "401", description = "Unauthorized"),
         @ApiResponse(responseCode = "404", description = "Post not found")
     })
-    public PublishPostResponse getPost(
-            @RequestHeader("X-User-ID") String userId,
-            @PathVariable("id") String postId) {
+    public PublicationPostResponse getPost(
+            @PathVariable("id") String postId,
+            @RequestParam String projectId,
+            @RequestParam String connectedAccountId,
+            @RequestParam long bindingVersion) {
         String tenantId = requireTenantId();
         log.info("GET /api/social/posts/{} tenant={}", postId, tenantId);
-        return publishService.getPost(tenantId, userId, postId);
+        return readService.get(
+                tenantId, projectId, connectedAccountId, bindingVersion, postId);
     }
 
     @PostMapping("/posts/{id}/retry")

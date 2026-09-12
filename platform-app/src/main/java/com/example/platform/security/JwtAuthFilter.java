@@ -18,6 +18,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.annotation.Order;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import javax.crypto.SecretKey;
@@ -64,6 +67,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             "/api/prompts",
             "/api/tenants",
             "/api/artifacts",
+            "/api/identity",
+            "/api/me",
+            "/api/social",
             "/api/web/"
     );
 
@@ -106,6 +112,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             String tenantId = claims.get("tenantId", String.class);
             List<String> roles = claims.get("roles", List.class);
 
+            if (subject == null || subject.isBlank() || tenantId == null || tenantId.isBlank()) {
+                throw new JwtException("JWT subject and tenantId are required");
+            }
+            if (roles == null) {
+                roles = List.of();
+            }
+
             request.setAttribute("jwt.subject", subject);
             request.setAttribute("jwt.tenantId", tenantId);
             request.setAttribute("jwt.roles", roles);
@@ -117,9 +130,21 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             }
             MDC.put("principal", subject != null ? subject : "anonymous");
 
+            var authorities = roles.stream()
+                    .filter(role -> role != null && !role.isBlank())
+                    .map(role -> role.startsWith("ROLE_") ? role : "ROLE_" + role)
+                    .distinct()
+                    .map(SimpleGrantedAuthority::new)
+                    .toList();
+            var securityContext = SecurityContextHolder.createEmptyContext();
+            securityContext.setAuthentication(
+                    UsernamePasswordAuthenticationToken.authenticated(subject, null, authorities));
+            SecurityContextHolder.setContext(securityContext);
+
             try {
                 filterChain.doFilter(request, response);
             } finally {
+                SecurityContextHolder.clearContext();
                 TenantContext.clear();
                 MDC.remove(TraceKeys.TENANT_ID);
                 MDC.remove("principal");

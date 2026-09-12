@@ -12,6 +12,7 @@ import com.example.platform.typedschema.jooq.generated.tables.ArtifactRelation.A
 import com.example.platform.typedschema.jooq.generated.tables.ArtifactReplica.ArtifactReplicaPath;
 import com.example.platform.typedschema.jooq.generated.tables.MediaAsset.MediaAssetPath;
 import com.example.platform.typedschema.jooq.generated.tables.MediaAssetArtifact.MediaAssetArtifactPath;
+import com.example.platform.typedschema.jooq.generated.tables.SocialPost.SocialPostPath;
 import com.example.platform.typedschema.jooq.generated.tables.WfArtifactReuseIndex.WfArtifactReuseIndexPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.ArtifactRecord;
 
@@ -271,6 +272,19 @@ public class Artifact extends TableImpl<ArtifactRecord> {
             _mediaAssetArtifact = new MediaAssetArtifactPath(this, null, Keys.MEDIA_ASSET_ARTIFACT__FK_MAA_ARTIFACT.getInverseKey());
 
         return _mediaAssetArtifact;
+    }
+
+    private transient SocialPostPath _socialPost;
+
+    /**
+     * Get the implicit to-many join path to the <code>public.social_post</code>
+     * table
+     */
+    public SocialPostPath socialPost() {
+        if (_socialPost == null)
+            _socialPost = new SocialPostPath(this, null, Keys.SOCIAL_POST__FK_SOCIAL_POST_ARTIFACT.getInverseKey());
+
+        return _socialPost;
     }
 
     private transient WfArtifactReuseIndexPath _wfArtifactReuseIndex;

@@ -7,6 +7,9 @@ package com.example.platform.typedschema.jooq.generated.tables;
 import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
+import com.example.platform.typedschema.jooq.generated.tables.Artifact.ArtifactPath;
+import com.example.platform.typedschema.jooq.generated.tables.Project.ProjectPath;
+import com.example.platform.typedschema.jooq.generated.tables.SocialConnectedPlatform.SocialConnectedPlatformPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.SocialPostRecord;
 
 import java.time.LocalDateTime;
@@ -14,12 +17,17 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
+import org.jooq.Check;
 import org.jooq.Condition;
 import org.jooq.Field;
+import org.jooq.ForeignKey;
 import org.jooq.Index;
+import org.jooq.InverseForeignKey;
 import org.jooq.Name;
+import org.jooq.Path;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
+import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
 import org.jooq.Select;
@@ -29,6 +37,7 @@ import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
@@ -68,6 +77,27 @@ public class SocialPost extends TableImpl<SocialPostRecord> {
      * The column <code>public.social_post.user_id</code>.
      */
     public final TableField<SocialPostRecord, String> USER_ID = createField(DSL.name("user_id"), SQLDataType.VARCHAR(36).nullable(false), this, "");
+
+    /**
+     * The column <code>public.social_post.project_id</code>.
+     */
+    public final TableField<SocialPostRecord, String> PROJECT_ID = createField(DSL.name("project_id"), SQLDataType.VARCHAR(64), this, "");
+
+    /**
+     * The column <code>public.social_post.connected_platform_id</code>.
+     */
+    public final TableField<SocialPostRecord, String> CONNECTED_PLATFORM_ID = createField(DSL.name("connected_platform_id"), SQLDataType.VARCHAR(36), this, "");
+
+    /**
+     * The column
+     * <code>public.social_post.connected_platform_binding_version</code>.
+     */
+    public final TableField<SocialPostRecord, Long> CONNECTED_PLATFORM_BINDING_VERSION = createField(DSL.name("connected_platform_binding_version"), SQLDataType.BIGINT, this, "");
+
+    /**
+     * The column <code>public.social_post.artifact_id</code>.
+     */
+    public final TableField<SocialPostRecord, String> ARTIFACT_ID = createField(DSL.name("artifact_id"), SQLDataType.VARCHAR(64), this, "");
 
     /**
      * The column <code>public.social_post.content_text</code>.
@@ -168,6 +198,39 @@ public class SocialPost extends TableImpl<SocialPostRecord> {
         this(DSL.name("social_post"), null);
     }
 
+    public <O extends Record> SocialPost(Table<O> path, ForeignKey<O, SocialPostRecord> childPath, InverseForeignKey<O, SocialPostRecord> parentPath) {
+        super(path, childPath, parentPath, SOCIAL_POST);
+    }
+
+    /**
+     * A subtype implementing {@link Path} for simplified path-based joins.
+     */
+    public static class SocialPostPath extends SocialPost implements Path<SocialPostRecord> {
+
+        private static final long serialVersionUID = 1L;
+        public <O extends Record> SocialPostPath(Table<O> path, ForeignKey<O, SocialPostRecord> childPath, InverseForeignKey<O, SocialPostRecord> parentPath) {
+            super(path, childPath, parentPath);
+        }
+        private SocialPostPath(Name alias, Table<SocialPostRecord> aliased) {
+            super(alias, aliased);
+        }
+
+        @Override
+        public SocialPostPath as(String alias) {
+            return new SocialPostPath(DSL.name(alias), this);
+        }
+
+        @Override
+        public SocialPostPath as(Name alias) {
+            return new SocialPostPath(alias, this);
+        }
+
+        @Override
+        public SocialPostPath as(Table<?> alias) {
+            return new SocialPostPath(alias.getQualifiedName(), this);
+        }
+    }
+
     @Override
     public Schema getSchema() {
         return aliased() ? null : Public.PUBLIC;
@@ -175,12 +238,61 @@ public class SocialPost extends TableImpl<SocialPostRecord> {
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.IX_SOCIAL_POST_STATUS, Indexes.IX_SOCIAL_POST_TENANT_USER);
+        return Arrays.asList(Indexes.IX_SOCIAL_POST_PUBLICATION_READ, Indexes.IX_SOCIAL_POST_STATUS, Indexes.IX_SOCIAL_POST_TENANT_USER);
     }
 
     @Override
     public UniqueKey<SocialPostRecord> getPrimaryKey() {
         return Keys.SOCIAL_POST_PKEY;
+    }
+
+    @Override
+    public List<ForeignKey<SocialPostRecord, ?>> getReferences() {
+        return Arrays.asList(Keys.SOCIAL_POST__FK_SOCIAL_POST_ACCOUNT_BINDING, Keys.SOCIAL_POST__FK_SOCIAL_POST_ARTIFACT, Keys.SOCIAL_POST__FK_SOCIAL_POST_PROJECT);
+    }
+
+    private transient SocialConnectedPlatformPath _socialConnectedPlatform;
+
+    /**
+     * Get the implicit join path to the
+     * <code>public.social_connected_platform</code> table.
+     */
+    public SocialConnectedPlatformPath socialConnectedPlatform() {
+        if (_socialConnectedPlatform == null)
+            _socialConnectedPlatform = new SocialConnectedPlatformPath(this, Keys.SOCIAL_POST__FK_SOCIAL_POST_ACCOUNT_BINDING, null);
+
+        return _socialConnectedPlatform;
+    }
+
+    private transient ArtifactPath _artifact;
+
+    /**
+     * Get the implicit join path to the <code>public.artifact</code> table.
+     */
+    public ArtifactPath artifact() {
+        if (_artifact == null)
+            _artifact = new ArtifactPath(this, Keys.SOCIAL_POST__FK_SOCIAL_POST_ARTIFACT, null);
+
+        return _artifact;
+    }
+
+    private transient ProjectPath _project;
+
+    /**
+     * Get the implicit join path to the <code>public.project</code> table.
+     */
+    public ProjectPath project() {
+        if (_project == null)
+            _project = new ProjectPath(this, Keys.SOCIAL_POST__FK_SOCIAL_POST_PROJECT, null);
+
+        return _project;
+    }
+
+    @Override
+    public List<Check<SocialPostRecord>> getChecks() {
+        return Arrays.asList(
+            Internal.createCheck(this, DSL.name("ck_social_post_binding_complete"), "((((project_id IS NULL) AND (connected_platform_id IS NULL) AND (connected_platform_binding_version IS NULL)) OR ((project_id IS NOT NULL) AND (connected_platform_id IS NOT NULL) AND (connected_platform_binding_version IS NOT NULL) AND (connected_platform_binding_version > 0))))", true)
+        );
     }
 
     @Override

@@ -7,6 +7,7 @@ package com.example.platform.typedschema.jooq.generated.tables;
 import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
+import com.example.platform.typedschema.jooq.generated.tables.SocialPost.SocialPostPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.SocialConnectedPlatformRecord;
 
 import java.time.LocalDateTime;
@@ -14,12 +15,17 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
+import org.jooq.Check;
 import org.jooq.Condition;
 import org.jooq.Field;
+import org.jooq.ForeignKey;
 import org.jooq.Index;
+import org.jooq.InverseForeignKey;
 import org.jooq.Name;
+import org.jooq.Path;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
+import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
 import org.jooq.Select;
@@ -29,6 +35,7 @@ import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
@@ -110,6 +117,11 @@ public class SocialConnectedPlatform extends TableImpl<SocialConnectedPlatformRe
     public final TableField<SocialConnectedPlatformRecord, String> STATUS = createField(DSL.name("status"), SQLDataType.VARCHAR(16).defaultValue(DSL.field(DSL.raw("'ACTIVE'::character varying"), SQLDataType.VARCHAR)), this, "");
 
     /**
+     * The column <code>public.social_connected_platform.binding_version</code>.
+     */
+    public final TableField<SocialConnectedPlatformRecord, Long> BINDING_VERSION = createField(DSL.name("binding_version"), SQLDataType.BIGINT.nullable(false).defaultValue(DSL.field(DSL.raw("1"), SQLDataType.BIGINT)), this, "");
+
+    /**
      * The column <code>public.social_connected_platform.created_at</code>.
      */
     public final TableField<SocialConnectedPlatformRecord, LocalDateTime> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.LOCALDATETIME(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.LOCALDATETIME)), this, "");
@@ -150,6 +162,39 @@ public class SocialConnectedPlatform extends TableImpl<SocialConnectedPlatformRe
         this(DSL.name("social_connected_platform"), null);
     }
 
+    public <O extends Record> SocialConnectedPlatform(Table<O> path, ForeignKey<O, SocialConnectedPlatformRecord> childPath, InverseForeignKey<O, SocialConnectedPlatformRecord> parentPath) {
+        super(path, childPath, parentPath, SOCIAL_CONNECTED_PLATFORM);
+    }
+
+    /**
+     * A subtype implementing {@link Path} for simplified path-based joins.
+     */
+    public static class SocialConnectedPlatformPath extends SocialConnectedPlatform implements Path<SocialConnectedPlatformRecord> {
+
+        private static final long serialVersionUID = 1L;
+        public <O extends Record> SocialConnectedPlatformPath(Table<O> path, ForeignKey<O, SocialConnectedPlatformRecord> childPath, InverseForeignKey<O, SocialConnectedPlatformRecord> parentPath) {
+            super(path, childPath, parentPath);
+        }
+        private SocialConnectedPlatformPath(Name alias, Table<SocialConnectedPlatformRecord> aliased) {
+            super(alias, aliased);
+        }
+
+        @Override
+        public SocialConnectedPlatformPath as(String alias) {
+            return new SocialConnectedPlatformPath(DSL.name(alias), this);
+        }
+
+        @Override
+        public SocialConnectedPlatformPath as(Name alias) {
+            return new SocialConnectedPlatformPath(alias, this);
+        }
+
+        @Override
+        public SocialConnectedPlatformPath as(Table<?> alias) {
+            return new SocialConnectedPlatformPath(alias.getQualifiedName(), this);
+        }
+    }
+
     @Override
     public Schema getSchema() {
         return aliased() ? null : Public.PUBLIC;
@@ -163,6 +208,31 @@ public class SocialConnectedPlatform extends TableImpl<SocialConnectedPlatformRe
     @Override
     public UniqueKey<SocialConnectedPlatformRecord> getPrimaryKey() {
         return Keys.SOCIAL_CONNECTED_PLATFORM_PKEY;
+    }
+
+    @Override
+    public List<UniqueKey<SocialConnectedPlatformRecord>> getUniqueKeys() {
+        return Arrays.asList(Keys.UQ_SOCIAL_CONNECTED_BINDING);
+    }
+
+    private transient SocialPostPath _socialPost;
+
+    /**
+     * Get the implicit to-many join path to the <code>public.social_post</code>
+     * table
+     */
+    public SocialPostPath socialPost() {
+        if (_socialPost == null)
+            _socialPost = new SocialPostPath(this, null, Keys.SOCIAL_POST__FK_SOCIAL_POST_ACCOUNT_BINDING.getInverseKey());
+
+        return _socialPost;
+    }
+
+    @Override
+    public List<Check<SocialConnectedPlatformRecord>> getChecks() {
+        return Arrays.asList(
+            Internal.createCheck(this, DSL.name("social_connected_platform_binding_version_check"), "((binding_version > 0))", true)
+        );
     }
 
     @Override

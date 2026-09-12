@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import javax.crypto.SecretKey;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -44,7 +45,7 @@ public class DevAuthController {
         String token = Jwts.builder()
                 .subject(userId)
                 .claim("tenantId", tenantId)
-                .claim("roles", "USER,ADMIN")
+                .claim("roles", List.of("USER", "ADMIN"))
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(now.plusMillis(jwtProperties.expirationMs())))
                 .signWith(key)

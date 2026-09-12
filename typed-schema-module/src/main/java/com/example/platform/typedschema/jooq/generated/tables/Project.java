@@ -11,6 +11,7 @@ import com.example.platform.typedschema.jooq.generated.tables.ApplyCommand.Apply
 import com.example.platform.typedschema.jooq.generated.tables.ArtifactPin.ArtifactPinPath;
 import com.example.platform.typedschema.jooq.generated.tables.ProjectImportMetadata.ProjectImportMetadataPath;
 import com.example.platform.typedschema.jooq.generated.tables.RenderJob.RenderJobPath;
+import com.example.platform.typedschema.jooq.generated.tables.SocialPost.SocialPostPath;
 import com.example.platform.typedschema.jooq.generated.tables.Tenant.TenantPath;
 import com.example.platform.typedschema.jooq.generated.tables.TimelineRevision.TimelineRevisionPath;
 import com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot.TimelineSnapshotPath;
@@ -244,6 +245,19 @@ public class Project extends TableImpl<ProjectRecord> {
             _renderJob = new RenderJobPath(this, null, Keys.RENDER_JOB__FK_RENDER_JOB_PROJECT.getInverseKey());
 
         return _renderJob;
+    }
+
+    private transient SocialPostPath _socialPost;
+
+    /**
+     * Get the implicit to-many join path to the <code>public.social_post</code>
+     * table
+     */
+    public SocialPostPath socialPost() {
+        if (_socialPost == null)
+            _socialPost = new SocialPostPath(this, null, Keys.SOCIAL_POST__FK_SOCIAL_POST_PROJECT.getInverseKey());
+
+        return _socialPost;
     }
 
     private transient TimelineRevisionPath _timelineRevision;
