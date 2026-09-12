@@ -35,8 +35,10 @@ import static org.mockito.Mockito.*;
  * Only the provider effect and template rendering are isolated test doubles. No external delivery.
  */
 @SpringJUnitConfig(NotificationIngressPersistenceTest.Config.class)
+@org.springframework.test.context.ActiveProfiles("ep20-ingress-isolated")
 class NotificationIngressPersistenceTest extends PostgresTestContainerSupport {
     @org.springframework.boot.test.context.TestConfiguration @EnableTransactionManagement
+    @Profile("ep20-ingress-isolated")
     @Import({OutboxBackedNotificationEventPublisher.class, NotificationOutboxEvents.class})
     static class Config {
         @Bean(destroyMethod="close") DataSource dataSource() {
