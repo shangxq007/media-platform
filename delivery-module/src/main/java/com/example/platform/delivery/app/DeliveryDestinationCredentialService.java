@@ -7,6 +7,8 @@ import com.example.platform.secrets.api.port.SecretsConfigPort;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * Persists delivery destination credentials to Vault (preferred) or legacy {@code credential_json}.
@@ -35,14 +37,30 @@ public class DeliveryDestinationCredentialService {
             String explicitCredentialRef,
             Map<String, String> inlineCredentials) {
         if (explicitCredentialRef != null && !explicitCredentialRef.isBlank()) {
+            var ref = SecretRef.parse(explicitCredentialRef.trim());
+            String scope = "/delivery/tenants/" + tenantId + "/destinations/";
+            if (!SecretRef.BACKEND_VAULT.equals(ref.backend()) || !ref.path().contains(scope)
+                    || ref.path().contains("..") || ref.path().contains("%") || ref.path().contains("\\")
+                    || (ref.path().contains("/versions/") && !ref.path().contains(scope + destinationId + "/versions/"))
+                    || ref.field() != null) {
+                throw new IllegalArgumentException("Credential reference is outside the authorized Delivery tenant scope");
+            }
             return new StoredCredentials(explicitCredentialRef.trim(), null);
         }
         if (inlineCredentials == null || inlineCredentials.isEmpty()) {
             return new StoredCredentials(null, null);
         }
         if (secretsConfig.vaultEnabled()) {
-            String logicalKey = "tenants/" + tenantId + "/destinations/" + destinationId;
+            requireTransaction();
+            // A fresh location never overwrites the credential still referenced by a committed destination.
+            String logicalKey = "tenants/" + tenantId + "/destinations/" + destinationId
+                    + "/versions/" + java.util.UUID.randomUUID();
             String encodedRef = secretResolver.storeCredentialMap("delivery", logicalKey, inlineCredentials);
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override public void afterCompletion(int status) {
+                    if (status != STATUS_COMMITTED) revoke(encodedRef);
+                }
+            });
             secretRefRegistry.register("delivery", destinationId, "vault", encodedRef);
             return new StoredCredentials(encodedRef, null);
         }
@@ -55,22 +73,35 @@ public class DeliveryDestinationCredentialService {
     }
 
     /**
-     * Removes Vault secret when destination is deleted (best-effort).
+     * Removes a Delivery-managed version. Shared/operator-provisioned references are not owned here.
      */
-    public void revoke(String credentialRef) {
+    private void revoke(String credentialRef) {
         if (credentialRef == null || credentialRef.isBlank()) {
             return;
         }
-        if (!secretsConfig.vaultEnabled()) {
-            return;
-        }
-        try {
-            SecretRef ref = SecretRef.parse(credentialRef);
-            if (SecretRef.BACKEND_VAULT.equals(ref.backend())) {
-                secretResolver.deleteByRef(credentialRef);
+        SecretRef ref = SecretRef.parse(credentialRef);
+        if (SecretRef.BACKEND_VAULT.equals(ref.backend()) && ref.path().contains("/delivery/tenants/")
+                && ref.path().contains("/versions/")) {
+            if (!secretsConfig.vaultEnabled()) {
+                throw new IllegalStateException("Delivery credential cleanup requires Vault");
             }
-        } catch (Exception e) {
-            // non-fatal on delete
+            secretResolver.deleteByRef(credentialRef);
+        }
+    }
+
+    public void revokeAfterCommit(String tenantId, String destinationId, String credentialRef) {
+        requireTransaction();
+        if (credentialRef == null || !SecretRef.parse(credentialRef).path().contains(
+                "/delivery/tenants/" + tenantId + "/destinations/" + destinationId + "/versions/")) return;
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override public void afterCommit() { revoke(credentialRef); }
+        });
+    }
+
+    private static void requireTransaction() {
+        if (!TransactionSynchronizationManager.isActualTransactionActive()
+                || !TransactionSynchronizationManager.isSynchronizationActive()) {
+            throw new IllegalStateException("Delivery credential changes require an application transaction");
         }
     }
 

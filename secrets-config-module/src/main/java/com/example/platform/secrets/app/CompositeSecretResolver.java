@@ -55,9 +55,10 @@ public class CompositeSecretResolver implements SecretResolver {
         }
         SecretRef ref = SecretRef.parse(encodedRef);
         SecretProvider provider = providerFor(ref);
-        if (provider.canDelete(ref)) {
-            provider.delete(ref);
+        if (!provider.canDelete(ref)) {
+            throw new IllegalStateException("Secret provider does not support required deletion");
         }
+        provider.delete(ref);
     }
 
     @Override

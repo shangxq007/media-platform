@@ -49,6 +49,8 @@ public class BuiltinDataInitializer {
         createPermIfNotExists("social.content.read", "Social content read", "Read Project-scoped social publication content fields", "SOCIAL");
         createPermIfNotExists("social.artifact.read", "Social Artifact read", "Read Project-scoped social publication Artifact relationships", "SOCIAL");
         createPermIfNotExists("social.publish", "Social publish", "Publish to social media platforms", "SOCIAL");
+        createPermIfNotExists("delivery.read", "Read delivery", "Read scoped Delivery destinations, policies and jobs", "DELIVERY");
+        createPermIfNotExists("delivery.manage", "Manage delivery", "Manage scoped Delivery destinations, policies and jobs", "DELIVERY");
 
         // APPD-CHV1: W2 workflow-definition authorization keys (typed, frozen vocabulary).
         createPermIfNotExists("workflow-definition.read", "Read workflow definition", "Read/list/get workflow definitions", "WORKFLOW");
@@ -66,6 +68,11 @@ public class BuiltinDataInitializer {
         linkRolePermissionIfNotExists("ADMIN", "WRITE");
         linkRolePermissionIfNotExists("EDITOR", "WRITE");
         linkRolePermissionIfNotExists("VIEWER", "render.submit");
+        linkRolePermissionIfNotExists("ADMIN", "delivery.read");
+        linkRolePermissionIfNotExists("EDITOR", "delivery.read");
+        linkRolePermissionIfNotExists("VIEWER", "delivery.read");
+        linkRolePermissionIfNotExists("ADMIN", "delivery.manage");
+        linkRolePermissionIfNotExists("EDITOR", "delivery.manage");
         linkRolePermissionIfNotExists("ADMIN", "social.read");
         linkRolePermissionIfNotExists("EDITOR", "social.read");
         linkRolePermissionIfNotExists("VIEWER", "social.read");

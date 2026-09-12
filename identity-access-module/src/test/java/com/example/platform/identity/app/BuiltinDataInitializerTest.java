@@ -38,7 +38,8 @@ class BuiltinDataInitializerTest {
 
         initializer.init();
 
-        assertEquals(23, distinctPermissionKeys().size());
+        assertEquals(25, distinctPermissionKeys().size());
+        assertTrue(distinctPermissionKeys().containsAll(Set.of("delivery.read", "delivery.manage")));
     }
 
     @Test
@@ -62,7 +63,7 @@ class BuiltinDataInitializerTest {
 
         initializer.init();
 
-        assertEquals(22, distinctPermissionKeys().size());
+        assertEquals(24, distinctPermissionKeys().size());
     }
 
     @Test

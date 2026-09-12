@@ -27,19 +27,22 @@ public class DeliveryCredentialMigrationService {
 
     private final DSLContext dsl;
     private final SecretResolver secretResolver;
-    private final SecretRefRegistryPort secretRefRegistry;
+    private final DeliveryDestinationCredentialService credentials;
+    private final DeliveryAccess access;
 
     public DeliveryCredentialMigrationService(
             DSLContext dsl,
             SecretResolver secretResolver,
-            SecretRefRegistryPort secretRefRegistry) {
+            DeliveryDestinationCredentialService credentials, DeliveryAccess access) {
         this.dsl = dsl;
         this.secretResolver = secretResolver;
-        this.secretRefRegistry = secretRefRegistry;
+        this.credentials = credentials;
+        this.access = access;
     }
 
     @Transactional
     public MigrationReport migrateTenant(String tenantId, boolean dryRun) {
+        access.requireAdministrator();
         if (!secretResolver.isVaultEnabled()) {
             throw new IllegalStateException("Vault must be enabled for credential migration");
         }
@@ -62,19 +65,17 @@ public class DeliveryCredentialMigrationService {
                     continue;
                 }
                 if (!dryRun) {
-                    String logicalKey = "tenants/" + tenantId + "/destinations/" + destinationId;
-                    String ref = secretResolver.storeCredentialMap("delivery", logicalKey, creds);
+                    String ref = credentials.persist(tenantId, destinationId, null, creds).credentialRef();
                     dsl.update(DELIVERY_DESTINATION)
                             .set(DELIVERY_DESTINATION.CREDENTIAL_REF, ref)
                             .set(DELIVERY_DESTINATION.CREDENTIAL_JSON, (String) null)
                             .where(DELIVERY_DESTINATION.ID.eq(destinationId))
+                            .and(DELIVERY_DESTINATION.TENANT_ID.eq(tenantId))
                             .execute();
-                    secretRefRegistry.register("delivery", destinationId, "vault", ref);
                 }
                 migrated.add(destinationId);
             } catch (Exception e) {
-                log.warn("Migration failed for destination {}: {}", destinationId, e.getMessage());
-                failed.add(destinationId + ": " + e.getMessage());
+                throw new IllegalStateException("Delivery credential migration failed; database changes rolled back", e);
             }
         }
         return new MigrationReport(tenantId, dryRun, migrated.size(), skipped.size(), failed.size(), migrated, skipped, failed);

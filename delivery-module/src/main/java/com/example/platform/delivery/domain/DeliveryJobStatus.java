@@ -5,5 +5,6 @@ public enum DeliveryJobStatus {
     RUNNING,
     COMPLETED,
     FAILED,
+    UNCERTAIN,
     CANCELLED
 }

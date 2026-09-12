@@ -1,58 +1,42 @@
 package com.example.platform.delivery.api;
 
-import static org.jooq.impl.DSL.noCondition;
 import com.example.platform.delivery.api.dto.AdminDeliveryJobResponse;
 import com.example.platform.delivery.api.dto.DeliveryDestinationResponse;
+import com.example.platform.delivery.app.DeliveryAdministrationService;
 import com.example.platform.delivery.app.DeliveryCredentialMigrationService;
 import com.example.platform.delivery.app.DeliveryDestinationUriIndexService;
-import com.example.platform.delivery.app.DeliveryJobService;
 import com.example.platform.delivery.app.DeliveryRemoteUriIndexService;
-import com.example.platform.secrets.api.port.CredentialBundlePort;
 import com.example.platform.shared.audit.AdminAuditPublisher;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.NotBlank;
-import java.time.OffsetDateTime;
 import java.util.List;
-import org.jooq.DSLContext;
-import org.jooq.Record;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import static com.example.platform.typedschema.jooq.generated.tables.DeliveryDestination.DELIVERY_DESTINATION;
-import static com.example.platform.typedschema.jooq.generated.tables.DeliveryJob.DELIVERY_JOB;
-import org.jooq.impl.DSL;
-
 
 @RestController
 @RequestMapping("/api/admin/delivery")
 @Tag(name = "Delivery Admin", description = "平台运维：渲染成品出站交付（需 ADMIN 角色）")
 public class DeliveryAdminController {
 
-    private final DSLContext dsl;
-    private final DeliveryJobService deliveryJobService;
-    private final CredentialBundlePort credentialBundlePort;
+    private final DeliveryAdministrationService deliveryAdministrationService;
     private final DeliveryCredentialMigrationService credentialMigrationService;
     private final DeliveryRemoteUriIndexService remoteUriIndexService;
     private final DeliveryDestinationUriIndexService destinationUriIndexService;
     private final AdminAuditPublisher auditPublisher;
 
     public DeliveryAdminController(
-            DSLContext dsl,
-            DeliveryJobService deliveryJobService,
-            CredentialBundlePort credentialBundlePort,
+            DeliveryAdministrationService deliveryAdministrationService,
             DeliveryCredentialMigrationService credentialMigrationService,
             DeliveryRemoteUriIndexService remoteUriIndexService,
             DeliveryDestinationUriIndexService destinationUriIndexService,
             AdminAuditPublisher auditPublisher) {
-        this.dsl = dsl;
-        this.deliveryJobService = deliveryJobService;
-        this.credentialBundlePort = credentialBundlePort;
+        this.deliveryAdministrationService = deliveryAdministrationService;
         this.credentialMigrationService = credentialMigrationService;
         this.remoteUriIndexService = remoteUriIndexService;
         this.destinationUriIndexService = destinationUriIndexService;
@@ -63,10 +47,10 @@ public class DeliveryAdminController {
     @Operation(summary = "交付目的地 URI 前缀索引", description = "来自 delivery_destination.config_json，供孤儿扫描对账")
     public java.util.Set<String> listDestinationUriPrefixes(HttpServletRequest request) {
         requireAdminRole(request, "ADMIN_DELIVERY_URI_PREFIXES", "delivery", null, null);
-        auditPublisher.publish(
-                extractActor(request), extractRoles(request),
+        var result = destinationUriIndexService.collectDestinationUriPrefixes();
+        auditPublisher.publish(extractActor(request), extractRoles(request),
                 "ADMIN_DELIVERY_URI_PREFIXES", "delivery", null, null, "SUCCESS");
-        return destinationUriIndexService.collectDestinationUriPrefixes();
+        return result;
     }
 
     @GetMapping("/by-storage-uri")
@@ -77,10 +61,10 @@ public class DeliveryAdminController {
             @RequestParam(defaultValue = "50") int limit,
             HttpServletRequest request) {
         requireAdminRole(request, "ADMIN_DELIVERY_LOOKUP_BY_URI", "delivery", storageUri, null);
-        auditPublisher.publish(
-                extractActor(request), extractRoles(request),
+        var result = remoteUriIndexService.findByAnyUri(storageUri, projectId, limit);
+        auditPublisher.publish(extractActor(request), extractRoles(request),
                 "ADMIN_DELIVERY_LOOKUP_BY_URI", "delivery", storageUri, null, "SUCCESS");
-        return remoteUriIndexService.findByAnyUri(storageUri, projectId, limit);
+        return result;
     }
 
     @GetMapping("/jobs")
@@ -92,25 +76,10 @@ public class DeliveryAdminController {
             @RequestParam(defaultValue = "50") int size,
             HttpServletRequest request) {
         requireAdminRole(request, "ADMIN_DELIVERY_LIST_JOBS", "delivery_job", null, tenantId);
-        auditPublisher.publish(
-                extractActor(request), extractRoles(request),
+        var result = deliveryAdministrationService.listAdministrativeJobs(tenantId, status, page, size);
+        auditPublisher.publish(extractActor(request), extractRoles(request),
                 "ADMIN_DELIVERY_LIST_JOBS", "delivery_job", null, tenantId, "SUCCESS");
-        int limit = Math.min(Math.max(size, 1), 200);
-        int offset = Math.max(page, 0) * limit;
-        var condition = noCondition();
-        if (tenantId != null && !tenantId.isBlank()) {
-            condition = condition.and(DELIVERY_DESTINATION.TENANT_ID.eq(tenantId));
-        }
-        if (status != null && !status.isBlank()) {
-            condition = condition.and(DELIVERY_JOB.STATUS.eq(status));
-        }
-        return dsl.select()
-                .from(DELIVERY_JOB)
-                .where(condition)
-                .orderBy(DELIVERY_JOB.CREATED_AT.desc())
-                .limit(limit)
-                .offset(offset)
-                .fetch(this::mapAdminJob);
+        return result;
     }
 
     @GetMapping("/destinations")
@@ -119,27 +88,10 @@ public class DeliveryAdminController {
             @RequestParam(required = false) String tenantId,
             HttpServletRequest request) {
         requireAdminRole(request, "ADMIN_DELIVERY_LIST_DESTINATIONS", "delivery_destination", null, tenantId);
-        auditPublisher.publish(
-                extractActor(request), extractRoles(request),
+        var result = deliveryAdministrationService.listAdministrativeDestinations(tenantId);
+        auditPublisher.publish(extractActor(request), extractRoles(request),
                 "ADMIN_DELIVERY_LIST_DESTINATIONS", "delivery_destination", null, tenantId, "SUCCESS");
-        var destCondition = noCondition();
-        if (tenantId != null && !tenantId.isBlank()) {
-            destCondition = destCondition.and(DELIVERY_DESTINATION.TENANT_ID.eq(tenantId));
-        }
-        return dsl.select()
-                .from(DELIVERY_DESTINATION)
-                .where(destCondition)
-                .orderBy(DELIVERY_DESTINATION.CREATED_AT.desc())
-                .fetch(r -> new DeliveryDestinationResponse(
-                        r.get(DELIVERY_DESTINATION.ID),
-                        r.get(DELIVERY_DESTINATION.TENANT_ID),
-                        r.get(DELIVERY_DESTINATION.NAME),
-                        r.get(DELIVERY_DESTINATION.PROTOCOL),
-                        Boolean.TRUE.equals(r.get(DELIVERY_DESTINATION.ENABLED)),
-                        r.get(DELIVERY_DESTINATION.CREDENTIAL_REF),
-                        credentialBundlePort.hasCredentials(
-                                r.get(DELIVERY_DESTINATION.CREDENTIAL_REF),
-                                r.get(DELIVERY_DESTINATION.CREDENTIAL_JSON))));
+        return result;
     }
 
     @PostMapping("/credentials/migrate")
@@ -149,55 +101,30 @@ public class DeliveryAdminController {
             @RequestParam(defaultValue = "false") boolean dryRun,
             HttpServletRequest request) {
         requireAdminRole(request, "ADMIN_DELIVERY_MIGRATE_CREDENTIALS", "delivery_credential", tenantId, tenantId);
-        auditPublisher.publish(
-                extractActor(request), extractRoles(request),
+        var result = credentialMigrationService.migrateTenant(tenantId, dryRun);
+        auditPublisher.publish(extractActor(request), extractRoles(request),
                 "ADMIN_DELIVERY_MIGRATE_CREDENTIALS", "delivery_credential", tenantId, tenantId,
-                dryRun ? "DRY_RUN" : "SUCCESS");
-        return credentialMigrationService.migrateTenant(tenantId, dryRun);
+                dryRun ? "DRY_RUN" : result.failed() == 0 ? "SUCCESS" : "PARTIAL_FAILURE");
+        return result;
     }
 
     @PostMapping("/jobs/{deliveryJobId}/retry")
     @Operation(summary = "运维重试失败交付（平台管理员）")
-    public AdminDeliveryJobResponse retryJob(@PathVariable String deliveryJobId,
-            HttpServletRequest request) {
+    public AdminDeliveryJobResponse retryJob(
+            @PathVariable String deliveryJobId, HttpServletRequest request) {
         requireAdminRole(request, "ADMIN_DELIVERY_RETRY_JOB", "delivery_job", deliveryJobId, null);
-        auditPublisher.publish(
-                extractActor(request), extractRoles(request),
+        var result = deliveryAdministrationService.retryAdministrativeJob(deliveryJobId);
+        auditPublisher.publish(extractActor(request), extractRoles(request),
                 "ADMIN_DELIVERY_RETRY_JOB", "delivery_job", deliveryJobId, null, "SUCCESS");
-        Record row = dsl.select()
-                .from(DELIVERY_JOB)
-                .where(DELIVERY_JOB.ID.eq(deliveryJobId))
-                .fetchOne();
-        if (row == null) {
-            throw new IllegalArgumentException("Delivery job not found");
-        }
-        deliveryJobService.retryDelivery(
-                row.get(DELIVERY_JOB.TENANT_ID),
-                row.get(DELIVERY_JOB.PROJECT_ID),
-                row.get(DELIVERY_JOB.RENDER_JOB_ID),
-                deliveryJobId);
-        Record updated = dsl.select()
-                .from(DELIVERY_JOB)
-                .where(DELIVERY_JOB.ID.eq(deliveryJobId))
-                .fetchOne();
-        return mapAdminJob(updated);
-    }
-
-    private void requireAdminRole(HttpServletRequest request) {
-        requireAdminRole(request, "ADMIN_DELIVERY_OPERATION", "delivery", null, null);
+        return result;
     }
 
     private void requireAdminRole(HttpServletRequest request, String action,
             String resourceType, String resourceId, String tenantId) {
-        if (request.isUserInRole("ADMIN")) {
+        if (request.isUserInRole("ADMIN") || hasRoleFromRequestAttribute(request, "ADMIN")) {
             return;
         }
-        // Legacy HMAC JWT path: check jwt.roles request attribute
-        if (hasRoleFromRequestAttribute(request, "ADMIN")) {
-            return;
-        }
-        auditPublisher.publish(
-                extractActor(request), extractRoles(request),
+        auditPublisher.publish(extractActor(request), extractRoles(request),
                 action, resourceType, resourceId, tenantId, "DENIED");
         throw new SecurityException("Admin role required for delivery admin operations");
     }
@@ -205,10 +132,14 @@ public class DeliveryAdminController {
     private static boolean hasRoleFromRequestAttribute(HttpServletRequest request, String role) {
         Object rolesAttr = request.getAttribute("jwt.roles");
         if (rolesAttr instanceof java.util.List<?> roles) {
-            return roles.stream().anyMatch(r -> r != null && role.equalsIgnoreCase(r.toString().trim()));
-        } else if (rolesAttr instanceof String rolesStr) {
-            for (String r : rolesStr.split(",")) {
-                if (role.equalsIgnoreCase(r.trim())) return true;
+            return roles.stream().anyMatch(candidate -> candidate != null
+                    && role.equalsIgnoreCase(candidate.toString().trim()));
+        }
+        if (rolesAttr instanceof String rolesString) {
+            for (String candidate : rolesString.split(",")) {
+                if (role.equalsIgnoreCase(candidate.trim())) {
+                    return true;
+                }
             }
         }
         return false;
@@ -223,27 +154,7 @@ public class DeliveryAdminController {
         Object rolesAttr = request.getAttribute("jwt.roles");
         if (rolesAttr instanceof java.util.List<?> roles) {
             return String.join(",", roles.stream().map(Object::toString).toList());
-        } else if (rolesAttr instanceof String rolesStr) {
-            return rolesStr;
         }
-        return "none";
-    }
-
-    private AdminDeliveryJobResponse mapAdminJob(Record r) {
-        return new AdminDeliveryJobResponse(
-                r.get(DELIVERY_JOB.ID),
-                r.get(DELIVERY_JOB.TENANT_ID),
-                r.get(DELIVERY_JOB.PROJECT_ID),
-                r.get(DELIVERY_JOB.RENDER_JOB_ID),
-                r.get(DELIVERY_JOB.DESTINATION_ID),
-                r.get(DELIVERY_JOB.STATUS),
-                r.get(DELIVERY_JOB.SOURCE_URI),
-                r.get(DELIVERY_JOB.REMOTE_URI),
-                r.get(DELIVERY_JOB.BYTES_TRANSFERRED),
-                r.get(DELIVERY_JOB.ATTEMPT_COUNT),
-                r.get(DELIVERY_JOB.ERROR_CODE),
-                r.get(DELIVERY_JOB.ERROR_MESSAGE),
-                r.get(DELIVERY_DESTINATION.CREATED_AT),
-                r.get(DELIVERY_JOB.COMPLETED_AT));
+        return rolesAttr instanceof String rolesString ? rolesString : "none";
     }
 }

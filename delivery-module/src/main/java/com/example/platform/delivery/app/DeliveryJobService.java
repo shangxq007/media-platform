@@ -1,6 +1,5 @@
 package com.example.platform.delivery.app;
 
-import com.example.platform.delivery.api.dto.UpdateDeliveryDestinationRequest;
 import com.example.platform.delivery.api.port.DeliveryAfterRenderPort;
 import com.example.platform.delivery.domain.DeliveryJobStatus;
 import com.example.platform.delivery.domain.DeliveryProtocol;
@@ -44,14 +43,12 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
     private final boolean enabled;
     private final int maxAttempts;
     private final CredentialBundlePort credentialBundlePort;
-    private final DeliveryDestinationCredentialService destinationCredentialService;
 
     public DeliveryJobService(DSLContext dsl,
                               DeliveryAdapterRegistry adapterRegistry,
                               DeliverySourceResolver sourceResolver,
                               ApplicationEventPublisher eventPublisher,
                               CredentialBundlePort credentialBundlePort,
-                              DeliveryDestinationCredentialService destinationCredentialService,
                               @Value("${delivery.enabled:true}") boolean enabled,
                               @Value("${delivery.max-attempts:3}") int maxAttempts) {
         this.dsl = dsl;
@@ -59,7 +56,6 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
         this.sourceResolver = sourceResolver;
         this.eventPublisher = eventPublisher;
         this.credentialBundlePort = credentialBundlePort;
-        this.destinationCredentialService = destinationCredentialService;
         this.enabled = enabled;
         this.maxAttempts = Math.max(1, maxAttempts);
     }
@@ -108,7 +104,7 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
 
     private void enqueueFromPolicy(String tenantId, String projectId, String renderJobId,
                                    String sourceUri, Record policy) {
-        String destinationId = policy.get(DELIVERY_JOB.DESTINATION_ID);
+        String destinationId = policy.get(DELIVERY_POLICY.DESTINATION_ID);
         Record dest = dsl.select()
                 .from(DELIVERY_DESTINATION)
                 .where(DELIVERY_DESTINATION.ID.eq(destinationId))
@@ -134,6 +130,7 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
         log.info("Queued delivery job {} renderJob={} destination={}", jobId, renderJobId, destinationId);
     }
 
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
     public int processQueued(int batchSize) {
         List<Record> queued = dsl.select()
                 .from(DELIVERY_JOB)
@@ -150,7 +147,7 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
         return processed;
     }
 
-    @Transactional
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
     public boolean runJob(String deliveryJobId) {
         Record row = dsl.select()
                 .from(DELIVERY_JOB)
@@ -165,12 +162,15 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
                 && !(DeliveryJobStatus.FAILED.name().equals(status) && attempts < maxAttempts)) {
             return false;
         }
-        dsl.update(DELIVERY_JOB)
+        int claimed = dsl.update(DELIVERY_JOB)
                 .set(DELIVERY_JOB.STATUS, DeliveryJobStatus.RUNNING.name())
                 .set(DELIVERY_JOB.ATTEMPT_COUNT, row.get(DELIVERY_JOB.ATTEMPT_COUNT) + 1)
                 .where(DELIVERY_JOB.ID.eq(deliveryJobId))
+                .and(DELIVERY_JOB.STATUS.eq(status))
+                .and(DELIVERY_JOB.ATTEMPT_COUNT.eq(attempts))
                 .execute();
 
+        if (claimed != 1) return false;
         String tenantId = row.get(DELIVERY_JOB.TENANT_ID);
         String projectId = row.get(DELIVERY_JOB.PROJECT_ID);
         String renderJobId = row.get(DELIVERY_JOB.RENDER_JOB_ID);
@@ -181,6 +181,7 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
         Record dest = dsl.select()
                 .from(DELIVERY_DESTINATION)
                 .where(DELIVERY_DESTINATION.ID.eq(destinationId))
+                .and(DELIVERY_DESTINATION.TENANT_ID.eq(tenantId))
                 .fetchOne();
         if (dest == null) {
             markFailed(deliveryJobId, tenantId, projectId, renderJobId, destinationId, "UNKNOWN", "DESTINATION_NOT_FOUND", "Destination missing");
@@ -201,6 +202,7 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
             return false;
         }
 
+        boolean transportInvoked = false;
         try (DeliverySourceResolver.SourceFile file = source.get()) {
             Map<String, Object> config = DeliveryConfigParser.parseConfig(dest.get(DELIVERY_DESTINATION.CONFIG_JSON));
             Map<String, String> credentials = resolveDestinationCredentials(dest);
@@ -208,6 +210,7 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
                     deliveryJobId, tenantId, projectId, renderJobId, sourceUri,
                     file.fileName(), file.contentType(), file.length(), file.stream(),
                     remotePath, protocol.name(), config, credentials);
+            transportInvoked = true;
             DeliveryAdapter.DeliveryResult result = adapter.get().deliver(ctx);
             if (result.success()) {
                 dsl.update(DELIVERY_JOB)
@@ -222,10 +225,17 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
                         protocol.name(), result.remoteUri(), Instant.now()));
                 return true;
             }
-            markFailed(deliveryJobId, tenantId, projectId, renderJobId, destinationId, protocol.name(),
-                    "DELIVERY_FAILED", result.error());
-            return false;
+            throw new IllegalStateException("Transport did not confirm delivery");
         } catch (Exception e) {
+            if (transportInvoked) {
+                // A transport exception or failed completion write cannot establish that nothing was sent.
+                // Persist uncertainty and prohibit automatic/manual retry until an operator reconciles it.
+                dsl.update(DELIVERY_JOB).set(DELIVERY_JOB.STATUS, DeliveryJobStatus.UNCERTAIN.name())
+                        .set(DELIVERY_JOB.ERROR_CODE, "DELIVERY_OUTCOME_UNCERTAIN")
+                        .set(DELIVERY_JOB.ERROR_MESSAGE, "Transport or completion failed; reconciliation required")
+                        .where(DELIVERY_JOB.ID.eq(deliveryJobId)).execute();
+                return false;
+            }
             markFailed(deliveryJobId, tenantId, projectId, renderJobId, destinationId, protocol.name(),
                     "DELIVERY_ERROR", e.getMessage());
             return false;
@@ -234,11 +244,11 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
 
     @Transactional
     public String triggerManual(String tenantId, String projectId, String renderJobId, String destinationId) {
-        Record job = dsl.select(RENDER_JOB.ARTIFACT_URI, DELIVERY_DESTINATION.TENANT_ID)
+        Record job = dsl.select(RENDER_JOB.ARTIFACT_URI, RENDER_JOB.TENANT_ID)
                 .from(RENDER_JOB)
-                .where(DELIVERY_DESTINATION.ID.eq(renderJobId))
+                .where(RENDER_JOB.ID.eq(renderJobId))
                 .and(RENDER_JOB.PROJECT_ID.eq(projectId))
-                .and(DELIVERY_DESTINATION.TENANT_ID.eq(tenantId))
+                .and(RENDER_JOB.TENANT_ID.eq(tenantId))
                 .fetchOne();
         if (job == null) {
             throw new IllegalArgumentException("Render job not found");
@@ -279,7 +289,7 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
                 deliveryJobId, renderJobId, projectId, tenantId, destinationId, protocol, message, Instant.now()));
     }
 
-    @Transactional
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
     public DeliveryAdapter.ProbeResult probeDestination(String tenantId, String destinationId) {
         Record dest = dsl.select()
                 .from(DELIVERY_DESTINATION)
@@ -307,7 +317,7 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
         return result;
     }
 
-    @Transactional
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
     public boolean retryDelivery(String tenantId, String projectId, String renderJobId, String deliveryJobId) {
         Record row = dsl.select()
                 .from(DELIVERY_JOB)
@@ -333,7 +343,7 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
     }
 
     @Override
-    @Transactional
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
     public int finalizeDeliveriesForRenderJob(String renderJobId) {
         String requiredRenderJobId = requireEventText(renderJobId, "renderJobId");
         List<String> deliveryJobIds = dsl.select(DELIVERY_JOB.ID)
@@ -349,70 +359,6 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
             }
         }
         return processed;
-    }
-
-    @Transactional
-    public void updateDestination(String tenantId, String destinationId, UpdateDeliveryDestinationRequest request) {
-        requireDestination(tenantId, destinationId);
-        if (request.name() != null && !request.name().isBlank()) {
-            dsl.update(DELIVERY_DESTINATION)
-                    .set(DELIVERY_DESTINATION.NAME, request.name().trim())
-                    .where(DELIVERY_DESTINATION.ID.eq(destinationId))
-                    .execute();
-        }
-        if (request.enabled() != null) {
-            dsl.update(DELIVERY_DESTINATION)
-                    .set(DELIVERY_DESTINATION.ENABLED, request.enabled())
-                    .where(DELIVERY_DESTINATION.ID.eq(destinationId))
-                    .execute();
-        }
-        if (request.config() != null) {
-            dsl.update(DELIVERY_DESTINATION)
-                    .set(DELIVERY_DESTINATION.CONFIG_JSON, DeliveryConfigParser.toJson(request.config()))
-                    .where(DELIVERY_DESTINATION.ID.eq(destinationId))
-                    .execute();
-        }
-    }
-
-    @Transactional
-    public void deleteDestination(String tenantId, String destinationId) {
-        Record dest = requireDestination(tenantId, destinationId);
-        String credentialRef = dest.get(DELIVERY_DESTINATION.CREDENTIAL_REF);
-        int policies = dsl.fetchCount(
-                dsl.selectFrom(DELIVERY_POLICY).where(DELIVERY_POLICY.DESTINATION_ID.eq(destinationId)));
-        if (policies > 0) {
-            throw new IllegalStateException("Destination is referenced by " + policies + " policies");
-        }
-        dsl.deleteFrom(DELIVERY_DESTINATION)
-                .where(DELIVERY_DESTINATION.ID.eq(destinationId))
-                .and(DELIVERY_DESTINATION.TENANT_ID.eq(tenantId))
-                .execute();
-        destinationCredentialService.revoke(credentialRef);
-    }
-
-    @Transactional
-    public void updatePolicyEnabled(String tenantId, String projectId, String policyId, boolean enabled) {
-        int updated = dsl.update(DELIVERY_POLICY)
-                .set(DELIVERY_POLICY.ENABLED, enabled)
-                .where(DELIVERY_POLICY.ID.eq(policyId))
-                .and(DELIVERY_POLICY.TENANT_ID.eq(tenantId))
-                .and(DELIVERY_POLICY.PROJECT_ID.eq(projectId))
-                .execute();
-        if (updated == 0) {
-            throw new IllegalArgumentException("Policy not found");
-        }
-    }
-
-    @Transactional
-    public void deletePolicy(String tenantId, String projectId, String policyId) {
-        int deleted = dsl.deleteFrom(DELIVERY_POLICY)
-                .where(DELIVERY_POLICY.ID.eq(policyId))
-                .and(DELIVERY_POLICY.TENANT_ID.eq(tenantId))
-                .and(DELIVERY_POLICY.PROJECT_ID.eq(projectId))
-                .execute();
-        if (deleted == 0) {
-            throw new IllegalArgumentException("Policy not found");
-        }
     }
 
     private Map<String, String> resolveDestinationCredentials(Record dest) {

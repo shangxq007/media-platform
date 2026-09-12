@@ -42,6 +42,8 @@ class DeliveryCompletionOwnerBoundaryTest extends PostgresTestContainerSupport {
     private static DSLContext dsl;
     private DeliveryCompletionListener listener;
     private DeliveryJobService service;
+    private boolean uncertainTransport;
+    private boolean failedProbe;
 
     @BeforeAll
     static void setUpDatabase() throws Exception {
@@ -114,6 +116,9 @@ class DeliveryCompletionOwnerBoundaryTest extends PostgresTestContainerSupport {
 
     @BeforeEach
     void setUp() {
+        uncertainTransport = false;
+        failedProbe = false;
+        dsl.execute("drop table if exists render_job");
         dsl.execute("truncate table delivery_job, delivery_policy, delivery_destination");
         dsl.execute("""
                 insert into delivery_destination
@@ -135,11 +140,13 @@ class DeliveryCompletionOwnerBoundaryTest extends PostgresTestContainerSupport {
 
             @Override
             public ProbeResult probe(com.example.platform.delivery.spi.DeliveryContext context) {
+                if (failedProbe) return ProbeResult.failure("test probe failed");
                 return ProbeResult.success();
             }
 
             @Override
             public DeliveryResult deliver(com.example.platform.delivery.spi.DeliveryContext context) {
+                if (uncertainTransport) throw new IllegalStateException("connection lost after write");
                 return DeliveryResult.ok(
                         context.remotePath(),
                         "sftp://delivered/" + context.deliveryJobId(),
@@ -159,10 +166,44 @@ class DeliveryCompletionOwnerBoundaryTest extends PostgresTestContainerSupport {
                 sourceResolver,
                 mock(ApplicationEventPublisher.class),
                 credentialBundlePort,
-                mock(DeliveryDestinationCredentialService.class),
                 true,
                 3);
         listener = new DeliveryCompletionListener(service);
+    }
+
+    @Test
+    void uncertainTransportIsPersistedAndCannotBeRetried() {
+        listener.onRenderJobCompleted(new RenderJobCompletedEvent("render-1", "project-1", "artifact-1",
+                "s3://render-output/render-1.mp4", Instant.now(),
+                RenderInitiator.restore(ActorType.USER, "user-1", "tenant-1")));
+        String id = (String) dsl.fetchValue("select id from delivery_job");
+        uncertainTransport = true;
+        org.junit.jupiter.api.Assertions.assertFalse(service.runJob(id));
+        assertEquals("UNCERTAIN", dsl.fetchValue("select status from delivery_job where id = ?", id));
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
+                () -> service.retryDelivery("tenant-1", "project-1", "render-1", id));
+        assertEquals(0, service.processQueued(10));
+    }
+
+    @Test
+    void manualTriggerBindsRenderTenantProjectAndDestination() {
+        dsl.execute("create table render_job (id varchar(64) primary key, tenant_id varchar(64), project_id varchar(64), artifact_uri text)");
+        dsl.execute("insert into render_job values ('render-1','tenant-1','project-1','s3://render-output/render-1.mp4')");
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> service.triggerManual("tenant-2", "project-1", "render-1", "destination-1"));
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> service.triggerManual("tenant-1", "project-2", "render-1", "destination-1"));
+        String id = service.triggerManual("tenant-1", "project-1", "render-1", "destination-1");
+        org.junit.jupiter.api.Assertions.assertTrue(service.runJob(id));
+        org.junit.jupiter.api.Assertions.assertFalse(service.runJob(id));
+        assertEquals("COMPLETED", dsl.fetchValue("select status from delivery_job where id = ?", id));
+    }
+
+    @Test
+    void failedProbeDoesNotMarkDestinationVerified() {
+        failedProbe = true;
+        org.junit.jupiter.api.Assertions.assertFalse(service.probeDestination("tenant-1", "destination-1").ok());
+        assertNull(dsl.fetchValue("select verified_at from delivery_destination where id = 'destination-1'"));
     }
 
     @Test
