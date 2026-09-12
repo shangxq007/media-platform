@@ -1,8 +1,10 @@
+import type { ComponentProps } from 'react'
+import { WorkspaceSessionProvider } from '../../foundation/workspaceSession'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { platformClient } from '../../foundation/platformClient'
-import { ProjectContextProvider } from '../../foundation/projectContext'
+import { ProjectContextProvider as ProjectProvider } from '../../foundation/projectContext'
 import { loadExplicitRevisionSelection, NleWorkspace } from './NleWorkspace'
 import { ScriptedOperationGateway, ScriptedTimelineQueryGateway, mockFailure } from './testing/mocks'
 import type { AcceptedOperationResult, CanonicalHeadReference, GatewayResult, OperationPreview, RevisionComparison, RevisionDetail, RevisionListEntry, TimelineQueryGateway } from './gateways'
@@ -374,3 +376,7 @@ describe('runtime NLE operation workspace', () => {
     expect(screen.queryByText(/Server accepted revision/)).toBeNull()
   })
 })
+
+function ProjectContextProvider(props: ComponentProps<typeof ProjectProvider>) {
+  return <WorkspaceSessionProvider workspaceId={props.workspaceId} projectId={props.projectId}><ProjectProvider {...props} /></WorkspaceSessionProvider>
+}

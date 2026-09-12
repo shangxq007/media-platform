@@ -119,16 +119,16 @@ export function isWorkspaceAccessFailure(error: unknown) {
 
 export function useWorkspaceHome(workspaceId: string) {
   const { binding, retired } = useWorkspaceBinding()
-  const available = !retired && (!binding || binding.workspaceId === workspaceId)
+  const available = !retired && binding.workspaceId === workspaceId
   const query = useQuery({
-    queryKey: [...platformQueryKeys.workspaceHome(workspaceId), binding?.id ?? 'standalone'],
+    queryKey: [...platformQueryKeys.workspaceHome(workspaceId), binding.id],
     queryFn: async ({ signal }) => {
       try {
         const data = await platformClient.workspace.getHome(workspaceId, signal)
-        if (signal.aborted || binding?.getSnapshot()) throw new Error('Workspace request retired')
+        if (signal.aborted || binding.getSnapshot()) throw new Error('Workspace request retired')
         return data
       } catch (error) {
-        if (!signal.aborted && isWorkspaceAccessFailure(error)) binding?.retire()
+        if (!signal.aborted && isWorkspaceAccessFailure(error)) binding.retire()
         throw error
       }
     },

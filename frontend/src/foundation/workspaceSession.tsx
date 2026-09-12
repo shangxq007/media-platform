@@ -12,23 +12,24 @@ function createBinding(workspaceId: string) {
     workspaceId,
     id: ++nextBinding,
     browsing: defaultProjectBrowsing() as ProjectBrowsing,
+    canvasView: null as { projectId: string; zoom: number; viewportX: number; viewportY: number } | null,
+    projectId: undefined as string | undefined,
     getSnapshot: () => retired,
     subscribe: (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener) } },
     retire() {
       retired = true
       this.browsing = defaultProjectBrowsing()
+      this.canvasView = null
       listeners.forEach(listener => listener())
     },
   }
 }
 export type WorkspaceBinding = ReturnType<typeof createBinding>
 const Context = createContext<WorkspaceBinding | null>(null)
-const noopSubscribe = () => () => {}
-const activeSnapshot = () => false
 
 // Route-lifetime memory only. A Workspace switch discards the previous binding;
 // leaving for a non-Workspace route keeps it until return or session retirement.
-export function WorkspaceSessionProvider({ workspaceId, children }: { workspaceId?: string; children: ReactNode }) {
+export function WorkspaceSessionProvider({ workspaceId, projectId, children }: { workspaceId?: string; projectId?: string; children: ReactNode }) {
   const client = useQueryClient()
   const [binding, setBinding] = useState(() => createBinding(workspaceId ?? ''))
   const [sessionRetired, setSessionRetired] = useState(false)
@@ -36,6 +37,10 @@ export function WorkspaceSessionProvider({ workspaceId, children }: { workspaceI
     const next = createBinding(workspaceId)
     if (sessionRetired) next.retire()
     setBinding(next)
+  }
+  if (projectId && binding.projectId !== projectId) {
+    binding.projectId = projectId
+    binding.canvasView = null
   }
   useLayoutEffect(() => {
     const discard = () => {
@@ -61,6 +66,7 @@ export function WorkspaceSessionProvider({ workspaceId, children }: { workspaceI
 
 export function useWorkspaceBinding() {
   const binding = useContext(Context)
-  const retired = useSyncExternalStore(binding?.subscribe ?? noopSubscribe, binding?.getSnapshot ?? activeSnapshot, activeSnapshot)
+  if (!binding) throw new Error('Workspace reads and presentation require WorkspaceSessionProvider.')
+  const retired = useSyncExternalStore(binding.subscribe, binding.getSnapshot, binding.getSnapshot)
   return { binding, retired }
 }

@@ -39,7 +39,7 @@ export function moveViewport(state: WorkspaceCanvasState, deltaX: number, deltaY
 
 export function changeZoom(state: WorkspaceCanvasState, delta: number): WorkspaceCanvasState {
   if (!Number.isFinite(delta)) return state
-  return { ...state, zoom: Math.min(2, Math.max(0.5, Number((state.zoom + delta).toFixed(2)))) }
+  return { ...state, zoom: Math.min(CANVAS_ZOOM_LIMITS.max, Math.max(CANVAS_ZOOM_LIMITS.min, Number((state.zoom + delta).toFixed(2)))) }
 }
 
 export function createCanvasState(projectId: string): WorkspaceCanvasState {
@@ -69,15 +69,21 @@ export function resetViewport(state: WorkspaceCanvasState): WorkspaceCanvasState
   return { ...state, zoom: 1, viewportX: 0, viewportY: 0 }
 }
 
-// Fit is a local camera operation; it never moves or changes the referenced objects.
-export function fitCanvasViewport(state: WorkspaceCanvasState, width: number, height: number): WorkspaceCanvasState {
-  if (width <= 32 || height <= 32 || !Number.isFinite(width + height) || !state.nodes.length) return state
-  const left = Math.min(...state.nodes.map(node => node.x))
-  const top = Math.min(...state.nodes.map(node => node.y))
-  const right = Math.max(...state.nodes.map(node => node.x + 230))
-  const bottom = Math.max(...state.nodes.map(node => node.y + 160))
-  const zoom = Math.min(1, (width - 32) / (right - left), (height - 32) / (bottom - top))
+// The current node model uses fixed card sizes. Explicit bounds also support
+// fitting differing presentation rectangles without adding canonical geometry.
+export interface CanvasBounds { x: number; y: number; width: number; height: number }
+export const CANVAS_ZOOM_LIMITS = { min: 0.5, max: 2 } as const
+export function fitCanvasBounds(state: WorkspaceCanvasState, width: number, height: number, bounds: readonly CanvasBounds[]): WorkspaceCanvasState {
+  if (width <= 32 || height <= 32 || !Number.isFinite(width + height) || !bounds.length
+    || bounds.some(rect => !Number.isFinite(rect.x + rect.y + rect.width + rect.height) || rect.width <= 0 || rect.height <= 0)) return state
+  const left = Math.min(...bounds.map(rect => rect.x)), top = Math.min(...bounds.map(rect => rect.y))
+  const right = Math.max(...bounds.map(rect => rect.x + rect.width)), bottom = Math.max(...bounds.map(rect => rect.y + rect.height))
+  const zoom = Math.max(CANVAS_ZOOM_LIMITS.min, Math.min(1, (width - 32) / (right - left), (height - 32) / (bottom - top)))
   return { ...state, zoom, viewportX: (width - (right - left) * zoom) / 2 - left * zoom, viewportY: (height - (bottom - top) * zoom) / 2 - top * zoom }
+}
+export function fitCanvasViewport(state: WorkspaceCanvasState, width: number, height: number, ids?: readonly string[]): WorkspaceCanvasState {
+  const nodes = ids ? state.nodes.filter(node => ids.includes(node.presentationId)) : state.nodes
+  return fitCanvasBounds(state, width, height, nodes.map(node => ({ x: node.x, y: node.y, ...CANVAS_NODE_SIZE })))
 }
 
 export interface CanvasPoint { readonly x: number; readonly y: number }

@@ -24,3 +24,17 @@
 ## 集成边界
 
 A 与 B 分开提交，最终提交身份和路径清单保存在外部 HANDOFF.md，避免在提交内自引用 SHA。仅准备串行集成；不合入 main、不 push、不部署、不清理历史工作树。
+
+## 交付 B
+
+复用原 Canvas model、SelectionProvider、框选/群组移动、0.5–2 的手动缩放与50步本地 undo/redo。扩展现有 fit 函数为全体/选中集合的边界适配，修复原 fit/reveal 可跌破最小缩放的问题；默认视图按钮从折叠菜单移至常用控制区。读取现有选择对象并复用 Inspector 以只读方式显示名字、已有类型与本地位置；多选数量和清选动作可见。F 适配选择，Shift+F 适配全体，0 默认视图，Ctrl/Meta+Z 和 Ctrl/Meta+Shift+Z 本地撤销/重做；输入、IME、dialog 和模态交互排除。
+
+视图保存复用 A 的会话内 Workspace binding，仅三项几何与项目ID，不保存 payload、凭据或 Timeline/Workflow revision。相同项目返回恢复视图但选择/本地历史继续按原 owner 规则退休；项目切换或会话退休清空。移除 Canvas 自身900px强制最小宽度、工具栏换行；未改其他创作面的宽度约束。
+
+额外依赖：当前 `createCanvasState` 只提供既有 Project 路由引用卡和本地 note；没有已接受、可读取授权项目对象的 Canvas 投影/持久布局合同。FB-GAP-001 仍阻止可信 Project resolution。若未来读取业务对象，需要平台授权的项目/对象投影及不可访问、不存在、绑定过期语义（建议，未声称后端已同意）。当前明确显示“本地布局演示”，不把卡片当作真实 Project 内容，不新增 canonical edit/read 命令，不启用 Project Open。
+
+浏览器执行了真实鼠标框选、群组拖拽、一次撤销、Fit all/selection、默认视图、页面往返、模态快捷键排除、桌面1440×1000及移动390×844检查。HTTP响应是测试独占拦截，仅证明本地呈现行为；真实授权 Project/Canvas 集成 **NOT_RUN**。证据 `browser-B.json`/`browser-B.mjs`、`canvas-desktop.png`、`canvas-mobile.png`。
+
+最终检查时 main 为 `88b7a8db589b2ee270445a8c3ce8d1879d253fb1`；从基线增加 Worker 后端文件，本任务路径重叠为零。不反复同步、不重放后端提交；保持串行集成准备状态。
+
+最终源代码验证：Projects 18/18，Canvas/Selection 22/22，共享 Publication/NLE/Review 41/41，全部0失败/0跳过（两个组包含相同的路由测试，数字不直接相加）。typecheck、architecture guard、独立 production build 通过；lint 0 errors/46 warnings，与基线数量相同。构建保留既有大 chunk 提示，未修改阈值。未运行全前端或后端测试。路径分类只补已有前端 architecture guard 所需条目，不新增治理或审批系统。

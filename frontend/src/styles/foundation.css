@@ -207,7 +207,7 @@ kbd { padding: 1px var(--space-1); border: 1px solid var(--border-default); bord
 .ff-route-loading { display: grid; min-height: 100vh; place-content: center; background: var(--surface-0); color: var(--text-secondary); }
 
 @media (max-width: 900px) {
-  .ff-app-shell[data-surface='nle'] .ff-shell-body, .ff-app-shell[data-surface='canvas'] .ff-shell-body, .ff-app-shell[data-surface='workflow'] .ff-shell-body, .ff-app-shell[data-surface='agent'] .ff-shell-body { min-width: 900px; }
+  .ff-app-shell[data-surface='nle'] .ff-shell-body, .ff-app-shell[data-surface='workflow'] .ff-shell-body, .ff-app-shell[data-surface='agent'] .ff-shell-body { min-width: 900px; }
   .ff-app-shell[data-surface='nle'] .ff-center-workspace::before, .ff-app-shell[data-surface='canvas'] .ff-center-workspace::before, .ff-app-shell[data-surface='workflow'] .ff-center-workspace::before, .ff-app-shell[data-surface='agent'] .ff-center-workspace::before { content: 'Desktop workspace recommended — navigation and read-only content remain available.'; display: block; padding: var(--space-2); background: var(--warning-muted); color: var(--warning); font-size: var(--text-caption); }
   .ff-dashboard-grid > :first-child { grid-column: auto; }
   .ff-graph-shell { grid-template-columns: 1fr; }
@@ -239,3 +239,13 @@ kbd { padding: 1px var(--space-1); border: 1px solid var(--border-default); bord
 .ff-project-summary { width: min(620px, calc(100vw - 32px)); max-height: 76dvh; overflow: auto; padding: var(--space-4); border: 1px solid var(--border-default); border-radius: var(--radius-lg); background: var(--surface-1); color: var(--text-primary); box-shadow: var(--shadow-lg); overflow-wrap: anywhere; }
 .ff-project-summary .ff-dialog-heading { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); margin-bottom: var(--space-4); }
 .ff-project-summary .ff-dialog-heading button { min-width: 40px; min-height: 40px; border: 1px solid var(--border-default); border-radius: var(--radius-md); }
+
+.ff-app-shell[data-surface='canvas'] .ff-canvas-toolbar { flex-wrap: wrap; }
+.ff-canvas-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-4); }
+.ff-canvas-summary { padding: var(--space-4); background: var(--surface-2); border: 1px solid var(--border-default); border-radius: var(--radius-lg); overflow-wrap: anywhere; }
+.ff-canvas-summary ul { padding-left: var(--space-4); }
+.ff-canvas-summary li + li { margin-top: var(--space-3); }
+
+.ff-app-shell[data-surface='canvas'] .ff-shell-toolbar, .ff-app-shell[data-surface='canvas'] .ff-selection-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.ff-app-shell[data-surface='canvas'] .ff-selection-title { overflow-wrap: anywhere; }
+@media (max-width: 640px) { .ff-app-shell[data-surface='canvas'] .ff-workspace-canvas { min-height: 380px; } }
