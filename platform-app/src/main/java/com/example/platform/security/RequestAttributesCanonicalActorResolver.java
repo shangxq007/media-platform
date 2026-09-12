@@ -21,14 +21,14 @@ import java.util.Set;
  *
  * <p>Lives in platform-app because it depends on {@code spring-web}
  * ({@code RequestContextHolder}) and reads the attributes populated by the platform
- * security filters here. The interface lives in shared-kernel so any module (including
- * workflow-module, which cannot depend on identity-access or platform-app) can consume
- * the canonical actor through the {@link CanonicalActorResolver} port.</p>
+ * security filters here. Identity publishes the interface so consumers including
+ * Workflow use the canonical actor through its {@link CanonicalActorResolver} port.</p>
  *
  * <p>Returns {@link Optional#empty()} when no authenticated subject is present — it never
  * fabricates a SYSTEM actor from a missing principal.</p>
  */
 @Component
+@org.springframework.core.annotation.Order(0)
 public class RequestAttributesCanonicalActorResolver implements CanonicalActorResolver {
 
     public static final String ATTR_SUBJECT = "jwt.subject";

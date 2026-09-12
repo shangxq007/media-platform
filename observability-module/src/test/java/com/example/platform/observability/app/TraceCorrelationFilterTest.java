@@ -1,6 +1,6 @@
 package com.example.platform.observability.app;
 
-import com.example.platform.observability.app.TraceKeys;
+import com.example.platform.observability.context.TraceKeys;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

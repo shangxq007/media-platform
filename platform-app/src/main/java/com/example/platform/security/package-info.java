@@ -2,6 +2,7 @@
         allowedDependencies = {
             "shared",
             "identity :: authorization",
+            "observability :: context",
             "identity :: app",
             "identity :: domain",
             "identity :: infrastructure",

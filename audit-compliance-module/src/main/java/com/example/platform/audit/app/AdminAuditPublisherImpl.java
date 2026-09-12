@@ -3,10 +3,9 @@ package com.example.platform.audit.app;
 import com.example.platform.shared.audit.AuditPort;
 import com.example.platform.shared.audit.AdminAuditPublisher;
 import com.example.platform.audit.logging.AdminAuditLogger;
-import com.example.platform.observability.app.TraceKeys;
+import com.example.platform.observability.context.ObservationContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
 
 import java.util.LinkedHashMap;
@@ -39,9 +38,11 @@ public class AdminAuditPublisherImpl implements AdminAuditPublisher {
     );
 
     private final AuditPort auditPort;
+    private final ObservationContext observationContext;
 
-    public AdminAuditPublisherImpl(AuditPort auditPort) {
+    public AdminAuditPublisherImpl(AuditPort auditPort, ObservationContext observationContext) {
         this.auditPort = auditPort;
+        this.observationContext = observationContext;
     }
 
     @Override
@@ -77,8 +78,9 @@ public class AdminAuditPublisherImpl implements AdminAuditPublisher {
             payload.put("roles", roles);
             payload.put("targetTenantId", targetTenantId);
             payload.put("result", result);
-            payload.put("requestId", safeMdc(TraceKeys.REQUEST_ID));
-            payload.put("traceId", safeMdc(TraceKeys.TRACE_ID));
+            var snapshot = observationContext.snapshot();
+            payload.put("requestId", safe(snapshot.requestId()));
+            payload.put("traceId", safe(snapshot.traceId()));
             if (details != null && !details.isEmpty()) {
                 payload.put("details", details);
             }
@@ -104,8 +106,7 @@ public class AdminAuditPublisherImpl implements AdminAuditPublisher {
         return sanitized;
     }
 
-    private static String safeMdc(String key) {
-        String value = MDC.get(key);
+    private static String safe(String value) {
         return value != null ? value : "";
     }
 }

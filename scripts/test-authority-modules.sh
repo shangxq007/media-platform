@@ -16,8 +16,17 @@ case "${1:-}" in
         --tests '*TimelineProjectAuthorizationServiceTest' --tests '*CommercialAuthorityDecisionAdapterTest' \
         --tests '*IdentityAuthorizationDenialTransportTest' --tests '*ModularityTest'
     ;;
+  observation)
+    ./gradlew --no-daemon --console=plain \
+      :observability-module:test :audit-compliance-module:test \
+      :identity-access-module:test --tests '*ApiKeyAuthenticationContextTest' \
+        --tests '*IdentityAccessServiceTest' --tests '*AuthorizationArchitectureGuardTest' \
+      :platform-app:test --tests '*ObservationBoundaryTest' --tests '*JwtAuthFilterTest' \
+        --tests '*OAuth2RequestContextFilterTest' --tests '*DeliverySecurityChainTest' \
+        --tests '*EnabledAdminSecurityTest' --tests '*AdminAuditHelperTest' --tests '*ModularityTest'
+    ;;
   compile)
     ./gradlew --no-daemon --console=plain compileJava compileTestJava pfirr1RemediationCheck :platform-app:bootJar
     ;;
-  *) echo 'Usage: bash scripts/test-authority-modules.sh identity|compile' >&2; exit 2 ;;
+  *) echo 'Usage: bash scripts/test-authority-modules.sh identity|observation|compile' >&2; exit 2 ;;
 esac

@@ -1,6 +1,8 @@
 package com.example.platform.identity.app;
 
-import com.example.platform.observability.app.TraceKeys;
+import com.example.platform.observability.context.TraceKeys;
+import com.example.platform.identity.authorization.ApiKeyCanonicalActorResolver;
+import com.example.platform.shared.authorization.CanonicalActor;
 import com.example.platform.shared.web.CommonErrorCode;
 import com.example.platform.shared.web.TenantContext;
 import jakarta.servlet.FilterChain;
@@ -53,6 +55,7 @@ public class ApiKeyAuthFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         String apiKey = request.getHeader(API_KEY_HEADER);
+        request.removeAttribute(ApiKeyCanonicalActorResolver.AUTHENTICATED_ACTOR_ATTRIBUTE);
 
         if (apiKey == null || apiKey.isBlank()) {
             ProblemDetail pd = ProblemDetail.forStatusAndDetail(
@@ -85,6 +88,10 @@ public class ApiKeyAuthFilter extends OncePerRequestFilter {
         String tenantId = identityAccessService.tenantIdOf(apiKey);
         String principal = identityAccessService.principalOf(apiKey);
         try {
+            if (principal != null && !principal.isBlank() && tenantId != null && !tenantId.isBlank()) {
+                request.setAttribute(ApiKeyCanonicalActorResolver.AUTHENTICATED_ACTOR_ATTRIBUTE,
+                        CanonicalActor.apiKey(principal, tenantId, Set.of(), "api-key"));
+            }
             if (tenantId != null) {
                 TenantContext.set(tenantId);
                 MDC.put(TraceKeys.TENANT_ID, tenantId);
@@ -94,6 +101,7 @@ public class ApiKeyAuthFilter extends OncePerRequestFilter {
             }
             filterChain.doFilter(request, response);
         } finally {
+            request.removeAttribute(ApiKeyCanonicalActorResolver.AUTHENTICATED_ACTOR_ATTRIBUTE);
             TenantContext.clear();
             MDC.remove(TraceKeys.TENANT_ID);
             MDC.remove("principal");

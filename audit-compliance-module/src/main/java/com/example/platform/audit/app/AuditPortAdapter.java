@@ -1,7 +1,7 @@
 package com.example.platform.audit.app;
 
 import com.example.platform.shared.audit.AuditPort;
-import com.example.platform.observability.app.TraceKeys;
+import com.example.platform.observability.context.ObservationContext;
 import com.example.platform.shared.web.TenantContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,9 +21,11 @@ public class AuditPortAdapter implements AuditPort {
     private static final Logger log = LoggerFactory.getLogger(AuditPortAdapter.class);
 
     private final AuditService auditService;
+    private final ObservationContext observationContext;
 
-    public AuditPortAdapter(AuditService auditService) {
+    public AuditPortAdapter(AuditService auditService, ObservationContext observationContext) {
         this.auditService = auditService;
+        this.observationContext = observationContext;
     }
 
     @Override
@@ -38,8 +40,8 @@ public class AuditPortAdapter implements AuditPort {
      * Resolves actorId from request context.
      * Priority: MDC principal > TenantContext > "system"
      */
-    private static String resolveActorId() {
-        String principal = org.slf4j.MDC.get(TraceKeys.PRINCIPAL);
+    private String resolveActorId() {
+        String principal = observationContext.snapshot().principal();
         if (principal != null && !principal.isBlank()) {
             return principal;
         }

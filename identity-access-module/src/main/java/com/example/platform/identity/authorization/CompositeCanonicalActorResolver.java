@@ -11,7 +11,7 @@ import java.util.Optional;
 /**
  * The primary {@link CanonicalActorResolver} used at HTTP boundaries.
  *
- * <p>Delegates to the ordered list of resolvers (request-attributes first, then MDC).
+ * <p>Delegates to verified request resolvers (JWT/OIDC first, then API-key authentication).
  * The first non-empty result wins. The {@link SystemCanonicalActorResolver} is
  * deliberately NOT part of this chain, so an unauthenticated request yields
  * {@link Optional#empty()} rather than an implicit SYSTEM actor.</p>

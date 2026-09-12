@@ -26,7 +26,7 @@ class AuditPortAdapterTest {
 
     @BeforeEach
     void setUp() {
-        adapter = new AuditPortAdapter(auditService);
+        adapter = new AuditPortAdapter(auditService, new com.example.platform.observability.app.MdcObservationContext());
         TenantContext.clear();
         MDC.clear();
     }

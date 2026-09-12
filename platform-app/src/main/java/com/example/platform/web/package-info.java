@@ -2,6 +2,7 @@
         allowedDependencies = {
             "shared",
             "identity :: authorization",
+            "observability :: context",
             "entitlement :: collaboration",
             "render",
             "render :: API",

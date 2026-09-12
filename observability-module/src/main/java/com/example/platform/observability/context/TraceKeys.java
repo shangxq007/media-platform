@@ -1,5 +1,6 @@
-package com.example.platform.observability.app;
+package com.example.platform.observability.context;
 
+/** Published diagnostic vocabulary; values never establish identity or authorization. */
 public final class TraceKeys {
     public static final String REQUEST_ID = "requestId";
     public static final String TRACE_ID = "traceId";
