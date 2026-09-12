@@ -95,7 +95,9 @@ class EnabledAdminSecurityTest extends PostgresTestContainerSupport {
 
     @AfterAll
     static void writeEvidence() throws Exception {
-        Files.writeString(Path.of("/tmp/admin-security-evidence.txt"), evidence.toString());
+        Path output = Path.of("build", "reports", "admin-security-evidence.txt");
+        Files.createDirectories(output.getParent());
+        Files.writeString(output, evidence.toString());
     }
 
     // ========== Helper methods ==========
@@ -346,12 +348,12 @@ class EnabledAdminSecurityTest extends PostgresTestContainerSupport {
     // ========== Canonical routes under security ==========
 
     @Test
-    void canonicalRoutes_accessible() throws Exception {
+    void canonicalRenderRead_requiresProjectPermissionDespiteJwtAdminRole() throws Exception {
         String admin = jwtHelper.adminToken();
         HttpResponse<String> response = httpGet("/api/tenants/t1/projects/p1/render-jobs", admin);
         evidence.append(String.format("CANONICAL_LIST: %d%n", response.statusCode()));
-        Assertions.assertTrue(response.statusCode() == 200 || response.statusCode() == 404,
-            "Canonical list should reach handler: got " + response.statusCode());
+        Assertions.assertEquals(403, response.statusCode(),
+            "JWT admin role without canonical Project READ permission must not disclose Render inventory");
     }
 
     // ========== Error response safety ==========
