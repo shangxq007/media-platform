@@ -111,8 +111,8 @@ public class DeliveryAdministrationService {
         access.require(tenantId, null, true);
         Record destination = requireDestination(tenantId, destinationId);
         int policies = dsl.fetchCount(
-                dsl.selectFrom(DELIVERY_POLICY).where(DELIVERY_POLICY.DESTINATION_ID.eq(destinationId)));
-        int jobs = dsl.fetchCount(dsl.selectFrom(DELIVERY_JOB).where(DELIVERY_JOB.DESTINATION_ID.eq(destinationId)));
+                dsl.select().from(DELIVERY_POLICY).where(DELIVERY_POLICY.DESTINATION_ID.eq(destinationId)));
+        int jobs = dsl.fetchCount(dsl.select().from(DELIVERY_JOB).where(DELIVERY_JOB.DESTINATION_ID.eq(destinationId)));
         if (policies > 0 || jobs > 0) {
             throw new IllegalStateException("Destination is referenced by " + policies + " policies");
         }
@@ -125,7 +125,7 @@ public class DeliveryAdministrationService {
 
     public List<DeliveryDestinationResponse> listDestinations(String tenantId) {
         access.require(tenantId, null, false);
-        return dsl.selectFrom(DELIVERY_DESTINATION)
+        return dsl.select().from(DELIVERY_DESTINATION)
                 .where(DELIVERY_DESTINATION.TENANT_ID.eq(tenantId))
                 .fetch(row -> mapDestinationRow(tenantId, row));
     }
@@ -136,14 +136,14 @@ public class DeliveryAdministrationService {
         if (tenantId != null && !tenantId.isBlank()) {
             condition = condition.and(DELIVERY_DESTINATION.TENANT_ID.eq(tenantId));
         }
-        return dsl.selectFrom(DELIVERY_DESTINATION).where(condition)
+        return dsl.select().from(DELIVERY_DESTINATION).where(condition)
                 .orderBy(DELIVERY_DESTINATION.CREATED_AT.desc())
                 .fetch(row -> mapDestinationRow(row.get(DELIVERY_DESTINATION.TENANT_ID), row));
     }
 
     public List<DeliveryPolicyResponse> listPolicies(String tenantId, String projectId) {
         access.require(tenantId, projectId, false);
-        return dsl.selectFrom(DELIVERY_POLICY)
+        return dsl.select().from(DELIVERY_POLICY)
                 .where(DELIVERY_POLICY.TENANT_ID.eq(tenantId))
                 .and(DELIVERY_POLICY.PROJECT_ID.eq(projectId))
                 .fetch(row -> new DeliveryPolicyResponse(
@@ -192,7 +192,7 @@ public class DeliveryAdministrationService {
 
     public List<DeliveryJobResponse> listDeliveries(String tenantId, String projectId, String renderJobId) {
         access.require(tenantId, projectId, false);
-        return dsl.selectFrom(DELIVERY_JOB).where(DELIVERY_JOB.TENANT_ID.eq(tenantId))
+        return dsl.select().from(DELIVERY_JOB).where(DELIVERY_JOB.TENANT_ID.eq(tenantId))
                 .and(DELIVERY_JOB.PROJECT_ID.eq(projectId)).and(DELIVERY_JOB.RENDER_JOB_ID.eq(renderJobId))
                 .fetch(this::mapJob);
     }
@@ -234,7 +234,7 @@ public class DeliveryAdministrationService {
         if (status != null && !status.isBlank()) {
             condition = condition.and(DELIVERY_JOB.STATUS.eq(status));
         }
-        return dsl.selectFrom(DELIVERY_JOB).where(condition).orderBy(DELIVERY_JOB.CREATED_AT.desc())
+        return dsl.select().from(DELIVERY_JOB).where(condition).orderBy(DELIVERY_JOB.CREATED_AT.desc())
                 .limit(limit).offset(offset).fetch(this::mapAdministrativeJob);
     }
 
@@ -250,7 +250,7 @@ public class DeliveryAdministrationService {
     }
 
     private Record requireDestination(String tenantId, String destinationId) {
-        Record destination = dsl.selectFrom(DELIVERY_DESTINATION).where(DELIVERY_DESTINATION.ID.eq(destinationId))
+        Record destination = dsl.select().from(DELIVERY_DESTINATION).where(DELIVERY_DESTINATION.ID.eq(destinationId))
                 .and(DELIVERY_DESTINATION.TENANT_ID.eq(tenantId)).forUpdate().fetchOne();
         if (destination == null) {
             throw new IllegalArgumentException("Destination not found");
@@ -259,7 +259,7 @@ public class DeliveryAdministrationService {
     }
 
     private Record requireJob(String deliveryJobId) {
-        Record job = dsl.selectFrom(DELIVERY_JOB).where(DELIVERY_JOB.ID.eq(deliveryJobId)).fetchOne();
+        Record job = dsl.select().from(DELIVERY_JOB).where(DELIVERY_JOB.ID.eq(deliveryJobId)).fetchOne();
         if (job == null) {
             throw new IllegalArgumentException("Delivery job not found");
         }
