@@ -1,3 +1,4 @@
+import { useWorkspaceBinding } from './workspaceSession'
 import { useQuery } from '@tanstack/react-query'
 import { z } from 'zod'
 import api from '../api'
@@ -11,7 +12,7 @@ const ProjectSummarySchema = z.object({
   name: z.string().min(1),
   description: z.string().nullish(),
   status: z.string().optional(),
-  createdAt: z.string().optional(),
+  createdAt: z.string().nullish(),
 })
 
 const DashboardSchema = z.object({
@@ -38,7 +39,7 @@ export interface ProjectSummary {
   readonly name: string
   readonly description?: string | null
   readonly status?: string
-  readonly createdAt?: string
+  readonly createdAt?: string | null
 }
 
 export interface WorkspaceHomeProjection {
@@ -50,7 +51,7 @@ export interface WorkspaceHomeProjection {
 
 export interface PlatformClient {
   readonly workspace: {
-    getHome(workspaceId: string): Promise<WorkspaceHomeProjection>
+    getHome(workspaceId: string, signal?: AbortSignal): Promise<WorkspaceHomeProjection>
   }
   readonly effectiveAccess: {
     getCatalog(keys: readonly string[]): Promise<EffectiveAccessCatalog>
@@ -70,8 +71,8 @@ const publicationOwner = {}
 
 export const platformClient: PlatformClient = {
   workspace: {
-    async getHome(workspaceId) {
-      const { data } = await api.get('/api/me/dashboard', { baseURL: '' })
+    async getHome(workspaceId, signal) {
+      const { data } = await api.get('/api/me/dashboard', { baseURL: '', signal })
       const parsed = DashboardSchema.parse(data)
       if (!parsed.workspace.id || parsed.workspace.id !== workspaceId) {
         const mismatch = new Error('The requested Workspace is not available in the authenticated dashboard projection.')
@@ -111,12 +112,33 @@ export const platformQueryKeys = {
   effectiveAccess: (keys: readonly string[]) => ['platform', 'effective-access', ...[...keys].sort()] as const,
 }
 
+export function isWorkspaceAccessFailure(error: unknown) {
+  const failure = error as { name?: string; response?: { status?: number } }
+  return failure?.name === 'WORKSPACE_SCOPE_NOT_AVAILABLE' || [401, 403, 404].includes(failure?.response?.status ?? 0)
+}
+
 export function useWorkspaceHome(workspaceId: string) {
-  return useQuery({
-    queryKey: platformQueryKeys.workspaceHome(workspaceId),
-    queryFn: () => platformClient.workspace.getHome(workspaceId),
-    enabled: Boolean(workspaceId),
+  const { binding, retired } = useWorkspaceBinding()
+  const available = !retired && (!binding || binding.workspaceId === workspaceId)
+  const query = useQuery({
+    queryKey: [...platformQueryKeys.workspaceHome(workspaceId), binding?.id ?? 'standalone'],
+    queryFn: async ({ signal }) => {
+      try {
+        const data = await platformClient.workspace.getHome(workspaceId, signal)
+        if (signal.aborted || binding?.getSnapshot()) throw new Error('Workspace request retired')
+        return data
+      } catch (error) {
+        if (!signal.aborted && isWorkspaceAccessFailure(error)) binding?.retire()
+        throw error
+      }
+    },
+    enabled: Boolean(workspaceId) && available,
+    retry: false,
+    staleTime: 0,
+    gcTime: 0,
   })
+  return { ...query, data: available && !isWorkspaceAccessFailure(query.error) ? query.data : undefined,
+    unavailable: !available || isWorkspaceAccessFailure(query.error) }
 }
 
 export function useEffectiveAccessCatalog(keys: readonly string[]) {

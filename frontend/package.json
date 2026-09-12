@@ -16,7 +16,8 @@
     "h4:clean-forward": "node scripts/verify-h4-clean-forward.mjs",
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
     "lint:fix": "eslint \"src/**/*.{ts,tsx}\" --fix",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:projects": "vitest run src/product/projects src/app/routeTree.test.tsx"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

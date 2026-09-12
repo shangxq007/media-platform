@@ -1,5 +1,6 @@
-import { useMemo, useState, type ReactNode } from 'react'
-import { useLocation, useParams } from '@tanstack/react-router'
+import { ProjectBrowser } from '../product/projects/ProjectBrowser'
+import { useState, type ReactNode } from 'react'
+import { Link, useLocation, useParams } from '@tanstack/react-router'
 import { ProductAppShell } from '../components/app-shell/AppShell'
 import { Badge, Button, EmptyState, Input, Panel, PropertyRow, Search, Skeleton, Status } from '../components/design-system'
 import { AsyncStatePanel, classifyPlatformError } from '../foundation/errors'
@@ -32,13 +33,13 @@ export function WorkspaceHomePage() {
       <div className="ff-page">
         <PageHeading eyebrow="Workspace" title={home.data?.workspace.name ?? 'Workspace home'} description="Projects, recent work, and creation entry points from server-authoritative projections." actions={<Button disabled={createAccess.status !== 'AVAILABLE'} title={createAccess.explanation}>Create</Button>} />
         {home.isLoading ? <Skeleton label="Loading Workspace home" /> : null}
-        {home.error ? <AsyncStatePanel state="ERROR" title="Workspace unavailable"><p>{classifyPlatformError(home.error).message}</p></AsyncStatePanel> : null}
+        {home.error || home.unavailable ? <AsyncStatePanel state={home.unavailable ? "UNAVAILABLE" : "ERROR"} title="Workspace unavailable"><p>{home.unavailable ? "Reopen the Workspace after signing in with current access." : classifyPlatformError(home.error).message}</p>{!home.unavailable ? <Button onClick={() => void home.refetch()}>Retry</Button> : null}</AsyncStatePanel> : null}
         {home.data ? <>
           <AccessStatus entry={createAccess} />
           <section className="ff-dashboard-grid" aria-label="Workspace summary">
             <Panel title="Recent projects">
               {home.data.recentProjects.length ? <ul className="ff-project-list">{home.data.recentProjects.map(project => <li key={project.id}><div><strong>{project.name}</strong><span>{project.status ?? 'Status not projected'}</span></div><Button disabled title="Workspace-to-Project resolution is not integrated (FB-GAP-001).">Open</Button></li>)}</ul> : <EmptyState title="No recent projects" description="The accepted dashboard projection returned no recent Projects." />}
-              <a className="ff-text-link" href={`/w/${encodeURIComponent(workspaceId)}/projects`}>View project list</a>
+              <Link className="ff-text-link" to="/w/$workspaceId/projects" params={{ workspaceId }}>View project list</Link>
             </Panel>
             <Panel title="Recent assets"><EmptyState title="Asset projection unavailable" description="A scoped redacted media and Artifact list is required (FB-GAP-004)." /></Panel>
             <Panel title="Activity"><EmptyState title="No integrated activity feed" description="No Workspace-scoped typed activity projection is currently consumed." /></Panel>
@@ -54,10 +55,7 @@ export function WorkspaceHomePage() {
 
 export function ProjectListPage() {
   const { workspaceId = '' } = routeParams()
-  const [query, setQuery] = useState('')
-  const home = useWorkspaceHome(workspaceId)
-  const projects = useMemo(() => home.data?.recentProjects.filter(project => project.name.toLowerCase().includes(query.toLowerCase())) ?? [], [home.data, query])
-  return <ProductAppShell surfaceId="workspace" workspaceId={workspaceId}><div className="ff-page"><PageHeading eyebrow="Workspace" title="Projects" description="Recent Project projections for this authenticated Workspace. Opening remains fail-closed until scoped resolution exists." /><Search value={query} onChange={event => setQuery(event.target.value)} label="Search projects" />{home.isLoading ? <Skeleton /> : home.error ? <AsyncStatePanel state="ERROR" title="Projects unavailable"><p>The authenticated Workspace projection could not be loaded.</p></AsyncStatePanel> : projects.length ? <div className="ff-card-grid">{projects.map(project => <Panel key={project.id} title={project.name}><p>{project.description || 'No description projected.'}</p><Status label={project.status ?? 'Status unknown'} /><Button disabled title="FB-GAP-001">Open project</Button></Panel>)}</div> : <EmptyState title="No projects found" description={query ? 'No projected Project matches this search.' : 'No recent Projects were returned.'} />}</div></ProductAppShell>
+  return <ProductAppShell surfaceId="workspace" workspaceId={workspaceId}><div className="ff-page"><PageHeading eyebrow="Workspace" title="Recent projects" description="Browse the recent projects returned for this Workspace. Project entry is not yet available." /><ProjectBrowser key={workspaceId} workspaceId={workspaceId} /></div></ProductAppShell>
 }
 
 export function ProjectFrame({ surfaceId, children }: { surfaceId: SurfaceId; children: ReactNode }) {

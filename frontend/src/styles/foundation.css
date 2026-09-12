@@ -233,3 +233,9 @@ kbd { padding: 1px var(--space-1); border: 1px solid var(--border-default); bord
   .ff-skeleton { animation: none; }
   .ff-canvas-viewport { transition: none; }
 }
+
+.ff-project-card--selected { outline: 2px solid var(--accent-400); outline-offset: 2px; }
+.ff-project-card-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3); }
+.ff-project-summary { width: min(620px, calc(100vw - 32px)); max-height: 76dvh; overflow: auto; padding: var(--space-4); border: 1px solid var(--border-default); border-radius: var(--radius-lg); background: var(--surface-1); color: var(--text-primary); box-shadow: var(--shadow-lg); overflow-wrap: anywhere; }
+.ff-project-summary .ff-dialog-heading { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); margin-bottom: var(--space-4); }
+.ff-project-summary .ff-dialog-heading button { min-width: 40px; min-height: 40px; border: 1px solid var(--border-default); border-radius: var(--radius-md); }

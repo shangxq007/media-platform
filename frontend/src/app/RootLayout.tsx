@@ -1,9 +1,12 @@
-import { Outlet } from '@tanstack/react-router'
+import { Outlet, useParams } from '@tanstack/react-router'
+
+import { WorkspaceSessionProvider } from '../foundation/workspaceSession'
 
 export default function RootLayout() {
+  const { workspaceId } = useParams({ strict: false }) as { workspaceId?: string }
   return (
     <div className="ff-root" data-theme="dark">
-      <Outlet />
+      <WorkspaceSessionProvider workspaceId={workspaceId}><Outlet /></WorkspaceSessionProvider>
     </div>
   )
 }

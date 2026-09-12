@@ -128,10 +128,10 @@ export function Skeleton({ label = 'Loading' }: { label?: string }) {
 }
 
 export interface BreadcrumbItem { label: string; href?: string }
-export function Breadcrumb({ items }: { items: readonly BreadcrumbItem[] }) {
+export function Breadcrumb({ items, renderLink }: { items: readonly BreadcrumbItem[]; renderLink?: (item: BreadcrumbItem) => ReactNode }) {
   return (
     <nav aria-label="Breadcrumb"><ol className="ff-breadcrumb">
-      {items.map((item, index) => <li key={`${item.label}-${index}`}>{item.href ? <a href={item.href}>{item.label}</a> : <span aria-current="page">{item.label}</span>}</li>)}
+      {items.map((item, index) => <li key={`${item.label}-${index}`}>{item.href ? (renderLink ? renderLink(item) : <a href={item.href}>{item.label}</a>) : <span aria-current="page">{item.label}</span>}</li>)}
     </ol></nav>
   )
 }

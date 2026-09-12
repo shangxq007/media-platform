@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Badge, Breadcrumb, Button, CommandPalette, IconButton, ResizablePanel } from '../design-system'
 import { commandRegistry, getCommandAvailability, getShortcut, type ShortcutOverrides } from '../../foundation/commandRegistry'
@@ -9,8 +10,8 @@ import { useTranslation } from '../../localization'
 export function WorkspaceHeader({ workspaceId, project }: { workspaceId?: string; project?: ProjectContextValue }) {
   return (
     <header className="ff-workspace-header">
-      <a className="ff-brand" href={workspaceId ? `/w/${encodeURIComponent(workspaceId)}/home` : '/'} aria-label="Media Platform home"><span aria-hidden="true">MP</span><strong>Media Platform</strong></a>
-      <Breadcrumb items={[
+      <Link className="ff-brand" to={workspaceId ? "/w/$workspaceId/home" : "/"} params={{ workspaceId: workspaceId ?? "" }} aria-label="Media Platform home"><span aria-hidden="true">MP</span><strong>Media Platform</strong></Link>
+      <Breadcrumb renderLink={item => <Link to="/w/$workspaceId/home" params={{ workspaceId: workspaceId ?? "" }}>{item.label}</Link>} items={[
         ...(workspaceId ? [{ label: workspaceId, href: `/w/${encodeURIComponent(workspaceId)}/home` }] : []),
         ...(project ? [{ label: project.projectName ?? project.projectId }] : []),
       ]} />
@@ -20,16 +21,16 @@ export function WorkspaceHeader({ workspaceId, project }: { workspaceId?: string
 }
 
 export function GlobalNavigation({ workspaceId }: { workspaceId?: string }) {
-  return <nav className="ff-global-nav" aria-label="Global navigation"><a href={workspaceId ? `/w/${encodeURIComponent(workspaceId)}/home` : '/'}>Workspace</a><a href="/operations/overview">Operations</a><a href="/admin/organization">Admin</a><a href="/developer/capabilities">Developer</a></nav>
+  return <nav className="ff-global-nav" aria-label="Global navigation"><Link to={workspaceId ? "/w/$workspaceId/home" : "/"} params={{ workspaceId: workspaceId ?? "" }}>Workspace</Link><Link to="/operations/overview">Operations</Link><Link to="/admin/organization">Admin</Link><Link to="/developer/capabilities">Developer</Link></nav>
 }
 
 export function ProjectNavigation({ project }: { project: ProjectContextValue }) {
-  return <nav className="ff-project-nav" aria-label="Project navigation"><a href={`/w/${encodeURIComponent(project.workspaceId)}/projects/${encodeURIComponent(project.projectId)}/overview`}>Overview</a><a href={`/w/${encodeURIComponent(project.workspaceId)}/projects/${encodeURIComponent(project.projectId)}/review`}>Review</a><a href={`/w/${encodeURIComponent(project.workspaceId)}/projects/${encodeURIComponent(project.projectId)}/production`}>Production</a></nav>
+  return <nav className="ff-project-nav" aria-label="Project navigation"><Link to="/w/$workspaceId/projects/$projectId/overview" params={project}>Overview</Link><Link to="/w/$workspaceId/projects/$projectId/review" params={project}>Review</Link><Link to="/w/$workspaceId/projects/$projectId/production" params={project}>Production</Link></nav>
 }
 
 export function SurfaceSwitcher({ project, currentSurfaceId }: { project: ProjectContextValue; currentSurfaceId: SurfaceId }) {
   const surfaces = surfaceRegistry.filter(surface => surface.projectScoped && surface.maturity !== 'HIDDEN')
-  return <nav className="ff-surface-switcher" aria-label="Project surface switcher">{surfaces.map(surface => <a key={surface.id} href={surface.buildRoute(project)} aria-current={surface.id === currentSurfaceId ? 'page' : undefined}>{surface.displayName}<Badge tone={surface.maturity === 'PREVIEW' ? 'warning' : 'neutral'}>{surface.maturity}</Badge></a>)}</nav>
+  return <nav className="ff-surface-switcher" aria-label="Project surface switcher">{surfaces.map(surface => <Link key={surface.id} to={surface.buildRoute(project)} aria-current={surface.id === currentSurfaceId ? 'page' : undefined}>{surface.displayName}<Badge tone={surface.maturity === 'PREVIEW' ? 'warning' : 'neutral'}>{surface.maturity}</Badge></Link>)}</nav>
 }
 
 export function AssetBrowserHost() {
