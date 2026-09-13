@@ -265,7 +265,8 @@ public class OutboxEventService {
         java.util.Objects.requireNonNull(claim);
         var condition=OUTBOX_EVENTS.ID.eq(claim.eventId()).and(OUTBOX_EVENTS.STATUS.eq(STATUS_PROCESSING))
                 .and(OUTBOX_EVENTS.LOCKED_BY.eq(claim.token()));
-        return fresh?condition.and(OUTBOX_EVENTS.LOCKED_AT.gt(Instant.now().minusMillis(claimLeaseMillis()))):condition;
+        Instant cutoff=Instant.now().minusMillis(claimLeaseMillis());
+        return condition.and(fresh?OUTBOX_EVENTS.LOCKED_AT.gt(cutoff):OUTBOX_EVENTS.LOCKED_AT.le(cutoff));
     }
 
     /** Atomic acquisition; a process identifier is diagnostic input, never the claim identity. */
@@ -328,7 +329,7 @@ public class OutboxEventService {
         for(var row:rows) {
             String id=row.get(OUTBOX_EVENTS.ID),token=row.get(OUTBOX_EVENTS.LOCKED_BY);
             if(token==null || row.get(OUTBOX_EVENTS.LOCKED_AT)==null) {
-                if(quarantineWhere(OUTBOX_EVENTS.ID.eq(id).and(OUTBOX_EVENTS.STATUS.eq(STATUS_PROCESSING)),"INVALID_CLAIM","Processing claim metadata is missing"))recovered++;
+                if(quarantineWhere(OUTBOX_EVENTS.ID.eq(id).and(OUTBOX_EVENTS.STATUS.eq(STATUS_PROCESSING)).and(OUTBOX_EVENTS.LOCKED_AT.isNull().or(OUTBOX_EVENTS.LOCKED_BY.isNull())),"INVALID_CLAIM","Processing claim metadata is missing"))recovered++;
             } else if(failClaim(new OutboxClaim(id,token),"CLAIM_EXPIRED","Processing lease expired; replay required",false))recovered++;
         }
         return recovered;

@@ -158,7 +158,8 @@ class NotificationIngressPersistenceTest extends PostgresTestContainerSupport {
         assertEquals(1,count("notification_event"));assertEquals(1,count("notification_delivery"));verify(provider,times(1)).send(any());
     }
     private void due(String id){dsl.execute("update outbox_events set next_attempt_at=? where id=?",java.time.LocalDateTime.now().minusSeconds(10),id);}
-    private void expire(String id){dsl.execute("update outbox_events set locked_at=? where id=?",java.time.Instant.now().minusSeconds(3600),id);}
+    private void expire(String id){var table=com.example.platform.typedschema.jooq.generated.tables.OutboxEvents.OUTBOX_EVENTS;
+        dsl.update(table).set(table.LOCKED_AT,java.time.Instant.now().minusSeconds(3600)).where(table.ID.eq(id)).execute();}
     @Test void expiredClaimsRecoverAndEveryOldResultIsFenced() {
         ingress.publish(event,"expired");String id=id();var first=outbox.claimForProcessing(id,"same-processor").orElseThrow();
         assertEquals(0,outbox.recoverExpiredClaims(100));expire(id);assertEquals(1,outbox.recoverExpiredClaims(100));
@@ -204,7 +205,7 @@ class NotificationIngressPersistenceTest extends PostgresTestContainerSupport {
     @Test void listenerRollbackCanRetryAndUncertainProviderResultIsNotRelabeled() {
         ingress.publish(event,"rollback-retry");String id=id();when(provider.send(any())).thenThrow(new IllegalStateException("provider unavailable"));
         assertFalse(dispatcher.processOnce(id));assertEquals(0,count("notification_event"));assertEquals(0,count("notification_delivery"));
-        when(provider.send(any())).thenReturn(new DeliveryResult("UNCERTAIN","unconfirmed"));due(id);assertTrue(dispatcher.processOnce(id));
+        doReturn(new DeliveryResult("UNCERTAIN","unconfirmed")).when(provider).send(any());due(id);assertTrue(dispatcher.processOnce(id));
         assertEquals(1,count("notification_event"));assertEquals(1,count("notification_delivery"));assertEquals("UNCERTAIN",dsl.fetchValue("select status from notification_delivery"));
         assertFalse(dispatcher.processOnce(id));verify(provider,times(2)).send(any());
     }
@@ -217,9 +218,7 @@ class NotificationIngressPersistenceTest extends PostgresTestContainerSupport {
     }
     @Test void terminatedClaimantIsRecoveredByANewDispatcher() throws Exception {
         ingress.publish(event,"terminated");String id=id();
-        var loader=(java.net.URLClassLoader)OutboxClaimCrashProcess.class.getClassLoader();
-        String classpath=java.util.Arrays.stream(loader.getURLs()).map(url->{try{return java.nio.file.Path.of(url.toURI()).toString();}catch(Exception e){throw new IllegalStateException(e);}})
-                .collect(java.util.stream.Collectors.joining(java.io.File.pathSeparator));
+        String classpath=System.getProperty("java.class.path");
         var builder=new ProcessBuilder(java.nio.file.Path.of(System.getProperty("java.home"),"bin","java").toString(),"-cp",classpath,OutboxClaimCrashProcess.class.getName(),id);
         builder.environment().put("OUTBOX_TEST_JDBC",jdbcUrl());builder.environment().put("OUTBOX_TEST_USER",username());builder.environment().put("OUTBOX_TEST_PASSWORD",password());
         builder.environment().put("OUTBOX_TEST_LEASE",Long.toString(outbox.claimLeaseMillis()));builder.redirectErrorStream(true);
@@ -238,5 +237,13 @@ class NotificationIngressPersistenceTest extends PostgresTestContainerSupport {
         }
         assertFalse(outbox.markProcessed(new OutboxClaim(id,token)));
         assertEquals("PROCESSED",outbox.readEvent(id).get("status"));assertEquals(1,count("notification_event"));assertEquals(1,count("notification_delivery"));
+    }
+    @Test void retiredUnfencedMutationApisAreAbsent() {
+        assertThrows(NoSuchMethodException.class,()->OutboxEventService.class.getMethod("markProcessed",String.class));
+        assertThrows(NoSuchMethodException.class,()->OutboxEventService.class.getMethod("markFailedWithDetails",String.class,String.class,String.class));
+        assertThrows(NoSuchMethodException.class,()->OutboxEventService.class.getMethod("quarantine",String.class,String.class,String.class));
+        assertThrows(NoSuchMethodException.class,()->OutboxEventService.class.getMethod("lockForProcessing",String.class,String.class));
+        assertThrows(IllegalStateException.class,()->context.getBean(NotificationEventHandler.class).handle(event));
+        assertEquals(0,count("notification_event"));
     }
 }
