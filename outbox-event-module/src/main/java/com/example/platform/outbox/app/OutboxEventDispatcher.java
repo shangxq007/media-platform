@@ -25,7 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Component
 @ConditionalOnProperty(name = "app.outbox.dispatcher-enabled", havingValue = "true", matchIfMissing = true)
-public class OutboxEventDispatcher {
+public class OutboxEventDispatcher implements AutoCloseable {
     private static final Logger log = LoggerFactory.getLogger(OutboxEventDispatcher.class);
 
     private final OutboxEventService service;
@@ -38,6 +38,9 @@ public class OutboxEventDispatcher {
     private final Counter eventsRetriedCounter;
     private final Timer dispatchTimer;
 
+    private final java.util.concurrent.ScheduledThreadPoolExecutor renewal=new java.util.concurrent.ScheduledThreadPoolExecutor(1,
+            Thread.ofPlatform().daemon().name("outbox-claim-renewal").factory());
+    @jakarta.annotation.PreDestroy @Override public void close(){renewal.shutdownNow();}
     private final String processorId = UUID.randomUUID().toString();
 
     public OutboxEventDispatcher(OutboxEventService service,
@@ -49,6 +52,7 @@ public class OutboxEventDispatcher {
         this.publisher = publisher;
         this.router = router;
         this.maxRetries = maxRetries;
+        renewal.setRemoveOnCancelPolicy(true);
 
         this.eventsDispatchedCounter = Counter.builder("outbox.events.dispatched")
                 .description("Number of outbox events successfully dispatched")
@@ -84,42 +88,47 @@ public class OutboxEventDispatcher {
     }
 
     public boolean processOnce(String outboxId) {
-        Timer.Sample sample = Timer.start();
-        boolean locked = service.lockForProcessing(outboxId, processorId);
-        if (!locked) return false;
-
-        Map<String, Object> row = service.readEvent(outboxId);
-        if (row == null) return false;
-
+        Timer.Sample sample=Timer.start();OutboxClaim claim=null;
+        java.util.concurrent.ScheduledFuture<?> heartbeat=null;
         try {
-            var event = router.decode((String) row.get("event_type"), ((Number) row.get("event_version")).intValue(),
-                    (String) row.get("aggregate_type"), (String) row.get("aggregate_id"), (String) row.get("payload"));
-            String previousTenant = com.example.platform.shared.web.TenantContext.get();
+            claim=service.claimForProcessing(outboxId,processorId).orElse(null);
+            if(claim==null)return false;
+            OutboxClaim active=claim;long interval=Math.max(1,service.claimLeaseMillis()/3);
+            var lost=new java.util.concurrent.atomic.AtomicBoolean();
+            heartbeat=renewal.scheduleAtFixedRate(()->{
+                if(lost.get())return;
+                try{if(!service.renewClaim(active))lost.set(true);}
+                catch(RuntimeException failure){log.warn("Outbox claim renewal failed for {}: {}",active.eventId(),failure.getMessage());}
+            },interval,interval,java.util.concurrent.TimeUnit.MILLISECONDS);
+            Map<String,Object> row=service.readClaimedEvent(claim);
+            if(row==null)return false;
+            var event=router.decode((String)row.get("event_type"),((Number)row.get("event_version")).intValue(),
+                    (String)row.get("aggregate_type"),(String)row.get("aggregate_id"),(String)row.get("payload"));
+            String previousTenant=com.example.platform.shared.web.TenantContext.get();
             try {
-                if (previousTenant != null && !previousTenant.equals(event.tenantId()))
-                    throw new OutboxEventRouter.InvalidEvent("INVALID_EVENT_SCOPE", "Dispatch tenant differs from envelope");
+                if(previousTenant!=null && !previousTenant.equals(event.tenantId()))
+                    throw new OutboxEventRouter.InvalidEvent("INVALID_EVENT_SCOPE","Dispatch tenant differs from envelope");
                 com.example.platform.shared.web.TenantContext.set(event.tenantId());
-                publisher.publishEvent(event.payload());
+                com.example.platform.outbox.api.event.OutboxDeliveryContext.run(
+                        new com.example.platform.outbox.api.event.OutboxDeliveryContext.Delivery(claim.eventId(),event.tenantId()),
+                        ()->publisher.publishEvent(event.payload()));
             } finally {
-                if (previousTenant == null) com.example.platform.shared.web.TenantContext.clear();
+                if(previousTenant==null)com.example.platform.shared.web.TenantContext.clear();
                 else com.example.platform.shared.web.TenantContext.set(previousTenant);
             }
-            service.markProcessed(outboxId);
-            eventsDispatchedCounter.increment();
-            log.info("Successfully dispatched outbox event {}", outboxId);
-            return true;
-        } catch (OutboxEventRouter.InvalidEvent ex) {
-            service.quarantine(outboxId, ex.code(), ex.getMessage());
-            eventsFailedCounter.increment();
-            return false;
-        } catch (Exception ex) {
-            service.markFailedWithDetails(outboxId, "DISPATCH_ERROR", ex.getMessage());
-            eventsFailedCounter.increment();
-            eventsRetriedCounter.increment();
-            log.warn("Failed to dispatch outbox event {}, will retry with backoff: {}",
-                    outboxId, ex.getMessage());
-            return false;
+            if(!service.markProcessed(claim))return false;
+            eventsDispatchedCounter.increment();return true;
+        } catch(OutboxEventRouter.InvalidEvent invalid) {
+            if(claim!=null)try{service.quarantine(claim,invalid.code(),invalid.getMessage());}
+                catch(RuntimeException unavailable){log.warn("Outbox quarantine unavailable; lease recovery retained: {}",outboxId);}
+            eventsFailedCounter.increment();return false;
+        } catch(Exception failure) {
+            if(claim!=null)try{service.markFailedWithDetails(claim,"DISPATCH_ERROR",failure.getMessage());}
+                catch(RuntimeException unavailable){log.warn("Outbox failure update unavailable; lease recovery retained: {}",outboxId);}
+            eventsFailedCounter.increment();eventsRetriedCounter.increment();
+            log.warn("Outbox dispatch failed for {}: {}",outboxId,failure.getMessage());return false;
         } finally {
+            if(heartbeat!=null)heartbeat.cancel(false);
             sample.stop(dispatchTimer);
         }
     }
@@ -138,6 +147,7 @@ public class OutboxEventDispatcher {
     }
 
     public int retryDueEvents() {
+        service.recoverExpiredClaims(100);
         int reset = service.resetDueFailedEvents();
         if (reset > 0) log.info("Reset {} due outbox events to PENDING", reset);
         return processBatch(100);

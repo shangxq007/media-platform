@@ -130,7 +130,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
     void markPublishedUpdatesStatus() {
         String id = service.append(OutboxTestEvents.order("ord-1", "value", null));
 
-        service.markProcessed(id);
+        ack(id);
 
         List<Map<String, Object>> rows = dsl.select()
                 .from(DSL.table("outbox_events"))
@@ -145,7 +145,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
     void markFailedIncrementsRetryCountAndSetsNextAttempt() {
         String id = service.append(OutboxTestEvents.order("ord-1", "value", null));
 
-        service.markFailedWithDetails(id, "TEST", "test error");
+        fail(id, "TEST", "test error");
 
         List<Map<String, Object>> rows = dsl.select()
                 .from(DSL.table("outbox_events"))
@@ -161,9 +161,9 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
     void markFailedExceedingMaxRetriesSetsStatusDeadLetter() {
         String id = service.append(OutboxTestEvents.order("ord-1", "value", null));
 
-        service.markFailedWithDetails(id, "TEST", "test error");
-        service.markFailedWithDetails(id, "TEST", "test error");
-        service.markFailedWithDetails(id, "TEST", "test error");
+        fail(id, "TEST", "test error");
+        fail(id, "TEST", "test error");
+        fail(id, "TEST", "test error");
 
         List<Map<String, Object>> rows = dsl.select()
                 .from(DSL.table("outbox_events"))
@@ -191,7 +191,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
     @Test
     void markDeadLetterDoesNotOverrideProcessed() {
         String id = service.append(OutboxTestEvents.order("ord-1", "value", null));
-        service.markProcessed(id);
+        ack(id);
 
         service.markDeadLetter(id, "test reason");
 
@@ -207,7 +207,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
     void pendingForDispatchExcludesFutureNextAttempt() {
         String id = service.append(OutboxTestEvents.order("ord-1", "value", null));
 
-        service.markFailedWithDetails(id, "TEST", "test error");
+        fail(id, "TEST", "test error");
 
         List<Map<String, Object>> pending = service.pendingForDispatch(100);
         assertTrue(pending.stream().noneMatch(r -> id.equals(String.valueOf(r.get("id")))));
@@ -244,7 +244,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
     void markProcessedSetsStatusToProcessed() {
         String id = service.append(OutboxTestEvents.order("ord-1", "value", null));
 
-        service.markProcessed(id);
+        ack(id);
 
         List<Map<String, Object>> rows = dsl.select()
                 .from(DSL.table("outbox_events"))
@@ -259,7 +259,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
     void markFailedWithDetailsRecordsErrorCodeAndMessage() {
         String id = service.append(OutboxTestEvents.order("ord-1", "value", null));
 
-        service.markFailedWithDetails(id, "TIMEOUT", "Connection timed out");
+        fail(id, "TIMEOUT", "Connection timed out");
 
         List<Map<String, Object>> rows = dsl.select()
                 .from(DSL.table("outbox_events"))
@@ -276,9 +276,9 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
     void markFailedWithDetailsExceedingMaxRetriesGoesToDeadLetter() {
         String id = service.append(OutboxTestEvents.order("ord-1", "value", null));
 
-        service.markFailedWithDetails(id, "ERR", "e1");
-        service.markFailedWithDetails(id, "ERR", "e2");
-        service.markFailedWithDetails(id, "ERR", "e3");
+        fail(id, "ERR", "e1");
+        fail(id, "ERR", "e2");
+        fail(id, "ERR", "e3");
 
         List<Map<String, Object>> rows = dsl.select()
                 .from(DSL.table("outbox_events"))
@@ -295,7 +295,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
     void exponentialBackoffIncreasesWithRetryCount() {
         String id = service.append(OutboxTestEvents.order("ord-1", "value", null));
 
-        service.markFailedWithDetails(id, "ERR", "e1");
+        fail(id, "ERR", "e1");
         List<Map<String, Object>> rows1 = dsl.select()
                 .from(DSL.table("outbox_events"))
                 .where(DSL.field("id").eq(id))
@@ -304,7 +304,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
         assertNotNull(next1);
 
         try { Thread.sleep(10); } catch (InterruptedException ignored) {}
-        service.markFailedWithDetails(id, "ERR", "e2");
+        fail(id, "ERR", "e2");
         List<Map<String, Object>> rows2 = dsl.select()
                 .from(DSL.table("outbox_events"))
                 .where(DSL.field("id").eq(id))
@@ -318,7 +318,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
     @Test
     void idempotencyKeyProcessedDoesNotDuplicate() {
         String id1 = service.append(OutboxTestEvents.order("ord-1", "v1", "idem-proc-1"));
-        service.markProcessed(id1);
+        ack(id1);
         String id2 = service.append(OutboxTestEvents.order("ord-1", "v2", "idem-proc-1"));
 
         assertEquals(id1, id2);
@@ -347,9 +347,9 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
     void lockForProcessingSetsProcessingStatus() {
         String id = service.append(OutboxTestEvents.order("ord-1", "value", null));
 
-        boolean locked = service.lockForProcessing(id, "test-processor-1");
+        var locked = service.claimForProcessing(id, "test-processor-1");
 
-        assertTrue(locked);
+        assertTrue(locked.isPresent());
 
         List<Map<String, Object>> rows = dsl.select()
                 .from(DSL.table("outbox_events"))
@@ -358,17 +358,17 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
 
         assertEquals("PROCESSING", rows.get(0).get("status"));
         assertNotNull(rows.get(0).get("locked_at"));
-        assertEquals("test-processor-1", rows.get(0).get("locked_by"));
+        assertEquals(locked.orElseThrow().token(), rows.get(0).get("locked_by"));
     }
 
     @Test
     void lockForProcessingReturnsFalseForProcessedEvent() {
         String id = service.append(OutboxTestEvents.order("ord-1", "value", null));
-        service.markProcessed(id);
+        ack(id);
 
-        boolean locked = service.lockForProcessing(id, "test-processor-1");
+        var locked = service.claimForProcessing(id, "test-processor-1");
 
-        assertTrue(!locked);
+        assertTrue(locked.isEmpty());
     }
 
     @Test
@@ -395,10 +395,16 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
     @Test
     void overviewIncludesProcessingCount() {
         String id = service.append(OutboxTestEvents.order("ord-1", "value", null));
-        service.lockForProcessing(id, "test-processor");
+        service.claimForProcessing(id, "test-processor");
 
         Map<String, Object> overview = service.overview();
         assertNotNull(overview.get("processing"));
         assertEquals(1, overview.get("processing"));
     }
+    private OutboxClaim claim(String id) {
+        dsl.execute("update outbox_events set next_attempt_at=? where id=? and status='FAILED'",java.time.LocalDateTime.now().minusSeconds(1),id);
+        return service.claimForProcessing(id,"fixture").orElseThrow();
+    }
+    private void ack(String id){assertTrue(service.markProcessed(claim(id)));}
+    private void fail(String id,String code,String message){assertTrue(service.markFailedWithDetails(claim(id),code,message));}
 }

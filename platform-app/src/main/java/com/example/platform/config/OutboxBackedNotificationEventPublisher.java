@@ -8,7 +8,8 @@ import com.example.platform.shared.web.TenantGuard;
 import java.util.Objects;
 import org.springframework.stereotype.Component;
 
-/** Sole durable adapter for the Notification-owned typed ingress. */
+/** Sole durable adapter for Notification ingress. The Outbox row supplies replay identity
+ * at dispatch; the three business/template fields remain unchanged. */
 @Component
 public final class OutboxBackedNotificationEventPublisher implements NotificationEventPublisher {
     private final OutboxEventService outbox;

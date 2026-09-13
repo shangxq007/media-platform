@@ -87,7 +87,7 @@ class NotificationEventHandlerTest extends PostgresTestContainerSupport {
                 "render.job.created", "rj-123",
                 Map.of("renderJobId", "rj-123", "projectId", "proj-1"));
 
-        handler.handle(event);
+        durable(() -> handler.handle(event));
 
         List<Map<String, Object>> events = dsl.select()
                 .from(table("notification_event"))
@@ -108,7 +108,7 @@ class NotificationEventHandlerTest extends PostgresTestContainerSupport {
                 "render.job.finished", "rj-456",
                 Map.of("renderJobId", "rj-456"));
 
-        handler.handle(event);
+        durable(() -> handler.handle(event));
 
         List<Map<String, Object>> deliveries = dsl.select()
                 .from(table("notification_delivery"))
@@ -149,8 +149,8 @@ class NotificationEventHandlerTest extends PostgresTestContainerSupport {
                 }),
                 renderingService, null);
 
-        singleHandler.handle(new NotificationInboundEvent(
-                "test.event", "sub-1", Map.of("key", "value")));
+        durable(() -> singleHandler.handle(new NotificationInboundEvent(
+                "test.event", "sub-1", Map.of("key", "value"))));
 
         List<Map<String, Object>> deliveries = dsl.select()
                 .from(table("notification_delivery"))
@@ -164,8 +164,8 @@ class NotificationEventHandlerTest extends PostgresTestContainerSupport {
         NotificationEventHandler emptyHandler = new NotificationEventHandler(
                 dsl, List.of(), renderingService, null);
 
-        emptyHandler.handle(new NotificationInboundEvent(
-                "test.event", "sub-1", Map.of("key", "value")));
+        durable(() -> emptyHandler.handle(new NotificationInboundEvent(
+                "test.event", "sub-1", Map.of("key", "value"))));
 
         List<Map<String, Object>> events = dsl.select()
                 .from(table("notification_event"))
@@ -176,5 +176,11 @@ class NotificationEventHandlerTest extends PostgresTestContainerSupport {
                 .from(table("notification_delivery"))
                 .fetchMaps();
         assertEquals(0, deliveries.size(), "No deliveries without providers");
+    }
+    private void durable(Runnable listener) {
+        com.example.platform.shared.web.TenantContext.set("notification-test");
+        try {com.example.platform.outbox.api.event.OutboxDeliveryContext.run(
+                new com.example.platform.outbox.api.event.OutboxDeliveryContext.Delivery("fixture-durable-event","notification-test"),listener);}
+        finally{com.example.platform.shared.web.TenantContext.clear();}
     }
 }

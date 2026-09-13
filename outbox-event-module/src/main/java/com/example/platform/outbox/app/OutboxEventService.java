@@ -34,6 +34,12 @@ public class OutboxEventService {
     private final DSLContext dsl;
     private final int maxRetries;
     private final PostgresNotificationService notifyService;
+    @Value("${app.outbox.claim-lease-ms:60000}")
+    private long claimLeaseMs=60000L;
+    public long claimLeaseMillis() {
+        if(claimLeaseMs<1000 || claimLeaseMs>3600000)throw new IllegalArgumentException("Outbox claim lease must be between 1 second and 1 hour");
+        return claimLeaseMs;
+    }
 
     public OutboxEventService(DSLContext dsl,
             @Value("${app.outbox.max-retries:3}") int maxRetries,
@@ -179,7 +185,9 @@ public class OutboxEventService {
     /**
      * Read a single event by ID (unlocked, for reads after locking).
      */
-    public Map<String, Object> readEvent(String outboxId) {
+    public Map<String,Object> readEvent(String outboxId) {return readEventWhere(OUTBOX_EVENTS.ID.eq(outboxId));}
+    public Map<String,Object> readClaimedEvent(OutboxClaim claim) {return readEventWhere(ownsClaim(claim,true));}
+    private Map<String,Object> readEventWhere(org.jooq.Condition condition) {
         return dsl.select(
                         OUTBOX_EVENTS.ID,
                         OUTBOX_EVENTS.AGGREGATE_TYPE,
@@ -194,7 +202,7 @@ public class OutboxEventService {
                         OUTBOX_EVENTS.CREATED_AT
                 )
                 .from(OUTBOX_EVENTS)
-                .where(OUTBOX_EVENTS.ID.eq(outboxId))
+                .where(condition)
                 .fetchOneMap();
     }
 
@@ -253,186 +261,99 @@ public class OutboxEventService {
         return existing.getId();
     }
 
-    // -------------------------------------------------------------------------
-    // Lock / unlock for processing
-    // -------------------------------------------------------------------------
-
-    /**
-     * Lock a single outbox event for processing using SELECT FOR UPDATE.
-     * Sets status to PROCESSING and records lock metadata.
-     *
-     * @return true if the event was locked successfully, false if it was not processable
-     */
-    @Transactional
-    public boolean lockForProcessing(String outboxId, String processorId) {
-        LocalDateTime now = LocalDateTime.now();
-
-        // Lock the row with SELECT FOR UPDATE
-        Map<String, Object> row = dsl.select(
-                        OUTBOX_EVENTS.ID,
-                        OUTBOX_EVENTS.STATUS,
-                        OUTBOX_EVENTS.NEXT_ATTEMPT_AT
-                )
-                .from(OUTBOX_EVENTS)
-                .where(OUTBOX_EVENTS.ID.eq(outboxId))
-                .forUpdate()
-                .fetchOneMap();
-
-        if (row == null) {
-            return false;
-        }
-
-        String status = String.valueOf(row.get("status"));
-
-        // Only process PENDING or FAILED (with expired backoff) events
-        boolean isProcessable = STATUS_PENDING.equals(status) ||
-                (STATUS_FAILED.equals(status) && row.get("next_attempt_at") != null
-                        && !parseLocalDateTime(row.get("next_attempt_at")).isAfter(now));
-
-        if (!isProcessable) {
-            return false;
-        }
-
-        // Set to PROCESSING
-        dsl.update(OUTBOX_EVENTS)
-                .set(OUTBOX_EVENTS.STATUS, STATUS_PROCESSING)
-                .set(OUTBOX_EVENTS.LOCKED_AT, java.time.Instant.now())
-                .set(OUTBOX_EVENTS.LOCKED_BY, processorId)
-                .where(OUTBOX_EVENTS.ID.eq(outboxId))
-                .execute();
-
-        return true;
+    private org.jooq.Condition ownsClaim(OutboxClaim claim,boolean fresh) {
+        java.util.Objects.requireNonNull(claim);
+        var condition=OUTBOX_EVENTS.ID.eq(claim.eventId()).and(OUTBOX_EVENTS.STATUS.eq(STATUS_PROCESSING))
+                .and(OUTBOX_EVENTS.LOCKED_BY.eq(claim.token()));
+        return fresh?condition.and(OUTBOX_EVENTS.LOCKED_AT.gt(Instant.now().minusMillis(claimLeaseMillis()))):condition;
     }
 
-    // -------------------------------------------------------------------------
-    // State transitions
-    // -------------------------------------------------------------------------
-
-    /**
-     * Mark an event as successfully processed.
-     */
+    /** Atomic acquisition; a process identifier is diagnostic input, never the claim identity. */
     @Transactional
-    public void markProcessed(String outboxId) {
-        dsl.update(OUTBOX_EVENTS)
-                .set(OUTBOX_EVENTS.STATUS, STATUS_PROCESSED)
-                .set(OUTBOX_EVENTS.PUBLISHED_AT, LocalDateTime.now())
-                .set(OUTBOX_EVENTS.LOCKED_AT, (Instant) null)
-                .set(OUTBOX_EVENTS.LOCKED_BY, (String) null)
-                .set(OUTBOX_EVENTS.LAST_ERROR_CODE, (String) null)
-                .set(OUTBOX_EVENTS.LAST_ERROR_MESSAGE, (String) null)
-                .where(OUTBOX_EVENTS.ID.eq(outboxId))
-                .execute();
+    public java.util.Optional<OutboxClaim> claimForProcessing(String outboxId,String processorId) {
+        if(processorId==null || processorId.isBlank())throw new IllegalArgumentException("processor required");
+        claimLeaseMillis();
+        var now=LocalDateTime.now();String token=java.util.UUID.randomUUID().toString();
+        var eligible=OUTBOX_EVENTS.STATUS.eq(STATUS_PENDING)
+                .and(OUTBOX_EVENTS.NEXT_ATTEMPT_AT.isNull().or(OUTBOX_EVENTS.NEXT_ATTEMPT_AT.le(now)))
+                .or(OUTBOX_EVENTS.STATUS.eq(STATUS_FAILED).and(OUTBOX_EVENTS.NEXT_ATTEMPT_AT.le(now))
+                        .and(OUTBOX_EVENTS.RETRY_COUNT.lt(OUTBOX_EVENTS.MAX_RETRIES)));
+        int changed=dsl.update(OUTBOX_EVENTS).set(OUTBOX_EVENTS.STATUS,STATUS_PROCESSING)
+                .set(OUTBOX_EVENTS.LOCKED_AT,Instant.now()).set(OUTBOX_EVENTS.LOCKED_BY,token)
+                .where(OUTBOX_EVENTS.ID.eq(outboxId)).and(eligible).execute();
+        return changed==1?java.util.Optional.of(new OutboxClaim(outboxId,token)):java.util.Optional.empty();
     }
-
-    /**
-     * Mark an event as failed with error details and exponential backoff.
-     * If retry count exceeds max retries, moves to DEAD_LETTER.
-     */
     @Transactional
-    public void markFailedWithDetails(String outboxId, String errorCode, String errorMessage) {
-        // Increment retry count and record error
-        dsl.update(OUTBOX_EVENTS)
-                .set(OUTBOX_EVENTS.RETRY_COUNT, OUTBOX_EVENTS.RETRY_COUNT.plus(1))
-                .set(OUTBOX_EVENTS.LAST_ERROR_CODE, errorCode)
-                .set(OUTBOX_EVENTS.LAST_ERROR_MESSAGE, errorMessage)
-                .where(OUTBOX_EVENTS.ID.eq(outboxId))
-                .execute();
-
-        // Read updated retry count and max_retries
-        Map<String, Object> row = dsl.select(
-                        OUTBOX_EVENTS.RETRY_COUNT,
-                        OUTBOX_EVENTS.MAX_RETRIES)
-                .from(OUTBOX_EVENTS)
-                .where(OUTBOX_EVENTS.ID.eq(outboxId))
-                .fetchOneMap();
-
-        if (row == null) {
-            return;
-        }
-
-        if (!(row.get("retry_count") instanceof Number retries) || retries.intValue() < 1) {
-            quarantine(outboxId, "INVALID_RETRY_POLICY", "Missing or invalid persisted retry_count");
-            return;
-        }
-        int retryCount = retries.intValue();
-        if (!(row.get("max_retries") instanceof Number limit) || limit.intValue() < 1 || limit.intValue() > 30) {
-            quarantine(outboxId, "INVALID_RETRY_POLICY", "Missing or invalid persisted max_retries");
-            return;
-        }
-        int rowMaxRetries = limit.intValue();
-
-        if (retryCount >= rowMaxRetries) {
-            // Exceeded max retries → DEAD_LETTER
-            dsl.update(OUTBOX_EVENTS)
-                    .set(OUTBOX_EVENTS.STATUS, STATUS_DEAD_LETTER)
-                    .set(OUTBOX_EVENTS.LOCKED_AT, (Instant) null)
-                    .set(OUTBOX_EVENTS.LOCKED_BY, (String) null)
-                    .where(OUTBOX_EVENTS.ID.eq(outboxId))
-                    .execute();
-        } else {
-            // Exponential backoff: nextAttemptAt = now + (baseDelay * 2^retryCount)
-            long backoffMs = BASE_BACKOFF_MS * (1L << retryCount);
-            LocalDateTime nextAttempt = LocalDateTime.now().plusNanos(backoffMs * 1_000_000L);
-            dsl.update(OUTBOX_EVENTS)
-                    .set(OUTBOX_EVENTS.STATUS, STATUS_FAILED)
-                    .set(OUTBOX_EVENTS.NEXT_ATTEMPT_AT, nextAttempt)
-                    .set(OUTBOX_EVENTS.LOCKED_AT, (Instant) null)
-                    .set(OUTBOX_EVENTS.LOCKED_BY, (String) null)
-                    .where(OUTBOX_EVENTS.ID.eq(outboxId))
-                    .execute();
-        }
+    public boolean renewClaim(OutboxClaim claim) {
+        return dsl.update(OUTBOX_EVENTS).set(OUTBOX_EVENTS.LOCKED_AT,Instant.now()).where(ownsClaim(claim,true)).execute()==1;
     }
-
-    /**
-     * Reset expired FAILED events to PENDING so they can be retried.
-     *
-     * @return number of events reset
-     */
+    @Transactional
+    public boolean markProcessed(OutboxClaim claim) {
+        return dsl.update(OUTBOX_EVENTS).set(OUTBOX_EVENTS.STATUS,STATUS_PROCESSED)
+                .set(OUTBOX_EVENTS.PUBLISHED_AT,LocalDateTime.now())
+                .set(OUTBOX_EVENTS.LOCKED_AT,(Instant)null).set(OUTBOX_EVENTS.LOCKED_BY,(String)null)
+                .set(OUTBOX_EVENTS.LAST_ERROR_CODE,(String)null).set(OUTBOX_EVENTS.LAST_ERROR_MESSAGE,(String)null)
+                .where(ownsClaim(claim,true)).execute()==1;
+    }
+    @Transactional
+    public boolean markFailedWithDetails(OutboxClaim claim,String code,String message) {
+        return failClaim(claim,code,message,true);
+    }
+    private boolean failClaim(OutboxClaim claim,String code,String message,boolean fresh) {
+        var condition=ownsClaim(claim,fresh);
+        var row=dsl.select(OUTBOX_EVENTS.RETRY_COUNT,OUTBOX_EVENTS.MAX_RETRIES).from(OUTBOX_EVENTS)
+                .where(condition).forUpdate().fetchOne();
+        if(row==null)return false;
+        Integer retries=row.get(OUTBOX_EVENTS.RETRY_COUNT),maximum=row.get(OUTBOX_EVENTS.MAX_RETRIES);
+        if(retries==null || retries<0 || maximum==null || maximum<1 || maximum>30)
+            return quarantineWhere(condition,"INVALID_RETRY_POLICY","Missing or invalid persisted retry policy");
+        int next=retries+1;boolean terminal=next>=maximum;
+        LocalDateTime due=terminal?null:LocalDateTime.now().plusNanos(BASE_BACKOFF_MS*(1L<<next)*1000000L);
+        return dsl.update(OUTBOX_EVENTS).set(OUTBOX_EVENTS.RETRY_COUNT,next)
+                .set(OUTBOX_EVENTS.STATUS,terminal?STATUS_DEAD_LETTER:STATUS_FAILED)
+                .set(OUTBOX_EVENTS.NEXT_ATTEMPT_AT,due)
+                .set(OUTBOX_EVENTS.LAST_ERROR_CODE,code).set(OUTBOX_EVENTS.LAST_ERROR_MESSAGE,message)
+                .set(OUTBOX_EVENTS.LOCKED_AT,(Instant)null).set(OUTBOX_EVENTS.LOCKED_BY,(String)null)
+                .where(condition).execute()==1;
+    }
+    /** Bounded abandoned-claim recovery; live claims are renewed and never reset indiscriminately. */
+    @Transactional
+    public int recoverExpiredClaims(int limit) {
+        if(limit<1 || limit>1000)throw new IllegalArgumentException("recovery limit must be 1..1000");
+        Instant cutoff=Instant.now().minusMillis(claimLeaseMillis());int recovered=0;
+        var rows=dsl.select(OUTBOX_EVENTS.ID,OUTBOX_EVENTS.LOCKED_BY,OUTBOX_EVENTS.LOCKED_AT).from(OUTBOX_EVENTS)
+                .where(OUTBOX_EVENTS.STATUS.eq(STATUS_PROCESSING))
+                .and(OUTBOX_EVENTS.LOCKED_AT.le(cutoff).or(OUTBOX_EVENTS.LOCKED_AT.isNull()).or(OUTBOX_EVENTS.LOCKED_BY.isNull()))
+                .orderBy(OUTBOX_EVENTS.LOCKED_AT.asc()).limit(limit).forUpdate().skipLocked().fetch();
+        for(var row:rows) {
+            String id=row.get(OUTBOX_EVENTS.ID),token=row.get(OUTBOX_EVENTS.LOCKED_BY);
+            if(token==null || row.get(OUTBOX_EVENTS.LOCKED_AT)==null) {
+                if(quarantineWhere(OUTBOX_EVENTS.ID.eq(id).and(OUTBOX_EVENTS.STATUS.eq(STATUS_PROCESSING)),"INVALID_CLAIM","Processing claim metadata is missing"))recovered++;
+            } else if(failClaim(new OutboxClaim(id,token),"CLAIM_EXPIRED","Processing lease expired; replay required",false))recovered++;
+        }
+        return recovered;
+    }
     @Transactional
     public int resetDueFailedEvents() {
-        LocalDateTime now = LocalDateTime.now();
-        return dsl.update(OUTBOX_EVENTS)
-                .set(OUTBOX_EVENTS.STATUS, STATUS_PENDING)
-                .set(OUTBOX_EVENTS.NEXT_ATTEMPT_AT, (LocalDateTime) null)
-                .set(OUTBOX_EVENTS.LOCKED_AT, (Instant) null)
-                .set(OUTBOX_EVENTS.LOCKED_BY, (String) null)
-                .where(OUTBOX_EVENTS.STATUS.eq(STATUS_FAILED))
-                .and(OUTBOX_EVENTS.NEXT_ATTEMPT_AT.le(now))
-                .execute();
+        return dsl.update(OUTBOX_EVENTS).set(OUTBOX_EVENTS.STATUS,STATUS_PENDING)
+                .set(OUTBOX_EVENTS.NEXT_ATTEMPT_AT,(LocalDateTime)null)
+                .set(OUTBOX_EVENTS.LOCKED_AT,(Instant)null).set(OUTBOX_EVENTS.LOCKED_BY,(String)null)
+                .where(OUTBOX_EVENTS.STATUS.eq(STATUS_FAILED)).and(OUTBOX_EVENTS.NEXT_ATTEMPT_AT.le(LocalDateTime.now()))
+                .and(OUTBOX_EVENTS.RETRY_COUNT.lt(OUTBOX_EVENTS.MAX_RETRIES)).execute();
     }
-
-    /**
-     * Manually move an event to DEAD_LETTER status.
-     */
+    /** Explicit administrative action, separate from a claimant's fenced quarantine. */
     @Transactional
-    public void markDeadLetter(String outboxId, String reason) {
-        dsl.update(OUTBOX_EVENTS)
-                .set(OUTBOX_EVENTS.STATUS, STATUS_DEAD_LETTER)
-                .set(OUTBOX_EVENTS.LAST_ERROR_CODE, "MANUAL")
-                .set(OUTBOX_EVENTS.LAST_ERROR_MESSAGE, reason)
-                .set(OUTBOX_EVENTS.LOCKED_AT, (Instant) null)
-                .set(OUTBOX_EVENTS.LOCKED_BY, (String) null)
-                .where(OUTBOX_EVENTS.ID.eq(outboxId))
-                .and(OUTBOX_EVENTS.STATUS.ne(STATUS_PROCESSED))
-                .execute();
+    public void markDeadLetter(String outboxId,String reason) {
+        quarantineWhere(OUTBOX_EVENTS.ID.eq(outboxId).and(OUTBOX_EVENTS.STATUS.ne(STATUS_PROCESSED)),"MANUAL",reason);
     }
-
     @Transactional
-    public void quarantine(String outboxId, String code, String reason) {
-        dsl.update(OUTBOX_EVENTS).set(OUTBOX_EVENTS.STATUS, STATUS_DEAD_LETTER)
-                .set(OUTBOX_EVENTS.LAST_ERROR_CODE, code).set(OUTBOX_EVENTS.LAST_ERROR_MESSAGE, reason)
-                .set(OUTBOX_EVENTS.LOCKED_AT, (Instant) null).set(OUTBOX_EVENTS.LOCKED_BY, (String) null)
-                .where(OUTBOX_EVENTS.ID.eq(outboxId)).execute();
+    public boolean quarantine(OutboxClaim claim,String code,String reason) {
+        return quarantineWhere(ownsClaim(claim,true),code,reason);
     }
-
-    // -------------------------------------------------------------------------
-    // Helpers
-    // -------------------------------------------------------------------------
-
-    private static LocalDateTime parseLocalDateTime(Object value) {
-        if (value instanceof LocalDateTime ldt) {
-            return ldt;
-        }
-        return LocalDateTime.parse(String.valueOf(value));
+    private boolean quarantineWhere(org.jooq.Condition condition,String code,String reason) {
+        return dsl.update(OUTBOX_EVENTS).set(OUTBOX_EVENTS.STATUS,STATUS_DEAD_LETTER)
+                .set(OUTBOX_EVENTS.LAST_ERROR_CODE,code).set(OUTBOX_EVENTS.LAST_ERROR_MESSAGE,reason)
+                .set(OUTBOX_EVENTS.LOCKED_AT,(Instant)null).set(OUTBOX_EVENTS.LOCKED_BY,(String)null)
+                .where(condition).execute()==1;
     }
 }

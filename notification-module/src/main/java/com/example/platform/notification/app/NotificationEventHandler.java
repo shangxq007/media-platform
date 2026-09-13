@@ -144,7 +144,9 @@ public class NotificationEventHandler {
 
     @EventListener
     public void handle(NotificationInboundEvent event) {
-        deliver("nev_"+java.util.UUID.randomUUID().toString().replace("-",""),event);
+        var delivery=com.example.platform.outbox.api.event.OutboxDeliveryContext.require();
+        com.example.platform.shared.web.TenantGuard.assertSameTenant(delivery.tenantId());
+        handleFact("notification-outbox:"+delivery.tenantId()+":"+delivery.eventId(),event);
     }
 
     private void handleFact(String factKey,NotificationInboundEvent event) {

@@ -134,7 +134,7 @@ class BillingUsageCompositionTest extends PostgresTestContainerSupport {
         assertThrows(org.springframework.dao.DataIntegrityViolationException.class,
                 () -> jdbc.update("update outbox_events set max_retries=null where id=?", badPolicy));
         jdbc.update("update outbox_events set max_retries=0 where id=?", badPolicy);
-        outbox.markFailedWithDetails(badPolicy, "TEST", "failure");
+        outbox.markFailedWithDetails(outbox.claimForProcessing(badPolicy,"fixture").orElseThrow(), "TEST", "failure");
         assertEquals("INVALID_RETRY_POLICY", jdbc.queryForObject("select last_error_code from outbox_events where id=?", String.class, badPolicy));
         assertEquals("DEAD_LETTER", jdbc.queryForObject("select status from outbox_events where id=?", String.class, badPolicy));
     }
