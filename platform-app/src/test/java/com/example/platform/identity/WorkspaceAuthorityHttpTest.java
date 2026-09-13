@@ -72,6 +72,14 @@ class WorkspaceAuthorityHttpTest extends PostgresTestContainerSupport {
             assertEquals(ws,rebuilt.getWorkspace(ws).id());assertEquals(creator,rebuilt.listMembers(ws).getFirst().userId());
         });
     }
+    @Test void federationReadUsesActualOwnerContextAndRejectsAfterRemoval() throws Exception {
+        String ws=create();assertEquals(200,add(ws,member,"VIEWER",creator).statusCode());
+        var loader=context.getBean(com.example.platform.federation.graphql.dataloader.WorkspaceDataLoader.class);
+        asActor(member,()->assertEquals(ws,loader.load(Set.of(ws)).toCompletableFuture().join().get(ws).get("id")));
+        assertEquals(204,call("DELETE",path(ws)+"/members/"+member,null,creator).statusCode());
+        asActor(member,()->assertThrows(CompletionException.class,()->loader.load(Set.of(ws)).toCompletableFuture().join()));
+        assertEquals(1,members(ws));
+    }
     @Test void noIdentityOrForgedOwnerCannotCreate() throws Exception {
         assertEquals(401,call("POST","/api/product/workspace",Map.of("name","bad"),null).statusCode());
         assertEquals(403,call("POST","/api/product/workspace",Map.of("name","bad","ownerId",outsider),creator).statusCode());

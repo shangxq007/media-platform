@@ -1,51 +1,40 @@
 package com.example.platform.federation.graphql.dataloader;
 
-import com.example.platform.identity.app.WorkspaceService;
+import com.example.platform.identity.api.workspace.WorkspaceQueries;
 import org.dataloader.MappedBatchLoader;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
+import java.util.*;
+import java.util.concurrent.*;
 
 @Component
 public class WorkspaceDataLoader implements MappedBatchLoader<String, Map<String, Object>> {
-    private static final Logger log = LoggerFactory.getLogger(WorkspaceDataLoader.class);
+    private final WorkspaceQueries workspaces;
 
-    private final WorkspaceService workspaceService;
-
-    public WorkspaceDataLoader(WorkspaceService workspaceService) {
-        this.workspaceService = workspaceService;
+    public WorkspaceDataLoader(WorkspaceQueries workspaces) {
+        this.workspaces = workspaces;
     }
 
     @Override
     public CompletionStage<Map<String, Map<String, Object>>> load(Set<String> keys) {
-        log.debug("Batch loading {} workspaces", keys.size());
-        return CompletableFuture.supplyAsync(() -> {
+        // Execute owner authorization in the dispatching request context; the common
+        // pool does not carry the authenticated actor or tenant. Never fabricate an ID
+        // projection when the owner denies a read.
+        try {
             Map<String, Map<String, Object>> result = new HashMap<>();
-            for (String wsId : keys) {
-                try {
-                    Object ws = workspaceService.getWorkspace(wsId);
-                    result.put(wsId, toMap(ws));
-                } catch (Exception e) {
-                    Map<String, Object> fallback = new HashMap<>();
-                    fallback.put("id", wsId);
-                    result.put(wsId, fallback);
-                }
+            for (String id : keys) {
+                var workspace = workspaces.getWorkspace(id);
+                Map<String, Object> fields = new HashMap<>();
+                fields.put("id", workspace.id());
+                fields.put("tenantId", workspace.tenantId());
+                fields.put("name", workspace.name());
+                fields.put("description", workspace.description());
+                fields.put("planTier", workspace.planTier());
+                fields.put("status", workspace.status());
+                result.put(id, Collections.unmodifiableMap(fields));
             }
-            return result;
-        });
-    }
-
-    @SuppressWarnings("unchecked")
-    private static Map<String, Object> toMap(Object obj) {
-        if (obj instanceof Map) return (Map<String, Object>) obj;
-        Map<String, Object> map = new HashMap<>();
-        map.put("value", obj.toString());
-        return map;
+            return CompletableFuture.completedFuture(Map.copyOf(result));
+        } catch (RuntimeException failure) {
+            return CompletableFuture.failedFuture(failure);
+        }
     }
 }

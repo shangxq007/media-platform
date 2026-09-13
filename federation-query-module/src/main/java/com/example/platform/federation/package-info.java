@@ -2,7 +2,7 @@
         displayName = "Federation Query",
         allowedDependencies = {
             "shared",
-            "identity :: app",
+            "identity :: app", "identity :: workspace",
             "identity :: domain",
             "identity :: infrastructure",
             "render",
