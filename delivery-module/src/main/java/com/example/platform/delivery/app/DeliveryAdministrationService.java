@@ -240,10 +240,18 @@ public class DeliveryAdministrationService {
     public AdminDeliveryJobResponse retryAdministrativeJob(String deliveryJobId) {
         access.requireAdministrator();
         Record job = requireJob(deliveryJobId);
-        if (!deliveryJobService.retryDelivery(job.get(DELIVERY_JOB.TENANT_ID), job.get(DELIVERY_JOB.PROJECT_ID),
-                job.get(DELIVERY_JOB.RENDER_JOB_ID), deliveryJobId)) {
-            throw new org.springframework.web.server.ResponseStatusException(
-                    org.springframework.http.HttpStatus.BAD_GATEWAY, "Delivery retry failed; inspect persisted status");
+        String previous=com.example.platform.shared.web.TenantContext.get();
+        try {
+            // Explicit administrator authorization above establishes this operation's target scope.
+            com.example.platform.shared.web.TenantContext.set(job.get(DELIVERY_JOB.TENANT_ID));
+            if (!deliveryJobService.retryDelivery(job.get(DELIVERY_JOB.TENANT_ID), job.get(DELIVERY_JOB.PROJECT_ID),
+                    job.get(DELIVERY_JOB.RENDER_JOB_ID), deliveryJobId)) {
+                throw new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.BAD_GATEWAY, "Delivery retry failed; inspect persisted status");
+            }
+        } finally {
+            if(previous==null)com.example.platform.shared.web.TenantContext.clear();
+            else com.example.platform.shared.web.TenantContext.set(previous);
         }
         return mapAdministrativeJob(requireJob(deliveryJobId));
     }

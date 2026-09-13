@@ -68,6 +68,15 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
     static com.example.platform.render.infrastructure.product.ProductRepository previewProducts;
     static boolean previewDenied;
     static String previewActorTenant;
+    static volatile RetryRace retryRace;
+    static class RetryRace {
+        final String mode;
+        final java.util.concurrent.CountDownLatch observed=new java.util.concurrent.CountDownLatch(2), releaseSecond=new java.util.concurrent.CountDownLatch(1),
+                transportStarted=new java.util.concurrent.CountDownLatch(1), finishTransport=new java.util.concurrent.CountDownLatch(1), secondOutcome=new java.util.concurrent.CountDownLatch(1);
+        final Set<String> seen=java.util.concurrent.ConcurrentHashMap.newKeySet();
+        RetryRace(String mode){this.mode=mode;}
+        static void await(java.util.concurrent.CountDownLatch latch){try{if(!latch.await(10,java.util.concurrent.TimeUnit.SECONDS))throw new IllegalStateException("race latch timeout");}catch(InterruptedException e){Thread.currentThread().interrupt();throw new IllegalStateException(e);}}
+    }
 
     @EnableTransactionManagement(proxyTargetClass=true) static class Transactions {}
     @BeforeAll static void setup() throws Exception {
@@ -82,7 +91,18 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
         context=new AnnotationConfigApplicationContext(); context.register(Transactions.class);
         context.registerBean("transactionManager",DataSourceTransactionManager.class,()->manager);
         context.registerBean(JdbcTemplate.class,()->jdbc);
-        context.registerBean(DSLContext.class,()->DSL.using(new TransactionAwareDataSourceProxy(ds),SQLDialect.POSTGRES,new org.jooq.conf.Settings().withRenderSchema(false)));
+        context.registerBean(DSLContext.class,()->{
+            var dsl=DSL.using(new TransactionAwareDataSourceProxy(ds),SQLDialect.POSTGRES,new org.jooq.conf.Settings().withRenderSchema(false));
+            dsl.configuration().set(new org.jooq.impl.DefaultExecuteListenerProvider(new org.jooq.impl.DefaultExecuteListener(){
+                @Override public void fetchEnd(org.jooq.ExecuteContext ctx){
+                    var race=retryRace;String thread=Thread.currentThread().getName();String sql=ctx.sql();
+                    if(race!=null && thread.startsWith("delivery-retry-") && sql!=null && sql.contains("delivery_job") && sql.contains("render_job_id") && race.seen.add(thread)) {
+                        race.observed.countDown();RetryRace.await(race.observed);
+                        if(thread.endsWith("-B"))RetryRace.await(race.releaseSecond);
+                    }
+                }
+            }));return dsl;
+        });
         context.registerBean(Clock.class,Clock::systemUTC);
         context.registerBean(CanonicalStorageObjectIdAllocator.class);
         context.registerBean(JdbcStorageWriteIntentRepository.class);
@@ -122,7 +142,9 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
             public com.example.platform.delivery.domain.DeliveryProtocol protocol(){return com.example.platform.delivery.domain.DeliveryProtocol.SFTP;}
             public ProbeResult probe(com.example.platform.delivery.spi.DeliveryContext c){return ProbeResult.success();}
             public DeliveryResult deliver(com.example.platform.delivery.spi.DeliveryContext c){
-                try{delivered=c.sourceStream().readAllBytes();transfers.incrementAndGet();return DeliveryResult.ok(c.remotePath(),"sftp://test/"+c.deliveryJobId(),delivered.length);}
+                try{delivered=c.sourceStream().readAllBytes();transfers.incrementAndGet();
+                    var race=retryRace;if(race!=null){race.transportStarted.countDown();if(Thread.currentThread().getName().endsWith("-B"))race.secondOutcome.countDown();RetryRace.await(race.finishTransport);if(race.mode.equals("UNCERTAIN"))throw new IllegalStateException("transport uncertain");}
+                    return DeliveryResult.ok(c.remotePath(),"sftp://test/"+c.deliveryJobId(),delivered.length);}
                 catch(java.io.IOException e){throw new IllegalStateException(e);}
             }
         };
@@ -158,6 +180,10 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
             assertEquals("ep04-tenant",request.resource().tenantId());
             return com.example.platform.shared.authorization.AuthorizationDecision.allow("fixture");});
         context.registerBean(com.example.platform.render.app.preview.PreviewMediaUploadService.class);
+        context.registerBean(DeliveryProjectScopePort.class,()->(tenant,project)->"ep04-tenant".equals(tenant)&&"project".equals(project));
+        context.registerBean(DeliveryAccess.class);
+        context.registerBean(DeliveryAdministrationService.class,()->new DeliveryAdministrationService(context.getBean(DSLContext.class),context.getBean(DeliveryJobService.class),
+                mock(DeliveryDestinationCredentialService.class),mock(com.example.platform.secrets.api.port.CredentialBundlePort.class),context.getBean(DeliveryAccess.class)));
         context.refresh();
         jdbc.update("insert into tenant(id,name,created_at) values ('ep04-tenant','test',now())");
         jdbc.update("insert into project(id,tenant_id,name,created_at) values ('project','ep04-tenant','test',now())");
@@ -170,7 +196,7 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
         if(admin!=null){new JdbcTemplate(admin).execute("drop schema "+SCHEMA+" cascade");closeDataSource(admin);}
         if(root!=null)try(var files=Files.walk(root)){for(Path p:files.sorted(Comparator.reverseOrder()).toList())Files.delete(p);}
     }
-    @BeforeEach void tenant(){TenantContext.set("ep04-tenant");reset(backend);reset(rawOutbox);reset(notification);transfers.set(0);reset(previewProducts);previewDenied=false;previewActorTenant="ep04-tenant";
+    @BeforeEach void tenant(){TenantContext.set("ep04-tenant");reset(backend);reset(rawOutbox);reset(notification);transfers.set(0);reset(previewProducts);previewDenied=false;previewActorTenant="ep04-tenant";retryRace=null;
         when(notification.channel()).thenReturn("TEST");when(notification.providerCode()).thenReturn("test");
         when(notification.send(any())).thenReturn(new com.example.platform.notification.domain.DeliveryResult("SENT","accepted"));
     }
@@ -495,7 +521,7 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
         assertFalse(context.getBean(DeliveryJobService.class).runJob(id));
         assertEquals("UNCERTAIN",jdbc.queryForObject("select status from delivery_job where id=?",String.class,id));
         assertNull(jdbc.queryForObject("select remote_uri from delivery_job where id=?",String.class,id));assertEquals(0,jobEvents(id));assertEquals(1,transfers.get());
-        assertThrows(IllegalStateException.class,()->context.getBean(DeliveryJobService.class).retryDelivery("ep04-tenant","project","delivery-append-fail",id));
+        assertThrows(IllegalStateException.class,()->context.getBean(DeliveryAdministrationService.class).retryDelivery("ep04-tenant","project","delivery-append-fail",id));
     }
     @Test void deliveryFailureAndRetryHaveDistinctAttemptFactsAndRejectStaleOutcome() throws Exception {
         String id=deliveryFixture("delivery-retry","HTTPS_PUT");var service=context.getBean(DeliveryJobService.class);
@@ -503,7 +529,7 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
         var failed=assertInstanceOf(com.example.platform.delivery.api.event.DeliveryFailedEvent.class,decodeFact("delivery.failed",id));assertEquals("ADAPTER_MISSING",failed.errorCode());
         assertTrue(dispatcher.processOnce(eventIds(id).getFirst()));context.publishEvent(failed);assertEquals(1L,jdbc.queryForObject("select count(*) from notification_event where subject_id=?",Long.class,id));
         jdbc.update("update delivery_destination set protocol='SFTP' where id='delivery-retry-dest'");
-        assertTrue(service.retryDelivery("ep04-tenant","project","delivery-retry",id));
+        assertTrue(context.getBean(DeliveryAdministrationService.class).retryDelivery("ep04-tenant","project","delivery-retry",id));
         var completed=assertInstanceOf(com.example.platform.delivery.api.event.DeliveryCompletedEvent.class,decodeFact("delivery.completed",id));assertEquals(2,completed.attempt());
         assertThrows(IllegalStateException.class,()->context.getBean(com.example.platform.delivery.app.DeliveryOutcomeService.class).failed(failed));
         assertEquals("COMPLETED",jdbc.queryForObject("select status from delivery_job where id=?",String.class,id));assertEquals(2,jobEvents(id));
@@ -673,5 +699,55 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
             for(var call:calls)assertEquals("prod_preview_"+identity.substring(0,40),call.get().productId());
         }
         assertEquals(products+1,count("product"));
+    }
+    @Test void staleDeliveryRetryCannotResetClaimCompletionOrUncertainty() throws Exception {
+        for(String mode:List.of("RUNNING","COMPLETED","UNCERTAIN")) {
+            String name="retry-race-"+mode.toLowerCase();String id=deliveryFixture(name,"HTTPS_PUT");
+            assertFalse(context.getBean(DeliveryJobService.class).runJob(id));
+            jdbc.update("update delivery_destination set protocol='SFTP' where id=?",name+"-dest");
+            transfers.set(0);var race=new RetryRace(mode);retryRace=race;
+            var admin=context.getBean(DeliveryAdministrationService.class);
+            try(var pool=java.util.concurrent.Executors.newFixedThreadPool(2)) {
+                var first=pool.submit(()->{Thread.currentThread().setName("delivery-retry-A");TenantContext.set("ep04-tenant");try{return admin.retryDelivery("ep04-tenant","project",name,id);}catch(RuntimeException failed){if(mode.equals("UNCERTAIN"))return false;throw failed;}finally{TenantContext.clear();}});
+                var second=pool.submit(()->{Thread.currentThread().setName("delivery-retry-B");TenantContext.set("ep04-tenant");try{return admin.retryDelivery("ep04-tenant","project",name,id);}catch(IllegalStateException stale){return false;}finally{race.secondOutcome.countDown();TenantContext.clear();}});
+                try {
+                    RetryRace.await(race.transportStarted);assertEquals(0,race.observed.getCount());
+                    if(!mode.equals("RUNNING")){race.finishTransport.countDown();first.get(10,java.util.concurrent.TimeUnit.SECONDS);}
+                    race.releaseSecond.countDown();RetryRace.await(race.secondOutcome);
+                    assertEquals(1,transfers.get(),"stale retry started a second transport in "+mode);
+                    assertFalse(second.get(10,java.util.concurrent.TimeUnit.SECONDS));
+                    assertEquals(mode.equals("UNCERTAIN")?"UNCERTAIN":mode,jdbc.queryForObject("select status from delivery_job where id=?",String.class,id));
+                    race.finishTransport.countDown();assertEquals(!mode.equals("UNCERTAIN"),first.get(10,java.util.concurrent.TimeUnit.SECONDS));
+                    assertEquals(2,jdbc.queryForObject("select attempt_count from delivery_job where id=?",Integer.class,id));
+                    assertEquals(mode.equals("UNCERTAIN")?"UNCERTAIN":"COMPLETED",jdbc.queryForObject("select status from delivery_job where id=?",String.class,id));
+                } finally {race.releaseSecond.countDown();race.finishTransport.countDown();}
+            } finally {retryRace=null;}
+        }
+    }
+    @Test void deliveryRetryRejectsWrongActorAndScopeAndFencesLateCompletion() throws Exception {
+        String name="retry-scope",id=deliveryFixture(name,"HTTPS_PUT");assertFalse(context.getBean(DeliveryJobService.class).runJob(id));
+        jdbc.update("update delivery_destination set protocol='SFTP' where id=?",name+"-dest");
+        var admin=context.getBean(DeliveryAdministrationService.class);int attempts=jdbc.queryForObject("select attempt_count from delivery_job where id=?",Integer.class,id);
+        previewDenied=true;assertThrows(SecurityException.class,()->admin.retryDelivery("ep04-tenant","project",name,id));previewDenied=false;
+        assertThrows(RuntimeException.class,()->admin.retryDelivery("foreign","project",name,id));
+        assertThrows(RuntimeException.class,()->admin.retryDelivery("ep04-tenant","other",name,id));
+        assertThrows(IllegalArgumentException.class,()->admin.retryDelivery("ep04-tenant","project","other-render",id));
+        assertEquals(0,transfers.get());assertEquals(attempts,jdbc.queryForObject("select attempt_count from delivery_job where id=?",Integer.class,id));
+        assertTrue(admin.retryDelivery("ep04-tenant","project",name,id));assertEquals(1,transfers.get());
+        var completed=assertInstanceOf(com.example.platform.delivery.api.event.DeliveryCompletedEvent.class,decodeFact("delivery.completed",id));
+        var stale=new com.example.platform.delivery.api.event.DeliveryCompletedEvent(id,completed.result(),completed.destinationId(),attempts,
+                completed.protocol(),"sftp://stale",completed.bytesTransferred(),Instant.now());
+        assertThrows(IllegalStateException.class,()->context.getBean(DeliveryOutcomeService.class).completed(stale));
+        assertEquals(completed.remoteUri(),jdbc.queryForObject("select remote_uri from delivery_job where id=?",String.class,id));assertEquals(2,jobEvents(id));
+    }
+    @Test void explicitlyAuthorizedAdministrativeRetryScopesAndRestoresTenant() throws Exception {
+        String name="retry-admin",id=deliveryFixture(name,"HTTPS_PUT");assertFalse(context.getBean(DeliveryJobService.class).runJob(id));
+        jdbc.update("update delivery_destination set protocol='SFTP' where id=?",name+"-dest");
+        var access=new DeliveryAccess(()->Optional.of(com.example.platform.shared.authorization.CanonicalActor.user("administrator","control",Set.of("ADMIN"),"fixture")),
+                request->com.example.platform.shared.authorization.AuthorizationDecision.deny("unused","unused","unused"),(t,p)->false);
+        var admin=new DeliveryAdministrationService(context.getBean(DSLContext.class),context.getBean(DeliveryJobService.class),
+                mock(DeliveryDestinationCredentialService.class),mock(com.example.platform.secrets.api.port.CredentialBundlePort.class),access);
+        TenantContext.set("control");admin.retryAdministrativeJob(id);assertEquals("control",TenantContext.get());
+        assertEquals("COMPLETED",jdbc.queryForObject("select status from delivery_job where id=?",String.class,id));assertEquals(1,transfers.get());
     }
 }

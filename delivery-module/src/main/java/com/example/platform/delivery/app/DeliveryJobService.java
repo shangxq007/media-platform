@@ -179,6 +179,9 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
                 .set(DELIVERY_JOB.STATUS, DeliveryJobStatus.RUNNING.name())
                 .set(DELIVERY_JOB.ATTEMPT_COUNT, row.get(DELIVERY_JOB.ATTEMPT_COUNT) + 1)
                 .where(DELIVERY_JOB.ID.eq(deliveryJobId))
+                .and(DELIVERY_JOB.TENANT_ID.eq(row.get(DELIVERY_JOB.TENANT_ID)))
+                .and(DELIVERY_JOB.PROJECT_ID.isNotDistinctFrom(row.get(DELIVERY_JOB.PROJECT_ID)))
+                .and(DELIVERY_JOB.RENDER_JOB_ID.eq(row.get(DELIVERY_JOB.RENDER_JOB_ID)))
                 .and(DELIVERY_JOB.STATUS.eq(status))
                 .and(DELIVERY_JOB.ATTEMPT_COUNT.eq(attempts))
                 .execute();
@@ -310,7 +313,9 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
     }
 
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
-    public boolean retryDelivery(String tenantId, String projectId, String renderJobId, String deliveryJobId) {
+    // Internal runtime operation: authenticated normal/admin callers enter through DeliveryAdministrationService.
+    boolean retryDelivery(String tenantId, String projectId, String renderJobId, String deliveryJobId) {
+        com.example.platform.shared.web.TenantGuard.assertSameTenant(tenantId);
         Record row = dsl.select()
                 .from(DELIVERY_JOB)
                 .where(DELIVERY_JOB.ID.eq(deliveryJobId))
@@ -324,13 +329,18 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
         if (!DeliveryJobStatus.FAILED.name().equals(row.get(DELIVERY_JOB.STATUS))) {
             throw new IllegalStateException("Only FAILED deliveries can be retried");
         }
-        dsl.update(DELIVERY_JOB)
+        int changed=dsl.update(DELIVERY_JOB)
                 .set(DELIVERY_JOB.STATUS, DeliveryJobStatus.QUEUED.name())
                 .set(DELIVERY_JOB.ERROR_CODE, (String) null)
                 .set(DELIVERY_JOB.ERROR_MESSAGE, (String) null)
                 .set(DELIVERY_JOB.COMPLETED_AT, (LocalDateTime) null)
                 .where(DELIVERY_JOB.ID.eq(deliveryJobId))
+                .and(DELIVERY_JOB.TENANT_ID.eq(tenantId)).and(DELIVERY_JOB.PROJECT_ID.eq(projectId))
+                .and(DELIVERY_JOB.RENDER_JOB_ID.eq(renderJobId))
+                .and(DELIVERY_JOB.STATUS.eq(DeliveryJobStatus.FAILED.name()))
+                .and(DELIVERY_JOB.ATTEMPT_COUNT.eq(row.get(DELIVERY_JOB.ATTEMPT_COUNT)))
                 .execute();
+        if(changed!=1)throw new IllegalStateException("Stale Delivery retry: status or attempt changed");
         return runJob(deliveryJobId);
     }
 
