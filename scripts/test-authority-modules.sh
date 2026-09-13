@@ -42,7 +42,7 @@ case "${1:-}" in
       :bmf-provider-module:test :provider-plugin-runtime-module:test :outbox-event-module:test \
       :storage-module:test :media-module:test \
       :artifact-module:test --tests '*ArtifactCommitServiceTest' --tests '*ArtifactApplicationServiceTest' --tests '*JooqArtifactCommitServiceProvenance*' \
-      :render-module:test --tests '*RenderArtifactStorageServiceTest' --tests '*RenderOutputRegistrationServiceTest' --tests '*RawMediaProductRegistrationFacadeTest' --tests '*PreviewArtifactQueryServiceTest' --tests 'com.example.platform.render.app.asset.*' --tests '*AssetServiceTest' --tests '*MediaAssetProbeServiceTest' \
+      :render-module:test --tests '*RenderArtifactStorageServiceTest' --tests '*RenderOutputRegistrationServiceTest' --tests '*RawMediaProductRegistrationFacadeTest' --tests '*PreviewArtifactQueryServiceTest' --tests 'com.example.platform.render.app.asset.*' --tests '*AssetServiceTest' --tests '*MediaAssetProbeServiceTest' --tests '*TimelineResolverRejectionTest' --tests '*TimelineSpecResolverTest' --tests '*TimelineScriptParserTest' --tests '*TimelineScriptParserEffectsTest' \
         --tests '*RenderJobFailureInitiatorTest' --tests '*RenderJobFailureDurabilityIntegrationTest' --tests '*StaleRenderJobCompensatorTest' --tests '*RenderJobLeaseServiceTest' \
         --tests '*RenderOrchestratorServiceCharacterizationTest' --tests '*RenderPipelineE2ECharacterizationTest' \
         --tests '*RenderCacheHashInvalidationNotifierTest' --tests '*RenderInitiatorContractTest' --tests '*C1Cnm1Cr1RateContractTest' --tests '*FrameRateTest' --tests 'com.example.platform.render.ir.*' --tests '*OpenTimelineioAdapterTest' --tests '*OpenTimelineioAdapterMetadataTest' \

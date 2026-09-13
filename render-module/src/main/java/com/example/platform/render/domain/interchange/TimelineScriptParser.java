@@ -46,7 +46,14 @@ public class TimelineScriptParser {
             return false;
         }
         String trimmed = script.trim();
-        return trimmed.startsWith("{") && trimmed.contains("tracks");
+        if(!trimmed.startsWith("{"))return false;
+        try {
+            JsonNode root=MAPPER.readTree(trimmed);
+            return root!=null && root.isObject() && (root.has("tracks")
+                    || com.example.platform.timeline.api.serialization.InternalTimelineJson.isInternalTimeline(root));
+        } catch(java.io.IOException malformed) {
+            throw new IllegalArgumentException("Malformed Timeline JSON",malformed);
+        }
     }
 
     public Optional<TimelineSpec> parse(String script) {

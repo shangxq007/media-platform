@@ -41,14 +41,21 @@ public class InternalTimelineAdapter {
         if (timelineJson == null || timelineJson.isBlank()) {
             return Optional.empty();
         }
+        JsonNode root;
         try {
-            JsonNode root = InternalTimelineJson.parse(timelineJson);
-            if (!InternalTimelineJson.isInternalTimeline(root)) {
-                return Optional.empty();
-            }
+            root=InternalTimelineJson.parse(timelineJson);
+        } catch(java.io.IOException malformed) {
+            if(timelineJson.stripLeading().startsWith("{"))
+                throw new IllegalArgumentException("Malformed Timeline JSON",malformed);
+            return Optional.empty(); // Genuine non-JSON input is not this format.
+        }
+        if(!InternalTimelineJson.isInternalTimeline(root))return Optional.empty();
+        try {
             return Optional.of(buildFromInternal(root));
-        } catch (Exception e) {
-            return Optional.empty();
+        } catch(RuntimeException rejected) {
+            throw rejected; // Recognized input must never enter another adapter after semantic failure.
+        } catch(Exception rejected) {
+            throw new IllegalArgumentException("Invalid Internal Timeline",rejected);
         }
     }
 
