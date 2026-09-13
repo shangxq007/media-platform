@@ -46,7 +46,7 @@ class HttpWorkerOutputStreamingTest {
             if(output.get()!=null)output.get().close();pool.shutdownNow();assertTrue(pool.awaitTermination(5,TimeUnit.SECONDS));executor.close();if(output.get()!=null)assertTrue(((BoundedWorkerOutputStream)output.get().content()).awaitStopped(Duration.ofSeconds(1)));release.countDown();server.stop(0);
         }
     }
-    enum Mode { NORMAL, PARTIAL_STALL, TRICKLE, SHORT }
+    enum Mode { NORMAL, HEADERS_STALL, PARTIAL_STALL, TRICKLE, SHORT }
     final class Peer implements AutoCloseable {
         final HttpServer server;final ExecutorService handlers=Executors.newCachedThreadPool();
         final ScheduledExecutorService ticker=Executors.newSingleThreadScheduledExecutor();
@@ -63,6 +63,7 @@ class HttpWorkerOutputStreamingTest {
                     assertEquals(RUNTIME.value(),exchange.getRequestHeaders().getFirst("X-Worker-Runtime-Id"));
                     assertEquals(INCARNATION.value(),exchange.getRequestHeaders().getFirst("X-Worker-Incarnation"));
                     exchange.getResponseHeaders().add("X-Execution-Context",WorkerInvocationCodec.correlation(WorkerInvocationCodec.context(request.bundle())));
+                    if(mode==Mode.HEADERS_STALL){progress.countDown();release.await(10,TimeUnit.SECONDS);}
                     exchange.sendResponseHeaders(200,mode==Mode.NORMAL?bytes.length:mode==Mode.SHORT?bytes.length+20:0);
                     if(mode==Mode.NORMAL || mode==Mode.SHORT){exchange.getResponseBody().write(bytes);return;}
                     if(mode==Mode.PARTIAL_STALL){exchange.getResponseBody().write(new byte[]{1,2,3});exchange.getResponseBody().flush();progress.countDown();}
@@ -116,13 +117,24 @@ class HttpWorkerOutputStreamingTest {
     @Test void cancellationClosesTheActualStagingStream() throws Exception {
         try(var peer=new Peer(Mode.PARTIAL_STALL);var read=new ReadRun(peer,WorkerHttpTimeouts.boundedBy(Duration.ofSeconds(3)))) {
             assertTrue(read.headers.await(3,TimeUnit.SECONDS));assertTrue(peer.progress.await(3,TimeUnit.SECONDS));
-            read.executor.cancel(WorkerInvocationCodec.context(bundle()));
+            var actual=WorkerInvocationCodec.context(bundle());
+            var wrong=new RuntimeExecutionContext(actual.executableTaskId(),actual.providerBindingPin(),ExecutionAttemptId.of("wrong-attempt"),actual.platformOwnershipGeneration());
+            read.executor.cancel(wrong);assertFalse(read.result.isDone(),"another execution context cannot close this output");
+            read.executor.cancel(actual);
             var failure=assertThrows(ExecutionException.class,()->read.result.get(2,TimeUnit.SECONDS));assertInstanceOf(InterruptedIOException.class,failure.getCause());emptyStaging();
         }
     }
     @Test void prematureEofCannotCommitADeclaredLongerOutput() throws Exception {
         try(var peer=new Peer(Mode.SHORT);var read=new ReadRun(peer,WorkerHttpTimeouts.boundedBy(Duration.ofSeconds(2)))) {
             var failure=assertThrows(ExecutionException.class,()->read.result.get(3,TimeUnit.SECONDS));assertInstanceOf(IOException.class,failure.getCause());emptyStaging();
+        }
+    }
+    @Test void headerTimeoutIsDistinctFromBodyReadTimeout() throws Exception {
+        var limits=new WorkerHttpTimeouts(Duration.ofMillis(300),Duration.ofMillis(300),Duration.ofMillis(500),Duration.ofSeconds(2));
+        try(var peer=new Peer(Mode.HEADERS_STALL);var read=new ReadRun(peer,limits)) {
+            assertTrue(peer.progress.await(3,TimeUnit.SECONDS));
+            var failure=assertThrows(ExecutionException.class,()->read.result.get(2,TimeUnit.SECONDS));
+            assertInstanceOf(java.net.http.HttpTimeoutException.class,failure.getCause());assertNull(read.output.get());emptyStaging();
         }
     }
 }
