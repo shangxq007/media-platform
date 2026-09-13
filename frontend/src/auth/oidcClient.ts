@@ -2,6 +2,10 @@ import { UserManager, WebStorageStateStore, type User } from 'oidc-client-ts'
 import { getOidcSettings, isOidcEnabled } from './oidcConfig'
 
 let userManager: UserManager | null = null
+// Request-fencing metadata only; UserManager remains the credential/session store.
+let transportRevision = 0
+let rejectedCredential: string | null = null
+let signoutInProgress = false
 // Initiation has no native SDK event; retire local consumers before redirect work.
 const signoutListeners = new Set<() => void>()
 
@@ -21,6 +25,13 @@ function manager(): UserManager {
       loadUserInfo: true,
       userStore: new WebStorageStateStore({ store: window.sessionStorage }),
     })
+    const advance = () => { transportRevision += 1 }
+    userManager.events.addUserLoaded(advance)
+    userManager.events.addUserUnloaded(advance)
+    userManager.events.addAccessTokenExpired(advance)
+    userManager.events.addUserSignedIn(advance)
+    userManager.events.addUserSignedOut(advance)
+    userManager.events.addUserSessionChanged(advance)
   }
   return userManager
 }
@@ -115,6 +126,9 @@ export async function signInRedirect(): Promise<void> {
 
 export async function handleOAuthCallback(): Promise<User> {
   const user = await manager().signinRedirectCallback()
+  rejectedCredential = null
+  signoutInProgress = false
+  transportRevision += 1
   if (user.profile?.sub) {
     localStorage.setItem('user_id', user.profile.sub)
   }
@@ -142,13 +156,45 @@ export async function getAccessToken(): Promise<string | null> {
   return user.access_token ?? null
 }
 
-/** Retire private consumers immediately when the authenticated transport rejects the session. */
-export function retireOidcSession(): void {
+export interface OidcRequestBinding {
+  readonly revision: number
+  readonly credential: string
+  readonly accessToken: string | null
+  readonly retired: boolean
+}
+export function currentOidcTransportRevision(): number { return transportRevision }
+
+/** Capture the credential used by this request; a later SDK event makes the capture stale. */
+export async function getOidcRequestBinding(): Promise<OidcRequestBinding> {
+  const sdk = manager()
+  const revision = transportRevision
+  const user = await sdk.getUser()
+  const credential = JSON.stringify([sessionIdentity(user), user?.access_token ?? null])
+  if (revision === transportRevision && rejectedCredential !== null && credential !== rejectedCredential) rejectedCredential = null
+  return { revision, credential, accessToken: user && !user.expired ? user.access_token ?? null : null,
+    retired: signoutInProgress || rejectedCredential === credential }
+}
+
+/** Handle expiry only for the still-current request binding, once per rejected credential. */
+export async function handleOidcUnauthorized(binding: OidcRequestBinding, signal: Pick<AbortSignal, 'aborted'> | undefined, returnTo: string): Promise<void> {
+  if (signal?.aborted || signoutInProgress) return
+  const current = await getOidcRequestBinding()
+  if (signal?.aborted || current.retired || current.revision !== transportRevision
+    || binding.revision !== current.revision || binding.credential !== current.credential) return
+  rejectedCredential = current.credential
+  retireOidcSession()
+  sessionStorage.setItem('oidc_post_login_redirect', returnTo)
+  try { await signInRedirect() } catch { console.error('OIDC sign-in redirect failed') }
+}
+
+function retireOidcSession(): void {
+  transportRevision += 1
   for (const retire of signoutListeners) retire()
 }
 
 export async function signOutOidc(): Promise<void> {
   if (!isOidcEnabled()) return
+  signoutInProgress = true
   retireOidcSession()
   await manager().signoutRedirect()
 }

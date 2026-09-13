@@ -3,13 +3,14 @@ import axios from 'axios'
 import type { Project, RenderJob, UserBehaviorEvent, ErrorResponse, EffectPack } from '@/types'
 import { getErrorMessage } from '@/utils/i18n'
 import { isOidcEnabled } from '@/auth/oidcConfig'
-import { getAccessToken, signInRedirect, retireOidcSession } from '@/auth/oidcClient'
+import { getOidcRequestBinding, currentOidcTransportRevision, handleOidcUnauthorized, type OidcRequestBinding } from '@/auth/oidcClient'
 
 const api = axios.create({
   baseURL: '/api/v1',
   headers: { 'Content-Type': 'application/json' }
 })
 
+const oidcRequests = new WeakMap<object, OidcRequestBinding>()
 let devAuthBootstrap: Promise<void> | null = null
 
 /** Attach dev JWT when backend runs with app.security.enabled=true and profile dev. */
@@ -38,10 +39,13 @@ export async function bootstrapDevAuth(): Promise<void> {
 
 api.interceptors.request.use(async config => {
   if (isOidcEnabled()) {
-    const token = await getAccessToken()
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
+    const binding = await getOidcRequestBinding()
+    if (binding.retired || binding.revision !== currentOidcTransportRevision() || config.signal?.aborted) {
+      throw new axios.CanceledError('OIDC request binding retired')
     }
+    if (binding.accessToken) config.headers.Authorization = `Bearer ${binding.accessToken}`
+    else delete config.headers.Authorization
+    oidcRequests.set(config, binding)
   } else if (import.meta.env.DEV) {
     await bootstrapDevAuth()
     // Axios materializes request headers before interceptors run. Bind the
@@ -67,9 +71,11 @@ api.interceptors.response.use(
       isOidcEnabled() &&
       !window.location.pathname.startsWith('/oauth/callback')
     ) {
-      if (!err.config?.signal?.aborted) retireOidcSession()
-      sessionStorage.setItem('oidc_post_login_redirect', window.location.pathname + window.location.search)
-      await signInRedirect()
+      const binding = err.config && oidcRequests.get(err.config)
+      if (binding) {
+        try { await handleOidcUnauthorized(binding, err.config?.signal, window.location.pathname + window.location.search) }
+        catch { console.error('OIDC current-session check failed') }
+      }
     }
     console.error('API error:', err.response?.status, errorData || err.message)
     return Promise.reject(err)
