@@ -41,7 +41,10 @@ class WorkspaceAuthorityHttpTest extends PostgresTestContainerSupport {
     @BeforeEach void scope(){
         tenant="wt-"+UUID.randomUUID();
         jdbc.update("insert into tenant(id,name,status,created_at) values (?,?,'ACTIVE',now())",tenant,"Workspace tests");
-        creator=user(tenant);member=user(tenant);outsider=user(tenant);foreign=user("other-"+UUID.randomUUID());
+        creator=user(tenant);member=user(tenant);outsider=user(tenant);
+        String other="other-"+UUID.randomUUID();
+        jdbc.update("insert into tenant(id,name,status,created_at) values (?,?,'ACTIVE',now())",other,"Other tenant");
+        foreign=user(other);
     }
     String user(String tenant){String id="wu-"+UUID.randomUUID();jdbc.update("insert into \"user\"(id,tenant_id,username,email,role,status,created_at) values (?,?,?,?,'MEMBER','ACTIVE',now())",id,tenant,id,id+"@test.invalid");return id;}
     String token(String user,String tenant){return io.jsonwebtoken.Jwts.builder().subject(user).claim("tenantId",tenant).claim("roles",List.of("ADMIN"))
@@ -98,6 +101,19 @@ class WorkspaceAuthorityHttpTest extends PostgresTestContainerSupport {
         assertEquals(403,call("GET","/api/product/workspace/user/"+creator,null,outsider).statusCode());
         assertEquals(1,members(ws));assertEquals(ownerAudits,ownerAudits());assertTrue(count("select count(*) from audit_records") > audits, "Security denials remain audited");
     }
+    @Test void aValidForeignTenantTokenCannotAccessOrMutateAnExistingWorkspace() throws Exception {
+        String ws=create(),other=jdbc.queryForObject("select tenant_id from \"user\" where id=?",String.class,foreign);
+        long before=ownerAudits();
+        for(String method:List.of("GET","POST","DELETE")) {
+            String suffix=method.equals("GET")?"":method.equals("POST")?"/members":"/members/"+creator;
+            var request=HttpRequest.newBuilder(URI.create("http://127.0.0.1:"+port+path(ws)+suffix))
+                    .header("Authorization","Bearer "+token(foreign,other)).header("Content-Type","application/json")
+                    .header("X-User-ID",creator).method(method,method.equals("POST")?
+                            HttpRequest.BodyPublishers.ofString(json.writeValueAsString(Map.of("userId",member,"role","ADMIN"))):HttpRequest.BodyPublishers.noBody()).build();
+            var result=http.send(request,HttpResponse.BodyHandlers.ofString());assertEquals(403,result.statusCode(),result.body());
+        }
+        assertEquals(1,members(ws));assertEquals(before,ownerAudits());
+    }
     @Test void validMembershipDuplicateConflictAndRemovalAffectDiscoveryAndRoleAuthorization() throws Exception {
         String ws=create();var first=add(ws,member,"EDITOR",creator);assertEquals(200,first.statusCode(),first.body());
         String id=memberId(ws,member);
@@ -118,6 +134,7 @@ class WorkspaceAuthorityHttpTest extends PostgresTestContainerSupport {
     }
     @Test void wrongWorkspaceMemberRoleCannotBeAssignedOrRevoked() throws Exception {
         String first=create(),second=create();var response=add(first,member,"EDITOR",creator);String id=memberId(first,member);
+        assertEquals(403,call("GET",path(second),null,member).statusCode());
         long before=count("select count(*) from user_role_assignment");
         assertEquals(403,call("POST","/api/workspaces/"+second+"/members/"+id+"/roles",Map.of("roleKey","ADMIN","assignedBy",creator),creator).statusCode());
         assertEquals(403,call("DELETE","/api/workspaces/"+second+"/members/"+id+"/roles/ADMIN",null,creator).statusCode());
