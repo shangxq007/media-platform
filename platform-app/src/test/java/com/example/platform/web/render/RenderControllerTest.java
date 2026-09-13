@@ -5,7 +5,7 @@ import com.example.platform.render.app.RenderJobService;
 import com.example.platform.render.app.dto.CreateRenderJobRequest;
 import com.example.platform.render.app.dto.RenderJobResponse;
 import com.example.platform.shared.authorization.CanonicalActor;
-import com.example.platform.shared.events.RenderInitiator;
+import com.example.platform.render.api.request.RenderInitiator;
 import java.util.Set;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;

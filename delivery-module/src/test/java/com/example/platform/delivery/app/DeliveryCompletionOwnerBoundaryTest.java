@@ -12,7 +12,7 @@ import com.example.platform.delivery.infrastructure.DeliveryAdapterRegistry;
 import com.example.platform.delivery.spi.DeliveryAdapter;
 import com.example.platform.secrets.api.port.CredentialBundlePort;
 import com.example.platform.shared.authorization.ActorType;
-import com.example.platform.shared.events.RenderInitiator;
+import com.example.platform.render.api.request.RenderInitiator;
 import com.example.platform.render.api.event.RenderJobCompletedEvent;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import java.io.ByteArrayInputStream;

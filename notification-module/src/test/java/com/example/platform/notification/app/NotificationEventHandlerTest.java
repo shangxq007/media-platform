@@ -124,7 +124,7 @@ class NotificationEventHandlerTest extends PostgresTestContainerSupport {
 
     @Test
     void onRenderJobCreatedConvertsEventAndHandles() {
-        RenderJobCreatedEvent event = new RenderJobCreatedEvent("rj-789", "proj-1", "snap-1", "social_1080p", com.example.platform.shared.events.RenderInitiator.restore(com.example.platform.shared.authorization.ActorType.SYSTEM,"event-test","tenant-test"), java.time.Instant.now());
+        RenderJobCreatedEvent event = new RenderJobCreatedEvent("rj-789", "proj-1", "snap-1", "social_1080p", com.example.platform.render.api.request.RenderInitiator.restore(com.example.platform.shared.authorization.ActorType.SYSTEM,"event-test","tenant-test"), java.time.Instant.now());
 
         handler.onRenderJobCreated(event);
 

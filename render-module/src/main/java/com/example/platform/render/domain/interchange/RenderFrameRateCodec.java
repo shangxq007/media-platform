@@ -1,35 +1,15 @@
-package com.example.platform.shared.time;
+package com.example.platform.render.domain.interchange;
+import com.example.platform.shared.time.FrameRate;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
-/**
- * C1-CNM1-CR1: canonical cross-language FrameRate wire codec.
- *
- * <p>Single authoritative wire-domain parser for the canonical
- * {@code rate{num,den}} JSON contract (Option A — bounded numeric).
- * All production consumers of the same canonical rate contract
- * (InternalTimelineCandidateAdapter, TimelineScriptParser, legacy int-fps
- * projection readers) must parse through this codec so that:
- *
- * <ul>
- *   <li>INVALID canonical rate input is REJECTED, never defaulted;</li>
- *   <li>MISSING (entire rate node absent) follows the caller's explicit
- *       optional/default policy — it is never conflated with invalid;</li>
- *   <li>validation precedes every bounded narrowing (no {@code asInt} of a
- *       value that may exceed int32 before range check);</li>
- *   <li>all parsers of the same contract accept the same value domain.</li>
- * </ul>
- *
- * <p>Wire domain (frozen): numerator and denominator are exact JSON
- * integers within signed int32, subject to FrameRate canonical rules
- * (numerator &gt; 0, denominator &gt; 0, gcd normalization). Because int32
- * ⊂ JS safe-integer range, the cross-language contract is automatically
- * JS-safe. FrameRate's internal BigInteger capability does NOT expand the
- * wire domain.</p>
+/** Render/interchange JSON adapter. Missing-rate policy is explicitly chosen by the interchange schema caller.
+ * Both adapters construct the same shared exact FrameRate value; neither defines alternative value semantics.
+ * Wire components retain the accepted signed-int32 JSON bounds.
  */
-public final class CanonicalFrameRateCodec {
+public final class RenderFrameRateCodec {
 
-    private CanonicalFrameRateCodec() {
+    private RenderFrameRateCodec() {
     }
 
     /**

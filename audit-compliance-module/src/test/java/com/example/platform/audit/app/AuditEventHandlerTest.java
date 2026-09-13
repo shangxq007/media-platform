@@ -8,7 +8,7 @@ import com.example.platform.render.api.event.RenderJobCompletedEvent;
 import com.example.platform.render.api.event.RenderJobCreatedEvent;
 import com.example.platform.render.api.event.RenderJobFailedEvent;
 import com.example.platform.render.api.event.RenderJobStatusChangedEvent;
-import com.example.platform.shared.events.RenderInitiator;
+import com.example.platform.render.api.request.RenderInitiator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

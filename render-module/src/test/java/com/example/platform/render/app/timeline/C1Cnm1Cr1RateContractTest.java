@@ -4,7 +4,7 @@ import com.example.platform.timeline.app.InternalTimelineCandidateAdapter;
 import com.example.platform.render.domain.interchange.TimelineSpec;
 import com.example.platform.render.domain.interchange.TimelineScriptParser;
 import com.example.platform.timeline.canonicalmodel.TimelineCandidate;
-import com.example.platform.shared.time.CanonicalFrameRateCodec;
+import com.example.platform.timeline.api.serialization.TimelineFrameRateCodec;
 import com.example.platform.shared.time.FrameRate;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -175,21 +175,21 @@ public class C1Cnm1Cr1RateContractTest {
     void codecUnitProofs() {
         // valid exact
         assertEquals(FrameRate.of(30000, 1001),
-                CanonicalFrameRateCodec.parse(mapper.valueToTree(java.util.Map.of("num", 30000, "den", 1001)), false));
+                TimelineFrameRateCodec.parse(mapper.valueToTree(java.util.Map.of("num", 30000, "den", 1001)), false));
         // missing allowed vs not: absent node is missing; present empty object is invalid
-        assertThrows(CanonicalFrameRateCodec.InvalidCanonicalRateException.class,
-                () -> CanonicalFrameRateCodec.parse(mapper.createObjectNode(), true),
+        assertThrows(TimelineFrameRateCodec.InvalidCanonicalRateException.class,
+                () -> TimelineFrameRateCodec.parse(mapper.createObjectNode(), true),
                 "present-but-incomplete rate object must reject even when missing is allowed");
-        assertThrows(CanonicalFrameRateCodec.InvalidCanonicalRateException.class,
-                () -> CanonicalFrameRateCodec.parse(mapper.createObjectNode(), false));
-        assertEquals(CanonicalFrameRateCodec.DEFAULT_RATE,
-                CanonicalFrameRateCodec.parse(mapper.missingNode(), true),
+        assertThrows(TimelineFrameRateCodec.InvalidCanonicalRateException.class,
+                () -> TimelineFrameRateCodec.parse(mapper.createObjectNode(), false));
+        assertEquals(TimelineFrameRateCodec.DEFAULT_RATE,
+                TimelineFrameRateCodec.parse(mapper.missingNode(), true),
                 "fully absent rate node follows the optional default policy");
         // huge BigInteger JSON number
         ObjectNode huge = mapper.createObjectNode();
         huge.put("num", new java.math.BigInteger("99999999999999999999999"));
         huge.put("den", 1);
-        assertThrows(CanonicalFrameRateCodec.InvalidCanonicalRateException.class,
-                () -> CanonicalFrameRateCodec.parse(huge, false));
+        assertThrows(TimelineFrameRateCodec.InvalidCanonicalRateException.class,
+                () -> TimelineFrameRateCodec.parse(huge, false));
     }
 }

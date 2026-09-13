@@ -40,4 +40,4 @@
  * @see IrDigest
  */
 package com.example.platform.render.ir;
-import com.example.platform.shared.time.RationalTime;
+import com.example.platform.render.ir.RationalTime;

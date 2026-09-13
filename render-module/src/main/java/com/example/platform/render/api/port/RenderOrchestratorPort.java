@@ -1,7 +1,7 @@
 package com.example.platform.render.api.port;
 
 import com.example.platform.render.api.dto.SubmitRenderJobRequest;
-import com.example.platform.shared.events.RenderInitiator;
+import com.example.platform.render.api.request.RenderInitiator;
 
 /**
  * Port for submitting and continuing render jobs.

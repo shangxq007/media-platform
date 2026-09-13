@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import com.example.platform.shared.time.CanonicalFrameRateCodec;
+import com.example.platform.timeline.api.serialization.TimelineFrameRateCodec;
 import org.springframework.stereotype.Component;
 import com.example.platform.render.domain.legacy.TimelineMarker;
 import com.example.platform.render.domain.legacy.TimelineTransition;
@@ -177,7 +177,7 @@ public class TimelineExtensionsReader {
 
     /**
      * C1-CNM1-CR1: project-level wire rate -> integer fps projection.
-     * The wire rate is validated through {@link CanonicalFrameRateCodec}
+     * The wire rate is validated through {@link TimelineFrameRateCodec}
      * BEFORE narrowing: present-but-invalid input is rejected (propagated),
      * never silently truncated or defaulted; a fully absent rate node is an
      * optional field and follows the documented default. Fractional rates
@@ -185,7 +185,7 @@ public class TimelineExtensionsReader {
      * carrier semantics) after domain validation.
      */
     private static int projectFps(JsonNode rate) {
-        var parsed = CanonicalFrameRateCodec.parse(rate, true);
+        var parsed = TimelineFrameRateCodec.parse(rate, true);
         long num = parsed.numerator().longValueExact();
         long den = parsed.denominator();
         return Math.max(1, (int) (num / den));

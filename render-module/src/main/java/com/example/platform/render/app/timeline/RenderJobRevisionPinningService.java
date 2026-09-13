@@ -1,7 +1,7 @@
 package com.example.platform.render.app.timeline;
 
 import com.example.platform.render.infrastructure.RenderJobRepository;
-import com.example.platform.shared.events.RenderInitiator;
+import com.example.platform.render.api.request.RenderInitiator;
 import java.time.LocalDateTime;
 import java.util.Objects;
 import org.jooq.DSLContext;

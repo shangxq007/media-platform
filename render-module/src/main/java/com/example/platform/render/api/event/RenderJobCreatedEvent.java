@@ -1,5 +1,5 @@
 package com.example.platform.render.api.event;
-import com.example.platform.shared.events.RenderInitiator;
+import com.example.platform.render.api.request.RenderInitiator;
 import java.time.Instant;
 import java.util.Objects;
 /** Fact of a persisted QUEUED job, independent of provider selection. */

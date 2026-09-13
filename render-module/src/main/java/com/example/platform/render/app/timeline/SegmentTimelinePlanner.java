@@ -1,7 +1,7 @@
 package com.example.platform.render.app.timeline;
 
 import com.example.platform.timeline.api.serialization.InternalTimelineJson;
-import com.example.platform.shared.time.CanonicalFrameRateCodec;
+import com.example.platform.timeline.api.serialization.TimelineFrameRateCodec;
 import com.example.platform.render.domain.planning.SegmentPolicy;
 import com.example.platform.render.domain.legacy.TimelineSegment;
 import com.example.platform.render.domain.interchange.TimelineSpec;
@@ -27,6 +27,8 @@ public class SegmentTimelinePlanner {
         try {
             JsonNode root = InternalTimelineJson.parse(timelineJson);
             return planFromRoot(root);
+        } catch (TimelineFrameRateCodec.InvalidCanonicalRateException invalid) {
+            throw invalid;
         } catch (Exception e) {
             return Optional.empty();
         }
@@ -38,6 +40,8 @@ public class SegmentTimelinePlanner {
                 JsonNode policyNode = InternalTimelineJson.mapper()
                         .readTree(spec.metadata().get(META_SEGMENT_POLICY));
                 return planFromPolicyNode(InternalTimelineJson.parse(timelineJson), policyNode);
+            } catch (TimelineFrameRateCodec.InvalidCanonicalRateException invalid) {
+                throw invalid;
             } catch (Exception ignored) {
                 // fall through
             }
@@ -170,7 +174,7 @@ public class SegmentTimelinePlanner {
 
     /**
      * C1-CNM1-CR1: project-level wire rate -> integer fps projection.
-     * The wire rate is validated through {@link CanonicalFrameRateCodec}
+     * The wire rate is validated through {@link TimelineFrameRateCodec}
      * BEFORE narrowing: present-but-invalid input is rejected (propagated),
      * never silently truncated or defaulted; a fully absent rate node is an
      * optional field and follows the documented default. Fractional rates
@@ -178,7 +182,7 @@ public class SegmentTimelinePlanner {
      * carrier semantics) after domain validation.
      */
     private static int projectFps(JsonNode rate) {
-        var parsed = CanonicalFrameRateCodec.parse(rate, true);
+        var parsed = TimelineFrameRateCodec.parse(rate, true);
         long num = parsed.numerator().longValueExact();
         long den = parsed.denominator();
         return Math.max(1, (int) (num / den));

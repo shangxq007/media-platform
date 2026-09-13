@@ -16,7 +16,7 @@ import com.example.platform.shared.commercial.PrincipalRef;
 import com.example.platform.shared.commercial.PrincipalType;
 import com.example.platform.render.api.event.RenderJobCreatedEvent;
 import com.example.platform.render.api.event.RenderJobFailedEvent;
-import com.example.platform.shared.events.RenderInitiator;
+import com.example.platform.render.api.request.RenderInitiator;
 import com.example.platform.shared.web.TenantContext;
 import com.example.platform.render.domain.interchange.TimelineScriptParser;
 import org.jooq.DSLContext;

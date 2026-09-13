@@ -25,7 +25,7 @@ import com.example.platform.render.infrastructure.timeline.EditorTimelineConvert
 import com.example.platform.render.api.event.RenderJobCompletedEvent;
 import com.example.platform.render.api.event.RenderJobFailedEvent;
 import com.example.platform.render.api.event.RenderJobStatusChangedEvent;
-import com.example.platform.shared.events.RenderInitiator;
+import com.example.platform.render.api.request.RenderInitiator;
 import com.example.platform.shared.commercial.PrincipalRef;
 import com.example.platform.shared.commercial.PrincipalType;
 import com.example.platform.entitlement.api.commercial.QuotaConsumptionPort;

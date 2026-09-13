@@ -9,7 +9,7 @@ import com.example.platform.render.policy.RenderPolicyDecision;
 import com.example.platform.render.policy.RenderPolicyEngine;
 import com.example.platform.render.api.event.RenderJobCreatedEvent;
 import com.example.platform.render.testsupport.RenderInitiatorFixtures;
-import com.example.platform.shared.events.RenderInitiator;
+import com.example.platform.render.api.request.RenderInitiator;
 import com.example.platform.render.app.event.RenderLifecyclePublisher;
 import com.example.platform.shared.web.PlatformException;
 import com.example.platform.shared.web.TenantContext;

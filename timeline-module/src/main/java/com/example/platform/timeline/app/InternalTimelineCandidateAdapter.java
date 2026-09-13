@@ -2,7 +2,7 @@ package com.example.platform.timeline.app;
 import com.example.platform.timeline.api.serialization.InternalTimelineJson;
 import com.example.platform.timeline.api.composition.TimelineCanonicalRejectionException;
 
-import com.example.platform.shared.time.CanonicalFrameRateCodec;
+import com.example.platform.timeline.api.serialization.TimelineFrameRateCodec;
 import com.example.platform.timeline.canonicalmodel.TimelineCandidate;
 import com.example.platform.timeline.canonicalmodel.TimelineCanonicalProfile;
 import com.example.platform.timeline.canonicalmodel.TimelineClipEffect;
@@ -380,7 +380,7 @@ public final class InternalTimelineCandidateAdapter {
 
     /**
      * C1-CNM1-CR1: parse the canonical clip rate through
-     * {@link CanonicalFrameRateCodec}. Present-but-invalid rate input
+     * {@link TimelineFrameRateCodec}. Present-but-invalid rate input
      * (out-of-int32, zero/negative denominator, malformed, non-integral) is
      * REJECTED with {@link TimelineCanonicalRejectionException} — never
      * silently defaulted. Only a fully absent rate node follows the optional
@@ -389,8 +389,8 @@ public final class InternalTimelineCandidateAdapter {
     private static FrameRate clipRateOf(JsonNode clipNode) {
         JsonNode rate = clipNode.path("timelineRange").path("start").path("rate");
         try {
-            return CanonicalFrameRateCodec.parse(rate, true);
-        } catch (CanonicalFrameRateCodec.InvalidCanonicalRateException e) {
+            return TimelineFrameRateCodec.parse(rate, true);
+        } catch (TimelineFrameRateCodec.InvalidCanonicalRateException e) {
             throw new TimelineCanonicalRejectionException(
                     new TimelineCanonicalRejectionException.AdapterDiagnostic(
                             TimelineCanonicalRejectionException.Code.TIMELINE_TIMING_INVALID,

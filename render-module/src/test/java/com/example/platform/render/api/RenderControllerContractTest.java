@@ -7,7 +7,7 @@ import com.example.platform.render.app.dto.CreateRenderJobRequest;
 import com.example.platform.render.app.dto.RenderJobResponse;
 import com.example.platform.render.app.dto.StatusHistoryResponse;
 import com.example.platform.render.testsupport.RenderInitiatorFixtures;
-import com.example.platform.shared.events.RenderInitiator;
+import com.example.platform.render.api.request.RenderInitiator;
 import com.example.platform.shared.web.TenantContext;
 import java.time.OffsetDateTime;
 import java.util.*;

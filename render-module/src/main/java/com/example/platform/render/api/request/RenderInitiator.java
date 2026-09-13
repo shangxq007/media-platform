@@ -1,4 +1,4 @@
-package com.example.platform.shared.events;
+package com.example.platform.render.api.request;
 
 import com.example.platform.shared.authorization.ActorType;
 import com.example.platform.shared.authorization.CanonicalActor;

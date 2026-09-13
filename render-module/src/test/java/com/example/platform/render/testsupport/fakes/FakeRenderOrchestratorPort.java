@@ -2,7 +2,7 @@ package com.example.platform.render.testsupport.fakes;
 
 import com.example.platform.render.api.dto.SubmitRenderJobRequest;
 import com.example.platform.render.api.port.RenderOrchestratorPort;
-import com.example.platform.shared.events.RenderInitiator;
+import com.example.platform.render.api.request.RenderInitiator;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;

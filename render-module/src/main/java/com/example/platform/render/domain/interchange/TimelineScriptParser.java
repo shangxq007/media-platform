@@ -1,6 +1,6 @@
 package com.example.platform.render.domain.interchange;
 
-import com.example.platform.shared.time.CanonicalFrameRateCodec;
+import com.example.platform.render.domain.interchange.RenderFrameRateCodec;
 import com.example.platform.shared.time.FrameRate;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -297,7 +297,7 @@ public class TimelineScriptParser {
     /**
      * C1-CNM1-CR1: exact rational frame rate from a JSON node.
      * Structured {@code {num, den}} is the canonical form, parsed through
-     * {@link CanonicalFrameRateCodec} (int32-bounded, zero/negative/partial
+     * {@link RenderFrameRateCodec} (int32-bounded, zero/negative/partial
      * rejected — never defaulted). A legacy decimal fps number is
      * rationalized from its decimal string (e.g. 29.97 -&gt; 2997/100) and
      * validated against the same bounded domain. Never a binary floating
@@ -307,7 +307,7 @@ public class TimelineScriptParser {
     private static FrameRate parseFrameRateNode(JsonNode node) {
         if (node == null || node.isMissingNode() || node.isNull()) {
             // Absent outputSpec frameRate: optional field, documented default.
-            return CanonicalFrameRateCodec.DEFAULT_RATE;
+            return RenderFrameRateCodec.DEFAULT_RATE;
         }
         if (node.isObject()) {
             // Canonical {num, den} form, OR the OTIO/Jackson bean alias
@@ -317,9 +317,9 @@ public class TimelineScriptParser {
                 ObjectNode canonical = MAPPER.createObjectNode();
                 canonical.set("num", node.get("numerator"));
                 canonical.set("den", node.get("denominator"));
-                return CanonicalFrameRateCodec.parse(canonical, false);
+                return RenderFrameRateCodec.parse(canonical, false);
             }
-            return CanonicalFrameRateCodec.parse(node, false);
+            return RenderFrameRateCodec.parse(node, false);
         }
         if (node.isNumber() || node.isTextual()) {
             String s = node.isTextual() ? node.asText() : node.asText();
@@ -332,7 +332,7 @@ public class TimelineScriptParser {
             } else {
                 double d = node.asDouble();
                 if (!Double.isFinite(d) || d <= 0) {
-                    throw new CanonicalFrameRateCodec.InvalidCanonicalRateException(
+                    throw new RenderFrameRateCodec.InvalidCanonicalRateException(
                             "decimal fps must be finite and positive: " + s);
                 }
                 if (d == Math.rint(d)) {
@@ -347,12 +347,12 @@ public class TimelineScriptParser {
                 }
             }
             if (num <= 0 || den <= 0 || num > Integer.MAX_VALUE || den > Integer.MAX_VALUE) {
-                throw new CanonicalFrameRateCodec.InvalidCanonicalRateException(
+                throw new RenderFrameRateCodec.InvalidCanonicalRateException(
                         "fps out of canonical wire domain: " + num + "/" + den);
             }
             return FrameRate.of(num, den);
         }
-        throw new CanonicalFrameRateCodec.InvalidCanonicalRateException(
+        throw new RenderFrameRateCodec.InvalidCanonicalRateException(
                 "unexpected frameRate node type: " + node.getNodeType());
     }
 
@@ -360,12 +360,12 @@ public class TimelineScriptParser {
         try {
             long v = Long.parseLong(s);
             if (v > Integer.MAX_VALUE || v < Integer.MIN_VALUE) {
-                throw new CanonicalFrameRateCodec.InvalidCanonicalRateException(
+                throw new RenderFrameRateCodec.InvalidCanonicalRateException(
                         "component out of int32 wire domain: " + v);
             }
             return v;
         } catch (NumberFormatException e) {
-            throw new CanonicalFrameRateCodec.InvalidCanonicalRateException(
+            throw new RenderFrameRateCodec.InvalidCanonicalRateException(
                     "malformed rate component: " + s);
         }
     }

@@ -54,7 +54,7 @@ class RenderWorkflowCancellationTest {
         FeatureFlagEvaluator flags = (key, targetingKey, attributes, defaultValue) -> false;
         RenderOrchestratorPort orchestrator = new RenderOrchestratorPort() {
             @Override
-            public String submitRenderJob(SubmitRenderJobRequest request, com.example.platform.shared.events.RenderInitiator initiator) {
+            public String submitRenderJob(SubmitRenderJobRequest request, com.example.platform.render.api.request.RenderInitiator initiator) {
                 return request.tenantId();
             }
 

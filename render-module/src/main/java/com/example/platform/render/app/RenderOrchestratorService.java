@@ -3,7 +3,7 @@ package com.example.platform.render.app;
 import com.example.platform.render.api.dto.SubmitRenderJobRequest;
 import com.example.platform.render.api.port.RenderJobSubmitContinuation;
 import com.example.platform.render.api.port.RenderOrchestratorPort;
-import com.example.platform.shared.events.RenderInitiator;
+import com.example.platform.render.api.request.RenderInitiator;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

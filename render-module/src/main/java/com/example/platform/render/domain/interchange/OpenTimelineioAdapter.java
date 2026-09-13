@@ -1,5 +1,5 @@
 package com.example.platform.render.domain.interchange;
-import com.example.platform.shared.time.RationalTime;
+import com.example.platform.render.ir.RationalTime;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

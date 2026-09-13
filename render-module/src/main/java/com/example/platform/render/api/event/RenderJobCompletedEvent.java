@@ -1,6 +1,6 @@
 package com.example.platform.render.api.event;
 import com.example.platform.artifact.app.ArtifactOutputReference;
-import com.example.platform.shared.events.RenderInitiator;
+import com.example.platform.render.api.request.RenderInitiator;
 import java.time.Instant;
 import java.util.Objects;
 /** Render completion after Artifact output acceptance. Storage coordinates are not lifecycle facts. */

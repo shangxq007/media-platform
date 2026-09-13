@@ -6,7 +6,7 @@ import com.example.platform.render.app.dto.RenderJobResponse;
 import com.example.platform.render.app.dto.StatusHistoryResponse;
 import com.example.platform.render.domain.RenderJobStateMachine;
 import com.example.platform.render.domain.RenderJobStatus;
-import com.example.platform.shared.events.RenderInitiator;
+import com.example.platform.render.api.request.RenderInitiator;
 
 import java.time.OffsetDateTime;
 import java.util.*;

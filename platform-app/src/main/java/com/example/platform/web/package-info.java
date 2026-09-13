@@ -6,7 +6,7 @@
             "observability :: context",
             "entitlement :: collaboration",
             "render",
-            "render :: API",
+            "render :: requests", "render :: API",
             "render :: app",
             "render :: domain",
             "render :: timeline",

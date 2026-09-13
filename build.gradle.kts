@@ -769,22 +769,28 @@ tasks.register("verifyC1Cnm1Red14") {
     group = "verification"
     description = "C1-CNM1-RED-14: cross-language canonical rate wire contract — every production consumer enforces one bounded exact domain; invalid/out-of-range/zero-denominator inputs are REJECTED, never narrowed or defaulted; adapter/parser path parity; validation precedes narrowing"
     doLast {
-        val codec = file("shared-kernel/src/main/java/com/example/platform/shared/time/CanonicalFrameRateCodec.java")
-        require(codec.exists()) { "FAIL: canonical rate codec missing" }
-        val cc = codec.readText()
-        require(cc.contains("int32 wire domain") || cc.contains("Integer.MAX_VALUE")) { "FAIL: codec must enforce int32 wire bound" }
-        require(cc.contains("denominator must not be zero") || cc.contains("den == 0")) { "FAIL: codec must reject zero denominator" }
-        require(cc.contains("InvalidCanonicalRateException")) { "FAIL: codec must have explicit invalid-rate type" }
-        require(cc.contains("isIntegralNumber")) { "FAIL: codec must require exact integer JSON numbers" }
+        require(!file("shared-kernel/src/main/java/com/example/platform/shared/time/CanonicalFrameRateCodec.java").exists()) { "FAIL: shared rate codec must be retired" }
+        for (path in listOf(
+            "timeline-module/src/main/java/com/example/platform/timeline/api/serialization/TimelineFrameRateCodec.java",
+            "render-module/src/main/java/com/example/platform/render/domain/interchange/RenderFrameRateCodec.java")) {
+            val codec = file(path)
+            require(codec.exists()) { "FAIL: owner rate adapter missing: $path" }
+            val cc = codec.readText()
+            require(cc.contains("int32 wire domain") || cc.contains("Integer.MAX_VALUE")) { "FAIL: adapter must enforce int32 wire bound" }
+            require(cc.contains("denominator must not be zero") || cc.contains("den == 0")) { "FAIL: adapter must reject zero denominator" }
+            require(cc.contains("InvalidCanonicalRateException")) { "FAIL: explicit invalid-rate type required" }
+            require(cc.contains("isIntegralNumber")) { "FAIL: exact integer JSON numbers required" }
+            require(cc.contains("FrameRate.of(num, den)")) { "FAIL: shared value semantics must remain authoritative" }
+        }
 
         // Consumers must route through the codec (no unsafe asInt narrowing on rate).
         val adapter = file("timeline-module/src/main/java/com/example/platform/timeline/app/InternalTimelineCandidateAdapter.java").readText()
-        require(adapter.contains("CanonicalFrameRateCodec.parse")) { "FAIL: adapter must parse rate via codec" }
+        require(adapter.contains("TimelineFrameRateCodec.parse")) { "FAIL: adapter must parse rate via codec" }
         require(!adapter.contains("rate.get(\"num\").asInt") && !adapter.contains("rate.get(\"den\").asInt")) {
             "FAIL: adapter must not use asInt as rate validator"
         }
         val parser = file("render-module/src/main/java/com/example/platform/render/domain/interchange/TimelineScriptParser.java").readText()
-        require(parser.contains("CanonicalFrameRateCodec.parse")) { "FAIL: script parser must parse rate via codec" }
+        require(parser.contains("RenderFrameRateCodec.parse")) { "FAIL: script parser must parse rate via codec" }
         require(parser.contains("InvalidCanonicalRateException")) { "FAIL: script parser must propagate invalid-rate rejection" }
         require(!parser.contains("asLong(0)") || !parser.contains("parseFrameRateNode")) { "note: parser rate reads must be codec-bounded" }
 
@@ -795,7 +801,7 @@ tasks.register("verifyC1Cnm1Red14") {
             "render-module/src/main/java/com/example/platform/render/app/timeline/SegmentTimelinePlanner.java",
             "render-module/src/main/java/com/example/platform/render/domain/interchange/TimelineExtensionsReader.java")) {
             val src = file(f).readText()
-            require(src.contains("CanonicalFrameRateCodec.parse")) { "FAIL: $f must validate rate via codec" }
+            require(src.contains("TimelineFrameRateCodec.parse")) { "FAIL: $f must validate rate via codec" }
             require(!src.contains("asInt(30) / rate.get(\"den\").asInt(1)") && !src.contains("asInt(defaultFps) / rate.get(\"den\").asInt(1)")) {
                 "FAIL: $f must not narrow-then-divide rate"
             }

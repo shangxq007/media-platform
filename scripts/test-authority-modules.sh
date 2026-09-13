@@ -45,8 +45,8 @@ case "${1:-}" in
       :render-module:test --tests '*RenderArtifactStorageServiceTest' --tests '*RenderOutputRegistrationServiceTest' --tests '*RawMediaProductRegistrationFacadeTest' --tests '*PreviewArtifactQueryServiceTest' \
         --tests '*RenderJobFailureInitiatorTest' --tests '*RenderJobFailureDurabilityIntegrationTest' --tests '*StaleRenderJobCompensatorTest' --tests '*RenderJobLeaseServiceTest' \
         --tests '*RenderOrchestratorServiceCharacterizationTest' --tests '*RenderPipelineE2ECharacterizationTest' \
-        --tests '*RenderCacheHashInvalidationNotifierTest' --tests '*RenderInitiatorContractTest' \
-      :platform-app:test --tests '*ProviderRuntimeExecutionCompositionTest' --tests '*RenderOutputAcceptanceTest' --tests '*OtherDomainEventBoundaryTest' --tests '*ModularityTest'
+        --tests '*RenderCacheHashInvalidationNotifierTest' --tests '*RenderInitiatorContractTest' --tests '*C1Cnm1Cr1RateContractTest' --tests '*FrameRateTest' --tests 'com.example.platform.render.ir.*' --tests '*OpenTimelineioAdapterTest' --tests '*OpenTimelineioAdapterMetadataTest' \
+      :platform-app:test --tests '*ProviderRuntimeExecutionCompositionTest' --tests '*RenderOutputAcceptanceTest' --tests '*RenderTimeBoundaryTest' --tests '*OtherDomainEventBoundaryTest' --tests '*ModularityTest'
     ;;
   outbox)
     ./gradlew --no-daemon --console=plain \

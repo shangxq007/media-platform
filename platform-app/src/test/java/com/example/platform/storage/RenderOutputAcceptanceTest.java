@@ -24,7 +24,7 @@ import com.example.platform.audit.app.*;
 import com.example.platform.notification.app.*;
 import com.example.platform.delivery.app.*;
 import com.example.platform.delivery.infrastructure.DeliveryAdapterRegistry;
-import com.example.platform.shared.events.RenderInitiator;
+import com.example.platform.render.api.request.RenderInitiator;
 import com.example.platform.shared.authorization.ActorType;
 import com.example.platform.entitlement.api.commercial.QuotaConsumptionPort;
 import java.time.Instant;

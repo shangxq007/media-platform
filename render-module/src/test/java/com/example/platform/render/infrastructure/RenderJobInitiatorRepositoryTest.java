@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.example.platform.render.testsupport.RenderTestSchemaFixture;
 import com.example.platform.shared.authorization.CanonicalActor;
-import com.example.platform.shared.events.RenderInitiator;
+import com.example.platform.render.api.request.RenderInitiator;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import java.time.OffsetDateTime;
 import java.util.Set;

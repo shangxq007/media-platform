@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import com.example.platform.shared.time.CanonicalFrameRateCodec;
+import com.example.platform.timeline.api.serialization.TimelineFrameRateCodec;
 import org.springframework.stereotype.Service;
 
 /**
@@ -228,7 +228,7 @@ public class InternalTimelineToEditorConverter {
 
     /**
      * C1-CNM1-CR1: project-level wire rate -> integer fps projection.
-     * The wire rate is validated through {@link CanonicalFrameRateCodec}
+     * The wire rate is validated through {@link TimelineFrameRateCodec}
      * BEFORE narrowing: present-but-invalid input is rejected (propagated),
      * never silently truncated or defaulted; a fully absent rate node is an
      * optional field and follows the documented default. Fractional rates
@@ -236,7 +236,7 @@ public class InternalTimelineToEditorConverter {
      * carrier semantics) after domain validation.
      */
     private static int projectFps(JsonNode rate) {
-        var parsed = CanonicalFrameRateCodec.parse(rate, true);
+        var parsed = TimelineFrameRateCodec.parse(rate, true);
         long num = parsed.numerator().longValueExact();
         long den = parsed.denominator();
         return Math.max(1, (int) (num / den));
@@ -279,7 +279,7 @@ public class InternalTimelineToEditorConverter {
         // C1-CNM1-CR1: validate through the canonical codec BEFORE projection;
         // invalid rate input is rejected (propagated), never narrowed-then-
         // divided; an absent rate node follows the caller's default policy.
-        var parsed = CanonicalFrameRateCodec.parse(rate, true);
+        var parsed = TimelineFrameRateCodec.parse(rate, true);
         long num = parsed.numerator().longValueExact();
         long den = parsed.denominator();
         return Math.max(1, (int) (num / den));

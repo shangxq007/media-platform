@@ -2,6 +2,7 @@ package com.example.platform.render.app.event;
 
 import com.example.platform.outbox.app.OutboxEventRouter;
 import com.example.platform.shared.events.*;
+import com.example.platform.render.api.request.RenderInitiator;
 import com.example.platform.render.api.event.*;
 import com.example.platform.shared.authorization.ActorType;
 import java.time.Instant;

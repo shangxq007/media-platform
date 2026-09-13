@@ -8,7 +8,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import com.example.platform.shared.authorization.ActorType;
-import com.example.platform.shared.events.RenderInitiator;
+import com.example.platform.render.api.request.RenderInitiator;
 import org.jooq.DSLContext;
 import org.jooq.Record;
 import org.springframework.stereotype.Repository;
