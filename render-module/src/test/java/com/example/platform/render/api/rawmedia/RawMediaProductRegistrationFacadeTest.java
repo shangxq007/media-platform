@@ -151,6 +151,7 @@ class RawMediaProductRegistrationFacadeTest {
 
         }
 
+        public void requireReadScope(String t,String p){throw new UnsupportedOperationException();}
         public void requireRegistrationScope(String t,String p){throw new UnsupportedOperationException();}
         public Asset register(String t,String p,String k,String m,String f,Long l,String c){throw new UnsupportedOperationException();}
         public java.util.List<Asset> listByProject(String t,String p){throw new UnsupportedOperationException();}

@@ -40,13 +40,13 @@ class MediaAssetProbeServiceTest {
         MediaProbes mediaProbeService = mock(MediaProbes.class);
         NormalizedMediaProbe expected = new NormalizedMediaProbe(
                 MediaAssetId.of("asset-1"), null, null, false, true, false, List.of());
-        when(mediaProbeService.latestNormalized("t1", MediaAssetId.of("asset-1")))
+        when(mediaProbeService.latestNormalized("tenant-1", MediaAssetId.of("asset-1")))
                 .thenReturn(Optional.of(expected));
 
         MediaAssetProbeService facade = new MediaAssetProbeService(mediaProbeService);
         NormalizedMediaProbe result = facade.getLatestProbe("tenant-1", "asset-1");
 
         assertThat(result).isSameAs(expected);
-        verify(mediaProbeService).latestNormalized("t1", MediaAssetId.of("asset-1"));
+        verify(mediaProbeService).latestNormalized("tenant-1", MediaAssetId.of("asset-1"));
     }
 }

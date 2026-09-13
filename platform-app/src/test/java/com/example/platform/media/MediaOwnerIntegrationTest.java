@@ -78,6 +78,7 @@ class MediaOwnerIntegrationTest extends PostgresTestContainerSupport {
     @Test void deniedAndWrongTenantCannotRegisterOrMutate() {
         var asset=register();denied=true;
         assertThrows(SecurityException.class,MediaOwnerIntegrationTest::register);
+        assertThrows(SecurityException.class,()->assets().requireReadScope("tenant","project"));
         assertThrows(SecurityException.class,()->assets().updatePublishStatus("tenant","project",asset.id(),"DRAFT","PUBLISHED"));
         denied=false;TenantContext.set("foreign");assertThrows(RuntimeException.class,MediaOwnerIntegrationTest::register);
         assertEquals("DRAFT",jdbc.queryForObject("select publish_status from media_asset where id=?",String.class,asset.id()));

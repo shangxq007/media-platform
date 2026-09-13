@@ -49,6 +49,7 @@ public class AssetService {
             throw new SecurityException("Tenant context required");
         }
 
+        assetRepository.requireReadScope(tenantId, projectId);
         Asset asset = assetRepository.findById(tenantId, assetId)
                 .orElseThrow(() -> new IllegalArgumentException("Asset not found: " + assetId));
 
@@ -82,6 +83,7 @@ public class AssetService {
         }
 
         // Verify ownership before delete
+        assetRepository.requireReadScope(tenantId, projectId);
         Asset asset = assetRepository.findById(tenantId, assetId)
                 .orElseThrow(() -> new IllegalArgumentException("Asset not found: " + assetId));
 

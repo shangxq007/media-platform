@@ -11,6 +11,9 @@ public class MediaAssetService implements MediaAssets {
     public MediaAssetService(JooqMediaAssetRepository repository, MediaAuthorization authorization) {
         this.repository = repository; this.authorization = authorization;
     }
+    public void requireReadScope(String tenant, String project) {
+        authorization.require(tenant, project, false);
+    }
     public void requireRegistrationScope(String tenant, String project) {
         authorization.require(tenant, project, true);
     }
@@ -20,9 +23,9 @@ public class MediaAssetService implements MediaAssets {
         return repository.register(tenant, project, key, type, filename, length, checksum);
     }
     public Optional<Asset> findById(String tenant, String id) {
-        var asset = repository.findById(tenant, id);
-        asset.ifPresent(a -> authorization.require(tenant, a.projectId(), false));
-        return asset;
+        // Internal scoped projection also serves accepted tenant-bound worker jobs.
+        // Interactive callers authorize their project before resolving this projection.
+        return repository.findById(tenant, id);
     }
     public List<Asset> listByProject(String tenant, String project) {
         authorization.require(tenant, project, false);
