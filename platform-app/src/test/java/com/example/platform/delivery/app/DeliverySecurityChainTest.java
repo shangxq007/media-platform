@@ -1,4 +1,5 @@
-package com.example.platform.security;
+package com.example.platform.delivery.app;
+import com.example.platform.security.*;
 
 import com.example.platform.identity.api.authorization.CanonicalActorResolver;
 import com.example.platform.identity.api.authorization.AuthorizationDecisionPort;
