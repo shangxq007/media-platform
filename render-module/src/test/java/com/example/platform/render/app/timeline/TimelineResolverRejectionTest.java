@@ -2,6 +2,7 @@ package com.example.platform.render.app.timeline;
 
 import com.example.platform.render.domain.interchange.*;
 import org.junit.jupiter.api.Test;
+import com.example.platform.timeline.api.serialization.TimelineFrameRateCodec.InvalidCanonicalRateException;
 import static org.junit.jupiter.api.Assertions.*;
 
 class TimelineResolverRejectionTest {
@@ -9,7 +10,7 @@ class TimelineResolverRejectionTest {
             new InternalTimelineAdapter(new TimelineExtensionsReader(),new TimelineAssetUriResolver()),new TimelineScriptParser());
     static final String INVALID="{\"schemaVersion\":\"1.0\",\"id\":\"t\",\"project\":{\"frameRate\":{\"num\":30,\"den\":0}},\"composition\":{\"tracks\":[]}}";
     @Test void invalidInternalProjectRateIsNotAnAlternativeFormat(){
-        assertThrows(IllegalArgumentException.class,()->resolver.resolve(INVALID));
+        assertThrows(InvalidCanonicalRateException.class,()->resolver.resolve(INVALID));
     }
     @Test void invalidInternalClipRateIsNotAnAlternativeFormat(){
         String input="""
@@ -18,19 +19,21 @@ class TimelineResolverRejectionTest {
                   "timelineRange":{"start":{"frame":0,"rate":{"num":30,"den":0}},"duration":{"frame":30,"rate":{"num":30,"den":1}}},
                   "sourceRange":{"start":{"frame":0,"rate":{"num":30,"den":1}},"duration":{"frame":30,"rate":{"num":30,"den":1}}}}]}]}}
                 """;
-        assertThrows(IllegalArgumentException.class,()->resolver.resolve(input));
+        assertThrows(InvalidCanonicalRateException.class,()->resolver.resolve(input));
     }
     @Test void mixedInternalAndInterchangeFieldsCannotHideInternalFailure() {
         String mixed=INVALID.substring(0,INVALID.length()-1)+",\"tracks\":[{\"children\":[]}],\"outputSpec\":{}}";
-        var error=assertThrows(IllegalArgumentException.class,()->resolver.resolve(mixed));
+        var error=assertThrows(InvalidCanonicalRateException.class,()->resolver.resolve(mixed));
         assertTrue(error.getMessage().toLowerCase().contains("den"),error.getMessage());
     }
-    @Test void missingOptionalRateKeepsPolicyButNullAndInvalidSuppliedValuesReject() {
+    @Test void missingOrNullOptionalRateKeepsPolicyButMalformedSuppliedValuesReject() {
         var accepted=resolver.resolve("{\"schemaVersion\":\"1.0\",\"composition\":{\"tracks\":[]}}").orElseThrow();
         assertEquals(com.example.platform.shared.time.FrameRate.of(30,1),accepted.outputSpec().frameRate());
-        for(String value:java.util.List.of("null","{\"num\":0,\"den\":1}","{\"num\":30,\"den\":-1}","\"30\"")) {
+        var explicitNull=resolver.resolve("{\"schemaVersion\":\"1.0\",\"project\":{\"frameRate\":null},\"composition\":{\"tracks\":[]}}").orElseThrow();
+        assertEquals(com.example.platform.shared.time.FrameRate.of(30,1),explicitNull.outputSpec().frameRate());
+        for(String value:java.util.List.of("{\"num\":0,\"den\":1}","{\"num\":30,\"den\":-1}","\"30\"")) {
             String input="{\"schemaVersion\":\"1.0\",\"project\":{\"frameRate\":"+value+"},\"composition\":{\"tracks\":[]}}";
-            assertThrows(IllegalArgumentException.class,()->resolver.resolve(input),value);
+            assertThrows(InvalidCanonicalRateException.class,()->resolver.resolve(input),value);
         }
     }
     @Test void supportedInternalAndOtioInputsStillResolve() throws Exception {
@@ -56,7 +59,7 @@ class TimelineResolverRejectionTest {
         var execution=new com.example.platform.render.app.RenderJobExecutionService(null,null,null,engine,
                 new TimelineScriptParser(),resolver,null,null,null,null,inspector,null,null,null,null,null,
                 new TimelineExtensionsReader(),null,null,null,null);
-        assertThrows(IllegalArgumentException.class,()->org.springframework.test.util.ReflectionTestUtils.invokeMethod(execution,
+        assertThrows(InvalidCanonicalRateException.class,()->org.springframework.test.util.ReflectionTestUtils.invokeMethod(execution,
                 "executeRenderWithOptionalDag","job","project",INVALID,"profile","tenant",null));
         org.mockito.Mockito.verifyNoInteractions(engine,inspector);
     }
