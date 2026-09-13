@@ -69,6 +69,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             "/api/admin/delivery",
             "/api/artifacts",
             "/api/identity",
+            "/api/workspaces",
+            "/api/product/workspace",
             "/api/me",
             "/api/social",
             "/api/web/"

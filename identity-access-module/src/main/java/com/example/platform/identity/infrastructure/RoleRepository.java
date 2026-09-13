@@ -173,6 +173,11 @@ public class RoleRepository {
      * @param roleKey     the role key (e.g. "ADMIN")
      * @param workspaceId the workspace ID scope
      */
+    public void deleteMemberAssignments(String workspaceId, String userId) {
+        dsl.deleteFrom(USER_ROLE_ASSIGNMENT).where(USER_ROLE_ASSIGNMENT.WORKSPACE_ID.eq(workspaceId))
+                .and(USER_ROLE_ASSIGNMENT.USER_ID.eq(userId)).execute();
+    }
+
     public void deleteUserRoleAssignmentByWorkspace(String userId, String roleKey, String workspaceId) {
         dsl.deleteFrom(USER_ROLE_ASSIGNMENT)
                 .where(USER_ROLE_ASSIGNMENT.USER_ID.eq(userId))

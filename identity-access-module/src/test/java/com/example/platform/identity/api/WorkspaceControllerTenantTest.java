@@ -14,7 +14,6 @@ import com.example.platform.entitlement.domain.WorkspaceMemberEntitlementGrant;
 import com.example.platform.identity.api.WorkspaceController;
 import com.example.platform.identity.api.dto.*;
 import com.example.platform.identity.app.WorkspaceService;
-import com.example.platform.shared.audit.AdminAuditPublisher;
 import com.example.platform.shared.commercial.PrincipalType;
 import com.example.platform.shared.web.TenantContext;
 import org.junit.jupiter.api.AfterEach;
@@ -44,15 +43,13 @@ class WorkspaceControllerTenantTest {
     @Mock
     private EntitlementDecisionQuery entitlementDecisionQuery;
 
-    @Mock
-    private AdminAuditPublisher auditPublisher;
 
     private WorkspaceController controller;
 
     @BeforeEach
     void setUp() {
         controller = new WorkspaceController(
-                workspaceService, poolService, entitlementDecisionQuery, auditPublisher);
+                workspaceService, poolService, entitlementDecisionQuery);
         TenantContext.clear();
     }
 
@@ -148,7 +145,7 @@ class WorkspaceControllerTenantTest {
         WorkspaceEntitlementPoolService canonicalPoolService =
                 new WorkspaceEntitlementPoolService(null, entitlementService, null);
         WorkspaceController canonicalController = new WorkspaceController(
-                workspaceService, canonicalPoolService, entitlementDecisionQuery, auditPublisher);
+                workspaceService, canonicalPoolService, entitlementDecisionQuery);
         WorkspaceController.RevokeGrantRequest request = new WorkspaceController.RevokeGrantRequest(
                 "member-1", 7L, "admin-request-2", "revoke-grant-1",
                 "member removed", "trace-2");
@@ -233,19 +230,11 @@ class WorkspaceControllerTenantTest {
     }
 
     @Test
-    void createWorkspace_crossTenantAdminSucceeds() {
+    void createWorkspace_crossTenantAdminCannotOverrideAuthenticatedScope() {
         TenantContext.set("tenant-a");
-        when(workspaceService.createWorkspace(eq("tenant-b"), any()))
-                .thenReturn(new WorkspaceResponse("ws-1", "tenant-b", "My WS", null, null, "ACTIVE", null, null));
-
-        CreateWorkspaceRequest body = new CreateWorkspaceRequest("My WS", null, null);
         MockHttpServletRequest request = new MockHttpServletRequest();
-        request.setAttribute("jwt.roles", java.util.List.of("ADMIN"));
-
-        WorkspaceResponse result = controller.createWorkspace("tenant-b", body, request);
-
-        assertNotNull(result);
-        assertEquals("tenant-b", result.tenantId());
-        verify(workspaceService).createWorkspace("tenant-b", body);
+        request.setAttribute("jwt.roles", List.of("ADMIN"));
+        assertThrows(SecurityException.class, () -> controller.createWorkspace("tenant-b", new CreateWorkspaceRequest("My WS", null, null), request));
+        verifyNoInteractions(workspaceService);
     }
 }

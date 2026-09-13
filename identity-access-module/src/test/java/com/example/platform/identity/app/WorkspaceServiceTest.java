@@ -36,11 +36,20 @@ class WorkspaceServiceTest {
     private AuditPort auditPort;
 
     private WorkspaceService workspaceService;
+    @Mock private com.example.platform.identity.api.authorization.CanonicalActorResolver actors;
+    @Mock private UserRepository users;
+    @org.junit.jupiter.api.AfterEach void clearTenant() { com.example.platform.shared.web.TenantContext.clear(); }
 
     @BeforeEach
     void setUp() {
         workspaceService = new WorkspaceService(workspaceRepository, workspaceMemberRepository,
-                workspaceGroupRepository, roleRepository, auditPort);
+                workspaceGroupRepository, roleRepository, auditPort, actors, users);
+        com.example.platform.shared.web.TenantContext.set("ten_1");
+        lenient().when(actors.resolveCurrentActor()).thenReturn(Optional.of(com.example.platform.shared.authorization.CanonicalActor.user("actor", "ten_1", java.util.Set.of(), "test")));
+        lenient().when(users.findById(anyString())).thenAnswer(i -> Optional.of(new User(i.getArgument(0), "ten_1", "user", null, User.UserRole.MEMBER, User.UserStatus.ACTIVE, Instant.now())));
+        lenient().when(workspaceRepository.findById(anyString())).thenAnswer(i -> Optional.of(new Workspace(i.getArgument(0), "ten_1", "My WS", null, "FREE", Workspace.WorkspaceStatus.ACTIVE, Instant.now(), Instant.now())));
+        lenient().when(workspaceRepository.lockById(anyString())).thenAnswer(i -> Optional.of(new Workspace(i.getArgument(0), "ten_1", "My WS", null, "FREE", Workspace.WorkspaceStatus.ACTIVE, Instant.now(), Instant.now())));
+        lenient().when(workspaceMemberRepository.findByWorkspaceIdAndUserId(anyString(), eq("actor"))).thenAnswer(i -> Optional.of(new WorkspaceMember("owner", i.getArgument(0), "actor", "OWNER", WorkspaceMember.MemberStatus.ACTIVE, Instant.now(), Instant.now())));
     }
 
     @Test
@@ -55,7 +64,7 @@ class WorkspaceServiceTest {
         assertTrue(response.id().startsWith("ws_"));
         assertEquals("My WS", response.name());
         assertEquals("PRO", response.planTier());
-        verify(auditPort).record(eq("SYSTEM"), eq("WORKSPACE_CREATE"), eq("CONFIG"),
+        verify(auditPort).record(eq("USER"), eq("WORKSPACE_CREATE"), eq("CONFIG"),
                 eq("WORKSPACE"), anyString(), any());
     }
 
@@ -98,7 +107,7 @@ class WorkspaceServiceTest {
         assertNotNull(response);
         assertEquals("usr_1", response.userId());
         assertEquals("EDITOR", response.role());
-        verify(auditPort).record(eq("SYSTEM"), eq("MEMBER_ADD"), eq("PERMISSION"),
+        verify(auditPort).record(eq("USER"), eq("MEMBER_ADD"), eq("PERMISSION"),
                 eq("WORKSPACE_MEMBER"), anyString(), any());
     }
 
@@ -153,7 +162,7 @@ class WorkspaceServiceTest {
         // Must use workspace-scoped deletion, NOT the deprecated global deletion
         verify(roleRepository).deleteUserRoleAssignmentByWorkspace("usr_1", "ADMIN", "ws_1");
         verify(roleRepository, never()).deleteUserRoleAssignment(anyString(), anyString());
-        verify(auditPort).record(eq("SYSTEM"), eq("ROLE_REVOKE"), eq("PERMISSION"),
+        verify(auditPort).record(eq("USER"), eq("ROLE_REVOKE"), eq("PERMISSION"),
                 eq("USER_ROLE_ASSIGNMENT"), eq("wsm_1"), any());
     }
 
@@ -221,7 +230,7 @@ class WorkspaceServiceTest {
 
         assertNotNull(response);
         assertEquals("Dev Team", response.name());
-        verify(auditPort).record(eq("SYSTEM"), eq("GROUP_CREATE"), eq("CONFIG"),
+        verify(auditPort).record(eq("USER"), eq("GROUP_CREATE"), eq("CONFIG"),
                 eq("WORKSPACE_GROUP"), anyString(), any());
     }
 

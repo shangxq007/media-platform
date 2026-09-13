@@ -46,6 +46,12 @@ public class WorkspaceRepository {
         return Optional.ofNullable(record).map(this::mapRecord);
     }
 
+    /** Serialize membership decisions and last-owner checks in the owner's transaction. */
+    public Optional<Workspace> lockById(String id) {
+        return Optional.ofNullable(dsl.select().from(WORKSPACE).where(WORKSPACE.ID.eq(id))
+                .forUpdate().fetchOne()).map(this::mapRecord);
+    }
+
     public List<Workspace> findByTenantId(String tenantId) {
         return dsl.select()
                 .from(WORKSPACE)

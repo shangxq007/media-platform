@@ -3,8 +3,12 @@ package com.example.platform.render.infrastructure.productization.api;
 import com.example.platform.render.infrastructure.productization.adaptive.AdaptiveEngine;
 import com.example.platform.render.infrastructure.productization.marketplace.Marketplace;
 import com.example.platform.render.infrastructure.productization.marketplace.MarketplaceService;
-import com.example.platform.render.infrastructure.productization.workspace.Workspace;
-import com.example.platform.render.infrastructure.productization.workspace.ProductWorkspaceService;
+import com.example.platform.identity.api.workspace.WorkspaceCommands;
+import com.example.platform.identity.api.workspace.WorkspaceQueries;
+import com.example.platform.identity.api.dto.WorkspaceResponse;
+import com.example.platform.identity.api.dto.WorkspaceMemberResponse;
+import com.example.platform.identity.api.authorization.CanonicalActorResolver;
+import com.example.platform.shared.web.*;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,15 +23,19 @@ import java.util.List;
 @RequestMapping("/api/product")
 public class ProductizationApi {
 
-    private final ProductWorkspaceService workspaceService;
+    private final WorkspaceCommands workspaceCommands;
+    private final WorkspaceQueries workspaceQueries;
+    private final CanonicalActorResolver actors;
     private final MarketplaceService marketplaceService;
     private final ObjectProvider<AdaptiveEngine> adaptiveEngineProvider;
 
     public ProductizationApi(
-            ProductWorkspaceService workspaceService,
+            WorkspaceCommands workspaceCommands, WorkspaceQueries workspaceQueries, CanonicalActorResolver actors,
             MarketplaceService marketplaceService,
             ObjectProvider<AdaptiveEngine> adaptiveEngineProvider) {
-        this.workspaceService = workspaceService;
+        this.workspaceCommands = workspaceCommands;
+        this.workspaceQueries = workspaceQueries;
+        this.actors = actors;
         this.marketplaceService = marketplaceService;
         this.adaptiveEngineProvider = adaptiveEngineProvider;
     }
@@ -35,45 +43,50 @@ public class ProductizationApi {
     // ─── Workspace Endpoints ───────────────────────────────────────────────────
 
     @PostMapping("/workspace")
-    public Workspace createWorkspace(@RequestBody CreateWorkspaceRequest request) {
-        return workspaceService.createWorkspace(request.name(), request.description(), request.ownerId());
+    public WorkspaceView createWorkspace(@RequestBody CreateWorkspaceRequest request) {
+        var actor = actors.resolveCurrentActor().orElseThrow(() -> new PlatformException(CommonErrorCode.AUTHENTICATION_REQUIRED, "Authentication required"));
+        if (request.ownerId() != null && !request.ownerId().equals(actor.actorId()))
+            throw new PlatformException(CommonErrorCode.INSUFFICIENT_PERMISSION, "Owner must be the authenticated actor");
+        return view(workspaceCommands.createWorkspace(actor.tenantId(),
+                new com.example.platform.identity.api.dto.CreateWorkspaceRequest(request.name(), request.description(), null)));
     }
 
     @GetMapping("/workspace/{workspaceId}")
-    public Workspace getWorkspace(@PathVariable String workspaceId) {
-        return workspaceService.getWorkspace(workspaceId);
+    public WorkspaceView getWorkspace(@PathVariable String workspaceId) {
+        return view(workspaceQueries.getWorkspace(workspaceId));
     }
 
     @GetMapping("/workspace/user/{userId}")
-    public List<Workspace> listWorkspacesForUser(@PathVariable String userId) {
-        return workspaceService.listWorkspacesForUser(userId);
+    public List<WorkspaceView> listWorkspacesForUser(@PathVariable String userId) {
+        return workspaceQueries.listWorkspacesForUser(userId).stream().map(this::view).toList();
     }
 
     @PostMapping("/workspace/{workspaceId}/members")
-    public Workspace addMember(@PathVariable String workspaceId, @RequestBody AddMemberRequest request) {
-        return workspaceService.addMember(workspaceId, request.userId(), request.role());
+    public WorkspaceView addMember(@PathVariable String workspaceId, @RequestBody AddMemberRequest request) {
+        workspaceCommands.addMember(workspaceId,
+                new com.example.platform.identity.api.dto.AddWorkspaceMemberRequest(request.userId(), request.role()));
+        return view(workspaceQueries.getWorkspace(workspaceId));
+    }
+
+    @GetMapping("/workspace/{workspaceId}/members")
+    public List<WorkspaceMemberResponse> members(@PathVariable String workspaceId) {
+        return workspaceQueries.listMembers(workspaceId);
     }
 
     @DeleteMapping("/workspace/{workspaceId}/members/{userId}")
-    public Workspace removeMember(@PathVariable String workspaceId, @PathVariable String userId) {
-        return workspaceService.removeMember(workspaceId, userId);
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void removeMember(@PathVariable String workspaceId, @PathVariable String userId) {
+        workspaceCommands.removeMember(workspaceId, userId);
     }
 
-    @PostMapping("/workspace/{workspaceId}/projects")
-    public Workspace addSharedProject(@PathVariable String workspaceId, @RequestBody AddProjectRequest request) {
-        return workspaceService.addSharedProject(workspaceId, request.projectId(), request.projectName(), request.ownerId());
-    }
-
-    // ─── Collaboration Endpoints ───────────────────────────────────────────────
-
-    @PostMapping("/workspace/{workspaceId}/sessions")
-    public Workspace startSession(@PathVariable String workspaceId, @RequestBody StartSessionRequest request) {
-        return workspaceService.startCollaborationSession(workspaceId, request.projectId(), request.participantIds());
-    }
-
-    @DeleteMapping("/workspace/{workspaceId}/sessions/{sessionId}")
-    public Workspace endSession(@PathVariable String workspaceId, @PathVariable String sessionId) {
-        return workspaceService.endCollaborationSession(workspaceId, sessionId);
+    // Identity has no Workspace-to-Project sharing or collaboration-session contract.
+    // The retired in-memory entries never established canonical access or execution.
+    @RequestMapping(path = {"/workspace/{workspaceId}/projects", "/workspace/{workspaceId}/sessions", "/workspace/{workspaceId}/sessions/{sessionId}"}, method = {RequestMethod.POST, RequestMethod.DELETE})
+    public ResponseEntity<org.springframework.http.ProblemDetail> retiredCollaboration(@PathVariable String workspaceId) {
+        workspaceQueries.getWorkspace(workspaceId);
+        var problem = org.springframework.http.ProblemDetail.forStatusAndDetail(HttpStatus.GONE,
+                "Product Workspace sharing/session metadata was retired; use canonical Project access. No Workspace-to-Project identity mapping is implied.");
+        return ResponseEntity.status(HttpStatus.GONE).body(problem);
     }
 
     // ─── Marketplace Endpoints ─────────────────────────────────────────────────
@@ -130,10 +143,19 @@ public class ProductizationApi {
 
     // ─── Request/Response Types ────────────────────────────────────────────────
 
+    /** Product wire projection only; no mutable identity, permissions, projects or sessions. */
+    public record WorkspaceView(String workspaceId, String tenantId, String name, String description,
+            List<WorkspaceMemberResponse> members, String status, java.time.Instant createdAt, java.time.Instant updatedAt) {
+        public WorkspaceView { members = List.copyOf(members); }
+    }
+    private WorkspaceView view(WorkspaceResponse workspace) {
+        return new WorkspaceView(workspace.id(), workspace.tenantId(), workspace.name(), workspace.description(),
+                workspaceQueries.listMembers(workspace.id()).stream().filter(m -> m.status().equals("ACTIVE")).toList(),
+                workspace.status(), workspace.createdAt(), workspace.updatedAt());
+    }
+
     public record CreateWorkspaceRequest(String name, String description, String ownerId) {}
-    public record AddMemberRequest(String userId, Workspace.WorkspaceRole role) {}
-    public record AddProjectRequest(String projectId, String projectName, String ownerId) {}
-    public record StartSessionRequest(String projectId, List<String> participantIds) {}
+    public record AddMemberRequest(String userId, String role) {}
     public record PublishItemRequest(
             String name, String description,
             Marketplace.MarketplaceItemType type, String category,
