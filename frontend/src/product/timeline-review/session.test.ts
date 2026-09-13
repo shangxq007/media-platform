@@ -101,3 +101,18 @@ it('explicit signout retirement does not start an automatic signin from an old r
   await vi.waitFor(() => expect(requests).toHaveLength(1)); await signOutOidc(); requests[0].reject(failed(requests[0].config)); await pending
   expect(sdk.signout).toHaveBeenCalledOnce(); expect(sdk.redirect).not.toHaveBeenCalled()
 })
+it('a stale SDK read during 401 handling cannot retire the session loaded in between', async () => {
+  const old = sdk.user; const requests = pendingRequests(); const pending = api.get('/sdk-race').catch(error => error)
+  await vi.waitFor(() => expect(requests).toHaveLength(1)); let finish!: (value: unknown) => void; let checking = false
+  sdk.getUser.mockImplementationOnce(() => { checking = true; return new Promise(resolve => { finish = resolve }) })
+  requests[0].reject(failed(requests[0].config)); await vi.waitFor(() => expect(checking).toBe(true))
+  sdk.user = user(`sdk-replacement-${sequence}`); await emit('UserLoaded'); const retired = await watch()
+  finish(old); await pending; expect(retired).not.toHaveBeenCalled(); expect(sdk.redirect).not.toHaveBeenCalled()
+})
+it('redirect failure preserves the original 401 and does not repeat automatic expiry effects', async () => {
+  const retired = await watch(); sdk.redirect.mockRejectedValue(new Error('redirect unavailable'))
+  const adapter = vi.fn(async (config: InternalAxiosRequestConfig) => { throw failed(config) }); api.defaults.adapter = adapter
+  await expect(api.get('/redirect-failure')).rejects.toMatchObject({ response: { status: 401 } })
+  await expect(api.get('/already-retired')).rejects.toMatchObject({ code: 'ERR_CANCELED' })
+  expect(retired).toHaveBeenCalledOnce(); expect(sdk.redirect).toHaveBeenCalledOnce(); expect(adapter).toHaveBeenCalledOnce()
+})

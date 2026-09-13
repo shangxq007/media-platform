@@ -98,4 +98,14 @@ describe('authenticated bounded timeline browsing (explicit test source)', () =>
     await act(async () => pending.resolve([])); await screen.findByText('No revisions were returned for this project.')
   })
 
+  it('renders distinct reviewer decisions when the aggregate review remains approved', async () => {
+    const reads = source()
+    vi.mocked(reads.detail).mockResolvedValue({ ...detail, review: { ...detail.review, status: 'APPROVED' },
+      decisions: ['reviewer-A', 'reviewer-B'].map((reviewerUserId, index) => ({ decisionId: `approval-${index}`, reviewId: detail.review.reviewId, reviewerUserId, decision: 'APPROVE', createdAt: null })),
+      mergeGuard: { canMerge: true, reason: null } })
+    mount(reads); await choose(); fireEvent.click(await screen.findByRole('button', { name: 'Opening review' }))
+    await screen.findByText(/Approve \(APPROVE\).*reviewer-A/)
+    expect(screen.getByText(/Approve \(APPROVE\).*reviewer-B/)).toBeTruthy()
+  })
+
 })
