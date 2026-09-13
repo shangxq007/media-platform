@@ -134,8 +134,11 @@ class DeliveryCompletionOwnerBoundaryTest extends PostgresTestContainerSupport {
         uncertainTransport = true;
         org.junit.jupiter.api.Assertions.assertFalse(service.runJob(id));
         assertEquals("UNCERTAIN", dsl.fetchValue("select status from delivery_job where id = ?", id));
-        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
-                () -> service.retryDelivery("tenant-1", "project-1", "render-1", id));
+        com.example.platform.shared.web.TenantContext.set("tenant-1");
+        try {
+            org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
+                    () -> service.retryDelivery("tenant-1", "project-1", "render-1", id));
+        } finally {com.example.platform.shared.web.TenantContext.clear();}
         assertEquals(0, service.processQueued(10));
     }
 
