@@ -70,8 +70,9 @@ public class AssetController {
     public ResponseEntity<AssetVersionResponse> getVersions(
             @PathVariable String projectId,
             @PathVariable String assetId) {
-        assetService.getById(projectId, assetId);
+        assetService.requireProjectRead(projectId);
         return assetRegistryService.resolve(assetId)
+                .filter(asset -> projectId.equals(asset.projectId()))
                 .map(r -> ResponseEntity.ok(toVersionResponse(r)))
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -81,8 +82,9 @@ public class AssetController {
     public ResponseEntity<AssetGovernanceResponse> getGovernance(
             @PathVariable String projectId,
             @PathVariable String assetId) {
-        assetService.getById(projectId, assetId);
+        assetService.requireProjectRead(projectId);
         return assetRegistryService.resolve(assetId)
+                .filter(asset -> projectId.equals(asset.projectId()))
                 .map(r -> ResponseEntity.ok(toGovernanceResponse(r)))
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -92,8 +94,9 @@ public class AssetController {
     public ResponseEntity<Map<String, Object>> exportJsonLd(
             @PathVariable String projectId,
             @PathVariable String assetId) {
-        assetService.getById(projectId, assetId);
+        assetService.requireProjectRead(projectId);
         return assetRegistryService.resolve(assetId)
+                .filter(asset -> projectId.equals(asset.projectId()))
                 .map(r -> ResponseEntity.ok(assetRegistryService.buildJsonLdProjection(assetId)))
                 .orElse(ResponseEntity.notFound().build());
     }

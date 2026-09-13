@@ -40,6 +40,10 @@ public class AssetService {
                 filename, sizeBytes, checksum);
     }
 
+    public void requireProjectRead(String projectId) {
+        assetRepository.requireReadScope(com.example.platform.shared.web.TenantGuard.requireTenantId(), projectId);
+    }
+
     /**
      * Get an asset by ID, scoped to current tenant.
      */

@@ -107,4 +107,23 @@ class MediaOwnerIntegrationTest extends PostgresTestContainerSupport {
         assertEquals(before,jdbc.queryForObject("select count(*) from media_probe_observation where media_asset_id=?",Long.class,asset.id()));
         assertEquals(1,streams.findByMediaAssetId(id).size());
     }
+    @Test void actualAssetHttpProjectionPreservesScopeAndMissing404() throws Exception {
+        var service=new com.example.platform.render.infrastructure.asset.AssetService(assets());
+        var controller=new com.example.platform.web.assets.AssetController(service,
+                new com.example.platform.render.app.asset.AssetRegistryService(assets()));
+        var mvc=org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup(controller).build();
+        var asset=register();
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/projects/project/assets/"+asset.id()+"/versions"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk());
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/projects/project/assets/missing/versions"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isNotFound());
+        assertThrows(SecurityException.class,()->controller.getVersions("other",asset.id()));
+        denied=true;assertThrows(SecurityException.class,()->controller.getGovernance("project",asset.id()));
+    }
+    @Test void invalidRegistrationAndMissingProbeCannotPersist() {
+        long before=jdbc.queryForObject("select count(*) from media_asset",Long.class);
+        assertThrows(RuntimeException.class,()->assets().register("tenant","project","../bad","VIDEO","x",1L,null));
+        assertThrows(IllegalArgumentException.class,()->context.getBean(MediaProbes.class).probeAndPersist(MediaAssetId.of("missing"),"tenant","project","fixture:input"));
+        assertEquals(before,jdbc.queryForObject("select count(*) from media_asset",Long.class));
+    }
 }

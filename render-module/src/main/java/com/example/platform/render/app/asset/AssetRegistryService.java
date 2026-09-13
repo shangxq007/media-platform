@@ -29,42 +29,6 @@ public class AssetRegistryService {
     }
 
     /**
-     * Register or upsert asset identity (MCMV2-C: structural media truth
-     * duration/width/height is no longer part of asset registration — it is
-     * captured by the probe normalization boundary into the canonical
-     * structural model).
-     */
-    public AssetRegistryRecord register(String projectId, String storageKey, String mediaType,
-                                         String filename, Long sizeBytes, String checksum,
-                                         String assetVersion, String ownerId) {
-        String tenantId = TenantContext.get();
-        if (tenantId == null || tenantId.isBlank()) {
-            throw new SecurityException("Tenant context required for asset registration");
-        }
-        StorageKeyPolicy.assertValidPath(storageKey);
-
-        Asset asset = assetRepository.register(tenantId, projectId, storageKey, mediaType,
-                filename, sizeBytes, checksum);
-
-        String entityRef = "asset://" + asset.id() + "?v=" + (assetVersion != null ? assetVersion : "v1");
-        String xmpUri = "xmp://asset/" + asset.id() + "/version/" + (assetVersion != null ? assetVersion : "v1");
-
-        return new AssetRegistryRecord(
-                asset.id(),
-                assetVersion != null ? assetVersion : "v1",
-                asset.mediaType(),
-                ownerId,
-                projectId,
-                entityRef,
-                xmpUri,
-                storageKey,
-                checksum,
-                AssetGovernanceMetadata.defaults(),
-                asset.createdAt(),
-                asset.createdAt());
-    }
-
-    /**
      * Resolve asset by ID.
      */
     public Optional<AssetRegistryRecord> resolve(String assetId) {
