@@ -62,7 +62,7 @@ class OutboxEventDispatcherTest {
         when(service.readEvent("obx_test2")).thenReturn(Map.of(
                 "id", "obx_test2",
                 "event_type", "unknown.event.type",
-                "event_version", 1, "aggregate_type", "render_job", "aggregate_id", "rj-1", "payload", "{}"
+                "event_version", 1, "aggregate_type", "fixture_job", "aggregate_id", "rj-1", "payload", "{}"
         ));
 
         boolean result = dispatcher.processOnce("obx_test2");
@@ -77,8 +77,8 @@ class OutboxEventDispatcherTest {
         when(service.lockForProcessing(eq("obx_test3"), anyString())).thenReturn(true);
         when(service.readEvent("obx_test3")).thenReturn(Map.of(
                 "id", "obx_test3",
-                "event_type", "render.job.created",
-                "event_version", 1, "aggregate_type", "render_job", "aggregate_id", "rj-1", "payload", "not-valid-json"
+                "event_type", "fixture.created",
+                "event_version", 1, "aggregate_type", "fixture_job", "aggregate_id", "rj-1", "payload", "not-valid-json"
         ));
 
         boolean result = dispatcher.processOnce("obx_test3");
@@ -103,13 +103,13 @@ class OutboxEventDispatcherTest {
     @Test
     void processBatchRespectsLimit() {
         when(service.pendingForDispatch(1)).thenReturn(List.of(
-                Map.of("id", "obx_l1", "event_type", "unknown.event.type", "event_version", 1, "aggregate_type", "render_job", "aggregate_id", "rj-1", "payload", "{}")
+                Map.of("id", "obx_l1", "event_type", "unknown.event.type", "event_version", 1, "aggregate_type", "fixture_job", "aggregate_id", "rj-1", "payload", "{}")
         ));
         when(service.lockForProcessing(eq("obx_l1"), anyString())).thenReturn(true);
         when(service.readEvent("obx_l1")).thenReturn(Map.of(
                 "id", "obx_l1",
                 "event_type", "unknown.event.type",
-                "event_version", 1, "aggregate_type", "render_job", "aggregate_id", "rj-1", "payload", "{}"
+                "event_version", 1, "aggregate_type", "fixture_job", "aggregate_id", "rj-1", "payload", "{}"
         ));
 
         int processed = dispatcher.processBatch(1);

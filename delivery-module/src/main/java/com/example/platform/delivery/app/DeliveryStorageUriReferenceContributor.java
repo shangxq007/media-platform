@@ -23,9 +23,11 @@ public class DeliveryStorageUriReferenceContributor implements StorageUriReferen
     private static final Logger log = LoggerFactory.getLogger(DeliveryStorageUriReferenceContributor.class);
 
     private final DSLContext dsl;
+    private final com.example.platform.artifact.app.ArtifactOutputReferenceIndex artifacts;
 
-    public DeliveryStorageUriReferenceContributor(DSLContext dsl) {
+    public DeliveryStorageUriReferenceContributor(DSLContext dsl, com.example.platform.artifact.app.ArtifactOutputReferenceIndex artifacts) {
         this.dsl = dsl;
+        this.artifacts = artifacts;
     }
 
     @Override
@@ -40,7 +42,8 @@ public class DeliveryStorageUriReferenceContributor implements StorageUriReferen
             return hits;
         }
         try {
-            var condition = DELIVERY_JOB.SOURCE_URI.eq(storageUri).or(DELIVERY_JOB.REMOTE_URI.eq(storageUri));
+            var ids=artifacts.findByStorageUri(storageUri,projectId,50).stream().map(ref->ref.artifactId().value()).toList();
+            var condition = DELIVERY_JOB.ARTIFACT_ID.in(ids).or(DELIVERY_JOB.REMOTE_URI.eq(storageUri));
             if (projectId != null && !projectId.isBlank()) {
                 condition = condition.and(DELIVERY_JOB.PROJECT_ID.eq(projectId));
             }
@@ -49,7 +52,7 @@ public class DeliveryStorageUriReferenceContributor implements StorageUriReferen
                             DELIVERY_JOB.PROJECT_ID,
                             DELIVERY_JOB.RENDER_JOB_ID,
                             DELIVERY_JOB.STATUS,
-                            DELIVERY_JOB.SOURCE_URI,
+                            DELIVERY_JOB.ARTIFACT_ID,
                             DELIVERY_JOB.REMOTE_URI)
                     .from(DELIVERY_JOB)
                     .where(condition)
@@ -60,7 +63,7 @@ public class DeliveryStorageUriReferenceContributor implements StorageUriReferen
                 details.put("projectId", row.get(DELIVERY_JOB.PROJECT_ID));
                 details.put("renderJobId", row.get(DELIVERY_JOB.RENDER_JOB_ID));
                 details.put("status", row.get(DELIVERY_JOB.STATUS));
-                details.put("sourceUri", row.get(DELIVERY_JOB.SOURCE_URI));
+                details.put("artifactId", row.get(DELIVERY_JOB.ARTIFACT_ID));
                 String remote = row.get(DELIVERY_JOB.REMOTE_URI);
                 if (remote != null) {
                     details.put("remoteUri", remote);

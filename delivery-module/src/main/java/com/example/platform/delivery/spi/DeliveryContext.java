@@ -8,7 +8,7 @@ public record DeliveryContext(
         String tenantId,
         String projectId,
         String renderJobId,
-        String sourceUri,
+        com.example.platform.shared.identity.ArtifactId artifactId,
         String sourceFileName,
         String contentType,
         long contentLength,

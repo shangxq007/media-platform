@@ -1,4 +1,5 @@
-package com.example.platform.shared.events;
+package com.example.platform.render.api.event;
+import com.example.platform.shared.events.RenderInitiator;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -56,9 +57,7 @@ class RenderInitiatorContractTest {
     void eventsPreserveExactInitiatorWithoutAuthorizationOrAudienceData() {
         RenderInitiator initiator = RenderInitiator.from(
                 CanonicalActor.user("principal-p1", "tenant-1", Set.of("ADMIN"), "jwt"));
-        RenderJobCompletedEvent event = new RenderJobCompletedEvent(
-                "rj-1", "project-1", "artifact-1", "storage://artifact-1",
-                Instant.parse("2026-08-29T00:00:00Z"), initiator);
+        RenderJobCompletedEvent event = new RenderJobCompletedEvent(new com.example.platform.artifact.app.ArtifactOutputReference(new com.example.platform.artifact.app.ArtifactScope("tenant-1","project-1","rj-1"), new com.example.platform.shared.identity.ArtifactId("artifact-1")), Instant.parse("2026-08-29T00:00:00Z"), initiator);
 
         Set<String> snapshotFields = Arrays.stream(initiator.getClass().getRecordComponents())
                 .map(RecordComponent::getName)
@@ -69,7 +68,6 @@ class RenderInitiatorContractTest {
         assertFalse(snapshotFields.contains("subscriber"));
 
         assertEquals(initiator, event.initiator());
-        assertEquals(initiator, new RenderJobFailedEvent(
-                "rj-1", "project-1", "failed", Instant.EPOCH, initiator).initiator());
+        assertEquals(initiator, new RenderJobFailedEvent("rj-1", "project-1", com.example.platform.render.api.event.RenderFailureReason.EXECUTION_FAILED, Instant.EPOCH, initiator, com.example.platform.render.domain.RenderJobStatus.FAILED).initiator());
     }
 }

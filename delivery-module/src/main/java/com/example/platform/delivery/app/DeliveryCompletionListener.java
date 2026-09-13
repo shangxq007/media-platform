@@ -1,6 +1,6 @@
 package com.example.platform.delivery.app;
 
-import com.example.platform.shared.events.RenderJobCompletedEvent;
+import com.example.platform.render.api.event.RenderJobCompletedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 

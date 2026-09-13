@@ -10,7 +10,7 @@ import com.example.platform.secrets.api.port.CredentialBundlePort;
 import com.example.platform.delivery.spi.DeliveryContext;
 import com.example.platform.shared.events.RenderDeliveryCompletedEvent;
 import com.example.platform.shared.events.RenderDeliveryFailedEvent;
-import com.example.platform.shared.events.RenderJobCompletedEvent;
+import com.example.platform.render.api.event.RenderJobCompletedEvent;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -28,7 +28,9 @@ import org.springframework.transaction.annotation.Transactional;
 import static com.example.platform.typedschema.jooq.generated.tables.DeliveryDestination.DELIVERY_DESTINATION;
 import static com.example.platform.typedschema.jooq.generated.tables.DeliveryJob.DELIVERY_JOB;
 import static com.example.platform.typedschema.jooq.generated.tables.DeliveryPolicy.DELIVERY_POLICY;
-import static com.example.platform.typedschema.jooq.generated.tables.RenderJob.RENDER_JOB;
+import com.example.platform.artifact.app.ArtifactOutputReference;
+import com.example.platform.artifact.app.ArtifactScope;
+import com.example.platform.shared.identity.ArtifactId;
 
 
 @Service
@@ -67,10 +69,10 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
         String renderJobId = requireEventText(event.renderJobId(), "renderJobId");
         String tenantId = requireEventText(event.initiator().tenantId(), "initiator.tenantId");
         String projectId = requireEventText(event.projectId(), "projectId");
-        String sourceUri = requireEventText(event.storageUri(), "storageUri");
+        ArtifactId artifactId = event.result().artifactId();
         List<Record> policies = resolvePolicies(tenantId, projectId);
         for (Record policy : policies) {
-            enqueueFromPolicy(tenantId, projectId, renderJobId, sourceUri, policy);
+            enqueueFromPolicy(tenantId, projectId, renderJobId, artifactId, policy);
         }
     }
 
@@ -102,7 +104,7 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
     }
 
     private void enqueueFromPolicy(String tenantId, String projectId, String renderJobId,
-                                   String sourceUri, Record policy) {
+                                   ArtifactId artifactId, Record policy) {
         String destinationId = policy.get(DELIVERY_POLICY.DESTINATION_ID);
         Record dest = dsl.select()
                 .from(DELIVERY_DESTINATION)
@@ -118,14 +120,14 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
         String remotePath = DeliveryPathRenderer.render(
                 pathTemplate,
                 DeliveryPathRenderer.vars(tenantId, projectId, renderJobId, filename));
-        String jobId = ("dlv_" + java.util.UUID.randomUUID().toString().replace("-", ""));
+        String jobId = "dlv_"+java.util.UUID.nameUUIDFromBytes((tenantId+"\0"+projectId+"\0"+renderJobId+"\0"+artifactId.value()+"\0"+policy.get(DELIVERY_POLICY.ID)).getBytes(java.nio.charset.StandardCharsets.UTF_8));
         dsl.insertInto(DELIVERY_JOB)
                 .columns(DELIVERY_JOB.ID, DELIVERY_JOB.TENANT_ID, DELIVERY_JOB.PROJECT_ID, DELIVERY_JOB.RENDER_JOB_ID,
-                        DELIVERY_JOB.DESTINATION_ID, DELIVERY_JOB.STATUS, DELIVERY_JOB.SOURCE_URI, DELIVERY_JOB.REMOTE_PATH,
+                        DELIVERY_JOB.DESTINATION_ID, DELIVERY_JOB.STATUS, DELIVERY_JOB.ARTIFACT_ID, DELIVERY_JOB.REMOTE_PATH,
                         DELIVERY_JOB.ATTEMPT_COUNT, DELIVERY_JOB.CREATED_AT)
                 .values(jobId, tenantId, projectId, renderJobId, destinationId,
-                        DeliveryJobStatus.QUEUED.name(), sourceUri, remotePath, 0, LocalDateTime.now())
-                .execute();
+                        DeliveryJobStatus.QUEUED.name(), artifactId.value(), remotePath, 0, LocalDateTime.now())
+                .onConflict(DELIVERY_JOB.ID).doNothing().execute();
         log.info("Queued delivery job {} renderJob={} destination={}", jobId, renderJobId, destinationId);
     }
 
@@ -155,6 +157,19 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
         if (row == null) {
             return false;
         }
+        String previousTenant=com.example.platform.shared.web.TenantContext.get();
+        String rowTenant=row.get(DELIVERY_JOB.TENANT_ID);
+        if(previousTenant!=null && !previousTenant.equals(rowTenant))throw new IllegalArgumentException("Delivery tenant mismatch");
+        try {
+            com.example.platform.shared.web.TenantContext.set(rowTenant);
+            return runScopedJob(deliveryJobId,row);
+        } finally {
+            if(previousTenant==null)com.example.platform.shared.web.TenantContext.clear();
+            else com.example.platform.shared.web.TenantContext.set(previousTenant);
+        }
+    }
+
+    private boolean runScopedJob(String deliveryJobId,Record row) {
         String status = row.get(DELIVERY_JOB.STATUS);
         int attempts = row.get(DELIVERY_JOB.ATTEMPT_COUNT);
         if (!DeliveryJobStatus.QUEUED.name().equals(status)
@@ -173,7 +188,7 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
         String tenantId = row.get(DELIVERY_JOB.TENANT_ID);
         String projectId = row.get(DELIVERY_JOB.PROJECT_ID);
         String renderJobId = row.get(DELIVERY_JOB.RENDER_JOB_ID);
-        String sourceUri = row.get(DELIVERY_JOB.SOURCE_URI);
+        ArtifactId artifactId = new ArtifactId(row.get(DELIVERY_JOB.ARTIFACT_ID));
         String remotePath = row.get(DELIVERY_JOB.REMOTE_PATH);
         String destinationId = row.get(DELIVERY_JOB.DESTINATION_ID);
 
@@ -194,10 +209,10 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
             return false;
         }
 
-        Optional<DeliverySourceResolver.SourceFile> source = sourceResolver.open(sourceUri);
+        Optional<DeliverySourceResolver.SourceFile> source = sourceResolver.open(new ArtifactOutputReference(new ArtifactScope(tenantId,projectId,renderJobId),artifactId));
         if (source.isEmpty()) {
             markFailed(deliveryJobId, tenantId, projectId, renderJobId, destinationId, protocol.name(),
-                    "SOURCE_UNAVAILABLE", "Cannot read " + sourceUri);
+                    "SOURCE_UNAVAILABLE", "Cannot read Artifact " + artifactId.value());
             return false;
         }
 
@@ -206,7 +221,7 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
             Map<String, Object> config = DeliveryConfigParser.parseConfig(dest.get(DELIVERY_DESTINATION.CONFIG_JSON));
             Map<String, String> credentials = resolveDestinationCredentials(dest);
             DeliveryContext ctx = new DeliveryContext(
-                    deliveryJobId, tenantId, projectId, renderJobId, sourceUri,
+                    deliveryJobId, tenantId, projectId, renderJobId, artifactId,
                     file.fileName(), file.contentType(), file.length(), file.stream(),
                     remotePath, protocol.name(), config, credentials);
             transportInvoked = true;
@@ -243,15 +258,8 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
 
     @Transactional
     public String triggerManual(String tenantId, String projectId, String renderJobId, String destinationId) {
-        Record job = dsl.select(RENDER_JOB.ARTIFACT_URI, RENDER_JOB.TENANT_ID)
-                .from(RENDER_JOB)
-                .where(RENDER_JOB.ID.eq(renderJobId))
-                .and(RENDER_JOB.PROJECT_ID.eq(projectId))
-                .and(RENDER_JOB.TENANT_ID.eq(tenantId))
-                .fetchOne();
-        if (job == null) {
-            throw new IllegalArgumentException("Render job not found");
-        }
+        ArtifactId artifactId=sourceResolver.find(new ArtifactScope(tenantId,projectId,renderJobId))
+                .orElseThrow(()->new IllegalArgumentException("Accepted Render output not found")).artifactId();
         Record dest = dsl.select()
                 .from(DELIVERY_DESTINATION)
                 .where(DELIVERY_DESTINATION.ID.eq(destinationId))
@@ -260,17 +268,16 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
         if (dest == null) {
             throw new IllegalArgumentException("Destination not found");
         }
-        String sourceUri = job.get(RENDER_JOB.ARTIFACT_URI);
         String pathTemplate = "{tenantId}/{projectId}/{jobId}/output.mp4";
         String remotePath = DeliveryPathRenderer.render(
                 pathTemplate, DeliveryPathRenderer.vars(tenantId, projectId, renderJobId, "output.mp4"));
         String dlvId = ("dlv_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         dsl.insertInto(DELIVERY_JOB)
                 .columns(DELIVERY_JOB.ID, DELIVERY_JOB.TENANT_ID, DELIVERY_JOB.PROJECT_ID, DELIVERY_JOB.RENDER_JOB_ID,
-                        DELIVERY_JOB.DESTINATION_ID, DELIVERY_JOB.STATUS, DELIVERY_JOB.SOURCE_URI, DELIVERY_JOB.REMOTE_PATH,
+                        DELIVERY_JOB.DESTINATION_ID, DELIVERY_JOB.STATUS, DELIVERY_JOB.ARTIFACT_ID, DELIVERY_JOB.REMOTE_PATH,
                         DELIVERY_JOB.ATTEMPT_COUNT, DELIVERY_JOB.CREATED_AT)
                 .values(dlvId, tenantId, projectId, renderJobId, destinationId,
-                        DeliveryJobStatus.QUEUED.name(), sourceUri, remotePath, 0, LocalDateTime.now())
+                        DeliveryJobStatus.QUEUED.name(), artifactId.value(), remotePath, 0, LocalDateTime.now())
                 .execute();
         return dlvId;
     }
@@ -304,7 +311,7 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
         Map<String, Object> config = DeliveryConfigParser.parseConfig(dest.get(DELIVERY_DESTINATION.CONFIG_JSON));
         Map<String, String> credentials = resolveDestinationCredentials(dest);
         DeliveryContext ctx = new DeliveryContext(
-                "probe", tenantId, null, null, "", "", "application/octet-stream", 0,
+                "probe", tenantId, null, null, null, "", "application/octet-stream", 0,
                 new java.io.ByteArrayInputStream(new byte[0]), "probe.dat", protocol.name(), config, credentials);
         DeliveryAdapter.ProbeResult result = adapter.probe(ctx);
         if (result.ok()) {

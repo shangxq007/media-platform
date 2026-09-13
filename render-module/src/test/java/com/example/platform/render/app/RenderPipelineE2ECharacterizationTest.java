@@ -1,4 +1,5 @@
 package com.example.platform.render.app;
+import com.example.platform.render.api.event.*;
 
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import static org.jooq.impl.DSL.field;
@@ -39,7 +40,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.context.ApplicationEventPublisher;
+import com.example.platform.render.app.event.RenderLifecyclePublisher;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -65,7 +66,7 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
     private CommercialAdmissionPort commercialAdmission;
     private QuotaConsumptionPort quotaConsumption;
     private RenderProviderRouter renderProviderRouter;
-    private ApplicationEventPublisher eventPublisher;
+    private RenderLifecyclePublisher eventPublisher;
     private RenderJobStatusHistoryRepository historyRepository;
     private TimelineScriptParser timelineScriptParser;
     private RenderArtifactStorageService artifactStorageService;
@@ -95,10 +96,14 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
         commercialAdmission = mock(CommercialAdmissionPort.class);
         quotaConsumption = mock(QuotaConsumptionPort.class);
         renderProviderRouter = mock(RenderProviderRouter.class);
-        eventPublisher = mock(ApplicationEventPublisher.class);
+        eventPublisher = mock(RenderLifecyclePublisher.class);
         historyRepository = new RenderJobStatusHistoryRepository(dsl);
         timelineScriptParser = mock(TimelineScriptParser.class);
         artifactStorageService = mock(RenderArtifactStorageService.class);
+        when(artifactStorageService.uploadJobOutput(anyString(),anyString(),anyString(),anyString())).thenAnswer(i->
+            new com.example.platform.artifact.app.ArtifactOutputReference(new com.example.platform.artifact.app.ArtifactScope(
+                com.example.platform.shared.web.TenantContext.get(),i.getArgument(1),i.getArgument(0)),
+                new com.example.platform.shared.identity.ArtifactId("accepted-"+i.getArgument(0))));
         timelineSnapshotService = mock(TimelineSnapshotService.class);
         effectTimelineInspector = mock(EffectTimelineInspector.class);
         renderProfileResolver = mock(RenderProfileResolver.class);
@@ -129,7 +134,7 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
                             field("status").in("SELECTING_PROVIDER", "PROVIDER_SELECTED", "EXECUTING", "COMPLETING")))
                     .execute();
             return null;
-        }).when(failureService).recordDurableFailure(anyString(), anyString());
+        }).when(failureService).recordDurableFailure(anyString(), anyString(), org.mockito.ArgumentMatchers.any(com.example.platform.render.api.event.RenderFailureReason.class));
         // Mock claimForSelection to update DB status (simulates REQUIRES_NEW CAS)
         when(claimService.claimForSelection(anyString())).thenAnswer(inv -> {
             String jobId = inv.getArgument(0);
@@ -148,18 +153,7 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
                 eventPublisher, timelineScriptParser,
                 effectTimelineInspector, renderProfileResolver,
                 null, null);
-        RenderJobExecutionService executionService = new RenderJobExecutionService(
-                renderJobRepository, quotaConsumption, null, renderProviderRouter,
-                providerRuntimeEngine,
-                eventPublisher, historyRepository,
-                timelineScriptParser, mock(TimelineSpecResolver.class),
-                mock(IncrementalRenderOrchestrationService.class),
-                artifactStorageService, null /* artifactGraphRepository */,
-                timelineSnapshotService,
-                editorTimelineConverter, effectTimelineInspector, renderProfileResolver,
-                null, null, null, null,
-                mock(TimelineExtensionsReader.class), null, null,
-                claimService, failureService);
+        RenderJobExecutionService executionService = new RenderJobExecutionService(renderJobRepository, null, renderProviderRouter, providerRuntimeEngine, timelineScriptParser, mock(TimelineSpecResolver.class), mock(IncrementalRenderOrchestrationService.class), new RenderJobLifecycleService(renderJobRepository,historyRepository,eventPublisher,artifactStorageService,org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactOutputRead.class),quotaConsumption), timelineSnapshotService, editorTimelineConverter, effectTimelineInspector, renderProfileResolver, null, null, null, null, mock(TimelineExtensionsReader.class), null, null, claimService, failureService);
         RenderJobTimelineQueryService timelineQueryService = new RenderJobTimelineQueryService(
                 renderJobRepository, mock(BaseJobTimelineLoader.class));
 
@@ -269,13 +263,14 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
         assertEquals("COMPLETED", jobRow.get(field("status"), String.class));
         assertEquals("tenant-1", jobRow.get(field("tenant_id"), String.class));
         assertEquals("proj-1", jobRow.get(field("project_id"), String.class));
-        assertNotNull(jobRow.get(field("artifact_uri"), String.class));
+        assertNull(jobRow.get(field("artifact_uri"), String.class));
+        verify(eventPublisher).publishEvent(any(RenderJobCompletedEvent.class));
 
         // 4. Verify provider was invoked with timeline
         verify(provider).render(eq(jobId), contains("tracks"), eq("default_1080p"));
 
         // 5. Verify notifications published
-        verify(eventPublisher, atLeastOnce()).publishEvent(any(Object.class));
+        verify(eventPublisher, atLeastOnce()).publishEvent(any(com.example.platform.render.api.event.RenderJobCompletedEvent.class));
     }
 
     // =========================================================
@@ -657,13 +652,18 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
                 "tenant-10", "proj-10", "snap-10", "default_1080p");
         String jobId = submit(request);
 
-        // Verify artifact URI persisted
+        // Verify the accepted typed result, with no physical completion URI persisted
         var jobRow = dsl.select(field("artifact_uri"))
                 .from(table("render_job"))
                 .where(field("id").eq(jobId))
                 .fetchOne();
-        assertNotNull(jobRow.get(field("artifact_uri"), String.class));
-        assertTrue(jobRow.get(field("artifact_uri"), String.class).contains("artifacts"));
+        assertNull(jobRow.get(field("artifact_uri"), String.class));
+        verify(eventPublisher).publishEvent(any(RenderJobCompletedEvent.class));
+        var completion=org.mockito.ArgumentCaptor.forClass(RenderJobCompletedEvent.class);
+        verify(eventPublisher).publishEvent(completion.capture());
+        assertEquals("accepted-"+jobId,completion.getValue().result().artifactId().value());
+        assertEquals("tenant-10",completion.getValue().result().scope().tenantId());
+        assertEquals("proj-10",completion.getValue().result().scope().projectId());
 
     }
 

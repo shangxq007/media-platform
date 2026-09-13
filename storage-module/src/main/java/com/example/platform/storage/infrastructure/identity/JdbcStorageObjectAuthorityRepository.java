@@ -34,6 +34,28 @@ public class JdbcStorageObjectAuthorityRepository implements StorageObjectAuthor
         this.jdbc = jdbc;
     }
 
+    @Override public List<IssuanceResult> references(String storageUri,String projectId,int limit) {
+        if(storageUri==null||storageUri.isBlank())return List.of();
+        var owners=jdbc.query("""
+            select o.tenant_id,o.project_id,o.issuance_idempotency_key from storage_logical_object o
+            join storage_placement_receipt r on r.object_id=o.object_id
+            where r.opaque_locator=? and r.receipt_purpose='ORIGINAL_ISSUANCE'
+              and (?::text is null or o.project_id=?) order by o.object_id limit ?
+            """,(rs,n)->new String[]{rs.getString(1),rs.getString(2),rs.getString(3)},storageUri,projectId,projectId,Math.min(100,Math.max(1,limit)));
+        return owners.stream().map(row->findOriginalIssuance(new StorageOwnershipScope(row[0],row[1]),new IssuanceIdempotencyKey(row[2])).orElseThrow()).toList();
+    }
+
+    @Override public Optional<IssuanceResult> findPlacement(StorageOwnershipScope owner, StorageObjectId objectId, StorageReplicaId replicaId) {
+        var keys=jdbc.query("""
+            select o.issuance_idempotency_key from storage_logical_object o
+            join storage_placement_receipt r on r.object_id=o.object_id
+            where o.tenant_id=? and o.project_id is not distinct from ? and o.object_id=?
+              and r.replica_id=? and r.receipt_purpose='ORIGINAL_ISSUANCE'
+            """,(rs,n)->rs.getString(1),owner.tenantId(),owner.projectId(),objectId.value(),replicaId.value());
+        if(keys.size()>1)throw new IllegalStateException("ambiguous original placement");
+        return keys.isEmpty()?Optional.empty():findOriginalIssuance(owner,new IssuanceIdempotencyKey(keys.getFirst()));
+    }
+
     @Override
     public Optional<IssuanceResult> findOriginalIssuance(
             StorageOwnershipScope owner, IssuanceIdempotencyKey idempotencyKey) {

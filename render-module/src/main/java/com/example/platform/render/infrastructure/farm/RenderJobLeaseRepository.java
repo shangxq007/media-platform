@@ -130,6 +130,7 @@ public class RenderJobLeaseRepository {
                 .where(RENDER_JOB_LEASE.LEASE_ID.eq(leaseId))
                 .and(RENDER_JOB_LEASE.WORKER_ID.eq(workerId))
                 .and(RENDER_JOB_LEASE.LEASE_VERSION.eq(expectedVersion))
+                .and(RENDER_JOB_LEASE.LEASE_UNTIL.greaterThan(toTs(now)))
                 .and(RENDER_JOB_LEASE.STATUS.in(
                         RenderJobLeaseStatus.CLAIMED.name(),
                         RenderJobLeaseStatus.RUNNING.name(),

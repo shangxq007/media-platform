@@ -38,14 +38,17 @@ public class RenderJobLeaseService {
     private final RenderJobLeaseRepository leaseRepository;
     private final RenderJobRepository jobRepository;
     private final RenderWorkerRegistryService workerRegistry;
+    private final com.example.platform.render.app.RenderJobLifecycleService lifecycle;
 
     public RenderJobLeaseService(
             RenderJobLeaseRepository leaseRepository,
             RenderJobRepository jobRepository,
-            RenderWorkerRegistryService workerRegistry) {
+            RenderWorkerRegistryService workerRegistry,
+            com.example.platform.render.app.RenderJobLifecycleService lifecycle) {
         this.leaseRepository = leaseRepository;
         this.jobRepository = jobRepository;
         this.workerRegistry = workerRegistry;
+        this.lifecycle = lifecycle;
     }
 
     /**
@@ -193,13 +196,18 @@ public class RenderJobLeaseService {
         }
 
         Instant now = Instant.now();
+        if(!lease.isActive()||lease.isExpired(now))return LeaseReleaseResult.failure(leaseId,"Lease not active or expired");
+        com.example.platform.shared.web.TenantGuard.assertSameTenantIfContextPresent(lease.tenantId());
         boolean released = leaseRepository.release(leaseId, workerId, lease.leaseVersion(), now);
 
         if (released) {
-            // Update job: COMPLETED + artifact URI
-            jobRepository.updateStatus(lease.jobId(), RenderJobStatus.COMPLETED.name());
-            if (artifactUri != null && !artifactUri.isBlank()) {
-                jobRepository.updateArtifactUri(lease.jobId(), artifactUri);
+            String previousTenant=com.example.platform.shared.web.TenantContext.get();
+            try{
+                com.example.platform.shared.web.TenantContext.set(lease.tenantId());
+                lifecycle.completeReportedOutput(lease.tenantId(),lease.jobId(),artifactUri,checksum);
+                if(!lease.leaseUntil().isAfter(Instant.now()))throw new IllegalStateException("lease expired during output acceptance");
+            }finally{
+                if(previousTenant==null)com.example.platform.shared.web.TenantContext.clear();else com.example.platform.shared.web.TenantContext.set(previousTenant);
             }
             // Decrement worker active jobs
             workerRegistry.decrementActiveJobs(workerId);

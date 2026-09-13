@@ -14,15 +14,15 @@ import com.example.platform.entitlement.api.commercial.CommercialDecision;
 import com.example.platform.entitlement.api.commercial.CommercialDecisionReason;
 import com.example.platform.shared.commercial.PrincipalRef;
 import com.example.platform.shared.commercial.PrincipalType;
-import com.example.platform.shared.events.RenderJobCreatedEvent;
-import com.example.platform.shared.events.RenderJobFailedEvent;
+import com.example.platform.render.api.event.RenderJobCreatedEvent;
+import com.example.platform.render.api.event.RenderJobFailedEvent;
 import com.example.platform.shared.events.RenderInitiator;
 import com.example.platform.shared.web.TenantContext;
 import com.example.platform.render.domain.interchange.TimelineScriptParser;
 import org.jooq.DSLContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.ApplicationEventPublisher;
+import com.example.platform.render.app.event.RenderLifecyclePublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,7 +53,7 @@ public class RenderJobSubmissionService {
     private final RenderJobRepository renderJobRepository;
     private final CommercialAdmissionPort commercialAdmission;
     private final RenderJobStatusHistoryRepository historyRepository;
-    private final ApplicationEventPublisher eventPublisher;
+    private final RenderLifecyclePublisher eventPublisher;
     private final TimelineScriptParser timelineScriptParser;
     private final EffectTimelineInspector effectTimelineInspector;
     private final RenderProfileResolver renderProfileResolver;
@@ -64,7 +64,7 @@ public class RenderJobSubmissionService {
             RenderJobRepository renderJobRepository,
             CommercialAdmissionPort commercialAdmission,
             RenderJobStatusHistoryRepository historyRepository,
-            ApplicationEventPublisher eventPublisher,
+            RenderLifecyclePublisher eventPublisher,
             TimelineScriptParser timelineScriptParser,
             EffectTimelineInspector effectTimelineInspector,
             RenderProfileResolver renderProfileResolver,
@@ -136,8 +136,7 @@ public class RenderJobSubmissionService {
                 "snap_" + rejectedJobId, profile, reason, initiator, OffsetDateTime.now());
         historyRepository.record(rejectedJobId, null, RenderJobStatus.REJECTED.name(),
                 reason, code);
-        eventPublisher.publishEvent(new RenderJobFailedEvent(
-                rejectedJobId, request.projectId(), reason, Instant.now(), initiator));
+        eventPublisher.publishEvent(new RenderJobFailedEvent(rejectedJobId, request.projectId(), com.example.platform.render.api.event.RenderFailureReason.COMMERCIAL_REJECTED, Instant.now(), initiator, RenderJobStatus.REJECTED));
 
         log.warn("Commercial decision rejected for tenant {}: {} - {}",
                 request.tenantId(), code, reason);
@@ -168,7 +167,7 @@ public class RenderJobSubmissionService {
         historyRepository.record(jobId, null, RenderJobStatus.QUEUED.name(), "Job created", null);
 
         eventPublisher.publishEvent(
-                new RenderJobCreatedEvent(jobId, request.projectId(), snapshotId, profile, null));
+                new RenderJobCreatedEvent(jobId, request.projectId(), snapshotId, profile, initiator, Instant.now()));
 
         persistInlineScriptIfPresent(jobId, request);
         applyAiEditInstructionIfPresent(jobId, request);

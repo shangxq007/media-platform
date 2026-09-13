@@ -53,9 +53,21 @@ public class AuditService {
 
     public String record(String actorType, String actorId, String action,
             String resourceType, String resourceId, Object payload, AuditCategory category) {
-        String id = ("aud_" + java.util.UUID.randomUUID().toString().replace("-", ""));
+        return recordWithId("aud_"+java.util.UUID.randomUUID().toString().replace("-",""),actorType,actorId,action,resourceType,resourceId,payload,category);
+    }
+
+    /** Idempotent database audit effect for an opaque defining-domain fact identity. */
+    public String recordFact(String factKey,String actorType,String actorId,String action,
+            String resourceType,String resourceId,Object payload,AuditCategory category) {
+        if(factKey==null||factKey.isBlank())throw new IllegalArgumentException("fact identity required");
+        String id="aud_"+java.util.UUID.nameUUIDFromBytes(factKey.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        return recordWithId(id,actorType,actorId,action,resourceType,resourceId,payload,category);
+    }
+
+    private String recordWithId(String id,String actorType,String actorId,String action,
+            String resourceType,String resourceId,Object payload,AuditCategory category) {
         String categoryName = category == null ? AuditCategory.UNKNOWN.name() : category.name();
-        dsl.insertInto(AUDIT_RECORDS)
+        int inserted=dsl.insertInto(AUDIT_RECORDS)
                 .columns(
                         AUDIT_RECORDS.ID,
                         AUDIT_RECORDS.ACTOR_TYPE,
@@ -78,7 +90,8 @@ public class AuditService {
                         categoryName,
                         LocalDateTime.now()
                 )
-                .execute();
+                .onConflict(AUDIT_RECORDS.ID).doNothing().execute();
+        if(inserted==0)return id;
 
         if (alertService.isPresent()) {
             try {

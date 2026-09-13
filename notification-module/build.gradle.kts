@@ -1,6 +1,7 @@
 plugins { id("java-library") }
 
 dependencies {
+    implementation(project(":render-module")) // defining-domain lifecycle contract
     implementation(project(":outbox-event-module"))
     implementation(project(":shared-kernel"))
     implementation(project(":typed-schema-module"))

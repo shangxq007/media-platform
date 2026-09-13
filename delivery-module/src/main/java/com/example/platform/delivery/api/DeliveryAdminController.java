@@ -54,7 +54,7 @@ public class DeliveryAdminController {
     }
 
     @GetMapping("/by-storage-uri")
-    @Operation(summary = "按存储 URI 反查交付任务", description = "匹配 delivery_job.source_uri 或 remote_uri")
+    @Operation(summary = "按存储 URI 反查交付任务", description = "通过 Artifact/Storage owner 解析来源引用，或匹配 remote_uri")
     public List<DeliveryRemoteUriIndexService.DeliveryUriHit> findByStorageUri(
             @RequestParam @NotBlank String storageUri,
             @RequestParam(required = false) String projectId,

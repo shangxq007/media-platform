@@ -178,16 +178,29 @@ public class RenderJobRepository {
                 .execute();
     }
 
-    public int markExecutingJobFailed(String jobId, String reason) {
+    public int markExecutingJobFailed(String jobId, String reason, java.time.Instant cutoff) {
         return dsl.update(RENDER_JOB)
                 .set(RENDER_JOB.STATUS, "FAILED")
                 .set(RENDER_JOB.ERROR_MESSAGE, reason)
                 .set(RENDER_JOB.UPDATED_AT, java.time.Instant.now())
                 .where(RENDER_JOB.ID.eq(jobId).and(RENDER_JOB.STATUS.eq("EXECUTING")))
+                .and(RENDER_JOB.UPDATED_AT.lessThan(cutoff))
                 .execute();
     }
 
     
+    public Record requireScopedJobForUpdate(String tenantId,String jobId) {
+        return dsl.select(RENDER_JOB.ID,RENDER_JOB.PROJECT_ID,RENDER_JOB.TENANT_ID,RENDER_JOB.STATUS,RENDER_JOB.INITIATOR_TYPE,RENDER_JOB.INITIATOR_ID,RENDER_JOB.INITIATOR_TENANT_ID)
+            .from(RENDER_JOB).where(RENDER_JOB.ID.eq(jobId)).and(RENDER_JOB.TENANT_ID.eq(tenantId))
+            .forUpdate().fetchOptional().orElseThrow(()->new IllegalArgumentException("Render job not found for tenant"));
+    }
+
+    public int compareAndSetStatus(String jobId,String projectId,String tenantId,String from,String to) {
+        return dsl.update(RENDER_JOB).set(RENDER_JOB.STATUS,to).set(RENDER_JOB.UPDATED_AT,java.time.Instant.now())
+            .where(RENDER_JOB.ID.eq(jobId)).and(RENDER_JOB.PROJECT_ID.eq(projectId)).and(RENDER_JOB.TENANT_ID.eq(tenantId))
+            .and(RENDER_JOB.STATUS.eq(from)).execute();
+    }
+
     public void updateStatus(String jobId, String newStatus) {
         dsl.update(RENDER_JOB)
                 .set(RENDER_JOB.STATUS, newStatus)
@@ -220,12 +233,7 @@ public class RenderJobRepository {
     /**
      * Update the artifact URI for a completed render job.
      */
-    public void updateArtifactUri(String jobId, String artifactUri) {
-        dsl.update(RENDER_JOB)
-                .set(RENDER_JOB.ARTIFACT_URI, artifactUri)
-                .where(RENDER_JOB.ID.eq(jobId))
-                .execute();
-    }
+
 
     /**
      * Update pipeline plan JSON.

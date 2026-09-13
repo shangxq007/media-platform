@@ -9,8 +9,8 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
-import com.example.platform.shared.events.RenderJobFailedEvent;
-import org.springframework.context.ApplicationEventPublisher;
+import com.example.platform.render.api.event.RenderJobFailedEvent;
+import com.example.platform.render.app.event.RenderLifecyclePublisher;
 
 /**
  * Minimal recovery service for stale EXECUTING RenderJobs.
@@ -24,10 +24,10 @@ public class RenderWorkerRecoveryService {
     private static final Logger log = LoggerFactory.getLogger(RenderWorkerRecoveryService.class);
 
     private final RenderJobRepository renderJobRepository;
-    private final ApplicationEventPublisher eventPublisher;
+    private final RenderLifecyclePublisher eventPublisher;
 
     public RenderWorkerRecoveryService(RenderJobRepository renderJobRepository,
-            ApplicationEventPublisher eventPublisher) {
+            RenderLifecyclePublisher eventPublisher) {
         this.renderJobRepository = renderJobRepository;
         this.eventPublisher = eventPublisher;
     }
@@ -40,6 +40,7 @@ public class RenderWorkerRecoveryService {
      * @param limit        max jobs to recover per call
      * @return number of jobs recovered
      */
+    @org.springframework.transaction.annotation.Transactional
     public int recoverStaleJobs(Duration staleTimeout, String action, int limit) {
         Instant cutoff = Instant.now().minus(staleTimeout);
         List<Record> staleJobs = renderJobRepository.findStaleExecutingJobs(cutoff, limit);
@@ -57,12 +58,10 @@ public class RenderWorkerRecoveryService {
 
             if ("REQUEUE".equalsIgnoreCase(action)) {
                 // First mark the old job as FAILED, then create a new retry job
-                int marked = renderJobRepository.markExecutingJobFailed(jobId, reason);
+                int marked = renderJobRepository.markExecutingJobFailed(jobId, reason, cutoff);
                 if (marked > 0) {
                     String projectId = job.get("project_id", String.class);
-                    eventPublisher.publishEvent(new RenderJobFailedEvent(
-                            jobId, projectId, reason, Instant.now(),
-                            RenderJobRepository.initiatorFrom(job)));
+                    eventPublisher.publishEvent(new RenderJobFailedEvent(jobId, projectId, com.example.platform.render.api.event.RenderFailureReason.STALE_TIMEOUT, Instant.now(), RenderJobRepository.initiatorFrom(job), com.example.platform.render.domain.RenderJobStatus.FAILED));
 
                     String newJobId = ("rj_" + java.util.UUID.randomUUID().toString().replace("-", ""));
                     renderJobRepository.createRetryJob(newJobId, jobId);
@@ -70,14 +69,9 @@ public class RenderWorkerRecoveryService {
                     recovered++;
                 }
             } else {
-                int updated = renderJobRepository.markExecutingJobFailed(jobId, reason);
+                int updated = renderJobRepository.markExecutingJobFailed(jobId, reason, cutoff);
                 if (updated > 0) {
-                    eventPublisher.publishEvent(new RenderJobFailedEvent(
-                            jobId,
-                            job.get("project_id", String.class),
-                            reason,
-                            Instant.now(),
-                            RenderJobRepository.initiatorFrom(job)));
+                    eventPublisher.publishEvent(new RenderJobFailedEvent(jobId, job.get("project_id", String.class), com.example.platform.render.api.event.RenderFailureReason.STALE_TIMEOUT, Instant.now(), RenderJobRepository.initiatorFrom(job), com.example.platform.render.domain.RenderJobStatus.FAILED));
                     log.info("Marked stale job FAILED: {}", jobId);
                     recovered++;
                 }

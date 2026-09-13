@@ -41,13 +41,16 @@ case "${1:-}" in
       :storage-module:test \
       :artifact-module:test --tests '*ArtifactCommitServiceTest' --tests '*ArtifactApplicationServiceTest' --tests '*JooqArtifactCommitServiceProvenance*' \
       :render-module:test --tests '*RenderArtifactStorageServiceTest' --tests '*RenderOutputRegistrationServiceTest' --tests '*RawMediaProductRegistrationFacadeTest' --tests '*PreviewArtifactQueryServiceTest' \
+        --tests '*RenderJobFailureInitiatorTest' --tests '*StaleRenderJobCompensatorTest' --tests '*RenderJobLeaseServiceTest' \
+        --tests '*RenderOrchestratorServiceCharacterizationTest' --tests '*RenderPipelineE2ECharacterizationTest' \
+        --tests '*RenderCacheHashInvalidationNotifierTest' --tests '*RenderInitiatorContractTest' \
       :platform-app:test --tests '*ProviderRuntimeExecutionCompositionTest' --tests '*RenderOutputAcceptanceTest' --tests '*ModularityTest'
     ;;
   outbox)
     ./gradlew --no-daemon --console=plain \
       :outbox-event-module:test \
       :billing-module:test --tests '*Usage*' --tests '*CostObservationEmissionServiceTest' --tests '*BillingConsumptionBoundaryTest' \
-      :notification-module:test :render-module:test --tests '*RenderOutboxEventsTest' \
+      :notification-module:test :render-module:test --tests '*RenderOutboxEventsTest' --tests '*RenderLifecycleBoundaryTest' \
       :platform-app:test --tests '*BillingUsageCompositionTest' --tests '*OutboxNotificationCompositionTest' --tests '*NotificationIngressPersistenceTest' --tests '*ModularityTest'
     ;;
   render-read)

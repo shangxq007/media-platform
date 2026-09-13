@@ -97,6 +97,22 @@ public class JobLeaseRepository {
         return Optional.of(new JobLease(leaseId, jobId, workerId, leaseUntil.atOffset(ZoneOffset.UTC).toInstant()));
     }
 
+    /** Must be called in the completion transaction; pins the current lease through finalization. */
+    public boolean lockActiveForCompletion(JobLease lease){
+        return dsl.select(RENDER_JOB_LEASE.LEASE_ID).from(RENDER_JOB_LEASE)
+            .where(RENDER_JOB_LEASE.LEASE_ID.eq(lease.leaseId())).and(RENDER_JOB_LEASE.JOB_ID.eq(lease.jobId()))
+            .and(RENDER_JOB_LEASE.WORKER_ID.eq(lease.workerId())).and(RENDER_JOB_LEASE.STATUS.eq("ACTIVE"))
+            .and(RENDER_JOB_LEASE.LEASE_UNTIL.greaterThan(LocalDateTime.now())).forUpdate().fetchOne()!=null;
+    }
+
+    public boolean releaseCompleted(JobLease lease){
+        return dsl.update(RENDER_JOB_LEASE).set(RENDER_JOB_LEASE.STATUS,"COMPLETED")
+            .set(RENDER_JOB_LEASE.RELEASED_AT,LocalDateTime.now()).set(RENDER_JOB_LEASE.UPDATED_AT,LocalDateTime.now())
+            .where(RENDER_JOB_LEASE.LEASE_ID.eq(lease.leaseId())).and(RENDER_JOB_LEASE.JOB_ID.eq(lease.jobId()))
+            .and(RENDER_JOB_LEASE.WORKER_ID.eq(lease.workerId())).and(RENDER_JOB_LEASE.STATUS.eq("ACTIVE"))
+            .and(RENDER_JOB_LEASE.LEASE_UNTIL.greaterThan(LocalDateTime.now())).execute()==1;
+    }
+
     /**
      * Release a lease (job completed or failed).
      */

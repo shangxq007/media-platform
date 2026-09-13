@@ -63,7 +63,7 @@ class RenderJobFailureDurabilityIntegrationTest extends PostgresTestContainerSup
         insertJob(jobId, "EXECUTING");
 
         // when: durable failure is recorded
-        failureService.recordDurableFailure(jobId, "provider timeout");
+        failureService.recordDurableFailure(jobId, "provider timeout", com.example.platform.render.api.event.RenderFailureReason.EXECUTION_FAILED);
 
         // then: job is FAILED with error message persisted
         JobRow row = loadJob(jobId);
@@ -83,7 +83,7 @@ class RenderJobFailureDurabilityIntegrationTest extends PostgresTestContainerSup
         TransactionTemplate outerTx = new TransactionTemplate(transactionManager);
         try {
             outerTx.execute(status -> {
-                failureService.recordDurableFailure(jobId, "provider crash");
+                failureService.recordDurableFailure(jobId, "provider crash", com.example.platform.render.api.event.RenderFailureReason.EXECUTION_FAILED);
                 // simulate outer failure — should roll back outer TX only
                 throw new RuntimeException("simulated outer failure");
             });
@@ -107,7 +107,7 @@ class RenderJobFailureDurabilityIntegrationTest extends PostgresTestContainerSup
         insertJob(jobId, "COMPLETED");
 
         // when: attempt to record failure
-        failureService.recordDurableFailure(jobId, "too late");
+        failureService.recordDurableFailure(jobId, "too late", com.example.platform.render.api.event.RenderFailureReason.EXECUTION_FAILED);
 
         // then: status unchanged — CAS rejected
         JobRow row = loadJob(jobId);
@@ -128,7 +128,7 @@ class RenderJobFailureDurabilityIntegrationTest extends PostgresTestContainerSup
                 .execute();
 
         // when: attempt to record a different failure
-        failureService.recordDurableFailure(jobId, "new reason");
+        failureService.recordDurableFailure(jobId, "new reason", com.example.platform.render.api.event.RenderFailureReason.EXECUTION_FAILED);
 
         // then: original error message preserved — CAS rejected
         JobRow row = loadJob(jobId);
@@ -143,7 +143,7 @@ class RenderJobFailureDurabilityIntegrationTest extends PostgresTestContainerSup
         String jobId = "job-dur-5";
         insertJob(jobId, "SELECTING_PROVIDER");
 
-        failureService.recordDurableFailure(jobId, "provider discovery failed");
+        failureService.recordDurableFailure(jobId, "provider discovery failed", com.example.platform.render.api.event.RenderFailureReason.EXECUTION_FAILED);
 
         JobRow row = loadJob(jobId);
         assertEquals("FAILED", row.status());
@@ -157,7 +157,7 @@ class RenderJobFailureDurabilityIntegrationTest extends PostgresTestContainerSup
         String jobId = "job-dur-6";
         insertJob(jobId, "PROVIDER_SELECTED");
 
-        failureService.recordDurableFailure(jobId, "provider rejected job");
+        failureService.recordDurableFailure(jobId, "provider rejected job", com.example.platform.render.api.event.RenderFailureReason.EXECUTION_FAILED);
 
         JobRow row = loadJob(jobId);
         assertEquals("FAILED", row.status());
@@ -171,7 +171,7 @@ class RenderJobFailureDurabilityIntegrationTest extends PostgresTestContainerSup
         String jobId = "job-dur-7";
         insertJob(jobId, "COMPLETING");
 
-        failureService.recordDurableFailure(jobId, "output upload failed");
+        failureService.recordDurableFailure(jobId, "output upload failed", com.example.platform.render.api.event.RenderFailureReason.EXECUTION_FAILED);
 
         JobRow row = loadJob(jobId);
         assertEquals("FAILED", row.status());
@@ -185,7 +185,7 @@ class RenderJobFailureDurabilityIntegrationTest extends PostgresTestContainerSup
         String jobId = "job-dur-8";
         insertJob(jobId, "QUEUED");
 
-        failureService.recordDurableFailure(jobId, "premature failure");
+        failureService.recordDurableFailure(jobId, "premature failure", com.example.platform.render.api.event.RenderFailureReason.EXECUTION_FAILED);
 
         JobRow row = loadJob(jobId);
         assertEquals("QUEUED", row.status());
@@ -253,7 +253,7 @@ class RenderJobFailureDurabilityIntegrationTest extends PostgresTestContainerSup
         @Bean
         public RenderJobFailureService failureService(RenderJobRepository repo) {
             return new RenderJobFailureService(
-                    repo, org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class));
+                    repo, org.mockito.Mockito.mock(com.example.platform.render.app.event.RenderLifecyclePublisher.class));
         }
     }
 }

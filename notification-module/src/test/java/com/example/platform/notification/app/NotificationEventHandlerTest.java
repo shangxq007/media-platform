@@ -17,7 +17,7 @@ import com.example.platform.notification.api.ingress.NotificationInboundEvent;
 import com.example.platform.notification.domain.NotificationProvider;
 import com.example.platform.notification.domain.NotificationTemplateCode;
 import com.example.platform.notification.domain.NotificationTemplatePayload;
-import com.example.platform.shared.events.RenderJobCreatedEvent;
+import com.example.platform.render.api.event.RenderJobCreatedEvent;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -124,8 +124,7 @@ class NotificationEventHandlerTest extends PostgresTestContainerSupport {
 
     @Test
     void onRenderJobCreatedConvertsEventAndHandles() {
-        RenderJobCreatedEvent event = new RenderJobCreatedEvent(
-                "rj-789", "proj-1", "snap-1", "social_1080p", "ffmpeg");
+        RenderJobCreatedEvent event = new RenderJobCreatedEvent("rj-789", "proj-1", "snap-1", "social_1080p", com.example.platform.shared.events.RenderInitiator.restore(com.example.platform.shared.authorization.ActorType.SYSTEM,"event-test","tenant-test"), java.time.Instant.now());
 
         handler.onRenderJobCreated(event);
 

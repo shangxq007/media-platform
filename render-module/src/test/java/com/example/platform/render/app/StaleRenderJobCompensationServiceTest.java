@@ -13,7 +13,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.context.ApplicationEventPublisher;
+import com.example.platform.render.app.event.RenderLifecyclePublisher;
 
 import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.table;
@@ -40,7 +40,7 @@ class StaleRenderJobCompensationServiceTest extends PostgresTestContainerSupport
     void setUp() {
         RenderTestSchemaFixture.truncate(dsl);
         service = new StaleRenderJobCompensationService(
-                dsl, new RenderJobStatusHistoryRepository(dsl), mock(ApplicationEventPublisher.class));
+                dsl, new RenderJobStatusHistoryRepository(dsl), mock(RenderLifecyclePublisher.class));
     }
 
     @Test

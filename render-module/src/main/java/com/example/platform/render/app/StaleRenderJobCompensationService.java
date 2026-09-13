@@ -2,7 +2,7 @@ package com.example.platform.render.app;
 
 import com.example.platform.render.domain.RenderJobStateMachine;
 import com.example.platform.render.domain.RenderJobStatus;
-import com.example.platform.shared.events.RenderJobFailedEvent;
+import com.example.platform.render.api.event.RenderJobFailedEvent;
 import com.example.platform.render.infrastructure.RenderJobRepository;
 import java.time.Duration;
 import java.time.Instant;
@@ -15,7 +15,7 @@ import org.jooq.DSLContext;
 import org.jooq.Record;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.ApplicationEventPublisher;
+import com.example.platform.render.app.event.RenderLifecyclePublisher;
 import org.springframework.stereotype.Service;
 import static com.example.platform.typedschema.jooq.generated.tables.RenderJob.RENDER_JOB;
 
@@ -31,18 +31,19 @@ public class StaleRenderJobCompensationService {
     private final DSLContext dsl;
     private final RenderJobStateMachine stateMachine;
     private final RenderJobStatusHistoryRepository historyRepository;
-    private final ApplicationEventPublisher eventPublisher;
+    private final RenderLifecyclePublisher eventPublisher;
 
     public StaleRenderJobCompensationService(
             DSLContext dsl,
             RenderJobStatusHistoryRepository historyRepository,
-            ApplicationEventPublisher eventPublisher) {
+            RenderLifecyclePublisher eventPublisher) {
         this.dsl = dsl;
         this.historyRepository = historyRepository;
         this.eventPublisher = eventPublisher;
         this.stateMachine = new RenderJobStateMachine();
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public CompensationResult compensate(CompensationRequest request) {
         List<String> activeStatuses = new ArrayList<>(List.of(
                 RenderJobStatus.SELECTING_PROVIDER.name(),
@@ -56,7 +57,7 @@ public class StaleRenderJobCompensationService {
             condition = condition.and(RENDER_JOB.CREATED_AT.lessThan(request.cutoff().toLocalDateTime()));
         }
 
-        var staleJobs = dsl.select(RENDER_JOB.ID, RENDER_JOB.PROJECT_ID, RENDER_JOB.STATUS,
+        var staleJobs = dsl.select(RENDER_JOB.ID, RENDER_JOB.PROJECT_ID, RENDER_JOB.STATUS, RENDER_JOB.UPDATED_AT,
                         RENDER_JOB.INITIATOR_TYPE, RENDER_JOB.INITIATOR_ID,
                         RENDER_JOB.INITIATOR_TENANT_ID)
                 .from(RENDER_JOB)
@@ -74,16 +75,17 @@ public class StaleRenderJobCompensationService {
             RenderJobStatus currentStatus = RenderJobStatus.valueOf(statusStr);
             try {
                 stateMachine.validateTransition(currentStatus, RenderJobStatus.FAILED);
-                dsl.update(RENDER_JOB)
+                int changed=dsl.update(RENDER_JOB)
                         .set(RENDER_JOB.STATUS, RenderJobStatus.FAILED.name())
                         .set(RENDER_JOB.ERROR_MESSAGE, request.errorMessage())
                         .where(RENDER_JOB.ID.eq(jobId))
+                        .and(RENDER_JOB.STATUS.eq(statusStr))
+                        .and(RENDER_JOB.UPDATED_AT.isNotDistinctFrom(job.get(RENDER_JOB.UPDATED_AT)))
                         .execute();
+                if(changed!=1)continue;
                 historyRepository.record(
                         jobId, statusStr, RenderJobStatus.FAILED.name(), reason, "STALE_TIMEOUT");
-                eventPublisher.publishEvent(new RenderJobFailedEvent(
-                        jobId, projectId, request.errorMessage(), Instant.now(),
-                        RenderJobRepository.initiatorFrom(job)));
+                eventPublisher.publishEvent(new RenderJobFailedEvent(jobId, projectId, com.example.platform.render.api.event.RenderFailureReason.STALE_TIMEOUT, Instant.now(), RenderJobRepository.initiatorFrom(job), com.example.platform.render.domain.RenderJobStatus.FAILED));
                 compensated++;
                 log.warn("Compensated stale job {} (was {}, reason={})", jobId, statusStr, reason);
             } catch (Exception e) {

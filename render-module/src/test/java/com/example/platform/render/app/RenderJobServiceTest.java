@@ -7,10 +7,10 @@ import com.example.platform.render.domain.RenderJobStateMachine;
 import com.example.platform.render.infrastructure.RenderJobRepository;
 import com.example.platform.render.policy.RenderPolicyDecision;
 import com.example.platform.render.policy.RenderPolicyEngine;
-import com.example.platform.shared.events.RenderJobCreatedEvent;
+import com.example.platform.render.api.event.RenderJobCreatedEvent;
 import com.example.platform.render.testsupport.RenderInitiatorFixtures;
 import com.example.platform.shared.events.RenderInitiator;
-import org.springframework.context.ApplicationEventPublisher;
+import com.example.platform.render.app.event.RenderLifecyclePublisher;
 import com.example.platform.shared.web.PlatformException;
 import com.example.platform.shared.web.TenantContext;
 import java.time.OffsetDateTime;
@@ -118,15 +118,17 @@ class RenderJobServiceTest {
         }
 
         @Test
-        @DisplayName("create() uses policy engine to determine backend")
-        void createUsesPolicyEngine() {
+        @DisplayName("create() preserves profile without selecting a provider")
+        void createPreservesProfileWithoutSelectingProvider() {
             fakeRepo.projectTenants.put("proj-1", "t-1");
 
             service.create(new CreateRenderJobRequest("proj-1", "snap-1", "social_1080p"),
                     RenderInitiatorFixtures.user("t-1"));
 
-            assertEquals("social_1080p", fakePolicy.lastProfile);
-            assertEquals("provider-a", fakePublisher.events.get(0).primaryBackend());
+            assertNull(fakePolicy.lastProfile);
+            assertEquals("social_1080p", fakePublisher.events.get(0).profile());
+            assertNotNull(fakePublisher.events.get(0).initiator());
+            assertFalse(java.util.Arrays.stream(RenderJobCreatedEvent.class.getRecordComponents()).anyMatch(c->c.getName().equals("primaryBackend")));
         }
 
         @Test
@@ -410,10 +412,16 @@ class RenderJobServiceTest {
         }
     }
 
-    static class FakeEventPublisher implements ApplicationEventPublisher {
+    static class FakeEventPublisher extends RenderLifecyclePublisher {
+        FakeEventPublisher(){super(org.mockito.Mockito.mock(com.example.platform.outbox.app.OutboxEventService.class));}
+        @Override public void publishEvent(com.example.platform.render.api.event.RenderJobCreatedEvent event){record(event);}
+        @Override public void publishEvent(com.example.platform.render.api.event.RenderJobCompletedEvent event){record(event);}
+        @Override public void publishEvent(com.example.platform.render.api.event.RenderJobFailedEvent event){record(event);}
+        @Override public void publishEvent(com.example.platform.render.api.event.RenderJobStatusChangedEvent event){record(event);}
+        @Override public void publishEvent(com.example.platform.render.api.event.RenderCacheHashInvalidatedEvent event){record(event);}
+
         final List<RenderJobCreatedEvent> events = new ArrayList<>();
-        @Override
-        public void publishEvent(Object event) {
+        public void record(Object event) {
             if (event instanceof RenderJobCreatedEvent e) events.add(e);
         }
     }

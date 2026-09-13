@@ -2739,7 +2739,7 @@ create table delivery_job (
     render_job_id varchar(64) not null,
     destination_id varchar(64) not null,
     status varchar(32) not null,
-    source_uri varchar(1024) not null,
+    artifact_id varchar(64) not null,
     remote_path varchar(1024),
     remote_uri varchar(1024),
     bytes_transferred bigint,

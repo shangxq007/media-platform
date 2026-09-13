@@ -7,11 +7,11 @@ import com.example.platform.notification.domain.*;
 import com.example.platform.notification.api.ingress.NotificationInboundEvent;
 import com.example.platform.notification.infrastructure.MockNotificationProvider;
 import com.example.platform.shared.events.ArtifactCreatedEvent;
-import com.example.platform.shared.events.RenderCacheHashInvalidatedEvent;
+import com.example.platform.render.api.event.RenderCacheHashInvalidatedEvent;
 import com.example.platform.shared.events.RenderDeliveryCompletedEvent;
 import com.example.platform.shared.events.RenderDeliveryFailedEvent;
-import com.example.platform.shared.events.RenderJobCreatedEvent;
-import com.example.platform.shared.events.RenderJobStatusChangedEvent;
+import com.example.platform.render.api.event.RenderJobCreatedEvent;
+import com.example.platform.render.api.event.RenderJobStatusChangedEvent;
 import com.example.platform.shared.events.TimelineMergedEvent;
 import com.example.platform.shared.events.TimelineRestoredEvent;
 import com.example.platform.shared.events.ReviewApprovedEvent;
@@ -56,11 +56,11 @@ public class NotificationEventHandler {
     @EventListener
     public void onRenderJobCreated(RenderJobCreatedEvent event) {
         log.info("NotificationEventHandler: RenderJobCreatedEvent for job={}", event.renderJobId());
-        handle(new NotificationInboundEvent(
+        handleFact(event.factKey(), new NotificationInboundEvent(
                 "render.job.created",
                 event.renderJobId(),
                 Map.of("renderJobId", event.renderJobId(), "projectId", event.projectId(),
-                        "profile", event.profile(), "backend", event.primaryBackend())
+                        "profile", event.profile(), "tenantId", event.tenantId())
         ));
     }
 
@@ -69,17 +69,17 @@ public class NotificationEventHandler {
         log.info("NotificationEventHandler: RenderJobStatusChangedEvent for job={}, {} -> {}",
                 event.renderJobId(), event.oldStatus(), event.newStatus());
         String eventType = switch (event.newStatus()) {
-            case "COMPLETED" -> "render.job.completed";
-            case "FAILED" -> "render.job.failed";
-            case "AI_PROCESSING" -> "render.job.ai_processing";
-            case "RENDERING" -> "render.job.rendering";
+            case COMPLETED -> "render.job.completed";
+            case FAILED -> "render.job.failed";
+            case SELECTING_PROVIDER -> "render.job.ai_processing";
+            case EXECUTING -> "render.job.rendering";
             default -> "render.job.status.changed";
         };
-        handle(new NotificationInboundEvent(
+        handleFact(event.factKey(), new NotificationInboundEvent(
                 eventType,
                 event.renderJobId(),
                 Map.of("renderJobId", event.renderJobId(), "projectId", event.projectId(),
-                        "oldStatus", event.oldStatus(), "newStatus", event.newStatus())
+                        "oldStatus", event.oldStatus().name(), "newStatus", event.newStatus().name(), "tenantId", event.tenantId())
         ));
     }
 
@@ -87,14 +87,14 @@ public class NotificationEventHandler {
     public void onRenderCacheHashInvalidated(RenderCacheHashInvalidatedEvent event) {
         log.info("NotificationEventHandler: cache hash invalidated job={} tasks={}",
                 event.renderJobId(), event.invalidatedCount());
-        handle(new NotificationInboundEvent(
+        handleFact(event.factKey(), new NotificationInboundEvent(
                 "render.cache.hash_invalidated",
                 event.renderJobId(),
                 Map.of(
                         "renderJobId", event.renderJobId(),
-                        "projectId", event.projectId() != null ? event.projectId() : "",
-                        "tenantId", event.tenantId() != null ? event.tenantId() : "",
-                        "baseJobId", event.baseJobId() != null ? event.baseJobId() : "",
+                        "projectId", event.projectId(),
+                        "tenantId", event.tenantId(),
+                        "baseJobId", event.baseJobId(),
                         "invalidatedTaskIds", event.invalidatedTaskIds(),
                         "invalidatedCount", event.invalidatedCount(),
                         "detectedAt", event.detectedAt().toString())
@@ -144,11 +144,19 @@ public class NotificationEventHandler {
 
     @EventListener
     public void handle(NotificationInboundEvent event) {
-        var eventId = ("nev_" + java.util.UUID.randomUUID().toString().replace("-", ""));
-        dsl.insertInto(NOTIFICATION_EVENT)
+        deliver("nev_"+java.util.UUID.randomUUID().toString().replace("-",""),event);
+    }
+
+    private void handleFact(String factKey,NotificationInboundEvent event) {
+        deliver("nev_"+java.util.UUID.nameUUIDFromBytes(factKey.getBytes(java.nio.charset.StandardCharsets.UTF_8)),event);
+    }
+
+    private void deliver(String eventId,NotificationInboundEvent event) {
+        int inserted=dsl.insertInto(NOTIFICATION_EVENT)
                 .columns(NOTIFICATION_EVENT.ID, NOTIFICATION_EVENT.EVENT_TYPE, NOTIFICATION_EVENT.SUBJECT_ID, NOTIFICATION_EVENT.PAYLOAD, NOTIFICATION_EVENT.CREATED_AT)
                 .values(eventId, event.eventType(), event.subjectId(), NotificationPayloadJson.toJson(event.payload()), LocalDateTime.now(ZoneOffset.UTC))
-                .execute();
+                .onConflict(NOTIFICATION_EVENT.ID).doNothing().execute();
+        if(inserted==0)return;
 
         var templateCode = NotificationTemplateCode.fromEventType(event.eventType());
         var rendered = renderingService.render(templateCode, event.eventType(), event.subjectId(), event.payload());

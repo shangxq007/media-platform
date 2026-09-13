@@ -33,19 +33,22 @@ public class ProviderRuntimeEngine {
     private final ProviderHealthMonitor healthMonitor;
     private final ProviderFallbackExecutor fallbackExecutor;
     private final ProviderTraceEmitter traceEmitter;
+    private final ProviderBindingPublisher bindingPublisher;
 
     public ProviderRuntimeEngine(
             RenderProviderRegistry registry,
             CapabilityNegotiationService capabilityService,
             ProviderHealthMonitor healthMonitor,
             ProviderFallbackExecutor fallbackExecutor,
-            ProviderTraceEmitter traceEmitter
+            ProviderTraceEmitter traceEmitter,
+            ProviderBindingPublisher bindingPublisher
     ) {
         this.registry = registry;
         this.capabilityService = capabilityService;
         this.healthMonitor = healthMonitor;
         this.fallbackExecutor = fallbackExecutor;
         this.traceEmitter = traceEmitter;
+        this.bindingPublisher = bindingPublisher;
 
         log.info("ProviderRuntimeEngine initialized with {} providers: {}",
                 registry.getProviderMap().size(), registry.getProviderMap().keySet());
@@ -88,6 +91,12 @@ public class ProviderRuntimeEngine {
                 negotiationResult.selectionReason(),
                 selected != null
         );
+
+        if(selected!=null) {
+            bindingPublisher.resolved(new com.example.platform.render.api.binding.ProviderRuntimeBindingResolvedEvent(
+                request.jobId(),request.projectId(),request.tenantId(),
+                new com.example.platform.shared.usage.ProviderRef(selected.providerName()),traceId,Instant.now()));
+        }
 
         // Step 6: Execute with fallback if needed
         FallbackExecutionResult executionResult = null;
@@ -222,8 +231,14 @@ public class ProviderRuntimeEngine {
             String traceId,
             Set<String> requiredCapabilities,
             String profile,
-            Map<String, Object> context
-    ) {}
+            Map<String, Object> context,
+            String tenantId,
+            String projectId
+    ) {
+        public ProviderResolutionRequest {
+            if(tenantId==null||tenantId.isBlank()||projectId==null||projectId.isBlank()||jobId==null||jobId.isBlank())throw new IllegalArgumentException("provider resolution scope required");
+        }
+    }
 
     public record ProviderCandidate(
             String providerName,

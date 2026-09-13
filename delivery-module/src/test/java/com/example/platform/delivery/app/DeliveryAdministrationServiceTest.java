@@ -40,13 +40,8 @@ class DeliveryAdministrationServiceTest extends PostgresTestContainerSupport {
         dsl = DSL.using(new TransactionAwareDataSourceProxy(dataSource), SQLDialect.POSTGRES,
                 new Settings().withRenderMapping(new RenderMapping().withSchemata(
                         new MappedSchema().withInput("public").withOutput(SCHEMA))));
-        dsl.execute("create schema " + SCHEMA);
-        // Exact columns selected by the generated Delivery table contract are present in this isolated schema.
-        dsl.execute("create table " + SCHEMA + ".delivery_destination (id varchar(64) primary key, tenant_id varchar(64) not null, name varchar(255) not null unique, protocol varchar(32), config_json text, credential_ref text, credential_json text, enabled boolean, verified_at timestamp, created_at timestamp)");
-        dsl.execute("create table " + SCHEMA + ".delivery_policy (id varchar(64) primary key, tenant_id varchar(64), project_id varchar(64), destination_id varchar(64), artifact_selector varchar(32), path_template text, trigger_mode varchar(32), enabled boolean, created_at timestamp)");
-        dsl.execute("create table " + SCHEMA + ".delivery_job (id varchar(64) primary key, tenant_id varchar(64), project_id varchar(64), render_job_id varchar(64), destination_id varchar(64), status varchar(32), source_uri text, remote_uri text, bytes_transferred bigint, attempt_count integer, error_code text, error_message text, created_at timestamp, completed_at timestamp)");
-        dsl.execute("alter table " + SCHEMA + ".delivery_destination add column user_id varchar(64)");
-        dsl.execute("alter table " + SCHEMA + ".delivery_job add column remote_path text");
+        DeliveryTestSchema.migrate(jdbcUrl(),username(),password(),SCHEMA);
+
     }
 
     @AfterAll static void close() { dsl.execute("drop schema " + SCHEMA + " cascade"); closeDataSource(dataSource); }
@@ -118,7 +113,7 @@ class DeliveryAdministrationServiceTest extends PostgresTestContainerSupport {
     }
 
     @Test void destinationMustBelongToAuthorizedTenant() {
-        dsl.execute("insert into " + SCHEMA + ".delivery_destination(id,tenant_id,name) values ('foreign','tenant-b','foreign')");
+        dsl.execute("insert into " + SCHEMA + ".delivery_destination(id,tenant_id,name,protocol,created_at) values ('foreign','tenant-b','foreign','SFTP',current_timestamp)");
         assertThrows(IllegalArgumentException.class, () -> service.createPolicy("tenant-a", "project-a", policy("foreign")));
         assertThrows(IllegalArgumentException.class, () -> service.updateDestination("tenant-a", "foreign", new UpdateDeliveryDestinationRequest("new", null, null, null, null)));
         assertEquals(0, dsl.fetchCount(DSL.table(SCHEMA + ".delivery_policy")));
@@ -148,9 +143,10 @@ class DeliveryAdministrationServiceTest extends PostgresTestContainerSupport {
     @Test void databaseFailureCompensatesOnlyNewSecret() {
         service.createDestination("tenant-a", destination("one"));
         var before = Map.copyOf(vault);
-        assertThrows(RuntimeException.class, () -> service.createDestination("tenant-a", destination("one")));
+        assertThrows(RuntimeException.class, () -> service.createDestination("tenant-a", destination("x".repeat(300))));
         assertEquals(1, destinations());
         assertEquals(before, vault);
+        verify(secrets, times(2)).storeCredentialMap(anyString(), anyString(), anyMap());
     }
 
     @Test void failedRotationKeepsOldCommittedCredentialsAndFields() {
@@ -194,7 +190,7 @@ class DeliveryAdministrationServiceTest extends PostgresTestContainerSupport {
 
     @Test void migrationUsesAdministratorAndSameCredentialTransaction() {
         when(secrets.isVaultEnabled()).thenReturn(true);
-        dsl.execute("insert into " + SCHEMA + ".delivery_destination(id,tenant_id,name,credential_json) values ('legacy','tenant-a','legacy','{\"password\":\"test-only\"}')");
+        dsl.execute("insert into " + SCHEMA + ".delivery_destination(id,tenant_id,name,protocol,created_at,credential_json) values ('legacy','tenant-a','legacy','SFTP',current_timestamp,'{\"password\":\"test-only\"}')");
         assertThrows(ResponseStatusException.class, () -> migration().migrateTenant("tenant-a", false));
         actor = CanonicalActor.user("admin", "tenant-z", Set.of("ADMIN"), "jwt");
         assertEquals(1, migration().migrateTenant("tenant-a", false).migrated());
@@ -205,7 +201,7 @@ class DeliveryAdministrationServiceTest extends PostgresTestContainerSupport {
     @Test void migrationFailureRetainsInlineCredentialsAndCompensatesVault() {
         when(secrets.isVaultEnabled()).thenReturn(true);
         actor = CanonicalActor.user("admin", "tenant-z", Set.of("ADMIN"), "jwt");
-        dsl.execute("insert into " + SCHEMA + ".delivery_destination(id,tenant_id,name,credential_json) values ('legacy','tenant-a','legacy','{\"password\":\"test-only\"}')");
+        dsl.execute("insert into " + SCHEMA + ".delivery_destination(id,tenant_id,name,protocol,created_at,credential_json) values ('legacy','tenant-a','legacy','SFTP',current_timestamp,'{\"password\":\"test-only\"}')");
         doThrow(new IllegalStateException("registry failure")).when(registry).register(anyString(), anyString(), anyString(), anyString());
         assertThrows(IllegalStateException.class, () -> migration().migrateTenant("tenant-a", false));
         assertNotNull(dsl.fetchValue("select credential_json from " + SCHEMA + ".delivery_destination where id='legacy'"));

@@ -44,6 +44,9 @@ public class RenderWorkerService {
     private final RenderJobRepository jobRepository;
     private final RenderProvider renderProvider;
     private final RenderJobStateMachine stateMachine;
+    private final com.example.platform.render.app.RenderJobLifecycleService lifecycle;
+    private final com.example.platform.render.app.RenderJobFailureService failures;
+    private final org.springframework.transaction.support.TransactionTemplate transactions;
 
     @Value("${render.worker.enabled:true}")
     private boolean workerEnabled;
@@ -61,12 +64,16 @@ public class RenderWorkerService {
             JobLeaseRepository leaseRepository,
             RenderJobRepository jobRepository,
             RenderProvider renderProvider,
-            RenderJobStateMachine stateMachine) {
+            RenderJobStateMachine stateMachine,
+            com.example.platform.render.app.RenderJobLifecycleService lifecycle,
+            com.example.platform.render.app.RenderJobFailureService failures,
+            org.springframework.transaction.PlatformTransactionManager transactionManager) {
         this.queue = queue;
         this.leaseRepository = leaseRepository;
         this.jobRepository = jobRepository;
         this.renderProvider = renderProvider;
         this.stateMachine = stateMachine;
+        this.lifecycle=lifecycle;this.failures=failures;this.transactions=new org.springframework.transaction.support.TransactionTemplate(transactionManager);
     }
 
     /**
@@ -133,19 +140,20 @@ public class RenderWorkerService {
             long durationMs = Instant.now().toEpochMilli() - startTime.toEpochMilli();
             long durationSeconds = durationMs / 1000;
 
-            // Update state to COMPLETING
-            jobRepository.updateStatus(jobId, RenderJobStatus.COMPLETING.name());
-            log.info("Job {} state: COMPLETING", jobId);
-
-            // Store artifact
-            jobRepository.updateArtifactUri(jobId, result.storageUri());
-
-            // Create billing record
-
-            // Complete job
-            jobRepository.updateStatus(jobId, RenderJobStatus.COMPLETED.name());
-            queue.complete(jobId);
-            leaseRepository.releaseLease(lease.leaseId(), "COMPLETED");
+            transactions.executeWithoutResult(tx->{
+                if(!leaseRepository.lockActiveForCompletion(lease))throw new IllegalStateException("stale worker lease");
+                String tenant=jobRecord.get("tenant_id",String.class);
+                String previous=com.example.platform.shared.web.TenantContext.get();
+                com.example.platform.shared.web.TenantGuard.assertSameTenantIfContextPresent(tenant);
+                try{
+                    com.example.platform.shared.web.TenantContext.set(tenant);
+                    String prefix="localFsStorageProvider://";
+                    if(result.storageUri()==null||!result.storageUri().startsWith(prefix)||!"mp4".equals(result.format()))throw new IllegalArgumentException("unsupported worker output");
+                    lifecycle.complete(tenant,jobId,result.storageUri().substring(prefix.length()),"video/mp4");
+                    queue.complete(jobId);
+                    if(!leaseRepository.releaseCompleted(lease))throw new IllegalStateException("lease expired during output acceptance");
+                }finally{if(previous==null)com.example.platform.shared.web.TenantContext.clear();else com.example.platform.shared.web.TenantContext.set(previous);}
+            });
 
             log.info("Job {} completed successfully in {}ms", jobId, durationMs);
 
@@ -158,9 +166,10 @@ public class RenderWorkerService {
      * Handle job failure.
      */
     private void handleJobFailure(String jobId, JobLeaseRepository.JobLease lease, Exception error) {
-        // Update state to FAILED
-        jobRepository.updateStatus(jobId, RenderJobStatus.FAILED.name());
-        jobRepository.updateErrorMessage(jobId, error.getMessage());
+        // An obsolete worker cannot overwrite a newer or already accepted terminal outcome.
+        boolean current=Boolean.TRUE.equals(transactions.execute(tx->leaseRepository.lockActiveForCompletion(lease)));
+        if(!current)return;
+        failures.recordDurableFailure(jobId, error.getMessage(), com.example.platform.render.api.event.RenderFailureReason.EXECUTION_FAILED);
 
         // Release lease
         leaseRepository.releaseLease(lease.leaseId(), "FAILED");

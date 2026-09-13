@@ -7,7 +7,7 @@ import static org.mockito.Mockito.verify;
 import com.example.platform.render.infrastructure.RenderJobRepository;
 import com.example.platform.render.testsupport.RenderInitiatorFixtures;
 import com.example.platform.render.testsupport.RenderTestSchemaFixture;
-import com.example.platform.shared.events.RenderJobFailedEvent;
+import com.example.platform.render.api.event.RenderJobFailedEvent;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import java.time.OffsetDateTime;
 import org.jooq.DSLContext;
@@ -17,14 +17,14 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.springframework.context.ApplicationEventPublisher;
+import com.example.platform.render.app.event.RenderLifecyclePublisher;
 
 class RenderJobFailureInitiatorTest extends PostgresTestContainerSupport {
 
     private static javax.sql.DataSource dataSource;
     private static DSLContext dsl;
     private RenderJobRepository repository;
-    private ApplicationEventPublisher eventPublisher;
+    private RenderLifecyclePublisher eventPublisher;
 
     @BeforeAll
     static void setUpDatabase() {
@@ -42,7 +42,7 @@ class RenderJobFailureInitiatorTest extends PostgresTestContainerSupport {
     void setUp() {
         RenderTestSchemaFixture.truncate(dsl);
         repository = new RenderJobRepository(dsl);
-        eventPublisher = mock(ApplicationEventPublisher.class);
+        eventPublisher = mock(RenderLifecyclePublisher.class);
     }
 
     @Test
@@ -52,9 +52,9 @@ class RenderJobFailureInitiatorTest extends PostgresTestContainerSupport {
                 "default", "EXECUTING", p1, OffsetDateTime.now());
 
         new RenderJobFailureService(repository, eventPublisher)
-                .recordDurableFailure("rj-1", "provider failed");
+                .recordDurableFailure("rj-1", "provider failed", com.example.platform.render.api.event.RenderFailureReason.EXECUTION_FAILED);
 
-        ArgumentCaptor<Object> event = ArgumentCaptor.forClass(Object.class);
+        ArgumentCaptor<RenderJobFailedEvent> event = ArgumentCaptor.forClass(RenderJobFailedEvent.class);
         verify(eventPublisher).publishEvent(event.capture());
         RenderJobFailedEvent failed = (RenderJobFailedEvent) event.getValue();
         assertEquals(p1, failed.initiator());

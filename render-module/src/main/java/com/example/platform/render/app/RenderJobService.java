@@ -7,7 +7,7 @@ import com.example.platform.render.api.port.RenderJobCancellationContinuation;
 import com.example.platform.render.domain.RenderJobStateMachine;
 import com.example.platform.render.domain.RenderJobStatus;
 import com.example.platform.render.infrastructure.RenderJobRepository;
-import com.example.platform.shared.events.RenderJobCreatedEvent;
+import com.example.platform.render.api.event.RenderJobCreatedEvent;
 import com.example.platform.shared.events.RenderInitiator;
 import com.example.platform.render.policy.RenderPolicyEngine;
 import com.example.platform.shared.web.CommonErrorCode;
@@ -21,7 +21,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.context.ApplicationEventPublisher;
+import com.example.platform.render.app.event.RenderLifecyclePublisher;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -32,14 +32,14 @@ public class RenderJobService {
     private static final AuthorizationAction READ_JOB = new AuthorizationAction("READ", AuthorizationResourceType.RENDER_JOB, "Read Render job");
     private final RenderJobRepository renderJobRepository;
     private final RenderPolicyEngine policyEngine;
-    private final ApplicationEventPublisher publisher;
+    private final RenderLifecyclePublisher publisher;
     private final RenderJobStateMachine stateMachine;
     private final RenderJobStatusHistoryRepository historyRepository;
     private final RenderJobCancellationContinuation cancellationContinuation;
 
     @org.springframework.beans.factory.annotation.Autowired
     public RenderJobService(RenderJobRepository renderJobRepository, RenderPolicyEngine policyEngine,
-            ApplicationEventPublisher publisher,
+            RenderLifecyclePublisher publisher,
             RenderJobStatusHistoryRepository historyRepository,
             @Autowired(required = false) RenderJobCancellationContinuation cancellationContinuation, ProjectReadQuery projects, CanonicalActorResolver actors, AuthorizationDecisionPort authorization) {
         this.renderJobRepository = renderJobRepository;
@@ -53,21 +53,22 @@ public class RenderJobService {
         this.authorization = java.util.Objects.requireNonNull(authorization);
     }
 
+    @Transactional
     public RenderJobResponse create(CreateRenderJobRequest request, RenderInitiator initiator) {
         String projectTenantId = renderJobRepository.findProjectTenantId(request.projectId())
                 .orElseThrow(() -> new IllegalArgumentException("Project not found: " + request.projectId()));
         assertTenantAccess(projectTenantId);
 
         var id = ("rj_" + java.util.UUID.randomUUID().toString().replace("-", ""));
-        var decision = policyEngine.decide(request.profile());
         assertInitiatorScope(projectTenantId, initiator);
         renderJobRepository.create(id, request.projectId(), projectTenantId,
                 request.timelineSnapshotId(), request.profile(), "QUEUED", initiator, OffsetDateTime.now());
         historyRepository.record(id, null, "QUEUED", "Job created", null);
-        publisher.publishEvent(new RenderJobCreatedEvent(id, request.projectId(), request.timelineSnapshotId(), request.profile(), decision.primaryBackend()));
+        publisher.publishEvent(new RenderJobCreatedEvent(id, request.projectId(), request.timelineSnapshotId(), request.profile(), initiator, java.time.Instant.now()));
         return new RenderJobResponse(id, request.projectId(), request.timelineSnapshotId(), request.profile(), "QUEUED");
     }
 
+    @Transactional
     public RenderJobResponse createForProject(String tenantId, String projectId,
             CreateRenderJobRequest request, RenderInitiator initiator) {
         assertInitiatorScope(tenantId, initiator);
@@ -79,11 +80,10 @@ public class RenderJobService {
         }
 
         var id = ("rj_" + java.util.UUID.randomUUID().toString().replace("-", ""));
-        var decision = policyEngine.decide(request.profile());
         renderJobRepository.create(id, projectId, tenantId,
                 request.timelineSnapshotId(), request.profile(), "QUEUED", initiator, OffsetDateTime.now());
         historyRepository.record(id, null, "QUEUED", "Job created", null);
-        publisher.publishEvent(new RenderJobCreatedEvent(id, projectId, request.timelineSnapshotId(), request.profile(), decision.primaryBackend()));
+        publisher.publishEvent(new RenderJobCreatedEvent(id, projectId, request.timelineSnapshotId(), request.profile(), initiator, java.time.Instant.now()));
         return new RenderJobResponse(id, projectId, request.timelineSnapshotId(), request.profile(), "QUEUED");
     }
 

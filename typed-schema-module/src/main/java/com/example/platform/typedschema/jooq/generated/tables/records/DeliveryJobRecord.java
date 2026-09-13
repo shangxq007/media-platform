@@ -105,16 +105,16 @@ public class DeliveryJobRecord extends UpdatableRecordImpl<DeliveryJobRecord> {
     }
 
     /**
-     * Setter for <code>public.delivery_job.source_uri</code>.
+     * Setter for <code>public.delivery_job.artifact_id</code>.
      */
-    public void setSourceUri(String value) {
+    public void setArtifactId(String value) {
         set(6, value);
     }
 
     /**
-     * Getter for <code>public.delivery_job.source_uri</code>.
+     * Getter for <code>public.delivery_job.artifact_id</code>.
      */
-    public String getSourceUri() {
+    public String getArtifactId() {
         return (String) get(6);
     }
 
@@ -253,7 +253,7 @@ public class DeliveryJobRecord extends UpdatableRecordImpl<DeliveryJobRecord> {
     /**
      * Create a detached, initialised DeliveryJobRecord
      */
-    public DeliveryJobRecord(String id, String tenantId, String projectId, String renderJobId, String destinationId, String status, String sourceUri, String remotePath, String remoteUri, Long bytesTransferred, Integer attemptCount, String errorCode, String errorMessage, LocalDateTime createdAt, LocalDateTime completedAt) {
+    public DeliveryJobRecord(String id, String tenantId, String projectId, String renderJobId, String destinationId, String status, String artifactId, String remotePath, String remoteUri, Long bytesTransferred, Integer attemptCount, String errorCode, String errorMessage, LocalDateTime createdAt, LocalDateTime completedAt) {
         super(DeliveryJob.DELIVERY_JOB);
 
         setId(id);
@@ -262,7 +262,7 @@ public class DeliveryJobRecord extends UpdatableRecordImpl<DeliveryJobRecord> {
         setRenderJobId(renderJobId);
         setDestinationId(destinationId);
         setStatus(status);
-        setSourceUri(sourceUri);
+        setArtifactId(artifactId);
         setRemotePath(remotePath);
         setRemoteUri(remoteUri);
         setBytesTransferred(bytesTransferred);

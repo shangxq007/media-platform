@@ -9,7 +9,7 @@ class DeliveryRemoteUriIndexServiceTest {
 
     @Test
     void findByAnyUriReturnsEmptyForBlank() {
-        DeliveryRemoteUriIndexService service = new DeliveryRemoteUriIndexService(org.mockito.Mockito.mock(DSLContext.class));
+        DeliveryRemoteUriIndexService service = new DeliveryRemoteUriIndexService(org.mockito.Mockito.mock(DSLContext.class),org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactOutputReferenceIndex.class));
         assertEquals(0, service.findByAnyUri("", null, 10).size());
         assertEquals(0, service.findByAnyUri("  ", "p1", 10).size());
         assertEquals(0, service.findByRemoteUri(null, null, 10).size());

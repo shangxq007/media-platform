@@ -15,7 +15,7 @@ import static com.example.platform.typedschema.jooq.generated.tables.DeliveryJob
 
 
 /**
- * Reverse lookup: remote (or source) storage URI → delivery jobs that reference it.
+ * Reverse lookup: remote URI or Artifact-owned source placement → delivery jobs that reference it.
  */
 @Service
 
@@ -24,34 +24,19 @@ public class DeliveryRemoteUriIndexService {
     private static final Logger log = LoggerFactory.getLogger(DeliveryRemoteUriIndexService.class);
 
     private final DSLContext dsl;
+    private final com.example.platform.artifact.app.ArtifactOutputReferenceIndex artifacts;
 
-    public DeliveryRemoteUriIndexService(DSLContext dsl) {
+    public DeliveryRemoteUriIndexService(DSLContext dsl, com.example.platform.artifact.app.ArtifactOutputReferenceIndex artifacts) {
         this.dsl = dsl;
+        this.artifacts = artifacts;
     }
 
     public List<DeliveryUriHit> findByRemoteUri(String remoteUri, String projectId, int limit) {
         return findByUriColumn("remote_uri", remoteUri, projectId, limit);
     }
 
-    public List<DeliveryUriHit> findBySourceUri(String sourceUri, String projectId, int limit) {
-        return findByUriColumn("source_uri", sourceUri, projectId, limit);
-    }
-
-    public List<DeliveryUriHit> findByAnyUri(String storageUri, String projectId, int limit) {
-        if (storageUri == null || storageUri.isBlank()) {
-            return List.of();
-        }
-        int cap = Math.min(Math.max(limit, 1), 100);
-        List<DeliveryUriHit> hits = new ArrayList<>();
-        hits.addAll(findByRemoteUri(storageUri, projectId, cap));
-        if (hits.size() < cap) {
-            for (DeliveryUriHit hit : findBySourceUri(storageUri, projectId, cap - hits.size())) {
-                if (hits.stream().noneMatch(h -> h.deliveryJobId().equals(hit.deliveryJobId()))) {
-                    hits.add(hit);
-                }
-            }
-        }
-        return hits;
+    public List<DeliveryUriHit> findByAnyUri(String storageUri,String projectId,int limit) {
+        return findByUriColumn("artifact_or_remote",storageUri,projectId,limit);
     }
 
     private List<DeliveryUriHit> findByUriColumn(String column, String uri, String projectId, int limit) {
@@ -61,7 +46,8 @@ public class DeliveryRemoteUriIndexService {
         }
         int cap = Math.min(Math.max(limit, 1), 100);
         try {
-            var condition = DSL.field(DSL.name(column)).eq(uri);
+            var condition = DELIVERY_JOB.REMOTE_URI.eq(uri);
+            if(!"remote_uri".equals(column))condition=condition.or(DELIVERY_JOB.ARTIFACT_ID.in(artifacts.findByStorageUri(uri,projectId,cap).stream().map(ref->ref.artifactId().value()).toList()));
             if (projectId != null && !projectId.isBlank()) {
                 condition = condition.and(DELIVERY_JOB.PROJECT_ID.eq(projectId));
             }
@@ -71,7 +57,7 @@ public class DeliveryRemoteUriIndexService {
                             DELIVERY_JOB.PROJECT_ID,
                             DELIVERY_JOB.RENDER_JOB_ID,
                             DELIVERY_JOB.STATUS,
-                            DELIVERY_JOB.SOURCE_URI,
+                            DELIVERY_JOB.ARTIFACT_ID,
                             DELIVERY_JOB.REMOTE_URI,
                             DELIVERY_JOB.CREATED_AT)
                     .from(DELIVERY_JOB)
@@ -86,9 +72,9 @@ public class DeliveryRemoteUriIndexService {
                         row.get(DELIVERY_JOB.PROJECT_ID),
                         row.get(DELIVERY_JOB.RENDER_JOB_ID),
                         row.get(DELIVERY_JOB.STATUS),
-                        row.get(DELIVERY_JOB.SOURCE_URI),
+                        row.get(DELIVERY_JOB.ARTIFACT_ID),
                         row.get(DELIVERY_JOB.REMOTE_URI),
-                        column,
+                        uri.equals(row.get(DELIVERY_JOB.REMOTE_URI)) ? "remote_uri" : "artifact_id",
                         row.get(DELIVERY_JOB.CREATED_AT)));
             }
         } catch (DataAccessException e) {
@@ -103,7 +89,7 @@ public class DeliveryRemoteUriIndexService {
             String projectId,
             String renderJobId,
             String status,
-            String sourceUri,
+            String artifactId,
             String remoteUri,
             String matchedColumn,
             LocalDateTime createdAt) {}

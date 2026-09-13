@@ -1,10 +1,10 @@
 package com.example.platform.audit.app;
 
 import com.example.platform.shared.events.ArtifactCreatedEvent;
-import com.example.platform.shared.events.RenderJobCompletedEvent;
-import com.example.platform.shared.events.RenderJobCreatedEvent;
-import com.example.platform.shared.events.RenderJobFailedEvent;
-import com.example.platform.shared.events.RenderJobStatusChangedEvent;
+import com.example.platform.render.api.event.RenderJobCompletedEvent;
+import com.example.platform.render.api.event.RenderJobCreatedEvent;
+import com.example.platform.render.api.event.RenderJobFailedEvent;
+import com.example.platform.render.api.event.RenderJobStatusChangedEvent;
 import com.example.platform.shared.events.TimelineMergedEvent;
 import com.example.platform.shared.events.TimelineRestoredEvent;
 import com.example.platform.shared.events.ReviewApprovedEvent;
@@ -35,41 +35,46 @@ public class AuditEventHandler {
     }
 
     @EventListener
+    public void onProviderRuntimeBound(com.example.platform.render.api.binding.ProviderRuntimeBindingResolvedEvent event) {
+        auditService.recordFact(event.factKey(),"SYSTEM","provider-runtime-event-handler","PROVIDER_RUNTIME_BOUND",
+            "RENDER_JOB",event.renderJobId(),Map.of("projectId",event.projectId(),"provider",event.provider().providerId(),"resolutionId",event.resolutionId(),"tenantId",event.tenantId()),AuditCategory.CONFIG);
+    }
+
+    @EventListener
     public void onRenderJobCreated(RenderJobCreatedEvent event) {
         log.info("AuditEventHandler: recording audit for render job created={}", event.renderJobId());
-        auditService.record("SYSTEM", "render-event-handler", "RENDER_JOB_CREATED",
+        auditService.recordFact(event.factKey(), "SYSTEM", "render-event-handler", "RENDER_JOB_CREATED",
                 "RENDER_JOB", event.renderJobId(),
-                Map.of("projectId", event.projectId(), "profile", event.profile(),
-                        "backend", event.primaryBackend()),
+                Map.of("projectId", event.projectId(), "profile", event.profile(), "tenantId", event.tenantId(), "initiatorId", event.initiator().actorId()),
                 AuditCategory.CONFIG);
     }
 
     @EventListener
     public void onRenderJobStatusChanged(RenderJobStatusChangedEvent event) {
         log.info("AuditEventHandler: recording audit for render job status change={}", event.renderJobId());
-        auditService.record("SYSTEM", "render-event-handler", "RENDER_JOB_STATUS_CHANGED",
+        auditService.recordFact(event.factKey(), "SYSTEM", "render-event-handler", "RENDER_JOB_STATUS_CHANGED",
                 "RENDER_JOB", event.renderJobId(),
-                Map.of("oldStatus", event.oldStatus(), "newStatus", event.newStatus(),
-                        "projectId", event.projectId()),
+                Map.of("oldStatus", event.oldStatus().name(), "newStatus", event.newStatus().name(),
+                        "projectId", event.projectId(), "tenantId", event.tenantId(), "initiatorId", event.initiator().actorId()),
                 AuditCategory.CONFIG);
     }
 
     @EventListener
     public void onRenderJobCompleted(RenderJobCompletedEvent event) {
         log.info("AuditEventHandler: recording audit for render job completed={}", event.renderJobId());
-        auditService.record("SYSTEM", "render-event-handler", "RENDER_JOB_COMPLETED",
+        auditService.recordFact(event.factKey(), "SYSTEM", "render-event-handler", "RENDER_JOB_COMPLETED",
                 "RENDER_JOB", event.renderJobId(),
-                Map.of("artifactId", event.artifactId(), "storageUri", event.storageUri(),
-                        "projectId", event.projectId()),
+                Map.of("artifactId", event.result().artifactId().value(),
+                        "projectId", event.projectId(), "tenantId", event.tenantId(), "initiatorId", event.initiator().actorId()),
                 AuditCategory.CONFIG);
     }
 
     @EventListener
     public void onRenderJobFailed(RenderJobFailedEvent event) {
         log.info("AuditEventHandler: recording audit for render job failed={}", event.renderJobId());
-        auditService.record("SYSTEM", "render-event-handler", "RENDER_JOB_FAILED",
+        auditService.recordFact(event.factKey(), "SYSTEM", "render-event-handler", event.outcome()==com.example.platform.render.domain.RenderJobStatus.REJECTED ? "RENDER_JOB_REJECTED" : "RENDER_JOB_FAILED",
                 "RENDER_JOB", event.renderJobId(),
-                Map.of("error", event.error(), "projectId", event.projectId()),
+                Map.of("error", event.reason().description(), "reason", event.reason().name(), "projectId", event.projectId(), "outcome", event.outcome().name(), "tenantId", event.tenantId(), "initiatorId", event.initiator().actorId()),
                 AuditCategory.CONFIG);
     }
 

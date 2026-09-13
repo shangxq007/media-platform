@@ -9,7 +9,7 @@ public record AdminDeliveryJobResponse(
         String renderJobId,
         String destinationId,
         String status,
-        String sourceUri,
+        String artifactId,
         String remoteUri,
         Long bytesTransferred,
         Integer attemptCount,

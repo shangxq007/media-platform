@@ -85,9 +85,9 @@ public class DeliveryJob extends TableImpl<DeliveryJobRecord> {
     public final TableField<DeliveryJobRecord, String> STATUS = createField(DSL.name("status"), SQLDataType.VARCHAR(32).nullable(false), this, "");
 
     /**
-     * The column <code>public.delivery_job.source_uri</code>.
+     * The column <code>public.delivery_job.artifact_id</code>.
      */
-    public final TableField<DeliveryJobRecord, String> SOURCE_URI = createField(DSL.name("source_uri"), SQLDataType.VARCHAR(1024).nullable(false), this, "");
+    public final TableField<DeliveryJobRecord, String> ARTIFACT_ID = createField(DSL.name("artifact_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
     /**
      * The column <code>public.delivery_job.remote_path</code>.

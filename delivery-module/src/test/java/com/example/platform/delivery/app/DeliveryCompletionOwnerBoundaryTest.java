@@ -13,7 +13,7 @@ import com.example.platform.delivery.spi.DeliveryAdapter;
 import com.example.platform.secrets.api.port.CredentialBundlePort;
 import com.example.platform.shared.authorization.ActorType;
 import com.example.platform.shared.events.RenderInitiator;
-import com.example.platform.shared.events.RenderJobCompletedEvent;
+import com.example.platform.render.api.event.RenderJobCompletedEvent;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import java.io.ByteArrayInputStream;
 import java.sql.Connection;
@@ -53,55 +53,9 @@ class DeliveryCompletionOwnerBoundaryTest extends PostgresTestContainerSupport {
                 .withRenderMapping(new RenderMapping()
                         .withSchemata(new MappedSchema().withInput("public").withOutput(SCHEMA)));
         dsl = DSL.using(connection, SQLDialect.POSTGRES, settings);
-        dsl.execute("create schema " + SCHEMA);
+        DeliveryTestSchema.migrate(jdbcUrl(),username(),password(),SCHEMA);
         dsl.execute("set search_path to " + SCHEMA);
-        dsl.execute("""
-                create table delivery_destination (
-                    id varchar(64) primary key,
-                    tenant_id varchar(64) not null,
-                    user_id varchar(64),
-                    name varchar(255) not null,
-                    protocol varchar(32) not null,
-                    config_json text,
-                    credential_json text,
-                    enabled boolean default true,
-                    verified_at timestamp,
-                    created_at timestamp not null,
-                    credential_ref varchar(512)
-                )
-                """);
-        dsl.execute("""
-                create table delivery_policy (
-                    id varchar(64) primary key,
-                    tenant_id varchar(64) not null,
-                    project_id varchar(64),
-                    destination_id varchar(64) not null,
-                    artifact_selector varchar(32) not null default 'FINAL_ONLY',
-                    path_template varchar(512) not null,
-                    trigger_mode varchar(16) not null default 'AUTO',
-                    enabled boolean default true,
-                    created_at timestamp not null
-                )
-                """);
-        dsl.execute("""
-                create table delivery_job (
-                    id varchar(64) primary key,
-                    tenant_id varchar(64) not null,
-                    project_id varchar(64) not null,
-                    render_job_id varchar(64) not null,
-                    destination_id varchar(64) not null,
-                    status varchar(32) not null,
-                    source_uri varchar(1024) not null,
-                    remote_path varchar(1024),
-                    remote_uri varchar(1024),
-                    bytes_transferred bigint,
-                    attempt_count int not null default 0,
-                    error_code varchar(64),
-                    error_message varchar(2048),
-                    created_at timestamp not null,
-                    completed_at timestamp
-                )
-                """);
+
     }
 
     @AfterAll
@@ -118,7 +72,6 @@ class DeliveryCompletionOwnerBoundaryTest extends PostgresTestContainerSupport {
     void setUp() {
         uncertainTransport = false;
         failedProbe = false;
-        dsl.execute("drop table if exists render_job");
         dsl.execute("truncate table delivery_job, delivery_policy, delivery_destination");
         dsl.execute("""
                 insert into delivery_destination
@@ -154,10 +107,13 @@ class DeliveryCompletionOwnerBoundaryTest extends PostgresTestContainerSupport {
             }
         };
         var sourceResolver = mock(DeliverySourceResolver.class);
-        when(sourceResolver.open(anyString())).thenAnswer(invocation -> Optional.of(
-                new DeliverySourceResolver.SourceFile(
-                        invocation.getArgument(0), "output.mp4", "video/mp4", 4,
-                        new ByteArrayInputStream(new byte[] {1, 2, 3, 4}))));
+        when(sourceResolver.open(any(com.example.platform.artifact.app.ArtifactOutputReference.class))).thenAnswer(invocation -> Optional.of(
+                new DeliverySourceResolver.SourceFile("output.mp4", "video/mp4", 4, new ByteArrayInputStream(new byte[] {1, 2, 3, 4}))));
+        when(sourceResolver.find(any(com.example.platform.artifact.app.ArtifactScope.class))).thenAnswer(i->{
+            var scope=i.getArgument(0,com.example.platform.artifact.app.ArtifactScope.class);
+            return scope.equals(new com.example.platform.artifact.app.ArtifactScope("tenant-1","project-1","render-1"))
+                ? Optional.of(new com.example.platform.artifact.app.ArtifactOutputReference(scope,new com.example.platform.shared.identity.ArtifactId("artifact-1"))) : Optional.empty();
+        });
         var credentialBundlePort = mock(CredentialBundlePort.class);
         when(credentialBundlePort.resolve(any(), any())).thenReturn(Map.of());
         service = new DeliveryJobService(
@@ -173,9 +129,7 @@ class DeliveryCompletionOwnerBoundaryTest extends PostgresTestContainerSupport {
 
     @Test
     void uncertainTransportIsPersistedAndCannotBeRetried() {
-        listener.onRenderJobCompleted(new RenderJobCompletedEvent("render-1", "project-1", "artifact-1",
-                "s3://render-output/render-1.mp4", Instant.now(),
-                RenderInitiator.restore(ActorType.USER, "user-1", "tenant-1")));
+        listener.onRenderJobCompleted(new RenderJobCompletedEvent(new com.example.platform.artifact.app.ArtifactOutputReference(new com.example.platform.artifact.app.ArtifactScope((RenderInitiator.restore(ActorType.USER, "user-1", "tenant-1")).tenantId(),"project-1","render-1"),new com.example.platform.shared.identity.ArtifactId("artifact-1")), Instant.now(), RenderInitiator.restore(ActorType.USER, "user-1", "tenant-1")));
         String id = (String) dsl.fetchValue("select id from delivery_job");
         uncertainTransport = true;
         org.junit.jupiter.api.Assertions.assertFalse(service.runJob(id));
@@ -187,8 +141,6 @@ class DeliveryCompletionOwnerBoundaryTest extends PostgresTestContainerSupport {
 
     @Test
     void manualTriggerBindsRenderTenantProjectAndDestination() {
-        dsl.execute("create table render_job (id varchar(64) primary key, tenant_id varchar(64), project_id varchar(64), artifact_uri text)");
-        dsl.execute("insert into render_job values ('render-1','tenant-1','project-1','s3://render-output/render-1.mp4')");
         org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
                 () -> service.triggerManual("tenant-2", "project-1", "render-1", "destination-1"));
         org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
@@ -207,16 +159,10 @@ class DeliveryCompletionOwnerBoundaryTest extends PostgresTestContainerSupport {
     }
 
     @Test
-    void completionAndFinalizationUseEventFactsAndDeliveryOwnedRowsWithoutRenderTable() {
-        assertNull(dsl.fetchValue("select to_regclass(?)", SCHEMA + ".render_job"));
+    void completionAndFinalizationUseArtifactFactsWithoutReadingRenderRows() {
+        assertEquals(0,((Number)dsl.fetchValue("select count(*) from render_job")).intValue());
 
-        listener.onRenderJobCompleted(new RenderJobCompletedEvent(
-                "render-1",
-                "project-1",
-                "artifact-1",
-                "s3://render-output/render-1.mp4",
-                Instant.parse("2026-09-01T00:00:00Z"),
-                RenderInitiator.restore(ActorType.USER, "user-1", "tenant-1")));
+        listener.onRenderJobCompleted(new RenderJobCompletedEvent(new com.example.platform.artifact.app.ArtifactOutputReference(new com.example.platform.artifact.app.ArtifactScope((RenderInitiator.restore(ActorType.USER, "user-1", "tenant-1")).tenantId(),"project-1","render-1"),new com.example.platform.shared.identity.ArtifactId("artifact-1")), Instant.parse("2026-09-01T00:00:00Z"), RenderInitiator.restore(ActorType.USER, "user-1", "tenant-1")));
 
         assertEquals(1, dsl.fetchCount(DSL.table("delivery_job"),
                 DSL.field("render_job_id").eq("render-1")));
@@ -224,22 +170,22 @@ class DeliveryCompletionOwnerBoundaryTest extends PostgresTestContainerSupport {
                 "select tenant_id from delivery_job where render_job_id = 'render-1'"));
         assertEquals("project-1", dsl.fetchValue(
                 "select project_id from delivery_job where render_job_id = 'render-1'"));
-        assertEquals("s3://render-output/render-1.mp4", dsl.fetchValue(
-                "select source_uri from delivery_job where render_job_id = 'render-1'"));
+        assertEquals("artifact-1", dsl.fetchValue(
+                "select artifact_id from delivery_job where render_job_id = 'render-1'"));
 
         dsl.execute("""
                 insert into delivery_job
                     (id, tenant_id, project_id, render_job_id, destination_id, status,
-                     source_uri, remote_path, attempt_count, created_at)
+                     artifact_id, remote_path, attempt_count, created_at)
                 values ('delivery-unrelated', 'tenant-1', 'project-1', 'render-2', 'destination-1',
-                        'QUEUED', 's3://render-output/render-2.mp4', 'unrelated/output.mp4', 0, current_timestamp)
+                        'QUEUED', 'artifact-2', 'unrelated/output.mp4', 0, current_timestamp)
                 """);
         dsl.execute("""
                 insert into delivery_job
                     (id, tenant_id, project_id, render_job_id, destination_id, status,
-                     source_uri, remote_path, attempt_count, created_at)
+                     artifact_id, remote_path, attempt_count, created_at)
                 values ('delivery-failed', 'tenant-1', 'project-1', 'render-1', 'destination-1',
-                        'FAILED', 's3://render-output/render-1.mp4', 'failed/output.mp4', 1, current_timestamp)
+                        'FAILED', 'artifact-1', 'failed/output.mp4', 1, current_timestamp)
                 """);
 
         assertEquals(1, service.finalizeDeliveriesForRenderJob("render-1"));

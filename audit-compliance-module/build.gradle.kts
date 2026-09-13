@@ -1,6 +1,7 @@
 plugins { id("java-library") }
 
 dependencies {
+    implementation(project(":render-module")) // defining-domain lifecycle contract
     api(project(":shared-kernel"))
     implementation(project(":typed-schema-module"))
     implementation(project(":observability-module")) // TraceKeys rehomed to observability (K2)

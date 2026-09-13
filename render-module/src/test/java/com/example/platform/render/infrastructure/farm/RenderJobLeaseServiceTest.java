@@ -24,6 +24,7 @@ class RenderJobLeaseServiceTest extends PostgresTestContainerSupport {
     private RenderJobLeaseRepository leaseRepository;
     private RenderWorkerRepository workerRepository;
     private RenderWorkerRegistryService workerRegistry;
+    private com.example.platform.render.app.RenderJobLifecycleService lifecycle;
 
     @BeforeAll
     static void setUpDatabase() {
@@ -44,7 +45,14 @@ class RenderJobLeaseServiceTest extends PostgresTestContainerSupport {
         workerRepository = new RenderWorkerRepository(dsl);
         workerRegistry = new RenderWorkerRegistryService(workerRepository);
         var jobRepository = new com.example.platform.render.infrastructure.RenderJobRepository(dsl);
-        leaseService = new RenderJobLeaseService(leaseRepository, jobRepository, workerRegistry);
+        // Lease-only unit fixture. Real output/Artifact/event acceptance is in RenderOutputAcceptanceTest.
+        lifecycle=org.mockito.Mockito.mock(com.example.platform.render.app.RenderJobLifecycleService.class);
+        org.mockito.Mockito.when(lifecycle.completeReportedOutput(org.mockito.ArgumentMatchers.anyString(),org.mockito.ArgumentMatchers.anyString(),org.mockito.ArgumentMatchers.anyString(),org.mockito.ArgumentMatchers.anyString())).thenAnswer(i->{
+            String tenant=i.getArgument(0),job=i.getArgument(1);var row=jobRepository.requireJobRecord(job);
+            assertEquals(tenant,row.get("tenant_id",String.class));jobRepository.updateStatus(job,"COMPLETED");
+            return new com.example.platform.artifact.app.ArtifactOutputReference(new com.example.platform.artifact.app.ArtifactScope(tenant,row.get("project_id",String.class),job),new com.example.platform.shared.identity.ArtifactId("artifact-"+job));
+        });
+        leaseService = new RenderJobLeaseService(leaseRepository, jobRepository, workerRegistry,lifecycle);
     }
 
     private void insertWorker(String workerId, String providerIds) {
@@ -260,7 +268,7 @@ class RenderJobLeaseServiceTest extends PostgresTestContainerSupport {
         RenderFarmClaimResult claimed = leaseService.claimNextJob(
                 "worker-1", List.of("remote"), false, "PRODUCTION");
         LeaseReleaseResult released = leaseService.completeLease(
-                claimed.leaseId(), "worker-1", "s3://bucket/output.mp4", "abc123", 5000L);
+                claimed.leaseId(), "worker-1", "localFsStorageProvider://output.mp4", "a".repeat(64), 5000L);
 
         assertTrue(released.isReleased());
         assertEquals("job-1", released.jobId());
@@ -275,24 +283,25 @@ class RenderJobLeaseServiceTest extends PostgresTestContainerSupport {
         RenderFarmClaimResult claimed = leaseService.claimNextJob(
                 "worker-1", List.of("remote"), false, "PRODUCTION");
         LeaseReleaseResult released = leaseService.completeLease(
-                claimed.leaseId(), "worker-2", "s3://bucket/output.mp4", "abc123", 5000L);
+                claimed.leaseId(), "worker-2", "localFsStorageProvider://output.mp4", "a".repeat(64), 5000L);
 
         assertFalse(released.isReleased());
     }
 
     @Test
-    void completeLeaseUpdatesArtifactUri() {
+    void completeLeaseDelegatesToAcceptedOutputOwner() {
         insertWorker("worker-1", "[\"remote\"]");
         insertJob("job-1", "QUEUED");
 
         RenderFarmClaimResult claimed = leaseService.claimNextJob(
                 "worker-1", List.of("remote"), false, "PRODUCTION");
-        leaseService.completeLease(claimed.leaseId(), "worker-1", "s3://bucket/output.mp4", "abc123", 5000L);
+        leaseService.completeLease(claimed.leaseId(), "worker-1", "localFsStorageProvider://output.mp4", "a".repeat(64), 5000L);
 
         var jobRecord = new com.example.platform.render.infrastructure.RenderJobRepository(dsl)
                 .requireJobRecord("job-1");
         assertEquals("COMPLETED", jobRecord.get("status", String.class));
-        assertEquals("s3://bucket/output.mp4", jobRecord.get("artifact_uri", String.class));
+        assertNull(jobRecord.get("artifact_uri", String.class));
+        org.mockito.Mockito.verify(lifecycle).completeReportedOutput("tenant-1","job-1","localFsStorageProvider://output.mp4","a".repeat(64));
     }
 
     // --- Fail tests ---
@@ -385,7 +394,7 @@ class RenderJobLeaseServiceTest extends PostgresTestContainerSupport {
         assertEquals(1, worker.activeJobCount());
 
         var lease = leaseRepository.findActiveLeaseByJobId("job-1").orElseThrow();
-        leaseService.completeLease(lease.leaseId(), "worker-1", "s3://bucket/out.mp4", "abc", 1000L);
+        leaseService.completeLease(lease.leaseId(), "worker-1", "localFsStorageProvider://output.mp4", "a".repeat(64), 1000L);
 
         worker = workerRepository.findByWorkerId("worker-1").orElseThrow();
         assertEquals(0, worker.activeJobCount());

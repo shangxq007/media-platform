@@ -85,6 +85,7 @@ public class StorageOutputService implements StorageOutputPort, StoragePlacement
         } catch (java.io.IOException e) { throw new IllegalStateException("output not found or write/read failed; retain write intent for retry",e); }
     }
 
+    @Override public List<IssuanceResult> references(String uri,String projectId,int limit){return receipts.references(uri,projectId,limit);}
     @Override public Optional<IssuanceResult> find(StorageOwnershipScope owner, IssuanceIdempotencyKey key) {
         TenantGuard.assertSameTenant(owner.tenantId());
         return receipts.findOriginalIssuance(owner,key);
@@ -97,6 +98,12 @@ public class StorageOutputService implements StorageOutputPort, StoragePlacement
         if (bytes.length!=issued.placement().committedLength() || !digest(bytes).matches(issued.placement().committedDigest()))
             throw new IllegalStateException("output integrity mismatch");
         return bytes;
+    }
+    @Override public byte[] read(StorageOwnershipScope owner,StorageObjectId objectId,StorageReplicaId replicaId) {
+        TenantGuard.assertSameTenant(owner.tenantId());
+        var placement=receipts.findPlacement(owner,objectId,replicaId).orElseThrow(()->new IllegalArgumentException("scoped placement not found"));
+        if(placement.placement().state()!=ReplicaState.AVAILABLE)throw new IllegalStateException("placement unavailable");
+        return read(owner,placement.receipt().idempotencyKey());
     }
     private String providerType() {
         return switch (properties.getProvider()) {

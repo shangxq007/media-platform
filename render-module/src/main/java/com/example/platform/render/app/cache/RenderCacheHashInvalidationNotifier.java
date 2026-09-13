@@ -1,7 +1,7 @@
 package com.example.platform.render.app.cache;
 
 import com.example.platform.render.infrastructure.RenderCacheProperties;
-import com.example.platform.shared.events.RenderCacheHashInvalidatedEvent;
+import com.example.platform.render.api.event.RenderCacheHashInvalidatedEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -15,7 +15,7 @@ import java.util.Map;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.ApplicationEventPublisher;
+import com.example.platform.render.app.event.RenderLifecyclePublisher;
 import org.springframework.stereotype.Component;
 
 /**
@@ -30,10 +30,10 @@ public class RenderCacheHashInvalidationNotifier {
             .connectTimeout(Duration.ofSeconds(5))
             .build();
 
-    private final ApplicationEventPublisher eventPublisher;
+    private final RenderLifecyclePublisher eventPublisher;
     private final RenderCacheProperties cacheProperties;
 
-    public RenderCacheHashInvalidationNotifier(ApplicationEventPublisher eventPublisher,
+    public RenderCacheHashInvalidationNotifier(RenderLifecyclePublisher eventPublisher,
                                                RenderCacheProperties cacheProperties) {
         this.eventPublisher = eventPublisher;
         this.cacheProperties = cacheProperties;

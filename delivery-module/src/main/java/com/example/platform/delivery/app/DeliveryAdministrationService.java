@@ -268,14 +268,14 @@ public class DeliveryAdministrationService {
     private DeliveryJobResponse mapJob(Record job) {
         return new DeliveryJobResponse(job.get(DELIVERY_JOB.ID), job.get(DELIVERY_JOB.RENDER_JOB_ID),
                 job.get(DELIVERY_JOB.DESTINATION_ID), job.get(DELIVERY_JOB.STATUS),
-                job.get(DELIVERY_JOB.SOURCE_URI), job.get(DELIVERY_JOB.REMOTE_URI),
+                job.get(DELIVERY_JOB.ARTIFACT_ID), job.get(DELIVERY_JOB.REMOTE_URI),
                 job.get(DELIVERY_JOB.BYTES_TRANSFERRED), job.get(DELIVERY_JOB.ERROR_MESSAGE));
     }
 
     private AdminDeliveryJobResponse mapAdministrativeJob(Record job) {
         return new AdminDeliveryJobResponse(job.get(DELIVERY_JOB.ID), job.get(DELIVERY_JOB.TENANT_ID),
                 job.get(DELIVERY_JOB.PROJECT_ID), job.get(DELIVERY_JOB.RENDER_JOB_ID),
-                job.get(DELIVERY_JOB.DESTINATION_ID), job.get(DELIVERY_JOB.STATUS), job.get(DELIVERY_JOB.SOURCE_URI),
+                job.get(DELIVERY_JOB.DESTINATION_ID), job.get(DELIVERY_JOB.STATUS), job.get(DELIVERY_JOB.ARTIFACT_ID),
                 job.get(DELIVERY_JOB.REMOTE_URI), job.get(DELIVERY_JOB.BYTES_TRANSFERRED),
                 job.get(DELIVERY_JOB.ATTEMPT_COUNT), job.get(DELIVERY_JOB.ERROR_CODE),
                 job.get(DELIVERY_JOB.ERROR_MESSAGE), job.get(DELIVERY_JOB.CREATED_AT), job.get(DELIVERY_JOB.COMPLETED_AT));

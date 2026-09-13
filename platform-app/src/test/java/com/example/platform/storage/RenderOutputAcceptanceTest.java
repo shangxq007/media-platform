@@ -14,6 +14,21 @@ import com.example.platform.artifact.app.*;
 import com.example.platform.artifact.domain.*;
 import com.example.platform.artifact.infrastructure.*;
 import com.example.platform.render.infrastructure.RenderArtifactStorageService;
+import com.example.platform.render.infrastructure.RenderJobRepository;
+import com.example.platform.render.app.*;
+import com.example.platform.render.app.event.*;
+import com.example.platform.render.api.event.*;
+import com.example.platform.render.infrastructure.providerruntime.engine.*;
+import com.example.platform.outbox.app.*;
+import com.example.platform.audit.app.*;
+import com.example.platform.notification.app.*;
+import com.example.platform.delivery.app.*;
+import com.example.platform.delivery.infrastructure.DeliveryAdapterRegistry;
+import com.example.platform.shared.events.RenderInitiator;
+import com.example.platform.shared.authorization.ActorType;
+import com.example.platform.entitlement.api.commercial.QuotaConsumptionPort;
+import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.nio.file.*;
 import java.time.Clock;
 import java.util.*;
@@ -44,7 +59,14 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
     static RenderArtifactStorageService render;
     static TransactionTemplate tx;
     static DataSource admin;
-    @EnableTransactionManagement static class Transactions {}
+    static OutboxEventService rawOutbox;
+    static RenderJobLifecycleService lifecycle;
+    static OutboxEventDispatcher dispatcher;
+    static com.example.platform.notification.domain.NotificationProvider notification;
+    static final java.util.concurrent.atomic.AtomicInteger transfers=new java.util.concurrent.atomic.AtomicInteger();
+    static byte[] delivered;
+
+    @EnableTransactionManagement(proxyTargetClass=true) static class Transactions {}
     @BeforeAll static void setup() throws Exception {
         root=Files.createTempDirectory("ep04-output-");
         admin=createDataSource();
@@ -72,7 +94,44 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
         context.registerBean(ArtifactRepository.class); context.registerBean(ArtifactRelationRepository.class);
         context.registerBean(JooqArtifactCommitService.class); context.registerBean(JooqArtifactQueryService.class);
         context.registerBean(JooqArtifactApplicationQuery.class); context.registerBean(ArtifactOutputCommitService.class);
-        context.registerBean(RenderArtifactStorageService.class); context.refresh();
+        context.registerBean(RenderArtifactStorageService.class);
+        context.registerBean(ArtifactOutputReadService.class);
+        context.registerBean(ArtifactOutputReferenceIndexService.class);
+        context.registerBean(OutboxEventRouter.class,()->new OutboxEventRouter(List.of(new RenderOutboxEvents(),new ProviderBindingOutboxEvents())));
+        context.registerBean(PostgresNotificationService.class);
+        context.registerBean(OutboxEventService.class,()->{
+            rawOutbox=spy(new OutboxEventService(context.getBean(DSLContext.class),3,context.getBean(PostgresNotificationService.class),context.getBean(OutboxEventRouter.class)));return rawOutbox;});
+        context.registerBean(RenderLifecyclePublisher.class);context.registerBean(ProviderBindingPublisher.class);
+        context.registerBean(RenderJobRepository.class);context.registerBean(RenderJobStatusHistoryRepository.class);
+        context.registerBean(QuotaConsumptionPort.class,()->mock(QuotaConsumptionPort.class));
+        context.registerBean(RenderJobLifecycleService.class);context.registerBean(RenderJobFailureService.class);
+        context.registerBean(com.example.platform.render.infrastructure.farm.RenderJobLeaseRepository.class);
+        context.registerBean(com.example.platform.render.infrastructure.farm.RenderWorkerRegistryService.class,()->mock(com.example.platform.render.infrastructure.farm.RenderWorkerRegistryService.class));
+        context.registerBean(com.example.platform.render.infrastructure.farm.RenderJobLeaseService.class);
+        context.registerBean(RenderJobService.class,()->new RenderJobService(context.getBean(RenderJobRepository.class),mock(com.example.platform.render.policy.RenderPolicyEngine.class),context.getBean(RenderLifecyclePublisher.class),context.getBean(RenderJobStatusHistoryRepository.class),null,mock(com.example.platform.identity.api.project.ProjectReadQuery.class),mock(com.example.platform.identity.api.authorization.CanonicalActorResolver.class),mock(com.example.platform.identity.api.authorization.AuthorizationDecisionPort.class)));
+        context.registerBean(AuditService.class,()->new AuditService(context.getBean(DSLContext.class),null));
+        context.registerBean(AuditEventHandler.class);
+        notification=mock(com.example.platform.notification.domain.NotificationProvider.class);
+        context.registerBean(NotificationRenderingService.class);
+        context.registerBean(NotificationEventHandler.class,()->new NotificationEventHandler(context.getBean(DSLContext.class),List.of(notification),context.getBean(NotificationRenderingService.class),null));
+        context.registerBean(DeliverySourceResolver.class);
+        var adapter=new com.example.platform.delivery.spi.DeliveryAdapter(){
+            public com.example.platform.delivery.domain.DeliveryProtocol protocol(){return com.example.platform.delivery.domain.DeliveryProtocol.SFTP;}
+            public ProbeResult probe(com.example.platform.delivery.spi.DeliveryContext c){return ProbeResult.success();}
+            public DeliveryResult deliver(com.example.platform.delivery.spi.DeliveryContext c){
+                try{delivered=c.sourceStream().readAllBytes();transfers.incrementAndGet();return DeliveryResult.ok(c.remotePath(),"sftp://test/"+c.deliveryJobId(),delivered.length);}
+                catch(java.io.IOException e){throw new IllegalStateException(e);}
+            }
+        };
+        context.registerBean(DeliveryJobService.class,()->new DeliveryJobService(context.getBean(DSLContext.class),new DeliveryAdapterRegistry(List.of(adapter)),context.getBean(DeliverySourceResolver.class),context,mock(com.example.platform.secrets.api.port.CredentialBundlePort.class),true,3));
+        context.registerBean(DeliveryCompletionListener.class);
+        context.registerBean(DeliveryRemoteUriIndexService.class);
+        context.registerBean(DeliveryStorageUriReferenceContributor.class);
+        context.registerBean(OutboxEventDispatcher.class,()->new OutboxEventDispatcher(context.getBean(OutboxEventService.class),context,context.getBean(OutboxEventRouter.class),3,new io.micrometer.core.instrument.simple.SimpleMeterRegistry()));
+        context.refresh();
+        jdbc.update("insert into tenant(id,name,created_at) values ('ep04-tenant','test',now())");
+        jdbc.update("insert into project(id,tenant_id,name,created_at) values ('project','ep04-tenant','test',now())");
+        lifecycle=context.getBean(RenderJobLifecycleService.class);dispatcher=context.getBean(OutboxEventDispatcher.class);
         output=context.getBean(StorageOutputPort.class); placements=context.getBean(StoragePlacementQuery.class);
         render=context.getBean(RenderArtifactStorageService.class);
     }
@@ -81,9 +140,18 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
         if(admin!=null){new JdbcTemplate(admin).execute("drop schema "+SCHEMA+" cascade");closeDataSource(admin);}
         if(root!=null)try(var files=Files.walk(root)){for(Path p:files.sorted(Comparator.reverseOrder()).toList())Files.delete(p);}
     }
-    @BeforeEach void tenant(){TenantContext.set("ep04-tenant");reset(backend);}
+    @BeforeEach void tenant(){TenantContext.set("ep04-tenant");reset(backend);reset(rawOutbox);reset(notification);transfers.set(0);
+        when(notification.channel()).thenReturn("TEST");when(notification.providerCode()).thenReturn("test");
+        when(notification.send(any())).thenReturn(new com.example.platform.notification.domain.DeliveryResult("SENT","accepted"));
+    }
     @AfterEach void clear(){TenantContext.clear();}
-    String file(String name) throws Exception {Files.write(root.resolve(name), ("deterministic-output:"+name).getBytes(java.nio.charset.StandardCharsets.UTF_8));return name;}
+    String file(String name) throws Exception {
+        try(var source=getClass().getResourceAsStream("/render-output-fixture.mp4")){
+            java.util.Objects.requireNonNull(source,"deterministic media fixture");
+            Files.copy(source,root.resolve(name));
+        }return name;
+    }
+
     StorageOutputPort.OutputCommand command(String key,String path){return new StorageOutputPort.OutputCommand(new StorageOwnershipScope("ep04-tenant","project"),new IssuanceIdempotencyKey(key),path,"video/mp4");}
     long count(String table){return jdbc.queryForObject("select count(*) from "+table,Long.class);}
 
@@ -173,4 +241,167 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
             assertThrows(RuntimeException.class,()->output.write(command("link","link.mp4")));}finally{Files.deleteIfExists(outside);}
         verify(backend,never()).put(any());
     }
+    void job(String id,String state){
+        context.getBean(RenderJobRepository.class).create(id,"project","ep04-tenant","snapshot", "default",state,
+            RenderInitiator.restore(ActorType.SYSTEM,"output-test","ep04-tenant"),OffsetDateTime.now());
+    }
+    List<String> eventIds(String job){return jdbc.queryForList("select id from outbox_events where aggregate_id=? order by created_at,id",String.class,job);}
+    long jobEvents(String job){return jdbc.queryForObject("select count(*) from outbox_events where aggregate_id=?",Long.class,job);}
+    void policy(){
+        jdbc.update("insert into delivery_destination(id,tenant_id,name,protocol,config_json,enabled,created_at) values ('lifecycle-dest','ep04-tenant','test','SFTP','{}',true,now()) on conflict do nothing");
+        jdbc.update("insert into delivery_policy(id,tenant_id,project_id,destination_id,path_template,trigger_mode,enabled,created_at) values ('lifecycle-policy','ep04-tenant','project','lifecycle-dest','{jobId}/output.mp4','AUTO',true,now()) on conflict do nothing");
+    }
+    @Test void queuedCreationRollsBackWithAppendAndDispatchesWithoutProviderSemantics(){
+        var service=context.getBean(RenderJobService.class);
+        var request=new com.example.platform.render.app.dto.CreateRenderJobRequest("project","snapshot","default");
+        var initiator=RenderInitiator.restore(ActorType.SYSTEM,"creation-test","ep04-tenant");
+        long jobs=count("render_job");
+        doThrow(new org.jooq.exception.DataAccessException("injected creation append failure")).when(rawOutbox).append(argThat(a->a.type()==RenderOutboxEvents.RENDERJOBCREATEDEVENT));
+        assertThrows(RuntimeException.class,()->service.createForProject("ep04-tenant","project",request,initiator));
+        assertEquals(jobs,count("render_job"));
+        reset(rawOutbox);var created=service.createForProject("ep04-tenant","project",request,initiator);
+        assertEquals("QUEUED",created.status());
+        String id=eventIds(created.id()).getFirst();
+        String payload=jdbc.queryForObject("select payload from outbox_events where id=?",String.class,id);
+        assertFalse(payload.contains("primaryBackend"));assertTrue(payload.contains("creation-test"));
+        assertTrue(dispatcher.processOnce(id));assertFalse(dispatcher.processOnce(id));
+        var fact=(RenderJobCreatedEvent)context.getBean(OutboxEventRouter.class).decode("render.job.created",2,"render_job",created.id(),payload).payload();
+        context.publishEvent(fact);context.publishEvent(fact);
+        assertEquals(1L,jdbc.queryForObject("select count(*) from audit_records where resource_id=? and action='RENDER_JOB_CREATED'",Long.class,created.id()));
+        assertEquals(1L,jdbc.queryForObject("select count(*) from notification_event where subject_id=?",Long.class,created.id()));
+    }
+    @Test void completionTraversesRealOutboxCodecConsumersAndArtifactReadback() throws Exception {
+        job("lifecycle-success","EXECUTING");policy();String path=file("lifecycle-success.mp4");
+        var accepted=lifecycle.complete("ep04-tenant","lifecycle-success",path,"video/mp4");
+        assertEquals("COMPLETED",jdbc.queryForObject("select status from render_job where id='lifecycle-success'",String.class));
+        assertNull(jdbc.queryForObject("select artifact_uri from render_job where id='lifecycle-success'",String.class));
+        var row=jdbc.queryForMap("select * from outbox_events where aggregate_id='lifecycle-success' and event_type='render.job.completed'");
+        var router=context.getBean(OutboxEventRouter.class);
+        var decoded=router.decode((String)row.get("event_type"),((Number)row.get("event_version")).intValue(),(String)row.get("aggregate_type"),(String)row.get("aggregate_id"),(String)row.get("payload"));
+        var completed=assertInstanceOf(RenderJobCompletedEvent.class,decoded.payload());assertEquals(accepted,completed.result());
+        assertFalse(((String)row.get("payload")).contains("storageUri"));assertFalse(((String)row.get("payload")).contains("primaryBackend"));
+        for(String id:eventIds("lifecycle-success"))assertTrue(dispatcher.processOnce(id));
+        assertFalse(dispatcher.processOnce((String)row.get("id")));
+        // Replayed callbacks cannot duplicate committed local business effects.
+        context.publishEvent(completed);context.publishEvent(completed);
+        assertEquals(1L,jdbc.queryForObject("select count(*) from audit_records where resource_id='lifecycle-success' and action='RENDER_JOB_COMPLETED'",Long.class));
+        assertEquals(1L,jdbc.queryForObject("select count(*) from delivery_job where render_job_id='lifecycle-success'",Long.class));
+        assertEquals(accepted.artifactId().value(),jdbc.queryForObject("select artifact_id from delivery_job where render_job_id='lifecycle-success'",String.class));
+        assertTrue(jdbc.queryForObject("select count(*) from notification_event where subject_id='lifecycle-success'",Long.class)>0);
+        String delivery=jdbc.queryForObject("select id from delivery_job where render_job_id='lifecycle-success'",String.class);
+        TenantContext.clear();assertTrue(context.getBean(DeliveryJobService.class).runJob(delivery));assertNull(TenantContext.get());
+        assertFalse(context.getBean(DeliveryJobService.class).runJob(delivery));assertEquals(1,transfers.get());
+        assertArrayEquals(Files.readAllBytes(root.resolve(path)),delivered);
+        TenantContext.set("ep04-tenant");var receipt=placements.find(new StorageOwnershipScope(accepted.scope().tenantId(),accepted.scope().projectId()),new IssuanceIdempotencyKey("render-output:lifecycle-success")).orElseThrow();
+        String uri=receipt.placement().location().opaqueLocator();
+        assertEquals(1,context.getBean(DeliveryRemoteUriIndexService.class).findByAnyUri(uri,"project",10).size());
+        assertEquals(1,context.getBean(DeliveryStorageUriReferenceContributor.class).findReferences(uri,"project").size());
+    }
+    @Test void completionAppendFailureRollsBackDomainRowsButRetainsPhysicalRecoveryEvidence() throws Exception {
+        job("lifecycle-rollback","EXECUTING");String path=file("lifecycle-rollback.mp4");long artifacts=count("artifact");
+        doThrow(new org.jooq.exception.DataAccessException("injected Outbox append failure")).when(rawOutbox).append(argThat(a->a.type()==RenderOutboxEvents.RENDERJOBCOMPLETEDEVENT));
+        assertThrows(RuntimeException.class,()->lifecycle.complete("ep04-tenant","lifecycle-rollback",path,"video/mp4"));
+        assertEquals("EXECUTING",jdbc.queryForObject("select status from render_job where id='lifecycle-rollback'",String.class));
+        assertEquals(artifacts,count("artifact"));assertEquals(0,jobEvents("lifecycle-rollback"));
+        assertEquals(0L,jdbc.queryForObject("select count(*) from render_job_status_history where job_id='lifecycle-rollback'",Long.class));
+        var owner=new StorageOwnershipScope("ep04-tenant","project");var key=new IssuanceIdempotencyKey("render-output:lifecycle-rollback");
+        var original=placements.find(owner,key).orElseThrow();assertArrayEquals(Files.readAllBytes(root.resolve(path)),placements.read(owner,key));
+        reset(rawOutbox);var accepted=lifecycle.complete("ep04-tenant","lifecycle-rollback",path,"video/mp4");
+        long events=jobEvents("lifecycle-rollback");Files.delete(root.resolve(path));
+        assertEquals(accepted,lifecycle.complete("ep04-tenant","lifecycle-rollback",path,"video/mp4"));assertEquals(events,jobEvents("lifecycle-rollback"));
+        assertEquals(original.objectId(),placements.find(owner,key).orElseThrow().objectId());verify(backend,times(1)).put(any());
+    }
+    @Test void rejectedTerminalAndCrossTenantFinalizationCannotWriteOrPublish() throws Exception {
+        job("lifecycle-cancelled","CANCELLED");String path=file("lifecycle-cancelled.mp4");
+        assertThrows(IllegalStateException.class,()->lifecycle.complete("ep04-tenant","lifecycle-cancelled",path,"video/mp4"));
+        TenantContext.set("foreign");assertThrows(RuntimeException.class,()->lifecycle.complete("foreign","lifecycle-cancelled",path,"video/mp4"));
+        assertEquals(0,jobEvents("lifecycle-cancelled"));verify(backend,never()).put(any());
+    }
+    @Test void failureTransitionAndEventAreAtomicAndReplayDoesNotInventAnotherFailure(){
+        job("lifecycle-failed","EXECUTING");var failure=context.getBean(RenderJobFailureService.class);
+        doThrow(new org.jooq.exception.DataAccessException("injected append rejection")).when(rawOutbox).append(argThat(a->a.type()==RenderOutboxEvents.RENDERJOBFAILEDEVENT));
+        assertThrows(RuntimeException.class,()->failure.recordDurableFailure("lifecycle-failed", "native stderr fixture", com.example.platform.render.api.event.RenderFailureReason.EXECUTION_FAILED));
+        assertEquals("EXECUTING",jdbc.queryForObject("select status from render_job where id='lifecycle-failed'",String.class));assertEquals(0,jobEvents("lifecycle-failed"));
+        reset(rawOutbox);failure.recordDurableFailure("lifecycle-failed", "native stderr fixture", com.example.platform.render.api.event.RenderFailureReason.EXECUTION_FAILED);failure.recordDurableFailure("lifecycle-failed", "native stderr fixture", com.example.platform.render.api.event.RenderFailureReason.EXECUTION_FAILED);
+        assertEquals(1,jobEvents("lifecycle-failed"));assertTrue(dispatcher.processOnce(eventIds("lifecycle-failed").getFirst()));
+        assertEquals("FAILED",jdbc.queryForObject("select status from render_job where id='lifecycle-failed'",String.class));
+        String payload=jdbc.queryForObject("select payload from outbox_events where aggregate_id='lifecycle-failed'",String.class);
+        assertTrue(payload.contains("EXECUTION_FAILED"));assertFalse(payload.contains("native stderr"));
+        assertEquals("native stderr fixture",jdbc.queryForObject("select error_message from render_job where id='lifecycle-failed'",String.class));
+    }
+    @Test void refreshedWorkerObservationCannotBeFailedByStaleRecovery(){
+        job("lifecycle-stale","EXECUTING");var jobs=context.getBean(RenderJobRepository.class);Instant cutoff=Instant.now().minusSeconds(30);
+        jdbc.update("update render_job set updated_at=? where id='lifecycle-stale'",java.sql.Timestamp.from(cutoff.minusSeconds(60)));
+        assertTrue(jobs.findStaleExecutingJobs(cutoff,100).stream().anyMatch(j->"lifecycle-stale".equals(j.get("id",String.class))));
+        jdbc.update("update render_job set updated_at=now() where id='lifecycle-stale'");
+        assertEquals(0,jobs.markExecutingJobFailed("lifecycle-stale","stale observation",cutoff));assertEquals(0,jobEvents("lifecycle-stale"));
+    }
+    void lease(String id,String job,Instant until){
+        Instant now=Instant.now();
+        context.getBean(com.example.platform.render.infrastructure.farm.RenderJobLeaseRepository.class).create(
+            new com.example.platform.render.infrastructure.farm.RenderJobLeaseRecord(id,id,job,"ep04-tenant","worker-test","provider-fixture",
+                com.example.platform.render.infrastructure.farm.RenderJobLeaseStatus.RUNNING,1L,now.minusSeconds(60),until,null,null,1,3,null,null,null,"test",now,now));
+    }
+    @Test void leaseCallbackValidatesWorkerExpiryChecksumAndAtomicArtifactAcceptance() throws Exception {
+        job("lease-output","EXECUTING");lease("lease-output-id","lease-output",Instant.now().plusSeconds(120));
+        String path=file("lease-output.mp4");var service=context.getBean(com.example.platform.render.infrastructure.farm.RenderJobLeaseService.class);
+        assertFalse(service.completeLease("lease-output-id","foreign-worker","localFsStorageProvider://"+path,"0".repeat(64),1L).released());
+        long before=count("artifact");
+        assertThrows(IllegalArgumentException.class,()->service.completeLease("lease-output-id","worker-test","localFsStorageProvider://"+path,"0".repeat(64),1L));
+        assertEquals(before,count("artifact"));assertEquals(0,jobEvents("lease-output"));
+        assertEquals("RUNNING",jdbc.queryForObject("select status from render_job_lease where lease_id='lease-output-id'",String.class));
+        assertEquals("EXECUTING",jdbc.queryForObject("select status from render_job where id='lease-output'",String.class));
+        String digest=java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(root.resolve(path))));
+        assertTrue(service.completeLease("lease-output-id","worker-test","localFsStorageProvider://"+path,digest,1L).released());
+        assertEquals("COMPLETED",jdbc.queryForObject("select status from render_job where id='lease-output'",String.class));
+        assertEquals("RELEASED",jdbc.queryForObject("select status from render_job_lease where lease_id='lease-output-id'",String.class));
+        verify(backend,times(1)).put(any());
+        job("lease-expired","EXECUTING");lease("lease-expired-id","lease-expired",Instant.now().minusSeconds(1));
+        assertFalse(service.completeLease("lease-expired-id","worker-test","localFsStorageProvider://"+path,digest,1L).released());
+        assertEquals(0,jobEvents("lease-expired"));
+        assertFalse(context.getBean(com.example.platform.render.infrastructure.farm.RenderJobLeaseRepository.class).release("lease-expired-id","worker-test",99L,Instant.now()));
+    }
+    @Test void retiredTypesVersionsAndOldCompletionFieldsAreExplicitlyDeadLettered() throws Exception {
+        long audits=count("audit_records");int index=0;
+        for(String type:List.of("render.job.created","render.job.completed","render.job.failed","render.job.status.changed",
+                "com.example.platform.shared.events.RenderJobCreatedEvent","com.example.platform.shared.events.RenderJobCompletedEvent",
+                "com.example.platform.shared.events.RenderJobFailedEvent","com.example.platform.shared.events.RenderJobStatusChangedEvent",
+                "com.example.platform.shared.events.RenderCacheHashInvalidatedEvent")){
+            String id="retired-"+(index++);jdbc.update("insert into outbox_events(id,aggregate_type,aggregate_id,event_type,event_version,payload,status,retry_count,max_retries,created_at) values (?,'render_job','retired',?,1,'{}','PENDING',0,3,now())",id,type);
+            assertFalse(dispatcher.processOnce(id));assertEquals("DEAD_LETTER",jdbc.queryForObject("select status from outbox_events where id=?",String.class,id));
+        }
+        var event=new RenderJobCompletedEvent(new ArtifactOutputReference(new ArtifactScope("ep04-tenant","project","malformed"),new com.example.platform.shared.identity.ArtifactId("test-only-artifact")),Instant.now(),RenderInitiator.restore(ActorType.SYSTEM,"test","ep04-tenant"));
+        var router=context.getBean(OutboxEventRouter.class);String payload=router.encode(RenderOutboxEvents.RENDERJOBCOMPLETEDEVENT.append("ep04-tenant",event,null));
+        var mapper=new com.fasterxml.jackson.databind.ObjectMapper();var json=mapper.readTree(payload);((com.fasterxml.jackson.databind.node.ObjectNode)json.get("payload")).put("storageUri","retired://not-a-result");
+        jdbc.update("insert into outbox_events(id,aggregate_type,aggregate_id,event_type,event_version,payload,status,retry_count,max_retries,created_at) values ('malformed','render_job','malformed','render.job.completed',2,?,'PENDING',0,3,now())",json.toString());
+        assertFalse(dispatcher.processOnce("malformed"));assertEquals("DEAD_LETTER",jdbc.queryForObject("select status from outbox_events where id='malformed'",String.class));assertEquals(audits,count("audit_records"));
+    }
+    @Test void actualRegistryBindingFactIsSeparateFromRenderLifecycle(){
+        var registry=new com.example.platform.render.infrastructure.RenderProviderRegistry();
+        var provider=mock(com.example.platform.render.infrastructure.RenderProvider.class);
+        when(provider.getStatus()).thenReturn(com.example.platform.render.infrastructure.ProviderStatus.PRODUCTION);when(provider.getPriority()).thenReturn("P1");
+        registry.register("registered-renderer",provider,mock(com.example.platform.render.infrastructure.RenderProviderCapability.class));
+        var capability=mock(com.example.platform.render.infrastructure.providerruntime.capability.CapabilityNegotiationService.class);
+        when(capability.describeProvider(any())).thenReturn(mock(com.example.platform.render.infrastructure.providerruntime.capability.CapabilityDescriptor.class));
+        when(capability.negotiate(anyList(),any())).thenReturn(new com.example.platform.render.infrastructure.providerruntime.capability.CapabilityNegotiationResult(true,List.of("registered-renderer"),List.of("registered-renderer"),Set.of(),"fixture match"));
+        var health=mock(com.example.platform.render.infrastructure.providerruntime.health.ProviderHealthMonitor.class);
+        when(health.checkHealth(anyString())).thenReturn(com.example.platform.render.infrastructure.providerruntime.health.ProviderHealthStatus.healthy("fixture"));
+        var engine=new ProviderRuntimeEngine(registry,capability,health,mock(com.example.platform.render.infrastructure.providerruntime.fallback.ProviderFallbackExecutor.class),mock(com.example.platform.render.infrastructure.providerruntime.trace.ProviderTraceEmitter.class),context.getBean(ProviderBindingPublisher.class));
+        job("binding-job","EXECUTING");
+        var result=engine.resolveProvider(new ProviderRuntimeEngine.ProviderResolutionRequest("binding-job","binding-trace",Set.of(),"default",Map.of(),"ep04-tenant","project"));
+        assertTrue(result.isSuccess());assertEquals(1,jobEvents("binding-job"));assertTrue(dispatcher.processOnce(eventIds("binding-job").getFirst()));
+        assertEquals("EXECUTING",jdbc.queryForObject("select status from render_job where id='binding-job'",String.class));
+        String payload=jdbc.queryForObject("select payload from outbox_events where aggregate_id='binding-job'",String.class);
+        assertTrue(payload.contains("registered-renderer"));assertFalse(payload.contains("primaryBackend"));
+        assertEquals(1L,jdbc.queryForObject("select count(*) from audit_records where resource_id='binding-job' and action='PROVIDER_RUNTIME_BOUND'",Long.class));
+        var empty=new ProviderRuntimeEngine(new com.example.platform.render.infrastructure.RenderProviderRegistry(),capability,health,mock(com.example.platform.render.infrastructure.providerruntime.fallback.ProviderFallbackExecutor.class),mock(com.example.platform.render.infrastructure.providerruntime.trace.ProviderTraceEmitter.class),context.getBean(ProviderBindingPublisher.class));
+        assertFalse(empty.resolveProvider(new ProviderRuntimeEngine.ProviderResolutionRequest("no-binding","no-binding-trace",Set.of(),"default",Map.of(),"ep04-tenant","project")).isSuccess());assertEquals(0,jobEvents("no-binding"));
+    }
+    @Test void cacheInvalidationUsesTypedDurabilityAndNotificationDeduplication(){
+        var notifier=new com.example.platform.render.app.cache.RenderCacheHashInvalidationNotifier(context.getBean(RenderLifecyclePublisher.class),new com.example.platform.render.infrastructure.RenderCacheProperties());
+        notifier.notifyIfNeeded("ep04-tenant","project","cache-job","base-job",Set.of("task-1"));
+        assertEquals(1,jobEvents("cache-job"));String id=eventIds("cache-job").getFirst();assertTrue(dispatcher.processOnce(id));assertFalse(dispatcher.processOnce(id));
+        assertEquals(1L,jdbc.queryForObject("select count(*) from notification_event where subject_id='cache-job'",Long.class));
+    }
+
 }

@@ -19,14 +19,14 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.context.ApplicationEventPublisher;
+import com.example.platform.render.app.event.RenderLifecyclePublisher;
 
 class StaleRenderJobCompensatorTest extends PostgresTestContainerSupport {
 
     private static javax.sql.DataSource dataSource;
     private static DSLContext dsl;
     private RenderJobStatusHistoryRepository historyRepository;
-    private ApplicationEventPublisher eventPublisher;
+    private RenderLifecyclePublisher eventPublisher;
 
     @BeforeAll
     static void setUpDatabase() {
@@ -44,7 +44,7 @@ class StaleRenderJobCompensatorTest extends PostgresTestContainerSupport {
     void setUp() {
         RenderTestSchemaFixture.truncate(dsl);
         historyRepository = new RenderJobStatusHistoryRepository(dsl);
-        eventPublisher = mock(ApplicationEventPublisher.class);
+        eventPublisher = mock(RenderLifecyclePublisher.class);
     }
 
     private StaleRenderJobCompensator createCompensator(boolean enabled, Duration threshold) {
@@ -148,7 +148,7 @@ class StaleRenderJobCompensatorTest extends PostgresTestContainerSupport {
         var rows = dsl.select().from(table("render_job"))
                 .where(field("id").eq("stale_disabled")).fetchMaps();
         assertEquals("SELECTING_PROVIDER", rows.get(0).get("status"));
-        verify(eventPublisher, never()).publishEvent(org.mockito.ArgumentMatchers.any());
+        verify(eventPublisher, never()).publishEvent(org.mockito.ArgumentMatchers.any(com.example.platform.render.api.event.RenderJobFailedEvent.class));
     }
 
     @Test

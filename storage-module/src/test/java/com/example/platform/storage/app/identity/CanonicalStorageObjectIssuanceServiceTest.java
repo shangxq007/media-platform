@@ -175,6 +175,14 @@ class CanonicalStorageObjectIssuanceServiceTest {
         private final Map<String, StorageWriteIntent> intentsByOwnerKey = new HashMap<>();
         private final Map<String, IssuanceResult> issuances = new HashMap<>();
         private boolean failNextCanonicalSave;
+        @Override public java.util.List<IssuanceResult> references(String uri,String projectId,int limit){
+            return issuances.values().stream().filter(i->i.placement().location().opaqueLocator().equals(uri))
+                .filter(i->projectId==null||projectId.equals(i.owner().projectId())).limit(limit).toList();
+        }
+        @Override public Optional<IssuanceResult> findPlacement(StorageOwnershipScope owner,com.example.platform.storage.contract.StorageObjectId objectId,com.example.platform.storage.contract.StorageReplicaId replicaId){
+            return issuances.values().stream().filter(i->i.owner().equals(owner)&&i.objectId().equals(objectId)&&i.placement().replicaId().equals(replicaId)).findFirst();
+        }
+
 
         @Override
         public void lockOwnerKey(StorageOwnershipScope owner, IssuanceIdempotencyKey key) {}

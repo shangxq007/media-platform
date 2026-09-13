@@ -13,23 +13,18 @@ import com.example.platform.render.app.timeline.IncrementalRenderOrchestrationSe
 import com.example.platform.render.app.timeline.TimelineSpecResolver;
 import com.example.platform.render.domain.RenderJobStateMachine;
 import com.example.platform.render.domain.RenderJobStatus;
-import com.example.platform.render.domain.artifact.ArtifactGraph;
-import com.example.platform.render.domain.artifact.ArtifactNode;
-import com.example.platform.render.domain.artifact.ArtifactNodeType;
 import com.example.platform.render.domain.interchange.TimelineExtensionsReader;
 import com.example.platform.render.domain.interchange.TimelineScriptParser;
 import com.example.platform.render.domain.interchange.TimelineSpec;
-import com.example.platform.render.infrastructure.RenderArtifactStorageService;
 import com.example.platform.render.infrastructure.RenderJobRepository;
 import com.example.platform.render.infrastructure.RenderProvider;
 import com.example.platform.render.infrastructure.RenderProviderRouter;
-import com.example.platform.render.infrastructure.artifact.ArtifactGraphRepository;
 import com.example.platform.render.infrastructure.providerruntime.engine.ProviderRuntimeEngine;
 import com.example.platform.render.infrastructure.timeline.EditorTimelineConverter;
 import com.example.platform.shared.events.ArtifactCreatedEvent;
-import com.example.platform.shared.events.RenderJobCompletedEvent;
-import com.example.platform.shared.events.RenderJobFailedEvent;
-import com.example.platform.shared.events.RenderJobStatusChangedEvent;
+import com.example.platform.render.api.event.RenderJobCompletedEvent;
+import com.example.platform.render.api.event.RenderJobFailedEvent;
+import com.example.platform.render.api.event.RenderJobStatusChangedEvent;
 import com.example.platform.shared.events.RenderInitiator;
 import com.example.platform.shared.commercial.PrincipalRef;
 import com.example.platform.shared.commercial.PrincipalType;
@@ -39,7 +34,7 @@ import com.example.platform.shared.web.TenantContext;
 import org.jooq.Record;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.ApplicationEventPublisher;
+import com.example.platform.render.app.event.RenderLifecyclePublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -62,18 +57,14 @@ public class RenderJobExecutionService {
     private static final Logger log = LoggerFactory.getLogger(RenderJobExecutionService.class);
 
     private final RenderJobRepository renderJobRepository;
-    private final QuotaConsumptionPort quotaConsumption;
     private final AiGatewayPort aiGatewayPort;
     private final RenderProviderRouter renderProviderRouter;
     private final ProviderRuntimeEngine providerRuntimeEngine;
-    private final ApplicationEventPublisher eventPublisher;
     private final RenderJobStateMachine stateMachine;
-    private final RenderJobStatusHistoryRepository historyRepository;
     private final TimelineScriptParser timelineScriptParser;
     private final TimelineSpecResolver timelineSpecResolver;
     private final IncrementalRenderOrchestrationService incrementalRenderOrchestrationService;
-    private final RenderArtifactStorageService artifactStorageService;
-    private final ArtifactGraphRepository artifactGraphRepository;
+    private final RenderJobLifecycleService lifecycle;
     private final TimelineSnapshotService timelineSnapshotService;
     private final EditorTimelineConverter editorTimelineConverter;
     private final EffectTimelineInspector effectTimelineInspector;
@@ -90,18 +81,13 @@ public class RenderJobExecutionService {
 
     public RenderJobExecutionService(
             RenderJobRepository renderJobRepository,
-            QuotaConsumptionPort quotaConsumption,
             AiGatewayPort aiGatewayPort,
             RenderProviderRouter renderProviderRouter,
             ProviderRuntimeEngine providerRuntimeEngine,
-            ApplicationEventPublisher eventPublisher,
-            RenderJobStatusHistoryRepository historyRepository,
             TimelineScriptParser timelineScriptParser,
             TimelineSpecResolver timelineSpecResolver,
             IncrementalRenderOrchestrationService incrementalRenderOrchestrationService,
-            RenderArtifactStorageService artifactStorageService,
-            @org.springframework.beans.factory.annotation.Autowired(required = false)
-            ArtifactGraphRepository artifactGraphRepository,
+            RenderJobLifecycleService lifecycle,
             TimelineSnapshotService timelineSnapshotService,
             EditorTimelineConverter editorTimelineConverter,
             EffectTimelineInspector effectTimelineInspector,
@@ -122,17 +108,13 @@ public class RenderJobExecutionService {
             RenderJobClaimService claimService,
             RenderJobFailureService failureService) {
         this.renderJobRepository = renderJobRepository;
-        this.quotaConsumption = quotaConsumption;
         this.aiGatewayPort = aiGatewayPort;
         this.renderProviderRouter = renderProviderRouter;
         this.providerRuntimeEngine = providerRuntimeEngine;
-        this.eventPublisher = eventPublisher;
-        this.historyRepository = historyRepository;
         this.timelineScriptParser = timelineScriptParser;
         this.timelineSpecResolver = timelineSpecResolver;
         this.incrementalRenderOrchestrationService = incrementalRenderOrchestrationService;
-        this.artifactStorageService = artifactStorageService;
-        this.artifactGraphRepository = artifactGraphRepository;
+        this.lifecycle = lifecycle;
         this.timelineSnapshotService = timelineSnapshotService;
         this.editorTimelineConverter = editorTimelineConverter;
         this.effectTimelineInspector = effectTimelineInspector;
@@ -192,7 +174,7 @@ public class RenderJobExecutionService {
         try {
             aiScript = resolveRenderScript(jobId, snapshotId, null, projectId, tenantId);
         } catch (Exception e) {
-            failureService.recordDurableFailure(jobId, "Script resolution failed: " + e.getMessage());
+            failureService.recordDurableFailure(jobId, "Script resolution failed: " + e.getMessage(), com.example.platform.render.api.event.RenderFailureReason.INPUT_RESOLUTION_FAILED);
             throw e;
         }
 
@@ -266,7 +248,7 @@ public class RenderJobExecutionService {
         try {
             aiScript = resolveRenderScript(jobId, snapshotId, null, projectId, tenantId);
         } catch (Exception e) {
-            failureService.recordDurableFailure(jobId, "Script resolution failed: " + e.getMessage());
+            failureService.recordDurableFailure(jobId, "Script resolution failed: " + e.getMessage(), com.example.platform.render.api.event.RenderFailureReason.INPUT_RESOLUTION_FAILED);
             throw e;
         }
 
@@ -305,7 +287,6 @@ public class RenderJobExecutionService {
      * Complete the render phase for an existing job that is already in RENDERING status.
      * This is the second half of the execution pipeline.
      */
-    @Transactional
     public String finishRenderPhase(String tenantId, String jobId) {
         assertTenantAccess(tenantId);
         return finishRenderPhaseInternal(tenantId, jobId);
@@ -354,78 +335,23 @@ public class RenderJobExecutionService {
             renderResult = executeRenderWithOptionalDag(jobId, projectId, aiScript, profile, tenantId, baseJobId);
         } catch (Exception e) {
             log.error("Render failed for job {}", jobId, e);
-            failureService.recordDurableFailure(jobId, "Render failed: " + e.getMessage());
+            failureService.recordDurableFailure(jobId, "Render failed: " + e.getMessage(), com.example.platform.render.api.event.RenderFailureReason.EXECUTION_FAILED);
             throw new IllegalStateException("Render failed", e);
         }
 
-        // Transition to COMPLETING
-        stateMachine.transition(jobId, RenderJobStatus.EXECUTING, RenderJobStatus.COMPLETING,
-                "Render completed, finalizing artifacts", "RenderJobExecutionService");
-        updateStatus(jobId, projectId, RenderJobStatus.EXECUTING, RenderJobStatus.COMPLETING, null);
-
-        String artifactId;
-        String storageUri = renderResult.storageUri();
-
         try {
-            String contentType = contentTypeForFormat(renderResult.format());
-            String relativePath = renderResult.storageUri().replace("localFsStorageProvider://", "");
-            artifactId = artifactStorageService.uploadJobOutput(jobId, projectId, relativePath, contentType).artifactId().value();
-        } catch (Exception e) {
-            log.error("Storage failed for job {}", jobId, e);
-            failureService.recordDurableFailure(jobId, "Storage failed: " + e.getMessage());
-            throw new IllegalStateException("Storage failed", e);
+            String uri=renderResult.storageUri();
+            String prefix="localFsStorageProvider://";
+            if(uri==null || !uri.startsWith(prefix))throw new IllegalArgumentException("unsupported Render output location");
+            lifecycle.complete(tenantId,jobId,uri.substring(prefix.length()),contentTypeForFormat(renderResult.format()));
+            return jobId;
+        } catch(RuntimeException failure) {
+            // A newly submitted job belongs to its caller transaction; rollback must not
+            // invoke an independent failure writer against the same uncommitted row.
+            if(!org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive())
+                failureService.recordDurableFailure(jobId, "Output acceptance failed: "+failure.getMessage(), com.example.platform.render.api.event.RenderFailureReason.OUTPUT_REJECTED);
+            throw failure;
         }
-
-        // Create ArtifactGraph with the rendered output
-        String contentHash = computeContentHash(storageUri);
-        ArtifactNode rootNode = ArtifactNode.create(
-                artifactId,
-                jobId,
-                ArtifactNodeType.fromExtension(renderResult.format()),
-                storageUri,
-                List.of(), // No parents for root artifact
-                contentHash
-        );
-
-        ArtifactGraph artifactGraph = ArtifactGraph.create(jobId, rootNode);
-
-        // Add additional artifacts if available (e.g., thumbnail, timeline JSON)
-        if (renderResult.duration() > 0) {
-            // Create timeline JSON artifact
-            String timelineArtifactId = ("art-timeline_" + java.util.UUID.randomUUID().toString().replace("-", ""));
-            ArtifactNode timelineNode = ArtifactNode.create(
-                    timelineArtifactId,
-                    jobId,
-                    ArtifactNodeType.TIMELINE_JSON,
-                    "timeline://" + jobId + "/timeline.json",
-                    List.of(artifactId), // Parent is the video artifact
-                    computeContentHash("timeline://" + jobId)
-            );
-            artifactGraph = artifactGraph.addNode(timelineNode);
-        }
-
-        // Save artifact graph
-        if (artifactGraphRepository != null) {
-            artifactGraphRepository.saveGraph(artifactGraph);
-            log.info("Saved artifact graph for job {} with {} nodes", jobId, artifactGraph.size());
-        }
-
-        // Update job with artifact URI (backward compatibility)
-        renderJobRepository.updateArtifactUri(jobId, storageUri);
-
-        // Transition to COMPLETED
-        stateMachine.transition(jobId, RenderJobStatus.COMPLETING, RenderJobStatus.COMPLETED,
-                "Job successfully completed", "RenderJobExecutionService");
-        updateStatus(jobId, projectId, RenderJobStatus.COMPLETING, RenderJobStatus.COMPLETED, null);
-        consumeRenderQuota(tenantId, jobId);
-
-        eventPublisher.publishEvent(
-                new ArtifactCreatedEvent(artifactId, jobId, projectId, Instant.now()));
-        eventPublisher.publishEvent(new RenderJobCompletedEvent(
-                jobId, projectId, artifactId, storageUri, Instant.now(), initiator));
-
-        log.info("Render job {} completed successfully with artifact graph {}", jobId, artifactGraph.graphId());
-        return jobId;
     }
 
     // --- Private helpers ---
@@ -459,11 +385,10 @@ public class RenderJobExecutionService {
                 throw new IllegalStateException(
                         "Pipeline DAG failed: " + (dag.errorMessage() != null ? dag.errorMessage() : "unknown"));
             }
-            String artifactId = dag.pipelineResult() != null && dag.pipelineResult().artifactId() != null
-                    ? dag.pipelineResult().artifactId()
-                    : ("art_" + java.util.UUID.randomUUID().toString().replace("-", ""));
-            String storageUri = dag.finalStorageUri() != null ? dag.finalStorageUri()
-                    : "localFsStorageProvider://artifacts/" + jobId + "/transcode-output.mp4";
+            if(dag.pipelineResult()==null || dag.finalStorageUri()==null || dag.finalStorageUri().isBlank())
+                throw new IllegalStateException("DAG did not provide an output result");
+            String artifactId=dag.pipelineResult().artifactId(); // provider output tag, never canonical Artifact identity
+            String storageUri=dag.finalStorageUri();
             String format = spec.outputSpec() != null ? spec.outputSpec().format() : "mp4";
             long durationSec = Math.max(1L, Math.round(spec.computeDuration()));
             String resolution = spec.outputSpec() != null ? spec.outputSpec().resolution() : "1920x1080";
@@ -480,7 +405,7 @@ public class RenderJobExecutionService {
                         null, // traceId will be generated
                         requiredCapabilities,
                         profile,
-                        Map.of("aiScript", aiScript, "tenantId", tenantId)
+                        Map.of("aiScript", aiScript), tenantId, projectId
                 );
 
         ProviderRuntimeEngine.ProviderResolutionResult resolutionResult =
@@ -531,18 +456,6 @@ public class RenderJobExecutionService {
 
     private String resolveTier(String tenantId) {
         return "ENTITLED";
-    }
-
-    private void consumeRenderQuota(String tenantId, String jobId) {
-        Instant now = Instant.now();
-        YearMonth month = YearMonth.from(now.atZone(ZoneOffset.UTC));
-        Instant periodStart = month.atDay(1).atStartOfDay(ZoneOffset.UTC).toInstant();
-        Instant periodEnd = month.plusMonths(1).atDay(1).atStartOfDay(ZoneOffset.UTC).toInstant();
-        quotaConsumption.consume(new QuotaConsumptionRequest(
-                PrincipalRef.tenantScoped(tenantId, PrincipalType.ORGANIZATION, tenantId),
-                "render.job.create", 1, periodStart, periodEnd,
-                "render-job:" + jobId + ":completion",
-                "render-job:" + jobId, "render completion " + jobId, now));
     }
 
     private boolean shouldDeferNatronRender(String profile) {
@@ -597,20 +510,9 @@ public class RenderJobExecutionService {
                 "No timeline snapshot or prompt available for render (snapshotId=" + snapshotId + ")");
     }
 
-    private void failJob(String jobId, String projectId, RenderJobStatus from, String code, String message) {
-        updateStatus(jobId, projectId, from, RenderJobStatus.FAILED, code);
-        renderJobRepository.updateErrorMessage(jobId, message);
-        eventPublisher.publishEvent(new RenderJobFailedEvent(
-                jobId, projectId, message, Instant.now(), renderJobRepository.requireInitiator(jobId)));
-    }
-
     private void updateStatus(String jobId, String projectId, RenderJobStatus oldStatus,
                               RenderJobStatus newStatus, String errorCode) {
-        stateMachine.validateTransition(oldStatus, newStatus);
-        renderJobRepository.updateStatus(jobId, newStatus.name());
-        historyRepository.record(jobId, oldStatus.name(), newStatus.name(), null, errorCode);
-        eventPublisher.publishEvent(
-                new RenderJobStatusChangedEvent(jobId, projectId, oldStatus.name(), newStatus.name(), Instant.now()));
+        lifecycle.transition(jobId,projectId,oldStatus,newStatus,errorCode);
     }
 
     private void assertJobNotInTerminalState(String jobId) {
@@ -627,23 +529,17 @@ public class RenderJobExecutionService {
     }
 
     private static String contentTypeForFormat(String format) {
-        if (format == null) {
-            return "video/mp4";
-        }
-        return switch (format.toLowerCase()) {
-            case "dash" -> "application/dash+xml";
-            case "hls" -> "application/vnd.apple.mpegurl";
-            default -> "video/mp4";
+        if(format==null)throw new IllegalArgumentException("Render output format required");
+        return switch(format.toLowerCase(java.util.Locale.ROOT)) {
+            case "mp4" -> "video/mp4";
+            case "webm" -> "video/webm";
+            case "mov" -> "video/quicktime";
+            case "wav" -> "audio/wav";
+            case "mp3" -> "audio/mpeg";
+            case "flac" -> "audio/flac";
+            case "png" -> "image/png";
+            case "jpg", "jpeg" -> "image/jpeg";
+            default -> throw new IllegalArgumentException("unsupported Render output format: "+format);
         };
-    }
-
-    /**
-     * Compute a content hash for deduplication.
-     * In production, this would hash the actual file content.
-     */
-    private String computeContentHash(String uri) {
-        if (uri == null) return "";
-        // Simple hash based on URI (in production, hash actual content)
-        return "hash-" + Integer.toHexString(uri.hashCode());
     }
 }

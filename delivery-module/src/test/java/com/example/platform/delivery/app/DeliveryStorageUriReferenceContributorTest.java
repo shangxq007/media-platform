@@ -19,36 +19,27 @@ class DeliveryStorageUriReferenceContributorTest extends PostgresTestContainerSu
     private static DSLContext dsl;
     private DeliveryStorageUriReferenceContributor contributor;
 
-    @BeforeAll
-    static void setUpDatabase() {
-        dataSource = createDataSource();
-        var jdbc = new JdbcTemplate(dataSource);
-
-        jdbc.execute("CREATE TABLE IF NOT EXISTS delivery_job ("
-                + "id varchar(64) primary key,"
-                + "tenant_id varchar(64),"
-                + "project_id varchar(64),"
-                + "render_job_id varchar(64),"
-                + "destination_id varchar(64),"
-                + "status varchar(32),"
-                + "source_uri varchar(1024),"
-                + "remote_uri varchar(1024),"
-                + "created_at timestamp"
-                + ")");
-
-        var settings = new Settings().withRenderNameCase(RenderNameCase.LOWER);
-        dsl = DSL.using(dataSource, SQLDialect.POSTGRES, settings);
+    private static final String SCHEMA=isolatedSchemaName();
+    @BeforeAll static void setUpDatabase(){
+        DeliveryTestSchema.migrate(jdbcUrl(),username(),password(),SCHEMA);
+        dataSource=new org.springframework.jdbc.datasource.DriverManagerDataSource(
+            jdbcUrl()+(jdbcUrl().contains("?")?"&":"?")+"currentSchema="+SCHEMA,username(),password());
+        dsl=DSL.using(dataSource,SQLDialect.POSTGRES,new Settings().withRenderSchema(false));
     }
+    @org.junit.jupiter.api.AfterAll static void close(){dsl.execute("drop schema "+SCHEMA+" cascade");closeDataSource(dataSource);}
 
     @BeforeEach
     void setUp() {
         dsl.execute("TRUNCATE TABLE delivery_job CASCADE");
 
-        dsl.execute("INSERT INTO delivery_job (id, tenant_id, project_id, render_job_id, destination_id, status, source_uri, remote_uri, created_at) VALUES ("
+        dsl.execute("INSERT INTO delivery_job (id, tenant_id, project_id, render_job_id, destination_id, status, artifact_id, remote_uri, created_at) VALUES ("
                 + "'dj_1','ten','prj_1','rj_1','dest_1','COMPLETED',"
-                + "'s3://bucket/out.mp4',null,CURRENT_TIMESTAMP)");
+                + "'artifact-1',null,CURRENT_TIMESTAMP)");
 
-        contributor = new DeliveryStorageUriReferenceContributor(dsl);
+        var index=org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactOutputReferenceIndex.class);
+        org.mockito.Mockito.when(index.findByStorageUri("s3://bucket/out.mp4","prj_1",50)).thenReturn(java.util.List.of(
+            new com.example.platform.artifact.app.ArtifactOutputReference(new com.example.platform.artifact.app.ArtifactScope("ten","prj_1","rj_1"),new com.example.platform.shared.identity.ArtifactId("artifact-1"))));
+        contributor = new DeliveryStorageUriReferenceContributor(dsl,index);
     }
 
     @Test

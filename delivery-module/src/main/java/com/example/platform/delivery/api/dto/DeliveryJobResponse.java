@@ -5,7 +5,7 @@ public record DeliveryJobResponse(
         String renderJobId,
         String destinationId,
         String status,
-        String sourceUri,
+        String artifactId,
         String remoteUri,
         Long bytesTransferred,
         String errorMessage) {}

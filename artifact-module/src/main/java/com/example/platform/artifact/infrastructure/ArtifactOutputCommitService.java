@@ -37,7 +37,7 @@ public class ArtifactOutputCommitService implements ArtifactOutputCommit {
         if (!scope.tenantId().equals(p.location().namespace().tenantId()) || !scope.projectId().equals(p.location().namespace().projectId()))
             throw new IllegalArgumentException("output namespace mismatch");
         storage.read(owner,receipt.receipt().idempotencyKey()); // current backend integrity, not unchecked URI
-        var id=new ArtifactId("art-"+UUID.nameUUIDFromBytes((scope.tenantId()+"\0"+scope.projectId()+"\0"+scope.renderJobId()+"\0"+receipt.objectId().value()).getBytes(StandardCharsets.UTF_8)));
+        var id=outputId(scope,receipt.objectId());
         dsl.fetch("select pg_advisory_xact_lock(hashtextextended(?, 0))", "artifact-output:"+id.value());
         var existing=query.getArtifact(scope.tenantId(),id);
         if (existing.isPresent()) {
@@ -57,4 +57,8 @@ public class ArtifactOutputCommitService implements ArtifactOutputCommit {
         }
         return new ArtifactOutputReference(scope,id);
     }
+    static ArtifactId outputId(ArtifactScope scope,com.example.platform.storage.contract.StorageObjectId objectId) {
+        return new ArtifactId("art-"+UUID.nameUUIDFromBytes((scope.tenantId()+"\0"+scope.projectId()+"\0"+scope.renderJobId()+"\0"+objectId.value()).getBytes(StandardCharsets.UTF_8)));
+    }
+
 }

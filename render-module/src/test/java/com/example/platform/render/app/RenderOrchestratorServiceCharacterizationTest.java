@@ -1,4 +1,5 @@
 package com.example.platform.render.app;
+import com.example.platform.render.api.event.*;
 
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import static org.jooq.impl.DSL.field;
@@ -22,7 +23,7 @@ import com.example.platform.render.infrastructure.timeline.EditorTimelineConvert
 import com.example.platform.render.infrastructure.providerruntime.engine.ProviderRuntimeEngine;
 import com.example.platform.render.testsupport.RenderTestSchemaFixture;
 import com.example.platform.render.testsupport.RenderInitiatorFixtures;
-import com.example.platform.shared.events.RenderJobCompletedEvent;
+import com.example.platform.render.api.event.RenderJobCompletedEvent;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import com.example.platform.shared.web.TenantContext;
 import com.example.platform.entitlement.api.commercial.CommercialAdmissionPort;
@@ -37,7 +38,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.context.ApplicationEventPublisher;
+import com.example.platform.render.app.event.RenderLifecyclePublisher;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -60,7 +61,7 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
     private CommercialAdmissionPort commercialAdmission;
     private QuotaConsumptionPort quotaConsumption;
     private RenderProviderRouter renderProviderRouter;
-    private ApplicationEventPublisher eventPublisher;
+    private RenderLifecyclePublisher eventPublisher;
     private RenderJobStatusHistoryRepository historyRepository;
     private TimelineScriptParser timelineScriptParser;
     private RenderArtifactStorageService artifactStorageService;
@@ -90,10 +91,14 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
         commercialAdmission = mock(CommercialAdmissionPort.class);
         quotaConsumption = mock(QuotaConsumptionPort.class);
         renderProviderRouter = mock(RenderProviderRouter.class);
-        eventPublisher = mock(ApplicationEventPublisher.class);
+        eventPublisher = mock(RenderLifecyclePublisher.class);
         historyRepository = new RenderJobStatusHistoryRepository(dsl);
         timelineScriptParser = mock(TimelineScriptParser.class);
         artifactStorageService = mock(RenderArtifactStorageService.class);
+        when(artifactStorageService.uploadJobOutput(anyString(),anyString(),anyString(),anyString())).thenAnswer(i->
+            new com.example.platform.artifact.app.ArtifactOutputReference(new com.example.platform.artifact.app.ArtifactScope(
+                com.example.platform.shared.web.TenantContext.get(),i.getArgument(1),i.getArgument(0)),
+                new com.example.platform.shared.identity.ArtifactId("accepted-"+i.getArgument(0))));
         timelineSnapshotService = mock(TimelineSnapshotService.class);
         effectTimelineInspector = mock(EffectTimelineInspector.class);
         renderProfileResolver = mock(RenderProfileResolver.class);
@@ -133,7 +138,7 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
                         .execute();
             }
             return null;
-        }).when(failureService).recordDurableFailure(anyString(), anyString());
+        }).when(failureService).recordDurableFailure(anyString(), anyString(), org.mockito.ArgumentMatchers.any(com.example.platform.render.api.event.RenderFailureReason.class));
         when(claimService.claimForSelection(anyString())).thenAnswer(inv -> {
             String jobId = inv.getArgument(0);
             // Simulate CAS: QUEUED → SELECTING_PROVIDER
@@ -149,18 +154,7 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
                 eventPublisher, timelineScriptParser,
                 effectTimelineInspector, renderProfileResolver,
                 null, null);
-        RenderJobExecutionService executionService = new RenderJobExecutionService(
-                renderJobRepository, quotaConsumption, null, renderProviderRouter,
-                providerRuntimeEngine,
-                eventPublisher, historyRepository,
-                timelineScriptParser, mock(TimelineSpecResolver.class),
-                mock(IncrementalRenderOrchestrationService.class),
-                artifactStorageService, null,
-                timelineSnapshotService,
-                editorTimelineConverter, effectTimelineInspector, renderProfileResolver,
-                null, null, null, null,
-                mock(TimelineExtensionsReader.class), null, null,
-                claimService, failureService);
+        RenderJobExecutionService executionService = new RenderJobExecutionService(renderJobRepository, null, renderProviderRouter, providerRuntimeEngine, timelineScriptParser, mock(TimelineSpecResolver.class), mock(IncrementalRenderOrchestrationService.class), new RenderJobLifecycleService(renderJobRepository,historyRepository,eventPublisher,artifactStorageService,org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactOutputRead.class),quotaConsumption), timelineSnapshotService, editorTimelineConverter, effectTimelineInspector, renderProfileResolver, null, null, null, null, mock(TimelineExtensionsReader.class), null, null, claimService, failureService);
         RenderJobTimelineQueryService timelineQueryService = new RenderJobTimelineQueryService(
                 renderJobRepository, mock(BaseJobTimelineLoader.class));
 
@@ -241,10 +235,8 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
         assertEquals("tenant-1", jobRow.get(field("initiator_tenant_id"), String.class));
 
         verify(provider).render(eq(jobId), anyString(), anyString());
-        verify(eventPublisher, atLeastOnce()).publishEvent(any(Object.class));
-        verify(eventPublisher).publishEvent(argThat((Object event) ->
-                event instanceof RenderJobCompletedEvent completed
-                        && "test-principal-p1".equals(completed.initiator().actorId())
+        verify(eventPublisher, atLeastOnce()).publishEvent(any(com.example.platform.render.api.event.RenderJobCompletedEvent.class));
+        verify(eventPublisher).publishEvent(argThat((RenderJobCompletedEvent completed) -> "test-principal-p1".equals(completed.initiator().actorId())
                         && "tenant-1".equals(completed.initiator().tenantId())));
     }
 
@@ -299,7 +291,8 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
                 .where(field("id").eq("rj-3"))
                 .fetchOne();
         assertEquals("COMPLETED", jobRow.get(field("status"), String.class));
-        assertNotNull(jobRow.get(field("artifact_uri"), String.class));
+        assertNull(jobRow.get(field("artifact_uri"), String.class));
+        verify(eventPublisher).publishEvent(any(RenderJobCompletedEvent.class));
 
         verify(quotaConsumption).consume(argThat(request ->
                 request.idempotencyKey().equals("render-job:rj-3:completion")));
