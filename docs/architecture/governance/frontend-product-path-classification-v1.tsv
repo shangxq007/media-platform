@@ -279,3 +279,6 @@ frontend/src/product/timeline-review/testing.ts	REUSE	BOUNDED_AUTHENTICATED_TIME
 frontend/src/product/timeline-review/timeline-review.css	REUSE	BOUNDED_AUTHENTICATED_TIMELINE_REVIEW_READ_AND_VERIFICATION
 frontend/src/product/timeline-review/session.test.ts	REUSE	OIDC_401_IMMEDIATE_PRIVATE_STATE_RETIREMENT_TEST
 frontend/docs/timeline-review.md	REUSE	TIMELINE_REVIEW_FEATURE_CONTRACT_AND_TEST_NOTES
+frontend/src/api/oidc-transport.ts	REUSE	SHARED_OIDC_AXIOS_REQUEST_BINDING_AND_EXPIRY_HANDLER
+frontend/src/api/oidc-transports.test.ts	REUSE	OIDC_CROSS_TRANSPORT_SESSION_FENCING_REGRESSION_TEST
+frontend/src/api/dev-transports.test.ts	REUSE	EXPLICIT_DEVELOPMENT_AUTH_TRANSPORT_REGRESSION_TEST
