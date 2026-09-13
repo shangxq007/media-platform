@@ -14,7 +14,7 @@ import com.example.platform.render.app.timeline.RenderJobRevisionPinningService;
 import com.example.platform.shared.authorization.CanonicalActor;
 import com.example.platform.shared.web.TenantContext;
 import com.example.platform.timeline.app.PatchApplyResult;
-import com.example.platform.timeline.app.TimelineCanonicalRejectionException;
+import com.example.platform.timeline.api.composition.TimelineCanonicalRejectionException;
 import com.example.platform.timeline.app.TimelinePatchApplicationService;
 import com.example.platform.timeline.app.TimelineRevisionDiffQuery;
 import com.example.platform.timeline.app.TimelineRevisionQueryService;
@@ -217,7 +217,7 @@ class TimelineMutationControllersMockMvcTest {
                 null,
                 null,
                 saveService,
-                mock(com.example.platform.timeline.app.TimelinePayloadCodec.class),
+                mock(com.example.platform.timeline.api.composition.TimelinePayloadCodec.class),
                 authorization);
 
         mvc(controller).perform(post("/api/render/projects/project-a/timeline/revisions/merge")
@@ -246,7 +246,7 @@ class TimelineMutationControllersMockMvcTest {
                 null,
                 null,
                 saveService,
-                mock(com.example.platform.timeline.app.TimelinePayloadCodec.class),
+                mock(com.example.platform.timeline.api.composition.TimelinePayloadCodec.class),
                 authorization);
         when(authorization.requireWrite("tenant-a", "project-a"))
                 .thenThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "denied"));

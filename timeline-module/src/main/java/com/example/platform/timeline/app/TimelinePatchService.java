@@ -1,6 +1,8 @@
 package com.example.platform.timeline.app;
+import com.example.platform.timeline.api.composition.TimelineCanonicalization;
+import com.example.platform.timeline.api.composition.TimelinePatches;
 
-import com.example.platform.timeline.app.InternalTimelineJson;
+import com.example.platform.timeline.api.serialization.InternalTimelineJson;
 import com.example.platform.timeline.app.TimelineCanonicalizer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -16,7 +18,7 @@ import org.springframework.stereotype.Service;
  * TimelineSpec projection conversion removed (render-side consumers convert via InternalTimelineAdapter).
  */
 @Service
-public class TimelinePatchService {
+public class TimelinePatchService implements TimelinePatches {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -57,7 +59,7 @@ public class TimelinePatchService {
 
             String patched = MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(doc);
             try {
-                TimelineCanonicalizer.CanonicalizeResult canonical =
+                TimelineCanonicalization.CanonicalizeResult canonical =
                         timelineCanonicalizer.canonicalize(patched);
                 return PatchResult.success(canonical.timelineJson(), applied);
             } catch (IllegalArgumentException e) {
@@ -124,21 +126,7 @@ public class TimelinePatchService {
         }
     }
 
-    public record PatchOperation(String op, String path, JsonNode value) {}
 
-    public record PatchResult(
-            boolean success,
-            String timelineJson,
-            List<String> appliedOps,
-            List<String> errors,
-            List<String> warnings) {
 
-        public static PatchResult success(String json, List<String> applied) {
-            return new PatchResult(true, json, applied, List.of(), List.of());
-        }
 
-        public static PatchResult failed(List<String> errors) {
-            return new PatchResult(false, null, List.of(), errors, List.of());
-        }
-    }
 }

@@ -1,5 +1,7 @@
 package com.example.platform.render.app.operation;
 
+import com.example.platform.timeline.api.composition.TimelineSourceValidation;
+import com.example.platform.timeline.api.revision.TimelineRevisionCommands;
 import com.example.platform.operation.plan.AuthorizationDecision;
 import com.example.platform.operation.plan.PlanErrorCode;
 import com.example.platform.operation.plan.PlanException;
@@ -9,7 +11,7 @@ import com.example.platform.identity.api.authorization.AuthorizationDecisionPort
 import com.example.platform.shared.authorization.CanonicalActor;
 import com.example.platform.shared.time.MediaTime;
 import com.example.platform.timeline.app.InternalTimelineValidationService;
-import com.example.platform.timeline.app.TimelineMutationContext;
+import com.example.platform.timeline.api.revision.TimelineMutationContext;
 import com.example.platform.timeline.app.TimelineRevisionSaveService;
 import com.example.platform.timeline.app.TimelineSourceReferenceValidator;
 import com.example.platform.timeline.canonical.TimelineContentDigester;
@@ -66,17 +68,17 @@ class H7FirstRealMediaCutTest {
                 any(TimelineMutationContext.class),
                 eq(RevisionRef.main(TENANT, PROJECT)), eq(BASE_REVISION),
                 any(TimelineDocument.class),
-                any(TimelineRevisionSaveService.RevisionWriteCommand.class)))
+                any(TimelineRevisionCommands.RevisionWriteCommand.class)))
                 .thenAnswer(invocation -> {
                     TimelineDocument document = invocation.getArgument(3, TimelineDocument.class);
                     savedDocument.set(document);
-                    return new TimelineRevisionSaveService.RevisionWriteResult(
+                    return new TimelineRevisionCommands.RevisionWriteResult(
                             "revision-R1", BASE_REVISION, DIGESTER.digest(document), false);
                 });
 
         TimelineSourceReferenceValidator sourceValidator = mock(TimelineSourceReferenceValidator.class);
         when(sourceValidator.validate(any(MediaStreamSourceBinding.class), eq(TENANT), eq(PROJECT), eq(TrackType.VIDEO)))
-                .thenReturn(new TimelineSourceReferenceValidator.ValidationResult(true, List.of()));
+                .thenReturn(new TimelineSourceValidation.ValidationResult(true, List.of()));
         List<String> authorizationActions = new ArrayList<>();
         AuthorizationDecisionPort authorization = request -> {
             authorizationActions.add(request.action().permissionKey());
@@ -160,7 +162,7 @@ class H7FirstRealMediaCutTest {
         when(writer.findPayloadDocument(TENANT, BASE_REVISION)).thenReturn(Optional.of(base));
         TimelineSourceReferenceValidator sources = mock(TimelineSourceReferenceValidator.class);
         when(sources.validate(any(), anyString(), anyString(), any()))
-                .thenReturn(new TimelineSourceReferenceValidator.ValidationResult(true, List.of()));
+                .thenReturn(new TimelineSourceValidation.ValidationResult(true, List.of()));
         OperationPlanApplyService apply = mock(OperationPlanApplyService.class);
         var service = new TimelineMediaClipOperationService(
                 writer, sources, new InternalTimelineValidationService(),
@@ -194,7 +196,7 @@ class H7FirstRealMediaCutTest {
         when(writer.findPayloadDocument(TENANT, BASE_REVISION)).thenReturn(Optional.of(base));
         TimelineSourceReferenceValidator sources = mock(TimelineSourceReferenceValidator.class);
         when(sources.validate(any(), anyString(), anyString(), any()))
-                .thenReturn(new TimelineSourceReferenceValidator.ValidationResult(true, List.of()));
+                .thenReturn(new TimelineSourceValidation.ValidationResult(true, List.of()));
         OperationPlanApplyService apply = mock(OperationPlanApplyService.class);
         var service = new TimelineMediaClipOperationService(
                 writer, sources, new InternalTimelineValidationService(),
@@ -223,7 +225,7 @@ class H7FirstRealMediaCutTest {
         when(writer.findPayloadDocument(TENANT, BASE_REVISION)).thenReturn(Optional.of(base));
         TimelineSourceReferenceValidator sources = mock(TimelineSourceReferenceValidator.class);
         when(sources.validate(any(), anyString(), anyString(), any()))
-                .thenReturn(new TimelineSourceReferenceValidator.ValidationResult(true, List.of()));
+                .thenReturn(new TimelineSourceValidation.ValidationResult(true, List.of()));
         OperationPlanApplyService apply = mock(OperationPlanApplyService.class);
         when(apply.apply(any(), any(), eq(PROJECT), eq(base)))
                 .thenThrow(new PlanException(PlanErrorCode.STALE_TARGET_REF, "current ref changed"));

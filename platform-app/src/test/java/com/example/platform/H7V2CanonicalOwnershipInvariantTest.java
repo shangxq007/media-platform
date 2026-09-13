@@ -1,5 +1,7 @@
 package com.example.platform;
 
+import com.example.platform.timeline.api.revision.TimelineRevisionDiff;
+import com.example.platform.timeline.api.revision.TimelineRevisionCommands;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -24,10 +26,10 @@ import com.example.platform.timeline.app.PatchPreviewResult;
 import com.example.platform.timeline.app.TimelineArtifactPinValidator;
 import com.example.platform.timeline.app.TimelineDocumentJsonSerializer;
 import com.example.platform.timeline.app.TimelineMergeEngine;
-import com.example.platform.timeline.app.TimelineMutationContext;
+import com.example.platform.timeline.api.revision.TimelineMutationContext;
 import com.example.platform.timeline.app.TimelinePatchApplicationService;
 import com.example.platform.timeline.app.ProjectRevisionNumberAllocator;
-import com.example.platform.timeline.app.TimelineRevisionCommandConflictException;
+import com.example.platform.timeline.api.revision.TimelineRevisionCommandConflictException;
 import com.example.platform.timeline.app.TimelineRevisionDiffQuery;
 import com.example.platform.timeline.app.TimelineRevisionDiffService;
 import com.example.platform.timeline.app.TimelineRevisionRefHeadUpdateAdapter;
@@ -581,7 +583,7 @@ class H7V2CanonicalOwnershipInvariantTest {
                 "ta", projectA, null, document("root-a", "track-a"), "server-author");
         TimelineRevision rootB = saveRevision(
                 "ta", projectB, null, document("root-b", "track-b"), "server-author");
-        var command = new TimelineRevisionSaveService.RevisionWriteCommand(
+        var command = new TimelineRevisionCommands.RevisionWriteCommand(
                 "same-command-key", "same-plan", "same-fingerprint", "OPERATION_PLAN", "ta");
         saveRevisionForCommand(
                 RevisionRef.main("ta", projectA), rootA.revisionId(),
@@ -617,9 +619,9 @@ class H7V2CanonicalOwnershipInvariantTest {
         assertEquals(from.revisionId(), compare.fromRevision().id());
         assertEquals(to.revisionId(), compare.toRevision().id());
         assertTrue(compare.entityChanges().contains(
-                new TimelineRevisionDiffService.EntityChange("track", "track-from", "removed")));
+                new TimelineRevisionDiff.EntityChange("track", "track-from", "removed")));
         assertTrue(compare.entityChanges().contains(
-                new TimelineRevisionDiffService.EntityChange("track", "track-to", "added")));
+                new TimelineRevisionDiff.EntityChange("track", "track-to", "added")));
         assertFalse(compare.entityChanges().stream()
                 .anyMatch(change -> "track-unrequested".equals(change.entityId())));
     }
@@ -743,9 +745,9 @@ class H7V2CanonicalOwnershipInvariantTest {
                 mutation(tenantId, projectId, actorId), historicalRevisionId, expectedHead);
     }
 
-    private TimelineRevisionSaveService.RevisionWriteResult saveRevisionForCommand(
+    private TimelineRevisionCommands.RevisionWriteResult saveRevisionForCommand(
             RevisionRef targetRef, String expectedHead, TimelineDocument document,
-            String actorId, TimelineRevisionSaveService.RevisionWriteCommand command) {
+            String actorId, TimelineRevisionCommands.RevisionWriteCommand command) {
         return saveService.saveRevisionForCommand(
                 mutation(targetRef.tenantId(), targetRef.projectId(), actorId),
                 targetRef, expectedHead, document, command);

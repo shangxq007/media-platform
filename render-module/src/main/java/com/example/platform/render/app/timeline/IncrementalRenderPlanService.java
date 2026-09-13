@@ -1,6 +1,6 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.timeline.app.InternalTimelineJson;import com.example.platform.timeline.app.TimelineCanonicalizer;import com.example.platform.timeline.app.TimelineSemanticDiffService;
+import com.example.platform.timeline.api.serialization.InternalTimelineJson;import com.example.platform.timeline.api.composition.TimelineCanonicalization;import com.example.platform.timeline.api.composition.TimelineSemanticDiff;
 import com.example.platform.render.app.planner.PipelineExecutionPlan;
 import com.example.platform.render.app.planner.PipelineTask;
 import com.example.platform.render.app.planner.PipelineTaskType;
@@ -28,21 +28,21 @@ import org.springframework.stereotype.Service;
 @Service
 public class IncrementalRenderPlanService {
 
-    private final TimelineSemanticDiffService semanticDiffService;
+    private final TimelineSemanticDiff semanticDiffService;
     private final RenderImpactAnalyzer impactAnalyzer;
     private final InternalTimelineAdapter internalTimelineAdapter;
     private final RenderPlannerService renderPlannerService;
     private final RenderArtifactRegistry artifactRegistry;
-    private final TimelineCanonicalizer canonicalizer;
+    private final TimelineCanonicalization canonicalizer;
     private final SegmentTimelinePlanner segmentTimelinePlanner;
     private final SegmentPlanFilter segmentPlanFilter;
 
-    public IncrementalRenderPlanService(TimelineSemanticDiffService semanticDiffService,
+    public IncrementalRenderPlanService(TimelineSemanticDiff semanticDiffService,
                                         RenderImpactAnalyzer impactAnalyzer,
                                         InternalTimelineAdapter internalTimelineAdapter,
                                         RenderPlannerService renderPlannerService,
                                         RenderArtifactRegistry artifactRegistry,
-                                        TimelineCanonicalizer canonicalizer,
+                                        TimelineCanonicalization canonicalizer,
                                         SegmentTimelinePlanner segmentTimelinePlanner,
                                         SegmentPlanFilter segmentPlanFilter) {
         this.semanticDiffService = semanticDiffService;

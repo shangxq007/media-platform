@@ -1,4 +1,7 @@
 package com.example.platform.timeline.app;
+import com.example.platform.timeline.api.revision.TimelineSnapshotView;
+import com.example.platform.timeline.api.serialization.InternalTimelineJson;
+import com.example.platform.timeline.api.composition.TimelineImportRequest;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -12,10 +15,10 @@ import com.example.platform.fonttext.text.TextContent;
 import com.example.platform.fonttext.typography.FontRational;
 import com.example.platform.timeline.adapter.TimelineRevisionRepository;
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
-import com.example.platform.timeline.app.TimelineImportRequest.ImportClip;
-import com.example.platform.timeline.app.TimelineImportRequest.ImportClipEffect;
-import com.example.platform.timeline.app.TimelineImportRequest.ImportOutput;
-import com.example.platform.timeline.app.TimelineImportRequest.ImportTrack;
+import com.example.platform.timeline.api.composition.TimelineImportRequest.ImportClip;
+import com.example.platform.timeline.api.composition.TimelineImportRequest.ImportClipEffect;
+import com.example.platform.timeline.api.composition.TimelineImportRequest.ImportOutput;
+import com.example.platform.timeline.api.composition.TimelineImportRequest.ImportTrack;
 import com.example.platform.timeline.canonical.TestTextElements;
 import com.example.platform.timeline.canonical.TextElement;
 import com.example.platform.timeline.canonical.TimelineDocument;
@@ -113,11 +116,11 @@ class TimedTextMergeEngineTest {
         when(revisionRepo.findOwnedById("src-rev", "proj-1", "tenant-1")).thenReturn(Optional.of(srcRow));
         when(revisionRepo.findOwnedById("tgt-rev", "proj-1", "tenant-1")).thenReturn(Optional.of(tgtRow));
                 when(snapshotService.findOwnedById("proj-1", "tenant-1", "snap-base"))
-                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-base", "proj-1", "tenant-1", basePayload, "timeline-1.0")));
+                .thenReturn(Optional.of(new TimelineSnapshotView("snap-base", "proj-1", "tenant-1", basePayload, "timeline-1.0")));
                 when(snapshotService.findOwnedById("proj-1", "tenant-1", "snap-src"))
-                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-src", "proj-1", "tenant-1", sourcePayload, "timeline-1.0")));
+                .thenReturn(Optional.of(new TimelineSnapshotView("snap-src", "proj-1", "tenant-1", sourcePayload, "timeline-1.0")));
                 when(snapshotService.findOwnedById("proj-1", "tenant-1", "snap-tgt"))
-                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-tgt", "proj-1", "tenant-1", targetPayload, "timeline-1.0")));
+                .thenReturn(Optional.of(new TimelineSnapshotView("snap-tgt", "proj-1", "tenant-1", targetPayload, "timeline-1.0")));
         when(revisionRepo.listOwnedByProject("proj-1", "tenant-1", null, null, null, 500)).thenReturn(List.of());
         when(currentService.currentHead(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any())).thenReturn("tgt-rev");
         var previewService = new TimelineMergePreviewService(new TimelineMergeConflictDetector());

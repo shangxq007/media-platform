@@ -1,10 +1,11 @@
 package com.example.platform.web.render;
 
-import com.example.platform.timeline.app.TimelinePayloadCodec;
+import com.example.platform.timeline.api.revision.TimelineRevisionQueries;
+import com.example.platform.timeline.api.composition.TimelinePayloadCodec;
 import com.example.platform.timeline.app.TimelineRevisionSaveService;
 import com.example.platform.timeline.app.TimelineRevisionQueryService;
 import com.example.platform.timeline.app.TimelineRevisionDiffQuery;
-import com.example.platform.timeline.app.TimelineMutationContext;
+import com.example.platform.timeline.api.revision.TimelineMutationContext;
 import com.example.platform.shared.web.TenantContext;
 import com.example.platform.timeline.version.TimelineRevision;
 import org.junit.jupiter.api.Test;
@@ -40,15 +41,15 @@ class TimelineRevisionControllerRestoreResponseTest {
     private static final String EDITOR_PROJECTION =
             "{\"schemaVersion\":\"2.0.0\",\"id\":\"tl-restore-editor\",\"layers\":[],\"clips\":[]}";
 
-    private static TimelineRevisionQueryService.RevisionInfo revisionInfo() {
-        return new TimelineRevisionQueryService.RevisionInfo(
+    private static TimelineRevisionQueries.RevisionInfo revisionInfo() {
+        return new TimelineRevisionQueries.RevisionInfo(
                 "trev_restored", "prj_r", "ten_r", null, 4, "snap_r", 3,
                 "hash", "timeline-1.0", "restore", "user-1", null,
                 "Restored from revision #2", List.of(), "{}", null, false, null, null, null);
     }
 
-    private static TimelineRevisionQueryService.RevisionInfo headInfo() {
-        return new TimelineRevisionQueryService.RevisionInfo(
+    private static TimelineRevisionQueries.RevisionInfo headInfo() {
+        return new TimelineRevisionQueries.RevisionInfo(
                 "trev_current", "prj_r", "ten_r", null, 3, "snap_current", 2,
                 "head-hash", "timeline-1.0", "api", "user-1", null,
                 null, List.of(), null, null, false, null, null, null);
@@ -103,9 +104,9 @@ class TimelineRevisionControllerRestoreResponseTest {
         when(saveService.restoreRevision(mutation(), "trev_restored", "trev_current"))
                 .thenReturn(validRestoredRevision("trev_current"));
         when(revisionQueryService.getDetail(eq("prj_r"), eq("ten_r"), eq("trev_restored")))
-                .thenReturn(Optional.of(new TimelineRevisionQueryService.RevisionDetail(revisionInfo(), null, null)));
+                .thenReturn(Optional.of(new TimelineRevisionQueries.RevisionDetail(revisionInfo(), null, null)));
         when(revisionQueryService.getRevisionSnapshotPayload("prj_r", "ten_r", "trev_restored"))
-                .thenReturn(Optional.of(new TimelineRevisionQueryService.RevisionSnapshotPayload(
+                .thenReturn(Optional.of(new TimelineRevisionQueries.RevisionSnapshotPayload(
                         "snap_r", CANONICAL_FIXTURE, "timeline-1.0")));
         when(codec.toEditorJson(CANONICAL_FIXTURE)).thenReturn(EDITOR_PROJECTION);
 
@@ -134,9 +135,9 @@ class TimelineRevisionControllerRestoreResponseTest {
         when(saveService.restoreRevision(mutation(), "trev_restored", "trev_current"))
                 .thenReturn(validRestoredRevision("trev_current"));
         when(revisionQueryService.getDetail(eq("prj_r"), eq("ten_r"), eq("trev_restored")))
-                .thenReturn(Optional.of(new TimelineRevisionQueryService.RevisionDetail(revisionInfo(), null, null)));
+                .thenReturn(Optional.of(new TimelineRevisionQueries.RevisionDetail(revisionInfo(), null, null)));
         when(revisionQueryService.getRevisionSnapshotPayload("prj_r", "ten_r", "trev_restored"))
-                .thenReturn(Optional.of(new TimelineRevisionQueryService.RevisionSnapshotPayload(
+                .thenReturn(Optional.of(new TimelineRevisionQueries.RevisionSnapshotPayload(
                         "snap_r", CANONICAL_FIXTURE, "timeline-1.0")));
         when(codec.toEditorJson(CANONICAL_FIXTURE)).thenReturn(EDITOR_PROJECTION);
 
@@ -157,9 +158,9 @@ class TimelineRevisionControllerRestoreResponseTest {
         when(saveService.restoreRevision(mutation(), "trev_restored", "trev_current"))
                 .thenReturn(validRestoredRevision("trev_current"));
         when(revisionQueryService.getDetail(eq("prj_r"), eq("ten_r"), eq("trev_restored")))
-                .thenReturn(Optional.of(new TimelineRevisionQueryService.RevisionDetail(revisionInfo(), null, null)));
+                .thenReturn(Optional.of(new TimelineRevisionQueries.RevisionDetail(revisionInfo(), null, null)));
         when(revisionQueryService.getRevisionSnapshotPayload("prj_r", "ten_r", "trev_restored"))
-                .thenReturn(Optional.of(new TimelineRevisionQueryService.RevisionSnapshotPayload(
+                .thenReturn(Optional.of(new TimelineRevisionQueries.RevisionSnapshotPayload(
                         "snap_r", CANONICAL_FIXTURE, "timeline-1.0")));
         when(codec.toEditorJson(CANONICAL_FIXTURE)).thenReturn(EDITOR_PROJECTION);
 

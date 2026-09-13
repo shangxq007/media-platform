@@ -1,4 +1,4 @@
-package com.example.platform.timeline.app;
+package com.example.platform.timeline.api.composition;
 
 import com.example.platform.timeline.canonicalmodel.TimelineDiagnostic;
 import com.example.platform.timeline.canonicalmodel.TimelineModelPath;

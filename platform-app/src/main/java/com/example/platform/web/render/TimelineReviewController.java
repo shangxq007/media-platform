@@ -1,17 +1,17 @@
 package com.example.platform.web.render;
 
-import com.example.platform.render.app.timeline.TimelineCommentService;
-import com.example.platform.render.app.timeline.TimelineReviewRepository;
-import com.example.platform.render.app.timeline.TimelineReviewService;
-import com.example.platform.render.app.timeline.ReviewDecisionService;
-import com.example.platform.render.app.event.TimelineReviewEventPublisher;
+import com.example.platform.timeline.api.review.ReviewRecords;
+import com.example.platform.timeline.api.review.TimelineComments;
+import com.example.platform.timeline.api.review.ReviewQueries;
+import com.example.platform.timeline.api.review.TimelineReviews;
+import com.example.platform.timeline.api.review.ReviewDecisions;
 import com.example.platform.shared.events.ReviewCreatedEvent;
 import com.example.platform.shared.events.ReviewApprovedEvent;
 import com.example.platform.shared.events.ReviewRejectedEvent;
 import com.example.platform.shared.events.ReviewChangesRequestedEvent;
 import com.example.platform.shared.events.ReviewCommentAddedEvent;
 import com.example.platform.shared.events.ReviewThreadResolvedEvent;
-import com.example.platform.render.app.timeline.TimelineReviewService.MergeGuardResult;
+import com.example.platform.timeline.api.review.TimelineReviews.MergeGuardResult;
 import com.example.platform.timeline.diff.merge.EntityKind;
 import com.example.platform.timeline.diff.merge.EntityRef;
 import com.example.platform.timeline.diff.merge.ReviewDecision;
@@ -30,21 +30,18 @@ import org.springframework.web.bind.annotation.*;
 @Tag(name = "Timeline Reviews", description = "Review workflow for timeline revisions")
 public class TimelineReviewController {
 
-    private final TimelineReviewService reviewService;
-    private final TimelineCommentService commentService;
-    private final ReviewDecisionService decisionService;
-    private final TimelineReviewEventPublisher eventPublisher;
+    private final TimelineReviews reviewService;
+    private final TimelineComments commentService;
+    private final ReviewDecisions decisionService;
     private final TimelineProjectAuthorizationService projectAuthorization;
 
-    public TimelineReviewController(TimelineReviewService reviewService,
-                                     TimelineCommentService commentService,
-                                     ReviewDecisionService decisionService,
-                                     TimelineReviewEventPublisher eventPublisher,
+    public TimelineReviewController(TimelineReviews reviewService,
+                                     TimelineComments commentService,
+                                     ReviewDecisions decisionService,
                                      TimelineProjectAuthorizationService projectAuthorization) {
         this.reviewService = reviewService;
         this.commentService = commentService;
         this.decisionService = decisionService;
-        this.eventPublisher = eventPublisher;
         this.projectAuthorization = projectAuthorization;
     }
 
@@ -56,8 +53,6 @@ public class TimelineReviewController {
         String actorId = projectAuthorization.requireWrite(TenantContext.get(), projectId).actorId();
         var review = reviewService.createReview(projectId,
                 body.revisionId(), actorId, body.title(), body.description());
-        eventPublisher.publish(new ReviewCreatedEvent(review.reviewId(), projectId,
-                "TIMELINE", body.revisionId(), actorId, body.title()));
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(toResponse(requireOwnedReview(projectId, review.reviewId())));
     }
@@ -104,9 +99,6 @@ public class TimelineReviewController {
         TimelineComment comment = commentService.addComment(
                 reviewId, body.revisionId(), body.threadId(), ref,
                 actorId, body.content());
-        eventPublisher.publish(new ReviewCommentAddedEvent(reviewId, "unknown", "TIMELINE",
-                body.revisionId(), comment.commentId(), actorId,
-                ref != null ? ref.key() : null));
         return ResponseEntity.status(HttpStatus.CREATED).body(toCommentResponse(comment));
     }
 
@@ -134,7 +126,6 @@ public class TimelineReviewController {
             throw new org.springframework.web.server.ResponseStatusException(
                     HttpStatus.NOT_FOUND, "thread not found in review");
         }
-        eventPublisher.publish(new ReviewThreadResolvedEvent(reviewId, "unknown", threadId, "unknown"));
         return ResponseEntity.ok(Map.of("threadId", threadId, "resolved", true));
     }
 
@@ -162,8 +153,6 @@ public class TimelineReviewController {
                 TenantContext.get(), projectId).actorId();
         requireOwnedReview(projectId, reviewId);
         reviewService.approve(reviewId, reviewerUserId);
-        decisionService.recordDecision(reviewId, reviewerUserId, ReviewDecision.Decision.APPROVE);
-        eventPublisher.publish(new ReviewApprovedEvent(reviewId, "unknown", "TIMELINE", "unknown", reviewerUserId));
         return ResponseEntity.ok(Map.of("reviewId", reviewId, "status", "APPROVED"));
     }
 
@@ -176,8 +165,6 @@ public class TimelineReviewController {
                 TenantContext.get(), projectId).actorId();
         requireOwnedReview(projectId, reviewId);
         reviewService.requestChanges(reviewId, reviewerUserId);
-        decisionService.recordDecision(reviewId, reviewerUserId, ReviewDecision.Decision.REQUEST_CHANGES);
-        eventPublisher.publish(new ReviewChangesRequestedEvent(reviewId, "unknown", "TIMELINE", "unknown", reviewerUserId));
         return ResponseEntity.ok(Map.of("reviewId", reviewId, "status", "CHANGES_REQUESTED"));
     }
 
@@ -190,8 +177,6 @@ public class TimelineReviewController {
                 TenantContext.get(), projectId).actorId();
         requireOwnedReview(projectId, reviewId);
         reviewService.reject(reviewId);
-        decisionService.recordDecision(reviewId, reviewerUserId, ReviewDecision.Decision.REJECT);
-        eventPublisher.publish(new ReviewRejectedEvent(reviewId, "unknown", "TIMELINE", "unknown"));
         return ResponseEntity.ok(Map.of("reviewId", reviewId, "status", "CLOSED"));
     }
 
@@ -207,24 +192,24 @@ public class TimelineReviewController {
                 "canMerge", guard.canMerge(), "reason", guard.reason() != null ? guard.reason() : ""));
     }
 
-    private static ReviewResponse toResponse(TimelineReviewRepository.ReviewRow r) {
+    private static ReviewResponse toResponse(ReviewRecords.ReviewRow r) {
         return new ReviewResponse(r.id(), r.projectId(), r.revisionId(),
                 r.authorUserId(), r.title(), r.description(), r.status(),
                 r.createdAt() != null ? r.createdAt().toString() : null,
                 r.updatedAt() != null ? r.updatedAt().toString() : null);
     }
 
-    private TimelineReviewRepository.ReviewRow requireOwnedReview(
+    private ReviewRecords.ReviewRow requireOwnedReview(
             String projectId, String reviewId) {
         return reviewService.getReview(projectId, TenantContext.get(), reviewId)
                 .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
                         HttpStatus.NOT_FOUND, "review not found"));
     }
 
-    private static ReviewDetailResponse toDetailResponse(TimelineReviewRepository.ReviewRow r,
-                                                           List<TimelineReviewRepository.CommentRow> comments,
-                                                           List<TimelineReviewRepository.ThreadRow> threads,
-                                                           List<TimelineReviewRepository.DecisionRow> decisions,
+    private static ReviewDetailResponse toDetailResponse(ReviewRecords.ReviewRow r,
+                                                           List<ReviewRecords.CommentRow> comments,
+                                                           List<ReviewRecords.ThreadRow> threads,
+                                                           List<ReviewRecords.DecisionRow> decisions,
                                                            MergeGuardResult guard) {
         return new ReviewDetailResponse(
                 toResponse(r),
@@ -234,7 +219,7 @@ public class TimelineReviewController {
                 new MergeGuardDto(guard.canMerge(), guard.reason()));
     }
 
-    private static CommentResponse toCommentResponse(TimelineReviewRepository.CommentRow c) {
+    private static CommentResponse toCommentResponse(ReviewRecords.CommentRow c) {
         return new CommentResponse(c.id(), c.reviewId(), c.threadId(), c.revisionId(),
                 c.entityRef(), c.authorUserId(), c.content(),
                 c.createdAt() != null ? c.createdAt().toString() : null);
@@ -246,12 +231,12 @@ public class TimelineReviewController {
                 c.authorUserId(), c.content(), c.createdAt().toString());
     }
 
-    private static ThreadResponse toThreadResponse(TimelineReviewRepository.ThreadRow t) {
+    private static ThreadResponse toThreadResponse(ReviewRecords.ThreadRow t) {
         return new ThreadResponse(t.id(), t.reviewId(), t.entityRef(), t.diffId(), t.status(),
                 t.createdAt() != null ? t.createdAt().toString() : null);
     }
 
-    private static DecisionResponse toDecisionResponse(TimelineReviewRepository.DecisionRow d) {
+    private static DecisionResponse toDecisionResponse(ReviewRecords.DecisionRow d) {
         return new DecisionResponse(d.id(), d.reviewId(), d.reviewerUserId(), d.decision(),
                 d.createdAt() != null ? d.createdAt().toString() : null);
     }

@@ -1,4 +1,5 @@
 package com.example.platform.render.app;
+import com.example.platform.timeline.api.revision.TimelineSnapshotView;
 import com.example.platform.render.api.event.*;
 
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
@@ -211,7 +212,7 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
         when(renderProviderRouter.route("default_1080p")).thenReturn(provider);
         stubProviderResolution(provider);
         when(timelineSnapshotService.findOwnedById(anyString(), anyString(), anyString()))
-                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap", "proj-1", "tenant-1", "{\"tracks\":[]}", "internal-1.0")));
+                .thenReturn(Optional.of(new TimelineSnapshotView("snap", "proj-1", "tenant-1", "{\"tracks\":[]}", "internal-1.0")));
 
         SubmitRenderJobRequest request = SubmitRenderJobRequest.withSnapshot(
                 "tenant-1", "proj-1", "snap-1", "default_1080p");
@@ -280,7 +281,7 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
         when(renderProviderRouter.route("default_1080p")).thenReturn(provider);
         stubProviderResolution(provider);
         when(timelineSnapshotService.findOwnedById(anyString(), anyString(), eq("snap-3")))
-                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-3", "proj-1", "tenant-3", "{\"tracks\":[]}", "internal-1.0")));
+                .thenReturn(Optional.of(new TimelineSnapshotView("snap-3", "proj-1", "tenant-3", "{\"tracks\":[]}", "internal-1.0")));
 
         String result = service.executeExistingRenderJob("tenant-3", "rj-3");
 
@@ -310,7 +311,7 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
         when(renderProviderRouter.route("default_1080p")).thenReturn(provider);
         stubProviderResolution(provider);
         when(timelineSnapshotService.findOwnedById(anyString(), anyString(), eq("snap-4")))
-                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-4", "proj-1", "tenant-4", "{\"tracks\":[]}", "internal-1.0")));
+                .thenReturn(Optional.of(new TimelineSnapshotView("snap-4", "proj-1", "tenant-4", "{\"tracks\":[]}", "internal-1.0")));
 
         assertThrows(IllegalStateException.class,
                 () -> service.executeExistingRenderJob("tenant-4", "rj-4"));
@@ -355,7 +356,7 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
         when(renderProviderRouter.route("default_1080p")).thenReturn(provider);
         stubProviderResolution(provider);
         when(timelineSnapshotService.findOwnedById(anyString(), anyString(), eq("snap-5")))
-                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo(
+                .thenReturn(Optional.of(new TimelineSnapshotView(
                         "snap-5", "proj-1", "tenant-5", "{\"tracks\":[{\"type\":\"VIDEO\"}]}", "internal-1.0")));
 
         SubmitRenderJobRequest request = SubmitRenderJobRequest.withSnapshot(

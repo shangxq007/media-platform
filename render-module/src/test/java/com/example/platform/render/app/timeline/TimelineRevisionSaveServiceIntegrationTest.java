@@ -1,6 +1,7 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.timeline.app.PatchApplyResult;import com.example.platform.timeline.app.TimelineRevisionRefMutation;import com.example.platform.timeline.app.TimelineCanonicalRejectionException;import com.example.platform.timeline.app.TimelinePatchApplicationService;import com.example.platform.timeline.app.TimelineRevisionSaveService;
+import com.example.platform.timeline.api.revision.TimelineRevisionCommands;
+import com.example.platform.timeline.app.PatchApplyResult;import com.example.platform.timeline.app.TimelineRevisionRefMutation;import com.example.platform.timeline.api.composition.TimelineCanonicalRejectionException;import com.example.platform.timeline.app.TimelinePatchApplicationService;import com.example.platform.timeline.app.TimelineRevisionSaveService;
 import com.example.platform.shared.time.MediaTime;
 import com.example.platform.timeline.app.DefaultTimelineRevisionPersistence;
 import com.example.platform.timeline.app.TimelineRevisionRefHeadUpdateAdapter;
@@ -225,7 +226,7 @@ class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSu
                 effectAuthority(), revisionSemanticContextStore(),
                 new DefaultTimelineRevisionPersistence(),
                 new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
-        var command = new TimelineRevisionSaveService.RevisionWriteCommand(
+        var command = new TimelineRevisionCommands.RevisionWriteCommand(
                 "apply-H7-durable", "plan-digest-H7", "fingerprint-H7", "OPERATION_PLAN", TENANT);
 
         var first = com.example.platform.render.testsupport.TimelineMutationTestSupport.saveForCommand(commandSave,
@@ -245,9 +246,9 @@ class TimelineRevisionSaveServiceIntegrationTest extends PostgresTestContainerSu
                 "select count(*) from apply_command where apply_command_id = 'apply-H7-durable'")
                 .get(0, Integer.class));
 
-        var conflict = new TimelineRevisionSaveService.RevisionWriteCommand(
+        var conflict = new TimelineRevisionCommands.RevisionWriteCommand(
                 "apply-H7-durable", "different-plan", "different-fingerprint", "OPERATION_PLAN", TENANT);
-        assertThrows(com.example.platform.timeline.app.TimelineRevisionCommandConflictException.class,
+        assertThrows(com.example.platform.timeline.api.revision.TimelineRevisionCommandConflictException.class,
                 () -> com.example.platform.render.testsupport.TimelineMutationTestSupport.saveForCommand(commandSave,
                         RevisionRef.main(TENANT, productId), root.revisionId(), candidate, "editor", conflict));
         assertEquals(2L, dsl.selectCount().from(TIMELINE_REVISION)

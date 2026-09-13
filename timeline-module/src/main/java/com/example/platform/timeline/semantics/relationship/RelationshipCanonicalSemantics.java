@@ -39,7 +39,7 @@ public final class RelationshipCanonicalSemantics {
     /** Lossless canonical JSON encoding for op payloads. */
     public static String canonicalJson(SemanticRelationship r) {
         try {
-            return com.example.platform.timeline.app.InternalTimelineJson.mapper()
+            return com.example.platform.timeline.api.serialization.InternalTimelineJson.mapper()
                     .writeValueAsString(r);
         } catch (Exception e) {
             throw new IllegalStateException("SemanticRelationship canonical encoding failed", e);
@@ -50,9 +50,9 @@ public final class RelationshipCanonicalSemantics {
      *  on SemanticRelationship is decode plumbing only). */
     public static SemanticRelationship fromCanonicalJson(String json) {
         try {
-            JsonNode node = com.example.platform.timeline.app.InternalTimelineJson.mapper()
+            JsonNode node = com.example.platform.timeline.api.serialization.InternalTimelineJson.mapper()
                     .readTree(json);
-            return com.example.platform.timeline.app.InternalTimelineJson.mapper()
+            return com.example.platform.timeline.api.serialization.InternalTimelineJson.mapper()
                     .treeToValue(node, SemanticRelationship.class);
         } catch (Exception e) {
             throw new IllegalStateException("SemanticRelationship canonical decode failed", e);

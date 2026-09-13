@@ -1,4 +1,5 @@
 package com.example.platform.render.app;
+import com.example.platform.timeline.api.revision.TimelineSnapshotView;
 import com.example.platform.render.api.event.*;
 
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
@@ -242,7 +243,7 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
 
         String timelineJson = buildTimelineJson("VIDEO", "storage://videos/source.mp4", 0.0, 10.0);
         when(timelineSnapshotService.findOwnedById(anyString(), anyString(), eq("snap-1")))
-                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo(
+                .thenReturn(Optional.of(new TimelineSnapshotView(
                         "snap-1", "proj-1", "tenant-1", timelineJson, "internal-1.0")));
 
         RenderProvider provider = mockProvider("localFsStorageProvider://artifacts/output.mp4");
@@ -309,7 +310,7 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
                 }
                 """;
         when(timelineSnapshotService.findOwnedById(anyString(), anyString(), eq("snap-2")))
-                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo(
+                .thenReturn(Optional.of(new TimelineSnapshotView(
                         "snap-2", "proj-1", "tenant-1", timelineJson, "internal-1.0")));
 
         RenderProvider provider = mockProvider("localFsStorageProvider://artifacts/output.mp4");
@@ -367,7 +368,7 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
                 }
                 """;
         when(timelineSnapshotService.findOwnedById(anyString(), anyString(), eq("snap-3")))
-                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo(
+                .thenReturn(Optional.of(new TimelineSnapshotView(
                         "snap-3", "proj-1", "tenant-1", timelineJson, "internal-1.0")));
         when(effectTimelineInspector.extractFromScript(anyString()))
                 .thenReturn(new EffectTimelineInspector.EffectUsage(
@@ -431,7 +432,7 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
                 }
                 """;
         when(timelineSnapshotService.findOwnedById(anyString(), anyString(), eq("snap-4")))
-                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo(
+                .thenReturn(Optional.of(new TimelineSnapshotView(
                         "snap-4", "proj-1", "tenant-1", timelineJson, "internal-1.0")));
 
         RenderProvider provider = mockProvider("localFsStorageProvider://artifacts/output.mp4");
@@ -464,7 +465,7 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
                 }
                 """;
         when(timelineSnapshotService.findOwnedById(anyString(), anyString(), eq("snap-5")))
-                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo(
+                .thenReturn(Optional.of(new TimelineSnapshotView(
                         "snap-5", "proj-1", "tenant-1", timelineJson, "internal-1.0")));
         when(timelineScriptParser.isTimelineJson(anyString())).thenReturn(false);
 
@@ -503,7 +504,7 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
                 }
                 """;
         when(timelineSnapshotService.findOwnedById(anyString(), anyString(), eq("snap-5b")))
-                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo(
+                .thenReturn(Optional.of(new TimelineSnapshotView(
                         "snap-5b", "proj-1", "tenant-1", timelineJson, "internal-1.0")));
 
         RenderProvider provider = mockProvider("localFsStorageProvider://artifacts/output.mp4");
@@ -530,7 +531,7 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
 
         String timelineJson = buildTimelineJson("VIDEO", "storage://videos/source.mp4", 0.0, 10.0);
         when(timelineSnapshotService.findOwnedById(anyString(), anyString(), eq("snap-6")))
-                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo(
+                .thenReturn(Optional.of(new TimelineSnapshotView(
                         "snap-6", "proj-1", "tenant-1", timelineJson, "internal-1.0")));
 
         // No provider available for this profile
@@ -605,7 +606,7 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
 
         String timelineJson = buildTimelineJson("VIDEO", "storage://videos/source.mp4", 0.0, 10.0);
         when(timelineSnapshotService.findOwnedById(anyString(), anyString(), eq("snap-9")))
-                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo(
+                .thenReturn(Optional.of(new TimelineSnapshotView(
                         "snap-9", "proj-1", "tenant-1", timelineJson, "internal-1.0")));
 
         RenderProvider provider = mockProvider("localFsStorageProvider://artifacts/output.mp4");
@@ -641,7 +642,7 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
 
         String timelineJson = buildTimelineJson("VIDEO", "storage://videos/source.mp4", 0.0, 10.0);
         when(timelineSnapshotService.findOwnedById(anyString(), anyString(), eq("snap-10")))
-                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo(
+                .thenReturn(Optional.of(new TimelineSnapshotView(
                         "snap-10", "proj-1", "tenant-1", timelineJson, "internal-1.0")));
 
         RenderProvider provider = mockProvider("localFsStorageProvider://artifacts/output.mp4");
@@ -679,7 +680,7 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
 
         String timelineJson = buildTimelineJson("VIDEO", "storage://videos/source.mp4", 0.0, 10.0);
         when(timelineSnapshotService.findOwnedById(anyString(), anyString(), eq("snap-11")))
-                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo(
+                .thenReturn(Optional.of(new TimelineSnapshotView(
                         "snap-11", "proj-1", "tenant-1", timelineJson, "internal-1.0")));
 
         RenderProvider provider = mock(RenderProvider.class);
@@ -715,7 +716,7 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
         // Trim: only 5s-15s of source
         String timelineJson = buildTimelineJson("VIDEO", "storage://videos/source.mp4", 5.0, 15.0);
         when(timelineSnapshotService.findOwnedById(anyString(), anyString(), eq("snap-12")))
-                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo(
+                .thenReturn(Optional.of(new TimelineSnapshotView(
                         "snap-12", "proj-1", "tenant-1", timelineJson, "internal-1.0")));
 
         RenderProvider provider = mockProvider("localFsStorageProvider://artifacts/output.mp4");
@@ -773,7 +774,7 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
                 }
                 """;
         when(timelineSnapshotService.findOwnedById(anyString(), anyString(), eq("snap-13")))
-                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo(
+                .thenReturn(Optional.of(new TimelineSnapshotView(
                         "snap-13", "proj-1", "tenant-1", timelineJson, "internal-1.0")));
 
         RenderProvider provider = mockProvider("localFsStorageProvider://artifacts/output.mp4");
@@ -800,7 +801,7 @@ class RenderPipelineE2ECharacterizationTest extends PostgresTestContainerSupport
 
         String timelineJson = buildTimelineJson("VIDEO", "storage://videos/source.mp4", 0.0, 10.0);
         when(timelineSnapshotService.findOwnedById(anyString(), anyString(), eq("snap-14")))
-                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo(
+                .thenReturn(Optional.of(new TimelineSnapshotView(
                         "snap-14", "proj-1", "tenant-1", timelineJson, "internal-1.0")));
 
         RenderProvider provider = mockProvider("localFsStorageProvider://artifacts/output.mp4");

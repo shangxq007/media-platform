@@ -1,4 +1,6 @@
 package com.example.platform.timeline.app;
+import com.example.platform.timeline.api.composition.TimelineSemanticDiff;
+import com.example.platform.timeline.api.serialization.InternalTimelineJson;
 
 import com.example.platform.timeline.diff.merge.EntityKind;
 import com.example.platform.timeline.diff.merge.EntityRef;
@@ -17,7 +19,7 @@ import org.springframework.stereotype.Service;
  * Semantic diff between two timelines by stable entity id (after canonicalization).
  */
 @Service
-public class TimelineSemanticDiffService {
+public class TimelineSemanticDiffService implements TimelineSemanticDiff {
 
     private final TimelineCanonicalizer canonicalizer;
 

@@ -1,6 +1,6 @@
-package com.example.platform.render.app.timeline;
+package com.example.platform.timeline.app;
 
-import com.example.platform.timeline.app.TimelineMergeEngine;
+import com.example.platform.timeline.api.revision.TimelineMergeOperations;
 import com.example.platform.timeline.canonical.TimelineContentDigester;
 import com.example.platform.timeline.diff.application.TimelinePatchApplier;
 import com.example.platform.timeline.diff.merge.TimelineMergeConflictDetector;
@@ -17,7 +17,7 @@ import org.springframework.context.annotation.Configuration;
  * repository convention (cf. {@code TimelineDiffEngine} static utility, inline-constructed
  * {@code CanonicalTimelineDiffCalculator}). This configuration composes them at the
  * application boundary so that the single production merge authority
- * {@link TimelineMergeEngine} can be fully constructed by the real application context
+ * {@link TimelineMergeOperations} can be fully constructed by the real application context
  * without coupling the domain layer to Spring stereotypes.
  *
  * <p>Composition only — no merge semantics, no conflict rules, no validation behavior

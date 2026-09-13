@@ -1,7 +1,8 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.timeline.app.InternalTimelineJson;
-import com.example.platform.timeline.adapter.TimelineSnapshotService;
+import com.example.platform.timeline.api.revision.TimelineSnapshotView;
+import com.example.platform.timeline.api.serialization.InternalTimelineJson;
+import com.example.platform.timeline.api.revision.TimelineSnapshotQueries;
 import com.example.platform.render.infrastructure.TimelineAssetGcProperties;
 import com.example.platform.storage.domain.BlobStorage;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -27,15 +28,15 @@ public class TimelineAssetGcService {
 
     private static final Logger log = LoggerFactory.getLogger(TimelineAssetGcService.class);
 
-    private final com.example.platform.timeline.app.SystemMaintenanceReader systemMaintenanceReader;
-    private final TimelineSnapshotService timelineSnapshotService;
+    private final com.example.platform.timeline.api.revision.TimelineMaintenanceQueries systemMaintenanceReader;
+    private final TimelineSnapshotQueries timelineSnapshotService;
     private final TimelineAssetLifecycleService lifecycleService;
     private final TimelineAssetGcProperties properties;
     private final Optional<BlobStorage> blobStorage;
 
     public TimelineAssetGcService(
-            com.example.platform.timeline.app.SystemMaintenanceReader systemMaintenanceReader,
-            TimelineSnapshotService timelineSnapshotService,
+            com.example.platform.timeline.api.revision.TimelineMaintenanceQueries systemMaintenanceReader,
+            TimelineSnapshotQueries timelineSnapshotService,
             TimelineAssetLifecycleService lifecycleService,
             TimelineAssetGcProperties properties,
             @Autowired(required = false) BlobStorage blobStorage) {
@@ -72,7 +73,7 @@ public class TimelineAssetGcService {
     public GcProjectResult runProjectGc(String projectId, String tenantId) {
         // System sweep (runGlobalGc) has no tenant context: use the explicit
         // privileged read port. Application path passes tenantId explicitly.
-        Optional<TimelineSnapshotService.SnapshotInfo> latest =
+        Optional<TimelineSnapshotView> latest =
                 tenantId == null || tenantId.isBlank()
                         ? systemMaintenanceReader.findLatestSnapshot(projectId)
                         : timelineSnapshotService.findLatestOwnedByProject(projectId, tenantId);
@@ -145,7 +146,7 @@ public class TimelineAssetGcService {
         if (storageUri == null || storageUri.isBlank()) {
             return 0;
         }
-        Optional<TimelineSnapshotService.SnapshotInfo> latest =
+        Optional<TimelineSnapshotView> latest =
                 timelineSnapshotService.findLatestOwnedByProject(projectId, tenantId);
         if (latest.isEmpty()) {
             return 0;

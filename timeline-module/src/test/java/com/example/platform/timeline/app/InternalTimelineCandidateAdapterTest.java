@@ -1,6 +1,6 @@
 package com.example.platform.timeline.app;
 
-import com.example.platform.timeline.app.InternalTimelineCandidateAdapter;import com.example.platform.timeline.app.TimelineCanonicalRejectionException;
+import com.example.platform.timeline.app.InternalTimelineCandidateAdapter;import com.example.platform.timeline.api.composition.TimelineCanonicalRejectionException;
 import com.example.platform.timeline.canonicalmodel.TimelineCandidate;
 import com.example.platform.timeline.canonicalmodel.TimelineCanonicalProfile;
 import com.example.platform.timeline.canonicalmodel.TimelineCanonicalValidator;

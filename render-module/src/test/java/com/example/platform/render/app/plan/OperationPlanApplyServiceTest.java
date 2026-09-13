@@ -1,5 +1,6 @@
 package com.example.platform.render.app.plan;
 
+import com.example.platform.timeline.api.revision.TimelineRevisionCommands;
 import com.example.platform.operation.operation.OperationDefinition;
 import com.example.platform.operation.operation.OperationDefinitionVersion;
 import com.example.platform.operation.operation.OperationInstance;
@@ -14,7 +15,7 @@ import com.example.platform.operation.plan.PlanException;
 import com.example.platform.operation.plan.TargetRevisionRef;
 import com.example.platform.shared.authorization.CanonicalActor;
 import com.example.platform.shared.time.MediaTime;
-import com.example.platform.timeline.app.TimelineMutationContext;
+import com.example.platform.timeline.api.revision.TimelineMutationContext;
 import com.example.platform.timeline.app.TimelineRevisionSaveService;
 import com.example.platform.timeline.canonical.TimelineClip;
 import com.example.platform.timeline.canonical.TimelineClipId;
@@ -76,7 +77,7 @@ class OperationPlanApplyServiceTest {
         when(writer.recordNoOpCommand(
                 any(TimelineMutationContext.class),
                 eq(RevisionRef.main("tenant-a", "project")), eq("R0"), eq(hash), any()))
-                .thenReturn(new TimelineRevisionSaveService.RevisionWriteResult(null, "R0", hash, false));
+                .thenReturn(new TimelineRevisionCommands.RevisionWriteResult(null, "R0", hash, false));
         var authorization = AuthorizationDecision.allow(
                 plan.planDigest(), "alice", "project", "tenant-a",
                 OperationPlanApplyService.CURRENT_REVISION_REF, "policy-v1");

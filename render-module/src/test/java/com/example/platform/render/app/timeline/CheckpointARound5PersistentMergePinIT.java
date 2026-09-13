@@ -26,7 +26,7 @@ import com.example.platform.shared.time.MediaTime;
 import com.example.platform.shared.web.TenantContext;
 import com.example.platform.timeline.adapter.TimelineRevisionRepository;
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
-import com.example.platform.timeline.app.InternalTimelineJson;
+import com.example.platform.timeline.api.serialization.InternalTimelineJson;
 import com.example.platform.timeline.app.TimelineRevisionRefMutation;
 import com.example.platform.timeline.app.TimelineArtifactPinValidator;
 import com.example.platform.timeline.app.TimelineMergeEngine;

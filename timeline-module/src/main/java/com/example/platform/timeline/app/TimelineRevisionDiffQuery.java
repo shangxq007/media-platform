@@ -1,5 +1,8 @@
 package com.example.platform.timeline.app;
 
+import com.example.platform.timeline.api.revision.TimelineSnapshotView;
+import com.example.platform.timeline.api.revision.TimelineRevisionDiff;
+import com.example.platform.timeline.api.revision.TimelineRevisionQueries;
 import com.example.platform.timeline.adapter.TimelineRevisionRepository;
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import java.util.List;
@@ -39,13 +42,13 @@ public class TimelineRevisionDiffQuery {
                 .orElseThrow(() -> new IllegalArgumentException("Revision not found: " + toRevisionId));
         String fromPayload = snapshotService
                 .findOwnedById(projectId, tenantId, from.snapshotId())
-                .map(TimelineSnapshotService.SnapshotInfo::payloadJson)
+                .map(TimelineSnapshotView::payloadJson)
                 .orElseThrow(() -> new IllegalArgumentException("Snapshot missing: " + from.snapshotId()));
         String toPayload = snapshotService
                 .findOwnedById(projectId, tenantId, to.snapshotId())
-                .map(TimelineSnapshotService.SnapshotInfo::payloadJson)
+                .map(TimelineSnapshotView::payloadJson)
                 .orElseThrow(() -> new IllegalArgumentException("Snapshot missing: " + to.snapshotId()));
-        TimelineRevisionDiffService.DetailedCompare detailed = diffService.compare(fromPayload, toPayload);
+        TimelineRevisionDiff.DetailedCompare detailed = diffService.compare(fromPayload, toPayload);
         // V2: compare output is derived solely from the requested from->to payloads.
         // Stored target patch metadata is never substituted as compare authority.
         List<PatchPathItem> patchPaths = detailed.entities().stream()
@@ -61,7 +64,7 @@ public class TimelineRevisionDiffQuery {
     }
 
     private static PatchPathItem toActualPairPath(
-            TimelineRevisionDiffService.EntityChange change) {
+            TimelineRevisionDiff.EntityChange change) {
         String op = switch (change.action()) {
             case "added" -> "add";
             case "removed" -> "remove";
@@ -70,8 +73,8 @@ public class TimelineRevisionDiffQuery {
         return new PatchPathItem(op, "/" + change.kind() + "s/" + change.entityId());
     }
 
-    private static TimelineRevisionQueryService.RevisionInfo toInfo(TimelineRevisionRepository.RevisionRow row) {
-        return new TimelineRevisionQueryService.RevisionInfo(
+    private static TimelineRevisionQueries.RevisionInfo toInfo(TimelineRevisionRepository.RevisionRow row) {
+        return new TimelineRevisionQueries.RevisionInfo(
                 row.id(),
                 row.projectId(),
                 row.tenantId(),
@@ -97,10 +100,10 @@ public class TimelineRevisionDiffQuery {
     public record PatchPathItem(String op, String path) {}
 
     public record CompareResult(
-            TimelineRevisionQueryService.RevisionInfo fromRevision,
-            TimelineRevisionQueryService.RevisionInfo toRevision,
-            TimelineRevisionDiffService.ChangeSummary summary,
-            List<TimelineRevisionDiffService.EntityChange> entityChanges,
+            TimelineRevisionQueries.RevisionInfo fromRevision,
+            TimelineRevisionQueries.RevisionInfo toRevision,
+            TimelineRevisionDiff.ChangeSummary summary,
+            List<TimelineRevisionDiff.EntityChange> entityChanges,
             List<PatchPathItem> patchPaths) {}
 
 }

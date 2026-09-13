@@ -1,11 +1,11 @@
 package com.example.platform.web.render;
 
+import com.example.platform.timeline.api.revision.TimelineRevisionQueries;
 import com.example.platform.render.app.timeline.TimelineConversionService;
 import com.example.platform.timeline.app.InternalTimelineCandidateAdapter;
 import com.example.platform.timeline.app.TimelineDocumentJsonSerializer;
-import com.example.platform.timeline.app.TimelineRevisionQueryService;
-import com.example.platform.timeline.app.TimelineRevisionSaveService;
-import com.example.platform.timeline.app.TimelineMutationContext;
+import com.example.platform.timeline.api.revision.TimelineRevisionCommands;
+import com.example.platform.timeline.api.revision.TimelineMutationContext;
 import com.example.platform.timeline.diff.calculation.TimelineSnapshotConverter;
 import com.example.platform.shared.web.TenantContext;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -28,14 +28,14 @@ public class TimelineSnapshotController {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    private final TimelineRevisionSaveService revisionSaveService;
-    private final TimelineRevisionQueryService revisionQueryService;
+    private final TimelineRevisionCommands revisionSaveService;
+    private final TimelineRevisionQueries revisionQueryService;
     private final TimelineConversionService conversionService;
     private final TimelineProjectAuthorizationService projectAuthorization;
 
     public TimelineSnapshotController(
-            TimelineRevisionSaveService revisionSaveService,
-            TimelineRevisionQueryService revisionQueryService,
+            TimelineRevisionCommands revisionSaveService,
+            TimelineRevisionQueries revisionQueryService,
             TimelineConversionService conversionService,
             TimelineProjectAuthorizationService projectAuthorization) {
         this.revisionSaveService = revisionSaveService;
@@ -55,7 +55,7 @@ public class TimelineSnapshotController {
                 request.expectedCurrentRevisionId(), document);
         String snapshotId = revisionQueryService
                 .findById(request.projectId(), tenantId, revision.revisionId())
-                .map(TimelineRevisionQueryService.RevisionInfo::snapshotId)
+                .map(TimelineRevisionQueries.RevisionInfo::snapshotId)
                 .orElseThrow(() -> new IllegalStateException(
                         "canonical revision result could not be reloaded: " + revision.revisionId()));
         return ResponseEntity.status(HttpStatus.CREATED)

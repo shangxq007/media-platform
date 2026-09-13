@@ -20,6 +20,8 @@ tasks.withType<JavaCompile>().configureEach {
 }
 
 dependencies {
+    implementation(project(":outbox-event-module"))
+    implementation("org.springframework:spring-web")
     implementation(project(":identity-access-module")) // published authorization contract
     implementation(project(":shared-kernel"))
     implementation(project(":media-module"))

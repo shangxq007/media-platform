@@ -1,5 +1,6 @@
 package com.example.platform.render.app;
 
+import com.example.platform.timeline.api.composition.TimelinePatches;
 import com.example.platform.timeline.app.TimelinePatchService;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -22,7 +23,7 @@ class TimelinePatchServiceTest {
     void replaceSubtitleCueText() throws Exception {
         String base = loadSample();
         var result = patchService.applyPatch(base, List.of(
-                new TimelinePatchService.PatchOperation(
+                new TimelinePatches.PatchOperation(
                         "replace",
                         "/composition/subtitleTracks/0/cues/0/text",
                         new TextNode("新标题"))));
@@ -38,7 +39,7 @@ class TimelinePatchServiceTest {
                 {"id":"tl-legacy","tracks":[{"id":"t1","type":"VIDEO","clips":[]}]}
                 """;
         var result = patchService.applyPatch(legacy, List.of(
-                new TimelinePatchService.PatchOperation(
+                new TimelinePatches.PatchOperation(
                         "replace", "/name", new TextNode("x"))));
         assertFalse(result.success());
     }

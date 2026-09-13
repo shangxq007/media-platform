@@ -1,4 +1,5 @@
 package com.example.platform.timeline.app;
+import com.example.platform.timeline.api.revision.TimelineMutationContext;
 
 import com.example.platform.timeline.canonical.TimelineContentDigester;
 import com.example.platform.timeline.canonical.TimelineDocument;

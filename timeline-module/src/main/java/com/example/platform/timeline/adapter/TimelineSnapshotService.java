@@ -1,4 +1,5 @@
 package com.example.platform.timeline.adapter;
+import com.example.platform.timeline.api.revision.TimelineSnapshotView;
 
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -13,7 +14,7 @@ import static com.example.platform.typedschema.jooq.generated.tables.TimelineSna
 
 
 @Service
-public class TimelineSnapshotService {
+public class TimelineSnapshotService implements com.example.platform.timeline.api.revision.TimelineSnapshotQueries {
 
     private static final Logger log = LoggerFactory.getLogger(TimelineSnapshotService.class);
 
@@ -43,7 +44,7 @@ public class TimelineSnapshotService {
         return snapshotId;
     }
 
-    
+
 
 
     /**
@@ -54,12 +55,12 @@ public class TimelineSnapshotService {
      * hydration MUST use this path; never unscoped global payload reads.
      */
     /** Convenience overload using this service's DSL (non-transactional reads). */
-    public Optional<SnapshotInfo> findOwnedById(String projectId, String tenantId,
+    public Optional<TimelineSnapshotView> findOwnedById(String projectId, String tenantId,
                                                 String snapshotId) {
         return findOwnedById(dsl, projectId, tenantId, snapshotId);
     }
 
-    public Optional<SnapshotInfo> findOwnedById(org.jooq.DSLContext readDsl,
+    public Optional<TimelineSnapshotView> findOwnedById(org.jooq.DSLContext readDsl,
                                                 String projectId, String tenantId,
                                                 String snapshotId) {
         if (snapshotId == null || snapshotId.isBlank()) {
@@ -82,7 +83,7 @@ public class TimelineSnapshotService {
         return Optional.of(mapSnapshotInfo(record));
     }
 
-    public Optional<SnapshotInfo> findLatestForSystemMaintenance(String projectId) {
+    public Optional<TimelineSnapshotView> findLatestForSystemMaintenance(String projectId) {
         if (projectId == null || projectId.isBlank()) {
             return Optional.empty();
         }
@@ -104,7 +105,7 @@ public class TimelineSnapshotService {
     }
 
     /** CFRH-I2: tenant-aware latest-snapshot read — ownership participates in the query. */
-    public Optional<SnapshotInfo> findLatestOwnedByProject(String projectId, String tenantId) {
+    public Optional<TimelineSnapshotView> findLatestOwnedByProject(String projectId, String tenantId) {
         if (projectId == null || projectId.isBlank()) {
             return Optional.empty();
         }
@@ -132,11 +133,11 @@ public class TimelineSnapshotService {
                 .fetch(TIMELINE_SNAPSHOT.PROJECT_ID);
     }
 
-    
 
 
-    private static SnapshotInfo mapSnapshotInfo(Record record) {
-        return new SnapshotInfo(
+
+    private static TimelineSnapshotView mapSnapshotInfo(Record record) {
+        return new TimelineSnapshotView(
                 record.get(TIMELINE_SNAPSHOT.ID),
                 record.get(TIMELINE_SNAPSHOT.PROJECT_ID),
                 record.get(TIMELINE_SNAPSHOT.TENANT_ID),
@@ -145,10 +146,4 @@ public class TimelineSnapshotService {
         );
     }
 
-    public record SnapshotInfo(
-            String id,
-            String projectId,
-            String tenantId,
-            String payloadJson,
-            String schemaVersion) {}
 }

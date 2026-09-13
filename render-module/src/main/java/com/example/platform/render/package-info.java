@@ -1,6 +1,7 @@
 @org.springframework.modulith.ApplicationModule(
         displayName = "Render",
         allowedDependencies = {
+            "timeline :: reviews", "timeline :: revision", "timeline :: composition", "timeline :: serialization",
             "ai",
             "ai :: API",
             "ai :: domain",

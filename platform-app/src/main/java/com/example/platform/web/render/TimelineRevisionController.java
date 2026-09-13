@@ -1,19 +1,19 @@
 package com.example.platform.web.render;
 
+import com.example.platform.timeline.api.revision.TimelineRevisionDiff;
+import com.example.platform.timeline.api.revision.TimelineRevisionQueries;
 import com.example.platform.timeline.app.TimelinePatchOpsJson;
-import com.example.platform.timeline.app.TimelineRevisionDiffService;
 import com.example.platform.render.app.timeline.TimelineRevisionRenderService;
-import com.example.platform.timeline.app.TimelineRevisionQueryService;
 import com.example.platform.timeline.app.TimelineRevisionDiffQuery;
 import com.example.platform.render.app.timeline.RenderJobStatusService;
 import com.example.platform.render.api.dto.RenderJobResultResponse;
 import com.example.platform.render.api.dto.RenderJobStatusResponse;
 import com.example.platform.timeline.app.TimelineRevisionDiffQuery.CompareResult;
-import com.example.platform.timeline.app.TimelineRevisionQueryService.EditSessionInfo;
-import com.example.platform.timeline.app.TimelineRevisionQueryService.RevisionDetail;
-import com.example.platform.timeline.app.TimelineRevisionQueryService.RevisionInfo;
-import com.example.platform.timeline.app.TimelineRevisionQueryService.RevisionSnapshotPayload;
-import com.example.platform.timeline.app.TimelineMergeEngine;
+import com.example.platform.timeline.api.revision.TimelineRevisionQueries.EditSessionInfo;
+import com.example.platform.timeline.api.revision.TimelineRevisionQueries.RevisionDetail;
+import com.example.platform.timeline.api.revision.TimelineRevisionQueries.RevisionInfo;
+import com.example.platform.timeline.api.revision.TimelineRevisionQueries.RevisionSnapshotPayload;
+import com.example.platform.timeline.api.revision.TimelineMergeOperations;
 import com.example.platform.render.api.dto.TimelineRevisionRenderRequest;
 import com.example.platform.render.api.dto.TimelineRevisionRenderResponse;
 import com.example.platform.render.app.event.TimelineReviewEventPublisher;
@@ -24,7 +24,7 @@ import com.example.platform.timeline.diff.merge.TimelineMergeResult;
 import com.example.platform.timeline.diff.merge.TimelineMergeSummary;
 import com.example.platform.timeline.diff.merge.TimelineConflict;
 import com.example.platform.timeline.diff.merge.TimelineResolutionIntent;
-import com.example.platform.timeline.app.TimelineMutationContext;
+import com.example.platform.timeline.api.revision.TimelineMutationContext;
 import com.example.platform.shared.web.TenantContext;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
@@ -50,25 +50,25 @@ public class TimelineRevisionController {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    private final com.example.platform.timeline.app.TimelineRevisionQueryService revisionQueryService;
+    private final com.example.platform.timeline.api.revision.TimelineRevisionQueries revisionQueryService;
     private final com.example.platform.timeline.app.TimelineRevisionDiffQuery revisionDiffQuery;
-    private final TimelineMergeEngine mergeEngine;
+    private final TimelineMergeOperations mergeEngine;
     private final TimelineReviewEventPublisher eventPublisher;
     private final TimelineRevisionRenderService renderService;
     private final RenderJobStatusService renderJobStatusService;
-    private final com.example.platform.timeline.app.TimelineRevisionSaveService revisionSaveService;
-    private final com.example.platform.timeline.app.TimelinePayloadCodec timelinePayloadCodec;
+    private final com.example.platform.timeline.api.revision.TimelineRevisionCommands revisionSaveService;
+    private final com.example.platform.timeline.api.composition.TimelinePayloadCodec timelinePayloadCodec;
     private final TimelineProjectAuthorizationService projectAuthorization;
 
     public TimelineRevisionController(
-            com.example.platform.timeline.app.TimelineRevisionQueryService revisionQueryService,
+            com.example.platform.timeline.api.revision.TimelineRevisionQueries revisionQueryService,
             com.example.platform.timeline.app.TimelineRevisionDiffQuery revisionDiffQuery,
-                                       TimelineMergeEngine mergeEngine,
+                                       TimelineMergeOperations mergeEngine,
                                        TimelineReviewEventPublisher eventPublisher,
                                        @org.springframework.beans.factory.annotation.Autowired(required = false) TimelineRevisionRenderService renderService,
                                        @org.springframework.beans.factory.annotation.Autowired(required = false) RenderJobStatusService renderJobStatusService,
-                                       com.example.platform.timeline.app.TimelineRevisionSaveService revisionSaveService,
-                                       com.example.platform.timeline.app.TimelinePayloadCodec timelinePayloadCodec,
+                                       com.example.platform.timeline.api.revision.TimelineRevisionCommands revisionSaveService,
+                                       com.example.platform.timeline.api.composition.TimelinePayloadCodec timelinePayloadCodec,
                                        TimelineProjectAuthorizationService projectAuthorization) {
         this.revisionQueryService = revisionQueryService;
         this.revisionDiffQuery = revisionDiffQuery;
@@ -103,7 +103,7 @@ public class TimelineRevisionController {
     public RevisionFacetsResponse facets(@PathVariable String projectId) {
         String tenantId = TenantContext.get();
         projectAuthorization.requireRead(tenantId, projectId);
-        TimelineRevisionQueryService.RevisionFacets facets = revisionQueryService.listFacets(projectId, tenantId);
+        TimelineRevisionQueries.RevisionFacets facets = revisionQueryService.listFacets(projectId, tenantId);
         return new RevisionFacetsResponse(
                 facets.sources(),
                 facets.authors().stream()
@@ -199,7 +199,7 @@ public class TimelineRevisionController {
         // canonical restore transaction boundary (TimelineRevisionSaveService.restoreRevision).
         // expected-current CAS comes from the canonical current-revision authority.
         String expectedCurrent = revisionQueryService.findHead(projectId, tenantId)
-                .map(com.example.platform.timeline.app.TimelineRevisionQueryService.RevisionInfo::id)
+                .map(com.example.platform.timeline.api.revision.TimelineRevisionQueries.RevisionInfo::id)
                 .orElse(null);
         var restored = revisionSaveService.restoreRevision(
                 new TimelineMutationContext(tenantId, projectId, actor),
@@ -466,7 +466,7 @@ public class TimelineRevisionController {
             return new ChangeSummaryDto(false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         }
 
-        static ChangeSummaryDto from(TimelineRevisionDiffService.ChangeSummary s) {
+        static ChangeSummaryDto from(TimelineRevisionDiff.ChangeSummary s) {
             return new ChangeSummaryDto(
                     s.supported(),
                     s.tracksAdded(),

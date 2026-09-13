@@ -1,7 +1,7 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.timeline.app.InternalTimelineJson;
-import com.example.platform.timeline.app.TimelinePatchService;
+import com.example.platform.timeline.api.composition.TimelinePatches;
+import com.example.platform.timeline.api.serialization.InternalTimelineJson;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.List;
@@ -59,8 +59,8 @@ public final class AiTimelineEditResponseParser {
         return t.trim();
     }
 
-    private static List<TimelinePatchService.PatchOperation> parseOperations(JsonNode array) {
-        List<TimelinePatchService.PatchOperation> ops = new ArrayList<>();
+    private static List<TimelinePatches.PatchOperation> parseOperations(JsonNode array) {
+        List<TimelinePatches.PatchOperation> ops = new ArrayList<>();
         for (JsonNode item : array) {
             String op = item.path("op").asText("");
             String path = item.path("path").asText("");
@@ -68,7 +68,7 @@ public final class AiTimelineEditResponseParser {
             if (op.isBlank() || path.isBlank()) {
                 continue;
             }
-            ops.add(new TimelinePatchService.PatchOperation(op, path, value));
+            ops.add(new TimelinePatches.PatchOperation(op, path, value));
         }
         if (ops.isEmpty()) {
             throw new IllegalArgumentException("patch operations[] is empty");
@@ -82,12 +82,12 @@ public final class AiTimelineEditResponseParser {
             return new FullTimeline(json);
         }
 
-        static PatchOps patchOps(List<TimelinePatchService.PatchOperation> operations) {
+        static PatchOps patchOps(List<TimelinePatches.PatchOperation> operations) {
             return new PatchOps(operations);
         }
 
         record FullTimeline(String timelineJson) implements Parsed {}
 
-        record PatchOps(List<TimelinePatchService.PatchOperation> operations) implements Parsed {}
+        record PatchOps(List<TimelinePatches.PatchOperation> operations) implements Parsed {}
     }
 }

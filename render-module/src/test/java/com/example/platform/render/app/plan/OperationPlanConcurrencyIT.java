@@ -1,5 +1,6 @@
 package com.example.platform.render.app.plan;
 
+import com.example.platform.timeline.api.revision.TimelineRevisionCommands;
 import com.example.platform.operation.operation.OperationDefinition;
 import com.example.platform.operation.operation.OperationDefinitionVersion;
 import com.example.platform.operation.operation.OperationInstance;
@@ -19,7 +20,7 @@ import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.timeline.app.DefaultTimelineRevisionPersistence;
 import com.example.platform.timeline.app.TimelineRevisionRefHeadUpdateAdapter;
 import com.example.platform.timeline.app.TimelineRevisionRefMutation;
-import com.example.platform.timeline.app.TimelineRevisionCommandConflictException;
+import com.example.platform.timeline.api.revision.TimelineRevisionCommandConflictException;
 import com.example.platform.timeline.app.TimelineRevisionSaveService;
 import com.example.platform.timeline.canonical.TimelineContentDigester;
 import com.example.platform.timeline.canonical.TimelineDocument;
@@ -430,7 +431,7 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
         go.await();
         try {
             com.example.platform.render.testsupport.TimelineMutationTestSupport.saveForCommand(service, ref(productId), baseRevisionId, candidate, "editor",
-                    new TimelineRevisionSaveService.RevisionWriteCommand(
+                    new TimelineRevisionCommands.RevisionWriteCommand(
                             commandId, "plan-" + commandId, "fingerprint-" + commandId,
                             "OPERATION_PLAN", TENANT));
             applied.incrementAndGet();
@@ -477,9 +478,9 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
                 new TimelineRevisionRefHeadUpdateAdapter(current), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
     }
 
-    private static TimelineRevisionSaveService.RevisionWriteCommand command(
+    private static TimelineRevisionCommands.RevisionWriteCommand command(
             String id, String planDigest, String fingerprint) {
-        return new TimelineRevisionSaveService.RevisionWriteCommand(
+        return new TimelineRevisionCommands.RevisionWriteCommand(
                 id, planDigest, fingerprint, "OPERATION_PLAN", TENANT);
     }
 

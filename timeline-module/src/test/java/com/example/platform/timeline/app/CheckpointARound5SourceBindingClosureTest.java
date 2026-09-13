@@ -1,4 +1,5 @@
 package com.example.platform.timeline.app;
+import com.example.platform.timeline.api.composition.TimelineCanonicalRejectionException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;

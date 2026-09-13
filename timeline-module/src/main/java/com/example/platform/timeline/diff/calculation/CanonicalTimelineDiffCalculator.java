@@ -402,7 +402,7 @@ public class CanonicalTimelineDiffCalculator {
 
     private static String temporalMappingJson(com.example.platform.timeline.semantics.temporal.TemporalMapping tm) {
         try {
-            return com.example.platform.timeline.app.InternalTimelineJson.mapper().writeValueAsString(tm);
+            return com.example.platform.timeline.api.serialization.InternalTimelineJson.mapper().writeValueAsString(tm);
         } catch (Exception e) {
             throw new IllegalStateException("TemporalMapping canonical encoding failed", e);
         }
@@ -939,7 +939,7 @@ public class CanonicalTimelineDiffCalculator {
         }
         if (clip.temporalMapping() != null) {
             try {
-                meta.put("temporalMapping", com.example.platform.timeline.app.InternalTimelineJson.mapper()
+                meta.put("temporalMapping", com.example.platform.timeline.api.serialization.InternalTimelineJson.mapper()
                         .writeValueAsString(clip.temporalMapping()));
             } catch (Exception e) {
                 throw new IllegalStateException("TemporalMapping canonical encoding failed", e);

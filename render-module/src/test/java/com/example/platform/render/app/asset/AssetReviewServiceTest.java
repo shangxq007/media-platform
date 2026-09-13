@@ -1,10 +1,11 @@
 package com.example.platform.render.app.asset;
 
+import com.example.platform.timeline.api.review.ReviewRecords;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-import com.example.platform.render.app.timeline.TimelineReviewRepository;
-import com.example.platform.render.app.timeline.TimelineReviewService;
+import com.example.platform.timeline.api.review.ReviewQueries;
+import com.example.platform.timeline.api.review.TimelineReviews;
 import com.example.platform.render.domain.asset.AssetPublishStatus;
 import com.example.platform.render.infrastructure.asset.AssetRepository;
 import java.time.OffsetDateTime;
@@ -17,16 +18,16 @@ import org.junit.jupiter.api.Test;
 class AssetReviewServiceTest {
 
     private AssetRepository assetRepository;
-    private TimelineReviewService reviewService;
-    private TimelineReviewRepository reviewRepository;
+    private TimelineReviews reviewService;
+    private ReviewQueries reviewRepository;
     private AssetReviewService assetReviewService;
 
     @BeforeEach
     void setUp() {
         TenantContext.set("tenant_1");
         assetRepository = mock(AssetRepository.class);
-        reviewService = mock(TimelineReviewService.class);
-        reviewRepository = mock(TimelineReviewRepository.class);
+        reviewService = mock(TimelineReviews.class);
+        reviewRepository = mock(ReviewQueries.class);
         assetReviewService = new AssetReviewService(assetRepository, reviewService, reviewRepository);
     }
 
@@ -41,7 +42,7 @@ class AssetReviewServiceTest {
                 .thenReturn(Optional.of(makeAsset("asset_1")));
 
         when(reviewRepository.findById(any())).thenReturn(Optional.of(
-                new TimelineReviewRepository.ReviewRow("arev_1", "proj_1", "tenant_1", "asset_1",
+                new ReviewRecords.ReviewRow("arev_1", "proj_1", "tenant_1", "asset_1",
                         "user_1", "Review Asset", "desc", "OPEN",
                         OffsetDateTime.now(), OffsetDateTime.now())));
 

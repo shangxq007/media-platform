@@ -125,7 +125,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({
             com.example.platform.timeline.version.TimelineConflictException.class,
-            com.example.platform.timeline.app.TimelineRevisionCommandConflictException.class
+            com.example.platform.timeline.api.review.ReviewConflictException.class,
+            com.example.platform.timeline.api.revision.TimelineRevisionCommandConflictException.class
     })
     public ProblemDetail handleTimelineConflict(
             RuntimeException ex, HttpServletRequest request) {
@@ -133,9 +134,9 @@ public class GlobalExceptionHandler {
                 HttpStatus.CONFLICT, "TIMELINE_CONFLICT", ex.getMessage(), request);
     }
 
-    @ExceptionHandler(com.example.platform.timeline.app.TimelineCanonicalRejectionException.class)
+    @ExceptionHandler(com.example.platform.timeline.api.composition.TimelineCanonicalRejectionException.class)
     public ProblemDetail handleTimelineCanonicalRejection(
-            com.example.platform.timeline.app.TimelineCanonicalRejectionException ex,
+            com.example.platform.timeline.api.composition.TimelineCanonicalRejectionException ex,
             HttpServletRequest request) {
         ProblemDetail problem = timelineProblem(
                 HttpStatus.UNPROCESSABLE_ENTITY,

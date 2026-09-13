@@ -1,4 +1,4 @@
-package com.example.platform.timeline.app;
+package com.example.platform.timeline.api.serialization;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

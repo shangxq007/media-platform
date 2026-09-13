@@ -1,4 +1,6 @@
 package com.example.platform.timeline.app;
+import com.example.platform.timeline.api.serialization.InternalTimelineJson;
+import com.example.platform.timeline.api.composition.TimelineCanonicalRejectionException;
 
 import com.example.platform.shared.time.CanonicalFrameRateCodec;
 import com.example.platform.timeline.canonicalmodel.TimelineCandidate;
@@ -111,7 +113,7 @@ public final class InternalTimelineCandidateAdapter {
      *  boundary (no AudioMasterBus/AudioRoute/gain/mute/balance/DSP field knowledge). */
     public static final class AudioMixJson {
         private static final com.fasterxml.jackson.databind.ObjectMapper M =
-                com.example.platform.timeline.app.InternalTimelineJson.mapper();
+                com.example.platform.timeline.api.serialization.InternalTimelineJson.mapper();
 
         public static com.example.platform.audio.domain.mix.AudioMix audioMixOf(JsonNode composition) {
             JsonNode node = composition.path("audioMix");
@@ -140,7 +142,7 @@ public final class InternalTimelineCandidateAdapter {
             if (node.isArray()) {
                 for (JsonNode rel : node) {
                     try {
-                        out.add(com.example.platform.timeline.app.InternalTimelineJson.mapper()
+                        out.add(com.example.platform.timeline.api.serialization.InternalTimelineJson.mapper()
                                 .treeToValue(rel, com.example.platform.timeline.semantics.relationship.SemanticRelationship.class));
                     } catch (Exception e) {
                         throw new TimelineCanonicalRejectionException(
@@ -276,7 +278,7 @@ public final class InternalTimelineCandidateAdapter {
         JsonNode tmNode = clipNode.path("temporalMapping");
         if (tmNode.isObject() && !tmNode.isEmpty()) {
             try {
-                temporalMapping = com.example.platform.timeline.app.InternalTimelineJson.mapper()
+                temporalMapping = com.example.platform.timeline.api.serialization.InternalTimelineJson.mapper()
                         .treeToValue(tmNode, com.example.platform.timeline.semantics.temporal.TemporalMapping.class);
             } catch (Exception e) {
                 throw new TimelineCanonicalRejectionException(

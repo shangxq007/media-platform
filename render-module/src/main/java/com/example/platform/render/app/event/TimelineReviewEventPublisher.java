@@ -35,36 +35,6 @@ public class TimelineReviewEventPublisher {
         log.info("Outbox: TimelineRestoredEvent new={}", event.newRevisionId());
     }
 
-    public void publish(ReviewCreatedEvent event) {
-        outboxEventService.append(RenderOutboxEvents.REVIEWCREATEDEVENT.append(com.example.platform.shared.web.TenantGuard.requireTenantId(), event, null));
-        log.debug("Outbox: ReviewCreatedEvent review={}", event.reviewId());
-    }
-
-    public void publish(ReviewApprovedEvent event) {
-        outboxEventService.append(RenderOutboxEvents.REVIEWAPPROVEDEVENT.append(com.example.platform.shared.web.TenantGuard.requireTenantId(), event, null));
-        log.info("Outbox: ReviewApprovedEvent review={}", event.reviewId());
-    }
-
-    public void publish(ReviewRejectedEvent event) {
-        outboxEventService.append(RenderOutboxEvents.REVIEWREJECTEDEVENT.append(com.example.platform.shared.web.TenantGuard.requireTenantId(), event, null));
-        log.info("Outbox: ReviewRejectedEvent review={}", event.reviewId());
-    }
-
-    public void publish(ReviewChangesRequestedEvent event) {
-        outboxEventService.append(RenderOutboxEvents.REVIEWCHANGESREQUESTEDEVENT.append(com.example.platform.shared.web.TenantGuard.requireTenantId(), event, null));
-        log.info("Outbox: ReviewChangesRequestedEvent review={}", event.reviewId());
-    }
-
-    public void publish(ReviewCommentAddedEvent event) {
-        outboxEventService.append(RenderOutboxEvents.REVIEWCOMMENTADDEDEVENT.append(com.example.platform.shared.web.TenantGuard.requireTenantId(), event, null));
-        log.debug("Outbox: ReviewCommentAddedEvent comment={}", event.commentId());
-    }
-
-    public void publish(ReviewThreadResolvedEvent event) {
-        outboxEventService.append(RenderOutboxEvents.REVIEWTHREADRESOLVEDEVENT.append(com.example.platform.shared.web.TenantGuard.requireTenantId(), event, null));
-        log.debug("Outbox: ReviewThreadResolvedEvent thread={}", event.threadId());
-    }
-
     public void publish(AssetSubmittedForReviewEvent event) {
         outboxEventService.append(RenderOutboxEvents.ASSETSUBMITTEDFORREVIEWEVENT.append(com.example.platform.shared.web.TenantGuard.requireTenantId(), event, null));
         log.info("Outbox: AssetSubmittedForReviewEvent asset={}", event.assetId());

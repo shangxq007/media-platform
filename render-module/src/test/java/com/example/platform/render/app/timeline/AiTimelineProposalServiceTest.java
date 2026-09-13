@@ -1,5 +1,6 @@
 package com.example.platform.render.app.timeline;
 
+import com.example.platform.timeline.api.composition.TimelinePatches;
 import com.example.platform.timeline.app.TimelineCanonicalizer;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -32,7 +33,7 @@ class AiTimelineProposalServiceTest {
         String withPending = service.appendPendingPatchProposal(
                 baseTimeline,
                 "lower bgm",
-                List.of(new TimelinePatchService.PatchOperation(
+                List.of(new TimelinePatches.PatchOperation(
                         "replace", "/metadata/platform.ai.lastStubEdit", new TextNode("true"))));
         assertEquals(1, service.listProposals(withPending).size());
         assertEquals("PENDING", service.listProposals(withPending).get(0).status());
@@ -45,7 +46,7 @@ class AiTimelineProposalServiceTest {
         String withPending2 = service.appendPendingPatchProposal(
                 baseTimeline,
                 "another",
-                List.of(new TimelinePatchService.PatchOperation(
+                List.of(new TimelinePatches.PatchOperation(
                         "replace", "/metadata/platform.ai.pendingFlag", new TextNode("yes"))));
         String proposalId2 = service.listProposals(withPending2).get(0).id();
         var rejected = service.reject(withPending2, proposalId2);

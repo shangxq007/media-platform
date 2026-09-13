@@ -1,5 +1,6 @@
 package com.example.platform.timeline.app;
 
+import com.example.platform.timeline.api.composition.TimelinePatches;
 import com.example.platform.timeline.app.TimelinePatchService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -15,13 +16,13 @@ public final class TimelinePatchOpsJson {
 
     private TimelinePatchOpsJson() {}
 
-    public static String toJson(List<TimelinePatchService.PatchOperation> operations) {
+    public static String toJson(List<TimelinePatches.PatchOperation> operations) {
         if (operations == null || operations.isEmpty()) {
             return null;
         }
         try {
             ArrayNode array = MAPPER.createArrayNode();
-            for (TimelinePatchService.PatchOperation op : operations) {
+            for (TimelinePatches.PatchOperation op : operations) {
                 ObjectNode item = MAPPER.createObjectNode();
                 item.put("op", op.op());
                 item.put("path", op.path());
@@ -36,8 +37,8 @@ public final class TimelinePatchOpsJson {
         }
     }
 
-    public static List<TimelinePatchService.PatchOperation> fromJson(String json) {
-        List<TimelinePatchService.PatchOperation> ops = new ArrayList<>();
+    public static List<TimelinePatches.PatchOperation> fromJson(String json) {
+        List<TimelinePatches.PatchOperation> ops = new ArrayList<>();
         if (json == null || json.isBlank()) {
             return ops;
         }
@@ -51,7 +52,7 @@ public final class TimelinePatchOpsJson {
                 String path = item.path("path").asText("");
                 JsonNode value = item.get("value");
                 if (!op.isBlank() && !path.isBlank()) {
-                    ops.add(new TimelinePatchService.PatchOperation(op, path, value));
+                    ops.add(new TimelinePatches.PatchOperation(op, path, value));
                 }
             }
         } catch (Exception ignored) {

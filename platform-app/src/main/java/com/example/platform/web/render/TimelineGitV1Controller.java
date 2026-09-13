@@ -5,12 +5,12 @@ import com.example.platform.identity.api.authorization.CanonicalActorResolver;
 import com.example.platform.shared.events.RenderInitiator;
 import com.example.platform.timeline.app.PatchApplyResult;
 import com.example.platform.timeline.app.PatchPreviewResult;
-import com.example.platform.timeline.app.TimelineRevisionQueryService;
+import com.example.platform.timeline.api.revision.TimelineRevisionQueries;
 import com.example.platform.shared.web.TenantContext;
 import com.example.platform.render.app.timeline.RenderJobRevisionPinningService;
 import com.example.platform.timeline.app.TimelinePatchApplicationService;
-import com.example.platform.timeline.app.TimelineRevisionSaveService;
-import com.example.platform.timeline.app.TimelineMutationContext;
+import com.example.platform.timeline.api.revision.TimelineRevisionCommands;
+import com.example.platform.timeline.api.revision.TimelineMutationContext;
 import com.example.platform.timeline.app.TimelineRevisionDiffQuery;
 import com.example.platform.timeline.canonical.TimelineClip;
 import com.example.platform.timeline.canonical.TimelineContentDigester;
@@ -48,8 +48,8 @@ import java.util.UUID;
 @Tag(name = "Timeline Git V1", description = "Immutable revision history and render pinning")
 public class TimelineGitV1Controller {
 
-    private final TimelineRevisionSaveService saveService;
-    private final TimelineRevisionQueryService revisionQueryService;
+    private final TimelineRevisionCommands saveService;
+    private final TimelineRevisionQueries revisionQueryService;
     private final RenderJobRevisionPinningService pinningService;
     private final TimelineContentDigester contentDigester;
     private final TimelineRevisionDiffQuery diffQuery;
@@ -57,8 +57,8 @@ public class TimelineGitV1Controller {
     private final TimelineProjectAuthorizationService projectAuthorization;
     private final CanonicalActorResolver canonicalActorResolver;
 
-    public TimelineGitV1Controller(TimelineRevisionSaveService saveService,
-                                   TimelineRevisionQueryService revisionQueryService,
+    public TimelineGitV1Controller(TimelineRevisionCommands saveService,
+                                   TimelineRevisionQueries revisionQueryService,
                                    RenderJobRevisionPinningService pinningService,
                                    TimelineContentDigester contentDigester,
                                    TimelineRevisionDiffQuery diffQuery,

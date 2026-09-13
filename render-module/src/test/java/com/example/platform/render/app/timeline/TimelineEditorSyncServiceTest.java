@@ -1,5 +1,7 @@
 package com.example.platform.render.app.timeline;
 
+import com.example.platform.timeline.api.revision.TimelineSnapshotView;
+import com.example.platform.timeline.api.revision.TimelineRevisionQueries;
 import com.example.platform.timeline.app.TimelineRevisionQueryService;
 import com.example.platform.timeline.app.TimelineRevisionDiffQuery;
 import com.example.platform.timeline.app.TimelineImportService;
@@ -9,7 +11,6 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
-import com.example.platform.timeline.adapter.TimelineSnapshotService.SnapshotInfo;
 import com.example.platform.render.domain.interchange.TimelineExtensionsReader;
 import com.example.platform.render.domain.interchange.TimelineOutputSpec;
 import com.example.platform.render.domain.interchange.TimelineScriptParser;
@@ -69,7 +70,7 @@ class TimelineEditorSyncServiceTest {
         TimelineSpec spec = TimelineSpec.create("tl-pull", "Pull", TimelineOutputSpec.mp4_1080p30());
         String internal = importService.importTimeline(importAdapter.toRequest(spec));
         when(revisionQueryService.findHead("prj_2", "ten_2"))
-                .thenReturn(Optional.of(new TimelineRevisionQueryService.RevisionInfo(
+                .thenReturn(Optional.of(new TimelineRevisionQueries.RevisionInfo(
                         "trev_2",
                         "prj_2",
                         "ten_2",
@@ -91,7 +92,7 @@ class TimelineEditorSyncServiceTest {
                         null,
                         null)));
         when(snapshotService.findOwnedById("prj_2", "ten_2", "snap_2"))
-                .thenReturn(Optional.of(new SnapshotInfo("snap_2", "prj_2", "ten_2", internal, "internal-1.0")));
+                .thenReturn(Optional.of(new TimelineSnapshotView("snap_2", "prj_2", "ten_2", internal, "internal-1.0")));
 
         var result = syncService.pullByProject("prj_2", "ten_2");
 

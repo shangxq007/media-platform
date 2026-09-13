@@ -1,4 +1,6 @@
 package com.example.platform.timeline.app;
+import com.example.platform.timeline.api.revision.TimelineSnapshotView;
+import com.example.platform.timeline.api.serialization.InternalTimelineJson;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -298,8 +300,8 @@ engine = new TimelineMergeEngine(revisionRepository, snapshotService, mock(Timel
                 true, "src-rev,tgt-rev", "base-rev", java.time.OffsetDateTime.now());
     }
 
-    private TimelineSnapshotService.SnapshotInfo info(String id, String payload) {
-        return new TimelineSnapshotService.SnapshotInfo(id, PROJECT, TENANT, payload, "timeline-1.0");
+    private TimelineSnapshotView info(String id, String payload) {
+        return new TimelineSnapshotView(id, PROJECT, TENANT, payload, "timeline-1.0");
     }
 
     private TimelineMergeResult merge(String baseJson, String sourceJson, String targetJson) {

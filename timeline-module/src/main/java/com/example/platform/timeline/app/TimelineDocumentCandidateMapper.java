@@ -1,4 +1,5 @@
 package com.example.platform.timeline.app;
+import com.example.platform.timeline.api.composition.TimelineCanonicalRejectionException;
 
 import com.example.platform.timeline.canonical.TimelineClip;
 import com.example.platform.timeline.canonical.TimelineDocument;

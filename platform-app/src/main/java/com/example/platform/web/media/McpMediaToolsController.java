@@ -1,19 +1,19 @@
 package com.example.platform.web.media;
 
+import com.example.platform.timeline.api.composition.TimelineCanonicalization;
+import com.example.platform.timeline.api.composition.TimelineValidation;
+import com.example.platform.timeline.api.composition.TimelinePatches;
 import com.example.platform.render.api.dto.SubmitRenderJobRequest;
 import com.example.platform.render.api.port.RenderOrchestratorPort;
 import com.example.platform.render.app.NleLayerCatalogService;
-import com.example.platform.timeline.app.TimelinePatchService;
 import com.example.platform.render.app.timeline.IncrementalPlanExplainer;
 import com.example.platform.render.app.timeline.IncrementalRenderPlanService;
 import com.example.platform.render.app.timeline.RenderImpactAnalyzer;
-import com.example.platform.timeline.app.TimelineCanonicalizer;
-import com.example.platform.timeline.app.TimelineSemanticDiffService;
+import com.example.platform.timeline.api.composition.TimelineSemanticDiff;
 import com.example.platform.render.app.timeline.InternalTimelineAdapter;
-import com.example.platform.timeline.app.InternalTimelineJson;
+import com.example.platform.timeline.api.serialization.InternalTimelineJson;
 import com.example.platform.render.app.timeline.TimelineSpecImportAdapter;
-import com.example.platform.timeline.app.InternalTimelineValidationService;
-import com.example.platform.timeline.app.TimelineImportService;
+import com.example.platform.timeline.api.composition.TimelineImport;
 import com.example.platform.render.app.timeline.SegmentPlanFilter;
 import com.example.platform.render.app.timeline.TimelineSpecResolver;
 import com.example.platform.render.domain.planning.IncrementalRenderPlan;
@@ -69,48 +69,48 @@ public class McpMediaToolsController {
 
     private static final Logger log = LoggerFactory.getLogger(McpMediaToolsController.class);
 
-    private final InternalTimelineValidationService timelineValidationService;
+    private final TimelineValidation timelineValidationService;
     private final TimelineScriptParser timelineScriptParser;
     private final RenderPlannerService renderPlannerService;
-    private final TimelinePatchService timelinePatchService;
+    private final TimelinePatches timelinePatchService;
     private final PipelinePlanPersistenceService pipelinePlanPersistence;
     private final AafConversionService aafConversionService;
     private final NleLayerCatalogService nleLayerCatalogService;
     private final Optional<GPACPackagingProvider> gpacPackaging;
     private final Optional<Bento4PackagingProvider> bento4Packaging;
     private final Optional<ShakaPackagingProvider> shakaPackaging;
-    private final TimelineCanonicalizer timelineCanonicalizer;
-    private final TimelineSemanticDiffService timelineSemanticDiffService;
+    private final TimelineCanonicalization timelineCanonicalizer;
+    private final TimelineSemanticDiff timelineSemanticDiffService;
     private final RenderImpactAnalyzer renderImpactAnalyzer;
     private final IncrementalPlanExplainer incrementalPlanExplainer;
     private final IncrementalRenderPlanService incrementalRenderPlanService;
     private final InternalTimelineAdapter internalTimelineAdapter;
     private final TimelineSpecImportAdapter timelineSpecImportAdapter;
-    private final TimelineImportService timelineImportService;
+    private final TimelineImport timelineImportService;
     private final TimelineSpecResolver timelineSpecResolver;
     private final Optional<RenderOrchestratorPort> renderOrchestratorPort;
     private final SegmentPlanFilter segmentPlanFilter;
     private final com.example.platform.web.render.TimelineProjectAuthorizationService projectAuthorization;
     private final CanonicalActorResolver canonicalActorResolver;
 
-    public McpMediaToolsController(InternalTimelineValidationService timelineValidationServiceParam,
+    public McpMediaToolsController(TimelineValidation timelineValidationServiceParam,
                                    TimelineScriptParser timelineScriptParser,
                                    RenderPlannerService renderPlannerService,
-                                   TimelinePatchService timelinePatchService,
+                                   TimelinePatches timelinePatchService,
                                    PipelinePlanPersistenceService pipelinePlanPersistence,
                                    AafConversionService aafConversionService,
                                    NleLayerCatalogService nleLayerCatalogService,
                                    Optional<GPACPackagingProvider> gpacPackaging,
                                    Optional<Bento4PackagingProvider> bento4Packaging,
                                    Optional<ShakaPackagingProvider> shakaPackaging,
-                                   TimelineCanonicalizer timelineCanonicalizer,
-                                   TimelineSemanticDiffService timelineSemanticDiffService,
+                                   TimelineCanonicalization timelineCanonicalizer,
+                                   TimelineSemanticDiff timelineSemanticDiffService,
                                    RenderImpactAnalyzer renderImpactAnalyzer,
                                    IncrementalPlanExplainer incrementalPlanExplainer,
                                    IncrementalRenderPlanService incrementalRenderPlanService,
                                    InternalTimelineAdapter internalTimelineAdapter,
                                    TimelineSpecImportAdapter timelineSpecImportAdapter,
-                                   TimelineImportService timelineImportService,
+                                   TimelineImport timelineImportService,
                                    TimelineSpecResolver timelineSpecResolver,
                                    Optional<RenderOrchestratorPort> renderOrchestratorPort,
                                    SegmentPlanFilter segmentPlanFilter,
@@ -302,7 +302,7 @@ public class McpMediaToolsController {
     public ResponseEntity<Map<String, Object>> canonicalizeTimeline(
             @RequestBody TimelineJsonRequest request) {
         try {
-            TimelineCanonicalizer.CanonicalizeResult result =
+            TimelineCanonicalization.CanonicalizeResult result =
                     timelineCanonicalizer.canonicalize(request.timelineJson());
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("timelineId", result.timelineId());
@@ -388,7 +388,7 @@ public class McpMediaToolsController {
     @Operation(summary = "校验 Internal Timeline JSON")
     public ResponseEntity<Map<String, Object>> validateTimeline(
             @RequestBody TimelineJsonRequest request) {
-        InternalTimelineValidationService.InternalTimelineValidationResult result =
+        TimelineValidation.InternalTimelineValidationResult result =
                 timelineValidationService.validate(request.timelineJson());
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("valid", result.valid());
@@ -554,10 +554,10 @@ public class McpMediaToolsController {
     @PostMapping("/patch_timeline")
     @Operation(summary = "JSON Patch 风格修改时间线")
     public ResponseEntity<Map<String, Object>> patchTimeline(@RequestBody PatchTimelineRequest request) {
-        List<TimelinePatchService.PatchOperation> ops = request.operations().stream()
-                .map(o -> new TimelinePatchService.PatchOperation(o.op(), o.path(), o.value()))
+        List<TimelinePatches.PatchOperation> ops = request.operations().stream()
+                .map(o -> new TimelinePatches.PatchOperation(o.op(), o.path(), o.value()))
                 .toList();
-        TimelinePatchService.PatchResult result =
+        TimelinePatches.PatchResult result =
                 timelinePatchService.applyPatch(request.timelineJson(), ops);
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("success", result.success());

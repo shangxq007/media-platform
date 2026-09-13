@@ -1,4 +1,5 @@
 package com.example.platform.timeline.app;
+import com.example.platform.timeline.api.revision.TimelineRevisionDiff;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -15,7 +16,7 @@ import org.springframework.stereotype.Service;
  * Entity-id-based diff summary between two canonical TimelineDocument payloads.
  */
 @Service
-public class TimelineRevisionDiffService {
+public class TimelineRevisionDiffService implements TimelineRevisionDiff {
 
     private static final ObjectMapper MAPPER = TimelineDocumentJsonSerializer.mapper();
 
@@ -307,33 +308,9 @@ public class TimelineRevisionDiffService {
         return all;
     }
 
-    public record ChangeSummary(
-            boolean supported,
-            int tracksAdded,
-            int tracksRemoved,
-            int tracksModified,
-            int clipsAdded,
-            int clipsRemoved,
-            int clipsModified,
-            int assetsAdded,
-            int assetsRemoved,
-            int parentInternalRevision,
-            int currentInternalRevision) {
 
-        public static ChangeSummary unsupported() {
-            return new ChangeSummary(false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-        }
 
-        public int totalTrackChanges() {
-            return tracksAdded + tracksRemoved + tracksModified;
-        }
 
-        public int totalClipChanges() {
-            return clipsAdded + clipsRemoved + clipsModified;
-        }
-    }
 
-    public record EntityChange(String kind, String entityId, String action) {}
 
-    public record DetailedCompare(boolean supported, ChangeSummary summary, List<EntityChange> entities) {}
 }

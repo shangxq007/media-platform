@@ -1,5 +1,6 @@
 package com.example.platform.render.app.timeline;
 
+import com.example.platform.timeline.api.revision.TimelineSnapshotView;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -172,7 +173,7 @@ class C1Cnm1RedBehavioralTest {
                         null,
                         OffsetDateTime.now())));
         when(snapshotService.findOwnedById(PROJECT, TENANT, snapshotId))
-                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo(
+                .thenReturn(Optional.of(new TimelineSnapshotView(
                         snapshotId,
                         PROJECT,
                         TENANT,

@@ -1,5 +1,6 @@
 package com.example.platform.timeline.app;
 
+import com.example.platform.timeline.api.revision.TimelineRevisionDiff;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -26,10 +27,10 @@ class TimelineRevisionDiffServiceCanonicalTest {
 
         assertTrue(forward.supported());
         assertEquals(List.of(
-                new TimelineRevisionDiffService.EntityChange("clip", "clip-from", "removed"),
-                new TimelineRevisionDiffService.EntityChange("clip", "clip-to", "added"),
-                new TimelineRevisionDiffService.EntityChange("asset", "asset-from", "removed"),
-                new TimelineRevisionDiffService.EntityChange("asset", "asset-to", "added")),
+                new TimelineRevisionDiff.EntityChange("clip", "clip-from", "removed"),
+                new TimelineRevisionDiff.EntityChange("clip", "clip-to", "added"),
+                new TimelineRevisionDiff.EntityChange("asset", "asset-from", "removed"),
+                new TimelineRevisionDiff.EntityChange("asset", "asset-to", "added")),
                 forward.entities().stream()
                         .filter(e -> !"track".equals(e.kind()))
                         .toList());

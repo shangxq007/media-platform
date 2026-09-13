@@ -1,5 +1,6 @@
 package com.example.platform.render.testsupport;
 
+import com.example.platform.timeline.api.revision.TimelineSnapshotView;
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
 
 
@@ -179,10 +180,10 @@ public final class TimelineCoreSmokeFixture {
     }
 
     /**
-     * Creates a SnapshotInfo from the fixture timeline.
+     * Creates a TimelineSnapshotView from the fixture timeline.
      */
-    public static TimelineSnapshotService.SnapshotInfo toSnapshotInfo(TimelineSpec spec) {
-        return new TimelineSnapshotService.SnapshotInfo(
+    public static TimelineSnapshotView toSnapshotInfo(TimelineSpec spec) {
+        return new TimelineSnapshotView(
                 "snap_" + spec.id(), PROJECT_ID, TENANT_ID,
                 toJson(spec), "1.0.0");
     }

@@ -1,6 +1,7 @@
 package com.example.platform.web.render;
 
 import com.example.platform.render.app.timeline.*;
+import com.example.platform.timeline.api.review.*;
 import com.example.platform.timeline.diff.merge.ReviewDecision;
 import com.example.platform.shared.web.TenantContext;
 import io.swagger.v3.oas.annotations.Operation;
@@ -18,16 +19,16 @@ import org.springframework.web.bind.annotation.*;
 public class ReviewWorkspaceController {
 
     private static final Logger log = LoggerFactory.getLogger(ReviewWorkspaceController.class);
-    private final TimelineReviewService reviewService;
-    private final TimelineReviewRepository reviewRepo;
-    private final TimelineCommentService commentService;
-    private final ReviewDecisionService decisionService;
+    private final TimelineReviews reviewService;
+    private final ReviewQueries reviewRepo;
+    private final TimelineComments commentService;
+    private final ReviewDecisions decisionService;
     private final TimelineProjectAuthorizationService projectAuthorization;
 
-    public ReviewWorkspaceController(TimelineReviewService reviewService,
-                                       TimelineReviewRepository reviewRepo,
-                                       TimelineCommentService commentService,
-                                       ReviewDecisionService decisionService,
+    public ReviewWorkspaceController(TimelineReviews reviewService,
+                                       ReviewQueries reviewRepo,
+                                       TimelineComments commentService,
+                                       ReviewDecisions decisionService,
                                        TimelineProjectAuthorizationService projectAuthorization) {
         this.reviewService = reviewService;
         this.reviewRepo = reviewRepo;
@@ -155,14 +156,14 @@ public class ReviewWorkspaceController {
                 (int) pendingThreads, pendingChanges, 1, approvals));
     }
 
-    private Optional<TimelineReviewRepository.ReviewRow> ownedReview(
+    private Optional<ReviewRecords.ReviewRow> ownedReview(
             String projectId, String reviewId) {
         String tenantId = TenantContext.get();
         projectAuthorization.requireRead(tenantId, projectId);
         return reviewRepo.findOwnedById(reviewId, projectId, tenantId);
     }
 
-    private TimelineReviewRepository.ReviewRow requireOwnedReview(
+    private ReviewRecords.ReviewRow requireOwnedReview(
             String projectId, String reviewId) {
         return ownedReview(projectId, reviewId)
                 .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(

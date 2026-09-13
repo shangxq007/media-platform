@@ -1,6 +1,6 @@
 package com.example.platform.timeline.version;
 
-import com.example.platform.timeline.app.InternalTimelineJson;
+import com.example.platform.timeline.api.serialization.InternalTimelineJson;
 import com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;

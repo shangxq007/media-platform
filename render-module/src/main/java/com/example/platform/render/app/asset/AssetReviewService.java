@@ -1,7 +1,8 @@
 package com.example.platform.render.app.asset;
 
-import com.example.platform.render.app.timeline.TimelineReviewRepository;
-import com.example.platform.render.app.timeline.TimelineReviewService;
+import com.example.platform.timeline.api.review.ReviewRecords;
+import com.example.platform.timeline.api.review.ReviewQueries;
+import com.example.platform.timeline.api.review.TimelineReviews;
 import com.example.platform.render.domain.asset.AssetPublishStatus;
 import com.example.platform.timeline.diff.merge.ReviewTargetType;
 import com.example.platform.render.infrastructure.asset.AssetRepository;
@@ -20,40 +21,32 @@ import org.springframework.transaction.annotation.Transactional;
 public class AssetReviewService {
 
     private final AssetRepository assetRepository;
-    private final TimelineReviewService reviewService;
-    private final TimelineReviewRepository reviewRepository;
+    private final TimelineReviews reviewService;
+    private final ReviewQueries reviewRepository;
 
     public AssetReviewService(AssetRepository assetRepository,
-                                TimelineReviewService reviewService,
-                                TimelineReviewRepository reviewRepository) {
+                                TimelineReviews reviewService,
+                                ReviewQueries reviewRepository) {
         this.assetRepository = assetRepository;
         this.reviewService = reviewService;
         this.reviewRepository = reviewRepository;
     }
 
     @Transactional
-    public TimelineReviewRepository.ReviewRow submitForReview(String assetId, String authorUserId,
+    public ReviewRecords.ReviewRow submitForReview(String assetId, String authorUserId,
                                                                  String title, String description) {
         var asset = assetRepository.findById(TenantContext.get(), assetId)
                 .orElseThrow(() -> new IllegalArgumentException("Asset not found: " + assetId));
 
-        String reviewId = ("arev_" + java.util.UUID.randomUUID().toString().replace("-", ""));
-        String tenantId = TenantContext.get();
-        OffsetDateTime now = OffsetDateTime.now();
-
-        reviewRepository.insertReview(reviewId, asset.projectId(), tenantId, assetId,
-                authorUserId, title, description, "OPEN", now);
-        reviewRepository.setTargetType(reviewId, "ASSET");
-
-        return reviewRepository.findById(reviewId).orElseThrow();
+        return reviewService.createAssetReview(asset.projectId(),assetId,authorUserId,title,description);
     }
 
-    public Optional<TimelineReviewRepository.ReviewRow> getReview(String assetId) {
+    public Optional<ReviewRecords.ReviewRow> getReview(String assetId) {
         return reviewRepository.findByTargetId(assetId);
     }
 
-    public List<TimelineReviewRepository.ReviewRow> listAssetReviews(String projectId, int limit) {
-        return reviewRepository.listByProject(projectId, TenantContext.get(), limit);
+    public List<ReviewRecords.ReviewRow> listAssetReviews(String projectId, int limit) {
+        return reviewRepository.listOwnedByProject(projectId, TenantContext.get(), limit);
     }
 
     @Transactional
@@ -61,7 +54,6 @@ public class AssetReviewService {
         var review = getReview(assetId)
                 .orElseThrow(() -> new IllegalArgumentException("No review found for asset: " + assetId));
         reviewService.approve(review.id(), reviewerUserId);
-        reviewRepository.setTargetType(review.id(), "ASSET");
     }
 
     @Transactional

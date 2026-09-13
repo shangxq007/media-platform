@@ -1,6 +1,7 @@
 package com.example.platform.render.app;
 
-import com.example.platform.timeline.adapter.TimelineSnapshotService;
+import com.example.platform.timeline.api.revision.TimelineSnapshotView;
+import com.example.platform.timeline.api.revision.TimelineSnapshotQueries;
 import com.example.platform.ai.api.AiGatewayPort;
 import com.example.platform.render.api.port.EffectEntitlementPort;
 import com.example.platform.render.app.cache.RenderCacheHashInvalidationNotifier;
@@ -64,7 +65,7 @@ public class RenderJobExecutionService {
     private final TimelineSpecResolver timelineSpecResolver;
     private final IncrementalRenderOrchestrationService incrementalRenderOrchestrationService;
     private final RenderJobLifecycleService lifecycle;
-    private final TimelineSnapshotService timelineSnapshotService;
+    private final TimelineSnapshotQueries timelineSnapshotService;
     private final EditorTimelineConverter editorTimelineConverter;
     private final EffectTimelineInspector effectTimelineInspector;
     private final EffectEntitlementPort effectEntitlementPort;
@@ -87,7 +88,7 @@ public class RenderJobExecutionService {
             TimelineSpecResolver timelineSpecResolver,
             IncrementalRenderOrchestrationService incrementalRenderOrchestrationService,
             RenderJobLifecycleService lifecycle,
-            TimelineSnapshotService timelineSnapshotService,
+            TimelineSnapshotQueries timelineSnapshotService,
             EditorTimelineConverter editorTimelineConverter,
             EffectTimelineInspector effectTimelineInspector,
             RenderProfileResolver renderProfileResolver,
@@ -477,7 +478,7 @@ public class RenderJobExecutionService {
         }
         Optional<String> snapshotPayload = timelineSnapshotService
                 .findOwnedById(projectId, tenantId, snapshotId)
-                .map(TimelineSnapshotService.SnapshotInfo::payloadJson);
+                .map(TimelineSnapshotView::payloadJson);
         if (snapshotPayload.isPresent()) {
             String payload = snapshotPayload.get().trim();
             if (timelineScriptParser.isTimelineJson(payload)) {

@@ -1,5 +1,6 @@
 package com.example.platform.timeline.app;
-import com.example.platform.timeline.adapter.TimelineRevisionRepository;import com.example.platform.timeline.app.InternalTimelineCandidateAdapter;import com.example.platform.timeline.app.InternalTimelineJson;import com.example.platform.timeline.app.TimelineRevisionRefMutation;import com.example.platform.timeline.app.TimelineMergeEngine;
+import com.example.platform.timeline.api.revision.TimelineSnapshotView;
+import com.example.platform.timeline.adapter.TimelineRevisionRepository;import com.example.platform.timeline.app.InternalTimelineCandidateAdapter;import com.example.platform.timeline.api.serialization.InternalTimelineJson;import com.example.platform.timeline.app.TimelineRevisionRefMutation;import com.example.platform.timeline.app.TimelineMergeEngine;
 import com.example.platform.shared.time.MediaTime;
 
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
@@ -158,11 +159,11 @@ engine = new TimelineMergeEngine(revisionRepository, snapshotService, mock(Timel
         when(revisionRepository.findOwnedById("rev-source", PROJECT, TENANT)).thenReturn(Optional.of(row("rev-source", "snap-source")));
         when(revisionRepository.findOwnedById("rev-target", PROJECT, TENANT)).thenReturn(Optional.of(row("rev-target", "snap-target")));
                 when(snapshotService.findOwnedById(PROJECT, TENANT, "snap-base"))
-                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-base", PROJECT, TENANT, base, "timeline-1.0")));
+                .thenReturn(Optional.of(new TimelineSnapshotView("snap-base", PROJECT, TENANT, base, "timeline-1.0")));
                 when(snapshotService.findOwnedById(PROJECT, TENANT, "snap-source"))
-                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-source", PROJECT, TENANT, source, "timeline-1.0")));
+                .thenReturn(Optional.of(new TimelineSnapshotView("snap-source", PROJECT, TENANT, source, "timeline-1.0")));
                 when(snapshotService.findOwnedById(PROJECT, TENANT, "snap-target"))
-                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-target", PROJECT, TENANT, target, "timeline-1.0")));
+                .thenReturn(Optional.of(new TimelineSnapshotView("snap-target", PROJECT, TENANT, target, "timeline-1.0")));
         when(revisionRepository.listOwnedByProject(PROJECT, TENANT, null, null, null, 500)).thenReturn(List.of());
         when(currentRevisionService.currentHead(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any())).thenReturn("rev-target");
     }

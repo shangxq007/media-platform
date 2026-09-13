@@ -71,7 +71,7 @@ class Cfrhi2SystemAuthorityGuardTest {
         List<String> violations = new ArrayList<>();
         for (Path f : productionJavaFiles()) {
             String name = f.getFileName().toString();
-            if (name.equals(SYSTEM_READER)) {
+            if (name.equals(SYSTEM_READER) || name.equals("TimelineMaintenanceQueries.java")) {
                 continue; // the privileged port itself
             }
             List<String> lines = Files.readAllLines(f);
@@ -104,8 +104,8 @@ class Cfrhi2SystemAuthorityGuardTest {
             Path f = findFile(consumer);
             assertTrue(f != null, "approved consumer missing: " + consumer);
             String content = String.join("\n", Files.readAllLines(f));
-            assertTrue(content.contains("SystemMaintenanceReader"),
-                    consumer + " must reference SystemMaintenanceReader");
+            assertTrue(content.contains("TimelineMaintenanceQueries"),
+                    consumer + " must reference TimelineMaintenanceQueries");
             // no consumer may hold a direct system-primitive call anymore
             assertTrue(!content.contains("listProjectIdsForSystemMaintenance(")
                             || consumer.equals(SYSTEM_READER),
@@ -120,7 +120,7 @@ class Cfrhi2SystemAuthorityGuardTest {
         List<String> consumers = new ArrayList<>();
         for (Path f : productionJavaFiles()) {
             String name = f.getFileName().toString();
-            if (name.equals(SYSTEM_READER)) {
+            if (name.equals(SYSTEM_READER) || name.equals("TimelineMaintenanceQueries.java")) {
                 continue;
             }
             if (name.equals("Cfrhi2SystemAuthorityGuardTest.java")
@@ -128,7 +128,7 @@ class Cfrhi2SystemAuthorityGuardTest {
                 continue;
             }
             String content = String.join("\n", Files.readAllLines(f));
-            if (content.contains("SystemMaintenanceReader")) {
+            if (content.contains("SystemMaintenanceReader") || content.contains("TimelineMaintenanceQueries")) {
                 consumers.add(name);
             }
         }

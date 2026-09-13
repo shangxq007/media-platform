@@ -1,6 +1,6 @@
 package com.example.platform.timeline.app;
 
-import com.example.platform.timeline.app.TimelineCanonicalRejectionException;import com.example.platform.timeline.app.TimelineDocumentCandidateMapper;
+import com.example.platform.timeline.api.composition.TimelineCanonicalRejectionException;import com.example.platform.timeline.app.TimelineDocumentCandidateMapper;
 import com.example.platform.timeline.canonical.TimelineClip;
 import com.example.platform.timeline.canonical.TimelineDocument;
 import com.example.platform.timeline.canonical.TimelineMetadata;

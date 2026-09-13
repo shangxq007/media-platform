@@ -6,7 +6,7 @@ import static org.mockito.Mockito.*;
 import com.example.platform.shared.authorization.CanonicalActor;
 import com.example.platform.shared.web.TenantContext;
 import com.example.platform.timeline.app.TimelineMergeEngine;
-import com.example.platform.timeline.app.TimelineMutationContext;
+import com.example.platform.timeline.api.revision.TimelineMutationContext;
 import com.example.platform.timeline.app.TimelineRevisionQueryService;
 import com.example.platform.timeline.app.TimelineRevisionDiffQuery;
 import com.example.platform.render.app.event.TimelineReviewEventPublisher;

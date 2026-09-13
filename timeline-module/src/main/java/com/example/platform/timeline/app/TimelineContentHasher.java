@@ -1,5 +1,6 @@
 package com.example.platform.timeline.app;
 
+import com.example.platform.timeline.api.composition.TimelineCanonicalization;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import org.springframework.stereotype.Component;
@@ -18,7 +19,7 @@ public class TimelineContentHasher {
 
     public String hashInternalTimeline(String timelineJson) {
         try {
-            TimelineCanonicalizer.CanonicalizeResult canonical = canonicalizer.canonicalize(timelineJson);
+            TimelineCanonicalization.CanonicalizeResult canonical = canonicalizer.canonicalize(timelineJson);
             return sha256Hex(canonical.timelineJson());
         } catch (Exception e) {
             throw new IllegalArgumentException("Cannot hash timeline JSON: " + e.getMessage(), e);

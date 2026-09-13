@@ -1,4 +1,7 @@
 package com.example.platform.timeline.app;
+import com.example.platform.timeline.api.revision.TimelineSnapshotView;
+import com.example.platform.timeline.api.revision.TimelineRevisionDiff;
+import com.example.platform.timeline.api.revision.TimelineRevisionQueries;
 
 import com.example.platform.timeline.adapter.TimelineRevisionRepository;
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
@@ -21,7 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
  * that does not touch the semantic digest).
  */
 @Service
-public class TimelineRevisionQueryService {
+public class TimelineRevisionQueryService implements TimelineRevisionQueries {
 
     private static final Logger log = LoggerFactory.getLogger(TimelineRevisionQueryService.class);
 
@@ -55,7 +58,7 @@ public class TimelineRevisionQueryService {
         return revisionRepository.findOwnedById(revisionId, projectId, tenantId).flatMap(row ->
                 snapshotService
                         .findOwnedById(row.projectId(), row.tenantId(), row.snapshotId())
-                        .map(TimelineSnapshotService.SnapshotInfo::payloadJson)
+                        .map(TimelineSnapshotView::payloadJson)
                         .flatMap(payload -> {
                             try {
                                 TimelineDocumentJsonSerializer.deserialize(payload);
@@ -120,7 +123,7 @@ public class TimelineRevisionQueryService {
     public Optional<RevisionDetail> getDetail(String projectId, String tenantId, String revisionId) {
         return revisionRepository.findOwnedById(revisionId, projectId, tenantId).map(row -> {
             RevisionInfo info = toInfo(row);
-            TimelineRevisionDiffService.ChangeSummary summary = parseSummary(row.changeSummaryJson());
+            TimelineRevisionDiff.ChangeSummary summary = parseSummary(row.changeSummaryJson());
             String parentSummary = null;
             if (row.parentRevisionId() != null) {
                 parentSummary = revisionRepository
@@ -132,15 +135,15 @@ public class TimelineRevisionQueryService {
         });
     }
 
-    private static TimelineRevisionDiffService.ChangeSummary parseSummary(String json) {
+    private static TimelineRevisionDiff.ChangeSummary parseSummary(String json) {
         if (json == null || json.isBlank()) {
-            return TimelineRevisionDiffService.ChangeSummary.unsupported();
+            return TimelineRevisionDiff.ChangeSummary.unsupported();
         }
         try {
             return new com.fasterxml.jackson.databind.ObjectMapper()
-                    .readValue(json, TimelineRevisionDiffService.ChangeSummary.class);
+                    .readValue(json, TimelineRevisionDiff.ChangeSummary.class);
         } catch (Exception e) {
-            return TimelineRevisionDiffService.ChangeSummary.unsupported();
+            return TimelineRevisionDiff.ChangeSummary.unsupported();
         }
     }
 
@@ -168,38 +171,15 @@ public class TimelineRevisionQueryService {
                 row.createdAt() != null ? row.createdAt().toString() : null);
     }
 
-    public record RevisionInfo(
-            String id,
-            String projectId,
-            String tenantId,
-            String parentRevisionId,
-            int revisionNumber,
-            String snapshotId,
-            int internalRevision,
-            String contentHash,
-            String schemaVersion,
-            String source,
-            String authorUserId,
-            String editSessionId,
-            String message,
-            List<String> labels,
-            String changeSummaryJson,
-            String patchOpsJson,
-            boolean isMerge,
-            String mergeParentRevisionIds,
-            String mergeBaseRevisionId,
-            String createdAt) {}
 
-    public record RevisionFacets(List<String> sources, List<AuthorFacet> authors) {}
 
-    public record AuthorFacet(String authorUserId, int revisionCount) {}
 
-    public record EditSessionInfo(String editSessionId, String lastAt, int revisionCount) {}
 
-    public record RevisionDetail(
-            RevisionInfo revision,
-            TimelineRevisionDiffService.ChangeSummary changeSummary,
-            String parentChangeSummaryJson) {}
 
-    public record RevisionSnapshotPayload(String snapshotId, String canonicalTimelineJson, String schemaVersion) {}
+
+
+
+
+
+
 }

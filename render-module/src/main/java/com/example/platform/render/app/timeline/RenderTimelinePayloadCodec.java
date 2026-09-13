@@ -1,6 +1,6 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.timeline.app.TimelinePayloadCodec;
+import com.example.platform.timeline.api.composition.TimelinePayloadCodec;
 import org.springframework.stereotype.Component;
 
 /**

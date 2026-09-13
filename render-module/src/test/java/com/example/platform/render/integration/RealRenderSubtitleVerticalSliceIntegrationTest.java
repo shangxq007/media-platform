@@ -106,7 +106,7 @@ class RealRenderSubtitleVerticalSliceIntegrationTest extends PostgresTestContain
         insertProduct(projectId, "ten-vslice");
         TimelineDocument invalid = createDocumentWithDuplicateTrackIds();
 
-        assertThrows(com.example.platform.timeline.app.TimelineCanonicalRejectionException.class,
+        assertThrows(com.example.platform.timeline.api.composition.TimelineCanonicalRejectionException.class,
                 () -> com.example.platform.render.testsupport.TimelineMutationTestSupport.save(saveService,
                         "ten-vslice", projectId, null, invalid,
                         RenderTestSchemaFixture.SERVER_ACTOR));

@@ -1,12 +1,13 @@
 package com.example.platform.web.render;
 
+import com.example.platform.timeline.api.review.ReviewRecords;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-import com.example.platform.render.app.timeline.TimelineCommentService;
-import com.example.platform.render.app.timeline.TimelineReviewRepository;
-import com.example.platform.render.app.timeline.TimelineReviewService;
-import com.example.platform.render.app.timeline.ReviewDecisionService;
+import com.example.platform.timeline.api.review.TimelineComments;
+import com.example.platform.timeline.api.review.ReviewQueries;
+import com.example.platform.timeline.api.review.TimelineReviews;
+import com.example.platform.timeline.api.review.ReviewDecisions;
 import com.example.platform.render.app.event.TimelineReviewEventPublisher;
 import com.example.platform.timeline.diff.merge.EntityKind;
 import com.example.platform.timeline.diff.merge.EntityRef;
@@ -22,18 +23,18 @@ import org.springframework.http.ResponseEntity;
 
 class TimelineReviewControllerTest {
 
-    private TimelineReviewService reviewService;
-    private TimelineCommentService commentService;
-    private ReviewDecisionService decisionService;
+    private TimelineReviews reviewService;
+    private TimelineComments commentService;
+    private ReviewDecisions decisionService;
     private TimelineReviewEventPublisher eventPublisher;
     private TimelineReviewController controller;
     private TimelineProjectAuthorizationService projectAuthorization;
 
     @BeforeEach
     void setUp() {
-        reviewService = mock(TimelineReviewService.class);
-        commentService = mock(TimelineCommentService.class);
-        decisionService = mock(ReviewDecisionService.class);
+        reviewService = mock(TimelineReviews.class);
+        commentService = mock(TimelineComments.class);
+        decisionService = mock(ReviewDecisions.class);
         eventPublisher = mock(TimelineReviewEventPublisher.class);
         projectAuthorization = mock(TimelineProjectAuthorizationService.class);
         var actor = com.example.platform.shared.authorization.CanonicalActor.user(
@@ -42,11 +43,11 @@ class TimelineReviewControllerTest {
         when(projectAuthorization.requireRead(any(), any())).thenReturn(actor);
         OffsetDateTime now = OffsetDateTime.now();
         when(reviewService.getReview(anyString(), nullable(String.class), anyString())).thenReturn(Optional.of(
-                new TimelineReviewRepository.ReviewRow(
+                new ReviewRecords.ReviewRow(
                         "rvw_1", "proj_1", "tenant_1", "trev_001", "user_1",
                         "Review Title", "Review Description", "OPEN", now, now)));
         controller = new TimelineReviewController(reviewService, commentService,
-                decisionService, eventPublisher, projectAuthorization);
+                decisionService, projectAuthorization);
     }
 
     @Test
@@ -58,7 +59,7 @@ class TimelineReviewControllerTest {
 
         when(reviewService.createReview(any(), any(), any(), any(), any())).thenReturn(review);
         OffsetDateTime now = OffsetDateTime.now();
-        var row = new TimelineReviewRepository.ReviewRow(
+        var row = new ReviewRecords.ReviewRow(
                 "rvw_001", "proj_1", "tenant_1", "trev_001", "user_1",
                 "Review Title", "Review Description", "OPEN", now, now);
         when(reviewService.getReview("proj_1", null, "rvw_001")).thenReturn(Optional.of(row));
@@ -82,7 +83,7 @@ class TimelineReviewControllerTest {
     @Test
     void shouldCheckMergeGuard() {
         when(reviewService.checkMergeGuard("rvw_1"))
-                .thenReturn(new TimelineReviewService.MergeGuardResult(false, "Review is OPEN"));
+                .thenReturn(new TimelineReviews.MergeGuardResult(false, "Review is OPEN"));
 
         ResponseEntity<Map<String, Object>> response =
                 controller.checkMergeGuard("proj_1", "rvw_1");

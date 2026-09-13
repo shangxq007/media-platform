@@ -1,5 +1,6 @@
 package com.example.platform.timeline.app;
 
+import com.example.platform.timeline.api.composition.TimelineSourceValidation;
 import com.example.platform.timeline.app.TimelineSourceReferenceValidator;
 import com.example.platform.media.app.MediaAssetRepository;
 import com.example.platform.media.app.MediaStreamRepository;
@@ -8,7 +9,7 @@ import com.example.platform.media.domain.media.MediaAsset;
 import com.example.platform.media.domain.stream.MediaStream;
 import com.example.platform.media.domain.stream.MediaStreamId;
 import com.example.platform.media.domain.stream.StreamKind;
-import com.example.platform.timeline.app.TimelineSourceReferenceValidator.ValidationResult;
+import com.example.platform.timeline.api.composition.TimelineSourceValidation.ValidationResult;
 import com.example.platform.timeline.canonical.TrackType;
 import com.example.platform.timeline.semantics.clip.MediaClip.TimeRange;
 import com.example.platform.timeline.semantics.clip.MediaStreamSourceBinding;

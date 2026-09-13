@@ -1,5 +1,6 @@
 package com.example.platform.render.app.timeline;
 
+import com.example.platform.timeline.api.revision.TimelineSnapshotView;
 import com.example.platform.timeline.adapter.TimelineRevisionRepository;import com.example.platform.timeline.app.TimelineRevisionQueryService;
 import com.example.platform.timeline.app.TimelineRevisionDiffQuery;
 import com.example.platform.timeline.app.TimelineImportService;
@@ -443,7 +444,7 @@ class TimelineRevisionRenderServiceTest {
     }
 
     static class InMemoryTimelineSnapshotService extends TimelineSnapshotService {
-        private final Map<String, SnapshotInfo> store = new ConcurrentHashMap<>();
+        private final Map<String, TimelineSnapshotView> store = new ConcurrentHashMap<>();
 
         InMemoryTimelineSnapshotService() {
             super(null);
@@ -453,16 +454,16 @@ class TimelineRevisionRenderServiceTest {
         public String saveTx(org.jooq.DSLContext ignored, String projectId, String tenantId,
                              String payloadJson, String schemaVersion) {
             String snapshotId = "snap-" + UUID.randomUUID().toString().substring(0, 8);
-            store.put(snapshotId, new SnapshotInfo(snapshotId, projectId, tenantId, payloadJson, schemaVersion));
+            store.put(snapshotId, new TimelineSnapshotView(snapshotId, projectId, tenantId, payloadJson, schemaVersion));
             return snapshotId;
         }
 
         void saveWithId(String snapshotId, String projectId, String tenantId, String payloadJson) {
-            store.put(snapshotId, new SnapshotInfo(snapshotId, projectId, tenantId, payloadJson, "1.0.0"));
+            store.put(snapshotId, new TimelineSnapshotView(snapshotId, projectId, tenantId, payloadJson, "1.0.0"));
         }
 
         @Override
-        public Optional<SnapshotInfo> findOwnedById(String projectId, String tenantId, String snapshotId) {
+        public Optional<TimelineSnapshotView> findOwnedById(String projectId, String tenantId, String snapshotId) {
             return Optional.ofNullable(store.get(snapshotId))
                     .filter(s -> s.projectId().equals(projectId) && s.tenantId().equals(tenantId));
         }

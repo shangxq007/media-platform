@@ -1,6 +1,6 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.timeline.app.TimelineRevisionRefMutation;import com.example.platform.timeline.app.TimelineCanonicalRejectionException;import com.example.platform.timeline.app.TimelineRevisionSaveService;
+import com.example.platform.timeline.app.TimelineRevisionRefMutation;import com.example.platform.timeline.api.composition.TimelineCanonicalRejectionException;import com.example.platform.timeline.app.TimelineRevisionSaveService;
 import com.example.platform.shared.time.MediaTime;
 import com.example.platform.timeline.app.DefaultTimelineRevisionPersistence;
 import com.example.platform.timeline.app.TimelineRevisionRefHeadUpdateAdapter;

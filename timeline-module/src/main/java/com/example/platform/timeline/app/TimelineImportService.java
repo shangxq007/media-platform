@@ -1,4 +1,8 @@
 package com.example.platform.timeline.app;
+import com.example.platform.timeline.api.composition.TimelineImport;
+import com.example.platform.timeline.api.serialization.InternalTimelineJson;
+import com.example.platform.timeline.api.composition.TimelineImportRequest;
+import com.example.platform.timeline.api.composition.TimelineCanonicalRejectionException;
 
 import com.example.platform.shared.time.FrameRate;
 import com.example.platform.timeline.canonicalmodel.TimelineCandidate;
@@ -32,7 +36,7 @@ import org.springframework.stereotype.Service;
  * access, no randomness. Deterministic output for identical input.</p>
  */
 @Service
-public class TimelineImportService {
+public class TimelineImportService implements TimelineImport {
 
     /** Build the canonical Internal Timeline Schema 1.0 JSON for the given import request. */
     public String importTimeline(TimelineImportRequest request) {

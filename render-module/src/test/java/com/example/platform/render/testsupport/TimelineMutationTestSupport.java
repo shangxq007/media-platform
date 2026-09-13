@@ -1,10 +1,11 @@
 package com.example.platform.render.testsupport;
 
+import com.example.platform.timeline.api.revision.TimelineRevisionCommands;
 import com.example.platform.shared.authorization.AuthorizationDecision;
 import com.example.platform.identity.api.authorization.AuthorizationDecisionPort;
 import com.example.platform.shared.authorization.CanonicalActor;
 import com.example.platform.shared.web.TenantContext;
-import com.example.platform.timeline.app.TimelineMutationContext;
+import com.example.platform.timeline.api.revision.TimelineMutationContext;
 import com.example.platform.timeline.app.TimelineRevisionSaveService;
 import com.example.platform.timeline.canonical.TimelineDocument;
 import com.example.platform.timeline.revisioncommand.RevisionRef;
@@ -72,18 +73,18 @@ public final class TimelineMutationTestSupport {
                 user(tenantId, projectId, actorId), historicalRevisionId, expectedHead);
     }
 
-    public static TimelineRevisionSaveService.RevisionWriteResult saveForCommand(
+    public static TimelineRevisionCommands.RevisionWriteResult saveForCommand(
             TimelineRevisionSaveService service, RevisionRef ref, String expectedHead,
             TimelineDocument document, String actorId,
-            TimelineRevisionSaveService.RevisionWriteCommand command) {
+            TimelineRevisionCommands.RevisionWriteCommand command) {
         return service.saveRevisionForCommand(
                 user(ref.tenantId(), ref.projectId(), actorId),
                 ref, expectedHead, document, command);
     }
 
-    public static TimelineRevisionSaveService.RevisionWriteResult recordNoOp(
+    public static TimelineRevisionCommands.RevisionWriteResult recordNoOp(
             TimelineRevisionSaveService service, RevisionRef ref, String expectedHead,
-            String contentHash, TimelineRevisionSaveService.RevisionWriteCommand command) {
+            String contentHash, TimelineRevisionCommands.RevisionWriteCommand command) {
         return service.recordNoOpCommand(
                 user(ref.tenantId(), ref.projectId(), "editor"),
                 ref, expectedHead, contentHash, command);

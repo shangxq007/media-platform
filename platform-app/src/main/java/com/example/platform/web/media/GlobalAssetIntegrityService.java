@@ -14,13 +14,13 @@ import org.springframework.stereotype.Service;
 @Service
 public class GlobalAssetIntegrityService {
 
-    private final com.example.platform.timeline.app.SystemMaintenanceReader systemMaintenanceReader;
+    private final com.example.platform.timeline.api.revision.TimelineMaintenanceQueries systemMaintenanceReader;
     private final TimelineAssetIntegrityScanner timelineScanner;
     private final AssetIntegrityMetrics metrics;
     private final ProblematicDataDetectionService problematicDataDetectionService;
 
     public GlobalAssetIntegrityService(
-            com.example.platform.timeline.app.SystemMaintenanceReader systemMaintenanceReader,
+            com.example.platform.timeline.api.revision.TimelineMaintenanceQueries systemMaintenanceReader,
             TimelineAssetIntegrityScanner timelineScanner,
             AssetIntegrityMetrics metrics,
             ProblematicDataDetectionService problematicDataDetectionService) {

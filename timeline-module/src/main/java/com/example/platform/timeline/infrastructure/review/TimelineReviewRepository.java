@@ -1,4 +1,5 @@
-package com.example.platform.render.app.timeline;
+package com.example.platform.timeline.infrastructure.review;
+import com.example.platform.timeline.api.review.ReviewRecords.*;
 
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -36,16 +37,24 @@ public class TimelineReviewRepository {
                 .execute();
     }
 
+    public String targetType(String reviewId) {
+        return dsl.select(TIMELINE_REVIEW.TARGET_TYPE).from(TIMELINE_REVIEW).where(TIMELINE_REVIEW.ID.eq(reviewId))
+            .and(TIMELINE_REVIEW.TENANT_ID.eq(com.example.platform.shared.web.TenantGuard.requireTenantId())).fetchOne(TIMELINE_REVIEW.TARGET_TYPE);
+    }
+    public void lock(String reviewId) {
+        dsl.select(TIMELINE_REVIEW.ID).from(TIMELINE_REVIEW).where(TIMELINE_REVIEW.ID.eq(reviewId))
+            .and(TIMELINE_REVIEW.TENANT_ID.eq(com.example.platform.shared.web.TenantGuard.requireTenantId())).forUpdate().fetchOne();
+    }
     public void setTargetType(String reviewId, String targetType) {
         dsl.update(TIMELINE_REVIEW)
                 .set(TIMELINE_REVIEW.TARGET_TYPE, targetType)
-                .where(TIMELINE_REVIEW.ID.eq(reviewId))
+                .where(TIMELINE_REVIEW.ID.eq(reviewId)).and(TIMELINE_REVIEW.TENANT_ID.eq(com.example.platform.shared.web.TenantGuard.requireTenantId()))
                 .execute();
     }
 
     public Optional<ReviewRow> findByTargetId(String targetId) {
         Record row = dsl.select().from(TIMELINE_REVIEW)
-                .where(TIMELINE_REVIEW.REVISION_ID.eq(targetId))
+                .where(TIMELINE_REVIEW.REVISION_ID.eq(targetId)).and(TIMELINE_REVIEW.TENANT_ID.eq(com.example.platform.shared.web.TenantGuard.requireTenantId()))
                 .orderBy(TIMELINE_REVIEW.CREATED_AT.desc())
                 .limit(1)
                 .fetchOne();
@@ -56,13 +65,13 @@ public class TimelineReviewRepository {
         dsl.update(TIMELINE_REVIEW)
                 .set(TIMELINE_REVIEW.STATUS, status)
                 .set(TIMELINE_REVIEW.UPDATED_AT, LocalDateTime.now())
-                .where(TIMELINE_REVIEW.ID.eq(reviewId))
+                .where(TIMELINE_REVIEW.ID.eq(reviewId)).and(TIMELINE_REVIEW.TENANT_ID.eq(com.example.platform.shared.web.TenantGuard.requireTenantId()))
                 .execute();
     }
 
     public Optional<ReviewRow> findById(String reviewId) {
         Record row = dsl.select().from(TIMELINE_REVIEW)
-                .where(TIMELINE_REVIEW.ID.eq(reviewId))
+                .where(TIMELINE_REVIEW.ID.eq(reviewId)).and(TIMELINE_REVIEW.TENANT_ID.eq(com.example.platform.shared.web.TenantGuard.requireTenantId()))
                 .fetchOne();
         return row == null ? Optional.empty() : Optional.of(mapReview(row));
     }
@@ -70,14 +79,14 @@ public class TimelineReviewRepository {
     public Optional<ReviewRow> findOwnedById(
             String reviewId, String projectId, String tenantId) {
         Record row = dsl.select().from(TIMELINE_REVIEW)
-                .where(TIMELINE_REVIEW.ID.eq(reviewId))
+                .where(TIMELINE_REVIEW.ID.eq(reviewId)).and(TIMELINE_REVIEW.TENANT_ID.eq(com.example.platform.shared.web.TenantGuard.requireTenantId()))
                 .and(TIMELINE_REVIEW.PROJECT_ID.eq(projectId))
                 .and(TIMELINE_REVIEW.TENANT_ID.eq(tenantId))
                 .fetchOne();
         return row == null ? Optional.empty() : Optional.of(mapReview(row));
     }
 
-    public List<ReviewRow> listByProject(String projectId, String tenantId, int limit) {
+    public List<ReviewRow> listOwnedByProject(String projectId, String tenantId, int limit) {
         return dsl.select().from(TIMELINE_REVIEW)
                 .where(TIMELINE_REVIEW.PROJECT_ID.eq(projectId))
                 .and(TIMELINE_REVIEW.TENANT_ID.eq(tenantId))
@@ -189,17 +198,4 @@ public class TimelineReviewRepository {
                 r.get(REVIEW_DECISION.CREATED_AT).atOffset(java.time.ZoneOffset.UTC));
     }
 
-    public record ReviewRow(String id, String projectId, String tenantId, String revisionId,
-                             String authorUserId, String title, String description,
-                             String status, OffsetDateTime createdAt, OffsetDateTime updatedAt) {}
-
-    public record CommentRow(String id, String reviewId, String threadId, String revisionId,
-                               String entityRef, String authorUserId, String content,
-                               OffsetDateTime createdAt) {}
-
-    public record ThreadRow(String id, String reviewId, String entityRef, String diffId,
-                              String status, OffsetDateTime createdAt) {}
-
-    public record DecisionRow(String id, String reviewId, String reviewerUserId,
-                                String decision, OffsetDateTime createdAt) {}
 }

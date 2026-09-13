@@ -1,7 +1,7 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.timeline.app.InternalTimelineJson;
-import com.example.platform.timeline.app.TimelinePatchService;
+import com.example.platform.timeline.api.composition.TimelinePatches;
+import com.example.platform.timeline.api.serialization.InternalTimelineJson;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -16,9 +16,9 @@ import org.springframework.stereotype.Service;
 @Service
 public class AiTimelineProposalService {
 
-    private final TimelinePatchService timelinePatchService;
+    private final TimelinePatches timelinePatchService;
 
-    public AiTimelineProposalService(TimelinePatchService timelinePatchService) {
+    public AiTimelineProposalService(TimelinePatches timelinePatchService) {
         this.timelinePatchService = timelinePatchService;
     }
 
@@ -29,11 +29,11 @@ public class AiTimelineProposalService {
     }
 
     public String appendPendingPatchProposal(
-            String timelineJson, String summary, List<TimelinePatchService.PatchOperation> operations) {
+            String timelineJson, String summary, List<TimelinePatches.PatchOperation> operations) {
         String id = "prop-" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
         ObjectNode patch = InternalTimelineJson.mapper().createObjectNode();
         ArrayNode ops = InternalTimelineJson.mapper().createArrayNode();
-        for (TimelinePatchService.PatchOperation op : operations) {
+        for (TimelinePatches.PatchOperation op : operations) {
             ObjectNode item = InternalTimelineJson.mapper().createObjectNode();
             item.put("op", op.op());
             item.put("path", op.path());
@@ -59,15 +59,15 @@ public class AiTimelineProposalService {
         String applied = timelineJson;
         JsonNode patch = proposal.get("patch");
         if (patch != null && patch.has("operations")) {
-            List<TimelinePatchService.PatchOperation> ops = parseOperations(patch.get("operations"));
-            TimelinePatchService.PatchResult result = timelinePatchService.applyPatch(timelineJson, ops);
+            List<TimelinePatches.PatchOperation> ops = parseOperations(patch.get("operations"));
+            TimelinePatches.PatchResult result = timelinePatchService.applyPatch(timelineJson, ops);
             if (!result.success()) {
                 throw new IllegalStateException("Failed to apply proposal patch: " + result.errors());
             }
             applied = result.timelineJson();
         }
         String updated = InternalTimelineAiProposals.updateProposalStatus(applied, proposalId, "ACCEPTED");
-        List<TimelinePatchService.PatchOperation> appliedOps = List.of();
+        List<TimelinePatches.PatchOperation> appliedOps = List.of();
         if (patch != null && patch.has("operations")) {
             appliedOps = parseOperations(patch.get("operations"));
         }
@@ -81,8 +81,8 @@ public class AiTimelineProposalService {
         return new ResolveResult(updated, proposalId, "REJECTED", false, List.of());
     }
 
-    private static List<TimelinePatchService.PatchOperation> parseOperations(JsonNode array) {
-        List<TimelinePatchService.PatchOperation> ops = new ArrayList<>();
+    private static List<TimelinePatches.PatchOperation> parseOperations(JsonNode array) {
+        List<TimelinePatches.PatchOperation> ops = new ArrayList<>();
         if (array == null || !array.isArray()) {
             return ops;
         }
@@ -91,7 +91,7 @@ public class AiTimelineProposalService {
             String path = item.path("path").asText("");
             JsonNode value = item.get("value");
             if (!op.isBlank() && !path.isBlank()) {
-                ops.add(new TimelinePatchService.PatchOperation(op, path, value));
+                ops.add(new TimelinePatches.PatchOperation(op, path, value));
             }
         }
         return ops;
@@ -120,5 +120,5 @@ public class AiTimelineProposalService {
             String proposalId,
             String status,
             boolean applied,
-            List<TimelinePatchService.PatchOperation> patchOperations) {}
+            List<TimelinePatches.PatchOperation> patchOperations) {}
 }

@@ -46,7 +46,7 @@ H8_AUTHORIZED_CHANGED_PATHS = frozenset({
 })
 
 REQUIRED_LAW_COUNT = 54
-REQUIRED_GOVERNED_RUNTIME_SOURCE_COUNT = 91
+REQUIRED_GOVERNED_RUNTIME_SOURCE_COUNT = 96
 
 # Exact SHA-256 attestation of the committed e570cf93 H8/H7 runtime authority
 # universe. These repository-relative paths cover the exposed Operation intent
@@ -56,6 +56,8 @@ REQUIRED_GOVERNED_RUNTIME_SOURCE_COUNT = 91
 # EP27A: seven reviewed entries follow the published Identity port, associated
 # imports/Javadoc, and domain-local snapshot UUID construction. The census and
 # every semantic/negative-control law remain enforced; no blanket hash exemption.
+# EP03: published-port extraction keeps the existing H7 implementation and extends
+# exact source protection to the moved command/result contracts. Zero laws remain unchanged.
 GOVERNED_RUNTIME_SOURCE_SHA256 = {
     "artifact-module/src/main/java/com/example/platform/artifact/app/ArtifactPinService.java": "34f5b57c43c1c8710adaf01c1166d491ec5b7e31172cda555cf4fde438e1d348",
     "media-module/src/main/java/com/example/platform/media/domain/identity/MediaAssetId.java": "4512f45c34dc5d502c424a585a9330eef99680ebe31d6f9ba23df09316679e0e",
@@ -89,9 +91,9 @@ GOVERNED_RUNTIME_SOURCE_SHA256 = {
     "render-module/src/main/java/com/example/platform/render/app/operation/AddMediaClipPreview.java": "64d37917bdc866d6a842d981e60e8a013f0d1cd77c3e678a6eb8b22ce062474c",
     "render-module/src/main/java/com/example/platform/render/app/operation/AddMediaClipResult.java": "58a0ed832754c16151e45382d853dc16f86767dbd92b998c2e18e7d6ef9df7de",
     "render-module/src/main/java/com/example/platform/render/app/operation/CanonicalOperationInvocationService.java": "3ab1c0d6f44151d3017a834c0461b17677ae7945c4ccef583d2551d8a4657507",
-    "render-module/src/main/java/com/example/platform/render/app/operation/TimelineMediaClipOperationService.java": "8d18ca17ab27fb98a7aca99d7666078b3d53217d782c9fe357927eff834e36c1",
+    "render-module/src/main/java/com/example/platform/render/app/operation/TimelineMediaClipOperationService.java": "d2c0dbf85c37c0691cbf47bf8c160dbd0d356a05c0c1d72203d0df361a92a297",
     "render-module/src/main/java/com/example/platform/render/app/operation/TimelineOperationException.java": "5d2a381fab95085537c6e50db781f96a540ba706ecbea9831a8a545438fa7195",
-    "render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java": "3db037395ff70b2f8c27abb3101bc4bcd00ce9505f257a0954b608e446cbed5e",
+    "render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java": "94d6f43c32f2c158d810fb4895a87e5de93b944270c84f9f35dbb98862333535",
     "shared-kernel/src/main/java/com/example/platform/shared/authorization/AuthorizableResourceRef.java": "0d5480a73113dad46a460df734c8f78e2af85f0a29a105dc6bde729dc94a4dfd",
     "shared-kernel/src/main/java/com/example/platform/shared/authorization/AuthorizationAction.java": "d81d141a81d6ee48df1c8a8d07bcbfd6fb0091f15a35d7ffd74e9540fb1c2b06",
     "shared-kernel/src/main/java/com/example/platform/shared/authorization/AuthorizationContext.java": "e83057cb025fa05a001732e1dd0ae83ac81478e1f1807dafae03529ddb41b6f0",
@@ -104,23 +106,23 @@ GOVERNED_RUNTIME_SOURCE_SHA256 = {
     "shared-kernel/src/main/java/com/example/platform/shared/digest/ContentDigest.java": "9b909f58acf190e50ff2ac1c47a9c305e8780173f1d8db8e5e96d34fc0fd9d14",
     "shared-kernel/src/main/java/com/example/platform/shared/identity/ArtifactId.java": "84ba3f0930448050e7bb462999f0c6c0c2733d756a323c887c2b9edbfa6d5f97",
     "shared-kernel/src/main/java/com/example/platform/shared/time/MediaTime.java": "623b6c99ad371987fb9fceb427e7c8290e0cb4eac6f36dc10a2a70c8a1d33942",
-    "timeline-module/src/main/java/com/example/platform/timeline/adapter/TimelineSnapshotService.java": "ded05d3823612d198be1a705dffdc9b891162c1deff1bddbae7e3629c843e413",
+    "timeline-module/src/main/java/com/example/platform/timeline/adapter/TimelineSnapshotService.java": "bec87cd292327c469206784aed082cf178b2cb11a6115094b3d65167c0b5667d",
     "timeline-module/src/main/java/com/example/platform/timeline/app/HeadUpdatePort.java": "97a4ef46cb8c7aaf87d421ee40f1bf638d53573f40e2ea3a7e1873c49641f911",
-    "timeline-module/src/main/java/com/example/platform/timeline/app/HistoricalRevisionRestoreVerifier.java": "a808b4804be60cec2c23f5ddd8a92589c124c05f126960530265b9bc0c6270a5",
-    "timeline-module/src/main/java/com/example/platform/timeline/app/InternalTimelineValidationService.java": "2a99d221b7b43b4aff00ad782874e83479f8743e17c1c71929e36e6d62521156",
+    "timeline-module/src/main/java/com/example/platform/timeline/app/HistoricalRevisionRestoreVerifier.java": "6d105f45b096289c64a42fb15b3a241d94ca8849085038ddae22613ac404f833",
+    "timeline-module/src/main/java/com/example/platform/timeline/app/InternalTimelineValidationService.java": "924077d801f53f43a86ec62f672af982351ca6b3cef9f4520463994c69239159",
     "timeline-module/src/main/java/com/example/platform/timeline/app/ProjectRevisionNumberAllocator.java": "8e46f9f42522f34c79b4b7c32a19815aa53d1971a2c98e322c82717a02179de2",
-    "timeline-module/src/main/java/com/example/platform/timeline/app/TimelineArtifactPinExtractor.java": "497795ff8b1c0fb10c382385a08ee17c25f4c7ab17f6fbafda4a9d27058d93bc",
+    "timeline-module/src/main/java/com/example/platform/timeline/app/TimelineArtifactPinExtractor.java": "c9145480210ab02f3c1c142f662819239db5bed87dd4e61bd7c11e94286295bf",
     "timeline-module/src/main/java/com/example/platform/timeline/app/TimelineArtifactPinValidator.java": "e250c3bd8e2476f8d8b5794c386d4dde6431d613081e6f69df6fe83863668059",
-    "timeline-module/src/main/java/com/example/platform/timeline/app/TimelineCanonicalRejectionException.java": "5107132400d434c285069426eefe9bf684cef550c534dbf988a7c2377da51e8d",
-    "timeline-module/src/main/java/com/example/platform/timeline/app/TimelineDocumentCandidateMapper.java": "0458692bca9e8d0deac651f54efa9f110b30014ce0a5c22a51d71f3ebfbe1a91",
+    "timeline-module/src/main/java/com/example/platform/timeline/api/composition/TimelineCanonicalRejectionException.java": "a7b274409c017c0c0aaeda47f3630886e5ab6e2db0efc0210e23aaaacafc5c2c",
+    "timeline-module/src/main/java/com/example/platform/timeline/app/TimelineDocumentCandidateMapper.java": "a009728f8f71087cb6f2e8a6a44f991ccba8d45619d292cd3ea167750764773a",
     "timeline-module/src/main/java/com/example/platform/timeline/app/TimelineDocumentJsonSerializer.java": "85044834384aa18dd155ed0da7f7bab3d618690c8b4dfbc08e86697730bb963f",
-    "timeline-module/src/main/java/com/example/platform/timeline/app/TimelineMutationContext.java": "12925ce84c12420dba3df8dbc30849cc7cd082f080e2751c1c4aee9864e67c52",
-    "timeline-module/src/main/java/com/example/platform/timeline/app/TimelineRevisionCommandConflictException.java": "6f598d9e4424ac140117881d90902588ef6f4b874c9be04de9ce243b7a2132f1",
+    "timeline-module/src/main/java/com/example/platform/timeline/api/revision/TimelineMutationContext.java": "857dfaeb1cabe05700fddd04007a7d60b3b0c05dec3112de7ed13bf2dc60b4f2",
+    "timeline-module/src/main/java/com/example/platform/timeline/api/revision/TimelineRevisionCommandConflictException.java": "154e50f8c772ae3fdb11851035b4d520710819e8b12d92974302c127ddb90ae5",
     "timeline-module/src/main/java/com/example/platform/timeline/app/TimelineRevisionPersistencePort.java": "75687b44fa1bcc7881b75077dd376adafe481dcddd2d5caef163a9e25bae87d7",
     "timeline-module/src/main/java/com/example/platform/timeline/app/TimelineRevisionRefHeadUpdateAdapter.java": "6aaac36d7e5dbc73100d04c1ab6c6b8adceeb9c1c801cedcd1f440f6db54ea9b",
     "timeline-module/src/main/java/com/example/platform/timeline/app/TimelineRevisionRefMutation.java": "9cde6e2dc5d8f90e6903fd5a755c6a55406659cd85ab58ea08f61ee78d00389c",
-    "timeline-module/src/main/java/com/example/platform/timeline/app/TimelineRevisionSaveService.java": "a55b0c3d60fb76ee47c28b24b7ab5384e9793f0535f15211381b876be14d9c6b",
-    "timeline-module/src/main/java/com/example/platform/timeline/app/TimelineSourceReferenceValidator.java": "0f322c14fb89c3a577b66c432e9f4785db09882024e934ad1584ea214b112185",
+    "timeline-module/src/main/java/com/example/platform/timeline/app/TimelineRevisionSaveService.java": "f0f0f00c5c96bef69a1126c26818fee11f591c2fd9682f8c9082d7e210f8541c",
+    "timeline-module/src/main/java/com/example/platform/timeline/app/TimelineSourceReferenceValidator.java": "72efb01abc6cc948c6408f4836246844df9eee4df8c1950a252ef4629aed7092",
     "timeline-module/src/main/java/com/example/platform/timeline/canonical/TimelineClip.java": "c3284017dbdf634144962e0e5df52ff503c9309fb65e8ca293242e0b4ac22d6c",
     "timeline-module/src/main/java/com/example/platform/timeline/canonical/TimelineClipId.java": "fbbe75799ec35aedd0fa7c98024185bb7b49a76dee73ee1b16f6711b90a7dd1a",
     "timeline-module/src/main/java/com/example/platform/timeline/canonical/TimelineContentDigester.java": "7410cacc54ef86b99f1ff3d2691f2ac4a1eb593f64e5f3ebbfc1864462eb4324",
@@ -148,6 +150,11 @@ GOVERNED_RUNTIME_SOURCE_SHA256 = {
     "timeline-module/src/main/java/com/example/platform/timeline/version/TimelineRevisionSemanticContextStore.java": "704b4a78ddde04bb155d8f6a187dd23eb3d0221603c1197700e23881ca7e38db",
     "typed-schema-module/src/main/java/com/example/platform/typedschema/jooq/generated/tables/TimelineRevision.java": "1dca8683c537e78af0b9853ec9aa698fdbcfecc47399cbd62195a0a960508c83",
     "typed-schema-module/src/main/java/com/example/platform/typedschema/jooq/generated/tables/TimelineRevisionParent.java": "e013952a0f9ad7b702fdadfc4124b99d109a9e61f847700fef4ab2704bd2362c",
+    "timeline-module/src/main/java/com/example/platform/timeline/api/revision/TimelineRevisionCommands.java": "4d89cedebddc83a780ac70b33b4ddbdd4cc06188ec63ee7658049cf40c3bc5ec",
+    "timeline-module/src/main/java/com/example/platform/timeline/api/composition/TimelineValidation.java": "280d6b9d5727ada156ec764b1f9239e292375f3d16bf075e37d39f3fa9e138ad",
+    "timeline-module/src/main/java/com/example/platform/timeline/api/composition/TimelineSourceValidation.java": "a860efca016ccafd44b3e67c659311349d5c4717ad9de8a39dac7bceba04aab0",
+    "timeline-module/src/main/java/com/example/platform/timeline/api/revision/TimelineSnapshotView.java": "befa0d4fb1ff0d98ac64bfa1fa65d9de73f11be4d41784fb420a26670b0289f7",
+    "timeline-module/src/main/java/com/example/platform/timeline/api/revision/TimelineSnapshotQueries.java": "800a0e3a92d9b5d251616e26cae35bbb44683fda6e663164c1e618872dd4c953"
 }
 
 LAW_ORDER = (
@@ -260,6 +267,7 @@ CLASSIFIED_RUNTIME_FQ_TYPES = {
     "com.example.platform.render.app.operation.TimelineOperationException": "internal-delegated-failure",
     "com.example.platform.render.app.plan.OperationPlanApplyService": "lower-apply-boundary",
     "com.example.platform.timeline.app.TimelineRevisionSaveService": "canonical-timeline-writer",
+    "com.example.platform.timeline.api.revision.TimelineRevisionCommands": "public-contract",
     "com.example.platform.timeline.app.HeadUpdatePort": "canonical-head-port",
     "com.example.platform.timeline.app.TimelineRevisionRefMutation": "canonical-head-authority",
     "com.example.platform.timeline.app.TimelineRevisionRefHeadUpdateAdapter": "canonical-head-adapter",
@@ -282,6 +290,9 @@ CLASSIFIED_OPERATION_MECHANICS_FQ_TYPES = {
 # coordinator, and lower apply boundary. A newly called production helper has
 # to be classified here deliberately; otherwise UNCLASSIFIED fails closed.
 KNOWN_RUNTIME_DIRECT_DEPENDENCY_FQ_TYPES = {
+    "com.example.platform.timeline.api.revision.TimelineRevisionCommands",
+    "com.example.platform.timeline.api.composition.TimelineValidation",
+    "com.example.platform.timeline.api.composition.TimelineSourceValidation",
     "com.example.platform.media.domain.identity.MediaAssetId",
     "com.example.platform.media.domain.stream.MediaStreamId",
     "com.example.platform.operation.invocation.OperationInvocationContext",
@@ -327,9 +338,9 @@ KNOWN_RUNTIME_DIRECT_DEPENDENCY_FQ_TYPES = {
     "com.example.platform.shared.time.MediaTime",
     "com.example.platform.timeline.app.HeadUpdatePort",
     "com.example.platform.timeline.app.InternalTimelineValidationService",
-    "com.example.platform.timeline.app.TimelineCanonicalRejectionException",
-    "com.example.platform.timeline.app.TimelineMutationContext",
-    "com.example.platform.timeline.app.TimelineRevisionCommandConflictException",
+    "com.example.platform.timeline.api.composition.TimelineCanonicalRejectionException",
+    "com.example.platform.timeline.api.revision.TimelineMutationContext",
+    "com.example.platform.timeline.api.revision.TimelineRevisionCommandConflictException",
     "com.example.platform.timeline.app.TimelineRevisionSaveService",
     "com.example.platform.timeline.app.TimelineSourceReferenceValidator",
     "com.example.platform.timeline.canonical.TimelineClipId",
@@ -374,7 +385,7 @@ FORBIDDEN_SIGNATURE_TYPES = (
     "OperationRequestResolver", "OperationInstance", "OperationDefinition", "OperationRegistry",
     "OperationPlanner", "OperationPlan", "OperationPlanPreview", "PlannedChange", "ApplyContext",
     "AuthorizationDecision", "ApplyResult", "OperationPlanApplyService", "TimelineRevisionSaveService",
-    "TimelinePatch", "TimelineRevisionPersistence", "TimelineRevisionRepository", "HeadUpdatePort",
+    "TimelineRevisionCommands", "TimelinePatch", "TimelineRevisionPersistence", "TimelineRevisionRepository", "HeadUpdatePort",
     "TimelineRevisionRefMutation", "DSLContext", "org.jooq", "Provider", "Worker", "Runtime",
 )
 
@@ -443,8 +454,8 @@ PREPARATION_MECHANIC = re.compile(
     r"saveRevisionForCommand|insertRevision|advanceHead|updateHead|moveRef|setHead)\s*\(|"
     r"\b(?:revisionSaveService|sourceValidator|timelineValidator|planner|applyService|"
     r"OperationRequestResolver|OperationPlanner|OperationPlanApplyService|"
-    r"TimelineRevisionSaveService|TimelineSourceReferenceValidator|"
-    r"InternalTimelineValidationService|TimelineRevisionRepository|"
+    r"TimelineRevisionSaveService|TimelineRevisionCommands|TimelineSourceReferenceValidator|TimelineSourceValidation|"
+    r"InternalTimelineValidationService|TimelineValidation|TimelineRevisionRepository|"
     r"TimelineRevisionPersistence|TimelineRevisionRefMutation|HeadUpdatePort)\b")
 
 
@@ -1564,7 +1575,7 @@ def evaluate(
     dangerous_runtime_pattern = re.compile(
         r"\b(?:OperationInvocation(?:Port|Context|Result|FailureCode|Exception)|"
         r"CanonicalOperationInvocationService|TimelineMediaClipOperationService|"
-        r"TimelineRevisionSaveService|TimelineRevisionRefMutation|"
+        r"TimelineRevisionSaveService|TimelineRevisionCommands|TimelineRevisionRefMutation|"
         r"TimelineRevisionRefHeadUpdateAdapter|HeadUpdatePort|"
         r"OperationRequestResolver|OperationInstance|OperationPlanApplyService|"
         r"OperationPlanner|TextOperationPlanner|OperationPlan|ApplyResult|"
@@ -1700,7 +1711,7 @@ def evaluate(
         r"\b(?:OperationRequestResolver|OperationInstance|OperationPlanner|"
         r"TextOperationPlanner)\b", workflow)
     workflow_writer_usage = occurrences(
-        r"\b(?:TimelineRevisionSaveService|TimelineRevisionRefMutation|"
+        r"\b(?:TimelineRevisionSaveService|TimelineRevisionCommands|TimelineRevisionRefMutation|"
         r"TimelineRevisionRepository|TimelineRevisionPersistencePort|"
         r"TimelineRevisionRefHeadUpdateAdapter|HeadUpdatePort|Timeline[A-Za-z0-9_$]*Writer|"
         r"Timeline[A-Za-z0-9_$]*(?:Repository|Persistence))\b", workflow)
@@ -1712,7 +1723,7 @@ def evaluate(
         workflow)
     canonical_writer = (
         r"\b(?:saveRevision|advanceHead|advanceTimelineHead|updateHead|OperationPlanApplyService|"
-        r"TimelineRevisionSaveService|TimelineRevisionRefMutation|TimelineRevisionRefHeadUpdateAdapter|"
+        r"TimelineRevisionSaveService|TimelineRevisionCommands|TimelineRevisionRefMutation|TimelineRevisionRefHeadUpdateAdapter|"
         r"TimelinePatchApplicationService|TimelinePatchEngine|TimelinePatch)\b")
 
     unexposed_imports = sum(
@@ -2396,6 +2407,13 @@ def run_self_test(
         "workflow-module/src/main/java/com/example/platform/workflow/PlanLeak.java",
         "package com.example.platform.workflow;\n"
         "import com.example.platform.operation.plan.OperationPlan;\nclass PlanLeak {}")))
+    cases.append(("workflow_published_timeline_writer_port", (
+        "WORKFLOW_TIMELINE_WRITER_IMPORT_COUNT",), with_source(
+            sources,
+            "workflow-module/src/main/java/com/example/platform/workflow/PortWriterLeak.java",
+            "package com.example.platform.workflow; "
+            "import com.example.platform.timeline.api.revision.TimelineRevisionCommands; "
+            "class PortWriterLeak { TimelineRevisionCommands writer; }")))
     cases.append(("workflow_timeline_writer_patch", (
         "WORKFLOW_TIMELINE_WRITER_IMPORT_COUNT", "WORKFLOW_GENERIC_TIMELINE_PATCH_USAGE_COUNT"), with_source(
             sources,

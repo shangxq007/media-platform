@@ -56,11 +56,11 @@ public class TimelineRenderJobMapper {
 
     private final TimelineScriptParser parser;
     private final TimelineSpecImportAdapter importAdapter;
-    private final com.example.platform.timeline.app.TimelineImportService timelineImportService;
+    private final com.example.platform.timeline.api.composition.TimelineImport timelineImportService;
 
     public TimelineRenderJobMapper(TimelineScriptParser parser,
                                    TimelineSpecImportAdapter importAdapter,
-                                   com.example.platform.timeline.app.TimelineImportService timelineImportService) {
+                                   com.example.platform.timeline.api.composition.TimelineImport timelineImportService) {
         this.parser = parser;
         this.importAdapter = importAdapter;
         this.timelineImportService = timelineImportService;

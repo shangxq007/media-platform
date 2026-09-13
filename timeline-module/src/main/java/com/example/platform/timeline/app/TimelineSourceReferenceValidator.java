@@ -1,4 +1,5 @@
 package com.example.platform.timeline.app;
+import com.example.platform.timeline.api.composition.TimelineSourceValidation;
 
 import com.example.platform.media.app.MediaAssetRepository;
 import com.example.platform.media.app.MediaStreamRepository;
@@ -30,7 +31,7 @@ import org.springframework.stereotype.Component;
  * </ul>
  */
 @Component
-public class TimelineSourceReferenceValidator {
+public class TimelineSourceReferenceValidator implements TimelineSourceValidation {
 
     private final MediaAssetRepository mediaAssetRepository;
     private final MediaStreamRepository mediaStreamRepository;
@@ -95,9 +96,5 @@ public class TimelineSourceReferenceValidator {
                 || (trackType == TrackType.AUDIO && streamKind == StreamKind.AUDIO);
     }
 
-    public record ValidationResult(boolean valid, List<String> violations) {
-        public ValidationResult {
-            violations = violations == null ? List.of() : List.copyOf(violations);
-        }
-    }
+
 }

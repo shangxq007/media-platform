@@ -9,7 +9,7 @@ import com.example.platform.render.domain.legacy.TimelineClip;
 import com.example.platform.render.domain.legacy.TimelineClipEffect;
 import com.example.platform.render.domain.legacy.TimelineTrack;
 import com.example.platform.render.domain.planning.ExternalRenderNode;
-import com.example.platform.timeline.app.TimelineImportRequest;
+import com.example.platform.timeline.api.composition.TimelineImportRequest;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -131,9 +131,9 @@ public class TimelineSpecImportAdapter {
                 output,
                 tracks,
                 overlays,
-                preservedObject(spec, com.example.platform.timeline.app.InternalTimelineJson.META_STYLES),
-                preservedObject(spec, com.example.platform.timeline.app.InternalTimelineJson.META_TEMPLATES),
-                preservedArray(spec, com.example.platform.timeline.app.InternalTimelineJson.META_RENDER_GRAPH_LAYERS),
+                preservedObject(spec, com.example.platform.timeline.api.serialization.InternalTimelineJson.META_STYLES),
+                preservedObject(spec, com.example.platform.timeline.api.serialization.InternalTimelineJson.META_TEMPLATES),
+                preservedArray(spec, com.example.platform.timeline.api.serialization.InternalTimelineJson.META_RENDER_GRAPH_LAYERS),
                 preservedObject(spec, SegmentTimelinePlanner.META_SEGMENT_POLICY),
                 "true".equals(metadata.get("platform.segmentPolicyEnabled")),
                 nodes,
@@ -175,7 +175,7 @@ public class TimelineSpecImportAdapter {
             return null;
         }
         try {
-            return com.example.platform.timeline.app.InternalTimelineJson.mapper()
+            return com.example.platform.timeline.api.serialization.InternalTimelineJson.mapper()
                     .readTree(spec.metadata().get(metadataKey));
         } catch (Exception e) {
             return null;

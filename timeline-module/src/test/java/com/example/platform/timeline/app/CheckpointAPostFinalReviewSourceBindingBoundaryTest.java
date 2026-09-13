@@ -1,4 +1,5 @@
 package com.example.platform.timeline.app;
+import com.example.platform.timeline.api.composition.TimelineCanonicalRejectionException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -76,7 +77,7 @@ class CheckpointAPostFinalReviewSourceBindingBoundaryTest {
     }
 
     private static void assertRejected(JsonNode sbField) {
-        assertThrows(com.example.platform.timeline.app.TimelineCanonicalRejectionException.class,
+        assertThrows(com.example.platform.timeline.api.composition.TimelineCanonicalRejectionException.class,
                 () -> InternalTimelineCandidateAdapter.map("proj-1", clipNode(sbField).toString()));
     }
 
@@ -206,7 +207,7 @@ class CheckpointAPostFinalReviewSourceBindingBoundaryTest {
     }
 
     private static void assertDocumentRejected(TimelineClip clip) {
-        assertThrows(com.example.platform.timeline.app.TimelineCanonicalRejectionException.class,
+        assertThrows(com.example.platform.timeline.api.composition.TimelineCanonicalRejectionException.class,
                 () -> TimelineDocumentCandidateMapper.map("proj-1", doc(clip)));
     }
 

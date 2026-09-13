@@ -115,7 +115,7 @@ public class TimelinePatchApplier {
             // (Timeline never owns AudioMasterBus/AudioRoute/DSP grammar).
             com.example.platform.audio.domain.mix.AudioMix mix =
                     com.example.platform.audio.domain.mix.AudioMixCanonicalSemantics
-                            .fromCanonicalJson(com.example.platform.timeline.app.InternalTimelineJson.mapper()
+                            .fromCanonicalJson(com.example.platform.timeline.api.serialization.InternalTimelineJson.mapper()
                                     .readTree(enc));
             return ok(s.withAudioMix(mix));
         } catch (Exception e) {
@@ -133,7 +133,7 @@ public class TimelinePatchApplier {
         }
         try {
             com.example.platform.timeline.semantics.relationship.SemanticRelationship rel =
-                    com.example.platform.timeline.app.InternalTimelineJson.mapper()
+                    com.example.platform.timeline.api.serialization.InternalTimelineJson.mapper()
                             .readValue(enc, com.example.platform.timeline.semantics.relationship.SemanticRelationship.class);
             java.util.List<com.example.platform.timeline.semantics.relationship.SemanticRelationship> rels =
                     new java.util.ArrayList<>(s.semanticRelationships());
@@ -734,7 +734,7 @@ public class TimelinePatchApplier {
             return current;
         }
         try {
-            return com.example.platform.timeline.app.InternalTimelineJson.mapper()
+            return com.example.platform.timeline.api.serialization.InternalTimelineJson.mapper()
                     .readValue(enc, com.example.platform.timeline.semantics.temporal.TemporalMapping.class);
         } catch (Exception e) {
             throw new IllegalArgumentException("Malformed TemporalMapping payload: " + e.getMessage());

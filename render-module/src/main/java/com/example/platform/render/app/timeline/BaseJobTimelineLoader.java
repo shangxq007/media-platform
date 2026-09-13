@@ -1,6 +1,7 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.timeline.adapter.TimelineSnapshotService;
+import com.example.platform.timeline.api.revision.TimelineSnapshotView;
+import com.example.platform.timeline.api.revision.TimelineSnapshotQueries;
 import com.example.platform.render.app.cache.RenderCacheTenantGuard;
 import com.example.platform.render.infrastructure.RenderJobRepository;
 import com.example.platform.render.infrastructure.RenderJobRepository.TimelineData;
@@ -17,12 +18,12 @@ import org.springframework.stereotype.Service;
 public class BaseJobTimelineLoader {
 
     private final RenderJobRepository renderJobRepository;
-    private final TimelineSnapshotService timelineSnapshotService;
+    private final TimelineSnapshotQueries timelineSnapshotService;
     private final TimelineSpecResolver timelineSpecResolver;
     private final RenderCacheTenantGuard tenantGuard;
 
     public BaseJobTimelineLoader(RenderJobRepository renderJobRepository,
-                                 TimelineSnapshotService timelineSnapshotService,
+                                 TimelineSnapshotQueries timelineSnapshotService,
                                  TimelineSpecResolver timelineSpecResolver,
                                  RenderCacheTenantGuard tenantGuard) {
         this.renderJobRepository = renderJobRepository;
@@ -61,7 +62,7 @@ public class BaseJobTimelineLoader {
         // findPayload. Tenant source: TimelineData.tenantId (render_job.TENANT_ID).
         return timelineSnapshotService
                 .findOwnedById(job.projectId(), job.tenantId(), snapshotId)
-                .map(TimelineSnapshotService.SnapshotInfo::payloadJson)
+                .map(TimelineSnapshotView::payloadJson)
                 .filter(payload -> !payload.isBlank())
                 .filter(timelineSpecResolver::isInternalTimelineJson)
                 .map(String::trim);

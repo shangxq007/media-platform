@@ -1,4 +1,7 @@
 package com.example.platform.timeline.app;
+import com.example.platform.timeline.api.revision.TimelineSnapshotView;
+import com.example.platform.timeline.api.serialization.InternalTimelineJson;
+import com.example.platform.timeline.api.composition.TimelineImportRequest;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -10,18 +13,18 @@ import com.example.platform.shared.time.FrameRate;
 import com.example.platform.shared.time.MediaTime;
 import com.example.platform.timeline.adapter.TimelineRevisionRepository;
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
-import com.example.platform.timeline.app.TimelineImportRequest.ImportAutomationCurve;
-import com.example.platform.timeline.app.TimelineImportRequest.ImportAutomationKeyframe;
-import com.example.platform.timeline.app.TimelineImportRequest.ImportClip;
-import com.example.platform.timeline.app.TimelineImportRequest.ImportClipEffect;
-import com.example.platform.timeline.app.TimelineImportRequest.ImportOutput;
-import com.example.platform.timeline.app.TimelineImportRequest.ImportTrack;
-import com.example.platform.timeline.app.TimelineImportRequest.ImportTransition;
+import com.example.platform.timeline.api.composition.TimelineImportRequest.ImportAutomationCurve;
+import com.example.platform.timeline.api.composition.TimelineImportRequest.ImportAutomationKeyframe;
+import com.example.platform.timeline.api.composition.TimelineImportRequest.ImportClip;
+import com.example.platform.timeline.api.composition.TimelineImportRequest.ImportClipEffect;
+import com.example.platform.timeline.api.composition.TimelineImportRequest.ImportOutput;
+import com.example.platform.timeline.api.composition.TimelineImportRequest.ImportTrack;
+import com.example.platform.timeline.api.composition.TimelineImportRequest.ImportTransition;
 import com.example.platform.timeline.canonicalmodel.TimelineCandidate;
 import com.example.platform.timeline.canonicalmodel.TimelineCanonicalNormalizer;
 import com.example.platform.timeline.app.TimelineCanonicalizer;
 import com.example.platform.timeline.diff.merge.TimelineMergeResult;
-import com.example.platform.timeline.app.TimelineCanonicalRejectionException;
+import com.example.platform.timeline.api.composition.TimelineCanonicalRejectionException;
 import com.example.platform.timeline.diff.merge.TimelineMergeRequest;
 import com.example.platform.timeline.canonicalmodel.TimelineCanonicalValidator;
 import com.example.platform.timeline.canonicalmodel.TimelineValidationResult;
@@ -209,11 +212,11 @@ class EffectTransitionEndToEndMergeTest {
         when(revisionRepo.findOwnedById("src-rev", "proj-1", "tenant-1")).thenReturn(Optional.of(srcRow));
         when(revisionRepo.findOwnedById("tgt-rev", "proj-1", "tenant-1")).thenReturn(Optional.of(tgtRow));
                 when(snapshotService.findOwnedById("proj-1", "tenant-1", "snap-base"))
-                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-base", "proj-1", "tenant-1", base, "timeline-1.0")));
+                .thenReturn(Optional.of(new TimelineSnapshotView("snap-base", "proj-1", "tenant-1", base, "timeline-1.0")));
                 when(snapshotService.findOwnedById("proj-1", "tenant-1", "snap-src"))
-                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-src", "proj-1", "tenant-1", source, "timeline-1.0")));
+                .thenReturn(Optional.of(new TimelineSnapshotView("snap-src", "proj-1", "tenant-1", source, "timeline-1.0")));
                 when(snapshotService.findOwnedById("proj-1", "tenant-1", "snap-tgt"))
-                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo("snap-tgt", "proj-1", "tenant-1", target, "timeline-1.0")));
+                .thenReturn(Optional.of(new TimelineSnapshotView("snap-tgt", "proj-1", "tenant-1", target, "timeline-1.0")));
         when(revisionRepo.listOwnedByProject("proj-1", "tenant-1", null, null, null, 500)).thenReturn(List.of());
         when(currentService.currentHead(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any())).thenReturn("tgt-rev");
         var previewService = new TimelineMergePreviewService(new TimelineMergeConflictDetector());

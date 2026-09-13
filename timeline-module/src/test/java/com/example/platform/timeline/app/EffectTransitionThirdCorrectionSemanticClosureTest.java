@@ -1,4 +1,5 @@
 package com.example.platform.timeline.app;
+import com.example.platform.timeline.api.composition.TimelineImportRequest;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -7,16 +8,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.example.platform.shared.time.FrameRate;
 import com.example.platform.shared.time.MediaTime;
-import com.example.platform.timeline.app.TimelineImportRequest.ImportAutomationCurve;
-import com.example.platform.timeline.app.TimelineImportRequest.ImportAutomationKeyframe;
-import com.example.platform.timeline.app.TimelineImportRequest.ImportClip;
-import com.example.platform.timeline.app.TimelineImportRequest.ImportClipEffect;
-import com.example.platform.timeline.app.TimelineImportRequest.ImportOutput;
-import com.example.platform.timeline.app.TimelineImportRequest.ImportTrack;
-import com.example.platform.timeline.app.TimelineImportRequest.ImportTransition;
+import com.example.platform.timeline.api.composition.TimelineImportRequest.ImportAutomationCurve;
+import com.example.platform.timeline.api.composition.TimelineImportRequest.ImportAutomationKeyframe;
+import com.example.platform.timeline.api.composition.TimelineImportRequest.ImportClip;
+import com.example.platform.timeline.api.composition.TimelineImportRequest.ImportClipEffect;
+import com.example.platform.timeline.api.composition.TimelineImportRequest.ImportOutput;
+import com.example.platform.timeline.api.composition.TimelineImportRequest.ImportTrack;
+import com.example.platform.timeline.api.composition.TimelineImportRequest.ImportTransition;
 import com.example.platform.timeline.canonicalmodel.TimelineCandidate;
 import com.example.platform.timeline.canonicalmodel.TimelineCanonicalNormalizer;
-import com.example.platform.timeline.app.TimelineCanonicalRejectionException;
+import com.example.platform.timeline.api.composition.TimelineCanonicalRejectionException;
 import com.example.platform.timeline.canonicalmodel.TimelineCanonicalValidator;
 import com.example.platform.timeline.canonicalmodel.TimelineValidationResult;
 import com.example.platform.timeline.diff.TimelineChangeType;

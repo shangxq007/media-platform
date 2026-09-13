@@ -1,4 +1,4 @@
-package com.example.platform.timeline.app;
+package com.example.platform.timeline.api.revision;
 
 import com.example.platform.shared.authorization.CanonicalActor;
 import java.util.Objects;

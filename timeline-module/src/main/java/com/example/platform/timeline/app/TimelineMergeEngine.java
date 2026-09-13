@@ -1,4 +1,6 @@
 package com.example.platform.timeline.app;
+import com.example.platform.timeline.api.revision.TimelineSnapshotView;
+import com.example.platform.timeline.api.revision.TimelineMergeOperations;
 
 import com.example.platform.timeline.adapter.RevisionGraphService;
 import com.example.platform.timeline.adapter.TimelineRevisionRepository;
@@ -69,7 +71,7 @@ import java.util.Optional;
  * policy, snapshot save, dual-parent revision insert.</p>
  */
 @Service
-public class TimelineMergeEngine {
+public class TimelineMergeEngine implements TimelineMergeOperations {
 
     private static final Logger log = LoggerFactory.getLogger(TimelineMergeEngine.class);
     private static final int DEDUP_SCAN_LIMIT = 500;
@@ -410,7 +412,7 @@ public class TimelineMergeEngine {
         }
         return snapshotService.findOwnedById(revision.projectId(), contextTenant,
                         revision.snapshotId())
-                .map(TimelineSnapshotService.SnapshotInfo::payloadJson)
+                .map(TimelineSnapshotView::payloadJson)
                 .orElseThrow(() -> new IllegalStateException(
                         "Snapshot not found/owned: " + revision.snapshotId()));
     }

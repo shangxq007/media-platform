@@ -1,18 +1,19 @@
 package com.example.platform.timeline.app;
+import com.example.platform.timeline.api.composition.TimelineImportRequest;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.example.platform.timeline.app.TimelineImportRequest.ImportAutomationCurve;
-import com.example.platform.timeline.app.TimelineImportRequest.ImportAutomationKeyframe;
-import com.example.platform.timeline.app.TimelineImportRequest.ImportClip;
-import com.example.platform.timeline.app.TimelineImportRequest.ImportClipEffect;
-import com.example.platform.timeline.app.TimelineImportRequest.ImportOutput;
-import com.example.platform.timeline.app.TimelineImportRequest.ImportTextOverlay;
-import com.example.platform.timeline.app.TimelineImportRequest.ImportTrack;
-import com.example.platform.timeline.app.TimelineImportRequest.ImportTransition;
+import com.example.platform.timeline.api.composition.TimelineImportRequest.ImportAutomationCurve;
+import com.example.platform.timeline.api.composition.TimelineImportRequest.ImportAutomationKeyframe;
+import com.example.platform.timeline.api.composition.TimelineImportRequest.ImportClip;
+import com.example.platform.timeline.api.composition.TimelineImportRequest.ImportClipEffect;
+import com.example.platform.timeline.api.composition.TimelineImportRequest.ImportOutput;
+import com.example.platform.timeline.api.composition.TimelineImportRequest.ImportTextOverlay;
+import com.example.platform.timeline.api.composition.TimelineImportRequest.ImportTrack;
+import com.example.platform.timeline.api.composition.TimelineImportRequest.ImportTransition;
 import com.example.platform.timeline.diff.merge.SemanticChangeType;
 import com.example.platform.shared.time.FrameRate;
 import java.util.List;

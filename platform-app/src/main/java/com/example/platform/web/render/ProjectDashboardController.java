@@ -5,6 +5,7 @@ import com.example.platform.outbox.app.OutboxEventService;
 import com.example.platform.outbox.coordination.PlatformJobRepository;
 import com.example.platform.render.infrastructure.asset.*;
 import com.example.platform.render.app.timeline.*;
+import com.example.platform.timeline.api.review.*;
 import com.example.platform.shared.web.TenantContext;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -25,14 +26,14 @@ public class ProjectDashboardController {
     private final MarketplaceListingRepository marketplaceRepo;
     private final SearchProjectionRepository searchProjectionRepo;
     private final TimelineRevisionRepository revisionRepo;
-    private final TimelineReviewRepository reviewRepo;
+    private final ReviewQueries reviewRepo;
     private final OutboxEventService outboxService;
 
     public ProjectDashboardController(AssetRepository assetRepo,
                                         MarketplaceListingRepository marketplaceRepo,
                                         SearchProjectionRepository searchProjectionRepo,
                                         TimelineRevisionRepository revisionRepo,
-                                        TimelineReviewRepository reviewRepo,
+                                        ReviewQueries reviewRepo,
                                         OutboxEventService outboxService) {
         this.assetRepo = assetRepo;
         this.marketplaceRepo = marketplaceRepo;
@@ -58,7 +59,7 @@ public class ProjectDashboardController {
         int publishedListings = (int) marketplace.stream()
                 .filter(m -> m.status() != null && m.status().name().equals("PUBLISHED")).count();
 
-        var reviews = reviewRepo.listByProject(projectId, tenantId, 200);
+        var reviews = reviewRepo.listOwnedByProject(projectId, tenantId, 200);
         int openReviews = (int) reviews.stream().filter(r -> "OPEN".equals(r.status())).count();
         int approvedReviews = (int) reviews.stream().filter(r -> "APPROVED".equals(r.status())).count();
 
@@ -90,7 +91,7 @@ public class ProjectDashboardController {
     @Operation(summary = "Pending actions requiring attention")
     public PendingDto pending(@PathVariable String projectId) {
         String tenantId = TenantContext.get();
-        var reviews = reviewRepo.listByProject(projectId, tenantId, 200);
+        var reviews = reviewRepo.listOwnedByProject(projectId, tenantId, 200);
         int pendingReviews = (int) reviews.stream().filter(r -> "OPEN".equals(r.status())).count();
         int pendingChanges = (int) reviews.stream().filter(r -> "CHANGES_REQUESTED".equals(r.status())).count();
 

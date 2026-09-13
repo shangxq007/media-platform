@@ -15,13 +15,13 @@ public class AiRenderScriptNormalizer {
     private final TimelineSpecResolver timelineSpecResolver;
     private final InternalTimelineAdapter internalTimelineAdapter;
     private final TimelineSpecImportAdapter timelineSpecImportAdapter;
-    private final com.example.platform.timeline.app.TimelineImportService timelineImportService;
+    private final com.example.platform.timeline.api.composition.TimelineImport timelineImportService;
     private final InternalTimelineMetadataEnricher metadataEnricher;
 
     public AiRenderScriptNormalizer(TimelineSpecResolver timelineSpecResolver,
                                     InternalTimelineAdapter internalTimelineAdapter,
                                     TimelineSpecImportAdapter timelineSpecImportAdapter,
-                                    com.example.platform.timeline.app.TimelineImportService timelineImportService,
+                                    com.example.platform.timeline.api.composition.TimelineImport timelineImportService,
                                     InternalTimelineMetadataEnricher metadataEnricher) {
         this.timelineSpecResolver = timelineSpecResolver;
         this.internalTimelineAdapter = internalTimelineAdapter;

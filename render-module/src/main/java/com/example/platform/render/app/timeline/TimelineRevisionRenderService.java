@@ -1,7 +1,8 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.timeline.app.TimelineRevisionQueryService;
-import com.example.platform.timeline.adapter.TimelineSnapshotService;
+import com.example.platform.timeline.api.revision.TimelineSnapshotView;
+import com.example.platform.timeline.api.revision.TimelineRevisionQueries;
+import com.example.platform.timeline.api.revision.TimelineSnapshotQueries;
 import com.example.platform.render.app.input.RenderInputMaterializationService;
 import com.example.platform.render.app.output.RenderOutputRegistrationService;
 import com.example.platform.render.app.product.ProductRuntimeService;
@@ -47,8 +48,8 @@ public class TimelineRevisionRenderService {
 
     private static final Logger log = LoggerFactory.getLogger(TimelineRevisionRenderService.class);
 
-    private final com.example.platform.timeline.app.TimelineRevisionQueryService revisionQueryService;
-    private final TimelineSnapshotService snapshotService;
+    private final com.example.platform.timeline.api.revision.TimelineRevisionQueries revisionQueryService;
+    private final TimelineSnapshotQueries snapshotService;
     private final TimelineRenderJobMapper mapper;
     private final TimelineScriptParser parser;
     private final InternalTimelineAdapter internalTimelineAdapter;
@@ -60,8 +61,8 @@ public class TimelineRevisionRenderService {
     private final Path storageRoot;
 
     public TimelineRevisionRenderService(
-            com.example.platform.timeline.app.TimelineRevisionQueryService revisionQueryService,
-            TimelineSnapshotService snapshotService,
+            com.example.platform.timeline.api.revision.TimelineRevisionQueries revisionQueryService,
+            TimelineSnapshotQueries snapshotService,
             TimelineRenderJobMapper mapper,
             TimelineScriptParser parser,
             InternalTimelineAdapter internalTimelineAdapter,
@@ -110,7 +111,7 @@ public class TimelineRevisionRenderService {
 
         // 3. Load snapshot payload (ownership-scoped)
         var payloadOpt = snapshotService.findOwnedById(projectId, tenantId, snapshotId)
-                .map(TimelineSnapshotService.SnapshotInfo::payloadJson);
+                .map(TimelineSnapshotView::payloadJson);
         if (payloadOpt.isEmpty()) {
             throw new IllegalStateException("Snapshot not found for revision: " + revisionId + " snapshot=" + snapshotId);
         }

@@ -1,8 +1,9 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.timeline.app.InternalTimelineJson;
+import com.example.platform.timeline.api.revision.TimelineSnapshotView;
+import com.example.platform.timeline.api.serialization.InternalTimelineJson;
 import com.example.platform.shared.web.TenantContext;
-import com.example.platform.timeline.adapter.TimelineSnapshotService;
+import com.example.platform.timeline.api.revision.TimelineSnapshotQueries;
 import com.example.platform.shared.asset.StorageUriReferenceContributor;
 import com.example.platform.shared.asset.StorageUriReferenceHit;
 import com.example.platform.shared.web.PlatformException;
@@ -32,11 +33,11 @@ public class TimelineAssetLifecycleService {
     private static final Logger log = LoggerFactory.getLogger(TimelineAssetLifecycleService.class);
 
     private final DSLContext dsl;
-    private final TimelineSnapshotService timelineSnapshotService;
+    private final TimelineSnapshotQueries timelineSnapshotService;
     private final List<StorageUriReferenceContributor> referenceContributors;
 
     public TimelineAssetLifecycleService(DSLContext dsl,
-                                         TimelineSnapshotService timelineSnapshotService,
+                                         TimelineSnapshotQueries timelineSnapshotService,
                                          @Autowired(required = false)
                                          List<StorageUriReferenceContributor> referenceContributors) {
         this.dsl = dsl;
@@ -108,7 +109,7 @@ public class TimelineAssetLifecycleService {
 
     @Transactional
     public TombstoneResult tombstone(String projectId, String snapshotId, String assetId, String tenantId) {
-        Optional<TimelineSnapshotService.SnapshotInfo> info =
+        Optional<TimelineSnapshotView> info =
                 timelineSnapshotService.findOwnedById(projectId, tenantId, snapshotId);
         if (info.isEmpty()) {
             throw RenderAssetErrors.assetNotFound(assetId);

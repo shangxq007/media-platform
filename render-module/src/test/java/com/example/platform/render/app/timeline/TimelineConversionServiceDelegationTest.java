@@ -8,7 +8,7 @@ import com.example.platform.render.domain.interchange.TimelineScriptParser;
 import com.example.platform.render.domain.interchange.TimelineSpec;
 import com.example.platform.timeline.app.InternalTimelineValidationService;
 import com.example.platform.timeline.app.TimelineImportService;
-import com.example.platform.timeline.app.TimelineCanonicalRejectionException;
+import com.example.platform.timeline.api.composition.TimelineCanonicalRejectionException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -62,14 +62,14 @@ class TimelineConversionServiceDelegationTest {
         });
     }
 
-    private com.example.platform.timeline.app.TimelineImportRequest importServiceRequestWithBlankClipId() {
-        return new com.example.platform.timeline.app.TimelineImportRequest(
+    private com.example.platform.timeline.api.composition.TimelineImportRequest importServiceRequestWithBlankClipId() {
+        return new com.example.platform.timeline.api.composition.TimelineImportRequest(
                 "tl-bad", "Bad", 1,
-                new com.example.platform.timeline.app.TimelineImportRequest.ImportOutput(
+                new com.example.platform.timeline.api.composition.TimelineImportRequest.ImportOutput(
                         "mp4", 1920, 1080, com.example.platform.shared.time.FrameRate.of(30, 1)),
-                java.util.List.of(new com.example.platform.timeline.app.TimelineImportRequest.ImportTrack(
+                java.util.List.of(new com.example.platform.timeline.api.composition.TimelineImportRequest.ImportTrack(
                         "v1", "VIDEO", 0,
-                        java.util.List.of(new com.example.platform.timeline.app.TimelineImportRequest.ImportClip(
+                        java.util.List.of(new com.example.platform.timeline.api.composition.TimelineImportRequest.ImportClip(
                                 "", "ast_1", null, 0, 0, 0.0, 2.0, 0.0, 2.0, java.util.List.of())))),
                 java.util.List.of(), null, null, null, null, false, java.util.List.of(), "AUTO", false,
                 java.util.Map.of(), java.util.Map.of(), 2.0, java.util.List.of(), java.util.List.of());

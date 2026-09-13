@@ -154,7 +154,7 @@ class EffectCanonicalSemanticsSixthCorrectionTest {
                 "S2-T6: canonical parameters must be deep-sorted TreeMap");
         // Behavior proof: manual re-serialization of the canonical value equals fingerprint
         try {
-            String direct = com.example.platform.timeline.app.InternalTimelineJson.mapper()
+            String direct = com.example.platform.timeline.api.serialization.InternalTimelineJson.mapper()
                     .writeValueAsString(canonical);
             assertEquals(e.semanticFingerprint(), direct,
                     "S2-T6: fingerprint must be exactly the canonical Effect value encoding");

@@ -1,4 +1,6 @@
 package com.example.platform.timeline.app;
+import com.example.platform.timeline.api.composition.TimelineCanonicalization;
+import com.example.platform.timeline.api.serialization.InternalTimelineJson;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -8,7 +10,7 @@ import org.springframework.stereotype.Service;
  * Canonicalizes Internal Timeline Schema 1.0 JSON (sort by id, strip volatile fields).
  */
 @Service
-public class TimelineCanonicalizer {
+public class TimelineCanonicalizer implements TimelineCanonicalization {
 
     public CanonicalizeResult canonicalize(String timelineJson) throws java.io.IOException {
         JsonNode root = InternalTimelineJson.parse(timelineJson);
@@ -29,9 +31,5 @@ public class TimelineCanonicalizer {
                 InternalTimelineJson.revision(canonical));
     }
 
-    public record CanonicalizeResult(
-            String timelineJson,
-            String schemaVersion,
-            String timelineId,
-            int revision) {}
+
 }

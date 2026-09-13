@@ -1,15 +1,18 @@
 package com.example.platform.timeline.app;
+import com.example.platform.timeline.api.serialization.InternalTimelineJson;
+import com.example.platform.timeline.api.composition.TimelineImportRequest;
+import com.example.platform.timeline.api.composition.TimelineCanonicalRejectionException;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.example.platform.fonttext.typography.FontFamilyName;
 import com.example.platform.shared.time.FrameRate;
-import com.example.platform.timeline.app.TimelineImportRequest.ImportClip;
-import com.example.platform.timeline.app.TimelineImportRequest.ImportClipEffect;
-import com.example.platform.timeline.app.TimelineImportRequest.ImportExternalRenderNode;
-import com.example.platform.timeline.app.TimelineImportRequest.ImportOutput;
-import com.example.platform.timeline.app.TimelineImportRequest.ImportTextOverlay;
-import com.example.platform.timeline.app.TimelineImportRequest.ImportTrack;
+import com.example.platform.timeline.api.composition.TimelineImportRequest.ImportClip;
+import com.example.platform.timeline.api.composition.TimelineImportRequest.ImportClipEffect;
+import com.example.platform.timeline.api.composition.TimelineImportRequest.ImportExternalRenderNode;
+import com.example.platform.timeline.api.composition.TimelineImportRequest.ImportOutput;
+import com.example.platform.timeline.api.composition.TimelineImportRequest.ImportTextOverlay;
+import com.example.platform.timeline.api.composition.TimelineImportRequest.ImportTrack;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.List;

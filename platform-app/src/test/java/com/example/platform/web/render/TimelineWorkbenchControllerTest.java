@@ -1,5 +1,6 @@
 package com.example.platform.web.render;
 
+import com.example.platform.timeline.api.revision.TimelineRevisionQueries;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -7,9 +8,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.example.platform.render.app.timeline.TimelineCommentService;
-import com.example.platform.render.app.timeline.TimelineReviewRepository;
-import com.example.platform.render.app.timeline.TimelineReviewService;
+import com.example.platform.timeline.api.review.TimelineComments;
+import com.example.platform.timeline.api.review.ReviewQueries;
+import com.example.platform.timeline.api.review.TimelineReviews;
 import com.example.platform.shared.web.TenantContext;
 import com.example.platform.timeline.app.TimelineRevisionDiffQuery;
 import com.example.platform.timeline.app.TimelineRevisionQueryService;
@@ -22,9 +23,9 @@ import org.junit.jupiter.api.Test;
 class TimelineWorkbenchControllerTest {
 
     private TimelineRevisionQueryService revisions;
-    private TimelineReviewRepository reviews;
-    private TimelineReviewService reviewService;
-    private TimelineCommentService comments;
+    private ReviewQueries reviews;
+    private TimelineReviews reviewService;
+    private TimelineComments comments;
     private TimelineProjectAuthorizationService authorization;
     private TimelineWorkbenchController controller;
 
@@ -32,9 +33,9 @@ class TimelineWorkbenchControllerTest {
     void setUp() {
         TenantContext.set("tenant-a");
         revisions = mock(TimelineRevisionQueryService.class);
-        reviews = mock(TimelineReviewRepository.class);
-        reviewService = mock(TimelineReviewService.class);
-        comments = mock(TimelineCommentService.class);
+        reviews = mock(ReviewQueries.class);
+        reviewService = mock(TimelineReviews.class);
+        comments = mock(TimelineComments.class);
         authorization = mock(TimelineProjectAuthorizationService.class);
         controller = new TimelineWorkbenchController(
                 revisions,
@@ -61,19 +62,19 @@ class TimelineWorkbenchControllerTest {
         verify(authorization).requireRead("tenant-a", "project-a");
         verify(reviews).findOwnedById("review-b", "project-a", "tenant-a");
         verifyNoInteractions(comments, reviewService);
-        verify(reviews, never()).findById("review-b");
+        org.mockito.Mockito.verifyNoMoreInteractions(reviews);
     }
 
     @Test
     void workspaceListsOnlyExplicitAuthorizedTenantAndProject() {
         when(revisions.listFacets("project-a", "tenant-a"))
-                .thenReturn(new TimelineRevisionQueryService.RevisionFacets(List.of(), List.of()));
-        when(reviews.listByProject("project-a", "tenant-a", 20)).thenReturn(List.of());
+                .thenReturn(new TimelineRevisionQueries.RevisionFacets(List.of(), List.of()));
+        when(reviews.listOwnedByProject("project-a", "tenant-a", 20)).thenReturn(List.of());
 
         var response = controller.workbench("project-a", "timeline-a");
 
         assertEquals(200, response.getStatusCode().value());
         verify(authorization).requireRead("tenant-a", "project-a");
-        verify(reviews).listByProject("project-a", "tenant-a", 20);
+        verify(reviews).listOwnedByProject("project-a", "tenant-a", 20);
     }
 }

@@ -1,4 +1,4 @@
-package com.example.platform.timeline.app;
+package com.example.platform.timeline.api.composition;
 
 /**
  * GCR-1 CORRECTION V1: Timeline-owned port for payload normalization and editor

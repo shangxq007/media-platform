@@ -29,10 +29,10 @@ import com.example.platform.shared.authorization.CanonicalActor;
 import com.example.platform.shared.digest.ContentDigest;
 import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.shared.time.MediaTime;
-import com.example.platform.timeline.app.InternalTimelineValidationService;
-import com.example.platform.timeline.app.TimelineRevisionSaveService;
-import com.example.platform.timeline.app.TimelineSourceReferenceValidator;
-import com.example.platform.timeline.app.TimelineCanonicalRejectionException;
+import com.example.platform.timeline.api.composition.TimelineValidation;
+import com.example.platform.timeline.api.revision.TimelineRevisionCommands;
+import com.example.platform.timeline.api.composition.TimelineSourceValidation;
+import com.example.platform.timeline.api.composition.TimelineCanonicalRejectionException;
 import com.example.platform.timeline.canonical.TimelineDocument;
 import com.example.platform.timeline.canonical.TimelineClipId;
 import com.example.platform.timeline.canonical.TimelineTrack;
@@ -64,17 +64,17 @@ public class TimelineMediaClipOperationService {
     private static final AuthorizationAction TIMELINE_READ = new AuthorizationAction(
             "READ", AuthorizationResourceType.PROJECT, "Read canonical Timeline for preview");
 
-    private final TimelineRevisionSaveService revisionSaveService;
-    private final TimelineSourceReferenceValidator sourceValidator;
-    private final InternalTimelineValidationService timelineValidator;
+    private final TimelineRevisionCommands revisionSaveService;
+    private final TimelineSourceValidation sourceValidator;
+    private final TimelineValidation timelineValidator;
     private final AuthorizationDecisionPort authorizationPort;
     private final OperationPlanApplyService applyService;
     private final OperationPlanner planner = new OperationPlanner();
 
     public TimelineMediaClipOperationService(
-            TimelineRevisionSaveService revisionSaveService,
-            TimelineSourceReferenceValidator sourceValidator,
-            InternalTimelineValidationService timelineValidator,
+            TimelineRevisionCommands revisionSaveService,
+            TimelineSourceValidation sourceValidator,
+            TimelineValidation timelineValidator,
             AuthorizationDecisionPort authorizationPort,
             OperationPlanApplyService applyService) {
         this.revisionSaveService = Objects.requireNonNull(revisionSaveService, "revisionSaveService");

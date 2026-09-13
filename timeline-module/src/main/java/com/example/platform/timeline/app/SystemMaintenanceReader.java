@@ -1,4 +1,6 @@
 package com.example.platform.timeline.app;
+import com.example.platform.timeline.api.revision.TimelineSnapshotView;
+import com.example.platform.timeline.api.revision.TimelineMaintenanceQueries;
 
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import java.util.List;
@@ -20,7 +22,7 @@ import org.springframework.stereotype.Service;
  * production class calls the global enumeration directly.
  */
 @Service
-public class SystemMaintenanceReader {
+public class SystemMaintenanceReader implements TimelineMaintenanceQueries {
 
     private final TimelineSnapshotService timelineSnapshotService;
 
@@ -40,7 +42,7 @@ public class SystemMaintenanceReader {
      * tenant-aware ownership-scoped read rule. Normal application reads must
      * use {@code findLatestOwnedByProject(projectId, tenantId)}.
      */
-    public Optional<TimelineSnapshotService.SnapshotInfo> findLatestSnapshot(String projectId) {
+    public Optional<TimelineSnapshotView> findLatestSnapshot(String projectId) {
         return timelineSnapshotService.findLatestForSystemMaintenance(projectId);
     }
 }

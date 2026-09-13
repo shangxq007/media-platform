@@ -1,4 +1,6 @@
 package com.example.platform.timeline.app;
+import com.example.platform.timeline.api.revision.TimelineSnapshotView;
+import com.example.platform.timeline.api.revision.TimelineMutationContext;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -112,7 +114,7 @@ class TimelineMergeEngineTest {
                         TimelineDocument.CURRENT_SCHEMA_VERSION, "test", "server-user",
                         null, null, null, null, null, false, null, null, OffsetDateTime.now())));
         when(snapshots.findOwnedById(PROJECT, TENANT, snapshotId))
-                .thenReturn(Optional.of(new TimelineSnapshotService.SnapshotInfo(
+                .thenReturn(Optional.of(new TimelineSnapshotView(
                         snapshotId, PROJECT, TENANT,
                         TimelineDocumentJsonSerializer.serialize(document),
                         TimelineDocument.CURRENT_SCHEMA_VERSION)));

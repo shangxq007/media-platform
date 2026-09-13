@@ -1,4 +1,4 @@
-package com.example.platform.timeline.app;
+package com.example.platform.timeline.api.revision;
 
 /** Durable canonical revision command id was reused incompatibly. */
 public final class TimelineRevisionCommandConflictException extends RuntimeException {

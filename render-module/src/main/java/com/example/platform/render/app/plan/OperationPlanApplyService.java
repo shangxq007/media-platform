@@ -1,5 +1,6 @@
 package com.example.platform.render.app.plan;
 
+import com.example.platform.timeline.api.revision.TimelineRevisionCommands;
 import com.example.platform.operation.plan.ApplyContext;
 import com.example.platform.operation.plan.ApplyResult;
 import com.example.platform.operation.plan.OperationPlan;
@@ -7,9 +8,8 @@ import com.example.platform.operation.plan.OperationPlanner;
 import com.example.platform.operation.plan.PlanErrorCode;
 import com.example.platform.operation.plan.PlanException;
 import com.example.platform.operation.plan.TargetRevisionRef;
-import com.example.platform.timeline.app.TimelineRevisionSaveService;
-import com.example.platform.timeline.app.TimelineRevisionCommandConflictException;
-import com.example.platform.timeline.app.TimelineMutationContext;
+import com.example.platform.timeline.api.revision.TimelineRevisionCommandConflictException;
+import com.example.platform.timeline.api.revision.TimelineMutationContext;
 import com.example.platform.timeline.canonical.TimelineContentDigester;
 import com.example.platform.timeline.canonical.TimelineDocument;
 import com.example.platform.timeline.revisioncommand.RevisionRef;
@@ -23,7 +23,7 @@ import org.springframework.stereotype.Service;
  *
  * <p>This service is deliberately not a Timeline writer. It verifies the exact
  * frozen OperationPlan and authorization binding, then delegates the single
- * atomic mutation to {@link TimelineRevisionSaveService}, the existing
+ * atomic mutation to {@link TimelineRevisionCommands}, the existing
  * canonical revision authority. No controller, provider, agent callback or
  * Operation type can insert a revision or advance a head through this class.
  */
@@ -32,11 +32,11 @@ public class OperationPlanApplyService {
 
     public static final String CURRENT_REVISION_REF = RevisionRef.MAIN_REF;
 
-    private final TimelineRevisionSaveService revisionSaveService;
+    private final TimelineRevisionCommands revisionSaveService;
     private final TimelineContentDigester digester = new TimelineContentDigester();
     private final OperationPlanner planner = new OperationPlanner();
 
-    public OperationPlanApplyService(TimelineRevisionSaveService revisionSaveService) {
+    public OperationPlanApplyService(TimelineRevisionCommands revisionSaveService) {
         this.revisionSaveService = Objects.requireNonNull(revisionSaveService, "revisionSaveService");
     }
 
@@ -101,7 +101,7 @@ public class OperationPlanApplyService {
                     projectId, context.tenantId(), context.principalRef(),
                     plan.sourceInstance().definitionId().value(),
                     plan.sourceInstance().parameterDigest());
-            var command = new TimelineRevisionSaveService.RevisionWriteCommand(
+            var command = new TimelineRevisionCommands.RevisionWriteCommand(
                     context.applyCommandId(), plan.planDigest(), commandFingerprint,
                     "OPERATION_PLAN", context.tenantId());
             RevisionRef targetRef = new RevisionRef(

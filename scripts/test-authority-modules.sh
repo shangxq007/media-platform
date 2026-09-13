@@ -6,6 +6,7 @@ case "${1:-}" in
   identity)
     ./gradlew --no-daemon --console=plain \
       :identity-access-module:test :delivery-module:test \
+      :timeline-module:test --tests 'com.example.platform.timeline.app.*' --tests '*TimelineCanonicalProductionBoundaryTest' \
       :entitlement-module:test --tests '*EntitlementDecisionServiceCollaborationTest' --tests '*CommercialAdmissionServiceTest' \
       :workflow-module:test --tests '*AuthorizationContractTest' --tests '*UserWorkflowDefinitionAuthorizationTest' --tests '*UserWorkflowExecutionRedMatrixTest' \
       :render-module:test --tests '*CanonicalOperationInvocationServiceTest' --tests '*H7FirstRealMediaCutTest' \
@@ -13,6 +14,7 @@ case "${1:-}" in
         --tests '*TimelineRevisionSaveServiceSnapshotIntegrationTest' \
       :social-publish-module:test --tests '*SocialAccountReadServiceTest' --tests '*SocialPostReadServiceTest' \
       :platform-app:test --tests '*DeliverySecurityChainTest' --tests '*EnabledAdminSecurityTest' \
+        --tests '*TimelineReviewOwnerIntegrationTest' --tests '*TimelineAuthorityBoundaryTest' --tests '*TimelineReviewControllerTest' --tests '*TimelineWorkbenchControllerTest' \
         --tests '*TimelineProjectAuthorizationServiceTest' --tests '*CommercialAuthorityDecisionAdapterTest' \
         --tests '*IdentityAuthorizationDenialTransportTest' --tests '*ModularityTest'
     ;;

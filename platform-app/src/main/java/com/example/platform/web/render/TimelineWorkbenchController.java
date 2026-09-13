@@ -1,9 +1,10 @@
 package com.example.platform.web.render;
 
-import com.example.platform.timeline.app.TimelineRevisionQueryService;
+import com.example.platform.timeline.api.revision.TimelineRevisionQueries;
 import com.example.platform.timeline.app.TimelineRevisionDiffQuery;
 import com.example.platform.shared.web.TenantContext;
 import com.example.platform.render.app.timeline.*;
+import com.example.platform.timeline.api.review.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.*;
@@ -18,19 +19,19 @@ import org.springframework.web.bind.annotation.*;
 public class TimelineWorkbenchController {
 
     private static final Logger log = LoggerFactory.getLogger(TimelineWorkbenchController.class);
-    private final com.example.platform.timeline.app.TimelineRevisionQueryService revisionQueryService;
+    private final com.example.platform.timeline.api.revision.TimelineRevisionQueries revisionQueryService;
     private final com.example.platform.timeline.app.TimelineRevisionDiffQuery revisionDiffQuery;
-    private final TimelineReviewService reviewService;
-    private final TimelineReviewRepository reviewRepo;
-    private final TimelineCommentService commentService;
+    private final TimelineReviews reviewService;
+    private final ReviewQueries reviewRepo;
+    private final TimelineComments commentService;
     private final TimelineProjectAuthorizationService projectAuthorization;
 
     public TimelineWorkbenchController(
-            com.example.platform.timeline.app.TimelineRevisionQueryService revisionQueryService,
+            com.example.platform.timeline.api.revision.TimelineRevisionQueries revisionQueryService,
             com.example.platform.timeline.app.TimelineRevisionDiffQuery revisionDiffQuery,
-                                        TimelineReviewService reviewService,
-                                        TimelineReviewRepository reviewRepo,
-                                        TimelineCommentService commentService,
+                                        TimelineReviews reviewService,
+                                        ReviewQueries reviewRepo,
+                                        TimelineComments commentService,
                                         TimelineProjectAuthorizationService projectAuthorization) {
         this.revisionQueryService = revisionQueryService;
         this.revisionDiffQuery = revisionDiffQuery;
@@ -47,8 +48,8 @@ public class TimelineWorkbenchController {
         long start = System.currentTimeMillis();
         String tenantId = TenantContext.get();
         projectAuthorization.requireRead(tenantId, projectId);
-        TimelineRevisionQueryService.RevisionFacets facets = revisionQueryService.listFacets(projectId, tenantId);
-        var reviews = reviewRepo.listByProject(projectId, tenantId, 20);
+        TimelineRevisionQueries.RevisionFacets facets = revisionQueryService.listFacets(projectId, tenantId);
+        var reviews = reviewRepo.listOwnedByProject(projectId, tenantId, 20);
         int openComments = reviews.stream()
                 .mapToInt(r -> commentService.listComments(r.id()).size()).sum();
 
@@ -65,7 +66,7 @@ public class TimelineWorkbenchController {
             @PathVariable String projectId, @PathVariable String timelineId) {
         String tenantId = TenantContext.get();
         projectAuthorization.requireRead(tenantId, projectId);
-        var reviews = reviewRepo.listByProject(projectId, tenantId, 20);
+        var reviews = reviewRepo.listOwnedByProject(projectId, tenantId, 20);
         int open = 0, approved = 0, changes = 0, merged = 0;
         for (var r : reviews) {
             switch (r.status()) {

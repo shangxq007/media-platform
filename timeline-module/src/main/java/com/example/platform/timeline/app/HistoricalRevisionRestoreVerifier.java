@@ -1,5 +1,6 @@
 package com.example.platform.timeline.app;
 
+import com.example.platform.timeline.api.revision.TimelineSnapshotView;
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.timeline.canonical.TimelineContentDigester;
 import com.example.platform.timeline.canonical.TimelineDocument;
@@ -80,7 +81,7 @@ public final class HistoricalRevisionRestoreVerifier {
                                              String historicalContentHash,
                                              TimelineRevisionSemanticContext historicalContext) {
         // 1. ownership-scoped Timeline snapshot load (R1)
-        TimelineSnapshotService.SnapshotInfo snapshot = timelineSnapshotService
+        TimelineSnapshotView snapshot = timelineSnapshotService
                 .findOwnedById(readDsl, projectId, tenantId, historicalSnapshotId)
                 .orElseThrow(() -> new IllegalStateException(
                         "RESTORE FAIL CLOSED (R1/RST7): historical Timeline snapshot '"

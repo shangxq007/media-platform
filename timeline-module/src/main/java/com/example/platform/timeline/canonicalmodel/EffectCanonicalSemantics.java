@@ -1,6 +1,6 @@
 package com.example.platform.timeline.canonicalmodel;
 
-import com.example.platform.timeline.app.InternalTimelineJson;
+import com.example.platform.timeline.api.serialization.InternalTimelineJson;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;

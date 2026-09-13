@@ -1,8 +1,8 @@
 package com.example.platform.render.app.timeline;
 
+import com.example.platform.timeline.api.composition.TimelinePatches;
 import com.example.platform.ai.api.AiGatewayPort;
 import com.example.platform.ai.domain.ChatResult;
-import com.example.platform.timeline.app.TimelinePatchService;
 import com.example.platform.render.domain.legacy.TimelinePlatformMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,7 +18,7 @@ public class AiTimelineEditService {
     private static final int PROMPT_TIMELINE_EXCERPT_MAX = 12_000;
 
     private final AiGatewayPort aiGatewayPort;
-    private final TimelinePatchService timelinePatchService;
+    private final TimelinePatches timelinePatchService;
     private final TimelineSpecResolver timelineSpecResolver;
     private final InternalTimelineMetadataEnricher metadataEnricher;
     private final BaseJobTimelineLoader baseJobTimelineLoader;
@@ -27,7 +27,7 @@ public class AiTimelineEditService {
 
     public AiTimelineEditService(
             AiGatewayPort aiGatewayPort,
-            TimelinePatchService timelinePatchService,
+            TimelinePatches timelinePatchService,
             TimelineSpecResolver timelineSpecResolver,
             InternalTimelineMetadataEnricher metadataEnricher,
             BaseJobTimelineLoader baseJobTimelineLoader,
@@ -120,7 +120,7 @@ public class AiTimelineEditService {
         }
         AiTimelineEditResponseParser.Parsed.PatchOps patch =
                 (AiTimelineEditResponseParser.Parsed.PatchOps) parsed;
-        TimelinePatchService.PatchResult result =
+        TimelinePatches.PatchResult result =
                 timelinePatchService.applyPatch(base, patch.operations());
         if (!result.success()) {
             throw new IllegalStateException("Timeline patch failed: " + result.errors());

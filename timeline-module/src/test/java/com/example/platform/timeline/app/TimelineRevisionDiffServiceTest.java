@@ -1,5 +1,6 @@
 package com.example.platform.timeline.app;
 
+import com.example.platform.timeline.api.revision.TimelineRevisionDiff;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -21,7 +22,7 @@ class TimelineRevisionDiffServiceTest {
         String from = payload("clip-from", "asset-from");
         String to = payload("clip-to", "asset-to");
 
-        TimelineRevisionDiffService.ChangeSummary summary = diffService.summarize(from, to);
+        TimelineRevisionDiff.ChangeSummary summary = diffService.summarize(from, to);
         assertTrue(summary.supported());
         assertEquals(1, summary.tracksModified());
         assertEquals(1, summary.clipsRemoved());
@@ -29,13 +30,13 @@ class TimelineRevisionDiffServiceTest {
         assertEquals(1, summary.assetsRemoved());
         assertEquals(1, summary.assetsAdded());
 
-        TimelineRevisionDiffService.DetailedCompare forward = diffService.compare(from, to);
+        TimelineRevisionDiff.DetailedCompare forward = diffService.compare(from, to);
         assertTrue(forward.supported());
         assertEquals(List.of(
-                new TimelineRevisionDiffService.EntityChange("clip", "clip-from", "removed"),
-                new TimelineRevisionDiffService.EntityChange("clip", "clip-to", "added"),
-                new TimelineRevisionDiffService.EntityChange("asset", "asset-from", "removed"),
-                new TimelineRevisionDiffService.EntityChange("asset", "asset-to", "added")),
+                new TimelineRevisionDiff.EntityChange("clip", "clip-from", "removed"),
+                new TimelineRevisionDiff.EntityChange("clip", "clip-to", "added"),
+                new TimelineRevisionDiff.EntityChange("asset", "asset-from", "removed"),
+                new TimelineRevisionDiff.EntityChange("asset", "asset-to", "added")),
                 forward.entities().stream()
                         .filter(change -> !"track".equals(change.kind()))
                         .toList(),

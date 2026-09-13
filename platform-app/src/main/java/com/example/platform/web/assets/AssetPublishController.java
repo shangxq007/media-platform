@@ -1,7 +1,8 @@
 package com.example.platform.web.assets;
 
+import com.example.platform.timeline.api.review.ReviewRecords;
 import com.example.platform.render.app.asset.AssetReviewService;
-import com.example.platform.render.app.timeline.TimelineReviewRepository;
+import com.example.platform.timeline.api.review.ReviewQueries;
 import com.example.platform.render.domain.asset.AssetPublishStatus;
 import com.example.platform.render.app.event.TimelineReviewEventPublisher;
 import com.example.platform.shared.events.*;
@@ -120,7 +121,7 @@ public class AssetPublishController {
         return ResponseEntity.ok(result);
     }
 
-    private static ReviewResponseDto toDto(TimelineReviewRepository.ReviewRow r) {
+    private static ReviewResponseDto toDto(ReviewRecords.ReviewRow r) {
         return new ReviewResponseDto(r.id(), r.revisionId(), r.status(), r.title(),
                 r.createdAt() != null ? r.createdAt().toString() : null);
     }

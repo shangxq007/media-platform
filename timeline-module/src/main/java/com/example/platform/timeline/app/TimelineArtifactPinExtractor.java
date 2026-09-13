@@ -1,4 +1,5 @@
 package com.example.platform.timeline.app;
+import com.example.platform.timeline.api.serialization.InternalTimelineJson;
 
 import com.example.platform.shared.digest.ContentDigest;
 import com.example.platform.shared.identity.ArtifactId;
@@ -27,7 +28,7 @@ public final class TimelineArtifactPinExtractor {
     public static List<ArtifactPin> extract(String internalTimelineJson) {
         Map<String, ArtifactPin> distinct = new LinkedHashMap<>();
         try {
-            JsonNode root = com.example.platform.timeline.app.InternalTimelineJson.parse(internalTimelineJson);
+            JsonNode root = com.example.platform.timeline.api.serialization.InternalTimelineJson.parse(internalTimelineJson);
             JsonNode tracks = root.path("composition").path("tracks");
             if (!tracks.isArray()) {
                 return List.of();

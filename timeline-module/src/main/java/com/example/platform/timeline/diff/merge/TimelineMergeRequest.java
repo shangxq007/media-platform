@@ -4,7 +4,7 @@ package com.example.platform.timeline.diff.merge;
  * Request to perform a three-way merge between two revision branches.
  */
 public record TimelineMergeRequest(
-        com.example.platform.timeline.app.TimelineMutationContext mutationContext,
+        com.example.platform.timeline.api.revision.TimelineMutationContext mutationContext,
         String baseRevisionId,
         String sourceRevisionId,
         String targetRevisionId,

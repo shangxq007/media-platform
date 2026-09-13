@@ -1,5 +1,7 @@
 package com.example.platform.render.app.operation;
 
+import com.example.platform.timeline.api.composition.TimelineSourceValidation;
+import com.example.platform.timeline.api.revision.TimelineRevisionCommands;
 import com.example.platform.operation.invocation.OperationInvocationContext;
 import com.example.platform.operation.invocation.OperationInvocationException;
 import com.example.platform.operation.invocation.OperationInvocationFailureCode;
@@ -18,7 +20,7 @@ import com.example.platform.identity.api.authorization.AuthorizationDecisionPort
 import com.example.platform.shared.authorization.CanonicalActor;
 import com.example.platform.shared.time.MediaTime;
 import com.example.platform.timeline.app.InternalTimelineValidationService;
-import com.example.platform.timeline.app.TimelineMutationContext;
+import com.example.platform.timeline.api.revision.TimelineMutationContext;
 import com.example.platform.timeline.app.TimelineRevisionSaveService;
 import com.example.platform.timeline.app.TimelineSourceReferenceValidator;
 import com.example.platform.timeline.canonical.TimelineClipId;
@@ -166,16 +168,16 @@ class CanonicalOperationInvocationServiceTest {
                 any(TimelineMutationContext.class),
                 eq(RevisionRef.main(TENANT, PROJECT)), eq(BASE_REVISION),
                 any(TimelineDocument.class),
-                any(TimelineRevisionSaveService.RevisionWriteCommand.class)))
+                any(TimelineRevisionCommands.RevisionWriteCommand.class)))
                 .thenAnswer(invocation -> {
                     TimelineDocument candidate = invocation.getArgument(3, TimelineDocument.class);
-                    return new TimelineRevisionSaveService.RevisionWriteResult(
+                    return new TimelineRevisionCommands.RevisionWriteResult(
                             "revision-R1", BASE_REVISION, DIGESTER.digest(candidate), false);
                 });
         TimelineSourceReferenceValidator sources = mock(TimelineSourceReferenceValidator.class);
         when(sources.validate(any(MediaStreamSourceBinding.class), eq(TENANT), eq(PROJECT),
                 eq(TrackType.VIDEO)))
-                .thenReturn(new TimelineSourceReferenceValidator.ValidationResult(true, List.of()));
+                .thenReturn(new TimelineSourceValidation.ValidationResult(true, List.of()));
         List<com.example.platform.shared.authorization.AuthorizationRequest> decisions =
                 new ArrayList<>();
         AuthorizationDecisionPort authorization = authorizationRequest -> {
@@ -213,8 +215,8 @@ class CanonicalOperationInvocationServiceTest {
                 .additionalReadOnlySignals().get("operationPlanDigest"));
         ArgumentCaptor<TimelineMutationContext> mutation =
                 ArgumentCaptor.forClass(TimelineMutationContext.class);
-        ArgumentCaptor<TimelineRevisionSaveService.RevisionWriteCommand> command =
-                ArgumentCaptor.forClass(TimelineRevisionSaveService.RevisionWriteCommand.class);
+        ArgumentCaptor<TimelineRevisionCommands.RevisionWriteCommand> command =
+                ArgumentCaptor.forClass(TimelineRevisionCommands.RevisionWriteCommand.class);
         verify(writer).saveRevisionForCommand(
                 mutation.capture(), eq(RevisionRef.main(TENANT, PROJECT)), eq(BASE_REVISION),
                 any(TimelineDocument.class), command.capture());

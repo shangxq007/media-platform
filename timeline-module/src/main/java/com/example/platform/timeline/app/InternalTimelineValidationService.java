@@ -1,4 +1,7 @@
 package com.example.platform.timeline.app;
+import com.example.platform.timeline.api.composition.TimelineValidation;
+import com.example.platform.timeline.api.serialization.InternalTimelineJson;
+import com.example.platform.timeline.api.composition.TimelineCanonicalRejectionException;
 
 import com.example.platform.timeline.canonicalmodel.TimelineCandidate;
 import com.example.platform.timeline.canonicalmodel.TimelineCanonicalNormalizer;
@@ -24,7 +27,7 @@ import org.springframework.stereotype.Service;
  * representation-level validator in render.</p>
  */
 @Service
-public class InternalTimelineValidationService {
+public class InternalTimelineValidationService implements TimelineValidation {
 
     /**
      * Typed application-layer validation entry point for an already-hydrated
@@ -49,27 +52,7 @@ public class InternalTimelineValidationService {
     }
 
     /** Timeline-owned validation result (endpoint-friendly shape). */
-    public record InternalTimelineValidationResult(
-            boolean valid,
-            List<String> errors,
-            List<String> warnings) {
 
-        public static InternalTimelineValidationResult ok() {
-            return new InternalTimelineValidationResult(true, List.of(), List.of());
-        }
-
-        public static InternalTimelineValidationResult okWithWarnings(List<String> warnings) {
-            return new InternalTimelineValidationResult(true, List.of(), warnings);
-        }
-
-        public static InternalTimelineValidationResult invalid(List<String> errors) {
-            return new InternalTimelineValidationResult(false, errors, List.of());
-        }
-
-        public static InternalTimelineValidationResult invalid(String error) {
-            return new InternalTimelineValidationResult(false, List.of(error), List.of());
-        }
-    }
 
     public InternalTimelineValidationResult validate(String timelineJson) {
         if (timelineJson == null || timelineJson.isBlank()) {

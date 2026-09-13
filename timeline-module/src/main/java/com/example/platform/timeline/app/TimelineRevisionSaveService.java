@@ -1,4 +1,9 @@
 package com.example.platform.timeline.app;
+import com.example.platform.timeline.api.revision.TimelineSnapshotView;
+import com.example.platform.timeline.api.revision.TimelineRevisionCommands;
+import com.example.platform.timeline.api.composition.TimelineCanonicalRejectionException;
+import com.example.platform.timeline.api.revision.TimelineRevisionCommandConflictException;
+import com.example.platform.timeline.api.revision.TimelineMutationContext;
 
 import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.shared.authorization.AuthorizableResourceRef;
@@ -46,7 +51,7 @@ import static com.example.platform.typedschema.jooq.generated.tables.TimelineRev
  * revision/context/pins/parent edge -> canonical ref CAS -> optional command completion.</p>
  */
 @Service
-public class TimelineRevisionSaveService {
+public class TimelineRevisionSaveService implements TimelineRevisionCommands {
 
     private static final Logger log = LoggerFactory.getLogger(TimelineRevisionSaveService.class);
     private static final AuthorizationAction MUTATE_TIMELINE = new AuthorizationAction(
@@ -516,29 +521,9 @@ public class TimelineRevisionSaveService {
         }
     }
 
-    public record RevisionWriteCommand(
-            String commandId,
-            String planDigest,
-            String fingerprint,
-            String commandDomain,
-            String tenantId) {
-        public RevisionWriteCommand {
-            if (commandId == null || commandId.isBlank()
-                    || planDigest == null || planDigest.isBlank()
-                    || fingerprint == null || fingerprint.isBlank()
-                    || commandDomain == null || commandDomain.isBlank()
-                    || tenantId == null || tenantId.isBlank()) {
-                throw new IllegalArgumentException("complete revision write command required");
-            }
-        }
-    }
 
-    public record RevisionWriteResult(
-            String revisionId,
-            String parentRevisionId,
-            String timelineContentHash,
-            boolean replayed) {
-    }
+
+
 
     private record SaveOutcome(
             TimelineRevision revision,
@@ -863,7 +848,7 @@ public class TimelineRevisionSaveService {
         }
         // C2: ownership-scoped snapshot hydration — (projectId, tenantId)
         // bound; a foreign snapshot is NOT FOUND (fail closed upstream).
-        Optional<TimelineSnapshotService.SnapshotInfo> snapshot =
+        Optional<TimelineSnapshotView> snapshot =
                 timelineSnapshotService.findOwnedById(
                         dsl, row.projectId(), tenantId, row.snapshotId());
         if (snapshot.isEmpty()) {

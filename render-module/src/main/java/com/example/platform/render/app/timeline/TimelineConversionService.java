@@ -1,7 +1,7 @@
 package com.example.platform.render.app.timeline;
 
-import com.example.platform.timeline.app.InternalTimelineJson;
-import com.example.platform.timeline.app.TimelineImportService;
+import com.example.platform.timeline.api.serialization.InternalTimelineJson;
+import com.example.platform.timeline.api.composition.TimelineImport;
 import com.example.platform.render.domain.interchange.TimelineSpec;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.Optional;
@@ -14,7 +14,7 @@ import org.springframework.stereotype.Service;
  * <p>Resolves editor / OTIO / legacy JSON into the render interchange model
  * ({@link TimelineSpec}), maps it through the boundary adapter into the typed
  * Timeline-owned import contract, and DELEGATES all canonical construction to
- * {@link TimelineImportService} (timeline-module). This class performs no
+ * {@link TimelineImport} (timeline-module). This class performs no
  * canonical construction, no schema acceptance, and no serialization decisions:
  * RENDER_TO_CANONICAL_TIMELINE_CONVERSION_AUTHORITY = 0.</p>
  */
@@ -23,12 +23,12 @@ public class TimelineConversionService {
 
     private final TimelineSpecResolver timelineSpecResolver;
     private final TimelineSpecImportAdapter importAdapter;
-    private final TimelineImportService timelineImportService;
+    private final TimelineImport timelineImportService;
 
     public TimelineConversionService(
             TimelineSpecResolver timelineSpecResolver,
             TimelineSpecImportAdapter importAdapter,
-            TimelineImportService timelineImportService) {
+            TimelineImport timelineImportService) {
         this.timelineSpecResolver = timelineSpecResolver;
         this.importAdapter = importAdapter;
         this.timelineImportService = timelineImportService;
