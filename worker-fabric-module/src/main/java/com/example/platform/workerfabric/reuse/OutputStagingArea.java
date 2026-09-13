@@ -36,16 +36,23 @@ public final class OutputStagingArea {
         }
         long length = 0;
         boolean complete = false;
-        try (InputStream input = providerOutput; var output = Files.newOutputStream(staged)) {
+        try {
+          try (InputStream input = providerOutput; var output = Files.newOutputStream(staged)) {
             byte[] buffer = new byte[64 * 1024];
             int read;
-            while ((read = input.read(buffer)) >= 0) {
+            while (true) {
+                if(Thread.currentThread().isInterrupted())throw new java.io.InterruptedIOException("Output staging cancelled");
+                read=input.read(buffer);
+                if(Thread.currentThread().isInterrupted())throw new java.io.InterruptedIOException("Output staging cancelled");
+                if(read<0)break;
                 if (read > 0) {
                     output.write(buffer, 0, read);
                     digest.update(buffer, 0, read);
                     length += read;
                 }
             }
+          }
+            if(Thread.currentThread().isInterrupted())throw new java.io.InterruptedIOException("Output staging cancelled");
             complete = true;
         } finally {
             if (!complete) {

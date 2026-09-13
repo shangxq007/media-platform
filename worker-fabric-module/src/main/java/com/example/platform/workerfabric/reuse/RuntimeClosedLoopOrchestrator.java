@@ -117,6 +117,7 @@ public final class RuntimeClosedLoopOrchestrator {
                     runtimeBinding, task, taskExecution, inputs);
             DurableArtifactCommitResult committed;
             try {
+                if(Thread.currentThread().isInterrupted())throw new java.io.InterruptedIOException("Runtime output cancelled before commitment");
                 committed = outputCommitOrchestrator.commit(
                         staged,
                         taskExecution.durableOutputTarget(),
@@ -226,14 +227,14 @@ public final class RuntimeClosedLoopOrchestrator {
             List<MaterializedExecutionInput> inputs) throws IOException {
         ProviderExecutionOutput providerOutput = runtimeBinding.execute(
                 task, execution.runtimeContext(), inputs);
-        try (providerOutput) {
-            try {
-                StagedExecutionOutput staged = outputStagingArea.stage(providerOutput.content());
-                metrics.staging(Phase16RuntimeMetrics.OperationOutcome.SUCCESS);
-                return staged;
-            } catch (IOException | RuntimeException failure) {
+        StagedExecutionOutput staged=null;boolean handedOff=false;
+        try {
+            try(providerOutput) {staged=outputStagingArea.stage(providerOutput.content());}
+            metrics.staging(Phase16RuntimeMetrics.OperationOutcome.SUCCESS);handedOff=true;return staged;
+        } finally {
+            if(!handedOff) {
+                if(staged!=null)deleteStagedBestEffort(staged);
                 metrics.staging(Phase16RuntimeMetrics.OperationOutcome.FAILURE);
-                throw failure;
             }
         }
     }

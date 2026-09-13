@@ -39,7 +39,10 @@ case "${1:-}" in
     ;;
   execution)
     ./gradlew --no-daemon --console=plain \
-      :bmf-provider-module:test :provider-plugin-runtime-module:test :outbox-event-module:test \
+      :bmf-provider-module:test :provider-plugin-runtime-module:test \
+      :worker-fabric-module:test --tests '*RuntimeClosedLoopConformanceTest' --tests '*RuntimeClosedLoopArchitectureGuardTest' \
+      :remote-render-worker:test --tests '*RemoteRenderWorkerTest' \
+      :outbox-event-module:test \
       :storage-module:test :media-module:test \
       :artifact-module:test --tests '*ArtifactCommitServiceTest' --tests '*ArtifactApplicationServiceTest' --tests '*JooqArtifactCommitServiceProvenance*' \
       :render-module:test --tests '*RenderArtifactStorageServiceTest' --tests '*RenderOutputRegistrationServiceTest' --tests '*RawMediaProductRegistrationFacadeTest' --tests '*PreviewArtifactQueryServiceTest' --tests 'com.example.platform.render.app.asset.*' --tests '*AssetServiceTest' --tests '*MediaAssetProbeServiceTest' --tests '*TimelineResolverRejectionTest' --tests '*TimelineSpecResolverTest' --tests '*TimelineScriptParserTest' --tests '*TimelineScriptParserEffectsTest' \

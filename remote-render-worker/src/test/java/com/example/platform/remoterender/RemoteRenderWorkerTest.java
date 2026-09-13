@@ -191,9 +191,8 @@ class RemoteRenderWorkerTest {
             } finally { exchange.close(); }
         });
         server.start();
-        try {
-            var http = new HttpWorkerRuntimeCommandExecutor(URI.create("http://localhost:" + server.getAddress().getPort()),
-                    RUNTIME, INCARNATION, "test-key", Duration.ofSeconds(5));
+        try (var http = new HttpWorkerRuntimeCommandExecutor(URI.create("http://localhost:" + server.getAddress().getPort()),
+                    RUNTIME, INCARNATION, "test-key", WorkerHttpTimeouts.boundedBy(Duration.ofSeconds(5)))) {
             AtomicInteger adapted = new AtomicInteger();
             var binding = new ProviderNativeRuntimeBinding<TestPlan>(
                     (task, ignored) -> new TestPlan(task.id(), task.providerBindingPin()),
@@ -216,9 +215,9 @@ class RemoteRenderWorkerTest {
     }
     @Test void remoteClientRequiresAuthenticatedEncryptedNonLoopbackTransport() {
         assertThrows(IllegalArgumentException.class, () -> new HttpWorkerRuntimeCommandExecutor(URI.create("http://example.com"),
-                RUNTIME, INCARNATION, "test-key", Duration.ofSeconds(5)));
+                RUNTIME, INCARNATION, "test-key", WorkerHttpTimeouts.boundedBy(Duration.ofSeconds(5))));
         assertThrows(IllegalArgumentException.class, () -> new HttpWorkerRuntimeCommandExecutor(URI.create("https://example.com"),
-                RUNTIME, INCARNATION, "", Duration.ofSeconds(5)));
+                RUNTIME, INCARNATION, "", WorkerHttpTimeouts.boundedBy(Duration.ofSeconds(5))));
     }
 
     @Test void platformAdapterCannotRebindGenerationBeforeDispatch() {

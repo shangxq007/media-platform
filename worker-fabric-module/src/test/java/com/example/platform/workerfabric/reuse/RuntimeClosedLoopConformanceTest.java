@@ -522,6 +522,20 @@ class RuntimeClosedLoopConformanceTest {
         return digest(("source-bytes-" + unit).getBytes(StandardCharsets.UTF_8)).canonicalValue();
     }
 
+    @Test void outputCloseFailuresNeverReachArtifactCommitOrCompletionAndCanRetry() throws Exception {
+        for(boolean second:List.of(false,true)) {
+            Harness harness=harness("provider-a");String unit="close-failure-"+second;String digest=sourceDigest(unit);
+            var graph=RuntimeClosedLoopGraphFixture.single(unit,digest,"provider-a");harness.seedSource(unit,digest);
+            harness.runtime.failFirstClose=!second;harness.runtime.failSecondClose=second;
+            assertThatThrownBy(()->harness.execute(graph,allTaskIds(graph),"failure")).isInstanceOf(IOException.class);
+            assertThat(harness.authority.commitCount()).isZero();assertThat(harness.completions.completionCount()).isZero();assertThat(harness.index.winnerCount()).isZero();
+            try(var files=Files.list(harness.root.resolve("staging"))){assertThat(files.count()).isZero();}
+            harness.runtime.failFirstClose=false;harness.runtime.failSecondClose=false;
+            assertThat(harness.execute(graph,allTaskIds(graph),"retry").executedTaskResults()).hasSize(1);
+            assertThat(harness.authority.commitCount()).isEqualTo(1);
+        }
+    }
+
     private static final class Harness {
         private final Path root;
         private final RecordingStorageProvider storage;
@@ -683,6 +697,7 @@ class RuntimeClosedLoopConformanceTest {
             implements RuntimeAdapter<TestNativePlan>,
                     com.example.platform.workerfabric.domain.providernative.RuntimeCommandExecutor {
         private final AtomicInteger executions = new AtomicInteger();
+        private boolean failFirstClose,failSecondClose;
         private final List<Integer> inputCounts = new ArrayList<>();
         private final Map<ExecutableTaskId, List<MaterializedExecutionInput>> inputsByTask =
                 new HashMap<>();
@@ -713,7 +728,10 @@ class RuntimeClosedLoopConformanceTest {
             inputsByTask.put(bundle.executableTaskId(), List.copyOf(runtimeLocalInputs));
             byte[] output = ("provider-output-" + bundle.executableTaskId().sha256Hex())
                     .getBytes(StandardCharsets.UTF_8);
-            return new ProviderExecutionOutput(new ByteArrayInputStream(output));
+            return new ProviderExecutionOutput(new ByteArrayInputStream(output){
+                int closes;
+                @Override public void close() throws IOException {closes++;if((failFirstClose && closes==1)||(failSecondClose && closes==2))throw new IOException("output close failed");super.close();}
+            });
         }
 
         int executions() { return executions.get(); }
