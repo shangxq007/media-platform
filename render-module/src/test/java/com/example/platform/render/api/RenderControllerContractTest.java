@@ -43,8 +43,7 @@ class RenderControllerContractTest {
     void setUp() {
         fakeService = new FakeRenderJobService();
         fakeOrchestrator = new FakeOrchestratorPort();
-        controller = new RenderController(fakeService, fakeOrchestrator,
-                null, null, null, null, null, null, null, null, null,
+        controller = new RenderController(fakeService, fakeOrchestrator, null, null, null, null, null, null, null,
                 RenderInitiatorFixtures.resolver("t-1"));
     }
 
@@ -130,8 +129,8 @@ class RenderControllerContractTest {
         @Test
         @DisplayName("Start throws IllegalStateException when orchestrator null")
         void startThrowsWhenNoOrchestrator() {
-            RenderController controllerNoOrch = new RenderController(fakeService, null, java.util.List.of(),
-                    null, null, null, null, null, null, null, null,
+            RenderController controllerNoOrch = new RenderController(fakeService, null,
+                    null, null, null, null, null, null, null,
                     RenderInitiatorFixtures.resolver("t-1"));
 
             assertThrows(IllegalStateException.class,

@@ -30,6 +30,35 @@ public class ProductRuntimeService {
         return saved;
     }
 
+    /** One Product effect per accepted preview request. The opaque media handle is not a MediaAssetId. */
+    @Transactional
+    public Product registerPreview(String tenantId,String requestIdentity,com.example.platform.storage.contract.StorageReference reference) {
+        com.example.platform.shared.web.TenantGuard.assertSameTenant(tenantId);
+        if(requestIdentity==null || !requestIdentity.matches("[0-9a-f]{64}"))throw new IllegalArgumentException("preview request identity required");
+        if(reference==null || reference.storageReferenceId()==null || reference.fileSize()<=0 || !"video/mp4".equals(reference.mimeType()))
+            throw new IllegalArgumentException("accepted preview Storage reference required");
+        repo.lockPreview(tenantId,requestIdentity);
+        String productId="prod_preview_"+requestIdentity.substring(0,40);
+        String mediaId="media_"+requestIdentity.substring(0,40);
+        var existing=repo.findById(productId);
+        if(existing.isPresent()) {
+            var product=existing.get();
+            if(!tenantId.equals(product.tenantId()) || !mediaId.equals(product.ownerAssetId())
+                    || !"preview-upload".equals(product.producerType())
+                    || !reference.storageReferenceId().equals(product.storageReferenceId())
+                    || !Objects.equals(reference.checksum(),product.checksum()))
+                throw new IllegalStateException("preview request conflicts with persisted Product");
+            if(product.status()==ProductStatus.READY)return product;
+            if(product.status()!=ProductStatus.REGISTERED)throw new IllegalStateException("preview Product is not retryable");
+        } else {
+            register(new Product(productId,tenantId,null,mediaId,ProductType.RAW_MEDIA,RepresentationKind.MEDIA_FILE,
+                    "preview-upload",mediaId,null,ProductStatus.REGISTERED,reference.storageReferenceId(),
+                    reference.checksum(),reference.contentHash(),reference.mimeType(),1,
+                    "{\"source\":\"preview-upload\"}",null,null));
+        }
+        return markReady(productId);
+    }
+
     @Transactional
     public Product markReady(String productId) {
         var p = repo.findById(productId).orElseThrow();

@@ -40,7 +40,7 @@ class RawMediaProductRegistrationFacadeTest {
         ProductRuntimeService productRuntime = new ProductRuntimeService(
                 productRepository, new FakeProductDependencyRepository());
         StorageRuntimeService storageRuntime = new StorageRuntimeService(storageReferenceRepository, mockProvider(null));
-        facade = new RawMediaProductRegistrationFacade(productRuntime, new com.example.platform.storage.app.StorageFileService(new com.example.platform.storage.infrastructure.LocalFsStorageProvider(storageRoot.toString()),storageReferenceRepository,storageRoot.toString()), assetRepository);
+        facade = new RawMediaProductRegistrationFacade(productRuntime, new com.example.platform.storage.app.StorageFileService(new com.example.platform.storage.infrastructure.LocalFsStorageProvider(storageRoot.toString()),storageReferenceRepository,storageRoot.toString(),org.mockito.Mockito.mock(com.example.platform.storage.api.StorageWriteIntentRecovery.class),org.mockito.Mockito.mock(com.example.platform.storage.app.identity.StorageObjectAuthorityRepository.class),new com.example.platform.storage.infrastructure.StorageS3Properties()), assetRepository);
         com.example.platform.shared.web.TenantContext.set("t1");
     }
 

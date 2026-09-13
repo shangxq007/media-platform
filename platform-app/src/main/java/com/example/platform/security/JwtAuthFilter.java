@@ -78,7 +78,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
         // Existing Media HTTP contracts use owner authorization after authentication.
-        if (path.matches("/api/projects/[^/]+/assets(?:/.*)?")
+        if (path.equals("/api/preview/media") || path.matches("/api/projects/[^/]+/assets(?:/.*)?")
                 || path.equals("/api/render/media-probe")
                 || path.startsWith("/api/render/media-probe/")) return false;
         for (String prefix : WEB_API_PREFIXES) {

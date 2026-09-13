@@ -22,8 +22,8 @@ class RenderControllerTest {
     @BeforeEach
     void setUp() {
         renderJobService = mock(RenderJobService.class);
-        controller = new RenderController(renderJobService, null, java.util.List.of(),
-                null, null, null, null, null, null, null, null,
+        controller = new RenderController(renderJobService, null,
+                null, null, null, null, null, null, null,
                 () -> java.util.Optional.of(CanonicalActor.user(
                         "test-principal-p1", "tenant-1", Set.of(), "test")));
     }

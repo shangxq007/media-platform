@@ -24,8 +24,8 @@ class RenderControllerTest {
     @BeforeEach
     void setUp() {
         service = mock(RenderJobService.class);
-        controller = new RenderController(service, null, java.util.List.of(),
-                null, null, null, null, null, null, null, null,
+        controller = new RenderController(service, null,
+                null, null, null, null, null, null, null,
                 RenderInitiatorFixtures.resolver("tenant-1"));
     }
 
@@ -46,8 +46,8 @@ class RenderControllerTest {
     @Test
     void missingActorFailsClosedAndDoesNotImplySystem() {
         RenderController missingActorController = new RenderController(
-                service, null, java.util.List.of(),
-                null, null, null, null, null, null, null, null,
+                service, null,
+                null, null, null, null, null, null, null,
                 java.util.Optional::empty);
 
         assertThrows(IllegalStateException.class, () -> missingActorController.createRenderJob(
@@ -59,8 +59,8 @@ class RenderControllerTest {
     @Test
     void actorTenantMismatchFailsClosed() {
         RenderController mismatchController = new RenderController(
-                service, null, java.util.List.of(),
-                null, null, null, null, null, null, null, null,
+                service, null,
+                null, null, null, null, null, null, null,
                 RenderInitiatorFixtures.resolver("tenant-other"));
 
         assertThrows(IllegalArgumentException.class, () -> mismatchController.createRenderJob(

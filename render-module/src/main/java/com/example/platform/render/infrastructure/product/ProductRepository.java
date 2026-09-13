@@ -23,6 +23,11 @@ public class ProductRepository {
     @org.springframework.beans.factory.annotation.Autowired
     public ProductRepository(DSLContext dsl) { this.dsl = dsl; }
 
+    /** Serialize local preview effects for one tenant/request identity. External writes are separate. */
+    public void lockPreview(String tenantId,String requestIdentity) {
+        dsl.fetch("select pg_advisory_xact_lock(hashtextextended(?,0))", "preview-product:"+tenantId+":"+requestIdentity);
+    }
+
     public Product save(Product p) {
         var id = p.productId() != null ? p.productId() : ("prod_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         var now = LocalDateTime.now();

@@ -47,41 +47,35 @@ public class RenderController {
     private static final Logger log = LoggerFactory.getLogger(RenderController.class);
     private final RenderJobService renderJobService;
     private final RenderOrchestratorPort orchestratorPort;
-    private final java.util.List<com.example.platform.storage.domain.BlobStorage> storageProviders;
     private final RenderIncrementalApiService incrementalApiService;
     private final RenderCachePresignService cachePresignService;
     private final RenderCacheCleanupService cacheCleanupService;
     private final AiTimelineEditService aiTimelineEditService;
     private final TimelineConversionService timelineConversionService;
     private final AiTimelineProposalService aiTimelineProposalService;
-    private final com.example.platform.render.app.product.ProductRuntimeService productRuntimeService;
-    private final com.example.platform.storage.api.StorageFilePort storageFiles;
+    private final com.example.platform.render.app.preview.PreviewMediaUploadService previewUploads;
     private final CanonicalActorResolver canonicalActorResolver;
 
     @org.springframework.beans.factory.annotation.Autowired
     public RenderController(RenderJobService renderJobService,
             @org.springframework.beans.factory.annotation.Autowired(required = false) RenderOrchestratorPort orchestratorPort,
-                             java.util.List<com.example.platform.storage.domain.BlobStorage> storageProviders,
             @org.springframework.beans.factory.annotation.Autowired(required = false) RenderIncrementalApiService incrementalApiService,
             @org.springframework.beans.factory.annotation.Autowired(required = false) RenderCachePresignService cachePresignService,
             @org.springframework.beans.factory.annotation.Autowired(required = false) RenderCacheCleanupService cacheCleanupService,
             @org.springframework.beans.factory.annotation.Autowired(required = false) AiTimelineEditService aiTimelineEditService,
             @org.springframework.beans.factory.annotation.Autowired(required = false) TimelineConversionService timelineConversionService,
             @org.springframework.beans.factory.annotation.Autowired(required = false) AiTimelineProposalService aiTimelineProposalService,
-            @org.springframework.beans.factory.annotation.Autowired(required = false) com.example.platform.render.app.product.ProductRuntimeService productRuntimeService,
-            @org.springframework.beans.factory.annotation.Autowired(required = false) com.example.platform.storage.api.StorageFilePort storageFiles,
+            @org.springframework.beans.factory.annotation.Autowired(required = false) com.example.platform.render.app.preview.PreviewMediaUploadService previewUploads,
             CanonicalActorResolver canonicalActorResolver) {
         this.renderJobService = renderJobService;
         this.orchestratorPort = orchestratorPort;
-        this.storageProviders = storageProviders;
         this.incrementalApiService = incrementalApiService;
         this.cachePresignService = cachePresignService;
         this.cacheCleanupService = cacheCleanupService;
         this.aiTimelineEditService = aiTimelineEditService;
         this.timelineConversionService = timelineConversionService;
         this.aiTimelineProposalService = aiTimelineProposalService;
-        this.productRuntimeService = productRuntimeService;
-        this.storageFiles = storageFiles;
+        this.previewUploads = previewUploads;
         this.canonicalActorResolver = canonicalActorResolver;
     }
 
@@ -437,53 +431,18 @@ public class RenderController {
 
     @PostMapping("/preview/media")
     @Operation(summary = "Upload preview media (dev/preview only)")
-    public Map<String, String> uploadPreviewMedia(@RequestParam("file") MultipartFile file) {
-        if (!"video/mp4".equals(file.getContentType())) {
-            throw new IllegalArgumentException("Only video/mp4 is supported");
-        }
-        if (file.getSize() > 20 * 1024 * 1024) {
-            throw new IllegalArgumentException("File too large (max 20MB)");
-        }
+    public Map<String, String> uploadPreviewMedia(@RequestParam("file") MultipartFile file,
+            @RequestHeader(value="Idempotency-Key",required=false) String requestKey,
+            jakarta.servlet.http.HttpServletResponse response) {
+        if (!"video/mp4".equals(file.getContentType())) throw new IllegalArgumentException("Only video/mp4 is supported");
+        if (file.getSize()>20*1024*1024) throw new IllegalArgumentException("File too large (max 20MB)");
+        if(previewUploads==null)throw new IllegalStateException("Preview upload is not available");
+        var key=new com.example.platform.render.api.request.PreviewUploadKey(
+                requestKey==null?java.util.UUID.randomUUID().toString():requestKey);
+        response.setHeader("Idempotency-Key",key.value());
         try {
-            String mediaId = "media_" + System.currentTimeMillis();
-            String objectKey = mediaId + "/input.mp4";
-            String tenantId = com.example.platform.shared.web.TenantGuard.requireTenantId();
-            var registeredStorage = storageFiles.uploadPreview(
-                    new com.example.platform.storage.api.StorageOwnershipScope(tenantId,null),file.getBytes(),file.getContentType());
-
-            // Create StorageReference and RAW_MEDIA Product for Product-backed resolution
-            try {
-                if (tenantId != null) {
-                    var existing = productRuntimeService.findByAsset(mediaId);
-                    if (existing.isEmpty()) {
-                        // Create StorageReference
-                        String storageRefId = registeredStorage.storageReferenceId();
-
-                        // Create RAW_MEDIA Product with storageReferenceId
-                        String productId = ("prod_" + java.util.UUID.randomUUID().toString().replace("-", ""));
-                        var product = new com.example.platform.render.domain.product.Product(
-                                productId, tenantId, null, mediaId,
-                                com.example.platform.render.domain.product.ProductType.RAW_MEDIA,
-                                com.example.platform.render.domain.product.RepresentationKind.MEDIA_FILE,
-                                "upload", mediaId, null,
-                                com.example.platform.render.domain.product.ProductStatus.REGISTERED,
-                                storageRefId, registeredStorage.checksum(), registeredStorage.contentHash(), "video/mp4", 1,
-                                "{\"source\":\"preview-upload\"}",
-                                java.time.Instant.now(), java.time.Instant.now());
-                        productRuntimeService.register(product);
-                        productRuntimeService.markReady(productId);
-                        log.info("Created RAW_MEDIA Product {} with storageRef {} for media: {}", productId, storageRefId, mediaId);
-                    }
-                }
-            } catch (Exception e) {
-                log.warn("Failed to create RAW_MEDIA Product for {}: {}", mediaId, e.getMessage());
-                // Continue without Product - URI fallback will work
-            }
-
-            return Map.of("mediaId", mediaId, "size", String.valueOf(file.getSize()));
-        } catch (java.io.IOException e) {
-            throw new IllegalStateException("Failed to store media", e);
-        }
+            var result=previewUploads.upload(key,file.getBytes(),file.getContentType());
+            return Map.of("mediaId",result.mediaId(),"size",Long.toString(result.size()));
+        } catch(java.io.IOException e){throw new IllegalStateException("Failed to read preview media",e);}
     }
-
 }
