@@ -142,8 +142,13 @@ export async function getAccessToken(): Promise<string | null> {
   return user.access_token ?? null
 }
 
+/** Retire private consumers immediately when the authenticated transport rejects the session. */
+export function retireOidcSession(): void {
+  for (const retire of signoutListeners) retire()
+}
+
 export async function signOutOidc(): Promise<void> {
   if (!isOidcEnabled()) return
-  for (const retire of signoutListeners) retire()
+  retireOidcSession()
   await manager().signoutRedirect()
 }

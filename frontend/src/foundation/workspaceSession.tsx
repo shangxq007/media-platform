@@ -1,3 +1,4 @@
+import type { TimelineBrowsing } from '../product/timeline-review/model'
 import type { PublicationBrowsing } from '../product/publication/types'
 import { createContext, useContext, useLayoutEffect, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
@@ -14,6 +15,7 @@ function createBinding(workspaceId: string) {
     id: ++nextBinding,
     browsing: defaultProjectBrowsing() as ProjectBrowsing,
     publicationBrowsing: null as PublicationBrowsing | null,
+    timelineBrowsing: null as TimelineBrowsing | null,
     canvasView: null as { projectId: string; zoom: number; viewportX: number; viewportY: number } | null,
     projectId: undefined as string | undefined,
     getSnapshot: () => retired,
@@ -23,6 +25,7 @@ function createBinding(workspaceId: string) {
       this.browsing = defaultProjectBrowsing()
       this.canvasView = null
       this.publicationBrowsing = null
+      this.timelineBrowsing = null
       listeners.forEach(listener => listener())
     },
   }
@@ -45,6 +48,7 @@ export function WorkspaceSessionProvider({ workspaceId, projectId, children }: {
     binding.projectId = projectId
     binding.canvasView = null
     binding.publicationBrowsing = null
+    binding.timelineBrowsing = null
   }
   useLayoutEffect(() => {
     const discard = () => {

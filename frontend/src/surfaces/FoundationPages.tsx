@@ -55,7 +55,7 @@ export function WorkspaceHomePage() {
 
 export function ProjectListPage() {
   const { workspaceId = '' } = routeParams()
-  return <ProductAppShell surfaceId="workspace" workspaceId={workspaceId}><div className="ff-page"><PageHeading eyebrow="Workspace" title="Recent projects" description="Browse the recent projects returned for this Workspace. Project entry is not yet available." /><ProjectBrowser key={workspaceId} workspaceId={workspaceId} /></div></ProductAppShell>
+  return <ProductAppShell surfaceId="workspace" workspaceId={workspaceId}><div className="ff-page"><PageHeading eyebrow="Workspace" title="Recent projects" description="Browse the recent projects returned for this Workspace. Project entry is not yet available." /><Link className="ff-text-link" to="/w/$workspaceId/history" params={{ workspaceId }}>Browse revision history and reviews</Link><ProjectBrowser key={workspaceId} workspaceId={workspaceId} /></div></ProductAppShell>
 }
 
 export function ProjectFrame({ surfaceId, children }: { surfaceId: SurfaceId; children: ReactNode }) {
