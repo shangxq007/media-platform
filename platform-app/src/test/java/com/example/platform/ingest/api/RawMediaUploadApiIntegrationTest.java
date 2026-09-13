@@ -150,6 +150,10 @@ class RawMediaUploadApiIntegrationTest extends PostgresTestContainerSupport {
         var listResponse=client.send(listRequest,HttpResponse.BodyHandlers.ofString());
         Assertions.assertEquals(200,listResponse.statusCode(),listResponse.body());
         Assertions.assertEquals(1,mapper.readTree(listResponse.body()).size());
+        var unauth=client.send(HttpRequest.newBuilder(listRequest.uri()).GET().build(),HttpResponse.BodyHandlers.ofString());
+        Assertions.assertEquals(401,unauth.statusCode());
+        var deniedRead=client.send(HttpRequest.newBuilder(listRequest.uri()).header("Authorization","Bearer "+token(tenantId,"denied")).GET().build(),HttpResponse.BodyHandlers.ofString());
+        Assertions.assertEquals(403,deniedRead.statusCode());
         Assertions.assertEquals(1, productRepository.findByAsset(asset.id()).stream()
                 .filter(p -> p.productType() == ProductType.RAW_MEDIA)
                 .count());
