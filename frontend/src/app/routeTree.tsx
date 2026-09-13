@@ -15,6 +15,7 @@ import { DevIngestPreflightPolicyDiagnosticsPage } from '../pages/DevIngestPrefl
 import { RenderResultsListPage } from '../routes/app/renders/RenderResultsListPage.js'
 import { RenderResultDetailPage } from '../routes/app/renders/RenderResultDetailPage.js'
 
+const TimelineHistoryPage = lazy(() => import('../product/timeline-review/TimelineBrowser').then(module => ({ default: module.TimelineHistoryPage })))
 const RootLandingPage = lazy(() => import('../surfaces/FoundationPages.js').then(module => ({ default: module.RootLandingPage })))
 const WorkspaceHomePage = lazy(() => import('../surfaces/FoundationPages.js').then(module => ({ default: module.WorkspaceHomePage })))
 const ProjectListPage = lazy(() => import('../surfaces/FoundationPages.js').then(module => ({ default: module.ProjectListPage })))
@@ -40,7 +41,7 @@ function lazyPage(Component: ComponentType) {
 
 export const implementedRouteInventory = [
   '/',
-  '/w/$workspaceId/home', '/w/$workspaceId/projects',
+  '/w/$workspaceId/history', '/w/$workspaceId/home', '/w/$workspaceId/projects',
   '/w/$workspaceId/projects/$projectId/overview', '/w/$workspaceId/projects/$projectId/edit',
   '/w/$workspaceId/projects/$projectId/canvas', '/w/$workspaceId/projects/$projectId/storyboard',
   '/w/$workspaceId/projects/$projectId/script', '/w/$workspaceId/projects/$projectId/workflow',
@@ -70,6 +71,7 @@ const additionalDeveloperSegments = ['plugins', 'providers', 'integrations', 'mc
 
 const foundationRoutes = [
   route('/', lazyPage(RootLandingPage)),
+  route('/w/$workspaceId/history', lazyPage(TimelineHistoryPage)),
   route('/w/$workspaceId/home', lazyPage(WorkspaceHomePage)),
   route('/w/$workspaceId/projects', lazyPage(ProjectListPage)),
   route('/w/$workspaceId/projects/$projectId/overview', lazyPage(ProjectOverviewPage)),

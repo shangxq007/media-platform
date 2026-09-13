@@ -1,0 +1,16 @@
+.ff-timeline-review { min-width: 0; overflow-wrap: anywhere; }
+.ff-timeline-review label { display: grid; gap: .4rem; margin-block: .8rem; }
+.ff-timeline-review select, .ff-timeline-review input { width: 100%; min-width: 0; max-width: 100%; padding: .5rem; color: var(--text-primary); background: var(--surface-2); border: 1px solid var(--border-default); border-radius: .4rem; }
+.ff-timeline-review button { max-width: 100%; white-space: normal; overflow-wrap: anywhere; text-align: start; }
+.ff-timeline-review :focus-visible { outline: 2px solid var(--accent-400); outline-offset: 3px; }
+.ff-timeline-review p { white-space: pre-wrap; }
+.ff-timeline-review li { margin-block: .8rem; }
+.ff-timeline-review-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1rem; }
+.ff-timeline-review-grid > * { min-width: 0; }
+.ff-timeline-review-dialog { width: min(48rem, calc(100vw - 2rem)); max-height: 82dvh; overflow-y: auto; padding: 1rem; border-radius: .75rem; background: var(--surface-2); }
+@media (max-width: 720px) { .ff-timeline-review-grid { grid-template-columns: minmax(0, 1fr); } }
+
+.ff-timeline-review .ff-property-row > span { color: var(--text-secondary); }
+.ff-timeline-review p { margin-block: .5rem; }
+.ff-timeline-review-dialog .ff-dialog-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-4); }
+.ff-timeline-review-dialog .ff-dialog-heading button { min-width: 40px; min-height: 40px; border: 1px solid var(--border-default); border-radius: var(--radius-md); text-align: center; }

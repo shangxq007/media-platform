@@ -20,7 +20,8 @@
     "test:projects": "vitest run src/product/projects src/app/routeTree.test.tsx",
     "test:canvas": "vitest run src/product/canvas src/interaction src/app/routeTree.test.tsx",
     "test:publication": "vitest run src/product/publication src/app/routeTree.test.tsx",
-    "test:render": "vitest run src/contracts/app/render-job.test.ts src/pages/H4BoundedCorrection.test.tsx src/app/routeTree.test.tsx"
+    "test:render": "vitest run src/contracts/app/render-job.test.ts src/pages/H4BoundedCorrection.test.tsx src/app/routeTree.test.tsx",
+    "test:timeline-review": "vitest run src/product/timeline-review src/app/routeTree.test.tsx"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

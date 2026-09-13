@@ -3,7 +3,7 @@ import axios from 'axios'
 import type { Project, RenderJob, UserBehaviorEvent, ErrorResponse, EffectPack } from '@/types'
 import { getErrorMessage } from '@/utils/i18n'
 import { isOidcEnabled } from '@/auth/oidcConfig'
-import { getAccessToken, signInRedirect } from '@/auth/oidcClient'
+import { getAccessToken, signInRedirect, retireOidcSession } from '@/auth/oidcClient'
 
 const api = axios.create({
   baseURL: '/api/v1',
@@ -67,6 +67,7 @@ api.interceptors.response.use(
       isOidcEnabled() &&
       !window.location.pathname.startsWith('/oauth/callback')
     ) {
+      if (!err.config?.signal?.aborted) retireOidcSession()
       sessionStorage.setItem('oidc_post_login_redirect', window.location.pathname + window.location.search)
       await signInRedirect()
     }
