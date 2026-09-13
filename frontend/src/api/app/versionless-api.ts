@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { getAccessToken, signInRedirect } from '../../auth/oidcClient'
+import { bindOidcRequest, handleOidcResponseError } from '../oidc-transport'
 import { isOidcEnabled } from '../../auth/oidcConfig'
 import { bootstrapDevAuth } from '../index'
 
@@ -15,8 +15,7 @@ export const versionlessApi = axios.create({
 
 versionlessApi.interceptors.request.use(async config => {
   if (isOidcEnabled()) {
-    const token = await getAccessToken()
-    if (token) config.headers.Authorization = `Bearer ${token}`
+    await bindOidcRequest(config)
   } else if (import.meta.env.DEV) {
     await bootstrapDevAuth()
     const token = localStorage.getItem('dev_access_token')
@@ -28,14 +27,7 @@ versionlessApi.interceptors.request.use(async config => {
 versionlessApi.interceptors.response.use(
   response => response,
   async error => {
-    if (
-      error?.response?.status === 401
-      && isOidcEnabled()
-      && !window.location.pathname.startsWith('/oauth/callback')
-    ) {
-      sessionStorage.setItem('oidc_post_login_redirect', window.location.pathname + window.location.search)
-      await signInRedirect()
-    }
+    await handleOidcResponseError(error)
     return Promise.reject(error)
   },
 )

@@ -1,4 +1,6 @@
 import { z } from 'zod'
+import { isOidcEnabled } from '../../auth/oidcConfig'
+import { currentOidcTransportRevision, getOidcRequestBinding, handleOidcUnauthorized } from '../../auth/oidcClient'
 
 export interface ApiClientConfig {
   baseUrl: string
@@ -31,17 +33,33 @@ export async function apiRequest<T>(
   const { method = 'GET', body, headers = {}, signal } = options
   
   try {
+    const requestHeaders: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...config.headers,
+      ...headers,
+    }
+    const binding = isOidcEnabled() ? await getOidcRequestBinding() : null
+    if (binding) {
+      if (binding.retired || binding.revision !== currentOidcTransportRevision() || signal?.aborted) {
+        throw new DOMException('OIDC request binding retired', 'AbortError')
+      }
+      // Replace any caller credential, including differently cased header names.
+      for (const name of Object.keys(requestHeaders)) {
+        if (name.toLowerCase() === 'authorization') delete requestHeaders[name]
+      }
+      if (binding.accessToken) Object.assign(requestHeaders, { Authorization: `Bearer ${binding.accessToken}` })
+    }
     const response = await fetch(`${config.baseUrl}${path}`, {
       method,
-      headers: {
-        'Content-Type': 'application/json',
-        ...config.headers,
-        ...headers,
-      },
+      headers: requestHeaders,
       body: body ? JSON.stringify(body) : undefined,
       signal,
     })
 
+    if (response.status === 401 && binding && !window.location.pathname.startsWith('/oauth/callback')) {
+      try { await handleOidcUnauthorized(binding, signal, window.location.pathname + window.location.search) }
+      catch { console.error('OIDC current-session check failed') }
+    }
     if (!response.ok) {
       return {
         success: false,
