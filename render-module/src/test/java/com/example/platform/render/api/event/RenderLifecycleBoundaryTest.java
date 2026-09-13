@@ -17,6 +17,10 @@ class RenderLifecycleBoundaryTest {
                 for(String name:RETIRED)if(s.contains("com.example.platform.shared.events."+name))found.add(path);
                 if(path.contains("/render/api/event/")&&s.matches("(?s).*\\b(?:String|ProviderRef)\\s+(?:storageUri|primaryBackend|provider|backend)\\b.*"))found.add(path);
                 if(path.contains("render-module/")&&s.contains(".updateArtifactUri("))found.add(path);
+                if(path.contains("render-module/")&&(s.contains("ArtifactGraphRepository")
+                    ||s.contains("typedschema.jooq.generated.tables.ArtifactGraph")
+                    ||s.contains("typedschema.jooq.generated.tables.ArtifactNode")
+                    ||s.matches("(?s).*\\b(?:insertInto|update|deleteFrom|table)\\s*\\(\\s*\"artifact_(?:graph|node)\".*")))found.add(path);
                 if(path.contains("delivery-module/")&&(s.contains("DELIVERY_JOB.SOURCE_URI")
                     ||s.contains("typedschema.jooq.generated.tables.RenderJob")||s.contains("typedschema.jooq.generated.tables.Artifact")))found.add(path);
             }
@@ -35,8 +39,11 @@ class RenderLifecycleBoundaryTest {
         Map<String,String> cases=Map.of(
             "shared-kernel/src/main/java/RenderJobCreatedEvent.java","record RenderJobCreatedEvent() {}",
             "render-module/src/main/java/com/example/platform/render/api/event/Bad.java","record Bad(String storageUri) {}",
+            "render-module/src/main/java/ForeignGraph.java","import com.example.platform.typedschema.jooq.generated.tables.ArtifactGraph;",
+            "render-module/src/main/java/Retired.java","class ArtifactGraphRepository {}",
+            "render-module/src/main/java/ForeignSql.java","dsl.deleteFrom(\"artifact_node\");",
             "delivery-module/src/main/java/Bad.java","import com.example.platform.typedschema.jooq.generated.tables.RenderJob;");
         for(var entry:cases.entrySet()){Path file=root.resolve(entry.getKey());Files.createDirectories(file.getParent());Files.writeString(file,entry.getValue());}
-        assertEquals(3,violations(root).size());
+        assertEquals(6,violations(root).size());
     }
 }
