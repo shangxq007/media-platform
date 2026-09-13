@@ -801,10 +801,11 @@ create table artifact (
     schema_version int not null default 1,
     created_at timestamp not null,
     tombstoned_at timestamp,
-    constraint uq_artifact_tenant_digest unique (tenant_id, content_digest, byte_length),
     constraint uq_artifact_tenant_id unique (tenant_id, id)
 );
 
+-- Artifact identity is independent of byte equality; distinct scoped outputs may contain identical bytes.
+create index ix_artifact_tenant_digest on artifact(tenant_id, content_digest, byte_length);
 create index ix_artifact_render_job_id on artifact(render_job_id);
 create index ix_artifact_project_id on artifact(project_id);
 create index ix_artifact_state on artifact(state);

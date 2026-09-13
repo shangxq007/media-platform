@@ -1,6 +1,6 @@
 package com.example.platform.render.app.product;
 
-import com.example.platform.render.app.storage.StorageRuntimeService;
+import com.example.platform.storage.api.StorageRuntime;
 import com.example.platform.render.domain.product.*;
 import com.example.platform.storage.contract.StorageReference;
 import org.slf4j.Logger;
@@ -27,7 +27,7 @@ import java.util.Optional;
  * <p>Architecture boundaries:
  * <ul>
  *   <li>Uses ProductRuntimeService for Product queries</li>
- *   <li>Uses StorageRuntimeService for StorageReference metadata</li>
+ *   <li>Uses StorageRuntime for StorageReference metadata</li>
  *   <li>Does NOT call repositories directly</li>
  *   <li>Does NOT expose storage paths or signed URLs in responses</li>
  *   <li>Does NOT modify any domain state</li>
@@ -39,10 +39,10 @@ public class PreviewArtifactQueryService {
     private static final Logger log = LoggerFactory.getLogger(PreviewArtifactQueryService.class);
 
     private final ProductRuntimeService productRuntime;
-    private final StorageRuntimeService storageRuntime;
+    private final StorageRuntime storageRuntime;
 
     public PreviewArtifactQueryService(ProductRuntimeService productRuntime,
-                                        StorageRuntimeService storageRuntime) {
+                                        StorageRuntime storageRuntime) {
         this.productRuntime = productRuntime;
         this.storageRuntime = storageRuntime;
     }

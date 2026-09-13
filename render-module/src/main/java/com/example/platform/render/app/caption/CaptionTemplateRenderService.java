@@ -3,7 +3,7 @@ package com.example.platform.render.app.caption;
 import com.example.platform.render.app.input.RenderInputMaterializationService;
 import com.example.platform.render.app.output.RenderOutputRegistrationService;
 import com.example.platform.render.app.product.ProductRuntimeService;
-import com.example.platform.render.app.storage.StorageRuntimeService;
+import com.example.platform.storage.api.StorageRuntime;
 import com.example.platform.render.app.timeline.*;
 import com.example.platform.render.app.timeline.compile.*;
 import com.example.platform.render.domain.caption.*;
@@ -41,7 +41,7 @@ public class CaptionTemplateRenderService {
     private final RenderInputMaterializationService materializationService;
     private final RenderOutputRegistrationService registrationService;
     private final ProductRuntimeService productRuntime;
-    private final StorageRuntimeService storageRuntime;
+    private final StorageRuntime storageRuntime;
     private final TimelineInputProductResolver inputProductResolver;
     private final Path storageRoot;
 
@@ -58,7 +58,7 @@ public class CaptionTemplateRenderService {
             RenderInputMaterializationService materializationService,
             RenderOutputRegistrationService registrationService,
             ProductRuntimeService productRuntime,
-            StorageRuntimeService storageRuntime,
+            StorageRuntime storageRuntime,
             TimelineInputProductResolver inputProductResolver,
             Path storageRoot) {
         this.validator = validator;

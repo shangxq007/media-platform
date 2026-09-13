@@ -55,7 +55,7 @@ public class RenderController {
     private final TimelineConversionService timelineConversionService;
     private final AiTimelineProposalService aiTimelineProposalService;
     private final com.example.platform.render.app.product.ProductRuntimeService productRuntimeService;
-    private final com.example.platform.render.infrastructure.storage.StorageReferenceRepository storageReferenceRepository;
+    private final com.example.platform.storage.api.StorageFilePort storageFiles;
     private final CanonicalActorResolver canonicalActorResolver;
 
     @org.springframework.beans.factory.annotation.Autowired
@@ -69,7 +69,7 @@ public class RenderController {
             @org.springframework.beans.factory.annotation.Autowired(required = false) TimelineConversionService timelineConversionService,
             @org.springframework.beans.factory.annotation.Autowired(required = false) AiTimelineProposalService aiTimelineProposalService,
             @org.springframework.beans.factory.annotation.Autowired(required = false) com.example.platform.render.app.product.ProductRuntimeService productRuntimeService,
-            @org.springframework.beans.factory.annotation.Autowired(required = false) com.example.platform.render.infrastructure.storage.StorageReferenceRepository storageReferenceRepository,
+            @org.springframework.beans.factory.annotation.Autowired(required = false) com.example.platform.storage.api.StorageFilePort storageFiles,
             CanonicalActorResolver canonicalActorResolver) {
         this.renderJobService = renderJobService;
         this.orchestratorPort = orchestratorPort;
@@ -81,7 +81,7 @@ public class RenderController {
         this.timelineConversionService = timelineConversionService;
         this.aiTimelineProposalService = aiTimelineProposalService;
         this.productRuntimeService = productRuntimeService;
-        this.storageReferenceRepository = storageReferenceRepository;
+        this.storageFiles = storageFiles;
         this.canonicalActorResolver = canonicalActorResolver;
     }
 
@@ -447,27 +447,17 @@ public class RenderController {
         try {
             String mediaId = "media_" + System.currentTimeMillis();
             String objectKey = mediaId + "/input.mp4";
-            java.nio.file.Path storageRoot = java.nio.file.Path.of("/tmp/platform");
-            java.nio.file.Path mediaPath = storageRoot.resolve("preview-media").resolve(objectKey);
-            java.nio.file.Files.createDirectories(mediaPath.getParent());
-            java.nio.file.Files.write(mediaPath, file.getBytes());
-            String storageUri = "localFsStorageProvider://preview-media/" + objectKey;
+            String tenantId = com.example.platform.shared.web.TenantGuard.requireTenantId();
+            var registeredStorage = storageFiles.uploadPreview(
+                    new com.example.platform.storage.api.StorageOwnershipScope(tenantId,null),file.getBytes(),file.getContentType());
 
             // Create StorageReference and RAW_MEDIA Product for Product-backed resolution
             try {
-                String tenantId = com.example.platform.shared.web.TenantContext.get();
                 if (tenantId != null) {
                     var existing = productRuntimeService.findByAsset(mediaId);
                     if (existing.isEmpty()) {
                         // Create StorageReference
-                        String storageRefId = ("stor_" + java.util.UUID.randomUUID().toString().replace("-", ""));
-                        var storageRef = new com.example.platform.storage.contract.StorageReference(
-                                storageRefId, "localFsStorageProvider",
-                                com.example.platform.storage.contract.StorageClass.STANDARD,
-                                "/tmp/platform", "preview-media/" + objectKey,
-                                null, null, file.getSize(), "video/mp4",
-                                java.time.Instant.now(), java.time.Instant.now());
-                        storageReferenceRepository.save(storageRef);
+                        String storageRefId = registeredStorage.storageReferenceId();
 
                         // Create RAW_MEDIA Product with storageReferenceId
                         String productId = ("prod_" + java.util.UUID.randomUUID().toString().replace("-", ""));
@@ -477,7 +467,7 @@ public class RenderController {
                                 com.example.platform.render.domain.product.RepresentationKind.MEDIA_FILE,
                                 "upload", mediaId, null,
                                 com.example.platform.render.domain.product.ProductStatus.REGISTERED,
-                                storageRefId, null, null, "video/mp4", 1,
+                                storageRefId, registeredStorage.checksum(), registeredStorage.contentHash(), "video/mp4", 1,
                                 "{\"source\":\"preview-upload\"}",
                                 java.time.Instant.now(), java.time.Instant.now());
                         productRuntimeService.register(product);

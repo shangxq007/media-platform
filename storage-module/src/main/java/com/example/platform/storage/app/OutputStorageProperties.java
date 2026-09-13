@@ -1,4 +1,4 @@
-package com.example.platform.render.app.storage;
+package com.example.platform.storage.app;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -22,7 +22,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * configured S3-compatible internal bucket.</p>
  */
 @ConfigurationProperties(prefix = "storage.output")
-public class RenderOutputStorageProperties {
+public class OutputStorageProperties {
 
     /**
      * Output storage provider type.

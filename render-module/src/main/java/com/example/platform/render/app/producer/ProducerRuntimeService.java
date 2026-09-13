@@ -2,7 +2,7 @@ package com.example.platform.render.app.producer;
 
 import com.example.platform.render.domain.producer.*;
 import com.example.platform.render.app.product.ProductRuntimeService;
-import com.example.platform.render.app.storage.StorageRuntimeService;
+import com.example.platform.storage.api.StorageRuntime;
 import com.example.platform.render.domain.product.*;
 import java.util.*;
 import org.slf4j.Logger;

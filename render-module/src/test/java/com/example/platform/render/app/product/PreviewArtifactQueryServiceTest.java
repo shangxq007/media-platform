@@ -1,12 +1,12 @@
 package com.example.platform.render.app.product;
 
-import com.example.platform.render.app.storage.StorageRuntimeService;
+import com.example.platform.storage.app.StorageRuntimeService;
 import com.example.platform.render.domain.product.*;
 import com.example.platform.storage.contract.StorageClass;
 import com.example.platform.storage.contract.StorageReference;
 import com.example.platform.render.infrastructure.product.ProductDependencyRepository;
 import com.example.platform.render.infrastructure.product.ProductRepository;
-import com.example.platform.render.infrastructure.storage.StorageReferenceRepository;
+import com.example.platform.storage.infrastructure.StorageReferenceRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

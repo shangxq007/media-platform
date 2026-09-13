@@ -212,6 +212,7 @@ public class Indexes {
     public static final Index IX_ARTIFACT_RENDER_JOB_ID = Internal.createIndex(DSL.name("ix_artifact_render_job_id"), Artifact.ARTIFACT, new OrderField[] { Artifact.ARTIFACT.RENDER_JOB_ID }, false);
     public static final Index IX_ARTIFACT_REPLICA_STORAGE = Internal.createIndex(DSL.name("ix_artifact_replica_storage"), ArtifactReplica.ARTIFACT_REPLICA, new OrderField[] { ArtifactReplica.ARTIFACT_REPLICA.STORAGE_OBJECT_ID }, false);
     public static final Index IX_ARTIFACT_STATE = Internal.createIndex(DSL.name("ix_artifact_state"), Artifact.ARTIFACT, new OrderField[] { Artifact.ARTIFACT.STATE }, false);
+    public static final Index IX_ARTIFACT_TENANT_DIGEST = Internal.createIndex(DSL.name("ix_artifact_tenant_digest"), Artifact.ARTIFACT, new OrderField[] { Artifact.ARTIFACT.TENANT_ID, Artifact.ARTIFACT.CONTENT_DIGEST, Artifact.ARTIFACT.BYTE_LENGTH }, false);
     public static final Index IX_ASM_LANGUAGE = Internal.createIndex(DSL.name("ix_asm_language"), AssetSemanticMetadata.ASSET_SEMANTIC_METADATA, new OrderField[] { AssetSemanticMetadata.ASSET_SEMANTIC_METADATA.LANGUAGE }, false);
     public static final Index IX_ASM_STATUS = Internal.createIndex(DSL.name("ix_asm_status"), AssetSemanticMetadata.ASSET_SEMANTIC_METADATA, new OrderField[] { AssetSemanticMetadata.ASSET_SEMANTIC_METADATA.STATUS }, false);
     public static final Index IX_AUDIT_RECORDS_ACTOR_ID = Internal.createIndex(DSL.name("ix_audit_records_actor_id"), AuditRecords.AUDIT_RECORDS, new OrderField[] { AuditRecords.AUDIT_RECORDS.ACTOR_ID }, false);

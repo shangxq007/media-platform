@@ -1,11 +1,8 @@
 package com.example.platform.render.app.output;
 
 import com.example.platform.render.app.product.ProductRuntimeService;
-import com.example.platform.render.app.storage.RenderOutputStorageProperties;
-import com.example.platform.render.app.storage.StorageRuntimeService;
 import com.example.platform.render.domain.product.*;
 import com.example.platform.storage.contract.*;
-import com.example.platform.storage.infrastructure.S3ObjectWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,7 +34,7 @@ import java.util.Set;
  *
  * <p>Architecture boundaries:
  * <ul>
- *   <li>Uses StorageRuntimeService for storage registration and checksum</li>
+ *   <li>Uses StorageRuntime for storage registration and checksum</li>
  *   <li>Uses ProductRuntimeService for Product registration and lifecycle</li>
  *   <li>Never accesses repositories directly</li>
  *   <li>Never resolves storage paths outside the registered root</li>
@@ -49,210 +46,32 @@ public class RenderOutputRegistrationService {
 
     private static final Logger log = LoggerFactory.getLogger(RenderOutputRegistrationService.class);
 
-    private final StorageRuntimeService storageRuntime;
+    private final com.example.platform.storage.api.StorageOutputPort output;
     private final ProductRuntimeService productRuntime;
-    private final Path storageRoot;
-    private final S3ObjectWriter s3Writer;
-    private final RenderOutputStorageProperties outputStorageProperties;
 
-    @Autowired
-    public RenderOutputRegistrationService(StorageRuntimeService storageRuntime,
-                                            ProductRuntimeService productRuntime,
-                                            Path storageRoot,
-                                            ObjectProvider<S3ObjectWriter> s3WriterProvider,
-                                            ObjectProvider<RenderOutputStorageProperties> outputStoragePropertiesProvider) {
-        this.storageRuntime = storageRuntime;
-        this.productRuntime = productRuntime;
-        this.storageRoot = storageRoot;
-        this.s3Writer = s3WriterProvider.getIfAvailable();
-        this.outputStorageProperties = outputStoragePropertiesProvider.getIfAvailable();
+    public RenderOutputRegistrationService(com.example.platform.storage.api.StorageOutputPort output,
+                                           ProductRuntimeService productRuntime) {
+        this.output=output; this.productRuntime=productRuntime;
     }
 
-
-    // Legacy constructor for backward compatibility
-    // Legacy constructor removed - use ObjectProvider version instead
-    private RenderOutputRegistrationService(StorageRuntimeService storageRuntime,
-                                            ProductRuntimeService productRuntime,
-                                            Path storageRoot,
-                                            S3ObjectWriter s3Writer,
-                                            RenderOutputStorageProperties outputStorageProperties) {
-        this.storageRuntime = storageRuntime;
-        this.productRuntime = productRuntime;
-        this.storageRoot = storageRoot;
-        this.s3Writer = s3Writer;
-        this.outputStorageProperties = outputStorageProperties;
-    }
-
-    /**
-     * Register a render output file as a StorageReference and READY Product.
-     *
-     * <p>Routes to LOCAL or S3-compatible registration based on configuration.</p>
-     *
-     * @param jobId           the render job identifier
-     * @param tenantId        the tenant identifier
-     * @param projectId       the project identifier
-     * @param producerId      the producer that generated the output
-     * @param relativePath    the relative path under storage root (e.g., "artifacts/job-1/output.mp4")
-     * @return the registered and READY Product
-     * @throws RenderOutputRegistrationException if any step fails
-     */
     public Product registerOutput(String jobId, String tenantId, String projectId,
-                                   String producerId, String relativePath) {
-        return registerOutput(jobId, tenantId, projectId, producerId, relativePath, null);
+            String producerId, String relativePath) {
+        return registerOutput(jobId,tenantId,projectId,producerId,relativePath,null);
     }
 
-    /**
-     * Check if S3-compatible output storage is configured and available.
-     */
-    public boolean isS3OutputEnabled() {
-        return outputStorageProperties != null
-                && outputStorageProperties.isS3Compatible()
-                && s3Writer != null
-                && s3Writer.isEnabled();
-    }
-
-    /**
-     * Register a render output file as a StorageReference and READY Product with
-     * full render provenance metadata.
-     *
-     * <p>All operations (StorageReference registration, Product registration,
-     * markReady, dependency linking) execute within a single transaction.
-     * If any step fails, all changes are rolled back.</p>
-     *
-     * <p>Routes to LOCAL or S3-compatible registration based on configuration.
-     * When S3-compatible output is enabled, the local file is uploaded to the
-     * configured internal S3 bucket before registration.</p>
-     *
-     * @param jobId           the render job identifier
-     * @param tenantId        the tenant identifier
-     * @param projectId       the project identifier
-     * @param producerId      the producer that generated the output
-     * @param relativePath    the relative path under storage root
-     * @param provenance      optional render provenance metadata to enrich the Product
-     * @return the registered and READY Product
-     * @throws RenderOutputRegistrationException if any step fails
-     */
     @Transactional
     public Product registerOutput(String jobId, String tenantId, String projectId,
-                                   String producerId, String relativePath,
-                                   RenderProductProvenance provenance) {
-        if (isS3OutputEnabled()) {
-            return registerOutputS3(jobId, tenantId, projectId, producerId, relativePath, provenance);
-        }
-        return registerOutputLocal(jobId, tenantId, projectId, producerId, relativePath, provenance);
-    }
-
-    /**
-     * Register a render output file using LOCAL storage.
-     */
-    private Product registerOutputLocal(String jobId, String tenantId, String projectId,
-                                         String producerId, String relativePath,
-                                         RenderProductProvenance provenance) {
-        Path outputFile = validatePath(relativePath);
-        String checksum = computeSha256(outputFile);
-        long fileSize = outputFile.toFile().length();
-        String mimeType = detectMimeType(outputFile);
-
-        StorageReference storageRef = new StorageReference(
-                null,
-                StorageProviderType.LOCAL.name(),
-                StorageClass.STANDARD,
-                storageRoot.toString(),
-                relativePath,
-                checksum,
-                checksum,
-                fileSize,
-                mimeType,
-                Instant.now(),
-                Instant.now());
-
-        StorageReference registeredRef;
+            String producerId, String relativePath, RenderProductProvenance provenance) {
         try {
-            registeredRef = storageRuntime.register(storageRef);
-        } catch (Exception e) {
-            throw new RenderOutputRegistrationException(
-                    jobId, "Storage registration failed: " + e.getMessage(), false);
-        }
-        log.info("Render output registered in local storage: job={} storageId={} path={} size={}",
-                jobId, registeredRef.storageReferenceId(), outputFile, fileSize);
-
-        if (!storageRuntime.verifyChecksum(registeredRef.storageReferenceId())) {
-            throw new RenderOutputRegistrationException(
-                    jobId, "Checksum verification failed for storage: " + registeredRef.storageReferenceId(), false);
-        }
-
-        return registerProductAndLink(jobId, tenantId, projectId, producerId,
-                outputFile, fileSize, mimeType, checksum, registeredRef.storageReferenceId(), provenance);
-    }
-
-    /**
-     * Register a render output file using S3-compatible internal storage.
-     *
-     * <p>Uploads the local render output to the configured S3-compatible bucket,
-     * then registers a StorageReference with S3_COMPATIBLE provider type.</p>
-     */
-    private Product registerOutputS3(String jobId, String tenantId, String projectId,
-                                       String producerId, String relativePath,
-                                       RenderProductProvenance provenance) {
-        Path outputFile = validatePath(relativePath);
-        String checksum = computeSha256(outputFile);
-        long fileSize = outputFile.toFile().length();
-        String mimeType = detectMimeType(outputFile);
-
-        // Build S3 object key: {prefix}/{projectId}/render-jobs/{renderJobId}/outputs/{filename}
-        String bucket = resolveS3Bucket();
-        String objectKey = buildS3ObjectKey(projectId, jobId, outputFile.getFileName().toString());
-
-        // Upload to S3
-        S3ObjectWriter.UploadResult uploadResult;
-        try {
-            uploadResult = s3Writer.upload(outputFile, bucket, objectKey, mimeType);
-            log.info("Render output uploaded to S3: job={} bucket={} key={} size={} checksum={}",
-                    jobId, uploadResult.bucket(), uploadResult.objectKey(),
-                    uploadResult.sizeBytes(), uploadResult.checksum());
-        } catch (Exception e) {
-            log.error("S3 upload failed for job={}: {}", jobId, e.getMessage());
-            throw new RenderOutputRegistrationException(
-                    jobId, "S3 upload failed: " + e.getMessage(), false);
-        }
-
-        // Verify checksum matches local computation
-        if (!checksum.equalsIgnoreCase(uploadResult.checksum())) {
-            log.error("S3 checksum mismatch for job={}: local={} uploaded={}",
-                    jobId, checksum, uploadResult.checksum());
-            s3Writer.delete(bucket, objectKey);
-            throw new RenderOutputRegistrationException(
-                    jobId, "S3 checksum mismatch after upload", false);
-        }
-
-        // Register StorageReference with S3_COMPATIBLE provider type
-        StorageReference storageRef = new StorageReference(
-                null,
-                StorageProviderType.S3_COMPATIBLE.name(),
-                StorageClass.STANDARD,
-                bucket,
-                objectKey,
-                checksum,
-                checksum,
-                fileSize,
-                mimeType,
-                Instant.now(),
-                Instant.now());
-
-        StorageReference registeredRef;
-        try {
-            registeredRef = storageRuntime.register(storageRef);
-        } catch (Exception e) {
-            log.error("S3 storage registration failed for job={}: {}", jobId, e.getMessage());
-            s3Writer.delete(bucket, objectKey);
-            throw new RenderOutputRegistrationException(
-                    jobId, "Storage registration failed: " + e.getMessage(), false);
-        }
-        log.info("Render output registered in S3 storage: job={} storageId={} bucket={} key={}",
-                jobId, registeredRef.storageReferenceId(), bucket, objectKey);
-
-        return registerProductAndLink(jobId, tenantId, projectId, producerId,
-                outputFile, fileSize, mimeType, checksum, registeredRef.storageReferenceId(), provenance);
+            var written=output.write(new com.example.platform.storage.api.StorageOutputPort.OutputCommand(
+                new com.example.platform.storage.api.StorageOwnershipScope(tenantId,projectId),
+                new com.example.platform.storage.api.IssuanceIdempotencyKey("render-product:"+jobId),
+                relativePath,relativePath == null ? "application/octet-stream" : detectMimeType(Path.of(relativePath))));
+            var ref=written.reference();
+            return registerProductAndLink(jobId,tenantId,projectId,producerId,Path.of(relativePath),
+                    ref.fileSize(),ref.mimeType(),ref.checksum(),ref.storageReferenceId(),provenance);
+        } catch (RenderOutputRegistrationException e) { throw e; }
+        catch (RuntimeException e) { throw new RenderOutputRegistrationException(jobId,"Output registration failed: "+e.getMessage(),false); }
     }
 
     /**
@@ -299,28 +118,6 @@ public class RenderOutputRegistrationService {
         }
 
         return readyProduct;
-    }
-
-    /**
-     * Resolve the S3 bucket for output storage.
-     */
-    private String resolveS3Bucket() {
-        if (outputStorageProperties != null && outputStorageProperties.getS3Bucket() != null
-                && !outputStorageProperties.getS3Bucket().isBlank()) {
-            return outputStorageProperties.getS3Bucket();
-        }
-        return s3Writer.getDefaultBucket();
-    }
-
-    /**
-     * Build the S3 object key for render output.
-     * Format: {prefix}/{projectId}/render-jobs/{renderJobId}/outputs/{filename}
-     */
-    private String buildS3ObjectKey(String projectId, String renderJobId, String filename) {
-        String prefix = (outputStorageProperties != null && outputStorageProperties.getS3KeyPrefix() != null)
-                ? outputStorageProperties.getS3KeyPrefix()
-                : "projects";
-        return prefix + "/" + projectId + "/render-jobs/" + renderJobId + "/outputs/" + filename;
     }
 
     /**
@@ -393,43 +190,6 @@ public class RenderOutputRegistrationService {
                 metadataJson, Instant.now(), Instant.now());
 
         return productRuntime.markFailed(productRuntime.register(product).productId());
-    }
-
-    private Path validatePath(String relativePath) {
-        if (relativePath == null || relativePath.isBlank()) {
-            throw new RenderOutputRegistrationException(null, "relativePath must not be null or blank", false);
-        }
-        Path resolved = storageRoot.resolve(relativePath).normalize();
-        if (!resolved.startsWith(storageRoot.normalize())) {
-            throw new RenderOutputRegistrationException(null,
-                    "Path traversal detected: " + relativePath, false);
-        }
-        if (!Files.exists(resolved)) {
-            throw new RenderOutputRegistrationException(null,
-                    "Output file not found: " + resolved, false);
-        }
-        if (!Files.isRegularFile(resolved)) {
-            throw new RenderOutputRegistrationException(null,
-                    "Output path is not a regular file: " + resolved, false);
-        }
-        if (resolved.toFile().length() == 0) {
-            throw new RenderOutputRegistrationException(null,
-                    "Output file is zero bytes: " + resolved, false);
-        }
-        return resolved;
-    }
-
-    private String computeSha256(Path file) {
-        try {
-            byte[] bytes = Files.readAllBytes(file);
-            byte[] hash = MessageDigest.getInstance("SHA-256").digest(bytes);
-            StringBuilder sb = new StringBuilder();
-            for (byte b : hash) sb.append(String.format("%02x", b));
-            return sb.toString();
-        } catch (IOException | NoSuchAlgorithmException e) {
-            throw new RenderOutputRegistrationException(null,
-                    "Failed to compute checksum: " + e.getMessage(), false);
-        }
     }
 
     private String detectMimeType(Path file) {

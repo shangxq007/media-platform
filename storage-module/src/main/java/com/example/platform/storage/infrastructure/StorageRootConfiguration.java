@@ -1,4 +1,4 @@
-package com.example.platform.render.infrastructure;
+package com.example.platform.storage.infrastructure;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -15,7 +15,7 @@ import java.nio.file.Path;
 @Configuration
 public class StorageRootConfiguration {
 
-    @Value("${app.storage.local-root:/tmp/platform}")
+    @Value("${app.storage.local-root:./.data/storage}")
     private String storageRoot;
 
     @Bean

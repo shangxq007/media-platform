@@ -1,7 +1,6 @@
 package com.example.platform.render.infrastructure;
 
 import com.example.platform.render.app.RenderWorkerQueueProperties;
-import com.example.platform.render.app.storage.RenderOutputStorageProperties;
 import com.example.platform.render.infrastructure.bento4.Bento4PackagingProviderProperties;
 import com.example.platform.render.infrastructure.natron.NatronRenderProviderProperties;
 import com.example.platform.render.infrastructure.shotstack.ShotstackRenderProviderProperties;
@@ -20,8 +19,7 @@ import org.springframework.context.annotation.Configuration;
         ShotstackRenderProviderProperties.class,
         RenderWorkerQueueProperties.class,
         RenderCacheProperties.class,
-        TimelineAssetGcProperties.class,
-        RenderOutputStorageProperties.class
+        TimelineAssetGcProperties.class
 })
 public class RenderModuleConfiguration {
 

@@ -6,7 +6,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@EnableConfigurationProperties(StorageS3Properties.class)
+@EnableConfigurationProperties({StorageS3Properties.class, com.example.platform.storage.app.OutputStorageProperties.class})
 public class StorageModuleConfiguration {
 
     @Bean

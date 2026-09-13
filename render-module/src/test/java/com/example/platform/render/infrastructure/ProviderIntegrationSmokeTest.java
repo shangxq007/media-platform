@@ -9,12 +9,12 @@ import com.example.platform.extension.domain.ToolExecutionSafetyPolicy;
 import com.example.platform.render.app.output.RenderOutputRegistrationService;
 import com.example.platform.render.app.output.RenderProductProvenance;
 import com.example.platform.render.app.product.ProductRuntimeService;
-import com.example.platform.render.app.storage.StorageRuntimeService;
+import com.example.platform.storage.app.StorageRuntimeService;
 import com.example.platform.render.domain.product.*;
 import com.example.platform.storage.contract.*;
 import com.example.platform.render.infrastructure.product.ProductDependencyRepository;
 import com.example.platform.render.infrastructure.product.ProductRepository;
-import com.example.platform.render.infrastructure.storage.StorageReferenceRepository;
+import com.example.platform.storage.infrastructure.StorageReferenceRepository;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -69,7 +69,7 @@ class ProviderIntegrationSmokeTest {
         ProductDependencyRepository depRepo = new InMemoryProductDependencyRepository();
         storageRuntime = new StorageRuntimeService(storageRepo, mockProvider(null));
         productRuntime = new ProductRuntimeService(productRepo, depRepo);
-        registrationService = new RenderOutputRegistrationService(storageRuntime, productRuntime, tempDir, mockProvider(null), mockProvider(null));
+        registrationService = new RenderOutputRegistrationService(com.example.platform.render.testsupport.fakes.OutputStorageFixture.create(storageRuntime, tempDir), productRuntime);
     }
 
     // ── Provider Status Verification ──

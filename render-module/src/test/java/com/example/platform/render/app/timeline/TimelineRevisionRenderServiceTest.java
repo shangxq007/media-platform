@@ -8,13 +8,13 @@ import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.render.app.input.RenderInputMaterializationService;
 import com.example.platform.render.app.output.RenderOutputRegistrationService;
 import com.example.platform.render.app.product.ProductRuntimeService;
-import com.example.platform.render.app.storage.StorageRuntimeService;
+import com.example.platform.storage.app.StorageRuntimeService;
 import com.example.platform.render.domain.product.*;
 import com.example.platform.storage.contract.*;
 
 import com.example.platform.render.infrastructure.product.ProductDependencyRepository;
 import com.example.platform.render.infrastructure.product.ProductRepository;
-import com.example.platform.render.infrastructure.storage.StorageReferenceRepository;
+import com.example.platform.storage.infrastructure.StorageReferenceRepository;
 import com.example.platform.render.testsupport.TimelineCoreSmokeFixture;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
@@ -81,7 +81,7 @@ class TimelineRevisionRenderServiceTest {
         ProductDependencyRepository depRepo = new InMemoryProductDependencyRepository();
         storageRuntime = new StorageRuntimeService(storageRepo, mockProvider(null));
         productRuntime = new ProductRuntimeService(productRepo, depRepo);
-        registrationService = new RenderOutputRegistrationService(storageRuntime, productRuntime, tempDir, mockProvider(null), mockProvider(null));
+        registrationService = new RenderOutputRegistrationService(com.example.platform.render.testsupport.fakes.OutputStorageFixture.create(storageRuntime, tempDir), productRuntime);
 
         TimelineExtensionsReader extensionsReader = new TimelineExtensionsReader();
         parser = new TimelineScriptParser(extensionsReader);

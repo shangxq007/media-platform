@@ -1,6 +1,6 @@
 package com.example.platform.web.assets;
 
-import com.example.platform.render.app.storage.StorageRuntimeService;
+import com.example.platform.storage.api.StorageRuntime;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.http.ResponseEntity;
@@ -10,8 +10,8 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/storage")
 public class StorageRuntimeController {
 
-    private final StorageRuntimeService service;
-    public StorageRuntimeController(StorageRuntimeService service) { this.service = service; }
+    private final StorageRuntime service;
+    public StorageRuntimeController(StorageRuntime service) { this.service = service; }
 
     @GetMapping("/{storageReferenceId}")
     public ResponseEntity<Map<String, Object>> get(@PathVariable String storageReferenceId) {

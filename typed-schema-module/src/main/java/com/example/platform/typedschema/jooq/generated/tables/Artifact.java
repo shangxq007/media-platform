@@ -194,7 +194,7 @@ public class Artifact extends TableImpl<ArtifactRecord> {
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.IX_ARTIFACT_CONTENT_DIGEST, Indexes.IX_ARTIFACT_PROJECT_ID, Indexes.IX_ARTIFACT_RENDER_JOB_ID, Indexes.IX_ARTIFACT_STATE);
+        return Arrays.asList(Indexes.IX_ARTIFACT_CONTENT_DIGEST, Indexes.IX_ARTIFACT_PROJECT_ID, Indexes.IX_ARTIFACT_RENDER_JOB_ID, Indexes.IX_ARTIFACT_STATE, Indexes.IX_ARTIFACT_TENANT_DIGEST);
     }
 
     @Override
@@ -204,7 +204,7 @@ public class Artifact extends TableImpl<ArtifactRecord> {
 
     @Override
     public List<UniqueKey<ArtifactRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.UQ_ARTIFACT_TENANT_DIGEST, Keys.UQ_ARTIFACT_TENANT_ID);
+        return Arrays.asList(Keys.UQ_ARTIFACT_TENANT_ID);
     }
 
     private transient ArtifactPinPath _artifactPin;

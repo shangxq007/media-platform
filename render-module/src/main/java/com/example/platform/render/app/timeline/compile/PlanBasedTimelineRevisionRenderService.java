@@ -5,7 +5,7 @@ import com.example.platform.render.app.input.RenderInputMaterializationService;
 import com.example.platform.render.app.output.RenderOutputRegistrationService;
 import com.example.platform.render.app.output.RenderProductProvenance;
 import com.example.platform.render.app.product.ProductRuntimeService;
-import com.example.platform.render.app.storage.StorageRuntimeService;
+import com.example.platform.storage.api.StorageRuntime;
 import com.example.platform.render.app.timeline.TimelineInputProductResolver;
 import com.example.platform.render.app.timeline.TimelineRenderJobMapper;
 import com.example.platform.render.app.timeline.compile.audit.*;
@@ -58,7 +58,7 @@ public class PlanBasedTimelineRevisionRenderService {
     private final RenderInputMaterializationService materializationService;
     private final RenderOutputRegistrationService registrationService;
     private final ProductRuntimeService productRuntime;
-    private final StorageRuntimeService storageRuntime;
+    private final StorageRuntime storageRuntime;
     private final Path storageRoot;
     private final RenderAuditRecorder auditRecorder;
     private final com.example.platform.render.domain.compile.remotion.ProviderExecutionDocumentGenerationService docGenerationService;
@@ -79,7 +79,7 @@ public class PlanBasedTimelineRevisionRenderService {
             RenderInputMaterializationService materializationService,
             RenderOutputRegistrationService registrationService,
             ProductRuntimeService productRuntime,
-            StorageRuntimeService storageRuntime,
+            StorageRuntime storageRuntime,
             Path storageRoot) {
         this(revisionQueryService, snapshotService, mapper, parser, inputProductResolver,
                 normalizer, artifactCompiler, capabilityCompiler, planCompiler, policyGuard, planRunner,
@@ -102,7 +102,7 @@ public class PlanBasedTimelineRevisionRenderService {
             RenderInputMaterializationService materializationService,
             RenderOutputRegistrationService registrationService,
             ProductRuntimeService productRuntime,
-            StorageRuntimeService storageRuntime,
+            StorageRuntime storageRuntime,
             Path storageRoot,
             RenderAuditRecorder auditRecorder) {
         this.revisionQueryService = revisionQueryService;

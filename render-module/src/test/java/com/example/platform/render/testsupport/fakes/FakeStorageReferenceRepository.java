@@ -1,7 +1,7 @@
 package com.example.platform.render.testsupport.fakes;
 
 import com.example.platform.storage.contract.StorageReference;
-import com.example.platform.render.infrastructure.storage.StorageReferenceRepository;
+import com.example.platform.storage.infrastructure.StorageReferenceRepository;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;

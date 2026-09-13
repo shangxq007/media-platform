@@ -3,7 +3,7 @@ package com.example.platform.render.api.rawmedia;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.example.platform.render.app.product.ProductRuntimeService;
-import com.example.platform.render.app.storage.StorageRuntimeService;
+import com.example.platform.storage.app.StorageRuntimeService;
 import com.example.platform.render.domain.asset.Asset;
 import com.example.platform.render.domain.product.Product;
 import com.example.platform.render.domain.product.ProductStatus;
@@ -40,8 +40,11 @@ class RawMediaProductRegistrationFacadeTest {
         ProductRuntimeService productRuntime = new ProductRuntimeService(
                 productRepository, new FakeProductDependencyRepository());
         StorageRuntimeService storageRuntime = new StorageRuntimeService(storageReferenceRepository, mockProvider(null));
-        facade = new RawMediaProductRegistrationFacade(productRuntime, storageRuntime, assetRepository, storageRoot);
+        facade = new RawMediaProductRegistrationFacade(productRuntime, new com.example.platform.storage.app.StorageFileService(new com.example.platform.storage.infrastructure.LocalFsStorageProvider(storageRoot.toString()),storageReferenceRepository,storageRoot.toString()), assetRepository);
+        com.example.platform.shared.web.TenantContext.set("t1");
     }
+
+    @org.junit.jupiter.api.AfterEach void clearTenant(){com.example.platform.shared.web.TenantContext.clear();}
 
     @Test
     void registerRawMediaCreatesReadyRawMediaProductWithRegisteredStorageReference() throws Exception {

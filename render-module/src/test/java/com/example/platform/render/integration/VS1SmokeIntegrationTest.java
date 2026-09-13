@@ -8,7 +8,7 @@ import com.example.platform.render.app.dto.RenderJobResponse;
 import com.example.platform.render.app.dto.StatusHistoryResponse;
 import com.example.platform.render.app.output.RenderOutputRegistrationException;
 import com.example.platform.render.app.product.ProductRuntimeService;
-import com.example.platform.render.app.storage.StorageRuntimeService;
+import com.example.platform.storage.app.StorageRuntimeService;
 import com.example.platform.render.domain.RenderJobStateMachine;
 import com.example.platform.render.domain.RenderJobStatus;
 import com.example.platform.render.domain.product.*;

@@ -1,4 +1,4 @@
-package com.example.platform.render.infrastructure.storage;
+package com.example.platform.storage.infrastructure;
 
 import static org.jooq.impl.DSL.*;
 import com.example.platform.storage.contract.*;
@@ -14,7 +14,7 @@ import org.jooq.impl.DSL;
 
 
 @Repository
-public class StorageReferenceRepository {
+public class StorageReferenceRepository implements com.example.platform.storage.api.StorageReferenceStore {
 
     private final DSLContext dsl;
 
@@ -39,8 +39,14 @@ public class StorageReferenceRepository {
                 .set(STORAGE_REFERENCE.FILE_SIZE, r.fileSize())
                 .set(STORAGE_REFERENCE.MIME_TYPE, r.mimeType())
                 .set(STORAGE_REFERENCE.UPDATED_AT, now)
-                .execute();
-        return findById(id).orElseThrow();
+                .returning().fetchOne();
+        return findByLocation(r).orElseThrow();
+    }
+
+    private Optional<StorageReference> findByLocation(StorageReference ref) {
+        var row = dsl.selectFrom(STORAGE_REFERENCE).where(STORAGE_REFERENCE.PROVIDER_TYPE.eq(ref.providerType()))
+            .and(STORAGE_REFERENCE.ROOT_PATH.eq(ref.rootPath())).and(STORAGE_REFERENCE.RELATIVE_PATH.eq(ref.relativePath())).fetchOne();
+        return Optional.ofNullable(row).map(StorageReferenceRepository::map);
     }
 
     public Optional<StorageReference> findById(String id) {

@@ -1,7 +1,7 @@
-package com.example.platform.render.app.storage;
+package com.example.platform.storage.app;
 
 import com.example.platform.storage.contract.StorageReference;
-import com.example.platform.render.infrastructure.storage.StorageReferenceRepository;
+import com.example.platform.storage.infrastructure.StorageReferenceRepository;
 import com.example.platform.storage.infrastructure.S3ObjectMaterializer;
 import java.util.Optional;
 import org.slf4j.Logger;
@@ -27,7 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
  * </ul>
  */
 @Service
-public class StorageRuntimeService {
+public class StorageRuntimeService implements com.example.platform.storage.api.StorageRuntime {
 
     private static final Logger log = LoggerFactory.getLogger(StorageRuntimeService.class);
     private final StorageReferenceRepository repo;
@@ -73,12 +73,13 @@ public class StorageRuntimeService {
                 storageRef.relativePath(),
                 storageRef.checksum()
             );
-            if (result.isPresent()) {
-                return Optional.of(result.get().localPath().toString());
-            }
+            return result.map(value -> value.localPath().toString());
+        }
+        if (!"LOCAL".equals(storageRef.providerType()) && !"localFsStorageProvider".equals(storageRef.providerType())) {
+            return Optional.empty(); // unavailable/unsupported remote storage is never interpreted as local
         }
 
-        // Fall back to local file verification
+        // Local storage verification
         var localPath = java.nio.file.Path.of(storageRef.absolutePath());
         if (java.nio.file.Files.exists(localPath)) {
             return Optional.of(localPath.toString());

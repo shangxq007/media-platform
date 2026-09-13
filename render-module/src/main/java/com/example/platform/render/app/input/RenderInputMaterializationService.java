@@ -1,7 +1,7 @@
 package com.example.platform.render.app.input;
 
 import com.example.platform.render.app.product.ProductRuntimeService;
-import com.example.platform.render.app.storage.StorageRuntimeService;
+import com.example.platform.storage.api.StorageRuntime;
 import com.example.platform.render.domain.product.Product;
 import com.example.platform.render.domain.product.ProductStatus;
 import com.example.platform.render.domain.product.RepresentationKind;
@@ -21,7 +21,7 @@ import java.util.Set;
  * Materializes render inputs through StorageRuntime.
  *
  * <p>Accepts input Products, verifies they are READY file-backed Products
- * with StorageReferences, and delegates to StorageRuntimeService.materialize()
+ * with StorageReferences, and delegates to StorageRuntime.materialize()
  * to obtain a local file path for a typed provider-plugin request.</p>
  *
  * <p>This service is the integration glue between input Products and the
@@ -51,10 +51,10 @@ public class RenderInputMaterializationService {
             "application/octet-stream" // fallback for unknown extensions
     );
 
-    private final StorageRuntimeService storageRuntime;
+    private final StorageRuntime storageRuntime;
     private final ProductRuntimeService productRuntime;
 
-    public RenderInputMaterializationService(StorageRuntimeService storageRuntime,
+    public RenderInputMaterializationService(StorageRuntime storageRuntime,
                                               ProductRuntimeService productRuntime) {
         this.storageRuntime = storageRuntime;
         this.productRuntime = productRuntime;

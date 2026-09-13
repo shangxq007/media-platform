@@ -1,9 +1,9 @@
-package com.example.platform.render.app.storage;
+package com.example.platform.storage.app;
 
 import com.example.platform.storage.contract.StorageClass;
 import com.example.platform.storage.contract.StorageProviderType;
 import com.example.platform.storage.contract.StorageReference;
-import com.example.platform.render.infrastructure.storage.StorageReferenceRepository;
+import com.example.platform.storage.infrastructure.StorageReferenceRepository;
 import java.time.Instant;
 import java.util.Optional;
 import org.junit.jupiter.api.*;

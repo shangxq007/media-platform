@@ -1,12 +1,12 @@
 package com.example.platform.render.app.output;
 
 import com.example.platform.render.app.product.ProductRuntimeService;
-import com.example.platform.render.app.storage.StorageRuntimeService;
+import com.example.platform.storage.app.StorageRuntimeService;
 import com.example.platform.render.domain.product.*;
 import com.example.platform.storage.contract.*;
 import com.example.platform.render.infrastructure.product.ProductRepository;
 import com.example.platform.render.infrastructure.product.ProductDependencyRepository;
-import com.example.platform.render.infrastructure.storage.StorageReferenceRepository;
+import com.example.platform.storage.infrastructure.StorageReferenceRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -54,7 +54,7 @@ class RenderOutputRegistrationServiceTest {
         depRepo = new InMemoryProductDependencyRepository();
         storageRuntime = new StorageRuntimeService(storageRepo, mockProvider(null));
         productRuntime = new ProductRuntimeService(productRepo, depRepo);
-        service = new RenderOutputRegistrationService(storageRuntime, productRuntime, tempDir, mockProvider(null), mockProvider(null));
+        service = new RenderOutputRegistrationService(com.example.platform.render.testsupport.fakes.OutputStorageFixture.create(storageRuntime, tempDir), productRuntime);
     }
 
     @AfterEach

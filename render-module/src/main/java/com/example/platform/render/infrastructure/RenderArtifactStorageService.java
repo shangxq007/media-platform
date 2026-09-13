@@ -1,22 +1,30 @@
 package com.example.platform.render.infrastructure;
 
-import java.io.IOException;
+import com.example.platform.artifact.app.*;
+import com.example.platform.artifact.domain.ArtifactMediaType;
+import com.example.platform.storage.api.*;
+import com.example.platform.shared.web.TenantGuard;
 import org.springframework.stereotype.Service;
 
-/**
- * Fail-closed gate for legacy render-output finalization.
- *
- * <p>The former implementation wrapped a provider bucket/key in
- * {@code StorageObjectId} and invented replica/provider facts before calling
- * Artifact. That path is unavailable until a Storage-owned production write
- * boundary returns a canonical logical ID and placement receipt.</p>
- */
+/** Render coordinates published Storage and Artifact commands; neither foreign table is writable here. */
 @Service
 public class RenderArtifactStorageService {
-
-    public void uploadJobOutput(String jobId, String projectId, String artifactId,
-            String localRelativePath, String contentType) throws IOException {
-        throw new UnsupportedOperationException(
-                "Render Artifact finalization requires Storage-owned canonical issuance");
+    private final StorageOutputPort storage;
+    private final ArtifactOutputCommit artifacts;
+    public RenderArtifactStorageService(StorageOutputPort storage, ArtifactOutputCommit artifacts) {
+        this.storage=storage; this.artifacts=artifacts;
+    }
+    public ArtifactOutputReference uploadJobOutput(String jobId, String projectId,
+            String localRelativePath, String contentType) {
+        String tenant=TenantGuard.requireTenantId();
+        ArtifactMediaType media=switch(contentType) {
+            case "video/mp4", "video/webm", "video/quicktime" -> ArtifactMediaType.VIDEO;
+            case "audio/wav", "audio/mpeg", "audio/flac" -> ArtifactMediaType.AUDIO;
+            case "image/png", "image/jpeg" -> ArtifactMediaType.IMAGE;
+            default -> throw new IllegalArgumentException("unsupported Render output media type");
+        };
+        var written=storage.write(new StorageOutputPort.OutputCommand(new StorageOwnershipScope(tenant,projectId),
+                new IssuanceIdempotencyKey("render-output:"+jobId),localRelativePath,contentType));
+        return artifacts.commit(new ArtifactScope(tenant,projectId,jobId),written.issuance(),media);
     }
 }

@@ -38,8 +38,10 @@ case "${1:-}" in
   execution)
     ./gradlew --no-daemon --console=plain \
       :bmf-provider-module:test :provider-plugin-runtime-module:test :outbox-event-module:test \
-      :render-module:compileTestJava \
-      :platform-app:test --tests '*ProviderRuntimeExecutionCompositionTest' --tests '*ModularityTest'
+      :storage-module:test \
+      :artifact-module:test --tests '*ArtifactCommitServiceTest' --tests '*ArtifactApplicationServiceTest' --tests '*JooqArtifactCommitServiceProvenance*' \
+      :render-module:test --tests '*RenderArtifactStorageServiceTest' --tests '*RenderOutputRegistrationServiceTest' --tests '*RawMediaProductRegistrationFacadeTest' --tests '*PreviewArtifactQueryServiceTest' \
+      :platform-app:test --tests '*ProviderRuntimeExecutionCompositionTest' --tests '*RenderOutputAcceptanceTest' --tests '*ModularityTest'
     ;;
   outbox)
     ./gradlew --no-daemon --console=plain \

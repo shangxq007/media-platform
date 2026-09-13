@@ -171,6 +171,14 @@ public class LocalFsStorageProvider implements BlobStorage {
         if (!resolved.startsWith(bucketPath)) {
             throw new IllegalArgumentException("Object key escapes bucket directory");
         }
+        // Do not follow a pre-existing symlink in an output's parent directories.
+        Path cursor = root;
+        for (Path segment : root.relativize(resolved)) {
+            cursor = cursor.resolve(segment);
+            if (Files.isSymbolicLink(cursor)) {
+                throw new IllegalArgumentException("Object path contains a symbolic link");
+            }
+        }
         if (Files.exists(resolved)) {
             try {
                 Path realPath = resolved.toRealPath();

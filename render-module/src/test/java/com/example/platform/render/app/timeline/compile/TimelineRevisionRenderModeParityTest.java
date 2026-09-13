@@ -13,11 +13,11 @@ import com.example.platform.timeline.adapter.TimelineSnapshotService;
 import com.example.platform.render.app.input.RenderInputMaterializationService;
 import com.example.platform.render.app.output.RenderOutputRegistrationService;
 import com.example.platform.render.app.product.ProductRuntimeService;
-import com.example.platform.render.app.storage.StorageRuntimeService;
+import com.example.platform.storage.app.StorageRuntimeService;
 import com.example.platform.render.app.timeline.*;
 import com.example.platform.render.infrastructure.product.ProductDependencyRepository;
 import com.example.platform.render.infrastructure.product.ProductRepository;
-import com.example.platform.render.infrastructure.storage.StorageReferenceRepository;
+import com.example.platform.storage.infrastructure.StorageReferenceRepository;
 import com.example.platform.render.testsupport.TimelineCoreSmokeFixture;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
@@ -212,7 +212,7 @@ class TimelineRevisionRenderModeParityTest {
         TimelineRenderJobMapper mapper = new TimelineRenderJobMapper(parser, importAdapter, importService);
         TimelineInputProductResolver inputProductResolver = new TimelineInputProductResolver(productRuntime);
         RenderInputMaterializationService matService = new RenderInputMaterializationService(storageRuntime, productRuntime);
-        RenderOutputRegistrationService regService = new RenderOutputRegistrationService(storageRuntime, productRuntime, tempDir, mockProvider(null), mockProvider(null));
+        RenderOutputRegistrationService regService = new RenderOutputRegistrationService(com.example.platform.render.testsupport.fakes.OutputStorageFixture.create(storageRuntime, tempDir), productRuntime);
         return new TimelineRevisionRenderService(
                 new StubTimelineRevisionService(revisionRepo), snapshotService,
                 mapper, parser, null, matService, regService, productRuntime, storageRuntime,
@@ -227,7 +227,7 @@ class TimelineRevisionRenderModeParityTest {
         TimelineRenderJobMapper mapper = new TimelineRenderJobMapper(parser, importAdapter, importService);
         TimelineInputProductResolver inputProductResolver = new TimelineInputProductResolver(productRuntime);
         RenderInputMaterializationService matService = new RenderInputMaterializationService(storageRuntime, productRuntime);
-        RenderOutputRegistrationService regService = new RenderOutputRegistrationService(storageRuntime, productRuntime, tempDir, mockProvider(null), mockProvider(null));
+        RenderOutputRegistrationService regService = new RenderOutputRegistrationService(com.example.platform.render.testsupport.fakes.OutputStorageFixture.create(storageRuntime, tempDir), productRuntime);
         TimelineNormalizationService normalizer = new TimelineNormalizationService();
         ArtifactGraphCompiler artifactCompiler = new ArtifactGraphCompiler();
         CapabilityGraphCompiler capCompiler = new CapabilityGraphCompiler();

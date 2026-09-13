@@ -363,13 +363,13 @@ public class RenderJobExecutionService {
                 "Render completed, finalizing artifacts", "RenderJobExecutionService");
         updateStatus(jobId, projectId, RenderJobStatus.EXECUTING, RenderJobStatus.COMPLETING, null);
 
-        String artifactId = renderResult.artifactId();
+        String artifactId;
         String storageUri = renderResult.storageUri();
 
         try {
             String contentType = contentTypeForFormat(renderResult.format());
             String relativePath = renderResult.storageUri().replace("localFsStorageProvider://", "");
-            artifactStorageService.uploadJobOutput(jobId, projectId, artifactId, relativePath, contentType);
+            artifactId = artifactStorageService.uploadJobOutput(jobId, projectId, relativePath, contentType).artifactId().value();
         } catch (Exception e) {
             log.error("Storage failed for job {}", jobId, e);
             failureService.recordDurableFailure(jobId, "Storage failed: " + e.getMessage());
