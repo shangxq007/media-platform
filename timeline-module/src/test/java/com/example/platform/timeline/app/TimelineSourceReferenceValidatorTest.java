@@ -2,8 +2,8 @@ package com.example.platform.timeline.app;
 
 import com.example.platform.timeline.api.composition.TimelineSourceValidation;
 import com.example.platform.timeline.app.TimelineSourceReferenceValidator;
-import com.example.platform.media.app.MediaAssetRepository;
-import com.example.platform.media.app.MediaStreamRepository;
+import com.example.platform.media.api.MediaAssetQueries;
+import com.example.platform.media.api.MediaStreamQueries;
 import com.example.platform.media.domain.identity.MediaAssetId;
 import com.example.platform.media.domain.media.MediaAsset;
 import com.example.platform.media.domain.stream.MediaStream;
@@ -41,18 +41,15 @@ class TimelineSourceReferenceValidatorTest {
                 new TimeRange(MediaTime.ZERO, MediaTime.ofRational(10, 1)));
     }
 
-    private static final MediaAssetRepository ASSETS = new MediaAssetRepository() {
-        @Override public MediaAsset save(MediaAsset asset) { return asset; }
+    private static final MediaAssetQueries ASSETS = new MediaAssetQueries() {
         @Override public Optional<MediaAsset> findById(MediaAssetId id) {
             return id.equals(ASSET) ? Optional.of(new MediaAsset(ASSET, "t", "p", "v1",
                     null, null, null, null, null, false, false, null,
                     java.time.Instant.EPOCH, java.time.Instant.EPOCH)) : Optional.empty();
         }
-        @Override public boolean exists(MediaAssetId id) { return id.equals(ASSET); }
     };
 
-    private static final MediaStreamRepository STREAMS = new MediaStreamRepository() {
-        @Override public void saveAll(MediaAssetId mediaAssetId, List<MediaStream> streams) {}
+    private static final MediaStreamQueries STREAMS = new MediaStreamQueries() {
         @Override public List<MediaStream> findByMediaAssetId(MediaAssetId mediaAssetId) {
             if (mediaAssetId.equals(ASSET)) {
                 return List.of(new MediaStream(STREAM, 0, StreamKind.VIDEO, "h264",
@@ -62,7 +59,6 @@ class TimelineSourceReferenceValidatorTest {
             }
             return List.of();
         }
-        @Override public void deleteByMediaAssetId(MediaAssetId mediaAssetId) {}
     };
 
     private final TimelineSourceReferenceValidator validator =

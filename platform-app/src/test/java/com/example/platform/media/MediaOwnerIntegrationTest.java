@@ -126,4 +126,30 @@ class MediaOwnerIntegrationTest extends PostgresTestContainerSupport {
         assertThrows(IllegalArgumentException.class,()->context.getBean(MediaProbes.class).probeAndPersist(MediaAssetId.of("missing"),"tenant","project","fixture:input"));
         assertEquals(before,jdbc.queryForObject("select count(*) from media_asset",Long.class));
     }
+    @Test void timelineResolvesRealMediaOwnerSourcesAndRejectsScopeMembershipAndKind() {
+        var asset=register();var id=MediaAssetId.of(asset.id());
+        var normalized=context.getBean(MediaProbes.class).probeAndPersist(id,"tenant","project","fixture:input");
+        var validator=new com.example.platform.timeline.app.TimelineSourceReferenceValidator(
+                context.getBean(MediaAssetQueries.class),context.getBean(MediaStreamQueries.class));
+        // Pin values are carried unchanged. Artifact acceptance is separately exercised by H7V2/output tests.
+        var pin=new com.example.platform.shared.identity.ArtifactId("source-validation-fixture-pin");
+        var digest=com.example.platform.shared.digest.ContentDigest.sha256("0".repeat(64));
+        var range=new com.example.platform.timeline.semantics.clip.MediaClip.TimeRange(
+                com.example.platform.shared.time.MediaTime.ZERO,com.example.platform.shared.time.MediaTime.ofRational(1,1));
+        var binding=new com.example.platform.timeline.semantics.clip.MediaStreamSourceBinding(
+                id,normalized.streams().getFirst().id(),pin,digest,range);
+        var video=com.example.platform.timeline.canonical.TrackType.VIDEO;
+        assertTrue(validator.validate(binding,"tenant","project",video).valid());
+        assertFalse(validator.validate(binding,"foreign","project",video).valid());
+        assertFalse(validator.validate(binding,"tenant","other",video).valid());
+        assertFalse(validator.validate(binding,"tenant","project",com.example.platform.timeline.canonical.TrackType.AUDIO).valid());
+        var foreignStream=new com.example.platform.timeline.semantics.clip.MediaStreamSourceBinding(
+                id,com.example.platform.media.domain.stream.MediaStreamId.of("missing-stream"),pin,digest,range);
+        assertFalse(validator.validate(foreignStream,"tenant","project",video).valid());
+        var missingAsset=new com.example.platform.timeline.semantics.clip.MediaStreamSourceBinding(
+                MediaAssetId.of("missing-asset"),binding.mediaStreamId(),pin,digest,range);
+        assertFalse(validator.validate(missingAsset,"tenant","project",video).valid());
+        assertEquals(pin,binding.artifactId());assertEquals(digest,binding.contentDigest());
+        assertEquals(range,binding.sourceRange());
+    }
 }

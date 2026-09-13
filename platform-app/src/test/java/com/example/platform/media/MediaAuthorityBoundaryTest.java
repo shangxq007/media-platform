@@ -30,4 +30,20 @@ class MediaAuthorityBoundaryTest {
             assertTrue(prohibitedRenderSource(source),source);
         assertFalse(prohibitedRenderSource("import com.example.platform.media.api.MediaAssets;"));
     }
+    static boolean foreignMediaImplementation(String source) {
+        return source.contains("com.example.platform.media.app.") || source.contains("com.example.platform.media.infrastructure.");
+    }
+    @Test void timelineDependsOnlyOnPublishedMediaContracts() throws Exception {
+        Path root=Path.of(System.getProperty("user.dir")).toAbsolutePath();
+        if(!Files.isDirectory(root.resolve("timeline-module")))root=root.getParent();
+        try(var files=Files.walk(root.resolve("timeline-module/src/main/java"))) {
+            for(Path file:files.filter(p->p.toString().endsWith(".java")).toList())
+                assertFalse(foreignMediaImplementation(Files.readString(file)),file.toString());
+        }
+        assertTrue(foreignMediaImplementation("import com.example.platform.media.app.MediaAssetRepository;"));
+        assertTrue(foreignMediaImplementation("import com.example.platform.media.app.MediaStreamRepository;"));
+        assertFalse(foreignMediaImplementation("import com.example.platform.media.api.MediaAssetQueries;"));
+        assertEquals(Set.of("findById"),Arrays.stream(com.example.platform.media.api.MediaAssetQueries.class.getMethods()).map(java.lang.reflect.Method::getName).collect(java.util.stream.Collectors.toSet()));
+        assertEquals(Set.of("findByMediaAssetId"),Arrays.stream(com.example.platform.media.api.MediaStreamQueries.class.getMethods()).map(java.lang.reflect.Method::getName).collect(java.util.stream.Collectors.toSet()));
+    }
 }

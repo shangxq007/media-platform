@@ -7,11 +7,9 @@ import java.util.Optional;
 /**
  * MediaAsset persistence port (media domain owner).
  */
-public interface MediaAssetRepository {
+public interface MediaAssetRepository extends com.example.platform.media.api.MediaAssetQueries {
 
     MediaAsset save(MediaAsset asset);
-
-    Optional<MediaAsset> findById(MediaAssetId id);
 
     boolean exists(MediaAssetId id);
 }

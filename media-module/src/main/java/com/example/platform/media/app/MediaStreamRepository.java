@@ -7,11 +7,9 @@ import java.util.List;
 /**
  * Canonical source stream persistence port.
  */
-public interface MediaStreamRepository {
+public interface MediaStreamRepository extends com.example.platform.media.api.MediaStreamQueries {
 
     void saveAll(MediaAssetId mediaAssetId, List<MediaStream> streams);
-
-    List<MediaStream> findByMediaAssetId(MediaAssetId mediaAssetId);
 
     void deleteByMediaAssetId(MediaAssetId mediaAssetId);
 }

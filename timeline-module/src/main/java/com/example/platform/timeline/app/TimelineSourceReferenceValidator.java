@@ -1,8 +1,8 @@
 package com.example.platform.timeline.app;
 import com.example.platform.timeline.api.composition.TimelineSourceValidation;
 
-import com.example.platform.media.app.MediaAssetRepository;
-import com.example.platform.media.app.MediaStreamRepository;
+import com.example.platform.media.api.MediaAssetQueries;
+import com.example.platform.media.api.MediaStreamQueries;
 import com.example.platform.media.domain.identity.MediaAssetId;
 import com.example.platform.media.domain.stream.MediaStream;
 import com.example.platform.media.domain.stream.MediaStreamId;
@@ -17,28 +17,27 @@ import org.springframework.stereotype.Component;
  * TIMELINE_SOURCE_REFERENCE_VALIDITY_V1 (T13) — bounded validation port.
  *
  * <p>Timeline validates the BINDING against canonical media source truth through the
- * media domain's typed query contract (MediaAssetRepository / MediaStreamRepository).
+ * media domain's typed query contract (MediaAssetQueries / MediaStreamQueries).
  * Timeline never reads media DB rows, never owns media truth.
  *
  * <p>Boundary notes:
  * <ul>
- *   <li>artifact pin (artifactId/contentDigest) existence check is DEFERRED: the current
- *       dependency graph is artifact-module -&gt; render-module, so render cannot query the
- *       artifact catalog without a cycle; the pin structure is enforced by MediaStreamSourceBinding
- *       invariants (non-null, typed).</li>
- *   <li>stream kind compatibility is left to clip semantics (TimelineClip has no kind
- *       field); MediaStreamId must belong to the pinned MediaAsset.</li>
+ *   <li>This port checks source asset ownership, stream membership, and track kind.
+ *       Canonical revision commitment separately validates Artifact pins through its
+ *       existing Artifact owner path. A successful Media lookup is not Artifact acceptance.</li>
+ *   <li>Context-bound authoring supplies tenant, project, and track kind; context-free
+ *       validation only checks structural references and grants no mutation authority.</li>
  * </ul>
  */
 @Component
 public class TimelineSourceReferenceValidator implements TimelineSourceValidation {
 
-    private final MediaAssetRepository mediaAssetRepository;
-    private final MediaStreamRepository mediaStreamRepository;
+    private final MediaAssetQueries mediaAssetRepository;
+    private final MediaStreamQueries mediaStreamRepository;
 
     public TimelineSourceReferenceValidator(
-            MediaAssetRepository mediaAssetRepository,
-            MediaStreamRepository mediaStreamRepository) {
+            MediaAssetQueries mediaAssetRepository,
+            MediaStreamQueries mediaStreamRepository) {
         this.mediaAssetRepository = mediaAssetRepository;
         this.mediaStreamRepository = mediaStreamRepository;
     }
@@ -83,7 +82,7 @@ public class TimelineSourceReferenceValidator implements TimelineSourceValidatio
             }
         }
 
-        // Artifact pin existence: DEFERRED (dependency-cycle constraint, see class javadoc).
+        // Artifact pin acceptance remains at the canonical revision owner boundary.
         // ContentDigest format is validated at ContentDigest construction.
         // Exact source range validity (start <= end, non-negative) is type-guaranteed by
         // MediaClip.TimeRange and MediaTime invariants.
