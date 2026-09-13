@@ -9,7 +9,7 @@ import static org.mockito.Mockito.verify;
 
 import com.example.platform.outbox.testsupport.OutboxEventTestSchemaFixture;
 import com.example.platform.outbox.testsupport.OutboxTestEvents;
-import com.example.platform.shared.events.ArtifactCreatedEvent;
+import com.example.platform.outbox.testsupport.OutboxTestEvents.FixtureArtifactCreated;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Instant;
@@ -84,7 +84,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
 
     @Test
     void persistedArtifactCreatedPayloadRoundTripsThroughOutboxDispatch() throws Exception {
-        ArtifactCreatedEvent event = new ArtifactCreatedEvent(
+        FixtureArtifactCreated event = new FixtureArtifactCreated(
                 "art-1", "job-1", "proj-1", Instant.parse("2026-08-13T03:16:09Z"));
         String id = service.append(OutboxTestEvents.ARTIFACT.append("tenant-test", event, null));
 
@@ -100,7 +100,7 @@ class OutboxEventServiceTest extends PostgresTestContainerSupport {
         assertTrue(dispatcher.processOnce(id));
         ArgumentCaptor<Object> published = ArgumentCaptor.forClass(Object.class);
         verify(publisher).publishEvent(published.capture());
-        assertEquals(event, assertInstanceOf(ArtifactCreatedEvent.class, published.getValue()));
+        assertEquals(event, assertInstanceOf(FixtureArtifactCreated.class, published.getValue()));
     }
 
     @Test

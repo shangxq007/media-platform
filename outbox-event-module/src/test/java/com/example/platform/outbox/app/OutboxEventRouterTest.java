@@ -2,7 +2,7 @@ package com.example.platform.outbox.app;
 
 import com.example.platform.outbox.api.event.*;
 import com.example.platform.outbox.testsupport.OutboxTestEvents;
-import com.example.platform.shared.events.ArtifactCreatedEvent;
+import com.example.platform.outbox.testsupport.OutboxTestEvents.FixtureArtifactCreated;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class OutboxEventRouterTest {
     @Test void exactVersionAndTypedPayloadRoundTripIncludingInstant() {
         var router = OutboxTestEvents.router();
-        var event = new ArtifactCreatedEvent("art", "job", "project", Instant.parse("2026-09-12T00:00:00Z"));
+        var event = new FixtureArtifactCreated("art", "job", "project", Instant.parse("2026-09-12T00:00:00Z"));
         String json = router.encode(OutboxTestEvents.ARTIFACT.append("tenant", event, null));
         assertTrue(json.contains("2026-09-12T00:00:00Z"));
         assertEquals(event, router.decode("artifact.created", 1, "artifact", "art", json).payload());

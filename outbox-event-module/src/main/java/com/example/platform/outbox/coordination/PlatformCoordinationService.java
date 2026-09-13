@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
  * ASR means) lives in task handlers, not here.</p>
  */
 @Service
+@org.springframework.modulith.NamedInterface("coordination")
 public class PlatformCoordinationService {
 
     private static final Logger log = LoggerFactory.getLogger(PlatformCoordinationService.class);
@@ -51,6 +52,28 @@ public class PlatformCoordinationService {
         notifyService.notifyTaskCreated();
         log.debug("Created platform task: id={} type={} capability={}", task.id(), taskType, capability);
         return task;
+    }
+
+    /** One local job/task intent for an immutable delivered fact; external execution remains at-least-once. */
+    @Transactional
+    public PlatformJob createJobWithTaskOnce(String deliveryKey,JobType jobType,String aggregateType,String aggregateId,
+            String tenantId,String projectId,String payloadJson,String taskType,TaskCapability capability) {
+        if(deliveryKey==null||deliveryKey.isBlank())throw new IllegalArgumentException("Delivery key required");
+        com.example.platform.shared.web.TenantGuard.assertSameTenant(tenantId);
+        String id="pjob_"+UUID.nameUUIDFromBytes((tenantId+"\0"+deliveryKey).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        jobRepo.lockDeliveryKey(id);
+        var existing=jobRepo.findById(id);
+        if(existing.isPresent()) {
+            var job=existing.get();var tasks=taskRepo.listByJob(id);
+            if(job.jobType()!=jobType||!Objects.equals(job.aggregateType(),aggregateType)||!Objects.equals(job.aggregateId(),aggregateId)
+                ||!Objects.equals(job.tenantId(),tenantId)||!Objects.equals(job.projectId(),projectId)||!Objects.equals(job.payloadJson(),payloadJson)
+                ||tasks.size()!=1||!Objects.equals(tasks.getFirst().taskType(),taskType)||tasks.getFirst().capability()!=capability)
+                throw new IllegalArgumentException("Delivery key reused for a different task intent");
+            return job;
+        }
+        jobRepo.createWithId(id,jobType,aggregateType,aggregateId,tenantId,projectId,payloadJson);
+        createTask(id,taskType,capability,null,0);
+        return jobRepo.findById(id).orElseThrow();
     }
 
     public List<PlatformTask> listTasks(String jobId) {

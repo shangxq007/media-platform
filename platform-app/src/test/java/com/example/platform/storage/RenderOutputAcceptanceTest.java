@@ -97,7 +97,7 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
         context.registerBean(RenderArtifactStorageService.class);
         context.registerBean(ArtifactOutputReadService.class);
         context.registerBean(ArtifactOutputReferenceIndexService.class);
-        context.registerBean(OutboxEventRouter.class,()->new OutboxEventRouter(List.of(new RenderOutboxEvents(),new ProviderBindingOutboxEvents())));
+        context.registerBean(OutboxEventRouter.class,()->new OutboxEventRouter(List.of(new RenderOutboxEvents(),new ProviderBindingOutboxEvents(),new com.example.platform.artifact.api.event.ArtifactOutboxEvents(),new com.example.platform.delivery.api.event.DeliveryOutboxEvents(),new com.example.platform.audit.api.event.AuditOutboxEvents())));
         context.registerBean(PostgresNotificationService.class);
         context.registerBean(OutboxEventService.class,()->{
             rawOutbox=spy(new OutboxEventService(context.getBean(DSLContext.class),3,context.getBean(PostgresNotificationService.class),context.getBean(OutboxEventRouter.class)));return rawOutbox;});
@@ -123,11 +123,21 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
                 catch(java.io.IOException e){throw new IllegalStateException(e);}
             }
         };
-        context.registerBean(DeliveryJobService.class,()->new DeliveryJobService(context.getBean(DSLContext.class),new DeliveryAdapterRegistry(List.of(adapter)),context.getBean(DeliverySourceResolver.class),context,mock(com.example.platform.secrets.api.port.CredentialBundlePort.class),true,3));
+        context.registerBean(com.example.platform.delivery.app.DeliveryOutcomeService.class);
+        context.registerBean(DeliveryJobService.class,()->new DeliveryJobService(context.getBean(DSLContext.class),new DeliveryAdapterRegistry(List.of(adapter)),context.getBean(DeliverySourceResolver.class),context.getBean(com.example.platform.delivery.app.DeliveryOutcomeService.class),mock(com.example.platform.secrets.api.port.CredentialBundlePort.class),true,3));
         context.registerBean(DeliveryCompletionListener.class);
         context.registerBean(DeliveryRemoteUriIndexService.class);
         context.registerBean(DeliveryStorageUriReferenceContributor.class);
         context.registerBean(OutboxEventDispatcher.class,()->new OutboxEventDispatcher(context.getBean(OutboxEventService.class),context,context.getBean(OutboxEventRouter.class),3,new io.micrometer.core.instrument.simple.SimpleMeterRegistry()));
+        context.registerBean(com.example.platform.artifact.api.event.ArtifactMetadataEventPublisher.class);
+        context.registerBean(com.example.platform.render.infrastructure.asset.AssetSemanticMetadataRepository.class);
+        context.registerBean(com.example.platform.render.infrastructure.asset.AssetRepository.class);
+        context.registerBean(com.example.platform.render.app.asset.AssetRegistryService.class);
+        context.registerBean(com.example.platform.render.app.asset.AssetSemanticMetadataService.class);
+        context.registerBean(com.example.platform.outbox.coordination.PlatformJobRepository.class);
+        context.registerBean(com.example.platform.outbox.coordination.PlatformTaskRepository.class);
+        context.registerBean(com.example.platform.outbox.coordination.PlatformCoordinationService.class);
+        context.registerBean(com.example.platform.render.app.asset.AssetSearchConsumer.class);
         context.refresh();
         jdbc.update("insert into tenant(id,name,created_at) values ('ep04-tenant','test',now())");
         jdbc.update("insert into project(id,tenant_id,name,created_at) values ('project','ep04-tenant','test',now())");
@@ -222,7 +232,7 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
         var failingCommit=mock(ArtifactCommitService.class);
         when(failingCommit.commit(any())).thenThrow(new IllegalStateException("injected Artifact transaction failure"));
         var service=new ArtifactOutputCommitService(placements,failingCommit,context.getBean(ArtifactQueryService.class),
-                context.getBean(ArtifactApplicationQuery.class),context.getBean(DSLContext.class));
+                context.getBean(ArtifactApplicationQuery.class),context.getBean(DSLContext.class),context.getBean(OutboxEventService.class));
         var failedRender=new RenderArtifactStorageService(output,(scope,receipt,media)->tx.execute(status->service.commit(scope,receipt,media)));
         long before=count("artifact");
         assertThrows(IllegalStateException.class,()->failedRender.uploadJobOutput("commit-failure-job","project",path,"video/mp4"));
@@ -420,6 +430,143 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
         notifier.notifyIfNeeded("ep04-tenant","project","cache-job","base-job",Set.of("task-1"));
         assertEquals(1,jobEvents("cache-job"));String id=eventIds("cache-job").getFirst();assertTrue(dispatcher.processOnce(id));assertFalse(dispatcher.processOnce(id));
         assertEquals(1L,jdbc.queryForObject("select count(*) from notification_event where subject_id='cache-job'",Long.class));
+    }
+
+    String deliveryFixture(String name,String protocol) throws Exception {
+        job(name,"EXECUTING");lifecycle.complete("ep04-tenant",name,file(name+".mp4"),"video/mp4");
+        jdbc.update("insert into delivery_destination(id,tenant_id,name,protocol,config_json,enabled,created_at) values (?,'ep04-tenant','test',?,'{}',true,now())",name+"-dest",protocol);
+        return context.getBean(DeliveryJobService.class).triggerManual("ep04-tenant","project",name,name+"-dest");
+    }
+    Record decodeFact(String type,String aggregate) {
+        var row=jdbc.queryForMap("select * from outbox_events where event_type=? and aggregate_id=? order by created_at desc limit 1",type,aggregate);
+        return context.getBean(OutboxEventRouter.class).decode(type,((Number)row.get("event_version")).intValue(),(String)row.get("aggregate_type"),aggregate,(String)row.get("payload")).payload();
+    }
+    @Test void artifactOwnerCreationIsDurableScopedAndReplayedWithoutDuplicateEffects() throws Exception {
+        String path=file("owner-created.mp4");var accepted=render.uploadJobOutput("owner-created","project",path,"video/mp4");
+        assertEquals(accepted,render.uploadJobOutput("owner-created","project",path,"video/mp4"));
+        String id=accepted.artifactId().value();assertEquals(1,jobEvents(id));
+        var fact=assertInstanceOf(com.example.platform.artifact.api.event.ArtifactCreatedEvent.class,decodeFact("artifact.created",id));
+        assertEquals(accepted,fact.result());assertTrue(dispatcher.processOnce(eventIds(id).getFirst()));
+        context.publishEvent(fact);context.publishEvent(fact);
+        assertEquals(1L,jdbc.queryForObject("select count(*) from audit_records where resource_id=? and action='ARTIFACT_CREATED'",Long.class,id));
+        assertEquals(1L,jdbc.queryForObject("select count(*) from notification_event where subject_id=? and event_type='artifact.created'",Long.class,id));
+        assertEquals(0,jobEvents("owner-created")); // Artifact creation does not invent a Render transition.
+    }
+    @Test void creationAppendFailureRollsBackArtifactButRetainsStorageRecovery() throws Exception {
+        String path=file("creation-fail.mp4");long before=count("artifact");
+        doThrow(new IllegalStateException("creation append unavailable")).when(rawOutbox).append(argThat(a->a.type()==com.example.platform.artifact.api.event.ArtifactOutboxEvents.ARTIFACTCREATEDEVENT));
+        assertThrows(IllegalStateException.class,()->render.uploadJobOutput("creation-fail","project",path,"video/mp4"));
+        assertEquals(before,count("artifact"));
+        assertTrue(placements.find(new StorageOwnershipScope("ep04-tenant","project"),new IssuanceIdempotencyKey("render-output:creation-fail")).isPresent());
+        reset(rawOutbox);var accepted=render.uploadJobOutput("creation-fail","project",path,"video/mp4");assertEquals(1,jobEvents(accepted.artifactId().value()));verify(backend,times(1)).put(any());
+    }
+    @Test void deliveryAcceptedAttemptDispatchesTypedOutcomeAndDeduplicatesNotification() throws Exception {
+        String id=deliveryFixture("delivery-fact","SFTP");assertTrue(context.getBean(DeliveryJobService.class).runJob(id));
+        var fact=assertInstanceOf(com.example.platform.delivery.api.event.DeliveryCompletedEvent.class,decodeFact("delivery.completed",id));
+        assertEquals(1,fact.attempt());assertEquals("ep04-tenant",fact.tenantId());assertEquals("delivery-fact",fact.renderJobId());
+        assertEquals(Files.size(root.resolve("delivery-fact.mp4")),fact.bytesTransferred());
+        assertTrue(dispatcher.processOnce(eventIds(id).getFirst()));context.publishEvent(fact);context.publishEvent(fact);
+        assertEquals(1L,jdbc.queryForObject("select count(*) from notification_event where subject_id=? and event_type='render.delivery.completed'",Long.class,id));
+        assertFalse(context.getBean(DeliveryJobService.class).runJob(id));assertEquals(1,transfers.get());
+    }
+    @Test void deliveryCompletionAppendFailurePreservesUncertaintyAndHasNoOrphanFact() throws Exception {
+        String id=deliveryFixture("delivery-append-fail","SFTP");
+        doThrow(new IllegalStateException("outcome append unavailable")).when(rawOutbox).append(argThat(a->a.type()==com.example.platform.delivery.api.event.DeliveryOutboxEvents.COMPLETED));
+        assertFalse(context.getBean(DeliveryJobService.class).runJob(id));
+        assertEquals("UNCERTAIN",jdbc.queryForObject("select status from delivery_job where id=?",String.class,id));
+        assertNull(jdbc.queryForObject("select remote_uri from delivery_job where id=?",String.class,id));assertEquals(0,jobEvents(id));assertEquals(1,transfers.get());
+        assertThrows(IllegalStateException.class,()->context.getBean(DeliveryJobService.class).retryDelivery("ep04-tenant","project","delivery-append-fail",id));
+    }
+    @Test void deliveryFailureAndRetryHaveDistinctAttemptFactsAndRejectStaleOutcome() throws Exception {
+        String id=deliveryFixture("delivery-retry","HTTPS_PUT");var service=context.getBean(DeliveryJobService.class);
+        assertFalse(service.runJob(id));assertEquals(0,transfers.get());
+        var failed=assertInstanceOf(com.example.platform.delivery.api.event.DeliveryFailedEvent.class,decodeFact("delivery.failed",id));assertEquals("ADAPTER_MISSING",failed.errorCode());
+        assertTrue(dispatcher.processOnce(eventIds(id).getFirst()));context.publishEvent(failed);assertEquals(1L,jdbc.queryForObject("select count(*) from notification_event where subject_id=?",Long.class,id));
+        jdbc.update("update delivery_destination set protocol='SFTP' where id='delivery-retry-dest'");
+        assertTrue(service.retryDelivery("ep04-tenant","project","delivery-retry",id));
+        var completed=assertInstanceOf(com.example.platform.delivery.api.event.DeliveryCompletedEvent.class,decodeFact("delivery.completed",id));assertEquals(2,completed.attempt());
+        assertThrows(IllegalStateException.class,()->context.getBean(com.example.platform.delivery.app.DeliveryOutcomeService.class).failed(failed));
+        assertEquals("COMPLETED",jdbc.queryForObject("select status from delivery_job where id=?",String.class,id));assertEquals(2,jobEvents(id));
+    }
+    @Test void deliveryFailureAppendRejectionRollsBackTheClaimedOutcome() throws Exception {
+        String id=deliveryFixture("delivery-failed-append","HTTPS_PUT");
+        doThrow(new IllegalStateException("failure append unavailable")).when(rawOutbox).append(argThat(a->a.type()==com.example.platform.delivery.api.event.DeliveryOutboxEvents.FAILED));
+        assertThrows(IllegalStateException.class,()->context.getBean(DeliveryJobService.class).runJob(id));
+        assertEquals("RUNNING",jdbc.queryForObject("select status from delivery_job where id=?",String.class,id));assertEquals(0,jobEvents(id));assertEquals(0,transfers.get());
+    }
+    @Test void enrichmentUpdateAppendRollbackAndDuplicateSearchIntentUseActualScope() throws Exception {
+        var service=context.getBean(com.example.platform.render.app.asset.AssetSemanticMetadataService.class);
+        jdbc.update("insert into media_asset(id,tenant_id,project_id,storage_key,media_type,created_at) values ('metadata-fact','ep04-tenant','project','test-metadata-source','VIDEO',now())");
+        var before=service.create("metadata-fact","v3");
+        var updated=new com.example.platform.render.domain.asset.semantic.AssetSemanticMetadata(before.assetId(),before.assetVersion(),
+            com.example.platform.render.domain.asset.semantic.AssetSemanticMetadata.EnrichmentStatus.COMPLETE,"en",List.of(),List.of(),List.of(),List.of(),List.of(),List.of(),List.of(),before.createdAt(),Instant.now());
+        doThrow(new IllegalStateException("metadata append unavailable")).when(rawOutbox).append(argThat(a->a.type()==com.example.platform.artifact.api.event.ArtifactOutboxEvents.ASSETENRICHEDEVENT));
+        assertThrows(IllegalStateException.class,()->service.completeEnrichment(updated,"ep04-tenant","project","ASR"));assertEquals(before.status(),service.get(before.assetId()).orElseThrow().status());assertEquals(0,jobEvents(before.assetId()));
+        reset(rawOutbox);var fact=service.completeEnrichment(updated,"ep04-tenant","project","ASR");
+        assertTrue(dispatcher.processOnce(eventIds(before.assetId()).getFirst()));
+        try(var pool=java.util.concurrent.Executors.newFixedThreadPool(2)) {
+            List<java.util.concurrent.Future<?>> futures=new ArrayList<>();
+            for(int i=0;i<2;i++)futures.add(pool.submit(()->{TenantContext.set("ep04-tenant");try{context.publishEvent(fact);}finally{TenantContext.clear();}}));
+            for(var future:futures)future.get(30,java.util.concurrent.TimeUnit.SECONDS);
+        }
+        assertEquals(1L,jdbc.queryForObject("select count(*) from platform_job where aggregate_id='metadata-fact'",Long.class));
+        assertEquals(1L,jdbc.queryForObject("select count(*) from platform_task t join platform_job j on t.job_id=j.id where j.aggregate_id='metadata-fact'",Long.class));
+        assertEquals("ep04-tenant",jdbc.queryForObject("select tenant_id from platform_job where aggregate_id='metadata-fact'",String.class));
+        assertEquals("project",jdbc.queryForObject("select project_id from platform_job where aggregate_id='metadata-fact'",String.class));
+        assertEquals(1L,jdbc.queryForObject("select count(*) from notification_event where subject_id='metadata-fact'",Long.class));
+        assertThrows(IllegalArgumentException.class,()->service.completeEnrichment(updated,"ep04-tenant","wrong-project","ASR"));
+        TenantContext.set("foreign");assertThrows(IllegalArgumentException.class,()->service.completeEnrichment(updated,"foreign","project","ASR"));TenantContext.set("ep04-tenant");
+        jdbc.update("update asset_semantic_metadata set asset_version='v4' where asset_id='metadata-fact'");
+        assertThrows(IllegalStateException.class,()->service.completeEnrichment(updated,"ep04-tenant","project","ASR"));assertEquals(1,jobEvents(before.assetId()));
+        TenantContext.set("foreign");assertThrows(RuntimeException.class,()->service.completeEnrichment(updated,"ep04-tenant","project","ASR"));
+    }
+    @Test void actualAnomalyObservationUsesAuditCatalogAndProductionDispatcher() {
+        var service=new UsageAnomalyDetectionService(context.getBean(OutboxEventService.class));
+        for(int i=0;i<11;i++)service.analyzeSubmission("ep04-tenant","anomaly-test","default","test");
+        var row=jdbc.queryForMap("select * from outbox_events where event_type='audit.usage.anomaly.detected' order by created_at desc limit 1");
+        var fact=assertInstanceOf(com.example.platform.audit.api.event.UsageAnomalyDetectedEvent.class,decodeFact("audit.usage.anomaly.detected",(String)row.get("aggregate_id")));
+        assertEquals("ep04-tenant",fact.tenantId());assertEquals("anomaly-test",fact.userId());assertEquals("render_burst",fact.ruleType());
+        assertTrue(dispatcher.processOnce((String)row.get("id")));assertFalse(dispatcher.processOnce((String)row.get("id")));
+        assertNotNull(service.getRiskProfile("ep04-tenant","anomaly-test")); // Detector state is still process-local.
+    }
+    @Test void retiredOtherDomainDurableContractsAreDeadLetteredWithoutEffects() {
+        long audits=count("audit_records"),notifications=count("notification_event");int n=0;
+        for(String type:List.of("artifact.created","asset.enriched","render.delivery.completed","render.delivery.failed",
+            "com.example.platform.shared.events.ArtifactCreatedEvent","com.example.platform.shared.events.AssetEnrichedEvent",
+            "com.example.platform.shared.events.AssetRegisteredEvent","com.example.platform.shared.events.AssetMetadataUpdatedEvent",
+            "com.example.platform.shared.events.RenderDeliveryCompletedEvent","com.example.platform.shared.events.RenderDeliveryFailedEvent",
+            "com.example.platform.shared.events.UsageAnomalyDetectedEvent")) {
+            String id="other-retired-"+n++;jdbc.update("insert into outbox_events(id,aggregate_type,aggregate_id,event_type,event_version,payload,status,retry_count,max_retries,created_at) values (?,'unused','unused',?,1,'{}','PENDING',0,3,now())",id,type);
+            assertFalse(dispatcher.processOnce(id));assertEquals("DEAD_LETTER",jdbc.queryForObject("select status from outbox_events where id=?",String.class,id));
+        }
+        assertEquals(audits,count("audit_records"));assertEquals(notifications,count("notification_event"));
+    }
+
+    @Test void deliveryOutcomeRejectsWrongArtifactTenantAndAttemptBeforeWriting() throws Exception {
+        String id=deliveryFixture("delivery-scope","SFTP");
+        jdbc.update("update delivery_job set status='RUNNING',attempt_count=1 where id=?",id);
+        var accepted=context.getBean(ArtifactOutputRead.class).find(new ArtifactScope("ep04-tenant","project","delivery-scope")).orElseThrow();
+        var wrong=new ArtifactOutputReference(accepted.scope(),new com.example.platform.shared.identity.ArtifactId("not-the-accepted-output"));
+        var outcomes=context.getBean(com.example.platform.delivery.app.DeliveryOutcomeService.class);
+        var bad=new com.example.platform.delivery.api.event.DeliveryCompletedEvent(id,wrong,"delivery-scope-dest",1,com.example.platform.delivery.domain.DeliveryProtocol.SFTP,"sftp://fixture/output",1,Instant.now());
+        assertThrows(IllegalStateException.class,()->outcomes.completed(bad));
+        var stale=new com.example.platform.delivery.api.event.DeliveryCompletedEvent(id,accepted,"delivery-scope-dest",2,com.example.platform.delivery.domain.DeliveryProtocol.SFTP,"sftp://fixture/output",1,Instant.now());
+        assertThrows(IllegalStateException.class,()->outcomes.completed(stale));
+        TenantContext.set("foreign");assertThrows(RuntimeException.class,()->outcomes.completed(bad));TenantContext.set("ep04-tenant");
+        assertEquals("RUNNING",jdbc.queryForObject("select status from delivery_job where id=?",String.class,id));assertEquals(0,jobEvents(id));
+    }
+    @Test void reindexIntentTransactionRollbackAndConflictingReplayAreExplicit() {
+        var service=context.getBean(com.example.platform.outbox.coordination.PlatformCoordinationService.class);
+        assertThrows(IllegalStateException.class,()->tx.execute(status->{
+            service.createJobWithTaskOnce("intent-rollback",com.example.platform.outbox.coordination.JobType.SEARCH_REINDEX,"ASSET","intent-asset","ep04-tenant","project","{}","REINDEX",com.example.platform.sandbox.execution.TaskCapability.REINDEX);
+            throw new IllegalStateException("consumer rollback");
+        }));
+        assertEquals(0L,jdbc.queryForObject("select count(*) from platform_job where aggregate_id='intent-asset'",Long.class));
+        var first=service.createJobWithTaskOnce("intent-rollback",com.example.platform.outbox.coordination.JobType.SEARCH_REINDEX,"ASSET","intent-asset","ep04-tenant","project","{}","REINDEX",com.example.platform.sandbox.execution.TaskCapability.REINDEX);
+        var duplicate=service.createJobWithTaskOnce("intent-rollback",com.example.platform.outbox.coordination.JobType.SEARCH_REINDEX,"ASSET","intent-asset","ep04-tenant","project","{}","REINDEX",com.example.platform.sandbox.execution.TaskCapability.REINDEX);
+        assertEquals(first,duplicate);assertEquals(1,service.listTasks(first.id()).size());
+        assertThrows(IllegalArgumentException.class,()->service.createJobWithTaskOnce("intent-rollback",com.example.platform.outbox.coordination.JobType.SEARCH_REINDEX,"ASSET","different","ep04-tenant","project","{}","REINDEX",com.example.platform.sandbox.execution.TaskCapability.REINDEX));
+        assertEquals(1L,jdbc.queryForObject("select count(*) from platform_job where aggregate_id='intent-asset'",Long.class));
     }
 
 }

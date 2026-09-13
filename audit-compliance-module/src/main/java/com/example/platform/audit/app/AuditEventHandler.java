@@ -1,6 +1,6 @@
 package com.example.platform.audit.app;
 
-import com.example.platform.shared.events.ArtifactCreatedEvent;
+import com.example.platform.artifact.api.event.ArtifactCreatedEvent;
 import com.example.platform.render.api.event.RenderJobCompletedEvent;
 import com.example.platform.render.api.event.RenderJobCreatedEvent;
 import com.example.platform.render.api.event.RenderJobFailedEvent;
@@ -12,8 +12,8 @@ import com.example.platform.shared.events.ReviewRejectedEvent;
 import com.example.platform.shared.events.ReviewChangesRequestedEvent;
 import com.example.platform.shared.events.ReviewCommentAddedEvent;
 import com.example.platform.shared.events.ReviewThreadResolvedEvent;
-import com.example.platform.shared.events.AssetRegisteredEvent;
-import com.example.platform.shared.events.AssetMetadataUpdatedEvent;
+import com.example.platform.artifact.api.event.AssetRegisteredEvent;
+import com.example.platform.artifact.api.event.AssetMetadataUpdatedEvent;
 import com.example.platform.shared.events.AssetApprovedEvent;
 import com.example.platform.shared.events.AssetPublishedEvent;
 import com.example.platform.shared.events.AssetArchivedEvent;
@@ -81,9 +81,9 @@ public class AuditEventHandler {
     @EventListener
     public void onArtifactCreated(ArtifactCreatedEvent event) {
         log.info("AuditEventHandler: recording audit for artifact created={}", event.artifactId());
-        auditService.record("SYSTEM", "render-event-handler", "ARTIFACT_CREATED",
+        auditService.recordFact(event.factKey(), "SYSTEM", "artifact-event-handler", "ARTIFACT_CREATED",
                 "ARTIFACT", event.artifactId(),
-                Map.of("renderJobId", event.renderJobId(), "projectId", event.projectId()),
+                Map.of("renderJobId", event.renderJobId(), "projectId", event.projectId(), "tenantId", event.tenantId()),
                 AuditCategory.CONFIG);
     }
 

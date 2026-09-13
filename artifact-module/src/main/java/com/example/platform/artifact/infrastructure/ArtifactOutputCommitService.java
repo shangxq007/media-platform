@@ -20,9 +20,10 @@ public class ArtifactOutputCommitService implements ArtifactOutputCommit {
     private final ArtifactQueryService query;
     private final ArtifactApplicationQuery scopedQuery;
     private final DSLContext dsl;
+    private final com.example.platform.outbox.app.OutboxEventService outbox;
     public ArtifactOutputCommitService(StoragePlacementQuery storage, ArtifactCommitService commits,
-            ArtifactQueryService query, ArtifactApplicationQuery scopedQuery, DSLContext dsl) {
-        this.storage=storage; this.commits=commits; this.query=query; this.scopedQuery=scopedQuery; this.dsl=dsl;
+            ArtifactQueryService query, ArtifactApplicationQuery scopedQuery, DSLContext dsl, com.example.platform.outbox.app.OutboxEventService outbox) {
+        this.storage=storage; this.commits=commits; this.query=query; this.scopedQuery=scopedQuery; this.dsl=dsl; this.outbox=outbox;
     }
     @Override @Transactional
     public ArtifactOutputReference commit(ArtifactScope scope, IssuanceResult supplied, ArtifactMediaType mediaType) {
@@ -54,6 +55,8 @@ public class ArtifactOutputCommitService implements ArtifactOutputCommit {
                 p.location().providerId(),ReplicaRole.PRIMARY,p.location().region(),"output:"+id.value(),List.of(),
                 receipt.receipt().issuedAt(),receipt.receipt().issuedAt(),scope.renderJobId(),scope.projectId()));
             if (!accepted.artifact().artifactId().equals(id)) throw new IllegalStateException("Artifact commit identity mismatch");
+            var event=new com.example.platform.artifact.api.event.ArtifactCreatedEvent(new ArtifactOutputReference(scope,id),receipt.receipt().issuedAt());
+            outbox.append(com.example.platform.artifact.api.event.ArtifactOutboxEvents.ARTIFACTCREATEDEVENT.append(scope.tenantId(),event,event.factKey()));
         }
         return new ArtifactOutputReference(scope,id);
     }

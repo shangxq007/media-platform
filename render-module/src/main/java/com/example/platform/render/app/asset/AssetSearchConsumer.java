@@ -4,6 +4,7 @@ import com.example.platform.outbox.coordination.PlatformCoordinationService;
 import com.example.platform.outbox.coordination.JobType;
 import com.example.platform.sandbox.execution.TaskCapability;
 import com.example.platform.shared.events.*;
+import com.example.platform.artifact.api.event.AssetEnrichedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
@@ -28,7 +29,12 @@ public class AssetSearchConsumer {
 
     @EventListener
     public void onAssetEnriched(AssetEnrichedEvent event) {
-        triggerReindex(event.assetId(), "", "", "asset.enriched");
+        try {
+            String payload=new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(new java.util.TreeMap<>(java.util.Map.of(
+                "assetId",event.assetId(),"tenantId",event.tenantId(),"projectId",event.projectId(),"reason","asset.enriched")));
+            coordinationService.createJobWithTaskOnce(event.factKey(),JobType.SEARCH_REINDEX,"ASSET",event.assetId(),
+                event.tenantId(),event.projectId(),payload,"REINDEX",TaskCapability.REINDEX);
+        } catch(com.fasterxml.jackson.core.JsonProcessingException e){throw new IllegalArgumentException("Invalid search intent",e);}
     }
 
     @EventListener

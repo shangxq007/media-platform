@@ -3,7 +3,7 @@ package com.example.platform.audit.app;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-import com.example.platform.shared.events.ArtifactCreatedEvent;
+import com.example.platform.artifact.api.event.ArtifactCreatedEvent;
 import com.example.platform.render.api.event.RenderJobCompletedEvent;
 import com.example.platform.render.api.event.RenderJobCreatedEvent;
 import com.example.platform.render.api.event.RenderJobFailedEvent;
@@ -116,13 +116,13 @@ class AuditEventHandlerTest {
     @Test
     void onArtifactCreated_usesCorrectActorId() {
         ArtifactCreatedEvent event = new ArtifactCreatedEvent(
-                "artifact-1", "job-1", "proj-1", Instant.now());
+                new com.example.platform.artifact.app.ArtifactOutputReference(new com.example.platform.artifact.app.ArtifactScope("tenant-1","proj-1","job-1"),new com.example.platform.shared.identity.ArtifactId("artifact-1")), Instant.now());
 
         handler.onArtifactCreated(event);
 
         ArgumentCaptor<String> actorIdCaptor = ArgumentCaptor.forClass(String.class);
-        verify(auditService).record(any(), actorIdCaptor.capture(), any(), any(), any(), any(), any());
-        assertEquals("render-event-handler", actorIdCaptor.getValue());
+        verify(auditService).recordFact(eq(event.factKey()), any(), actorIdCaptor.capture(), any(), any(), any(), any(), any());
+        assertEquals("artifact-event-handler", actorIdCaptor.getValue());
     }
 
     @Test

@@ -4,7 +4,6 @@ import com.example.platform.render.app.event.RenderLifecyclePublisher;
 import com.example.platform.render.domain.*;
 import com.example.platform.render.infrastructure.*;
 import com.example.platform.artifact.app.*;
-import com.example.platform.shared.events.ArtifactCreatedEvent;
 import com.example.platform.shared.web.TenantGuard;
 import com.example.platform.entitlement.api.commercial.*;
 import com.example.platform.shared.commercial.PrincipalRef;
@@ -66,7 +65,6 @@ public class RenderJobLifecycleService {
         "render.job.create",1,month.atDay(1).atStartOfDay(ZoneOffset.UTC).toInstant(),month.plusMonths(1).atDay(1).atStartOfDay(ZoneOffset.UTC).toInstant(),
         "render-job:"+jobId+":completion","render-job:"+jobId,"render completion "+jobId,now));
     transition(jobId,projectId,RenderJobStatus.COMPLETING,RenderJobStatus.COMPLETED,null);
-    events.publishEvent(new ArtifactCreatedEvent(accepted.artifactId().value(),jobId,projectId,now));
     events.publishEvent(new RenderJobCompletedEvent(accepted,now,RenderJobRepository.initiatorFrom(job)));
     return accepted;
  }

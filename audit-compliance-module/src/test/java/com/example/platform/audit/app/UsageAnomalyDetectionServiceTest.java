@@ -3,7 +3,7 @@ package com.example.platform.audit.app;
 import com.example.platform.audit.domain.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.context.ApplicationEventPublisher;
+import com.example.platform.outbox.app.OutboxEventService;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -11,11 +11,11 @@ import static org.mockito.Mockito.*;
 class UsageAnomalyDetectionServiceTest {
 
     private UsageAnomalyDetectionService service;
-    private ApplicationEventPublisher eventPublisher;
+    private OutboxEventService eventPublisher;
 
     @BeforeEach
     void setUp() {
-        eventPublisher = mock(ApplicationEventPublisher.class);
+        eventPublisher = mock(OutboxEventService.class);
         service = new UsageAnomalyDetectionService(eventPublisher);
     }
 

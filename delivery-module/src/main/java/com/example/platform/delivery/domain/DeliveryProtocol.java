@@ -1,5 +1,6 @@
 package com.example.platform.delivery.domain;
 
+@org.springframework.modulith.NamedInterface("events")
 public enum DeliveryProtocol {
     S3_MIRROR,
     SFTP,

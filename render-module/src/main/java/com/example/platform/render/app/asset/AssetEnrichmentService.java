@@ -149,7 +149,7 @@ public class AssetEnrichmentService {
                 meta.language(), meta.transcripts(), meta.detectedTexts(),
                 meta.scenes(), meta.objects(), meta.people(), meta.brands(),
                 meta.embeddings(), meta.createdAt(), java.time.Instant.now());
-        repository.update(assetId, completed.status().name(), toJson(completed));
+        repository.update(assetId, completed.assetVersion(), completed.status().name(), toJson(completed));
         return completed;
     }
 

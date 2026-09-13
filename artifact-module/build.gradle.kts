@@ -23,6 +23,7 @@ tasks.withType<JavaCompile>().configureEach {
 }
 
 dependencies {
+    implementation(project(":outbox-event-module"))
     // GCR-2: artifact-module depends on storage-module contracts (ContentDigest was moved
     // to shared-kernel; storage contracts StorageObjectId/StorageReplicaId/StorageProviderId
     // remain storage data-plane). The stale render-module dependency is REMOVED — artifact

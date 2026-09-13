@@ -6,12 +6,10 @@ import com.example.platform.outbox.coordination.TaskHandler;
 import com.example.platform.outbox.coordination.TaskExecutionContext;
 import com.example.platform.sandbox.execution.TaskCapability;
 import com.example.platform.render.app.asset.AssetSemanticMetadataService;
-import com.example.platform.render.app.event.TimelineReviewEventPublisher;
 import com.example.platform.render.domain.asset.semantic.*;
 import com.example.platform.render.domain.producer.Producer;
 import com.example.platform.render.domain.producer.ProducerContext;
 import com.example.platform.render.domain.producer.ProducerResult;
-import com.example.platform.shared.events.AssetEnrichedEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.*;
@@ -29,12 +27,10 @@ public class VisionTaskHandler implements TaskHandler, Producer {
     private static final Logger log = LoggerFactory.getLogger(VisionTaskHandler.class);
     private final com.example.platform.extension.runtime.PluginRuntime pluginRuntime;
     private final AssetSemanticMetadataService semanticService;
-    private final TimelineReviewEventPublisher eventPublisher;
     private final ObjectMapper mapper = new ObjectMapper();
 
-    public VisionTaskHandler(com.example.platform.extension.runtime.PluginRuntime pluginRuntime, AssetSemanticMetadataService sem,
-                               TimelineReviewEventPublisher evt) {
-        this.pluginRuntime = pluginRuntime; this.semanticService = sem; this.eventPublisher = evt;
+    public VisionTaskHandler(com.example.platform.extension.runtime.PluginRuntime pluginRuntime, AssetSemanticMetadataService sem) {
+        this.pluginRuntime = pluginRuntime; this.semanticService = sem;
     }
 
     @Override public TaskCapability capability() { return TaskCapability.VISION; }
@@ -88,9 +84,7 @@ public class VisionTaskHandler implements TaskHandler, Producer {
                 scenes, objects, existing.people(), brands, existing.embeddings(),
                 existing.createdAt(), Instant.now());
 
-        semanticService.update(assetId, updated);
-        eventPublisher.publish(new AssetEnrichedEvent(assetId, "v1", "VIDEO", "",
-                AssetSemanticMetadata.EnrichmentStatus.COMPLETE.name(), "VISION"));
+        semanticService.completeEnrichment(updated,context.job().tenantId(),context.job().projectId(),"VISION");
         log.info("VisionTaskHandler: persisted asset={} objects={} scenes={} brands={}",
                 assetId, objects.size(), scenes.size(), brands.size());
     }

@@ -1,4 +1,4 @@
-package com.example.platform.shared.events;
+package com.example.platform.artifact.api.event;
 
 /**
  * Published when asset metadata is updated (governance, version, or probe data).

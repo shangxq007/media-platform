@@ -36,13 +36,14 @@ public class AssetSemanticMetadataRepository {
                 .execute();
     }
 
-    public void update(String assetId, String status, String semanticJson) {
-        dsl.update(ASSET_SEMANTIC_METADATA)
+    public void update(String assetId, String assetVersion, String status, String semanticJson) {
+        int changed=dsl.update(ASSET_SEMANTIC_METADATA)
                 .set(ASSET_SEMANTIC_METADATA.STATUS, status)
                 .set(ASSET_SEMANTIC_METADATA.SEMANTIC_JSON, semanticJson)
                 .set(ASSET_SEMANTIC_METADATA.UPDATED_AT, LocalDateTime.now())
-                .where(ASSET_SEMANTIC_METADATA.ASSET_ID.eq(assetId))
+                .where(ASSET_SEMANTIC_METADATA.ASSET_ID.eq(assetId)).and(ASSET_SEMANTIC_METADATA.ASSET_VERSION.eq(assetVersion))
                 .execute();
+        if(changed!=1)throw new IllegalStateException("Semantic metadata missing or version changed");
     }
 
     public Optional<SemanticRow> findById(String assetId) {

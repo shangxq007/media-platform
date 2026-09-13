@@ -44,7 +44,7 @@ case "${1:-}" in
         --tests '*RenderJobFailureInitiatorTest' --tests '*RenderJobFailureDurabilityIntegrationTest' --tests '*StaleRenderJobCompensatorTest' --tests '*RenderJobLeaseServiceTest' \
         --tests '*RenderOrchestratorServiceCharacterizationTest' --tests '*RenderPipelineE2ECharacterizationTest' \
         --tests '*RenderCacheHashInvalidationNotifierTest' --tests '*RenderInitiatorContractTest' \
-      :platform-app:test --tests '*ProviderRuntimeExecutionCompositionTest' --tests '*RenderOutputAcceptanceTest' --tests '*ModularityTest'
+      :platform-app:test --tests '*ProviderRuntimeExecutionCompositionTest' --tests '*RenderOutputAcceptanceTest' --tests '*OtherDomainEventBoundaryTest' --tests '*ModularityTest'
     ;;
   outbox)
     ./gradlew --no-daemon --console=plain \

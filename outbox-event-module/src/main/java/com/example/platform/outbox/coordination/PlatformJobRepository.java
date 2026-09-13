@@ -21,7 +21,15 @@ public class PlatformJobRepository {
 
     public PlatformJob create(JobType jobType, String aggregateType, String aggregateId,
                                 String tenantId, String projectId, String payloadJson) {
-        String id = ("pjob_" + java.util.UUID.randomUUID().toString().replace("-", ""));
+        return createWithId("pjob_"+java.util.UUID.randomUUID().toString().replace("-",""),jobType,aggregateType,aggregateId,tenantId,projectId,payloadJson);
+    }
+
+    void lockDeliveryKey(String key) {
+        dsl.fetch("select pg_advisory_xact_lock(hashtextextended(?, 0))", "coordination-intent:"+key);
+    }
+
+    PlatformJob createWithId(String id,JobType jobType,String aggregateType,String aggregateId,
+                            String tenantId,String projectId,String payloadJson) {
         LocalDateTime now = LocalDateTime.now();
         dsl.insertInto(PLATFORM_JOB)
                 .columns(PLATFORM_JOB.ID, PLATFORM_JOB.JOB_TYPE, PLATFORM_JOB.AGGREGATE_TYPE,

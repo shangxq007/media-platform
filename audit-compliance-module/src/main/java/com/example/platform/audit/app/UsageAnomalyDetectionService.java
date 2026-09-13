@@ -1,10 +1,11 @@
 package com.example.platform.audit.app;
 
 import com.example.platform.audit.domain.*;
-import com.example.platform.shared.events.UsageAnomalyDetectedEvent;
+import com.example.platform.audit.api.event.UsageAnomalyDetectedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.ApplicationEventPublisher;
+import com.example.platform.outbox.app.OutboxEventService;
+import com.example.platform.audit.api.event.AuditOutboxEvents;
 import org.springframework.stereotype.Service;
 
 import java.time.OffsetDateTime;
@@ -29,9 +30,9 @@ public class UsageAnomalyDetectionService {
     private final ConcurrentHashMap<String, Integer> failureCounts = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Double> costAccumulators = new ConcurrentHashMap<>();
 
-    private final ApplicationEventPublisher eventPublisher;
+    private final OutboxEventService eventPublisher;
 
-    public UsageAnomalyDetectionService(ApplicationEventPublisher eventPublisher) {
+    public UsageAnomalyDetectionService(OutboxEventService eventPublisher) {
         this.eventPublisher = eventPublisher;
     }
 
@@ -99,11 +100,12 @@ public class UsageAnomalyDetectionService {
                     actions.isEmpty() ? "OBSERVE" : actions.get(0).actionType(),
                     maxScore, Map.of("anomalies", detectedAnomalies),
                     OffsetDateTime.now());
-            recordAnomaly(event);
-            eventPublisher.publishEvent(new com.example.platform.shared.events.UsageAnomalyDetectedEvent(
+            var fact=new UsageAnomalyDetectedEvent(
                     event.eventId(), tenantId, userId, event.ruleType(),
                     event.severity(), event.action(), event.score(),
-                    event.context(), java.time.Instant.now()));
+                    event.context(), event.detectedAt().toInstant());
+            eventPublisher.append(AuditOutboxEvents.ANOMALY.append(tenantId,fact,"usage-anomaly:"+tenantId+":"+fact.eventId()));
+            recordAnomaly(event);
         }
 
         updateRiskProfile(tenantId, userId, maxScore, detectedAnomalies);

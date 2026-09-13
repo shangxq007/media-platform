@@ -16,6 +16,6 @@ class RenderOutboxEventsTest {
         var append = RenderOutboxEvents.RENDERJOBCOMPLETEDEVENT.append("tenant", event, "completion:job");
         assertEquals(event, router.decode("render.job.completed", 2, "render_job", "job", router.encode(append)).payload());
         assertThrows(IllegalArgumentException.class, () -> RenderOutboxEvents.RENDERJOBCOMPLETEDEVENT.append("foreign", event, null));
-        assertEquals(22, router.size());
+        assertEquals(18, router.size());
     }
 }

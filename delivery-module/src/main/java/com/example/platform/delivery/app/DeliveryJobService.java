@@ -8,8 +8,8 @@ import com.example.platform.delivery.infrastructure.DeliveryConfigParser;
 import com.example.platform.delivery.spi.DeliveryAdapter;
 import com.example.platform.secrets.api.port.CredentialBundlePort;
 import com.example.platform.delivery.spi.DeliveryContext;
-import com.example.platform.shared.events.RenderDeliveryCompletedEvent;
-import com.example.platform.shared.events.RenderDeliveryFailedEvent;
+import com.example.platform.delivery.api.event.DeliveryCompletedEvent;
+import com.example.platform.delivery.api.event.DeliveryFailedEvent;
 import com.example.platform.render.api.event.RenderJobCompletedEvent;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -22,7 +22,6 @@ import org.jooq.Record;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import static com.example.platform.typedschema.jooq.generated.tables.DeliveryDestination.DELIVERY_DESTINATION;
@@ -40,7 +39,7 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
     private final DSLContext dsl;
     private final DeliveryAdapterRegistry adapterRegistry;
     private final DeliverySourceResolver sourceResolver;
-    private final ApplicationEventPublisher eventPublisher;
+    private final DeliveryOutcomeService outcomes;
     private final boolean enabled;
     private final int maxAttempts;
     private final CredentialBundlePort credentialBundlePort;
@@ -48,14 +47,14 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
     public DeliveryJobService(DSLContext dsl,
                               DeliveryAdapterRegistry adapterRegistry,
                               DeliverySourceResolver sourceResolver,
-                              ApplicationEventPublisher eventPublisher,
+                              DeliveryOutcomeService outcomes,
                               CredentialBundlePort credentialBundlePort,
                               @Value("${delivery.enabled:true}") boolean enabled,
                               @Value("${delivery.max-attempts:3}") int maxAttempts) {
         this.dsl = dsl;
         this.adapterRegistry = adapterRegistry;
         this.sourceResolver = sourceResolver;
-        this.eventPublisher = eventPublisher;
+        this.outcomes = outcomes;
         this.credentialBundlePort = credentialBundlePort;
         this.enabled = enabled;
         this.maxAttempts = Math.max(1, maxAttempts);
@@ -198,20 +197,20 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
                 .and(DELIVERY_DESTINATION.TENANT_ID.eq(tenantId))
                 .fetchOne();
         if (dest == null) {
-            markFailed(deliveryJobId, tenantId, projectId, renderJobId, destinationId, "UNKNOWN", "DESTINATION_NOT_FOUND", "Destination missing");
+            markFailed(deliveryJobId, tenantId, projectId, renderJobId, artifactId, attempts+1, destinationId, "DESTINATION_NOT_FOUND", "Destination missing");
             return false;
         }
         DeliveryProtocol protocol = DeliveryProtocol.fromString(dest.get(DELIVERY_DESTINATION.PROTOCOL));
         Optional<DeliveryAdapter> adapter = adapterRegistry.get(protocol);
         if (adapter.isEmpty()) {
-            markFailed(deliveryJobId, tenantId, projectId, renderJobId, destinationId, protocol.name(),
+            markFailed(deliveryJobId, tenantId, projectId, renderJobId, artifactId, attempts+1, destinationId,
                     "ADAPTER_MISSING", "No adapter for " + protocol);
             return false;
         }
 
         Optional<DeliverySourceResolver.SourceFile> source = sourceResolver.open(new ArtifactOutputReference(new ArtifactScope(tenantId,projectId,renderJobId),artifactId));
         if (source.isEmpty()) {
-            markFailed(deliveryJobId, tenantId, projectId, renderJobId, destinationId, protocol.name(),
+            markFailed(deliveryJobId, tenantId, projectId, renderJobId, artifactId, attempts+1, destinationId,
                     "SOURCE_UNAVAILABLE", "Cannot read Artifact " + artifactId.value());
             return false;
         }
@@ -227,16 +226,9 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
             transportInvoked = true;
             DeliveryAdapter.DeliveryResult result = adapter.get().deliver(ctx);
             if (result.success()) {
-                dsl.update(DELIVERY_JOB)
-                        .set(DELIVERY_JOB.STATUS, DeliveryJobStatus.COMPLETED.name())
-                        .set(DELIVERY_JOB.REMOTE_URI, result.remoteUri())
-                        .set(DELIVERY_JOB.BYTES_TRANSFERRED, result.bytesTransferred())
-                        .set(DELIVERY_JOB.COMPLETED_AT, LocalDateTime.now())
-                        .where(DELIVERY_JOB.ID.eq(deliveryJobId))
-                        .execute();
-                eventPublisher.publishEvent(new RenderDeliveryCompletedEvent(
-                        deliveryJobId, renderJobId, projectId, tenantId, destinationId,
-                        protocol.name(), result.remoteUri(), Instant.now()));
+                outcomes.completed(new DeliveryCompletedEvent(deliveryJobId,
+                        new ArtifactOutputReference(new ArtifactScope(tenantId,projectId,renderJobId),artifactId),destinationId,
+                        attempts+1,protocol,result.remoteUri(),result.bytesTransferred(),Instant.now()));
                 return true;
             }
             throw new IllegalStateException("Transport did not confirm delivery");
@@ -247,10 +239,11 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
                 dsl.update(DELIVERY_JOB).set(DELIVERY_JOB.STATUS, DeliveryJobStatus.UNCERTAIN.name())
                         .set(DELIVERY_JOB.ERROR_CODE, "DELIVERY_OUTCOME_UNCERTAIN")
                         .set(DELIVERY_JOB.ERROR_MESSAGE, "Transport or completion failed; reconciliation required")
-                        .where(DELIVERY_JOB.ID.eq(deliveryJobId)).execute();
+                        .where(DELIVERY_JOB.ID.eq(deliveryJobId)).and(DELIVERY_JOB.TENANT_ID.eq(tenantId))
+                        .and(DELIVERY_JOB.STATUS.eq("RUNNING")).and(DELIVERY_JOB.ATTEMPT_COUNT.eq(attempts+1)).execute();
                 return false;
             }
-            markFailed(deliveryJobId, tenantId, projectId, renderJobId, destinationId, protocol.name(),
+            markFailed(deliveryJobId, tenantId, projectId, renderJobId, artifactId, attempts+1, destinationId,
                     "DELIVERY_ERROR", e.getMessage());
             return false;
         }
@@ -282,17 +275,10 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
         return dlvId;
     }
 
-    private void markFailed(String deliveryJobId, String tenantId, String projectId, String renderJobId,
-                            String destinationId, String protocol, String code, String message) {
-        dsl.update(DELIVERY_JOB)
-                .set(DELIVERY_JOB.STATUS, DeliveryJobStatus.FAILED.name())
-                .set(DELIVERY_JOB.ERROR_CODE, code)
-                .set(DELIVERY_JOB.ERROR_MESSAGE, message != null && message.length() > 2000 ? message.substring(0, 2000) : message)
-                .set(DELIVERY_JOB.COMPLETED_AT, LocalDateTime.now())
-                .where(DELIVERY_JOB.ID.eq(deliveryJobId))
-                .execute();
-        eventPublisher.publishEvent(new RenderDeliveryFailedEvent(
-                deliveryJobId, renderJobId, projectId, tenantId, destinationId, protocol, message, Instant.now()));
+    private void markFailed(String deliveryJobId,String tenantId,String projectId,String renderJobId,
+                            ArtifactId artifactId,int attempt,String destinationId,String code,String message) {
+        outcomes.failed(new DeliveryFailedEvent(deliveryJobId,
+            new ArtifactOutputReference(new ArtifactScope(tenantId,projectId,renderJobId),artifactId),destinationId,attempt,code,message,Instant.now()));
     }
 
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)

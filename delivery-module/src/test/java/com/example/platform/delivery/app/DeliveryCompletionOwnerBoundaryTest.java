@@ -120,7 +120,7 @@ class DeliveryCompletionOwnerBoundaryTest extends PostgresTestContainerSupport {
                 dsl,
                 new DeliveryAdapterRegistry(List.of(adapter)),
                 sourceResolver,
-                mock(ApplicationEventPublisher.class),
+                new DeliveryOutcomeService(dsl,mock(com.example.platform.outbox.app.OutboxEventService.class)),
                 credentialBundlePort,
                 true,
                 3);

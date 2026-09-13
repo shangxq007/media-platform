@@ -65,21 +65,6 @@ public class TimelineReviewEventPublisher {
         log.debug("Outbox: ReviewThreadResolvedEvent thread={}", event.threadId());
     }
 
-    public void publish(AssetRegisteredEvent event) {
-        outboxEventService.append(RenderOutboxEvents.ASSETREGISTEREDEVENT.append(com.example.platform.shared.web.TenantGuard.requireTenantId(), event, null));
-        log.info("Outbox: AssetRegisteredEvent asset={}", event.assetId());
-    }
-
-    public void publish(AssetMetadataUpdatedEvent event) {
-        outboxEventService.append(RenderOutboxEvents.ASSETMETADATAUPDATEDEVENT.append(com.example.platform.shared.web.TenantGuard.requireTenantId(), event, null));
-        log.debug("Outbox: AssetMetadataUpdatedEvent asset={}", event.assetId());
-    }
-
-    public void publish(AssetEnrichedEvent event) {
-        outboxEventService.append(RenderOutboxEvents.ASSETENRICHEDEVENT.append(com.example.platform.shared.web.TenantGuard.requireTenantId(), event, null));
-        log.info("Outbox: AssetEnrichedEvent asset={}", event.assetId());
-    }
-
     public void publish(AssetSubmittedForReviewEvent event) {
         outboxEventService.append(RenderOutboxEvents.ASSETSUBMITTEDFORREVIEWEVENT.append(com.example.platform.shared.web.TenantGuard.requireTenantId(), event, null));
         log.info("Outbox: AssetSubmittedForReviewEvent asset={}", event.assetId());

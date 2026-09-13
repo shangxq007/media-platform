@@ -6,10 +6,10 @@ import static com.example.platform.typedschema.jooq.generated.tables.Notificatio
 import com.example.platform.notification.domain.*;
 import com.example.platform.notification.api.ingress.NotificationInboundEvent;
 import com.example.platform.notification.infrastructure.MockNotificationProvider;
-import com.example.platform.shared.events.ArtifactCreatedEvent;
+import com.example.platform.artifact.api.event.ArtifactCreatedEvent;
 import com.example.platform.render.api.event.RenderCacheHashInvalidatedEvent;
-import com.example.platform.shared.events.RenderDeliveryCompletedEvent;
-import com.example.platform.shared.events.RenderDeliveryFailedEvent;
+import com.example.platform.delivery.api.event.DeliveryCompletedEvent;
+import com.example.platform.delivery.api.event.DeliveryFailedEvent;
 import com.example.platform.render.api.event.RenderJobCreatedEvent;
 import com.example.platform.render.api.event.RenderJobStatusChangedEvent;
 import com.example.platform.shared.events.TimelineMergedEvent;
@@ -22,7 +22,7 @@ import com.example.platform.shared.events.ReviewThreadResolvedEvent;
 import com.example.platform.shared.events.AssetApprovedEvent;
 import com.example.platform.shared.events.AssetPublishedEvent;
 import com.example.platform.shared.events.AssetArchivedEvent;
-import com.example.platform.shared.events.AssetEnrichedEvent;
+import com.example.platform.artifact.api.event.AssetEnrichedEvent;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -102,8 +102,8 @@ public class NotificationEventHandler {
     }
 
     @EventListener
-    public void onRenderDeliveryCompleted(RenderDeliveryCompletedEvent event) {
-        handle(new NotificationInboundEvent(
+    public void onRenderDeliveryCompleted(DeliveryCompletedEvent event) {
+        handleFact(event.factKey(), new NotificationInboundEvent(
                 "render.delivery.completed",
                 event.deliveryJobId(),
                 Map.of(
@@ -112,14 +112,14 @@ public class NotificationEventHandler {
                         "projectId", event.projectId() != null ? event.projectId() : "",
                         "tenantId", event.tenantId() != null ? event.tenantId() : "",
                         "destinationId", event.destinationId() != null ? event.destinationId() : "",
-                        "protocol", event.protocol() != null ? event.protocol() : "",
+                        "protocol", event.protocol().name(),
                         "remoteUri", event.remoteUri() != null ? event.remoteUri() : "")
         ));
     }
 
     @EventListener
-    public void onRenderDeliveryFailed(RenderDeliveryFailedEvent event) {
-        handle(new NotificationInboundEvent(
+    public void onRenderDeliveryFailed(DeliveryFailedEvent event) {
+        handleFact(event.factKey(), new NotificationInboundEvent(
                 "render.delivery.failed",
                 event.deliveryJobId(),
                 Map.of(
@@ -134,11 +134,11 @@ public class NotificationEventHandler {
     @EventListener
     public void onArtifactCreated(ArtifactCreatedEvent event) {
         log.info("NotificationEventHandler: ArtifactCreatedEvent for artifact={}", event.artifactId());
-        handle(new NotificationInboundEvent(
+        handleFact(event.factKey(), new NotificationInboundEvent(
                 "artifact.created",
                 event.artifactId(),
                 Map.of("artifactId", event.artifactId(), "renderJobId", event.renderJobId(),
-                        "projectId", event.projectId())
+                        "projectId", event.projectId(), "tenantId", event.tenantId())
         ));
     }
 
@@ -246,7 +246,7 @@ public class NotificationEventHandler {
     @EventListener
     public void onAssetEnriched(AssetEnrichedEvent event) {
         log.info("NotificationEventHandler: AssetEnriched for asset={}", event.assetId());
-        handle(new NotificationInboundEvent("asset.enriched", event.assetId(),
-                Map.of("assetId", event.assetId(), "status", event.enrichmentStatus())));
+        handleFact(event.factKey(), new NotificationInboundEvent("asset.enriched", event.assetId(),
+                Map.of("assetId", event.assetId(), "status", event.enrichmentStatus(), "tenantId", event.tenantId(), "projectId", event.projectId())));
     }
 }

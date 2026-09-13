@@ -21,7 +21,6 @@ import com.example.platform.render.infrastructure.RenderProvider;
 import com.example.platform.render.infrastructure.RenderProviderRouter;
 import com.example.platform.render.infrastructure.providerruntime.engine.ProviderRuntimeEngine;
 import com.example.platform.render.infrastructure.timeline.EditorTimelineConverter;
-import com.example.platform.shared.events.ArtifactCreatedEvent;
 import com.example.platform.render.api.event.RenderJobCompletedEvent;
 import com.example.platform.render.api.event.RenderJobFailedEvent;
 import com.example.platform.render.api.event.RenderJobStatusChangedEvent;

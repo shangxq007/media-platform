@@ -18,9 +18,11 @@ public class AssetSemanticMetadataService {
             .registerModule(new JavaTimeModule());
 
     private final AssetSemanticMetadataRepository repository;
+    private final com.example.platform.artifact.api.event.ArtifactMetadataEventPublisher events;
+    private final AssetRegistryService registry;
 
-    public AssetSemanticMetadataService(AssetSemanticMetadataRepository repository) {
-        this.repository = repository;
+    public AssetSemanticMetadataService(AssetSemanticMetadataRepository repository, com.example.platform.artifact.api.event.ArtifactMetadataEventPublisher events, AssetRegistryService registry) {
+        this.repository = repository; this.events=events; this.registry=registry;
     }
 
     @Transactional
@@ -37,8 +39,22 @@ public class AssetSemanticMetadataService {
 
     @Transactional
     public AssetSemanticMetadata update(String assetId, AssetSemanticMetadata metadata) {
-        repository.update(assetId, metadata.status().name(), toJson(metadata));
+        repository.update(assetId, metadata.assetVersion(), metadata.status().name(), toJson(metadata));
         return metadata;
+    }
+
+    @Transactional
+    public com.example.platform.artifact.api.event.AssetEnrichedEvent completeEnrichment(
+            AssetSemanticMetadata metadata,String tenantId,String projectId,String capability) {
+        com.example.platform.shared.web.TenantGuard.assertSameTenant(tenantId);
+        var asset=registry.resolve(metadata.assetId()).orElseThrow(()->new IllegalArgumentException("Scoped asset metadata source not found"));
+        if(!java.util.Objects.equals(projectId,asset.projectId()))throw new IllegalArgumentException("Metadata source project mismatch");
+        var event=new com.example.platform.artifact.api.event.AssetEnrichedEvent(java.util.UUID.randomUUID().toString(),
+            new com.example.platform.artifact.api.event.AssetMetadataReference(tenantId,metadata.assetId(),metadata.assetVersion(),asset.projectId()),
+            asset.assetType(),metadata.status().name(),capability,metadata.updatedAt());
+        update(metadata.assetId(),metadata);
+        events.publish(event);
+        return event;
     }
 
     @Transactional

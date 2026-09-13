@@ -6,12 +6,10 @@ import com.example.platform.outbox.coordination.TaskHandler;
 import com.example.platform.outbox.coordination.TaskExecutionContext;
 import com.example.platform.sandbox.execution.TaskCapability;
 import com.example.platform.render.app.asset.AssetSemanticMetadataService;
-import com.example.platform.render.app.event.TimelineReviewEventPublisher;
 import com.example.platform.render.domain.asset.semantic.*;
 import com.example.platform.render.domain.producer.Producer;
 import com.example.platform.render.domain.producer.ProducerContext;
 import com.example.platform.render.domain.producer.ProducerResult;
-import com.example.platform.shared.events.AssetEnrichedEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.*;
@@ -29,13 +27,11 @@ public class EmbeddingTaskHandler implements TaskHandler, Producer {
     private static final Logger log = LoggerFactory.getLogger(EmbeddingTaskHandler.class);
     private final com.example.platform.extension.runtime.PluginRuntime pluginRuntime;
     private final AssetSemanticMetadataService semSvc;
-    private final TimelineReviewEventPublisher evtPub;
     private final ObjectMapper mapper = new ObjectMapper();
 
     public EmbeddingTaskHandler(com.example.platform.extension.runtime.PluginRuntime pluginRuntime,
-                                AssetSemanticMetadataService s,
-                                TimelineReviewEventPublisher p) {
-        this.pluginRuntime = pluginRuntime; this.semSvc = s; this.evtPub = p;
+                                AssetSemanticMetadataService s) {
+        this.pluginRuntime = pluginRuntime; this.semSvc = s;
     }
 
     @Override public TaskCapability capability() { return TaskCapability.EMBEDDING; }
@@ -68,9 +64,7 @@ public class EmbeddingTaskHandler implements TaskHandler, Producer {
                 existing.language(), existing.transcripts(), existing.detectedTexts(),
                 existing.scenes(), existing.objects(), existing.people(), existing.brands(),
                 merged, existing.createdAt(), Instant.now());
-        semSvc.update(assetId, updated);
-        evtPub.publish(new AssetEnrichedEvent(assetId, "v1", "VIDEO", "",
-                AssetSemanticMetadata.EnrichmentStatus.COMPLETE.name(), "EMBEDDING"));
+        semSvc.completeEnrichment(updated,ctx.job().tenantId(),ctx.job().projectId(),"EMBEDDING");
         log.info("EmbeddingTaskHandler: persisted asset={} dim={}", assetId, ref.vectorDimension());
     }
 
