@@ -163,6 +163,8 @@ def sole_boundary_proof(sources: dict[str, str]) -> bool:
     return (
         shadow_revision_command_runtime_absent(sources)
         and boundary_definitions == 1
+        and "implements TimelineRevisionCommands" in save_source
+        and sum(len(re.findall(r"\bimplements\s+TimelineRevisionCommands\b", source)) for source in sources.values()) == 1
         and insert_revision_callers == {save_path}
         and len(direct_insert_callers) == 1
         and next(iter(direct_insert_callers)).endswith("DefaultTimelineRevisionPersistence.java")
@@ -175,9 +177,9 @@ def sole_boundary_proof(sources: dict[str, str]) -> bool:
             merge_source,
             flags=re.DOTALL,
         ) is not None
-        and "TimelineRevisionSaveService revisionSaveService" in revision_controller
+        and "TimelineRevisionCommands revisionSaveService" in revision_controller
         and "revisionSaveService.restoreRevision" in revision_controller
-        and "TimelineRevisionSaveService saveService" in git_controller
+        and "TimelineRevisionCommands saveService" in git_controller
         and "saveService.restoreRevision" in git_controller
     )
 

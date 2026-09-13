@@ -41,15 +41,17 @@ class AssetReviewServiceTest {
         when(assetRepository.findById(any(), eq("asset_1")))
                 .thenReturn(Optional.of(makeAsset("asset_1")));
 
-        when(reviewRepository.findById(any())).thenReturn(Optional.of(
+        when(reviewService.createAssetReview("proj_1","asset_1","user_1","Review Asset","desc")).thenReturn(
                 new ReviewRecords.ReviewRow("arev_1", "proj_1", "tenant_1", "asset_1",
                         "user_1", "Review Asset", "desc", "OPEN",
-                        OffsetDateTime.now(), OffsetDateTime.now())));
+                        OffsetDateTime.now(), OffsetDateTime.now()));
 
         var result = assetReviewService.submitForReview("asset_1", "user_1", "Review Asset", "desc");
 
         assertNotNull(result);
         assertEquals("OPEN", result.status());
+        verify(reviewService).createAssetReview("proj_1","asset_1","user_1","Review Asset","desc");
+        verifyNoInteractions(reviewRepository);
     }
 
     private com.example.platform.render.domain.asset.Asset makeAsset(String id) {

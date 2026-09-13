@@ -1395,7 +1395,7 @@ tasks.register("verifyGcr1CorrectionV2IngressAuthority") {
         require(file(timelineAppDir.resolve("TimelineImportService.java")).exists()) {
             "FAIL: TimelineImportService missing (canonical constructor authority)"
         }
-        require(file(timelineAppDir.resolve("TimelineImportRequest.java")).exists()) {
+        require(file("timeline-module/src/main/java/com/example/platform/timeline/api/composition/TimelineImportRequest.java").exists()) {
             "FAIL: TimelineImportRequest missing (typed Timeline-owned import contract)"
         }
         require(file(timelineAppDir.resolve("InternalTimelineValidationService.java")).exists()) {
@@ -1410,7 +1410,7 @@ tasks.register("verifyGcr1CorrectionV2IngressAuthority") {
         require(!importSrc.contains("com.example.platform.render.")) {
             "FAIL: TimelineImportService depends on render-domain types"
         }
-        val requestSrc = file(timelineAppDir.resolve("TimelineImportRequest.java")).readText()
+        val requestSrc = file("timeline-module/src/main/java/com/example/platform/timeline/api/composition/TimelineImportRequest.java").readText()
         require(!requestSrc.contains("com.example.platform.render.")) {
             "FAIL: TimelineImportRequest depends on render-domain types"
         }
@@ -1423,7 +1423,7 @@ tasks.register("verifyGcr1CorrectionV2IngressAuthority") {
 
         // ── Conversion coordinator delegates (no writer-backed construction) ──
         val conversion = file(renderTimelineDir.resolve("TimelineConversionService.java")).readText()
-        require(conversion.contains("TimelineImportService") && conversion.contains("importTimeline")) {
+        require(conversion.contains("TimelineImport timelineImportService") && conversion.contains("importTimeline") && importSrc.contains("implements TimelineImport")) {
             "FAIL: TimelineConversionService does not delegate canonical construction to TimelineImportService"
         }
         require(!conversion.contains("InternalTimelineWriter")) {
@@ -1947,7 +1947,7 @@ tasks.register("verifyTimelineEffectTransitionCanonicalization") {
         require(!candidateModel.contains("public TimelineCandidate(\n            String timelineId,\n            String projectId,\n            TimelineCanonicalProfile profile,\n            List<Track> tracks)")) {
             "FAIL: TimelineCandidate structural-only convenience constructor must be removed"
         }
-        require(!file("timeline-module/src/main/java/com/example/platform/timeline/app/TimelineImportRequest.java").readText()
+        require(!file("timeline-module/src/main/java/com/example/platform/timeline/api/composition/TimelineImportRequest.java").readText()
                 .contains("Backward-compatible convenience constructor")) {
             "FAIL: TimelineImportRequest backward-compatible semantic constructor must be removed"
         }

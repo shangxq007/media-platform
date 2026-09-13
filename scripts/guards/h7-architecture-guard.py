@@ -308,7 +308,7 @@ def evaluate(raw_sources: dict[str, str]) -> Evaluation:
                 r"DefaultTimelineRevisionPersistence)\b", source):
             return True
         if re.search(
-                r"\binterface\s+(?:TimelineRevisionPersistencePort|HeadUpdatePort)\b|"
+                r"\binterface\s+(?:TimelineRevisionPersistencePort|HeadUpdatePort|TimelineRevisionCommands|TimelineRevisionQueries)\b|"
                 r"\brecord\s+RevisionRef\b", source):
             return True
         if re.search(r"\b(?:revisionSaveService|saveService)\s*\.\s*"
