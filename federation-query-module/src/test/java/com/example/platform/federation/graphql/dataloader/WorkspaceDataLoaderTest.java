@@ -1,7 +1,7 @@
 package com.example.platform.federation.graphql.dataloader;
 
 import com.example.platform.identity.app.WorkspaceService;
-import com.example.platform.identity.api.dto.WorkspaceResponse;
+import com.example.platform.identity.api.workspace.WorkspaceResponse;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
