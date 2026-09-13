@@ -92,6 +92,8 @@ public class StorageOutputService implements StorageOutputPort, StoragePlacement
     }
     @Override public byte[] read(StorageOwnershipScope owner, IssuanceIdempotencyKey key) {
         var issued=find(owner,key).orElseThrow(()->new IllegalArgumentException("output receipt not found"));
+        receipts.findPlacement(owner,issued.objectId(),issued.placement().replicaId())
+            .orElseThrow(()->new IllegalStateException("current output placement unavailable or changed"));
         var ref=BlobStorage.parseUri(issued.placement().location().opaqueLocator()).orElseThrow();
         if (!backend.code().equals(ref.provider())) throw new IllegalStateException("output backend unavailable");
         byte[] bytes=backend.get(ref.bucket(),ref.objectKey()).orElseThrow(()->new IllegalStateException("output bytes unavailable"));

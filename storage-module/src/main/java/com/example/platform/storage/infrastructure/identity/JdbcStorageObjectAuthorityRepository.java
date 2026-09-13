@@ -49,8 +49,12 @@ public class JdbcStorageObjectAuthorityRepository implements StorageObjectAuthor
         var keys=jdbc.query("""
             select o.issuance_idempotency_key from storage_logical_object o
             join storage_placement_receipt r on r.object_id=o.object_id
+            join storage_object_placement p on p.object_id=r.object_id and p.replica_id=r.replica_id
             where o.tenant_id=? and o.project_id is not distinct from ? and o.object_id=?
               and r.replica_id=? and r.receipt_purpose='ORIGINAL_ISSUANCE'
+              and p.placement_state='AVAILABLE' and p.provider_id=r.provider_id
+              and p.opaque_locator=r.opaque_locator and p.committed_digest=r.committed_digest
+              and p.committed_length=r.committed_length
             """,(rs,n)->rs.getString(1),owner.tenantId(),owner.projectId(),objectId.value(),replicaId.value());
         if(keys.size()>1)throw new IllegalStateException("ambiguous original placement");
         return keys.isEmpty()?Optional.empty():findOriginalIssuance(owner,new IssuanceIdempotencyKey(keys.getFirst()));

@@ -180,6 +180,13 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
         assertNotNull(render.uploadJobOutput("rollback-job","project",path,"video/mp4"));
         verify(backend,times(1)).put(any());
     }
+    @Test void originalReceiptReplayDoesNotOverrideCurrentStorageQuarantine() throws Exception {
+        var c=command("quarantine-key",file("quarantine.mp4"));var original=output.write(c).issuance();
+        jdbc.update("update storage_object_placement set placement_state='QUARANTINED' where object_id=?",original.objectId().value());
+        assertEquals(original,placements.find(c.owner(),c.key()).orElseThrow());
+        assertThrows(IllegalStateException.class,()->placements.read(c.owner(),c.key()));
+        assertThrows(IllegalArgumentException.class,()->placements.read(c.owner(),original.objectId(),original.placement().replicaId()));
+    }
     @Test void changedInputRetryCannotOverwriteAcceptedOutput() throws Exception {
         String path=file("changed.mp4"); var c=command("changed-key",path);var accepted=output.write(c);
         byte[] original=placements.read(c.owner(),c.key());Files.writeString(root.resolve(path),"changed bytes");
