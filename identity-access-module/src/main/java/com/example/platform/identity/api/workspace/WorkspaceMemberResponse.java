@@ -1,4 +1,4 @@
-package com.example.platform.identity.api.dto;
+package com.example.platform.identity.api.workspace;
 
 import com.example.platform.identity.domain.WorkspaceMember;
 import java.time.Instant;
