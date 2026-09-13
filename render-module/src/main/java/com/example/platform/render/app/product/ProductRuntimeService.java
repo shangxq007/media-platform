@@ -43,7 +43,10 @@ public class ProductRuntimeService {
         var existing=repo.findById(productId);
         if(existing.isPresent()) {
             var product=existing.get();
-            if(!tenantId.equals(product.tenantId()) || !mediaId.equals(product.ownerAssetId())
+            if(!tenantId.equals(product.tenantId()) || product.projectId()!=null || !mediaId.equals(product.ownerAssetId())
+                    || !mediaId.equals(product.producerId()) || product.productType()!=ProductType.RAW_MEDIA
+                    || product.representationKind()!=RepresentationKind.MEDIA_FILE || !reference.mimeType().equals(product.mimeType())
+                    || !Objects.equals(reference.contentHash(),product.contentHash())
                     || !"preview-upload".equals(product.producerType())
                     || !reference.storageReferenceId().equals(product.storageReferenceId())
                     || !Objects.equals(reference.checksum(),product.checksum()))

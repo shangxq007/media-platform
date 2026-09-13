@@ -46,7 +46,7 @@ case "${1:-}" in
         --tests '*RenderJobFailureInitiatorTest' --tests '*RenderJobFailureDurabilityIntegrationTest' --tests '*StaleRenderJobCompensatorTest' --tests '*RenderJobLeaseServiceTest' \
         --tests '*RenderOrchestratorServiceCharacterizationTest' --tests '*RenderPipelineE2ECharacterizationTest' \
         --tests '*RenderCacheHashInvalidationNotifierTest' --tests '*RenderInitiatorContractTest' --tests '*C1Cnm1Cr1RateContractTest' --tests '*FrameRateTest' --tests 'com.example.platform.render.ir.*' --tests '*OpenTimelineioAdapterTest' --tests '*OpenTimelineioAdapterMetadataTest' \
-      :platform-app:test --tests '*ProviderRuntimeExecutionCompositionTest' --tests '*RenderOutputAcceptanceTest' --tests '*RenderTimeBoundaryTest' --tests '*OtherDomainEventBoundaryTest' --tests '*MediaOwnerIntegrationTest' --tests '*MediaAuthorityBoundaryTest' --tests 'com.example.platform.ingest.*' --tests 'com.example.platform.web.assets.*' --tests '*ModularityTest'
+      :platform-app:test --tests '*ProviderRuntimeExecutionCompositionTest' --tests '*RenderOutputAcceptanceTest' --tests '*RenderTimeBoundaryTest' --tests '*OtherDomainEventBoundaryTest' --tests '*PreviewUploadHttpTest' --tests '*PreviewCoordinationBoundaryTest' --tests '*MediaOwnerIntegrationTest' --tests '*MediaAuthorityBoundaryTest' --tests 'com.example.platform.ingest.*' --tests 'com.example.platform.web.assets.*' --tests '*ModularityTest'
     ;;
   outbox)
     ./gradlew --no-daemon --console=plain \

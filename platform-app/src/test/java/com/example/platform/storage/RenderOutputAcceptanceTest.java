@@ -663,16 +663,15 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
         assertEquals(products,count("product"));assertEquals(intents,count("storage_write_intent"));verify(backend,never()).put(any());
     }
     @Test void previewProductConcurrentRetryHasOneLocalEffect() throws Exception {
-        var accepted=preview("preview-concurrent");var product=previewProducts.findByAsset(accepted.mediaId()).getFirst();
-        var ref=context.getBean(StorageReferenceStore.class).findById(product.storageReferenceId()).orElseThrow();
-        String object=ref.relativePath().split("/")[1];
-        String identity=jdbc.queryForObject("select issuance_idempotency_key from storage_write_intent where object_id=?",String.class,object).substring("preview:".length());
+        String identity="f".repeat(64);
+        var ref=context.getBean(StorageFilePort.class).uploadPreview(StorageOwnershipScope.tenant("ep04-tenant"),
+                new IssuanceIdempotencyKey("preview:"+identity),previewBytes(),"video/mp4");
         long products=count("product");var runtime=context.getBean(com.example.platform.render.app.product.ProductRuntimeService.class);
         try(var executor=java.util.concurrent.Executors.newFixedThreadPool(2)) {
             var calls=List.of(executor.submit(()->{TenantContext.set("ep04-tenant");try{return runtime.registerPreview("ep04-tenant",identity,ref);}finally{TenantContext.clear();}}),
                     executor.submit(()->{TenantContext.set("ep04-tenant");try{return runtime.registerPreview("ep04-tenant",identity,ref);}finally{TenantContext.clear();}}));
-            for(var call:calls)assertEquals(product.productId(),call.get().productId());
+            for(var call:calls)assertEquals("prod_preview_"+identity.substring(0,40),call.get().productId());
         }
-        assertEquals(products,count("product"));
+        assertEquals(products+1,count("product"));
     }
 }
