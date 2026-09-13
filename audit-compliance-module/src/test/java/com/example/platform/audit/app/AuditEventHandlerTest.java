@@ -161,7 +161,7 @@ class AuditEventHandlerTest {
     }
 
     @Test
-    void onRenderJobFailed_payloadContainsProjectIdAndError() {
+    void onRenderJobFailed_payloadContainsScopedNeutralReason() {
         RenderJobFailedEvent event = new RenderJobFailedEvent("job-1", "proj-1", com.example.platform.render.api.event.RenderFailureReason.EXECUTION_FAILED, Instant.now(), initiator(), com.example.platform.render.domain.RenderJobStatus.FAILED);
 
         handler.onRenderJobFailed(event);
@@ -170,6 +170,9 @@ class AuditEventHandlerTest {
         ArgumentCaptor<Map<String, Object>> payloadCaptor = ArgumentCaptor.forClass(Map.class);
         verify(auditService).recordFact(anyString(), any(), any(), any(), any(), any(), payloadCaptor.capture(), any());
         assertEquals("proj-1", payloadCaptor.getValue().get("projectId"));
-        assertEquals("FFmpeg timeout", payloadCaptor.getValue().get("error"));
+        assertEquals("Render execution failed", payloadCaptor.getValue().get("error"));
+        assertEquals("EXECUTION_FAILED", payloadCaptor.getValue().get("reason"));
+        assertEquals(initiator().tenantId(),payloadCaptor.getValue().get("tenantId"));
+        assertFalse(payloadCaptor.getValue().toString().contains("FFmpeg"));
     }
 }
