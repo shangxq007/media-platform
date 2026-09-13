@@ -433,12 +433,18 @@ public class RenderController {
     @Operation(summary = "Upload preview media (dev/preview only)")
     public Map<String, String> uploadPreviewMedia(@RequestParam("file") MultipartFile file,
             @RequestHeader(value="Idempotency-Key",required=false) String requestKey,
+            @RequestHeader(value="X-Tenant-ID",required=false) String tenantHint,
             jakarta.servlet.http.HttpServletResponse response) {
-        if (!"video/mp4".equals(file.getContentType())) throw new IllegalArgumentException("Only video/mp4 is supported");
-        if (file.getSize()>20*1024*1024) throw new IllegalArgumentException("File too large (max 20MB)");
+        if(tenantHint!=null && !tenantHint.equals(com.example.platform.shared.web.TenantGuard.requireTenantId()))
+            throw new org.springframework.web.server.ResponseStatusException(HttpStatus.FORBIDDEN,"Preview tenant header must match authenticated tenant");
+        if(file.isEmpty())throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST,"Preview media is empty");
+        if (!"video/mp4".equals(file.getContentType())) throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST,"Only video/mp4 is supported");
+        if (file.getSize()>20*1024*1024) throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST,"File too large (max 20MB)");
         if(previewUploads==null)throw new IllegalStateException("Preview upload is not available");
-        var key=new com.example.platform.render.api.request.PreviewUploadKey(
-                requestKey==null?java.util.UUID.randomUUID().toString():requestKey);
+        com.example.platform.render.api.request.PreviewUploadKey key;
+        try {key=new com.example.platform.render.api.request.PreviewUploadKey(
+                requestKey==null?java.util.UUID.randomUUID().toString():requestKey);}
+        catch(IllegalArgumentException invalid){throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST,invalid.getMessage(),invalid);}
         response.setHeader("Idempotency-Key",key.value());
         try {
             var result=previewUploads.upload(key,file.getBytes(),file.getContentType());
