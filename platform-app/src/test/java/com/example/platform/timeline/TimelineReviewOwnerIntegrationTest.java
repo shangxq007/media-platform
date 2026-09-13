@@ -210,7 +210,9 @@ class TimelineReviewOwnerIntegrationTest extends PostgresTestContainerSupport {
   actor.set("B");controller.approve("project",id);
   assertEquals(updated,jdbc.queryForObject("select updated_at from timeline_review where id=?",java.sql.Timestamp.class,id));
   var workspace=context.getBean(ReviewWorkspaceController.class).workspace("project",id).getBody();assertEquals(2,workspace.approvals());
-  dispatchSubject(id);dispatchSubject(id);
+  dispatchSubject(id);
+  for(String event:jdbc.queryForList("select id from outbox_events where aggregate_id=?",String.class,id))
+   assertFalse(context.getBean(OutboxEventDispatcher.class).processOnce(event));
   assertEquals(2L,jdbc.queryForObject("select count(*) from audit_records where resource_id=?",Long.class,id));
   assertEquals(2L,jdbc.queryForObject("select count(*) from notification_event where subject_id=?",Long.class,id));
  }
