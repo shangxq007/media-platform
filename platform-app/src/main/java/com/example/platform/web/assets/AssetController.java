@@ -1,6 +1,6 @@
 package com.example.platform.web.assets;
 
-import com.example.platform.render.domain.asset.Asset;
+import com.example.platform.media.api.Asset;
 import com.example.platform.render.domain.asset.AssetGovernanceMetadata;
 import com.example.platform.render.infrastructure.asset.AssetService;
 import com.example.platform.render.app.asset.AssetRegistryService;
@@ -70,6 +70,7 @@ public class AssetController {
     public ResponseEntity<AssetVersionResponse> getVersions(
             @PathVariable String projectId,
             @PathVariable String assetId) {
+        assetService.getById(projectId, assetId);
         return assetRegistryService.resolve(assetId)
                 .map(r -> ResponseEntity.ok(toVersionResponse(r)))
                 .orElse(ResponseEntity.notFound().build());
@@ -80,6 +81,7 @@ public class AssetController {
     public ResponseEntity<AssetGovernanceResponse> getGovernance(
             @PathVariable String projectId,
             @PathVariable String assetId) {
+        assetService.getById(projectId, assetId);
         return assetRegistryService.resolve(assetId)
                 .map(r -> ResponseEntity.ok(toGovernanceResponse(r)))
                 .orElse(ResponseEntity.notFound().build());
@@ -90,6 +92,7 @@ public class AssetController {
     public ResponseEntity<Map<String, Object>> exportJsonLd(
             @PathVariable String projectId,
             @PathVariable String assetId) {
+        assetService.getById(projectId, assetId);
         return assetRegistryService.resolve(assetId)
                 .map(r -> ResponseEntity.ok(assetRegistryService.buildJsonLdProjection(assetId)))
                 .orElse(ResponseEntity.notFound().build());

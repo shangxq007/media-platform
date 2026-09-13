@@ -1,6 +1,6 @@
 package com.example.platform.render.app.asset;
 
-import com.example.platform.render.domain.asset.Asset;
+import com.example.platform.media.api.Asset;
 import com.example.platform.render.domain.asset.AssetGovernanceMetadata;
 import com.example.platform.render.domain.asset.AssetIdentity;
 import com.example.platform.render.domain.asset.AssetLineageMetadata;
@@ -22,9 +22,9 @@ import org.springframework.stereotype.Service;
 @Service
 public class AssetRegistryService {
 
-    private final com.example.platform.render.infrastructure.asset.AssetRepository assetRepository;
+    private final com.example.platform.media.api.MediaAssets assetRepository;
 
-    public AssetRegistryService(com.example.platform.render.infrastructure.asset.AssetRepository assetRepository) {
+    public AssetRegistryService(com.example.platform.media.api.MediaAssets assetRepository) {
         this.assetRepository = assetRepository;
     }
 

@@ -5,7 +5,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.example.platform.media.app.MediaProbeService;
+import com.example.platform.media.api.MediaProbes;
 import com.example.platform.media.domain.identity.MediaAssetId;
 import com.example.platform.media.domain.probe.NormalizedMediaProbe;
 import java.util.List;
@@ -20,7 +20,7 @@ class MediaAssetProbeServiceTest {
 
     @Test
     void probeAndPersistDelegatesToMediaDomainWithStableIdentity() {
-        MediaProbeService mediaProbeService = mock(MediaProbeService.class);
+        MediaProbes mediaProbeService = mock(MediaProbes.class);
         NormalizedMediaProbe expected = new NormalizedMediaProbe(
                 MediaAssetId.of("asset-1"), null, null, false, true, true, List.of());
         when(mediaProbeService.probeAndPersist(
@@ -37,16 +37,16 @@ class MediaAssetProbeServiceTest {
 
     @Test
     void getLatestProbeReturnsNormalizedModel() {
-        MediaProbeService mediaProbeService = mock(MediaProbeService.class);
+        MediaProbes mediaProbeService = mock(MediaProbes.class);
         NormalizedMediaProbe expected = new NormalizedMediaProbe(
                 MediaAssetId.of("asset-1"), null, null, false, true, false, List.of());
-        when(mediaProbeService.latestNormalized(MediaAssetId.of("asset-1")))
+        when(mediaProbeService.latestNormalized("t1", MediaAssetId.of("asset-1")))
                 .thenReturn(Optional.of(expected));
 
         MediaAssetProbeService facade = new MediaAssetProbeService(mediaProbeService);
         NormalizedMediaProbe result = facade.getLatestProbe("tenant-1", "asset-1");
 
         assertThat(result).isSameAs(expected);
-        verify(mediaProbeService).latestNormalized(MediaAssetId.of("asset-1"));
+        verify(mediaProbeService).latestNormalized("t1", MediaAssetId.of("asset-1"));
     }
 }

@@ -17,7 +17,10 @@ import org.springframework.transaction.annotation.Transactional;
  * structural rows are replaced by the normalized result.
  */
 @Service
-public class MediaProbeService {
+public class MediaProbeService implements com.example.platform.media.api.MediaProbes {
+
+    private final MediaAssetRepository assets;
+    private final MediaAuthorization authorization;
 
     private final MediaProbePort probePort;
     private final MediaProbeNormalizer normalizer;
@@ -27,7 +30,9 @@ public class MediaProbeService {
     public MediaProbeService(MediaProbePort probePort,
                              MediaProbeNormalizer normalizer,
                              MediaStreamRepository streamRepository,
-                             MediaProbeObservationRepository observationRepository) {
+                             MediaProbeObservationRepository observationRepository, MediaAssetRepository assets, MediaAuthorization authorization) {
+        this.authorization = authorization;
+        this.assets = assets;
         this.probePort = probePort;
         this.normalizer = normalizer;
         this.streamRepository = streamRepository;
@@ -37,7 +42,11 @@ public class MediaProbeService {
     @Transactional
     public NormalizedMediaProbe probeAndPersist(
             MediaAssetId mediaAssetId, String tenantId, String projectId, String assetUri) {
+        var asset = requireAsset(tenantId, mediaAssetId);
+        if (!asset.projectId().equals(projectId)) throw new IllegalArgumentException("media project mismatch");
+        authorization.require(tenantId, projectId, true);
         MediaProbeObservation observation = probePort.probe(assetUri);
+        if (!observation.valid()) throw new IllegalStateException("Media probe rejected: " + observation.error());
         observationRepository.save(mediaAssetId, tenantId, projectId, observation);
         NormalizedMediaProbe normalized = normalizer.normalize(observation, mediaAssetId);
         streamRepository.deleteByMediaAssetId(mediaAssetId);
@@ -47,12 +56,22 @@ public class MediaProbeService {
         return normalized;
     }
 
-    public Optional<NormalizedMediaProbe> latestNormalized(MediaAssetId mediaAssetId) {
+    public Optional<NormalizedMediaProbe> latestNormalized(String tenantId, MediaAssetId mediaAssetId) {
+        var asset = requireAsset(tenantId, mediaAssetId);
+        authorization.require(tenantId, asset.projectId(), false);
         return observationRepository.findLatest(mediaAssetId)
                 .map(o -> normalizer.normalize(o, mediaAssetId));
     }
 
-    public Optional<MediaProbeObservation> latestObservation(MediaAssetId mediaAssetId) {
+    private com.example.platform.media.domain.media.MediaAsset requireAsset(String tenantId, MediaAssetId id) {
+        com.example.platform.shared.web.TenantGuard.assertSameTenant(tenantId);
+        return assets.findById(id).filter(a -> a.tenantId().equals(tenantId))
+            .orElseThrow(() -> new IllegalArgumentException("media asset not found in tenant"));
+    }
+
+    public Optional<MediaProbeObservation> latestObservation(String tenantId, MediaAssetId mediaAssetId) {
+        var asset = requireAsset(tenantId, mediaAssetId);
+        authorization.require(tenantId, asset.projectId(), false);
         return observationRepository.findLatest(mediaAssetId);
     }
 }

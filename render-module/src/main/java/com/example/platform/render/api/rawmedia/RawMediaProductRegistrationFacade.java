@@ -2,7 +2,7 @@ package com.example.platform.render.api.rawmedia;
 
 import com.example.platform.render.app.product.ProductRuntimeService;
 import com.example.platform.storage.api.StorageRuntime;
-import com.example.platform.render.domain.asset.Asset;
+import com.example.platform.media.api.Asset;
 import com.example.platform.render.domain.product.Product;
 import com.example.platform.render.domain.product.ProductStatus;
 import com.example.platform.render.domain.product.ProductType;
@@ -10,7 +10,7 @@ import com.example.platform.render.domain.product.RepresentationKind;
 import com.example.platform.storage.contract.StorageClass;
 import com.example.platform.storage.contract.StorageProviderType;
 import com.example.platform.storage.contract.StorageReference;
-import com.example.platform.render.infrastructure.asset.AssetRepository;
+import com.example.platform.media.api.MediaAssets;
 import com.example.platform.storage.domain.BlobStorage;
 import com.example.platform.storage.domain.StorageObjectRef;
 import java.nio.file.Files;
@@ -31,11 +31,11 @@ public class RawMediaProductRegistrationFacade {
 
     private final ProductRuntimeService productRuntimeService;
     private final com.example.platform.storage.api.StorageFilePort storageFiles;
-    private final AssetRepository assetRepository;
+    private final MediaAssets assetRepository;
 
     public RawMediaProductRegistrationFacade(ProductRuntimeService productRuntimeService,
                                              com.example.platform.storage.api.StorageFilePort storageFiles,
-                                             AssetRepository assetRepository) {
+                                             MediaAssets assetRepository) {
         this.productRuntimeService = productRuntimeService;
         this.storageFiles = storageFiles;
         this.assetRepository = assetRepository;

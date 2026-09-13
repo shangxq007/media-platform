@@ -3,8 +3,8 @@ package com.example.platform.ingest.app;
 import com.example.platform.render.api.rawmedia.RawMediaProductRegistrationCommand;
 import com.example.platform.render.api.rawmedia.RawMediaProductRegistrationFacade;
 import com.example.platform.render.api.rawmedia.RawMediaProductRegistrationResult;
-import com.example.platform.render.domain.asset.Asset;
-import com.example.platform.render.infrastructure.asset.AssetRepository;
+import com.example.platform.media.api.Asset;
+import com.example.platform.media.api.MediaAssets;
 import com.example.platform.storage.contract.StorageKeyPolicy;
 import com.example.platform.storage.domain.BlobStorage;
 import com.example.platform.storage.domain.PutObjectCommand;
@@ -36,12 +36,12 @@ public class RawMediaUploadService {
     public static final String DEFAULT_UPLOAD_BUCKET = "uploads";
 
     private final BlobStorage blobStorage;
-    private final AssetRepository assetRepository;
+    private final MediaAssets assetRepository;
     private final RawMediaProductRegistrationFacade productRegistrationFacade;
 
     public RawMediaUploadService(
             BlobStorage blobStorage,
-            AssetRepository assetRepository,
+            MediaAssets assetRepository,
             RawMediaProductRegistrationFacade productRegistrationFacade) {
         this.blobStorage = blobStorage;
         this.assetRepository = assetRepository;
@@ -62,6 +62,7 @@ public class RawMediaUploadService {
     @Transactional
     public RawMediaUploadResult upload(String tenantId, String projectId, byte[] fileBytes,
                           String filename, String contentType, String displayName) {
+        assetRepository.requireRegistrationScope(tenantId, projectId);
         // 1. Generate IDs
         String assetId = ("asset_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         String safeFilename = sanitizeFilename(filename);

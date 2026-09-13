@@ -3,9 +3,9 @@ package com.example.platform.render.app.asset;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-import com.example.platform.render.domain.asset.Asset;
+import com.example.platform.media.api.Asset;
 import com.example.platform.render.domain.asset.search.*;
-import com.example.platform.render.infrastructure.asset.AssetRepository;
+import com.example.platform.media.api.MediaAssets;
 import com.example.platform.render.infrastructure.asset.AssetSemanticMetadataRepository;
 import com.example.platform.render.infrastructure.asset.SearchProjectionRepository;
 import java.time.Instant;
@@ -15,13 +15,13 @@ import org.junit.jupiter.api.Test;
 
 class AssetSearchServiceTest {
 
-    private AssetRepository assetRepository;
+    private MediaAssets assetRepository;
     private AssetSemanticMetadataRepository semanticRepo;
     private AssetSearchService service;
 
     @BeforeEach
     void setUp() {
-        assetRepository = mock(AssetRepository.class);
+        assetRepository = mock(MediaAssets.class);
         semanticRepo = mock(AssetSemanticMetadataRepository.class);
         SearchProjectionRepository projRepo = mock(SearchProjectionRepository.class);
         service = new AssetSearchService(assetRepository, semanticRepo, projRepo);

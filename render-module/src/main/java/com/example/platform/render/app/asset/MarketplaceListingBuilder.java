@@ -1,7 +1,7 @@
 package com.example.platform.render.app.asset;
 
 import com.example.platform.render.domain.asset.marketplace.*;
-import com.example.platform.render.infrastructure.asset.AssetRepository;
+import com.example.platform.media.api.MediaAssets;
 import com.example.platform.render.infrastructure.asset.AssetSemanticMetadataRepository;
 import com.example.platform.render.infrastructure.asset.SearchProjectionRepository;
 import org.slf4j.Logger;
@@ -16,11 +16,11 @@ import org.springframework.stereotype.Component;
 public class MarketplaceListingBuilder {
 
     private static final Logger log = LoggerFactory.getLogger(MarketplaceListingBuilder.class);
-    private final AssetRepository assetRepo;
+    private final MediaAssets assetRepo;
     private final SearchProjectionRepository projectionRepo;
     private final AssetSemanticMetadataRepository semanticRepo;
 
-    public MarketplaceListingBuilder(AssetRepository assetRepo,
+    public MarketplaceListingBuilder(MediaAssets assetRepo,
                                        SearchProjectionRepository projectionRepo,
                                        AssetSemanticMetadataRepository semanticRepo) {
         this.assetRepo = assetRepo;

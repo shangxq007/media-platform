@@ -5,7 +5,7 @@ import com.example.platform.timeline.api.review.ReviewQueries;
 import com.example.platform.timeline.api.review.TimelineReviews;
 import com.example.platform.render.domain.asset.AssetPublishStatus;
 import com.example.platform.timeline.diff.merge.ReviewTargetType;
-import com.example.platform.render.infrastructure.asset.AssetRepository;
+import com.example.platform.media.api.MediaAssets;
 import com.example.platform.shared.web.TenantContext;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -20,11 +20,11 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AssetReviewService {
 
-    private final AssetRepository assetRepository;
+    private final MediaAssets assetRepository;
     private final TimelineReviews reviewService;
     private final ReviewQueries reviewRepository;
 
-    public AssetReviewService(AssetRepository assetRepository,
+    public AssetReviewService(MediaAssets assetRepository,
                                 TimelineReviews reviewService,
                                 ReviewQueries reviewRepository) {
         this.assetRepository = assetRepository;
@@ -71,13 +71,15 @@ public class AssetReviewService {
             throw new IllegalStateException("Asset must be APPROVED before publishing. Current: " + review.status());
         }
         String tenantId = TenantContext.get();
-        assetRepository.updatePublishStatus(tenantId, assetId, AssetPublishStatus.PUBLISHED.name());
+        var asset = assetRepository.findById(tenantId, assetId).orElseThrow(() -> new IllegalArgumentException("Asset not found"));
+        assetRepository.updatePublishStatus(tenantId, asset.projectId(), assetId, asset.publishStatus(), AssetPublishStatus.PUBLISHED.name());
     }
 
     @Transactional
     public void archiveAsset(String assetId) {
         String tenantId = TenantContext.get();
-        assetRepository.updatePublishStatus(tenantId, assetId, AssetPublishStatus.ARCHIVED.name());
+        var asset = assetRepository.findById(tenantId, assetId).orElseThrow(() -> new IllegalArgumentException("Asset not found"));
+        assetRepository.updatePublishStatus(tenantId, asset.projectId(), assetId, asset.publishStatus(), AssetPublishStatus.ARCHIVED.name());
     }
 
     public Optional<AssetPublishStatus> getPublishStatus(String assetId) {

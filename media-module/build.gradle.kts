@@ -30,6 +30,8 @@ dependencies {
 
     api(project(":shared-kernel"))
     implementation(project(":typed-schema-module"))
+    implementation(project(":storage-module"))
+    implementation(project(":identity-access-module"))
 
     implementation("org.springframework:spring-tx")
     implementation("org.springframework.boot:spring-boot-starter-jdbc")

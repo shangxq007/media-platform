@@ -1,6 +1,6 @@
 package com.example.platform.web.assets;
 
-import com.example.platform.render.domain.asset.Asset;
+import com.example.platform.media.api.Asset;
 import com.example.platform.render.infrastructure.asset.AssetService;
 import com.example.platform.render.app.asset.AssetRegistryService;
 import org.junit.jupiter.api.BeforeEach;

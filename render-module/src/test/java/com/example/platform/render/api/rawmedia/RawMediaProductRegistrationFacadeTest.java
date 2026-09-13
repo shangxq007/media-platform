@@ -4,12 +4,12 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.example.platform.render.app.product.ProductRuntimeService;
 import com.example.platform.storage.app.StorageRuntimeService;
-import com.example.platform.render.domain.asset.Asset;
+import com.example.platform.media.api.Asset;
 import com.example.platform.render.domain.product.Product;
 import com.example.platform.render.domain.product.ProductStatus;
 import com.example.platform.render.domain.product.ProductType;
 import com.example.platform.render.domain.product.RepresentationKind;
-import com.example.platform.render.infrastructure.asset.AssetRepository;
+import com.example.platform.media.api.MediaAssets;
 import com.example.platform.render.testsupport.fakes.FakeProductDependencyRepository;
 import com.example.platform.render.testsupport.fakes.FakeProductRepository;
 import com.example.platform.render.testsupport.fakes.FakeStorageReferenceRepository;
@@ -144,12 +144,18 @@ class RawMediaProductRegistrationFacadeTest {
         return provider;
     }
 
-    static class FakeAssetRepository extends AssetRepository {
+    static class FakeAssetRepository implements MediaAssets {
         Asset asset;
 
         FakeAssetRepository() {
-            super(null);
+
         }
+
+        public void requireRegistrationScope(String t,String p){throw new UnsupportedOperationException();}
+        public Asset register(String t,String p,String k,String m,String f,Long l,String c){throw new UnsupportedOperationException();}
+        public java.util.List<Asset> listByProject(String t,String p){throw new UnsupportedOperationException();}
+        public boolean delete(String t,String p,String a,String v){throw new UnsupportedOperationException();}
+        public void updatePublishStatus(String t,String p,String a,String e,String n){throw new UnsupportedOperationException();}
 
         @Override
         public Optional<Asset> findById(String tenantId, String assetId) {

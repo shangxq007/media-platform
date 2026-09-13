@@ -7,7 +7,7 @@ import static org.mockito.Mockito.*;
 import com.example.platform.timeline.api.review.ReviewQueries;
 import com.example.platform.timeline.api.review.TimelineReviews;
 import com.example.platform.render.domain.asset.AssetPublishStatus;
-import com.example.platform.render.infrastructure.asset.AssetRepository;
+import com.example.platform.media.api.MediaAssets;
 import java.time.OffsetDateTime;
 import java.util.*;
 import com.example.platform.shared.web.TenantContext;
@@ -17,7 +17,7 @@ import org.junit.jupiter.api.Test;
 
 class AssetReviewServiceTest {
 
-    private AssetRepository assetRepository;
+    private MediaAssets assetRepository;
     private TimelineReviews reviewService;
     private ReviewQueries reviewRepository;
     private AssetReviewService assetReviewService;
@@ -25,7 +25,7 @@ class AssetReviewServiceTest {
     @BeforeEach
     void setUp() {
         TenantContext.set("tenant_1");
-        assetRepository = mock(AssetRepository.class);
+        assetRepository = mock(MediaAssets.class);
         reviewService = mock(TimelineReviews.class);
         reviewRepository = mock(ReviewQueries.class);
         assetReviewService = new AssetReviewService(assetRepository, reviewService, reviewRepository);
@@ -54,8 +54,8 @@ class AssetReviewServiceTest {
         verifyNoInteractions(reviewRepository);
     }
 
-    private com.example.platform.render.domain.asset.Asset makeAsset(String id) {
-        return new com.example.platform.render.domain.asset.Asset(
+    private com.example.platform.media.api.Asset makeAsset(String id) {
+        return new com.example.platform.media.api.Asset(
                 id, "tenant_1", "proj_1", "key", "VIDEO", "f.mp4",
                 100L, null, "v1", null, null, null, null,
                 null, null, false, false, "DRAFT", java.time.Instant.now(), java.time.Instant.now());

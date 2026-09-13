@@ -4,7 +4,7 @@ import com.example.platform.outbox.coordination.TaskHandler;
 import com.example.platform.outbox.coordination.TaskExecutionContext;
 import com.example.platform.sandbox.execution.TaskCapability;
 import com.example.platform.render.domain.asset.search.SearchProjection;
-import com.example.platform.render.infrastructure.asset.AssetRepository;
+import com.example.platform.media.api.MediaAssets;
 import com.example.platform.render.infrastructure.asset.AssetSemanticMetadataRepository;
 import com.example.platform.render.infrastructure.asset.SearchProjectionRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -21,12 +21,12 @@ import org.springframework.stereotype.Component;
 public class SearchReindexTaskHandler implements TaskHandler {
 
     private static final Logger log = LoggerFactory.getLogger(SearchReindexTaskHandler.class);
-    private final AssetRepository assetRepository;
+    private final MediaAssets assetRepository;
     private final AssetSemanticMetadataRepository semanticRepo;
     private final SearchProjectionRepository projectionRepo;
     private final ObjectMapper mapper = new ObjectMapper();
 
-    public SearchReindexTaskHandler(AssetRepository assetRepository,
+    public SearchReindexTaskHandler(MediaAssets assetRepository,
                                       AssetSemanticMetadataRepository semanticRepo,
                                       SearchProjectionRepository projectionRepo) {
         this.assetRepository = assetRepository;

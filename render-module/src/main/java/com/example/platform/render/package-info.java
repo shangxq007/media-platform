@@ -22,7 +22,7 @@
             "extension",
             "extension :: app",
             "extension :: domain",
-            "media",
+            "media", "media :: assets",
             "audio",
             "operation :: invocation",
             "sandbox :: API", "sandbox :: Execution"

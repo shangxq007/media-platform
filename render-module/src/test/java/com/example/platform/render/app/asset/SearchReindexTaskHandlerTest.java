@@ -6,7 +6,7 @@ import static org.mockito.Mockito.*;
 import com.example.platform.outbox.coordination.TaskExecutionContext;
 import com.example.platform.outbox.coordination.*;
 import com.example.platform.sandbox.execution.TaskCapability;
-import com.example.platform.render.infrastructure.asset.AssetRepository;
+import com.example.platform.media.api.MediaAssets;
 import com.example.platform.render.infrastructure.asset.AssetSemanticMetadataRepository;
 import com.example.platform.render.infrastructure.asset.SearchProjectionRepository;
 import java.time.Instant;
@@ -15,14 +15,14 @@ import org.junit.jupiter.api.Test;
 
 class SearchReindexTaskHandlerTest {
 
-    private AssetRepository assetRepository;
+    private MediaAssets assetRepository;
     private AssetSemanticMetadataRepository semanticRepo;
     private SearchProjectionRepository projectionRepo;
     private SearchReindexTaskHandler handler;
 
     @BeforeEach
     void setUp() {
-        assetRepository = mock(AssetRepository.class);
+        assetRepository = mock(MediaAssets.class);
         semanticRepo = mock(AssetSemanticMetadataRepository.class);
         projectionRepo = mock(SearchProjectionRepository.class);
         handler = new SearchReindexTaskHandler(assetRepository, semanticRepo, projectionRepo);

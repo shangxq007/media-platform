@@ -1,9 +1,9 @@
-package com.example.platform.render.domain.asset;
+package com.example.platform.media.api;
 
 import java.time.Instant;
 
 /**
- * Domain model for a project asset (video, image, audio, subtitle, etc.).
+ * Published Media projection for a project asset (video, image, audio, subtitle, etc.).
  *
  * <p>Assets are stored in object storage and referenced by timeline clips.
  * The {@code storageKey} is a validated, tenant-scoped storage path — not a signed URL.</p>

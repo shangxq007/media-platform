@@ -2,12 +2,12 @@ package com.example.platform.ingest.api;
 
 import com.example.platform.render.app.input.RenderInputMaterialization;
 import com.example.platform.render.app.input.RenderInputMaterializationService;
-import com.example.platform.render.domain.asset.Asset;
+import com.example.platform.media.api.Asset;
 import com.example.platform.render.domain.product.Product;
 import com.example.platform.render.domain.product.ProductStatus;
 import com.example.platform.render.domain.product.ProductType;
 import com.example.platform.render.domain.product.RepresentationKind;
-import com.example.platform.render.infrastructure.asset.AssetRepository;
+import com.example.platform.media.api.MediaAssets;
 import com.example.platform.render.infrastructure.product.ProductRepository;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import com.example.platform.storage.domain.BlobStorage;
@@ -51,7 +51,7 @@ class RawMediaUploadApiIntegrationTest extends PostgresTestContainerSupport {
     private int port;
 
     @Autowired
-    private AssetRepository assetRepository;
+    private MediaAssets assetRepository;
 
     @Autowired
     private ProductRepository productRepository;

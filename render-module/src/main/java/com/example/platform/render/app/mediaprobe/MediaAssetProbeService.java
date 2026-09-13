@@ -1,12 +1,12 @@
 package com.example.platform.render.app.mediaprobe;
 
-import com.example.platform.media.app.MediaProbeService;
+import com.example.platform.media.api.MediaProbes;
 import com.example.platform.media.domain.identity.MediaAssetId;
 import com.example.platform.media.domain.probe.NormalizedMediaProbe;
 import org.springframework.stereotype.Service;
 
 /**
- * Render-side probe facade. The media-domain {@link MediaProbeService} owns
+ * Render-side probe facade. The media-domain {@link MediaProbes} owns
  * the normalization boundary; this facade adapts the ingest call shape
  * (tenant/project/assetId strings) to the canonical MediaAssetId world.
  *
@@ -16,9 +16,9 @@ import org.springframework.stereotype.Service;
 @Service
 public class MediaAssetProbeService {
 
-    private final MediaProbeService mediaProbeService;
+    private final MediaProbes mediaProbeService;
 
-    public MediaAssetProbeService(MediaProbeService mediaProbeService) {
+    public MediaAssetProbeService(MediaProbes mediaProbeService) {
         this.mediaProbeService = mediaProbeService;
     }
 
@@ -29,6 +29,6 @@ public class MediaAssetProbeService {
     }
 
     public NormalizedMediaProbe getLatestProbe(String tenantId, String assetId) {
-        return mediaProbeService.latestNormalized(MediaAssetId.of(assetId)).orElse(null);
+        return mediaProbeService.latestNormalized(tenantId, MediaAssetId.of(assetId)).orElse(null);
     }
 }

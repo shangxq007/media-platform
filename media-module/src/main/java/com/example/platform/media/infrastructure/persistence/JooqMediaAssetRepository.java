@@ -10,6 +10,11 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Optional;
+import java.util.List;
+import org.jooq.Record;
+import com.example.platform.media.api.Asset;
+import com.example.platform.storage.contract.StorageKeyPolicy;
+import com.example.platform.shared.web.TenantGuard;
 import org.jooq.DSLContext;
 import org.springframework.stereotype.Repository;
 
@@ -94,5 +99,116 @@ public class JooqMediaAssetRepository implements MediaAssetRepository {
     @Override
     public boolean exists(MediaAssetId id) {
         return dsl.fetchExists(dsl.selectOne().from(MEDIA_ASSET).where(MEDIA_ASSET.ID.eq(id.value())));
+    }
+    /**
+     * Register a new asset.
+     */
+    public Asset register(String tenantId, String projectId, String storageKey,
+                          String mediaType, String filename, Long sizeBytes,
+                          String checksum) {
+        TenantGuard.assertSameTenant(tenantId);
+        if (projectId == null || projectId.isBlank()) throw new IllegalArgumentException("project required");
+        // Validate storage reference projection via Storage owner policy
+        StorageKeyPolicy.assertValidPath(storageKey);
+
+        String id = ("asset_" + java.util.UUID.randomUUID().toString().replace("-", ""));
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+
+        dsl.insertInto(MEDIA_ASSET)
+                .set(MEDIA_ASSET.ID, id)
+                .set(MEDIA_ASSET.TENANT_ID, tenantId)
+                .set(MEDIA_ASSET.PROJECT_ID, projectId)
+                .set(MEDIA_ASSET.STORAGE_KEY, storageKey)
+                .set(MEDIA_ASSET.MEDIA_TYPE, mediaType)
+                .set(MEDIA_ASSET.FILENAME, filename)
+                .set(MEDIA_ASSET.SIZE_BYTES, sizeBytes)
+                .set(MEDIA_ASSET.CHECKSUM, checksum)
+                .set(MEDIA_ASSET.MEDIA_VERSION, "v1")
+                .set(MEDIA_ASSET.CONTAINS_PII, false)
+                .set(MEDIA_ASSET.AI_GENERATED, false)
+                .set(MEDIA_ASSET.CREATED_AT, now)
+                .set(MEDIA_ASSET.UPDATED_AT, now)
+                .set(MEDIA_ASSET.PUBLISH_STATUS, "DRAFT")
+                .execute();
+
+        return new Asset(id, tenantId, projectId, storageKey, mediaType, filename,
+                sizeBytes, checksum,
+                "v1", null, null, null, null, null, null, false, false, "DRAFT",
+                now.toInstant(ZoneOffset.UTC), now.toInstant(ZoneOffset.UTC));
+    }
+
+    /**
+     * Find an asset by ID, scoped to tenant.
+     */
+    public Optional<Asset> findById(String tenantId, String assetId) {
+        TenantGuard.assertSameTenant(tenantId);
+        Record r = dsl.selectFrom(MEDIA_ASSET)
+                .where(MEDIA_ASSET.ID.eq(assetId))
+                .and(MEDIA_ASSET.TENANT_ID.eq(tenantId))
+                .fetchOne();
+        return Optional.ofNullable(r).map(this::mapAsset);
+    }
+
+    /**
+     * List all assets for a project, scoped to tenant.
+     */
+    public List<Asset> listByProject(String tenantId, String projectId) {
+        TenantGuard.assertSameTenant(tenantId);
+        return dsl.selectFrom(MEDIA_ASSET)
+                .where(MEDIA_ASSET.TENANT_ID.eq(tenantId))
+                .and(MEDIA_ASSET.PROJECT_ID.eq(projectId))
+                .orderBy(MEDIA_ASSET.CREATED_AT.desc())
+                .fetch(this::mapAsset);
+    }
+
+    /**
+     * Delete an asset by ID, scoped to tenant.
+     */
+    public boolean delete(String tenantId, String projectId, String assetId, String expectedVersion) {
+        TenantGuard.assertSameTenant(tenantId);
+        return dsl.deleteFrom(MEDIA_ASSET)
+                .where(MEDIA_ASSET.ID.eq(assetId).and(MEDIA_ASSET.TENANT_ID.eq(tenantId))
+                    .and(MEDIA_ASSET.PROJECT_ID.eq(projectId)).and(MEDIA_ASSET.MEDIA_VERSION.eq(expectedVersion)))
+                .execute() > 0;
+    }
+
+    public void updatePublishStatus(String tenantId, String projectId, String assetId, String expectedStatus, String publishStatus) {
+        TenantGuard.assertSameTenant(tenantId);
+        if (!java.util.Set.of("PUBLISHED", "ARCHIVED").contains(publishStatus)) throw new IllegalArgumentException("unsupported publication outcome");
+        int changed = dsl.update(MEDIA_ASSET)
+                .set(MEDIA_ASSET.PUBLISH_STATUS, publishStatus)
+                .where(MEDIA_ASSET.ID.eq(assetId).and(MEDIA_ASSET.TENANT_ID.eq(tenantId))
+                    .and(MEDIA_ASSET.PROJECT_ID.eq(projectId)).and(MEDIA_ASSET.PUBLISH_STATUS.eq(expectedStatus)))
+                .execute();
+        if (changed != 1) throw new IllegalStateException("asset scope or publication status changed");
+    }
+
+    private Asset mapAsset(Record r) {
+        Boolean cp = r.get("contains_pii", Boolean.class);
+        Boolean ag = r.get("ai_generated", Boolean.class);
+        return new Asset(
+                r.get(MEDIA_ASSET.ID, String.class),
+                r.get(MEDIA_ASSET.TENANT_ID, String.class),
+                r.get(MEDIA_ASSET.PROJECT_ID, String.class),
+                r.get(MEDIA_ASSET.STORAGE_KEY, String.class),
+                r.get(MEDIA_ASSET.MEDIA_TYPE, String.class),
+                r.get(MEDIA_ASSET.FILENAME, String.class),
+                r.get(MEDIA_ASSET.SIZE_BYTES, Long.class),
+                r.get(MEDIA_ASSET.CHECKSUM, String.class),
+                r.get(MEDIA_ASSET.MEDIA_VERSION, String.class),
+                r.get(MEDIA_ASSET.OWNER_ID, String.class),
+                r.get(MEDIA_ASSET.ENTITY_REF, String.class),
+                r.get(MEDIA_ASSET.CLASSIFICATION, String.class),
+                r.get(MEDIA_ASSET.LICENSE, String.class),
+                r.get(MEDIA_ASSET.RETENTION_POLICY, String.class),
+                r.get(MEDIA_ASSET.SECURITY_LEVEL, String.class),
+                Boolean.TRUE.equals(cp),
+                Boolean.TRUE.equals(ag),
+                r.get(MEDIA_ASSET.PUBLISH_STATUS, String.class),
+                r.get(MEDIA_ASSET.CREATED_AT, LocalDateTime.class) != null
+                        ? r.get(MEDIA_ASSET.CREATED_AT, LocalDateTime.class).toInstant(ZoneOffset.UTC) : null,
+                r.get(MEDIA_ASSET.UPDATED_AT, LocalDateTime.class) != null
+                        ? r.get(MEDIA_ASSET.UPDATED_AT, LocalDateTime.class).toInstant(ZoneOffset.UTC) : null
+        );
     }
 }

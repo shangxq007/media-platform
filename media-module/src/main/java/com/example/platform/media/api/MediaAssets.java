@@ -1,0 +1,13 @@
+package com.example.platform.media.api;
+import java.util.List;
+import java.util.Optional;
+/** Media-owned registration and scoped asset projections. Callers establish actor authorization;
+ * the owner checks tenant context and predicates every mutation on persisted scope. */
+public interface MediaAssets {
+    void requireRegistrationScope(String tenantId, String projectId);
+    Asset register(String tenantId, String projectId, String storageKey, String mediaType, String filename, Long sizeBytes, String checksum);
+    Optional<Asset> findById(String tenantId, String assetId);
+    List<Asset> listByProject(String tenantId, String projectId);
+    boolean delete(String tenantId, String projectId, String assetId, String expectedVersion);
+    void updatePublishStatus(String tenantId, String projectId, String assetId, String expectedStatus, String publishStatus);
+}

@@ -3,7 +3,7 @@ package com.example.platform.render.app.asset;
 import com.example.platform.outbox.coordination.TaskHandler;
 import com.example.platform.outbox.coordination.TaskExecutionContext;
 import com.example.platform.sandbox.execution.TaskCapability;
-import com.example.platform.render.infrastructure.asset.AssetRepository;
+import com.example.platform.media.api.MediaAssets;
 import com.example.platform.render.infrastructure.asset.SearchProjectionRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
@@ -19,11 +19,11 @@ import org.springframework.stereotype.Component;
 public class MarketplaceValidateTaskHandler implements TaskHandler {
 
     private static final Logger log = LoggerFactory.getLogger(MarketplaceValidateTaskHandler.class);
-    private final AssetRepository assetRepo;
+    private final MediaAssets assetRepo;
     private final SearchProjectionRepository projectionRepo;
     private final ObjectMapper mapper = new ObjectMapper();
 
-    public MarketplaceValidateTaskHandler(AssetRepository assetRepo,
+    public MarketplaceValidateTaskHandler(MediaAssets assetRepo,
                                             SearchProjectionRepository projectionRepo) {
         this.assetRepo = assetRepo;
         this.projectionRepo = projectionRepo;

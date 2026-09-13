@@ -1,7 +1,7 @@
 package com.example.platform.render.app.asset;
 
 import com.example.platform.render.domain.asset.search.*;
-import com.example.platform.render.infrastructure.asset.AssetRepository;
+import com.example.platform.media.api.MediaAssets;
 import com.example.platform.render.infrastructure.asset.AssetSemanticMetadataRepository;
 import com.example.platform.render.infrastructure.asset.SearchProjectionRepository;
 import java.util.*;
@@ -23,11 +23,11 @@ public class AssetSearchService {
     private static final int SCORE_SCENE = 8;
     private static final int SCORE_METADATA = 4;
 
-    private final AssetRepository assetRepository;
+    private final MediaAssets assetRepository;
     private final AssetSemanticMetadataRepository semanticRepo;
     private final SearchProjectionRepository projectionRepo;
 
-    public AssetSearchService(AssetRepository assetRepository,
+    public AssetSearchService(MediaAssets assetRepository,
                                 AssetSemanticMetadataRepository semanticRepo,
                                 SearchProjectionRepository projectionRepo) {
         this.assetRepository = assetRepository;
@@ -85,7 +85,7 @@ public class AssetSearchService {
                                                 List<String> queries,
                                                 String tenantId, String projectId) {
         List<AssetSearchResult> results = new ArrayList<>();
-        List<com.example.platform.render.domain.asset.Asset> assets = assetRepository.listByProject(tenantId, projectId);
+        List<com.example.platform.media.api.Asset> assets = assetRepository.listByProject(tenantId, projectId);
         for (var asset : assets) {
             int score = 0;
             List<MatchedField> matched = new ArrayList<>();
@@ -116,7 +116,7 @@ public class AssetSearchService {
         return s;
     }
 
-    private boolean matchesAssetFilters(com.example.platform.render.domain.asset.Asset a, AssetSearchRequest r) {
+    private boolean matchesAssetFilters(com.example.platform.media.api.Asset a, AssetSearchRequest r) {
         if (r.assetTypes() != null && !r.assetTypes().isEmpty() && !r.assetTypes().contains(a.mediaType())) return false;
         if (r.classification() != null && !r.classification().equals(a.classification())) return false;
         if (r.aiGenerated() != null && a.aiGenerated() != r.aiGenerated()) return false;

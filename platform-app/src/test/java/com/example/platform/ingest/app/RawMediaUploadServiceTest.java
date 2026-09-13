@@ -7,8 +7,8 @@ import static org.mockito.Mockito.*;
 import com.example.platform.render.api.rawmedia.RawMediaProductRegistrationCommand;
 import com.example.platform.render.api.rawmedia.RawMediaProductRegistrationFacade;
 import com.example.platform.render.api.rawmedia.RawMediaProductRegistrationResult;
-import com.example.platform.render.domain.asset.Asset;
-import com.example.platform.render.infrastructure.asset.AssetRepository;
+import com.example.platform.media.api.Asset;
+import com.example.platform.media.api.MediaAssets;
 import com.example.platform.storage.domain.BlobStorage;
 import com.example.platform.storage.domain.StorageObjectRef;
 import java.time.Instant;
@@ -24,7 +24,7 @@ class RawMediaUploadServiceTest {
     @Mock
     private BlobStorage blobStorage;
     @Mock
-    private AssetRepository assetRepository;
+    private MediaAssets assetRepository;
     @Mock
     private RawMediaProductRegistrationFacade productRegistrationFacade;
 

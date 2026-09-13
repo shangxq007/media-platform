@@ -1,5 +1,5 @@
 @org.springframework.modulith.ApplicationModule(
-        allowedDependencies = {
+        allowedDependencies = {"media :: assets",
             "timeline :: reviews", "timeline :: revision", "timeline :: composition", "timeline :: serialization",
             "shared",
             "identity :: authorization",

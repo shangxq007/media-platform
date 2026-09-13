@@ -40,13 +40,13 @@ case "${1:-}" in
   execution)
     ./gradlew --no-daemon --console=plain \
       :bmf-provider-module:test :provider-plugin-runtime-module:test :outbox-event-module:test \
-      :storage-module:test \
+      :storage-module:test :media-module:test \
       :artifact-module:test --tests '*ArtifactCommitServiceTest' --tests '*ArtifactApplicationServiceTest' --tests '*JooqArtifactCommitServiceProvenance*' \
       :render-module:test --tests '*RenderArtifactStorageServiceTest' --tests '*RenderOutputRegistrationServiceTest' --tests '*RawMediaProductRegistrationFacadeTest' --tests '*PreviewArtifactQueryServiceTest' \
         --tests '*RenderJobFailureInitiatorTest' --tests '*RenderJobFailureDurabilityIntegrationTest' --tests '*StaleRenderJobCompensatorTest' --tests '*RenderJobLeaseServiceTest' \
         --tests '*RenderOrchestratorServiceCharacterizationTest' --tests '*RenderPipelineE2ECharacterizationTest' \
         --tests '*RenderCacheHashInvalidationNotifierTest' --tests '*RenderInitiatorContractTest' --tests '*C1Cnm1Cr1RateContractTest' --tests '*FrameRateTest' --tests 'com.example.platform.render.ir.*' --tests '*OpenTimelineioAdapterTest' --tests '*OpenTimelineioAdapterMetadataTest' \
-      :platform-app:test --tests '*ProviderRuntimeExecutionCompositionTest' --tests '*RenderOutputAcceptanceTest' --tests '*RenderTimeBoundaryTest' --tests '*OtherDomainEventBoundaryTest' --tests '*ModularityTest'
+      :platform-app:test --tests '*ProviderRuntimeExecutionCompositionTest' --tests '*RenderOutputAcceptanceTest' --tests '*RenderTimeBoundaryTest' --tests '*OtherDomainEventBoundaryTest' --tests '*MediaOwnerIntegrationTest' --tests '*MediaAuthorityBoundaryTest' --tests '*ModularityTest'
     ;;
   outbox)
     ./gradlew --no-daemon --console=plain \

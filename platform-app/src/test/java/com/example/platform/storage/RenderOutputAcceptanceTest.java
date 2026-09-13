@@ -131,7 +131,11 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
         context.registerBean(OutboxEventDispatcher.class,()->new OutboxEventDispatcher(context.getBean(OutboxEventService.class),context,context.getBean(OutboxEventRouter.class),3,new io.micrometer.core.instrument.simple.SimpleMeterRegistry()));
         context.registerBean(com.example.platform.artifact.api.event.ArtifactMetadataEventPublisher.class);
         context.registerBean(com.example.platform.render.infrastructure.asset.AssetSemanticMetadataRepository.class);
-        context.registerBean(com.example.platform.render.infrastructure.asset.AssetRepository.class);
+        context.registerBean(com.example.platform.media.infrastructure.persistence.JooqMediaAssetRepository.class);
+        context.registerBean(com.example.platform.media.app.MediaAssetService.class);
+        context.registerBean(com.example.platform.media.app.MediaAuthorization.class, () -> new com.example.platform.media.app.MediaAuthorization(
+            () -> java.util.Optional.of(com.example.platform.shared.authorization.CanonicalActor.user("fixture", TenantContext.get(), java.util.Set.of("EDITOR"), "fixture")),
+            request -> com.example.platform.shared.authorization.AuthorizationDecision.allow("fixture")));
         context.registerBean(com.example.platform.render.app.asset.AssetRegistryService.class);
         context.registerBean(com.example.platform.render.app.asset.AssetSemanticMetadataService.class);
         context.registerBean(com.example.platform.outbox.coordination.PlatformJobRepository.class);

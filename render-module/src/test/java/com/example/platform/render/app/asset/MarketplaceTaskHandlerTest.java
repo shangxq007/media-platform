@@ -16,7 +16,7 @@ class MarketplaceTaskHandlerTest {
 
     @Test
     void validateHandlerShouldReportCapability() {
-        var h = new MarketplaceValidateTaskHandler(mock(AssetRepository.class), mock(SearchProjectionRepository.class));
+        var h = new MarketplaceValidateTaskHandler(mock(com.example.platform.media.api.MediaAssets.class), mock(SearchProjectionRepository.class));
         assertEquals(TaskCapability.VALIDATE, h.capability());
     }
 

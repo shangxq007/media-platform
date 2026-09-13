@@ -1,6 +1,7 @@
 package com.example.platform.render.infrastructure.asset;
+import com.example.platform.media.api.MediaAssets;
 
-import com.example.platform.render.domain.asset.Asset;
+import com.example.platform.media.api.Asset;
 import com.example.platform.shared.web.TenantContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,12 +16,12 @@ import static org.mockito.Mockito.*;
 
 class AssetServiceTest {
 
-    private AssetRepository assetRepository;
+    private MediaAssets assetRepository;
     private AssetService assetService;
 
     @BeforeEach
     void setUp() {
-        assetRepository = mock(AssetRepository.class);
+        assetRepository = mock(MediaAssets.class);
         assetService = new AssetService(assetRepository);
         TenantContext.set("tenant-1");
     }
@@ -103,7 +104,7 @@ class AssetServiceTest {
         Asset asset = testAsset("asset-1", "tenant-1", "proj-1", "key", "VIDEO", "file.mp4",
                 100L, null);
         when(assetRepository.findById("tenant-1", "asset-1")).thenReturn(Optional.of(asset));
-        when(assetRepository.delete("tenant-1", "asset-1")).thenReturn(true);
+        when(assetRepository.delete("tenant-1", "proj-1", "asset-1", "v1")).thenReturn(true);
 
         boolean result = assetService.delete("proj-1", "asset-1");
         assertTrue(result);

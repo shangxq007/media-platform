@@ -4,6 +4,7 @@ import com.example.platform.timeline.adapter.TimelineRevisionRepository;
 import com.example.platform.outbox.app.OutboxEventService;
 import com.example.platform.outbox.coordination.PlatformJobRepository;
 import com.example.platform.render.infrastructure.asset.*;
+import com.example.platform.media.api.MediaAssets;
 import com.example.platform.render.app.timeline.*;
 import com.example.platform.timeline.api.review.*;
 import com.example.platform.shared.web.TenantContext;
@@ -22,14 +23,14 @@ import org.springframework.web.bind.annotation.*;
 public class ProjectDashboardController {
 
     private static final Logger log = LoggerFactory.getLogger(ProjectDashboardController.class);
-    private final AssetRepository assetRepo;
+    private final MediaAssets assetRepo;
     private final MarketplaceListingRepository marketplaceRepo;
     private final SearchProjectionRepository searchProjectionRepo;
     private final TimelineRevisionRepository revisionRepo;
     private final ReviewQueries reviewRepo;
     private final OutboxEventService outboxService;
 
-    public ProjectDashboardController(AssetRepository assetRepo,
+    public ProjectDashboardController(MediaAssets assetRepo,
                                         MarketplaceListingRepository marketplaceRepo,
                                         SearchProjectionRepository searchProjectionRepo,
                                         TimelineRevisionRepository revisionRepo,

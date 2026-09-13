@@ -6,7 +6,7 @@ import static org.mockito.Mockito.*;
 import com.example.platform.outbox.coordination.TaskExecutionContext;
 import com.example.platform.outbox.coordination.*;
 import com.example.platform.sandbox.execution.TaskCapability;
-import com.example.platform.render.infrastructure.asset.AssetRepository;
+import com.example.platform.media.api.MediaAssets;
 import com.example.platform.render.infrastructure.asset.SearchProjectionRepository;
 import java.time.Instant;
 import java.util.Optional;
@@ -15,13 +15,13 @@ import org.junit.jupiter.api.Test;
 
 class MarketplaceValidationTest {
 
-    private AssetRepository assetRepo;
+    private MediaAssets assetRepo;
     private SearchProjectionRepository projRepo;
     private MarketplaceValidateTaskHandler handler;
 
     @BeforeEach
     void setUp() {
-        assetRepo = mock(AssetRepository.class);
+        assetRepo = mock(MediaAssets.class);
         projRepo = mock(SearchProjectionRepository.class);
         handler = new MarketplaceValidateTaskHandler(assetRepo, projRepo);
     }

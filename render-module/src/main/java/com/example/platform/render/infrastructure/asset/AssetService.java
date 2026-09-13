@@ -1,6 +1,7 @@
 package com.example.platform.render.infrastructure.asset;
+import com.example.platform.media.api.MediaAssets;
 
-import com.example.platform.render.domain.asset.Asset;
+import com.example.platform.media.api.Asset;
 import com.example.platform.storage.contract.StorageKeyPolicy;
 import com.example.platform.shared.web.TenantContext;
 import java.util.List;
@@ -15,9 +16,9 @@ import org.springframework.stereotype.Service;
 @Service
 public class AssetService {
 
-    private final AssetRepository assetRepository;
+    private final MediaAssets assetRepository;
 
-    public AssetService(AssetRepository assetRepository) {
+    public AssetService(MediaAssets assetRepository) {
         this.assetRepository = assetRepository;
     }
 
@@ -88,7 +89,7 @@ public class AssetService {
             throw new IllegalArgumentException("Asset not found in project: " + projectId);
         }
 
-        return assetRepository.delete(tenantId, assetId);
+        return assetRepository.delete(tenantId, projectId, assetId, asset.assetVersion());
     }
 
     /**
