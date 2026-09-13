@@ -3,6 +3,7 @@ package com.example.platform.identity;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import com.example.platform.identity.app.WorkspaceService;
 import com.example.platform.identity.api.dto.*;
+import com.example.platform.identity.api.workspace.*;
 import com.example.platform.shared.web.TenantContext;
 import com.fasterxml.jackson.databind.*;
 import java.net.URI;
@@ -46,7 +47,7 @@ class WorkspaceAuthorityHttpTest extends PostgresTestContainerSupport {
     String token(String user,String tenant){return io.jsonwebtoken.Jwts.builder().subject(user).claim("tenantId",tenant).claim("roles",List.of("ADMIN"))
             .expiration(new Date(System.currentTimeMillis()+600000)).signWith(io.jsonwebtoken.security.Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8))).compact();}
     HttpResponse<String> call(String method,String path,Object body,String actor) throws Exception {
-        var request=HttpRequest.newBuilder(URI.create("http://127.0.0.1:"+port+path)).header("Content-Type","application/json");
+        var request=HttpRequest.newBuilder(URI.create("http://127.0.0.1:"+port+path)).header("Content-Type","application/json").header("X-User-ID",creator);
         if(actor!=null)request.header("Authorization","Bearer "+token(actor,tenant));
         return http.send(request.method(method,body==null?HttpRequest.BodyPublishers.noBody():HttpRequest.BodyPublishers.ofString(json.writeValueAsString(body))).build(),HttpResponse.BodyHandlers.ofString());
     }
@@ -167,6 +168,19 @@ class WorkspaceAuthorityHttpTest extends PostgresTestContainerSupport {
         asActor(creator,()->assertThrows(IllegalStateException.class,()->new TransactionTemplate(transactions).execute(status->{owner.removeMember(ws,member);assertEquals(1,members(ws));assertEquals(0,count("select count(*) from user_role_assignment where workspace_id=? and user_id=?",ws,member));throw new IllegalStateException("after removal");})));
         assertEquals(1,count("select count(*) from user_role_assignment where workspace_id=? and user_id=?",ws,member));
         assertEquals(2,members(ws));assertEquals(before,count("select count(*) from audit_records"));assertEquals(200,call("GET",path(ws),null,member).statusCode());
+    }
+    @Test void workspaceEntitlementRoutesCannotBypassRevokedOrForeignMembership() throws Exception {
+        String ws=create();assertEquals(200,add(ws,member,"VIEWER",creator).statusCode());
+        assertEquals(204,call("DELETE",path(ws)+"/members/"+member,null,creator).statusCode());
+        long grants=count("select count(*) from workspace_member_entitlement_grant");
+        for(String actor:List.of(member,outsider,foreign)) {
+            assertEquals(403,call("GET","/api/workspaces/"+ws+"/entitlements/grants",null,actor).statusCode());
+            assertEquals(403,call("POST","/api/workspaces/"+ws+"/entitlements/grants",Map.of("memberId",creator,"featureKey","render","quotaAmount",1),actor).statusCode());
+            assertEquals(403,call("POST","/api/workspaces/"+ws+"/entitlements/preview",Map.of("userId",creator,"preset","default_720p","outputFormat","mp4"),actor).statusCode());
+        }
+        assertEquals(grants,count("select count(*) from workspace_member_entitlement_grant"));
+        var allowed=call("GET","/api/workspaces/"+ws+"/entitlements/grants",null,creator);
+        assertEquals(200,allowed.statusCode(),allowed.body());assertEquals(0,json.readTree(allowed.body()).get("grants").size());
     }
     @Test void unsupportedMetadataRejectsExplicitlyAndUnknownRoleCannotMutate() throws Exception {
         String ws=create();assertEquals(410,call("POST",path(ws)+"/projects",Map.of("projectId",tenant),creator).statusCode());

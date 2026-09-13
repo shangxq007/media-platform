@@ -7,6 +7,7 @@ import com.example.platform.entitlement.domain.EntitlementDecision;
 import com.example.platform.entitlement.domain.AccessCheckRequest;
 import com.example.platform.entitlement.domain.WorkspaceMemberEntitlementGrant;
 import com.example.platform.identity.api.dto.*;
+import com.example.platform.identity.api.workspace.*;
 import com.example.platform.identity.app.WorkspaceService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -89,13 +90,15 @@ public class WorkspaceController {
         return workspaceService.listGroups(workspaceId);
     }
 
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/{workspaceId}/entitlements/grants")
     public WorkspaceMemberEntitlementGrant createWorkspaceGrant(
             @PathVariable String workspaceId,
             @RequestBody CreateWorkspaceGrantRequest request,
             @RequestHeader(value = "X-User-ID", required = false) String actor) {
-        String effectiveActor = actor != null ? actor : "system";
+        String effectiveActor = workspaceService.requireManagementActor(workspaceId);
         String tenantId = requireTenantContext();
+        workspaceService.requireWorkspaceUser(workspaceId, request.memberId(), true);
         Instant startsAt = request.startsAt() != null ? request.startsAt() : Instant.now();
         return poolService.allocateToMember(
                 tenantId, workspaceId, request.featureKey(), request.memberId(),
@@ -105,16 +108,19 @@ public class WorkspaceController {
 
     @GetMapping("/{workspaceId}/entitlements/grants")
     public Map<String, Object> listWorkspaceGrants(@PathVariable String workspaceId) {
-        return Map.of("grants", poolService.getMemberGrants(workspaceId));
+        workspaceService.requireManagementActor(workspaceId);
+        return Map.of("grants", poolService.getMemberGrants(requireTenantContext(), workspaceId));
     }
 
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/{workspaceId}/entitlements/grants/{grantId}/revoke")
     public Map<String, Object> revokeWorkspaceGrant(
             @PathVariable String workspaceId,
             @PathVariable String grantId,
             @RequestBody RevokeGrantRequest request,
             @RequestHeader(value = "X-User-ID", required = false) String actor) {
-        String effectiveActor = actor != null ? actor : "system";
+        String effectiveActor = workspaceService.requireManagementActor(workspaceId);
+        workspaceService.requireWorkspaceUser(workspaceId, request.memberId(), false);
         EntitlementCommandResult result = poolService.revokeFromMember(
                 requireTenantContext(), workspaceId, grantId, request.memberId(),
                 request.expectedVersion(), effectiveActor, request.sourceRef(),
@@ -126,6 +132,7 @@ public class WorkspaceController {
     public EntitlementDecision previewEntitlements(
             @PathVariable String workspaceId,
             @RequestBody PreviewRequest request) {
+        workspaceService.requireMemberPreview(workspaceId, request.userId());
         String tenantId = com.example.platform.shared.web.TenantContext.get();
         if (tenantId == null || tenantId.isBlank()) {
             throw new IllegalArgumentException("Tenant context is required");

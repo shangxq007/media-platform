@@ -1,6 +1,7 @@
 package com.example.platform.identity.app;
 
 import com.example.platform.identity.api.dto.*;
+import com.example.platform.identity.api.workspace.*;
 import com.example.platform.identity.domain.*;
 import com.example.platform.identity.infrastructure.*;
 import com.example.platform.shared.audit.AuditPort;
@@ -169,6 +170,24 @@ public class WorkspaceService implements com.example.platform.identity.api.works
         return workspaceGroupRepository.findByWorkspaceId(workspaceId).stream()
                 .map(WorkspaceGroupResponse::from)
                 .toList();
+    }
+
+    /** Hold the owner lock through a surrounding transactional Workspace command adapter. */
+    public String requireManagementActor(String workspaceId) {
+        access(workspaceId, true, true);
+        return actor().actorId();
+    }
+
+    /** Entitlement memberId denotes a USER principal, not a membership row ID. */
+    public void requireWorkspaceUser(String workspaceId, String userId, boolean active) {
+        access(workspaceId, false, false);
+        var member = workspaceMemberRepository.findByWorkspaceIdAndUserId(workspaceId, userId).orElseThrow(WorkspaceService::denied);
+        if (active && member.status() != WorkspaceMember.MemberStatus.ACTIVE) throw denied();
+    }
+
+    public void requireMemberPreview(String workspaceId, String userId) {
+        access(workspaceId, false, !actor().actorId().equals(userId));
+        requireWorkspaceUser(workspaceId, userId, true);
     }
 
     private com.example.platform.shared.authorization.CanonicalActor actor() {

@@ -13,7 +13,7 @@
             "entitlement :: domain",
             "entitlement :: commercial",
             "shared",
-            "identity :: authorization", "identity :: projects",
+            "identity :: authorization", "identity :: projects", "identity :: workspace",
             "storage",
             "storage :: API",
             "storage :: domain", "storage :: contract", "artifact :: events", "artifact :: app", "artifact :: domain",

@@ -145,7 +145,6 @@ public class WorkspaceEntitlementPoolService {
         return entitlementService.listWorkspaceGrants(tenantId, workspaceId);
     }
 
-    public List<WorkspaceMemberEntitlementGrant> getMemberGrants(String workspaceId) { return List.of(); }
 
     private void audit(String action, String actor, Map<String, Object> payload) {
         if (auditPort != null) {

@@ -47,9 +47,13 @@ class WorkspaceEntitlementPoolServiceTest {
     }
 
     @Test
-    void getMemberGrantsReturnsEmptyWithoutRepository() {
-        var grants = service.getMemberGrants("ws-1");
-        assertNotNull(grants);
-        assertTrue(grants.isEmpty());
+    void getMemberGrantsUsesCanonicalScopedQueryIncludingNonemptyResults() {
+        var owner = org.mockito.Mockito.mock(EntitlementService.class);
+        var grant = new com.example.platform.entitlement.domain.WorkspaceMemberEntitlementGrant(
+                "grant", "ws-1", "user", "render", 1, java.time.Instant.EPOCH, null, "ACTIVE", "actor", java.time.Instant.EPOCH, java.time.Instant.EPOCH);
+        org.mockito.Mockito.when(owner.listWorkspaceGrants("tenant", "ws-1")).thenReturn(List.of(grant));
+        service = new WorkspaceEntitlementPoolService(null, owner, null);
+        assertEquals(List.of(grant), service.getMemberGrants("tenant", "ws-1"));
+        org.mockito.Mockito.verify(owner).listWorkspaceGrants("tenant", "ws-1");
     }
 }

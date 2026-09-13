@@ -13,6 +13,7 @@ import com.example.platform.entitlement.domain.EntitlementGrantCommand;
 import com.example.platform.entitlement.domain.WorkspaceMemberEntitlementGrant;
 import com.example.platform.identity.api.WorkspaceController;
 import com.example.platform.identity.api.dto.*;
+import com.example.platform.identity.api.workspace.*;
 import com.example.platform.identity.app.WorkspaceService;
 import com.example.platform.shared.commercial.PrincipalType;
 import com.example.platform.shared.web.TenantContext;
@@ -112,6 +113,7 @@ class WorkspaceControllerTenantTest {
 
     @Test
     void createWorkspaceGrantUsesTenantContextAndCanonicalCommandMetadata() {
+        when(workspaceService.requireManagementActor("ws-1")).thenReturn("admin-1");
         TenantContext.set("tenant-a");
         Instant startsAt = Instant.parse("2026-08-29T01:00:00Z");
         Instant expiresAt = Instant.parse("2026-09-29T01:00:00Z");
@@ -129,7 +131,7 @@ class WorkspaceControllerTenantTest {
                 .thenReturn(expected);
 
         WorkspaceMemberEntitlementGrant result =
-                controller.createWorkspaceGrant("ws-1", request, "admin-1");
+                controller.createWorkspaceGrant("ws-1", request, "forged-header");
 
         assertSame(expected, result);
         verify(poolService).allocateToMember(
@@ -140,6 +142,7 @@ class WorkspaceControllerTenantTest {
 
     @Test
     void revokeWorkspaceGrantUsesTenantContextMemberVersionAndCanonicalCommandMetadata() {
+        when(workspaceService.requireManagementActor("ws-1")).thenReturn("admin-1");
         TenantContext.set("tenant-a");
         EntitlementCommandResult expected = new EntitlementCommandResult("command-1", null);
         WorkspaceEntitlementPoolService canonicalPoolService =
@@ -152,7 +155,7 @@ class WorkspaceControllerTenantTest {
         when(entitlementService.execute(any(EntitlementGrantCommand.class))).thenReturn(expected);
 
         var result = canonicalController.revokeWorkspaceGrant(
-                "ws-1", "ws-grant-1", request, "admin-1");
+                "ws-1", "ws-grant-1", request, "forged-header");
 
         assertEquals("revoked", result.get("status"));
         assertSame(expected, result.get("event"));

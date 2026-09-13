@@ -1,6 +1,5 @@
 package com.example.platform.identity.api.workspace;
 
-import com.example.platform.identity.api.dto.*;
 import java.util.List;
 
 /** Authorized owner reads. Workspace identity is distinct from tenant and Project identity. */

@@ -5,8 +5,8 @@ import com.example.platform.render.infrastructure.productization.marketplace.Mar
 import com.example.platform.render.infrastructure.productization.marketplace.MarketplaceService;
 import com.example.platform.identity.api.workspace.WorkspaceCommands;
 import com.example.platform.identity.api.workspace.WorkspaceQueries;
-import com.example.platform.identity.api.dto.WorkspaceResponse;
-import com.example.platform.identity.api.dto.WorkspaceMemberResponse;
+import com.example.platform.identity.api.workspace.WorkspaceResponse;
+import com.example.platform.identity.api.workspace.WorkspaceMemberResponse;
 import com.example.platform.identity.api.authorization.CanonicalActorResolver;
 import com.example.platform.shared.web.*;
 import org.springframework.beans.factory.ObjectProvider;
@@ -48,7 +48,7 @@ public class ProductizationApi {
         if (request.ownerId() != null && !request.ownerId().equals(actor.actorId()))
             throw new PlatformException(CommonErrorCode.INSUFFICIENT_PERMISSION, "Owner must be the authenticated actor");
         return view(workspaceCommands.createWorkspace(actor.tenantId(),
-                new com.example.platform.identity.api.dto.CreateWorkspaceRequest(request.name(), request.description(), null)));
+                new com.example.platform.identity.api.workspace.CreateWorkspaceRequest(request.name(), request.description(), null)));
     }
 
     @GetMapping("/workspace/{workspaceId}")
@@ -64,7 +64,7 @@ public class ProductizationApi {
     @PostMapping("/workspace/{workspaceId}/members")
     public WorkspaceView addMember(@PathVariable String workspaceId, @RequestBody AddMemberRequest request) {
         workspaceCommands.addMember(workspaceId,
-                new com.example.platform.identity.api.dto.AddWorkspaceMemberRequest(request.userId(), request.role()));
+                new com.example.platform.identity.api.workspace.AddWorkspaceMemberRequest(request.userId(), request.role()));
         return view(workspaceQueries.getWorkspace(workspaceId));
     }
 
