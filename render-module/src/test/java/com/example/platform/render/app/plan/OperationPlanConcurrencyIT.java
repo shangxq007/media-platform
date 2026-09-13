@@ -475,7 +475,7 @@ class OperationPlanConcurrencyIT extends PostgresTestContainerSupport {
                         new JdbcEffectSemanticSnapshotStore(context)),
                 new JdbcTimelineRevisionSemanticContextStore(context),
                 new DefaultTimelineRevisionPersistence(),
-                new TimelineRevisionRefHeadUpdateAdapter(current), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
+                new TimelineRevisionRefHeadUpdateAdapter(current), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL, org.mockito.Mockito.mock(com.example.platform.outbox.app.OutboxEventService.class));
     }
 
     private static TimelineRevisionCommands.RevisionWriteCommand command(

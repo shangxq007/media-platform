@@ -16,9 +16,6 @@ import com.example.platform.timeline.api.revision.TimelineRevisionQueries.Revisi
 import com.example.platform.timeline.api.revision.TimelineMergeOperations;
 import com.example.platform.render.api.dto.TimelineRevisionRenderRequest;
 import com.example.platform.render.api.dto.TimelineRevisionRenderResponse;
-import com.example.platform.render.app.event.TimelineReviewEventPublisher;
-import com.example.platform.shared.events.TimelineMergedEvent;
-import com.example.platform.shared.events.TimelineRestoredEvent;
 import com.example.platform.timeline.diff.merge.TimelineMergeRequest;
 import com.example.platform.timeline.diff.merge.TimelineMergeResult;
 import com.example.platform.timeline.diff.merge.TimelineMergeSummary;
@@ -53,7 +50,6 @@ public class TimelineRevisionController {
     private final com.example.platform.timeline.api.revision.TimelineRevisionQueries revisionQueryService;
     private final com.example.platform.timeline.app.TimelineRevisionDiffQuery revisionDiffQuery;
     private final TimelineMergeOperations mergeEngine;
-    private final TimelineReviewEventPublisher eventPublisher;
     private final TimelineRevisionRenderService renderService;
     private final RenderJobStatusService renderJobStatusService;
     private final com.example.platform.timeline.api.revision.TimelineRevisionCommands revisionSaveService;
@@ -64,7 +60,6 @@ public class TimelineRevisionController {
             com.example.platform.timeline.api.revision.TimelineRevisionQueries revisionQueryService,
             com.example.platform.timeline.app.TimelineRevisionDiffQuery revisionDiffQuery,
                                        TimelineMergeOperations mergeEngine,
-                                       TimelineReviewEventPublisher eventPublisher,
                                        @org.springframework.beans.factory.annotation.Autowired(required = false) TimelineRevisionRenderService renderService,
                                        @org.springframework.beans.factory.annotation.Autowired(required = false) RenderJobStatusService renderJobStatusService,
                                        com.example.platform.timeline.api.revision.TimelineRevisionCommands revisionSaveService,
@@ -73,7 +68,6 @@ public class TimelineRevisionController {
         this.revisionQueryService = revisionQueryService;
         this.revisionDiffQuery = revisionDiffQuery;
         this.mergeEngine = mergeEngine;
-        this.eventPublisher = eventPublisher;
         this.renderService = renderService;
         this.renderJobStatusService = renderJobStatusService;
         this.revisionSaveService = revisionSaveService;
@@ -204,7 +198,6 @@ public class TimelineRevisionController {
         var restored = revisionSaveService.restoreRevision(
                 new TimelineMutationContext(tenantId, projectId, actor),
                 revisionId, expectedCurrent);
-        eventPublisher.publish(new TimelineRestoredEvent(projectId, revisionId, restored.revisionId()));
         return ResponseEntity.status(HttpStatus.CREATED).body(toRestoreResponse(projectId, restored.revisionId()));
     }
 
@@ -247,11 +240,6 @@ public class TimelineRevisionController {
         }
 
         if (result.isMerged() && result.mergedRevisionId() != null) {
-            eventPublisher.publish(new TimelineMergedEvent(projectId,
-                    result.baseRevisionId(), result.sourceRevisionId(), result.targetRevisionId(),
-                    result.mergedRevisionId(),
-                    body.sourceRevisionId() + "," + body.targetRevisionId(),
-                    result.baseRevisionId()));
         }
 
         return ResponseEntity.ok(toMergeResponse(result));

@@ -5,13 +5,13 @@ import com.example.platform.render.api.event.RenderJobCompletedEvent;
 import com.example.platform.render.api.event.RenderJobCreatedEvent;
 import com.example.platform.render.api.event.RenderJobFailedEvent;
 import com.example.platform.render.api.event.RenderJobStatusChangedEvent;
-import com.example.platform.shared.events.TimelineMergedEvent;
-import com.example.platform.shared.events.TimelineRestoredEvent;
-import com.example.platform.shared.events.ReviewApprovedEvent;
-import com.example.platform.shared.events.ReviewRejectedEvent;
-import com.example.platform.shared.events.ReviewChangesRequestedEvent;
-import com.example.platform.shared.events.ReviewCommentAddedEvent;
-import com.example.platform.shared.events.ReviewThreadResolvedEvent;
+import com.example.platform.timeline.api.event.TimelineMergedEvent;
+import com.example.platform.timeline.api.event.TimelineRestoredEvent;
+import com.example.platform.timeline.api.event.TimelineReviewApprovedEvent;
+import com.example.platform.timeline.api.event.TimelineReviewRejectedEvent;
+import com.example.platform.timeline.api.event.TimelineReviewChangesRequestedEvent;
+import com.example.platform.timeline.api.event.TimelineReviewCommentAddedEvent;
+import com.example.platform.timeline.api.event.TimelineReviewThreadResolvedEvent;
 import com.example.platform.artifact.api.event.AssetRegisteredEvent;
 import com.example.platform.artifact.api.event.AssetMetadataUpdatedEvent;
 import com.example.platform.shared.events.AssetApprovedEvent;
@@ -90,9 +90,9 @@ public class AuditEventHandler {
     @EventListener
     public void onTimelineMerged(TimelineMergedEvent event) {
         log.info("AuditEventHandler: recording audit for timeline merged={}", event.mergeRevisionId());
-        auditService.record("SYSTEM", "timeline-event-handler", "TIMELINE_MERGED",
+        auditService.recordFact(event.factKey(), "SYSTEM", "timeline-event-handler", "TIMELINE_MERGED",
                 "TIMELINE", event.mergeRevisionId(),
-                Map.of("projectId", event.projectId(), "sourceRevision", event.sourceRevisionId(),
+                Map.of("tenantId",event.tenantId(),"projectId",event.projectId(), "sourceRevision", event.sourceRevisionId(),
                         "targetRevision", event.targetRevisionId()),
                 AuditCategory.CONFIG);
     }
@@ -100,55 +100,55 @@ public class AuditEventHandler {
     @EventListener
     public void onTimelineRestored(TimelineRestoredEvent event) {
         log.info("AuditEventHandler: recording audit for timeline restored to={}", event.newRevisionId());
-        auditService.record("SYSTEM", "timeline-event-handler", "TIMELINE_RESTORED",
+        auditService.recordFact(event.factKey(), "SYSTEM", "timeline-event-handler", "TIMELINE_RESTORED",
                 "TIMELINE", event.newRevisionId(),
-                Map.of("projectId", event.projectId(), "restoredFrom", event.restoredFromRevisionId()),
+                Map.of("tenantId",event.tenantId(),"projectId",event.projectId(), "restoredFrom", event.restoredFromRevisionId()),
                 AuditCategory.CONFIG);
     }
 
     @EventListener
-    public void onReviewApproved(ReviewApprovedEvent event) {
+    public void onReviewApproved(TimelineReviewApprovedEvent event) {
         log.info("AuditEventHandler: recording audit for review approved={}", event.reviewId());
-        auditService.record("SYSTEM", "review-event-handler", "REVIEW_APPROVED",
+        auditService.recordFact(event.factKey(), "SYSTEM", "review-event-handler", "REVIEW_APPROVED",
                 "REVIEW", event.reviewId(),
-                Map.of("reviewerUserId", event.reviewerUserId(), "targetType", event.targetType(),
-                        "targetId", event.targetId()),
+                Map.of("tenantId",event.tenantId(),"projectId",event.projectId(),"reviewerUserId", event.reviewerUserId(), "targetType", "TIMELINE",
+                        "targetId", event.revisionId()),
                 AuditCategory.CONFIG);
     }
 
     @EventListener
-    public void onReviewRejected(ReviewRejectedEvent event) {
+    public void onReviewRejected(TimelineReviewRejectedEvent event) {
         log.info("AuditEventHandler: recording audit for review rejected={}", event.reviewId());
-        auditService.record("SYSTEM", "review-event-handler", "REVIEW_REJECTED",
+        auditService.recordFact(event.factKey(), "SYSTEM", "review-event-handler", "REVIEW_REJECTED",
                 "REVIEW", event.reviewId(),
-                Map.of("targetType", event.targetType(), "targetId", event.targetId()),
+                Map.of("tenantId",event.tenantId(),"projectId",event.projectId(),"targetType", "TIMELINE", "targetId", event.revisionId()),
                 AuditCategory.CONFIG);
     }
 
     @EventListener
-    public void onReviewChangesRequested(ReviewChangesRequestedEvent event) {
+    public void onReviewChangesRequested(TimelineReviewChangesRequestedEvent event) {
         log.info("AuditEventHandler: recording audit for review changes requested={}", event.reviewId());
-        auditService.record("SYSTEM", "review-event-handler", "REVIEW_CHANGES_REQUESTED",
+        auditService.recordFact(event.factKey(), "SYSTEM", "review-event-handler", "REVIEW_CHANGES_REQUESTED",
                 "REVIEW", event.reviewId(),
-                Map.of("reviewerUserId", event.reviewerUserId()),
+                Map.of("tenantId",event.tenantId(),"projectId",event.projectId(),"reviewerUserId", event.reviewerUserId()),
                 AuditCategory.CONFIG);
     }
 
     @EventListener
-    public void onReviewCommentAdded(ReviewCommentAddedEvent event) {
+    public void onReviewCommentAdded(TimelineReviewCommentAddedEvent event) {
         log.info("AuditEventHandler: recording audit for review comment={}", event.commentId());
-        auditService.record("SYSTEM", "review-event-handler", "REVIEW_COMMENT_ADDED",
+        auditService.recordFact(event.factKey(), "SYSTEM", "review-event-handler", "REVIEW_COMMENT_ADDED",
                 "REVIEW", event.commentId(),
-                Map.of("reviewId", event.reviewId(), "authorUserId", event.authorUserId()),
+                Map.of("tenantId",event.tenantId(),"projectId",event.projectId(),"reviewId", event.reviewId(), "authorUserId", event.authorUserId()),
                 AuditCategory.CONFIG);
     }
 
     @EventListener
-    public void onReviewThreadResolved(ReviewThreadResolvedEvent event) {
+    public void onReviewThreadResolved(TimelineReviewThreadResolvedEvent event) {
         log.info("AuditEventHandler: recording audit for review thread resolved={}", event.threadId());
-        auditService.record("SYSTEM", "review-event-handler", "REVIEW_THREAD_RESOLVED",
+        auditService.recordFact(event.factKey(), "SYSTEM", "review-event-handler", "REVIEW_THREAD_RESOLVED",
                 "REVIEW", event.threadId(),
-                Map.of("reviewId", event.reviewId()), AuditCategory.CONFIG);
+                Map.of("tenantId",event.tenantId(),"projectId",event.projectId(),"reviewId", event.reviewId()), AuditCategory.CONFIG);
     }
 
     @EventListener

@@ -141,7 +141,7 @@ class CheckpointARound4RestorePinCopyIT extends PostgresTestContainerSupport {
     private void buildSaveService(ArtifactQueryService query, ArtifactPinService pinSvc) {
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService,
                 new TimelineContentDigester(), snapshotService,
-                new TimelineArtifactPinValidator(query), pinSvc, effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
+                new TimelineArtifactPinValidator(query), pinSvc, effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL, org.mockito.Mockito.mock(com.example.platform.outbox.app.OutboxEventService.class));
     }
 
     private long countPinsFor(String projectId, String revisionId) {

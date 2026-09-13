@@ -1,102 +1,23 @@
----
-status: implementation-report
-created: 2026-06-24
-scope: shared-kernel + render-module + platform-app + outbox-event-module
-truth_level: current
-owner: platform
----
+# Timeline review and revision events
 
-# Platform Foundation Sprint 014 — Timeline & Review Domain Events
+Timeline owns these typed facts and their `TimelineOutboxEvents` catalog. Outbox owns the existing versioned envelope, codec and dispatcher. There are no shared-package aliases or generic targetType-discriminated review facts.
 
-## Event Gap Analysis
+| Durable contract | Version | Actual producer | Actual consumers |
+|---|---:|---|---|
+| timeline.review.created | 1 | TimelineReviewService, accepted creation transaction | Intentional publication contract (CAR-0093/0095); no internal consumer |
+| timeline.review.approved | 1 | TimelineReviewService, accepted status + decision transaction | Audit, Notification |
+| timeline.review.rejected | 1 | TimelineReviewService, accepted status + decision transaction | Audit, Notification |
+| timeline.review.changes_requested | 1 | TimelineReviewService, accepted status + decision transaction | Audit, Notification |
+| timeline.review.comment.added | 1 | TimelineCommentService, accepted comment transaction | Audit, Notification |
+| timeline.review.thread.resolved | 1 | TimelineCommentService, accepted resolution transaction | Audit, Notification |
+| timeline.merged | 2 | TimelineRevisionSaveService, same explicit jOOQ transaction as accepted merge | Audit, Notification |
+| timeline.restored | 2 | TimelineRevisionSaveService, same explicit jOOQ transaction as verified restore | Audit, Notification |
+| timeline.revision.created | 2 | No current producer; intentional published contract retained under CAR-0096 | No current consumer |
 
-### Before Sprint 014
+Contracts live in `timeline.api.event`. Review references bind review identity to a scoped Timeline revision. Merge/restore facts carry scoped accepted result/source identities. Decision/comment IDs or a unique accepted resolution fact ID distinguish transitions. Facts contain actual server-resolved actor IDs; they do not cause another lifecycle or infer state from diagnostics.
 
-Outbox infrastructure supported only 6 render event types. Timeline (revision, merge, restore) and Review (created, approved, rejected, changes, comments, threads) had zero event representation.
+Review and revision mutations roll back with failed append. Existing merge duplicate handling avoids a new event for an already accepted result. Audit and Notification use stable fact identities for local duplicate handling. Existing notification subscription topics are preserved as Notification-owned ingress projections; they are not compatibility registrations for retired domain payloads.
 
-### After Sprint 014
+The six old generic review keys and all nine shared Java definitions are retired. Prior version-1 Timeline revision payloads are incompatible with the new typed scope and are explicitly rejected/dead-lettered. No translator, dual publication, field default or historical rewrite is supplied. Valid typed inputs use the existing production envelope and codec.
 
-9 new domain events spanning two domains, dispatched via existing outbox infrastructure.
-
-## Event Inventory
-
-### Timeline Domain Events (3)
-
-| Event | eventType | Trigger |
-|-------|-----------|---------|
-| `TimelineRevisionCreatedEvent` | `timeline.revision.created` | `TimelineRevisionController` (via `TimelineReviewEventPublisher`) |
-| `TimelineMergedEvent` | `timeline.merged` | `TimelineRevisionController.merge()` |
-| `TimelineRestoredEvent` | `timeline.restored` | (event record created; publish point TBD) |
-
-### Review Domain Events (6)
-
-| Event | eventType | Trigger |
-|-------|-----------|---------|
-| `ReviewCreatedEvent` | `review.created` | `TimelineReviewController.createReview()` |
-| `ReviewApprovedEvent` | `review.approved` | `TimelineReviewController.approve()` |
-| `ReviewRejectedEvent` | `review.rejected` | (event record created) |
-| `ReviewChangesRequestedEvent` | `review.changes_requested` | (event record created) |
-| `ReviewCommentAddedEvent` | `review.comment.added` | (event record created) |
-| `ReviewThreadResolvedEvent` | `review.thread.resolved` | (event record created) |
-
-## New Files
-
-| File | Type | Purpose |
-|------|------|---------|
-| `TimelineRevisionCreatedEvent.java` | Event record | Revision created |
-| `TimelineMergedEvent.java` | Event record | Merge completed |
-| `TimelineRestoredEvent.java` | Event record | Restore completed |
-| `ReviewCreatedEvent.java` | Event record | Review created |
-| `ReviewApprovedEvent.java` | Event record | Review approved |
-| `ReviewRejectedEvent.java` | Event record | Review rejected |
-| `ReviewChangesRequestedEvent.java` | Event record | Changes requested |
-| `ReviewCommentAddedEvent.java` | Event record | Comment added |
-| `ReviewThreadResolvedEvent.java` | Event record | Thread resolved |
-| `TimelineReviewEventPublisher.java` | Service | Publishes events via Spring ApplicationEventPublisher |
-
-## Modified Files
-
-| File | Change |
-|------|--------|
-| `OutboxEventDispatcher.java` | +9 case branches for timeline + review event types |
-| `TimelineRevisionController.java` | +`eventPublisher` dependency; event publish on merge completion |
-| `TimelineReviewController.java` | +`eventPublisher` dependency; event publish on create + approve |
-| `TimelineMergeControllerTest.java` | +`eventPublisher` mock |
-| `TimelineReviewControllerTest.java` | +`eventPublisher` mock + restored test methods |
-
-## Event Flow
-
-```
-Controller action (merge/approve/create)
-    ↓
-TimelineReviewEventPublisher.publish(event)
-    ↓
-Spring ApplicationEventPublisher
-    ↓
-OutboxEventDispatcher (reads from outbox_events)
-    ↓
-@EventListener consumers (notification, audit)
-```
-
-## Tests
-
-All existing tests pass (TimelineMergeControllerTest, TimelineReviewControllerTest, TimelineConflictDetectorTest).
-
-## Known Limitations
-
-| Limitation | Status |
-|-----------|--------|
-| Trigger coverage incomplete | Merge and create/approve wired. Restore, reject, changes, comment, thread not yet connected to controllers. |
-| Notification handler not wired | Event records exist. No `@EventListener` for timeline/review events in NotificationEventHandler yet. |
-| Audit handler not wired | Event records exist. No `@EventListener` for timeline/review events in AuditEventHandler yet. |
-| No outbox_event rows in tests | Events published via Spring ApplicationEventPublisher, not directly to outbox. Integration test needed. |
-
-## Deferred Items
-
-| Item | Sprint |
-|------|--------|
-| Notification handler for timeline/review events | Sprint 015 |
-| Audit handler for timeline/review events | Sprint 015 |
-| Asset domain events | Sprint 015 |
-| platform_job / platform_task | Sprint 016 |
-| LISTEN/NOTIFY wake-up | Sprint 017 |
+Asset/Marketplace publication events and their remaining authority convergence are outside this scope (EP29C). The contracts do not add frontend pages, a general Project Open flow or real provider execution. Notification delivery does not claim exactly-once external effects.

@@ -4,7 +4,7 @@ import com.example.platform.timeline.api.review.ReviewRecords;
 import com.example.platform.render.app.asset.AssetReviewService;
 import com.example.platform.timeline.api.review.ReviewQueries;
 import com.example.platform.render.domain.asset.AssetPublishStatus;
-import com.example.platform.render.app.event.TimelineReviewEventPublisher;
+import com.example.platform.render.app.event.AssetPublicationEventPublisher;
 import com.example.platform.shared.events.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -19,10 +19,10 @@ import org.springframework.web.bind.annotation.*;
 public class AssetPublishController {
 
     private final AssetReviewService reviewService;
-    private final TimelineReviewEventPublisher eventPublisher;
+    private final AssetPublicationEventPublisher eventPublisher;
 
     public AssetPublishController(AssetReviewService reviewService,
-                                    TimelineReviewEventPublisher eventPublisher) {
+                                    AssetPublicationEventPublisher eventPublisher) {
         this.reviewService = reviewService;
         this.eventPublisher = eventPublisher;
     }

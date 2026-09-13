@@ -132,7 +132,7 @@ class CheckpointAPinRegistrationRollbackIT extends PostgresTestContainerSupport 
 
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService,
                 new TimelineContentDigester(), snapshotService,
-                new TimelineArtifactPinValidator(query), pinService, effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
+                new TimelineArtifactPinValidator(query), pinService, effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL, org.mockito.Mockito.mock(com.example.platform.outbox.app.OutboxEventService.class));
 
         assertThrows(IllegalStateException.class,
                 () -> com.example.platform.render.testsupport.TimelineMutationTestSupport.save(saveService,
@@ -173,7 +173,7 @@ class CheckpointAPinRegistrationRollbackIT extends PostgresTestContainerSupport 
 
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService,
                 new TimelineContentDigester(), snapshotService,
-                new TimelineArtifactPinValidator(query), pinService, effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
+                new TimelineArtifactPinValidator(query), pinService, effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL, org.mockito.Mockito.mock(com.example.platform.outbox.app.OutboxEventService.class));
 
         var revision = com.example.platform.render.testsupport.TimelineMutationTestSupport.save(saveService,
                 TENANT, productId, null, pinnedDoc(), RenderTestSchemaFixture.SERVER_ACTOR);

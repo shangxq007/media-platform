@@ -14,7 +14,7 @@ case "${1:-}" in
         --tests '*TimelineRevisionSaveServiceSnapshotIntegrationTest' \
       :social-publish-module:test --tests '*SocialAccountReadServiceTest' --tests '*SocialPostReadServiceTest' \
       :platform-app:test --tests '*DeliverySecurityChainTest' --tests '*EnabledAdminSecurityTest' \
-        --tests '*TimelineReviewOwnerIntegrationTest' --tests '*TimelineAuthorityBoundaryTest' --tests '*TimelineReviewControllerTest' --tests '*TimelineWorkbenchControllerTest' \
+        --tests '*TimelineReviewOwnerIntegrationTest' --tests '*TimelineEventBoundaryTest' --tests '*H7V2CanonicalOwnershipInvariantTest' --tests '*TimelineAuthorityBoundaryTest' --tests '*TimelineReviewControllerTest' --tests '*TimelineWorkbenchControllerTest' \
         --tests '*TimelineProjectAuthorizationServiceTest' --tests '*CommercialAuthorityDecisionAdapterTest' \
         --tests '*IdentityAuthorizationDenialTransportTest' --tests '*ModularityTest'
     ;;

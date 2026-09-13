@@ -10,9 +10,6 @@ import org.springframework.stereotype.Component;
 @Component
 @org.springframework.modulith.NamedInterface("events")
 public final class RenderOutboxEvents implements OutboxEventCatalog {
-    public static final OutboxEventType<TimelineRevisionCreatedEvent> TIMELINEREVISIONCREATEDEVENT = new OutboxEventType<>("timeline.revision.created", 1, "TIMELINE", TimelineRevisionCreatedEvent.class, TimelineRevisionCreatedEvent::revisionId, event -> null);
-    public static final OutboxEventType<TimelineMergedEvent> TIMELINEMERGEDEVENT = new OutboxEventType<>("timeline.merged", 1, "TIMELINE", TimelineMergedEvent.class, TimelineMergedEvent::mergeRevisionId, event -> null);
-    public static final OutboxEventType<TimelineRestoredEvent> TIMELINERESTOREDEVENT = new OutboxEventType<>("timeline.restored", 1, "TIMELINE", TimelineRestoredEvent.class, TimelineRestoredEvent::newRevisionId, event -> null);
     public static final OutboxEventType<AssetSubmittedForReviewEvent> ASSETSUBMITTEDFORREVIEWEVENT = new OutboxEventType<>("asset.submitted.review", 1, "ASSET", AssetSubmittedForReviewEvent.class, AssetSubmittedForReviewEvent::assetId, event -> null);
     public static final OutboxEventType<AssetApprovedEvent> ASSETAPPROVEDEVENT = new OutboxEventType<>("asset.approved", 1, "ASSET", AssetApprovedEvent.class, AssetApprovedEvent::assetId, event -> null);
     public static final OutboxEventType<AssetPublishedEvent> ASSETPUBLISHEDEVENT = new OutboxEventType<>("asset.published", 1, "ASSET", AssetPublishedEvent.class, AssetPublishedEvent::assetId, event -> null);
@@ -22,5 +19,5 @@ public final class RenderOutboxEvents implements OutboxEventCatalog {
     public static final OutboxEventType<RenderJobCompletedEvent> RENDERJOBCOMPLETEDEVENT = new OutboxEventType<>("render.job.completed", 2, "render_job", RenderJobCompletedEvent.class, RenderJobCompletedEvent::renderJobId, event -> event.initiator().tenantId());
     public static final OutboxEventType<RenderJobFailedEvent> RENDERJOBFAILEDEVENT = new OutboxEventType<>("render.job.failed", 2, "render_job", RenderJobFailedEvent.class, RenderJobFailedEvent::renderJobId, event -> event.initiator().tenantId());
     public static final OutboxEventType<RenderCacheHashInvalidatedEvent> CACHE_INVALIDATED = new OutboxEventType<>("render.cache.hash.invalidated", 1, "render_job", RenderCacheHashInvalidatedEvent.class, RenderCacheHashInvalidatedEvent::renderJobId, RenderCacheHashInvalidatedEvent::tenantId);
-    @Override public List<OutboxEventType<?>> types() { return List.of(TIMELINEREVISIONCREATEDEVENT, TIMELINEMERGEDEVENT, TIMELINERESTOREDEVENT, ASSETSUBMITTEDFORREVIEWEVENT, ASSETAPPROVEDEVENT, ASSETPUBLISHEDEVENT, ASSETARCHIVEDEVENT, RENDERJOBCREATEDEVENT, RENDERJOBSTATUSCHANGEDEVENT, RENDERJOBCOMPLETEDEVENT, RENDERJOBFAILEDEVENT, CACHE_INVALIDATED); }
+    @Override public List<OutboxEventType<?>> types() { return List.of(ASSETSUBMITTEDFORREVIEWEVENT, ASSETAPPROVEDEVENT, ASSETPUBLISHEDEVENT, ASSETARCHIVEDEVENT, RENDERJOBCREATEDEVENT, RENDERJOBSTATUSCHANGEDEVENT, RENDERJOBCOMPLETEDEVENT, RENDERJOBFAILEDEVENT, CACHE_INVALIDATED); }
 }

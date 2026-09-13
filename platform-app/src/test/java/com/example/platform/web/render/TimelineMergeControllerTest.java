@@ -9,7 +9,7 @@ import com.example.platform.timeline.app.TimelineMergeEngine;
 import com.example.platform.timeline.api.revision.TimelineMutationContext;
 import com.example.platform.timeline.app.TimelineRevisionQueryService;
 import com.example.platform.timeline.app.TimelineRevisionDiffQuery;
-import com.example.platform.render.app.event.TimelineReviewEventPublisher;
+import com.example.platform.render.app.event.AssetPublicationEventPublisher;
 import com.example.platform.render.domain.planning.*; // render-kept internal types only
 import com.example.platform.timeline.diff.merge.EntityKind;
 import com.example.platform.timeline.diff.merge.EntityRef;
@@ -39,7 +39,7 @@ class TimelineMergeControllerTest {
     private TimelineRevisionQueryService revisionQueryService;
     private TimelineRevisionDiffQuery revisionDiffQuery;
     private TimelineMergeEngine mergeEngine;
-    private TimelineReviewEventPublisher eventPublisher;
+    private AssetPublicationEventPublisher eventPublisher;
     private TimelineProjectAuthorizationService projectAuthorization;
     private TimelineRevisionController controller;
 
@@ -49,11 +49,11 @@ class TimelineMergeControllerTest {
         revisionQueryService = mock(TimelineRevisionQueryService.class);
         revisionDiffQuery = mock(TimelineRevisionDiffQuery.class);
         mergeEngine = mock(TimelineMergeEngine.class);
-        eventPublisher = mock(TimelineReviewEventPublisher.class);
+        eventPublisher = mock(AssetPublicationEventPublisher.class);
         projectAuthorization = mock(TimelineProjectAuthorizationService.class);
         when(projectAuthorization.requireWrite(TENANT_ID, PROJECT_ID)).thenReturn(SERVER_ACTOR);
         controller = new TimelineRevisionController(
-                revisionQueryService, revisionDiffQuery, mergeEngine, eventPublisher,
+                revisionQueryService, revisionDiffQuery, mergeEngine,
                 null, null, null, null, projectAuthorization);
     }
 

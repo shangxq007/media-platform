@@ -157,7 +157,7 @@ class CheckpointARound4PatchPathPinIT extends PostgresTestContainerSupport {
 
     private void buildServices(ArtifactQueryService query, ArtifactPinService pinSvc) {
         saveService = new TimelineRevisionSaveService(dsl, currentRevisionService,
-                digester, snapshotService, new TimelineArtifactPinValidator(query), pinSvc, effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
+                digester, snapshotService, new TimelineArtifactPinValidator(query), pinSvc, effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL, org.mockito.Mockito.mock(com.example.platform.outbox.app.OutboxEventService.class));
     }
 
     private TimelinePatch patchMove(String productId, TimelineRevision base,

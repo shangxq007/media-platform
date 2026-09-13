@@ -7,7 +7,7 @@ import com.example.platform.timeline.app.TimelineMergeEngine;
 import com.example.platform.render.app.timeline.TimelineRevisionRenderService;
 import com.example.platform.timeline.app.TimelineRevisionQueryService;
 import com.example.platform.timeline.app.TimelineRevisionDiffQuery;
-import com.example.platform.render.app.event.TimelineReviewEventPublisher;
+import com.example.platform.render.app.event.AssetPublicationEventPublisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -39,7 +39,7 @@ class TimelineRevisionRenderJobStatusControllerTest {
     private TimelineRevisionQueryService revisionQueryService;
     private TimelineRevisionDiffQuery revisionDiffQuery;
     private TimelineMergeEngine mergeEngine;
-    private TimelineReviewEventPublisher eventPublisher;
+    private AssetPublicationEventPublisher eventPublisher;
     private TimelineRevisionRenderService renderService;
     private RenderJobStatusService renderJobStatusService;
     private TimelineRevisionController controller;
@@ -50,12 +50,12 @@ class TimelineRevisionRenderJobStatusControllerTest {
         revisionQueryService = mock(TimelineRevisionQueryService.class);
         revisionDiffQuery = mock(TimelineRevisionDiffQuery.class);
         mergeEngine = mock(TimelineMergeEngine.class);
-        eventPublisher = mock(TimelineReviewEventPublisher.class);
+        eventPublisher = mock(AssetPublicationEventPublisher.class);
         renderService = mock(TimelineRevisionRenderService.class);
         renderJobStatusService = mock(RenderJobStatusService.class);
         projectAuthorization = mock(TimelineProjectAuthorizationService.class);
         controller = new TimelineRevisionController(
-                revisionQueryService, revisionDiffQuery, mergeEngine, eventPublisher,
+                revisionQueryService, revisionDiffQuery, mergeEngine,
                 renderService, renderJobStatusService, null, null, projectAuthorization);
     }
 
@@ -183,7 +183,7 @@ class TimelineRevisionRenderJobStatusControllerTest {
     void statusEndpointServiceUnavailable() {
         // Arrange — controller with null renderJobStatusService
         TimelineRevisionController controllerNoService = new TimelineRevisionController(
-                revisionQueryService, revisionDiffQuery, mergeEngine, eventPublisher,
+                revisionQueryService, revisionDiffQuery, mergeEngine,
                 renderService, null, null, null, projectAuthorization);
 
         // Act
@@ -323,7 +323,7 @@ class TimelineRevisionRenderJobStatusControllerTest {
     void resultEndpointServiceUnavailable() {
         // Arrange — controller with null renderJobStatusService
         TimelineRevisionController controllerNoService = new TimelineRevisionController(
-                revisionQueryService, revisionDiffQuery, mergeEngine, eventPublisher,
+                revisionQueryService, revisionDiffQuery, mergeEngine,
                 renderService, null, null, null, projectAuthorization);
 
         // Act

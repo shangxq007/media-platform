@@ -1,5 +1,6 @@
 package com.example.platform.timeline.app.review;
 import com.example.platform.timeline.api.review.*;
+import com.example.platform.timeline.api.event.*;
 import com.example.platform.timeline.api.review.ReviewRecords.*;
 import com.example.platform.timeline.infrastructure.review.TimelineReviewRepository;
 
@@ -45,7 +46,7 @@ public class TimelineCommentService implements TimelineComments {
                 revisionId, entityRef != null ? entityRef.key() : null,
                 authorUserId, content, now);
 
-        if("TIMELINE".equals(reviewRepository.targetType(reviewId)))events.publish(new com.example.platform.shared.events.ReviewCommentAddedEvent(reviewId,review.projectId(),"TIMELINE",revisionId,commentId,authorUserId,entityRef!=null?entityRef.key():null));
+        if("TIMELINE".equals(reviewRepository.targetType(reviewId)))events.publish(new TimelineReviewCommentAddedEvent(new TimelineReviewReference(reviewId,new TimelineRevisionIdentity(review.tenantId(),review.projectId(),revisionId)),commentId,authorUserId,entityRef!=null?entityRef.key():null,now.toInstant()));
         return TimelineComment.create(commentId, reviewId, effectiveThreadId,
                 revisionId, entityRef, authorUserId, content);
     }
@@ -60,7 +61,7 @@ public class TimelineCommentService implements TimelineComments {
         var thread=reviewRepository.listThreadsByReview(reviewId).stream().filter(t->t.id().equals(threadId)).findFirst();
         if(thread.isEmpty())return false;if("RESOLVED".equals(thread.get().status()))return true;
         boolean changed=reviewRepository.updateThreadStatus(reviewId,threadId,"RESOLVED");
-        if(changed&&"TIMELINE".equals(reviewRepository.targetType(reviewId)))events.publish(new com.example.platform.shared.events.ReviewThreadResolvedEvent(reviewId,review.projectId(),threadId,thread.get().entityRef()));
+        if(changed&&"TIMELINE".equals(reviewRepository.targetType(reviewId)))events.publish(new TimelineReviewThreadResolvedEvent(new TimelineReviewReference(reviewId,new TimelineRevisionIdentity(review.tenantId(),review.projectId(),review.revisionId())),java.util.UUID.randomUUID().toString(),threadId,thread.get().entityRef(),java.time.Instant.now()));
         return changed;
     }
 

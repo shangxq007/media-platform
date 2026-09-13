@@ -99,7 +99,7 @@ class CheckpointAPinInvariantTest {
                 new DefaultTimelineRevisionPersistence(),
                 new TimelineRevisionRefHeadUpdateAdapter(
                         org.mockito.Mockito.mock(TimelineRevisionRefMutation.class)),
-                TestTimelineMutationContexts.ALLOW_ALL);
+                TestTimelineMutationContexts.ALLOW_ALL, org.mockito.Mockito.mock(com.example.platform.outbox.app.OutboxEventService.class));
     }
 
     private static com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotAuthority effectAuthority() {
@@ -249,7 +249,7 @@ class CheckpointAPinInvariantTest {
                         org.mockito.Mockito.mock(com.example.platform.timeline.adapter.TimelineSnapshotService.class),
                         null,
                         org.mockito.Mockito.mock(ArtifactPinService.class),
-                        effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(org.mockito.Mockito.mock(TimelineRevisionRefMutation.class)), TestTimelineMutationContexts.ALLOW_ALL),
+                        effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(org.mockito.Mockito.mock(TimelineRevisionRefMutation.class)), TestTimelineMutationContexts.ALLOW_ALL, org.mockito.Mockito.mock(com.example.platform.outbox.app.OutboxEventService.class)),
                 "null artifactPinValidator must be rejected by construction");
         assertThrows(NullPointerException.class,
                 () -> new TimelineRevisionSaveService(
@@ -259,7 +259,7 @@ class CheckpointAPinInvariantTest {
                         org.mockito.Mockito.mock(com.example.platform.timeline.adapter.TimelineSnapshotService.class),
                         new TimelineArtifactPinValidator(mock(ArtifactQueryService.class)),
                         null,
-                        effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(org.mockito.Mockito.mock(TimelineRevisionRefMutation.class)), TestTimelineMutationContexts.ALLOW_ALL),
+                        effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(org.mockito.Mockito.mock(TimelineRevisionRefMutation.class)), TestTimelineMutationContexts.ALLOW_ALL, org.mockito.Mockito.mock(com.example.platform.outbox.app.OutboxEventService.class)),
                         "null artifactPinService must be rejected by construction");
                         assertThrows(NullPointerException.class,
                         () -> new TimelineRevisionSaveService(
@@ -269,7 +269,7 @@ class CheckpointAPinInvariantTest {
                                 org.mockito.Mockito.mock(com.example.platform.timeline.adapter.TimelineSnapshotService.class),
                                 new TimelineArtifactPinValidator(mock(ArtifactQueryService.class)),
                                 org.mockito.Mockito.mock(ArtifactPinService.class),
-                                effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(org.mockito.Mockito.mock(TimelineRevisionRefMutation.class)), TestTimelineMutationContexts.ALLOW_ALL),
+                                effectAuthority(), revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(org.mockito.Mockito.mock(TimelineRevisionRefMutation.class)), TestTimelineMutationContexts.ALLOW_ALL, org.mockito.Mockito.mock(com.example.platform.outbox.app.OutboxEventService.class)),
                         "null dsl must be rejected by construction");
         // ROADMAP20 authority integration: Effect authority + context store are
         // REQUIRED BY CONSTRUCTION — a save surface without them cannot exist.
@@ -281,7 +281,7 @@ class CheckpointAPinInvariantTest {
                         org.mockito.Mockito.mock(com.example.platform.timeline.adapter.TimelineSnapshotService.class),
                         new TimelineArtifactPinValidator(mock(ArtifactQueryService.class)),
                         org.mockito.Mockito.mock(ArtifactPinService.class),
-                        null, revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(org.mockito.Mockito.mock(TimelineRevisionRefMutation.class)), TestTimelineMutationContexts.ALLOW_ALL),
+                        null, revisionSemanticContextStore(), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(org.mockito.Mockito.mock(TimelineRevisionRefMutation.class)), TestTimelineMutationContexts.ALLOW_ALL, org.mockito.Mockito.mock(com.example.platform.outbox.app.OutboxEventService.class)),
                 "null Effect snapshot authority must be rejected by construction");
     }
 

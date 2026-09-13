@@ -204,6 +204,17 @@ public class OutboxEventService {
 
     @Transactional
     public String append(com.example.platform.outbox.api.event.OutboxAppend<?> append) {
+        return appendUsing(append,dsl,notifyService::notifyOutboxEvent);
+    }
+
+    /** Join an already-active owner jOOQ transaction; never start an independent transaction. */
+    public String appendInTransaction(com.example.platform.outbox.api.event.OutboxAppend<?> append, DSLContext transaction) {
+        java.util.Objects.requireNonNull(transaction,"owner transaction required");
+        transaction.connection(connection->{if(connection.getAutoCommit())throw new IllegalStateException("active owner transaction required");});
+        return appendUsing(append,transaction,()->notifyService.notifyOutboxEvent(transaction));
+    }
+
+    private String appendUsing(com.example.platform.outbox.api.event.OutboxAppend<?> append,DSLContext dsl,Runnable notify) {
         String currentTenant = com.example.platform.shared.web.TenantContext.get();
         if (currentTenant != null && !currentTenant.equals(append.tenantId()))
             throw new IllegalArgumentException("Outbox tenant scope mismatch");
@@ -224,7 +235,7 @@ public class OutboxEventService {
                             OUTBOX_EVENTS.IDEMPOTENCY_KEY, OUTBOX_EVENTS.CREATED_AT)
                     .values(id, append.type().aggregateType(), append.aggregateId(), append.type().name(), append.type().version(),
                             payload, STATUS_PENDING, 0, maxRetries, key, LocalDateTime.now()).execute();
-            notifyService.notifyOutboxEvent();
+            notify.run();
             return id;
         }
         var decoded = router.decode(existing.getEventType(), existing.getEventVersion(), existing.getAggregateType(), existing.getAggregateId(), existing.getPayload());

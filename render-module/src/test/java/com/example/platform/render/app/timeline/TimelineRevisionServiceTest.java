@@ -78,7 +78,7 @@ class TimelineRevisionServiceTest extends PostgresTestContainerSupport {
                 org.mockito.Mockito.mock(
                         com.example.platform.timeline.version.TimelineRevisionSemanticContextStore.class),
                 new DefaultTimelineRevisionPersistence(),
-                new TimelineRevisionRefHeadUpdateAdapter(revisionRefMutation), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
+                new TimelineRevisionRefHeadUpdateAdapter(revisionRefMutation), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL, org.mockito.Mockito.mock(com.example.platform.outbox.app.OutboxEventService.class));
         revisionQueryService = new TimelineRevisionQueryService(
                 repo, snapshotService, diffService);
     }

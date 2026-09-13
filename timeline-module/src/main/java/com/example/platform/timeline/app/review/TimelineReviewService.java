@@ -1,5 +1,6 @@
 package com.example.platform.timeline.app.review;
 import com.example.platform.timeline.api.review.*;
+import com.example.platform.timeline.api.event.*;
 import com.example.platform.timeline.api.review.ReviewRecords.*;
 import com.example.platform.timeline.infrastructure.review.TimelineReviewRepository;
 
@@ -36,7 +37,7 @@ public class TimelineReviewService implements TimelineReviews {
         OffsetDateTime now = OffsetDateTime.now();
         reviewRepository.insertReview(reviewId, projectId, tenantId, revisionId,
                 authorUserId, title, description, "OPEN", now);
-        events.publish(new com.example.platform.shared.events.ReviewCreatedEvent(reviewId,projectId,"TIMELINE",revisionId,authorUserId,title));
+        events.publish(new TimelineReviewCreatedEvent(new TimelineReviewReference(reviewId,new TimelineRevisionIdentity(tenantId,projectId,revisionId)),authorUserId,title,now.toInstant()));
         return TimelineReview.create(reviewId, projectId, tenantId, revisionId,
                 authorUserId, title, description);
     }
@@ -79,12 +80,14 @@ public class TimelineReviewService implements TimelineReviews {
         if(status.equals(row.status()))return;
         if("CLOSED".equals(row.status())||"MERGED".equals(row.status()))throw new ReviewConflictException("review is closed");
         reviewRepository.updateReviewStatus(id,status);
-        reviewRepository.insertDecision("rdec_"+java.util.UUID.randomUUID(),id,actor.actorId(),decision,OffsetDateTime.now());
+        String decisionId="rdec_"+java.util.UUID.randomUUID();var occurredAt=java.time.Instant.now();
+        reviewRepository.insertDecision(decisionId,id,actor.actorId(),decision,OffsetDateTime.ofInstant(occurredAt,java.time.ZoneOffset.UTC));
         if(!"TIMELINE".equals(reviewRepository.targetType(id)))return;
+        var reference=new TimelineReviewReference(id,new TimelineRevisionIdentity(row.tenantId(),row.projectId(),row.revisionId()));
         switch(decision){
-         case "APPROVE" -> events.publish(new com.example.platform.shared.events.ReviewApprovedEvent(id,row.projectId(),"TIMELINE",row.revisionId(),actor.actorId()));
-         case "REQUEST_CHANGES" -> events.publish(new com.example.platform.shared.events.ReviewChangesRequestedEvent(id,row.projectId(),"TIMELINE",row.revisionId(),actor.actorId()));
-         case "REJECT" -> events.publish(new com.example.platform.shared.events.ReviewRejectedEvent(id,row.projectId(),"TIMELINE",row.revisionId()));
+         case "APPROVE" -> events.publish(new TimelineReviewApprovedEvent(reference,decisionId,actor.actorId(),occurredAt));
+         case "REQUEST_CHANGES" -> events.publish(new TimelineReviewChangesRequestedEvent(reference,decisionId,actor.actorId(),occurredAt));
+         case "REJECT" -> events.publish(new TimelineReviewRejectedEvent(reference,decisionId,actor.actorId(),occurredAt));
          default -> throw new IllegalArgumentException("unsupported decision");
         }
     }

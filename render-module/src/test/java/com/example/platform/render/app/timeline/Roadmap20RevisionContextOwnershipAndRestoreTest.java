@@ -97,7 +97,7 @@ class Roadmap20RevisionContextOwnershipAndRestoreTest extends PostgresTestContai
                         new JdbcEffectSemanticSnapshotStore(dsl)),
                 new JdbcTimelineRevisionSemanticContextStore(dsl),
                 new DefaultTimelineRevisionPersistence(),
-                new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
+                new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL, org.mockito.Mockito.mock(com.example.platform.outbox.app.OutboxEventService.class));
     }
 
     private static TimelineDocument sampleDocument() {
@@ -335,7 +335,7 @@ class Roadmap20RevisionContextOwnershipAndRestoreTest extends PostgresTestContai
                 (tx, ref, expected, newRevisionId) -> {
                     throw new IllegalStateException("RST_TX_HEAD injected head failure");
                 },
-                com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
+                com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL, org.mockito.Mockito.mock(com.example.platform.outbox.app.OutboxEventService.class));
         assertThrows(IllegalStateException.class,
                 () -> com.example.platform.render.testsupport.TimelineMutationTestSupport.restore(failingRestore, productId, rev.revisionId(), rev.revisionId(), "u"));
         assertEquals(revisionsBefore, countRevisions(productId), "RST_TX_HEAD: no new revision committed");

@@ -1,6 +1,7 @@
 plugins { id("java-library") }
 
 dependencies {
+    implementation(project(":timeline-module"))
     implementation(project(":delivery-module"))
     implementation(project(":artifact-module"))
     implementation(project(":render-module")) // defining-domain lifecycle contract

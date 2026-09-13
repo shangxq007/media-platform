@@ -1,4 +1,5 @@
 package com.example.platform.timeline.app;
+import com.example.platform.timeline.api.event.*;
 import com.example.platform.timeline.api.revision.TimelineSnapshotView;
 import com.example.platform.timeline.api.revision.TimelineRevisionCommands;
 import com.example.platform.timeline.api.composition.TimelineCanonicalRejectionException;
@@ -57,6 +58,7 @@ public class TimelineRevisionSaveService implements TimelineRevisionCommands {
     private static final AuthorizationAction MUTATE_TIMELINE = new AuthorizationAction(
             "WRITE", AuthorizationResourceType.PROJECT, "Mutate canonical Timeline");
     private final DSLContext dsl;
+    private final com.example.platform.outbox.app.OutboxEventService outbox;
     private final TimelineContentDigester contentDigester;
     private final TimelineSnapshotService timelineSnapshotService;
     private final TimelineArtifactPinValidator artifactPinValidator;
@@ -101,12 +103,13 @@ public class TimelineRevisionSaveService implements TimelineRevisionCommands {
                                        com.example.platform.timeline.version.TimelineRevisionSemanticContextStore revisionSemanticContextStore,
                                        TimelineRevisionPersistencePort revisionPersistence,
                                        HeadUpdatePort headUpdatePort,
-                                       AuthorizationDecisionPort authorizationPort) {
+                                       AuthorizationDecisionPort authorizationPort, com.example.platform.outbox.app.OutboxEventService outbox) {
         // R5-C (CHECKPOINT_A Round 5): ALL production invariants are REQUIRED
         // BY CONSTRUCTION — no constructor permits a save/restore surface with
         // a missing artifact-pin dependency. A pinned revision can never be
         // committed without pin validation/persistence authority.
         this.dsl = Objects.requireNonNull(dsl, "dsl");
+        this.outbox=Objects.requireNonNull(outbox,"outbox");
         this.revisionRefMutation = Objects.requireNonNull(revisionRefMutation, "revisionRefMutation");
         this.contentDigester = Objects.requireNonNull(contentDigester, "contentDigester");
         this.timelineSnapshotService = Objects.requireNonNull(timelineSnapshotService, "timelineSnapshotService");
@@ -338,6 +341,12 @@ public class TimelineRevisionSaveService implements TimelineRevisionCommands {
         String revisionId = UUID.randomUUID().toString();
         final java.util.List<TimelineArtifactPinExtractor.ArtifactPin> pinsToRegister = pins;
         return dsl.transactionResult(tx -> {
+            if(!additionalParents.isEmpty() && (mergeBaseRevisionId==null || !tx.dsl().fetchExists(
+                    tx.dsl().selectOne().from(TIMELINE_REVISION).where(TIMELINE_REVISION.ID.eq(mergeBaseRevisionId))
+                        .and(TIMELINE_REVISION.TENANT_ID.eq(tenantId)).and(TIMELINE_REVISION.PROJECT_ID.eq(productId))))) {
+                throw new IllegalArgumentException("merge base revision not found in scope");
+            }
+
             if (command != null) {
                 SaveOutcome replay = claimOrReplayCommand(
                         tx.dsl(), command, commandTargetRef,
@@ -453,6 +462,13 @@ public class TimelineRevisionSaveService implements TimelineRevisionCommands {
                         expectedCurrentRevisionId, revisionId);
             }
 
+            if(!additionalParents.isEmpty()) {
+                var fact=new TimelineMergedEvent(new TimelineRevisionIdentity(tenantId,productId,revisionId),
+                    new TimelineRevisionIdentity(tenantId,productId,mergeBaseRevisionId),
+                    new TimelineRevisionIdentity(tenantId,productId,additionalParents.getFirst()),
+                    new TimelineRevisionIdentity(tenantId,productId,expectedCurrentRevisionId),createdBy,Instant.now());
+                outbox.appendInTransaction(TimelineOutboxEvents.MERGED.append(tenantId,fact,fact.factKey()),tx.dsl());
+            }
             log.info("Saved timeline revision {} for product {}", revisionId, productId);
             return new SaveOutcome(revision, revisionId, timelineDigest, false);
         });
@@ -655,6 +671,9 @@ public class TimelineRevisionSaveService implements TimelineRevisionCommands {
                     tx.dsl(), RevisionRef.main(tenantId, productId),
                     expectedCurrentRevisionId, revisionId);
 
+            var fact=new TimelineRestoredEvent(new TimelineRevisionIdentity(tenantId,productId,revisionId),
+                new TimelineRevisionIdentity(tenantId,productId,historicalRevisionId),canonicalAuthor,Instant.now());
+            outbox.appendInTransaction(TimelineOutboxEvents.RESTORED.append(tenantId,fact,fact.factKey()),tx.dsl());
             log.info("Restored revision {} as new revision {} for product {}", historicalRevisionId, revisionId, productId);
             return new TimelineRevision(revisionId, productId, expectedCurrentRevisionId,
                     schemaVersionFinal,

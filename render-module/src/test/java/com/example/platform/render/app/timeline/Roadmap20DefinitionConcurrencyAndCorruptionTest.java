@@ -77,7 +77,7 @@ class Roadmap20DefinitionConcurrencyAndCorruptionTest extends PostgresTestContai
                                 new com.example.platform.artifact.app.ArtifactRelationRepository(dsl))),
                 new com.example.platform.artifact.app.ArtifactPinService(
                         new com.example.platform.artifact.infrastructure.ArtifactPinRepository(dsl)),
-                authority, new JdbcTimelineRevisionSemanticContextStore(dsl), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
+                authority, new JdbcTimelineRevisionSemanticContextStore(dsl), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL, org.mockito.Mockito.mock(com.example.platform.outbox.app.OutboxEventService.class));
     }
 
     private void insertFixtures(String productId) {

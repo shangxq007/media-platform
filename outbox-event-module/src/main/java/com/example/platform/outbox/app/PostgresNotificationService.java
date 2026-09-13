@@ -30,6 +30,10 @@ public class PostgresNotificationService {
         }
     }
 
+    public void notifyOutboxEvent(org.jooq.DSLContext transaction) {
+        transaction.execute("NOTIFY outbox_event");
+    }
+
     public void notifyTaskCreated() {
         try {
             jdbc.execute("NOTIFY platform_task");

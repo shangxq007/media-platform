@@ -12,13 +12,13 @@ import com.example.platform.delivery.api.event.DeliveryCompletedEvent;
 import com.example.platform.delivery.api.event.DeliveryFailedEvent;
 import com.example.platform.render.api.event.RenderJobCreatedEvent;
 import com.example.platform.render.api.event.RenderJobStatusChangedEvent;
-import com.example.platform.shared.events.TimelineMergedEvent;
-import com.example.platform.shared.events.TimelineRestoredEvent;
-import com.example.platform.shared.events.ReviewApprovedEvent;
-import com.example.platform.shared.events.ReviewRejectedEvent;
-import com.example.platform.shared.events.ReviewChangesRequestedEvent;
-import com.example.platform.shared.events.ReviewCommentAddedEvent;
-import com.example.platform.shared.events.ReviewThreadResolvedEvent;
+import com.example.platform.timeline.api.event.TimelineMergedEvent;
+import com.example.platform.timeline.api.event.TimelineRestoredEvent;
+import com.example.platform.timeline.api.event.TimelineReviewApprovedEvent;
+import com.example.platform.timeline.api.event.TimelineReviewRejectedEvent;
+import com.example.platform.timeline.api.event.TimelineReviewChangesRequestedEvent;
+import com.example.platform.timeline.api.event.TimelineReviewCommentAddedEvent;
+import com.example.platform.timeline.api.event.TimelineReviewThreadResolvedEvent;
 import com.example.platform.shared.events.AssetApprovedEvent;
 import com.example.platform.shared.events.AssetPublishedEvent;
 import com.example.platform.shared.events.AssetArchivedEvent;
@@ -173,52 +173,52 @@ public class NotificationEventHandler {
     @EventListener
     public void onTimelineMerged(TimelineMergedEvent event) {
         log.info("NotificationEventHandler: TimelineMerged for merge={}", event.mergeRevisionId());
-        handle(new NotificationInboundEvent("timeline.merged", event.mergeRevisionId(),
-                Map.of("projectId", event.projectId(), "mergeRevisionId", event.mergeRevisionId())));
+        handleFact(event.factKey(), new NotificationInboundEvent("timeline.merged", event.mergeRevisionId(),
+                Map.of("tenantId",event.tenantId(),"projectId",event.projectId(), "mergeRevisionId", event.mergeRevisionId())));
     }
 
     @EventListener
     public void onTimelineRestored(TimelineRestoredEvent event) {
         log.info("NotificationEventHandler: TimelineRestored for new={}", event.newRevisionId());
-        handle(new NotificationInboundEvent("timeline.restored", event.newRevisionId(),
-                Map.of("projectId", event.projectId(), "restoredFrom", event.restoredFromRevisionId())));
+        handleFact(event.factKey(), new NotificationInboundEvent("timeline.restored", event.newRevisionId(),
+                Map.of("tenantId",event.tenantId(),"projectId",event.projectId(), "restoredFrom", event.restoredFromRevisionId())));
     }
 
     @EventListener
-    public void onReviewApproved(ReviewApprovedEvent event) {
+    public void onReviewApproved(TimelineReviewApprovedEvent event) {
         log.info("NotificationEventHandler: ReviewApproved for review={}", event.reviewId());
-        handle(new NotificationInboundEvent("review.approved", event.reviewId(),
-                Map.of("reviewId", event.reviewId(), "targetType", event.targetType(),
-                        "targetId", event.targetId())));
+        handleFact(event.factKey(), new NotificationInboundEvent("review.approved", event.reviewId(),
+                Map.of("tenantId",event.tenantId(),"projectId",event.projectId(),"reviewId", event.reviewId(), "targetType", "TIMELINE",
+                        "targetId", event.revisionId())));
     }
 
     @EventListener
-    public void onReviewRejected(ReviewRejectedEvent event) {
+    public void onReviewRejected(TimelineReviewRejectedEvent event) {
         log.info("NotificationEventHandler: ReviewRejected for review={}", event.reviewId());
-        handle(new NotificationInboundEvent("review.rejected", event.reviewId(),
-                Map.of("reviewId", event.reviewId(), "targetType", event.targetType(),
-                        "targetId", event.targetId())));
+        handleFact(event.factKey(), new NotificationInboundEvent("review.rejected", event.reviewId(),
+                Map.of("tenantId",event.tenantId(),"projectId",event.projectId(),"reviewId", event.reviewId(), "targetType", "TIMELINE",
+                        "targetId", event.revisionId())));
     }
 
     @EventListener
-    public void onReviewChangesRequested(ReviewChangesRequestedEvent event) {
+    public void onReviewChangesRequested(TimelineReviewChangesRequestedEvent event) {
         log.info("NotificationEventHandler: ReviewChangesRequested for review={}", event.reviewId());
-        handle(new NotificationInboundEvent("review.changes_requested", event.reviewId(),
-                Map.of("reviewId", event.reviewId(), "reviewerUserId", event.reviewerUserId())));
+        handleFact(event.factKey(), new NotificationInboundEvent("review.changes_requested", event.reviewId(),
+                Map.of("tenantId",event.tenantId(),"projectId",event.projectId(),"reviewId", event.reviewId(), "reviewerUserId", event.reviewerUserId())));
     }
 
     @EventListener
-    public void onReviewCommentAdded(ReviewCommentAddedEvent event) {
+    public void onReviewCommentAdded(TimelineReviewCommentAddedEvent event) {
         log.info("NotificationEventHandler: ReviewCommentAdded for comment={}", event.commentId());
-        handle(new NotificationInboundEvent("review.comment.added", event.commentId(),
-                Map.of("reviewId", event.reviewId(), "authorUserId", event.authorUserId())));
+        handleFact(event.factKey(), new NotificationInboundEvent("review.comment.added", event.commentId(),
+                Map.of("tenantId",event.tenantId(),"projectId",event.projectId(),"reviewId", event.reviewId(), "authorUserId", event.authorUserId())));
     }
 
     @EventListener
-    public void onReviewThreadResolved(ReviewThreadResolvedEvent event) {
+    public void onReviewThreadResolved(TimelineReviewThreadResolvedEvent event) {
         log.info("NotificationEventHandler: ReviewThreadResolved for thread={}", event.threadId());
-        handle(new NotificationInboundEvent("review.thread.resolved", event.threadId(),
-                Map.of("reviewId", event.reviewId(), "threadId", event.threadId())));
+        handleFact(event.factKey(), new NotificationInboundEvent("review.thread.resolved", event.threadId(),
+                Map.of("tenantId",event.tenantId(),"projectId",event.projectId(),"reviewId", event.reviewId(), "threadId", event.threadId())));
     }
 
     @EventListener

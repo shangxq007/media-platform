@@ -104,6 +104,8 @@ class H7V2CanonicalOwnershipInvariantTest {
     private TimelinePatchApplicationService patchService;
     private TimelineRevisionDiffQuery diffQuery;
     private TimelineMergeEngine mergeEngine;
+    private com.example.platform.outbox.app.OutboxEventService outbox;
+    private com.example.platform.outbox.app.OutboxEventRouter eventRouter;
 
     @BeforeAll
     static void migrateExactCanonicalV1() {
@@ -131,7 +133,7 @@ class H7V2CanonicalOwnershipInvariantTest {
     @BeforeEach
     void resetCanonicalRows() {
         jdbc.execute("""
-                truncate table apply_command, artifact_pin, timeline_revision_parent,
+                truncate table outbox_events, audit_records, notification_delivery, notification_event, apply_command, artifact_pin, timeline_revision_parent,
                     timeline_revision_ref, timeline_revision, timeline_snapshot,
                     project_revision_counter, project, artifact, tenant cascade
                 """);
@@ -141,6 +143,9 @@ class H7V2CanonicalOwnershipInvariantTest {
         jdbc.update("insert into project(id,tenant_id,name,created_at) values ('pc','ta','A2',now())");
         jdbc.update("insert into project(id,tenant_id,name,created_at) values ('pb','tb','B1',now())");
 
+        com.example.platform.shared.web.TenantContext.clear();
+        eventRouter=new com.example.platform.outbox.app.OutboxEventRouter(List.of(new com.example.platform.timeline.api.event.TimelineOutboxEvents()));
+        outbox=org.mockito.Mockito.spy(new com.example.platform.outbox.app.OutboxEventService(dsl,3,new com.example.platform.outbox.app.PostgresNotificationService(jdbc),eventRouter));
         digester = new TimelineContentDigester();
         revisionRefMutation = new TimelineRevisionRefMutation(dsl);
         snapshotService = new TimelineSnapshotService(dsl);
@@ -183,7 +188,7 @@ class H7V2CanonicalOwnershipInvariantTest {
                 new JdbcTimelineRevisionSemanticContextStore(dsl),
                 new DefaultTimelineRevisionPersistence(),
                 new TimelineRevisionRefHeadUpdateAdapter(revisionRefMutation),
-                authorization);
+                authorization, outbox);
     }
 
     @Test
@@ -883,4 +888,77 @@ class H7V2CanonicalOwnershipInvariantTest {
             return columns.next();
         }
     }
+    @Test
+    void restoreFactUsesTheOwnerTransactionAndProductionConsumers() {
+        var base=saveRevision("ta","pa",null,document("old","track-old"),"actor");
+        var head=saveRevision("ta","pa",base.revisionId(),document("head","track-new"),"actor");
+        var before=canonicalState("pa");
+        org.mockito.Mockito.doThrow(new IllegalStateException("injected typed append failure")).when(outbox).appendInTransaction(
+            org.mockito.ArgumentMatchers.argThat(a->a.type()==com.example.platform.timeline.api.event.TimelineOutboxEvents.RESTORED),org.mockito.ArgumentMatchers.any());
+        assertThrows(IllegalStateException.class,()->restoreRevision("ta","pa",base.revisionId(),head.revisionId(),"actor"));
+        assertEquals(before,canonicalState("pa"));assertEquals(0,jdbc.queryForObject("select count(*) from outbox_events",Integer.class));
+        org.mockito.Mockito.reset(outbox);
+        var restored=restoreRevision("ta","pa",base.revisionId(),head.revisionId(),"actor");
+        var fact=org.junit.jupiter.api.Assertions.assertInstanceOf(com.example.platform.timeline.api.event.TimelineRestoredEvent.class,decodedEvent(restored.revisionId()));
+        assertEquals("ta",fact.tenantId());assertEquals("pa",fact.projectId());assertEquals(base.revisionId(),fact.restoredFromRevisionId());
+        dispatchAndReplay(restored.revisionId(),fact,"TIMELINE_RESTORED");
+    }
+
+    @Test
+    void mergeFactRollsBackWithStateAndDuplicateMergeDoesNotRepublish() {
+        var base=saveRevision("ta","pa",null,document("base","track-base"),"actor");
+        var source=saveRevision("ta","pa",base.revisionId(),document("base","track-base","track-source"),"actor");
+        assertTrue(revisionRefMutation.advance(dsl,RevisionRef.main("ta","pa"),source.revisionId(),base.revisionId()));
+        var target=saveRevision("ta","pa",base.revisionId(),document("base","track-base","track-target"),"actor");
+        var request=new TimelineMergeRequest(mutation("ta","pa","actor"),base.revisionId(),source.revisionId(),target.revisionId(),"merge");
+        var foreign=saveRevision("ta","pc",null,document("foreign","track-foreign"),"actor");
+        var scopeBefore=canonicalState("pa");
+        assertThrows(IllegalArgumentException.class,()->saveService.saveMergeRevision(mutation("ta","pa","actor"),target.revisionId(),source.revisionId(),foreign.revisionId(),document("base","track-base","track-source","track-target")));
+        assertEquals(scopeBefore,canonicalState("pa"));
+        var before=canonicalState("pa");
+        org.mockito.Mockito.doThrow(new IllegalStateException("injected merge append failure")).when(outbox).appendInTransaction(
+            org.mockito.ArgumentMatchers.argThat(a->a.type()==com.example.platform.timeline.api.event.TimelineOutboxEvents.MERGED),org.mockito.ArgumentMatchers.any());
+        assertThrows(IllegalStateException.class,()->mergeEngine.merge(request));assertEquals(before,canonicalState("pa"));
+        assertEquals(0,jdbc.queryForObject("select count(*) from outbox_events",Integer.class));org.mockito.Mockito.reset(outbox);
+        var merged=mergeEngine.merge(request);assertEquals(TimelineMergeResult.MergeStatus.MERGED,merged.status());
+        var fact=org.junit.jupiter.api.Assertions.assertInstanceOf(com.example.platform.timeline.api.event.TimelineMergedEvent.class,decodedEvent(merged.mergedRevisionId()));
+        assertEquals(source.revisionId(),fact.sourceRevisionId());assertEquals(target.revisionId(),fact.targetRevisionId());
+        assertEquals(base.revisionId(),fact.baseRevisionId());
+        var duplicate=mergeEngine.merge(request);assertEquals(merged.mergedRevisionId(),duplicate.mergedRevisionId());
+        assertEquals(1,jdbc.queryForObject("select count(*) from outbox_events",Integer.class));
+        dispatchAndReplay(merged.mergedRevisionId(),fact,"TIMELINE_MERGED");
+    }
+
+    @Test
+    void explicitTransactionAppendRejectsAutocommitAndScopeMismatch() {
+        var result=new com.example.platform.timeline.api.event.TimelineRevisionIdentity("ta","pa","fixture-revision");
+        var fact=new com.example.platform.timeline.api.event.TimelineRestoredEvent(result,result,"actor",java.time.Instant.now());
+        var type=com.example.platform.timeline.api.event.TimelineOutboxEvents.RESTORED;
+        assertThrows(RuntimeException.class,()->outbox.appendInTransaction(type.append("ta",fact,fact.factKey()),dsl));
+        assertThrows(IllegalArgumentException.class,()->type.append("tb",fact,null));
+        assertEquals(0,jdbc.queryForObject("select count(*) from outbox_events",Integer.class));
+    }
+
+    private Record decodedEvent(String revisionId) {
+        var row=jdbc.queryForMap("select * from outbox_events where aggregate_id=?",revisionId);
+        return eventRouter.decode((String)row.get("event_type"),((Number)row.get("event_version")).intValue(),(String)row.get("aggregate_type"),revisionId,(String)row.get("payload")).payload();
+    }
+    private void dispatchAndReplay(String revisionId,Record fact,String action) {
+        try(var events=new org.springframework.context.annotation.AnnotationConfigApplicationContext()) {
+            events.registerBean(DSLContext.class,()->dsl);
+            events.registerBean(com.example.platform.audit.app.AuditService.class,()->new com.example.platform.audit.app.AuditService(dsl,null));
+            events.registerBean(com.example.platform.audit.app.AuditEventHandler.class);
+            events.registerBean(com.example.platform.notification.app.NotificationRenderingService.class);
+            events.registerBean(com.example.platform.notification.app.NotificationEventHandler.class,()->new com.example.platform.notification.app.NotificationEventHandler(dsl,List.of(),events.getBean(com.example.platform.notification.app.NotificationRenderingService.class),null));
+            events.refresh();
+            var dispatcher=new com.example.platform.outbox.app.OutboxEventDispatcher(outbox,events,eventRouter,3,new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
+            String id=jdbc.queryForObject("select id from outbox_events where aggregate_id=?",String.class,revisionId);
+            assertTrue(dispatcher.processOnce(id));assertFalse(dispatcher.processOnce(id));
+            com.example.platform.shared.web.TenantContext.set("ta");
+            try{events.publishEvent(fact);events.publishEvent(fact);}finally{com.example.platform.shared.web.TenantContext.clear();}
+            assertEquals(1,jdbc.queryForObject("select count(*) from audit_records where resource_id=? and action=?",Integer.class,revisionId,action));
+            assertEquals(1,jdbc.queryForObject("select count(*) from notification_event where subject_id=?",Integer.class,revisionId));
+        }
+    }
+
 }

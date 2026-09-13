@@ -7,32 +7,17 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
- * Unified domain event publisher for Timeline, Review, and Asset domains.
+ * Existing Asset publication publisher; defining-domain convergence remains EP29C.
  * All events are written to outbox_events for reliable delivery.
  */
 @Service
-public class TimelineReviewEventPublisher {
+public class AssetPublicationEventPublisher {
 
-    private static final Logger log = LoggerFactory.getLogger(TimelineReviewEventPublisher.class);
+    private static final Logger log = LoggerFactory.getLogger(AssetPublicationEventPublisher.class);
     private final OutboxEventService outboxEventService;
 
-    public TimelineReviewEventPublisher(OutboxEventService outboxEventService) {
+    public AssetPublicationEventPublisher(OutboxEventService outboxEventService) {
         this.outboxEventService = outboxEventService;
-    }
-
-    public void publish(TimelineRevisionCreatedEvent event) {
-        outboxEventService.append(RenderOutboxEvents.TIMELINEREVISIONCREATEDEVENT.append(com.example.platform.shared.web.TenantGuard.requireTenantId(), event, null));
-        log.debug("Outbox: TimelineRevisionCreatedEvent rev={}", event.revisionId());
-    }
-
-    public void publish(TimelineMergedEvent event) {
-        outboxEventService.append(RenderOutboxEvents.TIMELINEMERGEDEVENT.append(com.example.platform.shared.web.TenantGuard.requireTenantId(), event, null));
-        log.info("Outbox: TimelineMergedEvent merge={}", event.mergeRevisionId());
-    }
-
-    public void publish(TimelineRestoredEvent event) {
-        outboxEventService.append(RenderOutboxEvents.TIMELINERESTOREDEVENT.append(com.example.platform.shared.web.TenantGuard.requireTenantId(), event, null));
-        log.info("Outbox: TimelineRestoredEvent new={}", event.newRevisionId());
     }
 
     public void publish(AssetSubmittedForReviewEvent event) {

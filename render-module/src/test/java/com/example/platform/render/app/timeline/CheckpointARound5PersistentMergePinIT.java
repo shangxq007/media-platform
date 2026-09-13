@@ -271,7 +271,7 @@ class CheckpointARound5PersistentMergePinIT extends PostgresTestContainerSupport
                 new com.example.platform.timeline.app.DefaultTimelineRevisionPersistence(),
                 new com.example.platform.timeline.app.TimelineRevisionRefHeadUpdateAdapter(
                         currentRevisionService),
-                com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
+                com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL, org.mockito.Mockito.mock(com.example.platform.outbox.app.OutboxEventService.class));
         mergeEngine = new TimelineMergeEngine(
                 new TimelineRevisionRepository(dsl),
                 snapshotService,

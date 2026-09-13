@@ -70,7 +70,7 @@ class Roadmap20TransactionAtomicityTest extends PostgresTestContainerSupport {
                                 new com.example.platform.artifact.app.ArtifactRelationRepository(dsl))),
                 new com.example.platform.artifact.app.ArtifactPinService(
                         new com.example.platform.artifact.infrastructure.ArtifactPinRepository(dsl)),
-                authority, new JdbcTimelineRevisionSemanticContextStore(dsl), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
+                authority, new JdbcTimelineRevisionSemanticContextStore(dsl), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL, org.mockito.Mockito.mock(com.example.platform.outbox.app.OutboxEventService.class));
     }
 
     private void insertFixtures(String productId) {
@@ -192,7 +192,7 @@ class Roadmap20TransactionAtomicityTest extends PostgresTestContainerSupport {
                         }
                     }
                 },
-                com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
+                com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL, org.mockito.Mockito.mock(com.example.platform.outbox.app.OutboxEventService.class));
         com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(spySave,
                 "tenant-1", productId, null, sampleDocument(), List.of(), List.of(),
                 com.example.platform.render.testsupport.RenderTestSchemaFixture.SERVER_ACTOR);
@@ -276,7 +276,7 @@ class Roadmap20TransactionAtomicityTest extends PostgresTestContainerSupport {
                                 new com.example.platform.artifact.app.ArtifactRelationRepository(dsl))),
                 new com.example.platform.artifact.app.ArtifactPinService(
                         new com.example.platform.artifact.infrastructure.ArtifactPinRepository(dsl)),
-                failingAuthority, new JdbcTimelineRevisionSemanticContextStore(dsl), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
+                failingAuthority, new JdbcTimelineRevisionSemanticContextStore(dsl), new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL, org.mockito.Mockito.mock(com.example.platform.outbox.app.OutboxEventService.class));
         assertThrows(IllegalStateException.class, () ->
                 com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(failingSave,
                         "tenant-1", productId, null, sampleDocument(),
@@ -312,7 +312,7 @@ class Roadmap20TransactionAtomicityTest extends PostgresTestContainerSupport {
                     throw new IllegalStateException("TX3 injected revision insert failure");
                 },
                 new com.example.platform.timeline.app.TimelineRevisionRefHeadUpdateAdapter(currentRevisionService),
-                com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
+                com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL, org.mockito.Mockito.mock(com.example.platform.outbox.app.OutboxEventService.class));
         // TX3: failing revision-insert port was passed AT CONSTRUCTION.
         assertThrows(IllegalStateException.class, () ->
                 com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(failingSave,
@@ -361,7 +361,7 @@ class Roadmap20TransactionAtomicityTest extends PostgresTestContainerSupport {
                 new EffectSemanticSnapshotAuthority(
                         new JdbcEffectDefinitionVersionRegistry(dsl),
                         new JdbcEffectSemanticSnapshotStore(dsl)),
-                failingCtxStore, new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
+                failingCtxStore, new DefaultTimelineRevisionPersistence(), new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL, org.mockito.Mockito.mock(com.example.platform.outbox.app.OutboxEventService.class));
         assertThrows(IllegalStateException.class, () ->
                 com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(failingSave,
                         "tenant-1", productId, null, sampleDocument(),
@@ -395,7 +395,7 @@ class Roadmap20TransactionAtomicityTest extends PostgresTestContainerSupport {
                 (tx, ref, expected, newRevisionId) -> {
                     throw new IllegalStateException("TX5 injected head update failure");
                 },
-                com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
+                com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL, org.mockito.Mockito.mock(com.example.platform.outbox.app.OutboxEventService.class));
         // TX5: failing head-update port passed AT CONSTRUCTION.
         assertThrows(IllegalStateException.class, () ->
                 com.example.platform.render.testsupport.TimelineMutationTestSupport.saveWithEffects(failingSave,

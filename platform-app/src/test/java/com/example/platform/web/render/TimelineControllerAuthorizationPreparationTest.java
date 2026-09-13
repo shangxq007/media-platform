@@ -30,7 +30,6 @@ class TimelineControllerAuthorizationPreparationTest {
                         org.springframework.http.HttpStatus.FORBIDDEN, "denied"));
         TimelineRevisionController controller = new TimelineRevisionController(
                 query, mock(TimelineRevisionDiffQuery.class), null,
-                mock(com.example.platform.render.app.event.TimelineReviewEventPublisher.class),
                 null, null, null, null, authorization);
 
         assertThrows(ResponseStatusException.class,

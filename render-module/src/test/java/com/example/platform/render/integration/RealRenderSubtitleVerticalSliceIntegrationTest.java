@@ -73,7 +73,7 @@ class RealRenderSubtitleVerticalSliceIntegrationTest extends PostgresTestContain
                 effectAuthority(),
                 new com.example.platform.timeline.adapter.JdbcTimelineRevisionSemanticContextStore(dsl),
                 new DefaultTimelineRevisionPersistence(),
-                new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL);
+                new TimelineRevisionRefHeadUpdateAdapter(currentRevisionService), com.example.platform.render.testsupport.TimelineMutationTestSupport.ALLOW_ALL, org.mockito.Mockito.mock(com.example.platform.outbox.app.OutboxEventService.class));
     }
 
     @Test
