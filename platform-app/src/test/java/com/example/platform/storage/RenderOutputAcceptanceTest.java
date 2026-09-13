@@ -329,6 +329,17 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
         assertTrue(payload.contains("EXECUTION_FAILED"));assertFalse(payload.contains("native stderr"));
         assertEquals("native stderr fixture",jdbc.queryForObject("select error_message from render_job where id='lifecycle-failed'",String.class));
     }
+    @Test void durableFailureAndItsTypedEventSurviveAnUnrelatedOuterRollback(){
+        job("failure-outer-rollback","EXECUTING");var failure=context.getBean(RenderJobFailureService.class);
+        assertThrows(IllegalStateException.class,()->tx.execute(status->{
+            jdbc.update("update project set description='rolled-back' where id='project'");
+            failure.recordDurableFailure("failure-outer-rollback","native diagnostic",RenderFailureReason.EXECUTION_FAILED);
+            throw new IllegalStateException("outer operation rolled back");
+        }));
+        assertNull(jdbc.queryForObject("select description from project where id='project'",String.class));
+        assertEquals("FAILED",jdbc.queryForObject("select status from render_job where id='failure-outer-rollback'",String.class));
+        assertEquals(1,jobEvents("failure-outer-rollback"));assertTrue(dispatcher.processOnce(eventIds("failure-outer-rollback").getFirst()));
+    }
     @Test void refreshedWorkerObservationCannotBeFailedByStaleRecovery(){
         job("lifecycle-stale","EXECUTING");var jobs=context.getBean(RenderJobRepository.class);Instant cutoff=Instant.now().minusSeconds(30);
         jdbc.update("update render_job set updated_at=? where id='lifecycle-stale'",java.sql.Timestamp.from(cutoff.minusSeconds(60)));
