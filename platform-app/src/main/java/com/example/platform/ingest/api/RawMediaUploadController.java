@@ -78,6 +78,10 @@ public class RawMediaUploadController {
         } catch (IOException e) {
             log.error("Upload failed: tenant={} project={} filename={}", tenantId, projectId, filename, e);
             return ResponseEntity.internalServerError().body(UploadRawMediaResponse.failed());
+        } catch (com.example.platform.identity.api.authorization.AuthorizationDeniedException
+                | com.example.platform.shared.web.PlatformException
+                | org.springframework.web.server.ResponseStatusException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Upload processing error: tenant={} project={} filename={}", tenantId, projectId, filename, e);
             return ResponseEntity.internalServerError().body(UploadRawMediaResponse.failed());
