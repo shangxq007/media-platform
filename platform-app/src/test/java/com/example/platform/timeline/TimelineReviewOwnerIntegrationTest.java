@@ -26,6 +26,7 @@ import static org.mockito.Mockito.*;
 class TimelineReviewOwnerIntegrationTest extends PostgresTestContainerSupport {
  static final String SCHEMA=isolatedSchemaName();static DataSource admin;static AnnotationConfigApplicationContext context;
  static JdbcTemplate jdbc;static OutboxEventService outbox;static boolean denied;
+ static final ThreadLocal<String> actor=ThreadLocal.withInitial(()->"server-actor");
  @EnableTransactionManagement(proxyTargetClass=true) static class Transactions {}
  @BeforeAll static void setup(){
   admin=createDataSource();new JdbcTemplate(admin).execute("create schema "+SCHEMA);
@@ -35,7 +36,7 @@ class TimelineReviewOwnerIntegrationTest extends PostgresTestContainerSupport {
   context.registerBean(JdbcTemplate.class,()->jdbc);
   context.registerBean("transactionManager",DataSourceTransactionManager.class,()->new DataSourceTransactionManager(ds));
   context.registerBean(DSLContext.class,()->DSL.using(new TransactionAwareDataSourceProxy(ds),SQLDialect.POSTGRES,new org.jooq.conf.Settings().withRenderSchema(false)));
-  context.registerBean(CanonicalActorResolver.class,()->()->Optional.of(CanonicalActor.user("server-actor","tenant",Set.of("EDITOR"),"fixture")));
+  context.registerBean(CanonicalActorResolver.class,()->()->Optional.of(CanonicalActor.user(actor.get(),"tenant",Set.of("EDITOR"),"fixture")));
   context.registerBean(AuthorizationDecisionPort.class,()->request->{
    if(denied)throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN,"denied by owner");
    assertEquals("tenant",request.resource().tenantId());return AuthorizationDecision.allow("fixture");});
@@ -46,12 +47,15 @@ class TimelineReviewOwnerIntegrationTest extends PostgresTestContainerSupport {
   context.registerBean(OutboxEventRouter.class,()->new OutboxEventRouter(List.of(new TimelineOutboxEvents())));
   context.registerBean(PostgresNotificationService.class);
   context.registerBean(OutboxEventService.class,()->{outbox=spy(new OutboxEventService(context.getBean(DSLContext.class),3,context.getBean(PostgresNotificationService.class),context.getBean(OutboxEventRouter.class)));return outbox;});
-  context.registerBean(TimelineProjectAuthorizationService.class);context.registerBean(TimelineReviewController.class);
+  context.registerBean(TimelineProjectAuthorizationService.class);context.registerBean(TimelineReviewController.class);context.registerBean(ReviewWorkspaceController.class);
   context.registerBean(com.example.platform.audit.app.AuditService.class,()->new com.example.platform.audit.app.AuditService(context.getBean(DSLContext.class),null));
   context.registerBean(com.example.platform.audit.app.AuditEventHandler.class);
   context.registerBean(com.example.platform.notification.app.NotificationRenderingService.class);
   context.registerBean(com.example.platform.notification.app.NotificationEventHandler.class,()->new com.example.platform.notification.app.NotificationEventHandler(context.getBean(DSLContext.class),List.of(),context.getBean(com.example.platform.notification.app.NotificationRenderingService.class),null));
   context.registerBean(OutboxEventDispatcher.class,()->new OutboxEventDispatcher(context.getBean(OutboxEventService.class),context,context.getBean(OutboxEventRouter.class),3,new io.micrometer.core.instrument.simple.SimpleMeterRegistry()));
+  context.registerBean(com.example.platform.media.infrastructure.persistence.JooqMediaAssetRepository.class);
+  context.registerBean(com.example.platform.media.app.MediaAuthorization.class);context.registerBean(com.example.platform.media.app.MediaAssetService.class);
+  context.registerBean(com.example.platform.render.app.asset.AssetReviewService.class);
   context.refresh();
   jdbc.update("insert into tenant(id,name,created_at) values ('tenant','test',now())");
   for(String project:List.of("project","other")){
@@ -61,8 +65,8 @@ class TimelineReviewOwnerIntegrationTest extends PostgresTestContainerSupport {
   }
  }
  @AfterAll static void close(){if(context!=null)context.close();if(admin!=null){new JdbcTemplate(admin).execute("drop schema "+SCHEMA+" cascade");closeDataSource(admin);}}
- @BeforeEach void before(){TenantContext.set("tenant");denied=false;reset(outbox);}
- @AfterEach void after(){TenantContext.clear();}
+ @BeforeEach void before(){actor.remove();TenantContext.set("tenant");denied=false;reset(outbox);}
+ @AfterEach void after(){TenantContext.clear();actor.remove();}
  long count(String table){return jdbc.queryForObject("select count(*) from "+table,Long.class);}
  String create(){return context.getBean(TimelineReviewController.class).createReview("project",new TimelineReviewController.CreateReviewRequest("project-revision","review","description")).getBody().reviewId();}
  @Test void externalEntryUsesAuthenticatedOwnerAndDurableDispatch(){
@@ -174,4 +178,84 @@ class TimelineReviewOwnerIntegrationTest extends PostgresTestContainerSupport {
   }
  }
 
+ @Test void distinctReviewersApproveThroughControllerAndKeepBothDecisions() {
+  String id=create();var controller=context.getBean(TimelineReviewController.class);
+  actor.set("reviewer-A");assertEquals(200,controller.approve("project",id).getStatusCode().value());
+  actor.set("reviewer-B");assertEquals(200,controller.approve("project",id).getStatusCode().value());
+  assertEquals(Set.of("reviewer-A","reviewer-B"),new HashSet<>(jdbc.queryForList("select reviewer_user_id from review_decision where review_id=?",String.class,id)));
+  assertEquals(2,jdbc.queryForObject("select count(*) from outbox_events where aggregate_id=? and event_type='timeline.review.approved'",Integer.class,id));
+ }
+ @Test void distinctReviewersRequestChangesKeepBothDecisions() {
+  String id=create();var controller=context.getBean(TimelineReviewController.class);
+  actor.set("reviewer-A");assertEquals(200,controller.requestChanges("project",id).getStatusCode().value());
+  actor.set("reviewer-B");assertEquals(200,controller.requestChanges("project",id).getStatusCode().value());
+  assertEquals(2,jdbc.queryForObject("select count(*) from review_decision where review_id=? and decision='REQUEST_CHANGES'",Integer.class,id));
+  assertEquals(2,jdbc.queryForObject("select count(*) from outbox_events where aggregate_id=? and event_type='timeline.review.changes_requested'",Integer.class,id));
+ }
+ @Test void currentActorDecisionRetriesAreNoopsButReaffirmationAndChangedDecisionsPersist() {
+  String id=create();var reviews=context.getBean(TimelineReviews.class);
+  actor.set("A");reviews.approve(id,"A");reviews.approve(id,"A");
+  actor.set("B");reviews.approve(id,"B");
+  actor.set("A");reviews.approve(id,"A");assertEquals(2,decisionCount(id));
+  actor.set("B");reviews.requestChanges(id,"B");
+  actor.set("A");reviews.approve(id,"A");assertEquals(4,decisionCount(id));
+  reviews.requestChanges(id,"A");actor.set("B");reviews.approve(id,"B");
+  actor.set("A");reviews.approve(id,"A");assertEquals(7,decisionCount(id));
+  assertEquals(7,jdbc.queryForObject("select count(*) from outbox_events where aggregate_id=? and event_type<>'timeline.review.created'",Integer.class,id));
+ }
+ int decisionCount(String id){return jdbc.queryForObject("select count(*) from review_decision where review_id=?",Integer.class,id);}
+ @Test void secondReviewerChangesNoAggregateTimestampAndConsumersDeduplicateEachDecision() {
+  String id=create();var controller=context.getBean(TimelineReviewController.class);
+  actor.set("A");controller.approve("project",id);var updated=jdbc.queryForObject("select updated_at from timeline_review where id=?",java.sql.Timestamp.class,id);
+  actor.set("B");controller.approve("project",id);
+  assertEquals(updated,jdbc.queryForObject("select updated_at from timeline_review where id=?",java.sql.Timestamp.class,id));
+  var workspace=context.getBean(ReviewWorkspaceController.class).workspace("project",id).getBody();assertEquals(2,workspace.approvals());
+  dispatchSubject(id);dispatchSubject(id);
+  assertEquals(2L,jdbc.queryForObject("select count(*) from audit_records where resource_id=?",Long.class,id));
+  assertEquals(2L,jdbc.queryForObject("select count(*) from notification_event where subject_id=?",Long.class,id));
+ }
+ @Test void decisionRollbackAfterActualOutboxInsertLeavesNoPartialResultAndCanRetry() {
+  String id=create();var reviews=context.getBean(TimelineReviews.class);var written=new java.util.concurrent.atomic.AtomicReference<String>();
+  actor.set("A");doAnswer(call->{String event=(String)call.callRealMethod();written.set(event);
+   assertEquals(1,jdbc.queryForObject("select count(*) from outbox_events where id=?",Integer.class,event));
+   throw new IllegalStateException("after real event insert");}).when(outbox).append(any());
+  assertThrows(IllegalStateException.class,()->reviews.approve(id,"A"));assertEquals(0,decisionCount(id));
+  assertEquals("OPEN",jdbc.queryForObject("select status from timeline_review where id=?",String.class,id));
+  assertEquals(0,jdbc.queryForObject("select count(*) from outbox_events where id=?",Integer.class,written.get()));
+  reset(outbox);reviews.approve(id,"A");assertEquals(1,decisionCount(id));
+ }
+ @Test void terminalReviewsAndSpoofedOrForeignActionsNeverAddDecisions() {
+  String id=create();var reviews=context.getBean(TimelineReviews.class);actor.set("A");
+  assertThrows(IllegalArgumentException.class,()->reviews.approve(id,"B"));
+  assertThrows(org.springframework.web.server.ResponseStatusException.class,()->context.getBean(TimelineReviewController.class).approve("other",id));
+  TenantContext.set("foreign");assertThrows(RuntimeException.class,()->reviews.approve(id,"A"));TenantContext.set("tenant");
+  assertEquals(0,decisionCount(id));reviews.reject(id);assertEquals(1,decisionCount(id));
+  assertThrows(ReviewConflictException.class,()->reviews.reject(id));assertThrows(ReviewConflictException.class,()->reviews.approve(id,"A"));
+  jdbc.update("update timeline_review set status='MERGED' where id=?",id);
+  assertThrows(ReviewConflictException.class,()->reviews.requestChanges(id,"A"));assertEquals(1,decisionCount(id));
+ }
+ @Test void concurrentReviewersAndConcurrentSameActorRetriesAreSerializedByOwner() throws Exception {
+  for(boolean same:List.of(false,true)) {
+   actor.remove();String id=create();var start=new java.util.concurrent.CountDownLatch(1);var ready=new java.util.concurrent.CountDownLatch(2);
+   try(var pool=java.util.concurrent.Executors.newFixedThreadPool(2)) {
+    var futures=new ArrayList<java.util.concurrent.Future<?>>();
+    for(String who:List.of("A",same?"A":"B"))futures.add(pool.submit(()->{TenantContext.set("tenant");actor.set(who);
+     try{ready.countDown();if(!start.await(5,java.util.concurrent.TimeUnit.SECONDS))throw new IllegalStateException("start timeout");context.getBean(TimelineReviews.class).approve(id,who);}
+     catch(InterruptedException e){Thread.currentThread().interrupt();throw new IllegalStateException(e);}finally{TenantContext.clear();actor.remove();}}));
+    assertTrue(ready.await(5,java.util.concurrent.TimeUnit.SECONDS));start.countDown();
+    for(var future:futures)future.get(10,java.util.concurrent.TimeUnit.SECONDS);
+   } finally{start.countDown();}
+   assertEquals(same?1:2,decisionCount(id));
+  }
+ }
+ @Test void assetReviewMechanismRecordsDecisionsButOnlyMediaOwnsPublication() {
+  var assets=context.getBean(com.example.platform.media.api.MediaAssets.class);
+  var asset=assets.register("tenant","project","review/input.mp4","VIDEO","input.mp4",1L,null);
+  var service=context.getBean(com.example.platform.render.app.asset.AssetReviewService.class);
+  var review=service.submitForReview(asset.id(),"server-actor","asset review","test");
+  actor.set("A");service.approveAsset(asset.id(),"A");actor.set("B");service.approveAsset(asset.id(),"B");
+  assertEquals(2,decisionCount(review.id()));assertEquals("DRAFT",assets.findById("tenant",asset.id()).orElseThrow().publishStatus());
+  assertEquals(0,jdbc.queryForObject("select count(*) from outbox_events where aggregate_id=?",Integer.class,review.id()));
+  service.publishAsset(asset.id());assertEquals("PUBLISHED",assets.findById("tenant",asset.id()).orElseThrow().publishStatus());
+ }
 }

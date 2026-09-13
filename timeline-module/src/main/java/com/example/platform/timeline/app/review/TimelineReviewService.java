@@ -77,9 +77,14 @@ public class TimelineReviewService implements TimelineReviews {
     private void decide(String id,String requestedActor,String status,String decision) {
         var row=requireReview(id,true);var actor=auth.require(row.projectId(),true);
         if(requestedActor!=null&&!actor.actorId().equals(requestedActor))throw new IllegalArgumentException("reviewer must be authenticated actor");
-        if(status.equals(row.status()))return;
         if("CLOSED".equals(row.status())||"MERGED".equals(row.status()))throw new ReviewConflictException("review is closed");
-        reviewRepository.updateReviewStatus(id,status);
+        // No command ID exists on these actions. A retry is the same actor's current
+        // decision while the aggregate already has that outcome; status alone is insufficient.
+        var ownDecisions=reviewRepository.listDecisionsByReview(id).stream()
+                .filter(d->actor.actorId().equals(d.reviewerUserId())).toList();
+        if(status.equals(row.status()) && !ownDecisions.isEmpty()
+                && decision.equals(ownDecisions.getLast().decision()))return;
+        if(!status.equals(row.status()))reviewRepository.updateReviewStatus(id,status);
         String decisionId="rdec_"+java.util.UUID.randomUUID();var occurredAt=java.time.Instant.now();
         reviewRepository.insertDecision(decisionId,id,actor.actorId(),decision,OffsetDateTime.ofInstant(occurredAt,java.time.ZoneOffset.UTC));
         if(!"TIMELINE".equals(reviewRepository.targetType(id)))return;
@@ -91,6 +96,8 @@ public class TimelineReviewService implements TimelineReviews {
          default -> throw new IllegalArgumentException("unsupported decision");
         }
     }
+    /** Shared review-record mechanism only. The caller proves the Media target and owns
+     * asset-specific effects; this branch neither mutates Media nor emits Timeline revision facts. */
     @Transactional
     public ReviewRow createAssetReview(String project,String asset,String author,String title,String description) {
         var actor=auth.require(project,true);if(!actor.actorId().equals(author))throw new IllegalArgumentException("author mismatch");
