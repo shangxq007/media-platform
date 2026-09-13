@@ -893,7 +893,13 @@ class H7V2CanonicalOwnershipInvariantTest {
         var base=saveRevision("ta","pa",null,document("old","track-old"),"actor");
         var head=saveRevision("ta","pa",base.revisionId(),document("head","track-new"),"actor");
         var before=canonicalState("pa");
-        org.mockito.Mockito.doThrow(new IllegalStateException("injected typed append failure")).when(outbox).appendInTransaction(
+        org.mockito.Mockito.doAnswer(invocation->{
+            Object id=invocation.callRealMethod();
+            assertNotNull(id,"real typed append must have inserted before the injected failure");
+            var transaction=invocation.getArgument(1,DSLContext.class);
+            assertEquals(1,transaction.fetchCount(com.example.platform.typedschema.jooq.generated.tables.OutboxEvents.OUTBOX_EVENTS));
+            throw new IllegalStateException("failure after real typed append");
+        }).when(outbox).appendInTransaction(
             org.mockito.ArgumentMatchers.argThat(a->a.type()==com.example.platform.timeline.api.event.TimelineOutboxEvents.RESTORED),org.mockito.ArgumentMatchers.any());
         assertThrows(IllegalStateException.class,()->restoreRevision("ta","pa",base.revisionId(),head.revisionId(),"actor"));
         assertEquals(before,canonicalState("pa"));assertEquals(0,jdbc.queryForObject("select count(*) from outbox_events",Integer.class));
