@@ -17,14 +17,9 @@ public class RenderArtifactStorageService {
     public ArtifactOutputReference uploadJobOutput(String jobId, String projectId,
             String localRelativePath, String contentType) {
         String tenant=TenantGuard.requireTenantId();
-        ArtifactMediaType media=switch(contentType) {
-            case "video/mp4", "video/webm", "video/quicktime" -> ArtifactMediaType.VIDEO;
-            case "audio/wav", "audio/mpeg", "audio/flac" -> ArtifactMediaType.AUDIO;
-            case "image/png", "image/jpeg" -> ArtifactMediaType.IMAGE;
-            default -> throw new IllegalArgumentException("unsupported Render output media type");
-        };
+        com.example.platform.artifact.domain.ArtifactOutputFormat.require(contentType);
         var written=storage.write(new StorageOutputPort.OutputCommand(new StorageOwnershipScope(tenant,projectId),
                 new IssuanceIdempotencyKey("render-output:"+jobId),localRelativePath,contentType));
-        return artifacts.commit(new ArtifactScope(tenant,projectId,jobId),written.issuance(),media);
+        return artifacts.commit(new ArtifactScope(tenant,projectId,jobId),written);
     }
 }

@@ -4,6 +4,7 @@ import java.util.Optional;
 /** Storage-owned reference commands and queries for internal runtime consumers. */
 public interface StorageReferenceStore {
  StorageReference save(StorageReference reference);
+ Optional<StorageReference> findByLocation(String providerType,String rootPath,String relativePath);
  Optional<StorageReference> findById(String id);
  Optional<StorageReference> findByContentHash(String hash);
  boolean exists(String id);

@@ -11,11 +11,11 @@ public class DeliverySourceResolver {
     public void close() throws java.io.IOException {stream.close();}
  }
  public Optional<ArtifactOutputReference> find(ArtifactScope scope){return artifacts.find(scope);}
+ public String fileName(ArtifactOutputReference reference){return artifacts.read(reference).fileName();}
  public Optional<SourceFile> open(ArtifactOutputReference reference){
     try{
         var content=artifacts.read(reference);byte[] bytes=content.bytes();
-        String mime=switch(content.mediaType()){case VIDEO->"video/mp4";case AUDIO->"audio/wav";case IMAGE->"image/png";default->"application/octet-stream";};
-        return Optional.of(new SourceFile("output.mp4",mime,bytes.length,new java.io.ByteArrayInputStream(bytes)));
+        return Optional.of(new SourceFile(content.fileName(),content.contentType(),bytes.length,new java.io.ByteArrayInputStream(bytes)));
     }catch(IllegalArgumentException|IllegalStateException unavailable){return Optional.empty();}
  }
 }

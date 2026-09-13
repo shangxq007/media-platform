@@ -7,6 +7,9 @@ public interface StoragePlacementQuery {
     java.util.List<StorageObjectIssuance.IssuanceResult> references(String storageUri,String projectId,int limit);
     Optional<StorageObjectIssuance.IssuanceResult> find(StorageOwnershipScope owner, IssuanceIdempotencyKey key);
     byte[] read(StorageOwnershipScope owner, IssuanceIdempotencyKey key);
+    /** Persisted content metadata for the exact currently available placement. */
+    com.example.platform.storage.contract.StorageReference reference(StorageOwnershipScope owner,
+            com.example.platform.storage.contract.StorageObjectId objectId,com.example.platform.storage.contract.StorageReplicaId replicaId);
     byte[] read(StorageOwnershipScope owner, com.example.platform.storage.contract.StorageObjectId objectId,
                 com.example.platform.storage.contract.StorageReplicaId replicaId);
 }

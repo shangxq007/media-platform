@@ -107,6 +107,7 @@ class DeliveryCompletionOwnerBoundaryTest extends PostgresTestContainerSupport {
             }
         };
         var sourceResolver = mock(DeliverySourceResolver.class);
+        when(sourceResolver.fileName(any())).thenReturn("output.mp4");
         when(sourceResolver.open(any(com.example.platform.artifact.app.ArtifactOutputReference.class))).thenAnswer(invocation -> Optional.of(
                 new DeliverySourceResolver.SourceFile("output.mp4", "video/mp4", 4, new ByteArrayInputStream(new byte[] {1, 2, 3, 4}))));
         when(sourceResolver.find(any(com.example.platform.artifact.app.ArtifactScope.class))).thenAnswer(i->{

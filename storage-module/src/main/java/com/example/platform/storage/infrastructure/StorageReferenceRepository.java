@@ -40,12 +40,12 @@ public class StorageReferenceRepository implements com.example.platform.storage.
                 .set(STORAGE_REFERENCE.MIME_TYPE, r.mimeType())
                 .set(STORAGE_REFERENCE.UPDATED_AT, now)
                 .returning().fetchOne();
-        return findByLocation(r).orElseThrow();
+        return findByLocation(r.providerType(),r.rootPath(),r.relativePath()).orElseThrow();
     }
 
-    private Optional<StorageReference> findByLocation(StorageReference ref) {
-        var row = dsl.selectFrom(STORAGE_REFERENCE).where(STORAGE_REFERENCE.PROVIDER_TYPE.eq(ref.providerType()))
-            .and(STORAGE_REFERENCE.ROOT_PATH.eq(ref.rootPath())).and(STORAGE_REFERENCE.RELATIVE_PATH.eq(ref.relativePath())).fetchOne();
+    public Optional<StorageReference> findByLocation(String providerType,String rootPath,String relativePath) {
+        var row = dsl.selectFrom(STORAGE_REFERENCE).where(STORAGE_REFERENCE.PROVIDER_TYPE.eq(providerType))
+            .and(STORAGE_REFERENCE.ROOT_PATH.eq(rootPath)).and(STORAGE_REFERENCE.RELATIVE_PATH.eq(relativePath)).fetchOne();
         return Optional.ofNullable(row).map(StorageReferenceRepository::map);
     }
 

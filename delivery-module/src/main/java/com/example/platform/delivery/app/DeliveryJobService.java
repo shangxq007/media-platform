@@ -115,7 +115,7 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
             return;
         }
         String pathTemplate = policy.get(DELIVERY_POLICY.PATH_TEMPLATE);
-        String filename = "output.mp4";
+        String filename = sourceResolver.fileName(new ArtifactOutputReference(new ArtifactScope(tenantId,projectId,renderJobId),artifactId));
         String remotePath = DeliveryPathRenderer.render(
                 pathTemplate,
                 DeliveryPathRenderer.vars(tenantId, projectId, renderJobId, filename));
@@ -264,9 +264,9 @@ public class DeliveryJobService implements DeliveryAfterRenderPort {
         if (dest == null) {
             throw new IllegalArgumentException("Destination not found");
         }
-        String pathTemplate = "{tenantId}/{projectId}/{jobId}/output.mp4";
+        String pathTemplate = "{tenantId}/{projectId}/{jobId}/{filename}";
         String remotePath = DeliveryPathRenderer.render(
-                pathTemplate, DeliveryPathRenderer.vars(tenantId, projectId, renderJobId, "output.mp4"));
+                pathTemplate, DeliveryPathRenderer.vars(tenantId, projectId, renderJobId, sourceResolver.fileName(new ArtifactOutputReference(new ArtifactScope(tenantId,projectId,renderJobId),artifactId))));
         String dlvId = ("dlv_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         dsl.insertInto(DELIVERY_JOB)
                 .columns(DELIVERY_JOB.ID, DELIVERY_JOB.TENANT_ID, DELIVERY_JOB.PROJECT_ID, DELIVERY_JOB.RENDER_JOB_ID,

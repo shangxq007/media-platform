@@ -26,9 +26,9 @@ public class ArtifactOutputCommitService implements ArtifactOutputCommit {
         this.storage=storage; this.commits=commits; this.query=query; this.scopedQuery=scopedQuery; this.dsl=dsl; this.outbox=outbox;
     }
     @Override @Transactional
-    public ArtifactOutputReference commit(ArtifactScope scope, IssuanceResult supplied, ArtifactMediaType mediaType) {
+    public ArtifactOutputReference commit(ArtifactScope scope, StorageOutputPort.WrittenOutput output) {
         TenantGuard.assertSameTenant(scope.tenantId());
-        Objects.requireNonNull(mediaType);
+        Objects.requireNonNull(output);var supplied=output.issuance();
         var owner=new StorageOwnershipScope(scope.tenantId(),scope.projectId());
         if (!owner.equals(supplied.owner())) throw new IllegalArgumentException("output owner mismatch");
         var receipt=storage.find(owner,supplied.receipt().idempotencyKey()).orElseThrow(()->new IllegalArgumentException("output receipt not persisted"));
@@ -37,7 +37,15 @@ public class ArtifactOutputCommitService implements ArtifactOutputCommit {
         var p=receipt.placement();
         if (!scope.tenantId().equals(p.location().namespace().tenantId()) || !scope.projectId().equals(p.location().namespace().projectId()))
             throw new IllegalArgumentException("output namespace mismatch");
-        storage.read(owner,receipt.receipt().idempotencyKey()); // current backend integrity, not unchecked URI
+        byte[] bytes=storage.read(owner,receipt.receipt().idempotencyKey());
+        var metadata=storage.reference(owner,receipt.objectId(),p.replicaId());
+        var suppliedMetadata=output.reference();
+        if(!metadata.storageReferenceId().equals(suppliedMetadata.storageReferenceId())
+                || !Objects.equals(metadata.mimeType(),suppliedMetadata.mimeType())
+                || metadata.fileSize()!=suppliedMetadata.fileSize() || !Objects.equals(metadata.checksum(),suppliedMetadata.checksum()))
+            throw new IllegalArgumentException("output metadata differs from persisted Storage result");
+        var format=ArtifactOutputFormat.require(metadata.mimeType());format.validate(bytes);
+        ArtifactMediaType mediaType=format.mediaType();
         var id=outputId(scope,receipt.objectId());
         dsl.fetch("select pg_advisory_xact_lock(hashtextextended(?, 0))", "artifact-output:"+id.value());
         var existing=query.getArtifact(scope.tenantId(),id);

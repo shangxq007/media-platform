@@ -21,7 +21,7 @@ public class ArtifactOutputReadService implements ArtifactOutputRead {
  public Content read(ArtifactOutputReference reference) {
     var scope=reference.scope();TenantGuard.assertSameTenant(scope.tenantId());
     var artifact=scoped.findArtifact(scope,reference.artifactId()).orElseThrow(()->new IllegalArgumentException("output not found in scope"));
-    if(artifact.state()!=ArtifactState.AVAILABLE)throw new IllegalStateException("output is not available");
+    if(artifact.state()!=ArtifactState.AVAILABLE || artifact.artifactKind()!=ArtifactKind.RENDER_MASTER)throw new IllegalStateException("output is not available");
     var owner=new StorageOwnershipScope(scope.tenantId(),scope.projectId());
     var receipt=storage.find(owner,new IssuanceIdempotencyKey("render-output:"+scope.renderJobId())).orElseThrow(()->new IllegalStateException("output receipt unavailable"));
     if(!artifact.artifactId().equals(ArtifactOutputCommitService.outputId(scope,receipt.objectId())))throw new IllegalArgumentException("not the accepted Render output");
@@ -32,6 +32,9 @@ public class ArtifactOutputReadService implements ArtifactOutputRead {
         var digest=com.example.platform.shared.digest.ContentDigest.sha256(java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(bytes)));
         if(bytes.length!=artifact.byteLength()||!digest.matches(artifact.contentDigest()))throw new IllegalStateException("Artifact content differs from accepted metadata");
     }catch(java.security.NoSuchAlgorithmException impossible){throw new IllegalStateException(impossible);}
-    return new Content(bytes,artifact.mediaType());
+    var metadata=storage.reference(owner,replica.storageObjectId(),replica.storageReplicaId());
+    var format=ArtifactOutputFormat.require(metadata.mimeType());format.validate(bytes);
+    if(format.mediaType()!=artifact.mediaType())throw new IllegalStateException("output MIME differs from accepted Artifact category");
+    return new Content(bytes,artifact.mediaType(),format.mimeType(),format.fileName());
  }
 }

@@ -107,6 +107,19 @@ public class StorageOutputService implements StorageOutputPort, StoragePlacement
         if(placement.placement().state()!=ReplicaState.AVAILABLE)throw new IllegalStateException("placement unavailable");
         return read(owner,placement.receipt().idempotencyKey());
     }
+    @Override public StorageReference reference(StorageOwnershipScope owner,StorageObjectId objectId,StorageReplicaId replicaId) {
+        TenantGuard.assertSameTenant(owner.tenantId());
+        var issued=receipts.findPlacement(owner,objectId,replicaId).orElseThrow(()->new IllegalArgumentException("scoped output placement unavailable"));
+        var location=BlobStorage.parseUri(issued.placement().location().opaqueLocator()).orElseThrow();
+        if(!backend.code().equals(location.provider()))throw new IllegalStateException("output backend unavailable");
+        String type=providerType();String locationRoot="LOCAL".equals(type)?root.resolve(location.bucket()).toString():location.bucket();
+        var reference=references.findByLocation(type,locationRoot,location.objectKey()).orElseThrow(()->new IllegalStateException("persisted output content metadata unavailable"));
+        if(reference.fileSize()!=issued.placement().committedLength()
+                || !issued.placement().committedDigest().canonicalValue().equals(reference.checksum())
+                || !issued.placement().committedDigest().canonicalValue().equals(reference.contentHash()))
+            throw new IllegalStateException("output content metadata differs from placement evidence");
+        return reference;
+    }
     private String providerType() {
         return switch (properties.getProvider()) {
             case "local" -> { if (!backend.code().equals("localFsStorageProvider")) throw new IllegalStateException("local output backend unavailable"); yield "LOCAL"; }

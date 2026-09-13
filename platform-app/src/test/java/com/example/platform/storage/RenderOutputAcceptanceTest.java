@@ -65,6 +65,7 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
     static com.example.platform.notification.domain.NotificationProvider notification;
     static final java.util.concurrent.atomic.AtomicInteger transfers=new java.util.concurrent.atomic.AtomicInteger();
     static byte[] delivered;
+    static String deliveredMime,deliveredFileName;
     static com.example.platform.render.infrastructure.product.ProductRepository previewProducts;
     static boolean previewDenied;
     static String previewActorTenant;
@@ -142,7 +143,7 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
             public com.example.platform.delivery.domain.DeliveryProtocol protocol(){return com.example.platform.delivery.domain.DeliveryProtocol.SFTP;}
             public ProbeResult probe(com.example.platform.delivery.spi.DeliveryContext c){return ProbeResult.success();}
             public DeliveryResult deliver(com.example.platform.delivery.spi.DeliveryContext c){
-                try{delivered=c.sourceStream().readAllBytes();transfers.incrementAndGet();
+                try{deliveredMime=c.contentType();deliveredFileName=c.sourceFileName();delivered=c.sourceStream().readAllBytes();transfers.incrementAndGet();
                     var race=retryRace;if(race!=null){race.transportStarted.countDown();if(Thread.currentThread().getName().endsWith("-B"))race.secondOutcome.countDown();RetryRace.await(race.finishTransport);if(race.mode.equals("UNCERTAIN"))throw new IllegalStateException("transport uncertain");}
                     return DeliveryResult.ok(c.remotePath(),"sftp://test/"+c.deliveryJobId(),delivered.length);}
                 catch(java.io.IOException e){throw new IllegalStateException(e);}
@@ -264,12 +265,12 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
         reset(backend);assertNotNull(output.write(c));
     }
     @Test void forgedReceiptAndCrossTenantScopeRejected() throws Exception {
-        var c=command("forged-key",file("forged.mp4"));var good=output.write(c).issuance();
+        var c=command("forged-key",file("forged.mp4"));var written=output.write(c);var good=written.issuance();
         var p=good.placement();var badPlacement=new BackendPlacementResult(p.replicaId(),p.location(),p.state(),p.committedDigest(),p.committedLength()+1,p.providerCorrelationId());
         var q=good.receipt();var badReceipt=new PlacementReceipt(q.receiptId(),q.idempotencyKey(),q.semanticFingerprint(),q.purpose(),q.objectId(),q.replicaId(),q.location(),q.state(),q.committedDigest(),q.committedLength()+1,q.providerCorrelationId(),q.issuedAt());
         var forged=new IssuanceResult(good.owner(),good.objectId(),badPlacement,badReceipt);
         var artifacts=context.getBean(ArtifactOutputCommit.class);
-        assertThrows(IllegalArgumentException.class,()->artifacts.commit(new ArtifactScope("ep04-tenant","project","forged-job"),forged,ArtifactMediaType.VIDEO));
+        assertThrows(IllegalArgumentException.class,()->artifacts.commit(new ArtifactScope("ep04-tenant","project","forged-job"),new StorageOutputPort.WrittenOutput(forged,written.reference())));
         TenantContext.set("foreign");assertThrows(RuntimeException.class,()->output.write(c));assertThrows(RuntimeException.class,()->placements.find(c.owner(),c.key()));
         verify(backend,times(1)).put(any());
     }
@@ -279,7 +280,7 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
         when(failingCommit.commit(any())).thenThrow(new IllegalStateException("injected Artifact transaction failure"));
         var service=new ArtifactOutputCommitService(placements,failingCommit,context.getBean(ArtifactQueryService.class),
                 context.getBean(ArtifactApplicationQuery.class),context.getBean(DSLContext.class),context.getBean(OutboxEventService.class));
-        var failedRender=new RenderArtifactStorageService(output,(scope,receipt,media)->tx.execute(status->service.commit(scope,receipt,media)));
+        var failedRender=new RenderArtifactStorageService(output,(scope,written)->tx.execute(status->service.commit(scope,written)));
         long before=count("artifact");
         assertThrows(IllegalStateException.class,()->failedRender.uploadJobOutput("commit-failure-job","project",path,"video/mp4"));
         assertEquals(before,count("artifact"));
@@ -749,5 +750,55 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
                 mock(DeliveryDestinationCredentialService.class),mock(com.example.platform.secrets.api.port.CredentialBundlePort.class),access);
         TenantContext.set("control");admin.retryAdministrativeJob(id);assertEquals("control",TenantContext.get());
         assertEquals("COMPLETED",jdbc.queryForObject("select status from delivery_job where id=?",String.class,id));assertEquals(1,transfers.get());
+    }
+    @Test void webmDeliveryMetadataMatchesTheAcceptedRealBytes() throws Exception {
+        byte[] bytes;try(var input=getClass().getResourceAsStream("/output-formats/output.webm")){bytes=Objects.requireNonNull(input).readAllBytes();}
+        Files.write(root.resolve("format-repro.webm"),bytes);
+        var reference=render.uploadJobOutput("format-repro","project","format-repro.webm","video/webm");
+        try(var content=context.getBean(DeliverySourceResolver.class).open(reference).orElseThrow()) {
+            assertArrayEquals(bytes,content.stream().readAllBytes());assertEquals("video/webm",content.contentType());assertEquals("output.webm",content.fileName());
+        }
+    }
+    @Test void everySupportedRealOutputFormatPersistsAndReachesDeliveryWithoutRelabeling() throws Exception {
+        var formats=Map.of("mp4","video/mp4","webm","video/webm","mov","video/quicktime","wav","audio/wav",
+                "mp3","audio/mpeg","flac","audio/flac","png","image/png","jpg","image/jpeg");
+        for(var entry:formats.entrySet()) {
+            String extension=entry.getKey(),mime=entry.getValue(),name="format-"+extension;
+            byte[] bytes;try(var input=getClass().getResourceAsStream("/output-formats/output."+extension)){bytes=Objects.requireNonNull(input).readAllBytes();}
+            String path=name+".bin";Files.write(root.resolve(path),bytes);job(name,"EXECUTING");
+            var reference=lifecycle.complete("ep04-tenant",name,path,mime);
+            var content=context.getBean(ArtifactOutputRead.class).read(reference);
+            assertArrayEquals(bytes,content.bytes());assertEquals(mime,content.contentType());assertEquals("output."+extension,content.fileName());
+            var receipt=placements.find(new StorageOwnershipScope("ep04-tenant","project"),new IssuanceIdempotencyKey("render-output:"+name)).orElseThrow();
+            var metadata=placements.reference(receipt.owner(),receipt.objectId(),receipt.placement().replicaId());
+            assertEquals(mime,metadata.mimeType());assertEquals(bytes.length,metadata.fileSize());
+            assertEquals("COMPLETED",jdbc.queryForObject("select status from render_job where id=?",String.class,name));
+            jdbc.update("insert into delivery_destination(id,tenant_id,name,protocol,config_json,enabled,created_at) values (?,'ep04-tenant','test','SFTP','{}',true,now())",name+"-dest");
+            String delivery=context.getBean(DeliveryJobService.class).triggerManual("ep04-tenant","project",name,name+"-dest");
+            assertTrue(jdbc.queryForObject("select remote_path from delivery_job where id=?",String.class,delivery).endsWith("/output."+extension));
+            assertTrue(context.getBean(DeliveryJobService.class).runJob(delivery));
+            assertArrayEquals(bytes,delivered);assertEquals(mime,deliveredMime);assertEquals("output."+extension,deliveredFileName);
+        }
+    }
+    @Test void inconsistentOutputFormatCannotCommitOrCompleteAndValidNewOutputStillWorks() throws Exception {
+        byte[] bytes;try(var input=getClass().getResourceAsStream("/output-formats/output.png")){bytes=Objects.requireNonNull(input).readAllBytes();}
+        Files.write(root.resolve("wrong-format.bin"),bytes);job("wrong-format","EXECUTING");long artifacts=count("artifact");
+        assertThrows(IllegalArgumentException.class,()->lifecycle.complete("ep04-tenant","wrong-format","wrong-format.bin","video/mp4"));
+        assertEquals(artifacts,count("artifact"));assertEquals("EXECUTING",jdbc.queryForObject("select status from render_job where id='wrong-format'",String.class));assertEquals(0,jobEvents("wrong-format"));
+        assertTrue(placements.find(new StorageOwnershipScope("ep04-tenant","project"),new IssuanceIdempotencyKey("render-output:wrong-format")).isPresent());
+        long intents=count("storage_write_intent");
+        assertThrows(IllegalArgumentException.class,()->render.uploadJobOutput("unknown-format","project","wrong-format.bin","application/unknown"));assertEquals(intents,count("storage_write_intent"));
+        job("correct-format","EXECUTING");var accepted=lifecycle.complete("ep04-tenant","correct-format","wrong-format.bin","image/png");
+        assertEquals("image/png",context.getBean(ArtifactOutputRead.class).read(accepted).contentType());
+    }
+    @Test void persistedMetadataMismatchRejectsReadAndOwnerReplayRestoresItsOriginalMetadata() throws Exception {
+        String path=file("metadata-repair.mp4");var reference=render.uploadJobOutput("metadata-repair","project",path,"video/mp4");
+        var receipt=placements.find(new StorageOwnershipScope("ep04-tenant","project"),new IssuanceIdempotencyKey("render-output:metadata-repair")).orElseThrow();
+        var metadata=placements.reference(receipt.owner(),receipt.objectId(),receipt.placement().replicaId());
+        jdbc.update("update storage_reference set mime_type='audio/wav' where storage_reference_id=?",metadata.storageReferenceId());
+        assertThrows(IllegalArgumentException.class,()->context.getBean(ArtifactOutputRead.class).read(reference));
+        assertTrue(context.getBean(DeliverySourceResolver.class).open(reference).isEmpty());
+        assertEquals(reference,render.uploadJobOutput("metadata-repair","project",path,"video/mp4"));
+        assertEquals("video/mp4",context.getBean(ArtifactOutputRead.class).read(reference).contentType());
     }
 }
