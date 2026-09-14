@@ -94,10 +94,9 @@ public class WorkspaceService implements com.example.platform.identity.api.works
                 .orElseThrow(() -> invalid("Member not found"));
         if (member.status() != WorkspaceMember.MemberStatus.ACTIVE) return;
         if (List.of("OWNER", "ADMIN").contains(member.role())) requireOwner(workspaceId);
-        if (member.role().equals("OWNER") && workspaceMemberRepository.findByWorkspaceId(workspaceId).stream()
-                .filter(m -> m.status() == WorkspaceMember.MemberStatus.ACTIVE && m.role().equals("OWNER"))
-                .filter(m -> eligibleUser(m.userId(), workspace.tenantId())).map(WorkspaceMember::userId).distinct().count() <= 1
-                && eligibleUser(member.userId(), workspace.tenantId()))
+        if (member.role().equals("OWNER") && eligibleUser(member.userId(), workspace.tenantId())
+                && workspaceMemberRepository.findUnambiguousActiveOwners(workspaceId).stream()
+                        .filter(m -> eligibleUser(m.userId(), workspace.tenantId())).count() <= 1)
             throw conflict("Cannot remove the last active Workspace owner");
         roleRepository.deleteMemberAssignments(workspaceId, userId);
         workspaceMemberRepository.updateStatus(member.id(), WorkspaceMember.MemberStatus.REMOVED, java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC));

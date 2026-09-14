@@ -52,6 +52,24 @@ public class WorkspaceMemberRepository {
                 .fetch(this::mapRecord);
     }
 
+    /**
+     * Owner candidates whose membership can resolve through the canonical fetchOne lookup.
+     * The competing-row scope is the entire Workspace/user key, regardless of role/status.
+     * Called under the Workspace command lock; no precedence or repair of duplicates.
+     */
+    public List<WorkspaceMember> findUnambiguousActiveOwners(String workspaceId) {
+        var other = WORKSPACE_MEMBER.as("other_member");
+        return dsl.selectFrom(WORKSPACE_MEMBER)
+                .where(WORKSPACE_MEMBER.WORKSPACE_ID.eq(workspaceId))
+                .and(WORKSPACE_MEMBER.STATUS.eq(WorkspaceMember.MemberStatus.ACTIVE.name()))
+                .and(WORKSPACE_MEMBER.ROLE.eq("OWNER"))
+                .andNotExists(dsl.selectOne().from(other)
+                        .where(other.WORKSPACE_ID.eq(WORKSPACE_MEMBER.WORKSPACE_ID))
+                        .and(other.USER_ID.eq(WORKSPACE_MEMBER.USER_ID))
+                        .and(other.ID.ne(WORKSPACE_MEMBER.ID)))
+                .fetch(this::mapRecord);
+    }
+
     public Optional<WorkspaceMember> findByWorkspaceIdAndUserId(String workspaceId, String userId) {
         Record record = dsl.select()
                 .from(WORKSPACE_MEMBER)
