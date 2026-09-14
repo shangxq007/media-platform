@@ -1574,11 +1574,17 @@ tasks.register("verifyGcr2ArtifactAuthority") {
             "FAIL: ArtifactGcService does not route through pin-aware deleteCheck"
         }
 
-        // ── 8. Single V1 Flyway; no incremental migrations ──
+        // ── 8. Owner-adopted V1 + prerequisite migration; applied V1 stays immutable ──
         val migrationDir = file("platform-app/src/main/resources/db/migration")
         val migrations = migrationDir.listFiles { f -> f.name.endsWith(".sql") } ?: emptyArray()
-        require(migrations.size == 1) {
-            "FAIL: FLYWAY_SCRIPT_COUNT = ${migrations.size} (must be 1)"
+        require(migrations.map { it.name }.toSet() == setOf("V1__initial_schema.sql", "V2__account_membership_and_project_scope.sql")) {
+            "FAIL: unexpected Flyway migration inventory: ${migrations.map { it.name }}"
+        }
+        val appliedV1Hash = java.security.MessageDigest.getInstance("SHA-256")
+            .digest(file(migrationDir.resolve("V1__initial_schema.sql")).readBytes())
+            .joinToString("") { "%02x".format(it.toInt() and 0xff) }
+        require(appliedV1Hash == "99154a87de34f89619b37ecf570bdd820bf1e752c3cdcf133d4b10ae82539d82") {
+            "FAIL: delivered V1 migration changed; use the adopted incremental migration"
         }
         require(file(migrationDir.resolve("V1__initial_schema.sql")).exists()) {
             "FAIL: V1__initial_schema.sql missing"
@@ -1666,15 +1672,15 @@ tasks.register("verifyGcr2CorrectionV1") {
 
 tasks.register("verifyGcr5Gcr6DatabaseCanonicalization") {
     group = "verification"
-    description = "GCR5/GCR6: single canonical V1; structural FK integrity (timeline_revision/pin/snapshot/render_job); media_stream RESTRICT; no legacy migration residue; operational time contract; jOOQ parity prerequisites"
+    description = "GCR5/GCR6: approved migration inventory; structural FK integrity (timeline_revision/pin/snapshot/render_job); media_stream RESTRICT; no legacy migration residue; operational time contract; jOOQ parity prerequisites"
     doLast {
         val v1 = file("platform-app/src/main/resources/db/migration/V1__initial_schema.sql").readText()
 
-        // 1. Single canonical V1, zero incremental/backup migrations.
+        // 1. Exact adopted migration inventory, with no backup/unclassified migrations.
         val migrationDir = file("platform-app/src/main/resources/db/migration")
         val scripts = migrationDir.listFiles().orEmpty().filter { it.name.startsWith("V") && it.name.endsWith(".sql") }
-        require(scripts.size == 1 && scripts[0].name == "V1__initial_schema.sql") {
-            "FAIL: FLYWAY_SCRIPT_COUNT != 1 (found ${scripts.map { it.name }})"
+        require(scripts.map { it.name }.toSet() == setOf("V1__initial_schema.sql", "V2__account_membership_and_project_scope.sql")) {
+            "FAIL: unexpected Flyway migration inventory: ${scripts.map { it.name }}"
         }
         val legacyMigrationDir = file("platform-app/src/main/resources/db/artifact-migration")
         require(!legacyMigrationDir.exists()) {
