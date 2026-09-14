@@ -35,9 +35,16 @@ public class RbacAuthorizationDecisionPort implements AuthorizationDecisionPort 
     private static final Logger log = LoggerFactory.getLogger(RbacAuthorizationDecisionPort.class);
 
     private final PermissionService permissionService;
+    private final ProjectRepository projects;
+    private final com.example.platform.identity.infrastructure.WorkspaceRepository workspaces;
+    private final com.example.platform.identity.infrastructure.WorkspaceMemberRepository members;
+    private final UserRepository users;
 
-    public RbacAuthorizationDecisionPort(PermissionService permissionService) {
+    public RbacAuthorizationDecisionPort(PermissionService permissionService, ProjectRepository projects,
+            com.example.platform.identity.infrastructure.WorkspaceRepository workspaces,
+            com.example.platform.identity.infrastructure.WorkspaceMemberRepository members, UserRepository users) {
         this.permissionService = permissionService;
+        this.projects=projects;this.workspaces=workspaces;this.members=members;this.users=users;
     }
 
     @Override
@@ -47,6 +54,10 @@ public class RbacAuthorizationDecisionPort implements AuthorizationDecisionPort 
             return AuthorizationDecision.deny("TENANT_BOUNDARY", "TENANT_BOUNDARY",
                     "actor tenant does not match resource tenant");
         }
+
+        String workspaceId;
+        try { workspaceId = resolveWorkspaceId(request); }
+        catch (RuntimeException invalid) { return AuthorizationDecision.deny("RESOURCE_SCOPE", "IDENTITY", "Resource scope unavailable"); }
 
         // SYSTEM is not a universal implicit allow; require explicit policy.
         if (request.actor().isSystem()) {
@@ -59,12 +70,16 @@ public class RbacAuthorizationDecisionPort implements AuthorizationDecisionPort 
 
         // Layer 1 — RBAC via the existing permission authority.
         String userId = request.actor().actorId();
-        String workspaceId = resolveWorkspaceId(request);
+
         String permissionKey = request.action().permissionKey();
 
         boolean permitted;
         try {
-            permitted = permissionService.hasPermission(userId, workspaceId, permissionKey);
+            permitted = workspaceId == null
+                    ? permissionService.hasTenantPermission(userId, request.resource().tenantId(), permissionKey)
+                    : permissionService.hasPermission(userId, request.resource().tenantId(), workspaceId, permissionKey);
+            String projectId=request.resource().projectId();
+            if(projectId!=null) permitted = permitted || permissionService.hasProjectPermission(userId,request.resource().tenantId(),projectId,permissionKey);
         } catch (Exception e) {
             log.warn("RBAC evaluation failed for user={} permission={}: {}", userId, permissionKey, e.getMessage());
             // Fail closed.
@@ -87,18 +102,31 @@ public class RbacAuthorizationDecisionPort implements AuthorizationDecisionPort 
         return actorTenant.equals(resourceTenant);
     }
 
-    /**
-     * Resolve the workspace scope for the RBAC lookup. The existing
-     * {@link PermissionService} is workspace-scoped; the platform convention (see
-     * {@code MeController}, {@code NavigationController}) passes the tenant id as the
-     * workspace id when no explicit workspace is in scope.
-     */
+    /** Resolve actual resource relationships. A missing Workspace is never a tenant/Project alias. */
     private String resolveWorkspaceId(AuthorizationRequest request) {
-        String workspaceId = request.context().workspaceId();
-        if (workspaceId != null && !workspaceId.isBlank()) {
-            return workspaceId;
+        String tenant = request.resource().tenantId();
+        String workspace = request.context().workspaceId();
+        String project = request.resource().projectId();
+        if(project == null && request.resource().resourceType() == com.example.platform.shared.authorization.AuthorizationResourceType.PROJECT)
+            project = request.resource().resourceId();
+        if(project != null) {
+            if(request.resource().resourceType()==com.example.platform.shared.authorization.AuthorizationResourceType.PROJECT
+                    &&request.resource().resourceId()!=null&&!project.equals(request.resource().resourceId()))throw new IllegalArgumentException("Project reference mismatch");
+            var resource=projects.findByIdAndTenant(project,tenant).orElseThrow();
+            if(resource.status()!=com.example.platform.identity.domain.Project.ProjectStatus.ACTIVE || resource.workspaceId()==null)throw new IllegalArgumentException("Project scope unresolved");
+            if(workspace!=null&&!workspace.equals(resource.workspaceId()))throw new IllegalArgumentException("Workspace mismatch");
+            workspace=resource.workspaceId();
         }
-        return request.resource().tenantId();
+        if(request.actor().actorType()==ActorType.USER) {
+            if(!users.isUsableMembership(request.actor().actorId(),tenant))throw new IllegalArgumentException("Inactive membership");
+        }
+        if(workspace!=null) {
+            workspaces.findById(workspace).filter(w->tenant.equals(w.tenantId())&&w.status()==com.example.platform.identity.domain.Workspace.WorkspaceStatus.ACTIVE).orElseThrow();
+            if(request.actor().actorType()==ActorType.USER)
+                members.findByWorkspaceIdAndUserId(workspace,request.actor().actorId())
+                        .filter(m->m.status()==com.example.platform.identity.domain.WorkspaceMember.MemberStatus.ACTIVE).orElseThrow();
+        }
+        return workspace;
     }
 
     /**

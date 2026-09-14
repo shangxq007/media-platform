@@ -99,7 +99,7 @@ class MultiTenancyIsolationTest extends PostgresTestContainerSupport {
         tenantProjectService = new TenantProjectService(tenantRepository, projectRepository,
                 userRepository, identityAccessService,
                 () -> java.util.Optional.ofNullable(TenantContext.get()).map(tenant -> com.example.platform.shared.authorization.CanonicalActor.user("fixture", tenant, java.util.Set.of(), "test")),
-                request -> com.example.platform.shared.authorization.AuthorizationDecision.allow("tenant-repository-test-only"));
+                request -> com.example.platform.shared.authorization.AuthorizationDecision.allow("tenant-repository-test-only"), org.mockito.Mockito.mock(com.example.platform.identity.api.workspace.WorkspaceQueries.class));
     }
 
     @Test

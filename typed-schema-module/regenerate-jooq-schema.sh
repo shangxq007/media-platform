@@ -113,7 +113,13 @@ for i in $(seq 1 30); do
     sleep 1
 done
 
-echo "Applying V1__initial_schema.sql..."
+# Materialize the ordered migration set for generation and exact table-identity verification.
+SCHEMA_FILE="$RUNTIME_DIR/effective-schema.sql"
+while IFS= read -r migration; do
+    cat "$migration" >> "$SCHEMA_FILE"
+    printf '\n' >> "$SCHEMA_FILE"
+done < <(find "$ROOT_DIR/platform-app/src/main/resources/db/migration" -maxdepth 1 -name 'V*__*.sql' -print | sort -V)
+echo "Applying ordered schema migrations..."
 podman exec -i "$CONTAINER_NAME" \
     psql -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 \
     < "$SCHEMA_FILE"

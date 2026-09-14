@@ -104,6 +104,24 @@ public class ProjectRecord extends UpdatableRecordImpl<ProjectRecord> {
         return (LocalDateTime) get(5);
     }
 
+    /**
+     * Setter for <code>public.project.workspace_id</code>. Canonical resource
+     * Workspace within tenant. NULL is an unresolved historical mapping, not a
+     * tenant/Project alias.
+     */
+    public void setWorkspaceId(String value) {
+        set(6, value);
+    }
+
+    /**
+     * Getter for <code>public.project.workspace_id</code>. Canonical resource
+     * Workspace within tenant. NULL is an unresolved historical mapping, not a
+     * tenant/Project alias.
+     */
+    public String getWorkspaceId() {
+        return (String) get(6);
+    }
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -127,7 +145,7 @@ public class ProjectRecord extends UpdatableRecordImpl<ProjectRecord> {
     /**
      * Create a detached, initialised ProjectRecord
      */
-    public ProjectRecord(String id, String tenantId, String name, String description, String status, LocalDateTime createdAt) {
+    public ProjectRecord(String id, String tenantId, String name, String description, String status, LocalDateTime createdAt, String workspaceId) {
         super(Project.PROJECT);
 
         setId(id);
@@ -136,6 +154,7 @@ public class ProjectRecord extends UpdatableRecordImpl<ProjectRecord> {
         setDescription(description);
         setStatus(status);
         setCreatedAt(createdAt);
+        setWorkspaceId(workspaceId);
         resetChangedOnNotNull();
     }
 }

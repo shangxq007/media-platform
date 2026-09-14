@@ -23,7 +23,15 @@ import java.util.Set;
 class RbacAuthorizationDecisionPortTest {
 
     private final PermissionService permissionService = mock(PermissionService.class);
-    private final RbacAuthorizationDecisionPort port = new RbacAuthorizationDecisionPort(permissionService);
+    private final UserRepository users=mock(UserRepository.class);
+    private final com.example.platform.identity.infrastructure.WorkspaceRepository workspaces=mock(com.example.platform.identity.infrastructure.WorkspaceRepository.class);
+    private final com.example.platform.identity.infrastructure.WorkspaceMemberRepository members=mock(com.example.platform.identity.infrastructure.WorkspaceMemberRepository.class);
+    private final RbacAuthorizationDecisionPort port=new RbacAuthorizationDecisionPort(permissionService,mock(ProjectRepository.class),workspaces,members,users);
+    @org.junit.jupiter.api.BeforeEach void validOwnerState() {
+        when(users.isUsableMembership(anyString(),eq("tenant-a"))).thenReturn(true);
+        when(workspaces.findById("ws-1")).thenReturn(java.util.Optional.of(new com.example.platform.identity.domain.Workspace("ws-1","tenant-a","Workspace",null,"FREE",com.example.platform.identity.domain.Workspace.WorkspaceStatus.ACTIVE,java.time.Instant.now(),java.time.Instant.now())));
+        when(members.findByWorkspaceIdAndUserId(eq("ws-1"),anyString())).thenAnswer(i->java.util.Optional.of(new com.example.platform.identity.domain.WorkspaceMember("m","ws-1",i.getArgument(1),"VIEWER",com.example.platform.identity.domain.WorkspaceMember.MemberStatus.ACTIVE,java.time.Instant.now(),java.time.Instant.now())));
+    }
 
     @Test
     void crossTenantDeniedEvenWithPermission_AUTHORIZATION_RED_001() {
@@ -34,7 +42,7 @@ class RbacAuthorizationDecisionPortTest {
                 new com.example.platform.shared.authorization.AuthorizationAction("workflow-definition.read", com.example.platform.shared.authorization.AuthorizationResourceType.WORKFLOW_DEFINITION, "read"), resource, new AuthorizationContext("web"));
 
         // Even though RBAC would grant it, cross-tenant must be DENY.
-        when(permissionService.hasPermission("u-1", "tenant-b", "workflow-definition.read")).thenReturn(true);
+        when(permissionService.hasPermission("u-1", "tenant-a", "tenant-b", "workflow-definition.read")).thenReturn(true);
 
         AuthorizationDecision decision = port.decide(request);
 
@@ -51,7 +59,7 @@ class RbacAuthorizationDecisionPortTest {
         AuthorizationRequest request = new AuthorizationRequest(actor,
                 new com.example.platform.shared.authorization.AuthorizationAction("workflow-definition.publish", com.example.platform.shared.authorization.AuthorizationResourceType.WORKFLOW_DEFINITION, "publish"), resource, new AuthorizationContext("web"));
 
-        when(permissionService.hasPermission("u-1", "tenant-a", "workflow-definition.publish")).thenReturn(false);
+        when(permissionService.hasTenantPermission("u-1", "tenant-a", "workflow-definition.publish")).thenReturn(false);
 
         AuthorizationDecision decision = port.decide(request);
 
@@ -67,7 +75,7 @@ class RbacAuthorizationDecisionPortTest {
         AuthorizationRequest request = new AuthorizationRequest(actor,
                 new com.example.platform.shared.authorization.AuthorizationAction("workflow-definition.edit", com.example.platform.shared.authorization.AuthorizationResourceType.WORKFLOW_DEFINITION, "edit"), resource, new AuthorizationContext("web"));
 
-        when(permissionService.hasPermission("admin-1", "tenant-a", "workflow-definition.edit")).thenReturn(true);
+        when(permissionService.hasTenantPermission("admin-1", "tenant-a", "workflow-definition.edit")).thenReturn(true);
 
         AuthorizationDecision decision = port.decide(request);
 
@@ -87,7 +95,7 @@ class RbacAuthorizationDecisionPortTest {
         AuthorizationRequest request = new AuthorizationRequest(actor,
                 new com.example.platform.shared.authorization.AuthorizationAction("workflow-definition.publish", com.example.platform.shared.authorization.AuthorizationResourceType.WORKFLOW_DEFINITION, "publish"), resource, ctx);
 
-        when(permissionService.hasPermission("u-1", "tenant-a", "workflow-definition.publish")).thenReturn(false);
+        when(permissionService.hasTenantPermission("u-1", "tenant-a", "workflow-definition.publish")).thenReturn(false);
 
         AuthorizationDecision decision = port.decide(request);
         assertFalse(decision.allowed());
@@ -104,7 +112,7 @@ class RbacAuthorizationDecisionPortTest {
         AuthorizationRequest request = new AuthorizationRequest(actor,
                 new com.example.platform.shared.authorization.AuthorizationAction("workflow-definition.publish", com.example.platform.shared.authorization.AuthorizationResourceType.WORKFLOW_DEFINITION, "publish"), resource, ctx);
 
-        when(permissionService.hasPermission("u-1", "tenant-a", "workflow-definition.publish")).thenReturn(false);
+        when(permissionService.hasTenantPermission("u-1", "tenant-a", "workflow-definition.publish")).thenReturn(false);
 
         assertFalse(port.decide(request).allowed());
     }
@@ -119,7 +127,7 @@ class RbacAuthorizationDecisionPortTest {
         AuthorizationRequest request = new AuthorizationRequest(actor,
                 new com.example.platform.shared.authorization.AuthorizationAction("workflow-definition.publish", com.example.platform.shared.authorization.AuthorizationResourceType.WORKFLOW_DEFINITION, "publish"), resource, ctx);
 
-        when(permissionService.hasPermission("u-1", "tenant-a", "workflow-definition.publish")).thenReturn(false);
+        when(permissionService.hasTenantPermission("u-1", "tenant-a", "workflow-definition.publish")).thenReturn(false);
 
         assertFalse(port.decide(request).allowed());
     }
@@ -150,7 +158,7 @@ class RbacAuthorizationDecisionPortTest {
         var systemAction = new com.example.platform.shared.authorization.AuthorizationAction(
                 "system.workflow-definition.read", AuthorizationResourceType.WORKFLOW_DEFINITION, "System read");
         AuthorizationRequest systemKeyRequest = new AuthorizationRequest(system, systemAction, resource, new AuthorizationContext("system"));
-        when(permissionService.hasPermission("system:admin", "tenant-a", "system.workflow-definition.read")).thenReturn(true);
+        when(permissionService.hasPermission("system:admin", "tenant-a", "tenant-a", "system.workflow-definition.read")).thenReturn(true);
 
         AuthorizationDecision systemDecision = port.decide(systemKeyRequest);
         assertTrue(systemDecision.allowed());
@@ -176,7 +184,7 @@ class RbacAuthorizationDecisionPortTest {
                 AuthorizationResourceType.WORKFLOW_DEFINITION, "def-1", "tenant-a");
         AuthorizationRequest request = new AuthorizationRequest(actor,
                 new com.example.platform.shared.authorization.AuthorizationAction("workflow-definition.read", com.example.platform.shared.authorization.AuthorizationResourceType.WORKFLOW_DEFINITION, "read"), resource, new AuthorizationContext("web"));
-        when(permissionService.hasPermission(anyString(), anyString(), anyString()))
+        when(permissionService.hasTenantPermission(anyString(), anyString(), anyString()))
                 .thenThrow(new RuntimeException("DB down"));
 
         AuthorizationDecision decision = port.decide(request);

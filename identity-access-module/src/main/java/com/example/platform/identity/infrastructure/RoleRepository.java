@@ -139,6 +139,20 @@ public class RoleRepository {
                 .fetch(this::mapUserRoleAssignmentRecord);
     }
 
+    public List<UserRoleAssignment> findTenantRoleAssignments(String userId, String tenantId) {
+        return dsl.selectFrom(USER_ROLE_ASSIGNMENT)
+                .where(USER_ROLE_ASSIGNMENT.USER_ID.eq(userId)).and(USER_ROLE_ASSIGNMENT.TENANT_ID.eq(tenantId))
+                .and(USER_ROLE_ASSIGNMENT.WORKSPACE_ID.isNull()).and(USER_ROLE_ASSIGNMENT.PROJECT_ID.isNull())
+                .fetch(this::mapUserRoleAssignmentRecord);
+    }
+
+    public List<UserRoleAssignment> findProjectRoleAssignments(String userId, String tenantId, String projectId) {
+        return dsl.selectFrom(USER_ROLE_ASSIGNMENT)
+                .where(USER_ROLE_ASSIGNMENT.USER_ID.eq(userId)).and(USER_ROLE_ASSIGNMENT.TENANT_ID.eq(tenantId))
+                .and(USER_ROLE_ASSIGNMENT.PROJECT_ID.eq(projectId)).and(USER_ROLE_ASSIGNMENT.WORKSPACE_ID.isNull())
+                .fetch(this::mapUserRoleAssignmentRecord);
+    }
+
     public List<UserRoleAssignment> findUserRoleAssignmentsByWorkspaceId(String workspaceId) {
         return dsl.select()
                 .from(USER_ROLE_ASSIGNMENT)
@@ -174,8 +188,11 @@ public class RoleRepository {
      * @param workspaceId the workspace ID scope
      */
     public void deleteMemberAssignments(String workspaceId, String userId) {
-        dsl.deleteFrom(USER_ROLE_ASSIGNMENT).where(USER_ROLE_ASSIGNMENT.WORKSPACE_ID.eq(workspaceId))
-                .and(USER_ROLE_ASSIGNMENT.USER_ID.eq(userId)).execute();
+        var project=com.example.platform.typedschema.jooq.generated.tables.Project.PROJECT;
+        dsl.deleteFrom(USER_ROLE_ASSIGNMENT).where(USER_ROLE_ASSIGNMENT.USER_ID.eq(userId))
+                .and(USER_ROLE_ASSIGNMENT.WORKSPACE_ID.eq(workspaceId)
+                        .or(USER_ROLE_ASSIGNMENT.PROJECT_ID.in(dsl.select(project.ID).from(project).where(project.WORKSPACE_ID.eq(workspaceId)))))
+                .execute();
     }
 
     public void deleteUserRoleAssignmentByWorkspace(String userId, String roleKey, String workspaceId) {

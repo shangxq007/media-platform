@@ -22,9 +22,11 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class OAuth2RequestContextFilter extends OncePerRequestFilter {
 
     private final OAuth2SecurityProperties oauth2Properties;
+    private final com.example.platform.identity.api.account.AccountIdentityQueries memberships;
 
-    public OAuth2RequestContextFilter(OAuth2SecurityProperties oauth2Properties) {
+    public OAuth2RequestContextFilter(OAuth2SecurityProperties oauth2Properties, com.example.platform.identity.api.account.AccountIdentityQueries memberships) {
         this.oauth2Properties = oauth2Properties;
+        this.memberships = memberships;
     }
 
     @Override
@@ -42,15 +44,28 @@ public class OAuth2RequestContextFilter extends OncePerRequestFilter {
         }
 
         Jwt jwt = jwtAuth.getToken();
-        String subject = JwtClaimSupport.userId(jwt, oauth2Properties.userIdClaim());
-        if (subject == null || subject.isBlank()) {
-            subject = jwt.getSubject();
-        }
+        String subject = jwt.getSubject();
+        // The verified issuer/subject pair identifies Account; custom member claims cannot replace it.
+        request.setAttribute("jwt.issuer", jwt.getIssuer() != null ? jwt.getIssuer().toString() : null);
         String tenantId = JwtClaimSupport.tenantId(jwt, oauth2Properties.tenantClaim());
         if (tenantId == null || tenantId.isBlank()) {
             tenantId = oauth2Properties.defaultTenantId();
         }
-        List<String> roles = JwtClaimSupport.roles(jwt, oauth2Properties.rolesClaim());
+        com.example.platform.identity.api.account.AccountMembership membership;
+        try {
+            membership = memberships.resolve(jwt.getIssuer() != null ? jwt.getIssuer().toString() : null, subject, tenantId);
+        } catch (com.example.platform.shared.web.PlatformException denied) {
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            response.setContentType("application/problem+json");
+            response.getWriter().write("{\"status\":403,\"title\":\"Tenant membership unavailable\"}");
+            return;
+        }
+        request.setAttribute("auth.subject", subject);
+        request.setAttribute("identity.accountId", membership.accountId());
+        subject = membership.membershipId();
+        List<String> roles = List.of(membership.role());
+        SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt,
+                roles.stream().map(role -> new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_"+role)).toList(), subject));
 
         request.setAttribute("jwt.subject", subject);
         request.setAttribute("jwt.tenantId", tenantId);

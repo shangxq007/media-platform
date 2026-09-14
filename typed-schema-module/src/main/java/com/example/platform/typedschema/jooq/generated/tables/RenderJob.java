@@ -11,6 +11,7 @@ import com.example.platform.typedschema.jooq.generated.Public;
 import com.example.platform.typedschema.jooq.generated.tables.ArtifactGraph.ArtifactGraphPath;
 import com.example.platform.typedschema.jooq.generated.tables.ArtifactNode.ArtifactNodePath;
 import com.example.platform.typedschema.jooq.generated.tables.Project.ProjectPath;
+import com.example.platform.typedschema.jooq.generated.tables.RenderExecutionContext.RenderExecutionContextPath;
 import com.example.platform.typedschema.jooq.generated.tables.SystemCanonicalGraph.SystemCanonicalGraphPath;
 import com.example.platform.typedschema.jooq.generated.tables.UnifiedRequestGraph.UnifiedRequestGraphPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.RenderJobRecord;
@@ -309,6 +310,19 @@ public class RenderJob extends TableImpl<RenderJobRecord> {
             _unifiedRequestGraph = new UnifiedRequestGraphPath(this, null, Keys.UNIFIED_REQUEST_GRAPH__FK_UEEG_JOB.getInverseKey());
 
         return _unifiedRequestGraph;
+    }
+
+    private transient RenderExecutionContextPath _renderExecutionContext;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.render_execution_context</code> table
+     */
+    public RenderExecutionContextPath renderExecutionContext() {
+        if (_renderExecutionContext == null)
+            _renderExecutionContext = new RenderExecutionContextPath(this, null, Keys.RENDER_EXECUTION_CONTEXT__RENDER_EXECUTION_CONTEXT_JOB_ID_FKEY.getInverseKey());
+
+        return _renderExecutionContext;
     }
 
     @Override

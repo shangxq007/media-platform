@@ -17,6 +17,7 @@ import java.util.stream.Collectors;
 @Service
 public class TenantProjectService implements ProjectReadQuery {
     private final CanonicalActorResolver actors;
+    private final com.example.platform.identity.api.workspace.WorkspaceQueries workspaces;
     private final AuthorizationDecisionPort authorization;
     private static final AuthorizationAction READ = new AuthorizationAction("READ", AuthorizationResourceType.PROJECT, "Read Project");
 
@@ -28,12 +29,13 @@ public class TenantProjectService implements ProjectReadQuery {
     public TenantProjectService(TenantRepository tenantRepository,
             ProjectRepository projectRepository,
             UserRepository userRepository,
-            IdentityAccessService identityAccessService, CanonicalActorResolver actors, AuthorizationDecisionPort authorization) {
+            IdentityAccessService identityAccessService, CanonicalActorResolver actors, AuthorizationDecisionPort authorization, com.example.platform.identity.api.workspace.WorkspaceQueries workspaces) {
         this.tenantRepository = tenantRepository;
         this.projectRepository = projectRepository;
         this.userRepository = userRepository;
         this.identityAccessService = identityAccessService;
         this.actors = java.util.Objects.requireNonNull(actors);
+        this.workspaces=workspaces;
         this.authorization = java.util.Objects.requireNonNull(authorization);
     }
 
@@ -51,14 +53,22 @@ public class TenantProjectService implements ProjectReadQuery {
         return TenantResponse.from(tenant);
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public ProjectResponse createProject(String tenantId, CreateProjectRequest request) {
-        assertTenantAccess(tenantId);
+        var actor=requireReadActor(tenantId);
+        if(request.workspaceId()==null||request.workspaceId().isBlank())throw new PlatformException(CommonErrorCode.INVALID_REQUEST,"Explicit Workspace required");
+        var workspace=workspaces.getWorkspace(request.workspaceId());
+        if(!tenantId.equals(workspace.tenantId()))throw new PlatformException(CommonErrorCode.INSUFFICIENT_PERMISSION,"Project scope unavailable");
+        authorization.requireAuthorized(new AuthorizationRequest(actor,
+                new AuthorizationAction("CREATE",AuthorizationResourceType.PROJECT,"Create Project"),
+                new AuthorizableResourceRef(AuthorizationResourceType.PROJECT,null,tenantId),
+                new AuthorizationContext("project-create",workspace.id(),Map.of())));
         Tenant tenant = tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new IllegalArgumentException("Tenant not found: " + tenantId));
         String id = ("prj_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         Project project = new Project(id, tenantId, request.name(),
                 request.description() != null ? request.description() : "",
-                Project.ProjectStatus.ACTIVE, Instant.now());
+                Project.ProjectStatus.ACTIVE, Instant.now(), request.workspaceId());
         projectRepository.save(project);
         return ProjectResponse.from(project);
     }
@@ -91,7 +101,7 @@ public class TenantProjectService implements ProjectReadQuery {
     private AuthorizationRequest readRequest(CanonicalActor actor, String tenantId, String projectId) {
         return new AuthorizationRequest(actor, READ,
                 new AuthorizableResourceRef(AuthorizationResourceType.PROJECT, projectId, tenantId, projectId, null),
-                new AuthorizationContext("project-read", projectId, Map.of()));
+                new AuthorizationContext("project-read", null, Map.of()));
     }
 
     public UserResponse createUser(String tenantId, CreateUserRequest request) {

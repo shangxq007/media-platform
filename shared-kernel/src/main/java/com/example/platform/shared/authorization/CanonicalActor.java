@@ -13,7 +13,7 @@ import java.util.Set;
  * form — business services never read {@code jwt.subject} or the SecurityContext
  * directly as an authority (AR-AUTH-009).</p>
  *
- * @param actorId   stable subject identifier (never null after resolution)
+ * @param actorId   USER tenant-membership ID; API-key/SYSTEM stable principal ID
  * @param actorType the frozen actor type
  * @param tenantId  the tenant the actor is operating within (may be null only for
  *                  SYSTEM actors operating outside a tenant scope)
@@ -21,13 +21,15 @@ import java.util.Set;
  * @param authSource provenance tag describing where the actor was resolved from
  *                  (e.g. "jwt", "api-key", "oauth2", "system") — informational and
  *                  for audit, never an authority input
+ * @param accountId verified global Account for an interactive USER; absent for nonhuman principals
  */
 public record CanonicalActor(
         String actorId,
         ActorType actorType,
         String tenantId,
         Set<String> roles,
-        String authSource) {
+        String authSource,
+        String accountId) {
 
     public CanonicalActor {
         Objects.requireNonNull(actorId, "actorId must not be null");
@@ -35,8 +37,13 @@ public record CanonicalActor(
         roles = roles == null ? Set.of() : Set.copyOf(roles);
     }
 
+    /** Non-HTTP/system/test construction; human request resolvers supply the verified account link. */
+    public CanonicalActor(String actorId, ActorType actorType, String tenantId, Set<String> roles, String authSource) {
+        this(actorId, actorType, tenantId, roles, authSource, null);
+    }
+
     /**
-     * Convenience factory for the common authenticated-user case.
+     * Trusted membership reference factory. Interactive authentication resolves the full Account link.
      */
     public static CanonicalActor user(String actorId, String tenantId, Set<String> roles, String authSource) {
         return new CanonicalActor(actorId, ActorType.USER, tenantId, roles, authSource);

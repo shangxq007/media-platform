@@ -740,7 +740,13 @@ def verify_identity_parity(
 def verify(schema_path: Path, generated_root: Path) -> tuple[int, int, int, int]:
     if not schema_path.is_file():
         raise VerificationError(f"CANONICAL_SCHEMA_MISSING path={schema_path}")
-    sql = schema_path.read_text(encoding="utf-8")
+    # Existing callers pass V1; include subsequent versioned migrations from that same authority.
+    if schema_path.name == "V1__initial_schema.sql":
+        migrations = sorted(schema_path.parent.glob("V*__*.sql"),
+                            key=lambda p: tuple(int(n) for n in p.name.split("__", 1)[0][1:].split("_")))
+        sql = "\n".join(p.read_text(encoding="utf-8") for p in migrations)
+    else:
+        sql = schema_path.read_text(encoding="utf-8")
     canonical = parse_canonical_table_identities(sql)
     tables, records, java_files = load_generated_identities(generated_root)
     verify_identity_parity(canonical, tables, records)

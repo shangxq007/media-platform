@@ -14,7 +14,8 @@ import java.util.Optional;
  * it is advisory input to an otherwise security-agnostic decision.</p>
  *
  * @param requestSource  where the call originated (e.g. "web", "api-key", "system", "graphql")
- * @param workspaceId    optional workspace scope for the decision
+ * @param workspaceId    optional real Workspace hint, never a Project/tenant alias;
+ *                       Identity resolves Project relationships from the resource reference
  * @param additionalReadOnlySignals read-only advisory signals (immutable, never authority)
  */
 public record AuthorizationContext(

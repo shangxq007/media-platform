@@ -7,6 +7,7 @@ package com.example.platform.typedschema.jooq.generated.tables;
 import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
+import com.example.platform.typedschema.jooq.generated.tables.Project.ProjectPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.WorkspaceRecord;
 
 import java.time.LocalDateTime;
@@ -16,10 +17,14 @@ import java.util.List;
 
 import org.jooq.Condition;
 import org.jooq.Field;
+import org.jooq.ForeignKey;
 import org.jooq.Index;
+import org.jooq.InverseForeignKey;
 import org.jooq.Name;
+import org.jooq.Path;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
+import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
 import org.jooq.Select;
@@ -123,6 +128,39 @@ public class Workspace extends TableImpl<WorkspaceRecord> {
         this(DSL.name("workspace"), null);
     }
 
+    public <O extends Record> Workspace(Table<O> path, ForeignKey<O, WorkspaceRecord> childPath, InverseForeignKey<O, WorkspaceRecord> parentPath) {
+        super(path, childPath, parentPath, WORKSPACE);
+    }
+
+    /**
+     * A subtype implementing {@link Path} for simplified path-based joins.
+     */
+    public static class WorkspacePath extends Workspace implements Path<WorkspaceRecord> {
+
+        private static final long serialVersionUID = 1L;
+        public <O extends Record> WorkspacePath(Table<O> path, ForeignKey<O, WorkspaceRecord> childPath, InverseForeignKey<O, WorkspaceRecord> parentPath) {
+            super(path, childPath, parentPath);
+        }
+        private WorkspacePath(Name alias, Table<WorkspaceRecord> aliased) {
+            super(alias, aliased);
+        }
+
+        @Override
+        public WorkspacePath as(String alias) {
+            return new WorkspacePath(DSL.name(alias), this);
+        }
+
+        @Override
+        public WorkspacePath as(Name alias) {
+            return new WorkspacePath(alias, this);
+        }
+
+        @Override
+        public WorkspacePath as(Table<?> alias) {
+            return new WorkspacePath(alias.getQualifiedName(), this);
+        }
+    }
+
     @Override
     public Schema getSchema() {
         return aliased() ? null : Public.PUBLIC;
@@ -136,6 +174,24 @@ public class Workspace extends TableImpl<WorkspaceRecord> {
     @Override
     public UniqueKey<WorkspaceRecord> getPrimaryKey() {
         return Keys.WORKSPACE_PKEY;
+    }
+
+    @Override
+    public List<UniqueKey<WorkspaceRecord>> getUniqueKeys() {
+        return Arrays.asList(Keys.UX_WORKSPACE_ID_TENANT);
+    }
+
+    private transient ProjectPath _project;
+
+    /**
+     * Get the implicit to-many join path to the <code>public.project</code>
+     * table
+     */
+    public ProjectPath project() {
+        if (_project == null)
+            _project = new ProjectPath(this, null, Keys.PROJECT__FK_PROJECT_WORKSPACE_TENANT.getInverseKey());
+
+        return _project;
     }
 
     @Override

@@ -7,6 +7,7 @@ package com.example.platform.typedschema.jooq.generated.tables;
 import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
+import com.example.platform.typedschema.jooq.generated.tables.Account.AccountPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.UserRecord;
 
 import java.time.LocalDateTime;
@@ -16,10 +17,14 @@ import java.util.List;
 
 import org.jooq.Condition;
 import org.jooq.Field;
+import org.jooq.ForeignKey;
 import org.jooq.Index;
+import org.jooq.InverseForeignKey;
 import org.jooq.Name;
+import org.jooq.Path;
 import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
+import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
 import org.jooq.Select;
@@ -89,6 +94,13 @@ public class User extends TableImpl<UserRecord> {
      */
     public final TableField<UserRecord, LocalDateTime> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.LOCALDATETIME(6).nullable(false), this, "");
 
+    /**
+     * The column <code>public.user.account_id</code>. Verified Account link.
+     * NULL preserves historical membership awaiting explicit identity mapping;
+     * never infer by email.
+     */
+    public final TableField<UserRecord, String> ACCOUNT_ID = createField(DSL.name("account_id"), SQLDataType.VARCHAR(64), this, "Verified Account link. NULL preserves historical membership awaiting explicit identity mapping; never infer by email.");
+
     private User(Name alias, Table<UserRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
     }
@@ -118,6 +130,39 @@ public class User extends TableImpl<UserRecord> {
         this(DSL.name("user"), null);
     }
 
+    public <O extends Record> User(Table<O> path, ForeignKey<O, UserRecord> childPath, InverseForeignKey<O, UserRecord> parentPath) {
+        super(path, childPath, parentPath, USER);
+    }
+
+    /**
+     * A subtype implementing {@link Path} for simplified path-based joins.
+     */
+    public static class UserPath extends User implements Path<UserRecord> {
+
+        private static final long serialVersionUID = 1L;
+        public <O extends Record> UserPath(Table<O> path, ForeignKey<O, UserRecord> childPath, InverseForeignKey<O, UserRecord> parentPath) {
+            super(path, childPath, parentPath);
+        }
+        private UserPath(Name alias, Table<UserRecord> aliased) {
+            super(alias, aliased);
+        }
+
+        @Override
+        public UserPath as(String alias) {
+            return new UserPath(DSL.name(alias), this);
+        }
+
+        @Override
+        public UserPath as(Name alias) {
+            return new UserPath(alias, this);
+        }
+
+        @Override
+        public UserPath as(Table<?> alias) {
+            return new UserPath(alias.getQualifiedName(), this);
+        }
+    }
+
     @Override
     public Schema getSchema() {
         return aliased() ? null : Public.PUBLIC;
@@ -125,12 +170,29 @@ public class User extends TableImpl<UserRecord> {
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.IX_USER_TENANT_ID);
+        return Arrays.asList(Indexes.IX_USER_TENANT_ID, Indexes.UX_USER_ACCOUNT_TENANT);
     }
 
     @Override
     public UniqueKey<UserRecord> getPrimaryKey() {
         return Keys.USER_PKEY;
+    }
+
+    @Override
+    public List<ForeignKey<UserRecord, ?>> getReferences() {
+        return Arrays.asList(Keys.USER__USER_ACCOUNT_ID_FKEY);
+    }
+
+    private transient AccountPath _account;
+
+    /**
+     * Get the implicit join path to the <code>public.account</code> table.
+     */
+    public AccountPath account() {
+        if (_account == null)
+            _account = new AccountPath(this, Keys.USER__USER_ACCOUNT_ID_FKEY, null);
+
+        return _account;
     }
 
     @Override

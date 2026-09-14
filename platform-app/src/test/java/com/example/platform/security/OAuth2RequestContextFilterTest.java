@@ -23,7 +23,8 @@ class OAuth2RequestContextFilterTest {
             new OAuth2SecurityProperties(
                     true, "https://auth.example/application/o/app/", null, "tenantId", "roles", "platform_user_id",
                     false, true, true, "tenant-1");
-    private final OAuth2RequestContextFilter filter = new OAuth2RequestContextFilter(properties);
+    private final com.example.platform.identity.api.account.AccountIdentityQueries memberships=mock(com.example.platform.identity.api.account.AccountIdentityQueries.class);
+    private final OAuth2RequestContextFilter filter = new OAuth2RequestContextFilter(properties,memberships);
 
     @BeforeEach
     @AfterEach
@@ -36,7 +37,9 @@ class OAuth2RequestContextFilterTest {
     void populatesRequestAttributesAndTenantContext() throws Exception {
         Jwt jwt = Jwt.withTokenValue("token")
                 .header("alg", "none")
-                .subject("user-42")
+                .issuer("https://auth.example/application/o/app/")
+                .subject("external-subject")
+                .claim("platform_user_id","forged-member")
                 .claim("tenantId", "tenant-9")
                 .claim("roles", List.of("ADMIN"))
                 .issuedAt(Instant.now())
@@ -48,10 +51,14 @@ class OAuth2RequestContextFilterTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
         FilterChain chain = mock(FilterChain.class);
 
+        org.mockito.Mockito.when(memberships.resolve("https://auth.example/application/o/app/","external-subject","tenant-9"))
+                .thenReturn(new com.example.platform.identity.api.account.AccountMembership("account-42","user-42","tenant-9","VIEWER"));
         filter.doFilter(request, response, chain);
 
         assertEquals("user-42", request.getAttribute("jwt.subject"));
         assertEquals("tenant-9", request.getAttribute("jwt.tenantId"));
+        assertEquals("external-subject",request.getAttribute("auth.subject"));assertEquals("account-42",request.getAttribute("identity.accountId"));
+        assertEquals(List.of("VIEWER"),request.getAttribute("jwt.roles"));
         verify(chain).doFilter(request, response);
     }
 }

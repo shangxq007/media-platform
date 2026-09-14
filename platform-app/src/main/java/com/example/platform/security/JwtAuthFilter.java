@@ -37,8 +37,9 @@ import java.util.Set;
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtProperties jwtProperties;
+    private final com.example.platform.identity.api.account.AccountIdentityQueries memberships;
 
-    public JwtAuthFilter(JwtProperties jwtProperties) {
+    public JwtAuthFilter(JwtProperties jwtProperties, com.example.platform.identity.api.account.AccountIdentityQueries memberships) {
         if (jwtProperties.usesInsecureDefault()) {
             throw new IllegalStateException(
                     "JWT authentication is enabled (app.security.enabled=true, app.security.oauth2.enabled=false) "
@@ -47,6 +48,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     + "To disable JWT validation locally, set app.security.enabled=false (dev/preview profiles only).");
         }
         this.jwtProperties = jwtProperties;
+        this.memberships = memberships;
     }
 
     @Bean
@@ -69,6 +71,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             "/api/admin/delivery",
             "/api/artifacts",
             "/api/identity",
+            "/api/billing",
             "/api/workspaces",
             "/api/product/workspace",
             "/api/me",
@@ -126,6 +129,16 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 roles = List.of();
             }
 
+            String tenantHint=request.getHeader("X-Tenant-ID");
+            if(tenantHint!=null&&!tenantHint.isBlank()&&!tenantId.equals(tenantHint))
+                throw new com.example.platform.shared.web.PlatformException(CommonErrorCode.INSUFFICIENT_PERMISSION,"Stale tenant scope hint");
+            var membership = memberships.resolve("urn:media-platform:local-hmac", subject, tenantId);
+            request.setAttribute("auth.subject", subject);
+            request.setAttribute("identity.accountId", membership.accountId());
+            subject = membership.membershipId();
+            roles = List.of(membership.role());
+            // This filter verifies the platform HMAC identity namespace, not an arbitrary external issuer.
+            request.setAttribute("jwt.issuer", "urn:media-platform:local-hmac");
             request.setAttribute("jwt.subject", subject);
             request.setAttribute("jwt.tenantId", tenantId);
             request.setAttribute("jwt.roles", roles);
@@ -156,6 +169,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 MDC.remove(TraceKeys.TENANT_ID);
                 MDC.remove("principal");
             }
+        } catch (com.example.platform.shared.web.PlatformException e) {
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            response.setContentType("application/problem+json");
+            response.getWriter().write("{\"status\":403,\"title\":\"Tenant membership unavailable\"}");
         } catch (JwtException e) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType("application/problem+json");

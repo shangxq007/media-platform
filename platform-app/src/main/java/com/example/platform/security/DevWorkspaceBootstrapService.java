@@ -26,6 +26,7 @@ public class DevWorkspaceBootstrapService {
     public static final String LEGACY_DEV_TENANT_ID = "tenant-1";
 
     private final TenantRepository tenantRepository;
+    private final com.example.platform.identity.app.AccountMembershipService accounts;
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final EntitlementPolicyService entitlementPolicyService;
@@ -36,15 +37,16 @@ public class DevWorkspaceBootstrapService {
             UserRepository userRepository,
             RoleRepository roleRepository,
             EntitlementPolicyService entitlementPolicyService,
-            BuiltinDataInitializer builtinDataInitializer) {
+            BuiltinDataInitializer builtinDataInitializer, com.example.platform.identity.app.AccountMembershipService accounts) {
         this.tenantRepository = tenantRepository;
+        this.accounts=accounts;
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.entitlementPolicyService = entitlementPolicyService;
         this.builtinDataInitializer = builtinDataInitializer;
     }
 
-    public void ensureDefaultWorkspace(String tenantId, String entitlementTier) {
+    public void ensureDefaultTenant(String tenantId, String entitlementTier) {
         if (tenantId == null || tenantId.isBlank()) {
             tenantId = LEGACY_DEV_TENANT_ID;
         }
@@ -73,45 +75,19 @@ public class DevWorkspaceBootstrapService {
      * Ensures legacy {@code user-1} exists with ADMIN RBAC — matches dev JWT / docs examples.
      */
     public void ensureLegacyDevUser(String tenantId) {
-        if (tenantId == null || tenantId.isBlank()) {
-            tenantId = LEGACY_DEV_TENANT_ID;
+        String tenant=tenantId==null||tenantId.isBlank()?LEGACY_DEV_TENANT_ID:tenantId;
+        var operator=com.example.platform.shared.authorization.CanonicalActor.system("system:identity-provisioning",tenant);
+        String account=accounts.provisionVerifiedAccount(operator,"urn:media-platform:local-hmac",LEGACY_DEV_USER_ID);
+        var old=userRepository.findById(LEGACY_DEV_USER_ID);
+        String member;
+        if(old.isPresent()&&tenant.equals(old.get().tenantId())) {
+            member=accounts.linkMembership(operator,account,tenant,LEGACY_DEV_USER_ID).membershipId();
+        } else {
+            member=accounts.createMembership(operator,account,tenant,"dev-user","dev-user@local","ADMIN").membershipId();
         }
-        final String resolvedTenantId = tenantId;
-        userRepository.findById(LEGACY_DEV_USER_ID).ifPresentOrElse(
-                u -> syncRoleAssignments(LEGACY_DEV_USER_ID, resolvedTenantId, List.of("ADMIN")),
-                () -> {
-                    User user = new User(
-                            LEGACY_DEV_USER_ID,
-                            resolvedTenantId,
-                            "dev-user",
-                            "dev-user@local",
-                            User.UserRole.ADMIN,
-                            User.UserStatus.ACTIVE,
-                            Instant.now());
-                    userRepository.save(user);
-                    syncRoleAssignments(LEGACY_DEV_USER_ID, resolvedTenantId, List.of("ADMIN"));
-                    log.info("Dev workspace: created legacy user {} in tenant {}", LEGACY_DEV_USER_ID, resolvedTenantId);
-                });
-    }
-
-    private void syncRoleAssignments(String userId, String workspaceId, List<String> platformRoleKeys) {
-        for (String roleKey : List.of("ADMIN", "EDITOR", "VIEWER")) {
-            try {
-                roleRepository.deleteUserRoleAssignment(userId, roleKey);
-            } catch (Exception ignored) {
-                // no-op
-            }
-        }
-        for (String roleKey : platformRoleKeys) {
-            roleRepository.findByKey(roleKey).ifPresent(role -> roleRepository.saveUserRoleAssignment(
-                    new UserRoleAssignment(
-                            ("ura_" + java.util.UUID.randomUUID().toString().replace("-", "")),
-                            null,
-                            workspaceId,
-                            userId,
-                            role.id(),
-                            "dev-bootstrap",
-                            Instant.now())));
-        }
+        roleRepository.findByKey("ADMIN").ifPresent(role->{
+            if(roleRepository.findTenantRoleAssignments(member,tenant).stream().noneMatch(a->a.roleId().equals(role.id())))
+                roleRepository.saveUserRoleAssignment(new UserRoleAssignment("ura_"+java.util.UUID.randomUUID(),tenant,null,member,role.id(),"dev-bootstrap",Instant.now()));
+        });
     }
 }

@@ -4,6 +4,7 @@
 package com.example.platform.typedschema.jooq.generated;
 
 
+import com.example.platform.typedschema.jooq.generated.tables.Account;
 import com.example.platform.typedschema.jooq.generated.tables.ApiClient;
 import com.example.platform.typedschema.jooq.generated.tables.ApiKey;
 import com.example.platform.typedschema.jooq.generated.tables.AppDatasource;
@@ -111,6 +112,7 @@ import com.example.platform.typedschema.jooq.generated.tables.QuotaProfile;
 import com.example.platform.typedschema.jooq.generated.tables.QuotaUsage;
 import com.example.platform.typedschema.jooq.generated.tables.QuotaUsageOperation;
 import com.example.platform.typedschema.jooq.generated.tables.RatedUsageRecord;
+import com.example.platform.typedschema.jooq.generated.tables.RenderExecutionContext;
 import com.example.platform.typedschema.jooq.generated.tables.RenderJob;
 import com.example.platform.typedschema.jooq.generated.tables.RenderJobLease;
 import com.example.platform.typedschema.jooq.generated.tables.RenderJobLifecycleEvents;
@@ -219,6 +221,11 @@ public class Public extends SchemaImpl {
      * The reference instance of <code>public</code>
      */
     public static final Public PUBLIC = new Public();
+
+    /**
+     * The table <code>public.account</code>.
+     */
+    public final Account ACCOUNT = Account.ACCOUNT;
 
     /**
      * The table <code>public.api_client</code>.
@@ -756,6 +763,11 @@ public class Public extends SchemaImpl {
     public final RatedUsageRecord RATED_USAGE_RECORD = RatedUsageRecord.RATED_USAGE_RECORD;
 
     /**
+     * The table <code>public.render_execution_context</code>.
+     */
+    public final RenderExecutionContext RENDER_EXECUTION_CONTEXT = RenderExecutionContext.RENDER_EXECUTION_CONTEXT;
+
+    /**
      * The table <code>public.render_job</code>.
      */
     public final RenderJob RENDER_JOB = RenderJob.RENDER_JOB;
@@ -1206,6 +1218,7 @@ public class Public extends SchemaImpl {
     @Override
     public final List<Table<?>> getTables() {
         return Arrays.asList(
+            Account.ACCOUNT,
             ApiClient.API_CLIENT,
             ApiKey.API_KEY,
             AppDatasource.APP_DATASOURCE,
@@ -1313,6 +1326,7 @@ public class Public extends SchemaImpl {
             QuotaUsage.QUOTA_USAGE,
             QuotaUsageOperation.QUOTA_USAGE_OPERATION,
             RatedUsageRecord.RATED_USAGE_RECORD,
+            RenderExecutionContext.RENDER_EXECUTION_CONTEXT,
             RenderJob.RENDER_JOB,
             RenderJobLease.RENDER_JOB_LEASE,
             RenderJobLifecycleEvents.RENDER_JOB_LIFECYCLE_EVENTS,

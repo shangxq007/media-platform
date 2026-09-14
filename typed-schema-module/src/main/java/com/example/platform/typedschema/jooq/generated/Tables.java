@@ -4,6 +4,7 @@
 package com.example.platform.typedschema.jooq.generated;
 
 
+import com.example.platform.typedschema.jooq.generated.tables.Account;
 import com.example.platform.typedschema.jooq.generated.tables.ApiClient;
 import com.example.platform.typedschema.jooq.generated.tables.ApiKey;
 import com.example.platform.typedschema.jooq.generated.tables.AppDatasource;
@@ -111,6 +112,7 @@ import com.example.platform.typedschema.jooq.generated.tables.QuotaProfile;
 import com.example.platform.typedschema.jooq.generated.tables.QuotaUsage;
 import com.example.platform.typedschema.jooq.generated.tables.QuotaUsageOperation;
 import com.example.platform.typedschema.jooq.generated.tables.RatedUsageRecord;
+import com.example.platform.typedschema.jooq.generated.tables.RenderExecutionContext;
 import com.example.platform.typedschema.jooq.generated.tables.RenderJob;
 import com.example.platform.typedschema.jooq.generated.tables.RenderJobLease;
 import com.example.platform.typedschema.jooq.generated.tables.RenderJobLifecycleEvents;
@@ -205,6 +207,11 @@ import com.example.platform.typedschema.jooq.generated.tables.WorkspaceQuotaAllo
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
 public class Tables {
+
+    /**
+     * The table <code>public.account</code>.
+     */
+    public static final Account ACCOUNT = Account.ACCOUNT;
 
     /**
      * The table <code>public.api_client</code>.
@@ -740,6 +747,11 @@ public class Tables {
      * The table <code>public.rated_usage_record</code>.
      */
     public static final RatedUsageRecord RATED_USAGE_RECORD = RatedUsageRecord.RATED_USAGE_RECORD;
+
+    /**
+     * The table <code>public.render_execution_context</code>.
+     */
+    public static final RenderExecutionContext RENDER_EXECUTION_CONTEXT = RenderExecutionContext.RENDER_EXECUTION_CONTEXT;
 
     /**
      * The table <code>public.render_job</code>.

@@ -26,9 +26,9 @@ public class ProjectRepository {
     public Project save(Project project) {
         dsl.insertInto(PROJECT)
                 .columns(PROJECT.ID, PROJECT.TENANT_ID, PROJECT.NAME,
-                        PROJECT.DESCRIPTION, PROJECT.STATUS, PROJECT.CREATED_AT)
+                        PROJECT.DESCRIPTION, PROJECT.STATUS, PROJECT.CREATED_AT, PROJECT.WORKSPACE_ID)
                 .values(project.id(), project.tenantId(), project.name(),
-                        project.description(), project.status().name(), LocalDateTime.ofInstant(project.createdAt(), ZoneOffset.UTC))
+                        project.description(), project.status().name(), LocalDateTime.ofInstant(project.createdAt(), ZoneOffset.UTC), project.workspaceId())
                 .execute();
         return project;
     }
@@ -55,6 +55,11 @@ public class ProjectRepository {
                 .fetch(this::mapRecord);
     }
 
+    public int bindWorkspaceIfUnmapped(String id,String tenantId,String workspaceId) {
+        return dsl.update(PROJECT).set(PROJECT.WORKSPACE_ID,workspaceId)
+                .where(PROJECT.ID.eq(id)).and(PROJECT.TENANT_ID.eq(tenantId)).and(PROJECT.WORKSPACE_ID.isNull()).execute();
+    }
+
     public void deleteById(String id) {
         dsl.deleteFrom(PROJECT)
                 .where(PROJECT.ID.eq(id))
@@ -68,7 +73,8 @@ public class ProjectRepository {
                 JooqRecords.string(record, "name"),
                 JooqRecords.string(record, "description"),
                 Project.ProjectStatus.valueOf(JooqRecords.string(record, "status")),
-                JooqRecords.offsetDateTime(record, "created_at").toInstant()
+                JooqRecords.offsetDateTime(record, "created_at").toInstant(),
+                record.get(PROJECT.WORKSPACE_ID)
         );
     }
 }

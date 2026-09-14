@@ -103,8 +103,7 @@ public class OAuth2ResourceServerSecurityConfiguration {
             JwtDecoder platformJwtDecoder,
             PlatformJwtAuthenticationConverter jwtAuthenticationConverter,
             OAuth2RequestContextFilter requestContextFilter,
-            TenantHeaderGuardFilter tenantHeaderGuardFilter,
-            OidcUserProvisioningFilter oidcUserProvisioningFilter) throws Exception {
+            TenantHeaderGuardFilter tenantHeaderGuardFilter) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -122,8 +121,7 @@ public class OAuth2ResourceServerSecurityConfiguration {
                         .decoder(platformJwtDecoder)
                         .jwtAuthenticationConverter(jwtAuthenticationConverter)))
                 .addFilterAfter(requestContextFilter, BearerTokenAuthenticationFilter.class)
-                .addFilterAfter(tenantHeaderGuardFilter, OAuth2RequestContextFilter.class)
-                .addFilterAfter(oidcUserProvisioningFilter, TenantHeaderGuardFilter.class);
+                .addFilterAfter(tenantHeaderGuardFilter, OAuth2RequestContextFilter.class);
 
         return http.build();
     }
@@ -134,8 +132,8 @@ public class OAuth2ResourceServerSecurityConfiguration {
     }
 
     @Bean
-    OAuth2RequestContextFilter oauth2RequestContextFilter() {
-        return new OAuth2RequestContextFilter(oauth2Properties);
+    OAuth2RequestContextFilter oauth2RequestContextFilter(com.example.platform.identity.api.account.AccountIdentityQueries memberships) {
+        return new OAuth2RequestContextFilter(oauth2Properties, memberships);
     }
 
     @Bean
@@ -143,9 +141,5 @@ public class OAuth2ResourceServerSecurityConfiguration {
         return new TenantHeaderGuardFilter(oauth2Properties);
     }
 
-    @Bean
-    OidcUserProvisioningFilter oidcUserProvisioningFilter(
-            OidcIdentityProvisioningService provisioningService) {
-        return new OidcUserProvisioningFilter(provisioningService);
-    }
+
 }

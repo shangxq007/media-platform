@@ -10,11 +10,13 @@ import com.example.platform.typedschema.jooq.generated.Public;
 import com.example.platform.typedschema.jooq.generated.tables.ApplyCommand.ApplyCommandPath;
 import com.example.platform.typedschema.jooq.generated.tables.ArtifactPin.ArtifactPinPath;
 import com.example.platform.typedschema.jooq.generated.tables.ProjectImportMetadata.ProjectImportMetadataPath;
+import com.example.platform.typedschema.jooq.generated.tables.RenderExecutionContext.RenderExecutionContextPath;
 import com.example.platform.typedschema.jooq.generated.tables.RenderJob.RenderJobPath;
 import com.example.platform.typedschema.jooq.generated.tables.SocialPost.SocialPostPath;
 import com.example.platform.typedschema.jooq.generated.tables.Tenant.TenantPath;
 import com.example.platform.typedschema.jooq.generated.tables.TimelineRevision.TimelineRevisionPath;
 import com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot.TimelineSnapshotPath;
+import com.example.platform.typedschema.jooq.generated.tables.Workspace.WorkspacePath;
 import com.example.platform.typedschema.jooq.generated.tables.records.ProjectRecord;
 
 import java.time.LocalDateTime;
@@ -96,6 +98,13 @@ public class Project extends TableImpl<ProjectRecord> {
      */
     public final TableField<ProjectRecord, LocalDateTime> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.LOCALDATETIME(6).nullable(false), this, "");
 
+    /**
+     * The column <code>public.project.workspace_id</code>. Canonical resource
+     * Workspace within tenant. NULL is an unresolved historical mapping, not a
+     * tenant/Project alias.
+     */
+    public final TableField<ProjectRecord, String> WORKSPACE_ID = createField(DSL.name("workspace_id"), SQLDataType.VARCHAR(64), this, "Canonical resource Workspace within tenant. NULL is an unresolved historical mapping, not a tenant/Project alias.");
+
     private Project(Name alias, Table<ProjectRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
     }
@@ -175,12 +184,12 @@ public class Project extends TableImpl<ProjectRecord> {
 
     @Override
     public List<UniqueKey<ProjectRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.UQ_PROJECT_TENANT_ID);
+        return Arrays.asList(Keys.UQ_PROJECT_TENANT_ID, Keys.UX_PROJECT_SCOPE);
     }
 
     @Override
     public List<ForeignKey<ProjectRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.PROJECT__FK_PROJECT_TENANT);
+        return Arrays.asList(Keys.PROJECT__FK_PROJECT_TENANT, Keys.PROJECT__FK_PROJECT_WORKSPACE_TENANT);
     }
 
     private transient TenantPath _tenant;
@@ -193,6 +202,18 @@ public class Project extends TableImpl<ProjectRecord> {
             _tenant = new TenantPath(this, Keys.PROJECT__FK_PROJECT_TENANT, null);
 
         return _tenant;
+    }
+
+    private transient WorkspacePath _workspace;
+
+    /**
+     * Get the implicit join path to the <code>public.workspace</code> table.
+     */
+    public WorkspacePath workspace() {
+        if (_workspace == null)
+            _workspace = new WorkspacePath(this, Keys.PROJECT__FK_PROJECT_WORKSPACE_TENANT, null);
+
+        return _workspace;
     }
 
     private transient ApplyCommandPath _applyCommand;
@@ -284,6 +305,19 @@ public class Project extends TableImpl<ProjectRecord> {
             _timelineSnapshot = new TimelineSnapshotPath(this, null, Keys.TIMELINE_SNAPSHOT__FK_TIMELINE_SNAPSHOT_PROJECT.getInverseKey());
 
         return _timelineSnapshot;
+    }
+
+    private transient RenderExecutionContextPath _renderExecutionContext;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.render_execution_context</code> table
+     */
+    public RenderExecutionContextPath renderExecutionContext() {
+        if (_renderExecutionContext == null)
+            _renderExecutionContext = new RenderExecutionContextPath(this, null, Keys.RENDER_EXECUTION_CONTEXT__RENDER_EXECUTION_CONTEXT_PROJECT_ID_TENANT_ID_WORKSPACE_ID_FKEY.getInverseKey());
+
+        return _renderExecutionContext;
     }
 
     @Override

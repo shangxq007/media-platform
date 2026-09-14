@@ -118,6 +118,20 @@ public class UserRoleAssignmentRecord extends UpdatableRecordImpl<UserRoleAssign
         return (LocalDateTime) get(6);
     }
 
+    /**
+     * Setter for <code>public.user_role_assignment.project_id</code>.
+     */
+    public void setProjectId(String value) {
+        set(7, value);
+    }
+
+    /**
+     * Getter for <code>public.user_role_assignment.project_id</code>.
+     */
+    public String getProjectId() {
+        return (String) get(7);
+    }
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -141,7 +155,7 @@ public class UserRoleAssignmentRecord extends UpdatableRecordImpl<UserRoleAssign
     /**
      * Create a detached, initialised UserRoleAssignmentRecord
      */
-    public UserRoleAssignmentRecord(String id, String tenantId, String workspaceId, String userId, String roleId, String assignedBy, LocalDateTime createdAt) {
+    public UserRoleAssignmentRecord(String id, String tenantId, String workspaceId, String userId, String roleId, String assignedBy, LocalDateTime createdAt, String projectId) {
         super(UserRoleAssignment.USER_ROLE_ASSIGNMENT);
 
         setId(id);
@@ -151,6 +165,7 @@ public class UserRoleAssignmentRecord extends UpdatableRecordImpl<UserRoleAssign
         setRoleId(roleId);
         setAssignedBy(assignedBy);
         setCreatedAt(createdAt);
+        setProjectId(projectId);
         resetChangedOnNotNull();
     }
 }

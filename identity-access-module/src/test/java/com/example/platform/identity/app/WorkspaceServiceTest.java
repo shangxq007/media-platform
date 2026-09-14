@@ -47,6 +47,7 @@ class WorkspaceServiceTest {
                 workspaceGroupRepository, roleRepository, auditPort, actors, users);
         com.example.platform.shared.web.TenantContext.set("ten_1");
         lenient().when(actors.resolveCurrentActor()).thenReturn(Optional.of(com.example.platform.shared.authorization.CanonicalActor.user("actor", "ten_1", java.util.Set.of(), "test")));
+        lenient().when(users.isUsableMembership(anyString(),eq("ten_1"))).thenReturn(true);
         lenient().when(users.findById(anyString())).thenAnswer(i -> Optional.of(new User(i.getArgument(0), "ten_1", "user", null, User.UserRole.MEMBER, User.UserStatus.ACTIVE, Instant.now())));
         lenient().when(workspaceRepository.findById(anyString())).thenAnswer(i -> Optional.of(new Workspace(i.getArgument(0), "ten_1", "My WS", null, "FREE", Workspace.WorkspaceStatus.ACTIVE, Instant.now(), Instant.now())));
         lenient().when(workspaceRepository.lockById(anyString())).thenAnswer(i -> Optional.of(new Workspace(i.getArgument(0), "ten_1", "My WS", null, "FREE", Workspace.WorkspaceStatus.ACTIVE, Instant.now(), Instant.now())));

@@ -29,10 +29,10 @@ public class PermissionService {
         return roleRepository.findAllPermissions();
     }
 
-    public boolean hasPermission(String userId, String workspaceId, String permissionKey) {
+    public boolean hasPermission(String userId, String tenantId, String workspaceId, String permissionKey) {
         List<com.example.platform.identity.domain.UserRoleAssignment> assignments =
                 roleRepository.findUserRoleAssignmentsByWorkspaceId(workspaceId).stream()
-                        .filter(a -> a.userId().equals(userId))
+                        .filter(a -> a.userId().equals(userId) && tenantId.equals(a.tenantId()))
                         .toList();
         for (com.example.platform.identity.domain.UserRoleAssignment assignment : assignments) {
             List<Permission> permissions = roleRepository.findPermissionsByRoleId(assignment.roleId());
@@ -43,6 +43,22 @@ public class PermissionService {
             }
         }
         return false;
+    }
+
+    public boolean hasProjectPermission(String userId,String tenantId,String projectId,String permissionKey) {
+        return roleRepository.findProjectRoleAssignments(userId,tenantId,projectId).stream()
+                .flatMap(a->roleRepository.findPermissionsByRoleId(a.roleId()).stream())
+                .anyMatch(p->p.permissionKey().equals(permissionKey));
+    }
+
+    public boolean hasTenantPermission(String userId, String tenantId, String permissionKey) {
+        return resolveTenantPermissions(userId, tenantId).contains(permissionKey);
+    }
+
+    public Set<String> resolveTenantPermissions(String userId, String tenantId) {
+        return roleRepository.findTenantRoleAssignments(userId,tenantId).stream()
+                .flatMap(a -> roleRepository.findPermissionsByRoleId(a.roleId()).stream())
+                .map(Permission::permissionKey).collect(Collectors.toSet());
     }
 
     public Set<String> resolvePermissions(String userId, String workspaceId) {

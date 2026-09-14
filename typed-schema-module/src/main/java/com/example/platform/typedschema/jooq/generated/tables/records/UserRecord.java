@@ -118,6 +118,24 @@ public class UserRecord extends UpdatableRecordImpl<UserRecord> {
         return (LocalDateTime) get(6);
     }
 
+    /**
+     * Setter for <code>public.user.account_id</code>. Verified Account link.
+     * NULL preserves historical membership awaiting explicit identity mapping;
+     * never infer by email.
+     */
+    public void setAccountId(String value) {
+        set(7, value);
+    }
+
+    /**
+     * Getter for <code>public.user.account_id</code>. Verified Account link.
+     * NULL preserves historical membership awaiting explicit identity mapping;
+     * never infer by email.
+     */
+    public String getAccountId() {
+        return (String) get(7);
+    }
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -141,7 +159,7 @@ public class UserRecord extends UpdatableRecordImpl<UserRecord> {
     /**
      * Create a detached, initialised UserRecord
      */
-    public UserRecord(String id, String tenantId, String username, String email, String role, String status, LocalDateTime createdAt) {
+    public UserRecord(String id, String tenantId, String username, String email, String role, String status, LocalDateTime createdAt, String accountId) {
         super(User.USER);
 
         setId(id);
@@ -151,6 +169,7 @@ public class UserRecord extends UpdatableRecordImpl<UserRecord> {
         setRole(role);
         setStatus(status);
         setCreatedAt(createdAt);
+        setAccountId(accountId);
         resetChangedOnNotNull();
     }
 }

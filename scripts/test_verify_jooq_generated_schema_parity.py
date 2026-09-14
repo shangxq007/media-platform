@@ -281,6 +281,9 @@ class RepositoryIntegrationTest(unittest.TestCase):
         )
 
         with tempfile.TemporaryDirectory() as temporary_directory:
+            for migration in self.schema.parent.glob("V*__*.sql"):
+                if migration != self.schema:
+                    shutil.copy2(migration, Path(temporary_directory) / migration.name)
             schema_path = Path(temporary_directory) / "V1__initial_schema.sql"
             schema_path.write_text("".join(schema_lines), encoding="utf-8")
             with self.assertRaisesRegex(
@@ -288,6 +291,13 @@ class RepositoryIntegrationTest(unittest.TestCase):
                 "OWNER_UNIQUE_KEY_PARITY_SCHEMA_GENERATED_DISAGREEMENT",
             ):
                 verifier.verify(schema_path, self.generated)
+
+    def test_missing_followup_migration_cannot_match_current_generated_tree(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            baseline = Path(directory) / self.schema.name
+            shutil.copy2(self.schema, baseline)
+            with self.assertRaisesRegex(verifier.VerificationError, "UNEXPECTED_GENERATED_TABLE"):
+                verifier.verify(baseline, self.generated)
 
 
 if __name__ == "__main__":

@@ -37,7 +37,7 @@ public class OidcDevBootstrapRunner implements ApplicationRunner {
         if (tenantId == null || tenantId.isBlank()) {
             tenantId = DevWorkspaceBootstrapService.LEGACY_DEV_TENANT_ID;
         }
-        devWorkspaceBootstrapService.ensureDefaultWorkspace(tenantId, "PRO");
+        devWorkspaceBootstrapService.ensureDefaultTenant(tenantId, "PRO");
         devWorkspaceBootstrapService.ensureLegacyDevUser(tenantId);
         log.info("OIDC dev bootstrap complete for tenant {}", tenantId);
     }

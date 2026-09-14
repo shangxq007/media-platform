@@ -31,7 +31,10 @@ class JwtAuthFilterTest {
     @BeforeEach
     void setUp() {
         jwtProperties = new JwtProperties("test-secret-key-that-is-at-least-256-bits-long-for-hmac!", 3600000);
-        filter = new JwtAuthFilter(jwtProperties);
+        var memberships=mock(com.example.platform.identity.api.account.AccountIdentityQueries.class);
+        when(memberships.resolve(eq("urn:media-platform:local-hmac"),anyString(),anyString()))
+                .thenAnswer(i->new com.example.platform.identity.api.account.AccountMembership("account-test",i.getArgument(1),i.getArgument(2),"MEMBER"));
+        filter = new JwtAuthFilter(jwtProperties,memberships);
         key = Keys.hmacShaKeyFor(jwtProperties.secretKey().getBytes(StandardCharsets.UTF_8));
         filterChain = mock(FilterChain.class);
     }
@@ -43,7 +46,7 @@ class JwtAuthFilterTest {
         JwtProperties emptySecret = new JwtProperties("", 3600000);
         IllegalStateException ex = assertThrows(
                 IllegalStateException.class,
-                () -> new JwtAuthFilter(emptySecret));
+                () -> new JwtAuthFilter(emptySecret, org.mockito.Mockito.mock(com.example.platform.identity.api.account.AccountIdentityQueries.class)));
         assertTrue(ex.getMessage().contains("APP_JWT_SECRET"),
                 "Error message must mention APP_JWT_SECRET");
     }
@@ -53,7 +56,7 @@ class JwtAuthFilterTest {
         JwtProperties blankSecret = new JwtProperties("   ", 3600000);
         IllegalStateException ex = assertThrows(
                 IllegalStateException.class,
-                () -> new JwtAuthFilter(blankSecret));
+                () -> new JwtAuthFilter(blankSecret, org.mockito.Mockito.mock(com.example.platform.identity.api.account.AccountIdentityQueries.class)));
         assertTrue(ex.getMessage().contains("APP_JWT_SECRET"),
                 "Error message must mention APP_JWT_SECRET");
     }
@@ -63,7 +66,7 @@ class JwtAuthFilterTest {
         JwtProperties devDefault = new JwtProperties(JwtProperties.INSECURE_DEV_DEFAULT, 3600000);
         IllegalStateException ex = assertThrows(
                 IllegalStateException.class,
-                () -> new JwtAuthFilter(devDefault));
+                () -> new JwtAuthFilter(devDefault, org.mockito.Mockito.mock(com.example.platform.identity.api.account.AccountIdentityQueries.class)));
         assertTrue(ex.getMessage().contains("APP_JWT_SECRET"),
                 "Error message must mention APP_JWT_SECRET");
     }
@@ -72,7 +75,7 @@ class JwtAuthFilterTest {
     void constructorAcceptsStrongSecret() {
         JwtProperties strong = new JwtProperties(
                 "a-sufficiently-long-and-strong-secret-key-for-hmac256-signing!!", 3600000);
-        assertDoesNotThrow(() -> new JwtAuthFilter(strong));
+        assertDoesNotThrow(() -> new JwtAuthFilter(strong, org.mockito.Mockito.mock(com.example.platform.identity.api.account.AccountIdentityQueries.class)));
     }
 
     private String createToken(String subject, String tenantId, List<String> roles) {
@@ -179,7 +182,7 @@ class JwtAuthFilterTest {
             assertTrue(authentication.isAuthenticated());
             assertEquals("user-1", authentication.getName());
             assertTrue(authentication.getAuthorities().stream()
-                    .anyMatch(authority -> authority.getAuthority().equals("ROLE_USER")));
+                    .anyMatch(authority -> authority.getAuthority().equals("ROLE_MEMBER")));
             return null;
         }).when(filterChain).doFilter(request, response);
 
@@ -188,7 +191,8 @@ class JwtAuthFilterTest {
         verify(filterChain).doFilter(request, response);
         verify(request).setAttribute("jwt.subject", "user-1");
         verify(request).setAttribute("jwt.tenantId", "tenant-1");
-        verify(request).setAttribute(eq("jwt.roles"), any(List.class));
+        verify(request).setAttribute("jwt.roles", List.of("MEMBER"));
+        verify(request).setAttribute("auth.subject", "user-1");
         verify(request).setAttribute("request.source", "WEB");
         assertNull(TenantContext.get());
         assertNull(SecurityContextHolder.getContext().getAuthentication());

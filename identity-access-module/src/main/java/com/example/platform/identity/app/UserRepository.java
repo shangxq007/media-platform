@@ -41,6 +41,16 @@ public class UserRepository {
         return Optional.ofNullable(record).map(this::mapRecord);
     }
 
+    /** One canonical persisted human-membership eligibility rule for authentication and ownership. */
+    public boolean isUsableMembership(String id,String tenantId) {
+        var account=com.example.platform.typedschema.jooq.generated.tables.Account.ACCOUNT;
+        var tenant=com.example.platform.typedschema.jooq.generated.tables.Tenant.TENANT;
+        return dsl.fetchExists(dsl.selectOne().from(USER)
+                .join(account).on(USER.ACCOUNT_ID.eq(account.ID)).join(tenant).on(USER.TENANT_ID.eq(tenant.ID))
+                .where(USER.ID.eq(id)).and(USER.TENANT_ID.eq(tenantId)).and(USER.STATUS.eq("ACTIVE"))
+                .and(account.STATUS.eq("ACTIVE")).and(tenant.STATUS.eq("ACTIVE")));
+    }
+
     public List<User> findByTenantId(String tenantId) {
         return dsl.select()
                 .from(USER)

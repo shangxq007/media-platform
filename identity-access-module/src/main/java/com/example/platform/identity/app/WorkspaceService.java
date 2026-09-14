@@ -209,14 +209,25 @@ public class WorkspaceService implements com.example.platform.identity.api.works
 
     /** Same persisted-user eligibility for authenticated actors and usable ownership. */
     private boolean eligibleUser(String userId, String tenantId) {
-        return userId != null && users.findById(userId)
-                .filter(u -> tenantId.equals(u.tenantId()) && u.status() == User.UserStatus.ACTIVE).isPresent();
+        return userId != null && users.isUsableMembership(userId, tenantId);
+    }
+
+    /** Identity-internal invariant for membership lifecycle commands, under the same owner locks. */
+    public void protectOwnershipBeforeDisablingMembership(String tenantId,String userId) {
+        for(var workspace:workspaceRepository.findByTenantId(tenantId).stream().sorted(java.util.Comparator.comparing(Workspace::id)).toList()) {
+            workspaceRepository.lockById(workspace.id()).orElseThrow();
+            var owners=workspaceMemberRepository.findUnambiguousActiveOwners(workspace.id()).stream()
+                    .filter(m->eligibleUser(m.userId(),tenantId)).toList();
+            if(owners.stream().anyMatch(m->m.userId().equals(userId))&&owners.size()<=1)
+                throw conflict("Cannot disable the last usable Workspace owner");
+        }
     }
 
     private Workspace access(String workspaceId, boolean mutate, boolean manage) {
         var actor = actor();
         Workspace workspace = (mutate ? workspaceRepository.lockById(workspaceId) : workspaceRepository.findById(workspaceId))
                 .orElseThrow(() -> new IllegalArgumentException("Workspace not found"));
+        activeUser(actor.actorId(), actor.tenantId());
         if (!actor.tenantId().equals(workspace.tenantId()) || workspace.status() != Workspace.WorkspaceStatus.ACTIVE) throw denied();
         WorkspaceMember member = workspaceMemberRepository.findByWorkspaceIdAndUserId(workspaceId, actor.actorId())
                 .filter(m -> m.status() == WorkspaceMember.MemberStatus.ACTIVE).orElseThrow(WorkspaceService::denied);

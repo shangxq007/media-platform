@@ -16,7 +16,7 @@ class SecurityFilterChainConfigTest {
     @Test
     void shouldCreateMcpApiKeyFilterRegistration() {
         JwtProperties props = new JwtProperties("test-secret-key-that-is-at-least-256-bits-long-for-hmac!", 3600000);
-        JwtAuthFilter jwtFilter = new JwtAuthFilter(props);
+        JwtAuthFilter jwtFilter = new JwtAuthFilter(props, org.mockito.Mockito.mock(com.example.platform.identity.api.account.AccountIdentityQueries.class));
         IdentityAccessService identityService = mock(IdentityAccessService.class);
         IdentityProperties identityProps = new IdentityProperties();
         ApiKeyAuthFilter apiKeyFilter = new ApiKeyAuthFilter(identityService, identityProps);

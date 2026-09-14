@@ -17,7 +17,7 @@ class ProjectReadAuthorizationTest {
     final CanonicalActorResolver actors = mock(CanonicalActorResolver.class);
     final AuthorizationDecisionPort authorization = mock(AuthorizationDecisionPort.class, CALLS_REAL_METHODS);
     final TenantProjectService service = new TenantProjectService(mock(TenantRepository.class), projects,
-            mock(UserRepository.class), mock(IdentityAccessService.class), actors, authorization);
+            mock(UserRepository.class), mock(IdentityAccessService.class), actors, authorization, org.mockito.Mockito.mock(com.example.platform.identity.api.workspace.WorkspaceQueries.class));
     final CanonicalActor actor = CanonicalActor.user("reader", "tenant", Set.of(), "test");
     @AfterEach void clear() { TenantContext.clear(); }
 

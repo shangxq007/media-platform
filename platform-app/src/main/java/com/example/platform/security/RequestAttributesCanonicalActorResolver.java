@@ -31,6 +31,11 @@ import java.util.Set;
 @org.springframework.core.annotation.Order(0)
 public class RequestAttributesCanonicalActorResolver implements CanonicalActorResolver {
 
+    private final com.example.platform.identity.api.account.AccountIdentityQueries memberships;
+    public RequestAttributesCanonicalActorResolver(com.example.platform.identity.api.account.AccountIdentityQueries memberships) {
+        this.memberships = memberships;
+    }
+
     public static final String ATTR_SUBJECT = "jwt.subject";
     public static final String ATTR_TENANT = "jwt.tenantId";
     public static final String ATTR_ROLES = "jwt.roles";
@@ -43,36 +48,15 @@ public class RequestAttributesCanonicalActorResolver implements CanonicalActorRe
             return Optional.empty();
         }
         HttpServletRequest request = attributes.getRequest();
-        Object subject = request.getAttribute(ATTR_SUBJECT);
+        Object subject = request.getAttribute("auth.subject");
         if (subject == null || subject.toString().isBlank()) {
             return Optional.empty();
         }
-        String actorId = subject.toString();
         String tenantId = attr(request, ATTR_TENANT);
-        if (tenantId == null || tenantId.isBlank()) {
-            tenantId = TenantContext.get();
-        }
-        Set<String> roles = rolesOf(request.getAttribute(ATTR_ROLES));
-        String source = attr(request, ATTR_SOURCE);
-        String authSource = source != null ? source.toLowerCase() : "jwt";
-        return Optional.of(new CanonicalActor(actorId, ActorType.USER, tenantId, roles, authSource));
-    }
-
-    @SuppressWarnings("unchecked")
-    private static Set<String> rolesOf(Object rolesAttr) {
-        if (rolesAttr instanceof List<?> list) {
-            List<String> converted = new ArrayList<>();
-            for (Object o : list) {
-                if (o != null) {
-                    converted.add(o.toString());
-                }
-            }
-            return Set.copyOf(converted);
-        }
-        if (rolesAttr instanceof Set<?> set) {
-            return set.stream().map(Object::toString).collect(java.util.stream.Collectors.toSet());
-        }
-        return Set.of();
+        String issuer = attr(request, "jwt.issuer");
+        var membership = memberships.resolve(issuer, subject.toString(), tenantId);
+        return Optional.of(new CanonicalActor(membership.membershipId(), ActorType.USER,
+                membership.tenantId(), Set.of(membership.role()), "verified-issuer-subject", membership.accountId()));
     }
 
     private static String attr(HttpServletRequest request, String name) {

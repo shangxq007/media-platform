@@ -14,6 +14,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
+import org.jooq.Check;
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.Index;
@@ -29,6 +30,7 @@ import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
@@ -89,6 +91,11 @@ public class UserRoleAssignment extends TableImpl<UserRoleAssignmentRecord> {
      */
     public final TableField<UserRoleAssignmentRecord, LocalDateTime> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.LOCALDATETIME(6).nullable(false), this, "");
 
+    /**
+     * The column <code>public.user_role_assignment.project_id</code>.
+     */
+    public final TableField<UserRoleAssignmentRecord, String> PROJECT_ID = createField(DSL.name("project_id"), SQLDataType.VARCHAR(64), this, "");
+
     private UserRoleAssignment(Name alias, Table<UserRoleAssignmentRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
     }
@@ -133,6 +140,13 @@ public class UserRoleAssignment extends TableImpl<UserRoleAssignmentRecord> {
     @Override
     public UniqueKey<UserRoleAssignmentRecord> getPrimaryKey() {
         return Keys.USER_ROLE_ASSIGNMENT_PKEY;
+    }
+
+    @Override
+    public List<Check<UserRoleAssignmentRecord>> getChecks() {
+        return Arrays.asList(
+            Internal.createCheck(this, DSL.name("ck_role_assignment_scope"), "(((workspace_id IS NULL) OR (project_id IS NULL)))", true)
+        );
     }
 
     @Override
