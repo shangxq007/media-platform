@@ -19,10 +19,10 @@ public class AccountMembershipService implements AccountIdentityQueries {
     public AccountMembership resolve(String issuer, String subject, String tenant) {
         if (issuer==null || subject==null || tenant==null) throw denied();
         var rows=jdbc.query("""
-                select a.id account_id,u.id membership_id,u.tenant_id,u.role
+                select a.id account_id,u.id membership_id,u.tenant_id,u.role,a.platform_admin
                 from account a join "user" u on u.account_id=a.id join tenant t on t.id=u.tenant_id
                 where a.issuer=? and a.subject=? and u.tenant_id=?
-                """,(r,n)->new AccountMembership(r.getString("account_id"),r.getString("membership_id"),r.getString("tenant_id"),r.getString("role")),issuer,subject,tenant);
+                """,(r,n)->new AccountMembership(r.getString("account_id"),r.getString("membership_id"),r.getString("tenant_id"),r.getString("role"),r.getBoolean("platform_admin")),issuer,subject,tenant);
         if(rows.size()!=1||!users.isUsableMembership(rows.getFirst().membershipId(),tenant)) throw denied();return rows.getFirst();
     }
 
@@ -67,6 +67,13 @@ public class AccountMembershipService implements AccountIdentityQueries {
         jdbc.update("update \"user\" set account_id=? where id=? and tenant_id=?",account,membership,tenant);
         return jdbc.queryForObject("select id,tenant_id,role from \"user\" where id=?",(r,n)->new AccountMembership(account,r.getString("id"),r.getString("tenant_id"),r.getString("role")),membership);
     }
+    /** Explicit platform-account administration; never inferred from a tenant ADMIN membership. */
+    @Transactional
+    public void setPlatformAdministrator(CanonicalActor operator,String account,boolean administrator) {
+        requireProvisioner(operator);
+        if(jdbc.update("update account set platform_admin=? where id=?",administrator,account)!=1)throw denied();
+    }
+
     @Transactional
     public void setMembershipActive(CanonicalActor operator,String account,String tenant,boolean active) {
         requireProvisioner(operator);

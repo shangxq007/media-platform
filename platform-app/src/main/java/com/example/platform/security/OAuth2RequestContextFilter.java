@@ -62,6 +62,7 @@ public class OAuth2RequestContextFilter extends OncePerRequestFilter {
         }
         request.setAttribute("auth.subject", subject);
         request.setAttribute("identity.accountId", membership.accountId());
+            request.setAttribute("identity.platformAdministrator", membership.platformAdministrator());
         subject = membership.membershipId();
         List<String> roles = List.of(membership.role());
         SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt,

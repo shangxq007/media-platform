@@ -1,4 +1,5 @@
 package com.example.platform.identity.api.account;
-
-/** Stable Identity-owned Account and selected business membership; never a grant or balance. */
-public record AccountMembership(String accountId, String membershipId, String tenantId, String role) {}
+/** Account platform administration and tenant membership roles are separate authorities. */
+public record AccountMembership(String accountId,String membershipId,String tenantId,String role,boolean platformAdministrator) {
+    public AccountMembership(String accountId,String membershipId,String tenantId,String role){this(accountId,membershipId,tenantId,role,false);}
+}

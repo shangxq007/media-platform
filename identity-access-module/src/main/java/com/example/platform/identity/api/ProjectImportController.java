@@ -24,6 +24,8 @@ public class ProjectImportController {
         try {
             ProjectImportResponse response = importService.executeImport(tenantId, request);
             return ResponseEntity.ok(response);
+        } catch (com.example.platform.shared.web.PlatformException e) {
+            throw e;
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of(
                     "error", "import_failed",

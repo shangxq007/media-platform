@@ -55,7 +55,12 @@ public class RenderAcceptanceContextService implements ExecutionContextQueries {
         var rows=jdbc.queryForList("select context_json::text from render_execution_context where job_id=? and tenant_id=? and project_id=?",String.class,job,tenant,project);
         if(rows.size()!=1)throw new PlatformException(CommonErrorCode.CONFLICT,"Historical task context unresolved");
         String value=rows.getFirst();
-        try {return json.readValue(value,AcceptedExecutionContext.class);}
+        try {
+            var restored=json.readValue(value,AcceptedExecutionContext.class);
+            if(!tenant.equals(restored.tenantId())||!project.equals(restored.projectId())||!job.equals(restored.jobId()))
+                throw new IllegalStateException("Persisted context key/scope mismatch");
+            return restored;
+        }
         catch(com.fasterxml.jackson.core.JsonProcessingException ex){throw new IllegalStateException("Invalid persisted execution facts",ex);}
     }
 }

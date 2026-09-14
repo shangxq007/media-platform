@@ -100,20 +100,8 @@ public class TenantProjectController {
      * Check ADMIN role via both OAuth2 SecurityContext and Legacy JWT request attribute.
      */
     private static boolean isAdmin(jakarta.servlet.http.HttpServletRequest request) {
-        // OAuth2 / Spring Security path: GrantedAuthority("ROLE_ADMIN")
-        if (request.isUserInRole("ADMIN")) {
-            return true;
-        }
-        // Legacy HMAC JWT path: roles stored in jwt.roles request attribute
-        Object rolesAttr = request.getAttribute("jwt.roles");
-        if (rolesAttr instanceof java.util.List<?> roles) {
-            return roles.stream().anyMatch(r -> r != null && "ADMIN".equalsIgnoreCase(r.toString().trim()));
-        } else if (rolesAttr instanceof String rolesStr) {
-            for (String r : rolesStr.split(",")) {
-                if ("ADMIN".equalsIgnoreCase(r.trim())) return true;
-            }
-        }
-        return false;
+        // Listing all tenants requires an explicit Account-level fact, not a tenant ADMIN role.
+        return Boolean.TRUE.equals(request.getAttribute("identity.platformAdministrator"));
     }
 
     private static String extractActor(jakarta.servlet.http.HttpServletRequest request) {

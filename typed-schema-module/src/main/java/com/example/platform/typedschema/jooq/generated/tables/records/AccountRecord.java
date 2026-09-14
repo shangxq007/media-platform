@@ -63,31 +63,45 @@ public class AccountRecord extends UpdatableRecordImpl<AccountRecord> {
     }
 
     /**
+     * Setter for <code>public.account.platform_admin</code>.
+     */
+    public void setPlatformAdmin(Boolean value) {
+        set(3, value);
+    }
+
+    /**
+     * Getter for <code>public.account.platform_admin</code>.
+     */
+    public Boolean getPlatformAdmin() {
+        return (Boolean) get(3);
+    }
+
+    /**
      * Setter for <code>public.account.status</code>.
      */
     public void setStatus(String value) {
-        set(3, value);
+        set(4, value);
     }
 
     /**
      * Getter for <code>public.account.status</code>.
      */
     public String getStatus() {
-        return (String) get(3);
+        return (String) get(4);
     }
 
     /**
      * Setter for <code>public.account.created_at</code>.
      */
     public void setCreatedAt(LocalDateTime value) {
-        set(4, value);
+        set(5, value);
     }
 
     /**
      * Getter for <code>public.account.created_at</code>.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(4);
+        return (LocalDateTime) get(5);
     }
 
     // -------------------------------------------------------------------------
@@ -113,12 +127,13 @@ public class AccountRecord extends UpdatableRecordImpl<AccountRecord> {
     /**
      * Create a detached, initialised AccountRecord
      */
-    public AccountRecord(String id, String issuer, String subject, String status, LocalDateTime createdAt) {
+    public AccountRecord(String id, String issuer, String subject, Boolean platformAdmin, String status, LocalDateTime createdAt) {
         super(Account.ACCOUNT);
 
         setId(id);
         setIssuer(issuer);
         setSubject(subject);
+        setPlatformAdmin(platformAdmin);
         setStatus(status);
         setCreatedAt(createdAt);
         resetChangedOnNotNull();

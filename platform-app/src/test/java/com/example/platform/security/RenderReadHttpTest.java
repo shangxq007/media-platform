@@ -19,7 +19,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 import static org.junit.jupiter.api.Assertions.*;
 
-/** Real HTTP/JWT/RBAC/application/repository path on a fresh Testcontainers database migrated by Flyway V1. */
+/** Real HTTP/JWT/RBAC/application/repository path on a fresh Testcontainers database migrated by the complete Flyway stream. */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles({"test", "preview"})
 @TestPropertySource(properties = {"app.security.enabled=true", "app.security.oauth2.enabled=false",
@@ -33,13 +33,22 @@ class RenderReadHttpTest extends PostgresTestContainerSupport {
     final ObjectMapper mapper = new ObjectMapper();
     final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
     @BeforeEach void seed() {
-        jdbc.execute("TRUNCATE TABLE render_job, project, tenant, user_role_assignment, role_permission, permission, role CASCADE");
+        jdbc.execute("TRUNCATE TABLE render_job, project, workspace_member, workspace, tenant, user_role_assignment, role_permission, permission, role CASCADE");
         jdbc.execute("insert into tenant(id,name,status,created_at) values('read-tenant','Read test','ACTIVE',now()),('foreign-tenant','Foreign','ACTIVE',now())");
-        jdbc.execute("insert into project(id,tenant_id,name,status,created_at) values('read-project','read-tenant','Readable','ACTIVE',now()),('empty-project','read-tenant','Empty','ACTIVE',now()),('hidden-project','read-tenant','Hidden','ACTIVE',now()),('foreign-project','foreign-tenant','Foreign','ACTIVE',now())");
+        jdbc.execute("insert into workspace(id,tenant_id,name,status,created_at,updated_at) values ('read-workspace','read-tenant','Read scope','ACTIVE',now(),now()),('foreign-workspace','foreign-tenant','Foreign scope','ACTIVE',now(),now())");
+        jdbc.execute("insert into project(id,tenant_id,workspace_id,name,status,created_at) values('read-project','read-tenant','read-workspace','Readable','ACTIVE',now()),('empty-project','read-tenant','read-workspace','Empty','ACTIVE',now()),('hidden-project','read-tenant','read-workspace','Hidden','ACTIVE',now()),('foreign-project','foreign-tenant','foreign-workspace','Foreign','ACTIVE',now())");
+        var accounts=context.getBean(com.example.platform.identity.app.AccountMembershipService.class);
+        var operator=com.example.platform.shared.authorization.CanonicalActor.system("system:identity-provisioning",null);
+        for(String member:List.of("reader","denied")) {
+            jdbc.update("insert into \"user\"(id,tenant_id,username,email,role,status,created_at) values (?,'read-tenant',?,?,'MEMBER','ACTIVE',now()) on conflict(id) do nothing",member,member,member+"@test.invalid");
+            String account=accounts.provisionVerifiedAccount(operator,"urn:media-platform:local-hmac",member);
+            accounts.linkMembership(operator,account,"read-tenant",member);
+            jdbc.update("insert into workspace_member(id,workspace_id,user_id,role,status,joined_at,updated_at) values (?,'read-workspace',?,'VIEWER','ACTIVE',now(),now())","member-"+member,member);
+        }
         jdbc.execute("insert into role(id,role_key,name,scope,created_at) values('read-role','READ_TEST','Read-only test','WORKSPACE',now())");
         jdbc.execute("insert into permission(id,permission_key,name,created_at) values('read-permission','READ','Read',now())");
         jdbc.execute("insert into role_permission(id,role_id,permission_id,created_at) values('read-rp','read-role','read-permission',now())");
-        jdbc.execute("insert into user_role_assignment(id,tenant_id,workspace_id,user_id,role_id,created_at) values('read-assignment','read-tenant','read-project','reader','read-role',now()),('empty-assignment','read-tenant','empty-project','reader','read-role',now())");
+        jdbc.execute("insert into user_role_assignment(id,tenant_id,project_id,user_id,role_id,created_at) values('read-assignment','read-tenant','read-project','reader','read-role',now()),('empty-assignment','read-tenant','empty-project','reader','read-role',now())");
         // Existing synthetic terminal rows only: no submission, queueing, provider call or mutation HTTP request.
         jdbc.execute("insert into render_job(id,project_id,tenant_id,timeline_snapshot_id,profile,status,created_at,initiator_type,initiator_id,initiator_tenant_id) values('read-job','read-project','read-tenant','snapshot','read-profile','FAILED',now(),'USER','reader','read-tenant'),('hidden-job','hidden-project','read-tenant','hidden-snapshot','hidden-profile','COMPLETED',now(),'USER','other','read-tenant'),('foreign-job','foreign-project','foreign-tenant','foreign-snapshot','foreign-profile','COMPLETED',now(),'USER','other','foreign-tenant')");
     }
@@ -105,10 +114,10 @@ class RenderReadHttpTest extends PostgresTestContainerSupport {
         assertEquals(403, get(jobs("read-project") + "/read-job", auth).statusCode());
         assertEquals(403, get("/api/identity/projects/read-project", auth).statusCode());
     }
-    @Test void absentProjectWithAReadGrantStillRequiresActualOwnerExistence() throws Exception {
-        jdbc.execute("insert into user_role_assignment(id,tenant_id,workspace_id,user_id,role_id,created_at) values('absent-assignment','read-tenant','absent-project','reader','read-role',now())");
+    @Test void absentProjectCannotDeriveScopeFromAStaleGrant() throws Exception {
+        jdbc.execute("insert into user_role_assignment(id,tenant_id,project_id,user_id,role_id,created_at) values('absent-assignment','read-tenant','absent-project','reader','read-role',now())");
         String auth = token("reader", "read-tenant");
-        assertEquals(404, get("/api/identity/projects/absent-project", auth).statusCode());
-        assertEquals(404, get(jobs("absent-project"), auth).statusCode());
+        assertEquals(403, get("/api/identity/projects/absent-project", auth).statusCode());
+        assertEquals(403, get(jobs("absent-project"), auth).statusCode());
     }
 }

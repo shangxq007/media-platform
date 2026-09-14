@@ -221,6 +221,9 @@ class AccountResourceExecutionAcceptanceTest extends WorkspaceAuthorityHttpTest 
         assertEquals(403,callScope(tenant,creator,"POST","/api/billing/subscriptions",request).statusCode());
         String subject="billing-subject-"+UUID.randomUUID();String a=accounts.provisionVerifiedAccount(operator(),"urn:media-platform:local-hmac",subject);
         var admin=accounts.createMembership(operator(),a,tenant,"billing-admin","billing@test.invalid","ADMIN");
+        assertEquals(403,callScope(tenant,subject,"GET","/api/identity/admin/tenants",null).statusCode());
+        accounts.setPlatformAdministrator(operator(),a,true);
+        assertEquals(200,callScope(tenant,subject,"GET","/api/identity/admin/tenants",null).statusCode());
         var response=callScope(tenant,subject,"POST","/api/billing/subscriptions",request);assertEquals(200,response.statusCode(),response.body());
         assertEquals(tenant,json.readTree(response.body()).get("beneficiaryTenantId").asText());
         assertEquals(1,count("select count(*) from subscription_contract where tenant_id=? and subject_type='ORGANIZATION' and subject_id=?",tenant,tenant));
@@ -260,5 +263,15 @@ class AccountResourceExecutionAcceptanceTest extends WorkspaceAuthorityHttpTest 
         assertEquals(200,callScope(tenant,member,"GET","/api/identity/projects/"+old,null).statusCode());
         assertThrows(org.springframework.dao.DataAccessException.class,()->jdbc.update("update project set workspace_id=? where id=?",wsB,old));
         assertEquals(wsA,jdbc.queryForObject("select workspace_id from project where id=?",String.class,old));
+    }
+
+    @Test void projectImportCreatesOnlyInExplicitAuthorizedWorkspace() throws Exception {
+        Map<String,Object> payload=Map.of("schemaVersion","project-export-v1","exportMode","metadata_only","project",Map.of("projectId","historical-source","name","Imported"));
+        var body=new HashMap<String,Object>();body.put("payload",payload);body.put("createNewProject",true);body.put("workspaceId",wsA);body.put("assetImportPolicy","metadata_only");
+        var response=callScope(tenant,creator,"POST","/api/identity/tenants/"+tenant+"/project-imports",body);
+        String project=readId(response,"projectId");assertEquals(wsA,jdbc.queryForObject("select workspace_id from project where id=?",String.class,project));
+        long before=count("select count(*) from project where tenant_id=?",tenant);body.put("workspaceId",wsB);
+        assertEquals(403,callScope(tenant,creator,"POST","/api/identity/tenants/"+tenant+"/project-imports",body).statusCode());
+        assertEquals(before,count("select count(*) from project where tenant_id=?",tenant));
     }
 }

@@ -4,6 +4,7 @@ create table account (
     id varchar(64) primary key,
     issuer varchar(512) not null,
     subject varchar(512) not null,
+    platform_admin boolean not null default false,
     status varchar(32) not null,
     created_at timestamp not null,
     unique (issuer, subject)

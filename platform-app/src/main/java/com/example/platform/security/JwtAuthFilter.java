@@ -135,6 +135,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             var membership = memberships.resolve("urn:media-platform:local-hmac", subject, tenantId);
             request.setAttribute("auth.subject", subject);
             request.setAttribute("identity.accountId", membership.accountId());
+            request.setAttribute("identity.platformAdministrator", membership.platformAdministrator());
             subject = membership.membershipId();
             roles = List.of(membership.role());
             // This filter verifies the platform HMAC identity namespace, not an arbitrary external issuer.

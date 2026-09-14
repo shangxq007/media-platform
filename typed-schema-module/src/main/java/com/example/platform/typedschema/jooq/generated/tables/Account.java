@@ -73,6 +73,11 @@ public class Account extends TableImpl<AccountRecord> {
     public final TableField<AccountRecord, String> SUBJECT = createField(DSL.name("subject"), SQLDataType.VARCHAR(512).nullable(false), this, "");
 
     /**
+     * The column <code>public.account.platform_admin</code>.
+     */
+    public final TableField<AccountRecord, Boolean> PLATFORM_ADMIN = createField(DSL.name("platform_admin"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.field(DSL.raw("false"), SQLDataType.BOOLEAN)), this, "");
+
+    /**
      * The column <code>public.account.status</code>.
      */
     public final TableField<AccountRecord, String> STATUS = createField(DSL.name("status"), SQLDataType.VARCHAR(32).nullable(false), this, "");

@@ -46,6 +46,7 @@ class MultiTenancyIsolationTest extends PostgresTestContainerSupport {
         jdbc.execute("CREATE TABLE IF NOT EXISTS project ("
                 + "id varchar(64) primary key,"
                 + "tenant_id varchar(64) not null,"
+                + "workspace_id varchar(64),"
                 + "name varchar(255) not null,"
                 + "description text,"
                 + "status varchar(32) not null,"
@@ -96,10 +97,19 @@ class MultiTenancyIsolationTest extends PostgresTestContainerSupport {
         properties.setApiKeyAuthEnabled(false);
         properties.setApiKeys(new LinkedHashMap<>());
         identityAccessService = new IdentityAccessService(properties, apiKeyRepository);
+        var workspaces=org.mockito.Mockito.mock(com.example.platform.identity.api.workspace.WorkspaceQueries.class);
+        org.mockito.Mockito.when(workspaces.getWorkspace(org.mockito.ArgumentMatchers.anyString())).thenAnswer(invocation->
+                new com.example.platform.identity.api.workspace.WorkspaceResponse(invocation.getArgument(0),TenantContext.get(),"Fixture",null,"FREE","ACTIVE",Instant.now(),Instant.now()));
         tenantProjectService = new TenantProjectService(tenantRepository, projectRepository,
                 userRepository, identityAccessService,
                 () -> java.util.Optional.ofNullable(TenantContext.get()).map(tenant -> com.example.platform.shared.authorization.CanonicalActor.user("fixture", tenant, java.util.Set.of(), "test")),
-                request -> com.example.platform.shared.authorization.AuthorizationDecision.allow("tenant-repository-test-only"), org.mockito.Mockito.mock(com.example.platform.identity.api.workspace.WorkspaceQueries.class));
+                request -> com.example.platform.shared.authorization.AuthorizationDecision.allow("tenant-repository-test-only"), workspaces);
+    }
+
+    private com.example.platform.identity.api.dto.ProjectResponse createProjectForFixture(String tenant,CreateProjectRequest request) {
+        String previous=TenantContext.get();TenantContext.set(tenant);
+        try {return tenantProjectService.createProject(tenant,new CreateProjectRequest(request.name(),request.description(),"fixture-ws-"+tenant));}
+        finally {if(previous==null)TenantContext.clear();else TenantContext.set(previous);}
     }
 
     @Test
@@ -124,11 +134,11 @@ class MultiTenancyIsolationTest extends PostgresTestContainerSupport {
     void tenantA_cannotAccessTenantB_project() {
         TenantContext.clear();
         var tenantA = tenantProjectService.createTenant(new CreateTenantRequest("Tenant A"));
-        var projectA = tenantProjectService.createProject(tenantA.id(),
+        var projectA = createProjectForFixture(tenantA.id(),
                 new CreateProjectRequest("Project A", "desc"));
 
         var tenantB = tenantProjectService.createTenant(new CreateTenantRequest("Tenant B"));
-        var projectB = tenantProjectService.createProject(tenantB.id(),
+        var projectB = createProjectForFixture(tenantB.id(),
                 new CreateProjectRequest("Project B", "desc"));
 
         TenantContext.set(tenantA.id());
@@ -142,11 +152,11 @@ class MultiTenancyIsolationTest extends PostgresTestContainerSupport {
     void tenantA_cannotListTenantB_projects() {
         TenantContext.clear();
         var tenantA = tenantProjectService.createTenant(new CreateTenantRequest("Tenant A"));
-        tenantProjectService.createProject(tenantA.id(),
+        createProjectForFixture(tenantA.id(),
                 new CreateProjectRequest("Project A", "desc"));
 
         var tenantB = tenantProjectService.createTenant(new CreateTenantRequest("Tenant B"));
-        tenantProjectService.createProject(tenantB.id(),
+        createProjectForFixture(tenantB.id(),
                 new CreateProjectRequest("Project B", "desc"));
 
         TenantContext.set(tenantA.id());
@@ -160,7 +170,7 @@ class MultiTenancyIsolationTest extends PostgresTestContainerSupport {
     void sameTenant_canAccessOwnProject() {
         TenantContext.clear();
         var tenantA = tenantProjectService.createTenant(new CreateTenantRequest("Tenant A"));
-        var project = tenantProjectService.createProject(tenantA.id(),
+        var project = createProjectForFixture(tenantA.id(),
                 new CreateProjectRequest("My Project", "desc"));
 
         TenantContext.set(tenantA.id());
@@ -174,9 +184,9 @@ class MultiTenancyIsolationTest extends PostgresTestContainerSupport {
     void sameTenant_canListOwnProjects() {
         TenantContext.clear();
         var tenantA = tenantProjectService.createTenant(new CreateTenantRequest("Tenant A"));
-        tenantProjectService.createProject(tenantA.id(),
+        createProjectForFixture(tenantA.id(),
                 new CreateProjectRequest("Project 1", "desc"));
-        tenantProjectService.createProject(tenantA.id(),
+        createProjectForFixture(tenantA.id(),
                 new CreateProjectRequest("Project 2", "desc"));
 
         TenantContext.set(tenantA.id());
@@ -190,7 +200,7 @@ class MultiTenancyIsolationTest extends PostgresTestContainerSupport {
         TenantContext.clear();
 
         var tenantA = tenantProjectService.createTenant(new CreateTenantRequest("Tenant A"));
-        var project = tenantProjectService.createProject(tenantA.id(),
+        var project = createProjectForFixture(tenantA.id(),
                 new CreateProjectRequest("Project A", "desc"));
 
         assertThrows(com.example.platform.shared.web.PlatformException.class, () -> tenantProjectService.getProject(tenantA.id(), project.id()));

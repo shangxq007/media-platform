@@ -37,6 +37,7 @@ public class ProjectImportService {
         this.auditPort = auditPort;
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public ProjectImportResponse executeImport(String tenantId, ProjectImportRequest request) {
         assertTenantAccess(tenantId);
 
@@ -142,7 +143,7 @@ public class ProjectImportService {
                     ? request.projectNameOverride()
                     : (payload.project() != null ? payload.project().name() + " (imported)" : "Imported Project");
             String projectDesc = payload.project() != null ? payload.project().description() : "";
-            CreateProjectRequest createReq = new CreateProjectRequest(projectName, projectDesc);
+            CreateProjectRequest createReq = new CreateProjectRequest(projectName, projectDesc, request.workspaceId());
             ProjectResponse created = tenantProjectService.createProject(tenantId, createReq);
             log.info("Created new project {} for import in tenant {}", created.id(), tenantId);
             return created.id();
