@@ -81,4 +81,20 @@ class RequestSourceAuditInterceptorTest {
 
         assertTrue(interceptor.preHandle(request, response, null));
     }
+
+    @Test
+    void longWorkspaceGrantRouteRetainsCompletePathAndDistinctBoundedAuditKeys() {
+        String prefix="/api/workspaces/ws_"+"a".repeat(32)+"/entitlements/grants/ws_grant_";
+        var keys=org.mockito.ArgumentCaptor.forClass(String.class);
+        @SuppressWarnings("unchecked") var payloads=org.mockito.ArgumentCaptor.forClass(java.util.Map.class);
+        for(String id:java.util.List.of("b".repeat(32),"c".repeat(32))) {
+            var request=new org.springframework.mock.web.MockHttpServletRequest("POST",prefix+id+"/revoke");
+            assertTrue(interceptor.preHandle(request,new org.springframework.mock.web.MockHttpServletResponse(),null));
+        }
+        verify(auditPort,times(2)).record(eq("USER"),eq("REQUEST_RECEIVED"),eq("API_REQUEST"),eq("http_request"),keys.capture(),payloads.capture());
+        assertNotEquals(keys.getAllValues().get(0),keys.getAllValues().get(1));
+        assertTrue(keys.getAllValues().stream().allMatch(k->k.length()<=120&&k.startsWith("http:sha256:")));
+        assertEquals(prefix+"b".repeat(32)+"/revoke",payloads.getAllValues().get(0).get("path"));
+        assertEquals(prefix+"c".repeat(32)+"/revoke",payloads.getAllValues().get(1).get("path"));
+    }
 }

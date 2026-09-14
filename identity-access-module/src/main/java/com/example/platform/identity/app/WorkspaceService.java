@@ -89,13 +89,15 @@ public class WorkspaceService implements com.example.platform.identity.api.works
 
     @Override
     public void removeMember(String workspaceId, String userId) {
-        access(workspaceId, true, true);
+        Workspace workspace = access(workspaceId, true, true);
         WorkspaceMember member = workspaceMemberRepository.findByWorkspaceIdAndUserId(workspaceId, userId)
                 .orElseThrow(() -> invalid("Member not found"));
         if (member.status() != WorkspaceMember.MemberStatus.ACTIVE) return;
         if (List.of("OWNER", "ADMIN").contains(member.role())) requireOwner(workspaceId);
         if (member.role().equals("OWNER") && workspaceMemberRepository.findByWorkspaceId(workspaceId).stream()
-                .filter(m -> m.status() == WorkspaceMember.MemberStatus.ACTIVE && m.role().equals("OWNER")).count() <= 1)
+                .filter(m -> m.status() == WorkspaceMember.MemberStatus.ACTIVE && m.role().equals("OWNER"))
+                .filter(m -> eligibleUser(m.userId(), workspace.tenantId())).map(WorkspaceMember::userId).distinct().count() <= 1
+                && eligibleUser(member.userId(), workspace.tenantId()))
             throw conflict("Cannot remove the last active Workspace owner");
         roleRepository.deleteMemberAssignments(workspaceId, userId);
         workspaceMemberRepository.updateStatus(member.id(), WorkspaceMember.MemberStatus.REMOVED, java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC));
@@ -180,7 +182,10 @@ public class WorkspaceService implements com.example.platform.identity.api.works
 
     /** Entitlement memberId denotes a USER principal, not a membership row ID. */
     public void requireWorkspaceUser(String workspaceId, String userId, boolean active) {
-        access(workspaceId, false, false);
+        Workspace workspace = access(workspaceId, false, false);
+        // Historical foreign/missing users cannot become entitlement targets.
+        var user = users.findById(userId).filter(u -> workspace.tenantId().equals(u.tenantId())).orElseThrow(WorkspaceService::denied);
+        if (active) activeUser(user.id(), workspace.tenantId());
         var member = workspaceMemberRepository.findByWorkspaceIdAndUserId(workspaceId, userId).orElseThrow(WorkspaceService::denied);
         if (active && member.status() != WorkspaceMember.MemberStatus.ACTIVE) throw denied();
     }
@@ -200,7 +205,13 @@ public class WorkspaceService implements com.example.platform.identity.api.works
     }
 
     private void activeUser(String userId, String tenantId) {
-        if (userId == null || users.findById(userId).filter(u -> tenantId.equals(u.tenantId()) && u.status() == User.UserStatus.ACTIVE).isEmpty()) throw denied();
+        if (!eligibleUser(userId, tenantId)) throw denied();
+    }
+
+    /** Same persisted-user eligibility for authenticated actors and usable ownership. */
+    private boolean eligibleUser(String userId, String tenantId) {
+        return userId != null && users.findById(userId)
+                .filter(u -> tenantId.equals(u.tenantId()) && u.status() == User.UserStatus.ACTIVE).isPresent();
     }
 
     private Workspace access(String workspaceId, boolean mutate, boolean manage) {

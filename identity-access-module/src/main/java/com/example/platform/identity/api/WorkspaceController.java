@@ -91,7 +91,7 @@ public class WorkspaceController {
     }
 
     @org.springframework.transaction.annotation.Transactional
-    @PostMapping("/{workspaceId}/entitlements/grants")
+    @PostMapping({"/{workspaceId}/entitlements/grants", "/{workspaceId}/entitlements/pool/allocate"})
     public WorkspaceMemberEntitlementGrant createWorkspaceGrant(
             @PathVariable String workspaceId,
             @RequestBody CreateWorkspaceGrantRequest request,
@@ -105,6 +105,27 @@ public class WorkspaceController {
                 request.quotaAmount(), startsAt, request.expiresAt(), effectiveActor,
                 request.sourceRef(), request.idempotencyKey(), request.reason(), request.traceId());
     }
+
+    // Pool transport shares Identity scope/locking and Entitlement mutation ownership with grants.
+    @GetMapping("/{workspaceId}/entitlements/pool")
+    public Map<String, Object> getWorkspacePool(@PathVariable String workspaceId) {
+        workspaceService.getWorkspace(workspaceId);
+        return Map.of("pools", poolService.getPool(workspaceId));
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    @PostMapping("/{workspaceId}/entitlements/pool/reclaim")
+    public Map<String, Object> reclaimWorkspacePool(@PathVariable String workspaceId,
+            @RequestBody ReclaimPoolRequest request) {
+        String actor = workspaceService.requireManagementActor(workspaceId);
+        // Reclaim remains available after a local member is removed.
+        workspaceService.requireWorkspaceUser(workspaceId, request.memberId(), false);
+        poolService.reclaimFromMember(workspaceId, request.memberId(), request.featureKey(),
+                request.quotaAmount(), actor);
+        return Map.of("status", "reclaimed");
+    }
+
+    public record ReclaimPoolRequest(String memberId, String featureKey, long quotaAmount) {}
 
     @GetMapping("/{workspaceId}/entitlements/grants")
     public Map<String, Object> listWorkspaceGrants(@PathVariable String workspaceId) {

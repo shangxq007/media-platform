@@ -45,10 +45,22 @@ public class RequestSourceAuditInterceptor implements HandlerInterceptor {
         if (traceId != null) auditPayload.put("traceId", traceId);
 
         auditPort.record("USER", "REQUEST_RECEIVED", "API_REQUEST",
-                "http_request", method + " " + sanitizePath(path),
+                "http_request", resourceKey(method + " " + sanitizePath(path)),
                 auditPayload);
 
         return true;
+    }
+
+    /** audit_records.resource_id is varchar(120); retain the complete path in payload. */
+    private String resourceKey(String value) {
+        if (value.length() <= 120) return value;
+        try {
+            byte[] digest = java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(value.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return "http:sha256:" + java.util.HexFormat.of().formatHex(digest);
+        } catch (java.security.NoSuchAlgorithmException impossible) {
+            throw new IllegalStateException("SHA-256 unavailable", impossible);
+        }
     }
 
     private String resolveSource(HttpServletRequest request) {
