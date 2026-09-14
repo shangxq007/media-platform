@@ -51,7 +51,8 @@ class RemoteRenderWorkerTest {
         block = new AtomicBoolean();
         started = new CountDownLatch(1);
         cancellationObserved = new AtomicBoolean();
-        catalog = new ProviderPluginCatalog();
+        // Worker consumes catalog queries; PF4J host tests own registration/retirement coverage.
+        catalog = mock(ProviderPluginCatalog.class);
         var contribution = mock(ProviderPluginContribution.class);
         when(contribution.pluginId()).thenReturn("test.process");
         when(contribution.pluginVersion()).thenReturn("1.0.0");
@@ -77,7 +78,7 @@ class RemoteRenderWorkerTest {
                         return new ProviderExecutionOutput(new ByteArrayInputStream(new byte[] {1, 2, 3}));
                     });
         });
-        catalog.register(contribution);
+        when(catalog.find(PIN)).thenReturn(Optional.of(contribution));
         service = worker(new WorkerRuntimeSupportAdvertisement(RUNTIME, RuntimeLifecycleKind.EPHEMERAL_TASK,
                 Map.of(SUPPORT, new RuntimeSupportEvidence("provider-plugin", "test.process@1.0.0"))));
         bundle = bundle(ExecutionOwnershipGeneration.first());
@@ -116,9 +117,10 @@ class RemoteRenderWorkerTest {
         service = worker(new WorkerRuntimeSupportAdvertisement(RUNTIME, RuntimeLifecycleKind.EPHEMERAL_TASK, Map.of()));
         assertEquals(ProviderNativeFailureCode.SANDBOX_POLICY_REJECTED, assertThrows(ProviderNativeExecutionFailure.class, this::execute).code());
     }
-    @Test void unloadedProviderDoesNotFallBackToAnotherProvider() {
-        catalog.remove("test.process", "1.0.0");
+    @Test void missingProviderDoesNotFallBackToAnotherProvider() {
+        when(catalog.find(PIN)).thenReturn(Optional.empty());
         assertEquals(ProviderNativeFailureCode.PROVIDER_BINDING_MISMATCH, assertThrows(ProviderNativeExecutionFailure.class, this::execute).code());
+        assertEquals(0, executions.get());
     }
     @Test void duplicateActiveInvocationIsRejectedUntilOutputIsClosed() throws Exception {
         try (var output = execute()) {
