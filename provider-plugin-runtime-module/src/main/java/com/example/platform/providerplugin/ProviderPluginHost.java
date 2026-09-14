@@ -64,10 +64,10 @@ public final class ProviderPluginHost implements AutoCloseable {
             loaded = true;
             return catalog;
         } catch (ProviderPluginLoadException failure) {
-            try { stopAndUnloadAfterFailure(); } catch (RuntimeException cleanup) { failure.addSuppressed(cleanup); }
+            stopAndUnloadAfterFailure(failure);
             throw failure;
         } catch (RuntimeException failure) {
-            try { stopAndUnloadAfterFailure(); } catch (RuntimeException cleanup) { failure.addSuppressed(cleanup); }
+            stopAndUnloadAfterFailure(failure);
             throw new ProviderPluginLoadException(
                     "PF4J_PROVIDER_PLUGIN_LOAD_FAILED", "provider plugin load/start failed", failure);
         }
@@ -121,7 +121,8 @@ public final class ProviderPluginHost implements AutoCloseable {
         try { action.run(); }
         catch (RuntimeException failure) {
             if (previous == null) return failure;
-            previous.addSuppressed(failure);
+            if (previous != failure && java.util.Arrays.stream(previous.getSuppressed()).noneMatch(e -> e == failure))
+                previous.addSuppressed(failure);
         }
         return previous;
     }
@@ -206,17 +207,14 @@ public final class ProviderPluginHost implements AutoCloseable {
         registrations.clear();
     }
 
-    private void stopAndUnloadAfterFailure() {
+    private void stopAndUnloadAfterFailure(RuntimeException failure) {
+        failure = attempt(pluginManager::stopPlugins, failure);
+        failure = attempt(pluginManager::unloadPlugins, failure);
         try {
-            pluginManager.stopPlugins();
+            failure = attempt(this::retireRegistrations, failure);
         } finally {
-            try {
-                pluginManager.unloadPlugins();
-            } finally {
-                retireRegistrations();
-                catalog.clear();
-                loaded = false;
-            }
+            catalog.clear();
+            loaded = false;
         }
     }
 }
