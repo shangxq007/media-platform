@@ -1,6 +1,6 @@
 package com.example.platform.render.infrastructure.asset.provider;
 
-import com.example.platform.extension.app.ExtensionRegistryService;
+import com.example.platform.extension.api.port.ProviderContributions;
 import com.example.platform.extension.domain.*;
 import com.example.platform.extension.runtime.PluginRuntimeProviderBinding;
 import com.example.platform.render.domain.asset.semantic.AsrResult;
@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * Whisper AI provider registered as a platform plugin via PluginRuntimeProviderBinding.
- * Self-registers in ExtensionRegistryService on startup. Delegates transcription
+ * Self-registers in ProviderContributions on startup. Delegates transcription
  * to WhisperAsrProvider through the ExecutionBackend pipeline.
  */
 @Component
@@ -25,10 +25,10 @@ public class WhisperProviderExtension implements PluginRuntimeProviderBinding {
     private static final String PROVIDER_KEY = "whisper";
     private static final String VERSION = "1.0";
     private final WhisperAsrProvider whisperProvider;
-    private final ExtensionRegistryService extensionRegistry;
+    private final ProviderContributions extensionRegistry;
 
     public WhisperProviderExtension(WhisperAsrProvider whisperProvider,
-                                      ExtensionRegistryService extensionRegistry) {
+                                      ProviderContributions extensionRegistry) {
         this.whisperProvider = whisperProvider;
         this.extensionRegistry = extensionRegistry;
     }

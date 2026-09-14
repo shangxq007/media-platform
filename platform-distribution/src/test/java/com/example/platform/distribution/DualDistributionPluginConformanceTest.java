@@ -2,9 +2,6 @@ package com.example.platform.distribution;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.example.platform.extension.app.PluginDescriptorValidator;
-import com.example.platform.extension.app.PluginHealthRegistry;
-import com.example.platform.extension.app.PluginRegistryImpl;
 import com.example.platform.providerplugin.EmbeddedPluginExtractor;
 import com.example.platform.providerplugin.ProviderPluginContribution;
 import com.example.platform.providerplugin.ProviderPluginHost;
@@ -147,9 +144,34 @@ class DualDistributionPluginConformanceTest {
         }
     }
 
+    @Test
+    void actualPf4jHostsRetireOwnedMetadataWithoutInvalidatingALaterHost() throws Exception {
+        var registry = com.example.platform.extension.api.port.PluginRegistries.standalone();
+        Path plugin = Path.of(System.getProperty("distribution.modular.plugin"));
+        Path firstDirectory = Files.createDirectories(temp.resolve("registration-first"));
+        Path nextDirectory = Files.createDirectories(temp.resolve("registration-next"));
+        Files.copy(plugin, firstDirectory.resolve(plugin.getFileName()));
+        Files.copy(plugin, nextDirectory.resolve(plugin.getFileName()));
+        try (var first = new ProviderPluginHost(firstDirectory, registry)) {
+            var contribution = first.loadAndStart().contributions().getFirst();
+            assertThat(registry.findByPluginId(contribution.pluginId())).contains(contribution.pluginDescriptor());
+            assertThat(first.disable(contribution.pluginId())).isTrue();
+            assertThat(registry.findByPluginId(contribution.pluginId())).isEmpty();
+            try (var next = new ProviderPluginHost(nextDirectory, registry)) {
+                var loaded = next.loadAndStart().contributions().getFirst();
+                first.close();
+                assertThat(registry.findByPluginId(loaded.pluginId())).contains(loaded.pluginDescriptor());
+                assertThat(next.catalog().find(loaded.providerBindingPin())).contains(loaded);
+                assertThat(((com.example.platform.extension.api.port.CapabilityRegistryPort) registry)
+                        .findCapabilityImplementations(com.example.platform.extension.domain.CapabilityId.of(
+                                loaded.pluginDescriptor().capabilities().getFirst().capabilityId()))).isNotEmpty();
+            }
+            assertThat(registry.enumerate()).isEmpty();
+        }
+    }
+
     private static ProviderPluginHost host(Path directory) {
-        return new ProviderPluginHost(directory, new PluginRegistryImpl(
-                new PluginDescriptorValidator(), new PluginHealthRegistry()));
+        return ProviderPluginHost.open(directory);
     }
 
     private static String sha256(Path path) throws Exception {

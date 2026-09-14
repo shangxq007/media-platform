@@ -20,7 +20,7 @@
             "outbox :: coordination", "outbox :: app", "outbox :: events",
             "workflow",
             "extension",
-            "extension :: app",
+            "extension :: contracts",
             "extension :: domain",
             "media", "media :: assets",
             "audio",

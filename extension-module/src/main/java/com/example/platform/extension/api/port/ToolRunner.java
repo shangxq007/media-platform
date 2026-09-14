@@ -1,4 +1,4 @@
-package com.example.platform.extension.app;
+package com.example.platform.extension.api.port;
 
 import com.example.platform.extension.domain.ToolRunRequest;
 import com.example.platform.extension.domain.ToolRunResult;

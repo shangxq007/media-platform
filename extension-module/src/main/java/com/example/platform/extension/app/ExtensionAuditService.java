@@ -47,6 +47,9 @@ public class ExtensionAuditService {
                 actor, tenantId, userId, traceId, trustLevel,
                 detailsJson, severity, OffsetDateTime.now());
 
+        auditPort.record(actor, eventType.name(), "EXTENSION",
+                "extension", extensionCode, details != null ? details : Map.of());
+
         synchronized (recentEvents) {
             recentEvents.add(event);
             if (recentEvents.size() > MAX_IN_MEMORY_EVENTS) {
@@ -55,8 +58,6 @@ public class ExtensionAuditService {
         }
         eventsByExtension.computeIfAbsent(extensionCode, k -> new ArrayList<>()).add(event);
 
-        auditPort.record(actor, eventType.name(), "EXTENSION",
-                "extension", extensionCode, details != null ? details : Map.of());
 
         log.debug("Extension audit event: {} {} by {} [{}]", eventType, extensionCode, actor, severity);
         return event;

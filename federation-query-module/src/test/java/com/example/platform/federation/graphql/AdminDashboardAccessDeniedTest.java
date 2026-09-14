@@ -2,7 +2,7 @@ package com.example.platform.federation.graphql;
 
 import com.example.platform.billing.app.BillingProjectionService;
 import com.example.platform.billing.app.UsageMeteringService;
-import com.example.platform.extension.app.ExtensionRegistryService;
+import com.example.platform.extension.api.port.ExtensionQueries;
 import com.example.platform.federation.graphql.context.GraphQLRequestContext;
 import com.example.platform.federation.graphql.dto.AdminDashboard;
 import com.example.platform.federation.graphql.resolver.AdminDashboardGraphQLResolver;
@@ -27,7 +27,7 @@ class AdminDashboardAccessDeniedTest {
         RenderJobService renderJobService = mock(RenderJobService.class);
         BillingProjectionService billingProjectionService = mock(BillingProjectionService.class);
         UsageMeteringService usageMeteringService = mock(UsageMeteringService.class);
-        ExtensionRegistryService extensionRegistryService = mock(ExtensionRegistryService.class);
+        ExtensionQueries extensionRegistryService = mock(ExtensionQueries.class);
 
         AdminDashboardGraphQLResolver resolver = new AdminDashboardGraphQLResolver(renderJobService, billingProjectionService, usageMeteringService, extensionRegistryService);
         return resolver;

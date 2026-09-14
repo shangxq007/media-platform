@@ -12,6 +12,7 @@ import java.util.List;
  * @param generatedAt   timestamp when the report was generated
  */
 public record ToolEnvironmentReport(List<ToolAvailability> tools, java.time.Instant generatedAt) {
+    public ToolEnvironmentReport { tools = List.copyOf(tools); }
 
     /**
      * Returns {@code true} if all registered tools are available.

@@ -16,7 +16,7 @@ import java.util.Optional;
  *
  * <p>All reads return immutable snapshots; enumeration is deterministic
  * (stable plugin ID, then version). No registration-order-dependent API is
- * exposed. The mutation API is internal (startup registration only).</p>
+ * exposed. Lifecycle hosts use the separate PluginRegistrationPort for startup registration and owned retirement.</p>
  */
 public interface PluginRegistryPort {
 

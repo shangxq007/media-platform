@@ -23,4 +23,5 @@ public record ToolDefinition(
         String executable,
         List<ToolCapability> capabilities,
         ToolExecutionSafetyPolicy executionSafetyPolicy) {
+    public ToolDefinition { capabilities = capabilities == null ? List.of() : List.copyOf(capabilities); }
 }

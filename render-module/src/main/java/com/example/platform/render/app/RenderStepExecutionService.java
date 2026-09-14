@@ -27,7 +27,7 @@ import org.springframework.stereotype.Service;
  *
  * <p>This service manages step lifecycle: transitioning from PENDING → RUNNING → COMPLETED/FAILED.
  * Actual tool execution is delegated to the appropriate provider (Provider, MLT, GPAC)
- * through the {@link com.example.platform.extension.app.ProcessToolRunner} port.</p>
+ * through the {@link com.example.platform.extension.api.port.ProcessToolRunner} port.</p>
  *
  * <p>On step execution it emits a canonical DURATION usage record as an additive side effect,
  * driven by the measured duration fact rather than business success status. Emission is

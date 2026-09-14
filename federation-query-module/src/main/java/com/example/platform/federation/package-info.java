@@ -10,7 +10,7 @@
             "render :: app",
             "render :: domain",
             "render :: infrastructure",
-            "extension :: app",
+            "extension :: contracts",
             "extension :: domain",
             "billing :: app",
             "billing :: domain",

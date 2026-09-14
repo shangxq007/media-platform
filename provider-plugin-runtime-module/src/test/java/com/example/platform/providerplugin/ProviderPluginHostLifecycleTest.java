@@ -11,7 +11,7 @@ import com.example.platform.execution.domain.provider.ProviderBindingPin;
 import com.example.platform.execution.domain.provider.ProviderCapabilityProfile;
 import com.example.platform.execution.domain.provider.ProviderDescriptor;
 import com.example.platform.execution.domain.provider.ProviderExecutionContract;
-import com.example.platform.extension.app.PluginRegistryImpl;
+import com.example.platform.extension.api.port.PluginRegistrationPort;
 import com.example.platform.extension.domain.PluginDescriptor;
 import com.example.platform.workerfabric.domain.WorkerRuntimeSupportRequirement;
 import com.example.platform.workerfabric.domain.providernative.ProviderNativeRuntimeBinding;
@@ -29,7 +29,7 @@ class ProviderPluginHostLifecycleTest {
         when(wrapper.getPluginId()).thenReturn("plugin.ffmpeg");
         when(manager.getStartedPlugins()).thenReturn(List.of(wrapper));
         when(manager.getPlugins()).thenReturn(List.of(wrapper));
-        ProviderPluginHost host = new ProviderPluginHost(manager, mock(PluginRegistryImpl.class));
+        ProviderPluginHost host = new ProviderPluginHost(manager, mock(PluginRegistrationPort.class));
         host.catalog().register(contribution("plugin.ffmpeg", "1.0.0"));
 
         host.close();
@@ -44,7 +44,7 @@ class ProviderPluginHostLifecycleTest {
     void load_failure_stops_and_unloads_pf4j_and_clears_partial_typed_catalog() {
         PluginManager manager = mock(PluginManager.class);
         doThrow(new IllegalStateException("load failed")).when(manager).loadPlugins();
-        ProviderPluginHost host = new ProviderPluginHost(manager, mock(PluginRegistryImpl.class));
+        ProviderPluginHost host = new ProviderPluginHost(manager, mock(PluginRegistrationPort.class));
         host.catalog().register(contribution("plugin.partial", "1.0.0"));
 
         assertThatThrownBy(host::loadAndStart)

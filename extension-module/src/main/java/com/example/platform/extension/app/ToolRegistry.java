@@ -1,5 +1,7 @@
 package com.example.platform.extension.app;
 
+import com.example.platform.extension.api.port.*;
+
 import com.example.platform.extension.domain.ToolCapability;
 import com.example.platform.extension.domain.ToolDefinition;
 import com.example.platform.extension.domain.ToolEnvironmentReport;
@@ -30,7 +32,7 @@ import org.springframework.stereotype.Component;
  * </ul>
  */
 @Component
-public class ToolRegistry {
+public class ToolRegistry implements ToolCatalog {
 
     private static final Logger log = LoggerFactory.getLogger(ToolRegistry.class);
 

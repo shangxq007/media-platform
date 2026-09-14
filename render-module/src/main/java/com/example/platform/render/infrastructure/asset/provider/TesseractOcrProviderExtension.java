@@ -1,6 +1,6 @@
 package com.example.platform.render.infrastructure.asset.provider;
 
-import com.example.platform.extension.app.ExtensionRegistryService;
+import com.example.platform.extension.api.port.ProviderContributions;
 import com.example.platform.extension.domain.*;
 import com.example.platform.extension.runtime.PluginRuntimeProviderBinding;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * Tesseract OCR provider plugin — implements PluginRuntimeProviderBinding.
- * Self-registers in ExtensionRegistryService on startup.
+ * Self-registers in ProviderContributions on startup.
  * Follows the same governance pattern as WhisperProviderExtension.
  */
 @Component
@@ -23,9 +23,9 @@ public class TesseractOcrProviderExtension implements PluginRuntimeProviderBindi
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final String PROVIDER_KEY = "tesseract";
     private static final String VERSION = "1.0";
-    private final ExtensionRegistryService extensionRegistry;
+    private final ProviderContributions extensionRegistry;
 
-    public TesseractOcrProviderExtension(ExtensionRegistryService extensionRegistry) {
+    public TesseractOcrProviderExtension(ProviderContributions extensionRegistry) {
         this.extensionRegistry = extensionRegistry;
     }
 

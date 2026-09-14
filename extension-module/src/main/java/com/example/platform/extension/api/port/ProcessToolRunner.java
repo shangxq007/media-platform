@@ -1,4 +1,4 @@
-package com.example.platform.extension.app;
+package com.example.platform.extension.api.port;
 
 import com.example.platform.extension.domain.ToolExecutionRequest;
 import com.example.platform.extension.domain.ToolExecutionResult;
@@ -10,7 +10,7 @@ import com.example.platform.extension.domain.ToolExecutionSafetyPolicy;
  * <p>Implementations must:</p>
  * <ul>
  *   <li>Use ordered argument values, never shell concatenation</li>
- *   <li>Enforce executable allowlist from {@link ToolRegistry}</li>
+ *   <li>Enforce executable allowlist from {@link ToolCatalog}</li>
  *   <li>Enforce the typed timeout from {@link ToolExecutionSafetyPolicy}</li>
  *   <li>Capture stdout/stderr with size limits</li>
  *   <li>Protect against path traversal</li>
@@ -19,7 +19,7 @@ import com.example.platform.extension.domain.ToolExecutionSafetyPolicy;
  * <p>Business modules must depend on this interface, not on any specific
  * process execution implementation.</p>
  *
- * @see ToolRegistry
+ * @see ToolCatalog
  * @see ToolExecutionRequest
  * @see ToolExecutionResult
  */

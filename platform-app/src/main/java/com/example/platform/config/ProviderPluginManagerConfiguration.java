@@ -1,6 +1,6 @@
 package com.example.platform.config;
 
-import com.example.platform.extension.app.PluginRegistryImpl;
+import com.example.platform.extension.api.port.PluginRegistrationPort;
 import com.example.platform.providerplugin.ProviderPluginHost;
 import com.example.platform.providerplugin.execution.RuntimeExecutionBackends;
 import com.example.platform.sandbox.execution.ExecutionBackendRegistry;
@@ -20,7 +20,7 @@ public class ProviderPluginManagerConfiguration {
 
     @Bean(destroyMethod = "close")
     ProviderPluginHost providerPluginHost(
-            PluginRegistryImpl pluginRegistry,
+            PluginRegistrationPort pluginRegistry,
             @Value("${app.extensions.plugins-dir:./plugins}") String pluginsDirectory) {
         ProviderPluginHost host = new ProviderPluginHost(Path.of(pluginsDirectory), pluginRegistry);
         host.loadAndStart();

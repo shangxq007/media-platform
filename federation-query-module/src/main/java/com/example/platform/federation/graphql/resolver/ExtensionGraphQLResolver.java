@@ -1,9 +1,9 @@
 package com.example.platform.federation.graphql.resolver;
 
-import com.example.platform.extension.app.ExtensionRegistryService;
-import com.example.platform.extension.app.ExtensionRegistryService.ExtensionInfo;
-import com.example.platform.extension.app.ExtensionResourceLimiter;
-import com.example.platform.extension.app.ExtensionRouter;
+import com.example.platform.extension.api.port.ExtensionQueries;
+import com.example.platform.extension.api.port.ExtensionQueries.ExtensionInfo;
+import com.example.platform.extension.api.port.ExtensionLimitQueries;
+import com.example.platform.extension.api.port.ExtensionRoutingQueries;
 import com.example.platform.extension.domain.ExtensionResourceLimits;
 import com.example.platform.extension.domain.RoutingRule;
 import com.example.platform.federation.graphql.context.GraphQLRequestContext;
@@ -22,13 +22,13 @@ public class ExtensionGraphQLResolver {
 
     private static final Logger log = LoggerFactory.getLogger(ExtensionGraphQLResolver.class);
 
-    private final ExtensionRegistryService extensionRegistryService;
-    private final ExtensionRouter extensionRouter;
-    private final ExtensionResourceLimiter extensionResourceLimiter;
+    private final ExtensionQueries extensionRegistryService;
+    private final ExtensionRoutingQueries extensionRouter;
+    private final ExtensionLimitQueries extensionResourceLimiter;
 
-    public ExtensionGraphQLResolver(ExtensionRegistryService extensionRegistryService,
-                                  ExtensionRouter extensionRouter,
-                                  ExtensionResourceLimiter extensionResourceLimiter) {
+    public ExtensionGraphQLResolver(ExtensionQueries extensionRegistryService,
+                                  ExtensionRoutingQueries extensionRouter,
+                                  ExtensionLimitQueries extensionResourceLimiter) {
         this.extensionRegistryService = extensionRegistryService;
         this.extensionRouter = extensionRouter;
         this.extensionResourceLimiter = extensionResourceLimiter;
@@ -67,7 +67,7 @@ public class ExtensionGraphQLResolver {
                 ext.trustLevel(),
                 "ACTIVE".equals(ext.status()),
                 ext.version(),
-                "HEALTHY",
+                "UNKNOWN",
                 null,
                 routeRules,
                 resourceLimits

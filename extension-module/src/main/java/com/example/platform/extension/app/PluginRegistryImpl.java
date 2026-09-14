@@ -1,182 +1,112 @@
 package com.example.platform.extension.app;
 
-import com.example.platform.extension.api.port.CapabilityRegistryPort;
-import com.example.platform.extension.api.port.PluginRegistryPort;
-import com.example.platform.extension.domain.CapabilityDescriptor;
-import com.example.platform.extension.domain.CapabilityId;
-import com.example.platform.extension.domain.CapabilityImplementation;
-import com.example.platform.extension.domain.CapabilityImplementationId;
-import com.example.platform.extension.domain.ContractVersion;
-import com.example.platform.extension.domain.PluginDescriptor;
-import com.example.platform.extension.domain.PluginDescriptorValidationIssue;
-import com.example.platform.extension.domain.PluginDiagnosticCode;
-import com.example.platform.extension.domain.PluginHealth;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import com.example.platform.extension.api.port.*;
+import com.example.platform.extension.domain.*;
+import java.util.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 /**
- * Plugin registry implementation (frozen contract
- * PLUGIN_CAPABILITY_REGISTRY_V1_CONTRACT_V1).
- *
- * <p>The registry is the ONE descriptor authority (describes, validates,
- * registers metadata, queries and selects). It does NOT execute providers —
- * existing execution authority remains with {@code ExtensionRegistryService}
- * (Compatibility Model B). Registration lifecycle: STARTUP_REGISTRATION only.
- * No install/update/remove/persistence/hot-reload/marketplace.</p>
- *
- * <p>Thread safety: ConcurrentHashMap-backed; atomic register; reads safe
- * concurrently with registration. Storage is order-independent; enumeration is
- * always sorted by stable ID (then version). Registration is order-independent:
- * no first-wins. Immutable read snapshots: enumerate/find return immutable
- * copies; descriptors are immutable records.</p>
+ * One descriptor authority, with capability discovery derived from each immutable entry.
+ * All derivation precedes publication. The host owns PF4J lifecycle; Extension owns
+ * registration/retirement. Runtime handles retire only their own entry, not a later
+ * registration with the same ID/version. No execution, installation or hot reload here.
  */
 @Service
-public class PluginRegistryImpl implements PluginRegistryPort, CapabilityRegistryPort {
-
+public class PluginRegistryImpl implements PluginRegistryPort, CapabilityRegistryPort, PluginRegistrationPort {
     private final PluginDescriptorValidator validator;
     private final PluginHealthRegistry healthRegistry;
-    private final ConcurrentMap<String, PluginDescriptor> byId = new ConcurrentHashMap<>();
-    private final ConcurrentMap<String, PluginDescriptor> byIdAndVersion = new ConcurrentHashMap<>();
-    private final ConcurrentMap<CapabilityImplementationId, CapabilityImplementation> implementations = new ConcurrentHashMap<>();
+    private final Map<String, Entry> byId = new HashMap<>();
+
+    private record Entry(PluginDescriptor descriptor, List<CapabilityImplementation> implementations) {}
 
     @Autowired
     public PluginRegistryImpl(PluginDescriptorValidator validator, PluginHealthRegistry healthRegistry) {
-        this.validator = validator;
-        this.healthRegistry = healthRegistry;
+        this.validator = Objects.requireNonNull(validator);
+        this.healthRegistry = Objects.requireNonNull(healthRegistry);
+    }
+    PluginRegistryImpl() { this(new PluginDescriptorValidator(), new PluginHealthRegistry()); }
+
+    @Override
+    public List<PluginDescriptorValidationIssue> validate(PluginDescriptor descriptor) {
+        var issues = validator.validate(descriptor);
+        if (issues.isEmpty()) deriveImplementations(descriptor);
+        return issues;
     }
 
-    /** Test-only convenience constructor. */
-    PluginRegistryImpl() {
-        this(new PluginDescriptorValidator(), new PluginHealthRegistry());
+    /** Retains the existing diagnostic-returning startup registration contract. */
+    public synchronized List<PluginDescriptorValidationIssue> register(PluginDescriptor descriptor) {
+        try { insert(descriptor); return List.of(); }
+        catch (PluginRegistrationException rejected) { return rejected.issues(); }
     }
 
-    /**
-     * Validated startup registration. Invalid descriptors are NOT registered:
-     * zero registry mutation, zero partial state. Duplicate plugin identity
-     * (pluginId+version) is rejected with PLG-015.
-     *
-     * @param descriptor descriptor to register
-     * @return ordered validation diagnostics; empty when registration succeeded
-     */
-    public List<PluginDescriptorValidationIssue> register(PluginDescriptor descriptor) {
-        List<PluginDescriptorValidationIssue> issues = validator.validate(descriptor);
-        if (!issues.isEmpty()) {
-            return issues;
-        }
-        String key = descriptor.pluginId();
-        String keyVersioned = descriptor.pluginId() + "@" + descriptor.pluginVersion();
-        PluginDescriptor previous = byId.putIfAbsent(key, descriptor);
-        if (previous != null) {
-            return List.of(PluginDescriptorValidationIssue.error(
-                    PluginDiagnosticCode.PLG_015, "pluginId", 1));
-        }
-        byIdAndVersion.put(keyVersioned, descriptor);
-        // #16 (R2): derive capability implementations from validated descriptors.
-        // Implementation id is INDEPENDENT of the (plugin, capability) tuple —
-        // it is derived deterministically (pluginId + capabilityId + contract
-        // version) so the same plugin may register multiple distinct
-        // implementations of the same capability over time. Duplicate
-        // implementation identity fails closed (PLG-016).
-        for (CapabilityDescriptor capability : descriptor.capabilities()) {
-            CapabilityImplementationId implId = CapabilityImplementationId.of(
-                    descriptor.pluginId() + "::" + capability.capabilityId()
-                            + "@" + capability.capabilityContractVersion());
-            CapabilityImplementation impl = CapabilityImplementation.of(
-                    implId, descriptor.pluginId(),
-                    CapabilityId.of(capability.capabilityId()),
-                    ContractVersion.parse(capability.capabilityContractVersion()),
-                    descriptor.pluginVersion());
-            CapabilityImplementation previousImpl = implementations.putIfAbsent(implId, impl);
-            if (previousImpl != null) {
-                return List.of(PluginDescriptorValidationIssue.error(
-                        PluginDiagnosticCode.PLG_018, "capabilityImplementationId", 1));
-            }
-        }
+    @Override
+    public synchronized Registration registerRuntime(PluginDescriptor descriptor) {
+        Entry entry = insert(descriptor);
+        return () -> retire(entry);
+    }
+
+    private Entry insert(PluginDescriptor descriptor) {
+        var issues = validator.validate(descriptor);
+        if (!issues.isEmpty()) throw new PluginRegistrationException(issues);
+        if (byId.containsKey(descriptor.pluginId())) throw new PluginRegistrationException(List.of(
+                PluginDescriptorValidationIssue.error(PluginDiagnosticCode.PLG_015, "pluginId", 1)));
+        // Domain version/identity validation can throw. Do it before ANY advertised entry.
+        Entry entry = new Entry(descriptor, deriveImplementations(descriptor));
         healthRegistry.touch(descriptor.pluginId());
-        return List.of();
+        byId.put(descriptor.pluginId(), entry);
+        return entry;
     }
 
-    @Override
-    public List<CapabilityImplementation> findCapabilityImplementations(CapabilityId capabilityId) {
+    private static List<CapabilityImplementation> deriveImplementations(PluginDescriptor descriptor) {
         List<CapabilityImplementation> result = new ArrayList<>();
-        for (CapabilityImplementation impl : implementations.values()) {
-            if (impl.capabilityId().equals(capabilityId)) {
-                result.add(impl);
-            }
+        Set<CapabilityImplementationId> identities = new HashSet<>();
+        for (CapabilityDescriptor capability : descriptor.capabilities()) {
+            CapabilityImplementationId id = CapabilityImplementationId.of(descriptor.pluginId() + "::"
+                    + capability.capabilityId() + "@" + capability.capabilityContractVersion());
+            if (!identities.add(id)) throw new PluginRegistrationException(List.of(
+                    PluginDescriptorValidationIssue.error(PluginDiagnosticCode.PLG_018, "capabilityImplementationId", 1)));
+            result.add(CapabilityImplementation.of(id, descriptor.pluginId(), CapabilityId.of(capability.capabilityId()),
+                    ContractVersion.parse(capability.capabilityContractVersion()), descriptor.pluginVersion()));
         }
-        result.sort(Comparator.comparing(i -> i.implementationId().value()));
         return List.copyOf(result);
     }
 
-    @Override
-    public Optional<CapabilityImplementation> findImplementationById(CapabilityImplementationId implementationId) {
-        return Optional.ofNullable(implementations.get(implementationId));
-    }
-
-    @Override
-    public List<CapabilityImplementation> findImplementationsForContractVersion(
-            CapabilityId capabilityId, ContractVersion contractVersion) {
-        List<CapabilityImplementation> result = new ArrayList<>();
-        for (CapabilityImplementation impl : implementations.values()) {
-            if (impl.capabilityId().equals(capabilityId)
-                    && impl.contractVersion().equals(contractVersion)) {
-                result.add(impl);
-            }
+    private synchronized void retire(Entry entry) {
+        String id = entry.descriptor().pluginId();
+        if (byId.get(id) == entry) {
+            byId.remove(id);
+            healthRegistry.remove(id);
         }
-        result.sort(Comparator.comparing(i -> i.implementationId().value()));
-        return List.copyOf(result);
     }
 
-    @Override
-    public Optional<PluginDescriptor> findByPluginId(String pluginId) {
-        return Optional.ofNullable(byId.get(pluginId));
+    private List<CapabilityImplementation> implementations() {
+        return byId.values().stream().flatMap(e -> e.implementations().stream())
+                .sorted(Comparator.comparing(i -> i.implementationId().value())).toList();
     }
-
-    @Override
-    public Optional<PluginDescriptor> findByPluginIdAndVersion(String pluginId, String pluginVersion) {
-        return Optional.ofNullable(byIdAndVersion.get(pluginId + "@" + pluginVersion));
+    @Override public synchronized List<CapabilityImplementation> findCapabilityImplementations(CapabilityId id) {
+        return implementations().stream().filter(i -> i.capabilityId().equals(id)).toList();
     }
-
-    @Override
-    public List<PluginDescriptor> enumerate() {
-        List<PluginDescriptor> sorted = new ArrayList<>(byId.values());
-        sorted.sort(Comparator.comparing(PluginDescriptor::pluginId)
-                .thenComparing(PluginDescriptor::pluginVersion));
-        return List.copyOf(sorted);
+    @Override public synchronized Optional<CapabilityImplementation> findImplementationById(CapabilityImplementationId id) {
+        return implementations().stream().filter(i -> i.implementationId().equals(id)).findFirst();
     }
-
-    @Override
-    public List<PluginDescriptor> findCapabilityCandidates(String capabilityId, String capabilityContractVersion) {
-        List<PluginDescriptor> candidates = new ArrayList<>();
-        for (PluginDescriptor descriptor : byId.values()) {
-            for (CapabilityDescriptor capability : descriptor.capabilities()) {
-                if (capability.capabilityId().equals(capabilityId)
-                        && capability.capabilityContractVersion().equals(capabilityContractVersion)) {
-                    candidates.add(descriptor);
-                    break;
-                }
-            }
-        }
-        candidates.sort(Comparator.comparing(PluginDescriptor::pluginId)
-                .thenComparing(PluginDescriptor::pluginVersion));
-        return List.copyOf(candidates);
+    @Override public synchronized List<CapabilityImplementation> findImplementationsForContractVersion(CapabilityId id, ContractVersion version) {
+        return implementations().stream().filter(i -> i.capabilityId().equals(id) && i.contractVersion().equals(version)).toList();
     }
-
-    @Override
-    public PluginHealth healthOf(String pluginId) {
-        return healthRegistry.healthOf(pluginId);
+    @Override public synchronized Optional<PluginDescriptor> findByPluginId(String id) {
+        return Optional.ofNullable(byId.get(id)).map(Entry::descriptor);
     }
-
-    /** Package-private test reset (frozen contract: "TEST RESET: package-private reset for tests only"). */
-    void resetForTests() {
-        byId.clear();
-        byIdAndVersion.clear();
-        healthRegistry.resetForTests();
+    @Override public synchronized Optional<PluginDescriptor> findByPluginIdAndVersion(String id, String version) {
+        return findByPluginId(id).filter(d -> d.pluginVersion().equals(version));
     }
+    @Override public synchronized List<PluginDescriptor> enumerate() {
+        return byId.values().stream().map(Entry::descriptor)
+                .sorted(Comparator.comparing(PluginDescriptor::pluginId).thenComparing(PluginDescriptor::pluginVersion)).toList();
+    }
+    @Override public synchronized List<PluginDescriptor> findCapabilityCandidates(String id, String version) {
+        return enumerate().stream().filter(d -> d.capabilities().stream()
+                .anyMatch(c -> c.capabilityId().equals(id) && c.capabilityContractVersion().equals(version))).toList();
+    }
+    @Override public synchronized PluginHealth healthOf(String id) { return healthRegistry.healthOf(id); }
+    synchronized void resetForTests() { byId.clear(); healthRegistry.resetForTests(); }
 }

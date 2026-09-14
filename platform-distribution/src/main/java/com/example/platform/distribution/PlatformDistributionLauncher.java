@@ -1,8 +1,5 @@
 package com.example.platform.distribution;
 
-import com.example.platform.extension.app.PluginDescriptorValidator;
-import com.example.platform.extension.app.PluginHealthRegistry;
-import com.example.platform.extension.app.PluginRegistryImpl;
 import com.example.platform.providerplugin.EmbeddedPluginExtractor;
 import com.example.platform.providerplugin.ProviderPluginHost;
 import java.net.URISyntaxException;
@@ -17,9 +14,7 @@ public final class PlatformDistributionLauncher {
 
     public static void main(String[] args) throws Exception {
         try (PluginDirectoryResolution resolution = resolvePluginDirectory(args)) {
-            PluginRegistryImpl registry = new PluginRegistryImpl(
-                    new PluginDescriptorValidator(), new PluginHealthRegistry());
-            try (ProviderPluginHost host = new ProviderPluginHost(resolution.pluginDirectory(), registry)) {
+            try (ProviderPluginHost host = ProviderPluginHost.open(resolution.pluginDirectory())) {
             var contributions = host.loadAndStart().contributions();
             if (contributions.isEmpty()) {
                 throw new IllegalStateException("No typed provider plugin contribution loaded");

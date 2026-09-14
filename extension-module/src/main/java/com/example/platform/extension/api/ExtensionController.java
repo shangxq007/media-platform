@@ -1,4 +1,5 @@
 package com.example.platform.extension.api;
+import com.example.platform.extension.api.port.ToolRunner;
 
 import com.example.platform.extension.api.dto.*;
 import com.example.platform.extension.app.*;
@@ -49,12 +50,12 @@ public class ExtensionController {
     }
 
     @GetMapping("/catalog")
-    public List<ExtensionRegistryService.ExtensionInfo> listExtensions() {
+    public List<com.example.platform.extension.api.port.ExtensionQueries.ExtensionInfo> listExtensions() {
         return registryService.listExtensions();
     }
 
     @GetMapping("/{key}")
-    public ResponseEntity<ExtensionRegistryService.ExtensionInfo> getExtension(@PathVariable String key) {
+    public ResponseEntity<com.example.platform.extension.api.port.ExtensionQueries.ExtensionInfo> getExtension(@PathVariable String key) {
         return registryService.getExtension(key)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());

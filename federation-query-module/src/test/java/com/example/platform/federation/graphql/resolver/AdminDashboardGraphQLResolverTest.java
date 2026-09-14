@@ -2,8 +2,8 @@ package com.example.platform.federation.graphql.resolver;
 
 import com.example.platform.billing.app.BillingProjectionService;
 import com.example.platform.billing.app.UsageMeteringService;
-import com.example.platform.extension.app.ExtensionRegistryService;
-import com.example.platform.extension.app.ExtensionRegistryService.ExtensionInfo;
+import com.example.platform.extension.api.port.ExtensionQueries;
+import com.example.platform.extension.api.port.ExtensionQueries.ExtensionInfo;
 import com.example.platform.federation.graphql.context.GraphQLRequestContext;
 import com.example.platform.federation.graphql.dto.AdminDashboard;
 import com.example.platform.render.app.RenderJobService;
@@ -29,7 +29,7 @@ class AdminDashboardGraphQLResolverTest {
         RenderJobService renderJobService = mock(RenderJobService.class);
         BillingProjectionService billingProjectionService = mock(BillingProjectionService.class);
         UsageMeteringService usageMeteringService = mock(UsageMeteringService.class);
-        ExtensionRegistryService extensionRegistryService = mock(ExtensionRegistryService.class);
+        ExtensionQueries extensionRegistryService = mock(ExtensionQueries.class);
 
         GraphQLRequestContext ctx = new GraphQLRequestContext(
                 "tenant-1", null, "user-1",
@@ -72,7 +72,7 @@ class AdminDashboardGraphQLResolverTest {
         RenderJobService renderJobService = mock(RenderJobService.class);
         BillingProjectionService billingProjectionService = mock(BillingProjectionService.class);
         UsageMeteringService usageMeteringService = mock(UsageMeteringService.class);
-        ExtensionRegistryService extensionRegistryService = mock(ExtensionRegistryService.class);
+        ExtensionQueries extensionRegistryService = mock(ExtensionQueries.class);
 
         GraphQLRequestContext ctx = new GraphQLRequestContext(
                 "tenant-1", null, "user-1",
@@ -98,7 +98,7 @@ class AdminDashboardGraphQLResolverTest {
         RenderJobService renderJobService = mock(RenderJobService.class);
         BillingProjectionService billingProjectionService = mock(BillingProjectionService.class);
         UsageMeteringService usageMeteringService = mock(UsageMeteringService.class);
-        ExtensionRegistryService extensionRegistryService = mock(ExtensionRegistryService.class);
+        ExtensionQueries extensionRegistryService = mock(ExtensionQueries.class);
 
         GraphQLRequestContext ctx = new GraphQLRequestContext(
                 "tenant-1", null, "user-1",
@@ -118,7 +118,7 @@ class AdminDashboardGraphQLResolverTest {
         RenderJobService renderJobService = mock(RenderJobService.class);
         BillingProjectionService billingProjectionService = mock(BillingProjectionService.class);
         UsageMeteringService usageMeteringService = mock(UsageMeteringService.class);
-        ExtensionRegistryService extensionRegistryService = mock(ExtensionRegistryService.class);
+        ExtensionQueries extensionRegistryService = mock(ExtensionQueries.class);
 
         GraphQLRequestContext ctx = new GraphQLRequestContext(
                 "tenant-1", null, "user-1",

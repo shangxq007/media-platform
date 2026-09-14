@@ -1,7 +1,7 @@
 package com.example.platform.render.infrastructure.natron;
 
-import com.example.platform.extension.app.ProcessToolRunner;
-import com.example.platform.extension.app.ToolRegistry;
+import com.example.platform.extension.api.port.ProcessToolRunner;
+import com.example.platform.extension.api.port.ToolCatalog;
 import com.example.platform.extension.domain.ToolDefinition;
 import com.example.platform.extension.domain.ToolExecutionSafetyPolicy;
 import java.util.List;
@@ -32,7 +32,7 @@ public class NatronRenderProviderConfiguration {
 
     @Bean
     CommandLineRunner natronPocToolRegistration(
-            ToolRegistry toolRegistry,
+            ToolCatalog toolRegistry,
             NatronPocScriptResolver scriptResolver,
             NatronRendererBinaryResolver rendererResolver,
             NatronRenderProviderProperties properties,

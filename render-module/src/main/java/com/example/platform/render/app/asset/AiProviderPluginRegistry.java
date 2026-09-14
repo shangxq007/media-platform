@@ -1,7 +1,7 @@
 package com.example.platform.render.app.asset;
 
-import com.example.platform.extension.app.ExtensionRegistryService;
-import com.example.platform.extension.app.ExtensionRegistryService.ExtensionInfo;
+import com.example.platform.extension.api.port.ExtensionQueries;
+import com.example.platform.extension.api.port.ExtensionQueries.ExtensionInfo;
 import java.util.List;
 import org.springframework.stereotype.Component;
 
@@ -15,9 +15,9 @@ import org.springframework.stereotype.Component;
 @Component
 public class AiProviderPluginRegistry {
 
-    private final ExtensionRegistryService extensionRegistry;
+    private final ExtensionQueries extensionRegistry;
 
-    public AiProviderPluginRegistry(ExtensionRegistryService extensionRegistry) {
+    public AiProviderPluginRegistry(ExtensionQueries extensionRegistry) {
         this.extensionRegistry = extensionRegistry;
     }
 

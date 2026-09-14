@@ -35,7 +35,7 @@ class ExtensionRegistryServiceTest {
         PluginRuntimeProviderBinding extension = createMockProvider("test-provider", "1.0.0");
         service.registerProviderExtension("test-provider", extension, ExtensionTrustLevel.FULLY_TRUSTED, "admin");
 
-        Optional<ExtensionRegistryService.ExtensionInfo> info = service.getExtension("test-provider");
+        Optional<com.example.platform.extension.api.port.ExtensionQueries.ExtensionInfo> info = service.getExtension("test-provider");
         assertTrue(info.isPresent());
         assertEquals("1.0.0", info.get().version());
         assertEquals("PROVIDER", info.get().category());
@@ -46,7 +46,7 @@ class ExtensionRegistryServiceTest {
         PromptExtensionSPI extension = createMockPrompt("test-prompt", "1.0.0");
         service.registerPromptExtension("test-prompt", extension, ExtensionTrustLevel.SEMI_TRUSTED, "admin");
 
-        Optional<ExtensionRegistryService.ExtensionInfo> info = service.getExtension("test-prompt");
+        Optional<com.example.platform.extension.api.port.ExtensionQueries.ExtensionInfo> info = service.getExtension("test-prompt");
         assertTrue(info.isPresent());
         assertEquals("PROMPT", info.get().category());
     }
@@ -56,7 +56,7 @@ class ExtensionRegistryServiceTest {
         WorkflowStepExtensionSPI extension = createMockWorkflowStep("test-step", "1.0.0");
         service.registerWorkflowStepExtension("test-step", extension, ExtensionTrustLevel.UNTRUSTED, "admin");
 
-        Optional<ExtensionRegistryService.ExtensionInfo> info = service.getExtension("test-step");
+        Optional<com.example.platform.extension.api.port.ExtensionQueries.ExtensionInfo> info = service.getExtension("test-step");
         assertTrue(info.isPresent());
         assertEquals("WORKFLOW_STEP", info.get().category());
     }
@@ -67,7 +67,7 @@ class ExtensionRegistryServiceTest {
         service.registerPromptExtension("prompt-1", createMockPrompt("prompt-1", "1.0.0"), ExtensionTrustLevel.SEMI_TRUSTED, "admin");
         service.registerWorkflowStepExtension("step-1", createMockWorkflowStep("step-1", "1.0.0"), ExtensionTrustLevel.UNTRUSTED, "admin");
 
-        List<ExtensionRegistryService.ExtensionInfo> extensions = service.listExtensions();
+        List<com.example.platform.extension.api.port.ExtensionQueries.ExtensionInfo> extensions = service.listExtensions();
         assertEquals(3, extensions.size());
     }
 
@@ -95,7 +95,7 @@ class ExtensionRegistryServiceTest {
         service.registerProviderExtension("test-provider", v1, ExtensionTrustLevel.SEMI_TRUSTED, "admin");
         service.registerProviderExtension("test-provider", v2, ExtensionTrustLevel.SEMI_TRUSTED, "admin");
 
-        Optional<ExtensionRegistryService.ExtensionInfo> info = service.getExtension("test-provider");
+        Optional<com.example.platform.extension.api.port.ExtensionQueries.ExtensionInfo> info = service.getExtension("test-provider");
         assertTrue(info.isPresent());
         assertEquals("2.0.0", info.get().version());
 

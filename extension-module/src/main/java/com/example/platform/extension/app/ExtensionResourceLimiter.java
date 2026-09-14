@@ -1,5 +1,7 @@
 package com.example.platform.extension.app;
 
+import com.example.platform.extension.api.port.*;
+
 import com.example.platform.extension.domain.*;
 import com.example.platform.shared.audit.AuditPort;
 import org.slf4j.Logger;
@@ -13,7 +15,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.LongAdder;
 
 @Service
-public class ExtensionResourceLimiter {
+public class ExtensionResourceLimiter implements ExtensionLimitQueries {
 
     private static final Logger log = LoggerFactory.getLogger(ExtensionResourceLimiter.class);
 

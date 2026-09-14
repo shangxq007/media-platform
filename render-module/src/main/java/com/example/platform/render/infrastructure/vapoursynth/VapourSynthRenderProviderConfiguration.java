@@ -1,6 +1,6 @@
 package com.example.platform.render.infrastructure.vapoursynth;
 
-import com.example.platform.extension.app.ProcessToolRunner;
+import com.example.platform.extension.api.port.ProcessToolRunner;
 import com.example.platform.render.domain.interchange.TimelineScriptParser;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;

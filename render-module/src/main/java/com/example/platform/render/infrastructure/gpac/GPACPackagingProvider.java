@@ -1,6 +1,6 @@
 package com.example.platform.render.infrastructure.gpac;
 
-import com.example.platform.extension.app.ProcessToolRunner;
+import com.example.platform.extension.api.port.ProcessToolRunner;
 import com.example.platform.extension.domain.ToolExecutionRequest;
 import com.example.platform.extension.domain.ToolExecutionResult;
 import java.util.List;

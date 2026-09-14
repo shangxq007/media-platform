@@ -1,8 +1,8 @@
 package com.example.platform.render.integration.extension;
 
-import com.example.platform.extension.app.ProcessToolRunner;
-import com.example.platform.extension.app.ToolRegistry;
-import com.example.platform.extension.app.ToolRunner;
+import com.example.platform.extension.api.port.ProcessToolRunner;
+import com.example.platform.extension.api.port.ToolCatalog;
+import com.example.platform.extension.api.port.ToolRunner;
 import com.example.platform.extension.domain.ToolExecutionRequest;
 import com.example.platform.extension.domain.ToolExecutionResult;
 import com.example.platform.extension.domain.ToolExecutionSafetyPolicy;
@@ -32,11 +32,11 @@ public final class ExtensionSandboxToolRunnerAdapter implements ProcessToolRunne
     private static final Map<String, String> DEFAULT_ENVIRONMENT =
             Map.of("PATH", "/usr/bin:/bin", "LANG", "C");
 
-    private final ToolRegistry toolRegistry;
+    private final ToolCatalog toolRegistry;
     private final SandboxProcessExecutionPort sandbox;
 
     public ExtensionSandboxToolRunnerAdapter(
-            ToolRegistry toolRegistry, SandboxProcessExecutionPort sandbox) {
+            ToolCatalog toolRegistry, SandboxProcessExecutionPort sandbox) {
         this.toolRegistry = toolRegistry;
         this.sandbox = sandbox;
     }

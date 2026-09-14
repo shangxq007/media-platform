@@ -1,8 +1,9 @@
 package com.example.platform.providerplugin;
 
 import com.example.platform.execution.domain.provider.ProviderBindingPin;
-import com.example.platform.extension.app.PluginDescriptorValidator;
-import com.example.platform.extension.app.PluginRegistryImpl;
+import com.example.platform.extension.api.port.PluginRegistries;
+import com.example.platform.extension.api.port.PluginRegistrationException;
+import com.example.platform.extension.api.port.PluginRegistrationPort;
 import com.example.platform.extension.domain.PluginDescriptor;
 import com.example.platform.extension.domain.PluginDescriptorValidationIssue;
 import java.nio.file.Path;
@@ -19,22 +20,22 @@ import org.pf4j.PluginWrapper;
 public final class ProviderPluginHost implements AutoCloseable {
 
     private final PluginManager pluginManager;
-    private final PluginRegistryImpl pluginRegistry;
+    private final PluginRegistrationPort pluginRegistry;
     private final ProviderPluginCatalog catalog = new ProviderPluginCatalog();
     private boolean loaded;
+    private final java.util.Map<String, PluginRegistrationPort.Registration> registrations = new java.util.LinkedHashMap<>();
 
     /** Standalone host composition uses the same canonical plugin validator and registry. */
     public static ProviderPluginHost open(Path pluginsDirectory) {
-        return new ProviderPluginHost(pluginsDirectory, new PluginRegistryImpl(
-                new PluginDescriptorValidator(), new com.example.platform.extension.app.PluginHealthRegistry()));
+        return new ProviderPluginHost(pluginsDirectory, PluginRegistries.standalone());
     }
 
-    public ProviderPluginHost(Path pluginsDirectory, PluginRegistryImpl pluginRegistry) {
+    public ProviderPluginHost(Path pluginsDirectory, PluginRegistrationPort pluginRegistry) {
         this(new DefaultPluginManager(Objects.requireNonNull(pluginsDirectory, "pluginsDirectory")),
                 pluginRegistry);
     }
 
-    ProviderPluginHost(PluginManager pluginManager, PluginRegistryImpl pluginRegistry) {
+    ProviderPluginHost(PluginManager pluginManager, PluginRegistrationPort pluginRegistry) {
         this.pluginManager = Objects.requireNonNull(pluginManager, "pluginManager");
         this.pluginRegistry = Objects.requireNonNull(pluginRegistry, "pluginRegistry");
     }
@@ -49,23 +50,24 @@ public final class ProviderPluginHost implements AutoCloseable {
             pluginManager.startPlugins();
             List<ProviderPluginContribution> contributions =
                     pluginManager.getExtensions(ProviderPluginContribution.class);
-            preflight(contributions);
+            var descriptors = preflight(contributions);
             for (ProviderPluginContribution contribution : contributions) {
-                List<PluginDescriptorValidationIssue> issues =
-                        pluginRegistry.register(contribution.pluginDescriptor());
-                if (!issues.isEmpty()) {
-                    throw new ProviderPluginLoadException(
-                            "INVALID_PLATFORM_PLUGIN_DESCRIPTOR", issues.toString());
+                try {
+                    var descriptor = descriptors.get(contribution);
+                    var registration = pluginRegistry.registerRuntime(descriptor);
+                    registrations.put(descriptor.pluginId() + "@" + descriptor.pluginVersion(), registration);
+                } catch (PluginRegistrationException rejected) {
+                    throw new ProviderPluginLoadException("INVALID_PLATFORM_PLUGIN_DESCRIPTOR", rejected.issues().toString());
                 }
                 catalog.register(contribution);
             }
             loaded = true;
             return catalog;
         } catch (ProviderPluginLoadException failure) {
-            stopAndUnloadAfterFailure();
+            try { stopAndUnloadAfterFailure(); } catch (RuntimeException cleanup) { failure.addSuppressed(cleanup); }
             throw failure;
         } catch (RuntimeException failure) {
-            stopAndUnloadAfterFailure();
+            try { stopAndUnloadAfterFailure(); } catch (RuntimeException cleanup) { failure.addSuppressed(cleanup); }
             throw new ProviderPluginLoadException(
                     "PF4J_PROVIDER_PLUGIN_LOAD_FAILED", "provider plugin load/start failed", failure);
         }
@@ -76,12 +78,11 @@ public final class ProviderPluginHost implements AutoCloseable {
         if (wrapper == null) {
             return false;
         }
-        List<ProviderPluginContribution> contributions =
-                pluginManager.getExtensions(ProviderPluginContribution.class, pluginId);
-        pluginManager.stopPlugin(pluginId);
-        boolean disabled = pluginManager.disablePlugin(pluginId);
-        removeContributions(contributions);
-        return disabled;
+        String version = wrapper.getDescriptor().getVersion();
+        try {
+            pluginManager.stopPlugin(pluginId);
+            return pluginManager.disablePlugin(pluginId);
+        } finally { removeContribution(pluginId, version); }
     }
 
     public synchronized boolean unload(String pluginId) {
@@ -89,16 +90,11 @@ public final class ProviderPluginHost implements AutoCloseable {
         if (wrapper == null) {
             return false;
         }
-        List<ProviderPluginContribution> contributions =
-                pluginManager.getExtensions(ProviderPluginContribution.class, pluginId);
-        pluginManager.stopPlugin(pluginId);
-        boolean unloaded = pluginManager.unloadPlugin(pluginId);
-        removeContributions(contributions);
-        return unloaded;
-    }
-
-    public PluginManager pluginManager() {
-        return pluginManager;
+        String version = wrapper.getDescriptor().getVersion();
+        try {
+            pluginManager.stopPlugin(pluginId);
+            return pluginManager.unloadPlugin(pluginId);
+        } finally { removeContribution(pluginId, version); }
     }
 
     public ProviderPluginCatalog catalog() {
@@ -107,21 +103,33 @@ public final class ProviderPluginHost implements AutoCloseable {
 
     @Override
     public synchronized void close() {
+        RuntimeException failure = null;
         try {
-            List<String> started = pluginManager.getStartedPlugins().stream()
-                    .map(PluginWrapper::getPluginId).toList();
-            started.forEach(pluginManager::stopPlugin);
-            List<String> loadedPlugins = pluginManager.getPlugins().stream()
-                    .map(PluginWrapper::getPluginId).toList();
-            loadedPlugins.forEach(pluginManager::unloadPlugin);
+            for (var plugin : List.copyOf(pluginManager.getStartedPlugins()))
+                failure = attempt(() -> pluginManager.stopPlugin(plugin.getPluginId()), failure);
+            for (var plugin : List.copyOf(pluginManager.getPlugins()))
+                failure = attempt(() -> pluginManager.unloadPlugin(plugin.getPluginId()), failure);
         } finally {
+            retireRegistrations();
             catalog.clear();
             loaded = false;
         }
+        if (failure != null) throw failure;
     }
 
-    private void preflight(List<ProviderPluginContribution> contributions) {
-        PluginDescriptorValidator validator = new PluginDescriptorValidator();
+    private static RuntimeException attempt(Runnable action, RuntimeException previous) {
+        try { action.run(); }
+        catch (RuntimeException failure) {
+            if (previous == null) return failure;
+            previous.addSuppressed(failure);
+        }
+        return previous;
+    }
+
+    private java.util.Map<ProviderPluginContribution, PluginDescriptor> preflight(List<ProviderPluginContribution> contributions) {
+        var descriptors = new java.util.IdentityHashMap<ProviderPluginContribution, PluginDescriptor>();
+        if (pluginManager.getPlugins().stream().anyMatch(p -> p.getPluginState() == org.pf4j.PluginState.FAILED))
+            throw new ProviderPluginLoadException("PF4J_PROVIDER_PLUGIN_LOAD_FAILED", "A plugin failed to start");
         Set<String> identities = new HashSet<>();
         Set<ProviderBindingPin> bindings = new HashSet<>();
         List<ProviderPluginContribution> deterministic = new ArrayList<>(contributions);
@@ -148,16 +156,19 @@ public final class ProviderPluginHost implements AutoCloseable {
                 throw new ProviderPluginLoadException(
                         "PLUGIN_IDENTITY_MISMATCH", "PF4J, platform, and contribution identities differ");
             }
-            if (!validator.validate(descriptor).isEmpty()) {
+            var issues = pluginRegistry.validate(descriptor);
+            if (!issues.isEmpty()) {
                 throw new ProviderPluginLoadException(
-                        "INVALID_PLATFORM_PLUGIN_DESCRIPTOR", validator.validate(descriptor).toString());
+                        "INVALID_PLATFORM_PLUGIN_DESCRIPTOR", issues.toString());
             }
+            descriptors.put(contribution, descriptor);
             validateProviderContracts(contribution);
             if (pluginRegistry.findByPluginId(contribution.pluginId()).isPresent()) {
                 throw new ProviderPluginLoadException(
                         "DUPLICATE_PLUGIN_ID_VERSION", "plugin registry already contains plugin identity");
             }
         }
+        return descriptors;
     }
 
     private static void validateProviderContracts(ProviderPluginContribution contribution) {
@@ -184,9 +195,15 @@ public final class ProviderPluginHost implements AutoCloseable {
         }
     }
 
-    private void removeContributions(List<ProviderPluginContribution> contributions) {
-        contributions.forEach(contribution -> catalog.remove(
-                contribution.pluginId(), contribution.pluginVersion()));
+    private void removeContribution(String pluginId, String version) {
+        var registration = registrations.remove(pluginId + "@" + version);
+        if (registration != null) registration.close();
+        catalog.remove(pluginId, version);
+    }
+
+    private void retireRegistrations() {
+        registrations.values().forEach(PluginRegistrationPort.Registration::close);
+        registrations.clear();
     }
 
     private void stopAndUnloadAfterFailure() {
@@ -196,6 +213,7 @@ public final class ProviderPluginHost implements AutoCloseable {
             try {
                 pluginManager.unloadPlugins();
             } finally {
+                retireRegistrations();
                 catalog.clear();
                 loaded = false;
             }

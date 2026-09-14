@@ -3,8 +3,8 @@ package com.example.platform.federation.graphql.resolver;
 import com.example.platform.billing.app.BillingProjectionService;
 import com.example.platform.billing.app.UsageMeteringService;
 import com.example.platform.billing.usage.UsageRecord;
-import com.example.platform.extension.app.ExtensionRegistryService;
-import com.example.platform.extension.app.ExtensionRegistryService.ExtensionInfo;
+import com.example.platform.extension.api.port.ExtensionQueries;
+import com.example.platform.extension.api.port.ExtensionQueries.ExtensionInfo;
 import com.example.platform.federation.graphql.context.GraphQLRequestContext;
 import com.example.platform.federation.graphql.dto.*;
 import com.example.platform.render.app.RenderJobService;
@@ -27,12 +27,12 @@ public class AdminDashboardGraphQLResolver {
     private final RenderJobService renderJobService;
     private final BillingProjectionService billingProjectionService;
     private final UsageMeteringService usageMeteringService;
-    private final ExtensionRegistryService extensionRegistryService;
+    private final ExtensionQueries extensionRegistryService;
 
     public AdminDashboardGraphQLResolver(RenderJobService renderJobService,
                                          BillingProjectionService billingProjectionService,
                                          UsageMeteringService usageMeteringService,
-                                         ExtensionRegistryService extensionRegistryService) {
+                                         ExtensionQueries extensionRegistryService) {
         this.renderJobService = renderJobService;
         this.billingProjectionService = billingProjectionService;
         this.usageMeteringService = usageMeteringService;

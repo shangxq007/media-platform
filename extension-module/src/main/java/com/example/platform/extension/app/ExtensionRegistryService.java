@@ -1,5 +1,8 @@
 package com.example.platform.extension.app;
 
+import com.example.platform.extension.api.port.*;
+import com.example.platform.extension.api.port.ExtensionQueries.ExtensionInfo;
+
 import com.example.platform.extension.domain.*;
 import com.example.platform.extension.runtime.PluginRuntimeProviderBinding;
 import com.example.platform.shared.audit.AuditPort;
@@ -12,7 +15,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
-public class ExtensionRegistryService {
+public class ExtensionRegistryService implements ProviderContributions, ExtensionQueries {
 
     private static final Logger log = LoggerFactory.getLogger(ExtensionRegistryService.class);
 
@@ -38,90 +41,50 @@ public class ExtensionRegistryService {
         this.router = router;
     }
 
-    public void registerProviderExtension(String key, PluginRuntimeProviderBinding extension,
-                                           ExtensionTrustLevel trustLevel, String registeredBy) {
+    @Override
+    public synchronized void registerProviderExtension(String key, PluginRuntimeProviderBinding extension,
+            ExtensionTrustLevel trustLevel, String registeredBy) {
         validateExtension(key, extension);
-        ExtensionHolder holder = new ExtensionHolder(key, extension.version(),
-                extension.providerType(), "PROVIDER",
-                OffsetDateTime.now(), registeredBy, ExtensionStatus.ACTIVE, trustLevel);
-
-        ExtensionHolder previous = providerExtensions.put(key, holder);
-        spiInstances.put(key, extension);
-
-        if (previous != null) {
-            saveVersionHistory(key, previous);
-            createRollbackPoint(key, previous);
-            log.info("Upgraded provider extension {} from {} to {}", key, previous.version(), extension.version());
-        }
-
-        ExtensionResourceLimits limits = ExtensionResourceLimits.forTrustLevel(trustLevel);
-        limits = extension.resourceLimits().overrideWith(limits);
-        resourceLimiter.registerLimits(key, limits);
-
-        auditService.recordRegistration(key, extension.version(),
-                trustLevel.name(), registeredBy, Map.of(
-                        "type", extension.providerType(),
-                        "action", previous != null ? "UPGRADE" : "REGISTER",
-                        "trustLevel", trustLevel.name()));
-
-        log.info("Registered provider extension: {} v{} trust={}", key, extension.version(), trustLevel);
+        register(key, extension, extension.version(), extension.providerType(), "PROVIDER",
+                trustLevel, registeredBy, extension.resourceLimits(), providerExtensions);
     }
 
-    public void registerPromptExtension(String key, PromptExtensionSPI extension,
-                                         ExtensionTrustLevel trustLevel, String registeredBy) {
+    public synchronized void registerPromptExtension(String key, PromptExtensionSPI extension,
+            ExtensionTrustLevel trustLevel, String registeredBy) {
         validateExtension(key, extension);
-        ExtensionHolder holder = new ExtensionHolder(key, extension.version(),
-                extension.extensionType(), "PROMPT",
-                OffsetDateTime.now(), registeredBy, ExtensionStatus.ACTIVE, trustLevel);
-
-        ExtensionHolder previous = promptExtensions.put(key, holder);
-        spiInstances.put(key, extension);
-
-        if (previous != null) {
-            saveVersionHistory(key, previous);
-            createRollbackPoint(key, previous);
-        }
-
-        ExtensionResourceLimits limits = ExtensionResourceLimits.forTrustLevel(trustLevel);
-        limits = extension.resourceLimits().overrideWith(limits);
-        resourceLimiter.registerLimits(key, limits);
-
-        auditService.recordRegistration(key, extension.version(),
-                trustLevel.name(), registeredBy, Map.of(
-                        "type", extension.extensionType(),
-                        "trustLevel", trustLevel.name()));
-
-        log.info("Registered prompt extension: {} v{} trust={}", key, extension.version(), trustLevel);
+        register(key, extension, extension.version(), extension.extensionType(), "PROMPT",
+                trustLevel, registeredBy, extension.resourceLimits(), promptExtensions);
     }
 
-    public void registerWorkflowStepExtension(String key, WorkflowStepExtensionSPI extension,
-                                                ExtensionTrustLevel trustLevel, String registeredBy) {
+    public synchronized void registerWorkflowStepExtension(String key, WorkflowStepExtensionSPI extension,
+            ExtensionTrustLevel trustLevel, String registeredBy) {
         validateExtension(key, extension);
-        ExtensionHolder holder = new ExtensionHolder(key, extension.version(),
-                extension.stepType(), "WORKFLOW_STEP",
-                OffsetDateTime.now(), registeredBy, ExtensionStatus.ACTIVE, trustLevel);
-
-        ExtensionHolder previous = workflowStepExtensions.put(key, holder);
-        spiInstances.put(key, extension);
-
-        if (previous != null) {
-            saveVersionHistory(key, previous);
-            createRollbackPoint(key, previous);
-        }
-
-        ExtensionResourceLimits limits = ExtensionResourceLimits.forTrustLevel(trustLevel);
-        limits = extension.resourceLimits().overrideWith(limits);
-        resourceLimiter.registerLimits(key, limits);
-
-        auditService.recordRegistration(key, extension.version(),
-                trustLevel.name(), registeredBy, Map.of(
-                        "type", extension.stepType(),
-                        "trustLevel", trustLevel.name()));
-
-        log.info("Registered workflow step extension: {} v{} trust={}", key, extension.version(), trustLevel);
+        register(key, extension, extension.version(), extension.stepType(), "WORKFLOW_STEP",
+                trustLevel, registeredBy, extension.resourceLimits(), workflowStepExtensions);
     }
 
-    public boolean unloadExtension(String key, String unloadedBy) {
+    private void register(String key, Object instance, String version, String type, String category,
+            ExtensionTrustLevel trust, String actor, ExtensionResourceLimits requested,
+            Map<String, ExtensionHolder> holders) {
+        // Resolve all plugin callbacks and validation before changing advertised state.
+        Objects.requireNonNull(version, "version");
+        Objects.requireNonNull(type, "extensionType");
+        var limits = Objects.requireNonNull(requested, "resourceLimits")
+                .overrideWith(ExtensionResourceLimits.forTrustLevel(trust));
+        var previous = holders.get(key);
+        var holder = new ExtensionHolder(key, version, type, category, OffsetDateTime.now(), actor, ExtensionStatus.ACTIVE, trust);
+        Map<String, Object> payload = category.equals("PROVIDER")
+                ? Map.of("type", type, "action", previous == null ? "REGISTER" : "UPGRADE", "trustLevel", trust.name())
+                : Map.of("type", type, "trustLevel", trust.name());
+        auditService.recordRegistration(key, version, trust.name(), actor, payload);
+        resourceLimiter.registerLimits(key, limits);
+        if (previous != null) { saveVersionHistory(key, previous); createRollbackPoint(key, previous); }
+        spiInstances.put(key, instance);
+        holders.put(key, holder);
+        log.info("Registered {} extension: {} v{} trust={}", category, key, version, trust);
+    }
+
+    public synchronized boolean unloadExtension(String key, String unloadedBy) {
         ExtensionHolder removed = providerExtensions.remove(key);
         if (removed == null) removed = promptExtensions.remove(key);
         if (removed == null) removed = workflowStepExtensions.remove(key);
@@ -139,7 +102,7 @@ public class ExtensionRegistryService {
         return false;
     }
 
-    public boolean rollbackExtension(String key, String targetVersion, String rolledBackBy) {
+    public synchronized boolean rollbackExtension(String key, String targetVersion, String rolledBackBy) {
         List<ExtensionVersionRecord> history = extensionHistory.get(key);
         if (history == null || history.isEmpty()) {
             log.warn("No version history for extension: {}", key);
@@ -172,7 +135,7 @@ public class ExtensionRegistryService {
         return true;
     }
 
-    public RollbackPoint createRollbackPoint(String extensionKey, String createdBy) {
+    public synchronized RollbackPoint createRollbackPoint(String extensionKey, String createdBy) {
         ExtensionHolder holder = providerExtensions.get(extensionKey);
         if (holder == null) holder = promptExtensions.get(extensionKey);
         if (holder == null) holder = workflowStepExtensions.get(extensionKey);
@@ -194,15 +157,15 @@ public class ExtensionRegistryService {
         return point;
     }
 
-    public List<ExtensionInfo> listExtensions() {
+    public synchronized List<ExtensionInfo> listExtensions() {
         List<ExtensionInfo> all = new ArrayList<>();
         providerExtensions.forEach((k, v) -> all.add(new ExtensionInfo(k, v.version(), v.extensionType(), "PROVIDER", v.status().name(), v.trustLevel().name())));
         promptExtensions.forEach((k, v) -> all.add(new ExtensionInfo(k, v.version(), v.extensionType(), "PROMPT", v.status().name(), v.trustLevel().name())));
         workflowStepExtensions.forEach((k, v) -> all.add(new ExtensionInfo(k, v.version(), v.extensionType(), "WORKFLOW_STEP", v.status().name(), v.trustLevel().name())));
-        return all;
+        return List.copyOf(all);
     }
 
-    public Optional<ExtensionInfo> getExtension(String key) {
+    public synchronized Optional<ExtensionInfo> getExtension(String key) {
         ExtensionHolder h = providerExtensions.get(key);
         if (h == null) h = promptExtensions.get(key);
         if (h == null) h = workflowStepExtensions.get(key);
@@ -210,8 +173,8 @@ public class ExtensionRegistryService {
         return Optional.of(new ExtensionInfo(key, h.version(), h.extensionType(), h.category(), h.status().name(), h.trustLevel().name()));
     }
 
-    public List<ExtensionVersionRecord> getVersionHistory(String key) {
-        return extensionHistory.getOrDefault(key, List.of());
+    public synchronized List<ExtensionVersionRecord> getVersionHistory(String key) {
+        return List.copyOf(extensionHistory.getOrDefault(key, List.of()));
     }
 
     public ExtensionRouter getRouter() {
@@ -225,7 +188,7 @@ public class ExtensionRegistryService {
      * @param key provider extension key
      * @return the registered provider binding, or {@code null} when not registered
      */
-    public PluginRuntimeProviderBinding findProviderBinding(String key) {
+    public synchronized PluginRuntimeProviderBinding findProviderBinding(String key) {
         Object spi = spiInstances.get(key);
         return spi instanceof PluginRuntimeProviderBinding provider ? provider : null;
     }
@@ -265,11 +228,6 @@ public class ExtensionRegistryService {
             String key, String version, String extensionType, String category,
             OffsetDateTime registeredAt, String registeredBy, ExtensionStatus status,
             ExtensionTrustLevel trustLevel
-    ) {}
-
-    public record ExtensionInfo(
-            String key, String version, String extensionType, String category,
-            String status, String trustLevel
     ) {}
 
     public record ExtensionVersionRecord(

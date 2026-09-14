@@ -1,6 +1,5 @@
 package com.example.platform.render.infrastructure.asset.provider;
 
-import com.example.platform.extension.app.ExtensionRegistryService;
 import com.example.platform.extension.domain.ExtensionExecutionException;
 import com.example.platform.extension.domain.ExtensionResult;
 import com.example.platform.outbox.coordination.TaskHandler;

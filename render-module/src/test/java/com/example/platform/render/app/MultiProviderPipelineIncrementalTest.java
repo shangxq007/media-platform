@@ -53,7 +53,7 @@ class MultiProviderPipelineIncrementalTest {
                 providerRouter, providerRegistry, exportPolicy, effectMapping,
                 timelineExecutor,
                 new SegmentStitchComposeService(
-                        mock(com.example.platform.extension.app.ProcessToolRunner.class),
+                        mock(com.example.platform.extension.api.port.ProcessToolRunner.class),
                         new com.example.platform.render.domain.interchange.TimelineScriptParser(),
                         new com.example.platform.render.infrastructure.mlt.MltProjectXmlBuilder(),
                         new com.example.platform.render.infrastructure.mlt.MLTCommandFactory(),

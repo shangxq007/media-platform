@@ -15,7 +15,7 @@ public final class ProviderPluginCatalog {
     private final Map<String, ProviderPluginContribution> byPluginIdentity = new LinkedHashMap<>();
     private final Map<ProviderBindingPin, ProviderPluginContribution> byBinding = new LinkedHashMap<>();
 
-    public synchronized void register(ProviderPluginContribution contribution) {
+    synchronized void register(ProviderPluginContribution contribution) {
         Objects.requireNonNull(contribution, "contribution");
         String pluginId = requireIdentity(contribution.pluginId(), "pluginId");
         String pluginVersion = requireIdentity(contribution.pluginVersion(), "pluginVersion");
@@ -45,7 +45,7 @@ public final class ProviderPluginCatalog {
         return List.copyOf(result);
     }
 
-    public synchronized void remove(String pluginId, String pluginVersion) {
+    synchronized void remove(String pluginId, String pluginVersion) {
         ProviderPluginContribution removed = byPluginIdentity.remove(pluginId + "@" + pluginVersion);
         if (removed != null) {
             byBinding.remove(removed.providerBindingPin(), removed);

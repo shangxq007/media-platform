@@ -50,6 +50,8 @@ public class PluginHealthRegistry {
         return healthByPluginId.getOrDefault(pluginId, PluginHealth.unknown(pluginId));
     }
 
+    void remove(String pluginId) { healthByPluginId.remove(pluginId); }
+
     void resetForTests() {
         healthByPluginId.clear();
     }

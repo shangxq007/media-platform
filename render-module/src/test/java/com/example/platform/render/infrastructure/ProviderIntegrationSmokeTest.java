@@ -2,7 +2,7 @@ package com.example.platform.render.infrastructure;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.example.platform.extension.app.ProcessToolRunner;
+import com.example.platform.extension.api.port.ProcessToolRunner;
 import com.example.platform.extension.domain.ToolExecutionRequest;
 import com.example.platform.extension.domain.ToolExecutionResult;
 import com.example.platform.extension.domain.ToolExecutionSafetyPolicy;

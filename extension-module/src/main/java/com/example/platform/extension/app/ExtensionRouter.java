@@ -1,5 +1,7 @@
 package com.example.platform.extension.app;
 
+import com.example.platform.extension.api.port.*;
+
 import com.example.platform.extension.domain.*;
 import com.example.platform.shared.audit.AuditPort;
 import org.slf4j.Logger;
@@ -11,7 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
 @Service
-public class ExtensionRouter {
+public class ExtensionRouter implements ExtensionRoutingQueries {
 
     private static final Logger log = LoggerFactory.getLogger(ExtensionRouter.class);
 

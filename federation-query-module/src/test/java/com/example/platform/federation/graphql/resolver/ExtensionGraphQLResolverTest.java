@@ -1,8 +1,8 @@
 package com.example.platform.federation.graphql.resolver;
 
-import com.example.platform.extension.app.ExtensionRegistryService;
-import com.example.platform.extension.app.ExtensionResourceLimiter;
-import com.example.platform.extension.app.ExtensionRouter;
+import com.example.platform.extension.api.port.ExtensionQueries;
+import com.example.platform.extension.api.port.ExtensionLimitQueries;
+import com.example.platform.extension.api.port.ExtensionRoutingQueries;
 import com.example.platform.extension.domain.ExtensionResourceLimits;
 import com.example.platform.extension.domain.RoutingRule;
 import com.example.platform.federation.graphql.context.GraphQLRequestContext;
@@ -24,9 +24,9 @@ class ExtensionGraphQLResolverTest {
 
     @Test
     void returnsExtensionsForExtensionAdmin() throws Exception {
-        ExtensionRegistryService registryService = mock(ExtensionRegistryService.class);
-        ExtensionRouter router = mock(ExtensionRouter.class);
-        ExtensionResourceLimiter limiter = mock(ExtensionResourceLimiter.class);
+        ExtensionQueries registryService = mock(ExtensionQueries.class);
+        ExtensionRoutingQueries router = mock(ExtensionRoutingQueries.class);
+        ExtensionLimitQueries limiter = mock(ExtensionLimitQueries.class);
 
         GraphQLRequestContext ctx = new GraphQLRequestContext(
                 "tenant-1", null, "user-1",
@@ -37,8 +37,8 @@ class ExtensionGraphQLResolverTest {
         );
 
         when(registryService.listExtensions()).thenReturn(List.of(
-                new ExtensionRegistryService.ExtensionInfo("ext-1", "1.0.0", "PROVIDER", "PROVIDER", "ACTIVE", "SEMI_TRUSTED"),
-                new ExtensionRegistryService.ExtensionInfo("ext-2", "2.0.0", "PROMPT", "PROMPT", "ACTIVE", "UNTRUSTED")
+                new com.example.platform.extension.api.port.ExtensionQueries.ExtensionInfo("ext-1", "1.0.0", "PROVIDER", "PROVIDER", "ACTIVE", "SEMI_TRUSTED"),
+                new com.example.platform.extension.api.port.ExtensionQueries.ExtensionInfo("ext-2", "2.0.0", "PROMPT", "PROMPT", "ACTIVE", "UNTRUSTED")
         ));
 
         RoutingRule rule = new RoutingRule(
@@ -65,6 +65,7 @@ class ExtensionGraphQLResolverTest {
         assertEquals("SEMI_TRUSTED", first.trustLevel());
         assertTrue(first.enabled());
         assertEquals("1.0.0", first.version());
+        assertEquals("UNKNOWN", first.healthStatus());
         assertFalse(first.routeRules().isEmpty());
         assertNotNull(first.resourceLimits());
         assertEquals(30000, first.resourceLimits().timeoutMs());
@@ -77,9 +78,9 @@ class ExtensionGraphQLResolverTest {
 
     @Test
     void returnsExtensionsForAdmin() throws Exception {
-        ExtensionRegistryService registryService = mock(ExtensionRegistryService.class);
-        ExtensionRouter router = mock(ExtensionRouter.class);
-        ExtensionResourceLimiter limiter = mock(ExtensionResourceLimiter.class);
+        ExtensionQueries registryService = mock(ExtensionQueries.class);
+        ExtensionRoutingQueries router = mock(ExtensionRoutingQueries.class);
+        ExtensionLimitQueries limiter = mock(ExtensionLimitQueries.class);
 
         GraphQLRequestContext ctx = new GraphQLRequestContext(
                 "tenant-1", null, "user-1",
@@ -103,9 +104,9 @@ class ExtensionGraphQLResolverTest {
 
     @Test
     void throwsForUnauthorizedUser() throws Exception {
-        ExtensionRegistryService registryService = mock(ExtensionRegistryService.class);
-        ExtensionRouter router = mock(ExtensionRouter.class);
-        ExtensionResourceLimiter limiter = mock(ExtensionResourceLimiter.class);
+        ExtensionQueries registryService = mock(ExtensionQueries.class);
+        ExtensionRoutingQueries router = mock(ExtensionRoutingQueries.class);
+        ExtensionLimitQueries limiter = mock(ExtensionLimitQueries.class);
 
         GraphQLRequestContext ctx = new GraphQLRequestContext(
                 "tenant-1", null, "user-1",
@@ -122,9 +123,9 @@ class ExtensionGraphQLResolverTest {
 
     @Test
     void throwsForNullRoles() throws Exception {
-        ExtensionRegistryService registryService = mock(ExtensionRegistryService.class);
-        ExtensionRouter router = mock(ExtensionRouter.class);
-        ExtensionResourceLimiter limiter = mock(ExtensionResourceLimiter.class);
+        ExtensionQueries registryService = mock(ExtensionQueries.class);
+        ExtensionRoutingQueries router = mock(ExtensionRoutingQueries.class);
+        ExtensionLimitQueries limiter = mock(ExtensionLimitQueries.class);
 
         GraphQLRequestContext ctx = new GraphQLRequestContext(
                 "tenant-1", null, "user-1",
