@@ -27,7 +27,7 @@ vi.mock('oidc-client-ts', () => {
     signoutRedirect() { return sdk.signout() }
   } }
 })
-import api from './index'
+import api, { RenderAPI } from './index'
 import { versionlessApi } from './app/versionless-api'
 import { getOidcRequestBinding, getOidcUser, handleOAuthCallback, subscribeOidcSessionRetirement } from '../auth/oidcClient'
 
@@ -339,5 +339,49 @@ describe('reachable fetch OIDC transport', () => {
     pending.response.resolve(fetchResponse(status))
     expect(await pending.result).toEqual({ success: false, error: { status, message: `HTTP ${status}` } })
     await fetchSuccess(); expect(retired).not.toHaveBeenCalled(); expect(sdk.redirect).not.toHaveBeenCalled()
+  })
+})
+
+
+describe('Project-scoped render submission', () => {
+  it('uses owner-resolved scope and ignores stale UI tenant hints', async () => {
+    await login('scope-A')
+    localStorage.setItem('tenant_id', 'forged-ui-tenant')
+    const seen: InternalAxiosRequestConfig[] = []
+    api.defaults.adapter = async config => {
+      seen.push(config)
+      return { config, status: 200, statusText: 'OK', headers: {}, data: config.method === 'get'
+        ? { id: 'project-A', tenantId: 'tenant-scope-A', workspaceId: 'workspace-A' } : { id: 'job-A' } }
+    }
+    await expect(RenderAPI.createJob('project-A', { profile: 'default', timelineSnapshotId: 'snapshot' })).resolves.toEqual({ id: 'job-A' })
+    expect(seen.map(c => c.url)).toEqual(['/identity/projects/project-A', '/tenants/tenant-scope-A/projects/project-A/render-jobs'])
+    expect(seen.every(c => c.headers.Authorization === 'Bearer token-scope-A')).toBe(true)
+    expect(JSON.stringify(seen[0].expectedOidcBinding)).toBe('{}')
+    expect(JSON.parse(seen[1].data)).toMatchObject({ projectId: 'project-A', workspaceId: 'workspace-A', allocationMode: 'TENANT_ORGANIZATION' })
+  })
+  it('does not submit after scope lookup returns into a newer session', async () => {
+    await login('scope-A')
+    const sent = deferred<InternalAxiosRequestConfig>(), response = deferred<AxiosResponse>()
+    const methods: string[] = []
+    api.defaults.adapter = config => { methods.push(config.method ?? ''); sent.resolve(config); return response.promise }
+    const pending = RenderAPI.createJob('project-A', { profile: 'default', timelineSnapshotId: 'snapshot' })
+    const rejected = expect(pending).rejects.toMatchObject({ code: 'ERR_CANCELED' })
+    const config = await sent.promise
+    await login('scope-B')
+    response.resolve({ config, status: 200, statusText: 'OK', headers: {}, data: { id: 'project-A', tenantId: 'tenant-scope-A', workspaceId: 'workspace-A' } })
+    await rejected
+    expect(methods).toEqual(['get'])
+    expect((await getOidcRequestBinding()).accessToken).toBe('token-scope-B')
+  })
+  it('rejects a changed credential without an SDK notification between requests', async () => {
+    await login('scope-A')
+    const methods: string[] = []
+    api.defaults.adapter = async config => {
+      methods.push(config.method ?? '')
+      sdk.user = user('scope-B')
+      return { config, status: 200, statusText: 'OK', headers: {}, data: { id: 'project-A', tenantId: 'tenant-scope-A', workspaceId: 'workspace-A' } }
+    }
+    await expect(RenderAPI.createJob('project-A', { profile: 'default', timelineSnapshotId: 'snapshot' })).rejects.toMatchObject({ code: 'ERR_CANCELED' })
+    expect(methods).toEqual(['get'])
   })
 })

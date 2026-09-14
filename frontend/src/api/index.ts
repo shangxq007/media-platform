@@ -1,9 +1,9 @@
-import { getTenantId } from '@/utils/tenant'
 import axios from 'axios'
 import type { Project, RenderJob, UserBehaviorEvent, ErrorResponse, EffectPack } from '@/types'
 import { getErrorMessage } from '@/utils/i18n'
 import { isOidcEnabled } from '@/auth/oidcConfig'
-import { bindOidcRequest, handleOidcResponseError } from './oidc-transport'
+import { bindOidcRequest, expectOidcRequestBinding, handleOidcResponseError } from './oidc-transport'
+import { getOidcRequestBinding, subscribeOidcSessionRetirement } from '@/auth/oidcClient'
 
 const api = axios.create({
   baseURL: '/api/v1',
@@ -130,13 +130,25 @@ export const RenderAPI = {
     return data
   },
   async createJob(projectId: string, settings: Record<string, string> & { timelineSnapshotId?: string }): Promise<RenderJob> {
-    const tenantId = getTenantId() || 'default'
-    const { data } = await api.post(`/tenants/${tenantId}/projects/${projectId}/render-jobs`, {
-      projectId,
-      timelineSnapshotId: settings.timelineSnapshotId,
-      profile: settings.profile,
-    })
-    return data
+    const cancellation = new AbortController()
+    const stop = isOidcEnabled() ? subscribeOidcSessionRetirement(() => cancellation.abort()) : () => {}
+    try {
+      const binding = isOidcEnabled() ? await getOidcRequestBinding() : undefined
+      const config = { signal: cancellation.signal, expectedOidcBinding: binding ? expectOidcRequestBinding(binding) : undefined }
+      const { data: scope } = await api.get<{ id: string; tenantId: string; workspaceId: string | null }>(
+        `/identity/projects/${encodeURIComponent(projectId)}`, config)
+      if (scope.id !== projectId || !scope.tenantId || !scope.workspaceId) throw new Error('Project scope is unresolved')
+      const { data } = await api.post(`/tenants/${encodeURIComponent(scope.tenantId)}/projects/${encodeURIComponent(projectId)}/render-jobs`, {
+        projectId,
+        workspaceId: scope.workspaceId,
+        allocationMode: 'TENANT_ORGANIZATION',
+        timelineSnapshotId: settings.timelineSnapshotId,
+        profile: settings.profile,
+      }, config)
+      return data
+    } finally {
+      stop()
+    }
   },
   async executeJob(jobId: string): Promise<{ jobId: string; status: string }> {
     const { data } = await api.post(`/render/jobs/${jobId}/execute`)
