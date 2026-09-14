@@ -35,8 +35,22 @@ class PurchaseFulfillmentServiceTest {
         ArgumentCaptor<EntitlementGrantCommand> grant =
                 ArgumentCaptor.forClass(EntitlementGrantCommand.class);
         verify(entitlements).execute(grant.capture());
+        var subscription=ArgumentCaptor.forClass(com.example.platform.billing.domain.SubscriptionCommand.class);
+        verify(subscriptions).execute(subscription.capture());
+        org.junit.jupiter.api.Assertions.assertEquals("ORGANIZATION",subscription.getValue().principal().principalType().name());
+        org.junit.jupiter.api.Assertions.assertEquals("tenant-1",subscription.getValue().principal().principalId());
+        org.junit.jupiter.api.Assertions.assertNotEquals("user-1",subscription.getValue().principal().principalId());
         org.junit.jupiter.api.Assertions.assertEquals("default_features", grant.getValue().bundleCode());
         org.junit.jupiter.api.Assertions.assertEquals("ORGANIZATION",
                 grant.getValue().principal().principalType().name());
+    }
+
+    @Test void unsupportedSeatAllocationCannotWriteATenantAsWorkspaceOrClaimSuccess() {
+        var subscriptions=mock(SubscriptionBillingService.class);var wallets=mock(CreditWalletService.class);var ledger=mock(BillingLedgerService.class);
+        var entitlements=mock(EntitlementService.class);var pools=mock(com.example.platform.entitlement.app.WorkspaceEntitlementPoolService.class);
+        var service=new PurchaseFulfillmentService(subscriptions,wallets,ledger,entitlements,Optional.of(pools));
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,()->service.fulfill(new PurchaseFulfillmentCommand(
+                "seat-order","tenant","purchaser","seats","SEAT_PACK","SEAT_PACK",null,null,null,null,null,1,"render.minutes",30,Instant.now())));
+        org.mockito.Mockito.verifyNoInteractions(subscriptions,wallets,ledger,entitlements,pools);
     }
 }

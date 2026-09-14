@@ -72,7 +72,7 @@ public final class TimelineProjectAuthorizationService {
                         projectId,
                         null),
                 new AuthorizationContext(
-                        "timeline-http", projectId,
+                        "timeline-http", null,
                         Map.of("canonicalAuthorSource", "authenticated-actor"))));
         return actor;
     }

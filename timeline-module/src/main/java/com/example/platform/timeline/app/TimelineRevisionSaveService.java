@@ -700,7 +700,7 @@ public class TimelineRevisionSaveService implements TimelineRevisionCommands {
                         null),
                 new AuthorizationContext(
                         "timeline-canonical-mutation",
-                        context.projectId(),
+                        null,
                         java.util.Map.of("operation", operation))));
     }
 

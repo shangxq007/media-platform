@@ -56,7 +56,7 @@ public final class SocialAccountReadService {
                 new AuthorizableResourceRef(
                         AuthorizationResourceType.PROJECT, projectId, tenantId, projectId, null),
                 new AuthorizationContext(
-                        "social-publication-account-read", projectId,
+                        "social-publication-account-read", null,
                         Map.of("endpointScope", "project-account-identity"))));
         if (!decision.allowed()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "publication account read denied");

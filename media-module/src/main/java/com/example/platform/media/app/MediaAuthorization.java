@@ -19,6 +19,6 @@ public class MediaAuthorization {
         decisions.requireAuthorized(new AuthorizationRequest(actor,
                 new AuthorizationAction(write ? "WRITE" : "READ", AuthorizationResourceType.PROJECT, "Media asset"),
                 new AuthorizableResourceRef(AuthorizationResourceType.PROJECT, project, tenant, project, null),
-                new AuthorizationContext("media-asset", project, Map.of())));
+                new AuthorizationContext("media-asset", null, Map.of())));
     }
 }

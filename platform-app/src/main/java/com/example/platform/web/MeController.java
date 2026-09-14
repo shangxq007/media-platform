@@ -281,7 +281,7 @@ public class MeController {
     private String resolveUserRole(String userId, String tenantId) {
         if (userId == null || tenantId == null || "anonymous".equals(userId)) return "VIEWER";
         try {
-            Set<String> permissions = permissionService.resolvePermissions(userId, tenantId);
+            Set<String> permissions = permissionService.resolveTenantPermissions(userId, tenantId);
             if (permissions.contains("ADMIN")) return "ADMIN";
             if (permissions.contains("WRITE")) return "MEMBER";
             return "VIEWER";
@@ -295,7 +295,7 @@ public class MeController {
         boolean canAdmin = false;
         try {
             if (userId != null && tenantId != null && !"anonymous".equals(userId)) {
-                Set<String> perms = permissionService.resolvePermissions(userId, tenantId);
+                Set<String> perms = permissionService.resolveTenantPermissions(userId, tenantId);
                 canAdmin = perms.contains("ADMIN") || perms.contains("MEMBER_MANAGE");
             }
         } catch (Exception e) {

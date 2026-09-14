@@ -85,7 +85,7 @@ public class PurchaseFulfillmentService implements PurchaseFulfillmentPort {
     private void fulfillBaseSubscription(PurchaseFulfillmentCommand command) {
         ensurePlan(command.planKey(), command.productCode(), Map.of());
         PrincipalRef principal = PrincipalRef.tenantScoped(
-                command.tenantId(), PrincipalType.USER, command.userId());
+                command.tenantId(), PrincipalType.ORGANIZATION, command.tenantId());
         subscriptionBillingService.execute(new SubscriptionCommand(
                 SubscriptionCommandType.CREATE, principal, "sub_" + command.orderId(),
                 command.planKey(), command.productCode(), command.periodDays(),
@@ -103,7 +103,7 @@ public class PurchaseFulfillmentService implements PurchaseFulfillmentPort {
     private void fulfillAddonSubscription(PurchaseFulfillmentCommand command) {
         ensurePlan(command.planKey(), command.productCode(), Map.of("addon", 1L));
         PrincipalRef principal = PrincipalRef.tenantScoped(
-                command.tenantId(), PrincipalType.USER, command.userId());
+                command.tenantId(), PrincipalType.ORGANIZATION, command.tenantId());
         subscriptionBillingService.execute(new SubscriptionCommand(
                 SubscriptionCommandType.CREATE, principal, "sub_" + command.orderId(),
                 command.planKey(), command.productCode(), command.periodDays(),
@@ -149,24 +149,8 @@ public class PurchaseFulfillmentService implements PurchaseFulfillmentPort {
     }
 
     private void fulfillSeatPack(PurchaseFulfillmentCommand command) {
-        int seats = command.includedSeats() != null ? command.includedSeats() : 0;
-        if (seats <= 0) {
-            throw new IllegalArgumentException("Seat pack requires includedSeats");
-        }
-        String featureKey = command.seatFeatureKey() != null && !command.seatFeatureKey().isBlank()
-                ? command.seatFeatureKey()
-                : "render.minutes";
-        long additionalMinutes = seats * 60L;
-        workspaceEntitlementPoolService.ifPresentOrElse(poolService -> {
-            List<WorkspaceEntitlementPool> pools = poolService.getPool(command.tenantId());
-            boolean exists = pools.stream().anyMatch(p -> featureKey.equals(p.featureKey()));
-            if (!exists) {
-                poolService.createPool(command.tenantId(), featureKey, additionalMinutes, "MONTHLY", "commerce");
-            } else {
-                poolService.extendPoolQuota(command.tenantId(), featureKey, additionalMinutes, "commerce");
-            }
-        }, () -> log.warn("WorkspaceEntitlementPoolService unavailable; seat pack not applied for order {}",
-                command.orderId()));
+        // A tenant is the beneficiary, not an invented Workspace allocation target.
+        throw new IllegalArgumentException("Seat-pack allocation requires an explicit supported Workspace allocation contract");
     }
 
     private void ensurePlan(String planKey, String productCode, Map<String, Long> defaultQuota) {

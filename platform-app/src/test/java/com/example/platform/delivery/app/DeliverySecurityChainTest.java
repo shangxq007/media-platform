@@ -91,16 +91,26 @@ class DeliverySecurityChainTest {
     @org.springframework.boot.test.context.TestConfiguration
     @Profile("ep14-security-chain") @EnableWebMvc @EnableWebSecurity
     static class Config {
-        @Bean JwtAuthFilter jwt() { return new JwtAuthFilter(JWT); }
+        @Bean com.example.platform.identity.api.account.AccountIdentityQueries memberships() {
+            return (issuer,subject,tenant)->new com.example.platform.identity.api.account.AccountMembership("fixture-account",subject,tenant,"admin".equals(subject)?"ADMIN":"MEMBER");
+        }
+        @Bean JwtAuthFilter jwt(com.example.platform.identity.api.account.AccountIdentityQueries memberships) { return new JwtAuthFilter(JWT,memberships); }
         @Bean SecurityFilterChain chain(HttpSecurity http, JwtAuthFilter jwt) throws Exception {
             return http.csrf(csrf -> csrf.disable()).authorizeHttpRequests(SecurityHttpRules::applyApiAuthorization)
                     .addFilterBefore(jwt, UsernamePasswordAuthenticationFilter.class).build();
         }
-        @Bean CanonicalActorResolver actor() { return new RequestAttributesCanonicalActorResolver(); }
+        @Bean CanonicalActorResolver actor(com.example.platform.identity.api.account.AccountIdentityQueries memberships) { return new RequestAttributesCanonicalActorResolver(memberships); }
         @Bean AuthorizationDecisionPort rbac() {
             PermissionService permissions = mock(PermissionService.class);
-            when(permissions.hasPermission("editor", "project-a", "delivery.manage")).thenReturn(true);
-            return new RbacAuthorizationDecisionPort(permissions);
+            when(permissions.hasPermission("editor","tenant-a","workspace-a","delivery.manage")).thenReturn(true);
+            var projects=mock(com.example.platform.identity.app.ProjectRepository.class);
+            when(projects.findByIdAndTenant("project-a","tenant-a")).thenReturn(java.util.Optional.of(new com.example.platform.identity.domain.Project("project-a","tenant-a","Project","",com.example.platform.identity.domain.Project.ProjectStatus.ACTIVE,java.time.Instant.now(),"workspace-a")));
+            var workspaces=mock(com.example.platform.identity.infrastructure.WorkspaceRepository.class);
+            when(workspaces.findById("workspace-a")).thenReturn(java.util.Optional.of(new com.example.platform.identity.domain.Workspace("workspace-a","tenant-a","Workspace",null,"FREE",com.example.platform.identity.domain.Workspace.WorkspaceStatus.ACTIVE,java.time.Instant.now(),java.time.Instant.now())));
+            var members=mock(com.example.platform.identity.infrastructure.WorkspaceMemberRepository.class);
+            when(members.findByWorkspaceIdAndUserId(eq("workspace-a"),anyString())).thenAnswer(i->java.util.Optional.of(new com.example.platform.identity.domain.WorkspaceMember("m","workspace-a",i.getArgument(1),"EDITOR",com.example.platform.identity.domain.WorkspaceMember.MemberStatus.ACTIVE,java.time.Instant.now(),java.time.Instant.now())));
+            var users=mock(com.example.platform.identity.app.UserRepository.class);when(users.isUsableMembership(anyString(),anyString())).thenReturn(true);
+            return new RbacAuthorizationDecisionPort(permissions,projects,workspaces,members,users);
         }
         @Bean DeliveryAccess access(CanonicalActorResolver actor, AuthorizationDecisionPort authorization) {
             return new DeliveryAccess(actor, authorization, (tenant, project) -> "tenant-a".equals(tenant) && "project-a".equals(project));

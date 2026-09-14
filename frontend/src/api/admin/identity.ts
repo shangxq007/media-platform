@@ -10,6 +10,7 @@ export interface AdminTenant {
 export interface AdminProject {
   id: string
   tenantId: string
+  workspaceId: string | null
   name: string
   description?: string
   status?: string
@@ -52,8 +53,8 @@ export const IdentityAPI = {
   },
 
   // Projects
-  async createProject(tenantId: string, name: string, description?: string): Promise<AdminProject> {
-    const { data } = await api.post(`/identity/tenants/${tenantId}/projects`, { name, description })
+  async createProject(tenantId: string, workspaceId: string, name: string, description?: string): Promise<AdminProject> {
+    const { data } = await api.post(`/identity/tenants/${tenantId}/projects`, { name, description, workspaceId })
     return data
   },
   async listProjects(tenantId: string): Promise<AdminProject[]> {

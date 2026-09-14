@@ -5,7 +5,7 @@ import java.time.Instant;
 public record SubscriptionResponse(
         String contractId,
         String tenantId,
-        String userId,
+        String beneficiaryTenantId,
         String planKey,
         Instant periodStartAt,
         Instant periodEndAt,

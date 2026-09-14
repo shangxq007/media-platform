@@ -57,11 +57,12 @@ public class SubscriptionBillingController {
     @PostMapping("/billing/subscriptions")
     public SubscriptionResponse createSubscription(@RequestBody CreateSubscriptionRequest request) {
         String tenantId = resolveTenantId(request.tenantId());
-        PrincipalRef principal = PrincipalRef.tenantScoped(tenantId, PrincipalType.USER, request.userId());
+        String actor = requireSubscriptionManager();
+        PrincipalRef principal = PrincipalRef.tenantScoped(tenantId, PrincipalType.ORGANIZATION, tenantId);
         SubscriptionContract contract = subscriptionBillingService.execute(new SubscriptionCommand(
                 SubscriptionCommandType.CREATE, principal, request.contractId(), request.planKey(),
                 request.planKey(), request.periodDays(), SubscriptionContractRole.BASE, 0,
-                request.idempotencyKey(), request.actor(), request.reason(), request.traceId(),
+                request.idempotencyKey(), actor, request.reason(), request.traceId(),
                 request.effectiveAt())).contract();
         return toSubscriptionResponse(contract);
     }
@@ -69,10 +70,10 @@ public class SubscriptionBillingController {
     @GetMapping("/billing/subscriptions/current")
     public SubscriptionResponse getCurrentSubscription(
             @RequestParam(required = false) String tenantId,
-            @RequestParam String userId) {
+            @RequestParam(required = false) String userId) {
         String effectiveTenant = resolveTenantId(tenantId);
         SubscriptionContract contract = subscriptionBillingService.getCurrentSubscription(
-                PrincipalRef.tenantScoped(effectiveTenant, PrincipalType.USER, userId));
+                PrincipalRef.tenantScoped(effectiveTenant, PrincipalType.ORGANIZATION, effectiveTenant));
         if (contract == null) {
             return null;
         }
@@ -82,10 +83,10 @@ public class SubscriptionBillingController {
     @GetMapping("/billing/subscriptions/active")
     public List<SubscriptionResponse> listActiveSubscriptions(
             @RequestParam(required = false) String tenantId,
-            @RequestParam String userId) {
+            @RequestParam(required = false) String userId) {
         String effectiveTenant = resolveTenantId(tenantId);
         return subscriptionBillingService.listActiveSubscriptions(
-                        PrincipalRef.tenantScoped(effectiveTenant, PrincipalType.USER, userId)).stream()
+                        PrincipalRef.tenantScoped(effectiveTenant, PrincipalType.ORGANIZATION, effectiveTenant)).stream()
                 .map(this::toSubscriptionResponse)
                 .toList();
     }
@@ -93,20 +94,21 @@ public class SubscriptionBillingController {
     @GetMapping("/billing/subscriptions/effective-quota")
     public Map<String, Long> getEffectiveIncludedQuota(
             @RequestParam(required = false) String tenantId,
-            @RequestParam String userId) {
+            @RequestParam(required = false) String userId) {
         String effectiveTenant = resolveTenantId(tenantId);
         return subscriptionBillingService.getEffectiveIncludedQuota(
-                PrincipalRef.tenantScoped(effectiveTenant, PrincipalType.USER, userId));
+                PrincipalRef.tenantScoped(effectiveTenant, PrincipalType.ORGANIZATION, effectiveTenant));
     }
 
     @PostMapping("/billing/subscriptions/change-plan")
     public SubscriptionResponse changePlan(@RequestBody ChangePlanRequest request) {
         String tenantId = resolveTenantId(request.tenantId());
-        PrincipalRef principal = PrincipalRef.tenantScoped(tenantId, PrincipalType.USER, request.userId());
+        String actor = requireSubscriptionManager();
+        PrincipalRef principal = PrincipalRef.tenantScoped(tenantId, PrincipalType.ORGANIZATION, tenantId);
         SubscriptionContract contract = subscriptionBillingService.execute(new SubscriptionCommand(
                 SubscriptionCommandType.CHANGE, principal, request.contractId(), request.newPlanKey(),
                 request.newPlanKey(), request.periodDays(), SubscriptionContractRole.BASE,
-                request.expectedVersion(), request.idempotencyKey(), request.actor(), request.reason(),
+                request.expectedVersion(), request.idempotencyKey(), actor, request.reason(),
                 request.traceId(), request.effectiveAt())).contract();
         return toSubscriptionResponse(contract);
     }
@@ -114,12 +116,23 @@ public class SubscriptionBillingController {
     @PostMapping("/billing/subscriptions/cancel")
     public SubscriptionResponse cancel(@RequestBody CancelSubscriptionRequest request) {
         String tenantId = resolveTenantId(request.tenantId());
-        PrincipalRef principal = PrincipalRef.tenantScoped(tenantId, PrincipalType.USER, request.userId());
+        String actor = requireSubscriptionManager();
+        PrincipalRef principal = PrincipalRef.tenantScoped(tenantId, PrincipalType.ORGANIZATION, tenantId);
         SubscriptionContract contract = subscriptionBillingService.execute(new SubscriptionCommand(
                 SubscriptionCommandType.CANCEL, principal, request.contractId(), null, null, 0,
                 SubscriptionContractRole.BASE, request.expectedVersion(), request.idempotencyKey(),
-                request.actor(), request.reason(), request.traceId(), request.effectiveAt())).contract();
+                actor, request.reason(), request.traceId(), request.effectiveAt())).contract();
         return toSubscriptionResponse(contract);
+    }
+
+    /** Roles/subject are server attributes populated from the validated tenant membership. */
+    private String requireSubscriptionManager() {
+        var attributes=org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
+        if(!(attributes instanceof org.springframework.web.context.request.ServletRequestAttributes servlet))throw new SecurityException("Authenticated tenant manager required");
+        var request=servlet.getRequest();requireAdminRole(request);
+        Object actor=request.getAttribute("jwt.subject");
+        if(actor==null||actor.toString().isBlank())throw new SecurityException("Authenticated tenant manager required");
+        return actor.toString();
     }
 
     private String resolveTenantId(String requestedTenantId) {
@@ -188,7 +201,7 @@ public class SubscriptionBillingController {
 
     private SubscriptionResponse toSubscriptionResponse(SubscriptionContract contract) {
         return new SubscriptionResponse(
-                contract.contractId(), contract.tenantId(), contract.userId(),
+                contract.contractId(), contract.tenantId(), contract.tenantId(),
                 contract.planKey(), contract.periodStartAt(), contract.periodEndAt(),
                 contract.lifecycleState(), contract.basePriceMinor(),
                 contract.currencyCode(),

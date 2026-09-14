@@ -115,7 +115,7 @@ public class NavigationController {
     private Set<String> resolvePermissions(CallerContext ctx) {
         if (ctx.userId() == null || ctx.userId().equals("anonymous")) return Set.of();
         try {
-            return permissionService.resolvePermissions(ctx.userId(), "default-workspace");
+            return permissionService.resolveTenantPermissions(ctx.userId(), ctx.tenantId());
         } catch (Exception e) {
             log.debug("Failed to resolve permissions for user {}: {}", ctx.userId(), e.getMessage());
             return Set.of();

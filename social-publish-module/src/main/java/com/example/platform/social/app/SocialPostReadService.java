@@ -103,7 +103,7 @@ public final class SocialPostReadService {
                 new AuthorizableResourceRef(
                         AuthorizationResourceType.PROJECT, projectId, tenantId, projectId, null),
                 new AuthorizationContext(
-                        "social-publication-read", projectId,
+                        "social-publication-read", null,
                         Map.of("accountScope", "server-current-exact-binding"))));
         if (!decision.allowed()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "publication read denied");
@@ -134,7 +134,7 @@ public final class SocialPostReadService {
                 new AuthorizableResourceRef(
                         AuthorizationResourceType.PROJECT, projectId, tenantId, projectId, null),
                 new AuthorizationContext(
-                        "social-publication-field-read", projectId,
+                        "social-publication-field-read", null,
                         Map.of("accountScope", connectedAccountId))))
                 .allowed();
     }

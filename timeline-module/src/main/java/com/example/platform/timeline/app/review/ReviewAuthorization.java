@@ -13,7 +13,7 @@ public class ReviewAuthorization {
   var actor=actors.resolveCurrentActor().orElseThrow(()->new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.UNAUTHORIZED,"authenticated actor required"));
   if(!tenant.equals(actor.tenantId()))throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN,"actor tenant mismatch");
   decisions.requireAuthorized(new AuthorizationRequest(actor,new AuthorizationAction(write?"WRITE":"READ",AuthorizationResourceType.PROJECT,"Timeline review"),
-    new AuthorizableResourceRef(AuthorizationResourceType.PROJECT,project,tenant,project,null),new AuthorizationContext("timeline-review",project,Map.of())));
+    new AuthorizableResourceRef(AuthorizationResourceType.PROJECT,project,tenant,project,null),new AuthorizationContext("timeline-review",null,Map.of())));
   return actor;
  }
 }

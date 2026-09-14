@@ -32,7 +32,7 @@ public class DeliveryAccess {
                 mutation ? "Manage delivery" : "Read delivery");
         var decision = authorization.decide(new AuthorizationRequest(actor, action,
                 new AuthorizableResourceRef(type, projectId, tenantId, projectId, null),
-                new AuthorizationContext("delivery", projectId == null ? tenantId : projectId, Map.of())));
+                new AuthorizationContext("delivery", null, Map.of())));
         if (!decision.allowed()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Delivery permission denied");
         }

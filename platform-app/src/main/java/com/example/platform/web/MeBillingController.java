@@ -47,7 +47,7 @@ public class MeBillingController {
     public ResponseEntity<Map<String, Object>> getCurrentPlan(HttpServletRequest req) {
         BillingSubject subject = resolveSubject(req);
         SubscriptionContract base = subscriptionBillingService.getCurrentSubscription(
-                PrincipalRef.tenantScoped(subject.tenantId(), PrincipalType.USER, subject.userId()));
+                PrincipalRef.tenantScoped(subject.tenantId(), PrincipalType.ORGANIZATION, subject.tenantId()));
         String tier = entitlementPolicyService.getTier(subject.tenantId());
 
         Map<String, Object> plan = new LinkedHashMap<>();
@@ -61,7 +61,7 @@ public class MeBillingController {
             plan.put("annualPrice", billingPlan != null ? billingPlan.basePriceMinor() * 12 / 100.0 : 0.0);
             plan.put("currency", billingPlan != null ? billingPlan.currencyCode() : "USD");
             plan.put("includedQuota", toPlanQuota(
-                    subscriptionBillingService.getEffectiveIncludedQuota(subject.tenantId(), subject.userId())));
+                    subscriptionBillingService.getEffectiveIncludedQuota(PrincipalRef.tenantScoped(subject.tenantId(), PrincipalType.ORGANIZATION, subject.tenantId()))));
             plan.put("features", List.of());
             plan.put("isActive", base.isActiveAt(Instant.now()));
             plan.put("periodEndAt", base.periodEndAt());
@@ -85,7 +85,7 @@ public class MeBillingController {
         BillingSubject subject = resolveSubject(req);
         List<Map<String, Object>> items = subscriptionBillingService
                 .listActiveSubscriptions(PrincipalRef.tenantScoped(
-                        subject.tenantId(), PrincipalType.USER, subject.userId())).stream()
+                        subject.tenantId(), PrincipalType.ORGANIZATION, subject.tenantId())).stream()
                 .map(this::subscriptionToMap)
                 .toList();
         return ResponseEntity.ok(items);
@@ -95,7 +95,7 @@ public class MeBillingController {
     public ResponseEntity<Map<String, Long>> effectiveQuota(HttpServletRequest req) {
         BillingSubject subject = resolveSubject(req);
         return ResponseEntity.ok(subscriptionBillingService.getEffectiveIncludedQuota(
-                subject.tenantId(), subject.userId()));
+                PrincipalRef.tenantScoped(subject.tenantId(), PrincipalType.ORGANIZATION, subject.tenantId())));
     }
 
     @GetMapping("/credits")

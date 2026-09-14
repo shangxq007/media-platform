@@ -23,7 +23,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 /** Sole logical command and fail-closed read boundary for Entitlement grants. */
 @Service
-public class EntitlementService {
+public class EntitlementService implements com.example.platform.entitlement.api.commercial.EntitlementBasisQueries {
     private final EntitlementGrantRepository grants;
     private final WorkspaceMemberEntitlementGrantRepository workspaceGrants;
     private final EntitlementCommandAuditRepository audit;
