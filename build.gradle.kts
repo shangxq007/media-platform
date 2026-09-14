@@ -1442,7 +1442,7 @@ tasks.register("verifyGcr1CorrectionV2IngressAuthority") {
 
 tasks.register("verifyGcr2ArtifactAuthority") {
     group = "verification"
-    description = "GCR-2: canonical Artifact authority is artifact-module only; shared ArtifactRef retired; no storage/render lifecycle authority; timeline pin validation + revision-pin atomicity + historical pin protection present; single V1 Flyway"
+    description = "GCR-2: canonical Artifact authority is artifact-module only; shared ArtifactRef retired; no storage/render lifecycle authority; timeline pin validation + revision-pin atomicity + historical pin protection present; approved migration inventory"
     doLast {
         // ── 1. Shared-kernel ArtifactRef retired ──
         val sharedCapabilityDir = file("shared-kernel/src/main/java/com/example/platform/shared/capability")
@@ -1613,7 +1613,7 @@ tasks.register("verifyGcr2ArtifactAuthority") {
             "FAIL: ArtifactCatalogRepository still writes canonical artifact table (ARTIFACT_CATALOG_CANONICAL_AUTHORITY_COUNT != 0)"
         }
 
-        println("OK: GCR-2 Artifact authority verified (single domain authority; ArtifactRef retired; storage data-plane only; timeline pin existence/digest/tenant validation; revision-pin atomicity; historical pin protection; single V1; projection catalog)")
+        println("OK: GCR-2 Artifact authority verified (single domain authority; ArtifactRef retired; storage data-plane only; timeline pin existence/digest/tenant validation; revision-pin atomicity; historical pin protection; approved migration inventory; projection catalog)")
     }
 }
 
@@ -1712,7 +1712,7 @@ tasks.register("verifyGcr5Gcr6DatabaseCanonicalization") {
         val mediaTimeAsTs = Regex("(?i)(media_time|frame_time|time_range)\\s+timestamp").findAll(v1)
         require(!mediaTimeAsTs.iterator().hasNext()) { "FAIL: Timeline MediaTime stored as operational timestamp" }
 
-        println("OK: GCR5/GCR6 database canonicalization verified (single V1; FK integrity; media_stream RESTRICT; render_job identity types; no legacy migration residue; MediaTime/timestamp separation)")
+        println("OK: GCR5/GCR6 database canonicalization verified (approved migration inventory; FK integrity; media_stream RESTRICT; render_job identity types; no legacy migration residue; MediaTime/timestamp separation)")
     }
 }
 

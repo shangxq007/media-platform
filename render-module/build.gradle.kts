@@ -398,18 +398,18 @@ tasks.register("verifyC20RenderPlanBoundaryGuard") {
         }
         // 21. durable snapshot store + definition version registry exist and
         //     operate over the existing timeline_snapshot immutable rows
-        //     (V1-only Flyway governance — repository-reality adapted).
+        //     (existing immutable Timeline rows; no alternate snapshot authority).
         val adapterFiles = fileTree(file("../timeline-module/src/main/java/com/example/platform/timeline/adapter")) { include("*.java") }.files
         val jdbcStoreSource = adapterFiles.find { it.name == "JdbcEffectSemanticSnapshotStore.java" }?.readText()
         require(jdbcStoreSource != null && jdbcStoreSource.contains("timeline_snapshot")
                 && adapterFiles.any { it.name == "JdbcEffectDefinitionVersionRegistry.java" }) {
             "FAIL: durable JDBC snapshot store + definition version registry required (restart-safe invariants)"
         }
-        // 22. repository V1-only Flyway governance must be preserved — no new
-        //     V2 migration introduced by this workstream.
+        // 22. Preserve the exact Owner-adopted migration inventory; no unclassified migrations.
         val migrationDir = file("../platform-app/src/main/resources/db/migration")
-        require(migrationDir.listFiles()?.none { it.name.startsWith("V2") } == true) {
-            "FAIL: V1-only Flyway governance must be preserved (no V2 migration)"
+        require(migrationDir.listFiles().orEmpty().filter { it.name.endsWith(".sql") }.map { it.name }.toSet()
+                == setOf("V1__initial_schema.sql", "V2__account_membership_and_project_scope.sql")) {
+            "FAIL: unexpected Flyway migration inventory"
         }
 
         println("OK: ROADMAP20 C20 RenderPlan boundary guard passed (provider-neutral, kernel-bound, R2 B1/B2/B3, R3 B1/B2/M1, R4 A/B/M, R5 A/B/E/F, R6 A/B/C/D/F/H, FINAL snapshot pin, ${javaFiles.size} files)")
