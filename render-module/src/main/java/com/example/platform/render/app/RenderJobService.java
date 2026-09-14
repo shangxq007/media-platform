@@ -27,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class RenderJobService {
     private final ProjectReadQuery projects;
+    private final RenderAcceptanceContextService acceptance;
     private final CanonicalActorResolver actors;
     private final AuthorizationDecisionPort authorization;
     private static final AuthorizationAction READ_JOB = new AuthorizationAction("READ", AuthorizationResourceType.RENDER_JOB, "Read Render job");
@@ -41,8 +42,9 @@ public class RenderJobService {
     public RenderJobService(RenderJobRepository renderJobRepository, RenderPolicyEngine policyEngine,
             RenderLifecyclePublisher publisher,
             RenderJobStatusHistoryRepository historyRepository,
-            @Autowired(required = false) RenderJobCancellationContinuation cancellationContinuation, ProjectReadQuery projects, CanonicalActorResolver actors, AuthorizationDecisionPort authorization) {
+            @Autowired(required = false) RenderJobCancellationContinuation cancellationContinuation, ProjectReadQuery projects, CanonicalActorResolver actors, AuthorizationDecisionPort authorization, RenderAcceptanceContextService acceptance) {
         this.renderJobRepository = renderJobRepository;
+        this.acceptance = acceptance;
         this.policyEngine = policyEngine;
         this.publisher = publisher;
         this.historyRepository = historyRepository;
@@ -55,17 +57,7 @@ public class RenderJobService {
 
     @Transactional
     public RenderJobResponse create(CreateRenderJobRequest request, RenderInitiator initiator) {
-        String projectTenantId = renderJobRepository.findProjectTenantId(request.projectId())
-                .orElseThrow(() -> new IllegalArgumentException("Project not found: " + request.projectId()));
-        assertTenantAccess(projectTenantId);
-
-        var id = ("rj_" + java.util.UUID.randomUUID().toString().replace("-", ""));
-        assertInitiatorScope(projectTenantId, initiator);
-        renderJobRepository.create(id, request.projectId(), projectTenantId,
-                request.timelineSnapshotId(), request.profile(), "QUEUED", initiator, OffsetDateTime.now());
-        historyRepository.record(id, null, "QUEUED", "Job created", null);
-        publisher.publishEvent(new RenderJobCreatedEvent(id, request.projectId(), request.timelineSnapshotId(), request.profile(), initiator, java.time.Instant.now()));
-        return new RenderJobResponse(id, request.projectId(), request.timelineSnapshotId(), request.profile(), "QUEUED");
+        return createForProject(initiator.tenantId(),request.projectId(),request,initiator);
     }
 
     @Transactional
@@ -73,15 +65,15 @@ public class RenderJobService {
             CreateRenderJobRequest request, RenderInitiator initiator) {
         assertInitiatorScope(tenantId, initiator);
         assertTenantAccess(tenantId);
-        String projectTenantId = renderJobRepository.findProjectTenantId(projectId)
-                .orElseThrow(() -> new IllegalArgumentException("Project not found: " + projectId));
-        if (!tenantId.equals(projectTenantId)) {
-            throw new IllegalArgumentException("Project not found for tenant");
-        }
+        if(!projectId.equals(request.projectId()))throw new PlatformException(CommonErrorCode.INVALID_REQUEST,"Project hint mismatch");
+        var prepared=acceptance.prepare(tenantId,projectId,initiator);
+        if(request.workspaceId()!=null&&!request.workspaceId().equals(prepared.scope().workspaceId()))throw new PlatformException(CommonErrorCode.INSUFFICIENT_PERMISSION,"Workspace hint mismatch");
+        if(request.allocationMode()!=null&&!"TENANT_ORGANIZATION".equals(request.allocationMode()))throw new PlatformException(CommonErrorCode.INVALID_REQUEST,"Unsupported allocation mode");
 
         var id = ("rj_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         renderJobRepository.create(id, projectId, tenantId,
                 request.timelineSnapshotId(), request.profile(), "QUEUED", initiator, OffsetDateTime.now());
+        acceptance.persist(id, request.timelineSnapshotId(), prepared);
         historyRepository.record(id, null, "QUEUED", "Job created", null);
         publisher.publishEvent(new RenderJobCreatedEvent(id, projectId, request.timelineSnapshotId(), request.profile(), initiator, java.time.Instant.now()));
         return new RenderJobResponse(id, projectId, request.timelineSnapshotId(), request.profile(), "QUEUED");
@@ -139,7 +131,7 @@ public class RenderJobService {
     private AuthorizationRequest jobRead(CanonicalActor actor, String tenantId, String projectId, String jobId) {
         return new AuthorizationRequest(actor, READ_JOB,
                 new AuthorizableResourceRef(AuthorizationResourceType.RENDER_JOB, jobId, tenantId, projectId, null),
-                new AuthorizationContext("render-job-read", projectId, Map.of()));
+                new AuthorizationContext("render-job-read", null, Map.of()));
     }
 
     // Existing mutation hydration stays internal; it is not a public read/discovery entry point.

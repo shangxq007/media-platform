@@ -46,6 +46,7 @@ import org.springframework.web.bind.annotation.*;
 public class RenderController {
     private static final Logger log = LoggerFactory.getLogger(RenderController.class);
     private final RenderJobService renderJobService;
+    private final com.example.platform.render.api.context.ExecutionContextQueries executionContexts;
     private final RenderOrchestratorPort orchestratorPort;
     private final RenderIncrementalApiService incrementalApiService;
     private final RenderCachePresignService cachePresignService;
@@ -66,8 +67,9 @@ public class RenderController {
             @org.springframework.beans.factory.annotation.Autowired(required = false) TimelineConversionService timelineConversionService,
             @org.springframework.beans.factory.annotation.Autowired(required = false) AiTimelineProposalService aiTimelineProposalService,
             @org.springframework.beans.factory.annotation.Autowired(required = false) com.example.platform.render.app.preview.PreviewMediaUploadService previewUploads,
-            CanonicalActorResolver canonicalActorResolver) {
+            CanonicalActorResolver canonicalActorResolver, com.example.platform.render.api.context.ExecutionContextQueries executionContexts) {
         this.renderJobService = renderJobService;
+        this.executionContexts = executionContexts;
         this.orchestratorPort = orchestratorPort;
         this.incrementalApiService = incrementalApiService;
         this.cachePresignService = cachePresignService;
@@ -131,6 +133,13 @@ public class RenderController {
             @Valid @RequestBody CreateRenderJobRequest request) {
         return renderJobService.createForProject(
                 tenantId, projectId, request, requireInitiator(tenantId));
+    }
+
+    @GetMapping("/tenants/{tenantId}/projects/{projectId}/render-jobs/{jobId}/execution-context")
+    public com.example.platform.render.api.context.AcceptedExecutionContext getExecutionContext(
+            @PathVariable String tenantId,@PathVariable String projectId,@PathVariable String jobId) {
+        renderJobService.getByIdAndProject(tenantId,projectId,jobId);
+        return executionContexts.get(tenantId,projectId,jobId);
     }
 
     @GetMapping("/tenants/{tenantId}/projects/{projectId}/render-jobs/{jobId}")

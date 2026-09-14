@@ -58,7 +58,7 @@ class TimelineResolverRejectionTest {
         var inspector=org.mockito.Mockito.mock(com.example.platform.render.app.EffectTimelineInspector.class);
         var execution=new com.example.platform.render.app.RenderJobExecutionService(null,null,null,engine,
                 new TimelineScriptParser(),resolver,null,null,null,null,inspector,null,null,null,null,null,
-                new TimelineExtensionsReader(),null,null,null,null);
+                new TimelineExtensionsReader(),null,null,null,null, org.mockito.Mockito.mock(com.example.platform.render.api.context.ExecutionContextQueries.class));
         assertThrows(InvalidCanonicalRateException.class,()->org.springframework.test.util.ReflectionTestUtils.invokeMethod(execution,
                 "executeRenderWithOptionalDag","job","project",INVALID,"profile","tenant",null));
         org.mockito.Mockito.verifyNoInteractions(engine,inspector);

@@ -157,7 +157,7 @@ public class TimelineMediaClipOperationService {
                 TIMELINE_EDIT,
                 new AuthorizableResourceRef(
                         AuthorizationResourceType.PROJECT, projectId, tenantId, projectId, null),
-                new AuthorizationContext("timeline-operation", projectId,
+                new AuthorizationContext("timeline-operation", null,
                         Map.of("operationPlanDigest", prepared.plan().planDigest()))));
         AuthorizationDecision boundDecision = securityDecision.allowed()
                 ? AuthorizationDecision.allow(prepared.plan().planDigest(), actor.actorId(),
@@ -208,7 +208,7 @@ public class TimelineMediaClipOperationService {
                 new AuthorizableResourceRef(
                         AuthorizationResourceType.PROJECT, projectId, tenantId, projectId, null),
                 new AuthorizationContext(
-                        "timeline-operation-prepare", projectId,
+                        "timeline-operation-prepare", null,
                         Map.of("operation", OPERATION))));
         if (!decision.allowed()) {
             throw new TimelineOperationException(

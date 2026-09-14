@@ -87,7 +87,7 @@ class VS1SmokeIntegrationTest {
         fakeOrchestrator = new FakeRenderOrchestratorPort();
         controller = new RenderController(fakeJobService, fakeOrchestrator,
                 null, null, null, null, null, null, null,
-                RenderInitiatorFixtures.resolver("t-1"));
+                RenderInitiatorFixtures.resolver("t-1"), org.mockito.Mockito.mock(com.example.platform.render.api.context.ExecutionContextQueries.class));
         stateMachine = new RenderJobStateMachine();
     }
 
@@ -317,7 +317,7 @@ class VS1SmokeIntegrationTest {
         void missingOrchestratorFallback() {
             RenderController controllerNoOrch = new RenderController(fakeJobService, null,
                     null, null, null, null, null, null, null,
-                    RenderInitiatorFixtures.resolver("t-1"));
+                    RenderInitiatorFixtures.resolver("t-1"), org.mockito.Mockito.mock(com.example.platform.render.api.context.ExecutionContextQueries.class));
             SubmitRenderJobRequest req = new SubmitRenderJobRequest(
                     "t-1", "proj-1", "test", "default_1080p", "snap-1");
 

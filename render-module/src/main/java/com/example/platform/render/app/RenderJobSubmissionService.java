@@ -50,6 +50,7 @@ public class RenderJobSubmissionService {
     private static final Logger log = LoggerFactory.getLogger(RenderJobSubmissionService.class);
 
     private final DSLContext dsl;
+    private final RenderAcceptanceContextService acceptance;
     private final RenderJobRepository renderJobRepository;
     private final CommercialAdmissionPort commercialAdmission;
     private final RenderJobStatusHistoryRepository historyRepository;
@@ -71,8 +72,9 @@ public class RenderJobSubmissionService {
             @org.springframework.beans.factory.annotation.Autowired(required = false)
             AiTimelineEditService aiTimelineEditService,
             @org.springframework.beans.factory.annotation.Autowired(required = false)
-            com.example.platform.render.app.cache.RenderCacheTenantGuard cacheTenantGuard) {
+            com.example.platform.render.app.cache.RenderCacheTenantGuard cacheTenantGuard, RenderAcceptanceContextService acceptance) {
         this.dsl = dsl;
+        this.acceptance = acceptance;
         this.renderJobRepository = renderJobRepository;
         this.commercialAdmission = commercialAdmission;
         this.historyRepository = historyRepository;
@@ -102,25 +104,14 @@ public class RenderJobSubmissionService {
 
         assertInitiatorScope(request.tenantId(), initiator);
         assertTenantAccess(request.tenantId());
-        assertProjectBelongsToTenant(request.tenantId(), request.projectId());
+        var prepared = acceptance.prepare(request.tenantId(), request.projectId(), initiator);
 
         if (request.baseJobId() != null && !request.baseJobId().isBlank() && cacheTenantGuard != null) {
             cacheTenantGuard.requireBaseJobAccess(
                     request.tenantId(), request.projectId(), request.baseJobId());
         }
 
-        Instant now = Instant.now();
-        Period period = period(now);
-        CommercialDecision decision = commercialAdmission.decide(new CommercialAdmissionRequest(
-                PrincipalRef.tenantScoped(
-                        request.tenantId(), PrincipalType.ORGANIZATION, request.tenantId()),
-                "render.submit", "render.job.create", "render.job.create", 1,
-                period.start(), period.end(), "render-submit:" + request.projectId(), now));
-        if (!decision.allowed()) {
-            return handleCommercialDecisionRejected(request, initiator, decision);
-        }
-
-        return createQueuedJob(request, initiator);
+        return createQueuedJob(request, initiator, prepared);
     }
 
     private String handleCommercialDecisionRejected(SubmitRenderJobRequest request,
@@ -152,7 +143,7 @@ public class RenderJobSubmissionService {
 
     private record Period(Instant start, Instant end) {}
 
-    private String createQueuedJob(SubmitRenderJobRequest request, RenderInitiator initiator) {
+    private String createQueuedJob(SubmitRenderJobRequest request, RenderInitiator initiator, RenderAcceptanceContextService.Prepared prepared) {
         String jobId = ("rj_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         String profile = request.profileOrDefault();
         String inlineScript = resolveInlineTimelineScript(request);
@@ -164,6 +155,7 @@ public class RenderJobSubmissionService {
 
         renderJobRepository.create(jobId, request.projectId(), request.tenantId(),
                 snapshotId, profile, RenderJobStatus.QUEUED.name(), initiator, OffsetDateTime.now());
+        acceptance.persist(jobId, snapshotId, prepared);
         historyRepository.record(jobId, null, RenderJobStatus.QUEUED.name(), "Job created", null);
 
         eventPublisher.publishEvent(

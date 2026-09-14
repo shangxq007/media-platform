@@ -57,6 +57,7 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
     private static javax.sql.DataSource dataSource;
     private static DSLContext dsl;
     private RenderOrchestratorService service;
+    private com.example.platform.render.testsupport.AcceptedContextFixture accepted;
 
     // Mocks
     private CommercialAdmissionPort commercialAdmission;
@@ -149,13 +150,14 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
                     .execute();
             return updated > 0;
         });
+        accepted=new com.example.platform.render.testsupport.AcceptedContextFixture(renderJobRepository,commercialAdmission);
         RenderJobSubmissionService submissionService = new RenderJobSubmissionService(
                 dsl, renderJobRepository, commercialAdmission,
                 historyRepository,
                 eventPublisher, timelineScriptParser,
                 effectTimelineInspector, renderProfileResolver,
-                null, null);
-        RenderJobExecutionService executionService = new RenderJobExecutionService(renderJobRepository, null, renderProviderRouter, providerRuntimeEngine, timelineScriptParser, mock(TimelineSpecResolver.class), mock(IncrementalRenderOrchestrationService.class), new RenderJobLifecycleService(renderJobRepository,historyRepository,eventPublisher,artifactStorageService,org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactOutputRead.class),quotaConsumption), timelineSnapshotService, editorTimelineConverter, effectTimelineInspector, renderProfileResolver, null, null, null, null, mock(TimelineExtensionsReader.class), null, null, claimService, failureService);
+                null, null, accepted);
+        RenderJobExecutionService executionService = new RenderJobExecutionService(renderJobRepository, null, renderProviderRouter, providerRuntimeEngine, timelineScriptParser, mock(TimelineSpecResolver.class), mock(IncrementalRenderOrchestrationService.class), new RenderJobLifecycleService(renderJobRepository,historyRepository,eventPublisher,artifactStorageService,org.mockito.Mockito.mock(com.example.platform.artifact.app.ArtifactOutputRead.class),quotaConsumption), timelineSnapshotService, editorTimelineConverter, effectTimelineInspector, renderProfileResolver, null, null, null, null, mock(TimelineExtensionsReader.class), null, null, claimService, failureService, accepted);
         RenderJobTimelineQueryService timelineQueryService = new RenderJobTimelineQueryService(
                 renderJobRepository, mock(BaseJobTimelineLoader.class));
 
@@ -187,6 +189,7 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
                 .values(jobId, projectId, tenantId, snapshotId, profile, status, OffsetDateTime.now(),
                         "USER", "test-principal-p1", tenantId)
                 .execute();
+        accepted.seed(jobId,tenantId,projectId,snapshotId);
     }
 
     private RenderProvider mockProvider(String storageUri) {
@@ -264,9 +267,7 @@ class RenderOrchestratorServiceCharacterizationTest extends PostgresTestContaine
                 .from(table("render_job"))
                 .where(field("tenant_id").eq("tenant-2"))
                 .fetchOne();
-        assertNotNull(rejectedJob);
-        assertEquals("REJECTED", rejectedJob.get(field("status"), String.class));
-        assertEquals("Quota exceeded", rejectedJob.get(field("error_message"), String.class));
+        assertNull(rejectedJob, "Admission rejection must precede any accepted task/context write");
 
         verifyNoInteractions(renderProviderRouter);
     }

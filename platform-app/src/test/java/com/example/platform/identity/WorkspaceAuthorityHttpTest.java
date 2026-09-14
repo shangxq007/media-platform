@@ -46,7 +46,11 @@ class WorkspaceAuthorityHttpTest extends PostgresTestContainerSupport {
         jdbc.update("insert into tenant(id,name,status,created_at) values (?,?,'ACTIVE',now())",other,"Other tenant");
         foreign=user(other);
     }
-    String user(String tenant){String id="wu-"+UUID.randomUUID();jdbc.update("insert into \"user\"(id,tenant_id,username,email,role,status,created_at) values (?,?,?,?,'MEMBER','ACTIVE',now())",id,tenant,id,id+"@test.invalid");return id;}
+    String user(String tenant){String id="wu-"+UUID.randomUUID();jdbc.update("insert into \"user\"(id,tenant_id,username,email,role,status,created_at) values (?,?,?,?,'MEMBER','ACTIVE',now())",id,tenant,id,id+"@test.invalid");
+        var provisioning=context.getBean(com.example.platform.identity.app.AccountMembershipService.class);
+        var operator=com.example.platform.shared.authorization.CanonicalActor.system("system:identity-provisioning",tenant);
+        var account=provisioning.provisionVerifiedAccount(operator,"urn:media-platform:local-hmac",id);
+        provisioning.linkMembership(operator,account,tenant,id);return id;}
     String token(String user,String tenant){return io.jsonwebtoken.Jwts.builder().subject(user).claim("tenantId",tenant).claim("roles",List.of("ADMIN"))
             .expiration(new Date(System.currentTimeMillis()+600000)).signWith(io.jsonwebtoken.security.Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8))).compact();}
     HttpResponse<String> call(String method,String path,Object body,String actor) throws Exception {
@@ -214,7 +218,7 @@ class WorkspaceAuthorityHttpTest extends PostgresTestContainerSupport {
         assertEquals(400,add(ws,member,"SUPERUSER",creator).statusCode());assertEquals(403,add(ws,foreign,"EDITOR",creator).statusCode());assertEquals(1,members(ws));
     }
     void asActor(String actor,Runnable action){
-        var request=new MockHttpServletRequest();request.setAttribute("jwt.subject",actor);request.setAttribute("jwt.tenantId",tenant);
+        var request=new MockHttpServletRequest();request.setAttribute("jwt.subject",actor);request.setAttribute("auth.subject",actor);request.setAttribute("jwt.issuer","urn:media-platform:local-hmac");request.setAttribute("jwt.tenantId",tenant);
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));TenantContext.set(tenant);
         try{action.run();}finally{RequestContextHolder.resetRequestAttributes();TenantContext.clear();}
     }

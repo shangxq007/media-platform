@@ -77,6 +77,7 @@ public class RenderJobExecutionService {
     private final RenderCacheHashInvalidationNotifier hashInvalidationNotifier;
     private final AiRenderScriptNormalizer aiRenderScriptNormalizer;
     private final RenderJobClaimService claimService;
+    private final com.example.platform.render.api.context.ExecutionContextQueries executionContexts;
     private final RenderJobFailureService failureService;
 
     public RenderJobExecutionService(
@@ -106,7 +107,7 @@ public class RenderJobExecutionService {
             @org.springframework.beans.factory.annotation.Autowired(required = false)
             AiRenderScriptNormalizer aiRenderScriptNormalizer,
             RenderJobClaimService claimService,
-            RenderJobFailureService failureService) {
+            RenderJobFailureService failureService, com.example.platform.render.api.context.ExecutionContextQueries executionContexts) {
         this.renderJobRepository = renderJobRepository;
         this.aiGatewayPort = aiGatewayPort;
         this.renderProviderRouter = renderProviderRouter;
@@ -127,6 +128,7 @@ public class RenderJobExecutionService {
         this.hashInvalidationNotifier = hashInvalidationNotifier;
         this.aiRenderScriptNormalizer = aiRenderScriptNormalizer;
         this.claimService = claimService;
+        this.executionContexts = executionContexts;
         this.failureService = failureService;
         this.stateMachine = new RenderJobStateMachine();
     }
@@ -147,6 +149,12 @@ public class RenderJobExecutionService {
         if (!tenantId.equals(jobTenantId)) {
             throw new IllegalArgumentException("Render job not found for tenant");
         }
+        var acceptedContext = executionContexts.get(tenantId, projectId, jobId);
+        if (!tenantId.equals(acceptedContext.tenantId()) || !projectId.equals(acceptedContext.projectId())
+                || !tenantId.equals(acceptedContext.consumptionPrincipalId())
+                || !java.util.Objects.equals(job.get("initiator_id",String.class),acceptedContext.actorId())
+                || !java.util.Objects.equals(job.get("initiator_type",String.class),acceptedContext.actorKind().name()))
+            throw new IllegalStateException("Persisted execution scope mismatch");
         String profile = job.get("profile", String.class);
         String snapshotId = job.get("timeline_snapshot_id", String.class);
         String status = job.get("status", String.class);

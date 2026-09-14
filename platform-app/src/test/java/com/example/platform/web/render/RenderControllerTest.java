@@ -25,7 +25,7 @@ class RenderControllerTest {
         controller = new RenderController(renderJobService, null,
                 null, null, null, null, null, null, null,
                 () -> java.util.Optional.of(CanonicalActor.user(
-                        "test-principal-p1", "tenant-1", Set.of(), "test")));
+                        "test-principal-p1", "tenant-1", Set.of(), "test")), org.mockito.Mockito.mock(com.example.platform.render.api.context.ExecutionContextQueries.class));
     }
 
     @Test

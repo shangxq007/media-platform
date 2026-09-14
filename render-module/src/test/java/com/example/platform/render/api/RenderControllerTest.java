@@ -26,7 +26,7 @@ class RenderControllerTest {
         service = mock(RenderJobService.class);
         controller = new RenderController(service, null,
                 null, null, null, null, null, null, null,
-                RenderInitiatorFixtures.resolver("tenant-1"));
+                RenderInitiatorFixtures.resolver("tenant-1"), org.mockito.Mockito.mock(com.example.platform.render.api.context.ExecutionContextQueries.class));
     }
 
     @Test
@@ -48,7 +48,7 @@ class RenderControllerTest {
         RenderController missingActorController = new RenderController(
                 service, null,
                 null, null, null, null, null, null, null,
-                java.util.Optional::empty);
+                java.util.Optional::empty, org.mockito.Mockito.mock(com.example.platform.render.api.context.ExecutionContextQueries.class));
 
         assertThrows(IllegalStateException.class, () -> missingActorController.createRenderJob(
                 "tenant-1", "proj-1",
@@ -61,7 +61,7 @@ class RenderControllerTest {
         RenderController mismatchController = new RenderController(
                 service, null,
                 null, null, null, null, null, null, null,
-                RenderInitiatorFixtures.resolver("tenant-other"));
+                RenderInitiatorFixtures.resolver("tenant-other"), org.mockito.Mockito.mock(com.example.platform.render.api.context.ExecutionContextQueries.class));
 
         assertThrows(IllegalArgumentException.class, () -> mismatchController.createRenderJob(
                 "tenant-1", "proj-1",

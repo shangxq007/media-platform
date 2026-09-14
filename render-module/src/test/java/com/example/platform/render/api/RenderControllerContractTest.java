@@ -44,7 +44,7 @@ class RenderControllerContractTest {
         fakeService = new FakeRenderJobService();
         fakeOrchestrator = new FakeOrchestratorPort();
         controller = new RenderController(fakeService, fakeOrchestrator, null, null, null, null, null, null, null,
-                RenderInitiatorFixtures.resolver("t-1"));
+                RenderInitiatorFixtures.resolver("t-1"), org.mockito.Mockito.mock(com.example.platform.render.api.context.ExecutionContextQueries.class));
     }
 
     @AfterEach
@@ -131,7 +131,7 @@ class RenderControllerContractTest {
         void startThrowsWhenNoOrchestrator() {
             RenderController controllerNoOrch = new RenderController(fakeService, null,
                     null, null, null, null, null, null, null,
-                    RenderInitiatorFixtures.resolver("t-1"));
+                    RenderInitiatorFixtures.resolver("t-1"), org.mockito.Mockito.mock(com.example.platform.render.api.context.ExecutionContextQueries.class));
 
             assertThrows(IllegalStateException.class,
                     () -> controllerNoOrch.startRenderJob("t-1", "proj-1", "rj-1"));
@@ -197,7 +197,7 @@ class RenderControllerContractTest {
                     new com.example.platform.identity.api.project.ProjectReadQuery() {
                         public java.util.List<com.example.platform.identity.api.dto.ProjectResponse> listProjects(String tenant) { throw new UnsupportedOperationException("Test double overrides reads"); }
                         public com.example.platform.identity.api.dto.ProjectResponse getProject(String tenant, String project) { throw new UnsupportedOperationException("Test double overrides reads"); }
-                    }, () -> java.util.Optional.empty(), request -> com.example.platform.shared.authorization.AuthorizationDecision.deny("TEST_DOUBLE", "test"));
+                    }, () -> java.util.Optional.empty(), request -> com.example.platform.shared.authorization.AuthorizationDecision.deny("TEST_DOUBLE", "test"), org.mockito.Mockito.mock(com.example.platform.render.app.RenderAcceptanceContextService.class));
         }
 
         @Override

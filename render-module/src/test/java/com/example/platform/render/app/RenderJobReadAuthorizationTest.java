@@ -21,7 +21,7 @@ class RenderJobReadAuthorizationTest {
     final ProjectReadQuery projects = mock(ProjectReadQuery.class);
     final CanonicalActorResolver actors = mock(CanonicalActorResolver.class);
     final AuthorizationDecisionPort authorization = mock(AuthorizationDecisionPort.class, CALLS_REAL_METHODS);
-    final RenderJobService service = new RenderJobService(jobs, mock(RenderPolicyEngine.class), mock(com.example.platform.render.app.event.RenderLifecyclePublisher.class), mock(RenderJobStatusHistoryRepository.class), null, projects, actors, authorization);
+    final RenderJobService service = new RenderJobService(jobs, mock(RenderPolicyEngine.class), mock(com.example.platform.render.app.event.RenderLifecyclePublisher.class), mock(RenderJobStatusHistoryRepository.class), null, projects, actors, authorization, org.mockito.Mockito.mock(com.example.platform.render.app.RenderAcceptanceContextService.class));
     @AfterEach void clear() { TenantContext.clear(); }
     void context() {
         TenantContext.set("tenant");

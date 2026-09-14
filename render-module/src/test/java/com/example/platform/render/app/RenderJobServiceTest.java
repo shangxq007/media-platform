@@ -52,7 +52,7 @@ class RenderJobServiceTest {
                     }
                 },
                 () -> Optional.ofNullable(TenantContext.get()).map(tenant -> com.example.platform.shared.authorization.CanonicalActor.user("fixture", tenant, Set.of(), "unit")),
-                request -> com.example.platform.shared.authorization.AuthorizationDecision.allow("lifecycle-unit-only"));
+                request -> com.example.platform.shared.authorization.AuthorizationDecision.allow("lifecycle-unit-only"), com.example.platform.render.testsupport.AcceptedContextFixture.lifecycleOnly(fakeRepo));
     }
 
     @AfterEach
