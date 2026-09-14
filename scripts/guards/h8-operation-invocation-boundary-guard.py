@@ -2984,8 +2984,8 @@ def run_self_test(
     cases.append(("v6_canonical_actor_authority_field", (
         "H8_GOVERNED_RUNTIME_SOURCE_HASH_MISMATCH_COUNT",), replace_once(
             sources, "shared/authorization/CanonicalActor.java",
-            "Set<String> roles,\n        String authSource)",
-            "Set<String> roles,\n        boolean platformAdmin,\n        String authSource)")))
+            "Set<String> roles,\n        String authSource,\n        String accountId)",
+            "Set<String> roles,\n        boolean platformAdmin,\n        String authSource,\n        String accountId)")))
     cases.append(("v6_aliased_map_definition_dispatch", (
         "H8_GOVERNED_RUNTIME_SOURCE_HASH_MISMATCH_COUNT",
         "EXECUTABLE_OPERATION_DEFINITION_COUNT"), replace_once(
