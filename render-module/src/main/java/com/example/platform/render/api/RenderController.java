@@ -44,6 +44,12 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api")
 @Tag(name = "Render Jobs", description = "渲染作业与增量渲染 REST API")
 public class RenderController {
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    public ResponseEntity<ProblemDetail> malformedRequest() {
+        return ResponseEntity.badRequest().body(ProblemDetail.forStatusAndDetail(
+                HttpStatus.BAD_REQUEST, "Malformed Render request"));
+    }
+
     private static final Logger log = LoggerFactory.getLogger(RenderController.class);
     private final RenderJobService renderJobService;
     private final com.example.platform.render.api.context.ExecutionContextQueries executionContexts;

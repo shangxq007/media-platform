@@ -32,7 +32,16 @@ public record SubmitRenderJobRequest(
         @Schema(description = "局部段渲染：仅执行列出的 seg_* 任务") List<String> targetSegmentIds,
         @Schema(description = "AI 多轮编辑会话 ID") String editSessionId,
         @Schema(description = "AI 编辑意图标签") String aiEditIntent,
-        @Schema(description = "AI 自然语言改时间线（需 baseJobId）") String aiEditInstruction) {
+        @Schema(description = "AI 自然语言改时间线（需 baseJobId）") String aiEditInstruction,
+        @Schema(description = "Optional canonical Workspace hint") String workspaceId,
+        @Schema(description = "Only TENANT_ORGANIZATION is supported") String allocationMode) {
+
+    public SubmitRenderJobRequest(String tenantId, String projectId, String prompt, String profile,
+            String timelineSnapshotId, String baseJobId, List<String> targetSegmentIds,
+            String editSessionId, String aiEditIntent, String aiEditInstruction) {
+        this(tenantId, projectId, prompt, profile, timelineSnapshotId, baseJobId, targetSegmentIds,
+                editSessionId, aiEditIntent, aiEditInstruction, null, null);
+    }
 
     public SubmitRenderJobRequest(
             String tenantId,

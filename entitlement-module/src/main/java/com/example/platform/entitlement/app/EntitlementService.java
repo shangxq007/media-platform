@@ -87,6 +87,12 @@ public class EntitlementService implements com.example.platform.entitlement.api.
         }
     }
 
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
+    public List<EntitlementGrantView> lockAdmissionGrants(PrincipalRef principal) {
+        if (principal.workspaceId() != null) throw new IllegalArgumentException("Tenant admission required");
+        return grants.lockPrincipal(principal);
+    }
+
     @Transactional(readOnly = true)
     public Optional<EntitlementGrantView> findGrant(PrincipalRef principal, String grantId) {
         try {

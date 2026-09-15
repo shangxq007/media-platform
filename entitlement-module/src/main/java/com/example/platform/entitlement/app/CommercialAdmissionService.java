@@ -26,36 +26,59 @@ public class CommercialAdmissionService implements CommercialAdmissionPort {
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
+    public CommercialDecision decideForAcceptance(CommercialAdmissionRequest request) {
+        var locked = entitlements.lockAdmissionGrants(request.principal());
+        // Linearization: use only the rows returned by the locking read, evaluated at this instant.
+        var now = java.time.Instant.now();
+        var current = new CommercialAdmissionRequest(request.principal(), request.action(), request.entitlementKey(),
+                request.quotaKey(), request.requestedUnits(), request.periodStart(), request.periodEnd(),
+                request.traceId(), now);
+        var grant = locked.stream().filter(g -> "ACTIVE".equals(g.status())
+                && request.entitlementKey().equals(g.bundleCode()) && !g.effectiveAt().isAfter(now)
+                && (g.expiresAt() == null || g.expiresAt().isAfter(now)))
+                .sorted(java.util.Comparator.comparing(com.example.platform.entitlement.domain.EntitlementGrantView::effectiveAt).reversed()
+                        .thenComparing(com.example.platform.entitlement.domain.EntitlementGrantView::grantId))
+                .findFirst().orElse(null);
+        if (grant == null) return denied(current, CommercialDecisionReason.NOT_ENTITLED,
+                new CommercialEvidenceRef("Entitlement", "DENIAL", "no-grant"));
+        var facts = new com.example.platform.entitlement.api.commercial.AdmissionGrantFacts(grant.grantId(),
+                grant.principal(), grant.bundleCode(), grant.version(), grant.effectiveAt(), grant.expiresAt());
+        return evaluateQuota(current, grant.grantId(), facts);
+    }
+
+    @Override
     public CommercialDecision decide(CommercialAdmissionRequest request) {
         try {
-            AccessDecision entitlement = entitlements.checkFeature(
-                    request.principal(), request.entitlementKey());
-            if (!entitlement.allowed()) {
-                return denied(request, CommercialDecisionReason.NOT_ENTITLED,
-                        new CommercialEvidenceRef("Entitlement", "DENIAL",
-                                nonBlank(entitlement.reasonCode(), "no-grant")));
-            }
-
-            QuotaDecision quota = quotaDecisions.evaluate(
-                    request.principal(), request.quotaKey(),
-                    request.periodStart(), request.periodEnd(), request.requestedUnits(),
-                    request.traceId(), request.decidedAt());
-            List<CommercialEvidenceRef> evidence = new ArrayList<>();
-            evidence.add(new CommercialEvidenceRef("Entitlement", "GRANT",
-                    nonBlank(entitlement.matchedGrantId(), entitlement.reasonCode())));
-            evidence.addAll(quota.evidence());
-            if (quota.evidence().isEmpty()) {
-                evidence.add(new CommercialEvidenceRef("Quota", "DECISION", quota.authorityVersion()));
-            }
-            return new CommercialDecision(
-                    request.principal(), request.action(), quota.allowed(),
-                    quota.allowed() ? CommercialDecisionReason.ALLOWED : CommercialDecisionReason.QUOTA_EXCEEDED,
-                    evidence, AUTHORITY_VERSION, request.traceId(), request.decidedAt());
+            AccessDecision entitlement = entitlements.checkFeature(request.principal(), request.entitlementKey());
+            if (!entitlement.allowed()) return denied(request, CommercialDecisionReason.NOT_ENTITLED,
+                    new CommercialEvidenceRef("Entitlement", "DENIAL", nonBlank(entitlement.reasonCode(), "no-grant")));
+            return evaluateQuota(request, nonBlank(entitlement.matchedGrantId(), entitlement.reasonCode()), null);
         } catch (RuntimeException unavailable) {
-            return denied(request, CommercialDecisionReason.POLICY_DENIED,
-                    new CommercialEvidenceRef("CommercialAdmission", "AUTHORITY_UNAVAILABLE",
-                            unavailable.getClass().getSimpleName()));
+            return unavailable(request, unavailable);
         }
+    }
+
+    private CommercialDecision evaluateQuota(CommercialAdmissionRequest request, String grantId,
+            com.example.platform.entitlement.api.commercial.AdmissionGrantFacts facts) {
+        try {
+            QuotaDecision quota = quotaDecisions.evaluate(request.principal(), request.quotaKey(),
+                    request.periodStart(), request.periodEnd(), request.requestedUnits(), request.traceId(), request.decidedAt());
+            List<CommercialEvidenceRef> evidence = new ArrayList<>();
+            evidence.add(new CommercialEvidenceRef("Entitlement", "GRANT", grantId));
+            evidence.addAll(quota.evidence());
+            if (quota.evidence().isEmpty()) evidence.add(new CommercialEvidenceRef("Quota", "DECISION", quota.authorityVersion()));
+            return new CommercialDecision(request.principal(), request.action(), quota.allowed(),
+                    quota.allowed() ? CommercialDecisionReason.ALLOWED : CommercialDecisionReason.QUOTA_EXCEEDED,
+                    evidence, AUTHORITY_VERSION, request.traceId(), request.decidedAt(), facts);
+        } catch (RuntimeException unavailable) {
+            return unavailable(request, unavailable);
+        }
+    }
+
+    private static CommercialDecision unavailable(CommercialAdmissionRequest request, RuntimeException unavailable) {
+        return denied(request, CommercialDecisionReason.POLICY_DENIED,
+                new CommercialEvidenceRef("CommercialAdmission", "AUTHORITY_UNAVAILABLE", unavailable.getClass().getSimpleName()));
     }
 
     private static CommercialDecision denied(

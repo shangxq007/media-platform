@@ -18,7 +18,7 @@ public final class AcceptedContextFixture extends RenderAcceptanceContextService
     private final Map<String,AcceptedExecutionContext> contexts=new HashMap<>();
     public AcceptedContextFixture(RenderJobRepository jobs,CommercialAdmissionPort commercial) {
         super(mock(com.example.platform.identity.api.project.ProjectScopeQueries.class),mock(com.example.platform.identity.api.authorization.CanonicalActorResolver.class),
-                mock(com.example.platform.identity.api.authorization.AuthorizationDecisionPort.class),commercial,mock(org.springframework.jdbc.core.JdbcTemplate.class),new com.fasterxml.jackson.databind.ObjectMapper(),mock(EntitlementBasisQueries.class));
+                mock(com.example.platform.identity.api.authorization.AuthorizationDecisionPort.class),commercial,mock(org.springframework.jdbc.core.JdbcTemplate.class),new com.fasterxml.jackson.databind.ObjectMapper());
         this.jobs=jobs;this.commercial=commercial;
     }
     public static AcceptedContextFixture lifecycleOnly(RenderJobRepository jobs) {

@@ -93,7 +93,7 @@ class AccountResourceExecutionAcceptanceTest extends WorkspaceAuthorityHttpTest 
         assertEquals(403,callScope(tenantB,member,"GET",submitPath(tenant,projectA)+"/"+job+"/execution-context",null).statusCode());
         var reconstructed=new RenderAcceptanceContextService(context.getBean(com.example.platform.identity.api.project.ProjectScopeQueries.class),
                 context.getBean(com.example.platform.identity.api.authorization.CanonicalActorResolver.class),context.getBean(com.example.platform.identity.api.authorization.AuthorizationDecisionPort.class),
-                context.getBean(com.example.platform.entitlement.api.commercial.CommercialAdmissionPort.class),jdbc,context.getBean(com.fasterxml.jackson.databind.ObjectMapper.class),context.getBean(com.example.platform.entitlement.api.commercial.EntitlementBasisQueries.class));
+                context.getBean(com.example.platform.entitlement.api.commercial.CommercialAdmissionPort.class),jdbc,context.getBean(com.fasterxml.jackson.databind.ObjectMapper.class));
         try(var worker=Executors.newSingleThreadExecutor()){
             assertEquals(fixed,worker.submit(()->reconstructed.get(tenant,projectA,job)).get(10,TimeUnit.SECONDS));
             assertEquals(fixed,worker.submit(()->reconstructed.get(tenant,projectA,job)).get(10,TimeUnit.SECONDS));

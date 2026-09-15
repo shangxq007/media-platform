@@ -16,7 +16,14 @@ public record CommercialDecision(
         List<CommercialEvidenceRef> evidence,
         String authorityVersion,
         String traceId,
-        Instant decidedAt) {
+        Instant decidedAt,
+        AdmissionGrantFacts grantFacts) {
+
+    public CommercialDecision(PrincipalRef principal, String action, boolean allowed,
+            CommercialDecisionReason reason, List<CommercialEvidenceRef> evidence,
+            String authorityVersion, String traceId, Instant decidedAt) {
+        this(principal, action, allowed, reason, evidence, authorityVersion, traceId, decidedAt, null);
+    }
 
     public CommercialDecision {
         Objects.requireNonNull(principal, "principal must not be null");

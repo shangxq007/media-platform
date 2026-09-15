@@ -104,7 +104,7 @@ public class RenderJobSubmissionService {
 
         assertInitiatorScope(request.tenantId(), initiator);
         assertTenantAccess(request.tenantId());
-        var prepared = acceptance.prepare(request.tenantId(), request.projectId(), initiator);
+        var prepared = acceptance.prepare(request.tenantId(), request.projectId(), initiator, request.workspaceId(), request.allocationMode());
 
         if (request.baseJobId() != null && !request.baseJobId().isBlank() && cacheTenantGuard != null) {
             cacheTenantGuard.requireBaseJobAccess(

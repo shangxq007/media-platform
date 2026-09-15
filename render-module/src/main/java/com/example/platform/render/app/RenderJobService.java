@@ -66,9 +66,7 @@ public class RenderJobService {
         assertInitiatorScope(tenantId, initiator);
         assertTenantAccess(tenantId);
         if(!projectId.equals(request.projectId()))throw new PlatformException(CommonErrorCode.INVALID_REQUEST,"Project hint mismatch");
-        var prepared=acceptance.prepare(tenantId,projectId,initiator);
-        if(request.workspaceId()!=null&&!request.workspaceId().equals(prepared.scope().workspaceId()))throw new PlatformException(CommonErrorCode.INSUFFICIENT_PERMISSION,"Workspace hint mismatch");
-        if(request.allocationMode()!=null&&!"TENANT_ORGANIZATION".equals(request.allocationMode()))throw new PlatformException(CommonErrorCode.INVALID_REQUEST,"Unsupported allocation mode");
+        var prepared=acceptance.prepare(tenantId,projectId,initiator,request.workspaceId(),request.allocationMode());
 
         var id = ("rj_" + java.util.UUID.randomUUID().toString().replace("-", ""));
         renderJobRepository.create(id, projectId, tenantId,

@@ -18,12 +18,18 @@ import org.springframework.stereotype.Service;
 public class RenderAcceptanceContextService implements ExecutionContextQueries {
     private final ProjectScopeQueries projects;private final CanonicalActorResolver actors;
     private final AuthorizationDecisionPort authorization;private final CommercialAdmissionPort admission;
-    private final JdbcTemplate jdbc;private final ObjectMapper json;private final EntitlementBasisQueries entitlementBasis;
+    private final JdbcTemplate jdbc;private final ObjectMapper json;
     public RenderAcceptanceContextService(ProjectScopeQueries projects,CanonicalActorResolver actors,AuthorizationDecisionPort authorization,
-            CommercialAdmissionPort admission,JdbcTemplate jdbc,ObjectMapper json,EntitlementBasisQueries entitlementBasis) {
-        this.projects=projects;this.actors=actors;this.authorization=authorization;this.admission=admission;this.jdbc=jdbc;this.json=json;this.entitlementBasis=entitlementBasis;
+            CommercialAdmissionPort admission,JdbcTemplate jdbc,ObjectMapper json) {
+        this.projects=projects;this.actors=actors;this.authorization=authorization;this.admission=admission;this.jdbc=jdbc;this.json=json;
     }
     public record Prepared(CanonicalActor actor,ProjectScope scope,CommercialDecision decision) {}
+    public Prepared prepare(String tenant,String project,RenderInitiator initiator,String workspaceHint,String mode) {
+        if(mode!=null&&!"TENANT_ORGANIZATION".equals(mode))throw new PlatformException(CommonErrorCode.INVALID_REQUEST,"Unsupported allocation mode");
+        var prepared=prepare(tenant,project,initiator);
+        if(workspaceHint!=null&&!workspaceHint.equals(prepared.scope().workspaceId()))throw new PlatformException(CommonErrorCode.INSUFFICIENT_PERMISSION,"Workspace hint mismatch");
+        return prepared;
+    }
     public Prepared prepare(String tenant,String project,RenderInitiator initiator) {
         if(!org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive())throw new IllegalStateException("Acceptance transaction required");
         var actor=initiator.actorType()==ActorType.SYSTEM?CanonicalActor.system(initiator.actorId(),initiator.tenantId()):actors.resolveCurrentActor().orElseThrow(()->new PlatformException(CommonErrorCode.AUTHENTICATION_REQUIRED,"Actor required"));
@@ -43,9 +49,16 @@ public class RenderAcceptanceContextService implements ExecutionContextQueries {
         return new Prepared(actor,scope,decision);
     }
     public void persist(String job,String snapshot,Prepared prepared) {
-        var a=prepared.actor();var s=prepared.scope();var d=prepared.decision();
-        String grantId=d.evidence().stream().filter(e->"Entitlement".equals(e.authority())&&"GRANT".equals(e.evidenceType())).map(com.example.platform.shared.commercial.CommercialEvidenceRef::evidenceId).findFirst().orElseThrow();
-        var grant=entitlementBasis.findGrant(d.principal(),grantId).filter(g->"ACTIVE".equals(g.status())&&"render.job.create".equals(g.bundleCode())).orElseThrow();
+        var a=prepared.actor();var s=prepared.scope();
+        // Final admission is repeated by its owner under grant locks, held until this task commits.
+        Instant now=Instant.now();YearMonth month=YearMonth.from(now.atZone(ZoneOffset.UTC));
+        var d=admission.decideForAcceptance(new CommercialAdmissionRequest(prepared.decision().principal(),
+                "render.submit","render.job.create","render.job.create",1,
+                month.atDay(1).atStartOfDay(ZoneOffset.UTC).toInstant(),
+                month.plusMonths(1).atDay(1).atStartOfDay(ZoneOffset.UTC).toInstant(),"render-submit:"+s.projectId(),now));
+        if(!d.allowed())throw new PlatformException(CommonErrorCode.INSUFFICIENT_PERMISSION,"Commercial admission: "+d.reason());
+        var grant=java.util.Objects.requireNonNull(d.grantFacts(),"Admission grant facts required");
+        String grantId=grant.grantId();
         var context=new AcceptedExecutionContext(1,job,a.actorId(),a.actorType(),a.accountId(),a.actorType()==ActorType.USER?a.actorId():null,
                 s.tenantId(),s.workspaceId(),s.projectId(),"ORGANIZATION",s.tenantId(),"TENANT_ORGANIZATION",null,d.authorityVersion(),grantId,grant.version(),d.evidence(),snapshot,d.decidedAt());
         try {jdbc.update("insert into render_execution_context(job_id,tenant_id,workspace_id,project_id,context_json,created_at) values (?,?,?,?,?::jsonb,now())",job,s.tenantId(),s.workspaceId(),s.projectId(),json.writeValueAsString(context));}

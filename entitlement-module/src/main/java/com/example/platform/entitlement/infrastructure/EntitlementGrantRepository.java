@@ -64,6 +64,11 @@ public class EntitlementGrantRepository {
         return rows.isEmpty() ? Optional.empty() : Optional.of(rows.get(0));
     }
 
+    public List<EntitlementGrantView> lockPrincipal(PrincipalRef principal) {
+        return jdbc.query("SELECT * FROM entitlement_grant WHERE tenant_id=? AND subject_type=? AND subject_id=? ORDER BY id FOR SHARE",
+                this::map, principal.tenantId(), principal.principalType().name(), principal.principalId());
+    }
+
     public List<EntitlementGrantView> findActive(PrincipalRef principal, Instant now) {
         return jdbc.query("""
                 SELECT * FROM entitlement_grant
