@@ -134,21 +134,21 @@ public class RoleRepository {
     public List<UserRoleAssignment> findUserRoleAssignmentsByUserId(String userId) {
         return dsl.select()
                 .from(USER_ROLE_ASSIGNMENT)
-                .where(USER_ROLE_ASSIGNMENT.USER_ID.eq(userId))
+                .where(USER_ROLE_ASSIGNMENT.SCOPE_UNRESOLVED.isFalse()).and(USER_ROLE_ASSIGNMENT.USER_ID.eq(userId))
                 .orderBy(USER_ROLE_ASSIGNMENT.CREATED_AT.desc())
                 .fetch(this::mapUserRoleAssignmentRecord);
     }
 
     public List<UserRoleAssignment> findTenantRoleAssignments(String userId, String tenantId) {
         return dsl.selectFrom(USER_ROLE_ASSIGNMENT)
-                .where(USER_ROLE_ASSIGNMENT.USER_ID.eq(userId)).and(USER_ROLE_ASSIGNMENT.TENANT_ID.eq(tenantId))
+                .where(USER_ROLE_ASSIGNMENT.SCOPE_UNRESOLVED.isFalse()).and(USER_ROLE_ASSIGNMENT.USER_ID.eq(userId)).and(USER_ROLE_ASSIGNMENT.TENANT_ID.eq(tenantId))
                 .and(USER_ROLE_ASSIGNMENT.WORKSPACE_ID.isNull()).and(USER_ROLE_ASSIGNMENT.PROJECT_ID.isNull())
                 .fetch(this::mapUserRoleAssignmentRecord);
     }
 
     public List<UserRoleAssignment> findProjectRoleAssignments(String userId, String tenantId, String projectId) {
         return dsl.selectFrom(USER_ROLE_ASSIGNMENT)
-                .where(USER_ROLE_ASSIGNMENT.USER_ID.eq(userId)).and(USER_ROLE_ASSIGNMENT.TENANT_ID.eq(tenantId))
+                .where(USER_ROLE_ASSIGNMENT.SCOPE_UNRESOLVED.isFalse()).and(USER_ROLE_ASSIGNMENT.USER_ID.eq(userId)).and(USER_ROLE_ASSIGNMENT.TENANT_ID.eq(tenantId))
                 .and(USER_ROLE_ASSIGNMENT.PROJECT_ID.eq(projectId)).and(USER_ROLE_ASSIGNMENT.WORKSPACE_ID.isNull())
                 .fetch(this::mapUserRoleAssignmentRecord);
     }
@@ -156,7 +156,7 @@ public class RoleRepository {
     public List<UserRoleAssignment> findUserRoleAssignmentsByWorkspaceId(String workspaceId) {
         return dsl.select()
                 .from(USER_ROLE_ASSIGNMENT)
-                .where(USER_ROLE_ASSIGNMENT.WORKSPACE_ID.eq(workspaceId))
+                .where(USER_ROLE_ASSIGNMENT.SCOPE_UNRESOLVED.isFalse()).and(USER_ROLE_ASSIGNMENT.WORKSPACE_ID.eq(workspaceId))
                 .orderBy(USER_ROLE_ASSIGNMENT.CREATED_AT.desc())
                 .fetch(this::mapUserRoleAssignmentRecord);
     }
@@ -171,7 +171,7 @@ public class RoleRepository {
     @Deprecated
     public void deleteUserRoleAssignment(String userId, String roleKey) {
         dsl.deleteFrom(USER_ROLE_ASSIGNMENT)
-                .where(USER_ROLE_ASSIGNMENT.USER_ID.eq(userId))
+                .where(USER_ROLE_ASSIGNMENT.SCOPE_UNRESOLVED.isFalse()).and(USER_ROLE_ASSIGNMENT.USER_ID.eq(userId))
                 .and(USER_ROLE_ASSIGNMENT.ROLE_ID.in(
                         dsl.select(ROLE.ID)
                                 .from(ROLE)
@@ -189,7 +189,7 @@ public class RoleRepository {
      */
     public void deleteMemberAssignments(String workspaceId, String userId) {
         var project=com.example.platform.typedschema.jooq.generated.tables.Project.PROJECT;
-        dsl.deleteFrom(USER_ROLE_ASSIGNMENT).where(USER_ROLE_ASSIGNMENT.USER_ID.eq(userId))
+        dsl.deleteFrom(USER_ROLE_ASSIGNMENT).where(USER_ROLE_ASSIGNMENT.SCOPE_UNRESOLVED.isFalse()).and(USER_ROLE_ASSIGNMENT.USER_ID.eq(userId))
                 .and(USER_ROLE_ASSIGNMENT.WORKSPACE_ID.eq(workspaceId)
                         .or(USER_ROLE_ASSIGNMENT.PROJECT_ID.in(dsl.select(project.ID).from(project).where(project.WORKSPACE_ID.eq(workspaceId)))))
                 .execute();
@@ -197,7 +197,7 @@ public class RoleRepository {
 
     public void deleteUserRoleAssignmentByWorkspace(String userId, String roleKey, String workspaceId) {
         dsl.deleteFrom(USER_ROLE_ASSIGNMENT)
-                .where(USER_ROLE_ASSIGNMENT.USER_ID.eq(userId))
+                .where(USER_ROLE_ASSIGNMENT.SCOPE_UNRESOLVED.isFalse()).and(USER_ROLE_ASSIGNMENT.USER_ID.eq(userId))
                 .and(USER_ROLE_ASSIGNMENT.WORKSPACE_ID.eq(workspaceId))
                 .and(USER_ROLE_ASSIGNMENT.ROLE_ID.in(
                         dsl.select(ROLE.ID)

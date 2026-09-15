@@ -132,6 +132,26 @@ public class UserRoleAssignmentRecord extends UpdatableRecordImpl<UserRoleAssign
         return (String) get(7);
     }
 
+    /**
+     * Setter for <code>public.user_role_assignment.scope_unresolved</code>.
+     * Historical unproven or colliding scope; excluded from all authorization
+     * and ordinary scope removal. Original fields retained. No automatic
+     * resolution.
+     */
+    public void setScopeUnresolved(Boolean value) {
+        set(8, value);
+    }
+
+    /**
+     * Getter for <code>public.user_role_assignment.scope_unresolved</code>.
+     * Historical unproven or colliding scope; excluded from all authorization
+     * and ordinary scope removal. Original fields retained. No automatic
+     * resolution.
+     */
+    public Boolean getScopeUnresolved() {
+        return (Boolean) get(8);
+    }
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -155,7 +175,7 @@ public class UserRoleAssignmentRecord extends UpdatableRecordImpl<UserRoleAssign
     /**
      * Create a detached, initialised UserRoleAssignmentRecord
      */
-    public UserRoleAssignmentRecord(String id, String tenantId, String workspaceId, String userId, String roleId, String assignedBy, LocalDateTime createdAt, String projectId) {
+    public UserRoleAssignmentRecord(String id, String tenantId, String workspaceId, String userId, String roleId, String assignedBy, LocalDateTime createdAt, String projectId, Boolean scopeUnresolved) {
         super(UserRoleAssignment.USER_ROLE_ASSIGNMENT);
 
         setId(id);
@@ -166,6 +186,7 @@ public class UserRoleAssignmentRecord extends UpdatableRecordImpl<UserRoleAssign
         setAssignedBy(assignedBy);
         setCreatedAt(createdAt);
         setProjectId(projectId);
+        setScopeUnresolved(scopeUnresolved);
         resetChangedOnNotNull();
     }
 }
