@@ -3,7 +3,9 @@
 
 spring:
   autoconfigure:
-    exclude: []
+    exclude:
+      # Enabling Temporal must preserve the base profile's unrelated GraphQL exclusion.
+      - org.springframework.boot.graphql.autoconfigure.GraphQlAutoConfiguration
 
 app:
   temporal:

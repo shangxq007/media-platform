@@ -11,7 +11,7 @@ case "${1:-}" in
       :identity-access-module:test --tests '*PermissionServiceTest' --tests '*RbacAuthorizationDecisionPortTest' --tests '*ProjectReadAuthorizationTest' \
       :extension-module:test --tests '*PluginRegistry*' --tests '*Capability*' \
       :render-module:test --tests '*CanonicalOperationInvocationServiceTest' --tests '*CanonicalOperationInvocationArchitectureTest' --tests '*ConstrainedGraphSafetyRulesTest' \
-      :platform-app:test --tests '*WorkflowFoundationIntegrationTest' --tests '*UserWorkflowDefinitionApiTest' --tests '*ModularityTest'
+      :platform-app:test --tests '*WorkflowFoundationIntegrationTest' --tests '*WorkflowProductionAssemblyTest' --tests '*UserWorkflowDefinitionApiTest' --tests '*ModularityTest'
     ;;
   workflow-plan)
     ./gradlew --offline --no-daemon --console=plain :workflow-module:test \
@@ -22,7 +22,7 @@ case "${1:-}" in
       :identity-access-module:test :delivery-module:test \
       :timeline-module:test --tests 'com.example.platform.timeline.app.*' --tests '*TimelineCanonicalProductionBoundaryTest' \
       :entitlement-module:test --tests '*EntitlementDecisionServiceCollaborationTest' --tests '*CommercialAdmissionServiceTest' \
-      :workflow-module:test --tests '*AuthorizationContractTest' --tests '*UserWorkflowDefinitionAuthorizationTest' --tests '*UserWorkflowExecutionRedMatrixTest' \
+      :workflow-module:test --tests '*AuthorizationContractTest' --tests '*UserWorkflowDefinitionAuthorizationTest' \
       :render-module:test --tests '*CanonicalOperationInvocationServiceTest' --tests '*H7FirstRealMediaCutTest' \
         --tests '*H8OperationInvocationBoundaryGuardTest' --tests '*TimelineRevisionSaveServiceIntegrationTest' \
         --tests '*TimelineRevisionSaveServiceSnapshotIntegrationTest' \

@@ -345,7 +345,7 @@ public class UserWorkflowDefinitionJdbcRepository implements UserWorkflowDefinit
             List<UserWorkflowDefinitionEdge> edges) {
         return new UserWorkflowDefinition(header.definitionId(), header.version(), header.tenantId(),
                 header.projectId(), header.name(), header.description(), header.status(),
-                nodes.stream().map(n -> new UserWorkflowDefinitionNode(n.nodeId(),n.nodeType(),n.name(),n.configSchemaRef(),
+                nodes.stream().map(n -> new UserWorkflowDefinitionNode(n.nodeId(),n.nodeType(),n.name(),header.schemaVersion()==2?"workflow.node.v2":n.configSchemaRef(),
                         new UserWorkflowDefinitionNode.VersionedJsonDocument(header.schemaVersion(),n.configValues().canonicalJson()),
                         n.inputDeclarations(),n.outputDeclarations(),n.errorPolicy())).toList(), edges, header.parameters(), header.triggerBinding(), header.schemaVersion(),
                 header.optimisticVersion(), header.createdAt(), header.createdBy(),

@@ -13,7 +13,7 @@ public final class WorkflowPlanCompiler {
             throw new IllegalArgumentException("Definition size");
         List<WorkflowPlan.Node> nodes = new ArrayList<>();
         for (var declaration : definition.nodes()) {
-            if (declaration.configValues().schemaVersion() != 2
+            if (!"workflow.node.v2".equals(declaration.configSchemaRef()) || declaration.configValues().schemaVersion() != 2
                     || declaration.configValues().canonicalJson().getBytes(StandardCharsets.UTF_8).length > 65536)
                 throw new IllegalArgumentException("Invalid executable node schema/size");
             var node = codec.decodeNode(declaration.configValues().canonicalJson());

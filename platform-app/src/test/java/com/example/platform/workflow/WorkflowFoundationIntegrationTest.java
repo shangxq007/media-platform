@@ -32,6 +32,7 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.*;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.*;
 import org.springframework.transaction.*;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -45,6 +46,7 @@ import java.util.concurrent.*;
  * Full Spring/Identity/Outbox/PostgreSQL assembly with real SDK runtime and an explicitly
  * controlled Operation owner.
  */
+@DirtiesContext(classMode=DirtiesContext.ClassMode.AFTER_CLASS)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles({"test", "preview", "ep07-workflow-test"})
 @TestPropertySource(
