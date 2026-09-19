@@ -8,6 +8,7 @@ include(
     "platform-app",
     "shared-kernel",
     "render-module",
+    "marketplace-module",
     "notification-module",
     "ai-module",
     "config-module",

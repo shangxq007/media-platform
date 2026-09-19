@@ -47,13 +47,14 @@ public class AssetSearchConsumer {
         triggerReindex(event.assetId(), "", event.projectId(), "asset.archived");
     }
 
-    private void triggerReindex(String assetId, String tenantId, String projectId, String eventType) {
-        log.info("Search reindex triggered: asset={} tenant={} event={}", assetId, tenantId, eventType);
-        String payload = "{\"assetId\":\"" + assetId + "\",\"tenantId\":\"" + tenantId
-                + "\",\"projectId\":\"" + projectId + "\",\"reason\":\"" + eventType + "\"}";
-        var job = coordinationService.createJob(JobType.SEARCH_REINDEX, "ASSET", assetId,
-                tenantId, projectId, payload);
-        coordinationService.createTask(job.id(), "REINDEX", TaskCapability.REINDEX, null, 0);
-        log.info("Search reindex job created: job={} task=REINDEX", job.id());
+    private void triggerReindex(String assetId, String ignoredTenantId, String projectId, String eventType) {
+        var delivery=com.example.platform.outbox.api.event.OutboxDeliveryContext.require();
+        String tenantId=delivery.tenantId();
+        try {
+            String payload=new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(
+                    java.util.Map.of("assetId",assetId,"tenantId",tenantId,"projectId",projectId,"reason",eventType));
+            coordinationService.createJobWithTaskOnce("asset-publication:"+delivery.eventId(),JobType.SEARCH_REINDEX,"ASSET",assetId,
+                    tenantId,projectId,payload,"REINDEX",TaskCapability.REINDEX);
+        } catch(com.fasterxml.jackson.core.JsonProcessingException e){throw new IllegalArgumentException("Invalid search intent",e);}
     }
 }

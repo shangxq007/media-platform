@@ -1,8 +1,6 @@
 package com.example.platform.render.infrastructure.productization.api;
 
 import com.example.platform.render.infrastructure.productization.adaptive.AdaptiveEngine;
-import com.example.platform.render.infrastructure.productization.marketplace.Marketplace;
-import com.example.platform.render.infrastructure.productization.marketplace.MarketplaceService;
 import com.example.platform.identity.api.workspace.WorkspaceCommands;
 import com.example.platform.identity.api.workspace.WorkspaceQueries;
 import com.example.platform.identity.api.workspace.WorkspaceResponse;
@@ -26,17 +24,14 @@ public class ProductizationApi {
     private final WorkspaceCommands workspaceCommands;
     private final WorkspaceQueries workspaceQueries;
     private final CanonicalActorResolver actors;
-    private final MarketplaceService marketplaceService;
     private final ObjectProvider<AdaptiveEngine> adaptiveEngineProvider;
 
     public ProductizationApi(
             WorkspaceCommands workspaceCommands, WorkspaceQueries workspaceQueries, CanonicalActorResolver actors,
-            MarketplaceService marketplaceService,
             ObjectProvider<AdaptiveEngine> adaptiveEngineProvider) {
         this.workspaceCommands = workspaceCommands;
         this.workspaceQueries = workspaceQueries;
         this.actors = actors;
-        this.marketplaceService = marketplaceService;
         this.adaptiveEngineProvider = adaptiveEngineProvider;
     }
 
@@ -89,46 +84,6 @@ public class ProductizationApi {
         return ResponseEntity.status(HttpStatus.GONE).body(problem);
     }
 
-    // ─── Marketplace Endpoints ─────────────────────────────────────────────────
-
-    @PostMapping("/marketplace/{marketplaceId}/items")
-    public Marketplace.MarketplaceItem publishItem(
-            @PathVariable String marketplaceId,
-            @RequestBody PublishItemRequest request) {
-        return marketplaceService.publishItem(
-                marketplaceId, request.name(), request.description(),
-                request.type(), request.category(), request.authorId(),
-                request.authorName(), request.version(), request.tags());
-    }
-
-    @GetMapping("/marketplace/{marketplaceId}/search")
-    public List<Marketplace.MarketplaceItem> searchItems(
-            @PathVariable String marketplaceId,
-            @RequestParam String query) {
-        return marketplaceService.searchItems(marketplaceId, query);
-    }
-
-    @GetMapping("/marketplace/{marketplaceId}/category/{category}")
-    public List<Marketplace.MarketplaceItem> getItemsByCategory(
-            @PathVariable String marketplaceId,
-            @PathVariable String category) {
-        return marketplaceService.getItemsByCategory(marketplaceId, category);
-    }
-
-    @GetMapping("/marketplace/{marketplaceId}/top-rated")
-    public List<Marketplace.MarketplaceItem> getTopRated(
-            @PathVariable String marketplaceId,
-            @RequestParam(defaultValue = "10") int limit) {
-        return marketplaceService.getTopRated(marketplaceId, limit);
-    }
-
-    @GetMapping("/marketplace/{marketplaceId}/popular")
-    public List<Marketplace.MarketplaceItem> getMostPopular(
-            @PathVariable String marketplaceId,
-            @RequestParam(defaultValue = "10") int limit) {
-        return marketplaceService.getMostPopular(marketplaceId, limit);
-    }
-
     // ─── AI Optimization Endpoints ─────────────────────────────────────────────
 
     @PostMapping("/optimization/analyze")
@@ -156,9 +111,4 @@ public class ProductizationApi {
 
     public record CreateWorkspaceRequest(String name, String description, String ownerId) {}
     public record AddMemberRequest(String userId, String role) {}
-    public record PublishItemRequest(
-            String name, String description,
-            Marketplace.MarketplaceItemType type, String category,
-            String authorId, String authorName, String version,
-            List<String> tags) {}
 }

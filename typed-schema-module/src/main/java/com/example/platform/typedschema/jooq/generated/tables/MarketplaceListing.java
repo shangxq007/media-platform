@@ -4,24 +4,30 @@
 package com.example.platform.typedschema.jooq.generated.tables;
 
 
+import com.example.platform.typedschema.contract.InstantConverter;
 import com.example.platform.typedschema.contract.TsvectorBinding;
 import com.example.platform.typedschema.contract.TsvectorValue;
 import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
+import com.example.platform.typedschema.jooq.generated.tables.MarketplaceReview.MarketplaceReviewPath;
 import com.example.platform.typedschema.jooq.generated.tables.MediaAsset.MediaAssetPath;
+import com.example.platform.typedschema.jooq.generated.tables.Workspace.WorkspacePath;
 import com.example.platform.typedschema.jooq.generated.tables.records.MarketplaceListingRecord;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
+import org.jooq.Check;
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
 import org.jooq.Index;
 import org.jooq.InverseForeignKey;
+import org.jooq.JSONB;
 import org.jooq.Name;
 import org.jooq.Path;
 import org.jooq.PlainSQL;
@@ -37,6 +43,7 @@ import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
 import org.jooq.impl.DefaultDataType;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
@@ -147,6 +154,46 @@ public class MarketplaceListing extends TableImpl<MarketplaceListingRecord> {
      */
     public final TableField<MarketplaceListingRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("updated_at"), SQLDataType.LOCALDATETIME(6).nullable(false), this, "");
 
+    /**
+     * The column <code>public.marketplace_listing.workspace_id</code>.
+     */
+    public final TableField<MarketplaceListingRecord, String> WORKSPACE_ID = createField(DSL.name("workspace_id"), SQLDataType.VARCHAR(64), this, "");
+
+    /**
+     * The column <code>public.marketplace_listing.subject_version</code>.
+     */
+    public final TableField<MarketplaceListingRecord, String> SUBJECT_VERSION = createField(DSL.name("subject_version"), SQLDataType.VARCHAR(64), this, "");
+
+    /**
+     * The column <code>public.marketplace_listing.aggregate_version</code>.
+     */
+    public final TableField<MarketplaceListingRecord, Long> AGGREGATE_VERSION = createField(DSL.name("aggregate_version"), SQLDataType.BIGINT.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.BIGINT)), this, "");
+
+    /**
+     * The column <code>public.marketplace_listing.created_by</code>.
+     */
+    public final TableField<MarketplaceListingRecord, String> CREATED_BY = createField(DSL.name("created_by"), SQLDataType.VARCHAR(128), this, "");
+
+    /**
+     * The column <code>public.marketplace_listing.updated_by</code>.
+     */
+    public final TableField<MarketplaceListingRecord, String> UPDATED_BY = createField(DSL.name("updated_by"), SQLDataType.VARCHAR(128), this, "");
+
+    /**
+     * The column <code>public.marketplace_listing.admitted_at</code>.
+     */
+    public final TableField<MarketplaceListingRecord, Instant> ADMITTED_AT = createField(DSL.name("admitted_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "", new InstantConverter());
+
+    /**
+     * The column <code>public.marketplace_listing.published_at</code>.
+     */
+    public final TableField<MarketplaceListingRecord, Instant> PUBLISHED_AT = createField(DSL.name("published_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "", new InstantConverter());
+
+    /**
+     * The column <code>public.marketplace_listing.legacy_snapshot</code>.
+     */
+    public final TableField<MarketplaceListingRecord, JSONB> LEGACY_SNAPSHOT = createField(DSL.name("legacy_snapshot"), SQLDataType.JSONB, this, "");
+
     private MarketplaceListing(Name alias, Table<MarketplaceListingRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
     }
@@ -231,7 +278,7 @@ public class MarketplaceListing extends TableImpl<MarketplaceListingRecord> {
 
     @Override
     public List<ForeignKey<MarketplaceListingRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.MARKETPLACE_LISTING__FK_ML_ASSET);
+        return Arrays.asList(Keys.MARKETPLACE_LISTING__FK_ML_ASSET, Keys.MARKETPLACE_LISTING__MARKETPLACE_WORKSPACE_FK);
     }
 
     private transient MediaAssetPath _mediaAsset;
@@ -244,6 +291,38 @@ public class MarketplaceListing extends TableImpl<MarketplaceListingRecord> {
             _mediaAsset = new MediaAssetPath(this, Keys.MARKETPLACE_LISTING__FK_ML_ASSET, null);
 
         return _mediaAsset;
+    }
+
+    private transient WorkspacePath _workspace;
+
+    /**
+     * Get the implicit join path to the <code>public.workspace</code> table.
+     */
+    public WorkspacePath workspace() {
+        if (_workspace == null)
+            _workspace = new WorkspacePath(this, Keys.MARKETPLACE_LISTING__MARKETPLACE_WORKSPACE_FK, null);
+
+        return _workspace;
+    }
+
+    private transient MarketplaceReviewPath _marketplaceReview;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.marketplace_review</code> table
+     */
+    public MarketplaceReviewPath marketplaceReview() {
+        if (_marketplaceReview == null)
+            _marketplaceReview = new MarketplaceReviewPath(this, null, Keys.MARKETPLACE_REVIEW__MARKETPLACE_REVIEW_LISTING_ID_FKEY.getInverseKey());
+
+        return _marketplaceReview;
+    }
+
+    @Override
+    public List<Check<MarketplaceListingRecord>> getChecks() {
+        return Arrays.asList(
+            Internal.createCheck(this, DSL.name("marketplace_admitted_scope"), "(((admitted_at IS NULL) OR ((tenant_id IS NOT NULL) AND (project_id IS NOT NULL) AND (workspace_id IS NOT NULL) AND (subject_version IS NOT NULL) AND (created_by IS NOT NULL) AND (aggregate_version > 0))))", true)
+        );
     }
 
     @Override

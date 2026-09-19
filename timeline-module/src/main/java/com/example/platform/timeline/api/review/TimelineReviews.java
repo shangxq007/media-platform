@@ -9,7 +9,6 @@ import java.util.*;
  * across intervening state/actor-decision changes. Closed/merged reviews reject actions. */
 public interface TimelineReviews {
  TimelineReview createReview(String project,String revision,String author,String title,String description);
- ReviewRow createAssetReview(String project,String asset,String author,String title,String description);
  Optional<ReviewRow> getReview(String project,String tenant,String id);
  List<ReviewRow> listReviews(String project,String tenant,int limit);
  void approve(String id,String actor);

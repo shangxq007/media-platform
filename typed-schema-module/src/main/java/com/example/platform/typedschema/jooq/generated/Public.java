@@ -59,7 +59,12 @@ import com.example.platform.typedschema.jooq.generated.tables.FrontendRouteDefin
 import com.example.platform.typedschema.jooq.generated.tables.GroupRoleAssignment;
 import com.example.platform.typedschema.jooq.generated.tables.IngestPreflightSafeReportRecords;
 import com.example.platform.typedschema.jooq.generated.tables.InvoiceLineItem;
+import com.example.platform.typedschema.jooq.generated.tables.MarketplaceCommand;
 import com.example.platform.typedschema.jooq.generated.tables.MarketplaceListing;
+import com.example.platform.typedschema.jooq.generated.tables.MarketplaceReview;
+import com.example.platform.typedschema.jooq.generated.tables.MarketplaceReviewComment;
+import com.example.platform.typedschema.jooq.generated.tables.MarketplaceReviewDecision;
+import com.example.platform.typedschema.jooq.generated.tables.MarketplaceReviewThread;
 import com.example.platform.typedschema.jooq.generated.tables.MediaAsset;
 import com.example.platform.typedschema.jooq.generated.tables.MediaAssetArtifact;
 import com.example.platform.typedschema.jooq.generated.tables.MediaProbeObservation;
@@ -501,9 +506,34 @@ public class Public extends SchemaImpl {
     public final InvoiceLineItem INVOICE_LINE_ITEM = InvoiceLineItem.INVOICE_LINE_ITEM;
 
     /**
+     * The table <code>public.marketplace_command</code>.
+     */
+    public final MarketplaceCommand MARKETPLACE_COMMAND = MarketplaceCommand.MARKETPLACE_COMMAND;
+
+    /**
      * The table <code>public.marketplace_listing</code>.
      */
     public final MarketplaceListing MARKETPLACE_LISTING = MarketplaceListing.MARKETPLACE_LISTING;
+
+    /**
+     * The table <code>public.marketplace_review</code>.
+     */
+    public final MarketplaceReview MARKETPLACE_REVIEW = MarketplaceReview.MARKETPLACE_REVIEW;
+
+    /**
+     * The table <code>public.marketplace_review_comment</code>.
+     */
+    public final MarketplaceReviewComment MARKETPLACE_REVIEW_COMMENT = MarketplaceReviewComment.MARKETPLACE_REVIEW_COMMENT;
+
+    /**
+     * The table <code>public.marketplace_review_decision</code>.
+     */
+    public final MarketplaceReviewDecision MARKETPLACE_REVIEW_DECISION = MarketplaceReviewDecision.MARKETPLACE_REVIEW_DECISION;
+
+    /**
+     * The table <code>public.marketplace_review_thread</code>.
+     */
+    public final MarketplaceReviewThread MARKETPLACE_REVIEW_THREAD = MarketplaceReviewThread.MARKETPLACE_REVIEW_THREAD;
 
     /**
      * The table <code>public.media_asset</code>.
@@ -1291,7 +1321,12 @@ public class Public extends SchemaImpl {
             GroupRoleAssignment.GROUP_ROLE_ASSIGNMENT,
             IngestPreflightSafeReportRecords.INGEST_PREFLIGHT_SAFE_REPORT_RECORDS,
             InvoiceLineItem.INVOICE_LINE_ITEM,
+            MarketplaceCommand.MARKETPLACE_COMMAND,
             MarketplaceListing.MARKETPLACE_LISTING,
+            MarketplaceReview.MARKETPLACE_REVIEW,
+            MarketplaceReviewComment.MARKETPLACE_REVIEW_COMMENT,
+            MarketplaceReviewDecision.MARKETPLACE_REVIEW_DECISION,
+            MarketplaceReviewThread.MARKETPLACE_REVIEW_THREAD,
             MediaAsset.MEDIA_ASSET,
             MediaAssetArtifact.MEDIA_ASSET_ARTIFACT,
             MediaProbeObservation.MEDIA_PROBE_OBSERVATION,

@@ -40,6 +40,7 @@ public class SearchReindexTaskHandler implements TaskHandler {
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional
     public void execute(TaskExecutionContext context) {
         String payload = context.payload();
         String assetId = extractField(payload, "assetId");
@@ -48,9 +49,15 @@ public class SearchReindexTaskHandler implements TaskHandler {
         String reason = extractField(payload, "reason");
         log.info("SearchReindexHandler: rebuilding projection for asset={} tenant={} reason={}", assetId, tenantId, reason);
 
-        String effectiveTenant = tenantId != null ? tenantId : "system";
+        if(context.job()==null || tenantId==null || projectId==null
+                || !tenantId.equals(context.job().tenantId()) || !projectId.equals(context.job().projectId())
+                || !java.util.Objects.equals(assetId,context.job().aggregateId()))
+            throw new IllegalArgumentException("Search intent scope mismatch");
+        // The Media owner holds a shared row lock until this projection write commits.
+        // Publication cannot interleave an old read with a new state and a late stale write.
+        var current=assetRepository.publicationSnapshot(tenantId,projectId,assetId);
 
-        SearchProjection projection = assetRepository.findById(effectiveTenant, assetId)
+        SearchProjection projection = java.util.Optional.of(current)
                 .map(asset -> {
                     List<String> transcripts = new ArrayList<>();
                     List<String> scenes = new ArrayList<>();

@@ -3,7 +3,7 @@ package com.example.platform.web.assets;
 import com.example.platform.render.app.asset.*;
 import com.example.platform.render.domain.asset.AssetGovernanceMetadata;
 import com.example.platform.render.domain.asset.AssetRegistryRecord;
-import com.example.platform.render.infrastructure.asset.MarketplaceListingRepository;
+import com.example.platform.marketplace.api.MarketplaceApi;
 import com.example.platform.render.infrastructure.asset.SearchProjectionRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -22,20 +22,17 @@ public class AssetWorkbenchController {
     private final AssetRegistryService registryService;
     private final AssetSemanticMetadataService semanticService;
     private final AssetEnrichmentService enrichmentService;
-    private final AssetReviewService reviewService;
-    private final MarketplaceListingRepository marketplaceRepo;
+    private final MarketplaceApi marketplaceRepo;
     private final SearchProjectionRepository searchProjectionRepo;
 
     public AssetWorkbenchController(AssetRegistryService registryService,
                                       AssetSemanticMetadataService semanticService,
                                       AssetEnrichmentService enrichmentService,
-                                      AssetReviewService reviewService,
-                                      MarketplaceListingRepository marketplaceRepo,
+                                      MarketplaceApi marketplaceRepo,
                                       SearchProjectionRepository searchProjectionRepo) {
         this.registryService = registryService;
         this.semanticService = semanticService;
         this.enrichmentService = enrichmentService;
-        this.reviewService = reviewService;
         this.marketplaceRepo = marketplaceRepo;
         this.searchProjectionRepo = searchProjectionRepo;
     }
@@ -49,15 +46,14 @@ public class AssetWorkbenchController {
 
         AssetRegistryRecord r = asset.get();
         var semantic = semanticService.get(assetId);
-        var pubStatus = reviewService.getPublishStatus(assetId);
-        var marketplace = marketplaceRepo.findByAssetId(assetId, null);
+        var marketplace = marketplaceRepo.managedByAsset(assetId);
         var searchProj = searchProjectionRepo.findByAssetId(assetId);
 
         var dto = new AssetWorkbenchDto(
                 r.assetId(), r.assetType(), r.checksum(),
                 r.createdAt() != null ? r.createdAt().toString() : null,
                 r.updatedAt() != null ? r.updatedAt().toString() : null,
-                pubStatus.map(Enum::name).orElse("DRAFT"),
+                marketplace.map(m -> m.status().name()).orElse("DRAFT"),
                 semantic.map(s -> s.status().name()).orElse("PENDING"),
                 marketplace.map(m -> m.status().name()).orElse(null),
                 searchProj.isPresent(),
@@ -103,11 +99,11 @@ public class AssetWorkbenchController {
     @GetMapping("/marketplace")
     @Operation(summary = "Marketplace listing workspace")
     public ResponseEntity<MarketplaceWsDto> marketplace(@PathVariable String assetId) {
-        return marketplaceRepo.findByAssetId(assetId, null)
+        return marketplaceRepo.managedByAsset(assetId)
                 .map(m -> ResponseEntity.ok(new MarketplaceWsDto(
                         m.id(), m.status().name(),
-                        m.listingType() != null ? m.listingType().name() : null,
-                        m.previewUrl(), m.coverUrl(),
+                        "MEDIA",
+                        null, null,
                         m.updatedAt() != null ? m.updatedAt().toString() : null)))
                 .orElse(ResponseEntity.notFound().build());
     }

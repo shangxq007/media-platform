@@ -3,7 +3,8 @@ package com.example.platform.web.render;
 import com.example.platform.timeline.adapter.TimelineRevisionRepository;
 import com.example.platform.outbox.app.OutboxEventService;
 import com.example.platform.outbox.coordination.PlatformJobRepository;
-import com.example.platform.render.infrastructure.asset.*;
+import com.example.platform.render.infrastructure.asset.SearchProjectionRepository;
+import com.example.platform.marketplace.api.MarketplaceApi;
 import com.example.platform.media.api.MediaAssets;
 import com.example.platform.render.app.timeline.*;
 import com.example.platform.timeline.api.review.*;
@@ -24,14 +25,14 @@ public class ProjectDashboardController {
 
     private static final Logger log = LoggerFactory.getLogger(ProjectDashboardController.class);
     private final MediaAssets assetRepo;
-    private final MarketplaceListingRepository marketplaceRepo;
+    private final MarketplaceApi marketplaceRepo;
     private final SearchProjectionRepository searchProjectionRepo;
     private final TimelineRevisionRepository revisionRepo;
     private final ReviewQueries reviewRepo;
     private final OutboxEventService outboxService;
 
     public ProjectDashboardController(MediaAssets assetRepo,
-                                        MarketplaceListingRepository marketplaceRepo,
+                                        MarketplaceApi marketplaceRepo,
                                         SearchProjectionRepository searchProjectionRepo,
                                         TimelineRevisionRepository revisionRepo,
                                         ReviewQueries reviewRepo,
@@ -55,10 +56,9 @@ public class ProjectDashboardController {
         int publishedAssets = (int) assets.stream().filter(a -> "PUBLISHED".equals(a.publishStatus())).count();
         int draftAssets = (int) assets.stream().filter(a -> "DRAFT".equals(a.publishStatus())).count();
 
-        var marketplace = marketplaceRepo.listByStatus("PUBLISHED", 500);
-        int totalListings = marketplace.size();
-        int publishedListings = (int) marketplace.stream()
-                .filter(m -> m.status() != null && m.status().name().equals("PUBLISHED")).count();
+        var marketplace = marketplaceRepo.summary(projectId);
+        int totalListings = marketplace.total();
+        int publishedListings = marketplace.published();
 
         var reviews = reviewRepo.listOwnedByProject(projectId, tenantId, 200);
         int openReviews = (int) reviews.stream().filter(r -> "OPEN".equals(r.status())).count();

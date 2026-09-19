@@ -55,7 +55,6 @@ class TimelineReviewOwnerIntegrationTest extends PostgresTestContainerSupport {
   context.registerBean(OutboxEventDispatcher.class,()->new OutboxEventDispatcher(context.getBean(OutboxEventService.class),context,context.getBean(OutboxEventRouter.class),3,new io.micrometer.core.instrument.simple.SimpleMeterRegistry()));
   context.registerBean(com.example.platform.media.infrastructure.persistence.JooqMediaAssetRepository.class);
   context.registerBean(com.example.platform.media.app.MediaAuthorization.class);context.registerBean(com.example.platform.media.app.MediaAssetService.class);
-  context.registerBean(com.example.platform.render.app.asset.AssetReviewService.class);
   context.refresh();
   jdbc.update("insert into tenant(id,name,created_at) values ('tenant','test',now())");
   for(String project:List.of("project","other")){
@@ -250,14 +249,13 @@ class TimelineReviewOwnerIntegrationTest extends PostgresTestContainerSupport {
    assertEquals(same?1:2,decisionCount(id));
   }
  }
- @Test void assetReviewMechanismRecordsDecisionsButOnlyMediaOwnsPublication() {
-  var assets=context.getBean(com.example.platform.media.api.MediaAssets.class);
-  var asset=assets.register("tenant","project","review/input.mp4","VIDEO","input.mp4",1L,null);
-  var service=context.getBean(com.example.platform.render.app.asset.AssetReviewService.class);
-  var review=service.submitForReview(asset.id(),"server-actor","asset review","test");
-  actor.set("A");service.approveAsset(asset.id(),"A");actor.set("B");service.approveAsset(asset.id(),"B");
-  assertEquals(2,decisionCount(review.id()));assertEquals("DRAFT",assets.findById("tenant",asset.id()).orElseThrow().publishStatus());
-  assertEquals(0,jdbc.queryForObject("select count(*) from outbox_events where aggregate_id=?",Integer.class,review.id()));
-  service.publishAsset(asset.id());assertEquals("PUBLISHED",assets.findById("tenant",asset.id()).orElseThrow().publishStatus());
+ @Test void historicalAssetReviewsRemainEvidenceButAreNotTimelineAuthority() {
+  String id="legacy-asset-review";
+  jdbc.update("insert into timeline_review(id,project_id,tenant_id,revision_id,target_type,author_user_id,title,status,created_at,updated_at) values (?,'project','tenant','media-id','ASSET','server-actor','legacy','OPEN',now(),now())",id);
+  assertTrue(context.getBean(com.example.platform.timeline.api.review.ReviewQueries.class).findOwnedById(id,"project","tenant").isEmpty());
+  assertThrows(RuntimeException.class,()->context.getBean(TimelineReviews.class).approve(id,"server-actor"));
+  assertEquals(0,decisionCount(id));
+  assertEquals(0,jdbc.queryForObject("select count(*) from outbox_events where aggregate_id=?",Integer.class,id));
+  assertEquals("OPEN",jdbc.queryForObject("select status from timeline_review where id=?",String.class,id));
  }
 }

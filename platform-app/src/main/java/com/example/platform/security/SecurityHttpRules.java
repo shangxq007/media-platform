@@ -17,6 +17,8 @@ public final class SecurityHttpRules {
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                 .requestMatchers("/actuator/**").permitAll()
                 .requestMatchers("/api/webhooks/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/marketplace/search", "/api/marketplace/listings",
+                        "/api/marketplace/listings/*", "/api/marketplace/discovery", "/api/product/marketplace/*/search").permitAll()
                 .requestMatchers("/api/mcp/**").authenticated()
                 .requestMatchers("/api/dev/auth/**").permitAll()
                 .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")

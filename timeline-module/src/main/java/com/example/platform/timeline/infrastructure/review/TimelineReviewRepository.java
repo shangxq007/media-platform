@@ -39,22 +39,15 @@ public class TimelineReviewRepository {
 
     public String targetType(String reviewId) {
         return dsl.select(TIMELINE_REVIEW.TARGET_TYPE).from(TIMELINE_REVIEW).where(TIMELINE_REVIEW.ID.eq(reviewId))
-            .and(TIMELINE_REVIEW.TENANT_ID.eq(com.example.platform.shared.web.TenantGuard.requireTenantId())).fetchOne(TIMELINE_REVIEW.TARGET_TYPE);
+            .and(TIMELINE_REVIEW.TENANT_ID.eq(com.example.platform.shared.web.TenantGuard.requireTenantId())).and(TIMELINE_REVIEW.TARGET_TYPE.eq("TIMELINE")).fetchOne(TIMELINE_REVIEW.TARGET_TYPE);
     }
     public void lock(String reviewId) {
         dsl.select(TIMELINE_REVIEW.ID).from(TIMELINE_REVIEW).where(TIMELINE_REVIEW.ID.eq(reviewId))
-            .and(TIMELINE_REVIEW.TENANT_ID.eq(com.example.platform.shared.web.TenantGuard.requireTenantId())).forUpdate().fetchOne();
+            .and(TIMELINE_REVIEW.TENANT_ID.eq(com.example.platform.shared.web.TenantGuard.requireTenantId())).and(TIMELINE_REVIEW.TARGET_TYPE.eq("TIMELINE")).forUpdate().fetchOne();
     }
-    public void setTargetType(String reviewId, String targetType) {
-        dsl.update(TIMELINE_REVIEW)
-                .set(TIMELINE_REVIEW.TARGET_TYPE, targetType)
-                .where(TIMELINE_REVIEW.ID.eq(reviewId)).and(TIMELINE_REVIEW.TENANT_ID.eq(com.example.platform.shared.web.TenantGuard.requireTenantId()))
-                .execute();
-    }
-
     public Optional<ReviewRow> findByTargetId(String targetId) {
         Record row = dsl.select().from(TIMELINE_REVIEW)
-                .where(TIMELINE_REVIEW.REVISION_ID.eq(targetId)).and(TIMELINE_REVIEW.TENANT_ID.eq(com.example.platform.shared.web.TenantGuard.requireTenantId()))
+                .where(TIMELINE_REVIEW.REVISION_ID.eq(targetId)).and(TIMELINE_REVIEW.TENANT_ID.eq(com.example.platform.shared.web.TenantGuard.requireTenantId())).and(TIMELINE_REVIEW.TARGET_TYPE.eq("TIMELINE"))
                 .orderBy(TIMELINE_REVIEW.CREATED_AT.desc())
                 .limit(1)
                 .fetchOne();
@@ -65,13 +58,13 @@ public class TimelineReviewRepository {
         dsl.update(TIMELINE_REVIEW)
                 .set(TIMELINE_REVIEW.STATUS, status)
                 .set(TIMELINE_REVIEW.UPDATED_AT, LocalDateTime.now())
-                .where(TIMELINE_REVIEW.ID.eq(reviewId)).and(TIMELINE_REVIEW.TENANT_ID.eq(com.example.platform.shared.web.TenantGuard.requireTenantId()))
+                .where(TIMELINE_REVIEW.ID.eq(reviewId)).and(TIMELINE_REVIEW.TENANT_ID.eq(com.example.platform.shared.web.TenantGuard.requireTenantId())).and(TIMELINE_REVIEW.TARGET_TYPE.eq("TIMELINE"))
                 .execute();
     }
 
     public Optional<ReviewRow> findById(String reviewId) {
         Record row = dsl.select().from(TIMELINE_REVIEW)
-                .where(TIMELINE_REVIEW.ID.eq(reviewId)).and(TIMELINE_REVIEW.TENANT_ID.eq(com.example.platform.shared.web.TenantGuard.requireTenantId()))
+                .where(TIMELINE_REVIEW.ID.eq(reviewId)).and(TIMELINE_REVIEW.TENANT_ID.eq(com.example.platform.shared.web.TenantGuard.requireTenantId())).and(TIMELINE_REVIEW.TARGET_TYPE.eq("TIMELINE"))
                 .fetchOne();
         return row == null ? Optional.empty() : Optional.of(mapReview(row));
     }
@@ -79,9 +72,9 @@ public class TimelineReviewRepository {
     public Optional<ReviewRow> findOwnedById(
             String reviewId, String projectId, String tenantId) {
         Record row = dsl.select().from(TIMELINE_REVIEW)
-                .where(TIMELINE_REVIEW.ID.eq(reviewId)).and(TIMELINE_REVIEW.TENANT_ID.eq(com.example.platform.shared.web.TenantGuard.requireTenantId()))
+                .where(TIMELINE_REVIEW.ID.eq(reviewId)).and(TIMELINE_REVIEW.TENANT_ID.eq(com.example.platform.shared.web.TenantGuard.requireTenantId())).and(TIMELINE_REVIEW.TARGET_TYPE.eq("TIMELINE"))
                 .and(TIMELINE_REVIEW.PROJECT_ID.eq(projectId))
-                .and(TIMELINE_REVIEW.TENANT_ID.eq(tenantId))
+                .and(TIMELINE_REVIEW.TENANT_ID.eq(tenantId)).and(TIMELINE_REVIEW.TARGET_TYPE.eq("TIMELINE"))
                 .fetchOne();
         return row == null ? Optional.empty() : Optional.of(mapReview(row));
     }
@@ -89,7 +82,7 @@ public class TimelineReviewRepository {
     public List<ReviewRow> listOwnedByProject(String projectId, String tenantId, int limit) {
         return dsl.select().from(TIMELINE_REVIEW)
                 .where(TIMELINE_REVIEW.PROJECT_ID.eq(projectId))
-                .and(TIMELINE_REVIEW.TENANT_ID.eq(tenantId))
+                .and(TIMELINE_REVIEW.TENANT_ID.eq(tenantId)).and(TIMELINE_REVIEW.TARGET_TYPE.eq("TIMELINE"))
                 .orderBy(TIMELINE_REVIEW.CREATED_AT.desc())
                 .limit(Math.min(limit, 100))
                 .fetch().map(TimelineReviewRepository::mapReview);

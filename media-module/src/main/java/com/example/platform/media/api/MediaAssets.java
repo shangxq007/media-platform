@@ -4,6 +4,8 @@ import java.util.Optional;
 /** Media-owned registration and scoped asset projections. Callers establish actor authorization;
  * the owner checks tenant context and predicates every mutation on persisted scope. */
 public interface MediaAssets {
+    /** Trusted scoped coordination snapshot; requires an enclosing owner transaction. Not an authorization grant. */
+    Asset publicationSnapshot(String tenantId, String projectId, String assetId);
     void requireReadScope(String tenantId, String projectId);
     void requireRegistrationScope(String tenantId, String projectId);
     Asset register(String tenantId, String projectId, String storageKey, String mediaType, String filename, Long sizeBytes, String checksum);

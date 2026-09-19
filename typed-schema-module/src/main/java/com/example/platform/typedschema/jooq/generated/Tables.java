@@ -59,7 +59,12 @@ import com.example.platform.typedschema.jooq.generated.tables.FrontendRouteDefin
 import com.example.platform.typedschema.jooq.generated.tables.GroupRoleAssignment;
 import com.example.platform.typedschema.jooq.generated.tables.IngestPreflightSafeReportRecords;
 import com.example.platform.typedschema.jooq.generated.tables.InvoiceLineItem;
+import com.example.platform.typedschema.jooq.generated.tables.MarketplaceCommand;
 import com.example.platform.typedschema.jooq.generated.tables.MarketplaceListing;
+import com.example.platform.typedschema.jooq.generated.tables.MarketplaceReview;
+import com.example.platform.typedschema.jooq.generated.tables.MarketplaceReviewComment;
+import com.example.platform.typedschema.jooq.generated.tables.MarketplaceReviewDecision;
+import com.example.platform.typedschema.jooq.generated.tables.MarketplaceReviewThread;
 import com.example.platform.typedschema.jooq.generated.tables.MediaAsset;
 import com.example.platform.typedschema.jooq.generated.tables.MediaAssetArtifact;
 import com.example.platform.typedschema.jooq.generated.tables.MediaProbeObservation;
@@ -487,9 +492,34 @@ public class Tables {
     public static final InvoiceLineItem INVOICE_LINE_ITEM = InvoiceLineItem.INVOICE_LINE_ITEM;
 
     /**
+     * The table <code>public.marketplace_command</code>.
+     */
+    public static final MarketplaceCommand MARKETPLACE_COMMAND = MarketplaceCommand.MARKETPLACE_COMMAND;
+
+    /**
      * The table <code>public.marketplace_listing</code>.
      */
     public static final MarketplaceListing MARKETPLACE_LISTING = MarketplaceListing.MARKETPLACE_LISTING;
+
+    /**
+     * The table <code>public.marketplace_review</code>.
+     */
+    public static final MarketplaceReview MARKETPLACE_REVIEW = MarketplaceReview.MARKETPLACE_REVIEW;
+
+    /**
+     * The table <code>public.marketplace_review_comment</code>.
+     */
+    public static final MarketplaceReviewComment MARKETPLACE_REVIEW_COMMENT = MarketplaceReviewComment.MARKETPLACE_REVIEW_COMMENT;
+
+    /**
+     * The table <code>public.marketplace_review_decision</code>.
+     */
+    public static final MarketplaceReviewDecision MARKETPLACE_REVIEW_DECISION = MarketplaceReviewDecision.MARKETPLACE_REVIEW_DECISION;
+
+    /**
+     * The table <code>public.marketplace_review_thread</code>.
+     */
+    public static final MarketplaceReviewThread MARKETPLACE_REVIEW_THREAD = MarketplaceReviewThread.MARKETPLACE_REVIEW_THREAD;
 
     /**
      * The table <code>public.media_asset</code>.

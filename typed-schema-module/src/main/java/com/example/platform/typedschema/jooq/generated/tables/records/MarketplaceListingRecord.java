@@ -7,8 +7,10 @@ package com.example.platform.typedschema.jooq.generated.tables.records;
 import com.example.platform.typedschema.contract.TsvectorValue;
 import com.example.platform.typedschema.jooq.generated.tables.MarketplaceListing;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 
+import org.jooq.JSONB;
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
 
@@ -259,6 +261,118 @@ public class MarketplaceListingRecord extends UpdatableRecordImpl<MarketplaceLis
         return (LocalDateTime) get(16);
     }
 
+    /**
+     * Setter for <code>public.marketplace_listing.workspace_id</code>.
+     */
+    public void setWorkspaceId(String value) {
+        set(17, value);
+    }
+
+    /**
+     * Getter for <code>public.marketplace_listing.workspace_id</code>.
+     */
+    public String getWorkspaceId() {
+        return (String) get(17);
+    }
+
+    /**
+     * Setter for <code>public.marketplace_listing.subject_version</code>.
+     */
+    public void setSubjectVersion(String value) {
+        set(18, value);
+    }
+
+    /**
+     * Getter for <code>public.marketplace_listing.subject_version</code>.
+     */
+    public String getSubjectVersion() {
+        return (String) get(18);
+    }
+
+    /**
+     * Setter for <code>public.marketplace_listing.aggregate_version</code>.
+     */
+    public void setAggregateVersion(Long value) {
+        set(19, value);
+    }
+
+    /**
+     * Getter for <code>public.marketplace_listing.aggregate_version</code>.
+     */
+    public Long getAggregateVersion() {
+        return (Long) get(19);
+    }
+
+    /**
+     * Setter for <code>public.marketplace_listing.created_by</code>.
+     */
+    public void setCreatedBy(String value) {
+        set(20, value);
+    }
+
+    /**
+     * Getter for <code>public.marketplace_listing.created_by</code>.
+     */
+    public String getCreatedBy() {
+        return (String) get(20);
+    }
+
+    /**
+     * Setter for <code>public.marketplace_listing.updated_by</code>.
+     */
+    public void setUpdatedBy(String value) {
+        set(21, value);
+    }
+
+    /**
+     * Getter for <code>public.marketplace_listing.updated_by</code>.
+     */
+    public String getUpdatedBy() {
+        return (String) get(21);
+    }
+
+    /**
+     * Setter for <code>public.marketplace_listing.admitted_at</code>.
+     */
+    public void setAdmittedAt(Instant value) {
+        set(22, value);
+    }
+
+    /**
+     * Getter for <code>public.marketplace_listing.admitted_at</code>.
+     */
+    public Instant getAdmittedAt() {
+        return (Instant) get(22);
+    }
+
+    /**
+     * Setter for <code>public.marketplace_listing.published_at</code>.
+     */
+    public void setPublishedAt(Instant value) {
+        set(23, value);
+    }
+
+    /**
+     * Getter for <code>public.marketplace_listing.published_at</code>.
+     */
+    public Instant getPublishedAt() {
+        return (Instant) get(23);
+    }
+
+    /**
+     * Setter for <code>public.marketplace_listing.legacy_snapshot</code>.
+     */
+    public void setLegacySnapshot(JSONB value) {
+        set(24, value);
+    }
+
+    /**
+     * Getter for <code>public.marketplace_listing.legacy_snapshot</code>.
+     */
+    public JSONB getLegacySnapshot() {
+        return (JSONB) get(24);
+    }
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -282,7 +396,7 @@ public class MarketplaceListingRecord extends UpdatableRecordImpl<MarketplaceLis
     /**
      * Create a detached, initialised MarketplaceListingRecord
      */
-    public MarketplaceListingRecord(String id, String assetId, String tenantId, String projectId, String listingType, String title, String summary, String description, String previewUrl, String coverUrl, String version, String status, String searchText, TsvectorValue searchVector, String reviewId, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public MarketplaceListingRecord(String id, String assetId, String tenantId, String projectId, String listingType, String title, String summary, String description, String previewUrl, String coverUrl, String version, String status, String searchText, TsvectorValue searchVector, String reviewId, LocalDateTime createdAt, LocalDateTime updatedAt, String workspaceId, String subjectVersion, Long aggregateVersion, String createdBy, String updatedBy, Instant admittedAt, Instant publishedAt, JSONB legacySnapshot) {
         super(MarketplaceListing.MARKETPLACE_LISTING);
 
         setId(id);
@@ -302,6 +416,14 @@ public class MarketplaceListingRecord extends UpdatableRecordImpl<MarketplaceLis
         setReviewId(reviewId);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
+        setWorkspaceId(workspaceId);
+        setSubjectVersion(subjectVersion);
+        setAggregateVersion(aggregateVersion);
+        setCreatedBy(createdBy);
+        setUpdatedBy(updatedBy);
+        setAdmittedAt(admittedAt);
+        setPublishedAt(publishedAt);
+        setLegacySnapshot(legacySnapshot);
         resetChangedOnNotNull();
     }
 }

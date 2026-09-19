@@ -1,132 +1,34 @@
 package com.example.platform.web.assets;
 
-import com.example.platform.timeline.api.review.ReviewRecords;
-import com.example.platform.render.app.asset.AssetReviewService;
-import com.example.platform.timeline.api.review.ReviewQueries;
-import com.example.platform.render.domain.asset.AssetPublishStatus;
-import com.example.platform.render.app.event.AssetPublicationEventPublisher;
-import com.example.platform.shared.events.*;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
-import java.util.*;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import com.example.platform.marketplace.api.MarketplaceApi;
+import com.example.platform.marketplace.api.MarketplaceApi.*;
+import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
+import java.util.*;
 
+/** Existing asset-facing callers now use the same persisted Marketplace owner commands. */
 @RestController
 @RequestMapping("/api/projects/{projectId}/assets/{assetId}")
-@Tag(name = "Asset Review & Publish", description = "Review and publish workflow for assets")
 public class AssetPublishController {
-
-    private final AssetReviewService reviewService;
-    private final AssetPublicationEventPublisher eventPublisher;
-
-    public AssetPublishController(AssetReviewService reviewService,
-                                    AssetPublicationEventPublisher eventPublisher) {
-        this.reviewService = reviewService;
-        this.eventPublisher = eventPublisher;
+    private final MarketplaceApi marketplace;
+    public AssetPublishController(MarketplaceApi marketplace){this.marketplace=marketplace;}
+    private Listing listing(String project,String asset){var row=marketplace.managedByAsset(asset).orElseThrow(()->new org.springframework.web.server.ResponseStatusException(HttpStatus.NOT_FOUND,"Create a Marketplace listing first"));return marketplace.managedListing(project,row.id());}
+    @PostMapping("/submit-review") @ResponseStatus(HttpStatus.CREATED)
+    public Review submit(@PathVariable String projectId,@PathVariable String assetId,@RequestBody String json){return marketplace.submit(projectId,listing(projectId,assetId).id(),MarketplaceController.body(json,Submit.class));}
+    @GetMapping("/review") public ResponseEntity<Review> get(@PathVariable String projectId,@PathVariable String assetId){var l=listing(projectId,assetId);return l.reviewId()==null?ResponseEntity.notFound().build():ResponseEntity.ok(marketplace.review(projectId,l.reviewId()));}
+    @PostMapping({"/approve-review","/reject-review"})
+    public Review decide(@PathVariable String projectId,@PathVariable String assetId,@RequestBody String json,jakarta.servlet.http.HttpServletRequest request){
+        var c=MarketplaceController.body(json,Decide.class);var expected=request.getRequestURI().endsWith("/approve-review")?Decision.APPROVE:Decision.REJECT;
+        if(c.decision()!=expected||request.getParameter("reviewerUserId")!=null)throw new IllegalArgumentException("Decision or actor override does not match command");
+        var l=listing(projectId,assetId);if(l.reviewId()==null)throw new IllegalArgumentException("No review");return marketplace.decide(projectId,l.reviewId(),c);
     }
-
-    @PostMapping("/submit-review")
-    @Operation(summary = "Submit asset for review")
-    public ResponseEntity<ReviewResponseDto> submitReview(
-            @PathVariable String projectId,
-            @PathVariable String assetId,
-            @RequestBody SubmitReviewRequest body) {
-        var review = reviewService.submitForReview(assetId,
-                body.authorUserId(), body.title(), body.description());
-        eventPublisher.publish(new AssetSubmittedForReviewEvent(assetId, projectId, review.id()));
-        return ResponseEntity.status(HttpStatus.CREATED).body(toDto(review));
+    @PostMapping({"/publish","/archive"})
+    public Listing transition(@PathVariable String projectId,@PathVariable String assetId,@RequestBody String json,jakarta.servlet.http.HttpServletRequest request){
+        var c=MarketplaceController.body(json,Change.class);var expected=request.getRequestURI().endsWith("/publish")?Transition.PUBLISH:Transition.ARCHIVE;
+        if(c.transition()!=expected)throw new IllegalArgumentException("Transition does not match command");return marketplace.transition(projectId,listing(projectId,assetId).id(),c);
     }
-
-    @GetMapping("/review")
-    @Operation(summary = "Get asset review status")
-    public ResponseEntity<ReviewResponseDto> getReview(
-            @PathVariable String projectId,
-            @PathVariable String assetId) {
-        return reviewService.getReview(assetId)
-                .map(r -> ResponseEntity.ok(toDto(r)))
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-    @PostMapping("/approve-review")
-    @Operation(summary = "Approve asset (via review system)")
-    public ResponseEntity<Map<String, Object>> approve(
-            @PathVariable String projectId,
-            @PathVariable String assetId,
-            @RequestParam String reviewerUserId) {
-        reviewService.approveAsset(assetId, reviewerUserId);
-        eventPublisher.publish(new AssetApprovedEvent(assetId, projectId, assetId));
-        return ResponseEntity.ok(Map.of("assetId", assetId, "status", "APPROVED"));
-    }
-
-    @PostMapping("/reject-review")
-    @Operation(summary = "Reject asset review")
-    public ResponseEntity<Map<String, Object>> reject(
-            @PathVariable String projectId,
-            @PathVariable String assetId) {
-        reviewService.rejectAsset(assetId);
-        return ResponseEntity.ok(Map.of("assetId", assetId, "status", "REJECTED"));
-    }
-
-    @PostMapping("/publish")
-    @Operation(summary = "Publish asset (must be APPROVED)")
-    public ResponseEntity<Map<String, Object>> publish(
-            @PathVariable String projectId,
-            @PathVariable String assetId) {
-        reviewService.publishAsset(assetId);
-        eventPublisher.publish(new AssetPublishedEvent(assetId, "v1", "ASSET", projectId, "PUBLISHED"));
-        return ResponseEntity.ok(Map.of("assetId", assetId, "publishStatus", "PUBLISHED"));
-    }
-
-    @PostMapping("/archive")
-    @Operation(summary = "Archive asset")
-    public ResponseEntity<Map<String, Object>> archive(
-            @PathVariable String projectId,
-            @PathVariable String assetId) {
-        reviewService.archiveAsset(assetId);
-        eventPublisher.publish(new AssetArchivedEvent(assetId, "ASSET", projectId));
-        return ResponseEntity.ok(Map.of("assetId", assetId, "publishStatus", "ARCHIVED"));
-    }
-
-    @GetMapping("/publish-status")
-    @Operation(summary = "Get asset publish status")
-    public ResponseEntity<Map<String, Object>> getPublishStatus(
-            @PathVariable String projectId,
-            @PathVariable String assetId) {
-        return reviewService.getPublishStatus(assetId)
-                .map(s -> {
-                    Map<String, Object> result = new LinkedHashMap<>();
-                    result.put("assetId", assetId);
-                    result.put("publishStatus", s.name());
-                    result.put("canPublish", reviewService.canPublish(assetId));
-                    return ResponseEntity.ok(result);
-                })
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-    @GetMapping("/review-summary")
-    @Operation(summary = "Get review summary for asset")
-    public ResponseEntity<Map<String, Object>> reviewSummary(
-            @PathVariable String projectId,
-            @PathVariable String assetId) {
-        var review = reviewService.getReview(assetId);
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("assetId", assetId);
-        result.put("hasReview", review.isPresent());
-        review.ifPresent(r -> {
-            result.put("reviewId", r.id());
-            result.put("status", r.status());
-        });
-        return ResponseEntity.ok(result);
-    }
-
-    private static ReviewResponseDto toDto(ReviewRecords.ReviewRow r) {
-        return new ReviewResponseDto(r.id(), r.revisionId(), r.status(), r.title(),
-                r.createdAt() != null ? r.createdAt().toString() : null);
-    }
-
-    public record SubmitReviewRequest(String authorUserId, String title, String description) {}
-    public record ReviewResponseDto(String reviewId, String targetId, String status,
-                                      String title, String createdAt) {}
+    @GetMapping("/publish-status") public Map<String,Object> status(@PathVariable String projectId,@PathVariable String assetId){var l=listing(projectId,assetId);return Map.of("assetId",assetId,"listingId",l.id(),"publishStatus",l.status(),"version",l.version(),"canPublish",marketplace.canPublish(projectId,l.id()));}
+    @GetMapping("/review-summary") public Map<String,Object> summary(@PathVariable String projectId,@PathVariable String assetId){var l=listing(projectId,assetId);return l.reviewId()==null?Map.of("assetId",assetId,"hasReview",false):Map.of("assetId",assetId,"hasReview",true,"reviewId",l.reviewId(),"status",marketplace.review(projectId,l.reviewId()).status());}
+    @ExceptionHandler(IllegalArgumentException.class) @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ProblemDetail invalid(IllegalArgumentException e){return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST,e.getMessage());}
 }

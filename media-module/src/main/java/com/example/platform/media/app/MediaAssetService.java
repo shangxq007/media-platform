@@ -11,6 +11,10 @@ public class MediaAssetService implements MediaAssets {
     public MediaAssetService(JooqMediaAssetRepository repository, MediaAuthorization authorization) {
         this.repository = repository; this.authorization = authorization;
     }
+    @Transactional(propagation=org.springframework.transaction.annotation.Propagation.MANDATORY)
+    public Asset publicationSnapshot(String tenant, String project, String asset) {
+        return repository.publicationSnapshot(tenant,project,asset);
+    }
     public void requireReadScope(String tenant, String project) {
         authorization.require(tenant, project, false);
     }

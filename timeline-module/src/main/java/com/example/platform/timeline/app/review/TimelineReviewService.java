@@ -96,16 +96,6 @@ public class TimelineReviewService implements TimelineReviews {
          default -> throw new IllegalArgumentException("unsupported decision");
         }
     }
-    /** Shared review-record mechanism only. The caller proves the Media target and owns
-     * asset-specific effects; this branch neither mutates Media nor emits Timeline revision facts. */
-    @Transactional
-    public ReviewRow createAssetReview(String project,String asset,String author,String title,String description) {
-        var actor=auth.require(project,true);if(!actor.actorId().equals(author))throw new IllegalArgumentException("author mismatch");
-        String id="arev_"+java.util.UUID.randomUUID();
-        reviewRepository.insertReview(id,project,actor.tenantId(),asset,actor.actorId(),title,description,"OPEN",OffsetDateTime.now());
-        reviewRepository.setTargetType(id,"ASSET");return reviewRepository.findById(id).orElseThrow();
-    }
-
     /**
      * Check whether a review allows merge.
      * Merge is blocked if: review is not APPROVED, or has pending REQUEST_CHANGES.

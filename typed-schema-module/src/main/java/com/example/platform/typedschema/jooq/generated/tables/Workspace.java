@@ -7,6 +7,7 @@ package com.example.platform.typedschema.jooq.generated.tables;
 import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
+import com.example.platform.typedschema.jooq.generated.tables.MarketplaceListing.MarketplaceListingPath;
 import com.example.platform.typedschema.jooq.generated.tables.Project.ProjectPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.WorkspaceRecord;
 
@@ -192,6 +193,19 @@ public class Workspace extends TableImpl<WorkspaceRecord> {
             _project = new ProjectPath(this, null, Keys.PROJECT__FK_PROJECT_WORKSPACE_TENANT.getInverseKey());
 
         return _project;
+    }
+
+    private transient MarketplaceListingPath _marketplaceListing;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.marketplace_listing</code> table
+     */
+    public MarketplaceListingPath marketplaceListing() {
+        if (_marketplaceListing == null)
+            _marketplaceListing = new MarketplaceListingPath(this, null, Keys.MARKETPLACE_LISTING__MARKETPLACE_WORKSPACE_FK.getInverseKey());
+
+        return _marketplaceListing;
     }
 
     @Override

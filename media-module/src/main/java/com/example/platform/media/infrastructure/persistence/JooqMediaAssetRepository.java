@@ -172,6 +172,14 @@ public class JooqMediaAssetRepository implements MediaAssetRepository {
                 .execute() > 0;
     }
 
+    public Asset publicationSnapshot(String tenant, String project, String asset) {
+        TenantGuard.assertSameTenant(tenant);
+        var row=dsl.selectFrom(MEDIA_ASSET).where(MEDIA_ASSET.ID.eq(asset))
+                .and(MEDIA_ASSET.TENANT_ID.eq(tenant)).and(MEDIA_ASSET.PROJECT_ID.eq(project)).forShare().fetchOne();
+        if(row==null) throw new IllegalArgumentException("Media subject unavailable in scope");
+        return mapAsset(row);
+    }
+
     public void updatePublishStatus(String tenantId, String projectId, String assetId, String expectedStatus, String publishStatus) {
         TenantGuard.assertSameTenant(tenantId);
         if (!java.util.Set.of("PUBLISHED", "ARCHIVED").contains(publishStatus)) throw new IllegalArgumentException("unsupported publication outcome");
