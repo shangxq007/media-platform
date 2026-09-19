@@ -190,7 +190,13 @@ abstract class MarketplaceTestSupport extends PostgresTestContainerSupport {
     long listings(){return jdbc.queryForObject("select count(*) from marketplace_listing where tenant_id=? and admitted_at is not null",Long.class,tenant);}
     long reviews(){return jdbc.queryForObject("select count(*) from marketplace_review where tenant_id=?",Long.class,tenant);}
     long commands(){return jdbc.queryForObject("select count(*) from marketplace_command where tenant_id=?",Long.class,tenant);}
-    List<Long> state(){return List.of(listings(),reviews(),commands(),events());}
+    List<Long> state(){return List.of(listings(),reviews(),commands(),events(),
+        jdbc.queryForObject("select coalesce(sum(aggregate_version),0) from marketplace_listing where tenant_id=? and admitted_at is not null",Long.class,tenant),
+        jdbc.queryForObject("select coalesce(sum(aggregate_version),0) from marketplace_review where tenant_id=?",Long.class,tenant),
+        jdbc.queryForObject("select count(*) from marketplace_review_decision d join marketplace_review r on r.id=d.review_id where r.tenant_id=?",Long.class,tenant),
+        jdbc.queryForObject("select count(*) from marketplace_review_comment c join marketplace_review r on r.id=c.review_id where r.tenant_id=?",Long.class,tenant),
+        jdbc.queryForObject("select count(*) from marketplace_review_thread t join marketplace_review r on r.id=t.review_id where r.tenant_id=? and t.resolved",Long.class,tenant),
+        jdbc.queryForObject("select coalesce(sum(case publish_status when 'PUBLISHED' then 1 when 'ARCHIVED' then 2 else 0 end),0) from media_asset where tenant_id=?",Long.class,tenant));}
     List<java.net.http.HttpResponse<String>> race(java.util.concurrent.Callable<java.net.http.HttpResponse<String>> a,java.util.concurrent.Callable<java.net.http.HttpResponse<String>> b) throws Exception {
         try(var connection=context.getBean(javax.sql.DataSource.class).getConnection();var pool=java.util.concurrent.Executors.newFixedThreadPool(2)) {
             connection.setAutoCommit(false);

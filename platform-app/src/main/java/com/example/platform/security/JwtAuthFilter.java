@@ -82,6 +82,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
+        // Marketplace management routes authenticate before their owner resolves Project/Workspace.
+        // The explicit public discovery GET routes remain anonymous metadata reads.
+        if(path.matches("/api/projects/[^/]+/marketplace(?:/.*)?")
+                || path.matches("/api/marketplace/assets/[^/]+/listing")
+                || path.matches("/api/product/marketplace/[^/]+/items")
+                || path.matches("/api/assets/[^/]+/workspace(?:/marketplace)?")) return false;
         // Existing Media HTTP contracts use owner authorization after authentication.
         if (path.equals("/api/preview/media") || path.matches("/api/projects/[^/]+/assets(?:/.*)?")
                 || path.equals("/api/render/media-probe")

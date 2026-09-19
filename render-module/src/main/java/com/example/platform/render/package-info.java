@@ -22,7 +22,7 @@
             "extension",
             "extension :: contracts",
             "extension :: domain",
-            "media", "media :: assets",
+            "media", "media :: assets", "media :: identity", "media :: model",
             "audio",
             "operation :: invocation",
             "sandbox :: API", "sandbox :: Execution"
