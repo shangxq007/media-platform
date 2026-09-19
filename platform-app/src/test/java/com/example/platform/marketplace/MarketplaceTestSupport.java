@@ -176,6 +176,16 @@ abstract class MarketplaceTestSupport extends PostgresTestContainerSupport {
     }
 
 
+    void grant(String member,String... keys) {
+        var roles=context.getBean(RoleRepository.class);
+        var role=context.getBean(RoleService.class).createRole("market-grant-"+UUID.randomUUID(),"Marketplace scoped grant",null,com.example.platform.identity.domain.Role.RoleScope.WORKSPACE);
+        for(String key:keys) {
+            var permission=roles.findAllPermissions().stream().filter(p->p.permissionKey().equals(key)).findFirst().orElseThrow();
+            roles.saveRolePermission(new RolePermission(UUID.randomUUID().toString(),role.id(),permission.id(),Instant.now()));
+        }
+        String membership=jdbc.queryForObject("select id from workspace_member where workspace_id=? and user_id=?",String.class,workspace,member);
+        as(user,()->context.getBean(WorkspaceService.class).assignRoleToMember(workspace,membership,new AssignRoleRequest(role.roleKey(),user)));
+    }
     String asset() {
         Asset[] a=new Asset[1];as(user,()->a[0]=context.getBean(MediaAssets.class).register(tenant,project,"marketplace/"+UUID.randomUUID()+".mp4","VIDEO","sample.mp4",1L,"checksum"));return a[0].id();
     }

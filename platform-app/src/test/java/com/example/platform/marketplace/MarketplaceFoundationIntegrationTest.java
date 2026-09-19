@@ -64,6 +64,7 @@ class MarketplaceFoundationIntegrationTest extends MarketplaceTestSupport {
 
     @Test void readerCannotMutateAndDuplicateConcurrentCreateHasOneLogicalListing() throws Exception {
         as(user,()->context.getBean(WorkspaceService.class).addMember(workspace,new AddWorkspaceMemberRequest(outsider,"VIEWER")));
+        grant(outsider,"READ");
         String asset=asset();var before=state();assertThat(http(outsider,"POST",root()+"/listings",createBody(asset,"reader")).statusCode()).isEqualTo(403);assertThat(state()).isEqualTo(before);
         var body=createBody(asset,"concurrent-create");var responses=race(()->http(user,"POST",root()+"/listings",body),()->http(user,"POST",root()+"/listings",body));
         var a=response(responses.get(0),201);var b=response(responses.get(1),201);assertThat(a).isEqualTo(b);assertThat(listings()).isEqualTo(1);assertThat(commands()).isEqualTo(1);

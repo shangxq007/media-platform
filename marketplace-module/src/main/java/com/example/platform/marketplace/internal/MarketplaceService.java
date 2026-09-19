@@ -122,13 +122,13 @@ public class MarketplaceService implements MarketplaceApi {
             if(c.decision()==null)throw new IllegalArgumentException("Decision required");var row=currentReviewListing(a,review,c.expectedVersion());
             var status=switch(c.decision()){case APPROVE->ReviewStatus.APPROVED;case REQUEST_CHANGES->ReviewStatus.CHANGES_REQUESTED;case REJECT->ReviewStatus.REJECTED;};
             if(status.name().equals(store.reviewRow(a.scope().tenantId(),project,review).get("status"))) {
-                var previous=store.jdbc.queryForList("select decision from marketplace_review_decision where review_id=? and actor_json::jsonb->>'actorId'=? order by aggregate_version desc limit 1",review,a.actor().actorId());
-                if(!previous.isEmpty()&&c.decision().name().equals(previous.getFirst().get("decision")))
+                var previous=store.latestDecision(review,a.actor().actorId());
+                if(previous.filter(c.decision().name()::equals).isPresent())
                     throw conflict("Decision already applied for this actor; retry with original command identity");
             }
             if(c.decision()==Decision.APPROVE&&store.unresolved(review))throw conflict("Unresolved review threads");
             store.reviewStatus(review,status,row.version()+1);store.change(row,c.decision()==Decision.APPROVE?Status.READY:Status.DRAFT,review,a.actor().actorId());
-            store.jdbc.update("insert into marketplace_review_decision(id,review_id,actor_json,decision,aggregate_version) values (?,?,?,?,?)","mdec_"+UUID.randomUUID(),review,MarketplaceJson.write(a.actor()),c.decision().name(),row.version()+1);
+            store.insertDecision("mdec_"+UUID.randomUUID(),review,MarketplaceJson.write(a.actor()),c.decision().name(),row.version()+1);
             events.decided(updated(a,row),review,c.decision().name(),a.actor());return reviewValue(a,review);
         });
     }
@@ -156,18 +156,15 @@ public class MarketplaceService implements MarketplaceApi {
         var a=access(project,"marketplace.review");
         return command(a,c.commandId(),"comment",review,c,Review.class,()->{
             var row=currentReviewListing(a,review,c.expectedVersion());text(c.content(),4000,"comment");
-            String thread=c.threadId();
-            if(thread==null) {thread="mthr_"+UUID.randomUUID();store.jdbc.update("insert into marketplace_review_thread(id,review_id) values (?,?)",thread,review);}
-            else if(!Boolean.TRUE.equals(store.jdbc.queryForObject("select exists(select 1 from marketplace_review_thread where id=? and review_id=? and not resolved)",Boolean.class,thread,review)))throw conflict("Thread not open in this review");
-            String id="mcom_"+UUID.randomUUID();store.jdbc.update("insert into marketplace_review_comment(id,review_id,thread_id,author_id,content) values (?,?,?,?,?)",id,review,thread,a.actor().actorId(),c.content());
-            store.reviewStatus(review,ReviewStatus.OPEN,row.version()+1);store.change(row,Status.DRAFT,review,a.actor().actorId());events.commentAdded(updated(a,row),review,thread,id,a.actor());return reviewValue(a,review);
+            var added=store.addComment(review,c.threadId(),a.actor().actorId(),c.content());
+            store.reviewStatus(review,ReviewStatus.OPEN,row.version()+1);store.change(row,Status.DRAFT,review,a.actor().actorId());events.commentAdded(updated(a,row),review,added.thread(),added.id(),a.actor());return reviewValue(a,review);
         });
     }
     @Override public Review resolve(String project,String review,Resolve c) {
         var a=access(project,"marketplace.review");
         return command(a,c.commandId(),"resolve",review,c,Review.class,()->{
             var row=currentReviewListing(a,review,c.expectedVersion());
-            if(store.jdbc.update("update marketplace_review_thread set resolved=true,resolved_by=? where id=? and review_id=? and not resolved",a.actor().actorId(),c.threadId(),review)!=1)throw conflict("Thread not open in this review");
+            store.resolveThread(review,c.threadId(),a.actor().actorId());
             store.reviewStatus(review,ReviewStatus.OPEN,row.version()+1);store.change(row,Status.DRAFT,review,a.actor().actorId());events.threadResolved(updated(a,row),review,c.threadId(),a.actor());return reviewValue(a,review);
         });
     }
@@ -180,7 +177,7 @@ public class MarketplaceService implements MarketplaceApi {
             validateSubject(a,row.subject());
             var r=store.reviewRow(row.tenantId(),project,row.reviewId());
             return ReviewStatus.APPROVED.name().equals(r.get("status"))&&subject(row.subject()).version().equals(r.get("subject_version"));
-        } catch(org.springframework.web.server.ResponseStatusException | com.example.platform.shared.web.PlatformException | IllegalArgumentException rejected) {return false;}
+        } catch(org.springframework.web.server.ResponseStatusException | com.example.platform.shared.web.PlatformException | com.example.platform.identity.api.authorization.AuthorizationDeniedException | IllegalArgumentException rejected) {return false;}
     }
     @Override public Listing managedListing(String project,String id){return requireListing(access(project,"READ"),id,false);}
     @Override public Optional<Listing> managedByAsset(String asset) {
@@ -190,8 +187,7 @@ public class MarketplaceService implements MarketplaceApi {
     }
     @Override public ProjectSummary summary(String project) {
         var a=access(project,"READ");
-        return store.jdbc.queryForObject("select count(*) as total,count(*) filter(where status='PUBLISHED') as published from marketplace_listing where tenant_id=? and project_id=? and workspace_id=? and admitted_at is not null",
-                (r,i)->new ProjectSummary(r.getInt("total"),r.getInt("published")),a.scope().tenantId(),project,a.scope().workspaceId());
+        return store.summary(a.scope().tenantId(),project,a.scope().workspaceId());
     }
     @Override public List<Listing> managedByProject(String project,int limit){var a=access(project,"READ");return store.project(a.scope().tenantId(),project,bound(limit)).stream().filter(row->a.scope().workspaceId().equals(row.workspaceId())).toList();}
     @Override public Review review(String project,String id){return reviewValue(access(project,"READ"),id);}

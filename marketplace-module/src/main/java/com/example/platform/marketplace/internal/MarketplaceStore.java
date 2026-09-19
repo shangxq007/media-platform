@@ -11,7 +11,7 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public class MarketplaceStore {
-    final JdbcTemplate jdbc;
+    private final JdbcTemplate jdbc;
     public MarketplaceStore(JdbcTemplate jdbc) {this.jdbc=jdbc;}
     Optional<Listing> listing(String tenant,String project,String id,boolean lock) {
         return jdbc.query("select * from marketplace_listing where tenant_id=? and project_id=? and id=? and admitted_at is not null"+(lock?" for update":""),this::map,tenant,project,id).stream().findFirst();
@@ -70,6 +70,28 @@ public class MarketplaceStore {
         return jdbc.query("select c.*,t.resolved from marketplace_review_comment c join marketplace_review_thread t on t.id=c.thread_id where c.review_id=? order by c.created_at,c.id",(r,i)->new ReviewComment(r.getString("id"),r.getString("thread_id"),r.getString("author_id"),r.getString("content"),r.getBoolean("resolved"),r.getTimestamp("created_at").toInstant()),reviewId);
     }
     boolean unresolved(String review) {return jdbc.queryForObject("select exists(select 1 from marketplace_review_thread where review_id=? and not resolved)",Boolean.class,review);}
+    Optional<String> latestDecision(String review,String actor) {
+        return jdbc.queryForList("select decision from marketplace_review_decision where review_id=? and actor_json::jsonb->>'actorId'=? order by aggregate_version desc limit 1",review,actor)
+                .stream().findFirst().map(row->(String)row.get("decision"));
+    }
+    void insertDecision(String id,String review,String actorJson,String decision,long version) {
+        jdbc.update("insert into marketplace_review_decision(id,review_id,actor_json,decision,aggregate_version) values (?,?,?,?,?)",id,review,actorJson,decision,version);
+    }
+    record AddedComment(String id,String thread) {}
+    AddedComment addComment(String review,String requestedThread,String actor,String content) {
+        String thread=requestedThread;
+        if(thread==null) {thread="mthr_"+UUID.randomUUID();jdbc.update("insert into marketplace_review_thread(id,review_id) values (?,?)",thread,review);}
+        else if(!Boolean.TRUE.equals(jdbc.queryForObject("select exists(select 1 from marketplace_review_thread where id=? and review_id=? and not resolved)",Boolean.class,thread,review)))throw MarketplaceService.conflict("Thread not open in this review");
+        String id="mcom_"+UUID.randomUUID();jdbc.update("insert into marketplace_review_comment(id,review_id,thread_id,author_id,content) values (?,?,?,?,?)",id,review,thread,actor,content);
+        return new AddedComment(id,thread);
+    }
+    void resolveThread(String review,String thread,String actor) {
+        if(jdbc.update("update marketplace_review_thread set resolved=true,resolved_by=? where id=? and review_id=? and not resolved",actor,thread,review)!=1)throw MarketplaceService.conflict("Thread not open in this review");
+    }
+    ProjectSummary summary(String tenant,String project,String workspace) {
+        return jdbc.queryForObject("select count(*) as total,count(*) filter(where status='PUBLISHED') as published from marketplace_listing where tenant_id=? and project_id=? and workspace_id=? and admitted_at is not null",
+                (r,i)->new ProjectSummary(r.getInt("total"),r.getInt("published")),tenant,project,workspace);
+    }
     Listing map(ResultSet r,int i)throws SQLException {
         return new Listing(r.getString("id"),new MediaAssetSubject(new MediaAssetId(r.getString("asset_id")),r.getString("subject_version")),r.getString("tenant_id"),r.getString("workspace_id"),r.getString("project_id"),r.getString("title"),r.getString("summary"),r.getString("description"),Status.valueOf(r.getString("status")),r.getLong("aggregate_version"),r.getString("review_id"),r.getString("created_by"),r.getTimestamp("created_at").toInstant(),r.getTimestamp("updated_at").toInstant());
     }
