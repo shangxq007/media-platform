@@ -136,11 +136,11 @@ def test_repository_policy() -> None:
     import test_execution_policy as policy
 
     declared = policy.declared_test_tasks(ROOT)
-    require(len(declared) == 51, f"expected 51 declared active Test tasks, got {len(declared)}")
+    require(len(declared) == 52, f"expected Phase A 51 plus Marketplace declared Test task, got {len(declared)}")
     require((":platform-algorithms", "test") in declared,
             "realized platform-algorithms parent Test task is missing from the declared census")
     report = validate_repository(ROOT)
-    require(report.task_count == 51, f"expected 51 active Test tasks, got {report.task_count}")
+    require(report.task_count == 52, f"expected Phase A 51 plus Marketplace active Test task, got {report.task_count}")
     require(report.serial_task_count > 0, "serial-only ledger must contain explicit tasks")
     require(report.pure_task_count == 21, "the 21 Hermes-sealed candidates must be canonically PURE_PARALLEL_SAFE")
     require(POLICY_LEVELS == ("V0_PRE_COMMIT", "V1_IMPLEMENTATION", "V2_CANDIDATE_FCV", "V3_CHECKPOINT"),

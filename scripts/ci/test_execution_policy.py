@@ -239,8 +239,13 @@ def validate_repository(root: Path) -> PolicyReport:
     actual = set(keys)
     if actual != expected:
         raise ValueError(f"topology ledger universe mismatch: missing={sorted(expected - actual)}, extra={sorted(actual - expected)}")
-    if len(actual) != 51:
-        raise ValueError(f"expected Phase A 51 Test tasks, got {len(actual)}")
+    # The sealed Phase A benchmark/accounting receipt remains historical at 51 tasks.
+    # EP15 adds exactly one unpromoted, single-fork owner suite; no historical totals change.
+    if len(actual) != 52 or (":marketplace-module", "test") not in actual:
+        raise ValueError(f"expected Phase A 51 plus Marketplace owner Test task, got {len(actual)}")
+    marketplace = next(row for row in topology if row["PROJECT"] == ":marketplace-module" and row["TEST_TASK"] == "test")
+    if marketplace["CLASSIFICATION"] != "REVIEW_REQUIRED" or marketplace["CURRENT_MAX_PARALLEL_FORKS"] != "1":
+        raise ValueError("Marketplace owner suite must remain unpromoted and single-fork")
 
     serial_keys: set[tuple[str, str]] = set()
     topology_by_key = {(row["PROJECT"], row["TEST_TASK"]): row for row in topology}
