@@ -38,7 +38,8 @@ public final class WorkflowDataValidation {
                             && node.predicate().left().source() == Source.RESULT
                             && Set.of(Comparison.IS_SET, Comparison.IS_EMPTY)
                                     .contains(node.predicate().comparison())
-                            && descendants(plan, node.id()).contains(node.predicate().left().key());
+                            && visibleResults(plan, children.getFirst().childId())
+                                    .contains(node.predicate().left().key());
             if (!optionalLoopResult) check(node.predicate().left(), available, inputs, item, false);
             if (node.predicate().comparison() == Comparison.EQUAL
                     || node.predicate().comparison() == Comparison.NOT_EQUAL)
@@ -115,14 +116,23 @@ public final class WorkflowDataValidation {
         return result;
     }
 
-    private Set<String> descendants(WorkflowPlan plan, String id) {
-        Set<String> result = new HashSet<>();
-        for (var edge : plan.edges())
-            if (edge.parentId().equals(id)) {
-                result.add(edge.childId());
-                result.addAll(descendants(plan, edge.childId()));
+    /** Potential results at the next loop condition, not arbitrary descendants.
+     * IS_SET/IS_EMPTY may inspect an in-scope Operation that has not run yet.
+     * Sequence, parallel, choice and loop propagate values; iteration and child
+     * scopes do not. Control nodes themselves never mint result values.
+     */
+    private Set<String> visibleResults(WorkflowPlan plan, String id) {
+        Node node = plan.nodes().stream().filter(n -> n.id().equals(id)).findFirst().orElseThrow();
+        return switch (node.kind()) {
+            case OPERATION_INVOCATION -> Set.of(id);
+            case WAIT, FOREACH, SUBWORKFLOW -> Set.of();
+            case SEQUENCE, PARALLEL, CHOICE, LOOP -> {
+                Set<String> result = new HashSet<>();
+                for (var edge : plan.edges())
+                    if (edge.parentId().equals(id)) result.addAll(visibleResults(plan, edge.childId()));
+                yield result;
             }
-        return result;
+        };
     }
 
     private Map<String, String> stringInputs(Map<String, JsonNode> inputs) {

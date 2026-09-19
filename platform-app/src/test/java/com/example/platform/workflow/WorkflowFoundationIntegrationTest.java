@@ -1545,4 +1545,85 @@ class WorkflowFoundationIntegrationTest extends PostgresTestContainerSupport {
         }
     }
 
+
+    @Test
+    @Order(1)
+    void loopAdmissionRejectsNonProducingAndHiddenResultsBeforeAnyDurableWork() throws Exception {
+        receiptsBeforeRejectedLoopMatrix = jdbc.queryForObject("select count(*) from workflow_operation_receipt", Integer.class);
+        effectsBeforeRejectedLoopMatrix = jdbc.queryForObject("select count(*) from ep07_test_effect", Integer.class);
+        for (Comparison comparison : List.of(Comparison.IS_SET, Comparison.IS_EMPTY)) {
+            for (WaitKind kind : WaitKind.values()) {
+                var wait = new Node("wait", Kind.WAIT, null, new Wait(kind, 1),
+                        0, 0, null, null, null, null, null, null);
+                for (String reference : List.of("wait", "body", "unknown")) {
+                    String definition = publish(List.of(resultLoop("root", comparison, reference),
+                                    Node.control("body", Kind.SEQUENCE), effect("effect", Map.of()), wait),
+                            List.of(new ControlEdge("root", "body", 0), new ControlEdge("body", "effect", 0),
+                                    new ControlEdge("body", "wait", 1)));
+                    rejectedLoopHasNoDurableWork(definition);
+                }
+            }
+            var each = new Node("each", Kind.FOREACH, null, null, 2, 1,
+                    new ValueRef(Source.INPUT, "items"), null, null, null, null, null);
+            for (String reference : List.of("hidden", "each")) {
+                String definition = publish(List.of(resultLoop("root", comparison, reference), each,
+                                effect("hidden", Map.of())),
+                        List.of(new ControlEdge("root", "each", 0), new ControlEdge("each", "hidden", 0)));
+                rejectedLoopHasNoDurableWork(definition);
+            }
+            String childId = publish(List.of(effect("hidden", Map.of())), List.of());
+            var child = context.getBean(WorkflowAdmission.class).resolve(definitions.getVersion(tenant,
+                    new UserWorkflowDefinitionId(childId), new UserWorkflowDefinitionVersion(1)));
+            var sub = new Node("sub", Kind.SUBWORKFLOW, null, null, 0, 0, null, null, null, null, null,
+                    new ChildPin(new WorkflowPlanCodec().digest(child), child));
+            for (String reference : List.of("hidden", "sub")) {
+                String definition = publish(List.of(resultLoop("root", comparison, reference), sub),
+                        List.of(new ControlEdge("root", "sub", 0)));
+                rejectedLoopHasNoDurableWork(definition);
+            }
+            String future = publish(List.of(Node.control("root", Kind.SEQUENCE),
+                            resultLoop("loop", comparison, "future"), effect("body", Map.of()), effect("future", Map.of())),
+                    List.of(new ControlEdge("root", "loop", 0), new ControlEdge("root", "future", 1),
+                            new ControlEdge("loop", "body", 0)));
+            rejectedLoopHasNoDurableWork(future);
+        }
+        // Same Identity, database and real worker: the intended initially absent Operation
+        // result is produced once and the loop terminates normally.
+        String valid = publish(List.of(resultLoop("root", Comparison.IS_EMPTY, "effect"), effect("effect", Map.of())),
+                List.of(new ControlEdge("root", "effect", 0)));
+        var response = http(user, "POST", "/api/tenants/" + tenant + "/workflow-executions",
+                Map.of("definitionId", valid, "definitionVersion", 1, "projectId", project,
+                        "idempotencyKey", "valid-result-loop", "inputsJson", "{}"));
+        assertThat(response.statusCode()).withFailMessage(response.body()).isEqualTo(201);
+        String id = RunJson.read(response.body(), com.fasterxml.jackson.databind.JsonNode.class).path("id").asText();
+        try (var worker = dispatcher()) { assertThat(worker.processOnce(event(id))).isTrue(); }
+        complete(id);
+        assertThat(store.require(id).status()).isEqualTo("SUCCEEDED");
+        assertThat(effectCount(id)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from workflow_operation_receipt where run_id=?", Integer.class, id)).isEqualTo(1);
+        System.out.println("EP07_CORRECTION_ADMISSION rejectedCases=28 runIntentReceiptEffects=0 validRun=" + id + " effects=1 status=SUCCEEDED");
+    }
+
+    private Node resultLoop(String id, Comparison comparison, String reference) {
+        return new Node(id, Kind.LOOP, new Predicate(comparison, new ValueRef(Source.RESULT, reference), null),
+                null, 2, 0, null, null, null, null, null, null);
+    }
+
+    private void rejectedLoopHasNoDurableWork(String definition) throws Exception {
+        var response = http(user, "POST", "/api/tenants/" + tenant + "/workflow-executions",
+                Map.of("definitionId", definition, "definitionVersion", 1, "projectId", project,
+                        "idempotencyKey", "invalid-" + UUID.randomUUID(), "inputsJson", "{\"items\":[1]}"));
+        assertThat(response.statusCode()).withFailMessage(response.body()).isEqualTo(400);
+        assertThat(jdbc.queryForObject("select count(*) from workflow_run where tenant_id=?", Integer.class, tenant)).isZero();
+        assertThat(jdbc.queryForObject("select count(*) from outbox_events where event_type like 'workflow.run.%' and payload like ?",
+                Integer.class, "%" + tenant + "%")).isZero();
+        assertThat(jdbc.queryForObject("select count(*) from workflow_operation_receipt", Integer.class))
+                .isEqualTo(receiptsBeforeRejectedLoopMatrix);
+        assertThat(jdbc.queryForObject("select count(*) from ep07_test_effect", Integer.class))
+                .isEqualTo(effectsBeforeRejectedLoopMatrix);
+    }
+
+    private int receiptsBeforeRejectedLoopMatrix;
+    private int effectsBeforeRejectedLoopMatrix;
+
 }
