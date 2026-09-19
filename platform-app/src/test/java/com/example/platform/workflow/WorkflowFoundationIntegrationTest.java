@@ -86,10 +86,6 @@ class WorkflowFoundationIntegrationTest extends PostgresTestContainerSupport {
                                     System.getenv()
                                             .getOrDefault(
                                                     "EP07_TEMPORAL_TARGET", "127.0.0.1:17233"))
-                            .setWorkerFactoryOptions(
-                                    io.temporal.worker.WorkerFactoryOptions.newBuilder()
-                                            .setWorkflowCacheSize(0)
-                                            .build())
                             .build());
         }
 
@@ -1315,11 +1311,7 @@ class WorkflowFoundationIntegrationTest extends PostgresTestContainerSupport {
                                 .setIdentity("ep07-restarted-worker")
                                 .build());
         var replacement =
-                io.temporal.worker.WorkerFactory.newInstance(
-                        restartClient,
-                        io.temporal.worker.WorkerFactoryOptions.newBuilder()
-                                .setWorkflowCacheSize(0)
-                                .build());
+                io.temporal.worker.WorkerFactory.newInstance(restartClient);
         var sdkWorker = replacement.newWorker("workflow-process");
         sdkWorker.registerWorkflowImplementationTypes(PlanWalkWorkflowImpl.class);
         sdkWorker.registerActivitiesImplementations(faults);
