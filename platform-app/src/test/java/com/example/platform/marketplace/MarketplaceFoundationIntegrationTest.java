@@ -142,4 +142,17 @@ class MarketplaceFoundationIntegrationTest extends MarketplaceTestSupport {
         assertThat(http(user,"PATCH","/api/marketplace/listings/"+listing.path("id").asText()+"/status",Map.of("status","PUBLISHED")).statusCode()).isIn(401,403,404,405);
         assertThat(state()).isEqualTo(before);assertThat(jdbc.queryForObject("select status from marketplace_listing where id=?",String.class,listing.path("id").asText())).isEqualTo("DRAFT");
     }
+
+    @Test void productionAssemblyHasOneMarketplaceOwnerAndNoRetiredRuntimeClasses() {
+        assertThat(context.getBeansOfType(MarketplaceApi.class)).hasSize(1);
+        assertThat(context.getBean(MarketplaceConfiguration.class)).isNotNull();
+        for(String name:List.of(
+                "com.example.platform.render.app.asset.AssetReviewService",
+                "com.example.platform.render.app.asset.MarketplaceConsumer",
+                "com.example.platform.render.app.asset.MarketplaceValidateTaskHandler",
+                "com.example.platform.render.app.asset.MarketplacePackageTaskHandler",
+                "com.example.platform.render.infrastructure.asset.MarketplaceListingRepository",
+                "com.example.platform.render.infrastructure.productization.marketplace.MarketplaceService"))
+            assertThatThrownBy(()->Class.forName(name)).isInstanceOf(ClassNotFoundException.class);
+    }
 }

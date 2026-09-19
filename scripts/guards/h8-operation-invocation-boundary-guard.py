@@ -62,7 +62,7 @@ REQUIRED_GOVERNED_RUNTIME_SOURCE_COUNT = 115
 GOVERNED_RUNTIME_SOURCE_SHA256 = {
     "artifact-module/src/main/java/com/example/platform/artifact/app/ArtifactPinService.java": "34f5b57c43c1c8710adaf01c1166d491ec5b7e31172cda555cf4fde438e1d348",
     "identity-access-module/src/main/java/com/example/platform/identity/api/authorization/AuthorizationDecisionPort.java": "410bab27d6eada22316af5e9bf60b357db2f4adebb56c74c8687c995d822cc48",
-    "media-module/src/main/java/com/example/platform/media/domain/identity/MediaAssetId.java": "4512f45c34dc5d502c424a585a9330eef99680ebe31d6f9ba23df09316679e0e",
+    "media-module/src/main/java/com/example/platform/media/domain/identity/MediaAssetId.java": "f2f99b607a46508adc8a65954ff8e59038e643a81e072a075f8de3f45bf18329",
     "media-module/src/main/java/com/example/platform/media/domain/stream/MediaStreamId.java": "3b5ee2acae0e44de0a3e464ef89255bf39cc6e998efbae0cb1de06af9e846488",
     "operation-module/src/main/java/com/example/platform/operation/invocation/OperationInvocationContext.java": "a31da87ee2d1251acf4f22d4574f212f2dba00755ebea92913495d211d712445",
     "operation-module/src/main/java/com/example/platform/operation/invocation/OperationInvocationException.java": "5762eae13a5cf2f4ffb557896f13ae894dfd2e717206a75c1f0db3d02edb1e89",

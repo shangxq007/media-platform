@@ -1743,6 +1743,12 @@ else
     fail "Storage identity/placement M0/M1 authority counters drifted"
 fi
 
+if python3 scripts/guards/marketplace-authority-guard.py --root "$ROOT_DIR"; then
+    pass "Marketplace owner, public composition and displaced authority retirement"
+else
+    fail "Marketplace authority drift"
+fi
+
 if [ $FAILED -eq 0 ]; then
     echo "✅ All architecture drift checks passed"
     exit 0

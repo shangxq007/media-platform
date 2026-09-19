@@ -1577,7 +1577,7 @@ tasks.register("verifyGcr2ArtifactAuthority") {
         // ── 8. Owner-adopted V1 + prerequisite migration; applied V1 stays immutable ──
         val migrationDir = file("platform-app/src/main/resources/db/migration")
         val migrations = migrationDir.listFiles { f -> f.name.endsWith(".sql") } ?: emptyArray()
-        require(migrations.map { it.name }.toSet() == setOf("V1__initial_schema.sql", "V2__account_membership_and_project_scope.sql", "V3__quarantine_unresolved_assignment_scopes.sql", "V4__quarantine_missing_assignment_tenants.sql", "V5__workflow_durable_runs.sql")) {
+        require(migrations.map { it.name }.toSet() == setOf("V1__initial_schema.sql", "V2__account_membership_and_project_scope.sql", "V3__quarantine_unresolved_assignment_scopes.sql", "V4__quarantine_missing_assignment_tenants.sql", "V5__workflow_durable_runs.sql", "V6__marketplace_owner.sql")) {
             "FAIL: unexpected Flyway migration inventory: ${migrations.map { it.name }}"
         }
         val appliedV1Hash = java.security.MessageDigest.getInstance("SHA-256")
@@ -1679,7 +1679,7 @@ tasks.register("verifyGcr5Gcr6DatabaseCanonicalization") {
         // 1. Exact adopted migration inventory, with no backup/unclassified migrations.
         val migrationDir = file("platform-app/src/main/resources/db/migration")
         val scripts = migrationDir.listFiles().orEmpty().filter { it.name.startsWith("V") && it.name.endsWith(".sql") }
-        require(scripts.map { it.name }.toSet() == setOf("V1__initial_schema.sql", "V2__account_membership_and_project_scope.sql", "V3__quarantine_unresolved_assignment_scopes.sql", "V4__quarantine_missing_assignment_tenants.sql", "V5__workflow_durable_runs.sql")) {
+        require(scripts.map { it.name }.toSet() == setOf("V1__initial_schema.sql", "V2__account_membership_and_project_scope.sql", "V3__quarantine_unresolved_assignment_scopes.sql", "V4__quarantine_missing_assignment_tenants.sql", "V5__workflow_durable_runs.sql", "V6__marketplace_owner.sql")) {
             "FAIL: unexpected Flyway migration inventory: ${scripts.map { it.name }}"
         }
         val legacyMigrationDir = file("platform-app/src/main/resources/db/artifact-migration")
