@@ -155,4 +155,31 @@ class MarketplaceFoundationIntegrationTest extends MarketplaceTestSupport {
                 "com.example.platform.render.infrastructure.productization.marketplace.MarketplaceService"))
             assertThatThrownBy(()->Class.forName(name)).isInstanceOf(ClassNotFoundException.class);
     }
+
+    @Test void explicitLegacyReadmissionPreservesEvidenceAndNeverReusesOldApproval() throws Exception {
+        String asset=asset(),id="legacy-listing-"+UUID.randomUUID();
+        jdbc.update("insert into marketplace_listing(id,asset_id,tenant_id,project_id,listing_type,title,status,version,review_id,legacy_snapshot,created_at,updated_at) values (?,?,'foreign','wrong','MEDIA','Historical title','PUBLISHED','1.0','old-review','{\"status\":\"PUBLISHED\",\"reviewId\":\"old-review\"}'::jsonb,now(),now())",id,asset);
+        String snapshot=jdbc.queryForObject("select legacy_snapshot::text from marketplace_listing where id=?",String.class,id);
+        assertThat(http(null,"GET","/api/marketplace/listings/"+id,null).statusCode()).isEqualTo(404);
+        var before=state();assertThat(http(user,"POST",root()+"/listings",createBody(asset,"foreign-legacy")).statusCode()).isEqualTo(409);assertThat(state()).isEqualTo(before);
+        assertThat(jdbc.queryForObject("select title from marketplace_listing where id=?",String.class,id)).isEqualTo("Historical title");
+        // Test fixture reconciles the historical scope; the application must still require
+        // explicit current admission and a new review, never reinterpret old approval.
+        jdbc.update("update marketplace_listing set tenant_id=?,project_id=? where id=?",tenant,project,id);
+        var admitted=create(asset);assertThat(admitted.path("id").asText()).isEqualTo(id);assertThat(admitted.path("status").asText()).isEqualTo("DRAFT");assertThat(admitted.path("reviewId").isNull()).isTrue();
+        assertThat(jdbc.queryForObject("select legacy_snapshot::text from marketplace_listing where id=?",String.class,id)).isEqualTo(snapshot);
+        before=state();assertThat(http(user,"POST",root()+"/listings/"+id+"/transitions",Map.of("commandId","old-approval","expectedVersion",1,"transition","PUBLISH")).statusCode()).isEqualTo(409);assertThat(state()).isEqualTo(before);
+        publish(approve(submit(admitted)));assertThat(jdbc.queryForObject("select legacy_snapshot::text from marketplace_listing where id=?",String.class,id)).isEqualTo(snapshot);
+    }
+    @Test void migratedAssetTransportUsesOwnerScopeAndRejectsOldAttributionFields() throws Exception {
+        String asset=asset();var listing=create(asset);String base="/api/projects/"+project+"/assets/"+asset;
+        var before=state();assertThat(http(user,"POST",base+"/submit-review",Map.of("authorUserId",outsider,"title","forged")).statusCode()).isEqualTo(400);assertThat(state()).isEqualTo(before);
+        var review=response(http(user,"POST",base+"/submit-review",Map.of("commandId","asset-submit","expectedVersion",listing.path("version").asLong(),"title","Review")),201);
+        var decision=Map.of("commandId","asset-approve","expectedVersion",review.path("version").asLong(),"decision","APPROVE");before=state();
+        assertThat(http(user,"POST",base+"/approve-review?reviewerUserId="+outsider,decision).statusCode()).isEqualTo(400);assertThat(state()).isEqualTo(before);
+        var approved=response(http(user,"POST",base+"/approve-review",decision),200);
+        var published=response(http(user,"POST",base+"/publish",Map.of("commandId","asset-publish","expectedVersion",approved.path("version").asLong(),"transition","PUBLISH")),200);
+        assertThat(published.path("id").asText()).isEqualTo(listing.path("id").asText());assertThat(published.path("status").asText()).isEqualTo("PUBLISHED");
+        assertThat(response(http(user,"GET",base+"/review",null),200).path("authorId").asText()).isEqualTo(user);
+    }
 }
