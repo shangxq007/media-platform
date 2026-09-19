@@ -322,8 +322,11 @@ def validate_repository(root: Path) -> PolicyReport:
     overlap_count = sum(int(row["DUPLICATE_TEST_COUNT"]) for row in overlaps)
     if overlap_count != int(baseline_by_metric["DECLARED_OVERLAP_COUNT"]):
         raise ValueError("declared overlap count does not match baseline")
-    if sum(int(row["DISCOVERED_TEST_COUNT"]) for row in topology) != int(baseline_by_metric["TASK_TOPOLOGY_GROSS_COUNT"]):
-        raise ValueError("topology gross count does not match baseline")
+    # Compare the sealed benchmark to its original cohort, not to a fabricated
+    # new whole-repository execution total. Marketplace has separate fresh evidence.
+    baseline_topology = [row for row in topology if (row["PROJECT"], row["TEST_TASK"]) != (":marketplace-module", "test")]
+    if sum(int(row["DISCOVERED_TEST_COUNT"]) for row in baseline_topology) != int(baseline_by_metric["TASK_TOPOLOGY_GROSS_COUNT"]):
+        raise ValueError("historical topology gross count does not match sealed baseline")
     if int(baseline_by_metric["TASK_TOPOLOGY_GROSS_COUNT"]) - overlap_count != int(baseline_by_metric["RAW_RECURSIVE_EXPECTED_UNIVERSE"]):
         raise ValueError("topology gross count does not reconcile with declared overlaps")
     validate_candidate_enrollment(topology_by_key, enrollment)
