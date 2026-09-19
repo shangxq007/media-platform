@@ -75,14 +75,39 @@ AND status IN ('PENDING','RUNNING','RETRY');
 UPDATE platform_job SET status='FAILED',updated_at=now()
 WHERE job_type='MARKETPLACE_PREPARE' AND status IN ('PENDING','RUNNING','RETRY');
 
--- Old publication consumers emitted these exact reindex payloads without a tenant.
--- Fail those non-executable intents explicitly; keep the payload and original scope evidence.
-UPDATE platform_task SET status='FAILED',error_message='MARKETPLACE_SCOPE_MISSING: legacy publication reindex needs owner reconciliation',updated_at=now()
-WHERE job_id IN (SELECT id FROM platform_job WHERE job_type='SEARCH_REINDEX'
- AND (coalesce(trim(tenant_id),'')='' OR coalesce(trim(project_id),'')='')
- AND (payload_json LIKE '%"reason":"asset.published"%' OR payload_json LIKE '%"reason":"asset.archived"%'))
-AND status IN ('PENDING','RUNNING','RETRY');
-UPDATE platform_job SET status='FAILED',updated_at=now()
-WHERE job_type='SEARCH_REINDEX' AND (coalesce(trim(tenant_id),'')='' OR coalesce(trim(project_id),'')='')
-AND (payload_json LIKE '%"reason":"asset.published"%' OR payload_json LIKE '%"reason":"asset.archived"%')
-AND status IN ('PENDING','RUNNING','RETRY');
+-- Retire only the active top-level publication reason, never nested history or text.
+-- Parse as json (NOT jsonb): json preserves duplicate keys so ambiguous objects can
+-- be left untouched. This classifier exists only inside this migration transaction.
+DO $$
+DECLARE
+    candidate record;
+    payload json;
+    reason text;
+    key_count bigint;
+    distinct_key_count bigint;
+BEGIN
+    FOR candidate IN SELECT id,payload_json FROM platform_job
+        WHERE job_type='SEARCH_REINDEX' AND status IN ('PENDING','RUNNING','RETRY')
+        AND (coalesce(trim(tenant_id),'')='' OR coalesce(trim(project_id),'')='')
+        FOR UPDATE
+    LOOP
+        BEGIN
+            payload := candidate.payload_json::json;
+            IF json_typeof(payload) IS DISTINCT FROM 'object' THEN CONTINUE; END IF;
+            SELECT count(*),count(DISTINCT key) INTO key_count,distinct_key_count FROM json_each(payload);
+            IF key_count <> distinct_key_count THEN CONTINUE; END IF;
+            IF json_typeof(payload->'reason') IS DISTINCT FROM 'string' THEN CONTINUE; END IF;
+            reason := payload->>'reason';
+        EXCEPTION WHEN invalid_text_representation OR untranslatable_character THEN
+            -- Malformed/undecodable historical input is not evidence of a publication intent.
+            CONTINUE;
+        END;
+        IF reason NOT IN ('asset.published','asset.archived') THEN CONTINUE; END IF;
+        -- Both mutations derive from this same locked, eligible job. Completed job
+        -- history cannot cause an otherwise pending child task to be retired.
+        UPDATE platform_task SET status='FAILED',
+            error_message='MARKETPLACE_SCOPE_MISSING: legacy publication reindex needs owner reconciliation',updated_at=now()
+            WHERE job_id=candidate.id AND status IN ('PENDING','RUNNING','RETRY');
+        UPDATE platform_job SET status='FAILED',updated_at=now() WHERE id=candidate.id;
+    END LOOP;
+END $$;
