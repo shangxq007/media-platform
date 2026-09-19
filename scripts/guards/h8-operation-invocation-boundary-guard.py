@@ -157,7 +157,7 @@ GOVERNED_RUNTIME_SOURCE_SHA256 = {
     "typed-schema-module/src/main/java/com/example/platform/typedschema/jooq/generated/tables/TimelineRevision.java": "1dca8683c537e78af0b9853ec9aa698fdbcfecc47399cbd62195a0a960508c83",
     "typed-schema-module/src/main/java/com/example/platform/typedschema/jooq/generated/tables/TimelineRevisionParent.java": "e013952a0f9ad7b702fdadfc4124b99d109a9e61f847700fef4ab2704bd2362c",
     "workflow-module/src/main/java/com/example/platform/workflow/plan/WorkflowCursor.java": "24f820fc9e77feee66a6a24a7fd7902ed03a7be27b12641c8a5b66c30618986b",
-    "workflow-module/src/main/java/com/example/platform/workflow/plan/WorkflowDataValidation.java": "e6b6bb248fb41a4a61362b0c4ff89a9bbcdf188b833f76357589f709e2ec58ab",
+    "workflow-module/src/main/java/com/example/platform/workflow/plan/WorkflowDataValidation.java": "6f56dbc4bf5287a7ae322ba328fb234c9e1169bc58817c8fa9aea896855ba682",
     "workflow-module/src/main/java/com/example/platform/workflow/plan/WorkflowOperationValueJson.java": "fae3e1a2e9fb1e95955e21a564e2f6b00cb3ef753999d76ea5aa35d548b92066",
     "workflow-module/src/main/java/com/example/platform/workflow/plan/WorkflowPlan.java": "c0f1d94ccce3312d09b7f7af77185ffb3c900391e04b450ac74cd9526d20b564",
     "workflow-module/src/main/java/com/example/platform/workflow/plan/WorkflowPlanCodec.java": "0dd5ad32ae9fc4a7727a537f397aa5590a295aefac18b0302981f1f7a2c72aad",
@@ -174,7 +174,7 @@ GOVERNED_RUNTIME_SOURCE_SHA256 = {
     "workflow-module/src/main/java/com/example/platform/workflow/run/WorkflowRunStore.java": "6ced8d648e1800471309563890251cd0b33b6439db814db1ff20d2c82c4b0dfe",
     "workflow-module/src/main/java/com/example/platform/workflow/temporal/PlanWalkActivities.java": "db8b80337946f6be8a34c8acc8cc2d28c13e820ba14ffbb1b22f151047903025",
     "workflow-module/src/main/java/com/example/platform/workflow/temporal/PlanWalkWorkflow.java": "b13e5687442edfe779607b0c9546214da8632b351d14c6647d9c1f25132e2f96",
-    "workflow-module/src/main/java/com/example/platform/workflow/temporal/PlanWalkWorkflowImpl.java": "4a8960d845fefad505cda9a030ffddf1c90ca96d3c736280404e68e79a695608",
+    "workflow-module/src/main/java/com/example/platform/workflow/temporal/PlanWalkWorkflowImpl.java": "80a1086819ef6b6805debb52c08f8346423243c9867b1f65e1f0c93b92eb98c5",
 }
 
 LAW_ORDER = (

@@ -1422,7 +1422,16 @@ class WorkflowFoundationIntegrationTest extends PostgresTestContainerSupport {
         var gate = new CountDownLatch[] {new CountDownLatch(1), new CountDownLatch(1)};
         if (race) faults.invocationGates.put("\"base-100\"", gate);
         try {
-            try (var worker = dispatcher()) { assertThat(worker.processOnce(event(id))).isTrue(); }
+            // Lose acknowledgement only after Temporal accepted this durable start.
+            // The existing dispatcher records FAILED with its real persisted backoff.
+            try (var failing = new OutboxEventDispatcher(context.getBean(OutboxEventService.class),
+                    payload -> { context.publishEvent(payload); throw new IllegalStateException("start acknowledgement lost"); },
+                    context.getBean(OutboxEventRouter.class), 3,
+                    context.getBean(io.micrometer.core.instrument.MeterRegistry.class))) {
+                assertThat(failing.processOnce(event(id))).isFalse();
+            }
+            assertThat(jdbc.queryForObject("select status from outbox_events where id=?", String.class, event(id)))
+                    .isEqualTo("FAILED");
             String first = client.newUntypedWorkflowStub(WorkflowDispatch.workflowId(id))
                     .describe().getFirstRunId();
             if (race) assertThat(gate[0].await(30, TimeUnit.SECONDS)).isTrue();
@@ -1430,6 +1439,18 @@ class WorkflowFoundationIntegrationTest extends PostgresTestContainerSupport {
                     .untilAsserted(() -> assertThat(effectCount(id)).isEqualTo(count));
             org.awaitility.Awaitility.await().atMost(java.time.Duration.ofSeconds(30))
                     .untilAsserted(() -> assertThat(continuationsWithPins(id, first)).isGreaterThanOrEqualTo(1));
+            // Retry the ORIGINAL failed row after continuation using claim eligibility.
+            // No SQL edits, resetDueFailedEvents, synthetic intent or new logical run.
+            try (var restarted = dispatcher()) {
+                org.awaitility.Awaitility.await().atMost(java.time.Duration.ofSeconds(10))
+                        .until(() -> restarted.processOnce(event(id)));
+            }
+            assertThat(jdbc.queryForObject("select status from outbox_events where id=?", String.class, event(id)))
+                    .isEqualTo("PROCESSED");
+            assertThat(jdbc.queryForObject("select retry_count from outbox_events where id=?", Integer.class, event(id)))
+                    .isEqualTo(1);
+            assertThat(client.newUntypedWorkflowStub(WorkflowDispatch.workflowId(id)).describe().getFirstRunId()).isEqualTo(first);
+            assertThat(jdbc.queryForObject("select count(*) from workflow_run where tenant_id=?", Integer.class, tenant)).isEqualTo(1);
             String step = WorkflowStepIdentity.child(WorkflowStepIdentity.root("root"), "wait");
             assertThat(store.waitProjection(id, step).getFirst().get("status")).isEqualTo("WAITING");
             var release = Map.of("stepId", step, "releaseId", "continued-command", "approved", true);
