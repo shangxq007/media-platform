@@ -46,7 +46,7 @@ H8_AUTHORIZED_CHANGED_PATHS = frozenset({
 })
 
 REQUIRED_LAW_COUNT = 54
-REQUIRED_GOVERNED_RUNTIME_SOURCE_COUNT = 96
+REQUIRED_GOVERNED_RUNTIME_SOURCE_COUNT = 115
 
 # Exact SHA-256 attestation of the committed e570cf93 H8/H7 runtime authority
 # universe. These repository-relative paths cover the exposed Operation intent
@@ -60,12 +60,13 @@ REQUIRED_GOVERNED_RUNTIME_SOURCE_COUNT = 96
 # exact source protection to the moved command/result contracts. Zero laws remain unchanged.
 GOVERNED_RUNTIME_SOURCE_SHA256 = {
     "artifact-module/src/main/java/com/example/platform/artifact/app/ArtifactPinService.java": "34f5b57c43c1c8710adaf01c1166d491ec5b7e31172cda555cf4fde438e1d348",
+    "identity-access-module/src/main/java/com/example/platform/identity/api/authorization/AuthorizationDecisionPort.java": "410bab27d6eada22316af5e9bf60b357db2f4adebb56c74c8687c995d822cc48",
     "media-module/src/main/java/com/example/platform/media/domain/identity/MediaAssetId.java": "4512f45c34dc5d502c424a585a9330eef99680ebe31d6f9ba23df09316679e0e",
     "media-module/src/main/java/com/example/platform/media/domain/stream/MediaStreamId.java": "3b5ee2acae0e44de0a3e464ef89255bf39cc6e998efbae0cb1de06af9e846488",
-    "operation-module/src/main/java/com/example/platform/operation/invocation/OperationInvocationContext.java": "e6958af12ac930af2fcefdf501a0906528352896f883d4f7810f7cd9030cf881",
+    "operation-module/src/main/java/com/example/platform/operation/invocation/OperationInvocationContext.java": "a31da87ee2d1251acf4f22d4574f212f2dba00755ebea92913495d211d712445",
     "operation-module/src/main/java/com/example/platform/operation/invocation/OperationInvocationException.java": "5762eae13a5cf2f4ffb557896f13ae894dfd2e717206a75c1f0db3d02edb1e89",
     "operation-module/src/main/java/com/example/platform/operation/invocation/OperationInvocationFailureCode.java": "bfd5bb23139b8b8d98bd6db3617faa981834bbd2aad703cc853e07ca735dd744",
-    "operation-module/src/main/java/com/example/platform/operation/invocation/OperationInvocationPort.java": "70e5190dcb265eda47656152575a9e17262a0bc06f2b7218d338ac3100685d74",
+    "operation-module/src/main/java/com/example/platform/operation/invocation/OperationInvocationPort.java": "49bf945dd14511bae5c4e227c8e188ec759ca4c21c6b5169633183dc876be388",
     "operation-module/src/main/java/com/example/platform/operation/invocation/OperationInvocationResult.java": "fafc52a4cf555fdf5380fefcd1b7c51e52a71a11550f19a8bd00c926ee917ff4",
     "operation-module/src/main/java/com/example/platform/operation/operation/OperationDefinition.java": "83e90f649fdb6994ea2a907dbe8f123b5e3710822ea289a7df80cb3ba20637f7",
     "operation-module/src/main/java/com/example/platform/operation/operation/OperationDefinitionId.java": "2b8f1b6fb269f4008b056fbbf399bcd98b5826b8d670cfa77fa71be842b028eb",
@@ -90,15 +91,14 @@ GOVERNED_RUNTIME_SOURCE_SHA256 = {
     "render-module/src/main/java/com/example/platform/render/app/operation/AddMediaClipCommand.java": "da4359b9591b4f04f46de008d4972a9d60fb2c2f9ffd632f64e5a7792ab6e1f5",
     "render-module/src/main/java/com/example/platform/render/app/operation/AddMediaClipPreview.java": "64d37917bdc866d6a842d981e60e8a013f0d1cd77c3e678a6eb8b22ce062474c",
     "render-module/src/main/java/com/example/platform/render/app/operation/AddMediaClipResult.java": "58a0ed832754c16151e45382d853dc16f86767dbd92b998c2e18e7d6ef9df7de",
-    "render-module/src/main/java/com/example/platform/render/app/operation/CanonicalOperationInvocationService.java": "3ab1c0d6f44151d3017a834c0461b17677ae7945c4ccef583d2551d8a4657507",
-    "render-module/src/main/java/com/example/platform/render/app/operation/TimelineMediaClipOperationService.java": "0746dc4376844844e1a8d99e6a4ffaf60eba1d765924d4a71617a71b4df9d885",
+    "render-module/src/main/java/com/example/platform/render/app/operation/CanonicalOperationInvocationService.java": "1b88f2a052a7ee11bc4531e5d9b3e2c66cf464a263cdcca808754b114504574e",
+    "render-module/src/main/java/com/example/platform/render/app/operation/TimelineMediaClipOperationService.java": "a91bc92880d5e83b9f80a5ba44a439f07a2846e85f2b2b47090aec000491659d",
     "render-module/src/main/java/com/example/platform/render/app/operation/TimelineOperationException.java": "5d2a381fab95085537c6e50db781f96a540ba706ecbea9831a8a545438fa7195",
     "render-module/src/main/java/com/example/platform/render/app/plan/OperationPlanApplyService.java": "94d6f43c32f2c158d810fb4895a87e5de93b944270c84f9f35dbb98862333535",
     "shared-kernel/src/main/java/com/example/platform/shared/authorization/AuthorizableResourceRef.java": "0d5480a73113dad46a460df734c8f78e2af85f0a29a105dc6bde729dc94a4dfd",
     "shared-kernel/src/main/java/com/example/platform/shared/authorization/AuthorizationAction.java": "d81d141a81d6ee48df1c8a8d07bcbfd6fb0091f15a35d7ffd74e9540fb1c2b06",
     "shared-kernel/src/main/java/com/example/platform/shared/authorization/AuthorizationContext.java": "a4dd30141dad146a293535a626b7abf5657baccc7d21fb12a0a3e7f8f5deb975",
     "shared-kernel/src/main/java/com/example/platform/shared/authorization/AuthorizationDecision.java": "f91212d6ab675f6b79630066a5fb2c4b835fce5d4e2aeee5c3555e46f8617b6a",
-    "identity-access-module/src/main/java/com/example/platform/identity/api/authorization/AuthorizationDecisionPort.java": "410bab27d6eada22316af5e9bf60b357db2f4adebb56c74c8687c995d822cc48",
     "shared-kernel/src/main/java/com/example/platform/shared/authorization/AuthorizationRequest.java": "073cea2503ab79e5a43fd40d0a7fd56105d47457c818a0e79ee81ece49b2a743",
     "shared-kernel/src/main/java/com/example/platform/shared/authorization/AuthorizationResourceType.java": "93507e3282ba2e3bb3129912f233ef6528bcf58014cf0b916f8dc3df3f0324b9",
     "shared-kernel/src/main/java/com/example/platform/shared/authorization/CanonicalActor.java": "e7cadaaa8325bb67dc5110e99cf68be9b05c810b72acc4e6e10c72ea87b7b81d",
@@ -107,17 +107,22 @@ GOVERNED_RUNTIME_SOURCE_SHA256 = {
     "shared-kernel/src/main/java/com/example/platform/shared/identity/ArtifactId.java": "84ba3f0930448050e7bb462999f0c6c0c2733d756a323c887c2b9edbfa6d5f97",
     "shared-kernel/src/main/java/com/example/platform/shared/time/MediaTime.java": "623b6c99ad371987fb9fceb427e7c8290e0cb4eac6f36dc10a2a70c8a1d33942",
     "timeline-module/src/main/java/com/example/platform/timeline/adapter/TimelineSnapshotService.java": "bec87cd292327c469206784aed082cf178b2cb11a6115094b3d65167c0b5667d",
+    "timeline-module/src/main/java/com/example/platform/timeline/api/composition/TimelineCanonicalRejectionException.java": "a7b274409c017c0c0aaeda47f3630886e5ab6e2db0efc0210e23aaaacafc5c2c",
+    "timeline-module/src/main/java/com/example/platform/timeline/api/composition/TimelineSourceValidation.java": "a860efca016ccafd44b3e67c659311349d5c4717ad9de8a39dac7bceba04aab0",
+    "timeline-module/src/main/java/com/example/platform/timeline/api/composition/TimelineValidation.java": "280d6b9d5727ada156ec764b1f9239e292375f3d16bf075e37d39f3fa9e138ad",
+    "timeline-module/src/main/java/com/example/platform/timeline/api/revision/TimelineMutationContext.java": "857dfaeb1cabe05700fddd04007a7d60b3b0c05dec3112de7ed13bf2dc60b4f2",
+    "timeline-module/src/main/java/com/example/platform/timeline/api/revision/TimelineRevisionCommandConflictException.java": "154e50f8c772ae3fdb11851035b4d520710819e8b12d92974302c127ddb90ae5",
+    "timeline-module/src/main/java/com/example/platform/timeline/api/revision/TimelineRevisionCommands.java": "4d89cedebddc83a780ac70b33b4ddbdd4cc06188ec63ee7658049cf40c3bc5ec",
+    "timeline-module/src/main/java/com/example/platform/timeline/api/revision/TimelineSnapshotQueries.java": "800a0e3a92d9b5d251616e26cae35bbb44683fda6e663164c1e618872dd4c953",
+    "timeline-module/src/main/java/com/example/platform/timeline/api/revision/TimelineSnapshotView.java": "befa0d4fb1ff0d98ac64bfa1fa65d9de73f11be4d41784fb420a26670b0289f7",
     "timeline-module/src/main/java/com/example/platform/timeline/app/HeadUpdatePort.java": "97a4ef46cb8c7aaf87d421ee40f1bf638d53573f40e2ea3a7e1873c49641f911",
     "timeline-module/src/main/java/com/example/platform/timeline/app/HistoricalRevisionRestoreVerifier.java": "6d105f45b096289c64a42fb15b3a241d94ca8849085038ddae22613ac404f833",
     "timeline-module/src/main/java/com/example/platform/timeline/app/InternalTimelineValidationService.java": "924077d801f53f43a86ec62f672af982351ca6b3cef9f4520463994c69239159",
     "timeline-module/src/main/java/com/example/platform/timeline/app/ProjectRevisionNumberAllocator.java": "8e46f9f42522f34c79b4b7c32a19815aa53d1971a2c98e322c82717a02179de2",
     "timeline-module/src/main/java/com/example/platform/timeline/app/TimelineArtifactPinExtractor.java": "c9145480210ab02f3c1c142f662819239db5bed87dd4e61bd7c11e94286295bf",
     "timeline-module/src/main/java/com/example/platform/timeline/app/TimelineArtifactPinValidator.java": "e250c3bd8e2476f8d8b5794c386d4dde6431d613081e6f69df6fe83863668059",
-    "timeline-module/src/main/java/com/example/platform/timeline/api/composition/TimelineCanonicalRejectionException.java": "a7b274409c017c0c0aaeda47f3630886e5ab6e2db0efc0210e23aaaacafc5c2c",
     "timeline-module/src/main/java/com/example/platform/timeline/app/TimelineDocumentCandidateMapper.java": "a009728f8f71087cb6f2e8a6a44f991ccba8d45619d292cd3ea167750764773a",
     "timeline-module/src/main/java/com/example/platform/timeline/app/TimelineDocumentJsonSerializer.java": "85044834384aa18dd155ed0da7f7bab3d618690c8b4dfbc08e86697730bb963f",
-    "timeline-module/src/main/java/com/example/platform/timeline/api/revision/TimelineMutationContext.java": "857dfaeb1cabe05700fddd04007a7d60b3b0c05dec3112de7ed13bf2dc60b4f2",
-    "timeline-module/src/main/java/com/example/platform/timeline/api/revision/TimelineRevisionCommandConflictException.java": "154e50f8c772ae3fdb11851035b4d520710819e8b12d92974302c127ddb90ae5",
     "timeline-module/src/main/java/com/example/platform/timeline/app/TimelineRevisionPersistencePort.java": "75687b44fa1bcc7881b75077dd376adafe481dcddd2d5caef163a9e25bae87d7",
     "timeline-module/src/main/java/com/example/platform/timeline/app/TimelineRevisionRefHeadUpdateAdapter.java": "6aaac36d7e5dbc73100d04c1ab6c6b8adceeb9c1c801cedcd1f440f6db54ea9b",
     "timeline-module/src/main/java/com/example/platform/timeline/app/TimelineRevisionRefMutation.java": "9cde6e2dc5d8f90e6903fd5a755c6a55406659cd85ab58ea08f61ee78d00389c",
@@ -150,11 +155,25 @@ GOVERNED_RUNTIME_SOURCE_SHA256 = {
     "timeline-module/src/main/java/com/example/platform/timeline/version/TimelineRevisionSemanticContextStore.java": "704b4a78ddde04bb155d8f6a187dd23eb3d0221603c1197700e23881ca7e38db",
     "typed-schema-module/src/main/java/com/example/platform/typedschema/jooq/generated/tables/TimelineRevision.java": "1dca8683c537e78af0b9853ec9aa698fdbcfecc47399cbd62195a0a960508c83",
     "typed-schema-module/src/main/java/com/example/platform/typedschema/jooq/generated/tables/TimelineRevisionParent.java": "e013952a0f9ad7b702fdadfc4124b99d109a9e61f847700fef4ab2704bd2362c",
-    "timeline-module/src/main/java/com/example/platform/timeline/api/revision/TimelineRevisionCommands.java": "4d89cedebddc83a780ac70b33b4ddbdd4cc06188ec63ee7658049cf40c3bc5ec",
-    "timeline-module/src/main/java/com/example/platform/timeline/api/composition/TimelineValidation.java": "280d6b9d5727ada156ec764b1f9239e292375f3d16bf075e37d39f3fa9e138ad",
-    "timeline-module/src/main/java/com/example/platform/timeline/api/composition/TimelineSourceValidation.java": "a860efca016ccafd44b3e67c659311349d5c4717ad9de8a39dac7bceba04aab0",
-    "timeline-module/src/main/java/com/example/platform/timeline/api/revision/TimelineSnapshotView.java": "befa0d4fb1ff0d98ac64bfa1fa65d9de73f11be4d41784fb420a26670b0289f7",
-    "timeline-module/src/main/java/com/example/platform/timeline/api/revision/TimelineSnapshotQueries.java": "800a0e3a92d9b5d251616e26cae35bbb44683fda6e663164c1e618872dd4c953"
+    "workflow-module/src/main/java/com/example/platform/workflow/plan/WorkflowCursor.java": "24f820fc9e77feee66a6a24a7fd7902ed03a7be27b12641c8a5b66c30618986b",
+    "workflow-module/src/main/java/com/example/platform/workflow/plan/WorkflowDataValidation.java": "e6b6bb248fb41a4a61362b0c4ff89a9bbcdf188b833f76357589f709e2ec58ab",
+    "workflow-module/src/main/java/com/example/platform/workflow/plan/WorkflowOperationValueJson.java": "fae3e1a2e9fb1e95955e21a564e2f6b00cb3ef753999d76ea5aa35d548b92066",
+    "workflow-module/src/main/java/com/example/platform/workflow/plan/WorkflowPlan.java": "c0f1d94ccce3312d09b7f7af77185ffb3c900391e04b450ac74cd9526d20b564",
+    "workflow-module/src/main/java/com/example/platform/workflow/plan/WorkflowPlanCodec.java": "0dd5ad32ae9fc4a7727a537f397aa5590a295aefac18b0302981f1f7a2c72aad",
+    "workflow-module/src/main/java/com/example/platform/workflow/plan/WorkflowPlanCompiler.java": "fd3d1dfd5c98842c4c9cb35f8274ba556e4c7457555e8e84140857ec47a70dea",
+    "workflow-module/src/main/java/com/example/platform/workflow/plan/WorkflowPlanValidator.java": "2551842bfe6495a8ddfe0936a3f091eb8ca3df8aea85f616a88a22cdc0a77fa9",
+    "workflow-module/src/main/java/com/example/platform/workflow/plan/WorkflowStepIdentity.java": "a55ac157b0e5f2d56cc25d969eef648ce93e3c23f6e2c2884d5d787111f46538",
+    "workflow-module/src/main/java/com/example/platform/workflow/run/RunEvents.java": "907674397958f4b38fcbe83cf75a840818d058b815f8d03d92dd254107bd1f30",
+    "workflow-module/src/main/java/com/example/platform/workflow/run/RunJson.java": "66c0b6c51e2c653a58065c0b57a7c4a213d8087322fd65948ab4ed13cda87a06",
+    "workflow-module/src/main/java/com/example/platform/workflow/run/WorkflowActivities.java": "e83953b0bfd6b5dba856e61514d0410c2f36d5c6f3589e28dae23035c0880af1",
+    "workflow-module/src/main/java/com/example/platform/workflow/run/WorkflowAdmission.java": "5fa7be89423af236cc81dcbd1fa150b3caa7a9c95848f56e738e0299819ef21a",
+    "workflow-module/src/main/java/com/example/platform/workflow/run/WorkflowDispatch.java": "6b975b5cd4af334c1181092db8555f80be035d7d7d62a614e60db39797f9637d",
+    "workflow-module/src/main/java/com/example/platform/workflow/run/WorkflowRunController.java": "ed992218f3fedcf8465b690df136dc1dd0b31991e13e0d3b0c82af043d0bb031",
+    "workflow-module/src/main/java/com/example/platform/workflow/run/WorkflowRunService.java": "e3741731d9b912177d5604886ca2a522cf9c3648f9d71ba4606a60d644edc892",
+    "workflow-module/src/main/java/com/example/platform/workflow/run/WorkflowRunStore.java": "6ced8d648e1800471309563890251cd0b33b6439db814db1ff20d2c82c4b0dfe",
+    "workflow-module/src/main/java/com/example/platform/workflow/temporal/PlanWalkActivities.java": "db8b80337946f6be8a34c8acc8cc2d28c13e820ba14ffbb1b22f151047903025",
+    "workflow-module/src/main/java/com/example/platform/workflow/temporal/PlanWalkWorkflow.java": "b13e5687442edfe779607b0c9546214da8632b351d14c6647d9c1f25132e2f96",
+    "workflow-module/src/main/java/com/example/platform/workflow/temporal/PlanWalkWorkflowImpl.java": "4a8960d845fefad505cda9a030ffddf1c90ca96d3c736280404e68e79a695608",
 }
 
 LAW_ORDER = (
@@ -252,6 +271,9 @@ CONTRACT_FQ_TYPES = {
 # boundaries: they are classified so traversal cannot mistake them for an H8
 # helper, but their existing authority is not transferred to H8.
 CLASSIFIED_RUNTIME_FQ_TYPES = {
+    # EP07 adds real Workflow consumers of the same invocation contract, not peer invocation authority.
+    "com.example.platform.workflow.run.WorkflowActivities": "workflow-operation-consumer",
+    "com.example.platform.workflow.run.WorkflowAdmission": "workflow-operation-consumer",
     "com.example.platform.operation.invocation.OperationInvocationPort": "public-contract",
     "com.example.platform.operation.invocation.OperationInvocationContext": "public-contract",
     "com.example.platform.operation.invocation.OperationInvocationResult": "public-result-authority",

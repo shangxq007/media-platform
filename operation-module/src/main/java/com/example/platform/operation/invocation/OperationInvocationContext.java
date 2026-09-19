@@ -24,6 +24,11 @@ public record OperationInvocationContext(
         Objects.requireNonNull(provenance, "provenance");
     }
 
+    /** Construct observation metadata without exposing it as a second authority-bearing caller. */
+    public OperationInvocationContext(CanonicalActor actor,String invocationId,String correlationId,String origin) {
+        this(actor,invocationId,new Provenance(correlationId,origin));
+    }
+
     /**
      * Bounded observation metadata only. Neither field is authoritative and
      * neither may change, replace, or supplement the canonical actor.

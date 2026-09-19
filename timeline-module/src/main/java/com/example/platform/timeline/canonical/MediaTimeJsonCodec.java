@@ -14,10 +14,12 @@ import java.io.IOException;
  * (CANONICAL_TIMELINE_SERIALIZATION_V2 — exact, never double).
  * Round-trips {@code MediaTime.toString()} losslessly.
  */
+@org.springframework.modulith.NamedInterface("composition")
 public final class MediaTimeJsonCodec {
 
     private MediaTimeJsonCodec() {}
 
+    @org.springframework.modulith.NamedInterface("composition")
     public static final class Serializer extends JsonSerializer<MediaTime> {
         @Override
         public void serialize(MediaTime value, JsonGenerator gen, SerializerProvider serializers)
@@ -26,6 +28,7 @@ public final class MediaTimeJsonCodec {
         }
     }
 
+    @org.springframework.modulith.NamedInterface("composition")
     public static final class Deserializer extends JsonDeserializer<MediaTime> {
         @Override
         public MediaTime deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {

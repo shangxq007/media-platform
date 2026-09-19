@@ -22,10 +22,10 @@ class PlanWalkSdkTest {
             worker.registerWorkflowImplementationTypes(PlanWalkWorkflowImpl.class);
             var effects=new Effects();worker.registerActivitiesImplementations(effects);env.start();
             var workflow=env.getWorkflowClient().newWorkflowStub(PlanWalkWorkflow.class,WorkflowOptions.newBuilder().setTaskQueue("ep07-test").build());
-            workflow.execute("run",new WorkflowPlanCodec().encode(WorkflowPlanTest.plan(nodes,edges)),Map.of("flag","true"));
+            workflow.execute("run",new WorkflowPlanCodec().encode(WorkflowPlanTest.plan(nodes,edges)),Map.of("flag","true"),null);
             assertThat(effects.status).isEqualTo("SUCCEEDED");
-            assertThat(effects.completed).contains("root/root/parallel/a","root/root/parallel/b","root/root/choice/yes","root/root");
-            assertThat(effects.completed).doesNotContain("root/root/choice/no");
+            assertThat(effects.completed).contains(step("root","parallel","a"),step("root","parallel","b"),step("root","choice","yes"),step("root"));
+            assertThat(effects.completed).doesNotContain(step("root","choice","no"));
         }
     }
     @Test void boundedForeachTraversesEveryItem() {
@@ -33,7 +33,7 @@ class PlanWalkSdkTest {
         var plan=WorkflowPlanTest.plan(List.of(root,WorkflowPlanTest.timer("body")),List.of(new ControlEdge("root","body",0)));
         var effects=execute(plan,Map.of("items","[1,2,3]"),false);
         assertThat(effects.status).isEqualTo("SUCCEEDED");
-        assertThat(effects.completed).contains("root/root/item-0/body","root/root/item-1/body","root/root/item-2/body");
+        assertThat(effects.completed).contains(WorkflowStepIdentity.at("body",step("root")+"/item-0/body"),WorkflowStepIdentity.at("body",step("root")+"/item-1/body"),WorkflowStepIdentity.at("body",step("root")+"/item-2/body"));
     }
     @Test void collectionOverflowFailsBeforeBody() {
         var root=new Node("root",Kind.FOREACH,null,null,1,1,new ValueRef(Source.INPUT,"items"),null,null,null,null,null);
@@ -46,13 +46,13 @@ class PlanWalkSdkTest {
         var root=new Node("root",Kind.LOOP,new Predicate(Comparison.IS_SET,new ValueRef(Source.INPUT,"condition"),null),null,2,0,null,null,null,null,null,null);
         var plan=WorkflowPlanTest.plan(List.of(root,WorkflowPlanTest.timer("body")),List.of(new ControlEdge("root","body",0)));
         var effects=execute(plan,Map.of("condition","true"),true);
-        assertThat(effects.completed).containsExactly("root/root/iteration-0/body","root/root/iteration-1/body");
+        assertThat(effects.completed).containsExactly(WorkflowStepIdentity.at("body",step("root")+"/iteration-0/body"),WorkflowStepIdentity.at("body",step("root")+"/iteration-1/body"));
         assertThat(effects.status).isEqualTo("FAILED");
     }
     @Test void unreleasedApprovalFailsAtDeadline() {
         var root=new Node("root",Kind.WAIT,null,new Wait(WaitKind.APPROVAL,1),0,0,null,null,null,null,null,null);
         var effects=execute(WorkflowPlanTest.plan(List.of(root),List.of()),Map.of(),true);
-        assertThat(effects.status).isEqualTo("FAILED");
+        assertThat(effects.status).isEqualTo("TIMED_OUT");
         assertThat(effects.completed).isEmpty();
     }
     @Test void pinnedChildExecutes() {
@@ -60,7 +60,26 @@ class PlanWalkSdkTest {
         var node=new Node("root",Kind.SUBWORKFLOW,null,null,0,0,null,null,null,null,null,
                 new ChildPin(new WorkflowPlanCodec().digest(child),child));
         var parent=new WorkflowPlan(1,"parent",1,"tenant","project","root",List.of(node),List.of());
-        assertThat(execute(parent,Map.of(),false).completed).contains("root/root/child/child","root/root");
+        assertThat(execute(parent,Map.of(),false).completed).contains(WorkflowStepIdentity.at("child",step("root")+"/child/child"),step("root"));
+    }
+    @Test void continueAsNewCarriesForeachCursorWithoutRepeatingCompletedSteps() {
+        var root=new Node("root",Kind.FOREACH,null,null,100,4,new ValueRef(Source.INPUT,"items"),null,null,null,null,null);
+        var plan=WorkflowPlanTest.plan(List.of(root,WorkflowPlanTest.timer("body")),List.of(new ControlEdge("root","body",0)));
+        String items=java.util.stream.IntStream.range(0,80).mapToObj(Integer::toString).collect(java.util.stream.Collectors.joining(",","[","]"));
+        try(var env=TestWorkflowEnvironment.newInstance()) {
+            var worker=env.newWorker("ep07-test");worker.registerWorkflowImplementationTypes(PlanWalkWorkflowImpl.class);
+            var effects=new Effects();worker.registerActivitiesImplementations(effects);env.start();
+            var workflow=env.getWorkflowClient().newWorkflowStub(PlanWalkWorkflow.class,WorkflowOptions.newBuilder().setTaskQueue("ep07-test").build());
+            var execution=io.temporal.client.WorkflowClient.start(workflow::execute,"run",new WorkflowPlanCodec().encode(plan),Map.of("items",items),null);
+            io.temporal.client.WorkflowStub.fromTyped(workflow).getResult(Map.class);
+            assertThat(effects.completed).hasSize(81).doesNotHaveDuplicates();
+            var history=env.getWorkflowClient().fetchHistory(execution.getWorkflowId(),execution.getRunId());
+            assertThat(history.getEvents()).anyMatch(event->event.getEventType()==io.temporal.api.enums.v1.EventType.EVENT_TYPE_WORKFLOW_EXECUTION_CONTINUED_AS_NEW);
+            io.temporal.testing.WorkflowReplayer.replayWorkflowExecution(history,PlanWalkWorkflowImpl.class);
+        } catch(Exception e){throw new AssertionError(e);}
+    }
+    private static String step(String... nodes) {
+        String key=WorkflowStepIdentity.root(nodes[0]);for(int i=1;i<nodes.length;i++)key=WorkflowStepIdentity.child(key,nodes[i]);return key;
     }
     private Effects execute(WorkflowPlan plan,Map<String,String> inputs,boolean failure) {
         try(var env=TestWorkflowEnvironment.newInstance()) {
@@ -68,9 +87,9 @@ class PlanWalkSdkTest {
             worker.registerWorkflowImplementationTypes(PlanWalkWorkflowImpl.class);
             var effects=new Effects();worker.registerActivitiesImplementations(effects);env.start();
             var workflow=env.getWorkflowClient().newWorkflowStub(PlanWalkWorkflow.class,WorkflowOptions.newBuilder().setTaskQueue("ep07-test").build());
-            if(failure) assertThatThrownBy(() -> workflow.execute("run",new WorkflowPlanCodec().encode(plan),inputs))
+            if(failure) assertThatThrownBy(() -> workflow.execute("run",new WorkflowPlanCodec().encode(plan),inputs,null))
                     .isInstanceOf(io.temporal.client.WorkflowFailedException.class);
-            else workflow.execute("run",new WorkflowPlanCodec().encode(plan),inputs);
+            else workflow.execute("run",new WorkflowPlanCodec().encode(plan),inputs,null);
             return effects;
         }
     }
@@ -80,6 +99,6 @@ class PlanWalkSdkTest {
         public String invoke(String run,String step,String plan,String node,Map<String,String> bindings) { throw new AssertionError("No Operation expected"); }
         public void waiting(String run,String step,String kind,long deadline) {}
         public void stepCompleted(String run,String step,String result) { completed.add(step); }
-        public void terminal(String run,String status) { this.status=status; }
+        public String terminal(String run,String status,String failureCode,String failedStep) { this.status=status;return status; }
     }
 }

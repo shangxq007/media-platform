@@ -30,6 +30,11 @@ delivery:
 spring.temporal:
   connection:
     target: ${TEMPORAL_TARGET:127.0.0.1:7233}
+  workers-auto-discovery:
+    packages:
+      - com.example.platform.workflow
   workers:
     - task-queue: media-platform-tasks
       name: render-worker
+    - task-queue: workflow-process
+      name: workflow-process-worker

@@ -1,164 +1,462 @@
 package com.example.platform.workflow.temporal;
 
-import com.example.platform.workflow.plan.*;
 import static com.example.platform.workflow.plan.WorkflowPlan.*;
+
+import com.example.platform.workflow.plan.*;
+import com.example.platform.workflow.plan.WorkflowCursor.Frame;
 import com.fasterxml.jackson.databind.*;
+
 import io.temporal.activity.ActivityOptions;
 import io.temporal.common.RetryOptions;
-import io.temporal.failure.CanceledFailure;
-import io.temporal.failure.ApplicationFailure;
+import io.temporal.failure.*;
+import io.temporal.spring.boot.WorkflowImpl;
 import io.temporal.workflow.*;
+
 import java.time.Duration;
 import java.util.*;
 
-/** Deterministic adapter for Workflow-owned typed process semantics. No live lookups in replay. */
+/** Durable mechanics over an explicit Workflow-owned cursor. All effects stay in activities. */
+@WorkflowImpl(taskQueues = "workflow-process")
 public final class PlanWalkWorkflowImpl implements PlanWalkWorkflow {
     private final WorkflowPlanCodec codec = new WorkflowPlanCodec();
     private final ObjectMapper json = new ObjectMapper();
-    private final PlanWalkActivities projections = Workflow.newActivityStub(PlanWalkActivities.class,
-            ActivityOptions.newBuilder().setStartToCloseTimeout(Duration.ofMinutes(1)).build());
-    private final Map<String, Boolean> releases = new HashMap<>();
-    private final Map<String, WaitKind> waiting = new HashMap<>();
-    private boolean cancelled;
+    private final PlanWalkActivities projections =
+            Workflow.newActivityStub(
+                    PlanWalkActivities.class,
+                    ActivityOptions.newBuilder()
+                            .setStartToCloseTimeout(Duration.ofMinutes(1))
+                            .build());
+    private final Map<String, WorkflowPlan> plans = new TreeMap<>();
+    private WorkflowCursor state;
+    private final Map<String, Boolean> earlyReleases = new TreeMap<>();
+    private boolean earlyCancellation;
     private String runId;
-    private Map<String,String> inputs;
+    private Map<String, String> inputs;
+    private final List<Promise<Void>> actions = new ArrayList<>();
+    private long nextDeadline;
 
-    @Override public Map<String,String> execute(String runId, String planJson, Map<String,String> inputs) {
+    @Override
+    public Map<String, String> execute(
+            String runId, String planJson, Map<String, String> inputs, String cursorJson) {
         this.runId = runId;
         this.inputs = Map.copyOf(inputs);
-        Map<String,String> results = new TreeMap<>();
+        var plan = codec.decode(planJson);
+        register(plan);
+        state =
+                cursorJson == null
+                        ? new WorkflowCursor()
+                        : decode(cursorJson, WorkflowCursor.class);
+        if (state.root == null)
+            state.root =
+                    new Frame(
+                            codec.digest(plan),
+                            plan.rootNodeId(),
+                            "root/" + plan.rootNodeId(),
+                            Map.of(),
+                            null);
+        state.releases.putAll(earlyReleases);
+        earlyReleases.clear();
+        state.cancelled |= earlyCancellation;
+        long startedTransitions = state.transitions;
         String terminal = "SUCCEEDED";
+        String failureCode = null;
         try {
-            WorkflowPlan plan = codec.decode(planJson);
-            walk(plan, plan.rootNodeId(), "root", results, null);
-            checkCancellation();
-        } catch (CanceledFailure e) { terminal = "CANCELLED"; }
-        catch (RuntimeException e) { terminal = cancelled ? "CANCELLED" : "FAILED"; }
-        final String outcome = terminal;
-        Workflow.newDetachedCancellationScope(() -> projections.terminal(runId, outcome)).run();
+            while (!state.root.done) {
+                cancelled();
+                actions.clear();
+                nextDeadline = Long.MAX_VALUE;
+                long before = state.transitions;
+                advance(state.root);
+                if (!actions.isEmpty()) Promise.allOf(actions).get();
+                else if (!state.root.done && before == state.transitions) {
+                    // Signals/timers are durable Temporal events; deadlines survive cursor
+                    // reconstruction.
+                    long delay =
+                            nextDeadline == Long.MAX_VALUE
+                                    ? 60000
+                                    : Math.max(1, nextDeadline - Workflow.currentTimeMillis());
+                    Workflow.await(
+                            Duration.ofMillis(delay),
+                            () -> state.cancelled || hasRelease(state.root));
+                }
+                cancelled();
+                if (!state.root.done
+                        && (state.transitions - startedTransitions >= 64
+                                || Workflow.getInfo().isContinueAsNewSuggested()))
+                    Workflow.continueAsNew(runId, planJson, inputs, encode(state));
+            }
+        } catch (CanceledFailure e) {
+            terminal = "CANCELLED";
+            failureCode = "CANCELLED";
+        } catch (RuntimeException e) {
+            terminal = state.cancelled ? "CANCELLED" : failureKind(e);
+            failureCode = code(e);
+        }
+        final String requested = terminal;
+        final String failure = failureCode;
+        String[] projected = new String[1];
+        Workflow.newDetachedCancellationScope(
+                        () ->
+                                projected[0] =
+                                        projections.terminal(
+                                                runId, requested, failure, state.failureStep))
+                .run();
+        final String outcome = projected[0];
+        if ("CANCELLED".equals(outcome)) throw new CanceledFailure("Workflow cancelled");
         if (!"SUCCEEDED".equals(outcome))
             throw ApplicationFailure.newNonRetryableFailure(outcome, "WORKFLOW_" + outcome);
-        return Map.copyOf(results);
+        return Map.copyOf(state.root.values);
     }
 
-    private void walk(WorkflowPlan plan, String id, String path, Map<String,String> results, String item) {
-        checkCancellation();
-        Node node = plan.nodes().stream().filter(n -> n.id().equals(id)).findFirst().orElseThrow();
-        String step = path + "/" + id;
-        List<ControlEdge> children = plan.edges().stream().filter(e -> e.parentId().equals(id))
-                .sorted(Comparator.comparingInt(ControlEdge::order)).toList();
+    private String code(Throwable error) {
+        for (Throwable e = error; e != null; e = e.getCause())
+            if (e instanceof ApplicationFailure a) return a.getType();
+        return "WORKFLOW_ACTIVITY_FAILURE";
+    }
+
+    private String failureKind(Throwable error) {
+        for (Throwable e = error; e != null; e = e.getCause())
+            if (e instanceof ApplicationFailure a && "WORKFLOW_TIMEOUT".equals(a.getType()))
+                return "TIMED_OUT";
+        return "FAILED";
+    }
+
+    private void register(WorkflowPlan plan) {
+        plans.put(codec.digest(plan), plan);
+        for (var n : plan.nodes()) if (n.childPlan() != null) register(n.childPlan().plan());
+    }
+
+    private void advance(Frame frame) {
+        if (frame.done || actions.size() >= 32) return;
+        cancelled();
+        var plan = plans.get(frame.planDigest);
+        if (plan == null) throw invalid("Unknown cursor plan");
+        var node =
+                plan.nodes().stream()
+                        .filter(n -> n.id().equals(frame.nodeId))
+                        .findFirst()
+                        .orElseThrow();
+        var children =
+                plan.edges().stream()
+                        .filter(e -> e.parentId().equals(node.id()))
+                        .sorted(Comparator.comparingInt(ControlEdge::order))
+                        .toList();
         switch (node.kind()) {
             case SEQUENCE -> {
-                for (ControlEdge edge : children) walk(plan, edge.childId(), step, results, item);
+                if (frame.index == children.size()) {
+                    complete(frame);
+                    return;
+                }
+                if (frame.children.isEmpty())
+                    frame.children.add(
+                            child(
+                                    frame,
+                                    children.get(frame.index).childId(),
+                                    frame.stepId,
+                                    frame.item));
+                var active = frame.children.getFirst();
+                advance(active);
+                if (active.done) {
+                    frame.values = new TreeMap<>(active.values);
+                    frame.children.clear();
+                    frame.index++;
+                    state.transitions++;
+                }
             }
             case PARALLEL -> {
-                List<Map<String,String>> branchResults = new ArrayList<>();
-                List<Promise<Void>> promises = new ArrayList<>();
-                for (ControlEdge edge : children) {
-                    Map<String,String> branch = new TreeMap<>(results);
-                    branchResults.add(branch);
-                    promises.add(Async.procedure(() -> walk(plan, edge.childId(), step, branch, item)));
+                if (!frame.initialized) {
+                    for (var edge : children)
+                        frame.children.add(child(frame, edge.childId(), frame.stepId, frame.item));
+                    frame.initialized = true;
                 }
-                Promise.allOf(promises).get();
-                for (Map<String,String> branch : branchResults) merge(results, branch);
+                for (var branch : frame.children) advance(branch);
+                if (frame.children.stream().allMatch(f -> f.done)) {
+                    Map<String, String> merged = new TreeMap<>(frame.values);
+                    for (var branch : frame.children)
+                        branch.values.forEach(
+                                (key, value) -> {
+                                    if (!Objects.equals(frame.values.get(key), value)
+                                            && merged.containsKey(key)
+                                            && !Objects.equals(merged.get(key), value)
+                                            && !Objects.equals(
+                                                    merged.get(key), frame.values.get(key)))
+                                        throw invalid("Conflicting branch output");
+                                    if (!Objects.equals(frame.values.get(key), value))
+                                        merged.put(key, value);
+                                });
+                    frame.values = merged;
+                    complete(frame);
+                }
             }
-            case CHOICE -> walk(plan, children.get(test(node.predicate(), results, item) ? 0 : 1).childId(), step, results, item);
+            case CHOICE -> {
+                if (!frame.initialized) {
+                    frame.children.add(
+                            child(
+                                    frame,
+                                    children.get(test(node.predicate(), frame) ? 0 : 1).childId(),
+                                    frame.stepId,
+                                    frame.item));
+                    frame.initialized = true;
+                }
+                var selected = frame.children.getFirst();
+                advance(selected);
+                if (selected.done) {
+                    frame.values = new TreeMap<>(selected.values);
+                    complete(frame);
+                }
+            }
             case LOOP -> {
-                int iteration = 0;
-                while (test(node.predicate(), results, item)) {
-                    if (iteration == node.bound()) throw ApplicationFailure.newNonRetryableFailure("Loop bound exhausted", "WORKFLOW_BOUND");
-                    walk(plan, children.getFirst().childId(), step + "/iteration-" + iteration++, results, item);
+                if (frame.children.isEmpty()) {
+                    if (!test(node.predicate(), frame)) {
+                        complete(frame);
+                        return;
+                    }
+                    if (frame.index >= node.bound())
+                        throw ApplicationFailure.newNonRetryableFailure(
+                                "Loop bound exhausted", "WORKFLOW_BOUND");
+                    frame.children.add(
+                            child(
+                                    frame,
+                                    children.getFirst().childId(),
+                                    frame.stepId + "/iteration-" + frame.index,
+                                    frame.item));
+                }
+                var active = frame.children.getFirst();
+                advance(active);
+                if (active.done) {
+                    frame.values = new TreeMap<>(active.values);
+                    frame.children.clear();
+                    frame.index++;
+                    state.transitions++;
                 }
             }
             case FOREACH -> {
-                JsonNode collection = read(value(node.collection(), results, item));
+                var collection = read(value(node.collection(), frame));
                 if (!collection.isArray() || collection.size() > node.bound())
-                    throw ApplicationFailure.newNonRetryableFailure("Invalid bounded collection", "WORKFLOW_INPUT");
-                for (int start = 0; start < collection.size(); start += node.concurrency()) {
-                    List<Promise<Void>> promises = new ArrayList<>();
-                    List<Map<String,String>> batch = new ArrayList<>();
-                    for (int i = start; i < Math.min(start + node.concurrency(), collection.size()); i++) {
-                        final int index = i;
-                        Map<String,String> branch = new TreeMap<>(results); batch.add(branch);
-                        promises.add(Async.procedure(() -> walk(plan, children.getFirst().childId(),
-                                step + "/item-" + index, branch, collection.get(index).toString())));
+                    throw invalid("Invalid bounded collection");
+                if (frame.children.isEmpty()) {
+                    if (frame.index == collection.size()) {
+                        complete(frame);
+                        return;
                     }
-                    Promise.allOf(promises).get();
-                    for (Map<String,String> branch : batch) merge(results, branch);
+                    for (int i = frame.index;
+                            i < Math.min(frame.index + node.concurrency(), collection.size());
+                            i++)
+                        frame.children.add(
+                                child(
+                                        frame,
+                                        children.getFirst().childId(),
+                                        frame.stepId + "/item-" + i,
+                                        collection.get(i).toString()));
+                }
+                for (var branch : frame.children) advance(branch);
+                if (frame.children.stream().allMatch(f -> f.done)) {
+                    frame.index += frame.children.size();
+                    frame.children.clear();
+                    state.transitions++;
+                }
+            }
+            case SUBWORKFLOW -> {
+                if (frame.children.isEmpty()) {
+                    var sub = node.childPlan().plan();
+                    frame.children.add(
+                            new Frame(
+                                    node.childPlan().digest(),
+                                    sub.rootNodeId(),
+                                    frame.stepId + "/child/" + sub.rootNodeId(),
+                                    Map.of(),
+                                    frame.item));
+                }
+                var active = frame.children.getFirst();
+                advance(active);
+                if (active.done) {
+                    complete(frame);
                 }
             }
             case WAIT -> {
-                waiting.put(step, node.waitSpec().kind());
-                try {
-                    projections.waiting(runId, step, node.waitSpec().kind().name(),
-                            Workflow.currentTimeMillis() + node.waitSpec().timeoutMillis());
-                    boolean signalled = Workflow.await(Duration.ofMillis(node.waitSpec().timeoutMillis()),
-                            () -> cancelled || releases.containsKey(step));
-                    checkCancellation();
-                    if (node.waitSpec().kind() != WaitKind.TIMER) {
-                        if (!signalled) throw ApplicationFailure.newNonRetryableFailure("Wait expired", "WORKFLOW_TIMEOUT");
-                        if (node.waitSpec().kind() == WaitKind.APPROVAL && !releases.get(step))
-                            throw ApplicationFailure.newNonRetryableFailure("Approval rejected", "WORKFLOW_REJECTED");
+                if (node.waitSpec().kind() == WaitKind.TIMER) state.releases.remove(frame.stepId);
+                if (!frame.waitRegistered) {
+                    if (frame.deadline == 0)
+                        frame.deadline =
+                                Workflow.currentTimeMillis() + node.waitSpec().timeoutMillis();
+                    frame.waitRegistered = true;
+                    actions.add(
+                            Async.procedure(
+                                    () -> {
+                                        projections.waiting(
+                                                runId,
+                                                frame.stepId,
+                                                node.waitSpec().kind().name(),
+                                                frame.deadline);
+                                        frame.waitRegistered = true;
+                                    }));
+                    return;
+                }
+                if (node.waitSpec().kind() != WaitKind.TIMER
+                        && state.releases.containsKey(frame.stepId)) {
+                    boolean approved = state.releases.remove(frame.stepId);
+                    if (node.waitSpec().kind() == WaitKind.APPROVAL && !approved) {
+                        state.failureStep = frame.stepId;
+                        throw ApplicationFailure.newNonRetryableFailure(
+                                "Approval rejected", "WORKFLOW_APPROVAL_REJECTED");
                     }
-                } finally { waiting.remove(step); releases.remove(step); }
-            }
-            case SUBWORKFLOW -> {
-                WorkflowPlan child = node.childPlan().plan();
-                walk(child, child.rootNodeId(), step + "/child", results, item);
+                    complete(frame);
+                } else if (Workflow.currentTimeMillis() >= frame.deadline) {
+                    if (node.waitSpec().kind() != WaitKind.TIMER) {
+                        state.failureStep = frame.stepId;
+                        throw ApplicationFailure.newNonRetryableFailure(
+                                "Wait expired", "WORKFLOW_TIMEOUT");
+                    }
+                    complete(frame);
+                } else nextDeadline = Math.min(nextDeadline, frame.deadline);
             }
             case OPERATION_INVOCATION -> {
-                Map<String,String> bindings = new TreeMap<>();
-                node.bindings().forEach((key, ref) -> bindings.put(key, value(ref, results, item)));
-                var activities = Workflow.newActivityStub(PlanWalkActivities.class, ActivityOptions.newBuilder()
-                        .setStartToCloseTimeout(Duration.ofMinutes(10))
-                        .setRetryOptions(RetryOptions.newBuilder().setMaximumAttempts(node.retry().maximumAttempts())
-                                .setInitialInterval(Duration.ofMillis(node.retry().initialDelayMillis())).build()).build());
-                String result = activities.invoke(runId, step, codec.encode(plan), node.id(), bindings);
-                results.put(step, result);
-                // Named output can be consumed sequentially; parallel branches must not share a name.
-                results.put(node.id(), result);
+                Map<String, String> bindings = new TreeMap<>();
+                node.bindings().forEach((key, ref) -> bindings.put(key, value(ref, frame)));
+                var activity =
+                        Workflow.newActivityStub(
+                                PlanWalkActivities.class,
+                                ActivityOptions.newBuilder()
+                                        .setStartToCloseTimeout(Duration.ofMinutes(10))
+                                        .setRetryOptions(
+                                                RetryOptions.newBuilder()
+                                                        .setMaximumAttempts(
+                                                                node.retry().maximumAttempts())
+                                                        .setInitialInterval(
+                                                                Duration.ofMillis(
+                                                                        node.retry()
+                                                                                .initialDelayMillis()))
+                                                        .build())
+                                        .build());
+                actions.add(
+                        Async.procedure(
+                                () -> {
+                                    String result;
+                                    try {
+                                        result =
+                                                activity.invoke(
+                                                        runId,
+                                                        frame.stepId,
+                                                        codec.encode(plan),
+                                                        node.id(),
+                                                        bindings);
+                                    } catch (RuntimeException failure) {
+                                        state.failureStep = frame.stepId;
+                                        throw failure;
+                                    }
+                                    frame.values.put(node.id(), result);
+                                    projections.stepCompleted(runId, frame.stepId, result);
+                                    frame.done = true;
+                                    state.transitions++;
+                                }));
             }
         }
-        checkCancellation();
-        projections.stepCompleted(runId, step, results.get(step));
     }
-    private void merge(Map<String,String> target, Map<String,String> branch) {
-        branch.forEach((key, value) -> {
-            // Branch-local aliases must not escape an ALL join; only qualified instance outputs do.
-            if (!key.contains("/")) return;
-            if (target.containsKey(key) && !Objects.equals(target.get(key), value))
-                throw ApplicationFailure.newNonRetryableFailure("Conflicting parallel result name", "WORKFLOW_BINDING");
-            target.put(key, value);
-        });
+
+    private Frame child(Frame parent, String id, String path, String item) {
+        return new Frame(parent.planDigest, id, path + "/" + id, parent.values, item);
     }
-    private boolean test(Predicate predicate, Map<String,String> results, String item) {
-        String raw = value(predicate.left(), results, item);
-        JsonNode actual = read(raw);
+
+    private void complete(Frame frame) {
+        if (actions.size() >= 32) return;
+        actions.add(
+                Async.procedure(
+                        () -> {
+                            projections.stepCompleted(runId, frame.stepId, null);
+                            frame.done = true;
+                            state.transitions++;
+                        }));
+    }
+
+    private boolean test(Predicate predicate, Frame frame) {
+        var actual = read(value(predicate.left(), frame));
         return switch (predicate.comparison()) {
             case EQUAL -> actual.equals(read(predicate.expectedJson()));
             case NOT_EQUAL -> !actual.equals(read(predicate.expectedJson()));
             case IS_SET -> !actual.isNull();
-            case IS_EMPTY -> actual.isNull() || actual.isTextual() && actual.asText().isEmpty()
-                    || actual.isContainerNode() && actual.isEmpty();
+            case IS_EMPTY ->
+                    actual.isNull()
+                            || actual.isTextual() && actual.asText().isEmpty()
+                            || actual.isContainerNode() && actual.isEmpty();
         };
     }
-    private String value(ValueRef ref, Map<String,String> results, String item) {
+
+    private String value(ValueRef ref, Frame frame) {
         return switch (ref.source()) {
             case INPUT -> inputs.get(ref.key());
-            case RESULT -> results.get(ref.key());
-            case ITEM -> item;
+            case ITEM ->
+                    "item".equals(ref.key())
+                            ? frame.item
+                            : read(frame.item).path(ref.key()).toString();
+            case RESULT -> {
+                String[] path = ref.key().split("\\.", 2);
+                String raw = frame.values.get(path[0]);
+                yield path.length == 1 ? raw : read(raw).path(path[1]).toString();
+            }
         };
     }
-    private JsonNode read(String raw) {
-        try { return raw == null ? json.nullNode() : json.readTree(raw); }
-        catch (Exception e) { throw ApplicationFailure.newNonRetryableFailure("Invalid typed JSON value", "WORKFLOW_INPUT"); }
+
+    private boolean hasRelease(Frame frame) {
+        return frame.waitRegistered && !frame.done && state.releases.containsKey(frame.stepId)
+                || frame.children.stream().anyMatch(this::hasRelease);
     }
-    private void checkCancellation() {
-        if (cancelled) throw new CanceledFailure("Workflow cancelled");
+
+    private Frame waiting(Frame frame, String id) {
+        if (frame.stepId.equals(id) && frame.waitRegistered && !frame.done) return frame;
+        for (var child : frame.children) {
+            var match = waiting(child, id);
+            if (match != null) return match;
+        }
+        return null;
+    }
+
+    @Override
+    public void release(String stepId, String releaseId, boolean approved) {
+        // A signal may be replayed before the main workflow method initializes its cursor.
+        // The application already fenced this durable command against the exact persisted wait.
+        if (state == null) {
+            earlyReleases.putIfAbsent(stepId, approved);
+            return;
+        }
+        if (!state.cancelled) state.releases.putIfAbsent(stepId, approved);
+    }
+
+    @Override
+    public void cancelRun() {
+        if (state == null) earlyCancellation = true;
+        else state.cancelled = true;
+    }
+
+    private void cancelled() {
+        if (state.cancelled) throw new CanceledFailure("Workflow cancelled");
         CancellationScope.throwCanceled();
     }
-    @Override public void release(String stepId, String releaseId, boolean approved) {
-        if (!cancelled && waiting.containsKey(stepId) && waiting.get(stepId) != WaitKind.TIMER) releases.putIfAbsent(stepId, approved);
+
+    private JsonNode read(String value) {
+        try {
+            return value == null ? json.nullNode() : json.readTree(value);
+        } catch (Exception e) {
+            throw invalid("Invalid typed value");
+        }
     }
-    @Override public void cancelRun() { cancelled = true; }
+
+    private String encode(Object value) {
+        try {
+            return json.writeValueAsString(value);
+        } catch (Exception e) {
+            throw invalid("Invalid cursor");
+        }
+    }
+
+    private <T> T decode(String value, Class<T> type) {
+        try {
+            return json.readValue(value, type);
+        } catch (Exception e) {
+            throw invalid("Invalid cursor");
+        }
+    }
+
+    private static ApplicationFailure invalid(String message) {
+        return ApplicationFailure.newNonRetryableFailure(message, "WORKFLOW_INVALID");
+    }
 }

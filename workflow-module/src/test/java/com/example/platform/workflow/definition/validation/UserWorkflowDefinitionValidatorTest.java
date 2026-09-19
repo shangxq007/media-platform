@@ -176,7 +176,7 @@ class UserWorkflowDefinitionValidatorTest {
                 UserWorkflowDefinitionId.generate(), UserWorkflowDefinitionVersion.of(1),
                 "tenant-a", null, "wf", null, UserWorkflowDefinitionStatus.DRAFT,
                 chain(1), List.of(), List.of(), UserWorkflowTriggerBinding.manual(),
-                2, 1L, NOW, "u-1", NOW, "u-1", null, null, null, null);
+                3, 1L, NOW, "u-1", NOW, "u-1", null, null, null, null);
         assertFalse(UserWorkflowDefinitionValidator.validate(d).valid());
         assertTrue(hasIssue(d, UserWorkflowValidationCode.CONFIG_INVALID_SCHEMA_VERSION));
     }

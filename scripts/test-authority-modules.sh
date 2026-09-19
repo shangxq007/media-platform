@@ -3,6 +3,16 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 case "${1:-}" in
+  workflow)
+    # Requires an isolated Temporal service (EP07_TEMPORAL_TARGET, default 127.0.0.1:17233)
+    # and a Docker-compatible endpoint for disposable PostgreSQL Testcontainers.
+    ./gradlew --no-daemon --console=plain \
+      :workflow-module:test :operation-module:test \
+      :identity-access-module:test --tests '*PermissionServiceTest' --tests '*RbacAuthorizationDecisionPortTest' --tests '*ProjectReadAuthorizationTest' \
+      :extension-module:test --tests '*PluginRegistry*' --tests '*Capability*' \
+      :render-module:test --tests '*CanonicalOperationInvocationServiceTest' --tests '*CanonicalOperationInvocationArchitectureTest' --tests '*ConstrainedGraphSafetyRulesTest' \
+      :platform-app:test --tests '*WorkflowFoundationIntegrationTest' --tests '*UserWorkflowDefinitionApiTest' --tests '*ModularityTest'
+    ;;
   workflow-plan)
     ./gradlew --offline --no-daemon --console=plain :workflow-module:test \
       --tests '*WorkflowPlanTest' --tests '*PlanWalkSdkTest' --tests '*UserWorkflowNodeTypeVocabularyTest'
@@ -78,5 +88,5 @@ case "${1:-}" in
   compile)
     ./gradlew --no-daemon --console=plain compileJava compileTestJava pfirr1RemediationCheck :platform-app:bootJar
     ;;
-  *) echo 'Usage: bash scripts/test-authority-modules.sh identity|observation|billing|execution|outbox|render-read|workflow-plan|compile|affected BASE HEAD' >&2; exit 2 ;;
+  *) echo 'Usage: bash scripts/test-authority-modules.sh identity|observation|billing|execution|outbox|render-read|workflow|workflow-plan|compile|affected BASE HEAD' >&2; exit 2 ;;
 esac

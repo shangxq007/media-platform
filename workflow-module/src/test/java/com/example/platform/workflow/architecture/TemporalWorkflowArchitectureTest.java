@@ -1,6 +1,7 @@
 package com.example.platform.workflow.architecture;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.IOException;
@@ -45,7 +46,7 @@ class TemporalWorkflowArchitectureTest {
 
     private static final String[] WORKFLOW_IMPLS = {
         "temporal/RenderWorkflowImpl.java",
-        "temporal/RenderPipelineWorkflowImpl.java",
+        "temporal/PlanWalkWorkflowImpl.java",
     };
 
     private static final String[] WORKFLOW_SIGNATURES = {
@@ -240,13 +241,7 @@ class TemporalWorkflowArchitectureTest {
      */
     @Test
     void arT10b_dormantPipelineRawJsonStaysExcludedAndUnregistered() {
-        // Dormant family must NOT be registered: RenderPipelineWorkflowImpl
-        // must have no @WorkflowImpl annotation (stays unregistered/dormant).
-        String implSrc = String.join("\n",
-                lines(WORKFLOW_SRC, "temporal/RenderPipelineWorkflowImpl.java"));
-        assertTrue(!implSrc.contains("@WorkflowImpl"),
-                "RenderPipelineWorkflowImpl must remain unregistered (dormant)");
-        assertTrue(implSrc.contains("timelineJson"),
-                "dormant pipeline signature carries raw timeline JSON (identified risk)");
+        assertFalse(Files.exists(WORKFLOW_SRC.resolve("temporal/RenderPipelineWorkflowImpl.java")),
+                "Old raw-payload pipeline must be retired");
     }
 }

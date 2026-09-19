@@ -41,7 +41,7 @@ import static org.junit.jupiter.api.Assertions.*;
  *
  * <p>Covers: tenant owner/editor authorized; member without permission denied;
  * cross-tenant denied (surfaced as 404, no existence leak); publish requires
- * authorization; unauthenticated (no actor) proceeds (dev/test behavior).</p>
+ * authorization; unauthenticated requests fail closed.</p>
  */
 class UserWorkflowDefinitionAuthorizationTest {
 
@@ -57,6 +57,11 @@ class UserWorkflowDefinitionAuthorizationTest {
                 Optional.of(CanonicalActor.user("owner-1", "tenant-a", Set.of("ADMIN"), "jwt"));
         AuthorizationDecisionPort port = req -> AuthorizationDecision.allow("RBAC");
         this.controller = new UserWorkflowDefinitionController(service, resolver, port);
+    }
+
+    @Test void unauthenticatedDefinitionAuthoringIsRejected() {
+        var anonymous=new UserWorkflowDefinitionController(service,Optional::empty,request -> AuthorizationDecision.allow("unused"));
+        assertThrows(org.springframework.web.server.ResponseStatusException.class,()->anonymous.create("tenant-a",createRequest("wf")));
     }
 
     @Test
@@ -125,7 +130,7 @@ class UserWorkflowDefinitionAuthorizationTest {
     }
 
     @Test
-    void noAuthenticatedActor_Proceeds_Unguarded() {
+    void noAuthenticatedActor_IsRejectedBeforeAuthorization() {
         UserWorkflowDefinitionController c = new UserWorkflowDefinitionController(
                 service,
                 () -> Optional.empty(),
@@ -134,8 +139,8 @@ class UserWorkflowDefinitionAuthorizationTest {
                     return AuthorizationDecision.allow("RBAC");
                 });
 
-        var response = c.create("tenant-a", createRequest("wf"));
-        assertEquals(201, response.getStatusCode().value());
+        assertThrows(org.springframework.web.server.ResponseStatusException.class,
+                () -> c.create("tenant-a",createRequest("wf")));
     }
 
     private ControllerWithService controllerWith(CanonicalActor actor,

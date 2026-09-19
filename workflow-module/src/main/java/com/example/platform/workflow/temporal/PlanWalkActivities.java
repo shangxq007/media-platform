@@ -9,5 +9,5 @@ public interface PlanWalkActivities {
     @ActivityMethod String invoke(String runId, String stepId, String planJson, String nodeId, Map<String,String> bindings);
     @ActivityMethod void waiting(String runId, String stepId, String kind, long deadlineMillis);
     @ActivityMethod void stepCompleted(String runId, String stepId, String resultJson);
-    @ActivityMethod void terminal(String runId, String status);
+    @ActivityMethod String terminal(String runId, String status, String failureCode,String failedStep);
 }

@@ -193,6 +193,9 @@ import com.example.platform.typedschema.jooq.generated.tables.WfTaskLeaseReserva
 import com.example.platform.typedschema.jooq.generated.tables.WfTaskOwnership;
 import com.example.platform.typedschema.jooq.generated.tables.WfWorkerRuntimeConnection;
 import com.example.platform.typedschema.jooq.generated.tables.WorkflowExecution;
+import com.example.platform.typedschema.jooq.generated.tables.WorkflowOperationReceipt;
+import com.example.platform.typedschema.jooq.generated.tables.WorkflowRun;
+import com.example.platform.typedschema.jooq.generated.tables.WorkflowRunStep;
 import com.example.platform.typedschema.jooq.generated.tables.Workspace;
 import com.example.platform.typedschema.jooq.generated.tables.WorkspaceEntitlementPool;
 import com.example.platform.typedschema.jooq.generated.tables.WorkspaceGroup;
@@ -1152,6 +1155,21 @@ public class Tables {
      * The table <code>public.workflow_execution</code>.
      */
     public static final WorkflowExecution WORKFLOW_EXECUTION = WorkflowExecution.WORKFLOW_EXECUTION;
+
+    /**
+     * The table <code>public.workflow_operation_receipt</code>.
+     */
+    public static final WorkflowOperationReceipt WORKFLOW_OPERATION_RECEIPT = WorkflowOperationReceipt.WORKFLOW_OPERATION_RECEIPT;
+
+    /**
+     * The table <code>public.workflow_run</code>.
+     */
+    public static final WorkflowRun WORKFLOW_RUN = WorkflowRun.WORKFLOW_RUN;
+
+    /**
+     * The table <code>public.workflow_run_step</code>.
+     */
+    public static final WorkflowRunStep WORKFLOW_RUN_STEP = WorkflowRunStep.WORKFLOW_RUN_STEP;
 
     /**
      * The table <code>public.workspace</code>.

@@ -193,6 +193,9 @@ import com.example.platform.typedschema.jooq.generated.tables.WfTaskLeaseReserva
 import com.example.platform.typedschema.jooq.generated.tables.WfTaskOwnership;
 import com.example.platform.typedschema.jooq.generated.tables.WfWorkerRuntimeConnection;
 import com.example.platform.typedschema.jooq.generated.tables.WorkflowExecution;
+import com.example.platform.typedschema.jooq.generated.tables.WorkflowOperationReceipt;
+import com.example.platform.typedschema.jooq.generated.tables.WorkflowRun;
+import com.example.platform.typedschema.jooq.generated.tables.WorkflowRunStep;
 import com.example.platform.typedschema.jooq.generated.tables.Workspace;
 import com.example.platform.typedschema.jooq.generated.tables.WorkspaceEntitlementPool;
 import com.example.platform.typedschema.jooq.generated.tables.WorkspaceGroup;
@@ -1168,6 +1171,21 @@ public class Public extends SchemaImpl {
     public final WorkflowExecution WORKFLOW_EXECUTION = WorkflowExecution.WORKFLOW_EXECUTION;
 
     /**
+     * The table <code>public.workflow_operation_receipt</code>.
+     */
+    public final WorkflowOperationReceipt WORKFLOW_OPERATION_RECEIPT = WorkflowOperationReceipt.WORKFLOW_OPERATION_RECEIPT;
+
+    /**
+     * The table <code>public.workflow_run</code>.
+     */
+    public final WorkflowRun WORKFLOW_RUN = WorkflowRun.WORKFLOW_RUN;
+
+    /**
+     * The table <code>public.workflow_run_step</code>.
+     */
+    public final WorkflowRunStep WORKFLOW_RUN_STEP = WorkflowRunStep.WORKFLOW_RUN_STEP;
+
+    /**
      * The table <code>public.workspace</code>.
      */
     public final Workspace WORKSPACE = Workspace.WORKSPACE;
@@ -1407,6 +1425,9 @@ public class Public extends SchemaImpl {
             WfTaskOwnership.WF_TASK_OWNERSHIP,
             WfWorkerRuntimeConnection.WF_WORKER_RUNTIME_CONNECTION,
             WorkflowExecution.WORKFLOW_EXECUTION,
+            WorkflowOperationReceipt.WORKFLOW_OPERATION_RECEIPT,
+            WorkflowRun.WORKFLOW_RUN,
+            WorkflowRunStep.WORKFLOW_RUN_STEP,
             Workspace.WORKSPACE,
             WorkspaceEntitlementPool.WORKSPACE_ENTITLEMENT_POOL,
             WorkspaceGroup.WORKSPACE_GROUP,

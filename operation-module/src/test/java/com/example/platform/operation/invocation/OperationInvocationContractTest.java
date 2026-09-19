@@ -39,14 +39,16 @@ class OperationInvocationContractTest {
             "actor-1", "tenant-1", Set.of("editor"), "test");
 
     @Test
-    void portAcceptsTheExistingOperationRequestAndHasExactlyOneMethod() throws Exception {
+    void portExposesReadOnlyValidationAndOneEffectInvocation() throws Exception {
         Method invoke = OperationInvocationPort.class.getDeclaredMethod(
                 "invoke", OperationRequest.class, OperationInvocationContext.class);
 
         assertEquals(OperationInvocationResult.class, invoke.getReturnType());
         assertTrue(Modifier.isPublic(invoke.getModifiers()));
         assertTrue(Modifier.isAbstract(invoke.getModifiers()));
-        assertArrayEquals(new Method[]{invoke}, OperationInvocationPort.class.getDeclaredMethods());
+        Method validate=OperationInvocationPort.class.getDeclaredMethod("validate",OperationRequest.class,OperationInvocationContext.class,String.class);
+        assertEquals(void.class,validate.getReturnType());
+        assertEquals(java.util.Set.of(invoke,validate),java.util.Set.of(OperationInvocationPort.class.getDeclaredMethods()));
     }
 
     @Test

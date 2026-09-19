@@ -28,13 +28,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles({"test", "preview"})
 @TestPropertySource(properties = {
-    "app.security.enabled=false",
+    "app.security.enabled=true",
+    "app.security.oauth2.enabled=false",
+    "app.outbox.dispatcher-enabled=false",
+    "app.security.jwt.secret-key=ep07-definition-contract-key-at-least-256-bits",
     "app.identity.api-key-auth-enabled=false",
     "spring.mvc.throw-exception-if-no-handler-found=true",
     "spring.web.resources.add-mappings=false"
 })
 class UserWorkflowDefinitionApiTest extends PostgresTestContainerSupport {
-
     private static final String BASE = "/api/tenants/tenant-a/workflow-definitions";
     private static final Pattern ID_PATTERN = Pattern.compile("\"definitionId\":\"([^\"]+)\"");
     private static final Pattern VERSION_PATTERN = Pattern.compile("\"versionNumber\":([0-9]+)");
@@ -46,6 +48,26 @@ class UserWorkflowDefinitionApiTest extends PostgresTestContainerSupport {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    @Autowired org.springframework.context.ApplicationContext context;
+    private String token;
+    @org.junit.jupiter.api.BeforeEach void authenticatedAuthor() {
+        String user="author-"+java.util.UUID.randomUUID();
+        jdbcTemplate.update("insert into tenant(id,name,status,created_at) values ('tenant-a','Workflow','ACTIVE',now()) on conflict do nothing");
+        jdbcTemplate.update("insert into \"user\"(id,tenant_id,username,email,role,status,created_at) values (?,'tenant-a',?,?,'MEMBER','ACTIVE',now())",user,user,user+"@test.invalid");
+        var accounts=context.getBean(com.example.platform.identity.app.AccountMembershipService.class);
+        var operator=com.example.platform.shared.authorization.CanonicalActor.system("system:identity-provisioning","tenant-a");
+        var account=accounts.provisionVerifiedAccount(operator,"urn:media-platform:local-hmac",user);accounts.linkMembership(operator,account,"tenant-a",user);
+        var roles=context.getBean(com.example.platform.identity.infrastructure.RoleRepository.class);
+        var permissions=context.getBean(com.example.platform.identity.app.PermissionService.class);
+        var role=context.getBean(com.example.platform.identity.app.RoleService.class).createRole(user,"Workflow author",null,com.example.platform.identity.domain.Role.RoleScope.GLOBAL);
+        for(String key:java.util.List.of("workflow-definition.edit","workflow-definition.read","workflow-definition.publish","workflow-definition.archive")) {
+            var permission=roles.findAllPermissions().stream().filter(p->p.permissionKey().equals(key)).findFirst().orElseGet(()->permissions.createPermission(key,key,null,"WORKFLOW_DEFINITION"));
+            roles.saveRolePermission(new com.example.platform.identity.domain.RolePermission(java.util.UUID.randomUUID().toString(),role.id(),permission.id(),java.time.Instant.now()));
+        }
+        roles.saveUserRoleAssignment(new com.example.platform.identity.domain.UserRoleAssignment(java.util.UUID.randomUUID().toString(),"tenant-a",null,user,role.id(),user,java.time.Instant.now()));
+        token=io.jsonwebtoken.Jwts.builder().subject(user).claim("tenantId","tenant-a").expiration(new java.util.Date(System.currentTimeMillis()+600000))
+                .signWith(io.jsonwebtoken.security.Keys.hmacShaKeyFor("ep07-definition-contract-key-at-least-256-bits".getBytes(java.nio.charset.StandardCharsets.UTF_8))).compact();
+    }
     private final HttpClient client = HttpClient.newHttpClient();
 
     private String url(String path) {
@@ -53,7 +75,7 @@ class UserWorkflowDefinitionApiTest extends PostgresTestContainerSupport {
     }
 
     private HttpResponse<String> send(String method, String path, String body) throws Exception {
-        HttpRequest.Builder b = HttpRequest.newBuilder(URI.create(url(path)));
+        HttpRequest.Builder b = HttpRequest.newBuilder(URI.create(url(path))).header("Authorization","Bearer "+token);
         if (body != null) {
             b.header("Content-Type", "application/json").method(method, HttpRequest.BodyPublishers.ofString(body));
         } else {

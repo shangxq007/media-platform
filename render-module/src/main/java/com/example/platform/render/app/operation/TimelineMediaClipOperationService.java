@@ -112,6 +112,12 @@ public class TimelineMediaClipOperationService {
                 prepared.preview().expectedChangedCanonicalObjects());
     }
 
+    void validateInvocation(OperationRequest request, OperationInvocationContext context) {
+        String projectId = ((OperationTargetRequest.TimelineTargetRequest) request.target()).timelineId();
+        requirePreparationAuthorization(context.actor().tenantId(), projectId, context.actor(), TIMELINE_EDIT);
+        prepareInternal(context.actor().tenantId(), projectId, request, context.actor());
+    }
+
     InvocationOutcome invoke(OperationRequest request, OperationInvocationContext context) {
         Objects.requireNonNull(request, "request");
         Objects.requireNonNull(context, "context");

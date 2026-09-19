@@ -85,6 +85,15 @@ public final class UserWorkflowDefinitionValidator {
     public static UserWorkflowValidationResult validate(UserWorkflowDefinition definition) {
         List<UserWorkflowValidationIssue> issues = new ArrayList<>();
 
+        if (definition.schemaVersion() == 2) {
+            for (var node : definition.nodes()) {
+                if (SECRET_PATTERN.matcher(node.configValues().canonicalJson()).find())
+                    issues.add(issue(UserWorkflowValidationCode.CONFIG_SECRET_LIKE_VALUE, "Secret-like value prohibited"));
+            }
+            try { new com.example.platform.workflow.plan.WorkflowPlanCompiler().compile(definition); }
+            catch (IllegalArgumentException invalid) { issues.add(issue(UserWorkflowValidationCode.CONFIG_INVALID_NODE_TYPE, invalid.getMessage())); }
+            return new UserWorkflowValidationResult(issues.isEmpty(), issues);
+        }
         // Configuration schema version (definition-level)
         if (definition.schemaVersion() != SUPPORTED_SCHEMA_VERSION) {
             issues.add(issue(UserWorkflowValidationCode.CONFIG_INVALID_SCHEMA_VERSION,

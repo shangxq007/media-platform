@@ -12,7 +12,10 @@ public final class WorkflowPlanValidator {
         if (!ancestors.add(identity)) fail("Recursive subworkflow");
         if (plan.nodes().isEmpty() || plan.nodes().size() > 100 || plan.edges().size() > 500) fail("Plan size");
         Map<String, Node> nodes = new HashMap<>();
-        for (Node n : plan.nodes()) if (nodes.put(n.id(), n) != null) fail("Duplicate node");
+        for (Node n : plan.nodes()) {
+            if(!n.id().matches("[A-Za-z0-9_-]{1,64}"))fail("Invalid node identity");
+            if (nodes.put(n.id(), n) != null) fail("Duplicate node");
+        }
         if (!nodes.containsKey(plan.rootNodeId())) fail("Missing root");
         Map<String, List<ControlEdge>> children = new HashMap<>();
         Set<String> owned = new HashSet<>();

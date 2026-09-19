@@ -64,6 +64,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -73,6 +74,17 @@ class CanonicalOperationInvocationServiceTest {
     private static final String PROJECT = "timeline-T";
     private static final String BASE_REVISION = "revision-R0";
     private static final TimelineContentDigester DIGESTER = new TimelineContentDigester();
+
+    @Test
+    void preflightUsesCanonicalOwnerWithoutApplyingAnEffect() {
+        var owner=mock(TimelineMediaClipOperationService.class);
+        var service=new CanonicalOperationInvocationService(owner);
+        var request=validRequest("base-hash");var context=context(TENANT);
+        service.validate(request,context,PROJECT);
+        verify(owner).validateInvocation(request,context);
+        verifyNoMoreInteractions(owner);
+        assertThrows(OperationInvocationException.class,()->service.validate(request,context,"foreign-project"));
+    }
 
     @Test
     void unsupportedDefinitionFailsBeforeAnyOperationMechanics() {

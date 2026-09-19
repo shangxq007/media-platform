@@ -92,6 +92,22 @@ public final class CanonicalOperationInvocationService implements OperationInvoc
         }
     }
 
+    @Override
+    public void validate(OperationRequest request, OperationInvocationContext context, String projectId) {
+        if (projectId==null || request == null || !OperationDefinition.V1.ADD_MEDIA_CLIP.definitionId().equals(request.definitionId())
+                || !OperationDefinition.V1.ADD_MEDIA_CLIP.version().equals(request.version())
+                || !(request.target() instanceof OperationTargetRequest.TimelineTargetRequest target)
+                || !projectId.equals(target.timelineId())
+                || !(request.parameters() instanceof OperationParameters.AddMediaClipParameters))
+            throw failure(OperationInvocationFailureCode.UNSUPPORTED_OPERATION, "unsupported-operation-or-scope");
+        if(context==null||context.actor()==null||context.actor().tenantId()==null||context.actor().tenantId().isBlank())
+            throw failure(OperationInvocationFailureCode.INVALID_REQUEST,"invalid-context");
+        try {mediaClipService.validateInvocation(request, context);}
+        catch(TimelineOperationException rejected){throw translate(rejected.code());}
+        catch(OperationInvocationException rejected){throw rejected;}
+        catch(RuntimeException rejected){throw failure(OperationInvocationFailureCode.APPLY_FAILURE,"preflight-failure");}
+    }
+
     private static OperationInvocationException translate(TimelineOperationException.Code code) {
         return switch (code) {
             case BASE_REVISION_NOT_FOUND ->

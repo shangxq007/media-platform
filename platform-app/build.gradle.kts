@@ -9,6 +9,7 @@ dependencies {
     implementation(project(":render-module"))
     implementation(project(":timeline-module"))
     implementation(project(":media-module"))
+    testImplementation("io.temporal:temporal-testing:1.33.0")
     testImplementation(project(":audio-module"))
     implementation(project(":operation-module"))
     implementation(project(":font-text-module"))

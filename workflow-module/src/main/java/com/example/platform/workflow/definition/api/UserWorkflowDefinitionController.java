@@ -67,8 +67,8 @@ import java.util.Optional;
  * repository tenant scoping underneath.</p>
  *
  * <p>When no authenticated actor is present (e.g. the platform security filter
- * layer is disabled in dev/test profiles), authorization is skipped so the
- * existing unauthenticated behavior is preserved — an absent actor is never
+ * layer is disabled in dev/test profiles), authorization fails closed; the
+ * request is rejected — an absent actor is never
  * treated as SYSTEM.</p>
  */
 @RestController
@@ -99,19 +99,23 @@ public class UserWorkflowDefinitionController {
      * Enforce authorization for {@code action} on the given resource scope.
      *
      * <p>If no authenticated actor resolves (security filter disabled), the call
-     * proceeds unguarded — preserving dev/test behavior. If an actor is present but
+     * fails closed. If an actor is present but
      * denied, a {@link AuthorizationDeniedException} is thrown: a tenant-boundary
      * (cross-tenant) denial is translated to the existing 404
      * {@code DEFINITION_NOT_FOUND} so existence is never leaked across tenants;
      * any other denial surfaces as 403.</p>
      */
     private void authorize(String tenantId, AuthorizationActions action, String resourceId) {
+        var current=actorResolver.resolveCurrentActor().orElseThrow(()->new org.springframework.web.server.ResponseStatusException(HttpStatus.UNAUTHORIZED));
+        if(!tenantId.equals(current.tenantId())) throw new UserWorkflowException(UserWorkflowErrorCode.Code.DEFINITION_NOT_FOUND,"definition not found");
+        String projectId=resourceId==null?null:service.get(tenantId,UserWorkflowDefinitionId.of(resourceId)).projectId();
+        authorize(tenantId,action,resourceId,projectId);
+    }
+    private void authorize(String tenantId, AuthorizationActions action, String resourceId,String projectId) {
         Optional<CanonicalActor> actor = actorResolver.resolveCurrentActor();
-        if (actor.isEmpty()) {
-            return;
-        }
+        if (actor.isEmpty()) throw new org.springframework.web.server.ResponseStatusException(HttpStatus.UNAUTHORIZED);
         AuthorizableResourceRef resource = new AuthorizableResourceRef(
-                AuthorizationResourceType.WORKFLOW_DEFINITION, resourceId, tenantId);
+                AuthorizationResourceType.WORKFLOW_DEFINITION, resourceId, tenantId,projectId,null);
         AuthorizationRequest request = new AuthorizationRequest(
                 actor.get(), action.action(), resource,
                 new AuthorizationContext("web"));
@@ -136,7 +140,7 @@ public class UserWorkflowDefinitionController {
     public ResponseEntity<UserWorkflowDefinitionDto> create(
             @PathVariable String tenantId,
             @RequestBody UserWorkflowDefinitionCreateRequest request) {
-        authorize(tenantId, AuthorizationActions.WORKFLOW_DEFINITION_EDIT);
+        authorize(tenantId, AuthorizationActions.WORKFLOW_DEFINITION_EDIT,null,request.projectId());
         UserWorkflowDefinition created = service.create(
                 tenantId, request.projectId(), request.name(), request.description(),
                 toNodes(request), toEdges(request.edges()),
@@ -151,7 +155,7 @@ public class UserWorkflowDefinitionController {
     public List<UserWorkflowDefinitionDto> list(
             @PathVariable String tenantId,
             @RequestParam(required = false) String projectId) {
-        authorize(tenantId, AuthorizationActions.WORKFLOW_DEFINITION_READ);
+        authorize(tenantId, AuthorizationActions.WORKFLOW_DEFINITION_READ,null,projectId);
         return service.list(tenantId, projectId).stream()
                 .map(UserWorkflowDefinitionDto::from)
                 .toList();
@@ -194,7 +198,7 @@ public class UserWorkflowDefinitionController {
                 tenantId, UserWorkflowDefinitionId.of(definitionId),
                 UserWorkflowDefinitionVersion.of(versionNumber),
                 request.optimisticVersion(), request.name(), request.description(),
-                toNodes(request), toEdges(request.edges()),
+                toNodes(request,service.getVersion(tenantId,UserWorkflowDefinitionId.of(definitionId),UserWorkflowDefinitionVersion.of(versionNumber)).schemaVersion()), toEdges(request.edges()),
                 toParameters(request.parameters()), toTrigger(request.trigger()),
                 principalId());
         return UserWorkflowDefinitionDto.from(updated);
@@ -285,15 +289,15 @@ public class UserWorkflowDefinitionController {
 
     private List<UserWorkflowDefinitionNode> toNodes(UserWorkflowDefinitionCreateRequest request) {
         return request.nodes() == null ? List.of()
-                : request.nodes().stream().map(this::toNode).toList();
+                : request.nodes().stream().map(n -> toNode(n,request.schemaVersion())).toList();
     }
 
-    private List<UserWorkflowDefinitionNode> toNodes(UserWorkflowDefinitionUpdateRequest request) {
+    private List<UserWorkflowDefinitionNode> toNodes(UserWorkflowDefinitionUpdateRequest request,int schemaVersion) {
         return request.nodes() == null ? List.of()
-                : request.nodes().stream().map(this::toNode).toList();
+                : request.nodes().stream().map(n -> toNode(n,schemaVersion)).toList();
     }
 
-    private UserWorkflowDefinitionNode toNode(UserWorkflowDefinitionDto.NodeDto n) {
+    private UserWorkflowDefinitionNode toNode(UserWorkflowDefinitionDto.NodeDto n,int schemaVersion) {
         WorkflowNodeType type;
         try {
             type = WorkflowNodeType.valueOf(n.nodeType());
@@ -303,14 +307,14 @@ public class UserWorkflowDefinitionController {
         }
         UserWorkflowDefinitionNode.ErrorPolicy policy;
         try {
-            policy = UserWorkflowDefinitionNode.ErrorPolicy.valueOf(n.errorPolicy());
+            policy = n.errorPolicy()==null?UserWorkflowDefinitionNode.ErrorPolicy.FAIL:UserWorkflowDefinitionNode.ErrorPolicy.valueOf(n.errorPolicy());
         } catch (IllegalArgumentException e) {
-            policy = UserWorkflowDefinitionNode.ErrorPolicy.FAIL;
+            throw new UserWorkflowException(UserWorkflowErrorCode.Code.INVALID_NODE_TYPE_CONFIGURATION,"Unknown error policy");
         }
         return new UserWorkflowDefinitionNode(
                 n.nodeId(), type, n.name(), n.configSchemaRef(),
                 new UserWorkflowDefinitionNode.VersionedJsonDocument(
-                        1, UserWorkflowDefinitionDto.canonicalConfig(n.configValues())),
+                        schemaVersion, UserWorkflowDefinitionDto.canonicalConfig(n.configValues())),
                 toParameters(n.inputDeclarations()), toParameters(n.outputDeclarations()), policy);
     }
 
@@ -339,11 +343,6 @@ public class UserWorkflowDefinitionController {
     }
 
     private String principalId() {
-        // Platform convention (audit-compliance-module AuditPortAdapter):
-        // actor priority = MDC principal > "system". The platform security
-        // filters (OAuth2RequestContextFilter / ApiKeyAuthFilter) populate MDC
-        // TraceKeys.PRINCIPAL with the authenticated subject on every request.
-        String principal = org.slf4j.MDC.get(com.example.platform.observability.context.TraceKeys.PRINCIPAL);
-        return principal != null && !principal.isBlank() ? principal : "system";
+        return actorResolver.resolveCurrentActor().orElseThrow(()->new org.springframework.web.server.ResponseStatusException(HttpStatus.UNAUTHORIZED)).actorId();
     }
 }

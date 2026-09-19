@@ -2,7 +2,7 @@ package com.example.platform.workflow.definition.domain;
 
 /** Declaration vocabulary. Schema 1 retains its eight historical declaration types.
  * Frozen executable controls are compiled by WorkflowPlanCompiler; schema 2 publication
- * remains disabled until the durable application start path is assembled. */
+ * is supported through the durable Workflow run application path. */
 public enum WorkflowNodeType {
     ACTION,
     EXTENSION_POINT,

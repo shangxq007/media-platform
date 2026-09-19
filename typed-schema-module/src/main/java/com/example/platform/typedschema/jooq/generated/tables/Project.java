@@ -16,6 +16,7 @@ import com.example.platform.typedschema.jooq.generated.tables.SocialPost.SocialP
 import com.example.platform.typedschema.jooq.generated.tables.Tenant.TenantPath;
 import com.example.platform.typedschema.jooq.generated.tables.TimelineRevision.TimelineRevisionPath;
 import com.example.platform.typedschema.jooq.generated.tables.TimelineSnapshot.TimelineSnapshotPath;
+import com.example.platform.typedschema.jooq.generated.tables.WorkflowRun.WorkflowRunPath;
 import com.example.platform.typedschema.jooq.generated.tables.Workspace.WorkspacePath;
 import com.example.platform.typedschema.jooq.generated.tables.records.ProjectRecord;
 
@@ -318,6 +319,19 @@ public class Project extends TableImpl<ProjectRecord> {
             _renderExecutionContext = new RenderExecutionContextPath(this, null, Keys.RENDER_EXECUTION_CONTEXT__RENDER_EXECUTION_CONTEXT_PROJECT_ID_TENANT_ID_WORKSPACE_ID_FKEY.getInverseKey());
 
         return _renderExecutionContext;
+    }
+
+    private transient WorkflowRunPath _workflowRun;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.workflow_run</code> table
+     */
+    public WorkflowRunPath workflowRun() {
+        if (_workflowRun == null)
+            _workflowRun = new WorkflowRunPath(this, null, Keys.WORKFLOW_RUN__WORKFLOW_RUN_PROJECT_ID_FKEY.getInverseKey());
+
+        return _workflowRun;
     }
 
     @Override

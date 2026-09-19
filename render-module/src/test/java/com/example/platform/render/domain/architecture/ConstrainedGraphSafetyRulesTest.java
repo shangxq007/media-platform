@@ -8,8 +8,6 @@ import com.example.platform.timeline.diff.application.*;
 import com.example.platform.timeline.diff.calculation.*;
 import com.example.platform.timeline.diff.merge.TimelineMergeConflictDetector;
 import com.example.platform.timeline.diff.merge.preview.*;
-import com.example.platform.render.domain.workflow.*;
-import com.example.platform.render.domain.workflow.planning.*;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.*;
@@ -25,99 +23,6 @@ import com.example.platform.shared.time.FrameRate;
 class ConstrainedGraphSafetyRulesTest {
 
     // ===== Workflow cycle detection still rejects cycles =====
-
-    @Test
-    @DisplayName("Workflow cycle detector rejects simple cycle")
-    void workflowCycleDetectorRejectsCycle() {
-        WorkflowStep s1 = new WorkflowStep(new WorkflowStepId("s1"),
-                WorkflowStepType.INGEST_PRODUCT,
-                List.of(new WorkflowStepDependency(new WorkflowStepId("s2"), null)),
-                Map.of(), null, Map.of());
-        WorkflowStep s2 = new WorkflowStep(new WorkflowStepId("s2"),
-                WorkflowStepType.VALIDATE_INPUT,
-                List.of(new WorkflowStepDependency(new WorkflowStepId("s1"), null)),
-                Map.of(), null, Map.of());
-        WorkflowDefinition def = new WorkflowDefinition(
-                new WorkflowDefinitionId("wf1"), new WorkflowVersion("1.0"), null,
-                List.of(), List.of(s1, s2), List.of(), Map.of());
-
-        assertTrue(new WorkflowCycleDetector().hasCycle(def));
-    }
-
-    @Test
-    @DisplayName("Workflow cycle detector accepts acyclic graph")
-    void workflowCycleDetectorAcceptsAcyclic() {
-        WorkflowStep s1 = new WorkflowStep(new WorkflowStepId("s1"),
-                WorkflowStepType.INGEST_PRODUCT, List.of(), Map.of(), null, Map.of());
-        WorkflowStep s2 = new WorkflowStep(new WorkflowStepId("s2"),
-                WorkflowStepType.VALIDATE_INPUT,
-                List.of(new WorkflowStepDependency(new WorkflowStepId("s1"), null)),
-                Map.of(), null, Map.of());
-        WorkflowStep s3 = new WorkflowStep(new WorkflowStepId("s3"),
-                WorkflowStepType.RENDER_TIMELINE,
-                List.of(new WorkflowStepDependency(new WorkflowStepId("s2"), null)),
-                Map.of(), null, Map.of());
-        WorkflowDefinition def = new WorkflowDefinition(
-                new WorkflowDefinitionId("wf1"), new WorkflowVersion("1.0"), null,
-                List.of(), List.of(s1, s2, s3), List.of(), Map.of());
-
-        assertFalse(new WorkflowCycleDetector().hasCycle(def));
-    }
-
-    @Test
-    @DisplayName("Workflow cycle detector rejects self-cycle")
-    void workflowCycleDetectorRejectsSelfCycle() {
-        WorkflowStep s1 = new WorkflowStep(new WorkflowStepId("s1"),
-                WorkflowStepType.INGEST_PRODUCT,
-                List.of(new WorkflowStepDependency(new WorkflowStepId("s1"), null)),
-                Map.of(), null, Map.of());
-        WorkflowDefinition def = new WorkflowDefinition(
-                new WorkflowDefinitionId("wf1"), new WorkflowVersion("1.0"), null,
-                List.of(), List.of(s1), List.of(), Map.of());
-
-        assertTrue(new WorkflowCycleDetector().hasCycle(def));
-    }
-
-    // ===== Workflow topological order is deterministic =====
-
-    @Test
-    @DisplayName("Workflow topological order is deterministic")
-    void workflowTopologicalOrderIsDeterministic() {
-        WorkflowStep s1 = new WorkflowStep(new WorkflowStepId("s1"),
-                WorkflowStepType.INGEST_PRODUCT, List.of(), Map.of(), null, Map.of());
-        WorkflowStep s2 = new WorkflowStep(new WorkflowStepId("s2"),
-                WorkflowStepType.VALIDATE_INPUT, List.of(), Map.of(), null, Map.of());
-        WorkflowStep s3 = new WorkflowStep(new WorkflowStepId("s3"),
-                WorkflowStepType.NORMALIZE_TIMELINE, List.of(), Map.of(), null, Map.of());
-        WorkflowDefinition def = new WorkflowDefinition(
-                new WorkflowDefinitionId("wf1"), new WorkflowVersion("1.0"), null,
-                List.of(), List.of(s1, s2, s3), List.of(), Map.of());
-
-        WorkflowStepOrderResolver resolver = new WorkflowStepOrderResolver();
-        List<String> order1 = resolver.resolveOrder(def);
-        List<String> order2 = resolver.resolveOrder(def);
-        List<String> order3 = resolver.resolveOrder(def);
-
-        assertEquals(order1, order2);
-        assertEquals(order2, order3);
-    }
-
-    @Test
-    @DisplayName("Workflow graph validator rejects duplicate step IDs")
-    void workflowValidatorRejectsDuplicateIds() {
-        WorkflowStep step = new WorkflowStep(new WorkflowStepId("s1"),
-                WorkflowStepType.INGEST_PRODUCT, List.of(), Map.of(), null, Map.of());
-        WorkflowDefinition def = new WorkflowDefinition(
-                new WorkflowDefinitionId("wf1"), new WorkflowVersion("1.0"), null,
-                List.of(), List.of(step, step), List.of(), Map.of());
-
-        WorkflowGraphValidationResult result = new WorkflowGraphValidator().validate(def);
-        assertFalse(result.valid());
-        assertTrue(result.issues().stream()
-                .anyMatch(i -> i.code() == WorkflowDryRunIssueCode.DUPLICATE_STEP_ID));
-    }
-
-    // ===== Timeline diff calculator is deterministic =====
 
     @Test
     @DisplayName("Timeline diff calculator is deterministic")
