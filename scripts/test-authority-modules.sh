@@ -3,6 +3,13 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 case "${1:-}" in
+  marketplace)
+    ./gradlew --no-daemon --console=plain \
+      :marketplace-module:test :outbox-event-module:test :notification-module:test :audit-compliance-module:test \
+      :identity-access-module:test --tests '*PermissionServiceTest' --tests '*RbacAuthorizationDecisionPortTest' --tests '*ProjectReadAuthorizationTest' \
+      :render-module:test --tests '*AssetSearchConsumerTest' --tests '*SearchReindexTaskHandlerTest' --tests '*RawMediaProductRegistrationFacadeTest' --tests '*RenderOutboxEventsTest' \
+      :platform-app:test --tests '*Marketplace*Test' --tests '*TimelineReviewOwnerIntegrationTest' --tests '*TimelineEventBoundaryTest' --tests '*MediaOwnerIntegrationTest' --tests '*MediaAuthorityBoundaryTest' --tests '*JwtAuthFilterTest' --tests '*OutboxNotificationCompositionTest' --tests '*NotificationIngressPersistenceTest' --tests '*ModularityTest'
+    ;;
   workflow)
     # Requires an isolated Temporal service (EP07_TEMPORAL_TARGET, default 127.0.0.1:17233)
     # and a Docker-compatible endpoint for disposable PostgreSQL Testcontainers.
@@ -88,5 +95,5 @@ case "${1:-}" in
   compile)
     ./gradlew --no-daemon --console=plain compileJava compileTestJava pfirr1RemediationCheck :platform-app:bootJar
     ;;
-  *) echo 'Usage: bash scripts/test-authority-modules.sh identity|observation|billing|execution|outbox|render-read|workflow|workflow-plan|compile|affected BASE HEAD' >&2; exit 2 ;;
+  *) echo 'Usage: bash scripts/test-authority-modules.sh identity|observation|billing|execution|outbox|render-read|marketplace|workflow|workflow-plan|compile|affected BASE HEAD' >&2; exit 2 ;;
 esac

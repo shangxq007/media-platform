@@ -1,3 +1,5 @@
+> Historical pre-owner implementation record. EP15/EP29C replaces the Render/in-memory Marketplace and generic Asset publication paths described here. Current contracts, routes, event ownership and migration limits: [Marketplace owner contracts](../marketplace/marketplace-foundation.md). Artifact-owned metadata and Timeline-owned review contracts remain distinct.
+
 ---
 status: implementation-report
 created: 2026-06-25

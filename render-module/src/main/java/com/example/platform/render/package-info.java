@@ -1,7 +1,7 @@
 @org.springframework.modulith.ApplicationModule(
         displayName = "Render",
         allowedDependencies = {
-            "marketplace :: events",
+            "marketplace :: events", "marketplace :: api",
             "timeline :: reviews", "timeline :: revision", "timeline :: composition", "timeline :: serialization",
             "ai",
             "ai :: API",
