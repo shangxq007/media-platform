@@ -83,7 +83,14 @@ public final class PlanWalkWorkflowImpl implements PlanWalkWorkflow {
                 if (!state.root.done
                         && (state.transitions - startedTransitions >= 64
                                 || Workflow.getInfo().isContinueAsNewSuggested()))
-                    Workflow.continueAsNew(runId, planJson, inputs, encode(state));
+                    // Continue-As-New does not inherit memo in the adopted SDK. Rebuild it
+                    // from the same immutable accepted inputs used by every execution.
+                    // Dispatch keeps requiring both pins, including on successor runs.
+                    Workflow.continueAsNew(
+                            ContinueAsNewOptions.newBuilder()
+                                    .setMemo(Map.of("workflowRunId", runId, "planDigest", codec.digest(plan)))
+                                    .build(),
+                            runId, planJson, inputs, encode(state));
             }
         } catch (CanceledFailure e) {
             terminal = "CANCELLED";

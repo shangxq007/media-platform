@@ -126,6 +126,7 @@ class WorkflowFoundationIntegrationTest extends PostgresTestContainerSupport {
         final java.util.concurrent.atomic.AtomicBoolean failProjection =
                 new java.util.concurrent.atomic.AtomicBoolean();
         final Map<String, CountDownLatch> waitSignals = new ConcurrentHashMap<>();
+        final Map<String, CountDownLatch[]> invocationGates = new ConcurrentHashMap<>();
 
         FaultActivities(WorkflowActivities delegate) {
             this.delegate = delegate;
@@ -134,6 +135,17 @@ class WorkflowFoundationIntegrationTest extends PostgresTestContainerSupport {
         public String invoke(
                 String run, String step, String plan, String node, Map<String, String> bindings) {
             String result = delegate.invoke(run, step, plan, node, bindings);
+            var gate = invocationGates.get(bindings.getOrDefault("baseRevisionId", ""));
+            if (gate != null) {
+                gate[0].countDown();
+                try {
+                    if (!gate[1].await(30, TimeUnit.SECONDS))
+                        throw new IllegalStateException("Correction test gate timed out");
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException(e);
+                }
+            }
             if (failAcknowledgement.compareAndSet(true, false))
                 throw new IllegalStateException(
                         "Injected acknowledgement loss after committed effect/receipt");
@@ -1368,4 +1380,169 @@ class WorkflowFoundationIntegrationTest extends PostgresTestContainerSupport {
             replacement.awaitTermination(10, TimeUnit.SECONDS);
         }
     }
+
+    @Test
+    @Order(1)
+    void approvalAfterContinuationUsesDurableDispatchAndSeventyDistinctEffects() throws Exception {
+        continuedControl(WaitKind.APPROVAL, 70, false, false);
+    }
+
+    @Test
+    @Order(1)
+    void signalAndRetriedStartRaceRepeatedContinuationWithoutLosingIdentity() throws Exception {
+        continuedControl(WaitKind.SIGNAL, 210, false, true);
+    }
+
+    @Test
+    @Order(1)
+    void cancellationAfterRepeatedContinuationFencesTerminalProjection() throws Exception {
+        continuedControl(WaitKind.APPROVAL, 210, true, false);
+    }
+
+    private void continuedControl(WaitKind kind, int count, boolean cancel, boolean race)
+            throws Exception {
+        var wait = new Node("wait", Kind.WAIT, null, new Wait(kind, 120000),
+                0, 0, null, null, null, null, null, null);
+        var each = new Node("each", Kind.FOREACH, null, null, 300, 4,
+                new ValueRef(Source.INPUT, "items"), null, null, null, null, null);
+        String definition = publish(
+                List.of(Node.control("root", Kind.PARALLEL), wait, each,
+                        effect("effect", Map.of("baseRevisionId", new ValueRef(Source.ITEM, "item")))),
+                List.of(new ControlEdge("root", "wait", 0), new ControlEdge("root", "each", 1),
+                        new ControlEdge("each", "effect", 0)));
+        String inputs = RunJson.write(Map.of("items", java.util.stream.IntStream.range(0, count)
+                .mapToObj(i -> "base-" + i).toList()));
+        var response = http(user, "POST", "/api/tenants/" + tenant + "/workflow-executions",
+                Map.of("definitionId", definition, "definitionVersion", 1, "projectId", project,
+                        "idempotencyKey", "continued-control", "inputsJson", inputs));
+        assertThat(response.statusCode()).withFailMessage(response.body()).isEqualTo(201);
+        String id = RunJson.read(response.body(), com.fasterxml.jackson.databind.JsonNode.class)
+                .path("id").asText();
+        var client = temporal.getWorkflowClient();
+        var gate = new CountDownLatch[] {new CountDownLatch(1), new CountDownLatch(1)};
+        if (race) faults.invocationGates.put("\"base-100\"", gate);
+        try {
+            try (var worker = dispatcher()) { assertThat(worker.processOnce(event(id))).isTrue(); }
+            String first = client.newUntypedWorkflowStub(WorkflowDispatch.workflowId(id))
+                    .describe().getFirstRunId();
+            if (race) assertThat(gate[0].await(30, TimeUnit.SECONDS)).isTrue();
+            else org.awaitility.Awaitility.await().atMost(java.time.Duration.ofSeconds(30))
+                    .untilAsserted(() -> assertThat(effectCount(id)).isEqualTo(count));
+            org.awaitility.Awaitility.await().atMost(java.time.Duration.ofSeconds(30))
+                    .untilAsserted(() -> assertThat(continuationsWithPins(id, first)).isGreaterThanOrEqualTo(1));
+            String step = WorkflowStepIdentity.child(WorkflowStepIdentity.root("root"), "wait");
+            assertThat(store.waitProjection(id, step).getFirst().get("status")).isEqualTo("WAITING");
+            var release = Map.of("stepId", step, "releaseId", "continued-command", "approved", true);
+            String base = "/api/tenants/" + tenant + "/workflow-executions/" + id;
+            String path = base + (cancel ? "/cancel" : "/release");
+            Object body = cancel ? Map.of() : release;
+            assertThat(http(outsider, "POST", path, body).statusCode()).isIn(401, 403);
+            assertThat(http(user, "POST", path, body).statusCode()).isEqualTo(200);
+            assertThat(http(user, "POST", path, body).statusCode()).isEqualTo(200);
+            String control = jdbc.queryForObject("select id from outbox_events where aggregate_id=?"
+                    + " and event_type='workflow.run.control'", String.class, id);
+            Runnable deliver = () -> {
+                replayStart(id); // Same accepted intent, through the existing typed Outbox router.
+                try (var worker = dispatcher()) { assertThat(worker.processOnce(control)).isTrue(); }
+                // Re-deliver the persisted envelope; do not reset published Outbox rows.
+                replayControl(id, step, cancel);
+            };
+            if (race) {
+                var barrier = new CyclicBarrier(2);
+                try (var executor = Executors.newSingleThreadExecutor()) {
+                    var delivery = executor.submit(() -> { barrier.await(); deliver.run(); return true; });
+                    barrier.await();
+                    gate[1].countDown();
+                    assertThat(delivery.get(30, TimeUnit.SECONDS)).isTrue();
+                }
+            } else deliver.run();
+            if (cancel) assertThatThrownBy(() -> complete(id)).isInstanceOf(WorkflowFailedException.class);
+            else complete(id);
+            assertThat(store.require(id).status()).isEqualTo(cancel ? "CANCELLED" : "SUCCEEDED");
+            assertThat(effectCount(id)).isEqualTo(count);
+            assertThat(jdbc.queryForObject("select sum(invocation_count) from ep07_test_effect where invocation_id like ?",
+                    Integer.class, "workflow:" + id + ":%" )).isEqualTo(count);
+            assertThat(jdbc.queryForObject("select count(distinct base_revision) from ep07_test_effect where invocation_id like ?",
+                    Integer.class, "workflow:" + id + ":%" )).isEqualTo(count);
+            assertThat(jdbc.queryForObject("select count(*) from workflow_operation_receipt where run_id=?",
+                    Integer.class, id)).isEqualTo(count);
+            assertThat(jdbc.queryForObject("select status from outbox_events where id=?",
+                    String.class, control)).isEqualTo("PUBLISHED");
+            int transitions = continuationsWithPins(id, first);
+            assertThat(transitions).isGreaterThanOrEqualTo(count == 70 ? 1 : 3);
+            assertThat(http(user, "POST", base + "/release", release).statusCode()).isEqualTo(400);
+            String terminal = store.require(id).status();
+            assertThat(context.getBean(WorkflowActivities.class).terminal(id, "SUCCEEDED", null, null))
+                    .isEqualTo(terminal);
+            replayStart(id);
+            replayControl(id, step, cancel);
+            assertThat(store.require(id).status()).isEqualTo(terminal);
+            System.out.println("EP07_CORRECTION_CONTROL run=" + id + " kind=" + kind + " cancel=" + cancel
+                    + " continuations=" + transitions + " effects=" + count + " status=" + terminal);
+        } finally {
+            gate[1].countDown();
+            faults.invocationGates.remove("\"base-100\"");
+        }
+    }
+
+    private int effectCount(String id) {
+        return jdbc.queryForObject("select count(*) from ep07_test_effect where invocation_id like ?",
+                Integer.class, "workflow:" + id + ":%");
+    }
+
+    private int continuationsWithPins(String id, String first) {
+        var client = temporal.getWorkflowClient();
+        String execution = first;
+        int count = 0;
+        for (;;) {
+            var described = client.newUntypedWorkflowStub(WorkflowDispatch.workflowId(id),
+                    Optional.of(execution), Optional.empty()).describe();
+            assertThat(described.getMemo("workflowRunId", String.class)).isEqualTo(id);
+            assertThat(described.getMemo("planDigest", String.class)).isEqualTo(store.require(id).workflowPlanDigest());
+            var next = client.fetchHistory(WorkflowDispatch.workflowId(id), execution).getEvents().stream()
+                    .filter(e -> e.hasWorkflowExecutionContinuedAsNewEventAttributes()).findFirst();
+            if (next.isEmpty()) return count;
+            execution = next.get().getWorkflowExecutionContinuedAsNewEventAttributes().getNewExecutionRunId();
+            count++;
+            assertThat(count).isLessThan(20);
+        }
+    }
+
+    private void replayStart(String id) {
+        var run = store.require(id);
+        com.example.platform.outbox.api.event.OutboxDeliveryContext.run(
+                new com.example.platform.outbox.api.event.OutboxDeliveryContext.Delivery(event(id), tenant),
+                () -> context.publishEvent(new RunEvents.Start(tenant, id, run.workflowPlanDigest())));
+    }
+
+    private void replayControl(String id, String step, boolean cancel) {
+        String event = jdbc.queryForObject("select id from outbox_events where aggregate_id=?"
+                + " and event_type='workflow.run.control'", String.class, id);
+        com.example.platform.outbox.api.event.OutboxDeliveryContext.run(
+                new com.example.platform.outbox.api.event.OutboxDeliveryContext.Delivery(event, tenant),
+                () -> context.publishEvent(new RunEvents.Control(tenant, id, cancel ? null : step,
+                        cancel ? "cancel" : "continued-command", !cancel, cancel)));
+    }
+
+    @Test
+    @Order(1)
+    void mismatchedOrMissingRuntimeIdentityFailsClosedWithoutEffects() {
+        for (var memo : List.of(Map.of("workflowRunId", "wrong", "planDigest", "wrong"),
+                Map.of("workflowRunId", "wrong"), Map.<String, String>of())) {
+            var run = start(publish(List.of(effect("root", Map.of())), List.of()), UUID.randomUUID().toString());
+            var persisted = store.require(run.id());
+            var client = temporal.getWorkflowClient();
+            var workflow = client.newWorkflowStub(PlanWalkWorkflow.class,
+                    WorkflowOptions.newBuilder().setWorkflowId(WorkflowDispatch.workflowId(run.id()))
+                            .setTaskQueue("ep07-correction-unpolled").setMemo(new HashMap<>(memo)).build());
+            WorkflowClient.start(workflow::execute, run.id(), persisted.planJson(), Map.of(), null);
+            try {
+                assertThatThrownBy(() -> replayStart(run.id())).isInstanceOf(IllegalStateException.class)
+                        .hasMessageContaining("does not match");
+                assertThat(effectCount(run.id())).isZero();
+                assertThat(store.steps(run.id())).isEmpty();
+            } finally { client.newUntypedWorkflowStub(WorkflowDispatch.workflowId(run.id())).terminate("test complete"); }
+        }
+    }
+
 }
