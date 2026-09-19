@@ -14,7 +14,8 @@ class MarketplaceMigrationTest extends PostgresTestContainerSupport {
             Flyway.configure().dataSource(jdbcUrl(),username(),password()).schemas(schema).defaultSchema(schema).locations("classpath:db/migration").target("5").load().migrate();
             var jdbc=new JdbcTemplate(new DriverManagerDataSource(jdbcUrl()+(jdbcUrl().contains("?")?"&":"?")+"currentSchema="+schema,username(),password()));
             jdbc.update("insert into tenant(id,name,status,created_at) values ('tenant','tenant','ACTIVE',now())");
-            jdbc.update("insert into media_asset(id,tenant_id,project_id,storage_key,media_type,filename,media_version,publish_status,created_at) values ('asset','tenant',null,'old/key','VIDEO','old.mp4','v1','PUBLISHED',now())");
+            jdbc.update("insert into project(id,tenant_id,name,status,created_at) values ('historical-project','tenant','Historical','ACTIVE',now())");
+            jdbc.update("insert into media_asset(id,tenant_id,project_id,storage_key,media_type,filename,media_version,publish_status,created_at) values ('asset','tenant','historical-project','old/key','VIDEO','old.mp4','v1','PUBLISHED',now())");
             jdbc.update("insert into marketplace_listing(id,asset_id,tenant_id,project_id,listing_type,title,status,version,created_at,updated_at) values ('listing','asset','tenant',null,'MEDIA','Historical title','PUBLISHED','1.0',now(),now())");
             jdbc.update("insert into timeline_review(id,project_id,tenant_id,revision_id,target_type,author_user_id,title,status,created_at,updated_at) values ('review','historical-project','tenant','asset','ASSET','historical-author','Historical review','APPROVED',now(),now())");
             String review=jdbc.queryForObject("select row_to_json(r)::text from timeline_review r where id='review'",String.class);

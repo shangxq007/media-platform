@@ -131,9 +131,13 @@ class MarketplaceFoundationIntegrationTest extends MarketplaceTestSupport {
     }
     @Test void unresolvedWorkspaceAndRetiredStatusShortcutCannotMutateState() throws Exception {
         String asset=asset();var before=state();
-        jdbc.update("update project set workspace_id=null where id=?",project);
-        assertThat(http(user,"POST",root()+"/listings",createBody(asset,"unresolved")).statusCode()).isIn(400,403,409);
-        assertThat(state()).isEqualTo(before);jdbc.update("update project set workspace_id=? where id=?",workspace,project);
+        assertThatThrownBy(()->jdbc.update("update project set workspace_id=null where id=?",project))
+                .isInstanceOf(RuntimeException.class).hasMessageContaining("Established Project scope is immutable");
+        String legacy="legacy-project-"+UUID.randomUUID();
+        jdbc.update("insert into project(id,tenant_id,name,status,workspace_id,created_at) values (?,?,?,'ACTIVE',null,now())",legacy,tenant,"Unresolved historical scope");
+        assertThat(http(user,"POST","/api/projects/"+legacy+"/marketplace/listings",createBody(asset,"unresolved")).statusCode()).isIn(400,403,409);
+        assertThat(http(user,"POST","/api/product/marketplace/"+project+"/items",Map.of("projectId",project,"listing",createBody(asset,"project-as-workspace"))).statusCode()).isEqualTo(403);
+        assertThat(state()).isEqualTo(before);
         var listing=create(asset);before=state();
         assertThat(http(user,"PATCH","/api/marketplace/listings/"+listing.path("id").asText()+"/status",Map.of("status","PUBLISHED")).statusCode()).isIn(401,403,404,405);
         assertThat(state()).isEqualTo(before);assertThat(jdbc.queryForObject("select status from marketplace_listing where id=?",String.class,listing.path("id").asText())).isEqualTo("DRAFT");
