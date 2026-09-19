@@ -20,8 +20,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CanonicalOperationInvocationArchitectureTest {
 
-    private static final String FROZEN_H7_CONTROLLER_SHA256 =
-            "29f884f53d3b7adc640859bdf78cdab4fa0468cd6e303fef8131a6a4dc940702";
+    // The approved Identity/resource-scope prerequisite changed this route; EP07 must preserve it.
+    private static final String ACCEPTED_IDENTITY_SCOPE_CONTROLLER_SHA256 =
+            "a31d1350b8ef058c5ba997c73fd6ff3858316f7d976ceaf82de2694a5773989d";
     private static final Path ROOT = repositoryRoot(Path.of(System.getProperty("user.dir")));
     private static final Path RENDER_MAIN = ROOT.resolve("render-module/src/main/java");
     private static final Path SERVICE = RENDER_MAIN.resolve(
@@ -57,8 +58,11 @@ class CanonicalOperationInvocationArchitectureTest {
                         .getDeclaredMethods())
                 .filter(method -> Modifier.isPublic(method.getModifiers()))
                 .toList();
-        assertEquals(1, publicMethods.size());
-        var invoke = publicMethods.getFirst();
+        assertEquals(2, publicMethods.size());
+        var invoke = CanonicalOperationInvocationService.class.getDeclaredMethod("invoke",OperationRequest.class,OperationInvocationContext.class);
+        var validate=CanonicalOperationInvocationService.class.getDeclaredMethod("validate",OperationRequest.class,OperationInvocationContext.class,String.class);
+        assertEquals(void.class,validate.getReturnType());
+        assertTrue(Modifier.isPublic(validate.getModifiers()));
         assertEquals("invoke", invoke.getName());
         assertEquals(OperationInvocationResult.class, invoke.getReturnType());
         assertArrayEquals(
@@ -76,13 +80,13 @@ class CanonicalOperationInvocationArchitectureTest {
     }
 
     @Test
-    void existingH7HttpControllerRemainsByteIdenticalToFrozenH7Baseline() throws Exception {
+    void existingH7HttpControllerRetainsAcceptedIdentityScopeBaseline() throws Exception {
         byte[] controllerBytes = Files.readAllBytes(CONTROLLER);
-        assertEquals(FROZEN_H7_CONTROLLER_SHA256, sha256(controllerBytes));
+        assertEquals(ACCEPTED_IDENTITY_SCOPE_CONTROLLER_SHA256, sha256(controllerBytes));
 
         byte[] mutatedBytes = controllerBytes.clone();
         mutatedBytes[0] ^= 1;
-        assertFalse(FROZEN_H7_CONTROLLER_SHA256.equals(sha256(mutatedBytes)));
+        assertFalse(ACCEPTED_IDENTITY_SCOPE_CONTROLLER_SHA256.equals(sha256(mutatedBytes)));
     }
 
     private static String sha256(byte[] bytes) throws Exception {
