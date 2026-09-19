@@ -80,7 +80,7 @@ class MarketplaceFoundationIntegrationTest extends MarketplaceTestSupport {
         assertThat(results.stream().map(java.net.http.HttpResponse::statusCode).toList()).containsExactlyInAnyOrder(200,409);
         assertThat(jdbc.queryForObject("select count(*) from marketplace_review_decision where review_id=?",Integer.class,id)).isEqualTo(1);
         var accepted=results.get(0).statusCode()==200?approve:reject;var snapshot=state();response(http(user,"POST",root()+"/reviews/"+id+"/decisions",accepted),200);assertThat(state()).isEqualTo(snapshot);
-        assertThat(events()-before).isLessThanOrEqualTo(1); // EP29C adds the currently absent rejection contract.
+        assertThat(events()-before).isEqualTo(1);
     }
 
     @Test void publicationAndOutboxFailureRollBackMediaListingAndReceiptTogether() throws Exception {

@@ -36,4 +36,24 @@ class MarketplaceMigrationTest extends PostgresTestContainerSupport {
             assertThat(jdbc.queryForObject("select count(*) from outbox_events",Integer.class)).isZero();
         } finally {admin.execute("drop schema "+schema+" cascade");}
     }
+
+    @Test void retiredPendingEnvelopesAreExplicitlyDeadLetteredWithoutRewritingEvidence() {
+        String schema=isolatedSchemaName();var admin=new JdbcTemplate(createDataSource());admin.execute("create schema "+schema);
+        try {
+            Flyway.configure().dataSource(jdbcUrl(),username(),password()).schemas(schema).defaultSchema(schema).locations("classpath:db/migration").target("6").load().migrate();
+            var jdbc=new JdbcTemplate(new DriverManagerDataSource(jdbcUrl()+(jdbcUrl().contains("?")?"&":"?")+"currentSchema="+schema,username(),password()));
+            String payload="{\"envelopeVersion\":1,\"tenantId\":\"tenant\",\"eventType\":\"asset.published\",\"eventVersion\":1,\"aggregateType\":\"ASSET\",\"aggregateId\":\"asset\",\"payload\":{\"assetId\":\"asset\",\"assetVersion\":\"v1\",\"assetType\":\"MEDIA\",\"projectId\":\"project\",\"publishStatus\":\"PUBLISHED\"}}";
+            for(String status:java.util.List.of("PENDING","FAILED","PROCESSING","PROCESSED"))
+                jdbc.update("insert into outbox_events(id,aggregate_type,aggregate_id,event_type,event_version,payload,status,created_at,idempotency_key,locked_by,locked_at) values (?,'ASSET','asset','asset.published',1,?,?,now(),?,'old-claim',now())",status,payload,status,"key-"+status);
+            Flyway.configure().dataSource(jdbcUrl(),username(),password()).schemas(schema).defaultSchema(schema).locations("classpath:db/migration").load().migrate();
+            for(String status:java.util.List.of("PENDING","FAILED","PROCESSING")) {
+                var row=jdbc.queryForMap("select * from outbox_events where id=?",status);
+                assertThat(row.get("status")).isEqualTo("DEAD_LETTER");assertThat(row.get("payload")).isEqualTo(payload);
+                assertThat(row.get("event_version")).isEqualTo(1);assertThat(row.get("idempotency_key")).isEqualTo("key-"+status);
+                assertThat(row.get("last_error_code")).isEqualTo("RETIRED_MARKETPLACE_EVENT_SCHEMA");assertThat(row.get("locked_by")).isNull();
+            }
+            assertThat(jdbc.queryForObject("select status from outbox_events where id='PROCESSED'",String.class)).isEqualTo("PROCESSED");
+            assertThat(jdbc.queryForObject("select count(*) from outbox_events",Integer.class)).isEqualTo(4);
+        } finally {admin.execute("drop schema "+schema+" cascade");}
+    }
 }

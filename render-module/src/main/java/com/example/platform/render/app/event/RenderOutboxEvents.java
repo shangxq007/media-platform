@@ -1,7 +1,6 @@
 package com.example.platform.render.app.event;
 
 import com.example.platform.outbox.api.event.*;
-import com.example.platform.shared.events.*;
 import com.example.platform.render.api.event.*;
 import java.util.List;
 import org.springframework.stereotype.Component;

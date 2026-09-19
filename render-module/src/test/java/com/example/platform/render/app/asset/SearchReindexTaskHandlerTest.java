@@ -53,7 +53,7 @@ class SearchReindexTaskHandlerTest {
         when(asset.filename()).thenReturn("asset");when(asset.mediaType()).thenReturn("VIDEO");when(asset.publishStatus()).thenReturn("ARCHIVED");
         when(assetRepository.publicationSnapshot("tenant","project","a1")).thenReturn(asset);
         var job=new PlatformJob("j1",JobType.SEARCH_REINDEX,"ASSET","a1","tenant","project",JobStatus.RUNNING,1,0,0,1,0,0,
-                "{\"assetId\":\"a1\",\"tenantId\":\"tenant\",\"projectId\":\"project\",\"reason\":\"asset.published\"}",null,Instant.now(),Instant.now(),null);
+                "{\"assetId\":\"a1\",\"tenantId\":\"tenant\",\"projectId\":\"project\",\"reason\":\"marketplace.listing.published\"}",null,Instant.now(),Instant.now(),null);
         handler.execute(new TaskExecutionContext("j1","t1",TaskCapability.REINDEX,job,null,job.payloadJson()));
         verify(projectionRepo).upsert(argThat(p->p.publishStatus().equals("ARCHIVED")&&p.tenantId().equals("tenant")&&p.projectId().equals("project")));
     }

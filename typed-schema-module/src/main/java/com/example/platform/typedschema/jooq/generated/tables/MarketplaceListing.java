@@ -321,7 +321,8 @@ public class MarketplaceListing extends TableImpl<MarketplaceListingRecord> {
     @Override
     public List<Check<MarketplaceListingRecord>> getChecks() {
         return Arrays.asList(
-            Internal.createCheck(this, DSL.name("marketplace_admitted_scope"), "(((admitted_at IS NULL) OR ((tenant_id IS NOT NULL) AND (project_id IS NOT NULL) AND (workspace_id IS NOT NULL) AND (subject_version IS NOT NULL) AND (created_by IS NOT NULL) AND (aggregate_version > 0))))", true)
+            Internal.createCheck(this, DSL.name("marketplace_admitted_scope"), "(((admitted_at IS NULL) OR ((tenant_id IS NOT NULL) AND (project_id IS NOT NULL) AND (workspace_id IS NOT NULL) AND (subject_version IS NOT NULL) AND (created_by IS NOT NULL) AND (aggregate_version > 0))))", true),
+            Internal.createCheck(this, DSL.name("marketplace_admitted_status"), "(((admitted_at IS NULL) OR ((status)::text = ANY ((ARRAY['DRAFT'::character varying, 'READY'::character varying, 'PUBLISHED'::character varying, 'ARCHIVED'::character varying])::text[]))))", true)
         );
     }
 

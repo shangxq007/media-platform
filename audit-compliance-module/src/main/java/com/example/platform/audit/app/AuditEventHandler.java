@@ -1,4 +1,5 @@
 package com.example.platform.audit.app;
+import com.example.platform.marketplace.api.event.*;
 
 import com.example.platform.artifact.api.event.ArtifactCreatedEvent;
 import com.example.platform.render.api.event.RenderJobCompletedEvent;
@@ -14,9 +15,6 @@ import com.example.platform.timeline.api.event.TimelineReviewCommentAddedEvent;
 import com.example.platform.timeline.api.event.TimelineReviewThreadResolvedEvent;
 import com.example.platform.artifact.api.event.AssetRegisteredEvent;
 import com.example.platform.artifact.api.event.AssetMetadataUpdatedEvent;
-import com.example.platform.shared.events.AssetApprovedEvent;
-import com.example.platform.shared.events.AssetPublishedEvent;
-import com.example.platform.shared.events.AssetArchivedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
@@ -169,28 +167,29 @@ public class AuditEventHandler {
     }
 
     @EventListener
-    public void onAssetApproved(AssetApprovedEvent event) {
-        log.info("AuditEventHandler: recording audit for asset approved={}", event.assetId());
-        auditService.record("SYSTEM", "asset-event-handler", "ASSET_APPROVED",
-                "ASSET", event.assetId(),
-                Map.of("projectId", event.projectId(), "reviewId", event.reviewId()),
-                AuditCategory.CONFIG);
+    public void onMarketplaceReviewApproved(MarketplaceReviewApprovedEvent event) {
+        var ref=event.reference();var data=marketplaceFacts(ref);data.put("reviewId",event.reviewId());data.put("decisionId",event.decisionId());
+        auditService.recordFact(event.factKey(),ref.actorType().name(),ref.actorId(),"MARKETPLACE_REVIEW_APPROVED",
+                "MARKETPLACE_REVIEW",event.reviewId(),data,AuditCategory.CONFIG);
     }
-
     @EventListener
-    public void onAssetPublished(AssetPublishedEvent event) {
-        log.info("AuditEventHandler: recording audit for asset published={}", event.assetId());
-        auditService.record("SYSTEM", "asset-event-handler", "ASSET_PUBLISHED",
-                "ASSET", event.assetId(),
-                Map.of("projectId", event.projectId(), "assetType", event.assetType()),
-                AuditCategory.CONFIG);
+    public void onMarketplaceListingPublished(MarketplaceListingPublishedEvent event) {
+        var ref=event.reference();var data=marketplaceFacts(ref);data.put("reviewId",event.reviewId());
+        auditService.recordFact(event.factKey(),ref.actorType().name(),ref.actorId(),"MARKETPLACE_LISTING_PUBLISHED",
+                "MARKETPLACE_LISTING",ref.listingId(),data,AuditCategory.CONFIG);
     }
-
     @EventListener
-    public void onAssetArchived(AssetArchivedEvent event) {
-        log.info("AuditEventHandler: recording audit for asset archived={}", event.assetId());
-        auditService.record("SYSTEM", "asset-event-handler", "ASSET_ARCHIVED",
-                "ASSET", event.assetId(),
-                Map.of("projectId", event.projectId()), AuditCategory.CONFIG);
+    public void onMarketplaceListingArchived(MarketplaceListingArchivedEvent event) {
+        var ref=event.reference();
+        auditService.recordFact(event.factKey(),ref.actorType().name(),ref.actorId(),"MARKETPLACE_LISTING_ARCHIVED",
+                "MARKETPLACE_LISTING",ref.listingId(),marketplaceFacts(ref),AuditCategory.CONFIG);
+    }
+    private Map<String,Object> marketplaceFacts(MarketplaceEventReference ref) {
+        var delivery=com.example.platform.outbox.api.event.OutboxDeliveryContext.require();
+        if(!delivery.tenantId().equals(ref.scope().tenantId()))throw new IllegalArgumentException("Marketplace fact tenant mismatch");
+        Map<String,Object> data=new java.util.LinkedHashMap<>();
+        data.put("tenantId",ref.scope().tenantId());data.put("workspaceId",ref.scope().workspaceId());data.put("projectId",ref.scope().projectId());
+        data.put("listingId",ref.listingId());data.put("listingVersion",ref.listingVersion());data.put("subject",ref.subject());data.put("occurredAt",ref.occurredAt().toString());
+        if(ref.accountId()!=null)data.put("accountId",ref.accountId());return data;
     }
 }

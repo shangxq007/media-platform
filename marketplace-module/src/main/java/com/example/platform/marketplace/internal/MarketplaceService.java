@@ -128,8 +128,9 @@ public class MarketplaceService implements MarketplaceApi {
             }
             if(c.decision()==Decision.APPROVE&&store.unresolved(review))throw conflict("Unresolved review threads");
             store.reviewStatus(review,status,row.version()+1);store.change(row,c.decision()==Decision.APPROVE?Status.READY:Status.DRAFT,review,a.actor().actorId());
-            store.insertDecision("mdec_"+UUID.randomUUID(),review,MarketplaceJson.write(a.actor()),c.decision().name(),row.version()+1);
-            events.decided(updated(a,row),review,c.decision().name(),a.actor());return reviewValue(a,review);
+            String decisionId="mdec_"+UUID.randomUUID();
+            store.insertDecision(decisionId,review,MarketplaceJson.write(a.actor()),c.decision().name(),row.version()+1);
+            events.decided(updated(a,row),review,decisionId,c.decision().name(),a.actor());return reviewValue(a,review);
         });
     }
     @Override public Listing transition(String project,String listing,Change c) {

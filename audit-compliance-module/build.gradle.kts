@@ -1,6 +1,7 @@
 plugins { id("java-library") }
 
 dependencies {
+    implementation(project(":marketplace-module")) // defining owner facts
     implementation(project(":timeline-module"))
     implementation(project(":outbox-event-module"))
     implementation(project(":artifact-module"))

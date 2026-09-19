@@ -1,4 +1,5 @@
 package com.example.platform.notification.app;
+import com.example.platform.marketplace.api.event.*;
 
 import static com.example.platform.typedschema.jooq.generated.tables.NotificationDelivery.NOTIFICATION_DELIVERY;
 import static com.example.platform.typedschema.jooq.generated.tables.NotificationEvent.NOTIFICATION_EVENT;
@@ -19,9 +20,6 @@ import com.example.platform.timeline.api.event.TimelineReviewRejectedEvent;
 import com.example.platform.timeline.api.event.TimelineReviewChangesRequestedEvent;
 import com.example.platform.timeline.api.event.TimelineReviewCommentAddedEvent;
 import com.example.platform.timeline.api.event.TimelineReviewThreadResolvedEvent;
-import com.example.platform.shared.events.AssetApprovedEvent;
-import com.example.platform.shared.events.AssetPublishedEvent;
-import com.example.platform.shared.events.AssetArchivedEvent;
 import com.example.platform.artifact.api.event.AssetEnrichedEvent;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -224,25 +222,24 @@ public class NotificationEventHandler {
     }
 
     @EventListener
-    public void onAssetApproved(AssetApprovedEvent event) {
-        log.info("NotificationEventHandler: AssetApproved for asset={}", event.assetId());
-        handle(new NotificationInboundEvent("asset.approved", event.assetId(),
-                Map.of("assetId", event.assetId(), "projectId", event.projectId())));
+    public void onMarketplaceReviewApproved(MarketplaceReviewApprovedEvent event) {
+        handleFact(event.factKey(),new NotificationInboundEvent("marketplace.review.approved",event.reviewId(),marketplaceFacts(event.reference())));
     }
-
     @EventListener
-    public void onAssetPublished(AssetPublishedEvent event) {
-        log.info("NotificationEventHandler: AssetPublished for asset={}", event.assetId());
-        handle(new NotificationInboundEvent("asset.published", event.assetId(),
-                Map.of("assetId", event.assetId(), "projectId", event.projectId(),
-                        "assetType", event.assetType())));
+    public void onMarketplaceListingPublished(MarketplaceListingPublishedEvent event) {
+        handleFact(event.factKey(),new NotificationInboundEvent("marketplace.listing.published",event.reference().listingId(),marketplaceFacts(event.reference())));
     }
-
     @EventListener
-    public void onAssetArchived(AssetArchivedEvent event) {
-        log.info("NotificationEventHandler: AssetArchived for asset={}", event.assetId());
-        handle(new NotificationInboundEvent("asset.archived", event.assetId(),
-                Map.of("assetId", event.assetId(), "projectId", event.projectId())));
+    public void onMarketplaceListingArchived(MarketplaceListingArchivedEvent event) {
+        handleFact(event.factKey(),new NotificationInboundEvent("marketplace.listing.archived",event.reference().listingId(),marketplaceFacts(event.reference())));
+    }
+    private Map<String,Object> marketplaceFacts(MarketplaceEventReference ref) {
+        var delivery=com.example.platform.outbox.api.event.OutboxDeliveryContext.require();
+        if(!delivery.tenantId().equals(ref.scope().tenantId()))throw new IllegalArgumentException("Marketplace fact tenant mismatch");
+        com.example.platform.shared.web.TenantGuard.assertSameTenant(ref.scope().tenantId());
+        // Metadata-only notification: review text and subject storage/access data remain private.
+        return Map.of("tenantId",ref.scope().tenantId(),"workspaceId",ref.scope().workspaceId(),"projectId",ref.scope().projectId(),
+                "listingId",ref.listingId(),"listingVersion",ref.listingVersion(),"actorId",ref.actorId());
     }
 
     @EventListener

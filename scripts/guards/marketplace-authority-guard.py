@@ -5,6 +5,10 @@ import argparse,re,tempfile
 from h7_input_boundary import candidate_files
 
 RETIRED = {
+ 'com.example.platform.shared.events.AssetApprovedEvent',
+ 'com.example.platform.shared.events.AssetArchivedEvent',
+ 'com.example.platform.shared.events.AssetPublishedEvent',
+ 'com.example.platform.shared.events.AssetSubmittedForReviewEvent',
  'com.example.platform.render.app.asset.AssetReviewService',
  'com.example.platform.render.app.asset.MarketplaceConsumer',
  'com.example.platform.render.app.asset.MarketplaceListingBuilder',
