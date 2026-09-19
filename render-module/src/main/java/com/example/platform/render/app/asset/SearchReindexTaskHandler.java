@@ -57,39 +57,31 @@ public class SearchReindexTaskHandler implements TaskHandler {
         // Publication cannot interleave an old read with a new state and a late stale write.
         var current=assetRepository.publicationSnapshot(tenantId,projectId,assetId);
 
-        SearchProjection projection = java.util.Optional.of(current)
-                .map(asset -> {
-                    List<String> transcripts = new ArrayList<>();
-                    List<String> scenes = new ArrayList<>();
-                    List<String> objects = new ArrayList<>();
+        SearchProjection projection = buildProjection(current);
+        projectionRepo.upsert(projection);
+        log.info("Search projection refreshed from current owner facts: asset={} tenant={}",assetId,tenantId);
+    }
 
-                    semanticRepo.findById(assetId).ifPresent(row -> {
-                        if (row.semanticJson() != null) {
-                            extractTextualFields(row.semanticJson(), transcripts, scenes, objects);
-                        }
-                    });
+    private SearchProjection buildProjection(com.example.platform.media.api.Asset asset) {
+        List<String> transcripts = new ArrayList<>();
+        List<String> scenes = new ArrayList<>();
+        List<String> objects = new ArrayList<>();
 
-                    String searchText = buildSearchText(asset.filename(), transcripts, scenes, objects);
+        semanticRepo.findById(assetId).ifPresent(row -> {
+            if (row.semanticJson() != null) {
+                extractTextualFields(row.semanticJson(), transcripts, scenes, objects);
+            }
+        });
 
-                    return new SearchProjection(
-                            asset.id(), asset.tenantId(), asset.projectId(),
-                            asset.filename(), asset.mediaType(),
-                            String.join(" ", transcripts),
-                            scenes, objects, List.of(), List.of(),
-                            asset.classification(), asset.license(),
-                            asset.publishStatus(), searchText, 0);
-                })
-                .orElse(SearchProjection.empty(assetId));
+        String searchText = buildSearchText(asset.filename(), transcripts, scenes, objects);
 
-        if (projection.tenantId() != null) {
-            projectionRepo.upsert(projection);
-            log.info("SearchReindexHandler: projection persisted asset={} transcript={} chars scenes={} objects={}",
-                    assetId,
-                    projection.transcriptText() != null ? projection.transcriptText().length() : 0,
-                    projection.sceneLabels().size(), projection.objects().size());
-        } else {
-            log.warn("SearchReindexHandler: skipping persist — asset {} not found in tenant {}", assetId, effectiveTenant);
-        }
+        return new SearchProjection(
+                asset.id(), asset.tenantId(), asset.projectId(),
+                asset.filename(), asset.mediaType(),
+                String.join(" ", transcripts),
+                scenes, objects, List.of(), List.of(),
+                asset.classification(), asset.license(),
+                asset.publishStatus(), searchText, 0);
     }
 
     private String buildSearchText(String filename, List<String> transcripts,
