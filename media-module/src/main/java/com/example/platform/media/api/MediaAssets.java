@@ -12,5 +12,9 @@ public interface MediaAssets {
     Optional<Asset> findById(String tenantId, String assetId);
     List<Asset> listByProject(String tenantId, String projectId);
     boolean delete(String tenantId, String projectId, String assetId, String expectedVersion);
+    /** Atomically withdraw publication metadata only for this exact scoped Media version.
+     * False means the subject is missing, moved, or version-stale; the caller may withdraw
+     * its own listing alone. Authorization and persistence failures are exceptions. */
+    boolean archivePublicationIfCurrent(String tenantId, String projectId, String assetId, String expectedVersion);
     void updatePublishStatus(String tenantId, String projectId, String assetId, String expectedStatus, String publishStatus);
 }

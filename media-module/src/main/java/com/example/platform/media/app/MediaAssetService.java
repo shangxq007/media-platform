@@ -41,6 +41,11 @@ public class MediaAssetService implements MediaAssets {
         return repository.delete(tenant, project, id, version);
     }
     @Transactional
+    public boolean archivePublicationIfCurrent(String tenant, String project, String id, String version) {
+        authorization.require(tenant, project, true);
+        return repository.archivePublicationIfCurrent(tenant, project, id, version);
+    }
+    @Transactional
     public void updatePublishStatus(String tenant, String project, String id, String expectedStatus, String status) {
         authorization.require(tenant, project, true);
         repository.updatePublishStatus(tenant, project, id, expectedStatus, status);

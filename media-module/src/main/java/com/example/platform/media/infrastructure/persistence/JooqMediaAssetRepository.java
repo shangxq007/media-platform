@@ -180,6 +180,17 @@ public class JooqMediaAssetRepository implements MediaAssetRepository {
         return mapAsset(row);
     }
 
+    public boolean archivePublicationIfCurrent(String tenantId, String projectId, String assetId, String expectedVersion) {
+        TenantGuard.assertSameTenant(tenantId);
+        if (expectedVersion == null || expectedVersion.isBlank()) throw new IllegalArgumentException("Media version required");
+        // PostgreSQL rechecks these predicates after a concurrent row writer commits.
+        // No read/check/write gap, and no new version is adopted on a conditional miss.
+        return dsl.update(MEDIA_ASSET).set(MEDIA_ASSET.PUBLISH_STATUS, "ARCHIVED")
+                .where(MEDIA_ASSET.ID.eq(assetId).and(MEDIA_ASSET.TENANT_ID.eq(tenantId))
+                    .and(MEDIA_ASSET.PROJECT_ID.eq(projectId)).and(MEDIA_ASSET.MEDIA_VERSION.eq(expectedVersion)))
+                .execute() == 1;
+    }
+
     public void updatePublishStatus(String tenantId, String projectId, String assetId, String expectedStatus, String publishStatus) {
         TenantGuard.assertSameTenant(tenantId);
         if (!java.util.Set.of("PUBLISHED", "ARCHIVED").contains(publishStatus)) throw new IllegalArgumentException("unsupported publication outcome");

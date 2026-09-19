@@ -147,9 +147,13 @@ public class MarketplaceService implements MarketplaceApi {
             }
             // Withdrawal belongs to the listing even if its subject is now stale/restricted.
             // Never mutate a foreign or changed Media version while withdrawing old metadata.
-            var s=subject(row.subject());var current=media.findById(row.tenantId(),s.assetId().value());
-            if(current.isPresent()&&project.equals(current.get().projectId())&&s.version().equals(current.get().assetVersion()))
-                media.updatePublishStatus(row.tenantId(),project,s.assetId().value(),current.get().publishStatus(),"ARCHIVED");
+            var s=subject(row.subject());
+            if (!media.archivePublicationIfCurrent(row.tenantId(),project,s.assetId().value(),s.version())) {
+                // An explicit conditional miss permits listing-only withdrawal. Exceptions
+                // still roll back the entire command; they are never translated into a miss.
+                org.slf4j.LoggerFactory.getLogger(MarketplaceService.class)
+                    .debug("Withdrawing listing {} without changing its stale Media subject", listing);
+            }
             store.change(row,Status.ARCHIVED,row.reviewId(),a.actor().actorId());var result=updated(a,row);events.archived(result,a.actor());return result;
         });
     }

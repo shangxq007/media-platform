@@ -157,6 +157,7 @@ class RawMediaProductRegistrationFacadeTest {
         public Asset register(String t,String p,String k,String m,String f,Long l,String c){throw new UnsupportedOperationException();}
         public java.util.List<Asset> listByProject(String t,String p){throw new UnsupportedOperationException();}
         public boolean delete(String t,String p,String a,String v){throw new UnsupportedOperationException();}
+        public boolean archivePublicationIfCurrent(String t,String p,String a,String v){throw new UnsupportedOperationException();}
         public void updatePublishStatus(String t,String p,String a,String e,String n){throw new UnsupportedOperationException();}
 
         @Override

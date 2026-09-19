@@ -76,3 +76,5 @@ Deployment must drain old writers and inspect preserved failed/dead-letter work;
 ## Focused verification
 
 Use a disposable Docker-compatible PostgreSQL endpoint and `bash scripts/test-authority-modules.sh marketplace`. Owner module contract tests, real Spring/HTTP/PostgreSQL command and consumer cases, migration controls, relevant Identity/Media/Timeline/Render/Audit/Notification/Outbox tests and architecture gates are recorded in the batch handoff. No new marketplace frontend, plugin commerce, real external publishing, settlement or deployment is claimed.
+
+Archive uses a Media-owned atomic tenant/Project/asset/version predicate. A conditional miss withdraws only listing metadata; authorization or database errors roll back the entire command. The current Media object is never adopted as a replacement for the listing pin.
