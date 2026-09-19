@@ -1467,7 +1467,7 @@ class WorkflowFoundationIntegrationTest extends PostgresTestContainerSupport {
             assertThat(jdbc.queryForObject("select count(*) from workflow_operation_receipt where run_id=?",
                     Integer.class, id)).isEqualTo(count);
             assertThat(jdbc.queryForObject("select status from outbox_events where id=?",
-                    String.class, control)).isEqualTo("PUBLISHED");
+                    String.class, control)).isEqualTo("PROCESSED");
             int transitions = continuationsWithPins(id, first);
             assertThat(transitions).isGreaterThanOrEqualTo(count == 70 ? 1 : 3);
             assertThat(http(user, "POST", base + "/release", release).statusCode()).isEqualTo(400);
