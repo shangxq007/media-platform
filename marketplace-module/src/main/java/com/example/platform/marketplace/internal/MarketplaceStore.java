@@ -23,7 +23,7 @@ public class MarketplaceStore {
         return jdbc.query("select * from marketplace_listing where id=? and admitted_at is not null and status='PUBLISHED'",this::map,id).stream().findFirst();
     }
     List<Listing> published(String query,String workspace) {
-        return jdbc.query("select * from marketplace_listing where admitted_at is not null and status='PUBLISHED' and (?::text is null or workspace_id=?) and (?::text is null or search_vector @@ plainto_tsquery('english',?)) order by id",this::map,workspace,workspace,query,query);
+        return jdbc.query("select * from marketplace_listing where admitted_at is not null and status='PUBLISHED' and (?::text is null or workspace_id=?) and (?::text is null or search_vector @@ plainto_tsquery('english',?)) order by updated_at desc,id",this::map,workspace,workspace,query,query);
     }
     List<Listing> project(String tenant,String project,int limit) {
         return jdbc.query("select * from marketplace_listing where tenant_id=? and project_id=? and admitted_at is not null order by updated_at desc,id limit ?",this::map,tenant,project,limit);

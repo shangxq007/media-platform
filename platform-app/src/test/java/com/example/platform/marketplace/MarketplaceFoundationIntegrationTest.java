@@ -117,4 +117,25 @@ class MarketplaceFoundationIntegrationTest extends MarketplaceTestSupport {
         before=state();assertThat(http(user,"POST",root()+"/reviews/"+rid+"/comments",Map.of("commandId","late-comment","expectedVersion",resolved.path("version").asLong(),"content","Late")).statusCode()).isEqualTo(409);assertThat(state()).isEqualTo(before);
         assertThat(jdbc.queryForObject("select count(*) from timeline_review where tenant_id=?",Integer.class,tenant)).isZero();
     }
+
+    @Test void distinctReviewersRetainTheirOwnDecisionsWithoutPublicationPermission() throws Exception {
+        as(user,()->context.getBean(WorkspaceService.class).addMember(workspace,new AddWorkspaceMemberRequest(outsider,"VIEWER")));
+        grant(outsider,"READ","marketplace.review");
+        String asset=asset();var first=approve(submit(create(asset)));String review=first.path("id").asText();
+        var second=response(http(outsider,"POST",root()+"/reviews/"+review+"/decisions",Map.of("commandId","second-approval","expectedVersion",first.path("version").asLong(),"decision","APPROVE")),200);
+        assertThat(jdbc.queryForList("select actor_json::jsonb->>'actorId' from marketplace_review_decision where review_id=? order by aggregate_version",String.class,review)).containsExactly(user,outsider);
+        var status=response(http(outsider,"GET","/api/projects/"+project+"/assets/"+asset+"/publish-status",null),200);
+        assertThat(status.path("canPublish").asBoolean()).isFalse();
+        var before=state();assertThat(http(outsider,"POST",root()+"/listings/"+first.path("listingId").asText()+"/transitions",Map.of("commandId","reviewer-publish","expectedVersion",second.path("version").asLong(),"transition","PUBLISH")).statusCode()).isEqualTo(403);assertThat(state()).isEqualTo(before);
+        publish(second);
+    }
+    @Test void unresolvedWorkspaceAndRetiredStatusShortcutCannotMutateState() throws Exception {
+        String asset=asset();var before=state();
+        jdbc.update("update project set workspace_id=null where id=?",project);
+        assertThat(http(user,"POST",root()+"/listings",createBody(asset,"unresolved")).statusCode()).isIn(400,403,409);
+        assertThat(state()).isEqualTo(before);jdbc.update("update project set workspace_id=? where id=?",workspace,project);
+        var listing=create(asset);before=state();
+        assertThat(http(user,"PATCH","/api/marketplace/listings/"+listing.path("id").asText()+"/status",Map.of("status","PUBLISHED")).statusCode()).isIn(401,403,404,405);
+        assertThat(state()).isEqualTo(before);assertThat(jdbc.queryForObject("select status from marketplace_listing where id=?",String.class,listing.path("id").asText())).isEqualTo("DRAFT");
+    }
 }

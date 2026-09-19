@@ -151,6 +151,7 @@ class RawMediaProductRegistrationFacadeTest {
 
         }
 
+        public Asset publicationSnapshot(String t,String p,String a){throw new UnsupportedOperationException("Publication snapshots require a real transaction");}
         public void requireReadScope(String t,String p){throw new UnsupportedOperationException();}
         public void requireRegistrationScope(String t,String p){throw new UnsupportedOperationException();}
         public Asset register(String t,String p,String k,String m,String f,Long l,String c){throw new UnsupportedOperationException();}

@@ -1,0 +1,38 @@
+package com.example.platform.marketplace;
+
+import com.example.platform.shared.test.PostgresTestContainerSupport;
+import org.flywaydb.core.Flyway;
+import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import static org.assertj.core.api.Assertions.*;
+
+class MarketplaceMigrationTest extends PostgresTestContainerSupport {
+    @Test void historicalListingAndReviewEvidenceSurviveWhileInvalidPendingPreparationStops() {
+        String schema=isolatedSchemaName();var admin=new JdbcTemplate(createDataSource());admin.execute("create schema "+schema);
+        try {
+            Flyway.configure().dataSource(jdbcUrl(),username(),password()).schemas(schema).defaultSchema(schema).locations("classpath:db/migration").target("5").load().migrate();
+            var jdbc=new JdbcTemplate(new DriverManagerDataSource(jdbcUrl()+(jdbcUrl().contains("?")?"&":"?")+"currentSchema="+schema,username(),password()));
+            jdbc.update("insert into tenant(id,name,status,created_at) values ('tenant','tenant','ACTIVE',now())");
+            jdbc.update("insert into media_asset(id,tenant_id,project_id,storage_key,media_type,filename,media_version,publish_status,created_at) values ('asset','tenant',null,'old/key','VIDEO','old.mp4','v1','PUBLISHED',now())");
+            jdbc.update("insert into marketplace_listing(id,asset_id,tenant_id,project_id,listing_type,title,status,version,created_at,updated_at) values ('listing','asset','tenant',null,'MEDIA','Historical title','PUBLISHED','1.0',now(),now())");
+            jdbc.update("insert into timeline_review(id,project_id,tenant_id,revision_id,target_type,author_user_id,title,status,created_at,updated_at) values ('review','historical-project','tenant','asset','ASSET','historical-author','Historical review','APPROVED',now(),now())");
+            String review=jdbc.queryForObject("select row_to_json(r)::text from timeline_review r where id='review'",String.class);
+            for(String job:new String[]{"pending","completed"}) {
+                jdbc.update("insert into platform_job(id,job_type,aggregate_type,aggregate_id,tenant_id,project_id,status,payload_json,created_at) values (?,'MARKETPLACE_PREPARE','ASSET','asset',null,null,?,'{\"assetId\":\"asset\"}',now())",job,job.equals("pending")?"PENDING":"COMPLETED");
+                jdbc.update("insert into platform_task(id,job_id,task_type,capability,status,created_at) values (?,?,'PACKAGE','PACKAGE',?,now())","task-"+job,job,job.equals("pending")?"PENDING":"COMPLETED");
+            }
+            Flyway.configure().dataSource(jdbcUrl(),username(),password()).schemas(schema).defaultSchema(schema).locations("classpath:db/migration").target("6").load().migrate();
+            assertThat(jdbc.queryForObject("select admitted_at is null from marketplace_listing where id='listing'",Boolean.class)).isTrue();
+            assertThat(jdbc.queryForObject("select legacy_snapshot->>'title' from marketplace_listing where id='listing'",String.class)).isEqualTo("Historical title");
+            assertThat(jdbc.queryForObject("select legacy_snapshot->>'status' from marketplace_listing where id='listing'",String.class)).isEqualTo("PUBLISHED");
+            assertThat(jdbc.queryForObject("select row_to_json(r)::text from timeline_review r where id='review'",String.class)).isEqualTo(review);
+            assertThat(jdbc.queryForObject("select status from platform_job where id='pending'",String.class)).isEqualTo("FAILED");
+            assertThat(jdbc.queryForObject("select payload_json from platform_job where id='pending'",String.class)).isEqualTo("{\"assetId\":\"asset\"}");
+            assertThat(jdbc.queryForObject("select error_message from platform_task where id='task-pending'",String.class)).contains("MARKETPLACE_OWNER_MIGRATION");
+            assertThat(jdbc.queryForObject("select status from platform_job where id='completed'",String.class)).isEqualTo("COMPLETED");
+            assertThat(jdbc.queryForObject("select count(*) from marketplace_review",Integer.class)).isZero();
+            assertThat(jdbc.queryForObject("select count(*) from outbox_events",Integer.class)).isZero();
+        } finally {admin.execute("drop schema "+schema+" cascade");}
+    }
+}
