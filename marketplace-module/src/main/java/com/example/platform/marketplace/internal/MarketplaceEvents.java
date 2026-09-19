@@ -1,4 +1,5 @@
 package com.example.platform.marketplace.internal;
+import static com.example.platform.marketplace.internal.MarketplaceOutboxEvents.*;
 
 import com.example.platform.marketplace.api.MarketplaceApi.*;
 import com.example.platform.marketplace.api.MarketplacePublicationSubjectRef.MediaAssetSubject;
@@ -11,14 +12,9 @@ import org.springframework.stereotype.Component;
 
 /** EP15 owns the producer transaction; EP29C replaces these existing payload schemas. */
 @Component
-public class MarketplaceEvents implements OutboxEventCatalog {
-    static final OutboxEventType<AssetSubmittedForReviewEvent> SUBMITTED=new OutboxEventType<>("asset.submitted.review",1,"ASSET",AssetSubmittedForReviewEvent.class,AssetSubmittedForReviewEvent::assetId,e->null);
-    static final OutboxEventType<AssetApprovedEvent> APPROVED=new OutboxEventType<>("asset.approved",1,"ASSET",AssetApprovedEvent.class,AssetApprovedEvent::assetId,e->null);
-    static final OutboxEventType<AssetPublishedEvent> PUBLISHED=new OutboxEventType<>("asset.published",1,"ASSET",AssetPublishedEvent.class,AssetPublishedEvent::assetId,e->null);
-    static final OutboxEventType<AssetArchivedEvent> ARCHIVED=new OutboxEventType<>("asset.archived",1,"ASSET",AssetArchivedEvent.class,AssetArchivedEvent::assetId,e->null);
+public class MarketplaceEvents {
     private final OutboxEventService outbox;
     public MarketplaceEvents(OutboxEventService outbox){this.outbox=outbox;}
-    public List<OutboxEventType<?>> types(){return List.of(SUBMITTED,APPROVED,PUBLISHED,ARCHIVED);}
     void listingCreated(Listing row,CanonicalActor actor) {}
     void listingUpdated(Listing row,CanonicalActor actor) {}
     void reviewCreated(Listing row,String review,CanonicalActor actor) {outbox.append(SUBMITTED.append(row.tenantId(),new AssetSubmittedForReviewEvent(asset(row),row.projectId(),review),key(row)));}

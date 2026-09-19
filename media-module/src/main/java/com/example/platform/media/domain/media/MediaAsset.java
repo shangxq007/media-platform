@@ -21,6 +21,7 @@ import java.time.Instant;
  * content digest as identity, physical lifecycle (artifact authority),
  * stream/structural truth (MediaStream / source description model).
  */
+@org.springframework.modulith.NamedInterface("model")
 public record MediaAsset(
         MediaAssetId id,
         String tenantId,

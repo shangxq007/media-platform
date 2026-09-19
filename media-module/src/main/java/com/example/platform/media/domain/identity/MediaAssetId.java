@@ -20,6 +20,7 @@ import java.util.Objects;
  * relocation, and (where legal under the frozen lifecycle contract) source
  * replacement / re-link.
  */
+@org.springframework.modulith.NamedInterface("identity")
 public record MediaAssetId(String value) implements Serializable {
 
     public MediaAssetId {
