@@ -3,6 +3,10 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 case "${1:-}" in
+  workflow-plan)
+    ./gradlew --offline --no-daemon --console=plain :workflow-module:test \
+      --tests '*WorkflowPlanTest' --tests '*PlanWalkSdkTest' --tests '*UserWorkflowNodeTypeVocabularyTest'
+    ;;
   identity)
     ./gradlew --no-daemon --console=plain \
       :identity-access-module:test :delivery-module:test \
@@ -74,5 +78,5 @@ case "${1:-}" in
   compile)
     ./gradlew --no-daemon --console=plain compileJava compileTestJava pfirr1RemediationCheck :platform-app:bootJar
     ;;
-  *) echo 'Usage: bash scripts/test-authority-modules.sh identity|observation|billing|execution|outbox|render-read|compile|affected BASE HEAD' >&2; exit 2 ;;
+  *) echo 'Usage: bash scripts/test-authority-modules.sh identity|observation|billing|execution|outbox|render-read|workflow-plan|compile|affected BASE HEAD' >&2; exit 2 ;;
 esac

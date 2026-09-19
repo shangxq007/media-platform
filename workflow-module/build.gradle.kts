@@ -1,6 +1,7 @@
 plugins { id("java-library") }
 
 dependencies {
+    implementation(project(":operation-module")) // canonical typed invocation contract
     implementation(project(":identity-access-module")) // published authorization contract
     api(project(":shared-kernel"))
     api(project(":policy-governance-module"))

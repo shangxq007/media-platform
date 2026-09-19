@@ -25,10 +25,11 @@ class UserWorkflowNodeTypeVocabularyTest {
     @Test
     void workflowNodeTypeIsWellDefinedVocabulary() {
         WorkflowNodeType[] w2 = WorkflowNodeType.values();
-        assertEquals(8, w2.length);
+        assertEquals(16, w2.length);
         Set<String> names = Arrays.stream(w2).map(Enum::name).collect(Collectors.toSet());
         assertEquals(Set.of("ACTION", "EXTENSION_POINT", "CONDITION", "APPROVAL",
-                "DELAY", "NOTIFICATION", "WEBHOOK", "HOOK"), names);
+                "DELAY", "NOTIFICATION", "WEBHOOK", "HOOK",
+                "SEQUENCE", "PARALLEL", "CHOICE", "WAIT", "LOOP", "FOREACH", "SUBWORKFLOW", "OPERATION_INVOCATION"), names);
     }
 
     /** K1-RED: the legacy AutomationFlow family that once sourced this vocabulary is retired. */

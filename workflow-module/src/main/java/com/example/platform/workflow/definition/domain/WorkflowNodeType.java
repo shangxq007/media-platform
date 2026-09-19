@@ -1,11 +1,8 @@
 package com.example.platform.workflow.definition.domain;
 
-/**
- * The eight W2 V1 declaration node types. Vocabulary source: the
- * AutomationFlow.NodeType vocabulary (VOCABULARY_SOURCE_ONLY relationship,
- * verified 1:1 by UserWorkflowNodeTypeVocabularyTest / AR-W2-09). These are
- * declaration vocabulary only; runtime invocation is NOT_IMPLEMENTED_IN_W2_V1.
- */
+/** Declaration vocabulary. Schema 1 retains its eight historical declaration types.
+ * Frozen executable controls are compiled by WorkflowPlanCompiler; schema 2 publication
+ * remains disabled until the durable application start path is assembled. */
 public enum WorkflowNodeType {
     ACTION,
     EXTENSION_POINT,
@@ -14,5 +11,6 @@ public enum WorkflowNodeType {
     DELAY,
     NOTIFICATION,
     WEBHOOK,
-    HOOK
+    HOOK,
+    SEQUENCE, PARALLEL, CHOICE, WAIT, LOOP, FOREACH, SUBWORKFLOW, OPERATION_INVOCATION
 }
