@@ -8,7 +8,6 @@ import com.example.platform.timeline.api.review.TimelineComments;
 import com.example.platform.timeline.api.review.ReviewQueries;
 import com.example.platform.timeline.api.review.TimelineReviews;
 import com.example.platform.timeline.api.review.ReviewDecisions;
-import com.example.platform.render.app.event.AssetPublicationEventPublisher;
 import com.example.platform.timeline.diff.merge.EntityKind;
 import com.example.platform.timeline.diff.merge.EntityRef;
 import com.example.platform.timeline.diff.merge.TimelineComment;
@@ -26,7 +25,6 @@ class TimelineReviewControllerTest {
     private TimelineReviews reviewService;
     private TimelineComments commentService;
     private ReviewDecisions decisionService;
-    private AssetPublicationEventPublisher eventPublisher;
     private TimelineReviewController controller;
     private TimelineProjectAuthorizationService projectAuthorization;
 
@@ -35,7 +33,6 @@ class TimelineReviewControllerTest {
         reviewService = mock(TimelineReviews.class);
         commentService = mock(TimelineComments.class);
         decisionService = mock(ReviewDecisions.class);
-        eventPublisher = mock(AssetPublicationEventPublisher.class);
         projectAuthorization = mock(TimelineProjectAuthorizationService.class);
         var actor = com.example.platform.shared.authorization.CanonicalActor.user(
                 "user_1", "tenant_1", Set.of(), "test");
@@ -100,7 +97,7 @@ class TimelineReviewControllerTest {
                 () -> controller.resolveThread("proj_1", "rvw_1", "thread_foreign"));
 
         verify(commentService).resolveThread("rvw_1", "thread_foreign");
-        verifyNoInteractions(eventPublisher);
+        verifyNoMoreInteractions(commentService);
     }
 
     @Test
