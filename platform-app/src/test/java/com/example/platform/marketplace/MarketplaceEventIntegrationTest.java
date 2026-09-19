@@ -132,4 +132,40 @@ class MarketplaceEventIntegrationTest extends MarketplaceTestSupport {
         response(http(user,"POST",root()+"/listings/"+listing+"/transitions",Map.of("commandId","valid-archive","expectedVersion",published.path("version").asLong(),"transition","ARCHIVE")),200);
         assertThat(jdbc.queryForObject("select status from marketplace_listing where id=?",String.class,listing)).isEqualTo("ARCHIVED");
     }
+
+    @Test void mediaSnapshotSerializesAnOldProjectionWriteBeforeConcurrentArchive() throws Exception {
+        String asset=asset();var publication=publish(approve(submit(create(asset))));String listing=publication.path("id").asText();
+        try(var d=dispatcher()){assertThat(d.processOnce((String)fact("marketplace.listing.published").get("id"))).isTrue();}
+        String jobId=jdbc.queryForObject("select id from platform_job where tenant_id=?",String.class,tenant);
+        var job=context.getBean(PlatformJobRepository.class).findById(jobId).orElseThrow();
+        var locked=new java.util.concurrent.CountDownLatch(1);var release=new java.util.concurrent.CountDownLatch(1);
+        try(var pool=java.util.concurrent.Executors.newFixedThreadPool(2)) {
+            var oldProjection=pool.submit(()-> {
+                com.example.platform.shared.web.TenantContext.set(job.tenantId());
+                try {
+                    new org.springframework.transaction.support.TransactionTemplate(context.getBean(org.springframework.transaction.PlatformTransactionManager.class))
+                            .executeWithoutResult(tx->{
+                                var snapshot=context.getBean(com.example.platform.media.api.MediaAssets.class).publicationSnapshot(tenant,project,asset);
+                                assertThat(snapshot.publishStatus()).isEqualTo("PUBLISHED");locked.countDown();
+                                try {if(!release.await(15,java.util.concurrent.TimeUnit.SECONDS))throw new IllegalStateException("Projection gate timed out");}
+                                catch(InterruptedException e){Thread.currentThread().interrupt();throw new IllegalStateException(e);}
+                                context.getBean(SearchReindexTaskHandler.class).execute(new TaskExecutionContext(job.id(),"controlled",com.example.platform.sandbox.execution.TaskCapability.REINDEX,job,null,job.payloadJson()));
+                            });
+                } finally {com.example.platform.shared.web.TenantContext.clear();}
+            });
+            assertThat(locked.await(10,java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+            var archive=pool.submit(()->http(user,"POST",root()+"/listings/"+listing+"/transitions",Map.of("commandId","concurrent-archive","expectedVersion",publication.path("version").asLong(),"transition","ARCHIVE")));
+            try {
+                org.awaitility.Awaitility.await().atMost(java.time.Duration.ofSeconds(10)).until(()->jdbc.queryForObject("select count(*) from pg_stat_activity where datname=current_database() and wait_event_type='Lock' and query like '%media_asset%'",Integer.class)>=1);
+                assertThat(archive.isDone()).isFalse();
+            } finally {release.countDown();}
+            oldProjection.get(15,java.util.concurrent.TimeUnit.SECONDS);response(archive.get(15,java.util.concurrent.TimeUnit.SECONDS),200);
+        } finally {release.countDown();}
+        try(var d=dispatcher()){assertThat(d.processOnce((String)fact("marketplace.listing.archived").get("id"))).isTrue();}
+        String newest=jdbc.queryForObject("select id from platform_job where tenant_id=? and id<>?",String.class,tenant,jobId);
+        var latest=context.getBean(PlatformJobRepository.class).findById(newest).orElseThrow();
+        as(user,()->context.getBean(SearchReindexTaskHandler.class).execute(new TaskExecutionContext(latest.id(),"controlled",com.example.platform.sandbox.execution.TaskCapability.REINDEX,latest,null,latest.payloadJson())));
+        assertThat(jdbc.queryForObject("select publish_status from search_projection where asset_id=?",String.class,asset)).isEqualTo("ARCHIVED");
+        assertThat(jdbc.queryForObject("select aggregate_version from marketplace_listing where id=?",Long.class,listing)).isEqualTo(5L);
+    }
 }
