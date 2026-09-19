@@ -91,4 +91,36 @@ class BoundaryTests(unittest.TestCase):
         self.tree=self.freeze()
         with self.assertRaises(RuntimeError):self.snapshot()
 
+class FilesystemCensusTests(unittest.TestCase):
+    def test_linked_history_is_not_candidate_authority(self):
+        from h7_input_boundary import candidate_files
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp)
+            names=['operation-module/src/main/java/Authority.java',
+                   'operation-module/src/main/java/Untracked.java',
+                   '.worktrees/retained/operation-module/src/main/java/Authority.java',
+                   '.git/metadata/src/main/java/Authority.java']
+            for name in names:
+                p=root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text('class Authority {}')
+            self.assertEqual({str(p.relative_to(root)) for p in candidate_files(root,'*.java')},set(names[:2]))
+            self.assertEqual({str(p.relative_to(root)) for p in candidate_files(root,'src/main/java/**/*.java')},set(names[:2]))
+    def test_reserved_name_inside_production_does_not_hide_source(self):
+        from h7_input_boundary import candidate_files
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp)
+            names=['operation-module/src/main/java/.worktrees/Escape.java',
+                   'operation-module/src/main/java/worktrees/Normal.java']
+            for name in names:
+                p=root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text('class Escape {}')
+            self.assertEqual({str(p.relative_to(root)) for p in candidate_files(root,'*.java')},set(names))
+    def test_only_candidate_migrations_are_enumerated(self):
+        from h7_input_boundary import candidate_files
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp)
+            names=['platform-app/src/main/resources/db/migration/V5__current.sql',
+                   '.worktrees/retained/platform-app/src/main/resources/db/migration/V7__old.sql']
+            for name in names:
+                p=root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text('create table marker(id text);')
+            self.assertEqual([str(p.relative_to(root)) for p in candidate_files(root,'*.sql')],names[:1])
+
 if __name__=='__main__':unittest.main(verbosity=2)

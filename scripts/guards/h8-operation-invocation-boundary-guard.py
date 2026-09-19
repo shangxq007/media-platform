@@ -8,6 +8,7 @@ import hashlib
 import re
 import subprocess
 import sys
+from h7_input_boundary import candidate_files
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -1129,13 +1130,13 @@ def sources_at(root: Path) -> tuple[dict[str, str], list[str], set[str], bool]:
         return {}, [f"repository root is missing: {root}"], set(), False
     sources: dict[str, str] = {}
     candidates: list[tuple[Path, str]] = []
-    for path in root.rglob("*.java"):
+    for path in candidate_files(root, "*.java"):
         relative = path.relative_to(root).as_posix()
         lowered = relative.lower()
         if "/src/main/java/" in f"/{relative}" or (
                 "jooq" in lowered and "generated" in lowered):
             candidates.append((path, "java"))
-    for path in root.rglob("*.sql"):
+    for path in candidate_files(root, "*.sql"):
         relative = path.relative_to(root).as_posix()
         lowered = relative.lower()
         if "migration" in lowered or "schema" in lowered:

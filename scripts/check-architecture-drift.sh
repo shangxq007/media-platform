@@ -24,6 +24,8 @@ from pathlib import Path
 
 
 ROOT = Path.cwd()
+sys.path.insert(0, str(ROOT / "scripts" / "guards"))
+from h7_input_boundary import candidate_files
 
 
 def strip_java_comments(text: str) -> str:
@@ -40,7 +42,7 @@ def strip_sql_comments(text: str) -> str:
 
 def production_sources() -> dict[str, str]:
     sources: dict[str, str] = {}
-    for path in ROOT.rglob("src/main/java/**/*.java"):
+    for path in candidate_files(ROOT, "src/main/java/**/*.java"):
         relative = path.relative_to(ROOT).as_posix()
         if "/build/" not in f"/{relative}":
             sources[relative] = strip_java_comments(path.read_text(encoding="utf-8"))
@@ -89,7 +91,7 @@ def shadow_revision_command_runtime_absent(sources: dict[str, str]) -> bool:
         "RevisionCommandApplyService.java",
     }
     return (
-        not any(path.name in named_files for path in ROOT.rglob("src/main/java/**/*.java"))
+        not any(path.name in named_files for path in candidate_files(ROOT, "src/main/java/**/*.java"))
         and not any(names.search(source) for source in sources.values())
     )
 
@@ -287,7 +289,7 @@ for class in StorageDeliveryProfileRegistry StorageDeliveryProfileCatalog Storag
              StorageDeliveryProfileValidator StorageDeliveryProfileConfigProperties \
              ReportOnlyPreflightPolicyEvaluator PreflightPolicyEvaluationResult \
              SafePreflightReportSummary UploadReportOnlyPreflightHook; do
-    if find . -path './build' -prune -o -path './.git' -prune -o -name "${class}.java" -print | grep -q .; then
+    if find . -path './.worktrees' -prune -o -path './build' -prune -o -path './.git' -prune -o -name "${class}.java" -print | grep -q .; then
         pass "Required class exists: $class"
     else
         fail "Required class missing: $class"
@@ -317,7 +319,7 @@ done
 echo ""
 echo "--- Report-only Evaluator ---"
 
-EVALUATOR_FILE="$(find . -name 'ReportOnlyPreflightPolicyEvaluator.java' | head -n 1)"
+EVALUATOR_FILE="$(find . -path './.worktrees' -prune -o -name 'ReportOnlyPreflightPolicyEvaluator.java' -print | head -n 1)"
 if [ -n "$EVALUATOR_FILE" ]; then
     if grep -q "return PreflightPolicyDecision.REJECT;" "$EVALUATOR_FILE" 2>/dev/null; then
         fail "Report-only evaluator must not emit REJECT"
@@ -341,7 +343,7 @@ echo ""
 echo "--- Persistence ---"
 
 for pattern in "PreflightPolicyEvaluationRepository" "PreflightReportRepository" "SafePreflightReportRepository"; do
-    if find . -path './build' -prune -o -name "${pattern}.java" -print | grep -q .; then
+    if find . -path './.worktrees' -prune -o -path './build' -prune -o -name "${pattern}.java" -print | grep -q .; then
         fail "Persistence repository found: $pattern"
     else
         pass "No persistence repository: $pattern"
@@ -353,7 +355,7 @@ echo "--- Safe Preflight Report Persistence Guard ---"
 
 # Check no persistence writer/repository exists
 for pattern in "SafePreflightReportPersistenceWriter" "PersistedPreflightReport" "PreflightSafeReportEntity" "PreflightPolicyResultEntity"; do
-    if find . -path './build' -prune -o -path './.git' -prune -o -name "${pattern}.java" -print | grep -q .; then
+    if find . -path './.worktrees' -prune -o -path './build' -prune -o -path './.git' -prune -o -name "${pattern}.java" -print | grep -q .; then
         # Writer is now approved
         pass "Approved persistence class: $pattern"
     else
@@ -362,7 +364,7 @@ for pattern in "SafePreflightReportPersistenceWriter" "PersistedPreflightReport"
 done
 
 # Check no Flyway migration for preflight
-if find . -path './build' -prune -o -path './.git' -prune -o -name "V*__*preflight*.sql" -print | grep -q .; then
+if find . -path './.worktrees' -prune -o -path './build' -prune -o -path './.git' -prune -o -name "V*__*preflight*.sql" -print | grep -q .; then
     # V3 migration is now approved
     pass "Approved preflight Flyway migration"
 else

@@ -11,6 +11,22 @@ import stat
 import subprocess
 
 
+def candidate_files(root: Path, pattern: str):
+    """Filesystem census of this checkout, including untracked production inputs.
+
+    Top-level Git metadata and sibling linked checkouts are not this candidate.
+    Do not apply Git-ignore filtering or suppress similarly named directories
+    inside a production module: those can still be compiler inputs.
+    """
+    for entry in sorted(root.iterdir()):
+        if entry.name in {'.git', '.worktrees'}:
+            continue
+        if entry.is_dir():
+            yield from entry.rglob(pattern)
+        elif entry.match(pattern):
+            yield entry
+
+
 def validate_entries(entries):
     seen = set()
     for mode, blob, name in entries:
