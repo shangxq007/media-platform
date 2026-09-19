@@ -180,11 +180,11 @@ public class WorkflowAdmission {
                                             Comparator.comparing(
                                                     i -> i.implementationId().toString()))
                                     .toList();
-                    if (available.isEmpty())
+                    if (available.isEmpty() && requirement.required())
                         throw new IllegalArgumentException("Missing compatible capability");
                     pins.put(
                             key + ":" + requirement.capabilityId(),
-                            RunJson.write(available.getFirst()));
+                            RunJson.write(available.isEmpty() ? null : available.getFirst()));
                 }
             }
         }

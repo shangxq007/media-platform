@@ -46,7 +46,7 @@ import java.util.concurrent.*;
  * Full Spring/Identity/Outbox/PostgreSQL assembly with real SDK runtime and an explicitly
  * controlled Operation owner.
  */
-@DirtiesContext(classMode=DirtiesContext.ClassMode.AFTER_CLASS)
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles({"test", "preview", "ep07-workflow-test"})
 @TestPropertySource(
@@ -793,6 +793,32 @@ class WorkflowFoundationIntegrationTest extends PostgresTestContainerSupport {
                                 Integer.class,
                                 tenant))
                 .isZero();
+        var optional =
+                new Node(
+                        "root",
+                        Kind.OPERATION_INVOCATION,
+                        null,
+                        null,
+                        0,
+                        0,
+                        null,
+                        good.operation(),
+                        List.of(
+                                com.example.platform.extension.domain.CapabilityRequirement
+                                        .optional(
+                                                capability.capabilityId(),
+                                                capability.contractRange())),
+                        Map.of(),
+                        null,
+                        null);
+        String optionalId = publish(List.of(optional), List.of());
+        var accepted = start(optionalId, "optional-absence");
+        assertThat(store.require(accepted.id()).bindingsJson()).contains("null");
+        try (var worker = dispatcher()) {
+            assertThat(worker.processOnce(event(accepted.id()))).isTrue();
+        }
+        complete(accepted.id());
+        assertThat(store.require(accepted.id()).status()).isEqualTo("SUCCEEDED");
     }
 
     @Test
@@ -1310,8 +1336,7 @@ class WorkflowFoundationIntegrationTest extends PostgresTestContainerSupport {
                                 .setNamespace("default")
                                 .setIdentity("ep07-restarted-worker")
                                 .build());
-        var replacement =
-                io.temporal.worker.WorkerFactory.newInstance(restartClient);
+        var replacement = io.temporal.worker.WorkerFactory.newInstance(restartClient);
         var sdkWorker = replacement.newWorker("workflow-process");
         sdkWorker.registerWorkflowImplementationTypes(PlanWalkWorkflowImpl.class);
         sdkWorker.registerActivitiesImplementations(faults);
