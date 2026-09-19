@@ -408,7 +408,7 @@ tasks.register("verifyC20RenderPlanBoundaryGuard") {
         // 22. Preserve the exact Owner-adopted migration inventory; no unclassified migrations.
         val migrationDir = file("../platform-app/src/main/resources/db/migration")
         require(migrationDir.listFiles().orEmpty().filter { it.name.endsWith(".sql") }.map { it.name }.toSet()
-                == setOf("V1__initial_schema.sql", "V2__account_membership_and_project_scope.sql", "V3__quarantine_unresolved_assignment_scopes.sql")) {
+                == setOf("V1__initial_schema.sql", "V2__account_membership_and_project_scope.sql", "V3__quarantine_unresolved_assignment_scopes.sql", "V4__quarantine_missing_assignment_tenants.sql")) {
             "FAIL: unexpected Flyway migration inventory"
         }
 
