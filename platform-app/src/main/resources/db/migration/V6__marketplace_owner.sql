@@ -62,7 +62,8 @@ CREATE TABLE marketplace_command (
 INSERT INTO permission(id,permission_key,name,resource_type,created_at) VALUES
  ('perm-marketplace-manage','marketplace.manage','Manage Marketplace listing','PROJECT',now()),
  ('perm-marketplace-review','marketplace.review','Decide Marketplace review','PROJECT',now()),
- ('perm-marketplace-publish','marketplace.publish','Publish Marketplace listing','PROJECT',now());
+ ('perm-marketplace-publish','marketplace.publish','Publish Marketplace listing','PROJECT',now())
+ON CONFLICT(permission_key) DO NOTHING;
 -- Historical ASSET timeline_review/thread/comment/decision rows remain byte-for-byte evidence.
 -- Marketplace never interprets those approvals as admission; Timeline live queries exclude them.
 
@@ -73,3 +74,15 @@ WHERE job_id IN (SELECT id FROM platform_job WHERE job_type='MARKETPLACE_PREPARE
 AND status IN ('PENDING','RUNNING','RETRY');
 UPDATE platform_job SET status='FAILED',updated_at=now()
 WHERE job_type='MARKETPLACE_PREPARE' AND status IN ('PENDING','RUNNING','RETRY');
+
+-- Old publication consumers emitted these exact reindex payloads without a tenant.
+-- Fail those non-executable intents explicitly; keep the payload and original scope evidence.
+UPDATE platform_task SET status='FAILED',error_message='MARKETPLACE_SCOPE_MISSING: legacy publication reindex needs owner reconciliation',updated_at=now()
+WHERE job_id IN (SELECT id FROM platform_job WHERE job_type='SEARCH_REINDEX'
+ AND (coalesce(trim(tenant_id),'')='' OR coalesce(trim(project_id),'')='')
+ AND (payload_json LIKE '%"reason":"asset.published"%' OR payload_json LIKE '%"reason":"asset.archived"%'))
+AND status IN ('PENDING','RUNNING','RETRY');
+UPDATE platform_job SET status='FAILED',updated_at=now()
+WHERE job_type='SEARCH_REINDEX' AND (coalesce(trim(tenant_id),'')='' OR coalesce(trim(project_id),'')='')
+AND (payload_json LIKE '%"reason":"asset.published"%' OR payload_json LIKE '%"reason":"asset.archived"%')
+AND status IN ('PENDING','RUNNING','RETRY');

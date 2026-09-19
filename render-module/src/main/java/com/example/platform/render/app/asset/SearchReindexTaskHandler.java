@@ -67,7 +67,7 @@ public class SearchReindexTaskHandler implements TaskHandler {
         List<String> scenes = new ArrayList<>();
         List<String> objects = new ArrayList<>();
 
-        semanticRepo.findById(assetId).ifPresent(row -> {
+        semanticRepo.findById(asset.id()).ifPresent(row -> {
             if (row.semanticJson() != null) {
                 extractTextualFields(row.semanticJson(), transcripts, scenes, objects);
             }
