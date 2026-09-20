@@ -43,6 +43,18 @@ remain ephemeral diagnostic inputs, not durable job/accounting state, and are no
 The independent recordFailure diagnostic path is unchanged. No new storage subsystem, business
 authority, event version, subscriber, route or compatibility alias is introduced.
 
+Each pending view update has its own transaction synchronization. On the assembled Spring JDBC
+transaction manager (Spring 7.0.6), it records the identities of savepoints created **after** its
+registration. Rollback to any other savepoint invalidates that update: its observation belongs
+to the rolled-back scope, even when registration happened inside an already existing savepoint
+whose creation notification it never received. Rolling back a later savepoint leaves earlier
+observations valid; rolling back an enclosing savepoint also invalidates released descendants.
+Successful nested work still waits for the outer commit. Spring suspends/resumes synchronization
+lists for REQUIRES_NEW, so independently committed observations survive outer rollback. State is
+callback-local and cleared/discarded at completion; there is no shared thread-local pending queue.
+This guarantee covers Spring-managed nested/programmatic savepoints, not raw JDBC/SQL savepoints
+that bypass Spring's synchronization notifications. Diagnostic attempt counters still do not roll back.
+
 ## Bounded verification
 
 EventConsumerClosureAssemblyTest checks actual catalogs, ownership and registered Spring typed
@@ -51,6 +63,9 @@ read path after retirement. RetiredEventContractsTest guards definitions/emissio
 with reintroduction controls. OutboxEventServiceTest exercises historical quarantine on PostgreSQL.
 UsageAnomalyPublicationTest uses assembled Audit/Outbox and PostgreSQL for commit visibility,
 rollback, rejected tenant, injected database failure, stable identity and delivery failure/replay.
+UsageAnomalySavepointTest uses the actual assembled JDBC transaction manager and PostgreSQL for
+nested rollback/commit, mixed outer/nested observations, enclosing rollback, subsequent valid work,
+REQUIRES_NEW isolation, commit-phase rejection and repeated programmatic savepoint rollback.
 Transport failure injection is test-only and does not add a production subscriber. Existing
 OtherDomainEventBoundaryTest and TimelineEventBoundaryTest retain invalid payload/version and
 old-authority negative controls. External handoff records exact candidate and execution evidence.

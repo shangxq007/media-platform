@@ -120,7 +120,19 @@ public class UsageAnomalyDetectionService {
         // Without a caller transaction its own Spring transaction has already committed.
         if (TransactionSynchronizationManager.isActualTransactionActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override public void afterCommit() { updateView.run(); }
+                // Registration can happen INSIDE an existing savepoint, so we never saw
+                // that savepoint's creation. Only savepoints created after this observation
+                // leave it intact on rollback. Identity (not equals) is Spring's savepoint key.
+                private final Set<Object> laterSavepoints = Collections.newSetFromMap(new IdentityHashMap<>());
+                private boolean rolledBack;
+                @Override public void savepoint(Object savepoint) { laterSavepoints.add(savepoint); }
+                @Override public void savepointRollback(Object savepoint) {
+                    if (!laterSavepoints.contains(savepoint)) rolledBack = true;
+                }
+                @Override public void afterCommit() {
+                    if (!rolledBack) updateView.run();
+                }
+                @Override public void afterCompletion(int status) { laterSavepoints.clear(); }
             });
         } else {
             updateView.run();
