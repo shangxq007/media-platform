@@ -35,11 +35,6 @@ Customer                  Commerce              Payment              Billing    
    |                         |                     |                    |                   |-- grantEntitlement()
    |                         |                     |                    |                   |<-- EntitlementChangedEvent
    |                         |                     |                    |                   |
-   |                         |                     |                    |-- updateInvoice() |
-   |                         |                     |                    |<-- InvoiceProjectionUpdatedEvent
-   |                         |                     |                    |                   |
-   |                         |                     |                    |-- billing.invoice.updated (Outbox) --> Notification
-   |                         |                     |                    |                   |
    |                         |                     |                    |                   |-- entitlement.changed (Outbox) --> Downstream
 ```
 
@@ -120,20 +115,14 @@ Customer                  Commerce              Payment              Billing    
 
 ---
 
-### 5. `billing.invoice.updated`
+### 5. Invoice projection publication — retired
 
-| Property          | Value                                      |
-|-------------------|--------------------------------------------|
-| **Source**        | `BillingProjectionService`                 |
-| **Consumer**      | Notification module (via Outbox)           |
-| **Trigger**       | Invoice status change                      |
-| **Payload**       | `InvoiceProjectionUpdatedEvent`            |
-| **Result**        | Outbox event persisted                     |
-
-**Flow:**
-1. `BillingProjectionService.updateInvoice()` creates an `InvoiceProjectionUpdatedEvent`.
-2. The event is persisted to the Outbox table via `OutboxEventService.appendEvent()`.
-3. The `OutboxEventDispatcher` publishes the event to the notification module.
+The former invoice-update record had no active producer, subscription or Outbox registration.
+EP23 retires that unused definition under current Owner direction. The previously described
+`updateInvoice()` / Outbox flow was not implemented and is not a retained publication obligation.
+`BillingProjectionService` continues to read scoped subscription state through its repository;
+no invoice event or notification is manufactured by that read path. The archived version of
+this document remains historical evidence.
 
 ---
 

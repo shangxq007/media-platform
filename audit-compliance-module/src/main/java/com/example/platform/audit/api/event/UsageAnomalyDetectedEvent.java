@@ -4,7 +4,10 @@ import java.time.Instant;
 import java.util.Map;
 
 /**
- * Published when a user's usage exceeds an anomaly threshold.
+ * Durable observation that this detector invocation exceeded a usage threshold.
+ * The Outbox fact is the durable record; process-local risk/mitigation views are derived.
+ * This does not assert that a render submission or mitigation was durably executed.
+ * A new invocation is a new observation; delivery retries retain the original eventId.
  */
 public record UsageAnomalyDetectedEvent(
         String eventId,

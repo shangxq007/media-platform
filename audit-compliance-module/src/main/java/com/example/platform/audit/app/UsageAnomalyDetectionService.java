@@ -7,6 +7,8 @@ import org.slf4j.LoggerFactory;
 import com.example.platform.outbox.app.OutboxEventService;
 import com.example.platform.audit.api.event.AuditOutboxEvents;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
@@ -87,11 +89,8 @@ public class UsageAnomalyDetectionService {
         String tier = resolveTier(tenantId);
         actions = applyExperienceProtection(tenantId, userId, tier, detectedAnomalies, actions);
 
-        // Emit events and record
-        for (UsageMitigationAction action : actions) {
-            recordMitigation(tenantId, userId, action);
-        }
-
+        // The Outbox observation is durable; these process-local views are derived from it.
+        UsageAnomalyEvent observation = null;
         if (!detectedAnomalies.isEmpty()) {
             UsageAnomalyEvent event = new UsageAnomalyEvent(
                     java.util.UUID.randomUUID().toString(),
@@ -105,10 +104,27 @@ public class UsageAnomalyDetectionService {
                     event.severity(), event.action(), event.score(),
                     event.context(), event.detectedAt().toInstant());
             eventPublisher.append(AuditOutboxEvents.ANOMALY.append(tenantId,fact,"usage-anomaly:"+tenantId+":"+fact.eventId()));
-            recordAnomaly(event);
+            observation = event;
         }
 
-        updateRiskProfile(tenantId, userId, maxScore, detectedAnomalies);
+        UsageAnomalyEvent committedObservation = observation;
+        List<UsageMitigationAction> committedActions = List.copyOf(actions);
+        List<String> committedAnomalies = List.copyOf(detectedAnomalies);
+        double committedScore = maxScore;
+        Runnable updateView = () -> {
+            committedActions.forEach(action -> recordMitigation(tenantId, userId, action));
+            if (committedObservation != null) recordAnomaly(committedObservation);
+            updateRiskProfile(tenantId, userId, committedScore, committedAnomalies);
+        };
+        // append joins a caller transaction when present; successful return is not then a commit.
+        // Without a caller transaction its own Spring transaction has already committed.
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override public void afterCommit() { updateView.run(); }
+            });
+        } else {
+            updateView.run();
+        }
 
         return new AnomalyCheckResult(detectedAnomalies.isEmpty(), detectedAnomalies,
                 maxScore, actions, buildRecommendedPreset(tier, detectedAnomalies));

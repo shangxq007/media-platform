@@ -6,14 +6,14 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
-/** Bounded EP29B reintroduction guard; not a production event registry. */
+/** Bounded EP29B/EP23 reintroduction guard; not a production event registry. */
 class RetiredEventContractsTest {
     static final List<String> TYPES = List.of("ProblematicDataDetectedEvent", "CostReservationCreatedEvent",
             "CostReservationReleasedEvent", "ReconciliationCompletedEvent", "ProviderHealthDegradedEvent",
-            "QuotaCheckRequestedEvent", "QuotaCheckResultEvent");
+            "QuotaCheckRequestedEvent", "QuotaCheckResultEvent", "InvoiceProjectionUpdatedEvent");
     static final List<String> KEYS = List.of("problematic.data.detected", "cost.reservation.created",
             "cost.reservation.released", "reconciliation.completed", "provider.health.degraded",
-            "quota.check.requested", "quota.check.result");
+            "quota.check.requested", "quota.check.result", "billing.invoice.updated");
     static boolean retired(String source) {
         return TYPES.stream().anyMatch(source::contains) || KEYS.stream().anyMatch(source::contains);
     }
@@ -28,6 +28,7 @@ class RetiredEventContractsTest {
     }
     @Test void negativeControlsDetectAReintroducedTypeOrRegistration() {
         assertTrue(retired("public record CostReservationCreatedEvent(String id) {}"));
+        assertTrue(retired("public record InvoiceProjectionUpdatedEvent(String id) {}"));
         assertTrue(retired("new OutboxEventType<>(\"provider.health.degraded\", 1, ...);"));
         assertFalse(retired("PROBLEMATIC_DATA_DETECTED"), "Audit action is retained business behavior, not an event registration");
         assertFalse(retired("RuntimeUsageObservedEvent"), "Accepted Usage fact must remain distinct");
