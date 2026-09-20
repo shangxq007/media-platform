@@ -8,8 +8,8 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -60,7 +60,7 @@ class SocialPostRepositoryReadQueryTest {
         assertFalse(normalized.contains("platform_post"));
         assertArrayEquals(new Object[] {
                 "tenant-a", "actor-1", "project-1", "account-1", 7L,
-                Timestamp.from(start), Timestamp.from(end), 25
+                LocalDateTime.parse("2026-01-01T00:00:00"), LocalDateTime.parse("2026-02-01T00:00:00"), 25
         }, arguments.getValue());
     }
 
