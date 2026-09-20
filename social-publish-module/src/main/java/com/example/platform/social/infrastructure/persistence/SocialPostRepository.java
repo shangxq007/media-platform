@@ -13,6 +13,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 
@@ -41,9 +43,9 @@ public class SocialPostRepository {
                 post.connectedPlatformBindingVersion(), post.artifactId(), post.contentText(),
                 toJsonArray(post.mediaUrls()), post.platformType().name(),
                 post.status().name(), post.platformPostId(), post.platformPostUrl(),
-                post.scheduledAt(), post.publishedAt(), post.failedAt(),
+                utcTimestamp(post.scheduledAt()), utcTimestamp(post.publishedAt()), utcTimestamp(post.failedAt()),
                 post.errorCode(), post.errorMessage(), post.retryCount(),
-                post.createdAt(), post.updatedAt());
+                utcTimestamp(post.createdAt()), utcTimestamp(post.updatedAt()));
         return post;
     }
 
@@ -70,7 +72,7 @@ public class SocialPostRepository {
     public List<SocialPost> findScheduledBefore(Instant before) {
         return jdbc.query(
                 "SELECT * FROM social_post WHERE status = 'SCHEDULED' AND scheduled_at <= ?",
-                rowMapper, before);
+                rowMapper, utcTimestamp(before));
     }
 
     public long countByTenantAndUser(String tenantId, String userId) {
@@ -154,19 +156,19 @@ public class SocialPostRepository {
 
     public void updateStatus(String id, PostStatus status, Instant updatedAt) {
         jdbc.update("UPDATE social_post SET status = ?, updated_at = ? WHERE id = ?",
-                status.name(), updatedAt, id);
+                status.name(), utcTimestamp(updatedAt), id);
     }
 
     public void updatePublishResult(String id, String platformPostId, String platformPostUrl,
                                      PostStatus status, Instant publishedAt, Instant updatedAt) {
         jdbc.update("UPDATE social_post SET platform_post_id = ?, platform_post_url = ?, status = ?, published_at = ?, updated_at = ? WHERE id = ?",
-                platformPostId, platformPostUrl, status.name(), publishedAt, updatedAt, id);
+                platformPostId, platformPostUrl, status.name(), utcTimestamp(publishedAt), utcTimestamp(updatedAt), id);
     }
 
     public void updateFailure(String id, String errorCode, String errorMessage,
                                PostStatus status, Instant failedAt, int retryCount, Instant updatedAt) {
         jdbc.update("UPDATE social_post SET error_code = ?, error_message = ?, status = ?, failed_at = ?, retry_count = ?, updated_at = ? WHERE id = ?",
-                errorCode, errorMessage, status.name(), failedAt, retryCount, updatedAt, id);
+                errorCode, errorMessage, status.name(), utcTimestamp(failedAt), retryCount, utcTimestamp(updatedAt), id);
     }
 
     public void deleteById(String id) {
@@ -188,14 +190,14 @@ public class SocialPostRepository {
                 PostStatus.valueOf(rs.getString("status")),
                 rs.getString("platform_post_id"),
                 rs.getString("platform_post_url"),
-                rs.getTimestamp("scheduled_at") != null ? rs.getTimestamp("scheduled_at").toInstant() : null,
-                rs.getTimestamp("published_at") != null ? rs.getTimestamp("published_at").toInstant() : null,
-                rs.getTimestamp("failed_at") != null ? rs.getTimestamp("failed_at").toInstant() : null,
+                readInstant(rs, "scheduled_at"),
+                readInstant(rs, "published_at"),
+                readInstant(rs, "failed_at"),
                 rs.getString("error_code"),
                 rs.getString("error_message"),
                 rs.getInt("retry_count"),
-                rs.getTimestamp("created_at").toInstant(),
-                rs.getTimestamp("updated_at").toInstant()
+                readInstant(rs, "created_at"),
+                readInstant(rs, "updated_at")
         );
     }
 
@@ -211,6 +213,15 @@ public class SocialPostRepository {
                 rs.getTimestamp("scheduled_at") != null
                         ? rs.getTimestamp("scheduled_at").toInstant()
                         : null);
+    }
+
+    private static LocalDateTime utcTimestamp(Instant instant) {
+        return instant == null ? null : LocalDateTime.ofInstant(instant, ZoneOffset.UTC);
+    }
+
+    private static Instant readInstant(ResultSet result, String column) throws SQLException {
+        LocalDateTime timestamp = result.getObject(column, LocalDateTime.class);
+        return timestamp == null ? null : timestamp.toInstant(ZoneOffset.UTC);
     }
 
     private String toJsonArray(List<String> items) {
