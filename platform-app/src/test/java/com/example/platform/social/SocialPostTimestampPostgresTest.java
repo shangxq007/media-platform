@@ -10,6 +10,8 @@ import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.*;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import java.time.*;
 import java.util.*;
 import static org.assertj.core.api.Assertions.*;
@@ -26,8 +28,7 @@ class SocialPostTimestampPostgresTest extends PostgresTestContainerSupport {
         Flyway.configure().dataSource(jdbcUrl(), username(), password())
                 .schemas(schema).defaultSchema(schema).locations("classpath:db/migration").load().migrate();
         jdbc = new JdbcTemplate(new DriverManagerDataSource(
-                jdbcUrl() + (jdbcUrl().contains("?") ? "&" : "?") + "currentSchema=" + schema
-                        + "&options=-c%20TimeZone%3DPacific%2FAuckland",
+                jdbcUrl() + (jdbcUrl().contains("?") ? "&" : "?") + "currentSchema=" + schema,
                 username(), password()));
     }
 
@@ -67,14 +68,18 @@ class SocialPostTimestampPostgresTest extends PostgresTestContainerSupport {
         TimeZone previous = TimeZone.getDefault();
         try {
             TimeZone.setDefault(TimeZone.getTimeZone("Pacific/Honolulu"));
-            assertThat(jdbc.queryForObject("SHOW TimeZone", String.class)).isEqualTo("Pacific/Auckland");
-            insert("zone", CUTOFF, "SCHEDULED");
-            assertThat(repository.findScheduledBefore(CUTOFF)).singleElement()
-                    .extracting(SocialPost::scheduledAt).isEqualTo(CUTOFF);
-            repository.updateStatus("zone", PostStatus.SCHEDULED, CUTOFF);
-            assertThat(repository.findById("zone").orElseThrow().updatedAt()).isEqualTo(CUTOFF);
-            assertThat(jdbc.queryForObject("SELECT updated_at FROM social_post WHERE id='zone'", LocalDateTime.class))
-                    .isEqualTo(LocalDateTime.ofInstant(CUTOFF, ZoneOffset.UTC));
+            new TransactionTemplate(new DataSourceTransactionManager(jdbc.getDataSource()))
+                    .executeWithoutResult(transaction -> {
+                        jdbc.execute("SET LOCAL TIME ZONE 'Pacific/Auckland'");
+                        assertThat(jdbc.queryForObject("SHOW TimeZone", String.class)).isEqualTo("Pacific/Auckland");
+                        insert("zone", CUTOFF, "SCHEDULED");
+                        assertThat(repository.findScheduledBefore(CUTOFF)).singleElement()
+                                .extracting(SocialPost::scheduledAt).isEqualTo(CUTOFF);
+                        repository.updateStatus("zone", PostStatus.SCHEDULED, CUTOFF);
+                        assertThat(repository.findById("zone").orElseThrow().updatedAt()).isEqualTo(CUTOFF);
+                        assertThat(jdbc.queryForObject("SELECT updated_at FROM social_post WHERE id='zone'", LocalDateTime.class))
+                                .isEqualTo(LocalDateTime.ofInstant(CUTOFF, ZoneOffset.UTC));
+                    });
         } finally {
             TimeZone.setDefault(previous);
         }
