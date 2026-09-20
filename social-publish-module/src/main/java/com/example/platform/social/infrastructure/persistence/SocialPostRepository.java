@@ -11,7 +11,6 @@ import org.springframework.stereotype.Repository;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -121,7 +120,7 @@ public class SocialPostRepository {
                 LIMIT ?
                 """, (rs, rowNum) -> mapReadRow(rs),
                 tenantId, actorId, projectId, connectedAccountId, bindingVersion,
-                Timestamp.from(start), Timestamp.from(end), limit);
+                utcTimestamp(start), utcTimestamp(end), limit);
     }
 
     public Optional<SocialPostReadModel> findReadProjectionById(
@@ -210,9 +209,7 @@ public class SocialPostRepository {
                 rs.getString("content_text"),
                 rs.getString("artifact_id"),
                 rs.getString("platform_type"),
-                rs.getTimestamp("scheduled_at") != null
-                        ? rs.getTimestamp("scheduled_at").toInstant()
-                        : null);
+                readInstant(rs, "scheduled_at"));
     }
 
     private static LocalDateTime utcTimestamp(Instant instant) {
