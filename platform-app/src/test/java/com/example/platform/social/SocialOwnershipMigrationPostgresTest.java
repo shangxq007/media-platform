@@ -14,12 +14,12 @@ class SocialOwnershipMigrationPostgresTest extends PostgresTestContainerSupport 
         config.target("7").load().migrate();
         var jdbc=new JdbcTemplate(new DriverManagerDataSource(jdbcUrl()+(jdbcUrl().contains("?")?"&":"?")+"currentSchema="+schema,username(),password()));
         for(String status:new String[]{"DRAFT","SCHEDULED","PUBLISHED","PUBLISHING","FAILED"})
-            jdbc.update("INSERT INTO social_post(id,tenant_id,user_id,platform_type,status,retry_count,platform_post_id) VALUES (?,'tenant','actor','TWITTER',?,3,'legacy-result')",status,status);
+            jdbc.update("INSERT INTO social_post(id,tenant_id,user_id,platform_type,status,retry_count,platform_post_id,error_code,error_message) VALUES (?,'tenant','actor','TWITTER',?,3,'legacy-result','legacy-code','legacy-message')",status,status);
         assertThat(config.target("latest").load().migrate().migrationsExecuted).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM social_post",Integer.class)).isEqualTo(5);
         for(String status:new String[]{"DRAFT","SCHEDULED","PUBLISHED","PUBLISHING","FAILED"}) {
             var row=jdbc.queryForMap("SELECT * FROM social_post WHERE id=?",status);
-            assertThat(row).containsEntry("retry_count",3).containsEntry("platform_post_id","legacy-result").containsEntry("publication_attempt_id",null);
+            assertThat(row).containsEntry("retry_count",3).containsEntry("platform_post_id","legacy-result").containsEntry("publication_attempt_id",null).containsEntry("error_code","legacy-code").containsEntry("error_message","legacy-message");
             assertThat(row.get("status")).isEqualTo(status.equals("FAILED")||status.equals("PUBLISHING")?"UNRESOLVED":status);
         }
         assertThat(config.load().validateWithResult().validationSuccessful).isTrue();

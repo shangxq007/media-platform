@@ -244,13 +244,29 @@ class SocialPublicationOwnershipPostgresTest extends PostgresTestContainerSuppor
         assertThatThrownBy(()->jdbc.update("UPDATE social_post SET connected_platform_binding_version=99 WHERE id=?",id)).isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
         assertThat(state()).isEqualTo(before);
     }
-    @Test void accountChangeBeforeDispatchRejectsButAfterDispatchCannotRecallRequest() {
-        doAnswer(inv->{jdbc.update("UPDATE social_connected_platform SET status='INACTIVE' WHERE id=?",account);return true;}).when(provider).validateCredentials(any());
-        assertThatThrownBy(this::publish).hasMessageContaining("binding");verify(provider,never()).publish(any(),any());
+    @Test void accountChangeBeforeDispatchRejectsButAfterDispatchCannotRecallRequest() throws Exception {
+        var checking=new CountDownLatch(1);var checked=new CountDownLatch(1);
+        doAnswer(inv->{checking.countDown();await(checked);return true;}).when(provider).validateCredentials(any());
+        try(var pool=Executors.newSingleThreadExecutor()) {
+            var job=pool.submit(()->assertThatThrownBy(this::scheduled).hasMessageContaining("binding"));
+            try {await(checking);jdbc.update("UPDATE social_connected_platform SET status='INACTIVE' WHERE id=?",account);}
+            finally {checked.countDown();}
+            job.get(15,TimeUnit.SECONDS);
+        }
+        assertThat(state()).containsEntry("status","FAILED").containsEntry("dispatch_started_at",null);
+        verify(provider,never()).publish(any(),any());
         jdbc.update("UPDATE social_connected_platform SET status='ACTIVE' WHERE id=?",account);
         doReturn(true).when(provider).validateCredentials(any());
-        doAnswer(inv->{jdbc.update("UPDATE social_connected_platform SET status='INACTIVE' WHERE id=?",account);return success();}).when(provider).publish(any(),any());
-        service.retryPost(tenant,actor,id);assertThat(state()).containsEntry("status","PUBLISHED").containsEntry("attempt_account_id",account);
+        var sent=new CountDownLatch(1);var response=new CountDownLatch(1);
+        doAnswer(inv->{sent.countDown();await(response);return success();}).when(provider).publish(any(),any());
+        service.schedulePost(tenant,actor,id,new com.example.platform.social.api.dto.SchedulePostRequest(Instant.now().minusSeconds(1).toString()));
+        try(var pool=Executors.newSingleThreadExecutor()) {
+            var job=pool.submit(this::scheduled);
+            try {await(sent);jdbc.update("UPDATE social_connected_platform SET status='INACTIVE' WHERE id=?",account);}
+            finally {response.countDown();}
+            job.get(15,TimeUnit.SECONDS);
+        }
+        assertThat(state()).containsEntry("status","PUBLISHED").containsEntry("attempt_account_id",account);
     }
     @Test void completionDatabaseFailureRetainsCommittedDispatchAndCannotRepublish() {
         jdbc.execute("CREATE OR REPLACE FUNCTION reject_social_completion() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.status='PUBLISHED' THEN RAISE EXCEPTION 'controlled completion failure'; END IF; RETURN NEW; END $$");
