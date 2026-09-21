@@ -11,7 +11,7 @@ import com.example.platform.identity.api.WorkspaceController;
 import com.example.platform.identity.api.dto.*;
 import com.example.platform.identity.app.WorkspaceService;
 import com.example.platform.security.AdminAuditHelper;
-import com.example.platform.shared.audit.AdminAuditPublisher;
+import com.example.platform.auditcontract.api.AdminAuditPublisher;
 import com.example.platform.shared.web.TenantContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;

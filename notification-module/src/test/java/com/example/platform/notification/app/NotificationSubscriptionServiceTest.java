@@ -8,7 +8,7 @@ import static org.mockito.Mockito.*;
 
 import com.example.platform.notification.domain.NotificationEventDefinition;
 import com.example.platform.notification.domain.NotificationSubscription;
-import com.example.platform.shared.audit.AuditPort;
+import com.example.platform.auditcontract.api.AuditPort;
 import com.example.platform.shared.web.ConfigurableErrorCode;
 import com.example.platform.shared.web.PlatformException;
 import java.util.List;

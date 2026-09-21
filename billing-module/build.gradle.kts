@@ -1,6 +1,7 @@
 plugins { id("java-library") }
 
 dependencies {
+    implementation(project(":audit-contract-module")) // owner-published audit ports
     api(project(":usage-contract-module")) // owner-published observation/ingestion contracts
     implementation(project(":typed-schema-module"))
     implementation(project(":outbox-event-module"))

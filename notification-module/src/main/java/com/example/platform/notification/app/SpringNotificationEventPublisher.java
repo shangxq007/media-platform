@@ -5,7 +5,7 @@ import static com.example.platform.typedschema.jooq.generated.tables.Notificatio
 
 import com.example.platform.notification.domain.*;
 import com.example.platform.notification.infrastructure.NotificationProviderRouter;
-import com.example.platform.shared.audit.AuditPort;
+import com.example.platform.auditcontract.api.AuditPort;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;

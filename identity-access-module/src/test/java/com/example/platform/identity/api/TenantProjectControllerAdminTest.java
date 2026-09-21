@@ -5,7 +5,7 @@ import static org.mockito.Mockito.*;
 
 import com.example.platform.identity.app.TenantProjectService;
 import com.example.platform.identity.api.dto.TenantResponse;
-import com.example.platform.shared.audit.AdminAuditPublisher;
+import com.example.platform.auditcontract.api.AdminAuditPublisher;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;

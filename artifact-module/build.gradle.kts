@@ -23,6 +23,7 @@ tasks.withType<JavaCompile>().configureEach {
 }
 
 dependencies {
+    implementation(project(":audit-contract-module")) // owner-published audit ports
     implementation(project(":outbox-event-module"))
     // GCR-2: artifact-module depends on storage-module contracts (ContentDigest was moved
     // to shared-kernel; storage contracts StorageObjectId/StorageReplicaId/StorageProviderId

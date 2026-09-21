@@ -9,7 +9,7 @@ import com.example.platform.identity.app.TenantRepository;
 import com.example.platform.identity.domain.Project;
 import com.example.platform.policy.featureflag.FeatureFlagService;
 import com.example.platform.policy.featureflag.domain.FeatureFlagDefinition;
-import com.example.platform.shared.audit.AuditPort;
+import com.example.platform.auditcontract.api.AuditPort;
 import com.example.platform.shared.web.TenantContext;
 import com.example.platform.web.collaboration.SharedResourceService;
 import jakarta.servlet.http.HttpServletRequest;

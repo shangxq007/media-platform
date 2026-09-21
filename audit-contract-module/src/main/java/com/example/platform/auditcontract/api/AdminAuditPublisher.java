@@ -1,4 +1,4 @@
-package com.example.platform.shared.audit;
+package com.example.platform.auditcontract.api;
 
 import java.util.Map;
 
@@ -13,7 +13,7 @@ import java.util.Map;
  *   <li>Ensuring persistence failures do not affect business logic</li>
  * </ul>
  *
- * <p>Defined in shared-kernel so all modules can depend on it.
+ * <p>Published by Audit in its dependency-light contract artifact.
  * Implementation lives in audit-compliance-module.
  */
 public interface AdminAuditPublisher {

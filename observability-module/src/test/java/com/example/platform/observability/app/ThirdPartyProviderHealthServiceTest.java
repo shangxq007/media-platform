@@ -1,7 +1,7 @@
 package com.example.platform.observability.app;
 
 import com.example.platform.observability.domain.*;
-import com.example.platform.shared.audit.AuditPort;
+import com.example.platform.auditcontract.api.AuditPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

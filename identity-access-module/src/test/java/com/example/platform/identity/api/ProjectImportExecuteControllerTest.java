@@ -3,7 +3,7 @@ package com.example.platform.identity.api;
 import com.example.platform.identity.api.dto.*;
 import com.example.platform.identity.app.ProjectExportZipReader;
 import com.example.platform.identity.app.ProjectImportExecuteService;
-import com.example.platform.shared.audit.AuditPort;
+import com.example.platform.auditcontract.api.AuditPort;
 import com.example.platform.shared.web.TenantContext;
 
 import static org.mockito.ArgumentMatchers.any;

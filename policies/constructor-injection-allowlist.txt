@@ -29,7 +29,6 @@ entitlement-module.WorkspaceEntitlementPoolService.memberGrantRepository|OPTIONA
 entitlement-module.WorkspaceQuotaAllocationService.allocationRepository|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: WorkspaceQuotaAllocationRepository may not be configured
 identity-access-module.ProjectExportService.auditPort|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: AuditPort may not be configured
 identity-access-module.ProjectExportService.projectAssetListingPort|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: ProjectAssetListingPort may not be configured
-identity-access-module.ProjectExportService.assetDownloadUrlPort|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: AssetDownloadUrlPort may not be configured
 identity-access-module.ProjectImportExecuteService.auditPort|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: AuditPort may not be configured
 identity-access-module.ProjectImportPreviewService.auditPort|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: AuditPort may not be configured
 identity-access-module.ProjectImportService.auditPort|OPTIONAL_CONSTRUCTOR_OR_PARAMETER|Optional bean: AuditPort may not be configured

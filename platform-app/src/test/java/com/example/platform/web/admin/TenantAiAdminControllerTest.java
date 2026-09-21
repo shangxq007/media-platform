@@ -5,7 +5,7 @@ import static org.mockito.Mockito.*;
 
 import com.example.platform.app.ai.TenantLitellmKeyService;
 import com.example.platform.security.AdminAuditHelper;
-import com.example.platform.shared.audit.AdminAuditPublisher;
+import com.example.platform.auditcontract.api.AdminAuditPublisher;
 import com.example.platform.web.admin.TenantAiAdminController.UpsertLitellmKeyRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

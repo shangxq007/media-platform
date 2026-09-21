@@ -3,7 +3,7 @@ package com.example.platform.artifact.app;
 import com.example.platform.artifact.domain.Artifact;
 import com.example.platform.artifact.infrastructure.ArtifactRepository;
 import com.example.platform.artifact.infrastructure.ArtifactGcProperties;
-import com.example.platform.shared.audit.AuditPort;
+import com.example.platform.auditcontract.api.AuditPort;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;

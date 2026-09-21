@@ -11,7 +11,7 @@ import com.example.platform.artifact.domain.ArtifactState;
 import com.example.platform.artifact.infrastructure.ArtifactGcProperties;
 import com.example.platform.artifact.infrastructure.ArtifactPinRepository;
 import com.example.platform.artifact.infrastructure.ArtifactRepository;
-import com.example.platform.shared.audit.AuditPort;
+import com.example.platform.auditcontract.api.AuditPort;
 import com.example.platform.shared.digest.ContentDigest;
 import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.shared.test.PostgresTestContainerSupport;

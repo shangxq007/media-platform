@@ -1,7 +1,7 @@
 package com.example.platform.audit.app;
 
-import com.example.platform.shared.audit.AuditPort;
-import com.example.platform.shared.audit.AdminAuditPublisher;
+import com.example.platform.auditcontract.api.AuditPort;
+import com.example.platform.auditcontract.api.AdminAuditPublisher;
 import com.example.platform.audit.logging.AdminAuditLogger;
 import com.example.platform.observability.context.ObservationContext;
 import org.slf4j.Logger;

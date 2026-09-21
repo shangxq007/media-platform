@@ -1,6 +1,6 @@
 package com.example.platform.federation.graphql.audit;
 
-import com.example.platform.shared.audit.AuditPort;
+import com.example.platform.auditcontract.api.AuditPort;
 import graphql.execution.instrumentation.InstrumentationState;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

@@ -1,6 +1,7 @@
 plugins { id("java-library") }
 
 dependencies {
+    implementation(project(":audit-contract-module")) // owner-published audit ports
     implementation(project(":outbox-event-module"))
     implementation(project(":artifact-module"))
     implementation(project(":render-module")) // defining-domain lifecycle contract

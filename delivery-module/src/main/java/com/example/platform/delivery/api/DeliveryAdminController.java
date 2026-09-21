@@ -6,7 +6,7 @@ import com.example.platform.delivery.app.DeliveryAdministrationService;
 import com.example.platform.delivery.app.DeliveryCredentialMigrationService;
 import com.example.platform.delivery.app.DeliveryDestinationUriIndexService;
 import com.example.platform.delivery.app.DeliveryRemoteUriIndexService;
-import com.example.platform.shared.audit.AdminAuditPublisher;
+import com.example.platform.auditcontract.api.AdminAuditPublisher;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;

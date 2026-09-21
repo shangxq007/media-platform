@@ -2,7 +2,7 @@ package com.example.platform.federation.graphql;
 
 import com.example.platform.federation.graphql.audit.GraphQLAuditInterceptor;
 import com.example.platform.federation.graphql.audit.GraphQLOperationLogger;
-import com.example.platform.shared.audit.AuditPort;
+import com.example.platform.auditcontract.api.AuditPort;
 import graphql.ExecutionInput;
 import graphql.ExecutionResult;
 import graphql.GraphQLContext;

@@ -1,4 +1,4 @@
 @org.springframework.modulith.ApplicationModule(
         displayName = "Entitlement",
-        allowedDependencies = {"shared", "policy :: feature-flags"})
+        allowedDependencies = {"audit-ports :: api", "shared", "policy :: feature-flags"})
 package com.example.platform.entitlement;

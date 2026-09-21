@@ -1,5 +1,5 @@
 @org.springframework.modulith.ApplicationModule(
-        allowedDependencies = {
+        allowedDependencies = {"audit-ports :: api",
             "shared",
             "identity :: authorization",
             "identity :: account",

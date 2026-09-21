@@ -1,4 +1,5 @@
 dependencies {
+    implementation(project(":audit-contract-module")) // owner-published audit ports
     implementation(project(":shared-kernel"))
     implementation("org.springframework.boot:spring-boot-starter")
     implementation("org.springframework.boot:spring-boot-starter-web")

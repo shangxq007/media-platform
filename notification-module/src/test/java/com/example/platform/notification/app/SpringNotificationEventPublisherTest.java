@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.example.platform.notification.domain.*;
 import com.example.platform.notification.testsupport.NotificationTestSchemaFixture;
-import com.example.platform.shared.audit.AuditPort;
+import com.example.platform.auditcontract.api.AuditPort;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import com.example.platform.shared.web.TenantContext;
 import java.time.OffsetDateTime;

@@ -1,7 +1,7 @@
 package com.example.platform.prompt.app;
 
 import com.example.platform.prompt.domain.*;
-import com.example.platform.shared.audit.AuditPort;
+import com.example.platform.auditcontract.api.AuditPort;
 import com.example.platform.shared.web.ConfigurableErrorCode;
 import com.example.platform.shared.web.PlatformException;
 import com.example.platform.prompt.infrastructure.PromptJdbcRepository;

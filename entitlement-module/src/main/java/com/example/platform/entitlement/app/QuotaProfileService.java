@@ -2,7 +2,7 @@ package com.example.platform.entitlement.app;
 
 import com.example.platform.entitlement.domain.QuotaProfile;
 import com.example.platform.entitlement.infrastructure.QuotaProfileRepository;
-import com.example.platform.shared.audit.AuditPort;
+import com.example.platform.auditcontract.api.AuditPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

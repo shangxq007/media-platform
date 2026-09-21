@@ -4,7 +4,7 @@ import com.example.platform.identity.api.dto.*;
 import com.example.platform.identity.api.workspace.*;
 import com.example.platform.identity.domain.*;
 import com.example.platform.identity.infrastructure.*;
-import com.example.platform.shared.audit.AuditPort;
+import com.example.platform.auditcontract.api.AuditPort;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;

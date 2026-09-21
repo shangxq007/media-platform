@@ -18,7 +18,7 @@ import com.example.platform.identity.api.dto.ProjectExportProjectDto;
 import com.example.platform.identity.api.dto.ProjectImportRequest;
 import com.example.platform.identity.api.dto.ProjectImportResponse;
 import com.example.platform.identity.api.dto.ProjectResponse;
-import com.example.platform.shared.audit.AuditPort;
+import com.example.platform.auditcontract.api.AuditPort;
 import com.example.platform.shared.web.TenantContext;
 import java.time.Instant;
 import java.util.List;

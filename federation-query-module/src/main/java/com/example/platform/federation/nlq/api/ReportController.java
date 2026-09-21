@@ -6,7 +6,7 @@ import com.example.platform.federation.nlq.domain.ReportDefinition;
 import com.example.platform.federation.nlq.domain.ReportExecution;
 import com.example.platform.federation.nlq.app.ReportDefinitionService;
 import com.example.platform.federation.nlq.app.ReportExecutionService;
-import com.example.platform.shared.audit.AdminAuditPublisher;
+import com.example.platform.auditcontract.api.AdminAuditPublisher;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

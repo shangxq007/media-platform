@@ -1,6 +1,7 @@
 plugins { id("java-library") }
 
 dependencies {
+    implementation(project(":audit-contract-module")) // owner-published audit ports
     implementation(project(":marketplace-module")) // defining owner facts
     implementation(project(":timeline-module"))
     implementation(project(":delivery-module"))

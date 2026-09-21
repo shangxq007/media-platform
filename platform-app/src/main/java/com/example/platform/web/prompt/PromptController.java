@@ -5,7 +5,7 @@ import com.example.platform.prompt.app.PromptTemplateService;
 import com.example.platform.prompt.app.PromptSafetyPolicyService;
 import com.example.platform.prompt.app.PromptSafetyPolicyService.SafetyPolicyResult;
 import com.example.platform.prompt.domain.*;
-import com.example.platform.shared.audit.AuditPort;
+import com.example.platform.auditcontract.api.AuditPort;
 import com.example.platform.web.CallerContext;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

@@ -74,7 +74,7 @@ class WorkspaceAuthorityHttpTest extends PostgresTestContainerSupport {
         asActor(creator,()->{
             var rebuilt=new WorkspaceService(context.getBean(com.example.platform.identity.infrastructure.WorkspaceRepository.class),
                     context.getBean(com.example.platform.identity.infrastructure.WorkspaceMemberRepository.class),context.getBean(com.example.platform.identity.infrastructure.WorkspaceGroupRepository.class),
-                    context.getBean(com.example.platform.identity.infrastructure.RoleRepository.class),context.getBean(com.example.platform.shared.audit.AuditPort.class),
+                    context.getBean(com.example.platform.identity.infrastructure.RoleRepository.class),context.getBean(com.example.platform.auditcontract.api.AuditPort.class),
                     context.getBean(com.example.platform.identity.api.authorization.CanonicalActorResolver.class),context.getBean(com.example.platform.identity.app.UserRepository.class));
             assertEquals(ws,rebuilt.getWorkspace(ws).id());assertEquals(creator,rebuilt.listMembers(ws).getFirst().userId());
         });

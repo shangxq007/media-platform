@@ -1,7 +1,7 @@
 package com.example.platform.federation.graphql.audit;
 
 import com.example.platform.federation.graphql.context.GraphQLRequestContext;
-import com.example.platform.shared.audit.AuditPort;
+import com.example.platform.auditcontract.api.AuditPort;
 import graphql.ExecutionInput;
 import graphql.ExecutionResult;
 import graphql.execution.instrumentation.InstrumentationContext;

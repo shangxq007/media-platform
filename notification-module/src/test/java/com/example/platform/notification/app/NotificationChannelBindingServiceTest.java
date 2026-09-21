@@ -7,7 +7,7 @@ import static org.mockito.Mockito.*;
 
 import com.example.platform.notification.domain.NotificationChannelBinding;
 import com.example.platform.notification.infrastructure.WebhookUrlValidator;
-import com.example.platform.shared.audit.AuditPort;
+import com.example.platform.auditcontract.api.AuditPort;
 import com.example.platform.shared.web.ConfigurableErrorCode;
 import com.example.platform.shared.web.PlatformException;
 import java.util.List;

@@ -7,7 +7,7 @@ import com.example.platform.artifact.app.ArtifactGcService;
 import com.example.platform.render.app.cache.RenderCacheCleanupService;
 import com.example.platform.render.app.timeline.TimelineAssetGcService;
 import com.example.platform.security.AdminAuditHelper;
-import com.example.platform.shared.audit.AdminAuditPublisher;
+import com.example.platform.auditcontract.api.AdminAuditPublisher;
 import com.example.platform.shared.web.TenantContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;

@@ -1,5 +1,5 @@
 @org.springframework.modulith.ApplicationModule(
-        allowedDependencies = {
+        allowedDependencies = {"audit-ports :: api",
         "marketplace :: api","media :: assets",
             "timeline :: reviews", "timeline :: revision", "timeline :: composition", "timeline :: serialization",
             "shared",

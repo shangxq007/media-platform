@@ -7,7 +7,7 @@ import com.example.platform.billing.domain.SubscriptionCommand;
 import com.example.platform.billing.domain.SubscriptionCommandType;
 import com.example.platform.billing.domain.SubscriptionContractRole;
 import com.example.platform.billing.domain.SubscriptionPlan;
-import com.example.platform.shared.audit.AdminAuditPublisher;
+import com.example.platform.auditcontract.api.AdminAuditPublisher;
 import com.example.platform.shared.commercial.PrincipalRef;
 import com.example.platform.shared.commercial.PrincipalType;
 import jakarta.servlet.http.HttpServletRequest;

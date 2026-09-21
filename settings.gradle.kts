@@ -23,6 +23,7 @@ include(
     "observability-module",
     "outbox-event-module",
     "audit-compliance-module",
+    "audit-contract-module",
     "scheduler-module",
     "identity-access-module",
     "commerce-module",

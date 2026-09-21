@@ -1,7 +1,7 @@
 package com.example.platform.identity.app;
 
 import com.example.platform.identity.api.dto.*;
-import com.example.platform.shared.audit.AuditPort;
+import com.example.platform.auditcontract.api.AuditPort;
 import com.example.platform.shared.web.TenantContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

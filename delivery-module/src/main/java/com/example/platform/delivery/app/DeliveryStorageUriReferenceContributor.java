@@ -1,7 +1,7 @@
 package com.example.platform.delivery.app;
 
-import com.example.platform.shared.asset.StorageUriReferenceContributor;
-import com.example.platform.shared.asset.StorageUriReferenceHit;
+import com.example.platform.storage.contract.StorageUriReferenceContributor;
+import com.example.platform.storage.contract.StorageUriReferenceHit;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;

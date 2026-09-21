@@ -4,7 +4,7 @@ import static com.example.platform.typedschema.jooq.generated.tables.Notificatio
 
 import com.example.platform.notification.domain.NotificationEventDefinition;
 import com.example.platform.notification.domain.NotificationSubscription;
-import com.example.platform.shared.audit.AuditPort;
+import com.example.platform.auditcontract.api.AuditPort;
 import com.example.platform.shared.web.PlatformException;
 import com.example.platform.shared.web.TenantContext;
 import java.time.LocalDateTime;

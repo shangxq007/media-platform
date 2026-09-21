@@ -2,7 +2,7 @@ package com.example.platform.identity.api;
 
 import com.example.platform.identity.api.dto.*;
 import com.example.platform.identity.app.TenantProjectService;
-import com.example.platform.shared.audit.AdminAuditPublisher;
+import com.example.platform.auditcontract.api.AdminAuditPublisher;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;

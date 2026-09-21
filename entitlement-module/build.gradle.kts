@@ -1,6 +1,7 @@
 plugins { id("java-library") }
 
 dependencies {
+    implementation(project(":audit-contract-module")) // owner-published audit ports
     implementation(project(":typed-schema-module"))
     implementation(project(":billing-module")) // cost ports rehomed to billing (K2)
     api(project(":shared-kernel"))

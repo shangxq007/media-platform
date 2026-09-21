@@ -14,7 +14,7 @@ import com.example.platform.delivery.app.*;
 import com.example.platform.identity.app.PermissionService;
 import com.example.platform.identity.app.RbacAuthorizationDecisionPort;
 import com.example.platform.secrets.api.port.CredentialBundlePort;
-import com.example.platform.shared.audit.AdminAuditPublisher;
+import com.example.platform.auditcontract.api.AdminAuditPublisher;
 import com.example.platform.shared.authorization.*;
 import java.util.*;
 import org.jooq.DSLContext;

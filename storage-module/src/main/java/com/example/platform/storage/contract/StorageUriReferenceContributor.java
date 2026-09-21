@@ -1,4 +1,4 @@
-package com.example.platform.shared.asset;
+package com.example.platform.storage.contract;
 
 import java.util.List;
 

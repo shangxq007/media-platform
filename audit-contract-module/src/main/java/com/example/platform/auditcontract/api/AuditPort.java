@@ -1,4 +1,4 @@
-package com.example.platform.shared.audit;
+package com.example.platform.auditcontract.api;
 
 import java.util.Map;
 

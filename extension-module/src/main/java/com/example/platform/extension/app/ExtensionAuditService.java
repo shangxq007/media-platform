@@ -1,7 +1,7 @@
 package com.example.platform.extension.app;
 
 import com.example.platform.extension.domain.*;
-import com.example.platform.shared.audit.AuditPort;
+import com.example.platform.auditcontract.api.AuditPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;

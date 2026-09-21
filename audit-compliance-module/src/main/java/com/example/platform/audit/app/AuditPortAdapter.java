@@ -1,8 +1,7 @@
 package com.example.platform.audit.app;
 
-import com.example.platform.shared.audit.AuditPort;
+import com.example.platform.auditcontract.api.AuditPort;
 import com.example.platform.observability.context.ObservationContext;
-import com.example.platform.shared.web.TenantContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -13,7 +12,7 @@ import java.util.Map;
  * Adapter that exposes AuditService as AuditPort.
  *
  * <p>Maps the 6-parameter AuditPort interface to the 7-parameter AuditService method,
- * deriving actorId from request context (MDC principal or TenantContext).
+ * deriving actorId from the server observation principal, never the tenant identifier.
  */
 @Component
 public class AuditPortAdapter implements AuditPort {
@@ -38,16 +37,12 @@ public class AuditPortAdapter implements AuditPort {
 
     /**
      * Resolves actorId from request context.
-     * Priority: MDC principal > TenantContext > "system"
+     * Priority: server observation principal > "system" sentinel for unattributed work.
      */
     private String resolveActorId() {
         String principal = observationContext.snapshot().principal();
         if (principal != null && !principal.isBlank()) {
             return principal;
-        }
-        String tenantId = TenantContext.get();
-        if (tenantId != null && !tenantId.isBlank()) {
-            return tenantId;
         }
         return "system";
     }

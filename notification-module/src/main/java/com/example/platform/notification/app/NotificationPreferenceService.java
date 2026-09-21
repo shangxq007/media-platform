@@ -3,7 +3,7 @@ package com.example.platform.notification.app;
 import static com.example.platform.typedschema.jooq.generated.tables.NotificationPreference.NOTIFICATION_PREFERENCE;
 
 import com.example.platform.notification.domain.NotificationPreference;
-import com.example.platform.shared.audit.AuditPort;
+import com.example.platform.auditcontract.api.AuditPort;
 import com.example.platform.shared.web.TenantContext;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;

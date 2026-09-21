@@ -1,6 +1,7 @@
 plugins { id("java-library") }
 
 dependencies {
+    implementation(project(":audit-contract-module")) // owner-published audit ports
     api(project(":shared-kernel"))
     api(project(":entitlement-module"))
     api(project(":identity-access-module"))

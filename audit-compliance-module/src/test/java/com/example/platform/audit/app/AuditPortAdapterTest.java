@@ -3,7 +3,7 @@ package com.example.platform.audit.app;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-import com.example.platform.shared.audit.AuditPort;
+import com.example.platform.auditcontract.api.AuditPort;
 import com.example.platform.shared.web.TenantContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -71,14 +71,14 @@ class AuditPortAdapterTest {
     }
 
     @Test
-    void recordDerivesActorIdFromTenantContextWhenNoMdcPrincipal() {
+    void recordNeverSubstitutesTenantForMissingActor() {
         TenantContext.set("tenant-abc");
         adapter.record("SYSTEM", "WORKSPACE_CREATE", "CONFIG",
                 "workspace", "ws-1", Map.of());
 
         ArgumentCaptor<String> actorIdCaptor = ArgumentCaptor.forClass(String.class);
         verify(auditService).record(any(), actorIdCaptor.capture(), any(), any(), any(), any(), any());
-        assertEquals("tenant-abc", actorIdCaptor.getValue());
+        assertEquals("system", actorIdCaptor.getValue());
     }
 
     @Test

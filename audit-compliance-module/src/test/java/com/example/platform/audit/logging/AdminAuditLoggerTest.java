@@ -2,7 +2,7 @@ package com.example.platform.audit.logging;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.example.platform.shared.audit.AuditPort;
+import com.example.platform.auditcontract.api.AuditPort;
 import com.example.platform.observability.context.TraceKeys;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -84,7 +84,7 @@ class AdminAuditLoggerTest {
     void loggerHasNoAuditPortDependency() {
         // Verify AdminAuditLogger has no setAuditPort method (removed in P2-1c)
         try {
-            AdminAuditLogger.class.getMethod("setAuditPort", com.example.platform.shared.audit.AuditPort.class);
+            AdminAuditLogger.class.getMethod("setAuditPort", com.example.platform.auditcontract.api.AuditPort.class);
             fail("AdminAuditLogger should not have setAuditPort method");
         } catch (NoSuchMethodException e) {
             // Expected — setAuditPort was removed

@@ -1,7 +1,7 @@
 package com.example.platform.observability.app;
 
 import com.example.platform.observability.domain.*;
-import com.example.platform.shared.audit.AuditPort;
+import com.example.platform.auditcontract.api.AuditPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;

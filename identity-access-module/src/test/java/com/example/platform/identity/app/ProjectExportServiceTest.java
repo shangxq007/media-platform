@@ -8,7 +8,7 @@ import static org.mockito.Mockito.when;
 
 import com.example.platform.identity.api.dto.ProjectExportRequest;
 import com.example.platform.identity.api.dto.ProjectResponse;
-import com.example.platform.shared.audit.AuditPort;
+import com.example.platform.auditcontract.api.AuditPort;
 import com.example.platform.shared.web.TenantContext;
 import java.time.Instant;
 import org.junit.jupiter.api.AfterEach;

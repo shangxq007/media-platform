@@ -2,7 +2,7 @@ package com.example.platform.policy.featureflag;
 
 import com.example.platform.policy.featureflag.FeatureFlagAuditService.FeatureFlagAuditEvent;
 import com.example.platform.policy.featureflag.domain.*;
-import com.example.platform.shared.audit.AuditPort;
+import com.example.platform.auditcontract.api.AuditPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

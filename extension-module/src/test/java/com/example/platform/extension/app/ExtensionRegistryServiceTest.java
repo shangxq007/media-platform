@@ -2,7 +2,7 @@ package com.example.platform.extension.app;
 
 import com.example.platform.extension.domain.*;
 import com.example.platform.extension.runtime.PluginRuntimeProviderBinding;
-import com.example.platform.shared.audit.AuditPort;
+import com.example.platform.auditcontract.api.AuditPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

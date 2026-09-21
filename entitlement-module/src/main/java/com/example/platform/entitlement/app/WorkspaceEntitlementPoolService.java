@@ -6,7 +6,7 @@ import com.example.platform.entitlement.domain.EntitlementCommandType;
 import com.example.platform.entitlement.domain.EntitlementCommandResult;
 import com.example.platform.entitlement.domain.EntitlementGrantCommand;
 import com.example.platform.entitlement.infrastructure.WorkspaceEntitlementPoolRepository;
-import com.example.platform.shared.audit.AuditPort;
+import com.example.platform.auditcontract.api.AuditPort;
 import com.example.platform.shared.commercial.PrincipalRef;
 import com.example.platform.shared.commercial.PrincipalType;
 import org.slf4j.Logger;

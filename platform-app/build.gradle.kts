@@ -1,6 +1,7 @@
 plugins { id("org.springframework.boot") }
 
 dependencies {
+    implementation(project(":audit-contract-module")) // owner-published audit ports
     implementation(project(":marketplace-module"))
     implementation(project(":sandbox-isolation-module"))
     implementation(project(":typed-schema-module"))

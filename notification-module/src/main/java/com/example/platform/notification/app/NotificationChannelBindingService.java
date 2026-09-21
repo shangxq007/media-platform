@@ -4,7 +4,7 @@ import static com.example.platform.typedschema.jooq.generated.tables.Notificatio
 
 import com.example.platform.notification.domain.NotificationChannelBinding;
 import com.example.platform.notification.infrastructure.WebhookUrlValidator;
-import com.example.platform.shared.audit.AuditPort;
+import com.example.platform.auditcontract.api.AuditPort;
 import com.example.platform.shared.web.PlatformException;
 import com.example.platform.shared.web.TenantContext;
 import java.time.Instant;
