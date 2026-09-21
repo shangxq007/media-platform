@@ -47,7 +47,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
     "com.example.platform.workerfabric"
 })
 @EnableScheduling
-@Import({com.example.platform.marketplace.MarketplaceConfiguration.class, DslContextConfiguration.class, DataSourceConfiguration.class, PlatformBeanConfiguration.class, FlywayConfiguration.class})
+@Import({com.example.platform.cloudresource.CloudResourceConfiguration.class, com.example.platform.marketplace.MarketplaceConfiguration.class, DslContextConfiguration.class, DataSourceConfiguration.class, PlatformBeanConfiguration.class, FlywayConfiguration.class})
 public class PlatformApplication {
     public static void main(String[] args) {
         SpringApplication.run(PlatformApplication.class, args);

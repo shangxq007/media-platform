@@ -40,7 +40,7 @@ class CloudResourceCatalogServiceTest {
         assertEquals("my-bucket", bucket.name());
         assertEquals("us-east-1", bucket.region());
         assertEquals("test-provider", bucket.provider());
-        assertEquals("ACTIVE", bucket.status());
+        assertEquals("CATALOGUED", bucket.status());
     }
 
     @Test

@@ -8,7 +8,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
-@Service
 public class CloudResourceCatalogService {
 
     private final List<CloudResourceProvider> providers;
@@ -31,7 +30,7 @@ public class CloudResourceCatalogService {
 
     public CloudBucket createBucket(String name, String region, String provider) {
         String id = "cb-" + bucketSeq.incrementAndGet();
-        CloudBucket bucket = new CloudBucket(id, name, region, provider, "ACTIVE");
+        CloudBucket bucket = new CloudBucket(id, name, region, provider, "CATALOGUED");
         buckets.put(id, bucket);
         return bucket;
     }
