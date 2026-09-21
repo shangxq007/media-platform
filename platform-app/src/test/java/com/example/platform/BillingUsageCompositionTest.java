@@ -33,6 +33,19 @@ class BillingUsageCompositionTest extends PostgresTestContainerSupport {
     @Autowired ObservedRuntimeUsageJdbcRepository repository;
     @Autowired JdbcTemplate jdbc;
 
+    @Test void displacedMeterDefinitionsAndRegisteredShadowAreAbsent() {
+        for (String retired : new String[]{
+                "com.example.platform.render.domain.governance.MeterDescriptor",
+                "com.example.platform.storage.contract.MeterDescriptor",
+                "com.example.platform.render.domain.governance.MeterEvent",
+                "com.example.platform.render.domain.governance.MeterAttribution",
+                "com.example.platform.render.app.governance.MeteringService"}) {
+            assertThrows(ClassNotFoundException.class, () -> Class.forName(retired), retired);
+            assertTrue(java.util.Arrays.stream(context.getBeanDefinitionNames())
+                    .noneMatch(name -> context.getType(name) != null && context.getType(name).getName().equals(retired)));
+        }
+    }
+
     @Test void onePlatformUsageAuthorityIsWiredIntoEveryRuntimeConsumer() {
         assertEquals(1, context.getBeansOfType(ObservedRuntimeUsageEmissionPort.class).size());
         assertEquals(1, context.getBeansOfType(ObservedRuntimeUsageJdbcRepository.class).size());

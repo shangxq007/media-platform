@@ -2,11 +2,13 @@
 status: implementation-report
 created: 2026-06-26
 scope: render-module
-truth_level: current
+truth_level: historical
 owner: platform
 ---
 
 # Capability X2 — Metering & Attribution Foundation
+
+Historical implementation report. EP24 retires the unused descriptors and Render in-memory meter path; current authority is documented in [meter-usage-authority.md](meter-usage-authority.md).
 
 ## Implemented
 
