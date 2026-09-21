@@ -120,6 +120,51 @@ class SocialPublicationOwnershipPostgresTest extends PostgresTestContainerSuppor
         assertThat(posts.complete(new SocialPostRepository.Attempt(current.post(),UUID.randomUUID().toString()),"wrong","wrong",Instant.now())).isFalse();
         assertThat(state()).isEqualTo(before);
     }
+    @Test void staleFailureMustNotOverwriteCommittedSuccess() throws Exception {
+        var entered=new CountDownLatch(1);var release=new CountDownLatch(1);
+        var calls=new java.util.concurrent.atomic.AtomicInteger();
+        doAnswer(inv->{if(calls.incrementAndGet()==1){entered.countDown();await(release);throw new IllegalStateException("obsolete predispatch failure");}return true;})
+                .when(provider).validateCredentials(any());
+        try(var pool=Executors.newSingleThreadExecutor()) {
+            var obsolete=pool.submit(()->assertThatThrownBy(this::scheduled).hasMessageContaining("obsolete"));
+            Map<String,Object> committed;
+            try {
+                await(entered);
+                // The old harness's second unowned dispatch is now impossible. Explicitly cancel
+                // before dispatch, then supersede safely to exercise a genuinely obsolete worker.
+                service.cancelScheduled(tenant,actor,id);
+                service.schedulePost(tenant,actor,id,new com.example.platform.social.api.dto.SchedulePostRequest(Instant.now().minusSeconds(1).toString()));
+                publish();committed=state();assertThat(committed).containsEntry("status","PUBLISHED");
+            } finally {release.countDown();}
+            obsolete.get(15,TimeUnit.SECONDS);
+            assertThat(state()).isEqualTo(committed);assertThat(state()).containsEntry("status","PUBLISHED");
+            verify(provider).publish(any(),any());
+        }
+    }
+    @Test void negativeProviderResponseIsNotProofThatRedispatchIsSafe() {
+        doReturn(new PublishResult(false,null,null,"REMOTE_FAILURE","unconfirmed")).when(provider).publish(any(),any());
+        assertThatThrownBy(this::publish).hasMessageContaining("unresolved");
+        var before=state();assertThat(before).containsEntry("status","UNRESOLVED").containsEntry("retry_count",0);
+        scheduler.processScheduledPosts();assertThat(state()).isEqualTo(before);verify(provider).publish(any(),any());
+    }
+    @Test void databaseOutagePreservesDispatchMarkerAndBothErrorsAfterRecovery() {
+        doAnswer(inv->{
+            jdbc.execute("CREATE OR REPLACE FUNCTION reject_social_writes() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'controlled write outage'; END $$");
+            jdbc.execute("CREATE TRIGGER reject_social_writes BEFORE UPDATE ON social_post FOR EACH ROW EXECUTE FUNCTION reject_social_writes()");
+            return success();
+        }).when(provider).publish(any(),any());
+        try {
+            var failure=catchThrowable(this::publish);
+            assertThat(failure).isInstanceOf(org.springframework.dao.DataAccessException.class);
+            assertThat(failure.getSuppressed()).hasSize(1);
+        } finally {
+            jdbc.execute("DROP TRIGGER IF EXISTS reject_social_writes ON social_post");
+            jdbc.execute("DROP FUNCTION IF EXISTS reject_social_writes()");
+        }
+        var before=state();assertThat(before).containsEntry("status","PUBLISHING");assertThat(before.get("dispatch_started_at")).isNotNull();
+        scheduler.processScheduledPosts();assertThatThrownBy(()->service.retryPost(tenant,actor,id)).isInstanceOf(IllegalStateException.class);
+        assertThat(state()).isEqualTo(before);verify(provider).publish(any(),any());
+    }
     @Test void predispatchCredentialFailureAllowsExplicitRetry() {
         doReturn(false).when(provider).validateCredentials(any());
         assertThatThrownBy(this::publish).hasMessageContaining("credentials");
