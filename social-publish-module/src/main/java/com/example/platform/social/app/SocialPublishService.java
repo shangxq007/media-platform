@@ -96,12 +96,18 @@ public class SocialPublishService {
             adapter = adapters.get(post.platformType());
             if (adapter == null) throw new IllegalStateException("No adapter for platform");
             account = validateBinding(post, false);
+            if (account.credentialExpiresAt() != null && !account.credentialExpiresAt().isAfter(Instant.now()))
+                throw new IllegalStateException("Provider credentials are expired");
             if (!adapter.validateCredentials(account)) throw new IllegalStateException("Invalid provider credentials");
+            var credentialSnapshot = account.credentialSnapshot();
             // Recheck the exact captured binding and canonical permission at the committed dispatch boundary.
             transactions.executeWithoutResult(tx -> {
-                if (!account.equals(validateBinding(post, true)))
-                    throw new IllegalStateException("Account changed before dispatch");
-                requireChanged(postRepository.markDispatched(attempt, Instant.now()));
+                var finalAccount = validateBinding(post, true);
+                if (!account.equals(finalAccount) || !credentialSnapshot.equals(finalAccount.credentialSnapshot()))
+                    throw new IllegalStateException("Account credentials changed before dispatch");
+                if (finalAccount.credentialExpiresAt() != null && !finalAccount.credentialExpiresAt().isAfter(Instant.now()))
+                    throw new IllegalStateException("Provider credentials expired before dispatch");
+                requireChanged(postRepository.markDispatched(attempt, credentialSnapshot, Instant.now()));
             });
         } catch (RuntimeException failure) {
             try { transactions.executeWithoutResult(tx -> postRepository.failBeforeDispatch(attempt, Instant.now())); }

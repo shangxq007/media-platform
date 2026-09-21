@@ -2,6 +2,7 @@ package com.example.platform.social.infrastructure.persistence;
 
 import com.example.platform.shared.web.TenantGuard;
 import com.example.platform.social.domain.PlatformType;
+import com.example.platform.social.domain.ConnectedPlatform;
 import com.example.platform.social.domain.PostStatus;
 import com.example.platform.social.domain.SocialPost;
 import com.example.platform.social.app.SocialPostReadModel;
@@ -74,12 +75,13 @@ public class SocialPostRepository {
                AND connected_platform_binding_version IS NOT DISTINCT FROM attempt_binding_version
             """;
 
-    public boolean markDispatched(Attempt attempt, Instant now) {
+    public boolean markDispatched(Attempt attempt, ConnectedPlatform.CredentialSnapshot credentials, Instant now) {
         var p = attempt.post();
         TenantGuard.assertSameTenant(p.tenantId());
-        return jdbc.update("UPDATE social_post SET dispatch_started_at=?, updated_at=? " + OWNED
-                        + " AND dispatch_started_at IS NULL", utcTimestamp(now), utcTimestamp(now),
-                p.id(), p.tenantId(), p.userId(), attempt.token()) == 1;
+        return jdbc.update("UPDATE social_post SET dispatch_started_at=?, attempt_credential_revision=?, attempt_credential_expires_at=?, updated_at=? " + OWNED
+                        + " AND dispatch_started_at IS NULL AND (?::timestamp IS NULL OR ?::timestamp > (clock_timestamp() AT TIME ZONE 'UTC'))",
+                utcTimestamp(now), credentials.revision(), utcTimestamp(credentials.expiresAt()), utcTimestamp(now),
+                p.id(), p.tenantId(), p.userId(), attempt.token(), utcTimestamp(credentials.expiresAt()), utcTimestamp(credentials.expiresAt())) == 1;
     }
 
     public boolean complete(Attempt attempt, String externalId, String externalUrl, Instant now) {

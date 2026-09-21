@@ -124,8 +124,15 @@ public class ConnectedPlatformRepository {
                 rs.getString("status"),
                 rs.getLong("binding_version"),
                 rs.getTimestamp("created_at").toInstant(),
-                rs.getTimestamp("updated_at").toInstant()
+                rs.getTimestamp("updated_at").toInstant(),
+                rs.getLong("credential_revision"),
+                readCredentialExpiry(rs)
         );
+    }
+
+    private static Instant readCredentialExpiry(ResultSet rs) throws SQLException {
+        var expiry = rs.getObject("token_expires_at", java.time.LocalDateTime.class);
+        return expiry == null ? null : expiry.toInstant(java.time.ZoneOffset.UTC);
     }
 
     private SocialAccountReadModel mapPublicationAccount(ResultSet rs) throws SQLException {

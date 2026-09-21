@@ -34,7 +34,7 @@ public class PostSchedulerService {
                 com.example.platform.shared.web.TenantContext.set(post.tenantId());
                 publishService.publishScheduled(post.tenantId(), post.userId(), post.id());
             } catch (Exception e) {
-                log.error("PostSchedulerService: failed to publish scheduled post={}: {}", post.id(), e.getMessage());
+                log.error("PostSchedulerService: failed to publish scheduled post={}", post.id(), e);
             } finally {
                 if (previousTenant == null) com.example.platform.shared.web.TenantContext.clear();
                 else com.example.platform.shared.web.TenantContext.set(previousTenant);

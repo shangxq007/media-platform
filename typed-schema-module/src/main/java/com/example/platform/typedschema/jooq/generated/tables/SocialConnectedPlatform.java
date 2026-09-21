@@ -131,6 +131,12 @@ public class SocialConnectedPlatform extends TableImpl<SocialConnectedPlatformRe
      */
     public final TableField<SocialConnectedPlatformRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("updated_at"), SQLDataType.LOCALDATETIME(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.LOCALDATETIME)), this, "");
 
+    /**
+     * The column
+     * <code>public.social_connected_platform.credential_revision</code>.
+     */
+    public final TableField<SocialConnectedPlatformRecord, Long> CREDENTIAL_REVISION = createField(DSL.name("credential_revision"), SQLDataType.BIGINT.nullable(false).defaultValue(DSL.field(DSL.raw("1"), SQLDataType.BIGINT)), this, "");
+
     private SocialConnectedPlatform(Name alias, Table<SocialConnectedPlatformRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
     }
@@ -231,7 +237,8 @@ public class SocialConnectedPlatform extends TableImpl<SocialConnectedPlatformRe
     @Override
     public List<Check<SocialConnectedPlatformRecord>> getChecks() {
         return Arrays.asList(
-            Internal.createCheck(this, DSL.name("social_connected_platform_binding_version_check"), "((binding_version > 0))", true)
+            Internal.createCheck(this, DSL.name("social_connected_platform_binding_version_check"), "((binding_version > 0))", true),
+            Internal.createCheck(this, DSL.name("social_connected_platform_credential_revision_check"), "((credential_revision > 0))", true)
         );
     }
 

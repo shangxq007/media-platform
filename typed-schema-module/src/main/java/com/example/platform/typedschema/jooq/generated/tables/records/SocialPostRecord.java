@@ -386,6 +386,34 @@ public class SocialPostRecord extends UpdatableRecordImpl<SocialPostRecord> {
         return (Long) get(25);
     }
 
+    /**
+     * Setter for <code>public.social_post.attempt_credential_revision</code>.
+     */
+    public void setAttemptCredentialRevision(Long value) {
+        set(26, value);
+    }
+
+    /**
+     * Getter for <code>public.social_post.attempt_credential_revision</code>.
+     */
+    public Long getAttemptCredentialRevision() {
+        return (Long) get(26);
+    }
+
+    /**
+     * Setter for <code>public.social_post.attempt_credential_expires_at</code>.
+     */
+    public void setAttemptCredentialExpiresAt(LocalDateTime value) {
+        set(27, value);
+    }
+
+    /**
+     * Getter for <code>public.social_post.attempt_credential_expires_at</code>.
+     */
+    public LocalDateTime getAttemptCredentialExpiresAt() {
+        return (LocalDateTime) get(27);
+    }
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -409,7 +437,7 @@ public class SocialPostRecord extends UpdatableRecordImpl<SocialPostRecord> {
     /**
      * Create a detached, initialised SocialPostRecord
      */
-    public SocialPostRecord(String id, String tenantId, String userId, String projectId, String connectedPlatformId, Long connectedPlatformBindingVersion, String artifactId, String contentText, String mediaUrls, String platformType, String status, String platformPostId, String platformPostUrl, LocalDateTime scheduledAt, LocalDateTime publishedAt, LocalDateTime failedAt, String errorCode, String errorMessage, Integer retryCount, LocalDateTime createdAt, LocalDateTime updatedAt, String publicationAttemptId, LocalDateTime dispatchStartedAt, String attemptProjectId, String attemptAccountId, Long attemptBindingVersion) {
+    public SocialPostRecord(String id, String tenantId, String userId, String projectId, String connectedPlatformId, Long connectedPlatformBindingVersion, String artifactId, String contentText, String mediaUrls, String platformType, String status, String platformPostId, String platformPostUrl, LocalDateTime scheduledAt, LocalDateTime publishedAt, LocalDateTime failedAt, String errorCode, String errorMessage, Integer retryCount, LocalDateTime createdAt, LocalDateTime updatedAt, String publicationAttemptId, LocalDateTime dispatchStartedAt, String attemptProjectId, String attemptAccountId, Long attemptBindingVersion, Long attemptCredentialRevision, LocalDateTime attemptCredentialExpiresAt) {
         super(SocialPost.SOCIAL_POST);
 
         setId(id);
@@ -438,6 +466,8 @@ public class SocialPostRecord extends UpdatableRecordImpl<SocialPostRecord> {
         setAttemptProjectId(attemptProjectId);
         setAttemptAccountId(attemptAccountId);
         setAttemptBindingVersion(attemptBindingVersion);
+        setAttemptCredentialRevision(attemptCredentialRevision);
+        setAttemptCredentialExpiresAt(attemptCredentialExpiresAt);
         resetChangedOnNotNull();
     }
 }

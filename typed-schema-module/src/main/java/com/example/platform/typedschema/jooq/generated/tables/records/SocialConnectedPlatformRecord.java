@@ -212,6 +212,22 @@ public class SocialConnectedPlatformRecord extends UpdatableRecordImpl<SocialCon
         return (LocalDateTime) get(12);
     }
 
+    /**
+     * Setter for
+     * <code>public.social_connected_platform.credential_revision</code>.
+     */
+    public void setCredentialRevision(Long value) {
+        set(13, value);
+    }
+
+    /**
+     * Getter for
+     * <code>public.social_connected_platform.credential_revision</code>.
+     */
+    public Long getCredentialRevision() {
+        return (Long) get(13);
+    }
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -235,7 +251,7 @@ public class SocialConnectedPlatformRecord extends UpdatableRecordImpl<SocialCon
     /**
      * Create a detached, initialised SocialConnectedPlatformRecord
      */
-    public SocialConnectedPlatformRecord(String id, String tenantId, String userId, String platformType, String platformUserId, String platformUsername, String accessTokenEncrypted, String refreshTokenEncrypted, LocalDateTime tokenExpiresAt, String status, Long bindingVersion, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public SocialConnectedPlatformRecord(String id, String tenantId, String userId, String platformType, String platformUserId, String platformUsername, String accessTokenEncrypted, String refreshTokenEncrypted, LocalDateTime tokenExpiresAt, String status, Long bindingVersion, LocalDateTime createdAt, LocalDateTime updatedAt, Long credentialRevision) {
         super(SocialConnectedPlatform.SOCIAL_CONNECTED_PLATFORM);
 
         setId(id);
@@ -251,6 +267,7 @@ public class SocialConnectedPlatformRecord extends UpdatableRecordImpl<SocialCon
         setBindingVersion(bindingVersion);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
+        setCredentialRevision(credentialRevision);
         resetChangedOnNotNull();
     }
 }

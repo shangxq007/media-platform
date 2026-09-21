@@ -12,9 +12,21 @@ public record ConnectedPlatform(
         String status,
         long bindingVersion,
         Instant createdAt,
-        Instant updatedAt
+        Instant updatedAt,
+        long credentialRevision,
+        Instant credentialExpiresAt
 ) {
+    /** Non-secret validation identity; null expiry means no locally recorded expiry, not provider validity. */
+    public record CredentialSnapshot(long revision, Instant expiresAt) {
+        public CredentialSnapshot {
+            if (revision < 1) throw new IllegalArgumentException("credential revision must be positive");
+        }
+    }
+
+    public CredentialSnapshot credentialSnapshot() { return new CredentialSnapshot(credentialRevision, credentialExpiresAt); }
+
     public ConnectedPlatform {
+        if (credentialRevision < 1) throw new IllegalArgumentException("credentialRevision must be positive");
         if (bindingVersion < 1) {
             throw new IllegalArgumentException("bindingVersion must be positive");
         }

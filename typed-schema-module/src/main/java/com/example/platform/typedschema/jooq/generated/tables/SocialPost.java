@@ -194,6 +194,16 @@ public class SocialPost extends TableImpl<SocialPostRecord> {
      */
     public final TableField<SocialPostRecord, Long> ATTEMPT_BINDING_VERSION = createField(DSL.name("attempt_binding_version"), SQLDataType.BIGINT, this, "");
 
+    /**
+     * The column <code>public.social_post.attempt_credential_revision</code>.
+     */
+    public final TableField<SocialPostRecord, Long> ATTEMPT_CREDENTIAL_REVISION = createField(DSL.name("attempt_credential_revision"), SQLDataType.BIGINT, this, "");
+
+    /**
+     * The column <code>public.social_post.attempt_credential_expires_at</code>.
+     */
+    public final TableField<SocialPostRecord, LocalDateTime> ATTEMPT_CREDENTIAL_EXPIRES_AT = createField(DSL.name("attempt_credential_expires_at"), SQLDataType.LOCALDATETIME(6), this, "");
+
     private SocialPost(Name alias, Table<SocialPostRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
     }
