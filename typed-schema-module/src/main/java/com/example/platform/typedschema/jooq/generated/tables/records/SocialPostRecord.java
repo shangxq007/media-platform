@@ -316,6 +316,76 @@ public class SocialPostRecord extends UpdatableRecordImpl<SocialPostRecord> {
         return (LocalDateTime) get(20);
     }
 
+    /**
+     * Setter for <code>public.social_post.publication_attempt_id</code>.
+     */
+    public void setPublicationAttemptId(String value) {
+        set(21, value);
+    }
+
+    /**
+     * Getter for <code>public.social_post.publication_attempt_id</code>.
+     */
+    public String getPublicationAttemptId() {
+        return (String) get(21);
+    }
+
+    /**
+     * Setter for <code>public.social_post.dispatch_started_at</code>.
+     */
+    public void setDispatchStartedAt(LocalDateTime value) {
+        set(22, value);
+    }
+
+    /**
+     * Getter for <code>public.social_post.dispatch_started_at</code>.
+     */
+    public LocalDateTime getDispatchStartedAt() {
+        return (LocalDateTime) get(22);
+    }
+
+    /**
+     * Setter for <code>public.social_post.attempt_project_id</code>.
+     */
+    public void setAttemptProjectId(String value) {
+        set(23, value);
+    }
+
+    /**
+     * Getter for <code>public.social_post.attempt_project_id</code>.
+     */
+    public String getAttemptProjectId() {
+        return (String) get(23);
+    }
+
+    /**
+     * Setter for <code>public.social_post.attempt_account_id</code>.
+     */
+    public void setAttemptAccountId(String value) {
+        set(24, value);
+    }
+
+    /**
+     * Getter for <code>public.social_post.attempt_account_id</code>.
+     */
+    public String getAttemptAccountId() {
+        return (String) get(24);
+    }
+
+    /**
+     * Setter for <code>public.social_post.attempt_binding_version</code>.
+     */
+    public void setAttemptBindingVersion(Long value) {
+        set(25, value);
+    }
+
+    /**
+     * Getter for <code>public.social_post.attempt_binding_version</code>.
+     */
+    public Long getAttemptBindingVersion() {
+        return (Long) get(25);
+    }
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -339,7 +409,7 @@ public class SocialPostRecord extends UpdatableRecordImpl<SocialPostRecord> {
     /**
      * Create a detached, initialised SocialPostRecord
      */
-    public SocialPostRecord(String id, String tenantId, String userId, String projectId, String connectedPlatformId, Long connectedPlatformBindingVersion, String artifactId, String contentText, String mediaUrls, String platformType, String status, String platformPostId, String platformPostUrl, LocalDateTime scheduledAt, LocalDateTime publishedAt, LocalDateTime failedAt, String errorCode, String errorMessage, Integer retryCount, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public SocialPostRecord(String id, String tenantId, String userId, String projectId, String connectedPlatformId, Long connectedPlatformBindingVersion, String artifactId, String contentText, String mediaUrls, String platformType, String status, String platformPostId, String platformPostUrl, LocalDateTime scheduledAt, LocalDateTime publishedAt, LocalDateTime failedAt, String errorCode, String errorMessage, Integer retryCount, LocalDateTime createdAt, LocalDateTime updatedAt, String publicationAttemptId, LocalDateTime dispatchStartedAt, String attemptProjectId, String attemptAccountId, Long attemptBindingVersion) {
         super(SocialPost.SOCIAL_POST);
 
         setId(id);
@@ -363,6 +433,11 @@ public class SocialPostRecord extends UpdatableRecordImpl<SocialPostRecord> {
         setRetryCount(retryCount);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
+        setPublicationAttemptId(publicationAttemptId);
+        setDispatchStartedAt(dispatchStartedAt);
+        setAttemptProjectId(attemptProjectId);
+        setAttemptAccountId(attemptAccountId);
+        setAttemptBindingVersion(attemptBindingVersion);
         resetChangedOnNotNull();
     }
 }

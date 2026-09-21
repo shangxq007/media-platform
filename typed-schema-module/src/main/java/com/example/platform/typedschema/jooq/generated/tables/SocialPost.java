@@ -169,6 +169,31 @@ public class SocialPost extends TableImpl<SocialPostRecord> {
      */
     public final TableField<SocialPostRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("updated_at"), SQLDataType.LOCALDATETIME(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.LOCALDATETIME)), this, "");
 
+    /**
+     * The column <code>public.social_post.publication_attempt_id</code>.
+     */
+    public final TableField<SocialPostRecord, String> PUBLICATION_ATTEMPT_ID = createField(DSL.name("publication_attempt_id"), SQLDataType.VARCHAR(36), this, "");
+
+    /**
+     * The column <code>public.social_post.dispatch_started_at</code>.
+     */
+    public final TableField<SocialPostRecord, LocalDateTime> DISPATCH_STARTED_AT = createField(DSL.name("dispatch_started_at"), SQLDataType.LOCALDATETIME(6), this, "");
+
+    /**
+     * The column <code>public.social_post.attempt_project_id</code>.
+     */
+    public final TableField<SocialPostRecord, String> ATTEMPT_PROJECT_ID = createField(DSL.name("attempt_project_id"), SQLDataType.VARCHAR(64), this, "");
+
+    /**
+     * The column <code>public.social_post.attempt_account_id</code>.
+     */
+    public final TableField<SocialPostRecord, String> ATTEMPT_ACCOUNT_ID = createField(DSL.name("attempt_account_id"), SQLDataType.VARCHAR(64), this, "");
+
+    /**
+     * The column <code>public.social_post.attempt_binding_version</code>.
+     */
+    public final TableField<SocialPostRecord, Long> ATTEMPT_BINDING_VERSION = createField(DSL.name("attempt_binding_version"), SQLDataType.BIGINT, this, "");
+
     private SocialPost(Name alias, Table<SocialPostRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
     }
@@ -291,6 +316,7 @@ public class SocialPost extends TableImpl<SocialPostRecord> {
     @Override
     public List<Check<SocialPostRecord>> getChecks() {
         return Arrays.asList(
+            Internal.createCheck(this, DSL.name("ck_social_dispatch_owned"), "(((dispatch_started_at IS NULL) OR (publication_attempt_id IS NOT NULL)))", true),
             Internal.createCheck(this, DSL.name("ck_social_post_binding_complete"), "((((project_id IS NULL) AND (connected_platform_id IS NULL) AND (connected_platform_binding_version IS NULL)) OR ((project_id IS NOT NULL) AND (connected_platform_id IS NOT NULL) AND (connected_platform_binding_version IS NOT NULL) AND (connected_platform_binding_version > 0))))", true)
         );
     }
