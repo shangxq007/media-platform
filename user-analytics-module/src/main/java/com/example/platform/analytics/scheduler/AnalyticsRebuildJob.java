@@ -57,7 +57,6 @@ public class AnalyticsRebuildJob {
                 .register(meterRegistry);
     }
 
-    @Scheduled(cron = "${app.analytics.scheduler.profiles-cron:0 0 2 * * ?}")
     void scheduledProfileRebuild() {
         String jobKey = "analytics-profile-rebuild";
         if (!shouldRun(jobKey)) {
@@ -95,7 +94,6 @@ public class AnalyticsRebuildJob {
         }
     }
 
-    @Scheduled(cron = "${app.analytics.scheduler.segments-cron:0 0 3 * * ?}")
     void scheduledSegmentRebuild() {
         String jobKey = "analytics-segment-rebuild";
         if (!shouldRun(jobKey)) {

@@ -90,7 +90,9 @@ The user analytics module provides privacy-respecting user profiling and behavio
 
 | Property | Default | Description |
 |----------|---------|-------------|
-| `app.analytics.enabled` | `true` | Enable/disable analytics collection |
+| `app.analytics.enabled` | `false` | Explicitly assemble analytics API and processing |
+| `app.analytics.persistence` | `jdbc` | Required JDBC backend; `memory` only in explicit dev/test without prod |
+| `app.analytics.scheduler.enabled` | `false` | Enable timed rebuilds when analytics is enabled |
 | `app.analytics.max-events-per-profile` | `1000` | Max events to aggregate per profile |
 | `app.analytics.max-events-for-habits` | `5000` | Max events for habits computation |
 

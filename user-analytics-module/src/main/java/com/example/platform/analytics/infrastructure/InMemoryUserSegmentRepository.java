@@ -1,7 +1,7 @@
 package com.example.platform.analytics.infrastructure;
 
 import com.example.platform.analytics.domain.UserSegment;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -10,7 +10,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Repository
-@ConditionalOnMissingBean(JdbcTemplate.class)
+@ConditionalOnProperty(prefix = "app.analytics", name = "persistence", havingValue = "memory")
+@org.springframework.context.annotation.Profile("(dev | test) & !prod")
 public class InMemoryUserSegmentRepository implements UserSegmentRepository {
 
     private final Map<String, UserSegment> segments = new ConcurrentHashMap<>();

@@ -16,7 +16,7 @@ import java.util.Map;
 import java.util.Optional;
 
 @Repository
-@Primary
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(prefix = "app.analytics", name = "persistence", havingValue = "jdbc", matchIfMissing = true)
 
 public class JdbcUserSegmentRepository implements UserSegmentRepository {
 
