@@ -13,6 +13,7 @@ import java.time.Instant;
 import java.util.List;
 
 @Service
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(prefix = "app.social-publish", name = {"enabled", "scheduler.enabled"}, havingValue = "true")
 public class PostSchedulerService {
     private static final Logger log = LoggerFactory.getLogger(PostSchedulerService.class);
 

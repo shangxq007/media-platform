@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.Locale;
 
 @Service
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(prefix = "app.social-publish", name = "enabled", havingValue = "true")
 public class PlatformAuthService {
     private static final Logger log = LoggerFactory.getLogger(PlatformAuthService.class);
 
@@ -39,14 +40,7 @@ public class PlatformAuthService {
             throw new IllegalArgumentException("Unsupported platform: " + platform);
         }
 
-        Instant now = Instant.now();
-        ConnectedPlatform connected = new ConnectedPlatform(
-                ("cn_" + java.util.UUID.randomUUID().toString().replace("-", "")), tenantId, userId, canonicalPlatform,
-                "stub_user_" + platform.toLowerCase(), "@stub_" + platform.toLowerCase(),
-                "ACTIVE", 1L, now, now);
-        connected = platformRepository.save(connected);
-        log.info("PlatformAuthService: connected platform={} as id={}", platform, connected.id());
-        return toResponse(connected);
+        throw new UnsupportedOperationException("Provider account authorization is not implemented; no account was connected");
     }
 
     public void disconnectPlatform(String tenantId, String userId, String platform) {

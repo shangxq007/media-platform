@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 
 @Service
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(prefix = "app.social-publish", name = "enabled", havingValue = "true")
 public class SocialPublishService {
     private static final Logger log = LoggerFactory.getLogger(SocialPublishService.class);
 
@@ -26,6 +27,9 @@ public class SocialPublishService {
     public SocialPublishService(SocialPostRepository postRepository,
                                  ConnectedPlatformRepository platformRepository,
                                  List<PlatformAdapter> adapterList) {
+        if (adapterList.size() != 1) {
+            throw new IllegalStateException("app.social-publish.enabled requires exactly one PlatformAdapter");
+        }
         this.postRepository = postRepository;
         this.platformRepository = platformRepository;
         this.adapters = adapterList.stream().collect(
@@ -78,6 +82,9 @@ public class SocialPublishService {
         ConnectedPlatform connected = platformRepository.findByTenantUserAndPlatform(
                 tenantId, userId, platformType.name()).orElse(null);
 
+        if (connected == null || !"ACTIVE".equals(connected.status()) || !adapter.validateCredentials(connected)) {
+            throw new IllegalStateException("Publishing requires an active account with valid provider credentials");
+        }
         PublishResult result = adapter.publish(post, connected);
         Instant now = Instant.now();
 

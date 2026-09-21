@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 
 @Service
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(prefix = "app.social-publish", name = "enabled", havingValue = "true")
 public class PublishAnalyticsService {
     private static final Logger log = LoggerFactory.getLogger(PublishAnalyticsService.class);
 
