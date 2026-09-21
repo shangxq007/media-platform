@@ -20,7 +20,6 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.annotation.ScheduledAnnotationBeanPostProcessor;
-import org.springframework.scheduling.support.ScheduledMethodRunnable;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import java.net.URI;
@@ -62,11 +61,12 @@ class ComponentBatchAssemblyTest extends PostgresTestContainerSupport {
         profiles.getOrCreateProfile("batch-tenant", "actor");
         context.getBean(BehaviorEventService.class).ingestEvent("batch-tenant", "actor", "USE", "edit", null, null, Map.of());
         var tasks = context.getBean(ScheduledAnnotationBeanPostProcessor.class).getScheduledTasks();
-        var selected = tasks.stream().map(task -> task.getTask().getRunnable())
-                .filter(ScheduledMethodRunnable.class::isInstance).map(ScheduledMethodRunnable.class::cast)
-                .filter(task -> AnalyticsSchedule.class.isInstance(task.getTarget()) || PostSchedulerService.class.isInstance(task.getTarget())).toList();
+        // Spring 7 exposes an outcome-tracking runnable around the method task.
+        var selected = tasks.stream().filter(task -> Set.of(
+                AnalyticsSchedule.class.getName() + ".profiles", AnalyticsSchedule.class.getName() + ".segments",
+                PostSchedulerService.class.getName() + ".processScheduledPosts").contains(task.toString())).toList();
         assertThat(selected).as("Registered tasks: %s", tasks).hasSize(3);
-        selected.forEach(Runnable::run);
+        selected.forEach(task -> task.getTask().getRunnable().run());
         assertThat(profiles.getOrCreateProfile("batch-tenant", "actor").totalActions()).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM user_segment WHERE tenant_id='batch-tenant'", Integer.class)).isEqualTo(6);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM social_post", Long.class)).isZero();
