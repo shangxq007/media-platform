@@ -31,6 +31,7 @@ public class PostSchedulerService {
         List<SocialPost> duePosts = postRepository.findScheduledBefore(now);
         log.info("PostSchedulerService: found {} scheduled posts due", duePosts.size());
         for (SocialPost post : duePosts) {
+            String previousTenant = com.example.platform.shared.web.TenantContext.get();
             try {
                 com.example.platform.shared.web.TenantContext.set(post.tenantId());
                 publishService.publishNow(post.tenantId(), post.userId(), post.id());
@@ -40,7 +41,8 @@ public class PostSchedulerService {
                 postRepository.updateFailure(post.id(), "PUBLISH_FAILED", e.getMessage(), PostStatus.FAILED,
                         failedAt, post.retryCount() + 1, failedAt);
             } finally {
-                com.example.platform.shared.web.TenantContext.clear();
+                if (previousTenant == null) com.example.platform.shared.web.TenantContext.clear();
+                else com.example.platform.shared.web.TenantContext.set(previousTenant);
             }
         }
     }
