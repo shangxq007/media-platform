@@ -15,10 +15,16 @@ public class HealthController {
 
     private static final Logger log = LoggerFactory.getLogger(HealthController.class);
 
+    private final com.example.platform.outbox.operations.OutboxOperationalQuery outbox;
+    private final com.example.platform.render.api.RenderOperationalQuery render;
     private final JdbcTemplate jdbc;
     private final DataSource dataSource;
 
-    public HealthController(JdbcTemplate jdbc, DataSource dataSource) {
+    public HealthController(JdbcTemplate jdbc, DataSource dataSource,
+            com.example.platform.outbox.operations.OutboxOperationalQuery outbox,
+            com.example.platform.render.api.RenderOperationalQuery render) {
+        this.outbox = outbox;
+        this.render = render;
         this.jdbc = jdbc;
         this.dataSource = dataSource;
     }
@@ -43,7 +49,9 @@ public class HealthController {
             allHealthy = false;
         }
 
-        checks.put("outbox", checkOutbox());
+        var outboxCheck = checkOutbox();
+        checks.put("outbox", outboxCheck);
+        allHealthy &= "ok".equals(outboxCheck.get("status"));
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("status", allHealthy ? "ok" : "degraded");
@@ -53,25 +61,28 @@ public class HealthController {
     }
 
     @GetMapping("/metrics/summary")
-    public Map<String, Object> metricsSummary() {
+    public Map<String, Object> metricsSummary(jakarta.servlet.http.HttpServletRequest request) {
+        if (!Boolean.TRUE.equals(request.getAttribute("identity.platformAdministrator"))) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN);
+        }
         Map<String, Object> metrics = new LinkedHashMap<>();
 
         try {
-            metrics.put("exportSessions", getExportSessionCounts());
+            metrics.put("exportSessions", render.exportSessionCounts());
         } catch (Exception e) {
-            metrics.put("exportSessions", Map.of("error", e.getMessage()));
+            metrics.put("exportSessions", Map.of("error", "dependency unavailable"));
         }
 
         try {
-            metrics.put("outbox", getOutboxCounts());
+            metrics.put("outbox", outbox.snapshot().counts());
         } catch (Exception e) {
-            metrics.put("outbox", Map.of("error", e.getMessage()));
+            metrics.put("outbox", Map.of("error", "dependency unavailable"));
         }
 
         try {
-            metrics.put("renderJobs", getRenderJobCounts());
+            metrics.put("renderJobs", render.renderJobCounts());
         } catch (Exception e) {
-            metrics.put("renderJobs", Map.of("error", e.getMessage()));
+            metrics.put("renderJobs", Map.of("error", "dependency unavailable"));
         }
 
         metrics.put("timestamp", System.currentTimeMillis());
@@ -84,7 +95,7 @@ public class HealthController {
             return Map.of("status", "ok");
         } catch (Exception e) {
             log.warn("Health check: database error: {}", e.getMessage());
-            return Map.of("status", "error", "error", e.getMessage());
+            return Map.of("status", "error", "error", "dependency unavailable");
         }
     }
 
@@ -95,59 +106,18 @@ public class HealthController {
             return Map.of("status", "ok");
         } catch (Exception e) {
             log.warn("Health check: storage error: {}", e.getMessage());
-            return Map.of("status", "error", "error", e.getMessage());
+            return Map.of("status", "error", "error", "dependency unavailable");
         }
     }
 
     private Map<String, Object> checkOutbox() {
         try {
-            Integer pending = jdbc.queryForObject(
-                    "SELECT COUNT(*) FROM outbox_events WHERE status = 'PENDING'", Integer.class);
-            return Map.of("status", "ok", "pendingCount", pending != null ? pending : 0);
+            outbox.snapshot();
+            // Public readiness reports availability, not privileged global tenant counts.
+            return Map.of("status", "ok");
         } catch (Exception e) {
-            return Map.of("status", "skipped", "reason", "outbox table not available");
-        }
-    }
-
-    private Map<String, Object> getExportSessionCounts() {
-        try {
-            var rows = jdbc.queryForList(
-                    "SELECT status, COUNT(*) as cnt FROM client_export_session GROUP BY status");
-            Map<String, Object> counts = new LinkedHashMap<>();
-            for (var row : rows) {
-                counts.put((String) row.get("status"), ((Number) row.get("cnt")).intValue());
-            }
-            return counts;
-        } catch (Exception e) {
-            return Map.of("error", "table not available");
-        }
-    }
-
-    private Map<String, Object> getOutboxCounts() {
-        try {
-            var rows = jdbc.queryForList(
-                    "SELECT status, COUNT(*) as cnt FROM outbox_events GROUP BY status");
-            Map<String, Object> counts = new LinkedHashMap<>();
-            for (var row : rows) {
-                counts.put((String) row.get("status"), ((Number) row.get("cnt")).intValue());
-            }
-            return counts;
-        } catch (Exception e) {
-            return Map.of("error", "table not available");
-        }
-    }
-
-    private Map<String, Object> getRenderJobCounts() {
-        try {
-            var rows = jdbc.queryForList(
-                    "SELECT status, COUNT(*) as cnt FROM render_job GROUP BY status");
-            Map<String, Object> counts = new LinkedHashMap<>();
-            for (var row : rows) {
-                counts.put((String) row.get("status"), ((Number) row.get("cnt")).intValue());
-            }
-            return counts;
-        } catch (Exception e) {
-            return Map.of("error", "table not available");
+            log.warn("Health check: outbox unavailable", e);
+            return Map.of("status", "error", "error", "dependency unavailable");
         }
     }
 }
