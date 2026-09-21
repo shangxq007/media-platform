@@ -59,6 +59,13 @@ public class ConnectedPlatformRepository {
         return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
     }
 
+    /** Held only during the short dispatch authorization transaction, never during provider IO. */
+    public Optional<ConnectedPlatform> lockById(String id) {
+        var rows = jdbc.query("SELECT * FROM social_connected_platform WHERE id=? AND tenant_id=? FOR UPDATE",
+                rowMapper, id, TenantGuard.requireTenantId());
+        return rows.stream().findFirst();
+    }
+
     public List<SocialAccountReadModel> findPublicationAccounts(
             String tenantId, String actorId, String projectId) {
         return jdbc.query("""

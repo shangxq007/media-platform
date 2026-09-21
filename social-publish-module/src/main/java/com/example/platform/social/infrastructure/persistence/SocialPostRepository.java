@@ -48,17 +48,97 @@ public class SocialPostRepository {
         return post;
     }
 
-    /** Update lifecycle fields only; identity and binding remain owned by the existing row. */
-    public void updateLifecycle(SocialPost post) {
-        TenantGuard.assertSameTenant(post.tenantId());
-        int count = jdbc.update("""
-                UPDATE social_post SET status=?, platform_post_id=?, platform_post_url=?, scheduled_at=?,
-                    published_at=?, failed_at=?, error_code=?, error_message=?, retry_count=?, updated_at=?
-                WHERE id=? AND tenant_id=? AND user_id=?
-                """, post.status().name(), post.platformPostId(), post.platformPostUrl(), utcTimestamp(post.scheduledAt()),
-                utcTimestamp(post.publishedAt()), utcTimestamp(post.failedAt()), post.errorCode(), post.errorMessage(),
-                post.retryCount(), utcTimestamp(post.updatedAt()), post.id(), post.tenantId(), post.userId());
-        if (count != 1) throw new IllegalStateException("Social post lifecycle update lost its owning row");
+    /** One durable owner; no lease expiry or automatic redispatch of interrupted attempts. */
+    public record Attempt(SocialPost post, String token) {}
+
+    public Optional<Attempt> claim(String tenant, String actor, String id, String token,
+                                   PostStatus expected, Instant now) {
+        TenantGuard.assertSameTenant(tenant);
+        if (expected != PostStatus.DRAFT && expected != PostStatus.SCHEDULED && expected != PostStatus.FAILED)
+            throw new IllegalArgumentException("Ineligible publication status");
+        var rows = jdbc.query("""
+                UPDATE social_post SET status='PUBLISHING', publication_attempt_id=?,
+                    attempt_project_id=project_id, attempt_account_id=connected_platform_id,
+                    attempt_binding_version=connected_platform_binding_version, updated_at=?
+                WHERE id=? AND tenant_id=? AND user_id=? AND status=? AND dispatch_started_at IS NULL
+                  AND (status <> 'SCHEDULED' OR scheduled_at <= ?)
+                RETURNING *
+                """, rowMapper, token, utcTimestamp(now), id, tenant, actor, expected.name(), utcTimestamp(now));
+        return rows.stream().findFirst().map(post -> new Attempt(post, token));
+    }
+
+    private static final String OWNED = """
+             WHERE id=? AND tenant_id=? AND user_id=? AND publication_attempt_id=? AND status='PUBLISHING'
+               AND project_id IS NOT DISTINCT FROM attempt_project_id
+               AND connected_platform_id IS NOT DISTINCT FROM attempt_account_id
+               AND connected_platform_binding_version IS NOT DISTINCT FROM attempt_binding_version
+            """;
+
+    public boolean markDispatched(Attempt attempt, Instant now) {
+        var p = attempt.post();
+        TenantGuard.assertSameTenant(p.tenantId());
+        return jdbc.update("UPDATE social_post SET dispatch_started_at=?, updated_at=? " + OWNED
+                        + " AND dispatch_started_at IS NULL", utcTimestamp(now), utcTimestamp(now),
+                p.id(), p.tenantId(), p.userId(), attempt.token()) == 1;
+    }
+
+    public boolean complete(Attempt attempt, String externalId, String externalUrl, Instant now) {
+        var p = attempt.post();
+        TenantGuard.assertSameTenant(p.tenantId());
+        return jdbc.update("""
+                UPDATE social_post SET status='PUBLISHED', platform_post_id=?, platform_post_url=?,
+                    published_at=?, error_code=NULL, error_message=NULL, updated_at=?
+                """ + OWNED + " AND dispatch_started_at IS NOT NULL", externalId, externalUrl,
+                utcTimestamp(now), utcTimestamp(now), p.id(), p.tenantId(), p.userId(), attempt.token()) == 1;
+    }
+
+    public boolean failBeforeDispatch(Attempt attempt, Instant now) {
+        var p = attempt.post();
+        TenantGuard.assertSameTenant(p.tenantId());
+        return jdbc.update("""
+                UPDATE social_post SET status='FAILED', failed_at=?, error_code='PRE_DISPATCH_REJECTED',
+                    error_message='Publication prerequisites rejected before dispatch', retry_count=retry_count+1, updated_at=?
+                """ + OWNED + " AND dispatch_started_at IS NULL", utcTimestamp(now), utcTimestamp(now),
+                p.id(), p.tenantId(), p.userId(), attempt.token()) == 1;
+    }
+
+    public boolean unresolved(Attempt attempt, Instant now) {
+        var p = attempt.post();
+        TenantGuard.assertSameTenant(p.tenantId());
+        return jdbc.update("""
+                UPDATE social_post SET status='UNRESOLVED', error_code='EXTERNAL_OUTCOME_UNKNOWN',
+                    error_message='Dispatch may have produced an external effect; reconciliation required', updated_at=?
+                """ + OWNED + " AND dispatch_started_at IS NOT NULL", utcTimestamp(now),
+                p.id(), p.tenantId(), p.userId(), attempt.token()) == 1;
+    }
+
+    public boolean schedule(String tenant, String actor, String id, Instant schedule, Instant now) {
+        TenantGuard.assertSameTenant(tenant);
+        return jdbc.update("""
+                UPDATE social_post SET status='SCHEDULED', scheduled_at=?, updated_at=?
+                WHERE id=? AND tenant_id=? AND user_id=? AND dispatch_started_at IS NULL
+                  AND status IN ('DRAFT','SCHEDULED','FAILED','CANCELLED')
+                """, utcTimestamp(schedule), utcTimestamp(now), id, tenant, actor) == 1;
+    }
+
+    /** Cancellation fences late completions. Dispatched work remains unresolved, never retryable. */
+    public boolean cancel(String tenant, String actor, String id, Instant now) {
+        TenantGuard.assertSameTenant(tenant);
+        return jdbc.update("""
+                UPDATE social_post SET status=CASE WHEN dispatch_started_at IS NULL THEN 'CANCELLED' ELSE 'UNRESOLVED' END,
+                    error_code=CASE WHEN dispatch_started_at IS NULL THEN NULL ELSE 'CANCELLED_AFTER_DISPATCH' END,
+                    error_message=CASE WHEN dispatch_started_at IS NULL THEN NULL ELSE 'External request cannot be recalled' END,
+                    updated_at=?
+                WHERE id=? AND tenant_id=? AND user_id=? AND status IN ('DRAFT','SCHEDULED','FAILED','PUBLISHING')
+                """, utcTimestamp(now), id, tenant, actor) == 1;
+    }
+
+    public boolean delete(String tenant, String actor, String id) {
+        TenantGuard.assertSameTenant(tenant);
+        return jdbc.update("""
+                DELETE FROM social_post WHERE id=? AND tenant_id=? AND user_id=?
+                  AND dispatch_started_at IS NULL AND status IN ('DRAFT','SCHEDULED','FAILED','CANCELLED')
+                """, id, tenant, actor) == 1;
     }
 
     public Optional<SocialPost> findById(String id) {
@@ -164,27 +244,6 @@ public class SocialPostRepository {
                 """, (rs, rowNum) -> mapReadRow(rs),
                 postId, tenantId, actorId, projectId, connectedAccountId, bindingVersion);
         return rows.isEmpty() ? Optional.empty() : Optional.of(rows.getFirst());
-    }
-
-    public void updateStatus(String id, PostStatus status, Instant updatedAt) {
-        jdbc.update("UPDATE social_post SET status = ?, updated_at = ? WHERE id = ?",
-                status.name(), utcTimestamp(updatedAt), id);
-    }
-
-    public void updatePublishResult(String id, String platformPostId, String platformPostUrl,
-                                     PostStatus status, Instant publishedAt, Instant updatedAt) {
-        jdbc.update("UPDATE social_post SET platform_post_id = ?, platform_post_url = ?, status = ?, published_at = ?, updated_at = ? WHERE id = ?",
-                platformPostId, platformPostUrl, status.name(), utcTimestamp(publishedAt), utcTimestamp(updatedAt), id);
-    }
-
-    public void updateFailure(String id, String errorCode, String errorMessage,
-                               PostStatus status, Instant failedAt, int retryCount, Instant updatedAt) {
-        jdbc.update("UPDATE social_post SET error_code = ?, error_message = ?, status = ?, failed_at = ?, retry_count = ?, updated_at = ? WHERE id = ?",
-                errorCode, errorMessage, status.name(), utcTimestamp(failedAt), retryCount, utcTimestamp(updatedAt), id);
-    }
-
-    public void deleteById(String id) {
-        jdbc.update("DELETE FROM social_post WHERE id = ?", id);
     }
 
     private SocialPost mapRow(ResultSet rs) throws SQLException {

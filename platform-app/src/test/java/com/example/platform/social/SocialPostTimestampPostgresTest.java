@@ -75,7 +75,7 @@ class SocialPostTimestampPostgresTest extends PostgresTestContainerSupport {
                         insert("zone", CUTOFF, "SCHEDULED");
                         assertThat(repository.findScheduledBefore(CUTOFF)).singleElement()
                                 .extracting(SocialPost::scheduledAt).isEqualTo(CUTOFF);
-                        repository.updateStatus("zone", PostStatus.SCHEDULED, CUTOFF);
+                        repository.schedule("social-test", "actor", "zone", CUTOFF, CUTOFF);
                         assertThat(repository.findById("zone").orElseThrow().updatedAt()).isEqualTo(CUTOFF);
                         assertThat(jdbc.queryForObject("SELECT updated_at FROM social_post WHERE id='zone'", LocalDateTime.class))
                                 .isEqualTo(LocalDateTime.ofInstant(CUTOFF, ZoneOffset.UTC));
@@ -99,12 +99,15 @@ class SocialPostTimestampPostgresTest extends PostgresTestContainerSupport {
     @Test
     void lifecycleUpdatesBindInstants() {
         insert("updated", CUTOFF, "SCHEDULED");
-        repository.updateStatus("updated", PostStatus.PUBLISHING, CUTOFF);
+        var attempt=repository.claim("social-test","actor","updated","token",PostStatus.SCHEDULED,CUTOFF).orElseThrow();
         assertThat(repository.findById("updated").orElseThrow().updatedAt()).isEqualTo(CUTOFF);
-        repository.updatePublishResult("updated", "external", "url", PostStatus.PUBLISHED, CUTOFF, CUTOFF);
+        repository.markDispatched(attempt,CUTOFF);
+        repository.complete(attempt,"external","url",CUTOFF);
         assertThat(repository.findById("updated").orElseThrow().publishedAt()).isEqualTo(CUTOFF);
-        repository.updateFailure("updated", "test", "controlled", PostStatus.FAILED, CUTOFF, 1, CUTOFF);
-        assertThat(repository.findById("updated").orElseThrow().failedAt()).isEqualTo(CUTOFF);
+        insert("failure", CUTOFF, "SCHEDULED");
+        var failed=repository.claim("social-test","actor","failure","failed",PostStatus.SCHEDULED,CUTOFF).orElseThrow();
+        repository.failBeforeDispatch(failed,CUTOFF);
+        assertThat(repository.findById("failure").orElseThrow().failedAt()).isEqualTo(CUTOFF);
     }
 
     @Test
@@ -121,11 +124,12 @@ class SocialPostTimestampPostgresTest extends PostgresTestContainerSupport {
         insert("due", Instant.now().minusSeconds(60), "SCHEDULED");
         SocialPublishService publisher = mock(SocialPublishService.class);
         doThrow(new IllegalStateException("controlled publisher failure")).when(publisher)
-                .publishNow("social-test", "actor", "due");
+                .publishScheduled("social-test", "actor", "due");
         new PostSchedulerService(repository, publisher).processScheduledPosts();
-        verify(publisher).publishNow("social-test", "actor", "due");
-        assertThat(repository.findById("due").orElseThrow().status()).isEqualTo(PostStatus.FAILED);
+        verify(publisher).publishScheduled("social-test", "actor", "due");
+        assertThat(repository.findById("due").orElseThrow().status()).isEqualTo(PostStatus.SCHEDULED);
         new PostSchedulerService(repository, publisher).processScheduledPosts();
-        verifyNoMoreInteractions(publisher);
+        verify(publisher, times(2)).publishScheduled("social-test", "actor", "due");
+        assertThat(repository.findById("due").orElseThrow().retryCount()).isZero();
     }
 }

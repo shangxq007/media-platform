@@ -23,13 +23,24 @@ public class SocialPublishService {
     private final SocialPostRepository postRepository;
     private final ConnectedPlatformRepository platformRepository;
     private final Map<PlatformType, PlatformAdapter> adapters;
+    private final org.springframework.transaction.support.TransactionTemplate transactions;
+    private final SocialProjectScopePort projects;
+    private final com.example.platform.identity.api.authorization.AuthorizationDecisionPort authorization;
+
 
     public SocialPublishService(SocialPostRepository postRepository,
                                  ConnectedPlatformRepository platformRepository,
-                                 List<PlatformAdapter> adapterList) {
+                                 List<PlatformAdapter> adapterList,
+                                 org.springframework.transaction.PlatformTransactionManager transactionManager,
+                                 SocialProjectScopePort projects,
+                                 com.example.platform.identity.api.authorization.AuthorizationDecisionPort authorization) {
         if (adapterList.size() != 1) {
             throw new IllegalStateException("app.social-publish.enabled requires exactly one PlatformAdapter");
         }
+        this.transactions = new org.springframework.transaction.support.TransactionTemplate(transactionManager);
+        this.transactions.setPropagationBehavior(org.springframework.transaction.TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        this.projects = projects;
+        this.authorization = authorization;
         this.postRepository = postRepository;
         this.platformRepository = platformRepository;
         this.adapters = adapterList.stream().collect(
@@ -53,95 +64,115 @@ public class SocialPublishService {
 
     @Transactional
     public PublishPostResponse schedulePost(String tenantId, String userId, String postId, SchedulePostRequest request) {
-        SocialPost post = postRepository.findById(postId)
-                .orElseThrow(() -> new IllegalArgumentException("Post not found: " + postId));
-
-        Instant scheduledAt = Instant.parse(request.scheduledAt());
-        SocialPost updated = new SocialPost(
-                post.id(), post.tenantId(), post.userId(), post.projectId(), post.connectedPlatformId(),
-                post.connectedPlatformBindingVersion(), post.artifactId(),
-                post.contentText(), post.mediaUrls(),
-                post.platformType(), PostStatus.SCHEDULED, post.platformPostId(), post.platformPostUrl(),
-                scheduledAt, null, null, null, null, post.retryCount(),
-                post.createdAt(), Instant.now());
-        postRepository.updateLifecycle(updated);
-        log.info("SocialPublishService: scheduled post={} at {}", postId, scheduledAt);
-        return toResponse(updated);
+        requireChanged(postRepository.schedule(tenantId, userId, postId, Instant.parse(request.scheduledAt()), Instant.now()));
+        return toResponse(postRepository.findById(postId).orElseThrow());
     }
 
-    @Transactional
+    /** External effects cannot participate in a caller's rollback. Reject before claiming or dispatching. */
     public PublishPostResponse publishNow(String tenantId, String userId, String postId) {
-        SocialPost post = postRepository.findById(postId)
-                .orElseThrow(() -> new IllegalArgumentException("Post not found: " + postId));
-        PlatformType platformType = post.platformType();
-        PlatformAdapter adapter = adapters.get(platformType);
-        if (adapter == null) {
-            throw new IllegalStateException("No adapter for platform: " + platformType);
-        }
+        noEnclosingTransaction();
+        SocialPost post = ownedPost(tenantId, userId, postId);
+        return publish(tenantId, userId, postId, post.status());
+    }
 
-        ConnectedPlatform connected = platformRepository.findByTenantUserAndPlatform(
-                tenantId, userId, platformType.name()).orElse(null);
+    public void publishScheduled(String tenantId, String userId, String postId) {
+        noEnclosingTransaction();
+        publish(tenantId, userId, postId, PostStatus.SCHEDULED);
+    }
 
-        if (connected == null || !"ACTIVE".equals(connected.status()) || !adapter.validateCredentials(connected)) {
-            throw new IllegalStateException("Publishing requires an active account with valid provider credentials");
-        }
-        PublishResult result = adapter.publish(post, connected);
-        Instant now = Instant.now();
+    public PublishPostResponse retryPost(String tenantId, String userId, String postId) {
+        noEnclosingTransaction();
+        return publish(tenantId, userId, postId, PostStatus.FAILED);
+    }
 
-        SocialPost updated;
-        if (result.success()) {
-            updated = new SocialPost(
-                    post.id(), post.tenantId(), post.userId(), post.projectId(), post.connectedPlatformId(),
-                    post.connectedPlatformBindingVersion(), post.artifactId(),
-                    post.contentText(), post.mediaUrls(),
-                    post.platformType(), PostStatus.PUBLISHED, result.platformPostId(), result.platformPostUrl(),
-                    post.scheduledAt(), now, null, null, null, post.retryCount(),
-                    post.createdAt(), now);
-        } else {
-            updated = new SocialPost(
-                    post.id(), post.tenantId(), post.userId(), post.projectId(), post.connectedPlatformId(),
-                    post.connectedPlatformBindingVersion(), post.artifactId(),
-                    post.contentText(), post.mediaUrls(),
-                    post.platformType(), PostStatus.FAILED, null, null,
-                    post.scheduledAt(), null, now, result.errorCode(), result.errorMessage(), post.retryCount() + 1,
-                    post.createdAt(), now);
+    private PublishPostResponse publish(String tenant, String actor, String id, PostStatus expected) {
+        var attempt = transactions.execute(tx -> postRepository.claim(tenant, actor, id,
+                java.util.UUID.randomUUID().toString(), expected, Instant.now()).orElseThrow(
+                () -> new IllegalStateException("Publication is not eligible or already owned")));
+        var post = attempt.post();
+        PlatformAdapter adapter;
+        ConnectedPlatform account;
+        try {
+            adapter = adapters.get(post.platformType());
+            if (adapter == null) throw new IllegalStateException("No adapter for platform");
+            account = validateBinding(post, false);
+            if (!adapter.validateCredentials(account)) throw new IllegalStateException("Invalid provider credentials");
+            // Recheck the exact captured binding and canonical permission at the committed dispatch boundary.
+            transactions.executeWithoutResult(tx -> {
+                if (!account.equals(validateBinding(post, true)))
+                    throw new IllegalStateException("Account changed before dispatch");
+                requireChanged(postRepository.markDispatched(attempt, Instant.now()));
+            });
+        } catch (RuntimeException failure) {
+            try { transactions.executeWithoutResult(tx -> postRepository.failBeforeDispatch(attempt, Instant.now())); }
+            catch (RuntimeException cleanup) { failure.addSuppressed(cleanup); }
+            throw failure;
         }
-        postRepository.updateLifecycle(updated);
-        log.info("SocialPublishService: published post={} success={}", postId, result.success());
-        return toResponse(updated);
+        try {
+            PublishResult result = adapter.publish(post, account);
+            if (result == null || !result.success() || result.platformPostId() == null || result.platformPostId().isBlank())
+                throw new IllegalStateException("Provider did not confirm publication; outcome unresolved");
+            transactions.executeWithoutResult(tx -> requireChanged(postRepository.complete(
+                    attempt, result.platformPostId(), result.platformPostUrl(), Instant.now())));
+        } catch (RuntimeException failure) {
+            // Even a negative response has no contractual guarantee of zero external effects.
+            // If persistence is unavailable, the committed dispatch marker still blocks redispatch.
+            try { transactions.executeWithoutResult(tx -> postRepository.unresolved(attempt, Instant.now())); }
+            catch (RuntimeException cleanup) { failure.addSuppressed(cleanup); }
+            throw failure;
+        }
+        return toResponse(postRepository.findById(id).orElseThrow());
+    }
+
+    private ConnectedPlatform validateBinding(SocialPost post, boolean lock) {
+        if (post.projectId() == null || post.connectedPlatformId() == null || post.connectedPlatformBindingVersion() == null)
+            throw new IllegalStateException("Publication requires an explicit account and Project binding");
+        if (!projects.belongsToTenant(post.tenantId(), post.projectId()))
+            throw new IllegalStateException("Publication Project unavailable");
+        // Persisted owner reference is a background delegation, not a fabricated request principal.
+        // Identity revalidates current membership, Workspace, Project and RBAC on every dispatch.
+        authorization.requireAuthorized(new com.example.platform.shared.authorization.AuthorizationRequest(
+                com.example.platform.shared.authorization.CanonicalActor.user(post.userId(), post.tenantId(),
+                        java.util.Set.of(), "social-persisted-owner"),
+                new com.example.platform.shared.authorization.AuthorizationAction("social.publish",
+                        com.example.platform.shared.authorization.AuthorizationResourceType.PROJECT, "Publish bound post"),
+                new com.example.platform.shared.authorization.AuthorizableResourceRef(
+                        com.example.platform.shared.authorization.AuthorizationResourceType.PROJECT,
+                        post.projectId(), post.tenantId(), post.projectId(), null),
+                new com.example.platform.shared.authorization.AuthorizationContext("social-publication", null, Map.of())));
+        var account = (lock ? platformRepository.lockById(post.connectedPlatformId())
+                : platformRepository.findById(post.connectedPlatformId())).orElseThrow(
+                () -> new IllegalStateException("Bound account unavailable"));
+        if (!post.tenantId().equals(account.tenantId()) || !post.userId().equals(account.userId())
+                || !post.platformType().name().equals(account.platformType())
+                || post.connectedPlatformBindingVersion().longValue() != account.bindingVersion()
+                || !"ACTIVE".equals(account.status())) throw new IllegalStateException("Invalid account binding");
+        return account;
+    }
+
+    private SocialPost ownedPost(String tenant, String actor, String id) {
+        com.example.platform.shared.web.TenantGuard.assertSameTenant(tenant);
+        return postRepository.findById(id).filter(p -> tenant.equals(p.tenantId()) && actor.equals(p.userId()))
+                .orElseThrow(() -> new IllegalArgumentException("Post not found"));
+    }
+
+    private static void noEnclosingTransaction() {
+        if (org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive())
+            throw new IllegalStateException("Publication cannot run inside an enclosing transaction");
+    }
+
+    private static void requireChanged(boolean changed) {
+        if (!changed) throw new IllegalStateException("Publication transition rejected: stale or ineligible state");
     }
 
     @Transactional
     public void cancelScheduled(String tenantId, String userId, String postId) {
-        SocialPost post = postRepository.findById(postId)
-                .orElseThrow(() -> new IllegalArgumentException("Post not found: " + postId));
-        SocialPost updated = new SocialPost(
-                post.id(), post.tenantId(), post.userId(), post.projectId(), post.connectedPlatformId(),
-                post.connectedPlatformBindingVersion(), post.artifactId(),
-                post.contentText(), post.mediaUrls(),
-                post.platformType(), PostStatus.CANCELLED, post.platformPostId(), post.platformPostUrl(),
-                null, null, null, null, null, post.retryCount(),
-                post.createdAt(), Instant.now());
-        postRepository.updateLifecycle(updated);
-        log.info("SocialPublishService: cancelled scheduled post={}", postId);
-    }
-
-    @Transactional
-    public PublishPostResponse retryPost(String tenantId, String userId, String postId) {
-        SocialPost post = postRepository.findById(postId)
-                .orElseThrow(() -> new IllegalArgumentException("Post not found: " + postId));
-        if (post.status() != PostStatus.FAILED) {
-            throw new IllegalStateException("Only failed posts can be retried");
-        }
-        return publishNow(tenantId, userId, postId);
+        requireChanged(postRepository.cancel(tenantId, userId, postId, Instant.now()));
     }
 
     @Transactional
     public void deletePost(String tenantId, String userId, String postId) {
-        postRepository.findById(postId)
-                .orElseThrow(() -> new IllegalArgumentException("Post not found: " + postId));
-        postRepository.deleteById(postId);
-        log.info("SocialPublishService: deleted post={}", postId);
+        requireChanged(postRepository.delete(tenantId, userId, postId));
     }
 
     public List<PublishPostResponse> getDrafts(String tenantId, String userId) {

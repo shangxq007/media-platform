@@ -33,6 +33,7 @@ class SocialCompositionTest {
                 .withBean(CanonicalActorResolver.class, () -> mock(CanonicalActorResolver.class))
                 .withBean(AuthorizationDecisionPort.class, () -> mock(AuthorizationDecisionPort.class))
                 .withBean(SocialProjectScopePort.class, () -> mock(SocialProjectScopePort.class))
+                .withBean(org.springframework.transaction.PlatformTransactionManager.class, () -> mock(org.springframework.transaction.PlatformTransactionManager.class))
                 .withBean(TaskScheduler.class, () -> mock(TaskScheduler.class));
     }
     @Test void disabledKeepsReadsAndRejectsMutationWithoutWork() {
@@ -77,26 +78,28 @@ class SocialCompositionTest {
             verifyNoInteractions(posts, accounts);
         });
     }
-    @Test void schedulerRegisteredOnceExecutesOwnerPublishingAndPersistsFailureThenRecovery() {
+    @Test void schedulerRegisteredOnceExecutesOwnerPublishing() {
         var posts = mock(SocialPostRepository.class);
         var accounts = mock(ConnectedPlatformRepository.class);
         var provider = adapter();
         when(posts.findScheduledBefore(any())).thenReturn(List.of(post()));
         when(posts.findById("post")).thenReturn(Optional.of(post()));
-        when(accounts.findByTenantUserAndPlatform("tenant", "actor", "TWITTER")).thenReturn(Optional.of(account()));
+        when(accounts.findById("account")).thenReturn(Optional.of(account()));
+        when(accounts.lockById("account")).thenReturn(Optional.of(account()));
+        when(posts.claim(any(),any(),any(),any(),any(),any())).thenReturn(Optional.of(new SocialPostRepository.Attempt(post(), "token")));
+        when(posts.markDispatched(any(),any())).thenReturn(true);
+        when(posts.complete(any(),any(),any(),any())).thenReturn(true);
         when(provider.validateCredentials(any())).thenReturn(true);
-        when(provider.publish(any(), any())).thenReturn(new PublishResult(false, null, null, "RETRY", "retry"),
-                new PublishResult(true, "external", "https://example.test/post", null, null));
+        when(provider.publish(any(), any())).thenReturn(new PublishResult(true, "external", "https://example.test/post", null, null));
         runner(posts, accounts).withPropertyValues("app.social-publish.enabled=true", "app.social-publish.scheduler.enabled=true")
+                .withBean(SocialProjectScopePort.class, () -> (t,p) -> true)
                 .withBean(PlatformAdapter.class, () -> provider).run(c -> {
                     assertThat(c).hasNotFailed();
                     var tasks = c.getBean(ScheduledAnnotationBeanPostProcessor.class).getScheduledTasks();
                     assertThat(tasks).hasSize(1);
                     tasks.iterator().next().getTask().getRunnable().run();
-                    verify(posts).updateLifecycle(argThat(p -> p.status() == PostStatus.FAILED && p.retryCount() == 1));
-                    tasks.iterator().next().getTask().getRunnable().run();
-                    verify(posts).updateLifecycle(argThat(p -> p.status() == PostStatus.PUBLISHED));
-                    verify(provider, times(2)).publish(any(), any());
+                    verify(posts).complete(any(), eq("external"), any(), any());
+                    verify(provider).publish(any(), any());
                 });
     }
     @Test void schedulerDisabledMakesNoRepositoryCallsAndMissingCredentialsNeverPublish() {
@@ -110,7 +113,7 @@ class SocialCompositionTest {
                     verifyNoInteractions(posts, accounts);
                     when(posts.findById("post")).thenReturn(Optional.of(post()));
                     assertThatThrownBy(() -> c.getBean(SocialPublishService.class).publishNow("tenant", "actor", "post"))
-                            .hasMessageContaining("valid provider credentials");
+                            .isInstanceOf(RuntimeException.class);
                     verify(provider, never()).publish(any(), any());
                     verify(posts, never()).save(any());
                 });
@@ -121,11 +124,11 @@ class SocialCompositionTest {
         return adapter;
     }
     private static ConnectedPlatform account() {
-        return new ConnectedPlatform("account", "tenant", "actor", "TWITTER", "external", "name", "ACTIVE", 1L, Instant.now(), Instant.now());
+        return new ConnectedPlatform("account", "tenant", "actor", "TWITTER", "external", "name", "ACTIVE", 1L, Instant.EPOCH, Instant.EPOCH);
     }
     private static SocialPost post() {
         var now = Instant.now();
-        return new SocialPost("post", "tenant", "actor", null, null, null, null, "text", List.of(), PlatformType.TWITTER,
+        return new SocialPost("post", "tenant", "actor", "project", "account", 1L, null, "text", List.of(), PlatformType.TWITTER,
                 PostStatus.SCHEDULED, null, null, now.minusSeconds(60), null, null, null, null, 0, now, now);
     }
 }

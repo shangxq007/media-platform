@@ -1,13 +1,11 @@
 package com.example.platform.social.app;
 
-import com.example.platform.social.domain.PostStatus;
 import com.example.platform.social.domain.SocialPost;
 import com.example.platform.social.infrastructure.persistence.SocialPostRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
@@ -34,12 +32,9 @@ public class PostSchedulerService {
             String previousTenant = com.example.platform.shared.web.TenantContext.get();
             try {
                 com.example.platform.shared.web.TenantContext.set(post.tenantId());
-                publishService.publishNow(post.tenantId(), post.userId(), post.id());
+                publishService.publishScheduled(post.tenantId(), post.userId(), post.id());
             } catch (Exception e) {
                 log.error("PostSchedulerService: failed to publish scheduled post={}: {}", post.id(), e.getMessage());
-                Instant failedAt = Instant.now();
-                postRepository.updateFailure(post.id(), "PUBLISH_FAILED", e.getMessage(), PostStatus.FAILED,
-                        failedAt, post.retryCount() + 1, failedAt);
             } finally {
                 if (previousTenant == null) com.example.platform.shared.web.TenantContext.clear();
                 else com.example.platform.shared.web.TenantContext.set(previousTenant);
