@@ -94,6 +94,96 @@ class SocialPublicationOwnershipPostgresTest extends PostgresTestContainerSuppor
                 .header("X-User-ID",actor).POST(java.net.http.HttpRequest.BodyPublishers.noBody()).build(),java.net.http.HttpResponse.BodyHandlers.ofString());
         assertThat(valid.statusCode()).as(valid.body()).isEqualTo(200);assertThat(state()).containsEntry("status","PUBLISHED");verify(provider).publish(any(),any());
     }
+    @Test void credentialRotationExpiryAndRevocationBeforeFinalFenceRejectWithoutProviderCall() throws Exception {
+        for (String change : List.of("rotation", "expiry", "revocation", "invalidation-restored")) {
+            fixture(); clearInvocations(provider);
+            var expiry=LocalDateTime.ofInstant(Instant.now().plusSeconds(3600),ZoneOffset.UTC).withNano(123456000);
+            jdbc.update("UPDATE social_connected_platform SET access_token_encrypted=?,refresh_token_encrypted=?,token_expires_at=? WHERE id=?",
+                    "fixture-encrypted-A","fixture-refresh-A",expiry,account);
+            var validated=new CountDownLatch(1);var release=new CountDownLatch(1);
+            var snapshot=new java.util.concurrent.atomic.AtomicReference<ConnectedPlatform.CredentialSnapshot>();
+            doAnswer(inv->{
+                assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+                ConnectedPlatform candidate=inv.getArgument(0);
+                snapshot.set(candidate.credentialSnapshot());
+                assertThat(snapshot.get()).isEqualTo(new ConnectedPlatform.CredentialSnapshot(2,expiry.toInstant(ZoneOffset.UTC)));
+                validated.countDown();await(release);return true;
+            }).when(provider).validateCredentials(any());
+            Map<String,Object> claimed;
+            try(var pool=Executors.newSingleThreadExecutor()) {
+                var job=pool.submit(()->catchThrowable(this::scheduled));
+                try {
+                    await(validated);claimed=state();
+                    assertThat(claimed).containsEntry("status","PUBLISHING").containsEntry("dispatch_started_at",null);
+                    new TransactionTemplate(manager).executeWithoutResult(tx->{
+                        switch(change) {
+                            case "rotation" -> jdbc.update("UPDATE social_connected_platform SET access_token_encrypted=?,refresh_token_encrypted=? WHERE id=?","fixture-encrypted-B","fixture-refresh-B",account);
+                            case "expiry" -> jdbc.update("UPDATE social_connected_platform SET token_expires_at=? WHERE id=?",LocalDateTime.ofInstant(Instant.now().minusSeconds(60),ZoneOffset.UTC),account);
+                            case "revocation" -> jdbc.update("UPDATE social_connected_platform SET access_token_encrypted=NULL,refresh_token_encrypted=NULL WHERE id=?",account);
+                            default -> {jdbc.update("UPDATE social_connected_platform SET status='INACTIVE' WHERE id=?",account);jdbc.update("UPDATE social_connected_platform SET status='ACTIVE' WHERE id=?",account);}
+                        }
+                    });
+                    assertThat(jdbc.queryForObject("SELECT credential_revision FROM social_connected_platform WHERE id=?",Long.class,account)).isGreaterThan(snapshot.get().revision());
+                } finally {release.countDown();}
+                assertThat(job.get(15,TimeUnit.SECONDS)).isInstanceOf(IllegalStateException.class).hasMessageContaining("credentials changed");
+            }
+            verify(provider,never()).publish(any(),any());
+            var rejected=state();
+            assertThat(rejected).containsEntry("status","FAILED").containsEntry("retry_count",1)
+                    .containsEntry("publication_attempt_id",claimed.get("publication_attempt_id"))
+                    .containsEntry("attempt_account_id",account).containsEntry("attempt_binding_version",2L)
+                    .containsEntry("dispatch_started_at",null).containsEntry("attempt_credential_revision",null)
+                    .containsEntry("attempt_credential_expires_at",null).containsEntry("platform_post_id",null)
+                    .containsEntry("error_code","PRE_DISPATCH_REJECTED")
+                    .containsEntry("error_message","Publication prerequisites rejected before dispatch");
+            jdbc.update("UPDATE social_connected_platform SET access_token_encrypted=?,refresh_token_encrypted=?,token_expires_at=? WHERE id=?","fixture-encrypted-C","fixture-refresh-C",expiry,account);
+            var restoredRevision=jdbc.queryForObject("SELECT credential_revision FROM social_connected_platform WHERE id=?",Long.class,account);
+            doReturn(true).when(provider).validateCredentials(any());
+            service.retryPost(tenant,actor,id);
+            assertThat(state()).containsEntry("status","PUBLISHED").containsEntry("retry_count",1)
+                    .containsEntry("attempt_credential_revision",restoredRevision).containsEntry("attempt_account_id",account);
+            assertThat(state().get("publication_attempt_id")).isNotEqualTo(rejected.get("publication_attempt_id"));
+            verify(provider).publish(any(),argThat(a->a.id().equals(account)&&a.bindingVersion()==2&&a.credentialRevision()==restoredRevision));
+        }
+    }
+
+    @Test void credentialExpiryIsUtcAndPastExpiryRejectsBeforeValidation() {
+        var expiry=LocalDateTime.ofInstant(Instant.now().minusSeconds(60),ZoneOffset.UTC);
+        jdbc.update("UPDATE social_connected_platform SET token_expires_at=? WHERE id=?",expiry,account);
+        assertThatThrownBy(this::publish).hasMessageContaining("expired");
+        assertThat(state()).containsEntry("status","FAILED").containsEntry("retry_count",1).containsEntry("dispatch_started_at",null);
+        verify(provider,never()).validateCredentials(any());verify(provider,never()).publish(any(),any());
+    }
+
+    @Test void unchangedCredentialSnapshotPermitsExactBindingAndPersistsSnapshot() {
+        jdbc.update("UPDATE social_connected_platform SET access_token_encrypted='stable', refresh_token_encrypted='stable-refresh', token_expires_at=? WHERE id=?", LocalDateTime.now(ZoneOffset.UTC).plusHours(1), account);
+        publish();
+        var row=state();
+        assertThat(row.get("attempt_credential_revision")).isEqualTo(2L);
+        assertThat(row.get("attempt_credential_expires_at")).isNotNull();
+        assertThat(row.get("attempt_account_id")).isEqualTo(account);
+        verify(provider).publish(any(),any());
+    }
+
+    @Test void credentialChangeAfterCommittedDispatchDoesNotRewriteOrRedispatch() throws Exception {
+        var entered=new CountDownLatch(1);var release=new CountDownLatch(1);
+        doAnswer(inv->{entered.countDown();await(release);return success();}).when(provider).publish(any(),any());
+        try(var pool=Executors.newSingleThreadExecutor()) {
+            var job=pool.submit(this::scheduled);
+            try {
+                await(entered);
+                var dispatched=state();
+                assertThat(dispatched.get("dispatch_started_at")).isNotNull();
+                assertThat(dispatched).containsEntry("attempt_credential_revision",1L);
+                jdbc.update("UPDATE social_connected_platform SET access_token_encrypted=? WHERE id=?","fixture-after-dispatch",account);
+                assertThat(state()).isEqualTo(dispatched);
+            } finally {release.countDown();}
+            job.get(15,TimeUnit.SECONDS);
+        }
+        var before=state();assertThat(before).containsEntry("status","PUBLISHED");
+        scheduler.processScheduledPosts();assertThat(state()).isEqualTo(before);verify(provider).publish(any(),any());
+    }
+
     @Test void ordinaryPublicationRepeatedProcessingAndExactBoundAccount() {
         publish(); var before=state();
         assertThat(before).containsEntry("status","PUBLISHED").containsEntry("retry_count",0).containsEntry("attempt_account_id",account).containsEntry("attempt_binding_version",2L);
@@ -225,7 +315,7 @@ class SocialPublicationOwnershipPostgresTest extends PostgresTestContainerSuppor
         service.cancelScheduled(tenant,actor,id);
         service.schedulePost(tenant,actor,id,new com.example.platform.social.api.dto.SchedulePostRequest(Instant.now().minusSeconds(1).toString()));
         publish();var before=state();
-        assertThat(posts.markDispatched(old,Instant.now())).isFalse();assertThat(posts.failBeforeDispatch(old,Instant.now())).isFalse();assertThat(posts.complete(old,"late","late",Instant.now())).isFalse();assertThat(state()).isEqualTo(before);
+        assertThat(posts.markDispatched(old, new ConnectedPlatform.CredentialSnapshot(1L, null), Instant.now())).isFalse();assertThat(posts.failBeforeDispatch(old,Instant.now())).isFalse();assertThat(posts.complete(old,"late","late",Instant.now())).isFalse();assertThat(state()).isEqualTo(before);
     }
     @Test void invalidBindingsAndCanonicalPermissionFailClosed() {
         for(String change:List.of(

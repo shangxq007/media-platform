@@ -15,13 +15,26 @@ class SocialOwnershipMigrationPostgresTest extends PostgresTestContainerSupport 
         var jdbc=new JdbcTemplate(new DriverManagerDataSource(jdbcUrl()+(jdbcUrl().contains("?")?"&":"?")+"currentSchema="+schema,username(),password()));
         for(String status:new String[]{"DRAFT","SCHEDULED","PUBLISHED","PUBLISHING","FAILED"})
             jdbc.update("INSERT INTO social_post(id,tenant_id,user_id,platform_type,status,retry_count,platform_post_id,error_code,error_message) VALUES (?,'tenant','actor','TWITTER',?,3,'legacy-result','legacy-code','legacy-message')",status,status);
-        assertThat(config.target("latest").load().migrate().migrationsExecuted).isEqualTo(1);
+        assertThat(config.target("8").load().migrate().migrationsExecuted).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM social_post",Integer.class)).isEqualTo(5);
         for(String status:new String[]{"DRAFT","SCHEDULED","PUBLISHED","PUBLISHING","FAILED"}) {
             var row=jdbc.queryForMap("SELECT * FROM social_post WHERE id=?",status);
             assertThat(row).containsEntry("retry_count",3).containsEntry("platform_post_id","legacy-result").containsEntry("publication_attempt_id",null).containsEntry("error_code","legacy-code").containsEntry("error_message","legacy-message");
             assertThat(row.get("status")).isEqualTo(status.equals("FAILED")||status.equals("PUBLISHING")?"UNRESOLVED":status);
         }
+        assertThat(config.load().validateWithResult().validationSuccessful).isTrue();
+        var oldRows=jdbc.queryForList("SELECT id,status,retry_count,platform_post_id,error_code,error_message FROM social_post ORDER BY id");
+        jdbc.update("INSERT INTO social_connected_platform(id,tenant_id,user_id,platform_type,access_token_encrypted,refresh_token_encrypted,token_expires_at) VALUES ('legacy','tenant','actor','TWITTER',?,?,?)", "fixture-encrypted-A", "fixture-refresh-A", java.time.LocalDateTime.of(2030,1,1,0,0));
+        assertThat(config.target("latest").load().migrate().migrationsExecuted).isEqualTo(1);
+        assertThat(jdbc.queryForList("SELECT id,status,retry_count,platform_post_id,error_code,error_message FROM social_post ORDER BY id")).isEqualTo(oldRows);
+        assertThat(jdbc.queryForObject("SELECT credential_revision FROM social_connected_platform WHERE id='legacy'",Long.class)).isEqualTo(1L);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM social_post WHERE attempt_credential_revision IS NOT NULL",Integer.class)).isZero();
+        jdbc.update("UPDATE social_connected_platform SET credential_revision=99 WHERE id='legacy'");
+        assertThat(jdbc.queryForObject("SELECT credential_revision FROM social_connected_platform WHERE id='legacy'",Long.class)).isEqualTo(1L);
+        jdbc.update("UPDATE social_connected_platform SET access_token_encrypted=?,credential_revision=1 WHERE id='legacy'", "fixture-encrypted-B");
+        assertThat(jdbc.queryForObject("SELECT credential_revision FROM social_connected_platform WHERE id='legacy'",Long.class)).isEqualTo(2L);
+        jdbc.update("UPDATE social_connected_platform SET access_token_encrypted=? WHERE id='legacy'", "fixture-encrypted-B");
+        assertThat(jdbc.queryForObject("SELECT credential_revision FROM social_connected_platform WHERE id='legacy'",Long.class)).isEqualTo(2L);
         assertThat(config.load().validateWithResult().validationSuccessful).isTrue();
     }
 }

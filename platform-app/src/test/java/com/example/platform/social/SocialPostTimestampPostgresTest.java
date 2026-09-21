@@ -101,7 +101,7 @@ class SocialPostTimestampPostgresTest extends PostgresTestContainerSupport {
         insert("updated", CUTOFF, "SCHEDULED");
         var attempt=repository.claim("social-test","actor","updated","token",PostStatus.SCHEDULED,CUTOFF).orElseThrow();
         assertThat(repository.findById("updated").orElseThrow().updatedAt()).isEqualTo(CUTOFF);
-        repository.markDispatched(attempt,CUTOFF);
+        repository.markDispatched(attempt, new ConnectedPlatform.CredentialSnapshot(1L, null), CUTOFF);
         repository.complete(attempt,"external","url",CUTOFF);
         assertThat(repository.findById("updated").orElseThrow().publishedAt()).isEqualTo(CUTOFF);
         insert("failure", CUTOFF, "SCHEDULED");

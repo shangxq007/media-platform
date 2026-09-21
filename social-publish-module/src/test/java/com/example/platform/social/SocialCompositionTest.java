@@ -87,7 +87,7 @@ class SocialCompositionTest {
         when(accounts.findById("account")).thenReturn(Optional.of(account()));
         when(accounts.lockById("account")).thenReturn(Optional.of(account()));
         when(posts.claim(any(),any(),any(),any(),any(),any())).thenReturn(Optional.of(new SocialPostRepository.Attempt(post(), "token")));
-        when(posts.markDispatched(any(),any())).thenReturn(true);
+        when(posts.markDispatched(any(),any(),any())).thenReturn(true);
         when(posts.complete(any(),any(),any(),any())).thenReturn(true);
         when(provider.validateCredentials(any())).thenReturn(true);
         when(provider.publish(any(), any())).thenReturn(new PublishResult(true, "external", "https://example.test/post", null, null));
@@ -128,7 +128,7 @@ class SocialCompositionTest {
         return adapter;
     }
     private static ConnectedPlatform account() {
-        return new ConnectedPlatform("account", "tenant", "actor", "TWITTER", "external", "name", "ACTIVE", 1L, Instant.EPOCH, Instant.EPOCH);
+        return new ConnectedPlatform("account", "tenant", "actor", "TWITTER", "external", "name", "ACTIVE", 1L, Instant.EPOCH, Instant.EPOCH, 1L, null);
     }
     private static SocialPost post() {
         var now = Instant.now();

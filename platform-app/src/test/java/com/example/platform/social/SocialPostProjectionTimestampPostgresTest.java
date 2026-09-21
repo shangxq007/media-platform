@@ -37,7 +37,7 @@ class SocialPostProjectionTimestampPostgresTest extends PostgresTestContainerSup
             assertThat(saved.createdAt()).isEqualTo(T);
             assertThat(saved.updatedAt()).isEqualTo(T);
             var attempt=repo.claim("social-test","actor","entity","token",PostStatus.SCHEDULED,T).orElseThrow();
-            repo.markDispatched(attempt,T);
+            repo.markDispatched(attempt, new ConnectedPlatform.CredentialSnapshot(1L, null), T);
             repo.complete(attempt,"external","url",T.plusSeconds(3));
             saved=repo.findById("entity").orElseThrow();
             assertThat(saved.publishedAt()).isEqualTo(T.plusSeconds(3));
