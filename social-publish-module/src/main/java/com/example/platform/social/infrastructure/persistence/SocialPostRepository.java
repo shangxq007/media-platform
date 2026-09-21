@@ -48,6 +48,19 @@ public class SocialPostRepository {
         return post;
     }
 
+    /** Update lifecycle fields only; identity and binding remain owned by the existing row. */
+    public void updateLifecycle(SocialPost post) {
+        TenantGuard.assertSameTenant(post.tenantId());
+        int count = jdbc.update("""
+                UPDATE social_post SET status=?, platform_post_id=?, platform_post_url=?, scheduled_at=?,
+                    published_at=?, failed_at=?, error_code=?, error_message=?, retry_count=?, updated_at=?
+                WHERE id=? AND tenant_id=? AND user_id=?
+                """, post.status().name(), post.platformPostId(), post.platformPostUrl(), utcTimestamp(post.scheduledAt()),
+                utcTimestamp(post.publishedAt()), utcTimestamp(post.failedAt()), post.errorCode(), post.errorMessage(),
+                post.retryCount(), utcTimestamp(post.updatedAt()), post.id(), post.tenantId(), post.userId());
+        if (count != 1) throw new IllegalStateException("Social post lifecycle update lost its owning row");
+    }
+
     public Optional<SocialPost> findById(String id) {
         String tenantId = TenantGuard.requireTenantId();
         List<SocialPost> results = jdbc.query(

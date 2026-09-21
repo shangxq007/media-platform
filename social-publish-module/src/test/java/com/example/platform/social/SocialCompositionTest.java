@@ -93,9 +93,9 @@ class SocialCompositionTest {
                     var tasks = c.getBean(ScheduledAnnotationBeanPostProcessor.class).getScheduledTasks();
                     assertThat(tasks).hasSize(1);
                     tasks.iterator().next().getTask().getRunnable().run();
-                    verify(posts).save(argThat(p -> p.status() == PostStatus.FAILED && p.retryCount() == 1));
+                    verify(posts).updateLifecycle(argThat(p -> p.status() == PostStatus.FAILED && p.retryCount() == 1));
                     tasks.iterator().next().getTask().getRunnable().run();
-                    verify(posts).save(argThat(p -> p.status() == PostStatus.PUBLISHED));
+                    verify(posts).updateLifecycle(argThat(p -> p.status() == PostStatus.PUBLISHED));
                     verify(provider, times(2)).publish(any(), any());
                 });
     }

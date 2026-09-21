@@ -26,17 +26,21 @@ public class PostSchedulerService {
     }
 
     @Scheduled(fixedDelay = 60000)
-    @Transactional
     public void processScheduledPosts() {
         Instant now = Instant.now();
         List<SocialPost> duePosts = postRepository.findScheduledBefore(now);
         log.info("PostSchedulerService: found {} scheduled posts due", duePosts.size());
         for (SocialPost post : duePosts) {
             try {
+                com.example.platform.shared.web.TenantContext.set(post.tenantId());
                 publishService.publishNow(post.tenantId(), post.userId(), post.id());
             } catch (Exception e) {
                 log.error("PostSchedulerService: failed to publish scheduled post={}: {}", post.id(), e.getMessage());
-                postRepository.updateStatus(post.id(), PostStatus.FAILED, Instant.now());
+                Instant failedAt = Instant.now();
+                postRepository.updateFailure(post.id(), "PUBLISH_FAILED", e.getMessage(), PostStatus.FAILED,
+                        failedAt, post.retryCount() + 1, failedAt);
+            } finally {
+                com.example.platform.shared.web.TenantContext.clear();
             }
         }
     }

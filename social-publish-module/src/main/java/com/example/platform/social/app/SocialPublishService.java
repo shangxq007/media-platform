@@ -64,7 +64,7 @@ public class SocialPublishService {
                 post.platformType(), PostStatus.SCHEDULED, post.platformPostId(), post.platformPostUrl(),
                 scheduledAt, null, null, null, null, post.retryCount(),
                 post.createdAt(), Instant.now());
-        postRepository.save(updated);
+        postRepository.updateLifecycle(updated);
         log.info("SocialPublishService: scheduled post={} at {}", postId, scheduledAt);
         return toResponse(updated);
     }
@@ -106,7 +106,7 @@ public class SocialPublishService {
                     post.scheduledAt(), null, now, result.errorCode(), result.errorMessage(), post.retryCount() + 1,
                     post.createdAt(), now);
         }
-        postRepository.save(updated);
+        postRepository.updateLifecycle(updated);
         log.info("SocialPublishService: published post={} success={}", postId, result.success());
         return toResponse(updated);
     }
@@ -122,7 +122,7 @@ public class SocialPublishService {
                 post.platformType(), PostStatus.CANCELLED, post.platformPostId(), post.platformPostUrl(),
                 null, null, null, null, null, post.retryCount(),
                 post.createdAt(), Instant.now());
-        postRepository.save(updated);
+        postRepository.updateLifecycle(updated);
         log.info("SocialPublishService: cancelled scheduled post={}", postId);
     }
 
