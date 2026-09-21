@@ -119,8 +119,6 @@ app:
     event-id-header: X-Event-ID
   identity:
     api-key-auth-enabled: false
-    builtin-data:
-      enabled: true
   render:
     worker-queue:
       enabled: false
@@ -427,3 +425,8 @@ egress:
       host: ${EGRESS_PROXY_JVM_HOST:egress-proxy}
       port: ${EGRESS_PROXY_JVM_PORT:3128}
       non-proxy-hosts: ${EGRESS_PROXY_JVM_NON_PROXY_HOSTS:localhost|127.*|*.svc|*.cluster.local|postgresql|minio|platform-api|sandbox-worker|egress-proxy}
+
+# Explicit administrative bootstrap only; ordinary startup does not seed RBAC.
+identity:
+  builtin-data:
+    enabled: false

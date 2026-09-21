@@ -15,14 +15,14 @@ import org.springframework.stereotype.Component;
  *
  * <p>This runner is ordered to run early (before other runners that may depend on
  * RBAC data). It is controlled by the {@code identity.builtin-data.enabled} property
- * (default: true).
+ * (default: false).
  *
  * <p>The initialization is idempotent — roles and permissions are only created if
  * they do not already exist. Running this multiple times will not duplicate data
  * or overwrite user customizations.
  */
 @Component
-@ConditionalOnProperty(prefix = "identity.builtin-data", name = "enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(prefix = "identity.builtin-data", name = "enabled", havingValue = "true", matchIfMissing = false)
 @Order(100)
 public class BuiltinDataBootstrapRunner implements ApplicationRunner {
 

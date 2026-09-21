@@ -25,18 +25,23 @@ import java.util.UUID;
 public class PlatformRequestContextFilter extends OncePerRequestFilter {
 
     @Bean
-    @Order(1)
     FilterRegistrationBean<PlatformRequestContextFilter> platformRequestContextFilterRegistration() {
         FilterRegistrationBean<PlatformRequestContextFilter> registration = new FilterRegistrationBean<>(this);
         registration.addUrlPatterns("/api/*");
-        registration.setOrder(1);
+        registration.setOrder(org.springframework.core.Ordered.HIGHEST_PRECEDENCE + 10);
         registration.setEnabled(true);
         return registration;
+    }
+
+    private static void clearRequestContext() {
+        MDC.clear();
+        com.example.platform.shared.web.TenantContext.clear();
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
             FilterChain filterChain) throws ServletException, IOException {
+        clearRequestContext();
         try {
             MDC.put(TraceKeys.REQUEST_ID, Optional.ofNullable(request.getHeader("X-Request-Id"))
                     .orElse(UUID.randomUUID().toString()));
@@ -45,9 +50,7 @@ public class PlatformRequestContextFilter extends OncePerRequestFilter {
             Optional.ofNullable(request.getHeader("X-Project-Id")).ifPresent(v -> MDC.put(TraceKeys.PROJECT_ID, v));
             filterChain.doFilter(request, response);
         } finally {
-            MDC.remove(TraceKeys.REQUEST_ID);
-            MDC.remove(TraceKeys.TRACE_ID);
-            MDC.remove(TraceKeys.PROJECT_ID);
+            clearRequestContext();
         }
     }
 }

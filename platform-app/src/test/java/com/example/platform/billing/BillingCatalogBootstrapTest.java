@@ -21,6 +21,8 @@ class BillingCatalogBootstrapTest {
         UsageMeteringService metering = mock(UsageMeteringService.class);
 
         try (var context = new AnnotationConfigApplicationContext()) {
+            context.getEnvironment().getPropertySources().addFirst(new org.springframework.core.env.MapPropertySource(
+                    "explicit-bootstrap", java.util.Map.of("app.billing.catalog-bootstrap.enabled", "true")));
             context.registerBean(PricingRuleService.class, () -> pricing);
             context.registerBean(UsageMeteringService.class, () -> metering);
             context.register(BillingCatalogBootstrap.class);

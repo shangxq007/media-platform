@@ -30,11 +30,12 @@ public class PlatformGracefulShutdownCoordinator {
     private boolean outboxDrainEnabled;
 
     public PlatformGracefulShutdownCoordinator(
-            @Autowired(required = false) OutboxEventDispatcher outboxDispatcher) {
+            @org.springframework.lang.Nullable OutboxEventDispatcher outboxDispatcher) {
         this.outboxDispatcher = Optional.ofNullable(outboxDispatcher);
     }
 
     @EventListener
+    @org.springframework.core.annotation.Order(org.springframework.core.Ordered.LOWEST_PRECEDENCE)
     public void onContextClosed(ContextClosedEvent event) {
         if (!shutdownStarted.compareAndSet(false, true)) {
             return;
@@ -52,7 +53,7 @@ public class PlatformGracefulShutdownCoordinator {
             int processed = outboxDispatcher.get().processBatch(Math.max(1, outboxDrainBatch));
             log.info("Outbox shutdown drain processed {} events", processed);
         } catch (Exception e) {
-            log.warn("Outbox shutdown drain skipped: {}", e.getMessage());
+            log.warn("Outbox shutdown drain failed; resource cleanup continues", e);
         }
     }
 

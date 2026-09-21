@@ -6,6 +6,8 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 @Component
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(
+        name = "app.billing.catalog-bootstrap.enabled", havingValue = "true")
 public class BillingCatalogBootstrap {
 
     private final UsageMeteringService usageMeteringService;
