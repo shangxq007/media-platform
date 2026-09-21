@@ -32,7 +32,6 @@ class SocialCompositionTest {
                 .withBean(PostAnalyticsRepository.class, () -> mock(PostAnalyticsRepository.class))
                 .withBean(CanonicalActorResolver.class, () -> mock(CanonicalActorResolver.class))
                 .withBean(AuthorizationDecisionPort.class, () -> mock(AuthorizationDecisionPort.class))
-                .withBean(SocialProjectScopePort.class, () -> mock(SocialProjectScopePort.class))
                 .withBean(org.springframework.transaction.PlatformTransactionManager.class, () -> mock(org.springframework.transaction.PlatformTransactionManager.class))
                 .withBean(TaskScheduler.class, () -> mock(TaskScheduler.class));
     }
@@ -92,7 +91,6 @@ class SocialCompositionTest {
         when(provider.validateCredentials(any())).thenReturn(true);
         when(provider.publish(any(), any())).thenReturn(new PublishResult(true, "external", "https://example.test/post", null, null));
         runner(posts, accounts).withPropertyValues("app.social-publish.enabled=true", "app.social-publish.scheduler.enabled=true")
-                .withBean(SocialProjectScopePort.class, () -> (t,p) -> true)
                 .withBean(PlatformAdapter.class, () -> provider).run(c -> {
                     assertThat(c).hasNotFailed();
                     var tasks = c.getBean(ScheduledAnnotationBeanPostProcessor.class).getScheduledTasks();
