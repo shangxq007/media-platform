@@ -239,13 +239,15 @@ def validate_repository(root: Path) -> PolicyReport:
     actual = set(keys)
     if actual != expected:
         raise ValueError(f"topology ledger universe mismatch: missing={sorted(expected - actual)}, extra={sorted(actual - expected)}")
-    # The sealed Phase A benchmark/accounting receipt remains historical at 51 tasks.
-    # EP15 adds exactly one unpromoted, single-fork owner suite; no historical totals change.
-    if len(actual) != 52 or (":marketplace-module", "test") not in actual:
-        raise ValueError(f"expected Phase A 51 plus Marketplace owner Test task, got {len(actual)}")
-    marketplace = next(row for row in topology if row["PROJECT"] == ":marketplace-module" and row["TEST_TASK"] == "test")
-    if marketplace["CLASSIFICATION"] != "REVIEW_REQUIRED" or marketplace["CURRENT_MAX_PARALLEL_FORKS"] != "1":
-        raise ValueError("Marketplace owner suite must remain unpromoted and single-fork")
+    # The sealed Phase A receipt remains historical at 51 tasks. EP15 and EP28A
+    # add exactly two unpromoted owner suites; neither changes historical totals.
+    owner_tasks = {(":marketplace-module", "test"), (":usage-contract-module", "test")}
+    if len(actual) != 53 or not owner_tasks.issubset(actual):
+        raise ValueError(f"expected Phase A 51 plus Marketplace and Usage owner Test tasks, got {len(actual)}")
+    for project, task in owner_tasks:
+        owner = next(row for row in topology if row["PROJECT"] == project and row["TEST_TASK"] == task)
+        if owner["CLASSIFICATION"] != "REVIEW_REQUIRED" or owner["CURRENT_MAX_PARALLEL_FORKS"] != "1":
+            raise ValueError(f"{project} owner suite must remain unpromoted and single-fork")
 
     serial_keys: set[tuple[str, str]] = set()
     topology_by_key = {(row["PROJECT"], row["TEST_TASK"]): row for row in topology}
@@ -323,8 +325,8 @@ def validate_repository(root: Path) -> PolicyReport:
     if overlap_count != int(baseline_by_metric["DECLARED_OVERLAP_COUNT"]):
         raise ValueError("declared overlap count does not match baseline")
     # Compare the sealed benchmark to its original cohort, not to a fabricated
-    # new whole-repository execution total. Marketplace has separate fresh evidence.
-    baseline_topology = [row for row in topology if (row["PROJECT"], row["TEST_TASK"]) != (":marketplace-module", "test")]
+    # new whole-repository execution total. New owner suites have separate fresh evidence.
+    baseline_topology = [row for row in topology if (row["PROJECT"], row["TEST_TASK"]) not in owner_tasks]
     if sum(int(row["DISCOVERED_TEST_COUNT"]) for row in baseline_topology) != int(baseline_by_metric["TASK_TOPOLOGY_GROSS_COUNT"]):
         raise ValueError("historical topology gross count does not match sealed baseline")
     if int(baseline_by_metric["TASK_TOPOLOGY_GROSS_COUNT"]) - overlap_count != int(baseline_by_metric["RAW_RECURSIVE_EXPECTED_UNIVERSE"]):
