@@ -22,9 +22,10 @@ class TenantProjectControllerAdminTest {
     // ========== OAuth2 / Spring Security path ==========
 
     @Test
-    void listAllTenants_oauth2AdminRole_succeeds() {
+    void listAllTenants_accountPlatformAdministrator_succeeds() {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addUserRole("ADMIN");
+        request.setAttribute("identity.platformAdministrator", true);
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         when(service.listAllTenants(100)).thenReturn(List.of(
@@ -54,35 +55,26 @@ class TenantProjectControllerAdminTest {
     // ========== Legacy HMAC JWT path ==========
 
     @Test
-    void listAllTenants_legacyJwtAdminRole_succeeds() {
+    void listAllTenants_tenantAdminRoleDoesNotGrantPlatformAccess() {
         MockHttpServletRequest request = new MockHttpServletRequest();
-        // Legacy JWT: roles stored in request attribute, not via addUserRole
+        request.addUserRole("ADMIN");
         request.setAttribute("jwt.roles", List.of("ADMIN"));
         MockHttpServletResponse response = new MockHttpServletResponse();
-
-        when(service.listAllTenants(100)).thenReturn(List.of(
-                new TenantResponse("t1", "Tenant One", "ACTIVE", Instant.now())));
-
-        List<TenantResponse> result = controller.listAllTenants(request, response, 100);
-
-        assertNotNull(result);
-        assertEquals(1, result.size());
-        assertEquals(200, response.getStatus());
+        assertThrows(SecurityException.class, () -> controller.listAllTenants(request, response, 100));
+        assertEquals(403, response.getStatus());
+        verifyNoInteractions(service);
+        verify(auditPublisher).publish("anonymous", "ADMIN", "ADMIN_LIST_TENANTS", "tenant", null, null, "DENIED");
     }
 
     @Test
-    void listAllTenants_legacyJwtCommaSeparatedRoles_succeeds() {
+    void listAllTenants_commaSeparatedTenantAdminRolesDoNotGrantPlatformAccess() {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setAttribute("jwt.roles", "USER,ADMIN");
         MockHttpServletResponse response = new MockHttpServletResponse();
-
-        when(service.listAllTenants(100)).thenReturn(List.of(
-                new TenantResponse("t1", "Tenant One", "ACTIVE", Instant.now())));
-
-        List<TenantResponse> result = controller.listAllTenants(request, response, 100);
-
-        assertNotNull(result);
-        assertEquals(200, response.getStatus());
+        assertThrows(SecurityException.class, () -> controller.listAllTenants(request, response, 100));
+        assertEquals(403, response.getStatus());
+        verifyNoInteractions(service);
+        verify(auditPublisher).publish("anonymous", "USER,ADMIN", "ADMIN_LIST_TENANTS", "tenant", null, null, "DENIED");
     }
 
     @Test
@@ -116,6 +108,7 @@ class TenantProjectControllerAdminTest {
     void listAllTenants_respectsLimit() {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addUserRole("ADMIN");
+        request.setAttribute("identity.platformAdministrator", true);
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         when(service.listAllTenants(50)).thenReturn(List.of());
@@ -129,6 +122,7 @@ class TenantProjectControllerAdminTest {
     void listAllTenants_clampsLimitToMaximum() {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addUserRole("ADMIN");
+        request.setAttribute("identity.platformAdministrator", true);
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         when(service.listAllTenants(500)).thenReturn(List.of());
@@ -143,6 +137,7 @@ class TenantProjectControllerAdminTest {
     void listAllTenants_clampsLimitToMinimum() {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addUserRole("ADMIN");
+        request.setAttribute("identity.platformAdministrator", true);
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         when(service.listAllTenants(1)).thenReturn(List.of());
@@ -159,6 +154,7 @@ class TenantProjectControllerAdminTest {
     void listAllTenants_returnsEmptyListWhenNoTenants() {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addUserRole("ADMIN");
+        request.setAttribute("identity.platformAdministrator", true);
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         when(service.listAllTenants(100)).thenReturn(List.of());
@@ -176,6 +172,7 @@ class TenantProjectControllerAdminTest {
     void listAllTenants_returnsNonSensitiveFieldsOnly() {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addUserRole("ADMIN");
+        request.setAttribute("identity.platformAdministrator", true);
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         when(service.listAllTenants(100)).thenReturn(List.of(
