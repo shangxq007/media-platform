@@ -19,11 +19,10 @@ import java.util.UUID;
 public class PlatformTraceCorrelationFilter extends OncePerRequestFilter {
 
     @Bean
-    @Order(0)
     FilterRegistrationBean<PlatformTraceCorrelationFilter> platformTraceCorrelationFilterRegistration() {
         FilterRegistrationBean<PlatformTraceCorrelationFilter> registration = new FilterRegistrationBean<>(this);
         registration.addUrlPatterns("/api/*");
-        registration.setOrder(0);
+        registration.setOrder(org.springframework.core.Ordered.HIGHEST_PRECEDENCE + 10);
         registration.setEnabled(true);
         return registration;
     }
@@ -34,18 +33,27 @@ public class PlatformTraceCorrelationFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
             FilterChain filterChain) throws ServletException, IOException {
+        clearRequestContext();
         String traceId = firstNonBlank(request.getHeader(TRACE_HEADER), UUID.randomUUID().toString());
         String requestId = firstNonBlank(request.getHeader(REQUEST_HEADER), UUID.randomUUID().toString());
         try {
             MDC.put(TraceKeys.TRACE_ID, traceId);
             MDC.put(TraceKeys.REQUEST_ID, requestId);
+            String projectId = request.getHeader("X-Project-Id");
+            if (projectId != null && !projectId.isBlank()) MDC.put(TraceKeys.PROJECT_ID, projectId);
             response.setHeader(TRACE_HEADER, traceId);
             response.setHeader(REQUEST_HEADER, requestId);
             filterChain.doFilter(request, response);
         } finally {
-            MDC.remove(TraceKeys.TRACE_ID);
-            MDC.remove(TraceKeys.REQUEST_ID);
+            clearRequestContext();
         }
+    }
+
+    private static void clearRequestContext() {
+        // Diagnostic fields never establish actor, tenant or Workspace authority.
+        for (String key : new String[]{TraceKeys.TRACE_ID, TraceKeys.REQUEST_ID, TraceKeys.PROJECT_ID,
+                TraceKeys.TENANT_ID, TraceKeys.PRINCIPAL, "workspaceId"}) MDC.remove(key);
+        com.example.platform.shared.web.TenantContext.clear();
     }
 
     private String firstNonBlank(String value, String fallback) {

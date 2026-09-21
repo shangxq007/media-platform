@@ -8,7 +8,7 @@ import com.example.platform.analytics.scheduler.AnalyticsSchedule;
 import com.example.platform.billing.BillingCatalogBootstrap;
 import com.example.platform.cloudresource.domain.CloudResourceProvider;
 import com.example.platform.lifecycle.PlatformGracefulShutdownCoordinator;
-import com.example.platform.logging.PlatformRequestContextFilter;
+import com.example.platform.observability.app.PlatformTraceCorrelationFilter;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import com.example.platform.social.app.*;
 import com.example.platform.social.infrastructure.platform.PlatformAdapter;
@@ -47,7 +47,7 @@ class ComponentBatchAssemblyTest extends PostgresTestContainerSupport {
         assertThat(context.getBeansOfType(UserProfileRepository.class)).hasSize(1);
         assertThat(context.getBean(UserProfileRepository.class)).isInstanceOf(JdbcUserProfileRepository.class);
         assertThat(context.getBeansOfType(PlatformGracefulShutdownCoordinator.class)).hasSize(1);
-        assertThat(context.getBeansOfType(PlatformRequestContextFilter.class)).hasSize(1);
+        assertThat(context.getBeansOfType(PlatformTraceCorrelationFilter.class)).hasSize(1);
         assertThat(context.getBeansOfType(BuiltinDataBootstrapRunner.class)).isEmpty();
         assertThat(context.getBeansOfType(BillingCatalogBootstrap.class)).isEmpty();
         assertThat(jdbc.queryForObject("SELECT count(*) FROM usage_meter", Long.class)).isZero();
@@ -64,8 +64,8 @@ class ComponentBatchAssemblyTest extends PostgresTestContainerSupport {
         var tasks = context.getBean(ScheduledAnnotationBeanPostProcessor.class).getScheduledTasks();
         var selected = tasks.stream().map(task -> task.getTask().getRunnable())
                 .filter(ScheduledMethodRunnable.class::isInstance).map(ScheduledMethodRunnable.class::cast)
-                .filter(task -> Set.of(AnalyticsSchedule.class, PostSchedulerService.class).contains(task.getMethod().getDeclaringClass())).toList();
-        assertThat(selected).hasSize(3);
+                .filter(task -> AnalyticsSchedule.class.isInstance(task.getTarget()) || PostSchedulerService.class.isInstance(task.getTarget())).toList();
+        assertThat(selected).as("Registered tasks: %s", tasks).hasSize(3);
         selected.forEach(Runnable::run);
         assertThat(profiles.getOrCreateProfile("batch-tenant", "actor").totalActions()).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM user_segment WHERE tenant_id='batch-tenant'", Integer.class)).isEqualTo(6);

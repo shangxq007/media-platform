@@ -50,7 +50,6 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @Import({BuiltinDataBootstrapRunner.class,
     com.example.platform.lifecycle.PlatformGracefulShutdownCoordinator.class,
     com.example.platform.lifecycle.TemporalWorkerHealthIndicator.class,
-    com.example.platform.logging.PlatformRequestContextFilter.class,
     com.example.platform.analytics.AnalyticsConfiguration.class, com.example.platform.cloudresource.CloudResourceConfiguration.class, com.example.platform.marketplace.MarketplaceConfiguration.class, DslContextConfiguration.class, DataSourceConfiguration.class, PlatformBeanConfiguration.class, FlywayConfiguration.class})
 public class PlatformApplication {
     public static void main(String[] args) {

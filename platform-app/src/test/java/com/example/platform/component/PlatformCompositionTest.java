@@ -5,7 +5,7 @@ import com.example.platform.billing.BillingCatalogBootstrap;
 import com.example.platform.billing.app.UsageMeteringService;
 import com.example.platform.identity.app.BuiltinDataInitializer;
 import com.example.platform.lifecycle.*;
-import com.example.platform.logging.PlatformRequestContextFilter;
+import com.example.platform.observability.app.PlatformTraceCorrelationFilter;
 import com.example.platform.outbox.app.OutboxEventDispatcher;
 import com.example.platform.shared.web.TenantContext;
 import com.example.platform.workflow.temporal.*;
@@ -119,11 +119,11 @@ class PlatformCompositionTest {
     }
     @Test void requestFilterIsSingleRegisteredOuterBoundaryAndReusedThreadCannotInheritContext() throws Exception {
         try (var executor = Executors.newSingleThreadExecutor()) {
-            new ApplicationContextRunner().withUserConfiguration(PlatformRequestContextFilter.class).run(c -> {
-                assertThat(c).hasSingleBean(PlatformRequestContextFilter.class).hasSingleBean(FilterRegistrationBean.class);
+            new ApplicationContextRunner().withUserConfiguration(PlatformTraceCorrelationFilter.class).run(c -> {
+                assertThat(c).hasSingleBean(PlatformTraceCorrelationFilter.class).hasSingleBean(FilterRegistrationBean.class);
                 var registration = c.getBean(FilterRegistrationBean.class);
                 assertThat(registration.getOrder()).isLessThan(org.springframework.core.Ordered.HIGHEST_PRECEDENCE + 20);
-                var filter = c.getBean(PlatformRequestContextFilter.class);
+                var filter = c.getBean(PlatformTraceCorrelationFilter.class);
                 for (boolean fail : new boolean[]{false, true, false}) {
                     executor.submit(() -> {
                         MDC.put("workspaceId", "previous-workspace");
