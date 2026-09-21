@@ -60,6 +60,8 @@ class SocialPublicationOwnershipPostgresTest extends PostgresTestContainerSuppor
         String permission=jdbc.queryForObject("SELECT id FROM permission WHERE permission_key='social.publish'",String.class);
         jdbc.update("INSERT INTO role_permission(id,role_id,permission_id,created_at) VALUES (?,?,?,now())",actor,actor,permission);
         jdbc.update("INSERT INTO user_role_assignment(id,tenant_id,workspace_id,user_id,role_id,created_at) VALUES (?,?,?,?,?,now())",actor,tenant,workspace,actor,actor);
+        // Decoy precedes the bound account, reproducing the reviewer's first-match routing counterexample.
+        jdbc.update("INSERT INTO social_connected_platform(id,tenant_id,user_id,platform_type,status) VALUES (?,?,?,'TWITTER','ACTIVE')","x"+account,tenant,actor);
         jdbc.update("INSERT INTO social_connected_platform(id,tenant_id,user_id,platform_type,status,binding_version) VALUES (?,?,?,'TWITTER','ACTIVE',2)",account,tenant,actor);
         jdbc.update("INSERT INTO social_post(id,tenant_id,user_id,project_id,connected_platform_id,connected_platform_binding_version,platform_type,status,scheduled_at) VALUES (?,?,?,?,?,2,'TWITTER','SCHEDULED',?)",id,tenant,actor,project,account,LocalDateTime.now(ZoneOffset.UTC).minusMinutes(1));
         when(provider.platform()).thenReturn(PlatformType.TWITTER);
@@ -93,7 +95,6 @@ class SocialPublicationOwnershipPostgresTest extends PostgresTestContainerSuppor
         assertThat(valid.statusCode()).as(valid.body()).isEqualTo(200);assertThat(state()).containsEntry("status","PUBLISHED");verify(provider).publish(any(),any());
     }
     @Test void ordinaryPublicationRepeatedProcessingAndExactBoundAccount() {
-        jdbc.update("INSERT INTO social_connected_platform(id,tenant_id,user_id,platform_type,status) VALUES (?,?,?,'TWITTER','ACTIVE')","x"+account,tenant,actor);
         publish(); var before=state();
         assertThat(before).containsEntry("status","PUBLISHED").containsEntry("retry_count",0).containsEntry("attempt_account_id",account).containsEntry("attempt_binding_version",2L);
         scheduler.processScheduledPosts();
