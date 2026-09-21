@@ -29,7 +29,7 @@ class SocialSchedulerCompositionPostgresTest extends PostgresTestContainerSuppor
         String schema = isolatedSchemaName();
         Flyway.configure().dataSource(jdbcUrl(), username(), password()).schemas(schema).defaultSchema(schema)
                 .locations("classpath:db/migration").load().migrate();
-        jdbc = new JdbcTemplate(new DriverManagerDataSource(jdbcUrl() + "?currentSchema=" + schema, username(), password()));
+        jdbc = new JdbcTemplate(new DriverManagerDataSource(jdbcUrl() + (jdbcUrl().contains("?") ? "&" : "?") + "currentSchema=" + schema, username(), password()));
     }
     @BeforeEach void fixture() {
         jdbc.update("DELETE FROM social_post");
