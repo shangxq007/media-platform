@@ -1,17 +1,18 @@
 package com.example.platform.federation.graphql.resolver;
 
-import com.example.platform.billing.app.BillingDecisionService;
-import com.example.platform.billing.app.BillingDecisionService.BillingContext;
-import com.example.platform.billing.domain.PricingModel;
+import com.example.platform.billing.api.reads.BillingReadQuery;
+import com.example.platform.federation.graphql.context.GraphQLReadScope;
+
+
 import com.example.platform.entitlement.api.EntitlementDecisionQuery;
 import com.example.platform.entitlement.domain.AccessCheckRequest;
 import com.example.platform.entitlement.domain.EntitlementDecision;
 import com.example.platform.federation.graphql.context.GraphQLRequestContext;
 import com.example.platform.federation.graphql.dto.*;
-import com.example.platform.identity.app.TenantRepository;
-import com.example.platform.identity.app.UserRepository;
-import com.example.platform.identity.domain.Tenant;
-import com.example.platform.identity.domain.User;
+import com.example.platform.identity.api.reads.TenantReadQuery;
+import com.example.platform.identity.api.reads.UserReadQuery;
+
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
@@ -24,15 +25,17 @@ public class MeOverviewGraphQLResolver {
 
     private static final Logger log = LoggerFactory.getLogger(MeOverviewGraphQLResolver.class);
 
+    private final GraphQLReadScope scope;
     private final EntitlementDecisionQuery entitlementDecisionService;
-    private final BillingDecisionService billingDecisionService;
-    private final TenantRepository tenantRepository;
-    private final UserRepository userRepository;
+    private final BillingReadQuery billingDecisionService;
+    private final TenantReadQuery tenantRepository;
+    private final UserReadQuery userRepository;
 
     public MeOverviewGraphQLResolver(EntitlementDecisionQuery entitlementDecisionService,
-                                     BillingDecisionService billingDecisionService,
-                                     TenantRepository tenantRepository,
-                                     UserRepository userRepository) {
+                                     BillingReadQuery billingDecisionService,
+                                     TenantReadQuery tenantRepository,
+                                     UserReadQuery userRepository, GraphQLReadScope scope) {
+        this.scope = scope;
         this.entitlementDecisionService = entitlementDecisionService;
         this.billingDecisionService = billingDecisionService;
         this.tenantRepository = tenantRepository;
@@ -40,14 +43,14 @@ public class MeOverviewGraphQLResolver {
     }
 
     @QueryMapping
-    public MeOverview meOverview(GraphQLRequestContext context) {
+    public MeOverview meOverview(@org.springframework.graphql.data.method.annotation.ContextValue("graphqlContext") GraphQLRequestContext context) {
         String userId = context.userId();
         String tenantId = context.tenantId();
         String workspaceId = context.workspaceId();
         List<String> roles = context.roles() != null ? context.roles() : List.of();
         List<String> permissions = context.permissions() != null ? context.permissions() : List.of();
 
-        User user = null;
+        UserReadQuery.View user = null;
         if (userId != null) {
             user = userRepository.findById(userId).orElse(null);
         }
@@ -58,7 +61,7 @@ public class MeOverviewGraphQLResolver {
         TenantInfo tenantInfo = null;
         String tier = "FREE";
         if (tenantId != null) {
-            Tenant tenant = tenantRepository.findById(tenantId).orElse(null);
+            TenantReadQuery.View tenant = tenantRepository.findById(tenantId).orElse(null);
             if (tenant != null) {
                 tier = resolveTier(tenantId, effectiveUserId);
                 tenantInfo = new TenantInfo(tenant.id(), tenant.name(), tier);
@@ -136,12 +139,10 @@ public class MeOverviewGraphQLResolver {
 
     private BillingSummary resolveBillingSummary(String tenantId, String userId) {
         try {
-            BillingContext billingCtx = new BillingContext(
-                    tenantId, userId, PricingModel.USAGE_BASED, 0, "USD", 0L, true);
-            var decision = billingDecisionService.decideBilling("summary", billingCtx);
-            MoneyDto creditBalance = new MoneyDto(0.0, decision.currencyCode());
+            var decision = billingDecisionService.summary(scope.actor());
+            MoneyDto creditBalance = new MoneyDto(decision.creditBalance(), decision.currencyCode());
             UsageSummary usage = new UsageSummary(0.0, 0.0, 0);
-            return new BillingSummary("FREE", creditBalance, usage);
+            return new BillingSummary(decision.tier(), creditBalance, usage);
         } catch (Exception e) {
             log.debug("Billing summary resolution failed: {}", e.getMessage());
             return null;

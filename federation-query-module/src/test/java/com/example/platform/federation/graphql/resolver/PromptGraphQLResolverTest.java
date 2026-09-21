@@ -14,6 +14,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class PromptGraphQLResolverTest {
+    @org.junit.jupiter.api.AfterEach void clearOwnerFixtureScope(){com.example.platform.shared.web.TenantContext.clear();}
+
 
     private void setField(Object target, String fieldName, Object value) throws Exception {
         Field f = target.getClass().getDeclaredField(fieldName);
@@ -53,7 +55,7 @@ class PromptGraphQLResolverTest {
                 null, null);
         when(promptService.listExecutions("pt-1")).thenReturn(List.of(execution));
 
-        PromptGraphQLResolver resolver = new PromptGraphQLResolver(promptService);
+        PromptGraphQLResolver resolver = new PromptGraphQLResolver(new com.example.platform.prompt.app.PromptReadProjection(promptService), com.example.platform.federation.graphql.OwnerQueryFixtures.scope());
 
         PromptTemplateDetail result = resolver.promptTemplateDetail("pt-1", ctx);
 
@@ -100,7 +102,7 @@ class PromptGraphQLResolverTest {
                 .toList();
         when(promptService.listExecutions("pt-2")).thenReturn(manyExecutions);
 
-        PromptGraphQLResolver resolver = new PromptGraphQLResolver(promptService);
+        PromptGraphQLResolver resolver = new PromptGraphQLResolver(new com.example.platform.prompt.app.PromptReadProjection(promptService), com.example.platform.federation.graphql.OwnerQueryFixtures.scope());
 
         PromptTemplateDetail result = resolver.promptTemplateDetail("pt-2", ctx);
 

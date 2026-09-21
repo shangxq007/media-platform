@@ -107,6 +107,10 @@ public class ExtensionResourceLimiter implements ExtensionLimitQueries {
         }
     }
 
+    public com.example.platform.extension.api.port.ExtensionLimitQueries.Limits limits(String key) {
+        var v=getLimits(key);return new com.example.platform.extension.api.port.ExtensionLimitQueries.Limits(v.timeoutMs(),v.maxConcurrency(),v.maxOutputBytes());
+    }
+
     public ExtensionResourceLimits getLimits(String extensionCode) {
         return limits.getOrDefault(extensionCode, ExtensionResourceLimits.DEFAULTS);
     }

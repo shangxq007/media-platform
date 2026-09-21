@@ -15,6 +15,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class PromptTemplateDetailQueryTest {
+    @org.junit.jupiter.api.AfterEach void clearOwnerFixtureScope(){com.example.platform.shared.web.TenantContext.clear();}
+
 
     private void setField(Object target, String fieldName, Object value) throws Exception {
         Field f = target.getClass().getDeclaredField(fieldName);
@@ -54,7 +56,7 @@ class PromptTemplateDetailQueryTest {
                 null, null);
         when(promptService.listExecutions("pt-1")).thenReturn(List.of(execution));
 
-        PromptGraphQLResolver resolver = new PromptGraphQLResolver(promptService);
+        PromptGraphQLResolver resolver = new PromptGraphQLResolver(new com.example.platform.prompt.app.PromptReadProjection(promptService), com.example.platform.federation.graphql.OwnerQueryFixtures.scope());
 
         PromptTemplateDetail result = resolver.promptTemplateDetail("pt-1", ctx);
 
@@ -101,7 +103,7 @@ class PromptTemplateDetailQueryTest {
                 .toList();
         when(promptService.listExecutions("pt-2")).thenReturn(manyExecutions);
 
-        PromptGraphQLResolver resolver = new PromptGraphQLResolver(promptService);
+        PromptGraphQLResolver resolver = new PromptGraphQLResolver(new com.example.platform.prompt.app.PromptReadProjection(promptService), com.example.platform.federation.graphql.OwnerQueryFixtures.scope());
 
         PromptTemplateDetail result = resolver.promptTemplateDetail("pt-2", ctx);
 
@@ -130,7 +132,7 @@ class PromptTemplateDetailQueryTest {
         when(promptService.getCurrentVersion("pt-3")).thenReturn(null);
         when(promptService.listExecutions("pt-3")).thenReturn(List.of());
 
-        PromptGraphQLResolver resolver = new PromptGraphQLResolver(promptService);
+        PromptGraphQLResolver resolver = new PromptGraphQLResolver(new com.example.platform.prompt.app.PromptReadProjection(promptService), com.example.platform.federation.graphql.OwnerQueryFixtures.scope());
 
         PromptTemplateDetail result = resolver.promptTemplateDetail("pt-3", ctx);
 
@@ -162,7 +164,7 @@ class PromptTemplateDetailQueryTest {
         when(promptService.getCurrentVersion("pt-4")).thenReturn(null);
         when(promptService.listExecutions("pt-4")).thenReturn(List.of());
 
-        PromptGraphQLResolver resolver = new PromptGraphQLResolver(promptService);
+        PromptGraphQLResolver resolver = new PromptGraphQLResolver(new com.example.platform.prompt.app.PromptReadProjection(promptService), com.example.platform.federation.graphql.OwnerQueryFixtures.scope());
 
         PromptTemplateDetail result = resolver.promptTemplateDetail("pt-4", ctx);
 
@@ -201,7 +203,7 @@ class PromptTemplateDetailQueryTest {
                 null, null);
         when(promptService.listExecutions("pt-5")).thenReturn(List.of(failedExec));
 
-        PromptGraphQLResolver resolver = new PromptGraphQLResolver(promptService);
+        PromptGraphQLResolver resolver = new PromptGraphQLResolver(new com.example.platform.prompt.app.PromptReadProjection(promptService), com.example.platform.federation.graphql.OwnerQueryFixtures.scope());
 
         PromptTemplateDetail result = resolver.promptTemplateDetail("pt-5", ctx);
 

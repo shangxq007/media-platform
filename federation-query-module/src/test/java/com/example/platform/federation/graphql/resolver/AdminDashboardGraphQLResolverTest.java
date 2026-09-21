@@ -17,6 +17,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class AdminDashboardGraphQLResolverTest {
+    @org.junit.jupiter.api.AfterEach void clearOwnerFixtureScope(){com.example.platform.shared.web.TenantContext.clear();}
+
 
     private void setField(Object target, String fieldName, Object value) throws Exception {
         Field f = target.getClass().getDeclaredField(fieldName);
@@ -44,12 +46,12 @@ class AdminDashboardGraphQLResolverTest {
                 new RenderJobResponse("rj-2", "proj-1", "snap-2", "720p", "FAILED"),
                 new RenderJobResponse("rj-3", "proj-2", "snap-3", "4k", "QUEUED")
         ));
-        when(usageMeteringService.getUsage(null, null)).thenReturn(List.of());
+        when(usageMeteringService.getUsageByTenant("tenant-1")).thenReturn(List.of());
         when(extensionRegistryService.listExtensions()).thenReturn(List.of(
                 new ExtensionInfo("ext-1", "1.0.0", "PROVIDER", "PROVIDER", "ACTIVE", "SEMI_TRUSTED")
         ));
 
-        AdminDashboardGraphQLResolver resolver = new AdminDashboardGraphQLResolver(renderJobService, billingProjectionService, usageMeteringService, extensionRegistryService);
+        AdminDashboardGraphQLResolver resolver = new AdminDashboardGraphQLResolver(new com.example.platform.render.app.RenderReadProjection(renderJobService), new com.example.platform.billing.app.BillingReadProjection(usageMeteringService), extensionRegistryService, com.example.platform.federation.graphql.OwnerQueryFixtures.scope());
 
         AdminDashboard result = resolver.adminDashboard("7d", ctx);
 
@@ -83,10 +85,10 @@ class AdminDashboardGraphQLResolverTest {
         );
 
         when(renderJobService.list()).thenReturn(List.of());
-        when(usageMeteringService.getUsage(null, null)).thenReturn(List.of());
+        when(usageMeteringService.getUsageByTenant("tenant-1")).thenReturn(List.of());
         when(extensionRegistryService.listExtensions()).thenReturn(List.of());
 
-        AdminDashboardGraphQLResolver resolver = new AdminDashboardGraphQLResolver(renderJobService, billingProjectionService, usageMeteringService, extensionRegistryService);
+        AdminDashboardGraphQLResolver resolver = new AdminDashboardGraphQLResolver(new com.example.platform.render.app.RenderReadProjection(renderJobService), new com.example.platform.billing.app.BillingReadProjection(usageMeteringService), extensionRegistryService, com.example.platform.federation.graphql.OwnerQueryFixtures.scope());
 
         AdminDashboard result = resolver.adminDashboard("7d", ctx);
 
@@ -108,7 +110,7 @@ class AdminDashboardGraphQLResolverTest {
                 "127.0.0.1", "test-agent"
         );
 
-        AdminDashboardGraphQLResolver resolver = new AdminDashboardGraphQLResolver(renderJobService, billingProjectionService, usageMeteringService, extensionRegistryService);
+        AdminDashboardGraphQLResolver resolver = new AdminDashboardGraphQLResolver(new com.example.platform.render.app.RenderReadProjection(renderJobService), new com.example.platform.billing.app.BillingReadProjection(usageMeteringService), extensionRegistryService, com.example.platform.federation.graphql.OwnerQueryFixtures.scope());
 
         assertThrows(IllegalArgumentException.class, () -> resolver.adminDashboard("7d", ctx));
     }
@@ -129,10 +131,10 @@ class AdminDashboardGraphQLResolverTest {
         );
 
         when(renderJobService.list()).thenReturn(List.of());
-        when(usageMeteringService.getUsage(null, null)).thenReturn(List.of());
+        when(usageMeteringService.getUsageByTenant("tenant-1")).thenReturn(List.of());
         when(extensionRegistryService.listExtensions()).thenReturn(List.of());
 
-        AdminDashboardGraphQLResolver resolver = new AdminDashboardGraphQLResolver(renderJobService, billingProjectionService, usageMeteringService, extensionRegistryService);
+        AdminDashboardGraphQLResolver resolver = new AdminDashboardGraphQLResolver(new com.example.platform.render.app.RenderReadProjection(renderJobService), new com.example.platform.billing.app.BillingReadProjection(usageMeteringService), extensionRegistryService, com.example.platform.federation.graphql.OwnerQueryFixtures.scope());
 
         AdminDashboard result = resolver.adminDashboard(null, ctx);
         assertNotNull(result);

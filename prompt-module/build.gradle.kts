@@ -1,6 +1,8 @@
+plugins { id("java-library") }
+
 dependencies {
     implementation(project(":audit-contract-module")) // owner-published audit ports
-    implementation(project(":shared-kernel"))
+    api(project(":shared-kernel")) // neutral canonical actor exposed by public query contracts
     implementation("org.springframework.boot:spring-boot-starter")
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-jdbc")

@@ -4,8 +4,9 @@ import com.example.platform.extension.api.port.ExtensionQueries;
 import com.example.platform.extension.api.port.ExtensionQueries.ExtensionInfo;
 import com.example.platform.extension.api.port.ExtensionLimitQueries;
 import com.example.platform.extension.api.port.ExtensionRoutingQueries;
-import com.example.platform.extension.domain.ExtensionResourceLimits;
-import com.example.platform.extension.domain.RoutingRule;
+import com.example.platform.extension.api.port.ExtensionLimitQueries.Limits;
+import com.example.platform.federation.graphql.context.GraphQLReadScope;
+import com.example.platform.extension.api.port.ExtensionRoutingQueries.Route;
 import com.example.platform.federation.graphql.context.GraphQLRequestContext;
 import com.example.platform.federation.graphql.dto.ResourceLimits;
 import com.example.platform.federation.graphql.dto.RouteRule;
@@ -22,22 +23,24 @@ public class ExtensionGraphQLResolver {
 
     private static final Logger log = LoggerFactory.getLogger(ExtensionGraphQLResolver.class);
 
+    private final GraphQLReadScope scope;
     private final ExtensionQueries extensionRegistryService;
     private final ExtensionRoutingQueries extensionRouter;
     private final ExtensionLimitQueries extensionResourceLimiter;
 
     public ExtensionGraphQLResolver(ExtensionQueries extensionRegistryService,
                                   ExtensionRoutingQueries extensionRouter,
-                                  ExtensionLimitQueries extensionResourceLimiter) {
+                                  ExtensionLimitQueries extensionResourceLimiter, GraphQLReadScope scope) {
+        this.scope=scope;
         this.extensionRegistryService = extensionRegistryService;
         this.extensionRouter = extensionRouter;
         this.extensionResourceLimiter = extensionResourceLimiter;
     }
 
     @QueryMapping
-    public List<com.example.platform.federation.graphql.dto.ExtensionInfo> extensionOverview(GraphQLRequestContext context) {
+    public List<com.example.platform.federation.graphql.dto.ExtensionInfo> extensionOverview(@org.springframework.graphql.data.method.annotation.ContextValue("graphqlContext") GraphQLRequestContext context) {
         List<String> roles = context.roles();
-        if (roles == null || (!roles.contains("EXTENSION_ADMIN") && !roles.contains("ADMIN"))) {
+        if (roles == null || (!roles.contains("EXTENSION_ADMIN") && !roles.contains("ADMIN") && !roles.contains("ROLE_EXTENSION_ADMIN") && !roles.contains("ROLE_ADMIN"))) {
             throw new IllegalArgumentException("Access denied: requires EXTENSION_ADMIN or ADMIN role");
         }
 
@@ -49,12 +52,12 @@ public class ExtensionGraphQLResolver {
     }
 
     private com.example.platform.federation.graphql.dto.ExtensionInfo mapExtensionInfo(ExtensionInfo ext) {
-        List<RoutingRule> routingRules = extensionRouter.getRules(ext.key());
+        List<Route> routingRules = extensionRouter.routes(ext.key(),scope.actor());
         List<RouteRule> routeRules = routingRules.stream()
                 .map(r -> new RouteRule(r.scene(), r.priority(), r.enabled()))
                 .collect(Collectors.toList());
 
-        ExtensionResourceLimits limits = extensionResourceLimiter.getLimits(ext.key());
+        Limits limits = extensionResourceLimiter.limits(ext.key());
         ResourceLimits resourceLimits = new ResourceLimits(
                 (int) limits.timeoutMs(),
                 limits.maxConcurrency(),

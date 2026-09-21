@@ -1,28 +1,12 @@
 package com.example.platform.federation.graphql.dataloader;
-
-import com.example.platform.identity.app.IdentityAccessService;
+import com.example.platform.identity.api.reads.UserReadQuery;
+import java.util.*;
 import org.junit.jupiter.api.Test;
-
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.CompletionStage;
-
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
-
 class UserDataLoaderTest {
-
-    @Test
-    void loadsUserDataInBatch() throws Exception {
-        IdentityAccessService identityService = mock(IdentityAccessService.class);
-        when(identityService.overview()).thenReturn(Map.of("id", "user-1", "status", "active"));
-
-        UserDataLoader loader = new UserDataLoader(identityService);
-        CompletionStage<Map<String, Map<String, Object>>> stage = loader.load(Set.of("user-1", "user-2"));
-        Map<String, Map<String, Object>> result = stage.toCompletableFuture().get();
-
-        assertNotNull(result);
-        assertTrue(result.containsKey("user-1"));
-        assertTrue(result.containsKey("user-2"));
-    }
+ @Test void callerThreadScopeIsPreservedAndNeverMovedToCommonPool(){
+  Thread caller=Thread.currentThread();
+  var loader=new UserDataLoader(id->{assertSame(caller,Thread.currentThread());return Optional.of(new UserReadQuery.View(id,"t","name","ACTIVE"));});
+  assertEquals("u",loader.load(Set.of("u")).toCompletableFuture().join().get("u").get("id"));
+ }
 }

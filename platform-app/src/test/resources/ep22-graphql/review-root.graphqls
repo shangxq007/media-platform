@@ -1,0 +1,2 @@
+# Test-only root for exercising the disabled production GraphQL surface.
+type Query { _reviewFixture: Boolean }

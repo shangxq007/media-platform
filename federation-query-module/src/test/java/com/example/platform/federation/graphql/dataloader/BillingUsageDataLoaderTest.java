@@ -68,7 +68,7 @@ class BillingUsageDataLoaderTest {
         UsageRecord record = canonicalUsage("rec-1", "tenant-1", "render_minutes", 10, "min");
         when(meteringService.getUsageByTenant("tenant-1")).thenReturn(List.of(record));
 
-        BillingUsageDataLoader loader = new BillingUsageDataLoader(meteringService);
+        BillingUsageDataLoader loader = new BillingUsageDataLoader(new com.example.platform.billing.app.BillingReadProjection(meteringService), com.example.platform.federation.graphql.OwnerQueryFixtures.scope());
         CompletionStage<Map<String, List<Map<String, Object>>>> stage = loader.load(Set.of("tenant-1"));
         Map<String, List<Map<String, Object>>> result = stage.toCompletableFuture().get();
 
@@ -80,110 +80,34 @@ class BillingUsageDataLoaderTest {
         assertEquals(10L, result.get("tenant-1").get(0).get("quantity"));
     }
 
-    @Test
-    void doesNotTouchTenantContext() throws Exception {
-        UsageMeteringService meteringService = mock(UsageMeteringService.class);
-        when(meteringService.getUsageByTenant("tenant-1")).thenReturn(List.of());
-
-        // Set a known tenant context before calling
-        TenantContext.set("original-tenant");
-
-        BillingUsageDataLoader loader = new BillingUsageDataLoader(meteringService);
-        loader.load(Set.of("tenant-1")).toCompletableFuture().get();
-
-        // TenantContext should be unchanged — loader does not manipulate it
-        assertEquals("original-tenant", TenantContext.get());
+    private BillingUsageDataLoader loader(UsageMeteringService service,String tenant){
+        var actor=com.example.platform.shared.authorization.CanonicalActor.user("u",tenant,Set.of(),"test");
+        return new BillingUsageDataLoader(new com.example.platform.billing.app.BillingReadProjection(service),
+            new com.example.platform.federation.graphql.context.GraphQLReadScope(()->java.util.Optional.of(actor)));
     }
-
-    @Test
-    void doesNotLeakTenantContextBetweenTenants() throws Exception {
-        UsageMeteringService meteringService = mock(UsageMeteringService.class);
-        UsageRecord record1 = canonicalUsage("rec-1", "tenant-1", "render_minutes", 10, "min");
-        UsageRecord record2 = canonicalUsage("rec-2", "tenant-2", "render_minutes", 20, "min");
-        when(meteringService.getUsageByTenant("tenant-1")).thenReturn(List.of(record1));
-        when(meteringService.getUsageByTenant("tenant-2")).thenReturn(List.of(record2));
-
-        BillingUsageDataLoader loader = new BillingUsageDataLoader(meteringService);
-        Map<String, List<Map<String, Object>>> result = loader.load(Set.of("tenant-1", "tenant-2"))
-                .toCompletableFuture().get();
-
-        // Each tenant gets their own data
-        assertEquals(1, result.get("tenant-1").size());
-        assertEquals(1, result.get("tenant-2").size());
-        assertEquals("rec-1", result.get("tenant-1").get(0).get("id"));
-        assertEquals("rec-2", result.get("tenant-2").get(0).get("id"));
+    @Test void wrongTenantAndAbsentDispatchScopeFailWithoutReading(){
+        var service=mock(UsageMeteringService.class);var loader=loader(service,"a");
+        TenantContext.set("a");
+        assertThrows(java.util.concurrent.CompletionException.class,()->loader.load(Set.of("b")).toCompletableFuture().join());
+        TenantContext.clear();
+        assertThrows(java.util.concurrent.CompletionException.class,()->loader.load(Set.of("a")).toCompletableFuture().join());
+        verifyNoInteractions(service);
     }
-
-    @Test
-    void tenantContextNotPollutedAfterLoaderCompletes() throws Exception {
-        UsageMeteringService meteringService = mock(UsageMeteringService.class);
-        when(meteringService.getUsageByTenant(anyString())).thenReturn(List.of());
-
-        // Simulate running on a thread pool thread that previously had a different tenant
-        ExecutorService executor = Executors.newSingleThreadExecutor();
+    @Test void failureIsNotEmptySuccessAndNextAttemptRecovers(){
+        var service=mock(UsageMeteringService.class);var loader=loader(service,"a");TenantContext.set("a");
+        when(service.getUsageByTenant("a")).thenThrow(new IllegalStateException("db unavailable")).thenReturn(List.of(canonicalUsage("r","a","m",0,"calls")));
+        assertThrows(java.util.concurrent.CompletionException.class,()->loader.load(Set.of("a")).toCompletableFuture().join());
+        var result=loader.load(Set.of("a")).toCompletableFuture().join();assertEquals("r",result.get("a").getFirst().get("id"));assertEquals(0L,result.get("a").getFirst().get("quantity"));assertEquals("a",TenantContext.get());
+    }
+    @Test void concurrentRequestsAndReusedThreadKeepScopeAndCleanup() throws Exception {
+        var service=mock(UsageMeteringService.class);
+        when(service.getUsageByTenant(anyString())).thenAnswer(call->{String t=call.getArgument(0);assertEquals(t,TenantContext.get());return List.of(canonicalUsage("same",t,"m",t.equals("a")?1:2,"calls"));});
+        var pool=Executors.newFixedThreadPool(2);var barrier=new java.util.concurrent.CyclicBarrier(2);
         try {
-            // Set tenant on the pool thread
-            executor.submit(() -> TenantContext.set("stale-tenant")).get();
-
-            // Run loader on the same pool thread
-            BillingUsageDataLoader loader = new BillingUsageDataLoader(meteringService);
-            executor.submit(() -> {
-                try {
-                    loader.load(Set.of("tenant-1")).toCompletableFuture().get();
-                } catch (Exception e) {
-                    fail("Loader failed: " + e.getMessage());
-                }
-            }).get();
-
-            // Verify TenantContext was not modified by the loader
-            String remaining = executor.submit(() -> TenantContext.get()).get();
-            assertEquals("stale-tenant", remaining,
-                    "Loader should not modify TenantContext on async threads");
-        } finally {
-            executor.shutdown();
-            assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
-        }
-    }
-
-    @Test
-    void handlesMultipleTenantsConcurrently() throws Exception {
-        UsageMeteringService meteringService = mock(UsageMeteringService.class);
-        for (int i = 0; i < 10; i++) {
-            String tenantId = "tenant-" + i;
-            UsageRecord record = canonicalUsage("rec-" + i, tenantId, "meter", i, "calls");
-            when(meteringService.getUsageByTenant(tenantId)).thenReturn(List.of(record));
-        }
-
-        BillingUsageDataLoader loader = new BillingUsageDataLoader(meteringService);
-        Set<String> keys = Set.of(
-                "tenant-0", "tenant-1", "tenant-2", "tenant-3", "tenant-4",
-                "tenant-5", "tenant-6", "tenant-7", "tenant-8", "tenant-9"
-        );
-        Map<String, List<Map<String, Object>>> result = loader.load(keys).toCompletableFuture().get();
-
-        assertEquals(10, result.size());
-        for (int i = 0; i < 10; i++) {
-            assertTrue(result.containsKey("tenant-" + i));
-            assertEquals(1, result.get("tenant-" + i).size());
-            assertEquals("rec-" + i, result.get("tenant-" + i).get(0).get("id"));
-        }
-    }
-
-    @Test
-    void failedTenantDoesNotAffectOthers() throws Exception {
-        UsageMeteringService meteringService = mock(UsageMeteringService.class);
-        when(meteringService.getUsageByTenant("tenant-good")).thenReturn(List.of(
-                canonicalUsage("rec-1", "tenant-good", "meter", 1, "calls")
-        ));
-        when(meteringService.getUsageByTenant("tenant-bad")).thenThrow(new RuntimeException("DB error"));
-
-        BillingUsageDataLoader loader = new BillingUsageDataLoader(meteringService);
-        Map<String, List<Map<String, Object>>> result = loader.load(Set.of("tenant-good", "tenant-bad"))
-                .toCompletableFuture().get();
-
-        // Good tenant still gets data
-        assertEquals(1, result.get("tenant-good").size());
-        // Bad tenant gets empty list (graceful degradation)
-        assertTrue(result.get("tenant-bad").isEmpty());
+            java.util.List<java.util.concurrent.Future<Long>> results=new java.util.ArrayList<>();
+            for(String tenant:List.of("a","b"))results.add(pool.submit(()->{TenantContext.set(tenant);try{barrier.await(5,TimeUnit.SECONDS);return (Long)loader(service,tenant).load(Set.of(tenant)).toCompletableFuture().join().get(tenant).getFirst().get("quantity");}finally{TenantContext.clear();}}));
+            assertEquals(1L,results.get(0).get());assertEquals(2L,results.get(1).get());
+            var single=Executors.newSingleThreadExecutor();try{single.submit(()->{TenantContext.set("a");try{assertThrows(java.util.concurrent.CompletionException.class,()->loader(service,"b").load(Set.of("b")).toCompletableFuture().join());}finally{TenantContext.clear();}}).get();assertNull(single.submit(TenantContext::get).get());}finally{single.shutdownNow();}
+        } finally {pool.shutdownNow();}
     }
 }

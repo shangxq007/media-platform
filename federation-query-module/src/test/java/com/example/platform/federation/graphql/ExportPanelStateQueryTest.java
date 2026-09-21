@@ -21,6 +21,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class ExportPanelStateQueryTest {
+    @org.junit.jupiter.api.AfterEach void clearOwnerFixtureScope(){com.example.platform.shared.web.TenantContext.clear();}
+
 
     private void setField(Object target, String fieldName, Object value) throws Exception {
         Field f = target.getClass().getDeclaredField(fieldName);
@@ -61,7 +63,7 @@ class ExportPanelStateQueryTest {
         when(exportPolicyService.getDefaultPreset("PRO")).thenReturn(preset);
         when(exportPolicyService.resolveProvider("pro_1080p", "PRO")).thenReturn("javacv");
 
-        ExportPanelGraphQLResolver resolver = new ExportPanelGraphQLResolver(renderJobService, exportPolicyService, entitlementService, projectRepository);
+        ExportPanelGraphQLResolver resolver = new ExportPanelGraphQLResolver(new com.example.platform.render.app.RenderReadProjection(renderJobService), new com.example.platform.render.app.ExportOptionProjection(exportPolicyService), entitlementService, com.example.platform.federation.graphql.OwnerQueryFixtures.projects(projectRepository));
 
         ExportPanelState result = resolver.exportPanelState("proj-1", ctx);
 
@@ -94,7 +96,7 @@ class ExportPanelStateQueryTest {
                 Project.ProjectStatus.ACTIVE, Instant.now());
         when(projectRepository.findById("proj-1")).thenReturn(Optional.of(project));
 
-        ExportPanelGraphQLResolver resolver = new ExportPanelGraphQLResolver(renderJobService, exportPolicyService, entitlementService, projectRepository);
+        ExportPanelGraphQLResolver resolver = new ExportPanelGraphQLResolver(new com.example.platform.render.app.RenderReadProjection(renderJobService), new com.example.platform.render.app.ExportOptionProjection(exportPolicyService), entitlementService, com.example.platform.federation.graphql.OwnerQueryFixtures.projects(projectRepository));
 
         assertThrows(IllegalArgumentException.class, () -> resolver.exportPanelState("proj-1", ctx));
     }
@@ -116,7 +118,7 @@ class ExportPanelStateQueryTest {
 
         when(projectRepository.findById("nonexistent")).thenReturn(Optional.empty());
 
-        ExportPanelGraphQLResolver resolver = new ExportPanelGraphQLResolver(renderJobService, exportPolicyService, entitlementService, projectRepository);
+        ExportPanelGraphQLResolver resolver = new ExportPanelGraphQLResolver(new com.example.platform.render.app.RenderReadProjection(renderJobService), new com.example.platform.render.app.ExportOptionProjection(exportPolicyService), entitlementService, com.example.platform.federation.graphql.OwnerQueryFixtures.projects(projectRepository));
 
         assertThrows(IllegalArgumentException.class, () -> resolver.exportPanelState("nonexistent", ctx));
     }
@@ -158,7 +160,7 @@ class ExportPanelStateQueryTest {
         when(exportPolicyService.resolveProvider("free_720p", "FREE")).thenReturn("javacv");
         when(exportPolicyService.resolveProvider("pro_1080p", "FREE")).thenReturn("javacv");
 
-        ExportPanelGraphQLResolver resolver = new ExportPanelGraphQLResolver(renderJobService, exportPolicyService, entitlementService, projectRepository);
+        ExportPanelGraphQLResolver resolver = new ExportPanelGraphQLResolver(new com.example.platform.render.app.RenderReadProjection(renderJobService), new com.example.platform.render.app.ExportOptionProjection(exportPolicyService), entitlementService, com.example.platform.federation.graphql.OwnerQueryFixtures.projects(projectRepository));
 
         ExportPanelState result = resolver.exportPanelState("proj-1", ctx);
 
@@ -200,7 +202,7 @@ class ExportPanelStateQueryTest {
         when(exportPolicyService.getDefaultPreset("PRO")).thenReturn(preset);
         when(exportPolicyService.resolveProvider("pro_1080p", "PRO")).thenReturn("javacv");
 
-        ExportPanelGraphQLResolver resolver = new ExportPanelGraphQLResolver(renderJobService, exportPolicyService, entitlementService, projectRepository);
+        ExportPanelGraphQLResolver resolver = new ExportPanelGraphQLResolver(new com.example.platform.render.app.RenderReadProjection(renderJobService), new com.example.platform.render.app.ExportOptionProjection(exportPolicyService), entitlementService, com.example.platform.federation.graphql.OwnerQueryFixtures.projects(projectRepository));
 
         ExportPanelState result = resolver.exportPanelState("proj-1", ctx);
 

@@ -20,7 +20,7 @@ class GraphQLContextFactorySecurityTest {
 
     @BeforeEach
     void setUp() {
-        factory = new GraphQLContextFactory();
+        factory = new GraphQLContextFactory(org.mockito.Mockito.mock(com.example.platform.identity.api.workspace.WorkspaceQueries.class));
         SecurityContextHolder.clearContext();
     }
 

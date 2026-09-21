@@ -24,6 +24,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class MeOverviewQueryTest {
+    @org.junit.jupiter.api.AfterEach void clearOwnerFixtureScope(){com.example.platform.shared.web.TenantContext.clear();}
+
 
     private void setField(Object target, String fieldName, Object value) throws Exception {
         Field f = target.getClass().getDeclaredField(fieldName);
@@ -63,7 +65,7 @@ class MeOverviewQueryTest {
                 "dec-1", "summary", "tenant-1", "user-1",
                 "USAGE_BASED", 0, "USD", true, Map.of(), "APPROVED"));
 
-        MeOverviewGraphQLResolver resolver = new MeOverviewGraphQLResolver(entitlementService, billingService, tenantRepository, userRepository);
+        MeOverviewGraphQLResolver resolver = new MeOverviewGraphQLResolver(entitlementService, new com.example.platform.billing.app.BillingReadProjection(mock(com.example.platform.billing.app.UsageMeteringService.class)), com.example.platform.federation.graphql.OwnerQueryFixtures.tenants(tenantRepository), com.example.platform.federation.graphql.OwnerQueryFixtures.users(userRepository), com.example.platform.federation.graphql.OwnerQueryFixtures.scope());
 
         MeOverview result = resolver.meOverview(ctx);
 
@@ -103,7 +105,7 @@ class MeOverviewQueryTest {
                 "dec-1", "summary", null, null,
                 "USAGE_BASED", 0, "USD", true, Map.of(), "APPROVED"));
 
-        MeOverviewGraphQLResolver resolver = new MeOverviewGraphQLResolver(entitlementService, billingService, tenantRepository, userRepository);
+        MeOverviewGraphQLResolver resolver = new MeOverviewGraphQLResolver(entitlementService, new com.example.platform.billing.app.BillingReadProjection(mock(com.example.platform.billing.app.UsageMeteringService.class)), com.example.platform.federation.graphql.OwnerQueryFixtures.tenants(tenantRepository), com.example.platform.federation.graphql.OwnerQueryFixtures.users(userRepository), com.example.platform.federation.graphql.OwnerQueryFixtures.scope());
 
         MeOverview result = resolver.meOverview(ctx);
 
@@ -145,7 +147,7 @@ class MeOverviewQueryTest {
                 "dec-1", "summary", "tenant-1", "user-1",
                 "USAGE_BASED", 0, "USD", true, Map.of(), "APPROVED"));
 
-        MeOverviewGraphQLResolver resolver = new MeOverviewGraphQLResolver(entitlementService, billingService, tenantRepository, userRepository);
+        MeOverviewGraphQLResolver resolver = new MeOverviewGraphQLResolver(entitlementService, new com.example.platform.billing.app.BillingReadProjection(mock(com.example.platform.billing.app.UsageMeteringService.class)), com.example.platform.federation.graphql.OwnerQueryFixtures.tenants(tenantRepository), com.example.platform.federation.graphql.OwnerQueryFixtures.users(userRepository), com.example.platform.federation.graphql.OwnerQueryFixtures.scope());
 
         MeOverview result = resolver.meOverview(ctx);
 
@@ -185,7 +187,7 @@ class MeOverviewQueryTest {
                 "dec-1", "summary", "tenant-1", "user-1",
                 "USAGE_BASED", 0, "USD", true, Map.of(), "APPROVED"));
 
-        MeOverviewGraphQLResolver resolver = new MeOverviewGraphQLResolver(entitlementService, billingService, tenantRepository, userRepository);
+        MeOverviewGraphQLResolver resolver = new MeOverviewGraphQLResolver(entitlementService, new com.example.platform.billing.app.BillingReadProjection(mock(com.example.platform.billing.app.UsageMeteringService.class)), com.example.platform.federation.graphql.OwnerQueryFixtures.tenants(tenantRepository), com.example.platform.federation.graphql.OwnerQueryFixtures.users(userRepository), com.example.platform.federation.graphql.OwnerQueryFixtures.scope());
 
         MeOverview result = resolver.meOverview(ctx);
 
@@ -226,7 +228,7 @@ class MeOverviewQueryTest {
                 "dec-1", "summary", "tenant-1", "user-1",
                 "USAGE_BASED", 0, "USD", true, Map.of(), "APPROVED"));
 
-        MeOverviewGraphQLResolver resolver = new MeOverviewGraphQLResolver(entitlementService, billingService, tenantRepository, userRepository);
+        MeOverviewGraphQLResolver resolver = new MeOverviewGraphQLResolver(entitlementService, new com.example.platform.billing.app.BillingReadProjection(mock(com.example.platform.billing.app.UsageMeteringService.class)), com.example.platform.federation.graphql.OwnerQueryFixtures.tenants(tenantRepository), com.example.platform.federation.graphql.OwnerQueryFixtures.users(userRepository), com.example.platform.federation.graphql.OwnerQueryFixtures.scope());
 
         MeOverview result = resolver.meOverview(ctx);
 

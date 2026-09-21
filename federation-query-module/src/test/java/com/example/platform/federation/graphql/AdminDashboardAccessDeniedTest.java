@@ -16,6 +16,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class AdminDashboardAccessDeniedTest {
+    @org.junit.jupiter.api.AfterEach void clearOwnerFixtureScope(){com.example.platform.shared.web.TenantContext.clear();}
+
 
     private void setField(Object target, String fieldName, Object value) throws Exception {
         Field f = target.getClass().getDeclaredField(fieldName);
@@ -29,7 +31,7 @@ class AdminDashboardAccessDeniedTest {
         UsageMeteringService usageMeteringService = mock(UsageMeteringService.class);
         ExtensionQueries extensionRegistryService = mock(ExtensionQueries.class);
 
-        AdminDashboardGraphQLResolver resolver = new AdminDashboardGraphQLResolver(renderJobService, billingProjectionService, usageMeteringService, extensionRegistryService);
+        AdminDashboardGraphQLResolver resolver = new AdminDashboardGraphQLResolver(new com.example.platform.render.app.RenderReadProjection(renderJobService), new com.example.platform.billing.app.BillingReadProjection(usageMeteringService), extensionRegistryService, com.example.platform.federation.graphql.OwnerQueryFixtures.scope());
         return resolver;
     }
 

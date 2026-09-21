@@ -28,6 +28,9 @@ import java.util.UUID;
 public class GraphQLContextFactory implements WebGraphQlInterceptor {
     private static final Logger log = LoggerFactory.getLogger(GraphQLContextFactory.class);
 
+    private final com.example.platform.identity.api.workspace.WorkspaceQueries workspaces;
+    public GraphQLContextFactory(com.example.platform.identity.api.workspace.WorkspaceQueries workspaces) { this.workspaces=workspaces; }
+
     private static String firstHeader(HttpHeaders headers, String key) {
         List<String> values = headers.get(key);
         return (values != null && !values.isEmpty()) ? values.get(0) : null;
@@ -41,6 +44,12 @@ public class GraphQLContextFactory implements WebGraphQlInterceptor {
         // (set by authentication filters from JWT/OAuth2 claims).
         String tenantId = TenantContext.get();
         String workspaceId = firstHeader(headers, "X-Workspace-Id");
+        if (workspaceId != null && !workspaceId.isBlank()) {
+            // Header is a selector only. Identity authorizes it before it enters the composed context.
+            var workspace = workspaces.getWorkspace(workspaceId);
+            if (!java.util.Objects.equals(tenantId, workspace.tenantId()))
+                throw new org.springframework.security.access.AccessDeniedException("Workspace scope mismatch");
+        }
 
         // User identity is resolved from the authenticated principal, NOT from headers.
         String userId = resolveUserId();

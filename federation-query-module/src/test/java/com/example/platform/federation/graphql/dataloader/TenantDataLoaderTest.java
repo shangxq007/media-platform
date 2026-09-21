@@ -1,46 +1,22 @@
 package com.example.platform.federation.graphql.dataloader;
-
-import com.example.platform.identity.app.TenantRepository;
+import com.example.platform.identity.api.reads.TenantReadQuery;
+import com.example.platform.identity.app.*;
 import com.example.platform.identity.domain.Tenant;
-import org.junit.jupiter.api.Test;
-
-import java.time.Instant;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.CompletionStage;
-
+import com.example.platform.shared.authorization.CanonicalActor;
+import com.example.platform.shared.web.TenantContext;
+import java.util.*;
+import java.util.concurrent.*;
+import org.junit.jupiter.api.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
-
 class TenantDataLoaderTest {
-
-    @Test
-    void loadsTenantDataInBatch() throws Exception {
-        TenantRepository tenantRepository = mock(TenantRepository.class);
-        Tenant tenant = new Tenant("tenant-1", "Test Tenant", Tenant.TenantStatus.ACTIVE, Instant.now());
-        when(tenantRepository.findById("tenant-1")).thenReturn(Optional.of(tenant));
-
-        TenantDataLoader loader = new TenantDataLoader(tenantRepository);
-        CompletionStage<Map<String, Map<String, Object>>> stage = loader.load(Set.of("tenant-1"));
-        Map<String, Map<String, Object>> result = stage.toCompletableFuture().get();
-
-        assertNotNull(result);
-        assertTrue(result.containsKey("tenant-1"));
-        assertEquals("tenant-1", result.get("tenant-1").get("id"));
-    }
-
-    @Test
-    void handlesMissingTenant() throws Exception {
-        TenantRepository tenantRepository = mock(TenantRepository.class);
-        when(tenantRepository.findById("missing")).thenReturn(Optional.empty());
-
-        TenantDataLoader loader = new TenantDataLoader(tenantRepository);
-        CompletionStage<Map<String, Map<String, Object>>> stage = loader.load(Set.of("missing"));
-        Map<String, Map<String, Object>> result = stage.toCompletableFuture().get();
-
-        assertNotNull(result);
-        assertTrue(result.containsKey("missing"));
-        assertEquals("missing", result.get("missing").get("id"));
-    }
+ @AfterEach void clear(){TenantContext.clear();}
+ @Test void ownerRejectsForeignTenantBeforeRepositoryAndMissingCurrentTenantIsAbsent(){
+  var repo=mock(TenantRepository.class);var actor=CanonicalActor.user("u","t",Set.of(),"test");TenantContext.set("t");
+  var loader=new TenantDataLoader(new TenantReadProjection(repo,()->Optional.of(actor)));
+  assertThrows(CompletionException.class,()->loader.load(Set.of("foreign")).toCompletableFuture().join());verifyNoInteractions(repo);
+  when(repo.findById("t")).thenReturn(Optional.empty());assertTrue(loader.load(Set.of("t")).toCompletableFuture().join().isEmpty());
+  when(repo.findById("t")).thenReturn(Optional.of(new Tenant("t","Tenant",Tenant.TenantStatus.ACTIVE,java.time.Instant.now())));
+  assertEquals("Tenant",loader.load(Set.of("t")).toCompletableFuture().join().get("t").get("name"));
+ }
 }

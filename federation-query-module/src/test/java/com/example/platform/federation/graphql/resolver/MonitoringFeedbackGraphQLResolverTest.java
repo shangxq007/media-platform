@@ -18,6 +18,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class MonitoringFeedbackGraphQLResolverTest {
+    @org.junit.jupiter.api.AfterEach void clearOwnerFixtureScope(){com.example.platform.shared.web.TenantContext.clear();}
+
 
     private void setField(Object target, String fieldName, Object value) throws Exception {
         Field f = target.getClass().getDeclaredField(fieldName);
@@ -52,7 +54,7 @@ class MonitoringFeedbackGraphQLResolverTest {
                         "ERR-001", null, null, null)
         ));
 
-        MonitoringFeedbackGraphQLResolver resolver = new MonitoringFeedbackGraphQLResolver(renderJobService, promptTemplateService);
+        MonitoringFeedbackGraphQLResolver resolver = new MonitoringFeedbackGraphQLResolver(new com.example.platform.render.app.RenderReadProjection(renderJobService), new com.example.platform.prompt.app.PromptReadProjection(promptTemplateService), com.example.platform.federation.graphql.OwnerQueryFixtures.scope());
 
         MonitoringFeedbackOverview result = resolver.monitoringFeedbackOverview("7d", ctx);
 
@@ -82,7 +84,7 @@ class MonitoringFeedbackGraphQLResolverTest {
         when(renderJobService.list()).thenReturn(List.of());
         when(promptTemplateService.listAllExecutions()).thenReturn(List.of());
 
-        MonitoringFeedbackGraphQLResolver resolver = new MonitoringFeedbackGraphQLResolver(renderJobService, promptTemplateService);
+        MonitoringFeedbackGraphQLResolver resolver = new MonitoringFeedbackGraphQLResolver(new com.example.platform.render.app.RenderReadProjection(renderJobService), new com.example.platform.prompt.app.PromptReadProjection(promptTemplateService), com.example.platform.federation.graphql.OwnerQueryFixtures.scope());
 
         MonitoringFeedbackOverview result = resolver.monitoringFeedbackOverview(null, ctx);
 
@@ -116,7 +118,7 @@ class MonitoringFeedbackGraphQLResolverTest {
                         null, null)
         ));
 
-        MonitoringFeedbackGraphQLResolver resolver = new MonitoringFeedbackGraphQLResolver(renderJobService, promptTemplateService);
+        MonitoringFeedbackGraphQLResolver resolver = new MonitoringFeedbackGraphQLResolver(new com.example.platform.render.app.RenderReadProjection(renderJobService), new com.example.platform.prompt.app.PromptReadProjection(promptTemplateService), com.example.platform.federation.graphql.OwnerQueryFixtures.scope());
 
         MonitoringFeedbackOverview result = resolver.monitoringFeedbackOverview("7d", ctx);
 

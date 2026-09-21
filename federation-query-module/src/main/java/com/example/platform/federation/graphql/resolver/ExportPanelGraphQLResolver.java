@@ -5,11 +5,11 @@ import com.example.platform.entitlement.domain.AccessCheckRequest;
 import com.example.platform.entitlement.domain.EntitlementDecision;
 import com.example.platform.federation.graphql.context.GraphQLRequestContext;
 import com.example.platform.federation.graphql.dto.*;
-import com.example.platform.identity.app.ProjectRepository;
-import com.example.platform.identity.domain.Project;
-import com.example.platform.render.app.RenderJobService;
-import com.example.platform.render.infrastructure.ExportPolicyService;
-import com.example.platform.render.infrastructure.ExportPolicyService.ExportPreset;
+import com.example.platform.identity.api.project.ProjectReadQuery;
+import com.example.platform.identity.api.dto.ProjectResponse;
+import com.example.platform.render.api.RenderReadQuery;
+import com.example.platform.render.api.ExportOptionQuery;
+import com.example.platform.render.api.ExportOptionQuery.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.graphql.data.method.annotation.Argument;
@@ -24,15 +24,15 @@ public class ExportPanelGraphQLResolver {
 
     private static final Logger log = LoggerFactory.getLogger(ExportPanelGraphQLResolver.class);
 
-    private final RenderJobService renderJobService;
-    private final ExportPolicyService exportPolicyService;
+    private final RenderReadQuery renderJobService;
+    private final ExportOptionQuery exportPolicyService;
     private final EntitlementDecisionQuery entitlementDecisionService;
-    private final ProjectRepository projectRepository;
+    private final ProjectReadQuery projectRepository;
 
-    public ExportPanelGraphQLResolver(RenderJobService renderJobService,
-                                      ExportPolicyService exportPolicyService,
+    public ExportPanelGraphQLResolver(RenderReadQuery renderJobService,
+                                      ExportOptionQuery exportPolicyService,
                                       EntitlementDecisionQuery entitlementDecisionService,
-                                      ProjectRepository projectRepository) {
+                                      ProjectReadQuery projectRepository) {
         this.renderJobService = renderJobService;
         this.exportPolicyService = exportPolicyService;
         this.entitlementDecisionService = entitlementDecisionService;
@@ -40,11 +40,11 @@ public class ExportPanelGraphQLResolver {
     }
 
     @QueryMapping
-    public ExportPanelState exportPanelState(@Argument String projectId, GraphQLRequestContext context) {
+    public ExportPanelState exportPanelState(@Argument String projectId, @org.springframework.graphql.data.method.annotation.ContextValue("graphqlContext") GraphQLRequestContext context) {
         String tenantId = context.tenantId();
         String userId = context.userId();
 
-        Project project = projectRepository.findById(projectId).orElse(null);
+        ProjectResponse project = projectRepository.getProject(tenantId, projectId);
         if (project == null) {
             throw new IllegalArgumentException("Project not found: " + projectId);
         }
@@ -79,7 +79,7 @@ public class ExportPanelGraphQLResolver {
 
     private TimelineSummary buildTimelineSummary(String tenantId, String projectId) {
         try {
-            List<?> jobs = renderJobService.listByProject(tenantId, projectId);
+            List<?> jobs = renderJobService.jobsForProject(tenantId, projectId);
             boolean hasJobs = !jobs.isEmpty();
             return new TimelineSummary(
                     hasJobs ? 3600.0 : 0.0,
@@ -88,21 +88,19 @@ public class ExportPanelGraphQLResolver {
                     hasJobs ? 2 : 0,
                     hasJobs ? 5 : 0
             );
-        } catch (Exception e) {
-            log.debug("Timeline summary build failed: {}", e.getMessage());
-            return new TimelineSummary(0.0, 0, 0, 0, 0);
+        } catch (Exception e) { throw new IllegalStateException("Owner query unavailable", e);
         }
     }
 
     private List<ExportOption> resolveExportOptions(String tier) {
         try {
-            List<ExportPreset> presets = exportPolicyService.getAvailablePresets(tier);
+            List<Option> presets = exportPolicyService.options(tier);
             return presets.stream()
                     .map(preset -> {
-                        boolean allowed = exportPolicyService.isPresetAvailable(preset.name(), tier);
+                        boolean allowed = preset.allowed();
                         String reasonCode = allowed ? null : "TIER_RESTRICTION";
-                        String recommendedPreset = exportPolicyService.getDefaultPreset(tier).name();
-                        List<String> providers = List.of(exportPolicyService.resolveProvider(preset.name(), tier));
+                        String recommendedPreset = preset.recommendedPreset();
+                        List<String> providers = List.of(preset.provider());
                         boolean requiresReview = preset.name().contains("experimental") || preset.name().contains("4k");
                         return new ExportOption(
                                 preset.name(),
@@ -116,9 +114,7 @@ public class ExportPanelGraphQLResolver {
                         );
                     })
                     .collect(Collectors.toList());
-        } catch (Exception e) {
-            log.warn("Export option resolution failed: {}", e.getMessage());
-            return List.of();
+        } catch (Exception e) { throw new IllegalStateException("Owner query unavailable", e);
         }
     }
 

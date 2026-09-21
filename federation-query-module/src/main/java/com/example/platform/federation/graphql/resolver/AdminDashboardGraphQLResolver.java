@@ -1,15 +1,16 @@
 package com.example.platform.federation.graphql.resolver;
 
-import com.example.platform.billing.app.BillingProjectionService;
-import com.example.platform.billing.app.UsageMeteringService;
-import com.example.platform.billing.usage.UsageRecord;
+
+import com.example.platform.billing.api.reads.BillingReadQuery;
+import com.example.platform.federation.graphql.context.GraphQLReadScope;
+import com.example.platform.billing.api.reads.BillingReadQuery.Usage;
 import com.example.platform.extension.api.port.ExtensionQueries;
 import com.example.platform.extension.api.port.ExtensionQueries.ExtensionInfo;
 import com.example.platform.federation.graphql.context.GraphQLRequestContext;
 import com.example.platform.federation.graphql.dto.*;
-import com.example.platform.render.app.RenderJobService;
-import com.example.platform.render.app.dto.RenderJobResponse;
-import com.example.platform.render.domain.RenderJobStatus;
+import com.example.platform.render.api.RenderReadQuery;
+import com.example.platform.render.api.RenderReadQuery.Job;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.graphql.data.method.annotation.Argument;
@@ -24,28 +25,27 @@ public class AdminDashboardGraphQLResolver {
 
     private static final Logger log = LoggerFactory.getLogger(AdminDashboardGraphQLResolver.class);
 
-    private final RenderJobService renderJobService;
-    private final BillingProjectionService billingProjectionService;
-    private final UsageMeteringService usageMeteringService;
+    private final RenderReadQuery renderJobService;
+    private final GraphQLReadScope scope;
+    private final BillingReadQuery usageMeteringService;
     private final ExtensionQueries extensionRegistryService;
 
-    public AdminDashboardGraphQLResolver(RenderJobService renderJobService,
-                                         BillingProjectionService billingProjectionService,
-                                         UsageMeteringService usageMeteringService,
-                                         ExtensionQueries extensionRegistryService) {
+    public AdminDashboardGraphQLResolver(RenderReadQuery renderJobService,
+                                         BillingReadQuery usageMeteringService,
+                                         ExtensionQueries extensionRegistryService, GraphQLReadScope scope) {
+        this.scope = scope;
         this.renderJobService = renderJobService;
-        this.billingProjectionService = billingProjectionService;
         this.usageMeteringService = usageMeteringService;
         this.extensionRegistryService = extensionRegistryService;
     }
 
     @QueryMapping
-    public AdminDashboard adminDashboard(@Argument String range, GraphQLRequestContext context) {
+    public AdminDashboard adminDashboard(@Argument String range, @org.springframework.graphql.data.method.annotation.ContextValue("graphqlContext") GraphQLRequestContext context) {
         if (range == null || range.isBlank()) {
             range = "7d";
         }
         List<String> roles = context.roles();
-        if (roles == null || (!roles.contains("ADMIN") && !roles.contains("DASHBOARD_ADMIN"))) {
+        if (roles == null || (!roles.contains("ADMIN") && !roles.contains("ROLE_ADMIN") && !roles.contains("DASHBOARD_ADMIN") && !roles.contains("ROLE_DASHBOARD_ADMIN"))) {
             throw new IllegalArgumentException("Access denied: requires ADMIN or DASHBOARD_ADMIN role");
         }
 
@@ -60,18 +60,16 @@ public class AdminDashboardGraphQLResolver {
 
     private RenderStats resolveRenderStats(String tenantId) {
         try {
-            List<RenderJobResponse> jobs = renderJobService.list();
+            List<Job> jobs = renderJobService.jobs();
             int submitted = jobs.size();
             int completed = (int) jobs.stream()
-                    .filter(j -> RenderJobStatus.COMPLETED.name().equals(j.status()))
+                    .filter(j -> "COMPLETED".equals(j.status()))
                     .count();
             int failed = (int) jobs.stream()
-                    .filter(j -> RenderJobStatus.FAILED.name().equals(j.status()))
+                    .filter(j -> "FAILED".equals(j.status()))
                     .count();
             return new RenderStats(submitted, completed, failed, null);
-        } catch (Exception e) {
-            log.debug("Render stats resolution failed: {}", e.getMessage());
-            return new RenderStats(0, 0, 0, null);
+        } catch (Exception e) { throw new IllegalStateException("Owner query unavailable", e);
         }
     }
 
@@ -85,7 +83,7 @@ public class AdminDashboardGraphQLResolver {
 
     private AdminBillingSummary resolveBillingSummary(String range) {
         try {
-            List<UsageRecord> allUsage = usageMeteringService.getUsage(null, null);
+            List<Usage> allUsage = usageMeteringService.usage(scope.actor(), scope.actor().tenantId());
             double totalAmount = allUsage.stream()
                     .mapToDouble(r -> (double) r.quantity().baseUnits())
                     .sum();
@@ -94,9 +92,7 @@ public class AdminDashboardGraphQLResolver {
                     new MoneyDto(totalAmount * 1.2, "USD"),
                     new MoneyDto(totalAmount * 0.8, "USD")
             );
-        } catch (Exception e) {
-            log.debug("Billing summary resolution failed: {}", e.getMessage());
-            return new AdminBillingSummary(new MoneyDto(0, "USD"), new MoneyDto(0, "USD"), new MoneyDto(0, "USD"));
+        } catch (Exception e) { throw new IllegalStateException("Owner query unavailable", e);
         }
     }
 

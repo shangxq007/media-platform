@@ -21,7 +21,9 @@ class GraphQLContextFactoryTest {
 
     @BeforeEach
     void setUp() {
-        factory = new GraphQLContextFactory();
+        var owner=mock(com.example.platform.identity.api.workspace.WorkspaceQueries.class);
+        when(owner.getWorkspace("ws-789")).thenReturn(new com.example.platform.identity.api.workspace.WorkspaceResponse("ws-789","tenant","Workspace",null,"FREE","ACTIVE",null,null));
+        factory = new GraphQLContextFactory(owner);
         SecurityContextHolder.clearContext();
     }
 
@@ -33,6 +35,7 @@ class GraphQLContextFactoryTest {
 
     @Test
     void createsContextWithAuthenticatedUser() {
+        TenantContext.set("tenant");
         // Set up authenticated principal
         var auth = new UsernamePasswordAuthenticationToken(
                 "user-123", null, List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));

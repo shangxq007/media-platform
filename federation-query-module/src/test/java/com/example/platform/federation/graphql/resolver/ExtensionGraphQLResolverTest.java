@@ -15,6 +15,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class ExtensionGraphQLResolverTest {
+    @org.junit.jupiter.api.AfterEach void clearOwnerFixtureScope(){com.example.platform.shared.web.TenantContext.clear();}
+
 
     private void setField(Object target, String fieldName, Object value) throws Exception {
         Field f = target.getClass().getDeclaredField(fieldName);
@@ -52,7 +54,9 @@ class ExtensionGraphQLResolverTest {
         when(limiter.getLimits("ext-1")).thenReturn(limits);
         when(limiter.getLimits("ext-2")).thenReturn(ExtensionResourceLimits.UNTRUSTED);
 
-        ExtensionGraphQLResolver resolver = new ExtensionGraphQLResolver(registryService, router, limiter);
+        when(router.routes(anyString(), any())).thenAnswer(call -> router.getRules(call.getArgument(0)).stream().map(r -> new com.example.platform.extension.api.port.ExtensionRoutingQueries.Route(r.scene(),r.priority(),r.enabled())).toList());
+        when(limiter.limits(anyString())).thenAnswer(call -> {var v=limiter.getLimits(call.getArgument(0)); return new com.example.platform.extension.api.port.ExtensionLimitQueries.Limits(v.timeoutMs(),v.maxConcurrency(),v.maxOutputBytes());});
+        ExtensionGraphQLResolver resolver = new ExtensionGraphQLResolver(registryService, router, limiter, com.example.platform.federation.graphql.OwnerQueryFixtures.scope());
 
         List<com.example.platform.federation.graphql.dto.ExtensionInfo> result = resolver.extensionOverview(ctx);
 
@@ -94,7 +98,9 @@ class ExtensionGraphQLResolverTest {
         when(router.getRules(any())).thenReturn(List.of());
         when(limiter.getLimits(any())).thenReturn(ExtensionResourceLimits.DEFAULTS);
 
-        ExtensionGraphQLResolver resolver = new ExtensionGraphQLResolver(registryService, router, limiter);
+        when(router.routes(anyString(), any())).thenAnswer(call -> router.getRules(call.getArgument(0)).stream().map(r -> new com.example.platform.extension.api.port.ExtensionRoutingQueries.Route(r.scene(),r.priority(),r.enabled())).toList());
+        when(limiter.limits(anyString())).thenAnswer(call -> {var v=limiter.getLimits(call.getArgument(0)); return new com.example.platform.extension.api.port.ExtensionLimitQueries.Limits(v.timeoutMs(),v.maxConcurrency(),v.maxOutputBytes());});
+        ExtensionGraphQLResolver resolver = new ExtensionGraphQLResolver(registryService, router, limiter, com.example.platform.federation.graphql.OwnerQueryFixtures.scope());
 
         List<com.example.platform.federation.graphql.dto.ExtensionInfo> result = resolver.extensionOverview(ctx);
 
@@ -116,7 +122,9 @@ class ExtensionGraphQLResolverTest {
                 "127.0.0.1", "test-agent"
         );
 
-        ExtensionGraphQLResolver resolver = new ExtensionGraphQLResolver(registryService, router, limiter);
+        when(router.routes(anyString(), any())).thenAnswer(call -> router.getRules(call.getArgument(0)).stream().map(r -> new com.example.platform.extension.api.port.ExtensionRoutingQueries.Route(r.scene(),r.priority(),r.enabled())).toList());
+        when(limiter.limits(anyString())).thenAnswer(call -> {var v=limiter.getLimits(call.getArgument(0)); return new com.example.platform.extension.api.port.ExtensionLimitQueries.Limits(v.timeoutMs(),v.maxConcurrency(),v.maxOutputBytes());});
+        ExtensionGraphQLResolver resolver = new ExtensionGraphQLResolver(registryService, router, limiter, com.example.platform.federation.graphql.OwnerQueryFixtures.scope());
 
         assertThrows(IllegalArgumentException.class, () -> resolver.extensionOverview(ctx));
     }
@@ -135,7 +143,9 @@ class ExtensionGraphQLResolverTest {
                 "127.0.0.1", "test-agent"
         );
 
-        ExtensionGraphQLResolver resolver = new ExtensionGraphQLResolver(registryService, router, limiter);
+        when(router.routes(anyString(), any())).thenAnswer(call -> router.getRules(call.getArgument(0)).stream().map(r -> new com.example.platform.extension.api.port.ExtensionRoutingQueries.Route(r.scene(),r.priority(),r.enabled())).toList());
+        when(limiter.limits(anyString())).thenAnswer(call -> {var v=limiter.getLimits(call.getArgument(0)); return new com.example.platform.extension.api.port.ExtensionLimitQueries.Limits(v.timeoutMs(),v.maxConcurrency(),v.maxOutputBytes());});
+        ExtensionGraphQLResolver resolver = new ExtensionGraphQLResolver(registryService, router, limiter, com.example.platform.federation.graphql.OwnerQueryFixtures.scope());
 
         assertThrows(IllegalArgumentException.class, () -> resolver.extensionOverview(ctx));
     }

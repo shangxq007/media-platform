@@ -1,66 +1,20 @@
 package com.example.platform.federation.graphql.dataloader;
-
-import com.example.platform.billing.app.UsageMeteringService;
-import com.example.platform.billing.usage.UsageRecord;
+import com.example.platform.billing.api.reads.BillingReadQuery;
+import com.example.platform.federation.graphql.context.GraphQLReadScope;
+import java.util.*;
+import java.util.concurrent.*;
 import org.dataloader.MappedBatchLoader;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-
-/**
- * DataLoader for billing usage records, keyed by tenant ID.
- *
- * <p>This loader does NOT manipulate {@code TenantContext} on async threads.
- * Instead, it passes the tenant ID explicitly to {@code UsageMeteringService.getUsageByTenant(tenantId)},
- * which already accepts tenantId as a parameter. This avoids ThreadLocal leakage on shared
- * thread pools (e.g., ForkJoinPool.commonPool).
- *
- * <p>If downstream code changes to require TenantContext, a dedicated executor with
- * proper context propagation must be used instead.
- */
 @Component
-public class BillingUsageDataLoader implements MappedBatchLoader<String, List<Map<String, Object>>> {
-    private static final Logger log = LoggerFactory.getLogger(BillingUsageDataLoader.class);
-
-    private final UsageMeteringService usageMeteringService;
-
-    public BillingUsageDataLoader(UsageMeteringService usageMeteringService) {
-        this.usageMeteringService = usageMeteringService;
-    }
-
-    @Override
-    public CompletionStage<Map<String, List<Map<String, Object>>>> load(Set<String> keys) {
-        log.debug("Batch loading usage records for {} tenant IDs", keys.size());
-        return CompletableFuture.supplyAsync(() -> {
-            Map<String, List<Map<String, Object>>> result = new HashMap<>();
-            for (String tenantId : keys) {
-                try {
-                    List<Map<String, Object>> records = new ArrayList<>();
-                    var usageRecords = usageMeteringService.getUsageByTenant(tenantId);
-                    for (var r : usageRecords) {
-                        Map<String, Object> map = new HashMap<>();
-                        map.put("id", r.recordId());
-                        map.put("meterKey", r.dimension().name());
-                        map.put("quantity", r.quantity().baseUnits());
-                        map.put("unit", r.quantity().unit().name());
-                        map.put("recordedAt", r.recordedAt() != null ? r.recordedAt().toString() : "");
-                        records.add(map);
-                    }
-                    result.put(tenantId, records);
-                } catch (Exception e) {
-                    log.warn("Failed to load usage for tenant {}: {}", tenantId, e.getMessage());
-                    result.put(tenantId, new ArrayList<>());
-                }
-            }
-            return result;
-        });
-    }
+public class BillingUsageDataLoader implements MappedBatchLoader<String, List<Map<String,Object>>> {
+ private final BillingReadQuery query; private final GraphQLReadScope scope;
+ public BillingUsageDataLoader(BillingReadQuery query,GraphQLReadScope scope){this.query=query;this.scope=scope;}
+ public CompletionStage<Map<String,List<Map<String,Object>>>> load(Set<String> keys) {
+  // Owner reads execute in the dispatching request context. No common-pool ThreadLocal loss.
+  try {
+   Map<String,List<Map<String,Object>>> result=new LinkedHashMap<>();
+   if(!keys.isEmpty()){var actor=scope.actor();for(String id:keys){var rows=query.usage(actor,id).stream().map(v->Map.<String,Object>of("id",v.recordId(),"meterKey",v.dimension().name(),"quantity",v.quantity().baseUnits(),"unit",v.quantity().unit().name(),"recordedAt",v.recordedAt()==null?"":v.recordedAt().toString())).toList();result.put(id,rows);}}
+   return CompletableFuture.completedFuture(Collections.unmodifiableMap(result));
+  } catch(RuntimeException failure){return CompletableFuture.failedFuture(failure);}
+ }
 }

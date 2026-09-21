@@ -1,143 +1,27 @@
 package com.example.platform.federation.graphql;
-
-import com.example.platform.entitlement.api.EntitlementDecisionQuery;
-import com.example.platform.entitlement.domain.AccessCheckRequest;
-import com.example.platform.entitlement.domain.EntitlementDecision;
-import com.example.platform.federation.graphql.dataloader.EntitlementGrantDataLoader;
 import com.example.platform.federation.graphql.dataloader.UserDataLoader;
-import com.example.platform.identity.app.IdentityAccessService;
+import com.example.platform.identity.api.reads.UserReadQuery;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.Test;
-
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ExecutionException;
-
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
-
 class GraphQLDataLoaderTest {
-
-    @Test
-    void entitlementGrantDataLoaderQueriesThePublishedDecisionBoundary() throws Exception {
-        EntitlementDecisionQuery entitlementQuery = mock(EntitlementDecisionQuery.class);
-        when(entitlementQuery.evaluate(any(AccessCheckRequest.class))).thenReturn(new EntitlementDecision(
-                true, "ALLOW", "TIER", "Access granted", "PRO",
-                java.util.List.of(), null, null, null, null,
-                null, java.util.List.of(), null, false));
-
-        EntitlementGrantDataLoader loader = new EntitlementGrantDataLoader(entitlementQuery);
-        Map<String, Map<String, Object>> result = loader.load(Set.of("export"))
-                .toCompletableFuture().get();
-
-        assertEquals(true, result.get("export").get("allowed"));
-        assertEquals("TIER", result.get("export").get("reasonCode"));
-        assertEquals("PRO", result.get("export").get("tier"));
-        verify(entitlementQuery).evaluate(any(AccessCheckRequest.class));
-    }
-
-    @Test
-    void userDataLoaderLoadsMultipleUsersInBatch() throws Exception {
-        IdentityAccessService identityService = mock(IdentityAccessService.class);
-        when(identityService.overview()).thenReturn(Map.of("id", "user-1", "status", "active"));
-
-        UserDataLoader loader = new UserDataLoader(identityService);
-        CompletionStage<Map<String, Map<String, Object>>> stage = loader.load(Set.of("user-1", "user-2"));
-        Map<String, Map<String, Object>> result = stage.toCompletableFuture().get();
-
-        assertNotNull(result);
-        assertTrue(result.containsKey("user-1"));
-        assertTrue(result.containsKey("user-2"));
-    }
-
-    @Test
-    void userDataLoaderReturnsEmptyMapForEmptyKeys() throws Exception {
-        IdentityAccessService identityService = mock(IdentityAccessService.class);
-
-        UserDataLoader loader = new UserDataLoader(identityService);
-        CompletionStage<Map<String, Map<String, Object>>> stage = loader.load(Set.of());
-        Map<String, Map<String, Object>> result = stage.toCompletableFuture().get();
-
-        assertNotNull(result);
-        assertTrue(result.isEmpty());
-    }
-
-    @Test
-    void userDataLoaderDoesNotLeakDataAcrossTenants() throws Exception {
-        IdentityAccessService identityService = mock(IdentityAccessService.class);
-        when(identityService.overview()).thenReturn(Map.of("tenant", "tenant-A"));
-
-        UserDataLoader loader = new UserDataLoader(identityService);
-        Map<String, Map<String, Object>> result = loader.load(Set.of("user-1")).toCompletableFuture().get();
-
-        assertNotNull(result);
-        assertTrue(result.containsKey("user-1"));
-        Map<String, Object> userData = result.get("user-1");
-        assertNotNull(userData);
-        assertEquals("tenant-A", userData.get("tenant"));
-    }
-
-    @Test
-    void userDataLoaderHandlesServiceExceptionGracefully() throws Exception {
-        IdentityAccessService identityService = mock(IdentityAccessService.class);
-        when(identityService.overview()).thenThrow(new RuntimeException("Service unavailable"));
-
-        UserDataLoader loader = new UserDataLoader(identityService);
-        Map<String, Map<String, Object>> result = loader.load(Set.of("user-x")).toCompletableFuture().get();
-
-        assertNotNull(result);
-        assertTrue(result.containsKey("user-x"));
-        assertEquals("user-x", result.get("user-x").get("id"));
-    }
-
-    @Test
-    void userDataLoaderReturnsSameDataForSameKey() throws Exception {
-        IdentityAccessService identityService = mock(IdentityAccessService.class);
-        when(identityService.overview()).thenReturn(Map.of("name", "Test User"));
-
-        UserDataLoader loader = new UserDataLoader(identityService);
-        Map<String, Map<String, Object>> result = loader.load(Set.of("user-1")).toCompletableFuture().get();
-
-        assertEquals(1, result.size());
-        assertEquals("Test User", result.get("user-1").get("name"));
-    }
-
-    @Test
-    void userDataLoaderCompletesFutureSuccessfully() {
-        IdentityAccessService identityService = mock(IdentityAccessService.class);
-        when(identityService.overview()).thenReturn(Map.of("ok", true));
-
-        UserDataLoader loader = new UserDataLoader(identityService);
-        CompletionStage<Map<String, Map<String, Object>>> stage = loader.load(Set.of("u1"));
-
-        assertDoesNotThrow(() -> stage.toCompletableFuture().get());
-    }
-
-    @Test
-    void userDataLoaderHandlesSingleKey() throws Exception {
-        IdentityAccessService identityService = mock(IdentityAccessService.class);
-        when(identityService.overview()).thenReturn(Map.of("count", 1));
-
-        UserDataLoader loader = new UserDataLoader(identityService);
-        Map<String, Map<String, Object>> result = loader.load(Set.of("single-1")).toCompletableFuture().get();
-
-        assertNotNull(result);
-        assertTrue(result.containsKey("single-1"));
-        assertEquals(1, result.get("single-1").get("count"));
-    }
-
-    @Test
-    void userDataLoaderBatchLoadIsAtomic() throws Exception {
-        IdentityAccessService identityService = mock(IdentityAccessService.class);
-        when(identityService.overview()).thenReturn(Map.of("batch", true));
-
-        UserDataLoader loader = new UserDataLoader(identityService);
-        Set<String> keys = Set.of("a", "b", "c", "d", "e");
-        Map<String, Map<String, Object>> result = loader.load(keys).toCompletableFuture().get();
-
-        assertEquals(5, result.size());
-        for (String key : keys) {
-            assertTrue(result.containsKey(key), "Result must contain key: " + key);
-        }
-    }
+ @Test void distinctKeysAndMissingRecordsKeepIdentity(){
+  var loader=new UserDataLoader(id->id.equals("missing")?Optional.empty():Optional.of(new UserReadQuery.View(id,"tenant",id+"-name","ACTIVE")));
+  var result=loader.load(Set.of("a","b","missing")).toCompletableFuture().join();
+  assertEquals(Set.of("a","b"),result.keySet());assertEquals("a",result.get("a").get("id"));assertEquals("b-name",result.get("b").get("username"));
+ }
+ @Test void mixedDeniedBatchFailsAndRetryDoesNotCacheFailure(){
+  var fail=new AtomicBoolean(true);
+  var loader=new UserDataLoader(id->{if(fail.get()&&id.equals("denied"))throw new SecurityException();return Optional.of(new UserReadQuery.View(id,"t",id,"ACTIVE"));});
+  assertThrows(CompletionException.class,()->loader.load(new LinkedHashSet<>(List.of("valid","denied"))).toCompletableFuture().join());
+  fail.set(false);assertEquals(Set.of("valid","denied"),loader.load(Set.of("valid","denied")).toCompletableFuture().join().keySet());
+ }
+ @Test void requestLocalCachesDoNotShareSameResourceId(){
+  var a=org.dataloader.DataLoaderFactory.newMappedDataLoader(new UserDataLoader(id->Optional.of(new UserReadQuery.View(id,"a","A","ACTIVE")))) ;
+  var b=org.dataloader.DataLoaderFactory.newMappedDataLoader(new UserDataLoader(id->Optional.of(new UserReadQuery.View(id,"b","B","ACTIVE")))) ;
+  var av=a.load("same");var bv=b.load("same");a.dispatch();b.dispatch();assertEquals("A",av.join().get("username"));assertEquals("B",bv.join().get("username"));
+ }
+ @Test void emptyBatchMakesNoQuery(){assertEquals(Map.of(),new UserDataLoader(id->{throw new AssertionError();}).load(Set.of()).toCompletableFuture().join());}
 }

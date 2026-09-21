@@ -92,6 +92,12 @@ public class ExtensionRouter implements ExtensionRoutingQueries {
         return Optional.empty();
     }
 
+    public List<com.example.platform.extension.api.port.ExtensionRoutingQueries.Route> routes(String key,com.example.platform.shared.authorization.CanonicalActor actor) {
+        if(actor==null || actor.tenantId()==null) throw new IllegalArgumentException("Authenticated scope required");
+        return getRules(key).stream().filter(r->(r.tenantId()==null || r.tenantId().equals(actor.tenantId())) && (r.userId()==null || r.userId().equals(actor.actorId())))
+            .map(r->new com.example.platform.extension.api.port.ExtensionRoutingQueries.Route(r.scene(),r.priority(),r.enabled())).toList();
+    }
+
     public List<RoutingRule> getRules(String extensionCode) {
         return List.copyOf(routingRules.getOrDefault(extensionCode, List.of()));
     }

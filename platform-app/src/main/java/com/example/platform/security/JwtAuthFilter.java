@@ -55,7 +55,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     @Order(3)
     FilterRegistrationBean<JwtAuthFilter> jwtAuthFilterRegistration() {
         FilterRegistrationBean<JwtAuthFilter> registration = new FilterRegistrationBean<>(this);
-        registration.addUrlPatterns("/api/*", "/metrics/summary");
+        registration.addUrlPatterns("/api/*", "/metrics/summary", "/graphql");
         registration.setOrder(3);
         registration.setEnabled(true);
         return registration;
@@ -82,7 +82,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
-        if (path.equals("/metrics/summary")) return false;
+        if (path.equals("/metrics/summary") || path.equals("/graphql")) return false;
         // Marketplace management routes authenticate before their owner resolves Project/Workspace.
         // The explicit public discovery GET routes remain anonymous metadata reads.
         if(path.matches("/api/projects/[^/]+/marketplace(?:/.*)?")

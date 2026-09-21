@@ -1,44 +1,19 @@
 package com.example.platform.federation.graphql.dataloader;
-
-import com.example.platform.identity.app.IdentityAccessService;
+import com.example.platform.identity.api.reads.UserReadQuery;
+import java.util.*;
+import java.util.concurrent.*;
 import org.dataloader.MappedBatchLoader;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-import java.util.stream.Collectors;
-
 @Component
-public class UserDataLoader implements MappedBatchLoader<String, Map<String, Object>> {
-    private static final Logger log = LoggerFactory.getLogger(UserDataLoader.class);
-
-    private final IdentityAccessService identityAccessService;
-
-    public UserDataLoader(IdentityAccessService identityAccessService) {
-        this.identityAccessService = identityAccessService;
-    }
-
-    @Override
-    public CompletionStage<Map<String, Map<String, Object>>> load(Set<String> keys) {
-        log.debug("Batch loading {} users", keys.size());
-        return CompletableFuture.supplyAsync(() -> {
-            Map<String, Map<String, Object>> result = new HashMap<>();
-            for (String userId : keys) {
-                try {
-                    Map<String, Object> overview = identityAccessService.overview();
-                    result.put(userId, overview);
-                } catch (Exception e) {
-                    Map<String, Object> fallback = new HashMap<>();
-                    fallback.put("id", userId);
-                    result.put(userId, fallback);
-                }
-            }
-            return result;
-        });
-    }
+public class UserDataLoader implements MappedBatchLoader<String, Map<String,Object>> {
+ private final UserReadQuery query;
+ public UserDataLoader(UserReadQuery query){this.query=query;}
+ public CompletionStage<Map<String,Map<String,Object>>> load(Set<String> keys) {
+  // Owner reads execute in the dispatching request context. No common-pool ThreadLocal loss.
+  try {
+   Map<String,Map<String,Object>> result=new LinkedHashMap<>();
+   for(String id:keys) query.findById(id).ifPresent(v->result.put(id,Map.of("id",v.id(),"username",v.username(),"status",v.status())));
+   return CompletableFuture.completedFuture(Collections.unmodifiableMap(result));
+  } catch(RuntimeException failure){return CompletableFuture.failedFuture(failure);}
+ }
 }
