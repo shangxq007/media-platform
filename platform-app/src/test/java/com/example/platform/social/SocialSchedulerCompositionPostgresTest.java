@@ -33,8 +33,8 @@ class SocialSchedulerCompositionPostgresTest extends PostgresTestContainerSuppor
     }
     @BeforeEach void fixture() {
         jdbc.update("DELETE FROM social_post");
-        jdbc.update("DELETE FROM connected_platform");
-        jdbc.update("INSERT INTO connected_platform(id,tenant_id,user_id,platform_type,platform_user_id,platform_username,status,binding_version) VALUES ('account','tenant','actor','TWITTER','external','name','ACTIVE',1)");
+        jdbc.update("DELETE FROM social_connected_platform");
+        jdbc.update("INSERT INTO social_connected_platform(id,tenant_id,user_id,platform_type,platform_user_id,platform_username,status,binding_version) VALUES ('account','tenant','actor','TWITTER','external','name','ACTIVE',1)");
         jdbc.update("INSERT INTO social_post(id,tenant_id,user_id,platform_type,status,scheduled_at) VALUES ('post','tenant','actor','TWITTER','SCHEDULED',?)", LocalDateTime.now(ZoneOffset.UTC).minusMinutes(1));
     }
     @Test void registeredSchedulerUsesDurableOwnerPathAndDisabledFlagsLeaveRowsUnchanged() {
