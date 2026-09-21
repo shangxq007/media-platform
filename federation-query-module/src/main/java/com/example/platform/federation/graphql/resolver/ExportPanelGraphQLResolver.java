@@ -55,7 +55,7 @@ public class ExportPanelGraphQLResolver {
 
         ProjectInfo projectInfo = new ProjectInfo(project.id(), project.name());
         TimelineSummary timelineSummary = buildTimelineSummary(project.tenantId(), projectId);
-        String tier = resolveTier(tenantId, userId);
+        String tier = resolveTier(tenantId, context.workspaceId(), userId);
         List<ExportOption> exportOptions = resolveExportOptions(tier);
         List<WorkerStatus> workers = resolveWorkerStatuses();
         ExportValidation validation = buildValidation(exportOptions);
@@ -63,10 +63,10 @@ public class ExportPanelGraphQLResolver {
         return new ExportPanelState(projectInfo, timelineSummary, exportOptions, workers, validation);
     }
 
-    private String resolveTier(String tenantId, String userId) {
+    private String resolveTier(String tenantId, String workspaceId, String userId) {
         try {
             AccessCheckRequest req = new AccessCheckRequest(
-                    tenantId, null, userId, "USER", userId,
+                    tenantId, workspaceId, userId, "USER", userId,
                     "check", "FEATURE", tenantId, "export",
                     null, null, "GRAPHQL", 0L, Map.of());
             EntitlementDecision decision = entitlementDecisionService.evaluate(req);
@@ -100,7 +100,7 @@ public class ExportPanelGraphQLResolver {
                         boolean allowed = preset.allowed();
                         String reasonCode = allowed ? null : "TIER_RESTRICTION";
                         String recommendedPreset = preset.recommendedPreset();
-                        List<String> providers = List.of(preset.provider());
+                        List<String> providers = preset.provider() == null ? List.of() : List.of(preset.provider());
                         boolean requiresReview = preset.name().contains("experimental") || preset.name().contains("4k");
                         return new ExportOption(
                                 preset.name(),

@@ -63,7 +63,7 @@ public class MeOverviewGraphQLResolver {
         if (tenantId != null) {
             TenantReadQuery.View tenant = tenantRepository.findById(tenantId).orElse(null);
             if (tenant != null) {
-                tier = resolveTier(tenantId, effectiveUserId);
+                tier = resolveTier(tenantId, workspaceId, effectiveUserId);
                 tenantInfo = new TenantInfo(tenant.id(), tenant.name(), tier);
             }
         }
@@ -88,10 +88,10 @@ public class MeOverviewGraphQLResolver {
         );
     }
 
-    private String resolveTier(String tenantId, String userId) {
+    private String resolveTier(String tenantId, String workspaceId, String userId) {
         try {
             AccessCheckRequest req = new AccessCheckRequest(
-                    tenantId, null, userId, "USER", userId,
+                    tenantId, workspaceId, userId, "USER", userId,
                     "check", "FEATURE", tenantId, "render",
                     null, null, "GRAPHQL", 0L, Map.of());
             EntitlementDecision decision = entitlementDecisionService.evaluate(req);
