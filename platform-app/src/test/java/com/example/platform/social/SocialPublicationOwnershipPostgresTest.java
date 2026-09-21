@@ -24,9 +24,10 @@ import static org.mockito.Mockito.*;
 
 /** Real application, Identity authorization, migrations, PostgreSQL and transaction proxies. Only IO/timing is controlled. */
 @SpringBootTest(classes=PlatformApplication.class, webEnvironment=SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties={"app.social-publish.enabled=true", "app.social-publish.scheduler.enabled=true", "render.providers.natron.enabled=false"})
+        properties={"app.security.enabled=true", "app.security.jwt.secret-key=ep34-correction-http-test-key-at-least-256-bits", "app.social-publish.enabled=true", "app.social-publish.scheduler.enabled=true", "render.providers.natron.enabled=false"})
 @ActiveProfiles({"dev","test","preview"})
 class SocialPublicationOwnershipPostgresTest extends PostgresTestContainerSupport {
+    @org.springframework.boot.test.web.server.LocalServerPort int port;
     @Autowired JdbcTemplate jdbc;
     @Autowired SocialPublishService service;
     @Autowired SocialPostRepository posts;
@@ -49,7 +50,7 @@ class SocialPublicationOwnershipPostgresTest extends PostgresTestContainerSuppor
         tenant="t"+key; actor="u"+key; project="p"+key; account="a"+key; id="s"+key; workspace="w"+key;
         TenantContext.set(tenant);
         jdbc.update("INSERT INTO tenant(id,name,status,created_at) VALUES (?,?,'ACTIVE',now())",tenant,tenant);
-        jdbc.update("INSERT INTO account(id,issuer,subject,status,created_at) VALUES (?,'test',?,'ACTIVE',now())",actor,actor);
+        jdbc.update("INSERT INTO account(id,issuer,subject,status,created_at) VALUES (?,'urn:media-platform:local-hmac',?,'ACTIVE',now())",actor,actor);
         jdbc.update("INSERT INTO \"user\"(id,tenant_id,username,email,status,account_id,created_at) VALUES (?,?,?,?,'ACTIVE',?,now())",actor,tenant,actor,actor,actor);
         jdbc.update("INSERT INTO workspace(id,tenant_id,name,created_at,updated_at) VALUES (?,?,?,now(),now())",workspace,tenant,workspace);
         jdbc.update("INSERT INTO workspace_member(id,workspace_id,user_id,role,joined_at,updated_at) VALUES (?,?,?,'OWNER',now(),now())",actor,workspace,actor);
@@ -77,6 +78,20 @@ class SocialPublicationOwnershipPostgresTest extends PostgresTestContainerSuppor
     void await(CountDownLatch latch) throws InterruptedException { assertThat(latch.await(10,TimeUnit.SECONDS)).isTrue(); }
     SocialPostRepository.Attempt attempt() {return new SocialPostRepository.Attempt(posts.findById(id).orElseThrow(), (String)state().get("publication_attempt_id"));}
 
+    @Test void httpPublicationUsesAuthenticatedActorAndRejectsForgedHeaderBeforeClaim() throws Exception {
+        String token=io.jsonwebtoken.Jwts.builder().subject(actor).claim("tenantId",tenant).claim("roles",List.of("MEMBER"))
+                .expiration(new java.util.Date(System.currentTimeMillis()+60000)).signWith(io.jsonwebtoken.security.Keys.hmacShaKeyFor(
+                        "ep34-correction-http-test-key-at-least-256-bits".getBytes(java.nio.charset.StandardCharsets.UTF_8))).compact();
+        var client=java.net.http.HttpClient.newHttpClient();
+        var uri=java.net.URI.create("http://127.0.0.1:"+port+"/api/social/posts/"+id+"/publish");
+        var before=state();
+        var forged=client.send(java.net.http.HttpRequest.newBuilder(uri).header("Authorization","Bearer "+token)
+                .header("X-User-ID","forged").POST(java.net.http.HttpRequest.BodyPublishers.noBody()).build(),java.net.http.HttpResponse.BodyHandlers.ofString());
+        assertThat(forged.statusCode()).isEqualTo(403);assertThat(state()).isEqualTo(before);verify(provider,never()).publish(any(),any());
+        var valid=client.send(java.net.http.HttpRequest.newBuilder(uri).header("Authorization","Bearer "+token)
+                .header("X-User-ID",actor).POST(java.net.http.HttpRequest.BodyPublishers.noBody()).build(),java.net.http.HttpResponse.BodyHandlers.ofString());
+        assertThat(valid.statusCode()).as(valid.body()).isEqualTo(200);assertThat(state()).containsEntry("status","PUBLISHED");verify(provider).publish(any(),any());
+    }
     @Test void ordinaryPublicationRepeatedProcessingAndExactBoundAccount() {
         jdbc.update("INSERT INTO social_connected_platform(id,tenant_id,user_id,platform_type,status) VALUES (?,?,?,'TWITTER','ACTIVE')","x"+account,tenant,actor);
         publish(); var before=state();

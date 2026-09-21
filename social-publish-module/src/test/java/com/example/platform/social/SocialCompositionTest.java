@@ -111,8 +111,13 @@ class SocialCompositionTest {
                     assertThat(c.getBean(ScheduledAnnotationBeanPostProcessor.class).getScheduledTasks()).isEmpty();
                     verifyNoInteractions(posts, accounts);
                     when(posts.findById("post")).thenReturn(Optional.of(post()));
-                    assertThatThrownBy(() -> c.getBean(SocialPublishService.class).publishNow("tenant", "actor", "post"))
-                            .isInstanceOf(RuntimeException.class);
+                    when(posts.claim(any(),any(),any(),any(),any(),any())).thenReturn(Optional.of(new SocialPostRepository.Attempt(post(),"token")));
+                    when(accounts.findById("account")).thenReturn(Optional.of(account()));
+                    com.example.platform.shared.web.TenantContext.set("tenant");
+                    try {
+                        assertThatThrownBy(() -> c.getBean(SocialPublishService.class).publishNow("tenant", "actor", "post"))
+                                .hasMessageContaining("Invalid provider credentials");
+                    } finally { com.example.platform.shared.web.TenantContext.clear(); }
                     verify(provider, never()).publish(any(), any());
                     verify(posts, never()).save(any());
                 });

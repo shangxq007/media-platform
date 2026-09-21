@@ -30,6 +30,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class SocialPublishControllerTest {
 
+    @Mock private com.example.platform.identity.api.authorization.CanonicalActorResolver actors;
     @Mock private SocialPublishService publishService;
     @Mock private PlatformAuthService platformAuthService;
     @Mock private PublishAnalyticsService analyticsService;
@@ -41,7 +42,7 @@ class SocialPublishControllerTest {
     @BeforeEach
     void setUp() {
         controller = new SocialPublishController(
-                publishService, platformAuthService, analyticsService, readService, accountReadService);
+                publishService, platformAuthService, analyticsService, readService, accountReadService, actors);
         TenantContext.clear();
     }
 
@@ -83,6 +84,8 @@ class SocialPublishControllerTest {
     @Test
     void preexistingPostMutationContractRemainsAndDoesNotCreateBinding() {
         TenantContext.set("tenant-a");
+        when(actors.resolveCurrentActor()).thenReturn(java.util.Optional.of(
+                com.example.platform.shared.authorization.CanonicalActor.user("legacy-user","tenant-a",java.util.Set.of(),"test")));
         CreatePostRequest request = new CreatePostRequest("text", List.of(), "YOUTUBE");
         when(publishService.createPost("tenant-a", "legacy-user", request))
                 .thenReturn(samplePost("post-1"));

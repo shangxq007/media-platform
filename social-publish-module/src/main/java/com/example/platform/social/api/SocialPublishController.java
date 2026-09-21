@@ -30,17 +30,20 @@ public class SocialPublishController {
     private final PublishAnalyticsService analyticsService;
     private final SocialPostReadService readService;
     private final SocialAccountReadService accountReadService;
+    private final com.example.platform.identity.api.authorization.CanonicalActorResolver actors;
 
     public SocialPublishController(@org.springframework.lang.Nullable SocialPublishService publishService,
                                     @org.springframework.lang.Nullable PlatformAuthService platformAuthService,
                                     @org.springframework.lang.Nullable PublishAnalyticsService analyticsService,
                                     SocialPostReadService readService,
-                                    SocialAccountReadService accountReadService) {
+                                    SocialAccountReadService accountReadService,
+                                    com.example.platform.identity.api.authorization.CanonicalActorResolver actors) {
         this.publishService = publishService;
         this.platformAuthService = platformAuthService;
         this.analyticsService = analyticsService;
         this.readService = readService;
         this.accountReadService = accountReadService;
+        this.actors = actors;
     }
 
     private static <T> T requirePublishing(T service) {
@@ -49,6 +52,16 @@ public class SocialPublishController {
                     org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE, "Social publishing is disabled");
         }
         return service;
+    }
+
+    /** The legacy header is a consistency input, never authentication authority. */
+    private String publicationActor(String suppliedUserId) {
+        var actor = actors.resolveCurrentActor().orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.UNAUTHORIZED, "Authenticated actor required"));
+        if (!requireTenantId().equals(actor.tenantId()) || !actor.actorId().equals(suppliedUserId))
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN, "Publication actor mismatch");
+        return actor.actorId();
     }
 
     private static String requireTenantId() {
@@ -120,7 +133,7 @@ public class SocialPublishController {
             @Valid @RequestBody CreatePostRequest request) {
         String tenantId = requireTenantId();
         log.info("POST /api/social/posts tenant={} platform={}", tenantId, request.platformType());
-        return requirePublishing(publishService).createPost(tenantId, userId, request);
+        return requirePublishing(publishService).createPost(tenantId, publicationActor(userId), request);
     }
 
     @PostMapping("/posts/{id}/publish")
@@ -136,7 +149,7 @@ public class SocialPublishController {
             @PathVariable("id") String postId) {
         String tenantId = requireTenantId();
         log.info("POST /api/social/posts/{}/publish tenant={}", postId, tenantId);
-        return requirePublishing(publishService).publishNow(tenantId, userId, postId);
+        return requirePublishing(publishService).publishNow(tenantId, publicationActor(userId), postId);
     }
 
     @PostMapping("/posts/{id}/schedule")
@@ -154,7 +167,7 @@ public class SocialPublishController {
             @Valid @RequestBody SchedulePostRequest request) {
         String tenantId = requireTenantId();
         log.info("POST /api/social/posts/{}/schedule tenant={}", postId, tenantId);
-        return requirePublishing(publishService).schedulePost(tenantId, userId, postId, request);
+        return requirePublishing(publishService).schedulePost(tenantId, publicationActor(userId), postId, request);
     }
 
     @DeleteMapping("/posts/{id}/schedule")
@@ -170,7 +183,7 @@ public class SocialPublishController {
             @PathVariable("id") String postId) {
         String tenantId = requireTenantId();
         log.info("DELETE /api/social/posts/{}/schedule tenant={}", postId, tenantId);
-        requirePublishing(publishService).cancelScheduled(tenantId, userId, postId);
+        requirePublishing(publishService).cancelScheduled(tenantId, publicationActor(userId), postId);
         return ResponseEntity.noContent().build();
     }
 
@@ -226,7 +239,7 @@ public class SocialPublishController {
             @PathVariable("id") String postId) {
         String tenantId = requireTenantId();
         log.info("POST /api/social/posts/{}/retry tenant={}", postId, tenantId);
-        return requirePublishing(publishService).retryPost(tenantId, userId, postId);
+        return requirePublishing(publishService).retryPost(tenantId, publicationActor(userId), postId);
     }
 
     @DeleteMapping("/posts/{id}")
@@ -242,7 +255,7 @@ public class SocialPublishController {
             @PathVariable("id") String postId) {
         String tenantId = requireTenantId();
         log.info("DELETE /api/social/posts/{} tenant={}", postId, tenantId);
-        requirePublishing(publishService).deletePost(tenantId, userId, postId);
+        requirePublishing(publishService).deletePost(tenantId, publicationActor(userId), postId);
         return ResponseEntity.noContent().build();
     }
 
@@ -273,7 +286,7 @@ public class SocialPublishController {
             @Valid @RequestBody CreatePostRequest request) {
         String tenantId = requireTenantId();
         log.info("POST /api/social/drafts tenant={} platform={}", tenantId, request.platformType());
-        return requirePublishing(publishService).saveDraft(tenantId, userId, request);
+        return requirePublishing(publishService).saveDraft(tenantId, publicationActor(userId), request);
     }
 
     @GetMapping("/analytics/overview")
