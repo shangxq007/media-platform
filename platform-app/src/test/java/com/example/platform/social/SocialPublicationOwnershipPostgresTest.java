@@ -45,7 +45,7 @@ class SocialPublicationOwnershipPostgresTest extends PostgresTestContainerSuppor
 
     @BeforeEach void fixture() {
         jdbc.update("DELETE FROM social_post");
-        String key=UUID.randomUUID().toString();
+        String key=UUID.randomUUID().toString().substring(0,24);
         tenant="t"+key; actor="u"+key; project="p"+key; account="a"+key; id="s"+key; workspace="w"+key;
         TenantContext.set(tenant);
         jdbc.update("INSERT INTO tenant(id,name,status,created_at) VALUES (?,?,'ACTIVE',now())",tenant,tenant);

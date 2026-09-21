@@ -5,7 +5,10 @@ ALTER TABLE social_post
     ADD COLUMN attempt_project_id VARCHAR(64),
     ADD COLUMN attempt_account_id VARCHAR(64),
     ADD COLUMN attempt_binding_version BIGINT;
--- Historical in-flight outcomes cannot safely be redispatched.
+-- Historical failed/in-flight outcomes cannot safely be redispatched.
 UPDATE social_post SET status='UNRESOLVED', error_code='LEGACY_IN_FLIGHT',
     error_message='Historical publication outcome requires reconciliation'
-WHERE status='PUBLISHING';
+WHERE status IN ('PUBLISHING','FAILED');
+
+ALTER TABLE social_post ADD CONSTRAINT ck_social_dispatch_owned CHECK (
+    dispatch_started_at IS NULL OR publication_attempt_id IS NOT NULL);
