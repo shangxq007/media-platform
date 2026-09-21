@@ -8,5 +8,8 @@ public interface BillingReadQuery {
  record Usage(String recordId,UsageDimension dimension,UsageQuantity quantity,Instant recordedAt) {}
  record Summary(String tier,String currencyCode,double creditBalance) {}
  List<Usage> usage(CanonicalActor actor,String tenantId);
+ /** Legacy dashboard estimates, not invoice totals or spendable credit. */
+ record DashboardEstimate(double usageAmount,double estimatedRevenue,double creditBalanceTotal,String currencyCode) {}
+ DashboardEstimate dashboardEstimate(CanonicalActor actor);
  Summary summary(CanonicalActor actor);
 }

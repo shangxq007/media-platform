@@ -3,7 +3,7 @@ package com.example.platform.federation.graphql.resolver;
 
 import com.example.platform.billing.api.reads.BillingReadQuery;
 import com.example.platform.federation.graphql.context.GraphQLReadScope;
-import com.example.platform.billing.api.reads.BillingReadQuery.Usage;
+
 import com.example.platform.extension.api.port.ExtensionQueries;
 import com.example.platform.extension.api.port.ExtensionQueries.ExtensionInfo;
 import com.example.platform.federation.graphql.context.GraphQLRequestContext;
@@ -83,15 +83,11 @@ public class AdminDashboardGraphQLResolver {
 
     private AdminBillingSummary resolveBillingSummary(String range) {
         try {
-            List<Usage> allUsage = usageMeteringService.usage(scope.actor(), scope.actor().tenantId());
-            double totalAmount = allUsage.stream()
-                    .mapToDouble(r -> (double) r.quantity().baseUnits())
-                    .sum();
+            var estimate = usageMeteringService.dashboardEstimate(scope.actor());
             return new AdminBillingSummary(
-                    new MoneyDto(totalAmount, "USD"),
-                    new MoneyDto(totalAmount * 1.2, "USD"),
-                    new MoneyDto(totalAmount * 0.8, "USD")
-            );
+                    new MoneyDto(estimate.usageAmount(), estimate.currencyCode()),
+                    new MoneyDto(estimate.estimatedRevenue(), estimate.currencyCode()),
+                    new MoneyDto(estimate.creditBalanceTotal(), estimate.currencyCode()));
         } catch (Exception e) { throw new IllegalStateException("Owner query unavailable", e);
         }
     }

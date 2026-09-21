@@ -14,7 +14,7 @@ public class EntitlementGrantDataLoader implements MappedBatchLoader<String, Map
   // Owner reads execute in the dispatching request context. No common-pool ThreadLocal loss.
   try {
    Map<String,Map<String,Object>> result=new LinkedHashMap<>();
-   if(!keys.isEmpty()){var actor=scope.actor();for(String id:keys){var d=query.evaluate(new AccessCheckRequest(actor.tenantId(),null,actor.actorId(),actor.actorType().name(),actor.actorId(),"check","FEATURE",id,id,null,null,"GRAPHQL",0L,Map.of()));result.put(id,Map.of("allowed",d.allowed(),"reasonCode",d.reasonCode()==null?"":d.reasonCode(),"tier",d.currentTier()==null?"":d.currentTier()));}}
+   if(!keys.isEmpty()){var actor=scope.actor();for(String id:keys){var d=query.evaluate(new AccessCheckRequest(actor.tenantId(),scope.workspaceId(),actor.actorId(),actor.actorType().name(),actor.actorId(),"check","FEATURE",id,id,null,null,"GRAPHQL",0L,Map.of()));result.put(id,Map.of("allowed",d.allowed(),"reasonCode",d.reasonCode()==null?"":d.reasonCode(),"tier",d.currentTier()==null?"":d.currentTier()));}}
    return CompletableFuture.completedFuture(Collections.unmodifiableMap(result));
   } catch(RuntimeException failure){return CompletableFuture.failedFuture(failure);}
  }

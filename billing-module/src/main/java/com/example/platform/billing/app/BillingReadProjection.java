@@ -13,5 +13,11 @@ public class BillingReadProjection implements BillingReadQuery {
    throw new PlatformException(CommonErrorCode.INSUFFICIENT_PERMISSION,"Billing read scope mismatch");
  }
  public List<Usage> usage(CanonicalActor actor,String tenant){scope(actor,tenant);return metering.getUsageByTenant(tenant).stream().map(r->new Usage(r.recordId(),r.dimension(),r.quantity(),r.recordedAt())).toList();}
+ public DashboardEstimate dashboardEstimate(CanonicalActor actor){
+  var rows=usage(actor,actor==null?null:actor.tenantId());
+  double total=rows.stream().mapToDouble(r->r.quantity().baseUnits()).sum();
+  // Preserve the existing legacy dashboard estimate; this is not rating or a ledger balance.
+  return new DashboardEstimate(total,total*1.2,total*0.8,"USD");
+ }
  public Summary summary(CanonicalActor actor){scope(actor,actor==null?null:actor.tenantId());return new Summary("FREE","USD",0.0);}
 }

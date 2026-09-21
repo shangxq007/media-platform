@@ -83,7 +83,7 @@ class BillingUsageDataLoaderTest {
     private BillingUsageDataLoader loader(UsageMeteringService service,String tenant){
         var actor=com.example.platform.shared.authorization.CanonicalActor.user("u",tenant,Set.of(),"test");
         return new BillingUsageDataLoader(new com.example.platform.billing.app.BillingReadProjection(service),
-            new com.example.platform.federation.graphql.context.GraphQLReadScope(()->java.util.Optional.of(actor)));
+            new com.example.platform.federation.graphql.context.GraphQLReadScope(()->java.util.Optional.of(actor),mock(com.example.platform.identity.api.workspace.WorkspaceQueries.class)));
     }
     @Test void wrongTenantAndAbsentDispatchScopeFailWithoutReading(){
         var service=mock(UsageMeteringService.class);var loader=loader(service,"a");
