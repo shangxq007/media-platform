@@ -7,7 +7,7 @@ import com.example.platform.payment.infrastructure.PaymentRoutingProperties;
 import com.example.platform.shared.commercial.Money;
 import com.example.platform.shared.commercial.PrincipalRef;
 import com.example.platform.shared.commercial.PrincipalType;
-import com.example.platform.commerce.app.CheckoutPaymentPort;
+import com.example.platform.commerce.api.checkout.CheckoutPaymentPort;
 import org.springframework.stereotype.Service;
 
 @Service

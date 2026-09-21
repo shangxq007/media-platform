@@ -5,7 +5,8 @@ import com.example.platform.commerce.api.dto.CreateCheckoutSessionRequest;
 import com.example.platform.commerce.domain.*;
 import com.example.platform.commerce.infrastructure.CheckoutSessionRepository;
 import com.example.platform.commerce.infrastructure.PurchaseOrderRepository;
-import com.example.platform.commerce.app.CheckoutPaymentPort;
+import com.example.platform.commerce.api.checkout.CheckoutPaymentPort;
+import com.example.platform.commerce.api.checkout.CheckoutOrderPort;
 import com.example.platform.commerce.app.PurchaseFulfillmentCommand;
 import com.example.platform.commerce.app.PurchaseFulfillmentPort;
 import com.example.platform.shared.web.TenantGuard;
@@ -22,7 +23,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
-public class CheckoutOrchestrator {
+public class CheckoutOrchestrator implements CheckoutOrderPort {
 
     private static final Logger log = LoggerFactory.getLogger(CheckoutOrchestrator.class);
 
@@ -157,6 +158,7 @@ public class CheckoutOrchestrator {
         return session;
     }
 
+    @Override
     public PurchaseOrderCreatedEvent confirmCheckout(String sessionId) {
         return confirmCheckout(sessionId, null);
     }

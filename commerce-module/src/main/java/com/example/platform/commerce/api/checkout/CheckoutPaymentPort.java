@@ -1,4 +1,4 @@
-package com.example.platform.commerce.app;
+package com.example.platform.commerce.api.checkout;
 
 import java.time.Instant;
 
