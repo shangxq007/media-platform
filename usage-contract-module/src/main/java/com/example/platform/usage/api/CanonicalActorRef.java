@@ -1,4 +1,4 @@
-package com.example.platform.shared.usage;
+package com.example.platform.usage.api;
 
 import com.example.platform.shared.authorization.CanonicalActor;
 import java.util.Objects;

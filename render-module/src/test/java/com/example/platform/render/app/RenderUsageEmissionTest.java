@@ -5,12 +5,12 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.example.platform.shared.usage.UsageDimension;
-import com.example.platform.shared.usage.UsageProvenance;
-import com.example.platform.shared.usage.UsageQuantity;
-import com.example.platform.shared.usage.ObservedRuntimeUsage;
-import com.example.platform.shared.usage.ObservedRuntimeUsageEmissionPort;
-import com.example.platform.shared.usage.UsageUnit;
+import com.example.platform.usage.api.UsageDimension;
+import com.example.platform.usage.api.UsageProvenance;
+import com.example.platform.usage.api.UsageQuantity;
+import com.example.platform.usage.api.ObservedRuntimeUsage;
+import com.example.platform.usage.api.ObservedRuntimeUsageEmissionPort;
+import com.example.platform.usage.api.UsageUnit;
 import com.example.platform.render.domain.RenderJobPlan;
 import com.example.platform.render.domain.RenderProfile;
 import com.example.platform.render.domain.RenderStep;

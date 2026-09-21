@@ -1,15 +1,15 @@
 package com.example.platform.extension.runtime.internal;
 
-import com.example.platform.shared.usage.CanonicalActorRef;
-import com.example.platform.shared.usage.ObservedRuntimeUsage;
-import com.example.platform.shared.usage.ObservedRuntimeUsageEmissionPort;
-import com.example.platform.shared.usage.OperationRef;
-import com.example.platform.shared.usage.ProviderRef;
-import com.example.platform.shared.usage.RuntimeOutcome;
-import com.example.platform.shared.usage.UsageDimension;
-import com.example.platform.shared.usage.UsageProvenance;
-import com.example.platform.shared.usage.UsageQuantity;
-import com.example.platform.shared.usage.UsageUnit;
+import com.example.platform.usage.api.CanonicalActorRef;
+import com.example.platform.usage.api.ObservedRuntimeUsage;
+import com.example.platform.usage.api.ObservedRuntimeUsageEmissionPort;
+import com.example.platform.usage.api.OperationRef;
+import com.example.platform.usage.api.ProviderRef;
+import com.example.platform.usage.api.RuntimeOutcome;
+import com.example.platform.usage.api.UsageDimension;
+import com.example.platform.usage.api.UsageProvenance;
+import com.example.platform.usage.api.UsageQuantity;
+import com.example.platform.usage.api.UsageUnit;
 import java.time.Instant;
 import java.util.Objects;
 

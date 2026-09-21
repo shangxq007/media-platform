@@ -1,4 +1,4 @@
-package com.example.platform.shared.usage;
+package com.example.platform.usage.api;
 
 /** Logical operation and optional execution-attempt identity. */
 public record OperationRef(String operationId, String attemptId) {

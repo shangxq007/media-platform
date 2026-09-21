@@ -1,7 +1,7 @@
 package com.example.platform.usage.api;
 
 import com.example.platform.outbox.api.event.*;
-import com.example.platform.shared.usage.UsageDimension;
+import com.example.platform.usage.api.UsageDimension;
 import java.util.List;
 import java.util.Objects;
 

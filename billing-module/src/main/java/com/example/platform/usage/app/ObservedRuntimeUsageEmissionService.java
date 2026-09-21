@@ -1,7 +1,7 @@
 package com.example.platform.usage.app;
 
-import com.example.platform.shared.usage.ObservedRuntimeUsage;
-import com.example.platform.shared.usage.ObservedRuntimeUsageEmissionPort;
+import com.example.platform.usage.api.ObservedRuntimeUsage;
+import com.example.platform.usage.api.ObservedRuntimeUsageEmissionPort;
 import org.springframework.stereotype.Service;
 
 /** Runtime-facing adapter to the single durable observation append path. */

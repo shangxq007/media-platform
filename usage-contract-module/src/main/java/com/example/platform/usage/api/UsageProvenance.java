@@ -1,4 +1,4 @@
-package com.example.platform.shared.usage;
+package com.example.platform.usage.api;
 
 /** How an operational quantity was obtained. */
 public enum UsageProvenance {

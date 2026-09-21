@@ -1,4 +1,7 @@
+plugins { id("java-library") }
+
 dependencies {
+    api(project(":usage-contract-module")) // owner-published observation/ingestion contracts
     implementation(project(":shared-kernel"))
     implementation("org.springframework.boot:spring-boot-starter")
     implementation("org.springframework.boot:spring-boot-starter-web")

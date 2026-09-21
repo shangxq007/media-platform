@@ -1,5 +1,5 @@
 package com.example.platform.render.api.binding;
-import com.example.platform.shared.usage.ProviderRef;
+import com.example.platform.usage.api.ProviderRef;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;

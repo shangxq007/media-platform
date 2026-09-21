@@ -4,7 +4,7 @@ import com.example.platform.ai.app.AiGatewayService;
 import com.example.platform.extension.runtime.PluginRuntime;
 import com.example.platform.render.app.RenderStepExecutionService;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
-import com.example.platform.shared.usage.*;
+import com.example.platform.usage.api.*;
 import com.example.platform.usage.app.ObservedRuntimeUsageEmissionService;
 import com.example.platform.usage.app.ObservedRuntimeUsageOutboxPublisher;
 import com.example.platform.usage.infrastructure.ObservedRuntimeUsageJdbcRepository;

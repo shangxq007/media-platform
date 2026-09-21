@@ -1,4 +1,4 @@
-package com.example.platform.shared.usage;
+package com.example.platform.usage.api;
 
 import java.util.Objects;
 

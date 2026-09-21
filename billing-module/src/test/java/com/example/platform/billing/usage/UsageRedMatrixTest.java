@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.example.platform.billing.app.UsageMeteringService;
-import com.example.platform.shared.usage.ObservedRuntimeUsage;
+import com.example.platform.usage.api.ObservedRuntimeUsage;
 import java.lang.reflect.RecordComponent;
 import java.util.Arrays;
 import org.junit.jupiter.api.Test;

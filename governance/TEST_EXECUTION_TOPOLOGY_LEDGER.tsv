@@ -51,3 +51,4 @@ PROJECT	TEST_TASK	SOURCE_SET	DISCOVERED_TEST_COUNT	USES_SPRING_CONTEXT	USES_SPRI
 :worker-fabric-module	test	test	362	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	2	2g	PURE_PARALLEL_SAFE	Hermes sealed promotion receipt V1 proves candidate profile correctness and collision-free two-fork execution
 :workflow-module	test	test	161	YES	NO	NO	NO	NO	YES	NO	NO	NO	YES	YES	NO	NO	TEMPORAL_TEST_ENVIRONMENT	1	2g	SERIAL_ONLY	Temporal worker lifecycle and static controls are an exclusive shared resource
 :marketplace-module	test	test	5	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	1	2g	REVIEW_REQUIRED	New Marketplace owner suite stays single-fork pending independent review
+:usage-contract-module	test	test	4	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	1	2g	REVIEW_REQUIRED	EP28A owner contract relocation; conservative single fork, no parallel promotion requested

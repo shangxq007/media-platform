@@ -1,7 +1,7 @@
 package com.example.platform.billing.usage;
 
-import com.example.platform.shared.usage.UsageDimension;
-import com.example.platform.shared.usage.UsageQuantity;
+import com.example.platform.usage.api.UsageDimension;
+import com.example.platform.usage.api.UsageQuantity;
 import java.time.Instant;
 
 /**

@@ -1,8 +1,8 @@
 package com.example.platform.extension.runtime.conformance;
 
-import com.example.platform.shared.usage.CanonicalActorRef;
-import com.example.platform.shared.usage.OperationRef;
-import com.example.platform.shared.usage.ProviderRef;
+import com.example.platform.usage.api.CanonicalActorRef;
+import com.example.platform.usage.api.OperationRef;
+import com.example.platform.usage.api.ProviderRef;
 import com.example.platform.extension.domain.ExtensionTrustLevel;
 import com.example.platform.extension.runtime.CredentialRef;
 import com.example.platform.extension.runtime.ExecutionMode;
@@ -118,10 +118,10 @@ class PluginRuntimeRedMatrixTest {
         RuntimeUsageEmitter emitter = new RuntimeUsageEmitter(port);
         var op = OperationRef.of("op-1", "attempt-1");
         emitter.emitBaseFacts("tenant-1", ACTOR, op, PROVIDER, "cap-1", 100,
-                com.example.platform.shared.usage.RuntimeOutcome.SUCCEEDED,
+                com.example.platform.usage.api.RuntimeOutcome.SUCCEEDED,
                 Instant.EPOCH, "trace-1");
         emitter.emitBaseFacts("tenant-1", ACTOR, op, PROVIDER, "cap-1", 100,
-                com.example.platform.shared.usage.RuntimeOutcome.SUCCEEDED,
+                com.example.platform.usage.api.RuntimeOutcome.SUCCEEDED,
                 Instant.EPOCH, "trace-1");
         // replay of the same attempt still emits facts (idempotency is enforced by
         // the persistence layer via the key) — keys must be identical across replay
@@ -136,11 +136,11 @@ class PluginRuntimeRedMatrixTest {
         RuntimeUsageEmitter emitter = new RuntimeUsageEmitter(port);
         emitter.emitBaseFacts("tenant-1", ACTOR, OperationRef.of("op-1", "attempt-1"),
                 PROVIDER, "cap-1", 100,
-                com.example.platform.shared.usage.RuntimeOutcome.SUCCEEDED,
+                com.example.platform.usage.api.RuntimeOutcome.SUCCEEDED,
                 Instant.EPOCH, "trace-1");
         emitter.emitBaseFacts("tenant-1", ACTOR, OperationRef.of("op-1", "attempt-2"),
                 PROVIDER, "cap-1", 100,
-                com.example.platform.shared.usage.RuntimeOutcome.SUCCEEDED,
+                com.example.platform.usage.api.RuntimeOutcome.SUCCEEDED,
                 Instant.EPOCH, "trace-1");
         // new attempt => distinct keys (all four distinct)
         assertEquals(4, port.keys.size());
@@ -154,20 +154,20 @@ class PluginRuntimeRedMatrixTest {
         RuntimeUsageEmitter emitter = new RuntimeUsageEmitter(port);
         emitter.emitBaseFacts("tenant-1", ACTOR, OperationRef.of("op-fail", "attempt-1"),
                 PROVIDER, "cap-1", 400,
-                com.example.platform.shared.usage.RuntimeOutcome.FAILED,
+                com.example.platform.usage.api.RuntimeOutcome.FAILED,
                 Instant.EPOCH, "trace-failed");
         assertTrue(port.dimensions.contains(
-                com.example.platform.shared.usage.UsageDimension.DURATION));
+                com.example.platform.usage.api.UsageDimension.DURATION));
     }
 
     /** Local fake emission port capturing keys + dimensions. */
-    static final class FakePort implements com.example.platform.shared.usage.ObservedRuntimeUsageEmissionPort {
+    static final class FakePort implements com.example.platform.usage.api.ObservedRuntimeUsageEmissionPort {
         final List<String> keys = new java.util.ArrayList<>();
-        final List<com.example.platform.shared.usage.UsageDimension> dimensions = new java.util.ArrayList<>();
+        final List<com.example.platform.usage.api.UsageDimension> dimensions = new java.util.ArrayList<>();
 
         @Override
-        public com.example.platform.shared.usage.ObservedRuntimeUsage emit(
-                com.example.platform.shared.usage.ObservedRuntimeUsage record) {
+        public com.example.platform.usage.api.ObservedRuntimeUsage emit(
+                com.example.platform.usage.api.ObservedRuntimeUsage record) {
             keys.add(record.idempotencyKey());
             dimensions.add(record.dimension());
             return record;

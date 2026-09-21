@@ -1,4 +1,4 @@
-package com.example.platform.shared.usage;
+package com.example.platform.usage.api;
 
 /** Stable reference to the provider implementation that performed the operation. */
 public record ProviderRef(String providerId) {

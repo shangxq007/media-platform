@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.example.platform.billing.usage.BillableUsage;
-import com.example.platform.shared.usage.ObservedRuntimeUsage;
+import com.example.platform.usage.api.ObservedRuntimeUsage;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -16,8 +16,8 @@ import org.junit.jupiter.api.Test;
 
 class I4UsageLineageArchitectureTest {
 
-    private static final Path SHARED_USAGE = Path.of(
-            "../shared-kernel/src/main/java/com/example/platform/shared/usage");
+    private static final Path USAGE_API = Path.of(
+            "../usage-contract-module/src/main/java/com/example/platform/usage/api");
     private static final Path EXTENSION_RUNTIME = Path.of(
             "../extension-module/src/main/java/com/example/platform/extension/runtime");
     private static final Path RENDER_MAIN = Path.of(
@@ -28,12 +28,12 @@ class I4UsageLineageArchitectureTest {
 
     @Test
     void neutralObservationOwnershipAndRuntimeImportDirection() throws IOException {
-        assertTrue(Files.exists(SHARED_USAGE.resolve("ObservedRuntimeUsage.java")));
+        assertTrue(Files.exists(USAGE_API.resolve("ObservedRuntimeUsage.java")));
         for (Path source : javaFiles(EXTENSION_RUNTIME)) {
             assertFalse(code(source).contains("com.example.platform.billing."),
                     "runtime must import no Billing app/domain/pricing/type: " + source);
         }
-        assertFalse(code(SHARED_USAGE.resolve("ObservedRuntimeUsage.java"))
+        assertFalse(code(USAGE_API.resolve("ObservedRuntimeUsage.java"))
                 .contains("com.example.platform.billing"));
     }
 
@@ -41,7 +41,7 @@ class I4UsageLineageArchitectureTest {
     void observedAndBillableAreDistinctTypesWithoutCommercialFieldsInObservation()
             throws IOException {
         assertNotEquals(ObservedRuntimeUsage.class, BillableUsage.class);
-        String observation = code(SHARED_USAGE.resolve("ObservedRuntimeUsage.java"));
+        String observation = code(USAGE_API.resolve("ObservedRuntimeUsage.java"));
         for (String forbidden : List.of(
                 "price", "billable", "entitlement", "subscription", "quotaDecision",
                 "amountMinor", "currency")) {

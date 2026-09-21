@@ -5,7 +5,7 @@ import com.example.platform.ingest.preflight.persistence.contract.SafePreflightP
 import com.example.platform.ingest.preflight.policy.config.IngestPreflightPolicyProperties;
 import com.example.platform.observability.monitoring.SentryMonitoringService;
 import com.example.platform.outbox.app.OutboxEventService;
-import com.example.platform.shared.usage.ObservedRuntimeUsageEmissionPort;
+import com.example.platform.usage.api.ObservedRuntimeUsageEmissionPort;
 import com.example.platform.usage.app.ObservedRuntimeUsageEmissionService;
 import com.example.platform.usage.app.ObservedRuntimeUsageOutboxPublisher;
 import com.example.platform.usage.infrastructure.ObservedRuntimeUsageJdbcRepository;

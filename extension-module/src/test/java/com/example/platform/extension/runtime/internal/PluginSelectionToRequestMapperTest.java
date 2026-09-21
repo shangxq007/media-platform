@@ -1,7 +1,7 @@
 package com.example.platform.extension.runtime.internal;
 
-import com.example.platform.shared.usage.CanonicalActorRef;
-import com.example.platform.shared.usage.OperationRef;
+import com.example.platform.usage.api.CanonicalActorRef;
+import com.example.platform.usage.api.OperationRef;
 import com.example.platform.extension.domain.PluginHealth;
 import com.example.platform.extension.domain.PluginSelectionResult;
 import com.example.platform.extension.runtime.ExecutionMode;

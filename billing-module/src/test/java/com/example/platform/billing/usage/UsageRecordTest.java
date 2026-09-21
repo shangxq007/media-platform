@@ -3,7 +3,7 @@ package com.example.platform.billing.usage;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.example.platform.shared.usage.ObservedRuntimeUsage;
+import com.example.platform.usage.api.ObservedRuntimeUsage;
 import java.lang.reflect.Modifier;
 import org.junit.jupiter.api.Test;
 

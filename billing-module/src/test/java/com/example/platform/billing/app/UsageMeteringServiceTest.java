@@ -7,8 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.example.platform.billing.usage.MeteringRule;
 import com.example.platform.billing.usage.MeteringRuleRegistry;
 import com.example.platform.billing.usage.MeteringTransformationKind;
-import com.example.platform.shared.usage.UsageDimension;
-import com.example.platform.shared.usage.UsageUnit;
+import com.example.platform.usage.api.UsageDimension;
+import com.example.platform.usage.api.UsageUnit;
 import org.junit.jupiter.api.Test;
 
 class UsageMeteringServiceTest {

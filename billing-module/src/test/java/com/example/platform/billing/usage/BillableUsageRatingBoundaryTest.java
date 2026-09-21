@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 import com.example.platform.billing.app.RatingEngine;
-import com.example.platform.shared.usage.ObservedRuntimeUsage;
+import com.example.platform.usage.api.ObservedRuntimeUsage;
 import java.util.Arrays;
 import org.junit.jupiter.api.Test;
 

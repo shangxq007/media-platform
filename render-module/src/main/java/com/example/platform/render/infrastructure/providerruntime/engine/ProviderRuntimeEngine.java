@@ -95,7 +95,7 @@ public class ProviderRuntimeEngine {
         if(selected!=null) {
             bindingPublisher.resolved(new com.example.platform.render.api.binding.ProviderRuntimeBindingResolvedEvent(
                 request.jobId(),request.projectId(),request.tenantId(),
-                new com.example.platform.shared.usage.ProviderRef(selected.providerName()),traceId,Instant.now()));
+                new com.example.platform.usage.api.ProviderRef(selected.providerName()),traceId,Instant.now()));
         }
 
         // Step 6: Execute with fallback if needed

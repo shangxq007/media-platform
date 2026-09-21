@@ -1,7 +1,7 @@
 package com.example.platform.billing.usage;
 
-import com.example.platform.shared.usage.UsageDimension;
-import com.example.platform.shared.usage.UsageUnit;
+import com.example.platform.usage.api.UsageDimension;
+import com.example.platform.usage.api.UsageUnit;
 import java.util.Objects;
 
 /** Explicit immutable and versioned observation-to-billable transformation rule. */

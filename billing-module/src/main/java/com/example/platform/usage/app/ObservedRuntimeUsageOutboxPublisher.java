@@ -1,7 +1,7 @@
 package com.example.platform.usage.app;
 
 import com.example.platform.outbox.app.OutboxEventService;
-import com.example.platform.shared.usage.ObservedRuntimeUsage;
+import com.example.platform.usage.api.ObservedRuntimeUsage;
 import com.example.platform.usage.infrastructure.ObservedRuntimeUsageJdbcRepository;
 
 import org.springframework.stereotype.Service;

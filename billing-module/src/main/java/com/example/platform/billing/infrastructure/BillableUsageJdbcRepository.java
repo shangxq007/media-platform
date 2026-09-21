@@ -2,10 +2,10 @@ package com.example.platform.billing.infrastructure;
 
 import com.example.platform.billing.usage.BillableUsage;
 import com.example.platform.billing.usage.MeteringTransformationKind;
-import com.example.platform.shared.usage.CanonicalActorRef;
-import com.example.platform.shared.usage.UsageDimension;
-import com.example.platform.shared.usage.UsageQuantity;
-import com.example.platform.shared.usage.UsageUnit;
+import com.example.platform.usage.api.CanonicalActorRef;
+import com.example.platform.usage.api.UsageDimension;
+import com.example.platform.usage.api.UsageQuantity;
+import com.example.platform.usage.api.UsageUnit;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;

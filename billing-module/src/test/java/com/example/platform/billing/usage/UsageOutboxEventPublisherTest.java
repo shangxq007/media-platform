@@ -8,9 +8,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.example.platform.outbox.app.OutboxEventService;
-import com.example.platform.shared.usage.ObservedRuntimeUsage;
-import com.example.platform.shared.usage.OperationRef;
-import com.example.platform.shared.usage.UsageDimension;
+import com.example.platform.usage.api.ObservedRuntimeUsage;
+import com.example.platform.usage.api.OperationRef;
+import com.example.platform.usage.api.UsageDimension;
 import com.example.platform.usage.app.ObservedRuntimeUsageOutboxPublisher;
 import com.example.platform.usage.infrastructure.ObservedRuntimeUsageJdbcRepository;
 import java.util.Map;

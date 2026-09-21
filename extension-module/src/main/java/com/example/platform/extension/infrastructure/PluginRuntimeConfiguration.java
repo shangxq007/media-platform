@@ -5,7 +5,7 @@ import com.example.platform.extension.runtime.PluginRuntime;
 import com.example.platform.extension.runtime.internal.DefaultPluginRuntime;
 import com.example.platform.extension.runtime.internal.RuntimeUsageEmitter;
 import com.example.platform.extension.runtime.internal.SecretRefResolver;
-import com.example.platform.shared.usage.ObservedRuntimeUsageEmissionPort;
+import com.example.platform.usage.api.ObservedRuntimeUsageEmissionPort;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

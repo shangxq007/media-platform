@@ -1,4 +1,4 @@
-package com.example.platform.shared.usage;
+package com.example.platform.usage.api;
 
 /** Neutral operational usage dimensions. */
 public enum UsageDimension {

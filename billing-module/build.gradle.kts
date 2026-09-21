@@ -1,6 +1,7 @@
 plugins { id("java-library") }
 
 dependencies {
+    api(project(":usage-contract-module")) // owner-published observation/ingestion contracts
     implementation(project(":typed-schema-module"))
     implementation(project(":outbox-event-module"))
     api(project(":shared-kernel"))

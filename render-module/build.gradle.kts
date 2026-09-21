@@ -4,6 +4,7 @@ plugins {
 }
 
 dependencies {
+    implementation(project(":usage-contract-module")) // owner-published observation/ingestion contracts
     implementation(project(":marketplace-module")) // public publication/listing owner contracts
     implementation(project(":identity-access-module")) // published authorization contract
     implementation(project(":sandbox-isolation-module"))

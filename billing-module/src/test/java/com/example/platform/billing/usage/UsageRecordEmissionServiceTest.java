@@ -5,7 +5,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.example.platform.shared.usage.ObservedRuntimeUsage;
+import com.example.platform.usage.api.ObservedRuntimeUsage;
 import com.example.platform.usage.app.ObservedRuntimeUsageEmissionService;
 import com.example.platform.usage.app.ObservedRuntimeUsageOutboxPublisher;
 import org.junit.jupiter.api.Test;

@@ -1,4 +1,4 @@
-package com.example.platform.shared.usage;
+package com.example.platform.usage.api;
 
 /** Neutral runtime-facing append port for observed usage. */
 @FunctionalInterface

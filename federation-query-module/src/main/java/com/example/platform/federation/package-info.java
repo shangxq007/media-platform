@@ -1,6 +1,7 @@
 @org.springframework.modulith.ApplicationModule(
         displayName = "Federation Query",
         allowedDependencies = {
+            "usage :: observations",
             "shared",
             "identity :: app", "identity :: workspace",
             "identity :: domain",

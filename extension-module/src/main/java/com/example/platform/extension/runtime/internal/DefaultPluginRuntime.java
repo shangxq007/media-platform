@@ -15,7 +15,7 @@ import com.example.platform.extension.runtime.PluginRuntimeError;
 import com.example.platform.extension.runtime.PluginRuntimeProviderBinding;
 import com.example.platform.extension.runtime.PluginRuntimeErrorCategory;
 import com.example.platform.extension.runtime.PluginRuntimeExecutionException;
-import com.example.platform.shared.usage.RuntimeOutcome;
+import com.example.platform.usage.api.RuntimeOutcome;
 
 import java.time.Instant;
 import java.util.Map;

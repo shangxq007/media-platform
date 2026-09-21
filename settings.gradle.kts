@@ -28,6 +28,7 @@ include(
     "commerce-module",
     "payment-module",
     "billing-module",
+    "usage-contract-module",
     "entitlement-module",
     "policy-governance-module",
     "sandbox-isolation-module",
