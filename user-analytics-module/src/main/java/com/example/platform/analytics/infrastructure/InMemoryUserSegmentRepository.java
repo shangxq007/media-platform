@@ -2,7 +2,6 @@ package com.example.platform.analytics.infrastructure;
 
 import com.example.platform.analytics.domain.UserSegment;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.util.*;

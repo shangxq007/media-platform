@@ -3,7 +3,6 @@ package com.example.platform.analytics.infrastructure;
 import com.example.platform.analytics.domain.UserHabits;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
-import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 

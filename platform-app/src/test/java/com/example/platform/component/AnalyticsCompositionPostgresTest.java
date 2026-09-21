@@ -64,7 +64,7 @@ class AnalyticsCompositionPostgresTest extends PostgresTestContainerSupport {
             assertThat(tasks).hasSize(2);
             tasks.forEach(task -> task.getTask().getRunnable().run());
             assertThat(jdbc.queryForObject("SELECT total_actions FROM user_profile WHERE tenant_id='tenant'", Integer.class)).isEqualTo(1);
-            assertThat(jdbc.queryForObject("SELECT count(*) FROM user_segment", Integer.class)).isEqualTo(3);
+            assertThat(jdbc.queryForObject("SELECT count(*) FROM user_segment", Integer.class)).isEqualTo(6);
             assertThat(c.getBean(UserProfileRepository.class).findByTenantIdAndUserId("tenant", "actor").orElseThrow().totalActions()).isEqualTo(1);
         });
         persistent().run(c -> {
