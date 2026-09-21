@@ -87,6 +87,23 @@ class PlatformCompositionTest {
             });
         } finally { logger.detachAppender(events); }
     }
+    @Test void workerCleanupRetainsOriginalAndSuppressedErrorsAndDoesNotPreventOtherOwners() {
+        var worker = mock(WorkerFactory.class);
+        var outbox = mock(OutboxEventDispatcher.class);
+        var original = new IllegalStateException("stop failed");
+        var cleanup = new IllegalStateException("await failed");
+        doThrow(original).when(worker).shutdown();
+        doThrow(cleanup).when(worker).awaitTermination(anyLong(), any());
+        new ApplicationContextRunner().withUserConfiguration(PlatformGracefulShutdownCoordinator.class, TemporalWorkerGracefulShutdown.class)
+                .withPropertyValues("app.temporal.enabled=true").withBean(WorkerFactory.class, () -> worker)
+                .withBean(AppTemporalProperties.class, AppTemporalProperties::new)
+                .withBean(OutboxEventDispatcher.class, () -> outbox).run(c -> assertThat(c).hasNotFailed());
+        verify(worker).shutdown();
+        verify(worker).shutdownNow();
+        verify(outbox).processBatch(50);
+        assertThat(original.getSuppressed()).contains(cleanup);
+    }
+
     @Test void workerHealthReflectsDependencyTransitions() {
         var worker = mock(WorkerFactory.class);
         new ApplicationContextRunner().withUserConfiguration(TemporalWorkerHealthIndicator.class)

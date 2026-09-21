@@ -22,6 +22,8 @@ public class TemporalWorkerGracefulShutdown {
 
     private static final Logger log = LoggerFactory.getLogger(TemporalWorkerGracefulShutdown.class);
 
+    private final java.util.concurrent.atomic.AtomicBoolean shutdownStarted = new java.util.concurrent.atomic.AtomicBoolean();
+
     private final WorkerFactory workerFactory;
     private final AppTemporalProperties temporalProperties;
 
@@ -33,17 +35,29 @@ public class TemporalWorkerGracefulShutdown {
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void onContextClosed(ContextClosedEvent event) {
+        if (!shutdownStarted.compareAndSet(false, true)) return;
         log.info("Temporal worker graceful shutdown: initiating WorkerFactory.shutdown()");
+        Exception failure = null;
+        try { workerFactory.shutdown(); }
+        catch (Exception e) { failure = e; }
+        int awaitSeconds = Math.max(5, temporalProperties.getShutdownAwaitSeconds());
+        try { workerFactory.awaitTermination(awaitSeconds, TimeUnit.SECONDS); }
+        catch (Exception e) { failure = retain(failure, e); }
         try {
-            workerFactory.shutdown();
-            int awaitSeconds = Math.max(5, temporalProperties.getShutdownAwaitSeconds());
-            workerFactory.awaitTermination(awaitSeconds, TimeUnit.SECONDS);
-            log.info(
-                    "Temporal worker shutdown finished: isTerminated={} isShutdown={}",
-                    workerFactory.isTerminated(),
-                    workerFactory.isShutdown());
-        } catch (Exception e) {
-            log.warn("Temporal worker graceful shutdown error: {}", e.getMessage());
+            if (!workerFactory.isTerminated()) {
+                workerFactory.shutdownNow();
+                workerFactory.awaitTermination(awaitSeconds, TimeUnit.SECONDS);
+            }
+        } catch (Exception e) { failure = retain(failure, e); }
+        if (failure != null) {
+            // Preserve the first failure and cleanup failures while allowing other context owners to close.
+            log.warn("Temporal worker shutdown failed; remaining resource cleanup continues", failure);
         }
+    }
+
+    private static Exception retain(Exception original, Exception cleanup) {
+        if (original == null) return cleanup;
+        if (original != cleanup) original.addSuppressed(cleanup);
+        return original;
     }
 }
