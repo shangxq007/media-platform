@@ -32,6 +32,7 @@ class SocialCompositionTest {
                 .withBean(PostAnalyticsRepository.class, () -> mock(PostAnalyticsRepository.class))
                 .withBean(CanonicalActorResolver.class, () -> mock(CanonicalActorResolver.class))
                 .withBean(AuthorizationDecisionPort.class, () -> mock(AuthorizationDecisionPort.class))
+                .withBean(SocialProjectScopePort.class, () -> (t,p) -> true)
                 .withBean(org.springframework.transaction.PlatformTransactionManager.class, () -> mock(org.springframework.transaction.PlatformTransactionManager.class))
                 .withBean(TaskScheduler.class, () -> mock(TaskScheduler.class));
     }
