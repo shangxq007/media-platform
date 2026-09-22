@@ -17,7 +17,7 @@ All tables reside in the **public** schema. Schema migrations are managed exclus
 
 The current migration inventory and release policy are maintained in the one
 normative [Flyway migration policy](../database/flyway-migration-baseline.md).
-At this checkpoint the executable directory contains V1 through V9; this
+At this checkpoint the executable directory contains V1 through V10; this
 supporting overview does not copy a second migration table. Future schema
 changes require a new forward migration and an accepted governance decision.
 

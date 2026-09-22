@@ -17,7 +17,7 @@ public class ThumbnailWorkflowImpl implements ThumbnailWorkflow {
     @Override public String run(String taskId,String tenantId,String projectId){
         Workflow.getVersion("MEDIA-THUMBNAIL-WF-V1", Workflow.DEFAULT_VERSION, 1);
         if(cancelled){state="CANCELLED";throw new CanceledFailure("thumbnail cancelled");}
-        try { String artifact=activities.extractAndCommit(taskId,tenantId,projectId); if(cancelled){state="CANCELLED";throw new CanceledFailure("thumbnail cancelled");} state="COMPLETED"; return artifact; }
+        try { String artifact=activities.extractAndCommit(taskId,tenantId,projectId); if(cancelled || artifact == null){state="CANCELLED";throw new CanceledFailure("thumbnail cancelled");} state="COMPLETED"; return artifact; }
         catch(CanceledFailure e){state="CANCELLED";throw e;} catch(RuntimeException e){state="FAILED";throw e;}
     }
     @Override public void cancel(String reason){cancelled=true;state="CANCELLED";}

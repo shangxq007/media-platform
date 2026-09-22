@@ -23,6 +23,6 @@ public final class ThumbnailContracts {
         private static void require(String value, String name) { if (value == null || value.isBlank()) throw new IllegalArgumentException(name + " required"); }
     }
 
-    public enum Status { ADMITTED, RUNNING, COMPLETED, FAILED, CANCELLED }
+    public enum Status { ADMITTED, RUNNING, COMMITTING, COMPLETED, FAILED, CANCELLED }
     public record Result(String taskId, Status status, String artifactId, String failureCode) {}
 }

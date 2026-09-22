@@ -8,6 +8,8 @@ create table media_thumbnail_task (
     width integer,
     quality integer,
     idempotency_key varchar(256) not null,
+    provider_id varchar(128) not null,
+    provider_version varchar(32) not null,
     status varchar(32) not null,
     artifact_id varchar(128),
     failure_code varchar(64),

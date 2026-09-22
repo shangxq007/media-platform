@@ -35,7 +35,7 @@ migration inventory.
 ## Current checkpoint: verified inventory
 
 The repository does **not** contain only `V1__initial_schema.sql`. At the
-2026-09-22 checkpoint it contains these nine SQL migrations:
+2026-09-22 checkpoint it contains these ten SQL migrations:
 
 | Version | File | Current role |
 |---|---|---|
@@ -48,9 +48,10 @@ The repository does **not** contain only `V1__initial_schema.sql`. At the
 | V7 | [`V7__marketplace_event_retirement.sql`](../../platform-app/src/main/resources/db/migration/V7__marketplace_event_retirement.sql) | Retire incompatible marketplace events |
 | V8 | [`V8__social_publication_ownership.sql`](../../platform-app/src/main/resources/db/migration/V8__social_publication_ownership.sql) | Social publication attempt ownership |
 | V9 | [`V9__social_credential_fence.sql`](../../platform-app/src/main/resources/db/migration/V9__social_credential_fence.sql) | Credential revision fencing |
+| V10 | [`V10__media_thumbnail_tasks.sql`](../../platform-app/src/main/resources/db/migration/V10__media_thumbnail_tasks.sql) | Durable thumbnail admission, cancellation, and provider pin |
 
 The exact set and the immutable V1 checksum are also enforced by the Gradle
-GCR-2/GCR-5/GCR-6 checks. A clean checkout must report exactly this set.
+GCR-2/GCR-5/GCR-6 checks. A clean checkout must report exactly this set (V1–V10).
 
 ## Policy
 

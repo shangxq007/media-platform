@@ -1,0 +1,97 @@
+package com.example.platform.thumbnail;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.function.BooleanSupplier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+/** Registered provider boundary for media.thumbnail. Process mechanics are confined here. */
+@Component
+public final class CpuFrameExtractThumbnailProvider implements ThumbnailCapabilityProvider {
+    public static final String PROVIDER_ID = "ffmpeg.cpu.frame-extract.v1";
+    public static final String TOOLCHAIN = "ffmpeg+ffprobe";
+    private final Path root;
+    private final String ffmpeg;
+    private final String ffprobe;
+    private static final Manifest MANIFEST = new Manifest(
+            ThumbnailContracts.CAPABILITY, PROVIDER_ID, "1.0.0", TOOLCHAIN,
+            Set.of("video/*"), Set.of("image/jpeg", "image/png"),
+            0, 86_400, 16, 4096, 512L * 1024L * 1024L, 60,
+            "trusted-provider", "worker-runtime.local-process");
+
+    public CpuFrameExtractThumbnailProvider(
+            @Value("${app.storage.local-root:./.data/storage}") String root,
+            @Value("${thumbnail.ffmpeg-path:ffmpeg}") String ffmpeg,
+            @Value("${thumbnail.ffprobe-path:ffprobe}") String ffprobe) {
+        this.root = Path.of(root).toAbsolutePath().normalize();
+        this.ffmpeg = ffmpeg;
+        this.ffprobe = ffprobe;
+    }
+
+    @Override public Manifest manifest() { return MANIFEST; }
+
+    @Override public Result extract(ThumbnailContracts.Request request, byte[] input, BooleanSupplier cancelled) {
+        Path work = root.resolve("thumbnail-work").resolve(request.idempotencyKey()).normalize();
+        try {
+            Files.createDirectories(work);
+            Path source = work.resolve("input");
+            Path output = work.resolve("output." + ("png".equals(request.imageFormat()) ? "png" : "jpg"));
+            Files.write(source, input);
+            double duration = probe(source, cancelled);
+            if (!Double.isFinite(duration) || request.timestampSeconds() > duration) {
+                return Result.failure("TIMESTAMP_OUT_OF_RANGE");
+            }
+            if (cancelled.getAsBoolean()) return Result.failure("CANCELLED");
+            var args = new java.util.ArrayList<String>(List.of(
+                    ffmpeg, "-hide_banner", "-nostdin", "-loglevel", "error", "-y",
+                    "-ss", Double.toString(request.timestampSeconds()), "-i", source.toString(),
+                    "-frames:v", "1"));
+            if (request.width() != null) args.addAll(List.of("-vf", "scale=" + request.width() + ":-2"));
+            args.add(output.toString());
+            if (request.quality() != null && "jpeg".equals(request.imageFormat())) {
+                int at = args.size() - 1;
+                args.add(at, "-q:v"); args.add(at + 1, Integer.toString(Math.max(2, Math.min(31, 32 - request.quality() / 4))));
+            }
+            Process process = new ProcessBuilder(args).redirectErrorStream(true).start();
+            while (process.isAlive()) {
+                if (cancelled.getAsBoolean()) {
+                    process.destroy();
+                    if (!process.waitFor(250, TimeUnit.MILLISECONDS)) process.destroyForcibly();
+                    return Result.failure("CANCELLED");
+                }
+                if (!process.waitFor(20, TimeUnit.MILLISECONDS)) continue;
+            }
+            if (process.exitValue() != 0 || !Files.isRegularFile(output) || Files.size(output) == 0) {
+                return Result.failure("PROVIDER_FAILED");
+            }
+            return Result.success(Files.readAllBytes(output), "png".equals(request.imageFormat()) ? "image/png" : "image/jpeg");
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            return Result.failure("CANCELLED");
+        } catch (IOException failure) {
+            return Result.failure("PROVIDER_FAILED");
+        } finally {
+            try { if (Files.exists(work)) Files.walk(work).sorted(Comparator.reverseOrder()).forEach(path -> { try { Files.deleteIfExists(path); } catch (IOException ignored) {} }); }
+            catch (IOException ignored) {}
+        }
+    }
+
+    private double probe(Path source, BooleanSupplier cancelled) throws IOException, InterruptedException {
+        Process process = new ProcessBuilder(ffprobe, "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", source.toString()).redirectErrorStream(true).start();
+        while (process.isAlive()) {
+            if (cancelled.getAsBoolean()) { process.destroyForcibly(); throw new InterruptedException("cancelled"); }
+            process.waitFor(20, TimeUnit.MILLISECONDS);
+        }
+        if (process.exitValue() != 0) throw new IllegalArgumentException("UNSUPPORTED_MEDIA");
+        try { return Double.parseDouble(new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8).trim()); }
+        catch (NumberFormatException e) { throw new IllegalArgumentException("UNSUPPORTED_MEDIA", e); }
+    }
+
+}

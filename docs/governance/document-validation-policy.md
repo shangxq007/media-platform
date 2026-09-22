@@ -35,7 +35,7 @@ For each Tier 0-1 document, verify:
 
 - [ ] Module count matches `settings.gradle.kts` (currently 35)
 - [ ] Frontend framework matches `frontend/package.json` (currently React 19)
-- [ ] Flyway state matches `db/migration/` directory (currently V1–V9 (9 files))
+- [ ] Flyway state matches `db/migration/` directory (currently V1–V10 (10 files))
 - [ ] Database version matches `docker-compose.yml` (currently postgres:16-alpine)
 - [ ] Allowed violations match `ModularityTest.java` ALLOWED_VIOLATIONS (currently 2)
 - [ ] Security checks match `ProductionSafetyValidator.java`
@@ -48,7 +48,7 @@ For each Tier 0-1 document, verify:
 |---------|--------------|-------------------|
 | Frontend framework | React 19 | Vue 3, Vue 3.5, Vue 3 + Pinia |
 | Module count | 35 | 30, 31, 32, 34 |
-| Flyway migrations | V1–V9 (9 files) | 17, 22, V1-V22 |
+| Flyway migrations | V1–V10 (10 files) | 17, 22, V1-V22 |
 | Database tables | 133 | 28+, 50+, 70+ |
 | PostgreSQL version | 16 | 15 |
 | Allowed violations | 2 | 8 |
