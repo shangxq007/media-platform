@@ -11,7 +11,7 @@ class ThumbnailArchitectureGuardTest {
     void temporalActivityDoesNotOwnProcessExecutionOrArtifactAuthority() throws Exception {
         String source = Files.readString(Path.of("src/main/java/com/example/platform/thumbnail/ThumbnailActivitiesImpl.java"));
         assertThat(source).doesNotContain("ProcessBuilder", "Runtime.getRuntime", "ffmpeg", "ffprobe");
-        assertThat(source).contains("ThumbnailCapabilityRegistry", "ArtifactCommitService");
+        assertThat(source).contains("ThumbnailCapabilityRegistry", "ThumbnailCommitService");
     }
 
     @Test
