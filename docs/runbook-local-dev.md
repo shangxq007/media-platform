@@ -167,10 +167,10 @@ Flyway is the current schema authority. The executable inventory is in
 [current Flyway policy](database/flyway-migration-baseline.md) for the exact
 inventory and release procedure.
 
-The development Compose file still contains a legacy init-volume reference.
-Treat that reference as a deployment gap rather than as a second schema
-authority. Do not create or rename migration files to satisfy it. For a clean
-environment, apply the documented Flyway startup path and verify the migration
+The development Compose file mounts the immutable V1 baseline for first-start
+PostgreSQL bootstrap, then application startup lets Flyway apply V2–V9. The
+mount is a bootstrap convenience only; the migration directory and Flyway
+history remain authoritative. For a clean environment, verify the migration
 history before using the services.
 
 ## Environment Variables
