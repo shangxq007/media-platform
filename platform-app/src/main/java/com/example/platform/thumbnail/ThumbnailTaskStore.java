@@ -37,6 +37,8 @@ public class ThumbnailTaskStore {
         return dsl.execute("update media_thumbnail_task set status='COMPLETED',artifact_id=?,failure_code=null,updated_at=current_timestamp where tenant_id=? and project_id=? and id=? and status='COMMITTING'", artifactId, tenant, project, id) == 1;
     }
     public boolean cancel(String tenant, String project, String id) { return dsl.execute("update media_thumbnail_task set status='CANCELLED',failure_code='CANCELLED',updated_at=current_timestamp where tenant_id=? and project_id=? and id=? and status in ('ADMITTED','RUNNING','COMMITTING')", tenant, project, id) == 1; }
+    public boolean cancelIfAdmitted(String tenant, String project, String id) { return dsl.execute("update media_thumbnail_task set status='CANCELLED',failure_code='CANCELLED',updated_at=current_timestamp where tenant_id=? and project_id=? and id=? and status='ADMITTED'", tenant, project, id) == 1; }
+    public boolean deleteUnchargedAdmission(String tenant, String project, String id) { return dsl.execute("delete from media_thumbnail_task where tenant_id=? and project_id=? and id=? and status='ADMITTED' and artifact_id is null", tenant, project, id) == 1; }
     public boolean isCancelled(String tenant, String project, String id) { return dsl.fetchExists(dsl.selectOne().from("media_thumbnail_task").where("tenant_id=? and project_id=? and id=? and status='CANCELLED'", tenant, project, id)); }
     public record Admission(String taskId, boolean created) {}
     public Optional<ThumbnailContracts.Result> find(String tenant, String project, String id) {

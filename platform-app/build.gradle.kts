@@ -105,5 +105,7 @@ tasks.register<Test>("renderIntegrationTest") {
     useJUnitPlatform {
         includeTags("render-integration")
     }
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
     shouldRunAfter(tasks.test)
 }

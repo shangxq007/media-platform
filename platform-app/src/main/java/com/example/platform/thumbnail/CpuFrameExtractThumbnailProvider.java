@@ -10,6 +10,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BooleanSupplier;
 import com.example.platform.sandbox.*;
+import com.example.platform.sandbox.execution.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -21,6 +22,7 @@ public final class CpuFrameExtractThumbnailProvider implements ThumbnailCapabili
     private final Path root;
     private final String ffmpeg;
     private final String ffprobe;
+    private final WorkerRuntime runtime;
     private static final Manifest MANIFEST = new Manifest(
             ThumbnailContracts.CAPABILITY, PROVIDER_ID, "1.0.0", TOOLCHAIN,
             Set.of("video/*"), Set.of("image/jpeg", "image/png"),
@@ -30,10 +32,15 @@ public final class CpuFrameExtractThumbnailProvider implements ThumbnailCapabili
     public CpuFrameExtractThumbnailProvider(
             @Value("${app.storage.local-root:./.data/storage}") String root,
             @Value("${thumbnail.ffmpeg-path:ffmpeg}") String ffmpeg,
-            @Value("${thumbnail.ffprobe-path:ffprobe}") String ffprobe) {
+            @Value("${thumbnail.ffprobe-path:ffprobe}") String ffprobe,
+            com.example.platform.sandbox.execution.ExecutionBackendRegistry backends) {
         this.root = Path.of(root).toAbsolutePath().normalize();
         this.ffmpeg = ffmpeg;
         this.ffprobe = ffprobe;
+        this.runtime = new WorkerRuntime(backends);
+    }
+    public CpuFrameExtractThumbnailProvider(String root, String ffmpeg, String ffprobe) {
+        this(root, ffmpeg, ffprobe, new com.example.platform.providerplugin.execution.RuntimeExecutionBackends(java.util.List.of(new ThumbnailExecutionBackend())));
     }
 
     @Override public Manifest manifest() { return MANIFEST; }
@@ -59,11 +66,15 @@ public final class CpuFrameExtractThumbnailProvider implements ThumbnailCapabili
                 args.add(at, "-q:v"); args.add(at + 1, Integer.toString(Math.max(2, Math.min(31, 32 - request.quality() / 4))));
             }
             args.add("pipe:1");
-            var execution = launch(Path.of(ffmpeg), args, work, source, cancelled);
-            if (execution.failure().isPresent() || execution.exitCode().orElse(-1) != 0 || execution.stdout().bytes().length == 0) {
-                return Result.failure(execution.failure().map(f -> f.code() == SandboxFailureCode.PROCESS_TERMINATED_BY_LIMIT ? "CANCELLED" : "PROVIDER_FAILED").orElse("PROVIDER_FAILED"));
+            Path output = work.resolve("output");
+            args.set(args.size() - 1, output.toString());
+            var execution = runtime.execute(PROVIDER_ID, new ExecutionRequest(request.idempotencyKey(), request.idempotencyKey(), TaskCapability.THUMBNAIL,
+                    work.toString(), java.util.Map.of(), args, 60, request.tenantId(), request.projectId(),
+                    java.util.Map.of("executable", Path.of(ffmpeg).toString(), "input", source.toString(), "providerId", PROVIDER_ID)));
+            if (!execution.success() || !Files.exists(output) || Files.size(output) == 0) {
+                return Result.failure("PROVIDER_FAILED");
             }
-            return Result.success(execution.stdout().bytes(), "png".equals(request.imageFormat()) ? "image/png" : "image/jpeg");
+            return Result.success(Files.readAllBytes(output), "png".equals(request.imageFormat()) ? "image/png" : "image/jpeg");
         } catch (InterruptedException interrupted) {
             Thread.currentThread().interrupt();
             return Result.failure("CANCELLED");
@@ -76,21 +87,11 @@ public final class CpuFrameExtractThumbnailProvider implements ThumbnailCapabili
     }
 
     private double probe(Path source, BooleanSupplier cancelled) throws IOException, InterruptedException {
-        var execution = launch(Path.of(ffprobe), List.of("-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", source.toString()), source.getParent(), source, cancelled);
-        if (execution.failure().isPresent() || execution.exitCode().orElse(-1) != 0) throw new IllegalArgumentException("UNSUPPORTED_MEDIA");
-        try { return Double.parseDouble(new String(execution.stdout().bytes(), StandardCharsets.UTF_8).trim()); }
+        var execution = runtime.execute(PROVIDER_ID, new ExecutionRequest("probe", "probe", TaskCapability.THUMBNAIL,
+                source.getParent().toString(), java.util.Map.of(), List.of("-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", source.toString()), 60, "", "", java.util.Map.of("executable", Path.of(ffprobe).toString(), "input", source.toString(), "providerId", PROVIDER_ID)));
+        if (!execution.success()) throw new IllegalArgumentException("UNSUPPORTED_MEDIA");
+        try { return Double.parseDouble(execution.stdout().trim()); }
         catch (NumberFormatException e) { throw new IllegalArgumentException("UNSUPPORTED_MEDIA", e); }
-    }
-
-    private SandboxExecutionResult launch(Path executable, List<String> arguments, Path work, Path input, BooleanSupplier cancelled) throws IOException {
-        var detection = BubblewrapSandboxCapabilityDetector.detect();
-        if (detection.launcher().isEmpty()) throw new IOException("sandbox runtime unavailable");
-        Path normalized = executable.toAbsolutePath().normalize(); Path workspace = work.toAbsolutePath().normalize();
-        var requirement = new SandboxExecutionRequirement(
-                ProcessRequirement.of(Set.of(normalized.toString()), normalized.toString(), arguments, java.time.Duration.ofSeconds(60)),
-                FilesystemPolicy.exact(Set.of(normalized, input.toAbsolutePath().normalize()), workspace, workspace.resolve(".sandbox-tmp"), workspace.resolve(".sandbox-output"), workspace),
-                NetworkPolicy.none(), EnvironmentPolicy.exact(java.util.Map.of("PATH", "/usr/bin:/bin", "LANG", "C", "LC_ALL", "C")), SecretExposure.none(), PrivilegePolicy.unprivileged(), ResourceEnforcementLimits.captureOnly(64L * 1024L * 1024L), DeviceExposurePolicy.none());
-        return detection.launcher().orElseThrow().launchResolved(requirement, () -> cancelled.getAsBoolean());
     }
 
 }
