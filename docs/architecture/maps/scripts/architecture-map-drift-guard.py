@@ -56,7 +56,13 @@ aggregate_covered = {
     "media-module", "audio-module", "color-image-module", "font-text-module",  # R18/R19 pure value domains (LikeC4 Media/Text aggregates)
     "timeline-module", "operation-module",  # GCR-1 canonical semantic modules (LikeC4 Timeline/Operation aggregates)
     "ai-module", "storage-module", "platform-app", "sandbox-worker", "remote-render-worker",
-    "media-platform"  # system boundary itself
+    "media-platform",  # system boundary itself
+    # Provider/runtime, contract, and distribution modules are represented by
+    # the Providers, PluginRuntime, Sandbox, or platform boundary containers.
+    "audit-contract-module", "bmf-provider-module", "composite-resource-module",
+    "ffmpeg-provider-module", "marketplace-module", "provider-plugin-runtime-module",
+    "sandbox-isolation-module", "usage-contract-module", "worker-fabric-module",
+    "platform-distribution"
 }
 # Modules explicitly represented as semantic containers in LikeC4:
 represented = {
