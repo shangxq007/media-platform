@@ -1,5 +1,7 @@
 # 可扩展服务端 NLE 渲染系统 — 行业标准、架构与落地设计
 
+> **Flyway governance note:** Any V10+ migration references below describe target design work, not applied platform migrations. The current executable inventory is V1–V9; see [the canonical Flyway policy](../database/flyway-migration-baseline.md).
+
 > **Module:** `render-module`, `platform-app`, MCP  
 > **Last Updated:** 2026-05-20  
 > **Related:** [10-server-nle-layered-architecture.md](./10-server-nle-layered-architecture.md), [01-render-pipeline.md](./01-render-pipeline.md), ADR-012

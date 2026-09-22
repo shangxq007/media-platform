@@ -11,3 +11,4 @@ INVALID_OR_DUPLICATE\tFireworks-Tech-Graph\tdocs/architecture/governance/source-
 HISTORICAL_EVIDENCE	docs/architecture/governance/inventory/conflict-register.json	docs/database/flyway-migration-baseline.md	HISTORICAL	old schema-conflict observations retained for traceability
 HISTORICAL_EVIDENCE	docs/architecture/governance/inventory/repository-artifact-inventory.json	docs/architecture/governance/document-classification-inventory.tsv	HISTORICAL	legacy inventory cannot guide current work
 HISTORICAL_EVIDENCE	docs/architecture/governance/jooq/jooq-typed-schema-authority-decision.md	docs/database/flyway-migration-baseline.md	HISTORICAL	pre-V1-V9 checkpoint evidence
+ARCHIVED	docs/documentation-gap-analysis.md	docs/system-audit/platform-architecture-audit-2026-06-13.md	ARCHIVED	point-in-time gap analysis explicitly marked archived

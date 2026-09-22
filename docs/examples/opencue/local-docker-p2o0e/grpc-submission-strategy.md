@@ -1,5 +1,7 @@
 # gRPC Submission Strategy — Local Docker OpenCue
 
+> **Scope note:** V11 references in this OpenCue example describe the external Cuebot compatibility database, not the platform Flyway inventory. The platform inventory remains V1–V9; see [the canonical Flyway policy](../../../database/flyway-migration-baseline.md).
+
 Date: 2026-06-30
 Task: P2O.0e
 Status: Strategy locked, spike complete

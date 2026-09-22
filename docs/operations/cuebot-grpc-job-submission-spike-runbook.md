@@ -1,5 +1,7 @@
 # Runbook: Cuebot gRPC Job Submission Spike
 
+> **Scope note:** V11 references here describe the external Cuebot compatibility database, not the platform Flyway inventory. The platform inventory remains V1–V9; see [the canonical Flyway policy](../database/flyway-migration-baseline.md).
+
 ## 1. Scope
 
 Operator-run validation of Cuebot gRPC job submission.

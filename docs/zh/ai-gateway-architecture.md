@@ -1,5 +1,7 @@
 # AI 网关架构：进程内 SPI vs LiteLLM 中间层
 
+> **Flyway 治理说明：**本文中的 V19 迁移是目标或历史设计示例，不属于当前执行清单。当前清单为 V1–V9，请参阅[规范 Flyway 文档](../database/flyway-migration-baseline.md)。
+
 > **最后更新:** 2026-05-20  
 > **模块:** `ai-module`（路由与 `ChatProvider` SPI）、`platform-app`（Spring AI / HTTP 适配器）  
 > **相关:** [platform/docs/ai-engine-spi.md](../ai-engine-spi.md)

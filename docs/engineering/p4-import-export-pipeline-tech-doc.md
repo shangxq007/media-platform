@@ -1,5 +1,7 @@
 # P4 Import/Export Pipeline 技术文档
 
+> **Flyway governance note:** Any V10+ migration names in this design document are target or historical examples. The current executable inventory is V1–V9; use [the canonical Flyway policy](../database/flyway-migration-baseline.md) for current state.
+
 ## 文档信息
 
 - **项目名称**: Media Platform P4 Import/Export Pipeline

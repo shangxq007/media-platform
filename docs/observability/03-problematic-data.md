@@ -1,5 +1,7 @@
 # Problematic Data Handling
 
+> **Flyway governance note:** The V12 reference below is a target or historical design claim, not a current migration. The current executable inventory is V1–V9; see [the canonical Flyway policy](../database/flyway-migration-baseline.md).
+
 > **Module:** `audit-compliance-module`
 > **Last Updated:** 2026-05-18
 

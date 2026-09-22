@@ -36,6 +36,7 @@ blocks_v5: false
 | GOV-2026-09-22-006 | Make runtime OpenAPI export the checked-in transport artifact | Keep one REST contract authority at OpenAPI 3.1.0, with base/candidate files used only for compatibility fixtures | Documentation/tooling only | `docs/api/openapi-authority.md` |
 | GOV-2026-09-22-007 | Classify historical and superseded material | Historical evidence remains available but cannot appear as current normative guidance | Documentation index/inventory | `architecture-document-inventory.tsv` |
 | GOV-2026-09-22-009 | Repair stale Flyway references and reclassify pre-checkpoint inventories | Current documentation must point to the V1–V9 executable inventory; old V1-only, V11+, and pre-checkpoint inventory claims are historical or target facts | Documentation and classification only; migration bytes unchanged | `docs/database/flyway-migration-baseline.md`, affected current guides, classification and superseded mappings |
+| GOV-2026-09-22-010 | Label remaining V10+ design and external-provider migration references | Design documents and Cuebot examples may mention future or external migrations, but those references must not be mistaken for the platform's current Flyway inventory | Documentation labels only; product and provider behavior unchanged | affected design/provider documents, classification inventory |
 
 No product source, executable application code, deployment configuration,
 database migration, or database data was changed by these decisions.

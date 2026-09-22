@@ -1,5 +1,7 @@
 # Production Blockers
 
+> **Flyway governance note:** V17 references in this blocker report are historical or target claims and are not in the current executable inventory. See [the canonical Flyway policy](database/flyway-migration-baseline.md).
+
 ## Critical (Must Fix)
 
 ### Real Payment Provider Integration (STUB)

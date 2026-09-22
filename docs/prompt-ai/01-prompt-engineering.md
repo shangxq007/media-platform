@@ -1,5 +1,7 @@
 # Prompt Engineering Platform
 
+> **Flyway governance note:** The V11 persistence reference below is a target or historical design claim. The current executable inventory is V1–V9; see [the canonical Flyway policy](../database/flyway-migration-baseline.md).
+
 > **Module:** `prompt-module`
 > **Last Updated:** 2026-05-18
 

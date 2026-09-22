@@ -1,5 +1,7 @@
 # Media Processing Modules
 
+> **Flyway governance note:** The V10 migration reference below is a target or historical design claim. The current executable inventory is V1–V9; see [the canonical Flyway policy](../database/flyway-migration-baseline.md).
+
 > **Last Updated:** 2026-05-20
 
 ## render-module

@@ -1,5 +1,7 @@
 # 时间线领域版控（Timeline Revision）
 
+> **Flyway 治理说明：**本文中的 V20–V22 是目标设计版本，不是当前已执行的迁移。当前清单为 V1–V9，请参阅[规范 Flyway 文档](../database/flyway-migration-baseline.md)。
+
 > **最后更新:** 2026-05-20  
 > **相关:** [Internal Timeline Schema 1.0](../media-rendering/13-internal-timeline-schema-v1.md)、[AI 时间线编辑](ai-timeline-editing.md)、[生产验收清单](production-acceptance-checklist.md)
 

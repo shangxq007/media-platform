@@ -1,5 +1,7 @@
 # P2O.0e — Cuebot gRPC Job Submission Discovery and Spike
 
+> **Scope note:** V11 references in this OpenCue example describe the external Cuebot compatibility database, not the platform Flyway inventory. The platform inventory remains V1–V9; see [the canonical Flyway policy](../../../database/flyway-migration-baseline.md).
+
 ## Purpose
 
 P2O.0e resolves the P2O.0d limitation: no true OpenCue job was submitted through Cuebot.

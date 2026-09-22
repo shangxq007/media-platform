@@ -869,7 +869,7 @@ CURRENT_OPERATIONAL	docs/development/04-error-handling.md	docs/documentation/doc
 CURRENT_OPERATIONAL	docs/docker-external-config.md	docs/documentation/documentation-index.md	CURRENT	supporting current documentation
 CURRENT_OPERATIONAL	docs/documentation/documentation-index.md	docs/documentation/documentation-index.md	CURRENT	supporting current documentation
 CURRENT_OPERATIONAL	docs/documentation/knowledge-architecture.md	docs/documentation/documentation-index.md	CURRENT	supporting current documentation
-CURRENT_OPERATIONAL	docs/documentation-gap-analysis.md	docs/documentation/documentation-index.md	CURRENT	supporting current documentation
+ARCHIVED	docs/documentation-gap-analysis.md	docs/architecture/current/architecture-entrypoint.md	HISTORICAL	point-in-time analysis explicitly marked archived; comprehensive audit is replacement
 CURRENT_OPERATIONAL	docs/documentation-gap-report.md	docs/documentation/documentation-index.md	CURRENT	supporting current documentation
 CURRENT_OPERATIONAL	docs/effect-pack-schema.md	docs/documentation/documentation-index.md	CURRENT	supporting current documentation
 CURRENT_OPERATIONAL	docs/egress-smoke-rollout.md	docs/documentation/documentation-index.md	CURRENT	supporting current documentation
