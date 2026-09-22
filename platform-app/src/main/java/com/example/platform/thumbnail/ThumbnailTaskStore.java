@@ -29,6 +29,13 @@ public class ThumbnailTaskStore {
     public boolean statusIfActive(String id, ThumbnailContracts.Status status, String artifactId, String failure) {
         return dsl.execute("update media_thumbnail_task set status=?,artifact_id=?,failure_code=?,updated_at=current_timestamp where id=? and status not in ('CANCELLED','COMPLETED')", status.name(), artifactId, failure, id) == 1;
     }
+    public boolean lockForCommit(String tenant, String project, String id) {
+        var row=dsl.fetchOne("select status from media_thumbnail_task where tenant_id=? and project_id=? and id=? for update", tenant, project, id);
+        return row != null && ThumbnailContracts.Status.COMMITTING.name().equals(row.get("status", String.class));
+    }
+    public boolean completeLocked(String tenant, String project, String id, String artifactId) {
+        return dsl.execute("update media_thumbnail_task set status='COMPLETED',artifact_id=?,failure_code=null,updated_at=current_timestamp where tenant_id=? and project_id=? and id=? and status='COMMITTING'", artifactId, tenant, project, id) == 1;
+    }
     public boolean cancel(String tenant, String project, String id) { return dsl.execute("update media_thumbnail_task set status='CANCELLED',failure_code='CANCELLED',updated_at=current_timestamp where tenant_id=? and project_id=? and id=? and status in ('ADMITTED','RUNNING','COMMITTING')", tenant, project, id) == 1; }
     public boolean isCancelled(String tenant, String project, String id) { return dsl.fetchExists(dsl.selectOne().from("media_thumbnail_task").where("tenant_id=? and project_id=? and id=? and status='CANCELLED'", tenant, project, id)); }
     public record Admission(String taskId, boolean created) {}
