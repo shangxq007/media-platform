@@ -39,6 +39,8 @@ acceptance follow-up changes recorded in the governance ledger.
 | Focused frontend API surfaces | `npm run test:projects`, `test:publication`, `test:render` | PASS; 104 tests |
 | Complete frontend suite | `NODE_OPTIONS=--localstorage-file=/tmp/media-platform-vitest.localstorage npm run test` | PASS; 34 files, 310 tests |
 | Frontend production build | `npm run build` | PASS; Vite 6.4.3 |
+| Frontend architecture guards | `npm run architecture:guard`, `npm run architecture:guard:test` | PASS; all authority counts zero, 131 guard tests pass |
+| Frontend H4 scope/routes/clean-forward | `npm run h4:ledger`, `npm run h4:routes`, `npm run h4:clean-forward` | PASS; 207 active identities, 21 routes, zero retired residue |
 | Compose/Flyway reference | focused Python path assertion | PASS; V1 mount resolves to `V1__initial_schema.sql` |
 | Docker Compose parser | `docker compose -f docker-compose.dev.yml config` | NOT_RUN; `docker` executable unavailable |
 

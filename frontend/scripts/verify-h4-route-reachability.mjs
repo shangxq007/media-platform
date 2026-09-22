@@ -24,7 +24,11 @@ const requiredRoutes = [
   { path: '/admin/organization', component: 'ManagementFoundationPage' },
   { path: '/developer/capabilities', component: 'ManagementFoundationPage' },
   { path: '/legacy/editor', component: 'EditorPage' },
-  { path: '/render-jobs', component: 'RenderJobDashboard' },
+  {
+    path: '/render-jobs',
+    component: 'RenderJobDashboard',
+    registrationPattern: /(?:route\(\s*['"]\/render-jobs['"]|createRoute\([\s\S]{0,120}?path:\s*['"]\/render-jobs['"])[\s\S]{0,180}?beforeLoad/,
+  },
   { path: '/capabilities', component: 'CapabilitiesPage' },
   { path: '/smoke-editor', component: 'SmokeEditorPage' },
   { path: '/observability', component: 'ObservabilityDashboard' },
@@ -39,7 +43,7 @@ function escapeRegExp(value) {
 try {
   for (const route of requiredRoutes) {
     const componentPattern = new RegExp(`(?:import[\\s\\S]{0,100}?\\b${route.component}\\b|const\\s+${route.component}\\s*=\\s*lazy)`)
-    const routePattern = new RegExp(
+    const routePattern = route.registrationPattern ?? new RegExp(
       `route\\(\\s*['"]${escapeRegExp(route.path)}['"]\\s*,\\s*(?:lazyPage\\()?${route.component}`
     )
     if (!componentPattern.test(routeTree)) {
