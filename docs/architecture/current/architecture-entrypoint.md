@@ -61,6 +61,13 @@ identifier file is a cross-view key, not a third architecture model.
 | HTTP API contract | [OpenAPI authority](../../api/openapi-authority.md) | CURRENT transport contract | runtime export + checked-in artifact |
 | Known gaps and deferred items | [current known gaps](current-known-gaps.md) | DEFERRED / gap register | governance |
 
+## Reproducible viewing and generation
+
+- **CURRENT logical intent:** open [`maps/likec4/media-platform.likec4`](../maps/likec4/media-platform.likec4) with LikeC4 Desktop/CLI. The checked-in HTML projection is [`maps/exports/html/index.html`](../maps/exports/html/index.html); it is a generated projection, not runtime discovery.
+- **CURRENT as-built structure:** regenerate the Spring Modulith output with `./gradlew --no-daemon :platform-app:test --tests ModulithDocumentationGenerationTest`. The output is [`maps/generated/modulith/`](../maps/generated/modulith/), derived from the executable module model.
+- **Provenance:** record the source commit, generator/tool version and SHA-256 of any published bundle. CI may publish the generated bundle; deployment of that bundle is out of scope for this batch.
+- **Physical/deployment view:** [`08-deployment-architecture.md`](../08-deployment-architecture.md) and the LikeC4 deployment view describe declared boundaries. PVE material is **HISTORICAL** observation from dated reports and must not be read as live discovery.
+
 ## Stable cross-view identifiers
 
 The logical and physical views share IDs for domains, modules, contracts,
