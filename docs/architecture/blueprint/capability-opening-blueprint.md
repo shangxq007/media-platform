@@ -616,7 +616,7 @@ The following registries are defined in `shared-kernel/src/main/java/com/example
 - [AI Provider Roadmap](../../roadmap/ai-provider-ecosystem-roadmap.md)
 - [Current Module Status](../current/current-module-status.md)
 - [Current Known Gaps](../current/current-known-gaps.md)
-- [Contract Source](../../../shared-kernel/src/main/java/com/example/platform/shared/capability/)
+- [Contract Source](../../../shared-kernel/src/main/java/com/example/platform/shared/)
 
 ---
 

@@ -41,7 +41,7 @@ docker compose up -d db
 cd frontend && npm install && npm run dev
 ```
 
-生产环境请使用 **`SPRING_PROFILES_ACTIVE=prod`**（勿带 `dev`），配置 PostgreSQL 与 OIDC。  
+生产环境请使用 **`SPRING_PROFILES_ACTIVE=prod`**（勿带 `dev`），配置 PostgreSQL 与 OIDC。
 启动门禁见 [docs/production-safety.md](docs/production-safety.md)。
 
 ## 技术栈
@@ -71,10 +71,10 @@ Schema 统一在：
 
 | 脚本 | 内容 |
 |------|------|
-| V1 | 完整 baseline（133 张表，2339 行 DDL） |
+| V1–V9 | Adopted baseline plus forward migrations (see canonical inventory) |
 
-当前 **1** 个中央 Flyway 脚本（V1 合并 baseline）。模块内 Bootstrap 仅作 JDBC→内存 **hydrate**，不替代 DDL。  
-新增迁移脚本见 [docs/operations/flyway-baseline-runbook.md](docs/operations/flyway-baseline-runbook.md)。  
+当前中央 Flyway 目录包含 **9** 个脚本（V1 baseline + V2–V9 forward migrations）。模块内 Bootstrap 仅作 JDBC→内存 **hydrate**，不替代 DDL。
+迁移政策与发布流程见 [docs/database/flyway-migration-baseline.md](docs/database/flyway-migration-baseline.md)。
 Modulith 违规预算见 [docs/modulith-debt-register.md](docs/modulith-debt-register.md)。
 
 ## 核心能力

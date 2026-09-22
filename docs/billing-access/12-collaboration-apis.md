@@ -761,7 +761,7 @@ async function updateMembersRoles(workspaceId: string, updates: MemberUpdate[]) 
 
 ## 参考链接
 
-- [GraphQL API文档](docs/06-api/03-graphql.md)
-- [REST API策略](docs/06-api/01-api-strategy.md)
-- [错误代码和审计参考](docs/05-access-entitlement-billing/10-error-codes-and-audit.md)
-- [安全策略](docs/11-development/03-security.md)
+- [GraphQL API文档](../api/03-graphql.md)
+- [REST API策略](../api/01-api-strategy.md)
+- [错误代码和审计参考](../error-handling-design.md)
+- [安全策略](../security-and-tenancy.md)

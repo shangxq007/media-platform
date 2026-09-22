@@ -1,0 +1,7 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`com.example.platform.cloudresource`
+|Spring components
+|* `c.e.p.c.CloudResourceConfiguration`
+|===

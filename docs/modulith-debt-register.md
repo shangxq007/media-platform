@@ -65,6 +65,6 @@
 
 ## 关联文档
 
-- [ModularityTest.java](../../platform-app/src/test/java/com/example/platform/ModularityTest.java)
+- [ModularityTest.java](../platform-app/src/test/java/com/example/platform/ModularityTest.java)
 - [module-boundaries.md](module-boundaries.md)
-- [issue-003b-modularity-test-reenable.md](../review/issue-003b-modularity-test-reenable.md)
+- [issue-003b-modularity-test-reenable.md](review/issue-003b-modularity-test-reenable.md)

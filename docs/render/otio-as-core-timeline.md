@@ -170,7 +170,7 @@ OTIO 不直接引用 Provider。Provider 的选择由 RenderPlanner 根据以下
 
 ## 相关文档
 
-- [OTIO Metadata Schema](./otio-metadata-schema.md)
-- [RenderGraph Compiler](./rendergraph-compiler.md)
-- [RenderJob from OTIO](./renderjob-from-otio.md)
-- [Asset Registry](./asset-registry.md)
+- [OTIO Metadata Schema](../review/otio-xmp-asset-registry-phase1-implementation.md)
+- [RenderGraph Compiler](../architecture/governance/roadmap-20-renderplan-rendergraph-architecture-contract.md)
+- [RenderJob from OTIO](../architecture/governance/roadmap-20-canonical-renderplan-rendergraph-implementation.md)
+- [Asset Registry](../review/otio-xmp-asset-registry-placement-decision.md)

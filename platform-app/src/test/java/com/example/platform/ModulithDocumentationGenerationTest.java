@@ -43,13 +43,15 @@ class ModulithDocumentationGenerationTest {
                 "ApplicationModules must contain at least one application module");
 
         // Generated output is a documented, diffable, GENERATED artifact.
-        Path output = Path.of("docs/architecture/maps/generated/modulith");
+        // Gradle runs this test with platform-app as the working directory;
+        // keep the checked-in derived artifact at the repository-level docs path.
+        Path output = Path.of("../docs/architecture/maps/generated/modulith");
         Files.createDirectories(output);
 
         // withOutputFolder is relative to the module working directory (platform-app/),
         // so the canonical docs path is resolved from the module root.
         Documenter.Options options = Documenter.Options.defaults()
-                .withOutputFolder("docs/architecture/maps/generated/modulith");
+                .withOutputFolder("../docs/architecture/maps/generated/modulith");
 
         new Documenter(modules, options)
                 .writeModulesAsPlantUml()

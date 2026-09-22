@@ -209,26 +209,26 @@ curl http://localhost:8080/actuator/health
 
 | 文档 | 用途 |
 |------|------|
-| [docs/zh/platform-guide/README.md](docs/zh/platform-guide/README.md) | **平台指南（分卷）** — 架构 / 依赖 / 实现 / 部署 / 集成 / 路线图 |
-| [docs/zh/platform-guide.md](docs/zh/platform-guide.md) | 旧版单页入口（已重定向至分卷） |
-| [docs/zh/README.md](docs/zh/README.md) | 项目总览（本文档） |
-| [docs/zh/module-reference.md](docs/zh/module-reference.md) | 各模块详细说明 |
-| [docs/zh/development-guidelines.md](docs/zh/development-guidelines.md) | 开发注意事项 |
-| [docs/zh/usage-guide.md](docs/zh/usage-guide.md) | 使用方式 |
-| [docs/zh/architecture.md](docs/zh/architecture.md) | 项目架构 |
-| [docs/zh/prompt-platform.md](docs/zh/prompt-platform.md) | 提示词工程平台说明 |
-| [docs/zh/problematic-data.md](docs/zh/problematic-data.md) | 问题数据处理说明 |
-| [docs/zh/dynamic-extension.md](docs/zh/dynamic-extension.md) | 动态扩展系统说明 |
-| [docs/zh/monitoring-feedback.md](docs/zh/monitoring-feedback.md) | 监控与反馈系统说明 |
-| [docs/zh/deployment.md](docs/zh/deployment.md) | 部署清单与回滚方案 |
-| [docs/zh/faq.md](docs/zh/faq.md) | 常见问题与端到端演示 |
-| [docs/zh/incremental-rendering.md](docs/zh/incremental-rendering.md) | Internal Timeline 1.0 与增量/段级/S3 缓存 |
-| [docs/zh/ai-timeline-editing.md](docs/zh/ai-timeline-editing.md) | AI 时间线编辑 API、多轮改稿与 metadata |
-| [docs/zh/timeline-version-control.md](docs/zh/timeline-version-control.md) | 时间线领域版控（修订链、冲突、History、patch 预览） |
-| [docs/zh/ai-gateway-architecture.md](docs/zh/ai-gateway-architecture.md) | LiteLLM / Spring AI 路由与多厂商配置 |
-| [docs/zh/vault-and-rustfs-setup.md](docs/zh/vault-and-rustfs-setup.md) | Vault、RustFS、Temporal、Cloudflare R2 |
-| [docs/zh/authentik-oidc-resource-server.md](docs/zh/authentik-oidc-resource-server.md) | Authentik 自托管、OIDC Resource Server 选型与部署 |
-| [docs/zh/authentik-property-mapping-and-migration.md](docs/zh/authentik-property-mapping-and-migration.md) | Authentik Property Mapping 与 user-1 迁移 |
+| [./README.md](./README.md) | **平台指南（分卷）** — 架构 / 依赖 / 实现 / 部署 / 集成 / 路线图 |
+| [./platform-guide.md](./platform-guide.md) | 旧版单页入口（已重定向至分卷） |
+| [./README.md](./README.md) | 项目总览（本文档） |
+| [./module-reference.md](./module-reference.md) | 各模块详细说明 |
+| [./development-guidelines.md](./development-guidelines.md) | 开发注意事项 |
+| [./usage-guide.md](./usage-guide.md) | 使用方式 |
+| [./architecture.md](./architecture.md) | 项目架构 |
+| [./prompt-platform.md](./prompt-platform.md) | 提示词工程平台说明 |
+| [./problematic-data.md](./problematic-data.md) | 问题数据处理说明 |
+| [./dynamic-extension.md](./dynamic-extension.md) | 动态扩展系统说明 |
+| [./monitoring-feedback.md](./monitoring-feedback.md) | 监控与反馈系统说明 |
+| [./deployment.md](./deployment.md) | 部署清单与回滚方案 |
+| [./faq.md](./faq.md) | 常见问题与端到端演示 |
+| [./incremental-rendering.md](./incremental-rendering.md) | Internal Timeline 1.0 与增量/段级/S3 缓存 |
+| [./ai-timeline-editing.md](./ai-timeline-editing.md) | AI 时间线编辑 API、多轮改稿与 metadata |
+| [./timeline-version-control.md](./timeline-version-control.md) | 时间线领域版控（修订链、冲突、History、patch 预览） |
+| [./ai-gateway-architecture.md](./ai-gateway-architecture.md) | LiteLLM / Spring AI 路由与多厂商配置 |
+| [./vault-and-rustfs-setup.md](./vault-and-rustfs-setup.md) | Vault、RustFS、Temporal、Cloudflare R2 |
+| [./authentik-oidc-resource-server.md](./authentik-oidc-resource-server.md) | Authentik 自托管、OIDC Resource Server 选型与部署 |
+| [./authentik-property-mapping-and-migration.md](./authentik-property-mapping-and-migration.md) | Authentik Property Mapping 与 user-1 迁移 |
 
 ### 英文文档
 
@@ -270,7 +270,7 @@ media-platform/
 ├── cloud-resource-module/   # 云资源
 ├── frontend/                # Vue.js 视频编辑器
 ├── docs/                    # 英文文档
-├── docs/zh/                 # 中文文档
+├── ./                 # 中文文档
 ├── scripts/                 # 验证脚本
 └── prompts/                 # 执行提示词 + MANIFEST
 ```
@@ -308,4 +308,4 @@ media-platform/
 
 ---
 
-*由 Kilo Code 生成 (Prompt 55)。完整执行历史见 [prompts/MANIFEST.md](prompts/MANIFEST.md)。*
+*由 Kilo Code 生成 (Prompt 55)。完整执行历史见 [../../prompts/MANIFEST.md](../../prompts/MANIFEST.md)。*

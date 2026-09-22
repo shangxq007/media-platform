@@ -105,8 +105,12 @@
       "authority_class": "CANONICAL_ACCEPTED",
       "lifecycle_state": "ACTIVE",
       "acceptance_state": "NOT_APPLICABLE",
-      "semantic_body_sha256": "278e4fec86d4b915b19c3ac95dfac61c12c02dac101ba54251c90e763eba5d5b",
-      "baseline_commit": "1af5ceb8a682cb946dd04a1891a4bf68125794a9"
+      "semantic_body_sha256": "aef6742bce2a3957441f737d15862d48872160077c34768356e1394a0cdeebdf",
+      "baseline_commit": "673e180a3236d747b4fd2aaaa5ca7a11a0cf830d",
+      "governance_change_id": "GOV-2026-09-22-005",
+      "semantic_reason": "Two previously authorized schema-intent amendments were not reflected in the registered protected hash.",
+      "previous_semantic_body_sha256": "278e4fec86d4b915b19c3ac95dfac61c12c02dac101ba54251c90e763eba5d5b",
+      "governance_decision": "docs/architecture/governance/governance-change-ledger-2026-09-22.md"
     },
     {
       "document_id": "architecture-governance-canonical-contracts-storage-contract",

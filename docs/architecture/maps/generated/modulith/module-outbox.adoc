@@ -1,0 +1,23 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`com.example.platform.outbox`
+|Spring components
+|_Services_
+
+* `c.e.p.o.app.OutboxEventService`
+* `c.e.p.o.app.PostgresNotificationService`
+* `c.e.p.o.coordination.PlatformCoordinationService`
+
+_Repositories_
+
+* `c.e.p.o.coordination.PlatformJobRepository`
+* `c.e.p.o.coordination.PlatformTaskRepository`
+
+_Others_
+
+* `c.e.p.o.app.DispatchBooster`
+* `c.e.p.o.operations.OutboxOperationalQuery` (via `c.e.p.o.app.JdbcOutboxOperationalQuery`)
+* `c.e.p.o.app.OutboxEventDispatcher`
+* `c.e.p.o.app.OutboxEventRouter`
+|===

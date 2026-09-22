@@ -733,14 +733,14 @@ Open-source capability map added as reference. See [Open-source Capability Exten
 - REAL-MEDIA-INPUT.0: COMPLETE
 - Upload endpoint: WORKING
 - Content endpoint: WORKING
-- See [Diagnostic](../render/spring-boot-classloader-deep-diagnostic.md)
+- See [Diagnostic](../../render/spring-boot-classloader-deep-diagnostic.md)
 
 ## Timeline Render MVP (2026-07-08)
 
 - TIMELINE-RENDER-MVP.0: COMPLETE
 - Timeline revision-based render: WORKING
 - One video clip with real media: VERIFIED
-- See [Timeline Render MVP](../render/timeline-render-mvp.md)
+- See [Timeline Render MVP](../../render/timeline-render-mvp.md)
 
 ## Basic Effects DSL (2026-07-08)
 
@@ -749,14 +749,14 @@ Open-source capability map added as reference. See [Open-source Capability Exten
 - Placement model: clip/track/timeline
 - Validation rules: DEFINED
 - FFmpeg mapping: GUIDANCE only
-- See [Basic Effects DSL](../render/basic-effects-dsl.md)
+- See [Basic Effects DSL](../../render/basic-effects-dsl.md)
 
 ## FFmpeg Filtergraph Compiler (2026-07-08)
 
 - FFMPEG-FILTERGRAPH-COMPILER.0: COMPLETE (EXISTING_INFRASTRUCTURE)
 - EffectFilterGraphBuilder: EXISTS
 - Fade/brightness/contrast/blur: VERIFIED
-- See [FFmpeg Filtergraph Compiler](../render/ffmpeg-filtergraph-compiler.md)
+- See [FFmpeg Filtergraph Compiler](../../render/ffmpeg-filtergraph-compiler.md)
 
 ## Subtitle DSL (2026-07-08)
 
@@ -764,7 +764,7 @@ Open-source capability map added as reference. See [Open-source Capability Exten
 - TimelineTextOverlay: EXISTS
 - Subtitle Render API: EXISTS (MVP)
 - libass provider: EXISTS
-- See [Subtitle DSL](../render/subtitle-dsl-ass.md)
+- See [Subtitle DSL](../../render/subtitle-dsl-ass.md)
 
 ## Text Overlay Security (2026-07-08)
 
@@ -772,7 +772,7 @@ Open-source capability map added as reference. See [Open-source Capability Exten
 - FFmpeg command: argv-based (safe)
 - ASS escaping: PARTIAL (follow-up)
 - Path exposure: NONE (safe)
-- See [Text Overlay Security](../render/text-overlay-security.md)
+- See [Text Overlay Security](../../render/text-overlay-security.md)
 
 ## ASS Generator MVP (2026-07-08)
 
@@ -780,7 +780,7 @@ Open-source capability map added as reference. See [Open-source Capability Exten
 - ASS escaping: HARDENED
 - Resource limits: ENFORCED
 - ASS injection risk: LOW
-- See [ASS Generator MVP](../render/ass-generator-mvp.md)
+- See [ASS Generator MVP](../../render/ass-generator-mvp.md)
 
 ## Subtitle Render Smoke (2026-07-09)
 
@@ -788,7 +788,7 @@ Open-source capability map added as reference. See [Open-source Capability Exten
 - Subtitle burn-in: ✅ COMPLETED
 - Escaped text: ✅ COMPLETED
 - Unicode: ✅ COMPLETED
-- See [Subtitle Render Smoke](../render/subtitle-render-smoke.md)
+- See [Subtitle Render Smoke](../../render/subtitle-render-smoke.md)
 
 ## Timeline Git Planning (2026-07-09)
 
@@ -797,4 +797,4 @@ Open-source capability map added as reference. See [Open-source Capability Exten
 - Semantic diff model: DEFINED
 - Patch model: DEFINED
 - Timeline Git: NOT IMPLEMENTED
-- See [Timeline Git Planning](../timeline/timeline-git-planning.md)
+- See [Timeline Git Planning](../../timeline/timeline-git-planning.md)

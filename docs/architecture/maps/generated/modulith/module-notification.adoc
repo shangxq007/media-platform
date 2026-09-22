@@ -1,0 +1,28 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`com.example.platform.notification`
+|Spring components
+|* `c.e.p.n.api.event.NotificationOutboxEvents`
+|Bean references
+|* `c.e.p.a.api.AuditPort` (in Audit public contracts)
+|Events listened to
+|* `c.e.p.n.api.ingress.NotificationInboundEvent` 
+* `c.e.p.a.api.event.ArtifactCreatedEvent` 
+* `c.e.p.a.api.event.AssetEnrichedEvent` 
+* `c.e.p.m.api.event.MarketplaceListingArchivedEvent` 
+* `c.e.p.m.api.event.MarketplaceListingPublishedEvent` 
+* `c.e.p.m.api.event.MarketplaceReviewApprovedEvent` 
+* `c.e.p.r.api.event.RenderCacheHashInvalidatedEvent` 
+* `c.e.p.d.api.event.DeliveryCompletedEvent` 
+* `c.e.p.d.api.event.DeliveryFailedEvent` 
+* `c.e.p.r.api.event.RenderJobCreatedEvent` 
+* `c.e.p.r.api.event.RenderJobStatusChangedEvent` 
+* `c.e.p.t.api.event.TimelineReviewApprovedEvent` 
+* `c.e.p.t.api.event.TimelineReviewChangesRequestedEvent` 
+* `c.e.p.t.api.event.TimelineReviewCommentAddedEvent` 
+* `c.e.p.t.api.event.TimelineReviewRejectedEvent` 
+* `c.e.p.t.api.event.TimelineReviewThreadResolvedEvent` 
+* `c.e.p.t.api.event.TimelineMergedEvent` 
+* `c.e.p.t.api.event.TimelineRestoredEvent` 
+|===

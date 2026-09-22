@@ -1,0 +1,10 @@
+classification\tlegacy_path\treplacement_or_reference\tstatus\tnotes
+SUPERSEDED\tdocs/operations/flyway-baseline-runbook.md\tdocs/database/flyway-migration-baseline.md\tSUPERSEDED\told V1-only claims retained in archive
+SUPERSEDED\tdocs/operations/flyway-migration-guide.md\tdocs/database/flyway-migration-baseline.md\tSUPERSEDED\told filenames and counts retired
+HISTORICAL_EVIDENCE\tdocs/review/\tdocs/architecture/current/architecture-entrypoint.md\tHISTORICAL\tdated review reports retained
+HISTORICAL_EVIDENCE\tdocs/releases/\tdocs/architecture/current/architecture-entrypoint.md\tHISTORICAL\tdated release reports retained
+ARCHIVED\tdocs/archive/\tdocs/architecture/current/architecture-entrypoint.md\tARCHIVED\tarchive remains readable but cannot guide current work
+GENERATED_DERIVED\tdocs/architecture/maps/exports/\tdocs/architecture/maps/likec4/media-platform.likec4\tGENERATED\tregenerate from LikeC4 source
+GENERATED_DERIVED\tdocs/architecture/maps/generated/modulith/\tplatform-app/src/test/java/com/example/platform/ModulithDocumentationGenerationTest.java\tGENERATED\tregenerate from ApplicationModules
+INVALID_OR_DUPLICATE\tArchify\tdocs/architecture/governance/source-of-truth/architecture-authority-model.md\tDEFERRED\tnot integrated
+INVALID_OR_DUPLICATE\tFireworks-Tech-Graph\tdocs/architecture/governance/source-of-truth/architecture-authority-model.md\tDEFERRED\tnot integrated

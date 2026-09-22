@@ -1,0 +1,30 @@
+@startuml
+title <size:24>AI</size>
+
+set separator none
+top to bottom direction
+
+<style>
+  root {
+    BackgroundColor: #ffffff
+    FontColor: #444444
+  }
+</style>
+
+!include <C4/C4>
+!include <C4/C4_Context>
+!include <C4/C4_Component>
+
+System_Boundary("PlatformApplication_boundary", "PlatformApplication", $tags="") {
+  Container_Boundary("PlatformApplication.PlatformApplication_boundary", "PlatformApplication", $tags="") {
+    Component(PlatformApplication.PlatformApplication.AI, "AI", $techn="Module", $descr="", $tags="", $link="")
+    Component(PlatformApplication.PlatformApplication.Usage, "Usage", $techn="Module", $descr="", $tags="", $link="")
+  }
+
+}
+
+Rel(PlatformApplication.PlatformApplication.AI, PlatformApplication.PlatformApplication.Usage, "uses", $techn="", $tags="", $link="")
+
+SHOW_LEGEND(true)
+hide stereotypes
+@enduml

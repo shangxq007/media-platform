@@ -232,6 +232,6 @@ All future providers follow the same canonical flow. No exceptions.
 |----------|-------------|
 | [Domain Event & Outbox Blueprint](../architecture/blueprint/domain-event-outbox-blueprint.md) | Outbox runtime design |
 | [Platform Coordination Blueprint](../architecture/blueprint/platform-coordination-blueprint.md) | Coordination runtime design |
-| [Provider Extension Runtime](provider-extension-runtime.md) | Extension runtime design |
-| [Provider Governance](provider-governance.md) | Provider governance rules |
-| [Execution Backend Abstraction](execution-backend-abstraction.md) | Execution runtime design |
+| [Provider Extension Runtime](../review/provider-extension-runtime.md) | Extension runtime design |
+| [Provider Governance](../review/provider-governance.md) | Provider governance rules |
+| [Execution Backend Abstraction](../review/execution-backend-abstraction.md) | Execution runtime design |

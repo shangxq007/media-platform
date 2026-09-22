@@ -19,6 +19,28 @@ SPECTRAL="$PWD/contracts/node_modules/.bin/spectral"
   --ruleset contracts/governance/api-style.yaml >/tmp/spectral-out.txt 2>&1
 ck $? "spectral lint passes (base)"
 
+echo "== Checked-in runtime OpenAPI authority =="
+python3 - <<'PY'
+import json
+from pathlib import Path
+
+p = Path("docs/api/openapi-preview-current.json")
+doc = json.loads(p.read_text(encoding="utf-8"))
+assert doc.get("openapi", "").startswith("3.1."), doc.get("openapi")
+assert isinstance(doc.get("paths"), dict) and doc["paths"], "paths missing"
+operations = 0
+for path, item in doc["paths"].items():
+    assert path.startswith("/"), path
+    for method, operation in item.items():
+        if method.lower() not in {"get", "put", "post", "delete", "options", "head", "patch", "trace"}:
+            continue
+        operations += 1
+        assert operation.get("operationId"), f"operationId missing: {method} {path}"
+assert operations > 0
+print(f"authority artifact: {p} openapi={doc['openapi']} operations={operations}")
+PY
+ck $? "checked-in runtime artifact is valid OpenAPI 3.1.x with operationIds"
+
 echo "== oasdiff breaking: base vs candidate (additive => non-breaking) =="
 if [ -x "$OASDIFF" ]; then
   OUT=$("$OASDIFF" breaking contracts/http/media-api/openapi.base.yaml \

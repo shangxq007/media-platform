@@ -1,6 +1,6 @@
 # 优雅停机与数据一致性
 
-> 与 [asset-lifecycle-governance.md](asset-lifecycle-governance.md)、[persistence-restart-semantics.md](../platform/docs/persistence-restart-semantics.md) 互补。
+> 与 [asset-lifecycle-governance.md](asset-lifecycle-governance.md)、[persistence-restart-semantics.md](../persistence-restart-semantics.md) 互补。
 
 ## 优雅停机能力（当前）
 

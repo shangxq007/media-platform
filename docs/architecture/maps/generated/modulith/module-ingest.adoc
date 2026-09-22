@@ -1,0 +1,9 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`com.example.platform.ingest`
+|Bean references
+|* `c.e.p.s.domain.BlobStorage` (in Storage)
+* `c.e.p.m.api.MediaAssets` (in Media)
+* `c.e.p.r.api.rawmedia.RawMediaProductRegistrationFacade` (in Render)
+|===

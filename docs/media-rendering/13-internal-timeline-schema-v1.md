@@ -402,7 +402,7 @@ function analyzeImpact(changes, dependencyGraph):
   dirtyNodes = set()
   reusableArtifacts = loadArtifactGraph()
   for c in changes:
-    dirtyNodes += propagationRules[c.type](c, dependencyGraph)
+    dirtyNodes += propagationRules(c.type, c, dependencyGraph)
   dirtyRanges = mergeTimeRanges(dirtyNodes)
   dirtySegments = splitBySegmentPolicy(dirtyRanges)
   for node in dependencyGraph.topoSort():

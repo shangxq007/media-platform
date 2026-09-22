@@ -1,0 +1,46 @@
+@startuml
+title <size:24>Execution</size>
+
+set separator none
+top to bottom direction
+
+<style>
+  root {
+    BackgroundColor: #ffffff
+    FontColor: #444444
+  }
+</style>
+
+!include <C4/C4>
+!include <C4/C4_Context>
+!include <C4/C4_Component>
+
+System_Boundary("PlatformApplication_boundary", "PlatformApplication", $tags="") {
+  Container_Boundary("PlatformApplication.PlatformApplication_boundary", "PlatformApplication", $tags="") {
+    Component(PlatformApplication.PlatformApplication.Colorimage, "Colorimage", $techn="Module", $descr="", $tags="", $link="")
+    Component(PlatformApplication.PlatformApplication.Execution, "Execution", $techn="Module", $descr="", $tags="", $link="")
+    Component(PlatformApplication.PlatformApplication.Extension, "Extension", $techn="Module", $descr="", $tags="", $link="")
+    Component(PlatformApplication.PlatformApplication.Graph, "Graph", $techn="Module", $descr="", $tags="", $link="")
+    Component(PlatformApplication.PlatformApplication.Render, "Render", $techn="Module", $descr="", $tags="", $link="")
+    Component(PlatformApplication.PlatformApplication.SharedKernel, "Shared Kernel", $techn="Module", $descr="", $tags="", $link="")
+    Component(PlatformApplication.PlatformApplication.Audio, "Audio", $techn="Module", $descr="", $tags="", $link="")
+  }
+
+}
+
+Rel(PlatformApplication.PlatformApplication.Execution, PlatformApplication.PlatformApplication.Audio, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Execution, PlatformApplication.PlatformApplication.Colorimage, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Execution, PlatformApplication.PlatformApplication.Extension, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Execution, PlatformApplication.PlatformApplication.Graph, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Execution, PlatformApplication.PlatformApplication.Render, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Execution, PlatformApplication.PlatformApplication.SharedKernel, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Extension, PlatformApplication.PlatformApplication.SharedKernel, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Render, PlatformApplication.PlatformApplication.Audio, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Render, PlatformApplication.PlatformApplication.Colorimage, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Render, PlatformApplication.PlatformApplication.Extension, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Render, PlatformApplication.PlatformApplication.Graph, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Render, PlatformApplication.PlatformApplication.SharedKernel, "depends on", $techn="", $tags="", $link="")
+
+SHOW_LEGEND(true)
+hide stereotypes
+@enduml

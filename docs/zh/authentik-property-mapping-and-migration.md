@@ -1,8 +1,8 @@
 # Authentik Property Mapping 示例与 `user-1` 迁移指南
 
-> **最后更新:** 2026-05-21  
-> **前置:** [authentik-oidc-resource-server.md](authentik-oidc-resource-server.md)  
-> **Blueprint 文件:** [platform/docs/authentik/blueprint-media-platform-claims.yaml](../../platform/docs/authentik/blueprint-media-platform-claims.yaml)
+> **最后更新:** 2026-05-21
+> **前置:** [authentik-oidc-resource-server.md](authentik-oidc-resource-server.md)
+> **Blueprint 文件:** [platform/docs/authentik/blueprint-media-platform-claims.yaml](../authentik/blueprint-media-platform-claims.yaml)
 
 本文提供 **可复制** 的 Authentik Scope Mapping 表达式、组/用户属性约定，以及从开发态 `user-1` / `tenant-1` 迁移到 OIDC 的步骤。
 
@@ -15,7 +15,7 @@
 | `sub` | 是 | Authentik 用户 UUID（默认） |
 | `platform_user_id` | 否（**迁移推荐**） | 平台用户主键；有则 JIT / API 用其代替 `sub` |
 | `tenantId` | 联调推荐 | 租户 ID，对应 DB `tenant.id` |
-| `roles` 或 `groups` | 推荐 | 字符串数组，如 `["ADMIN"]`；见 [OidcRoleMapping](../../platform/platform-app/src/main/java/com/example/platform/security/OidcRoleMapping.java) |
+| `roles` 或 `groups` | 推荐 | 字符串数组，如 `["ADMIN"]`；见 [OidcRoleMapping](../../platform-app/src/main/java/com/example/platform/security/OidcRoleMapping.java) |
 | `email` | 推荐 | JIT 创建用户邮箱 |
 
 后端配置（已实现）：
@@ -62,7 +62,7 @@ app.security.oauth2:
 
 ### 3.1 `tenantId`（Scope name: `media-platform` 或 `profile`）
 
-**Name:** `Media Platform — tenantId`  
+**Name:** `Media Platform — tenantId`
 **Scope name:** `media-platform`（需在 Provider 的 Scopes 与前端 `VITE_OIDC_SCOPE` 中加入 `media-platform`）
 
 ```python
@@ -112,8 +112,8 @@ return {
 
 ### 3.3 Provider 挂载
 
-1. **Applications → Providers →** 你的 `media-platform-dev` Provider  
-2. **Property mappings** → 添加上述 Scope Mapping（保留默认 `openid` / `profile` / `email`）  
+1. **Applications → Providers →** 你的 `media-platform-dev` Provider
+2. **Property mappings** → 添加上述 Scope Mapping（保留默认 `openid` / `profile` / `email`）
 3. **Advanced settings → Scopes** 确保包含自定义 scope（若使用 `media-platform`）
 
 ### 3.4 前端 Scope
@@ -128,7 +128,7 @@ VITE_OIDC_SCOPE=openid profile email media-platform
 
 ## 4. 用 Blueprint 导入（可选）
 
-将 [blueprint-media-platform-claims.yaml](../../platform/docs/authentik/blueprint-media-platform-claims.yaml) 挂载到 Authentik worker：
+将 [blueprint-media-platform-claims.yaml](../authentik/blueprint-media-platform-claims.yaml) 挂载到 Authentik worker：
 
 ```yaml
 # docker-compose.authentik.yml 中 server/worker 增加：
@@ -136,7 +136,7 @@ volumes:
   - ./docs/authentik:/blueprints/custom:ro
 ```
 
-启动后 **Customization → Blueprints** 中应出现 `media-platform-claims`，点击 **Apply**。  
+启动后 **Customization → Blueprints** 中应出现 `media-platform-claims`，点击 **Apply**。
 Provider / Application 仍需在 UI 中绑定 Property mappings（Blueprint 仅预建 Groups + Scope Mapping）。
 
 ---
@@ -153,10 +153,10 @@ Provider / Application 仍需在 UI 中绑定 Property mappings（Blueprint 仅�
 
 ### 5.2 策略 A 操作清单
 
-1. 平台 DB 已有 `tenant-1`（`oidc` profile 下 [OidcDevBootstrapRunner](../../platform/platform-app/src/main/java/com/example/platform/security/OidcDevBootstrapRunner.java) 会自动创建）。  
-2. 确认存在 `user-1`（同上，或历史数据已创建）。  
-3. Authentik 创建用户 `dev@local`，属性 `platform_user_id=user-1`，加入 `mp-tenant-1-admin`。  
-4. 登录后 JWT 含 `platform_user_id`，JIT 更新 `user-1` 的角色分配，**不会**新建 UUID 用户。  
+1. 平台 DB 已有 `tenant-1`（`oidc` profile 下 [OidcDevBootstrapRunner](../../platform-app/src/main/java/com/example/platform/security/OidcDevBootstrapRunner.java) 会自动创建）。
+2. 确认存在 `user-1`（同上，或历史数据已创建）。
+3. Authentik 创建用户 `dev@local`，属性 `platform_user_id=user-1`，加入 `mp-tenant-1-admin`。
+4. 登录后 JWT 含 `platform_user_id`，JIT 更新 `user-1` 的角色分配，**不会**新建 UUID 用户。
 5. 前端去掉依赖：生产禁用裸 `X-Tenant-ID`；`trust-jwt-tenant-only=true`。
 
 ### 5.3 验证 JWT
@@ -174,8 +174,8 @@ curl -sS -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/v1/me/dashb
 
 ## 6. 与内置 RBAC 的关系
 
-- JIT 写入 `user` 表 + `user_role_assignment`（角色键 `ADMIN` / `EDITOR` / `VIEWER`）。  
-- [BuiltinDataInitializer](../../platform/identity-access-module/src/main/java/com/example/platform/identity/app/BuiltinDataInitializer.java) 会链接 `ADMIN` → 权限 `ADMIN` / `WRITE` / `MEMBER_MANAGE`，供 `/api/v1/me` 与导航使用。  
+- JIT 写入 `user` 表 + `user_role_assignment`（角色键 `ADMIN` / `EDITOR` / `VIEWER`）。
+- [BuiltinDataInitializer](../../identity-access-module/src/main/java/com/example/platform/identity/app/BuiltinDataInitializer.java) 会链接 `ADMIN` → 权限 `ADMIN` / `WRITE` / `MEMBER_MANAGE`，供 `/api/v1/me` 与导航使用。
 - **套餐 tier** 仍由 `entitlement-module` 控制（与 IdP 组独立）。
 
 ---

@@ -1,0 +1,36 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`com.example.platform.timeline`
+|Spring components
+|_Services_
+
+* `c.e.p.t.api.revision.TimelineSnapshotQueries` (via `c.e.p.t.adapter.TimelineSnapshotService`)
+* `c.e.p.t.api.composition.TimelineValidation` (via `c.e.p.t.app.InternalTimelineValidationService`)
+* `c.e.p.t.api.revision.TimelineMaintenanceQueries` (via `c.e.p.t.app.SystemMaintenanceReader`)
+* `c.e.p.t.api.composition.TimelineCanonicalization` (via `c.e.p.t.app.TimelineCanonicalizer`)
+* `c.e.p.t.api.composition.TimelineImport` (via `c.e.p.t.app.TimelineImportService`)
+* `c.e.p.t.api.revision.TimelineMergeOperations` (via `c.e.p.t.app.TimelineMergeEngine`)
+* `c.e.p.t.api.composition.TimelinePatches` (via `c.e.p.t.app.TimelinePatchService`)
+* `c.e.p.t.api.revision.TimelineRevisionDiff` (via `c.e.p.t.app.TimelineRevisionDiffService`)
+* `c.e.p.t.api.revision.TimelineRevisionQueries` (via `c.e.p.t.app.TimelineRevisionQueryService`)
+* `c.e.p.t.api.revision.TimelineRevisionCommands` (via `c.e.p.t.app.TimelineRevisionSaveService`)
+* `c.e.p.t.api.composition.TimelineSemanticDiff` (via `c.e.p.t.app.TimelineSemanticDiffService`)
+* `c.e.p.t.api.review.ReviewDecisions` (via `c.e.p.t.app.review.ReviewDecisionService`)
+* `c.e.p.t.api.review.TimelineComments` (via `c.e.p.t.app.review.TimelineCommentService`)
+* `c.e.p.t.api.review.ReviewQueries` (via `c.e.p.t.app.review.TimelineReviewQueries`)
+* `c.e.p.t.api.review.TimelineReviews` (via `c.e.p.t.app.review.TimelineReviewService`)
+
+_Others_
+
+* `c.e.p.t.api.event.TimelineOutboxEvents`
+* `c.e.p.t.api.composition.TimelineSourceValidation` (via `c.e.p.t.app.TimelineSourceReferenceValidator`)
+|Bean references
+|* `c.e.p.a.domain.ArtifactQueryService` (in Artifact)
+* `c.e.p.a.app.ArtifactPinService` (in Artifact)
+* `c.e.p.i.api.authorization.AuthorizationDecisionPort` (in Identity & Access)
+* `c.e.p.o.app.OutboxEventService` (in Outbox & Events)
+* `c.e.p.m.api.MediaAssetQueries` (in Media)
+* `c.e.p.m.api.MediaStreamQueries` (in Media)
+* `c.e.p.i.api.authorization.CanonicalActorResolver` (in Identity & Access)
+|===

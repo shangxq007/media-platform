@@ -689,8 +689,8 @@ Counter.builder("ai.errors.total")
 ## Related Documentation
 
 - [AI Engine SPI](../ai-engine-spi.md)
-- [Spring AI Adapter](../../spring-ai-adapter/README.md)
-- [Prompt Module](../../prompt-module/README.md)
+- [Spring AI Adapter](../ai-engine-spi.md)
+- [Prompt Module](../../prompt-module/)
 - [Current System State](../architecture/current/current-system-state.md)
 
 ---

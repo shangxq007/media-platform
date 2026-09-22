@@ -1,0 +1,24 @@
+classification\tpath\treplacement_or_authority\tfact_state\tnotes
+CURRENT_NORMATIVE\tdocs/architecture/current/architecture-entrypoint.md\tself\tCURRENT\tsingle architecture navigation entrypoint
+CURRENT_NORMATIVE\tdocs/architecture/governance/source-of-truth/architecture-authority-model.md\tself\tCURRENT\tauthority precedence and view ownership
+CURRENT_NORMATIVE\tdocs/architecture/maps/likec4/media-platform.likec4\tself\tCURRENT/TARGET/DEFERRED\thuman-curated intent model
+GENERATED_DERIVED\tdocs/architecture/maps/generated/modulith/\tplatform-app/src/test/java/com/example/platform/ModulithDocumentationGenerationTest.java\tCURRENT\tSpring Modulith as-built output; regenerated, not edited
+CURRENT_NORMATIVE\tdocs/database/flyway-migration-baseline.md\tself\tCURRENT\tsingle current Flyway policy and inventory
+CURRENT_NORMATIVE\tdocs/api/openapi-authority.md\tself\tCURRENT\tOpenAPI 3.1.x authority and generation rule
+CURRENT_OPERATIONAL\tdocs/operations/\tdocs/database/flyway-migration-baseline.md\tCURRENT\toperational procedures; individual docs are classified below
+CURRENT_NORMATIVE\tdocs/architecture/adr/\tdocs/architecture/governance/canonical-contracts/canonical-contract-registry.json\tCURRENT/TARGET/DEFERRED\taccepted decisions and explicit candidates
+CURRENT_NORMATIVE\tdocs/architecture/governance/canonical-contracts/\tself\tCURRENT/TARGET/DEFERRED\tcanonical semantic contracts
+HISTORICAL_EVIDENCE\tdocs/review/\tdocs/architecture/current/architecture-entrypoint.md\tHISTORICAL\treview reports and validation evidence; not current policy
+HISTORICAL_EVIDENCE\tdocs/releases/\tdocs/architecture/current/architecture-entrypoint.md\tHISTORICAL\trelease evidence and closeout records
+ARCHIVED\tdocs/archive/\tdocs/architecture/current/architecture-entrypoint.md\tHISTORICAL\tretained for traceability; never current guidance
+GENERATED_DERIVED\tdocs/architecture/maps/exports/\tdocs/architecture/maps/likec4/media-platform.likec4\tCURRENT\tLikeC4 generated export; regenerate from source
+GENERATED_DERIVED\tdocs/api/openapi-preview-current.json\tdocs/api/openapi-authority.md\tCURRENT\tchecked-in runtime export; do not hand-edit
+INVALID_OR_DUPLICATE\tArchify / Fireworks-Tech-Graph\tdocs/architecture/governance/source-of-truth/architecture-authority-model.md\tDEFERRED\tno integrated repository implementation found
+
+# Inventory scope
+
+The path rows above define the authoritative classification for document
+families. Individual files under each family inherit the row classification
+unless their own front matter says `SUPERSEDED`, `ARCHIVED`, `HISTORICAL`, or
+`GENERATED`. The complete path-level export is produced by the governance
+inventory command recorded in the validation report.

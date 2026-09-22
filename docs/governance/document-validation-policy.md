@@ -12,7 +12,7 @@ The following code artifacts are the **ground truth** for documentation validati
 | `settings.gradle.kts` | Module count, module names | Root |
 | `build.gradle.kts` | Versions (Java, Spring Boot, Spring Modulith, jOOQ) | Root |
 | `frontend/package.json` | Frontend framework, dependencies | `frontend/` |
-| `V1__init_full_schema.sql` | Database schema, table count | `platform-app/src/main/resources/db/migration/` |
+| `platform-app/src/main/resources/db/migration/V1__initial_schema.sql` | Database schema, table count | `platform-app/src/main/resources/db/migration/` |
 | `ModularityTest.java` | Allowed module boundary violations | `platform-app/src/test/java/` |
 | `ProductionSafetyValidator.java` | Production safety checks | `platform-app/src/main/java/` |
 | `package-info.java` | Module boundaries, NamedInterfaces, allowedDependencies | Each module root |
@@ -35,7 +35,7 @@ For each Tier 0-1 document, verify:
 
 - [ ] Module count matches `settings.gradle.kts` (currently 35)
 - [ ] Frontend framework matches `frontend/package.json` (currently React 19)
-- [ ] Flyway state matches `db/migration/` directory (currently 1 V1 file)
+- [ ] Flyway state matches `db/migration/` directory (currently V1–V9 (9 files))
 - [ ] Database version matches `docker-compose.yml` (currently postgres:16-alpine)
 - [ ] Allowed violations match `ModularityTest.java` ALLOWED_VIOLATIONS (currently 2)
 - [ ] Security checks match `ProductionSafetyValidator.java`
@@ -48,7 +48,7 @@ For each Tier 0-1 document, verify:
 |---------|--------------|-------------------|
 | Frontend framework | React 19 | Vue 3, Vue 3.5, Vue 3 + Pinia |
 | Module count | 35 | 30, 31, 32, 34 |
-| Flyway migrations | 1 (V1 consolidated) | 17, 22, V1-V22 |
+| Flyway migrations | V1–V9 (9 files) | 17, 22, V1-V22 |
 | Database tables | 133 | 28+, 50+, 70+ |
 | PostgreSQL version | 16 | 15 |
 | Allowed violations | 2 | 8 |
@@ -63,10 +63,10 @@ For each Tier 0-1 document, verify:
 grep -c 'include(' settings.gradle.kts
 
 # Flyway files
-ls platform-app/src/main/resources/db/migration/
+find platform-app/src/main/resources/db/migration -maxdepth 1 -type f -name 'V*.sql' -printf '%f\n' | sort -V
 
 # Table count
-grep -ci 'CREATE TABLE' platform-app/src/main/resources/db/migration/V1__init_full_schema.sql
+grep -ci 'CREATE TABLE' platform-app/src/main/resources/db/migration/V1__initial_schema.sql
 
 # Frontend framework
 grep '"react"' frontend/package.json

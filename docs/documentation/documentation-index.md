@@ -1,56 +1,30 @@
----
-status: canonical
-created: 2026-06-27
-scope: documentation
-owner: chief-platform-architect
----
+# Documentation index
 
-# Documentation Index
+Classification checkpoint: 2026-09-22. The [path-level classification inventory](../architecture/governance/document-classification-inventory.tsv) assigns exactly one document class to each in-scope artifact. Classification controls navigation; old `ACTIVE` or `canonical` labels retained inside evidence do not promote it to current guidance.
 
-## Layer 0 — Project Identity
+## Current normative guidance
 
-| Document | Purpose | Audience | Priority |
-|----------|---------|----------|----------|
-| [Vision](docs/identity/vision.md) | What we build and why | All | High |
-| [Positioning](../architecture/platform-positioning.md) | Platform positioning | All | High |
-| [Philosophy](../identity/philosophy.md) | Design philosophy | Architects | Medium |
-| [Roadmap](../architecture/platform-roadmap.md) | Future direction | All | High |
+- [Architecture entrypoint](../architecture/current/architecture-entrypoint.md): logical and deployment views, identifiers, flow and authority links.
+- [Authority rules](../architecture/governance/source-of-truth/architecture-authority-model.md): implementation, approved semantics, intent and derived views.
+- [Canonical semantic contracts](../architecture/governance/canonical-contracts/canonical-contract-registry.json).
+- [ADR registry](../architecture/governance/adr-registry.tsv): accepted decisions, proposals and supersession.
+- [Flyway policy](../database/flyway-migration-baseline.md): the only current migration policy.
+- [HTTP/OpenAPI authority](../api/openapi-authority.md): REST artifact, generation and compatibility evidence.
 
-## Layer 1 — Platform Constitution
+## Current operations
 
-| Document | Purpose | Audience | Priority |
-|----------|---------|----------|----------|
-| [Platform Constitution](../architecture/platform-constitution-v1.md) | Frozen architecture | All | **Required** |
-| [Architecture Freeze Report](../review/architecture-freeze-report-v1.md) | Freeze decision record | Architects | High |
-| [ADR Index](../architecture/adr/) | Architecture decisions | Architects | High |
-| [Kernel Invariants](../architecture/platform-kernel.md#0-canonical-domain-model) | 10 invariants | All | **Required** |
-| [Stable SPIs](../architecture/platform-constitution-v1.md#2-stable-public-spis-api-v10) | 7 frozen SPIs | Developers | High |
+Operational documents explain procedures; their exact class and source scope are in the inventory. A runbook does not establish semantic authority or prove that an environment is deployed.
 
-## Layer 2 — Project Handoff
+- [Local runbook](../runbook-local.md).
+- [Production safety](../production-safety.md).
+- [Architecture verification](../architecture/maps/README.md).
 
-| Document | Purpose | Audience | Priority |
-|----------|---------|----------|----------|
-| [Project Handoff](docs/handoff/project-handoff-v1.md) | Current state | All | **Required** |
-| [Current Phase](docs/handoff/current-phase.md) | Priorities + constraints | All | **Required** |
-| [Reading Guide](docs/handoff/reading-guide.md) | Navigation | All | **Required** |
-| [Next Milestones](docs/handoff/next-milestones.md) | Upcoming work | Contributors | Medium |
+## Derived artifacts
 
-## Layer 3 — Architecture Blueprint
+- [LikeC4 source and generation](../architecture/maps/likec4/README.md).
+- [Spring Modulith generated C4](../architecture/maps/generated/README.md).
+- [Validation report](../architecture/governance/validation-report-2026-09-22.md).
 
-| Document | Purpose | Audience | Priority |
-|----------|---------|----------|----------|
-| [Platform Kernel](../architecture/platform-kernel.md) | Kernel inventory | Developers | High |
-| [Platform Governance](../architecture/platform-governance.md) | Governance B2/B2.1 | Developers | High |
-| [Workflow Platform](../architecture/workflow-platform.md) | Workflow + composition | Architects | Medium |
-| [Public Capability](../architecture/public-capability-architecture.md) | Public capability model | Developers | High |
-| [Component Descriptor](../architecture/component-descriptor.md) | Descriptor architecture | Developers | Medium |
-| [Product Runtime](../architecture/product-runtime.md) | Product model | Developers | High |
-| [Execution Model](../architecture/execution-job-model.md) | Job/Task/Command | Developers | High |
+## Historical, superseded and archived material
 
-## Layer 4 — Implementation
-
-| Document | Purpose | Audience | Priority |
-|----------|---------|----------|----------|
-| [Implementation Reports](../review/) | Sprint/foundation reports | Contributors | Low |
-| [Architecture Validations](../review/opencue-architecture-validation.md) | Validation reports | Reviewers | Medium |
-| [Source Code](render-module/) | Implementation | Developers | Medium |
+[Replacement mapping](../architecture/governance/superseded-archive-mapping.tsv) records each retired guide and evidence location. [Reviews](../review/), [releases](../releases/), [archive](../archive/) and dated closeout reports are historical evidence. They are not present-day operating policy or release readiness. Original consolidated Flyway documents and the former index are preserved in [the archive manifest](../architecture/governance/preservation-manifest-2026-09-22.json).

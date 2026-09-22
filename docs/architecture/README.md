@@ -26,6 +26,10 @@ blocks_v5: false
 
 # Architecture Documentation
 
+**Current entrypoint:** [Current Architecture Entrypoint](current/architecture-entrypoint.md)
+
+**Authority model:** [Architecture Authority Model](governance/source-of-truth/architecture-authority-model.md)
+
 ## Start Here for Canonical Semantics
 
 **Canonical contracts define authoritative architecture semantics:**

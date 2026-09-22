@@ -1,0 +1,66 @@
+schema_version: 1
+status: CURRENT_NORMATIVE_CROSS_VIEW_KEYS
+authority: docs/architecture/governance/source-of-truth/architecture-authority-model.md
+namespaces:
+  domains:
+    dom.platform: Platform kernel and composition root
+    dom.identity: Identity, tenant, workspace and authorization
+    dom.workflow: Workflow definition and durable execution
+    dom.render: Render planning and execution
+    dom.provider: Provider and plugin execution
+    dom.storage: Artifact and storage delivery
+    dom.billing: Usage, quota, entitlement and billing
+    dom.delivery: External delivery destinations
+  modules:
+    mod.platform-app: platform-app
+    mod.workflow: workflow-module
+    mod.render: render-module
+    mod.provider-runtime: provider-plugin-runtime-module
+    mod.storage: storage-module
+    mod.delivery: delivery-module
+    mod.temporal-adapter: workflow-module temporal adapter
+    mod.sandbox-worker: sandbox-worker
+  contracts:
+    ctr.api.http: OpenAPI 3.1.x external HTTP transport
+    ctr.schema.flyway: Flyway migration contract
+    ctr.workflow.execution: workflow execution contract
+    ctr.provider.spi: provider/plugin execution SPI
+    ctr.storage.spi: storage read/write and placement SPI
+  authorities:
+    auth.source-code: executable implementation
+    auth.adr: accepted ADR and canonical contracts
+    auth.likec4: human-curated intent
+    auth.modulith-c4: generated as-built module view
+    auth.temporal: durable orchestration
+    auth.plugin-runtime: effect execution
+    auth.postgres: persistent product state
+    auth.storage: object storage/data plane
+  data_entities:
+    data.render-job: one render execution attempt
+    data.workflow-run: durable workflow run
+    data.artifact: canonical artifact identity
+    data.storage-object: physical storage object
+    data.usage-record: observed runtime usage
+  deployment_units:
+    dep.platform-app: platform-app JVM deployment
+    dep.remote-render-worker: remote render worker deployment
+    dep.sandbox-worker: sandbox worker process boundary
+    dep.temporal: Temporal service
+    dep.postgresql: PostgreSQL service
+    dep.object-storage: object storage/shared filesystem
+relationships:
+  - from: mod.platform-app
+    to: mod.workflow
+    kind: composes
+  - from: mod.workflow
+    to: auth.temporal
+    kind: orchestrates
+  - from: auth.temporal
+    to: mod.provider-runtime
+    kind: activity-boundary
+  - from: mod.provider-runtime
+    to: auth.storage
+    kind: writes-artifacts
+  - from: mod.platform-app
+    to: auth.postgres
+    kind: persists

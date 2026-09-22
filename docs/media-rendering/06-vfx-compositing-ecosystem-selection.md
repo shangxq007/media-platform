@@ -2,7 +2,7 @@
 
 > **Module:** `render-module`, `effect-pack`  
 > **Last Updated:** 2026-05-20  
-> **Related:** [03-provider-roadmap.md](./03-provider-roadmap.md), [01-render-pipeline.md](./01-render-pipeline.md), [08-pipeline-tools-shotstack-natron-popcornfx-bento4.md](./08-pipeline-tools-shotstack-natron-popcornfx-bento4.md), [../../platform/docs/effect-pack-schema.md](../../platform/docs/effect-pack-schema.md)
+> **Related:** [03-provider-roadmap.md](./03-provider-roadmap.md), [01-render-pipeline.md](./01-render-pipeline.md), [08-pipeline-tools-shotstack-natron-popcornfx-bento4.md](./08-pipeline-tools-shotstack-natron-popcornfx-bento4.md), [../effect-pack-schema.md](../effect-pack-schema.md)
 
 本文档说明主流剪辑/合成/特效宿主与本平台的关系，并回答：**为更好使用特效，是否应集成 Natron 或 TuttleOFX / Sam？**
 

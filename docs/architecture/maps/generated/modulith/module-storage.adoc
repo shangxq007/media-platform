@@ -1,0 +1,35 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`com.example.platform.storage`
+|Spring components
+|_Controllers_
+
+* `c.e.p.s.api.StorageController`
+
+_Services_
+
+* `c.e.p.s.api.StorageCatalogPort` (via `c.e.p.s.app.StorageCatalogService`)
+* `c.e.p.s.api.StorageFilePort` (via `c.e.p.s.app.StorageFileService`)
+* `c.e.p.s.api.StorageOutputPort`, `c.e.p.s.api.StoragePlacementQuery` (via `c.e.p.s.app.StorageOutputService`)
+* `c.e.p.s.api.StorageRuntime` (via `c.e.p.s.app.StorageRuntimeService`)
+* `c.e.p.s.api.StorageObjectIssuance` (via `c.e.p.s.app.identity.CanonicalStorageObjectIssuanceService`)
+* `c.e.p.s.api.StorageWriteIntentRecovery` (via `c.e.p.s.app.identity.CanonicalStorageWriteIntentRecoveryService`)
+
+_Repositories_
+
+* `c.e.p.s.api.StorageReferenceStore` (via `c.e.p.s.infrastructure.StorageReferenceRepository`)
+
+_Configuration properties_
+
+* `c.e.p.s.infrastructure.StorageS3Properties`
+
+_Others_
+
+* `c.e.p.s.domain.BlobStorage` (via `c.e.p.s.infrastructure.LocalFsStorageProvider`)
+* `c.e.p.s.domain.BlobStorage` (via `c.e.p.s.infrastructure.S3BlobStorageProvider`)
+* `c.e.p.s.infrastructure.S3ObjectMaterializer`
+* `c.e.p.s.infrastructure.S3ObjectWriter`
+* `c.e.p.s.infrastructure.StorageModuleConfiguration`
+* `c.e.p.s.infrastructure.StorageRootConfiguration`
+|===

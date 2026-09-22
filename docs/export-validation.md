@@ -139,7 +139,7 @@ If `BudgetGuardPort` is available, the system checks the tenant's budget:
 2. Browser encodes via `ClientCompositor` (frontend)
 3. `POST /api/v1/render/client-exports/{sessionId}/upload` (multipart) → `artifactId`, `downloadUrl`
 
-See [frontend client export capabilities](../frontend/src/clientExport/clientExportCapabilities.ts) for browser support matrix.
+See [frontend client export capabilities](../frontend/src/utils/timelineExport.ts) for browser support matrix.
 
 ## Recommended Presets
 

@@ -1,0 +1,14 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`com.example.platform.payment`
+|Spring components
+|_Services_
+
+* `c.e.p.p.app.PaymentSettlementProjectionPort` (via `c.e.p.p.PaymentSettledCheckoutProjectionHandler`)
+* `c.e.p.p.app.PaymentOutboxDispatcher`
+* `c.e.p.p.app.PaymentTransactionAuthority`
+* `c.e.p.p.commerce.CheckoutPaymentPortAdapter`
+|Bean references
+|* `c.e.p.c.api.checkout.CheckoutOrderPort` (in Commerce)
+|===

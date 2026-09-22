@@ -1,0 +1,9 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`com.example.platform.observability`
+|Spring components
+|* `c.e.p.o.context.ObservationContext` (via `c.e.p.o.app.MdcObservationContext`)
+|Bean references
+|* `c.e.p.a.api.AuditPort` (in Audit public contracts)
+|===

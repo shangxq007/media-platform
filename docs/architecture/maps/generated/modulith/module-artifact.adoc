@@ -1,0 +1,34 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`com.example.platform.artifact`
+|Spring components
+|_Services_
+
+* `c.e.p.a.api.event.ArtifactMetadataEventPublisher`
+* `c.e.p.a.app.ArtifactApplicationService`
+* `c.e.p.a.app.ArtifactCatalogService`
+* `c.e.p.a.app.ArtifactGcService`
+* `c.e.p.a.app.ArtifactLifecycleService`
+* `c.e.p.a.app.ArtifactPinService`
+* `c.e.p.a.app.ArtifactOutputCommit` (via `c.e.p.a.infrastructure.ArtifactOutputCommitService`)
+* `c.e.p.a.app.ArtifactOutputRead` (via `c.e.p.a.infrastructure.ArtifactOutputReadService`)
+* `c.e.p.a.app.ArtifactOutputReferenceIndex` (via `c.e.p.a.infrastructure.ArtifactOutputReferenceIndexService`)
+* `c.e.p.a.domain.ArtifactCommitService` (via `c.e.p.a.infrastructure.JooqArtifactCommitService`)
+* `c.e.p.a.domain.ArtifactQueryService` (via `c.e.p.a.infrastructure.JooqArtifactQueryService`)
+
+_Repositories_
+
+* `c.e.p.a.app.ArtifactCatalogRepository`
+* `c.e.p.a.app.ArtifactRelationRepository`
+* `c.e.p.a.app.ArtifactApplicationQuery` (via `c.e.p.a.infrastructure.JooqArtifactApplicationQuery`)
+
+_Others_
+
+* `c.e.p.a.api.event.ArtifactOutboxEvents`
+* `c.e.p.a.app.AssetIntegrityMetrics`
+|Bean references
+|* `c.e.p.o.app.OutboxEventService` (in Outbox & Events)
+* `c.e.p.a.api.AuditPort` (in Audit public contracts)
+* `c.e.p.s.api.StoragePlacementQuery` (in Storage)
+|===

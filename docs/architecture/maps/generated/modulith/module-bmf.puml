@@ -1,0 +1,36 @@
+@startuml
+title <size:24>Bmf</size>
+
+set separator none
+top to bottom direction
+
+<style>
+  root {
+    BackgroundColor: #ffffff
+    FontColor: #444444
+  }
+</style>
+
+!include <C4/C4>
+!include <C4/C4_Context>
+!include <C4/C4_Component>
+
+System_Boundary("PlatformApplication_boundary", "PlatformApplication", $tags="") {
+  Container_Boundary("PlatformApplication.PlatformApplication_boundary", "PlatformApplication", $tags="") {
+    Component(PlatformApplication.PlatformApplication.Bmf, "Bmf", $techn="Module", $descr="", $tags="", $link="")
+    Component(PlatformApplication.PlatformApplication.Execution, "Execution", $techn="Module", $descr="", $tags="", $link="")
+    Component(PlatformApplication.PlatformApplication.SandboxIsolation, "Sandbox Isolation", $techn="Module", $descr="", $tags="", $link="")
+    Component(PlatformApplication.PlatformApplication.Workerfabric, "Workerfabric", $techn="Module", $descr="", $tags="", $link="")
+  }
+
+}
+
+Rel(PlatformApplication.PlatformApplication.Bmf, PlatformApplication.PlatformApplication.Execution, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Bmf, PlatformApplication.PlatformApplication.SandboxIsolation, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Bmf, PlatformApplication.PlatformApplication.Workerfabric, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Workerfabric, PlatformApplication.PlatformApplication.Execution, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Workerfabric, PlatformApplication.PlatformApplication.SandboxIsolation, "depends on", $techn="", $tags="", $link="")
+
+SHOW_LEGEND(true)
+hide stereotypes
+@enduml

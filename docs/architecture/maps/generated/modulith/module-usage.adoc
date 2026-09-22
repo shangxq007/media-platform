@@ -1,0 +1,15 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`com.example.platform.usage`
+|Spring components
+|_Services_
+
+* `c.e.p.u.api.ObservedRuntimeUsageEmissionPort` (via `c.e.p.u.app.ObservedRuntimeUsageEmissionService`)
+
+_Repositories_
+
+* `c.e.p.u.infrastructure.ObservedRuntimeUsageJdbcRepository`
+|Bean references
+|* `c.e.p.o.app.OutboxEventService` (in Outbox & Events)
+|===

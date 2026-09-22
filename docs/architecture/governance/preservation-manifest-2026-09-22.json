@@ -1,0 +1,30 @@
+[
+  {
+    "original": "docs/database/flyway-migration-baseline.md",
+    "archived": "docs/archive/governance-2026-09-22/flyway-migration-baseline.md",
+    "sha256": "d0d98ec54aa2a2dbf71582ce9c0136873c825025381d67638b8f1ff9a85ab4c4",
+    "classification": "ARCHIVED",
+    "replacement": "docs/database/flyway-migration-baseline.md"
+  },
+  {
+    "original": "docs/operations/flyway-baseline-runbook.md",
+    "archived": "docs/archive/governance-2026-09-22/flyway-baseline-runbook.md",
+    "sha256": "1461fe40e2e9015bea7e057fdb8000df60990eedd1705a2652429e6a5ac26476",
+    "classification": "ARCHIVED",
+    "replacement": "docs/database/flyway-migration-baseline.md"
+  },
+  {
+    "original": "docs/operations/flyway-migration-guide.md",
+    "archived": "docs/archive/governance-2026-09-22/flyway-migration-guide.md",
+    "sha256": "2c76c8652dda21ae65e088b751394feeee02e4c3a09ed8c84b9a5ede95f97415",
+    "classification": "ARCHIVED",
+    "replacement": "docs/database/flyway-migration-baseline.md"
+  },
+  {
+    "original": "docs/documentation/documentation-index.md",
+    "archived": "docs/archive/governance-2026-09-22/documentation-index.md",
+    "sha256": "208f4e99df2d4b6050da2df9211b0b58d933f54e1eab67c7bdf1ba4ebb75cb54",
+    "classification": "ARCHIVED",
+    "replacement": "docs/documentation/documentation-index.md"
+  }
+]

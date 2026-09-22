@@ -1,0 +1,20 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`com.example.platform.marketplace`
+|Spring components
+|_Services_
+
+* `c.e.p.m.api.MarketplaceApi` (via `c.e.p.m.internal.MarketplaceService`)
+
+_Others_
+
+* `c.e.p.m.MarketplaceConfiguration`
+|Bean references
+|* `c.e.p.o.app.OutboxEventService` (in Outbox & Events)
+* `c.e.p.m.api.MediaAssets` (in Media)
+* `c.e.p.m.api.MediaAssetQueries` (in Media)
+* `c.e.p.i.api.authorization.CanonicalActorResolver` (in Identity & Access)
+* `c.e.p.i.api.project.ProjectScopeQueries` (in Identity & Access)
+* `c.e.p.i.api.authorization.AuthorizationDecisionPort` (in Identity & Access)
+|===

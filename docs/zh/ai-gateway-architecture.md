@@ -2,7 +2,7 @@
 
 > **最后更新:** 2026-05-20  
 > **模块:** `ai-module`（路由与 `ChatProvider` SPI）、`platform-app`（Spring AI / HTTP 适配器）  
-> **相关:** [platform/docs/ai-engine-spi.md](../../platform/docs/ai-engine-spi.md)
+> **相关:** [platform/docs/ai-engine-spi.md](../ai-engine-spi.md)
 
 ---
 

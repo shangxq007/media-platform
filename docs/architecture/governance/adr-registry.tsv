@@ -1,0 +1,7 @@
+state\tpath\tdecision_or_replacement\tfact_state\tnotes
+CURRENT_NORMATIVE\tdocs/architecture/adr/\tdocs/architecture/current/architecture-entrypoint.md\tCURRENT/TARGET/DEFERRED\taccepted and explicitly marked candidate decisions
+CURRENT_NORMATIVE\tdocs/render/adr/\tdocs/architecture/current/architecture-entrypoint.md\tCURRENT/TARGET\trender-specific ADRs; accepted status controls authority
+HISTORICAL_EVIDENCE\tdocs/review/\tdocs/architecture/current/architecture-entrypoint.md\tHISTORICAL\treview evidence is not an ADR
+ARCHIVED\tdocs/archive/\tdocs/architecture/current/architecture-entrypoint.md\tHISTORICAL\tarchived ADR copies are retained only for traceability
+SUPERSEDED\tdocs/architecture/adr/ADR-016b-execution-lifecycle.md\tdocs/architecture/adr/ADR-016-execution-job-model.md\tHISTORICAL\tduplicate ADR identifier retained with replacement
+SUPERSEDED\tdocs/architecture/adr/ADR-026-render-output-commit-protocol.md\tdocs/render/adr/ADR-026-render-output-commit-protocol.md\tHISTORICAL\tarchitecture copy is not the accepted render ADR

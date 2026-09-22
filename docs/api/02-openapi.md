@@ -35,3 +35,8 @@ The OpenAPI spec can be used with MCP-compatible tools for AI-assisted developme
 | Notifications | `notifications` | notification-module |
 | Billing | `billing` | billing-module |
 | Admin | `admin` | multiple modules |
+
+## Governance authority
+
+The current contract authority, generation rule, and compatibility gate are
+maintained in [OpenAPI HTTP Contract Authority](openapi-authority.md).

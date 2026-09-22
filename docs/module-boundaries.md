@@ -367,7 +367,7 @@ From [`architecture-notes.md`](./architecture-notes.md):
 5. Every long-running job should emit audit records and carry trace correlation identifiers.
 6. Multi-datasource is managed via named DataSources and named jOOQ `DSLContext`s.
 
-From [`.roo/rules/10-coding-standards.md`](.roo/rules/10-coding-standards.md):
+From [`../AGENTS.md`](../AGENTS.md):
 
 - Critical cross-module changes must go through Outbox.
 - Do not directly call notification, payment, entitlement, render, workflow, or AI modules from unrelated modules unless through defined ports, APIs, or events.

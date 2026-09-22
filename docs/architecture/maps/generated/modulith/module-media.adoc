@@ -1,0 +1,13 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`com.example.platform.media`
+|Spring components
+|_Services_
+
+* `c.e.p.m.api.MediaAssets` (via `c.e.p.m.app.MediaAssetService`)
+* `c.e.p.m.api.MediaProbes` (via `c.e.p.m.app.MediaProbeService`)
+|Bean references
+|* `c.e.p.i.api.authorization.CanonicalActorResolver` (in Identity & Access)
+* `c.e.p.i.api.authorization.AuthorizationDecisionPort` (in Identity & Access)
+|===

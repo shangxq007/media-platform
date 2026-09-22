@@ -1,0 +1,80 @@
+@startuml
+title <size:24>Notification</size>
+
+set separator none
+top to bottom direction
+
+<style>
+  root {
+    BackgroundColor: #ffffff
+    FontColor: #444444
+  }
+</style>
+
+!include <C4/C4>
+!include <C4/C4_Context>
+!include <C4/C4_Component>
+
+System_Boundary("PlatformApplication_boundary", "PlatformApplication", $tags="") {
+  Container_Boundary("PlatformApplication.PlatformApplication_boundary", "PlatformApplication", $tags="") {
+    Component(PlatformApplication.PlatformApplication.Delivery, "Delivery", $techn="Module", $descr="", $tags="", $link="")
+    Component(PlatformApplication.PlatformApplication.IdentityAccess, "Identity & Access", $techn="Module", $descr="", $tags="", $link="")
+    Component(PlatformApplication.PlatformApplication.Marketplace, "Marketplace", $techn="Module", $descr="", $tags="", $link="")
+    Component(PlatformApplication.PlatformApplication.Notification, "Notification", $techn="Module", $descr="", $tags="", $link="")
+    Component(PlatformApplication.PlatformApplication.OutboxEvents, "Outbox & Events", $techn="Module", $descr="", $tags="", $link="")
+    Component(PlatformApplication.PlatformApplication.Render, "Render", $techn="Module", $descr="", $tags="", $link="")
+    Component(PlatformApplication.PlatformApplication.SharedKernel, "Shared Kernel", $techn="Module", $descr="", $tags="", $link="")
+    Component(PlatformApplication.PlatformApplication.Timeline, "Timeline", $techn="Module", $descr="", $tags="", $link="")
+    Component(PlatformApplication.PlatformApplication.Typedschema, "Typedschema", $techn="Module", $descr="", $tags="", $link="")
+    Component(PlatformApplication.PlatformApplication.Artifact, "Artifact", $techn="Module", $descr="", $tags="", $link="")
+    Component(PlatformApplication.PlatformApplication.Auditpubliccontracts, "Audit public contracts", $techn="Module", $descr="", $tags="", $link="")
+  }
+
+}
+
+Rel(PlatformApplication.PlatformApplication.Artifact, PlatformApplication.PlatformApplication.Auditpubliccontracts, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Artifact, PlatformApplication.PlatformApplication.OutboxEvents, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Artifact, PlatformApplication.PlatformApplication.SharedKernel, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Artifact, PlatformApplication.PlatformApplication.Typedschema, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Delivery, PlatformApplication.PlatformApplication.Artifact, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Delivery, PlatformApplication.PlatformApplication.Auditpubliccontracts, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Delivery, PlatformApplication.PlatformApplication.IdentityAccess, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Delivery, PlatformApplication.PlatformApplication.OutboxEvents, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Delivery, PlatformApplication.PlatformApplication.Render, "listens to", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Delivery, PlatformApplication.PlatformApplication.SharedKernel, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Delivery, PlatformApplication.PlatformApplication.Typedschema, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.IdentityAccess, PlatformApplication.PlatformApplication.Auditpubliccontracts, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.IdentityAccess, PlatformApplication.PlatformApplication.SharedKernel, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.IdentityAccess, PlatformApplication.PlatformApplication.Typedschema, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Marketplace, PlatformApplication.PlatformApplication.IdentityAccess, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Marketplace, PlatformApplication.PlatformApplication.OutboxEvents, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Marketplace, PlatformApplication.PlatformApplication.SharedKernel, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Notification, PlatformApplication.PlatformApplication.Artifact, "listens to", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Notification, PlatformApplication.PlatformApplication.Auditpubliccontracts, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Notification, PlatformApplication.PlatformApplication.Delivery, "listens to", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Notification, PlatformApplication.PlatformApplication.IdentityAccess, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Notification, PlatformApplication.PlatformApplication.Marketplace, "listens to", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Notification, PlatformApplication.PlatformApplication.OutboxEvents, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Notification, PlatformApplication.PlatformApplication.Render, "listens to", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Notification, PlatformApplication.PlatformApplication.SharedKernel, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Notification, PlatformApplication.PlatformApplication.Timeline, "listens to", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Notification, PlatformApplication.PlatformApplication.Typedschema, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.OutboxEvents, PlatformApplication.PlatformApplication.SharedKernel, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.OutboxEvents, PlatformApplication.PlatformApplication.Typedschema, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Render, PlatformApplication.PlatformApplication.Artifact, "listens to", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Render, PlatformApplication.PlatformApplication.Artifact, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Render, PlatformApplication.PlatformApplication.IdentityAccess, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Render, PlatformApplication.PlatformApplication.Marketplace, "listens to", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Render, PlatformApplication.PlatformApplication.OutboxEvents, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Render, PlatformApplication.PlatformApplication.SharedKernel, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Render, PlatformApplication.PlatformApplication.Timeline, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Render, PlatformApplication.PlatformApplication.Typedschema, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Timeline, PlatformApplication.PlatformApplication.Artifact, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Timeline, PlatformApplication.PlatformApplication.IdentityAccess, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Timeline, PlatformApplication.PlatformApplication.OutboxEvents, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Timeline, PlatformApplication.PlatformApplication.SharedKernel, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Timeline, PlatformApplication.PlatformApplication.Typedschema, "depends on", $techn="", $tags="", $link="")
+
+SHOW_LEGEND(true)
+hide stereotypes
+@enduml

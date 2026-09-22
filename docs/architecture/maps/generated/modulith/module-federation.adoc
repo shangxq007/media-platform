@@ -1,0 +1,26 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`com.example.platform.federation`
+|Bean references
+|* `c.e.p.a.api.AuditPort` (in Audit public contracts)
+* `c.e.p.o.monitoring.SentryMonitoringService` (in Observability)
+* `c.e.p.i.api.workspace.WorkspaceQueries` (in Identity & Access)
+* `c.e.p.i.api.authorization.CanonicalActorResolver` (in Identity & Access)
+* `c.e.p.b.api.reads.BillingReadQuery` (in Billing)
+* `c.e.p.e.api.EntitlementDecisionQuery` (in Entitlement)
+* `c.e.p.p.api.reads.PromptReadQuery` (in Prompt)
+* `c.e.p.r.api.RenderReadQuery` (in Render)
+* `c.e.p.i.api.reads.TenantReadQuery` (in Identity & Access)
+* `c.e.p.i.api.reads.UserReadQuery` (in Identity & Access)
+* `c.e.p.e.api.port.ExtensionQueries` (in Extension)
+* `c.e.p.r.api.ExportOptionQuery` (in Render)
+* `c.e.p.i.api.project.ProjectReadQuery` (in Identity & Access)
+* `c.e.p.e.api.port.ExtensionRoutingQueries` (in Extension)
+* `c.e.p.e.api.port.ExtensionLimitQueries` (in Extension)
+* `c.e.p.p.featureflag.FeatureFlagService` (in Policy Governance)
+* `c.e.p.a.api.AdminAuditPublisher` (in Audit public contracts)
+* `c.e.p.a.api.AiGatewayPort` (in AI)
+|Events listened to
+|* `org.springframework.boot.context.event.ApplicationReadyEvent` 
+|===

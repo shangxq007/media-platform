@@ -3,6 +3,9 @@
 // As-built structure lives in Spring Modulith generated C4:
 //   docs/architecture/maps/generated/modulith/ (GENERATED — DO NOT EDIT)
 // This file is NOT a manual copy of the Spring module graph.
+// Cross-view identifiers are defined in ../architecture-identifiers.yaml.
+// Logical and physical views intentionally reuse IDs such as mod.workflow,
+// auth.temporal, data.render-job, and dep.platform-app.
 // Authorities frozen: PRV2 (PluginRuntime), UWEV1-ARSF (Workflow Execution TARGET), W2 (Definition), EUMF (Usage), APPD (Security).
 
 specification {
@@ -48,15 +51,15 @@ model {
 
     // ── Deployment units ──────────────────────────────────────────────
     platformApp = container 'platform-app' {
-      description 'Canonical Spring Boot entry point (PlatformApplication)'
+      description '[ID: mod.platform-app; dep.platform-app] Canonical Spring Boot entry point (PlatformApplication)'
     }
 
     sandboxWorker = container 'sandbox-worker' {
-      description 'DEPLOYMENT / SECURITY / PROCESS ISOLATION BOUNDARY — code sandbox execution worker (SandboxWorkerApplication)'
+      description '[ID: mod.sandbox-worker; dep.sandbox-worker] DEPLOYMENT / SECURITY / PROCESS ISOLATION BOUNDARY — code sandbox execution worker (SandboxWorkerApplication)'
     }
 
     remoteRenderWorker = container 'remote-render-worker' {
-      description 'CURRENT deployment unit / render-specific adapter (RemoteRenderWorkerApplication). TARGET: THIN deployment adapter (PMPR)'
+      description '[ID: dep.remote-render-worker] CURRENT deployment unit / render-specific adapter (RemoteRenderWorkerApplication). TARGET: THIN deployment adapter (PMPR)'
     }
 
     // ── Workflow (Definition PUBLISHED / Execution TARGET UWEV1) ─────
@@ -65,16 +68,16 @@ model {
     }
 
     workflowExecution = container 'Workflow Execution' {
-      description 'CURRENT (UWEV1-FV1 foundation): execution authority workflow-module; WorkflowExecution + workflow_execution table; PUBLISHED-only version-pinned start; Temporal durable orchestration; ACTION/EXTENSION_POINT -> PluginRuntime. DEFERRED: full plan-walk, HOOK execution, node-level persistence, compensation'
+      description '[ID: mod.workflow; ctr.workflow.execution; data.workflow-run] CURRENT (UWEV1-FV1 foundation): execution authority workflow-module; WorkflowExecution + workflow_execution table; PUBLISHED-only version-pinned start; Temporal durable orchestration; ACTION/EXTENSION_POINT -> PluginRuntime. DEFERRED: full plan-walk, HOOK execution, node-level persistence, compensation'
     }
 
     temporal = container 'Temporal' {
-      description 'DURABLE ORCHESTRATION AUTHORITY — sole durable orchestrator (render pipeline active; generic execution TARGET)'
+      description '[ID: auth.temporal; dep.temporal] DURABLE ORCHESTRATION AUTHORITY — sole durable orchestrator (render pipeline active; generic execution TARGET)'
     }
 
     // ── Runtime authority ─────────────────────────────────────────────
     pluginRuntime = container 'PluginRuntime' {
-      description 'CANONICAL EFFECT EXECUTION AUTHORITY (PRV2 PUBLISHED) — DefaultPluginRuntime; extension::runtime; TRUSTED_IN_PROCESS + untrusted DENY'
+      description '[ID: auth.plugin-runtime; mod.provider-runtime; ctr.provider.spi] CANONICAL EFFECT EXECUTION AUTHORITY (PRV2 PUBLISHED) — DefaultPluginRuntime; extension::runtime; TRUSTED_IN_PROCESS + untrusted DENY'
     }
 
     capabilityRegistry = container 'Capability Registry' {
@@ -108,7 +111,7 @@ model {
     }
 
     usage = container 'Usage' {
-      description 'EUMF PUBLISHED — UsageRecord via UsageRecordEmissionPort (REQUEST+DURATION; OperationRef+attempt idempotency)'
+      description '[ID: data.usage-record; dom.billing] EUMF PUBLISHED — UsageRecord via UsageRecordEmissionPort (REQUEST+DURATION; OperationRef+attempt idempotency)'
     }
 
     providerCost = container 'ProviderCost' {
@@ -116,12 +119,12 @@ model {
     }
 
     storageModule = container 'storage-module' {
-      description 'Storage delivery + materialization (CURRENT: Artifact->Render->Storage SPI debt; TARGET: Artifact->Storage API/SPI — PMPR)'
+      description '[ID: mod.storage; ctr.storage.spi; auth.storage] Storage delivery + materialization (CURRENT: Artifact->Render->Storage SPI debt; TARGET: Artifact->Storage API/SPI — PMPR)'
     }
 
     // ── Other CURRENT containers (aggregate) ──────────────────────────
     renderModule = container 'render-module' {
-      description 'Core render domain (CURRENT; legacy provider-bound paths remain)'
+      description '[ID: mod.render; dom.render; data.render-job] Core render domain (CURRENT; legacy provider-bound paths remain)'
     }
 
     aiModule = container 'ai-module' {

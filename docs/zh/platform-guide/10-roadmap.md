@@ -44,8 +44,8 @@
 - [x] **时间线版控 L7**（修订 snapshot API、高亮导航器，见 [timeline-version-control.md](../timeline-version-control.md) §9）
 - [x] **时间线版控 L8**（来源/作者筛选、修订备注 PATCH、对比导出 JSON、高亮快捷键，见 §9 L8）
 - [x] **时间线版控 L9**（修订标签、facets API、History 导出、冲突自动对比、JWT 作者，见 §9 L9）
-- [x] **生产安全门禁**（`ProductionSafetyValidator`、`application-prod` 硬化，见 [platform/docs/production-safety.md](../../platform/docs/production-safety.md)）
-- [x] **Modulith 预算测试**（取消静默 filter，见 [platform/docs/modulith-debt-register.md](../../platform/docs/modulith-debt-register.md)）
+- [x] **生产安全门禁**（`ProductionSafetyValidator`、`application-prod` 硬化，见 [platform/docs/production-safety.md](../../production-safety.md)）
+- [x] **Modulith 预算测试**（取消静默 filter，见 [platform/docs/modulith-debt-register.md](../../modulith-debt-register.md)）
 - [x] **Flyway PG 集成测**（`FlywaySchemaIntegrationTest` + Testcontainers）
 - [x] **导航与 fallback 对齐**：canonical 路由注册 + `NAV-404-SYNC` 区分同步缺口
 - [x] **Hyperswitch HTTP**：`platform.payment.hyperswitch.enabled` + `HYPERSWITCH_API_KEY`（Payment Link）

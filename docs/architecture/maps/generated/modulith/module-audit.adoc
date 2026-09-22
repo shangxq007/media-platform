@@ -1,0 +1,54 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`com.example.platform.audit`
+|Spring components
+|_Services_
+
+* `c.e.p.a.app.AuditAlertService`
+* `c.e.p.a.app.AuditQueryService`
+* `c.e.p.a.app.AuditService`
+* `c.e.p.a.app.ProblematicDataAutoFixService`
+* `c.e.p.a.app.ProblematicDataDetectionService`
+* `c.e.p.a.app.UsageAnomalyDetectionService`
+* `c.e.p.a.app.UserExperienceGuard`
+
+_Event listeners_
+
+* `c.e.p.a.app.AuditEventHandler`
+
+_Configuration properties_
+
+* `c.e.p.a.app.AuditAlertProperties`
+
+_Others_
+
+* `c.e.p.a.api.event.AuditOutboxEvents`
+* `c.e.p.a.app.AdminAuditPublisherImpl`
+* `c.e.p.a.app.AuditAlertConfiguration`
+* `c.e.p.a.app.AuditPortAdapter`
+* `c.e.p.a.app.SecurityAlertPort`
+|Bean references
+|* `c.e.p.a.api.AuditPort` (in Audit public contracts)
+* `c.e.p.o.context.ObservationContext` (in Observability)
+* `c.e.p.o.app.OutboxEventService` (in Outbox & Events)
+|Events listened to
+|* `c.e.p.a.api.event.ArtifactCreatedEvent` 
+* `c.e.p.a.api.event.AssetMetadataUpdatedEvent` 
+* `c.e.p.a.api.event.AssetRegisteredEvent` 
+* `c.e.p.m.api.event.MarketplaceListingArchivedEvent` 
+* `c.e.p.m.api.event.MarketplaceListingPublishedEvent` 
+* `c.e.p.m.api.event.MarketplaceReviewApprovedEvent` 
+* `c.e.p.r.api.binding.ProviderRuntimeBindingResolvedEvent` 
+* `c.e.p.r.api.event.RenderJobCompletedEvent` 
+* `c.e.p.r.api.event.RenderJobCreatedEvent` 
+* `c.e.p.r.api.event.RenderJobFailedEvent` 
+* `c.e.p.r.api.event.RenderJobStatusChangedEvent` 
+* `c.e.p.t.api.event.TimelineReviewApprovedEvent` 
+* `c.e.p.t.api.event.TimelineReviewChangesRequestedEvent` 
+* `c.e.p.t.api.event.TimelineReviewCommentAddedEvent` 
+* `c.e.p.t.api.event.TimelineReviewRejectedEvent` 
+* `c.e.p.t.api.event.TimelineReviewThreadResolvedEvent` 
+* `c.e.p.t.api.event.TimelineMergedEvent` 
+* `c.e.p.t.api.event.TimelineRestoredEvent` 
+|===

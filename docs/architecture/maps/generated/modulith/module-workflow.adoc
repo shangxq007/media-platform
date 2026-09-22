@@ -1,0 +1,39 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`com.example.platform.workflow`
+|Spring components
+|_Event listeners_
+
+* `c.e.p.w.temporal.TemporalWorkerGracefulShutdown`
+* `c.e.p.w.temporal.TemporalWorkerStartupVerifier`
+
+_Configuration properties_
+
+* `c.e.p.w.temporal.AppTemporalProperties`
+
+_Others_
+
+* `c.e.p.w.temporal.PlanWalkActivities` (via `c.e.p.w.run.WorkflowActivities`)
+* `c.e.p.w.temporal.RenderActivities` (via `c.e.p.w.temporal.RenderActivitiesImpl`)
+* `c.e.p.w.temporal.TemporalEnablementConfiguration`
+* `c.e.p.w.temporal.TemporalEnablementConfiguration.TemporalRuntimeMarker`
+* `c.e.p.w.temporal.TemporalWorkflowStarter`
+|Bean references
+|* `c.e.p.r.api.port.RenderOrchestratorPort` (in Render)
+* `c.e.p.r.api.port.RenderWorkflowResumePort` (in Render)
+* `c.e.p.i.api.authorization.CanonicalActorResolver` (in Identity & Access)
+* `c.e.p.i.api.authorization.AuthorizationDecisionPort` (in Identity & Access)
+* `c.e.p.o.invocation.OperationInvocationPort` (in Operation)
+* `c.e.p.e.api.port.CapabilityRegistryPort` (in Extension)
+* `c.e.p.i.api.project.ProjectScopeQueries` (in Identity & Access)
+* `c.e.p.o.app.OutboxEventService` (in Outbox & Events)
+* `c.e.p.p.api.FeatureFlagEvaluator` (in Policy Governance)
+* `c.e.p.d.api.port.DeliveryAfterRenderPort` (in Delivery)
+|Events listened to
+|* `org.springframework.boot.context.event.ApplicationReadyEvent` 
+
+
+* `org.springframework.context.event.ContextClosedEvent` 
+* `org.springframework.boot.context.event.ApplicationReadyEvent` 
+|===

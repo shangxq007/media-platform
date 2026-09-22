@@ -538,7 +538,7 @@ if (error.value) {
 
 ## 参考链接
 
-- [用户门户文档](docs/04-frontend/05-user-portal.md)
-- [管理控制台文档](docs/04-frontend/06-admin-console.md)
-- [API策略文档](docs/06-api/01-api-strategy.md)
-- [GraphQL文档](docs/06-api/03-graphql.md)
+- [用户门户文档](../frontend/05-user-portal.md)
+- [管理控制台文档](../frontend/06-admin-console.md)
+- [API策略文档](../api/01-api-strategy.md)
+- [GraphQL文档](../api/03-graphql.md)

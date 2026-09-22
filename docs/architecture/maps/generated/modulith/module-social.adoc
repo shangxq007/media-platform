@@ -1,0 +1,17 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`com.example.platform.social`
+|Spring components
+|_Services_
+
+* `c.e.p.s.app.PlatformAuthService`
+* `c.e.p.s.app.PostSchedulerService`
+* `c.e.p.s.app.PublishAnalyticsService`
+* `c.e.p.s.app.SocialAccountReadService`
+* `c.e.p.s.app.SocialPostReadService`
+* `c.e.p.s.app.SocialPublishService`
+|Bean references
+|* `c.e.p.i.api.authorization.CanonicalActorResolver` (in Identity & Access)
+* `c.e.p.i.api.authorization.AuthorizationDecisionPort` (in Identity & Access)
+|===

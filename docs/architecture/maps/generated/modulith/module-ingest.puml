@@ -1,0 +1,45 @@
+@startuml
+title <size:24>Ingest</size>
+
+set separator none
+top to bottom direction
+
+<style>
+  root {
+    BackgroundColor: #ffffff
+    FontColor: #444444
+  }
+</style>
+
+!include <C4/C4>
+!include <C4/C4_Context>
+!include <C4/C4_Component>
+
+System_Boundary("PlatformApplication_boundary", "PlatformApplication", $tags="") {
+  Container_Boundary("PlatformApplication.PlatformApplication_boundary", "PlatformApplication", $tags="") {
+    Component(PlatformApplication.PlatformApplication.Ingest, "Ingest", $techn="Module", $descr="", $tags="", $link="")
+    Component(PlatformApplication.PlatformApplication.Media, "Media", $techn="Module", $descr="", $tags="", $link="")
+    Component(PlatformApplication.PlatformApplication.Render, "Render", $techn="Module", $descr="", $tags="", $link="")
+    Component(PlatformApplication.PlatformApplication.SandboxIsolation, "Sandbox Isolation", $techn="Module", $descr="", $tags="", $link="")
+    Component(PlatformApplication.PlatformApplication.Storage, "Storage", $techn="Module", $descr="", $tags="", $link="")
+    Component(PlatformApplication.PlatformApplication.Typedschema, "Typedschema", $techn="Module", $descr="", $tags="", $link="")
+  }
+
+}
+
+Rel(PlatformApplication.PlatformApplication.Ingest, PlatformApplication.PlatformApplication.Media, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Ingest, PlatformApplication.PlatformApplication.Render, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Ingest, PlatformApplication.PlatformApplication.SandboxIsolation, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Ingest, PlatformApplication.PlatformApplication.Storage, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Ingest, PlatformApplication.PlatformApplication.Typedschema, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Media, PlatformApplication.PlatformApplication.Storage, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Media, PlatformApplication.PlatformApplication.Typedschema, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Render, PlatformApplication.PlatformApplication.Media, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Render, PlatformApplication.PlatformApplication.SandboxIsolation, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Render, PlatformApplication.PlatformApplication.Storage, "uses", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Render, PlatformApplication.PlatformApplication.Typedschema, "depends on", $techn="", $tags="", $link="")
+Rel(PlatformApplication.PlatformApplication.Storage, PlatformApplication.PlatformApplication.Typedschema, "depends on", $techn="", $tags="", $link="")
+
+SHOW_LEGEND(true)
+hide stereotypes
+@enduml

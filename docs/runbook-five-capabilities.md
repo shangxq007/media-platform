@@ -111,7 +111,7 @@ curl -sS "$BASE/api/v1/outbox/event/recent?limit=5" | jq .
 
 ### 3.1 行为说明
 
-- 过滤器为每个请求生成或透传 **`X-Trace-Id`**、**`X-Request-Id`**，并写入 **MDC**：`traceId`、`requestId`（键名见 [TraceKeys](../shared-kernel/src/main/java/com/example/platform/shared/logging/TraceKeys.java)）。
+- 过滤器为每个请求生成或透传 **`X-Trace-Id`**、**`X-Request-Id`**，并写入 **MDC**：`traceId`、`requestId`（键名见 [TraceKeys](../observability-module/src/main/java/com/example/platform/observability/context/TraceKeys.java)）。
 - 响应头会回写上述 id，便于链路排查。
 
 ### 3.2 curl 示例
@@ -238,6 +238,6 @@ curl -sS -H "X-API-Key: dev-key-change-me" "$BASE/api/v1/outbox/event/overview" 
 |------|----------|
 | CI | [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) |
 | Outbox 写入与调度 | [`outbox-event-module`](../outbox-event-module/src/main/java/com/example/platform/outbox/) |
-| Trace 过滤器 | [`TraceCorrelationFilter`](../observability-module/src/main/java/com/example/platform/observability/app/TraceCorrelationFilter.java) |
+| Trace 过滤器 | [`TraceCorrelationFilter`](../observability-module/src/main/java/com/example/platform/observability/app/PlatformTraceCorrelationFilter.java) |
 | 审计 | [`audit-compliance-module`](../audit-compliance-module/src/main/java/com/example/platform/audit/) |
 | API Key | [`ApiKeyAuthFilter`](../identity-access-module/src/main/java/com/example/platform/identity/app/ApiKeyAuthFilter.java)、[`IdentityProperties`](../identity-access-module/src/main/java/com/example/platform/identity/app/IdentityProperties.java) |

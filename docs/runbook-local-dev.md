@@ -244,7 +244,7 @@ For S3-compatible providers, `StorageReference.rootPath` = bucket name and
 `StorageReference.relativePath` = object key. These are **internal locator fields**
 and must not be exposed in public APIs.
 
-See [Storage Runtime Foundation — StorageReference Locator Semantics](../review/storage-runtime-foundation.md#storagereference-locator-semantics).
+See [Storage Runtime Foundation — StorageReference Locator Semantics](review/storage-runtime-foundation.md#storagereference-locator-semantics).
 
 ### Start object storage
 

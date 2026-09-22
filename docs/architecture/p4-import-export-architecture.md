@@ -702,7 +702,7 @@ flowchart TD
     L -->|No| J
 ```
 
-**详细CI策略**: [CI测试策略](../engineering/ci-test-strategy.md)（待创建）
+**详细CI策略**: [CI测试策略](../operations/ci-verification-guide.md)（待创建）
 
 ---
 

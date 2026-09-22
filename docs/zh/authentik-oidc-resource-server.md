@@ -217,7 +217,7 @@ export AUTHENTIK_REDIS__HOST=redis
 | `roles` | `ADMIN`/`EDITOR`/`VIEWER` | 组名或 Mapping 数组 |
 
 **逐步配置（复制即用）：** [authentik-property-mapping-and-migration.md](authentik-property-mapping-and-migration.md)  
-**Blueprint：** [platform/docs/authentik/blueprint-media-platform-claims.yaml](../../platform/docs/authentik/blueprint-media-platform-claims.yaml)
+**Blueprint：** [platform/docs/authentik/blueprint-media-platform-claims.yaml](../authentik/blueprint-media-platform-claims.yaml)
 
 **禁止：** 生产环境用 `X-Tenant-ID` 覆盖 JWT 内 `tenantId`（`trust-jwt-tenant-only=true`）。
 

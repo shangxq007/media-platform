@@ -53,11 +53,13 @@ npx likec4 export png . -o ../exports/png/
 
 ## Authority Level
 
-LikeC4 maps are **Level 4: Visual/Derived** — NOT the canonical source of truth.
+LikeC4 is the **human-curated architecture-intent model**. It is normative for
+approved intent views, while source code and accepted ADR/canonical-contract
+documents remain authoritative for implementation and semantic decisions. The
+generated Spring Modulith C4 view is the separate as-built structural view.
 
-Canonical sources:
-1. AGENTS.md
-2. current-system-state.md
-3. production-safety.md
-4. blueprint
-5. ADRs
+Shared identifiers for logical and physical views are maintained in
+`../architecture-identifiers.yaml`.
+
+Authority precedence is defined in
+`../../governance/source-of-truth/architecture-authority-model.md`.

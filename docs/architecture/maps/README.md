@@ -76,14 +76,13 @@ NOT require LikeC4 updates.
 
 ## Authority Level
 
-LikeC4 maps are **Level 4: Visual/Derived** — NOT the canonical source of truth.
+LikeC4 is the **human-curated architecture-intent model**. It is authoritative
+for the approved intent views it owns, while source code/executable contracts
+remain authoritative for implemented behaviour and ADRs/canonical contracts
+remain authoritative for semantic decisions. Spring Modulith output is the
+separate generated as-built module view.
 
-Canonical sources:
-1. AGENTS.md
-2. current-system-state.md
-3. production-safety.md
-4. blueprint
-5. ADRs
-6. source code
+See [Architecture Authority Model](../governance/source-of-truth/architecture-authority-model.md)
+for the conflict precedence and non-authoritative derived tools.
 
 LikeC4 diagrams must not invent components not present in docs/code.

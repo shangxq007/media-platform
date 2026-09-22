@@ -497,7 +497,7 @@ Response: MyCapabilities
 
 ## 参考链接
 
-- [工作区管理API文档](docs/06-api/03-graphql.md)
-- [Feature Flag治理](docs/05-access-entitlement-billing/03-feature-flag-governance.md)
-- [访问决策服务](docs/05-access-entitlement-billing/02-access-decision.md)
-- [错误代码参考](docs/05-access-entitlement-billing/10-error-codes-and-audit.md)
+- [工作区管理API文档](../api/03-graphql.md)
+- [Feature Flag治理](03-feature-flag-governance.md)
+- [访问决策服务](../rbac-abac-access-control.md)
+- [错误代码参考](../error-handling-design.md)

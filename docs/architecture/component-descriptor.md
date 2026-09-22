@@ -9,7 +9,7 @@ owner: platform
 # Unified Component Descriptor Architecture
 
 > **Linked ADR:** [ADR-019](adr/ADR-019-unified-component-descriptor.md)
-> **Related:** [Platform Governance](platform-governance.md), [Capability Catalog](capability-catalog.md)
+> **Related:** [Platform Governance](platform-governance.md), [Capability Catalog](../review/capability-catalog.md)
 
 ## 1. Core Principle
 
