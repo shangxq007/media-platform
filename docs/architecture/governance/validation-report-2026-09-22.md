@@ -74,7 +74,8 @@ and external-provider/production checks were not run.
 
 ## Post-report repair verification
 
-Commit `30ca4c4b` repaired remaining current-document Flyway references and
+Commits `30ca4c4b` and `6936ae97` repaired remaining current-document Flyway
+references, labeled external-provider and target migration examples, and
 reclassified pre-checkpoint inventories as historical evidence. The fresh
 command `bash scripts/check-document-governance.sh --head HEAD --base HEAD
 --mode current --verbose` passed **16/16** with zero introduced links; the
