@@ -154,7 +154,9 @@ Vault 启用后：
 
 ## 6. 迁移与生命周期
 
-- Flyway：`V14__delivery_credential_ref.sql` 增加 `credential_ref` 列。
+- Flyway：当前仓库没有 `V14__delivery_credential_ref.sql`。如批准持久化
+  `credential_ref`，必须创建下一个单调版本（V10 或更高）并先更新规范
+  Flyway 文档。
 - **管理端迁移 API**（需 Vault 已启用）：
 
   `POST /api/v1/admin/delivery/credentials/migrate?tenantId=tenant-1&dryRun=false`

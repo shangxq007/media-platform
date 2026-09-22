@@ -29,9 +29,9 @@
 
 ## P1（已落地）
 
-### 制品关系持久化
+### 制品关系持久化（目标）
 
-- 表 `artifact_relation`（迁移 `V16__artifact_relation.sql`）
+- 表 `artifact_relation`（原设计预留迁移；当前仓库不存在 `V16__artifact_relation.sql`）
 - `ArtifactRelationRepository` 落库；`relateArtifacts` 写入 DB
 
 ### 后台 GC
@@ -82,7 +82,7 @@ platform:
 
 ### `artifact_relation` 外键
 
-- 迁移 `V17__artifact_relation_fk.sql`：`ON DELETE RESTRICT` 防止误删仍被引用的制品
+- 目标迁移：未来应使用下一个单调版本（V10 或更高），并先更新规范 Flyway 文档；当前不存在 `V17__artifact_relation_fk.sql`。
 
 ### 时间线 GC + 制品联动
 

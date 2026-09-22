@@ -8,3 +8,6 @@ GENERATED_DERIVED\tdocs/architecture/maps/exports/\tdocs/architecture/maps/likec
 GENERATED_DERIVED\tdocs/architecture/maps/generated/modulith/\tplatform-app/src/test/java/com/example/platform/ModulithDocumentationGenerationTest.java\tGENERATED\tregenerate from ApplicationModules
 INVALID_OR_DUPLICATE\tArchify\tdocs/architecture/governance/source-of-truth/architecture-authority-model.md\tDEFERRED\tnot integrated
 INVALID_OR_DUPLICATE\tFireworks-Tech-Graph\tdocs/architecture/governance/source-of-truth/architecture-authority-model.md\tDEFERRED\tnot integrated
+HISTORICAL_EVIDENCE	docs/architecture/governance/inventory/conflict-register.json	docs/database/flyway-migration-baseline.md	HISTORICAL	old schema-conflict observations retained for traceability
+HISTORICAL_EVIDENCE	docs/architecture/governance/inventory/repository-artifact-inventory.json	docs/architecture/governance/document-classification-inventory.tsv	HISTORICAL	legacy inventory cannot guide current work
+HISTORICAL_EVIDENCE	docs/architecture/governance/jooq/jooq-typed-schema-authority-decision.md	docs/database/flyway-migration-baseline.md	HISTORICAL	pre-V1-V9 checkpoint evidence

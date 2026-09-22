@@ -108,7 +108,8 @@
 
 All agents must遵守以下约束：
 
-- Do not modify the Flyway V1 baseline (`V1__init_full_schema.sql`)
+- Do not modify an applied Flyway migration. The accepted V1 baseline is
+  `V1__initial_schema.sql`; add a reviewed forward migration for later changes.
 - Do not introduce H2 database (PostgreSQL only)
 - Do not enable Spring AI active runtime
 - Do not add `spring-modulith-starter-insight`

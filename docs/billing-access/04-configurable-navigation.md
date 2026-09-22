@@ -50,9 +50,12 @@ public record NavigationDecision(
 ) {}
 ```
 
-## V16 Migration
+## Target schema migration
 
-The `V16__navigation.sql` migration adds tables for:
+The original design reserved a future migration for navigation persistence.
+There is no `V16__navigation.sql` in the current repository. If persistence is
+approved, add the next monotonic migration (V10 or later) and update the
+canonical Flyway policy before implementation. The target tables are:
 - Route definitions
 - Navigation policies
 - Route-feature flag mappings

@@ -185,9 +185,12 @@ public interface BillingEngine {
 
 Current implementation: `NoopKillBillBillingEngine` — returns projected state only.
 
-## V17 Migration
+## Target schema migration
 
-`V17__billing_models.sql` adds tables for:
+The original design reserved a future migration for billing persistence. There
+is no `V17__billing_models.sql` in the current repository. If persistence is
+approved, add the next monotonic migration (V10 or later) and update the
+canonical Flyway policy before implementation. The target tables are:
 - Flexible billing configurations
 - Custom pricing rules
 - Subscription enhancements

@@ -1424,14 +1424,18 @@ All Phase 1 concerns fit within existing `render-module` boundaries:
 - Governance fields are core asset attributes, not a separate policy concern — they belong on the `asset` table
 - The `policy-governance-module` handles feature flags and rule evaluation; asset governance is a different concern
 
-### V1 Baseline Extension Policy
+### Target schema extension policy
 
-Because the project has not been deployed yet and the V1 baseline is stated as _"valid for pre-production/greenfield resettable environments"_, schema changes may be applied directly to `V1__init_full_schema.sql`:
+The earlier blueprint assumption that the baseline could be edited is
+superseded. `V1__initial_schema.sql` is an accepted immutable baseline. Target
+schema additions must use a reviewed forward migration (V10 or later), with
+the canonical Flyway policy and an accepted ADR updated before implementation.
 
-- Add 10 columns to existing `asset` table
+The target design proposes adding 10 columns to the existing `asset` table
 - Add new `asset_version` table
 - Add new `asset_lineage` table
-- No V2 migration file needed until after first real deployment with shared database
+- No migration is added until the target is approved; when approved, use the
+  next monotonic version after V9 rather than editing V1.
 
 ### Phase 1 Scope Boundary
 
@@ -1464,7 +1468,7 @@ Because the project has not been deployed yet and the V1 baseline is stated as _
 - [x] Placement decision report filed at `docs/review/otio-xmp-asset-registry-placement-decision.md`
 
 **Files likely affected during implementation:**
-- `platform-app/src/main/resources/db/migration/V1__init_full_schema.sql` (schema extension)
+- `platform-app/src/main/resources/db/migration/V10__<approved_description>.sql` (future schema extension)
 - `render-module/.../domain/asset/Asset.java` (record extension)
 - `render-module/.../domain/xmp/` (8 new XMP schema records)
 - `render-module/.../domain/timeline/TimelinePlatformMetadata.java` (new keys)
@@ -1948,4 +1952,3 @@ As of RENDER-WORKER-MINIMAL.0, FFmpeg is temporarily packaged into the platform-
 - render-worker-ffmpeg = dedicated execution image
 - OpenCue = distributed scheduler
 - FFmpeg should move out of platform-api after OpenCue worker execution is stable
-

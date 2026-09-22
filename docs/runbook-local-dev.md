@@ -161,17 +161,17 @@ What R10B verifies:
 
 ## Database Bootstrap
 
-The `db` service mounts `V1__init_full_schema.sql` into PostgreSQL's
-`/docker-entrypoint-initdb.d/` directory. On first startup (empty data volume),
-PostgreSQL automatically runs this script to create the schema.
+Flyway is the current schema authority. The executable inventory is in
+`platform-app/src/main/resources/db/migration/` and currently contains
+`V1__initial_schema.sql` through `V9__social_credential_fence.sql`; use the
+[current Flyway policy](database/flyway-migration-baseline.md) for the exact
+inventory and release procedure.
 
-This happens once per volume lifecycle:
-- `docker compose down -v` → next `up` triggers fresh bootstrap
-- `docker compose down` (no `-v`) → data persists, no re-bootstrap
-- `docker compose up` on existing volume → no-op (data already present)
-
-Flyway's `baseline-on-migrate: true` then finds the schema already present
-and records V1 as baseline without re-running it.
+The development Compose file still contains a legacy init-volume reference.
+Treat that reference as a deployment gap rather than as a second schema
+authority. Do not create or rename migration files to satisfy it. For a clean
+environment, apply the documented Flyway startup path and verify the migration
+history before using the services.
 
 ## Environment Variables
 

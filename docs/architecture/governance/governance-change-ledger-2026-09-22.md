@@ -35,6 +35,7 @@ blocks_v5: false
 | GOV-2026-09-22-005 | Re-record protected schema-intent baseline | Commits `b509be5f` and `673e180a` were explicit governance amendments. The registered hash was not advanced, causing a false protected-baseline failure. | Protected baseline metadata only; semantic change already authorized | `protected-document-baseline.json`, this ledger |
 | GOV-2026-09-22-006 | Make runtime OpenAPI export the checked-in transport artifact | Keep one REST contract authority at OpenAPI 3.1.0, with base/candidate files used only for compatibility fixtures | Documentation/tooling only | `docs/api/openapi-authority.md` |
 | GOV-2026-09-22-007 | Classify historical and superseded material | Historical evidence remains available but cannot appear as current normative guidance | Documentation index/inventory | `architecture-document-inventory.tsv` |
+| GOV-2026-09-22-009 | Repair stale Flyway references and reclassify pre-checkpoint inventories | Current documentation must point to the V1–V9 executable inventory; old V1-only, V11+, and pre-checkpoint inventory claims are historical or target facts | Documentation and classification only; migration bytes unchanged | `docs/database/flyway-migration-baseline.md`, affected current guides, classification and superseded mappings |
 
 No product source, executable application code, deployment configuration,
 database migration, or database data was changed by these decisions.

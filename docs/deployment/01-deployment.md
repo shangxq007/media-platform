@@ -103,14 +103,8 @@ Flyway migrations run automatically at startup. Migration files are in:
 platform-app/src/main/resources/db/migration/
 ```
 
-| Version | Description |
-|---------|-------------|
-| V1–V8 | Core schema |
-| V9–V10 | Outbox + status history |
-| V11 | Prompt engineering |
-| V12 | Problematic data |
-| V13 | Extension platform v2 |
-| V14 | RBAC + workspace |
-| V15 | Entitlement upgrade |
-| V16 | Navigation |
-| V17 | Billing models |
+At the current checkpoint the repository contains exactly V1 through V9. The
+authoritative filenames, checksum guard, release procedure, and rollback
+limitations are maintained in the [current Flyway policy](../database/flyway-migration-baseline.md).
+Older V10+ descriptions in historical deployment notes are not part of the
+current inventory.

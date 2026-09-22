@@ -10,7 +10,7 @@ replacing the current raw DSL style (`field("column_name")` strings).
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  Flyway Migrations (V1__init.sql ... V10__*.sql)            │
+│  Flyway Migrations (V1__initial_schema.sql ... V9__*.sql)   │
 │  ↓                                                          │
 │  File-based H2 (MODE=PostgreSQL)                            │
 │  ↓                                                          │

@@ -15,25 +15,11 @@ All tables reside in the **public** schema. Schema migrations are managed exclus
 
 ## Flyway Migration History
 
-| Version | File | Tables Added | Purpose |
-|---------|------|-------------|---------|
-| V1 | `V1__init.sql` | `render_job`, `notification_event`, `notification_template`, `notification_delivery`, `config_item` | Core tables |
-| V2 | `V2__platform_v2.sql` | `storage_object`, `prompt_template`, `prompt_execution_log`, `cloud_resource_definition`, `secret_ref`, `extension_definition`, `extension_invocation`, `app_datasource` | Platform extensions |
-| V3 | `V3__platform_v3.sql` | `outbox_events`, `audit_records`, `schedules`, `quota_definitions` | Operations |
-| V4 | `V4__commerce_billing_entitlement.sql` | `commerce_product`, `commerce_price`, `provider_product_mapping`, `checkout_session`, `purchase_order`, `payment_attempt`, `provider_webhook_event`, `subscription_contract`, `billing_invoice`, `feature_definition`, `feature_bundle`, `feature_bundle_item`, `entitlement_grant`, `entitlement_override` | Commerce domain |
-| V5 | `V5__outbox_audit_enhancements.sql` | (alters) `outbox_events`, `audit_records` | Enhancements |
-| V6 | `V6__indexes_and_constraints.sql` | (indexes) ~40 indexes | Performance |
-| V7 | `V7__identity_render_artifact.sql` | `tenant`, `project`, `user`, `api_key`, `artifact`, `notification_record` | Identity & artifacts |
-| V8 | `V8__quota_usage_and_render_history.sql` | `quota_usage` | Quota tracking |
-| V9 | `V9__outbox_enhancements.sql` | (alters) `outbox_events` | Outbox enhancements |
-| V10 | `V10__render_job_status_history.sql` | (new table) | Status history |
-| V11 | `V11__prompt_engineering_tables.sql` | (new tables) | Prompt engineering |
-| V12 | `V12__problematic_data_tables.sql` | `problematic_data_record`, `quarantined_render_jobs`, `quarantined_prompt_executions`, `quarantined_provider_workers`, `problematic_data_rule_config` | Problematic data |
-| V13 | `V13__extension_platform_upgrade.sql` | `extension_routing_rule`, `extension_resource_limit`, `extension_rollback_point`, `extension_audit_event`, `sandbox_execution_job` | Extension v2 |
-| V14 | `V14__rbac_workspace.sql` | (new tables) | RBAC & workspace |
-| V15 | `V15__entitlement_upgrade.sql` | (alters) | Entitlement upgrade |
-| V16 | `V16__navigation.sql` | (new tables) | Configurable navigation |
-| V17 | `V17__billing_models.sql` | (new tables) | Billing models |
+The current migration inventory and release policy are maintained in the one
+normative [Flyway migration policy](../database/flyway-migration-baseline.md).
+At this checkpoint the executable directory contains V1 through V9; this
+supporting overview does not copy a second migration table. Future schema
+changes require a new forward migration and an accepted governance decision.
 
 ## Entity Relationship Diagram
 
