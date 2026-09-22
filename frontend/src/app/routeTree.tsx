@@ -32,6 +32,7 @@ const RenderPage = lazy(() => import('../pages/RenderJobDashboard.js').then(modu
 const OperationsProjectionPage = lazy(() => import('../surfaces/FoundationPages.js').then(module => ({ default: module.OperationsProjectionPage })))
 const ManagementFoundationPage = lazy(() => import('../surfaces/FoundationPages.js').then(module => ({ default: module.ManagementFoundationPage })))
 const HiddenCreativeFoundationPage = lazy(() => import('../surfaces/FoundationPages.js').then(module => ({ default: module.HiddenCreativeFoundationPage })))
+const ThumbnailPage = lazy(() => import('../product/thumbnail/ThumbnailWorkspace.js').then(module => ({ default: module.ThumbnailWorkspace })))
 
 function lazyPage(Component: ComponentType) {
   return function LazyRoutePage() {
@@ -48,6 +49,7 @@ export const implementedRouteInventory = [
   '/w/$workspaceId/projects/$projectId/recipe',
   '/w/$workspaceId/projects/$projectId/agent', '/w/$workspaceId/projects/$projectId/review',
   '/w/$workspaceId/projects/$projectId/production', '/w/$workspaceId/projects/$projectId/publication', '/operations/overview', '/operations/renders',
+  '/w/$workspaceId/projects/$projectId/thumbnails',
   '/operations/storage', '/admin/organization', '/admin/members', '/admin/workspaces', '/admin/roles',
   '/admin/security', '/admin/billing', '/admin/entitlements', '/admin/usage', '/admin/quota',
   '/admin/policies', '/admin/audit', '/developer/capabilities', '/developer/plugins',
@@ -85,6 +87,7 @@ const foundationRoutes = [
   route('/w/$workspaceId/projects/$projectId/review', lazyPage(ReviewPage)),
   route('/w/$workspaceId/projects/$projectId/production', lazyPage(ProductionPage)),
   route('/w/$workspaceId/projects/$projectId/publication', lazyPage(PublicationPage)),
+  route('/w/$workspaceId/projects/$projectId/thumbnails', lazyPage(ThumbnailPage)),
   route('/operations/overview', lazyPage(OperationsOverviewPage)),
   route('/operations/renders', lazyPage(RenderPage)),
   route('/operations/storage', lazyPage(OperationsProjectionPage)),

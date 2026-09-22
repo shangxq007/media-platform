@@ -12,6 +12,42 @@ info:
 servers:
   - url: /api
 paths:
+  /tenants/{tenantId}/projects/{projectId}/thumbnails:
+    post:
+      operationId: submitMediaThumbnail
+      summary: Submit a durable timestamped thumbnail extraction
+      parameters:
+        - {name: tenantId, in: path, required: true, schema: {type: string}}
+        - {name: projectId, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ThumbnailRequest'}
+      responses:
+        '200':
+          description: Durable thumbnail task
+          content: {application/json: {schema: {$ref: '#/components/schemas/ThumbnailTask'}}}
+  /tenants/{tenantId}/projects/{projectId}/thumbnails/{taskId}:
+    get:
+      operationId: getMediaThumbnailTask
+      summary: Get thumbnail task status
+      parameters:
+        - {name: tenantId, in: path, required: true, schema: {type: string}}
+        - {name: projectId, in: path, required: true, schema: {type: string}}
+        - {name: taskId, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Task status, content: {application/json: {schema: {$ref: '#/components/schemas/ThumbnailTask'}}}}
+  /tenants/{tenantId}/projects/{projectId}/thumbnails/{taskId}/image:
+    get:
+      operationId: getMediaThumbnailImage
+      summary: Retrieve an authorized committed thumbnail image
+      parameters:
+        - {name: tenantId, in: path, required: true, schema: {type: string}}
+        - {name: projectId, in: path, required: true, schema: {type: string}}
+        - {name: taskId, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Committed image, content: {image/jpeg: {}, image/png: {}}}
   /render/jobs/{jobId}:
     get:
       operationId: getRenderJob
@@ -107,6 +143,24 @@ components:
           schema:
             $ref: "#/components/schemas/ApiError"
   schemas:
+    ThumbnailRequest:
+      type: object
+      required: [sourceAssetId, timestampSeconds, idempotencyKey]
+      properties:
+        sourceAssetId: {type: string}
+        timestampSeconds: {type: number, format: double, minimum: 0}
+        imageFormat: {type: string, enum: [jpeg, png], default: jpeg}
+        width: {type: integer, minimum: 16, maximum: 4096}
+        quality: {type: integer, minimum: 1, maximum: 100}
+        idempotencyKey: {type: string, minLength: 1}
+    ThumbnailTask:
+      type: object
+      required: [taskId, status]
+      properties:
+        taskId: {type: string}
+        status: {type: string, enum: [ADMITTED, RUNNING, COMPLETED, FAILED, CANCELLED]}
+        artifactId: {type: string, nullable: true}
+        failureCode: {type: string, nullable: true}
     ApiError:
       type: object
       required: [code, message]
