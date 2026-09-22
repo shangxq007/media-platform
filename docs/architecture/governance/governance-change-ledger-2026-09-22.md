@@ -34,7 +34,6 @@ blocks_v5: false
 | GOV-2026-09-22-004 | Repair DG-011 broken links | Current documentation must resolve repository links; obsolete targets are replaced by existing source paths | Documentation only | governance validation report |
 | GOV-2026-09-22-005 | Re-record protected schema-intent baseline | Commits `b509be5f` and `673e180a` were explicit governance amendments. The registered hash was not advanced, causing a false protected-baseline failure. | Protected baseline metadata only; semantic change already authorized | `protected-document-baseline.json`, this ledger |
 | GOV-2026-09-22-006 | Make runtime OpenAPI export the checked-in transport artifact | Keep one REST contract authority at OpenAPI 3.1.0, with base/candidate files used only for compatibility fixtures | Documentation/tooling only | `docs/api/openapi-authority.md` |
-| GOV-2026-09-22-008 | Update protected API-contract baseline hash | The API authority document now records OpenAPI 3.1.0, runtime export, and compatibility semantics; the registered hash was advanced with this decision. | Protected baseline metadata only; endpoint behaviour unchanged | `protected-document-baseline.json`, this ledger |
 | GOV-2026-09-22-007 | Classify historical and superseded material | Historical evidence remains available but cannot appear as current normative guidance | Documentation index/inventory | `architecture-document-inventory.tsv` |
 
 No product source, executable application code, deployment configuration,
