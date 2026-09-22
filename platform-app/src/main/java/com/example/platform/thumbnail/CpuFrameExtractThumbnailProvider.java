@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BooleanSupplier;
+import com.example.platform.sandbox.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -42,7 +43,6 @@ public final class CpuFrameExtractThumbnailProvider implements ThumbnailCapabili
         try {
             Files.createDirectories(work);
             Path source = work.resolve("input");
-            Path output = work.resolve("output." + ("png".equals(request.imageFormat()) ? "png" : "jpg"));
             Files.write(source, input);
             double duration = probe(source, cancelled);
             if (!Double.isFinite(duration) || request.timestampSeconds() > duration) {
@@ -50,28 +50,19 @@ public final class CpuFrameExtractThumbnailProvider implements ThumbnailCapabili
             }
             if (cancelled.getAsBoolean()) return Result.failure("CANCELLED");
             var args = new java.util.ArrayList<String>(List.of(
-                    ffmpeg, "-hide_banner", "-nostdin", "-loglevel", "error", "-y",
+                    "-hide_banner", "-nostdin", "-loglevel", "error",
                     "-ss", Double.toString(request.timestampSeconds()), "-i", source.toString(),
-                    "-frames:v", "1"));
+                    "-frames:v", "1", "-f", "image2pipe", "-vcodec", "png".equals(request.imageFormat()) ? "png" : "mjpeg", "pipe:1"));
             if (request.width() != null) args.addAll(List.of("-vf", "scale=" + request.width() + ":-2"));
-            args.add(output.toString());
             if (request.quality() != null && "jpeg".equals(request.imageFormat())) {
                 int at = args.size() - 1;
                 args.add(at, "-q:v"); args.add(at + 1, Integer.toString(Math.max(2, Math.min(31, 32 - request.quality() / 4))));
             }
-            Process process = new ProcessBuilder(args).redirectErrorStream(true).start();
-            while (process.isAlive()) {
-                if (cancelled.getAsBoolean()) {
-                    process.destroy();
-                    if (!process.waitFor(250, TimeUnit.MILLISECONDS)) process.destroyForcibly();
-                    return Result.failure("CANCELLED");
-                }
-                if (!process.waitFor(20, TimeUnit.MILLISECONDS)) continue;
+            var execution = launch(Path.of(ffmpeg), args, work, source, cancelled);
+            if (execution.failure().isPresent() || execution.exitCode().orElse(-1) != 0 || execution.stdout().bytes().length == 0) {
+                return Result.failure(execution.failure().map(f -> f.code() == SandboxFailureCode.PROCESS_TERMINATED_BY_LIMIT ? "CANCELLED" : "PROVIDER_FAILED").orElse("PROVIDER_FAILED"));
             }
-            if (process.exitValue() != 0 || !Files.isRegularFile(output) || Files.size(output) == 0) {
-                return Result.failure("PROVIDER_FAILED");
-            }
-            return Result.success(Files.readAllBytes(output), "png".equals(request.imageFormat()) ? "image/png" : "image/jpeg");
+            return Result.success(execution.stdout().bytes(), "png".equals(request.imageFormat()) ? "image/png" : "image/jpeg");
         } catch (InterruptedException interrupted) {
             Thread.currentThread().interrupt();
             return Result.failure("CANCELLED");
@@ -84,14 +75,21 @@ public final class CpuFrameExtractThumbnailProvider implements ThumbnailCapabili
     }
 
     private double probe(Path source, BooleanSupplier cancelled) throws IOException, InterruptedException {
-        Process process = new ProcessBuilder(ffprobe, "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", source.toString()).redirectErrorStream(true).start();
-        while (process.isAlive()) {
-            if (cancelled.getAsBoolean()) { process.destroyForcibly(); throw new InterruptedException("cancelled"); }
-            process.waitFor(20, TimeUnit.MILLISECONDS);
-        }
-        if (process.exitValue() != 0) throw new IllegalArgumentException("UNSUPPORTED_MEDIA");
-        try { return Double.parseDouble(new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8).trim()); }
+        var execution = launch(Path.of(ffprobe), List.of("-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", source.toString()), source.getParent(), source, cancelled);
+        if (execution.failure().isPresent() || execution.exitCode().orElse(-1) != 0) throw new IllegalArgumentException("UNSUPPORTED_MEDIA");
+        try { return Double.parseDouble(new String(execution.stdout().bytes(), StandardCharsets.UTF_8).trim()); }
         catch (NumberFormatException e) { throw new IllegalArgumentException("UNSUPPORTED_MEDIA", e); }
+    }
+
+    private SandboxExecutionResult launch(Path executable, List<String> arguments, Path work, Path input, BooleanSupplier cancelled) throws IOException {
+        var detection = BubblewrapSandboxCapabilityDetector.detect();
+        if (detection.launcher().isEmpty()) throw new IOException("sandbox runtime unavailable");
+        Path normalized = executable.toAbsolutePath().normalize(); Path workspace = work.toAbsolutePath().normalize();
+        var requirement = new SandboxExecutionRequirement(
+                ProcessRequirement.of(Set.of(normalized.toString()), normalized.toString(), arguments, java.time.Duration.ofSeconds(60)),
+                FilesystemPolicy.exact(Set.of(normalized, input.toAbsolutePath().normalize()), workspace, workspace.resolve(".sandbox-tmp"), workspace.resolve(".sandbox-output"), workspace),
+                NetworkPolicy.none(), EnvironmentPolicy.exact(java.util.Map.of("PATH", "/usr/bin:/bin", "LANG", "C", "LC_ALL", "C")), SecretExposure.none(), PrivilegePolicy.unprivileged(), ResourceEnforcementLimits.captureOnly(64L * 1024L * 1024L), DeviceExposurePolicy.none());
+        return detection.launcher().orElseThrow().launchResolved(requirement, () -> cancelled.getAsBoolean());
     }
 
 }
