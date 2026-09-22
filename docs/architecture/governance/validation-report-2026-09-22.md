@@ -71,3 +71,11 @@ OpenAPI 3.1.0 structural validation pass. Whole-repository governance remains
 conditional because oasdiff and Semgrep prerequisites are unavailable, the full
 broken-link debt baseline is not yet zero, frontend checks are environment-gated,
 and external-provider/production checks were not run.
+
+## Post-report repair verification
+
+Commit `30ca4c4b` repaired remaining current-document Flyway references and
+reclassified pre-checkpoint inventories as historical evidence. The fresh
+command `bash scripts/check-document-governance.sh --head HEAD --base HEAD
+--mode current --verbose` passed **16/16** with zero introduced links; the
+canonical migration directory still reports exactly V1 through V9.
