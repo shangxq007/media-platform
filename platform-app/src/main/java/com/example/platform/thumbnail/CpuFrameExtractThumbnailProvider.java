@@ -52,12 +52,13 @@ public final class CpuFrameExtractThumbnailProvider implements ThumbnailCapabili
             var args = new java.util.ArrayList<String>(List.of(
                     "-hide_banner", "-nostdin", "-loglevel", "error",
                     "-ss", Double.toString(request.timestampSeconds()), "-i", source.toString(),
-                    "-frames:v", "1", "-f", "image2pipe", "-vcodec", "png".equals(request.imageFormat()) ? "png" : "mjpeg", "pipe:1"));
+                    "-frames:v", "1", "-f", "image2pipe", "-vcodec", "png".equals(request.imageFormat()) ? "png" : "mjpeg"));
             if (request.width() != null) args.addAll(List.of("-vf", "scale=" + request.width() + ":-2"));
             if (request.quality() != null && "jpeg".equals(request.imageFormat())) {
-                int at = args.size() - 1;
+                int at = args.size();
                 args.add(at, "-q:v"); args.add(at + 1, Integer.toString(Math.max(2, Math.min(31, 32 - request.quality() / 4))));
             }
+            args.add("pipe:1");
             var execution = launch(Path.of(ffmpeg), args, work, source, cancelled);
             if (execution.failure().isPresent() || execution.exitCode().orElse(-1) != 0 || execution.stdout().bytes().length == 0) {
                 return Result.failure(execution.failure().map(f -> f.code() == SandboxFailureCode.PROCESS_TERMINATED_BY_LIMIT ? "CANCELLED" : "PROVIDER_FAILED").orElse("PROVIDER_FAILED"));
