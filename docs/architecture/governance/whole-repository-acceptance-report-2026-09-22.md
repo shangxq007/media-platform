@@ -44,10 +44,14 @@ acceptance follow-up changes recorded in the governance ledger.
 | Compose/Flyway reference | focused Python path assertion | PASS; V1 mount resolves to `V1__initial_schema.sql` |
 | Docker Compose parser | `docker compose -f docker-compose.dev.yml config` | NOT_RUN; `docker` executable unavailable |
 
-Generated-C4 determinism and Spring Modulith results remain valid from the
-accepted baseline evidence; no source or generated application code changed in
-this follow-up. The pinned oasdiff, frontend dependencies, and Semgrep runtime
-were restored outside tracked product sources.
+Generated-C4 determinism and Spring Modulith Modularity checks were freshly
+executed after the acceptance follow-up:
+`./gradlew --no-daemon :platform-app:test
+--tests com.example.platform.ModulithDocumentationGenerationTest
+--tests com.example.platform.ModularityTest` — BUILD SUCCESSFUL (97 actionable
+tasks, all up-to-date). No source or generated application code changed in
+that run. The pinned oasdiff, frontend dependencies, and Semgrep runtime were
+restored outside tracked product sources.
 
 ## Failure-path and contract scope
 

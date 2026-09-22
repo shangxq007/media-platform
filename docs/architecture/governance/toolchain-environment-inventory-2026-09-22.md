@@ -22,7 +22,7 @@ blocks_v5: false
 
 | Area | Toolchain | Fresh result | Environment note |
 |---|---|---|---|
-| Backend | Gradle wrapper, Java 25 toolchain | PASS in prior accepted evidence | Reused generated-C4 and Modularity evidence; no source changes since that run |
+| Backend | Gradle wrapper, Java 25 toolchain | PASS; generated-C4 determinism and Modularity freshly executed | `./gradlew --no-daemon :platform-app:test --tests com.example.platform.ModulithDocumentationGenerationTest --tests com.example.platform.ModularityTest`; 97 actionable tasks, all up-to-date |
 | Documentation | Python 3.13.15 | PASS, 16/16 | Fresh on final repository state |
 | LikeC4 | `likec4@1.58.0` via `npx --yes` | PASS | Fresh |
 | Architecture drift | Python guard | PASS, 50 modules / 3 deployment units | Fresh |
