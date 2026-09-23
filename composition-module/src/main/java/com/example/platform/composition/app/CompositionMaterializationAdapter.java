@@ -68,6 +68,7 @@ public final class CompositionMaterializationAdapter {
             CommittedMediaAsset asset = materialization.commitMediaAsset(request, artifact);
             if (!request.tenantId().equals(asset.tenantId()) || !request.workspaceId().equals(asset.workspaceId()))
                 throw new IllegalArgumentException("MediaAsset scope does not match authenticated request");
+            materialization.recordCommitted(request, issued, artifact, asset);
             return new Result(request, issued, artifact, asset);
         } catch (RuntimeException failure) {
             if (issued != null && !artifactCommitted) {

@@ -9,7 +9,7 @@ public interface PlatformExecutionAdmissionPort {
     AdmissionDecision admit(PlatformExecutionPlan plan);
     boolean cancel(String executionId, long ownershipGeneration);
     boolean retry(String executionId, long ownershipGeneration);
-    Optional<PlatformCompletionReference> completed(String idempotencyKey, String requestHash);
+    Optional<PlatformCompletionReference> completed(String tenantId, String idempotencyKey, String requestHash);
 
     record AdmissionDecision(String executionId, long ownershipGeneration, boolean newlyAdmitted) {
         public AdmissionDecision {

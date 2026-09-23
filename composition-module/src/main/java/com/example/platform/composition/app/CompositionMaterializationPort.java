@@ -14,6 +14,8 @@ public interface CompositionMaterializationPort {
     CommittedArtifact commitArtifact(CompositionExecutionRequest request, IssuedOutput output);
     CommittedMediaAsset commitMediaAsset(CompositionExecutionRequest request, CommittedArtifact artifact);
     void compensate(IssuedOutput output);
+    default void recordCommitted(CompositionExecutionRequest request, IssuedOutput issued,
+            CommittedArtifact artifact, CommittedMediaAsset asset) {}
 
     record IssuedOutput(String tenantId, String workspaceId, String placementId, String digest, long length) {
         public IssuedOutput {

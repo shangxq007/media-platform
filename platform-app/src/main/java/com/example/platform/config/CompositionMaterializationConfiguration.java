@@ -3,6 +3,7 @@ package com.example.platform.config;
 import com.example.platform.artifact.domain.ArtifactCommitService;
 import com.example.platform.composition.app.OwnerPortCompositionMaterialization;
 import com.example.platform.composition.app.CompositionMaterializationPort;
+import com.example.platform.composition.app.CompositionResultRepository;
 import com.example.platform.media.api.MediaAssets;
 import com.example.platform.storage.api.StorageOutputPort;
 import java.nio.file.Path;
@@ -16,7 +17,7 @@ public class CompositionMaterializationConfiguration {
     @Bean
     CompositionMaterializationPort compositionMaterializationPort(
             StorageOutputPort storage, ArtifactCommitService artifacts, MediaAssets media,
-            @Value("${app.storage.local-root:./.data/storage}") String root) {
-        return new OwnerPortCompositionMaterialization(storage, artifacts, media, Path.of(root));
+            @Value("${app.storage.local-root:./.data/storage}") String root, CompositionResultRepository results) {
+        return new OwnerPortCompositionMaterialization(storage, artifacts, media, Path.of(root), results);
     }
 }
