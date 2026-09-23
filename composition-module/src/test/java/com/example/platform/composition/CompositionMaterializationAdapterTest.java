@@ -131,4 +131,18 @@ class CompositionMaterializationAdapterTest {
                         .execute(request, () -> true));
         assertFalse(dispatched.get());
     }
+
+    @Test void mediaAssetFailureAfterArtifactCommitDoesNotDeleteDurableArtifact() {
+        AtomicBoolean compensated = new AtomicBoolean();
+        var execution = (CompositionExecutionPort) r -> new ProviderExecutionOutput(new ByteArrayInputStream(new byte[] {1}));
+        var materialization = new CompositionMaterializationPort() {
+            public IssuedOutput issue(CompositionExecutionRequest r, ProviderExecutionOutput o) { return new IssuedOutput("tenant-a", "workspace-a", "placement", "sha", 1); }
+            public CommittedArtifact commitArtifact(CompositionExecutionRequest r, IssuedOutput o) { return new CommittedArtifact("tenant-a", "workspace-a", "artifact", "sha"); }
+            public CommittedMediaAsset commitMediaAsset(CompositionExecutionRequest r, CommittedArtifact a) { throw new IllegalStateException("media persistence failed"); }
+            public void compensate(IssuedOutput o) { compensated.set(true); }
+        };
+        assertThrows(IllegalStateException.class,
+                () -> new CompositionMaterializationAdapter(compatible, execution, materialization).execute(request));
+        assertFalse(compensated.get(), "durable Artifact output must be reconciled, not implicitly deleted");
+    }
 }

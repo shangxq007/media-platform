@@ -12,8 +12,10 @@ import java.util.function.BooleanSupplier;
  * Explicit ProviderExecutionOutput to MediaAsset bridge.
  *
  * <p>The adapter never creates a MediaAsset from provider bytes directly. Storage
- * issuance and Artifact commitment must succeed first; every later failure asks
- * the Storage owner to compensate its disposable output.</p>
+ * issuance and Artifact commitment must succeed first. Disposable Storage output
+ * is compensated only before Artifact commitment; after Artifact commitment a
+ * publication failure is fenced for reconciliation rather than deleting durable
+ * Artifact state implicitly.</p>
  */
 public final class CompositionMaterializationAdapter {
     private final CompositionExecutionPort execution;
