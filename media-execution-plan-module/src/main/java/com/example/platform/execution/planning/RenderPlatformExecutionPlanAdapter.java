@@ -22,7 +22,7 @@ public final class RenderPlatformExecutionPlanAdapter {
         ExecutionPlanningEntry.plan(result, planId);
         var p = result.plan();
         var inputs = p.nodes().stream().map(n -> new PlatformExecutionPlan.TypedInputReference(
-                n.id().value(), "render-node", n.kind().name(), n.id().value())).toList();
+                n.id().value(), "render-node", n.kind().canonicalName(), n.id().value())).toList();
         var outputs = p.request().outputs().stream().map(o -> new PlatformExecutionPlan.TypedOutputExpectation(
                 o.role().name(), "render-output", "1", "artifact")).toList();
         return new PlatformExecutionPlan(scope,
