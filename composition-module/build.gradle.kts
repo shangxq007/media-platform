@@ -5,6 +5,8 @@ dependencies {
     api(project(":extension-module"))
     implementation(project(":identity-access-module"))
     implementation(project(":artifact-module"))
+    implementation(project(":storage-module"))
+    implementation(project(":media-module"))
     implementation(project(":worker-fabric-module"))
     implementation(project(":entitlement-module"))
     implementation("org.springframework.boot:spring-boot-starter-jdbc")
