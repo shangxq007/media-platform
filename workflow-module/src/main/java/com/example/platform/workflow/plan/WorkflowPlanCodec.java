@@ -28,7 +28,21 @@ public final class WorkflowPlanCodec {
         try {
             return mapper.readValue(json, WorkflowPlan.Node.class);
         } catch (java.io.IOException e) {
-            throw new IllegalArgumentException("Invalid typed Workflow node", e);
+            // Decode through the canonical plan envelope as well. Jackson's
+            // record creator path is reliable for the complete immutable plan
+            // and keeps node validation identical to runtime admission.
+            try {
+                JsonNode raw = mapper.readTree(json);
+                String id = raw.path("id").asText();
+                if (id.isBlank()) throw new IllegalArgumentException("node id required");
+                String envelope = "{\"formatVersion\":1,\"definitionId\":\"single\",\"definitionVersion\":1,"
+                        + "\"tenantId\":\"tenant\",\"projectId\":\"project\",\"rootNodeId\":\""
+                        + id.replace("\\", "\\\\").replace("\"", "\\\"")
+                        + "\",\"nodes\":[" + json + "],\"edges\":[]}";
+                return decode(envelope).nodes().getFirst();
+            } catch (Exception fallback) {
+                throw new IllegalArgumentException("Invalid typed Workflow node", e);
+            }
         }
     }
 

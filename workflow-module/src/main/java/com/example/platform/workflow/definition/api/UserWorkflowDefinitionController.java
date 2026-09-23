@@ -140,6 +140,7 @@ public class UserWorkflowDefinitionController {
     public ResponseEntity<UserWorkflowDefinitionDto> create(
             @PathVariable String tenantId,
             @RequestBody UserWorkflowDefinitionCreateRequest request) {
+        requireExecutableSchema2(request.schemaVersion());
         authorize(tenantId, AuthorizationActions.WORKFLOW_DEFINITION_EDIT,null,request.projectId());
         UserWorkflowDefinition created = service.create(
                 tenantId, request.projectId(), request.name(), request.description(),
@@ -344,5 +345,12 @@ public class UserWorkflowDefinitionController {
 
     private String principalId() {
         return actorResolver.resolveCurrentActor().orElseThrow(()->new org.springframework.web.server.ResponseStatusException(HttpStatus.UNAUTHORIZED)).actorId();
+    }
+
+    private static void requireExecutableSchema2(int schemaVersion) {
+        if (schemaVersion != com.example.platform.workflow.definition.validation.UserWorkflowDefinitionValidator.EXECUTABLE_SCHEMA_VERSION) {
+            throw new UserWorkflowException(UserWorkflowErrorCode.Code.INVALID_SCHEMA_VERSION,
+                    "definition schemaVersion " + schemaVersion + " is not supported (supported: 2)");
+        }
     }
 }

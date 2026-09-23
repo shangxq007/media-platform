@@ -13,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.Instant;
 import java.util.List;
@@ -26,11 +27,20 @@ public class FeatureFlagController {
 
     private final FeatureFlagService featureFlagService;
     private final FeatureFlagAuditService auditService;
+    private final AuthoritativeWorkspaceScope workspaceScope;
 
     public FeatureFlagController(FeatureFlagService featureFlagService,
                                   FeatureFlagAuditService auditService) {
+        this(featureFlagService, auditService, null);
+    }
+
+    @Autowired
+    public FeatureFlagController(FeatureFlagService featureFlagService,
+                                  FeatureFlagAuditService auditService,
+                                  AuthoritativeWorkspaceScope workspaceScope) {
         this.featureFlagService = featureFlagService;
         this.auditService = auditService;
+        this.workspaceScope = workspaceScope;
     }
 
     @PostMapping("/admin/feature-flags")
@@ -152,7 +162,7 @@ public class FeatureFlagController {
 
     @GetMapping("/me/feature-flags")
     public ResponseEntity<List<FeatureFlagDefinition>> getMyFlags(HttpServletRequest request) {
-        FeatureFlagContext context = buildCurrentContext(request);
+        FeatureFlagContext context = buildCurrentContext(request, null);
         List<FeatureFlagDefinition> flags = featureFlagService.getFlagsForContext(context);
         return ResponseEntity.ok(flags);
     }
@@ -166,7 +176,7 @@ public class FeatureFlagController {
             // Scope is reconstructed from the authenticated server request boundary.
             rejectForgedTenantOrUserScope(request.context(), servletRequest);
             FeatureFlagEvaluationRequest authoritative = new FeatureFlagEvaluationRequest(
-                    request.flagKey(), buildCurrentContext(servletRequest), request.defaultValue());
+                    request.flagKey(), buildCurrentContext(servletRequest, request.context()), request.defaultValue());
             FeatureFlagEvaluationResult result = featureFlagService.evaluate(authoritative);
             auditService.auditEvaluated(result.decision(), getCurrentActor(servletRequest));
             return ResponseEntity.ok(result);
@@ -182,7 +192,7 @@ public class FeatureFlagController {
             @RequestBody List<FeatureFlagEvaluationRequest> requests,
             HttpServletRequest servletRequest) {
         requests.forEach(r -> rejectForgedTenantOrUserScope(r.context(), servletRequest));
-        FeatureFlagContext authoritativeContext = buildCurrentContext(servletRequest);
+        FeatureFlagContext authoritativeContext = buildCurrentContext(servletRequest, null);
         List<FeatureFlagEvaluationRequest> authoritative = requests.stream()
                 .map(r -> new FeatureFlagEvaluationRequest(r.flagKey(), authoritativeContext, r.defaultValue()))
                 .toList();
@@ -206,14 +216,22 @@ public class FeatureFlagController {
         return principal == null || String.valueOf(principal).isBlank() ? "system" : String.valueOf(principal);
     }
 
-    private FeatureFlagContext buildCurrentContext(HttpServletRequest request) {
+    private FeatureFlagContext buildCurrentContext(HttpServletRequest request, FeatureFlagContext supplied) {
         String tenantId = TenantContext.get();
         Object subject = request.getAttribute("auth.subject");
-        Object membershipId = request.getAttribute("jwt.subject");
         Object role = request.getAttribute("jwt.roles");
         String userId = subject == null ? null : String.valueOf(subject);
         List<String> roles = role instanceof List<?> values ? values.stream().map(String::valueOf).toList() : List.of();
-        return new FeatureFlagContext(tenantId, null, userId, roles, List.of(),
+        String workspaceId = request.getHeader("X-Workspace-Id");
+        if (workspaceId != null && !workspaceId.isBlank()
+                && (workspaceScope == null || !workspaceScope.isActiveMember(tenantId, workspaceId, userId))) {
+            throw forbidden("Workspace is not an active member scope");
+        }
+        if (supplied != null && supplied.workspaceId() != null && !supplied.workspaceId().isBlank()
+                && !supplied.workspaceId().equals(workspaceId)) {
+            throw forbidden("Workspace scope must match the server-selected workspace");
+        }
+        return new FeatureFlagContext(tenantId, workspaceId, userId, roles, List.of(),
                 null, "server", null, null, null, Map.of());
     }
 
@@ -232,12 +250,16 @@ public class FeatureFlagController {
                     Map.of("en", "Forbidden", "zh", "无权访问"), "security", 403),
                     "User scope does not match authenticated identity", Map.of(), "en");
         }
-        // A workspace is not a claim of the local JWT. It must not be accepted from a browser body.
-        if (supplied.workspaceId() != null && !supplied.workspaceId().isBlank()) {
-            throw new PlatformException(new ConfigurableErrorCode("SECURITY-403-001", 403001,
-                    Map.of("en", "Forbidden", "zh", "无权访问"), "security", 403),
-                    "Workspace scope requires an authoritative server binding", Map.of(), "en");
-        }
+        String selectedWorkspace = request.getHeader("X-Workspace-Id");
+        if (supplied.workspaceId() != null && !supplied.workspaceId().isBlank()
+                && (selectedWorkspace == null || !supplied.workspaceId().equals(selectedWorkspace)))
+            throw forbidden("Workspace scope must match the server-selected workspace");
+    }
+
+    private static PlatformException forbidden(String message) {
+        return new PlatformException(new ConfigurableErrorCode("SECURITY-403-001", 403001,
+                Map.of("en", "Forbidden", "zh", "无权访问"), "security", 403),
+                message, Map.of(), "en");
     }
 
     private PlatformException notFound(String flagKey) {

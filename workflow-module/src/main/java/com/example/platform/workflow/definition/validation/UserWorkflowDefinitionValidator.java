@@ -37,7 +37,9 @@ public final class UserWorkflowDefinitionValidator {
     public static final int MAX_EDGES = 500;
     public static final int MAX_CONFIG_BYTES = 64 * 1024;
     public static final int MAX_PARAMETER_BYTES = 16 * 1024;
+    /** Legacy draft validator version; executable Composition uses schema 2. */
     public static final int SUPPORTED_SCHEMA_VERSION = 1;
+    public static final int EXECUTABLE_SCHEMA_VERSION = 2;
 
     private static final ObjectMapper CANONICAL =
             new ObjectMapper().configure(
@@ -85,7 +87,7 @@ public final class UserWorkflowDefinitionValidator {
     public static UserWorkflowValidationResult validate(UserWorkflowDefinition definition) {
         List<UserWorkflowValidationIssue> issues = new ArrayList<>();
 
-        if (definition.schemaVersion() == 2) {
+        if (definition.schemaVersion() == EXECUTABLE_SCHEMA_VERSION) {
             for (var node : definition.nodes()) {
                 if (SECRET_PATTERN.matcher(node.configValues().canonicalJson()).find())
                     issues.add(issue(UserWorkflowValidationCode.CONFIG_SECRET_LIKE_VALUE, "Secret-like value prohibited"));
@@ -95,7 +97,11 @@ public final class UserWorkflowDefinitionValidator {
             return new UserWorkflowValidationResult(issues.isEmpty(), issues);
         }
         // Configuration schema version (definition-level)
-        if (definition.schemaVersion() != SUPPORTED_SCHEMA_VERSION) {
+        // Legacy schema 1 remains readable for migration diagnostics only. It
+        // is rejected by the Composition API boundary and cannot be admitted
+        // to Temporal; retaining validation here keeps old persisted drafts
+        // diagnosable without silently upgrading them.
+        if (definition.schemaVersion() != 1) {
             issues.add(issue(UserWorkflowValidationCode.CONFIG_INVALID_SCHEMA_VERSION,
                     "definition schemaVersion " + definition.schemaVersion()
                             + " is not supported (supported: " + SUPPORTED_SCHEMA_VERSION + ")"));
@@ -242,7 +248,7 @@ public final class UserWorkflowDefinitionValidator {
                     "node " + node.nodeId() + " has unsupported node type: " + node.nodeType()));
             return;
         }
-        if (node.configValues().schemaVersion() != SUPPORTED_SCHEMA_VERSION) {
+        if (node.configValues().schemaVersion() != 1) {
             issues.add(issue(UserWorkflowValidationCode.CONFIG_INVALID_SCHEMA_VERSION,
                     "node " + node.nodeId() + " config schema version unsupported"));
         }

@@ -3,8 +3,8 @@ package com.example.platform.workflow.definition.api.dto;
 import java.util.List;
 
 /**
- * Create-request DTO (public-api-contract.tsv): name required; description and
- * projectId optional; schemaVersion required == 1.
+ * Create-request DTO: Composition definitions must use executable schema 2.
+ * Schema 1 is retired and is rejected at the API boundary.
  */
 public record UserWorkflowDefinitionCreateRequest(
         String name,
