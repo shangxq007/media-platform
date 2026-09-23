@@ -9,6 +9,7 @@ import com.example.platform.identity.app.TenantRepository;
 import com.example.platform.policy.featureflag.FeatureFlagService;
 import com.example.platform.shared.web.TenantContext;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -27,6 +28,13 @@ class MeControllerProjectsAuthorizationTest {
             mock(EntitlementService.class), mock(EntitlementPolicyService.class),
             mock(FeatureFlagService.class), mock(AuditPort.class),
             mock(com.example.platform.web.collaboration.SharedResourceService.class));
+
+    @BeforeEach
+    void resetFixtures() {
+        reset(projects);
+        TenantContext.clear();
+        SecurityContextHolder.clearContext();
+    }
 
     @AfterEach
     void clearRequestState() {
