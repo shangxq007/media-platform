@@ -15,3 +15,11 @@ dependencies {
     testRuntimeOnly("org.postgresql:postgresql")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
+
+// Package the canonical platform grammar; no provider-owned syntax is loaded.
+tasks.processResources {
+    from(rootProject.file("contracts/composition/version-range-v1.json")) { into("composition") }
+}
+tasks.processTestResources {
+    from(rootProject.file("contracts/composition/version-range-cases.json")) { into("composition") }
+}

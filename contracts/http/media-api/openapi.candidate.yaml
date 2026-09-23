@@ -4,6 +4,8 @@ info:
   version: 3.2.0
   x-lifecycle: STABLE
   x-contract-id: media-api
+  x-composition-version-range-grammar: composition-version-range-v1
+  x-composition-version-range-grammar-document: docs/api/composition-version-range.md
   description: >
     VERSION_COMPATIBILITY_GOVERNANCE_FOUNDATION_V1 baseline. The OpenAPI document
     is authority for the EXTERNAL HTTP TRANSPORT CONTRACT only — it is NOT Media
@@ -257,7 +259,7 @@ components:
   schemas:
     TemplateWorkflow:
       type: object
-      required: [id, version, name, steps, bindings, parameters, requiredCapabilities, executionModes, requiredAssets, outputs, estimate, reliability, lifecycle, tenantId, workspaceId, revision]
+      required: [id, version, name, steps, bindings, parameters, requiredCapabilities, executionModes, requiredAssets, outputs, entry, estimate, reliability, lifecycle, tenantId, workspaceId, revision]
       properties:
         id: {type: string}
         version: {type: string}
@@ -269,6 +271,7 @@ components:
         executionModes: {type: array, items: {type: string, enum: [SYNCHRONOUS, ASYNCHRONOUS, BATCH]}}
         requiredAssets: {type: array, items: {type: string}}
         outputs: {type: array, items: {$ref: '#/components/schemas/WorkflowOutput'}}
+        entry: {$ref: '#/components/schemas/WorkflowEntry'}
         estimate: {$ref: '#/components/schemas/CostEstimate'}
         reliability: {$ref: '#/components/schemas/Reliability'}
         lifecycle: {type: string, enum: [DRAFT, PUBLISHED]}
@@ -310,6 +313,14 @@ components:
         toStep: {type: string}
         toInput: {type: string}
         type: {type: string}
+    WorkflowEntry:
+      type: object
+      required: [name, contract, stepId, port]
+      properties:
+        name: {type: string}
+        contract: {$ref: '#/components/schemas/ContractRef'}
+        stepId: {type: string}
+        port: {type: string}
     WorkflowOutput:
       type: object
       required: [name, type, stepId, port]

@@ -38,6 +38,10 @@ public final class CompositionModels {
     public record Binding(String fromStep, String fromOutput, String toStep, String toInput, String type) {
         public Binding { require(fromStep, "fromStep"); require(fromOutput, "fromOutput"); require(toStep, "toStep"); require(toInput, "toInput"); require(type, "binding type"); }
     }
+    /** Platform-owned external input binding; never inferred from graph roots. */
+    public record WorkflowEntry(String name, ContractRef contract, String stepId, String port) {
+        public WorkflowEntry { require(name, "entry name"); if (contract == null) throw new IllegalArgumentException("entry contract is required"); require(stepId, "entry stepId"); require(port, "entry port"); }
+    }
     public record WorkflowOutput(String name, String type, String stepId, String port) {
         public WorkflowOutput { require(name, "output name"); require(type, "output type"); require(stepId, "output stepId"); require(port, "output port"); }
     }
@@ -46,16 +50,22 @@ public final class CompositionModels {
     }
     public record TemplateWorkflow(String id, String version, String name, List<WorkflowStep> steps, List<Binding> bindings,
                                    List<Parameter> parameters, Set<String> requiredCapabilities, Set<ExecutionMode> executionModes,
-                                   Set<String> requiredAssets, List<WorkflowOutput> outputs, CostEstimate estimate, Reliability reliability, Lifecycle lifecycle,
+                                   Set<String> requiredAssets, List<WorkflowOutput> outputs, WorkflowEntry entry, CostEstimate estimate, Reliability reliability, Lifecycle lifecycle,
                                    String tenantId, String workspaceId, long revision) {
         public TemplateWorkflow { require(id, "workflow id"); require(version, "workflow version"); require(name, "workflow name"); require(tenantId, "tenantId"); require(workspaceId, "workspaceId");
             steps = steps == null ? List.of() : List.copyOf(steps); bindings = bindings == null ? List.of() : List.copyOf(bindings); parameters = parameters == null ? List.of() : List.copyOf(parameters); outputs = outputs == null ? List.of() : List.copyOf(outputs);
             requiredCapabilities = immutable(requiredCapabilities); executionModes = executionModes == null ? Set.of() : Set.copyOf(executionModes); requiredAssets = immutable(requiredAssets); if (estimate == null || reliability == null || lifecycle == null) throw new IllegalArgumentException("incomplete workflow metadata"); }
         public TemplateWorkflow(String id, String version, String name, List<WorkflowStep> steps, List<Binding> bindings,
                                 List<Parameter> parameters, Set<String> requiredCapabilities, Set<ExecutionMode> executionModes,
+                                Set<String> requiredAssets, List<WorkflowOutput> outputs, CostEstimate estimate, Reliability reliability, Lifecycle lifecycle,
+                                String tenantId, String workspaceId, long revision) {
+            this(id, version, name, steps, bindings, parameters, requiredCapabilities, executionModes, requiredAssets, outputs, null, estimate, reliability, lifecycle, tenantId, workspaceId, revision);
+        }
+        public TemplateWorkflow(String id, String version, String name, List<WorkflowStep> steps, List<Binding> bindings,
+                                List<Parameter> parameters, Set<String> requiredCapabilities, Set<ExecutionMode> executionModes,
                                 Set<String> requiredAssets, CostEstimate estimate, Reliability reliability, Lifecycle lifecycle,
                                 String tenantId, String workspaceId, long revision) {
-            this(id, version, name, steps, bindings, parameters, requiredCapabilities, executionModes, requiredAssets, List.of(), estimate, reliability, lifecycle, tenantId, workspaceId, revision);
+            this(id, version, name, steps, bindings, parameters, requiredCapabilities, executionModes, requiredAssets, List.of(), null, estimate, reliability, lifecycle, tenantId, workspaceId, revision);
         }
     }
     public record Application(String id, String version, String displayName, String description, ContractRef input, ContractRef output,

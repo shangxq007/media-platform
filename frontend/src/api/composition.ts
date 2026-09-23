@@ -1,7 +1,7 @@
 import api from './index'
 
 export type CapabilityAvailability = { capabilityId:string; version:string; input:{name:string;version:string}; output:{name:string;version:string}; assetTypes:string[]; mediaTypes:string[]; executionModes:string[]; availability:string; summary:string; estimate:{units:number;unit:string;quotaUnits:number}; reliability:{cancellable:boolean;retryable:boolean;maxRetries:number} }
-export type WorkflowDraft = { id:string; version:string; name:string; steps:any[]; bindings:any[]; parameters:any[]; requiredCapabilities:string[]; executionModes:string[]; requiredAssets:string[]; outputs:any[]; estimate:any; reliability:any; lifecycle:string; tenantId:string; workspaceId:string; revision:number }
+export type WorkflowDraft = { id:string; version:string; name:string; steps:any[]; bindings:any[]; parameters:any[]; requiredCapabilities:string[]; executionModes:string[]; requiredAssets:string[]; outputs:any[]; entry?:{name:string;contract:{name:string;version:string};stepId:string;port:string}; estimate:any; reliability:any; lifecycle:string; tenantId:string; workspaceId:string; revision:number }
 export type ApplicationDraft = { id:string; version:string; displayName:string; description:string; input:any; output:any; requiredCapabilities:string[]; workflowIds:string[]; requiredAssets:string[]; entitlements:string[]; executionModes:string[]; lifecycle:string; tenantId:string; workspaceId:string; revision:number }
 export type ValidationIssue = { code:string; severity:'ERROR'|'WARNING'; objectType:string; objectId:string; path:string; location:string; message:string }
 export type ValidationResult = { ready:boolean; issues:ValidationIssue[]; snapshotId:string }

@@ -4,6 +4,8 @@ info:
   version: 3.2.0
   x-lifecycle: STABLE
   x-contract-id: media-api
+  x-composition-version-range-grammar: composition-version-range-v1
+  x-composition-version-range-grammar-document: docs/api/composition-version-range.md
   description: >
     VERSION_COMPATIBILITY_GOVERNANCE_FOUNDATION_V1 baseline. The OpenAPI document
     is authority for the EXTERNAL HTTP TRANSPORT CONTRACT only — it is NOT Media
@@ -257,6 +259,14 @@ components:
       properties:
         name: {type: string}
         version: {type: string}
+    WorkflowEntry:
+      type: object
+      required: [name, contract, stepId, port]
+      properties:
+        name: {type: string}
+        contract: {$ref: '#/components/schemas/ContractRef'}
+        stepId: {type: string}
+        port: {type: string}
     WorkflowOutput:
       type: object
       required: [name, type, stepId, port]

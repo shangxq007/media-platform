@@ -19,7 +19,7 @@ public final class RegistryAvailabilityProjection implements ProviderRegistryBou
     }
     private void register(CapabilityAvailability c) { entries.put(c.capabilityId()+":"+c.version(), c); }
     public List<CapabilityAvailability> publicAvailability() { return entries.values().stream().map(this::project).sorted(Comparator.comparing(CapabilityAvailability::capabilityId).thenComparing(CapabilityAvailability::version)).toList(); }
-    public Optional<CapabilityAvailability> resolve(String id, String version) { return Optional.ofNullable(entries.get(id+":"+version)).map(this::project); }
+    public Optional<CapabilityAvailability> resolve(String id, String version) { return entries.values().stream().filter(c -> c.capabilityId().equals(id) && com.example.platform.composition.domain.CompositionVersionRange.check(version, c.version()).equals("OK")).sorted(Comparator.comparing(CapabilityAvailability::version)).findFirst().map(this::project); }
     private CapabilityAvailability project(CapabilityAvailability contract) {
         var matches=capabilities.findImplementationsForContractVersion(
                 com.example.platform.extension.domain.CapabilityId.of(contract.capabilityId()),

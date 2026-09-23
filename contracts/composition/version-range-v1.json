@@ -1,0 +1,22 @@
+{
+  "id": "composition-version-range-v1",
+  "versionPattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:\\.(0|[1-9][0-9]*))?$",
+  "wildcardPattern": "^(0|[1-9][0-9]*)(?:\\.(0|[1-9][0-9]*))?\\.(x|\\*)$",
+  "boundPattern": "^(>=|<=|>|<)(.+)$",
+  "operators": [
+    ">=",
+    ">",
+    "<=",
+    "<"
+  ],
+  "maximumComponent": 2147483646,
+  "prerelease": "unsupported",
+  "algorithm": [
+    "Trim outer whitespace; empty is MALFORMED_VERSION_RANGE.",
+    "Parse entire expression before testing actual. Exact versions and wildcards stand alone. Bounds are one or two whitespace-separated tokens with no whitespace between operator and version. Two bounds must contain one lower and one upper, in either order.",
+    "Major.minor is historical shorthand for major.minor.0. All numeric components are nonnegative decimal integers without leading zeros, <= maximumComponent. Build metadata and prerelease are unsupported.",
+    "Wildcards are half-open intervals: M.x/M.* => [M.0.0,(M+1).0.0); M.m.x/M.m.* => [M.m.0,M.(m+1).0).",
+    "Bounds retain their inclusive/exclusive flags. Lower > upper, or equal with either exclusive, is INVALID_VERSION_RANGE. Duplicate directions and other syntax are MALFORMED_VERSION_RANGE.",
+    "Parse actual with versionPattern or return MALFORMED_VERSION. Compare integer tuples lexicographically. Outside interval is INCOMPATIBLE_VERSION_RANGE; inside is OK."
+  ]
+}
