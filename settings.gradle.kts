@@ -54,6 +54,7 @@ include(
     "timeline-module",
     "operation-module",
     "composite-resource-module",
+    "composition-module",
 )
 
 // ── HOLD modules ────────────────────────────────────────────────────────────

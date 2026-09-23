@@ -12,6 +12,36 @@ info:
 servers:
   - url: /api
 paths:
+  /composition/capabilities:
+    get:
+      operationId: listCapabilityAvailability
+      summary: Read provider-neutral capability availability
+      responses:
+        '200': {description: Capability availability catalog}
+  /composition/workflows/drafts:
+    post:
+      operationId: saveTemplateWorkflowDraft
+      summary: Save a Template Workflow draft
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/TemplateWorkflow'}}}}
+      responses: {'200': {description: Draft saved}}
+  /composition/workflows/validate:
+    post:
+      operationId: validateTemplateWorkflow
+      summary: Validate a Template Workflow without execution
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/TemplateWorkflow'}}}}
+      responses: {'200': {description: Validation result}}
+  /composition/applications/drafts:
+    post:
+      operationId: saveApplicationDraft
+      summary: Save an Application draft
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/Application'}}}}
+      responses: {'200': {description: Draft saved}}
+  /composition/applications/validate:
+    post:
+      operationId: validateApplication
+      summary: Validate an Application without execution
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/Application'}}}}
+      responses: {'200': {description: Validation result}}
   /tenants/{tenantId}/projects/{projectId}/thumbnails:
     post:
       operationId: submitMediaThumbnail
@@ -153,6 +183,24 @@ components:
           schema:
             $ref: "#/components/schemas/ApiError"
   schemas:
+    TemplateWorkflow:
+      type: object
+      required: [id, version, name, steps, bindings, executionModes]
+      properties:
+        id: {type: string}
+        version: {type: string}
+        name: {type: string}
+        steps: {type: array, items: {type: object}}
+        bindings: {type: array, items: {type: object}}
+        executionModes: {type: array, items: {type: string}}
+    Application:
+      type: object
+      required: [id, version, displayName, workflowIds]
+      properties:
+        id: {type: string}
+        version: {type: string}
+        displayName: {type: string}
+        workflowIds: {type: array, items: {type: string}}
     ThumbnailRequest:
       type: object
       required: [sourceAssetId, timestampSeconds, idempotencyKey]

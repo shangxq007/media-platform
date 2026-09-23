@@ -14,6 +14,7 @@ import { DevStorageDeliveryProfileDiagnosticsPage } from '../pages/DevStorageDel
 import { DevIngestPreflightPolicyDiagnosticsPage } from '../pages/DevIngestPreflightPolicyDiagnosticsPage.js'
 import { RenderResultsListPage } from '../routes/app/renders/RenderResultsListPage.js'
 import { RenderResultDetailPage } from '../routes/app/renders/RenderResultDetailPage.js'
+import { CompositionFoundationPage } from '../pages/CompositionFoundationPage.js'
 
 const TimelineHistoryPage = lazy(() => import('../product/timeline-review/TimelineBrowser').then(module => ({ default: module.TimelineHistoryPage })))
 const RootLandingPage = lazy(() => import('../surfaces/FoundationPages.js').then(module => ({ default: module.RootLandingPage })))
@@ -94,6 +95,7 @@ const foundationRoutes = [
   route('/admin/organization', lazyPage(ManagementFoundationPage)),
   ...additionalAdminSegments.map(segment => route(`/admin/${segment}`, lazyPage(ManagementFoundationPage))),
   route('/developer/capabilities', lazyPage(ManagementFoundationPage)),
+  route('/developer/composition', CompositionFoundationPage),
   ...additionalDeveloperSegments.map(segment => route(`/developer/${segment}`, lazyPage(ManagementFoundationPage))),
 ]
 
