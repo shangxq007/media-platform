@@ -4,6 +4,8 @@ dependencies {
     api(project(":shared-kernel"))
     api(project(":extension-module"))
     implementation(project(":identity-access-module"))
+    implementation(project(":artifact-module"))
+    implementation(project(":entitlement-module"))
     implementation("org.springframework.boot:spring-boot-starter-jdbc")
     implementation("com.fasterxml.jackson.core:jackson-databind")
     implementation("org.springframework.boot:spring-boot-starter-web")
