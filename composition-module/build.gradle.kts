@@ -5,6 +5,7 @@ dependencies {
     api(project(":extension-module"))
     implementation(project(":identity-access-module"))
     implementation(project(":artifact-module"))
+    implementation(project(":worker-fabric-module"))
     implementation(project(":entitlement-module"))
     implementation("org.springframework.boot:spring-boot-starter-jdbc")
     implementation("com.fasterxml.jackson.core:jackson-databind")
