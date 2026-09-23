@@ -122,6 +122,27 @@ class JwtAuthFilterTest {
     }
 
     @Test
+    void shouldNotSkipCompositionAndFeatureFlagPaths() {
+        for (String path : List.of(
+                "/api/composition/scope",
+                "/api/composition/capabilities",
+                "/api/feature-flags/evaluate",
+                "/api/feature-flags/batch-evaluate",
+                "/api/admin/feature-flags")) {
+            HttpServletRequest request = mock(HttpServletRequest.class);
+            when(request.getRequestURI()).thenReturn(path);
+            assertFalse(filter.shouldNotFilter(request), "protected route must authenticate: " + path);
+        }
+    }
+
+    @Test
+    void shouldKeepUnrelatedApiPathsOutsideThisFilterBoundary() {
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getRequestURI()).thenReturn("/api/public-discovery/example");
+        assertTrue(filter.shouldNotFilter(request));
+    }
+
+    @Test
     void shouldNotSkipProjectDiscoveryPaths() {
         HttpServletRequest meRequest = mock(HttpServletRequest.class);
         when(meRequest.getRequestURI()).thenReturn("/api/me/projects");
@@ -147,6 +168,35 @@ class JwtAuthFilterTest {
         verify(response).setStatus(401);
         verify(filterChain, never()).doFilter(any(), any());
         assertTrue(sw.toString().contains("Missing or malformed JWT token"));
+    }
+
+    @Test
+    void shouldRejectMissingTokenOnCompositionRoute() throws Exception {
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getRequestURI()).thenReturn("/api/composition/scope");
+        when(request.getHeader("Authorization")).thenReturn(null);
+        HttpServletResponse response = mock(HttpServletResponse.class);
+        when(response.getWriter()).thenReturn(new PrintWriter(new StringWriter()));
+
+        filter.doFilterInternal(request, response, filterChain);
+
+        verify(response).setStatus(401);
+        verify(filterChain, never()).doFilter(any(), any());
+    }
+
+    @Test
+    void shouldAuthenticateFeatureFlagRouteWithValidToken() throws Exception {
+        String token = createToken("user-1", "tenant-1", List.of("USER"));
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getRequestURI()).thenReturn("/api/feature-flags/evaluate");
+        when(request.getHeader("Authorization")).thenReturn("Bearer " + token);
+        HttpServletResponse response = mock(HttpServletResponse.class);
+        when(response.getWriter()).thenReturn(new PrintWriter(new StringWriter()));
+
+        filter.doFilterInternal(request, response, filterChain);
+
+        verify(filterChain).doFilter(request, response);
+        verify(request).setAttribute("jwt.tenantId", "tenant-1");
     }
 
     @Test
