@@ -71,6 +71,11 @@ class MeControllerProjectsAuthorizationTest {
 
     @Test
     void requestContextsDoNotCrossBetweenThreads() throws Exception {
+        var seenTenants = new java.util.concurrent.ConcurrentLinkedQueue<String>();
+        doAnswer(invocation -> {
+            seenTenants.add(invocation.getArgument(0));
+            return List.of();
+        }).when(projects).findByTenantId(anyString());
         var executor = java.util.concurrent.Executors.newFixedThreadPool(2);
         try {
             var first = executor.submit(() -> scopedResult("tenant-a"));
@@ -80,8 +85,8 @@ class MeControllerProjectsAuthorizationTest {
         } finally {
             executor.shutdownNow();
         }
-        verify(projects).findByTenantId("tenant-a");
-        verify(projects).findByTenantId("tenant-b");
+        org.junit.jupiter.api.Assertions.assertEquals(
+                java.util.Set.of("tenant-a", "tenant-b"), new java.util.HashSet<>(seenTenants));
     }
 
     private String scopedResult(String tenant) {
