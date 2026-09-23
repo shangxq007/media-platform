@@ -109,7 +109,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                                      FilterChain filterChain) throws ServletException, IOException {
         String authHeader = request.getHeader(AUTHORIZATION_HEADER);
 
-        if (authHeader == null || !authHeader.startsWith(BEARER_PREFIX)) {
+        if (authHeader == null || !authHeader.startsWith(BEARER_PREFIX)
+                || authHeader.substring(BEARER_PREFIX.length()).isBlank()) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType("application/problem+json");
             response.getWriter().write(

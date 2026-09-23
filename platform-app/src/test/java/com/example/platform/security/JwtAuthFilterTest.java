@@ -216,6 +216,54 @@ class JwtAuthFilterTest {
     }
 
     @Test
+    void shouldRejectEmptyBearerToken() throws Exception {
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getRequestURI()).thenReturn("/api/me/projects");
+        when(request.getHeader("Authorization")).thenReturn("Bearer ");
+        HttpServletResponse response = mock(HttpServletResponse.class);
+        when(response.getWriter()).thenReturn(new PrintWriter(new StringWriter()));
+
+        filter.doFilterInternal(request, response, filterChain);
+
+        verify(response).setStatus(401);
+        verify(filterChain, never()).doFilter(any(), any());
+    }
+
+    @Test
+    void shouldRejectInvalidSignature() throws Exception {
+        SecretKey otherKey = Keys.hmacShaKeyFor(
+                "another-secret-key-that-is-at-least-256-bits-long-for-hmac!".getBytes(StandardCharsets.UTF_8));
+        String token = Jwts.builder().subject("user-1").claim("tenantId", "tenant-1")
+                .claim("roles", List.of("USER")).signWith(otherKey).compact();
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getRequestURI()).thenReturn("/api/me/projects");
+        when(request.getHeader("Authorization")).thenReturn("Bearer " + token);
+        HttpServletResponse response = mock(HttpServletResponse.class);
+        when(response.getWriter()).thenReturn(new PrintWriter(new StringWriter()));
+
+        filter.doFilterInternal(request, response, filterChain);
+
+        verify(response).setStatus(401);
+        verify(filterChain, never()).doFilter(any(), any());
+    }
+
+    @Test
+    void shouldRejectCrossTenantHeaderScope() throws Exception {
+        String token = createToken("user-1", "tenant-1", List.of("USER"));
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getRequestURI()).thenReturn("/api/me/projects");
+        when(request.getHeader("Authorization")).thenReturn("Bearer " + token);
+        when(request.getHeader("X-Tenant-ID")).thenReturn("tenant-2");
+        HttpServletResponse response = mock(HttpServletResponse.class);
+        when(response.getWriter()).thenReturn(new PrintWriter(new StringWriter()));
+
+        filter.doFilterInternal(request, response, filterChain);
+
+        verify(response).setStatus(403);
+        verify(filterChain, never()).doFilter(any(), any());
+    }
+
+    @Test
     void shouldAcceptValidToken() throws Exception {
         String token = createToken("user-1", "tenant-1", List.of("USER"));
         HttpServletRequest request = mock(HttpServletRequest.class);

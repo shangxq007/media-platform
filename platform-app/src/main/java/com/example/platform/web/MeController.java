@@ -16,6 +16,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
@@ -141,15 +144,22 @@ public class MeController {
     public ResponseEntity<Map<String, Object>> getProjects(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        String tenantId = TenantContext.get();
-        Map<String, Object> result = new LinkedHashMap<>();
-        if (tenantId == null) {
-            result.put("projects", Collections.emptyList());
-            result.put("total", 0);
-            result.put("page", page);
-            result.put("size", size);
-            return ResponseEntity.ok(result);
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()
+                || "anonymousUser".equals(authentication.getPrincipal())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
+                    "status", 401,
+                    "title", "Authentication Required",
+                    "detail", "An authenticated identity is required"));
         }
+        String tenantId = TenantContext.get();
+        if (tenantId == null || tenantId.isBlank()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                    "status", 403,
+                    "title", "Forbidden",
+                    "detail", "Authenticated tenant scope is required"));
+        }
+        Map<String, Object> result = new LinkedHashMap<>();
         try {
             List<Project> allProjects = projectRepository.findByTenantId(tenantId);
             int total = allProjects.size();
