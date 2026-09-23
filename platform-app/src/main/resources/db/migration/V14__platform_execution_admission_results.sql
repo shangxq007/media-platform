@@ -39,3 +39,25 @@ create table platform_execution_result (
 );
 
 create index ix_platform_execution_admission_scope_state on platform_execution_admission (tenant_id, workspace_id, state);
+
+create function platform_execution_admission_state_guard() returns trigger language plpgsql as $$
+begin
+    if old.state = 'CANCELLED' and new.state <> old.state then raise exception 'terminal admission state'; end if;
+    if old.state = 'COMPLETED' and new.state <> old.state then raise exception 'terminal admission state'; end if;
+    if old.state = 'FAILED' and new.state not in ('FAILED','RETRYING') then raise exception 'invalid admission transition'; end if;
+    if old.state = 'ADMITTED' and new.state not in ('ADMITTED','RUNNING','CANCELLED','FAILED') then raise exception 'invalid admission transition'; end if;
+    if old.state = 'RETRYING' and new.state not in ('RETRYING','RUNNING','CANCELLED','FAILED') then raise exception 'invalid admission transition'; end if;
+    return new;
+end $$;
+create trigger platform_execution_admission_state_guard before update of state on platform_execution_admission
+for each row execute function platform_execution_admission_state_guard();
+
+create function platform_execution_result_state_guard() returns trigger language plpgsql as $$
+begin
+    if old.materialization_state = 'MEDIA_REGISTERED' and new.materialization_state <> old.materialization_state then raise exception 'terminal materialization state'; end if;
+    if old.materialization_state = 'STORAGE_ISSUED' and new.materialization_state not in ('STORAGE_ISSUED','ARTIFACT_COMMITTED','FAILED','COMPENSATING') then raise exception 'invalid materialization transition'; end if;
+    if old.materialization_state = 'ARTIFACT_COMMITTED' and new.materialization_state not in ('ARTIFACT_COMMITTED','MEDIA_REGISTERED','FAILED') then raise exception 'invalid materialization transition'; end if;
+    return new;
+end $$;
+create trigger platform_execution_result_state_guard before update of materialization_state on platform_execution_result
+for each row execute function platform_execution_result_state_guard();
