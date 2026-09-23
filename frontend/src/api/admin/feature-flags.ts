@@ -13,7 +13,7 @@ export interface FeatureFlagOverview {
   module?: string
   status?: string
   description?: string
-  unleashEnabled?: boolean
+  openFeatureEnabled?: boolean
   policyCount?: number
 }
 
@@ -73,6 +73,20 @@ export interface FeatureFlagEvaluationResult {
   matchedRule?: string
   reason: string
   steps: FeatureFlagEvaluationStep[]
+}
+
+
+export interface CanonicalFeatureEvaluationResult {
+  decision: {
+    flagKey: string
+    enabled: boolean
+    variant?: string
+    reasonCode: string
+    providerType?: string
+    matchedRule?: string
+    evaluatedAt?: string
+    details?: Record<string, unknown>
+  }
 }
 
 export interface FeatureFlagEvaluationStep {
@@ -150,6 +164,13 @@ export const FeatureFlagAPI = {
     await api.post(`/admin/feature-flags/${flagKey}/disable`)
   },
 
+  /** Session-bound evaluation. Scope is resolved by the server; browser context is never trusted. */
+  async evaluateCurrentFeatureFlag(flagKey: string, defaultValue = false): Promise<CanonicalFeatureEvaluationResult> {
+    const { data } = await api.post('/feature-flags/evaluate', { flagKey, defaultValue })
+    return data
+  },
+
+  /** @deprecated Admin diagnostics endpoint; use evaluateCurrentFeatureFlag for product UI. */
   async evaluateFeatureFlag(flagKey: string, context: FeatureFlagEvaluationContext): Promise<FeatureFlagEvaluationResult> {
     const { data } = await api.post(`/admin/feature-flags/${flagKey}/evaluate`, context)
     return data

@@ -2,6 +2,7 @@ package com.example.platform.policy.featureflag;
 
 import com.example.platform.policy.featureflag.domain.*;
 import com.example.platform.shared.web.ConfigurableErrorCode;
+import com.example.platform.shared.web.TenantContext;
 import com.example.platform.shared.web.PlatformException;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -159,7 +160,11 @@ public class FeatureFlagController {
     public ResponseEntity<FeatureFlagEvaluationResult> evaluateFlag(
             @RequestBody FeatureFlagEvaluationRequest request) {
         try {
-            FeatureFlagEvaluationResult result = featureFlagService.evaluate(request);
+            // Browser supplied tenant/workspace/user fields are intentionally ignored.
+            // Scope is reconstructed from the authenticated server request boundary.
+            FeatureFlagEvaluationRequest authoritative = new FeatureFlagEvaluationRequest(
+                    request.flagKey(), buildCurrentContext(), request.defaultValue());
+            FeatureFlagEvaluationResult result = featureFlagService.evaluate(authoritative);
             auditService.auditEvaluated(result.decision(), getCurrentActor());
             return ResponseEntity.ok(result);
         } catch (Exception e) {
@@ -188,8 +193,9 @@ public class FeatureFlagController {
     }
 
     private FeatureFlagContext buildCurrentContext() {
-        return new FeatureFlagContext(null, null, null, List.of(), List.of(),
-                null, null, null, null, null, Map.of());
+        String tenantId = TenantContext.get();
+        return new FeatureFlagContext(tenantId, null, null, List.of(), List.of(),
+                null, "server", null, null, null, Map.of());
     }
 
     private PlatformException notFound(String flagKey) {

@@ -11,17 +11,25 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Component
-public class LocalFeatureFlagProvider {
+public class LocalFeatureFlagProvider implements PlatformFeatureProvider {
 
     private static final Logger log = LoggerFactory.getLogger(LocalFeatureFlagProvider.class);
 
     private final FeatureFlagPersistence store;
 
-    public LocalFeatureFlagProvider(@Autowired(required = false) FeatureFlagJdbcStore jdbcStore) {
-        this.store = jdbcStore != null ? jdbcStore : new InMemoryFeatureFlagPersistence();
+    @Autowired
+    public LocalFeatureFlagProvider(@Autowired(required = false) FeatureFlagJdbcStore jdbcStore,
+                                    AppFeaturesProperties properties) {
+        if (jdbcStore != null) {
+            this.store = jdbcStore;
+        } else if (properties.isLocalDevelopment()) {
+            this.store = new InMemoryFeatureFlagPersistence();
+        } else {
+            throw new IllegalStateException("PostgreSQL feature control plane is unavailable; enable local-development only for tests/local development");
+        }
     }
 
-    /** For unit tests without Spring context. */
+    /** For unit tests without Spring context; never used as the production bean. */
     public LocalFeatureFlagProvider() {
         this.store = new InMemoryFeatureFlagPersistence();
     }
@@ -65,6 +73,18 @@ public class LocalFeatureFlagProvider {
         FeatureFlagContext context = request.context();
         Object defaultValue = request.defaultValue();
 
+        if (flagKey == null || flagKey.isBlank()) {
+            return new FeatureFlagDecision(
+                    flagKey, false, null, "INVALID_REQUEST", FeatureFlagProviderType.LOCAL,
+                    null, null, null, null, Instant.now(), Map.of("error", "flagKey is required"));
+        }
+        if (context == null && store.findRules(flagKey).stream().anyMatch(r -> r.percentage() != null)) {
+            boolean fallback = defaultValue instanceof Boolean b && b;
+            return new FeatureFlagDecision(flagKey, fallback, null, "INVALID_CONTEXT",
+                    FeatureFlagProviderType.LOCAL, null, null, null, null, Instant.now(),
+                    Map.of("error", "percentage evaluation requires an authoritative subject"));
+        }
+
         FeatureFlagDefinition definition = store.findByKey(flagKey).orElse(null);
         if (definition == null || !definition.enabled() || definition.archived()) {
             boolean fallback = defaultValue instanceof Boolean ? (Boolean) defaultValue : false;
@@ -84,6 +104,16 @@ public class LocalFeatureFlagProvider {
                 .filter(FeatureFlagTargetingRule::enabled)
                 .sorted(Comparator.comparingInt(r -> r.priority() != null ? r.priority() : Integer.MAX_VALUE))
                 .collect(Collectors.toList());
+
+        if (rules.stream().anyMatch(r -> r.percentage() != null) && !hasStableSubject(context)) {
+            boolean fallback = defaultValue instanceof Boolean b && b;
+            return new FeatureFlagDecision(flagKey, fallback, null, "INVALID_CONTEXT",
+                    FeatureFlagProviderType.LOCAL, null,
+                    context == null ? null : context.tenantId(),
+                    context == null ? null : context.workspaceId(),
+                    context == null ? null : context.userId(), Instant.now(),
+                    Map.of("error", "percentage evaluation requires user, tenant, or workspace scope"));
+        }
 
         for (FeatureFlagTargetingRule rule : rules) {
             if (isRuleExpired(rule)) {
@@ -151,11 +181,31 @@ public class LocalFeatureFlagProvider {
         return true;
     }
 
+    private boolean hasStableSubject(FeatureFlagContext context) {
+        return context != null && ((context.userId() != null && !context.userId().isBlank())
+                || (context.tenantId() != null && !context.tenantId().isBlank())
+                || (context.workspaceId() != null && !context.workspaceId().isBlank()));
+    }
+
     private boolean isWithinPercentage(Double percentage, FeatureFlagContext context) {
-        String hashKey = context.userId() != null ? context.userId()
-                : context.tenantId() != null ? context.tenantId() : UUID.randomUUID().toString();
-        int hash = Math.abs(hashKey.hashCode() % 100);
-        return hash < percentage;
+        if (context == null) return false;
+        String subject = context.userId() != null ? context.userId()
+                : context.tenantId() != null ? context.tenantId()
+                : context.workspaceId();
+        if (subject == null || subject.isBlank()) return false;
+        if (percentage == null || percentage < 0 || percentage > 100) return false;
+        // Versioned SHA-256 bucketing is stable across JVMs and deployments.
+        String input = "platform-feature-bucket-v1\0" + subject;
+        try {
+            byte[] digest = java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(input.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            long value = java.nio.ByteBuffer.wrap(digest, 0, Long.BYTES).getLong()
+                    & Long.MAX_VALUE;
+            double bucket = (value / (double) Long.MAX_VALUE) * 100.0;
+            return bucket < percentage;
+        } catch (java.security.NoSuchAlgorithmException impossible) {
+            throw new IllegalStateException("SHA-256 is required for feature bucketing", impossible);
+        }
     }
 
     private boolean resolveEnabledFromRule(FeatureFlagTargetingRule rule, FeatureFlagContext context,

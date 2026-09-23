@@ -61,14 +61,14 @@
 
 **Context:** Need a feature flag system that supports targeting rules, percentage rollout, and remote providers.
 
-**Decision:** Use OpenFeature Java SDK with `LocalFeatureFlagProvider` as default. `OpenFeatureFlagEvaluator` reserved for remote provider (LaunchDarkly, flagd, Unleash).
+**Decision:** Use OpenFeature Java SDK through the platform-owned `PlatformFeatureProvider` boundary. PostgreSQL platform control-plane state is the runtime default; in-memory/file-backed providers are test/local-only. The accepted deployment matrix is ARCH-FLAG-001 (ADR-027); flagd is an optional future adapter and is not a runtime dependency.
 
 **Consequences:**
 - ✅ Standard API via OpenFeature
 - ✅ Local provider supports targeting + rollout
 - ✅ Easy to swap to remote provider
-- ⚠️ Local provider is in-memory only (not persisted)
-- 🔴 Remote provider not configured (production blocker)
+- ✅ PostgreSQL control-plane persistence is the default runtime path
+- ⚠️ flagd integration and service deployment remain deferred by ARCH-FLAG-001
 
 ---
 

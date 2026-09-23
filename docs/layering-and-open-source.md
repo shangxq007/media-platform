@@ -65,11 +65,11 @@
 - **Spring AI**：作为统一 AI 客户端抽象合理；多厂商时建议在 `ai-module` 内保持自有 SPI，Spring AI 作为 adapter 之一而非唯一抽象。
 - **PF4J**：与「插件治理」目标一致；需另文约定插件隔离、签名与类加载安全（README 已提示 GraalVM/独立进程等分级策略）。
 
-### 特性开关（OpenFeature + Unleash）与 Temporal
+### 特性开关（OpenFeature 平台控制面）与 Temporal
 
-- **`policy-governance-module`**：`dev.openfeature:sdk` + `dev.openfeature.contrib.providers:unleash`（**alpha** 构件，升级前请看 Release Notes）。配置前缀 **`app.features.unleash`**；`enabled: false` 时使用 **InMemoryProvider**（仅默认值）。
+- **`policy-governance-module`**：`dev.openfeature:sdk` 通过平台拥有的 `PlatformFeatureProvider` 边界接入 PostgreSQL 控制面；内存/文件提供者仅用于测试和本地开发。flagd 仅保留为未来内部适配器，当前不部署。
 - **模块 API**：`com.example.platform.policy.api` 包标记为 **`@NamedInterface("feature-flags")`**，对外类型如 **`FeatureFlagEvaluator`**；其它模块（如 **`workflow-module`**）只依赖该接口，满足 Modulith 边界。
-- **Temporal**：在 **Activity** 中调用 `FeatureFlagEvaluator`，**不要**在 Workflow 实现里直接访问 OpenFeature/Unleash。启用 Worker 需配置 **`spring.temporal.connection.target`** 等（见 `application.yml` 末尾注释示例）。
+- **Temporal**：在 **Activity** 中调用 `FeatureFlagEvaluator`，**不要**在 Workflow 实现里直接访问 OpenFeature provider。启用 Worker 需配置 **`spring.temporal.connection.target`** 等（见 `application.yml` 末尾注释示例）。
 
 ### `extension-module`：配置驱动 CLI（推荐）
 

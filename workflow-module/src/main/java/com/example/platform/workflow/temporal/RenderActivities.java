@@ -10,7 +10,7 @@ import io.temporal.activity.ActivityMethod;
 public interface RenderActivities {
 
     /**
-     * Resolves which render pipeline variant to use (e.g. Unleash flag {@code render-pipeline-v2}).
+     * Resolves which render pipeline variant to use (e.g. platform feature flag {@code render-pipeline-v2}).
      */
     @ActivityMethod
     String decideRenderPipeline(String renderJobId, String tenantId);

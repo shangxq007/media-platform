@@ -85,12 +85,16 @@ public class FeatureFlagAuditService {
     }
 
     public void auditEvaluated(FeatureFlagDecision decision, String actor) {
-        Map<String, Object> details = Map.of(
-                "flagKey", decision.flagKey(),
-                "enabled", decision.enabled(),
-                "providerType", decision.providerType().name(),
-                "reasonCode", decision.reasonCode()
-        );
+        Map<String, Object> details = new java.util.LinkedHashMap<>();
+        details.put("flagKey", decision.flagKey());
+        details.put("enabled", decision.enabled());
+        details.put("providerRevision", "platform-feature-provider-v1");
+        details.put("reasonCode", decision.reasonCode());
+        if (decision.tenantId() != null) details.put("tenantId", decision.tenantId());
+        if (decision.workspaceId() != null) details.put("workspaceId", decision.workspaceId());
+        if (decision.userId() != null) details.put("userId", decision.userId());
+        if (decision.matchedRule() != null) details.put("matchedRule", decision.matchedRule());
+        if (decision.variant() != null) details.put("variant", decision.variant());
         recordEvent("FLAG_EVALUATED", decision.flagKey(), actor, details);
     }
 

@@ -4,10 +4,6 @@ import com.example.platform.policy.api.FeatureFlagEvaluator;
 import com.example.platform.policy.featureflag.LocalFeatureFlagProvider;
 import com.example.platform.policy.featureflag.OpenFeatureFlagEvaluator;
 import com.example.platform.policy.featureflag.domain.*;
-import dev.openfeature.sdk.Client;
-import dev.openfeature.sdk.ImmutableContext;
-import dev.openfeature.sdk.OpenFeatureAPI;
-import dev.openfeature.sdk.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.DependsOn;
@@ -24,7 +20,6 @@ public class FeatureFlagService implements FeatureFlagEvaluator {
 
     private static final Logger log = LoggerFactory.getLogger(FeatureFlagService.class);
 
-    private final Client client = OpenFeatureAPI.getInstance().getClient();
     private final LocalFeatureFlagProvider localProvider;
     private final OpenFeatureFlagEvaluator openFeatureEvaluator;
     private final AppFeaturesProperties appFeaturesProperties;
@@ -42,36 +37,24 @@ public class FeatureFlagService implements FeatureFlagEvaluator {
     @Override
     public boolean isEnabled(
             String flagKey, String targetingKey, Map<String, String> attributes, boolean defaultValue) {
-        Map<String, Value> attrs = new HashMap<>();
-        if (attributes != null) {
-            attributes.forEach((k, v) -> attrs.put(k, new Value(v != null ? v : "")));
-        }
-        var ctx = new ImmutableContext(targetingKey != null ? targetingKey : "", attrs);
-        return client.getBooleanValue(flagKey, defaultValue, ctx);
+        FeatureFlagContext context = new FeatureFlagContext(
+                attributes == null ? null : attributes.get("tenantId"),
+                attributes == null ? null : attributes.get("workspaceId"),
+                targetingKey,
+                List.of(), List.of(), null, "server", null, null, null,
+                attributes == null ? Map.of() : new HashMap<>(attributes));
+        return evaluate(new FeatureFlagEvaluationRequest(flagKey, context, defaultValue)).decision().enabled();
     }
 
     public FeatureFlagEvaluationResult evaluate(FeatureFlagEvaluationRequest request) {
-        FeatureFlagDecision decision;
-        if (appFeaturesProperties.getUnleash().isEnabled()) {
-            decision = openFeatureEvaluator.evaluate(request);
-        } else {
-            ensureCached(request.flagKey());
-            decision = localProvider.evaluate(request);
-        }
+        ensureCached(request.flagKey());
+        FeatureFlagDecision decision = localProvider.evaluate(request);
         return new FeatureFlagEvaluationResult(decision);
     }
 
     public List<FeatureFlagEvaluationResult> evaluateBatch(List<FeatureFlagEvaluationRequest> requests) {
-        boolean useOpenFeature = appFeaturesProperties.getUnleash().isEnabled();
-        List<FeatureFlagDecision> decisions;
-        if (useOpenFeature) {
-            decisions = requests.stream()
-                    .map(openFeatureEvaluator::evaluate)
-                    .collect(Collectors.toList());
-        } else {
-            requests.forEach(r -> ensureCached(r.flagKey()));
-            decisions = localProvider.evaluateBatch(requests);
-        }
+        requests.forEach(r -> ensureCached(r.flagKey()));
+        List<FeatureFlagDecision> decisions = localProvider.evaluateBatch(requests);
         return decisions.stream()
                 .map(FeatureFlagEvaluationResult::new)
                 .collect(Collectors.toList());

@@ -54,8 +54,10 @@ app:
       enabled: ${APP_SECURITY_OAUTH2_ENABLED:true}
       legacy-hmac-jwt-enabled: false
   features:
-    unleash:
-      enabled: ${APP_FEATURES_UNLEASH_ENABLED:false}
+    local-development: false
+    flagd:
+      enabled: false
+      endpoint: ""
   ai:
     default-provider: ${APP_AI_DEFAULT_PROVIDER:openAiChatProvider}
     providers:

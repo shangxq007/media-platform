@@ -150,12 +150,11 @@ app:
         - http://127.0.0.1:*
       allow-credentials: true
   features:
-    unleash:
+    # PostgreSQL platform control plane is the runtime provider.
+    local-development: ${APP_FEATURES_LOCAL_DEVELOPMENT:false}
+    flagd:
       enabled: false
-      api-url: http://localhost:4242/api/
-      app-name: media-platform
-      instance-id: "${HOSTNAME:singleton}"
-      api-key: ""
+      endpoint: ""
   cli-tools:
     executables:
       binary-true: /usr/bin/true
