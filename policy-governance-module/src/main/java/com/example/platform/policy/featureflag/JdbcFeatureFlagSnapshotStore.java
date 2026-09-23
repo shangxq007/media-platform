@@ -63,4 +63,26 @@ public final class JdbcFeatureFlagSnapshotStore implements FeatureFlagSnapshotSt
             }
         }, snapshotId);
     }
+
+    @Override
+    public FeatureFlagSnapshot loadForScope(String snapshotId, String tenantId, String workspaceId) {
+        FeatureFlagSnapshot snapshot = jdbc.query("""
+                select snapshot_id, provider_revision, tenant_id, workspace_id, captured_at, decisions_json::text
+                from feature_flag_evaluation_snapshot
+                where snapshot_id = ? and tenant_id = ? and workspace_id is not distinct from ?
+                """, rs -> {
+            if (!rs.next()) return null;
+            try {
+                Map<String, FeatureFlagDecision> decisions = mapper.readValue(rs.getString("decisions_json"),
+                        new TypeReference<>() {});
+                return new FeatureFlagSnapshot(rs.getString("snapshot_id"), rs.getString("provider_revision"),
+                        rs.getString("tenant_id"), rs.getString("workspace_id"),
+                        rs.getTimestamp("captured_at").toInstant(), decisions);
+            } catch (Exception e) {
+                throw new IllegalStateException("Unable to read feature flag snapshot", e);
+            }
+        }, snapshotId, tenantId, workspaceId);
+        if (snapshot == null) throw new IllegalArgumentException("feature flag snapshot is outside the authenticated scope");
+        return snapshot;
+    }
 }

@@ -48,6 +48,11 @@ class PlatformFeatureFoundationTest {
         InMemoryFeatureFlagSnapshotStore store = new InMemoryFeatureFlagSnapshotStore();
         FeatureFlagSnapshot persisted = resolver.captureAndPersist(context, Map.of("render.v2", false), store);
         assertEquals(snapshot.decision("render.v2").enabled(), store.load(persisted.snapshotId()).decision("render.v2").enabled());
+        assertEquals("NO_MATCHING_RULE", resolver.replay(store, persisted.snapshotId(), context, "render.v2").reasonCode());
+        FeatureFlagContext otherTenant = new FeatureFlagContext("tenant-b", "workspace-a", "user-a",
+                List.of(), List.of(), null, "server", null, null, null, Map.of());
+        assertThrows(IllegalArgumentException.class,
+                () -> resolver.replay(store, persisted.snapshotId(), otherTenant, "render.v2"));
         assertThrows(IllegalArgumentException.class, () -> snapshot.decision("later-added-flag"));
     }
 

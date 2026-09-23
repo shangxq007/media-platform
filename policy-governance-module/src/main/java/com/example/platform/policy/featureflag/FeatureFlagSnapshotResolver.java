@@ -42,6 +42,15 @@ public final class FeatureFlagSnapshotResolver {
         return snapshot.decision(flagKey);
     }
 
+    public FeatureFlagDecision replay(FeatureFlagSnapshotStore store, String snapshotId,
+                                     FeatureFlagContext authoritativeContext, String flagKey) {
+        if (authoritativeContext == null || authoritativeContext.tenantId() == null) {
+            throw new IllegalArgumentException("authoritative tenant scope is required");
+        }
+        return store.loadForScope(snapshotId, authoritativeContext.tenantId(), authoritativeContext.workspaceId())
+                .decision(flagKey);
+    }
+
     private static String digest(FeatureFlagContext context, Map<String, FeatureFlagDecision> decisions) {
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
