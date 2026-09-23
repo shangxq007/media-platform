@@ -18,4 +18,9 @@ public class OpenFeatureFlagsConfiguration {
     public OpenFeatureLifecycle openFeatureLifecycle(FeatureProvider provider) throws Exception {
         return new OpenFeatureLifecycle(provider);
     }
+
+    @Bean
+    public FeatureFlagSnapshotResolver featureFlagSnapshotResolver(PlatformFeatureProvider provider) {
+        return new FeatureFlagSnapshotResolver(provider);
+    }
 }
