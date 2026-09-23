@@ -8,6 +8,7 @@ dependencies {
     implementation(project(":storage-module"))
     implementation(project(":media-module"))
     implementation(project(":worker-fabric-module"))
+    implementation(project(":media-execution-plan-module"))
     implementation(project(":entitlement-module"))
     implementation("org.springframework.boot:spring-boot-starter-jdbc")
     implementation("com.fasterxml.jackson.core:jackson-databind")
