@@ -9,6 +9,8 @@ import org.springframework.dao.annotation.PersistenceExceptionTranslationPostPro
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import javax.sql.DataSource;
+import java.lang.reflect.Method;
+import org.springframework.transaction.annotation.Transactional;
 
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
@@ -19,6 +21,13 @@ class JdbcFeatureFlagSnapshotStoreSpringTest {
             assertInstanceOf(FeatureFlagSnapshotStore.class,
                     context.getBean(FeatureFlagSnapshotStore.class));
         }
+    }
+
+    @Test
+    void persistenceEntryPointRetainsTransactionalBoundary() throws NoSuchMethodException {
+        Method persist = JdbcFeatureFlagSnapshotStore.class.getMethod("persist",
+                com.example.platform.policy.featureflag.domain.FeatureFlagSnapshot.class);
+        org.junit.jupiter.api.Assertions.assertTrue(persist.isAnnotationPresent(Transactional.class));
     }
 
     @Configuration(proxyBeanMethods = false)
