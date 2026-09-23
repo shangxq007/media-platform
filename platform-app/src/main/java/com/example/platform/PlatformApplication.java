@@ -44,7 +44,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
     "com.example.platform.timeline",
     "com.example.platform.operation",
     "com.example.platform.health",
-    "com.example.platform.workerfabric"
+    "com.example.platform.workerfabric",
+    "com.example.platform.composition"
 })
 @EnableScheduling
 @Import({BuiltinDataBootstrapRunner.class,

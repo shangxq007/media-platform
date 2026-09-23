@@ -41,6 +41,9 @@ print(f"authority artifact: {p} openapi={doc['openapi']} operations={operations}
 PY
 ck $? "checked-in runtime artifact is valid OpenAPI 3.1.x with operationIds"
 
+python3 scripts/api/verify-composition-openapi.py
+ck $? "composition controller, candidate contract and runtime export agree"
+
 echo "== oasdiff breaking: base vs candidate (additive => non-breaking) =="
 if [ -x "$OASDIFF" ]; then
   OUT=$("$OASDIFF" breaking contracts/http/media-api/openapi.base.yaml \

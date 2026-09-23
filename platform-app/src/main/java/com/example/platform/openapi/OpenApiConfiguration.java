@@ -65,6 +65,16 @@ public class OpenApiConfiguration {
     }
 
     @Bean
+    GroupedOpenApi compositionApi() {
+        return GroupedOpenApi.builder()
+                .group("composition")
+                .displayName("Composition Foundation")
+                .pathsToMatch("/api/composition/**")
+                .build();
+    }
+
+
+    @Bean
     GroupedOpenApi mcpApi() {
         return GroupedOpenApi.builder()
                 .group("mcp-api")

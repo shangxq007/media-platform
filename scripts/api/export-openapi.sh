@@ -4,9 +4,11 @@ set -e
 
 API_URL="${1:-https://api.render.cc.cd}"
 OUTPUT="${2:-docs/api/openapi-preview-current.json}"
+GROUP="${OPENAPI_GROUP:-}"
 
 echo "Exporting OpenAPI from: $API_URL"
-curl -sS "$API_URL/v3/api-docs" -o "$OUTPUT"
+DOC_URL="$API_URL/v3/api-docs${GROUP:+/$GROUP}"
+curl -fsS "$DOC_URL" -o "$OUTPUT"
 
 python3 - "$OUTPUT" <<'PY'
 import json
@@ -27,6 +29,8 @@ for route, item in document.get("paths", {}).items():
                 raise SystemExit(f"ERROR: missing operationId for {method.upper()} {route}")
 print(f"Validated OpenAPI {version} with {operations} operations")
 PY
+
+python3 scripts/api/verify-composition-openapi.py
 
 echo "Exported to: $OUTPUT"
 echo "Paths: $(grep -o '"/' "$OUTPUT" | wc -l)"

@@ -36,6 +36,10 @@ paths:
       summary: Get a workspace-owned workflow draft
       parameters: [{name: id, in: path, required: true, schema: {type: string}}, {name: workspaceId, in: query, required: true, schema: {type: string}}]
       responses: {'200': {description: Draft}}
+    put:
+      operationId: updateTemplateWorkflowDraft
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/TemplateWorkflow'}}}}
+      responses: {'200': {description: Draft updated}}
   /composition/workflows/drafts/{id}/publish:
     post:
       operationId: publishTemplateWorkflow
@@ -66,6 +70,10 @@ paths:
       summary: Get an application draft
       parameters: [{name: id, in: path, required: true, schema: {type: string}}, {name: workspaceId, in: query, required: true, schema: {type: string}}]
       responses: {'200': {description: Draft}}
+    put:
+      operationId: updateApplicationDraft
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/Application'}}}}
+      responses: {'200': {description: Draft updated}}
   /composition/applications/drafts/{id}/publish:
     post:
       operationId: publishApplication
@@ -249,14 +257,24 @@ components:
   schemas:
     TemplateWorkflow:
       type: object
-      required: [id, version, name, steps, bindings, executionModes]
+      required: [id, version, name, steps, bindings, parameters, requiredCapabilities, executionModes, requiredAssets, outputs, estimate, reliability, lifecycle, tenantId, workspaceId, revision]
       properties:
         id: {type: string}
         version: {type: string}
         name: {type: string}
-        steps: {type: array, items: {type: object}}
-        bindings: {type: array, items: {type: object}}
-        executionModes: {type: array, items: {type: string}}
+        steps: {type: array, items: {$ref: '#/components/schemas/WorkflowStep'}}
+        bindings: {type: array, items: {$ref: '#/components/schemas/Binding'}}
+        parameters: {type: array, items: {$ref: '#/components/schemas/Parameter'}}
+        requiredCapabilities: {type: array, items: {type: string}}
+        executionModes: {type: array, items: {type: string, enum: [SYNCHRONOUS, ASYNCHRONOUS, BATCH]}}
+        requiredAssets: {type: array, items: {type: string}}
+        outputs: {type: array, items: {$ref: '#/components/schemas/WorkflowOutput'}}
+        estimate: {$ref: '#/components/schemas/CostEstimate'}
+        reliability: {$ref: '#/components/schemas/Reliability'}
+        lifecycle: {type: string, enum: [DRAFT, PUBLISHED]}
+        tenantId: {type: string}
+        workspaceId: {type: string}
+        revision: {type: integer, format: int64}
     Application:
       type: object
       required: [id, version, displayName, workflowIds]
@@ -265,6 +283,83 @@ components:
         version: {type: string}
         displayName: {type: string}
         workflowIds: {type: array, items: {type: string}}
+        requiredCapabilities: {type: array, items: {type: string}}
+        requiredAssets: {type: array, items: {type: string}}
+        entitlements: {type: array, items: {type: string}}
+        executionModes: {type: array, items: {type: string, enum: [SYNCHRONOUS, ASYNCHRONOUS, BATCH]}}
+        lifecycle: {type: string, enum: [DRAFT, PUBLISHED]}
+        tenantId: {type: string}
+        workspaceId: {type: string}
+        revision: {type: integer, format: int64}
+    WorkflowStep:
+      type: object
+      required: [id, capabilityId, capabilityVersion, inputs, requiredAssets, alternatives]
+      properties:
+        id: {type: string}
+        capabilityId: {type: string}
+        capabilityVersion: {type: string}
+        inputs: {type: object, additionalProperties: true}
+        requiredAssets: {type: array, items: {type: string}}
+        alternatives: {type: array, items: {type: string}}
+    Binding:
+      type: object
+      required: [fromStep, fromOutput, toStep, toInput, type]
+      properties:
+        fromStep: {type: string}
+        fromOutput: {type: string}
+        toStep: {type: string}
+        toInput: {type: string}
+        type: {type: string}
+    WorkflowOutput:
+      type: object
+      required: [name, type, stepId, port]
+      properties:
+        name: {type: string}
+        type: {type: string}
+        stepId: {type: string}
+        port: {type: string}
+    Parameter:
+      type: object
+      required: [name, type, required]
+      properties:
+        name: {type: string}
+        type: {type: string, enum: [string, integer, number, boolean, object, array]}
+        defaultValue: {}
+        minimum: {type: number}
+        maximum: {type: number}
+        required: {type: boolean}
+    CostEstimate:
+      type: object
+      required: [units, unit, quotaUnits]
+      properties:
+        units: {type: number}
+        unit: {type: string}
+        quotaUnits: {type: number}
+    Reliability:
+      type: object
+      required: [cancellable, retryable, maxRetries]
+      properties:
+        cancellable: {type: boolean}
+        retryable: {type: boolean}
+        maxRetries: {type: integer, minimum: 0}
+    ValidationIssue:
+      type: object
+      required: [code, path, message, severity, objectType, objectId, location]
+      properties:
+        code: {type: string}
+        path: {type: string}
+        message: {type: string}
+        severity: {type: string, enum: [ERROR, WARNING]}
+        objectType: {type: string}
+        objectId: {type: string}
+        location: {type: string}
+    ValidationResult:
+      type: object
+      required: [ready, issues, snapshotId]
+      properties:
+        ready: {type: boolean}
+        issues: {type: array, items: {$ref: '#/components/schemas/ValidationIssue'}}
+        snapshotId: {type: string}
     ThumbnailRequest:
       type: object
       required: [sourceAssetId, timestampSeconds, idempotencyKey]
@@ -322,3 +417,22 @@ components:
           type: string
         streamId:
           type: string
+    CapabilityAvailability:
+      type: object
+      required: [capabilityId, version, input, output, availability]
+      properties:
+        capabilityId: {type: string}
+        version: {type: string}
+        input: {$ref: '#/components/schemas/ContractRef'}
+        output: {$ref: '#/components/schemas/ContractRef'}
+        assetTypes: {type: array, items: {type: string}}
+        mediaTypes: {type: array, items: {type: string}}
+        executionModes: {type: array, items: {type: string}}
+        availability: {type: string}
+        summary: {type: string}
+    ContractRef:
+      type: object
+      required: [name, version]
+      properties:
+        name: {type: string}
+        version: {type: string}

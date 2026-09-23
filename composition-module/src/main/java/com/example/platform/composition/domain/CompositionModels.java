@@ -38,23 +38,35 @@ public final class CompositionModels {
     public record Binding(String fromStep, String fromOutput, String toStep, String toInput, String type) {
         public Binding { require(fromStep, "fromStep"); require(fromOutput, "fromOutput"); require(toStep, "toStep"); require(toInput, "toInput"); require(type, "binding type"); }
     }
+    public record WorkflowOutput(String name, String type, String stepId, String port) {
+        public WorkflowOutput { require(name, "output name"); require(type, "output type"); require(stepId, "output stepId"); require(port, "output port"); }
+    }
     public record WorkflowStep(String id, String capabilityId, String capabilityVersion, Map<String, Object> inputs, Set<String> requiredAssets, Set<String> alternatives) {
         public WorkflowStep { require(id, "step id"); require(capabilityId, "capabilityId"); require(capabilityVersion, "capabilityVersion"); inputs = inputs == null ? Map.of() : Map.copyOf(inputs); requiredAssets = immutable(requiredAssets); alternatives = immutable(alternatives); }
     }
     public record TemplateWorkflow(String id, String version, String name, List<WorkflowStep> steps, List<Binding> bindings,
                                    List<Parameter> parameters, Set<String> requiredCapabilities, Set<ExecutionMode> executionModes,
-                                   Set<String> requiredAssets, CostEstimate estimate, Reliability reliability, Lifecycle lifecycle,
+                                   Set<String> requiredAssets, List<WorkflowOutput> outputs, CostEstimate estimate, Reliability reliability, Lifecycle lifecycle,
                                    String tenantId, String workspaceId, long revision) {
         public TemplateWorkflow { require(id, "workflow id"); require(version, "workflow version"); require(name, "workflow name"); require(tenantId, "tenantId"); require(workspaceId, "workspaceId");
-            steps = steps == null ? List.of() : List.copyOf(steps); bindings = bindings == null ? List.of() : List.copyOf(bindings); parameters = parameters == null ? List.of() : List.copyOf(parameters);
+            steps = steps == null ? List.of() : List.copyOf(steps); bindings = bindings == null ? List.of() : List.copyOf(bindings); parameters = parameters == null ? List.of() : List.copyOf(parameters); outputs = outputs == null ? List.of() : List.copyOf(outputs);
             requiredCapabilities = immutable(requiredCapabilities); executionModes = executionModes == null ? Set.of() : Set.copyOf(executionModes); requiredAssets = immutable(requiredAssets); if (estimate == null || reliability == null || lifecycle == null) throw new IllegalArgumentException("incomplete workflow metadata"); }
+        public TemplateWorkflow(String id, String version, String name, List<WorkflowStep> steps, List<Binding> bindings,
+                                List<Parameter> parameters, Set<String> requiredCapabilities, Set<ExecutionMode> executionModes,
+                                Set<String> requiredAssets, CostEstimate estimate, Reliability reliability, Lifecycle lifecycle,
+                                String tenantId, String workspaceId, long revision) {
+            this(id, version, name, steps, bindings, parameters, requiredCapabilities, executionModes, requiredAssets, List.of(), estimate, reliability, lifecycle, tenantId, workspaceId, revision);
+        }
     }
     public record Application(String id, String version, String displayName, String description, ContractRef input, ContractRef output,
                               Set<String> requiredCapabilities, List<String> workflowIds, Set<String> requiredAssets, Set<String> entitlements,
                               Set<ExecutionMode> executionModes, Lifecycle lifecycle, String tenantId, String workspaceId, long revision) {
         public Application { require(id, "application id"); require(version, "application version"); require(displayName, "displayName"); require(tenantId, "tenantId"); require(workspaceId, "workspaceId"); if (input == null || output == null || lifecycle == null) throw new IllegalArgumentException("incomplete application metadata"); requiredCapabilities = immutable(requiredCapabilities); workflowIds = workflowIds == null ? List.of() : List.copyOf(workflowIds); requiredAssets = immutable(requiredAssets); entitlements = immutable(entitlements); executionModes = executionModes == null ? Set.of() : Set.copyOf(executionModes); }
     }
-    public record ValidationIssue(String code, String path, String message, Severity severity) {}
+    public record ValidationIssue(String code, String path, String message, Severity severity, String objectType, String objectId, String location) {
+        public ValidationIssue { require(code, "validation code"); require(path, "validation path"); require(message, "validation message"); if (severity == null) throw new IllegalArgumentException("severity is required"); objectType = objectType == null ? "composition" : objectType; objectId = objectId == null ? "" : objectId; location = location == null ? path : location; }
+        public ValidationIssue(String code, String path, String message, Severity severity) { this(code, path, message, severity, "composition", "", path); }
+    }
     public record ValidationResult(boolean ready, List<ValidationIssue> issues, String snapshotId) { public ValidationResult { issues = issues == null ? List.of() : List.copyOf(issues); } }
     static void require(String s, String n) { if (s == null || s.isBlank()) throw new IllegalArgumentException(n + " is required"); }
     static <T> Set<T> immutable(Set<T> v) { return v == null ? Set.of() : Set.copyOf(v); }

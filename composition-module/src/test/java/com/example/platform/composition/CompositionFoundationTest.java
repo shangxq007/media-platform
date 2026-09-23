@@ -1,6 +1,7 @@
 package com.example.platform.composition;
 
 import com.example.platform.composition.app.*;
+import com.example.platform.composition.app.CompositionValidator;
 import com.example.platform.composition.domain.CompositionModels.*;
 import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
@@ -19,4 +20,19 @@ class CompositionFoundationTest {
     @Test void rejectsUnknownCapabilityAndCycle(){var bad=workflow("w",List.of(new Binding("a","out","missing","in","ImageAsset"),new Binding("b","out","a","in","ImageAsset"),new Binding("a","out","b","in","ImageAsset"))); var r=service.validateWorkflow(bad,"t1",Set.of()); assertFalse(r.ready()); assertTrue(r.issues().stream().anyMatch(i->i.code().equals("INVALID_BINDING")||i.code().equals("CIRCULAR_DEPENDENCY")));}
     @Test void repositoryWritesAreScopedAndVersioned(){var w=workflow("w",List.of()); service.saveWorkflow(w,"t1"); org.mockito.Mockito.verify(repository).save(org.mockito.ArgumentMatchers.eq(CompositionRepository.Kind.WORKFLOW),org.mockito.ArgumentMatchers.eq("t1"),org.mockito.ArgumentMatchers.eq("w1"),org.mockito.ArgumentMatchers.eq("w"),org.mockito.ArgumentMatchers.eq("1.0"),org.mockito.ArgumentMatchers.eq(0L),org.mockito.ArgumentMatchers.any());}
     @Test void rejectsMissingAssetsAndEntitlements(){var w=new TemplateWorkflow("w","1.0","T",List.of(),List.of(),List.of(),Set.of(),Set.of(ExecutionMode.ASYNCHRONOUS),Set.of("video"),new CostEstimate(BigDecimal.ONE,"u",BigDecimal.ONE),new Reliability(true,true,1),Lifecycle.DRAFT,"t1","w1",0); assertTrue(service.validateWorkflow(w,"t1",Set.of()).issues().stream().anyMatch(i->i.code().equals("MISSING_ASSET"))); var a=new Application("a","1.0","A","",new ContractRef("x","1"),new ContractRef("y","1"),Set.of(),List.of(),Set.of(),Set.of("entitlement.compose"),Set.of(ExecutionMode.ASYNCHRONOUS),Lifecycle.DRAFT,"t1","w1",0); assertTrue(service.validateApplication(a,"t1",Set.of(),Set.of()).issues().stream().anyMatch(i->i.code().equals("MISSING_ENTITLEMENT")));}
+    @Test void rejectsOutputlessAndDisconnectedWorkflowsWithStructuredIssues(){
+        var a=new WorkflowStep("a","media.thumbnail","1.0",Map.of(),Set.of(),Set.of());
+        var b=new WorkflowStep("b","media.thumbnail","1.0",Map.of(),Set.of(),Set.of());
+        var w=new TemplateWorkflow("w","1.0","T",List.of(a,b),List.of(),List.of(),Set.of("media.thumbnail"),Set.of(ExecutionMode.ASYNCHRONOUS),Set.of(),List.of(),new CostEstimate(BigDecimal.ONE,"u",BigDecimal.ONE),new Reliability(true,true,1),Lifecycle.DRAFT,"t1","w1",0);
+        var result=service.validateWorkflow(w,"t1",Set.of());
+        assertFalse(result.ready());
+        assertTrue(result.issues().stream().anyMatch(i->i.code().equals("MISSING_WORKFLOW_OUTPUT")));
+        assertTrue(result.issues().stream().anyMatch(i->i.objectType().equals("workflow") && i.objectId().equals("w") && i.location().equals("outputs")));
+    }
+    @Test void rejectsMalformedVersionRanges(){
+        assertEquals("MALFORMED_VERSION_RANGE", CompositionValidator.versionCompatibility("", "1.0"));
+        assertEquals("MALFORMED_VERSION_RANGE", CompositionValidator.versionCompatibility("wat", "1.0"));
+        assertEquals("INCOMPATIBLE_VERSION_RANGE", CompositionValidator.versionCompatibility(">=2.0 <3.0", "1.0"));
+        assertEquals("OK", CompositionValidator.versionCompatibility(">=1.0 <2.0", "1.5"));
+    }
 }

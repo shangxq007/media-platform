@@ -243,3 +243,43 @@ components:
           type: string
         streamId:
           type: string
+    CapabilityAvailability:
+      type: object
+      properties:
+        capabilityId: {type: string}
+        version: {type: string}
+        input: {$ref: '#/components/schemas/ContractRef'}
+        output: {$ref: '#/components/schemas/ContractRef'}
+        availability: {type: string}
+    ContractRef:
+      type: object
+      required: [name, version]
+      properties:
+        name: {type: string}
+        version: {type: string}
+    WorkflowOutput:
+      type: object
+      required: [name, type, stepId, port]
+      properties:
+        name: {type: string}
+        type: {type: string}
+        stepId: {type: string}
+        port: {type: string}
+    ValidationIssue:
+      type: object
+      required: [code, severity, objectType, objectId, path, location, message]
+      properties:
+        code: {type: string}
+        severity: {type: string}
+        objectType: {type: string}
+        objectId: {type: string}
+        path: {type: string}
+        location: {type: string}
+        message: {type: string}
+    ValidationResult:
+      type: object
+      required: [ready, issues, snapshotId]
+      properties:
+        ready: {type: boolean}
+        issues: {type: array, items: {$ref: '#/components/schemas/ValidationIssue'}}
+        snapshotId: {type: string}
