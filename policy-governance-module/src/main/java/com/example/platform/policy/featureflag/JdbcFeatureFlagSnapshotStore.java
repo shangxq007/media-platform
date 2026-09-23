@@ -32,6 +32,14 @@ public final class JdbcFeatureFlagSnapshotStore implements FeatureFlagSnapshotSt
                     on conflict (snapshot_id) do nothing
                     """, snapshot.snapshotId(), snapshot.providerRevision(), snapshot.tenantId(),
                     snapshot.workspaceId(), Timestamp.from(snapshot.capturedAt()), json);
+            FeatureFlagSnapshot existing = load(snapshot.snapshotId());
+            if (existing == null || !existing.snapshotId().equals(snapshot.snapshotId())
+                    || !existing.providerRevision().equals(snapshot.providerRevision())
+                    || !existing.tenantId().equals(snapshot.tenantId())
+                    || !java.util.Objects.equals(existing.workspaceId(), snapshot.workspaceId())
+                    || !existing.decisions().equals(snapshot.decisions())) {
+                throw new IllegalStateException("snapshot id already exists with different content");
+            }
         } catch (Exception e) {
             throw new IllegalStateException("Unable to persist feature flag snapshot", e);
         }
