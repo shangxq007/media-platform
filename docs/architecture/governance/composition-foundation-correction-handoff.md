@@ -19,3 +19,27 @@ The architecture guard must be run against a committed candidate tree because H7
 The frontend composition route is workspace-bound, passes the session-selected workspace to the catalog, handles retired sessions and 401/403 responses, and is reachable from both the existing developer route and `/w/{workspaceId}/composition`.
 
 PVE, Temporal, Storage, FFmpeg/BMF, external providers, worker topology, production configuration, deployment, and real execution remain NOT_RUN.
+
+# R1–R3 correction handoff — 2026-09-24
+
+This dedicated correction worktree freezes candidate `417a6960682dfae4bac73ffe6923cfa710bd212a` with tree `39abac803c6eb86f88ba1754eb187b30b240ea35`, based on approved candidate `285b8a93fa7114b6285ea6eea3eb2c986a9102ed`. The worktree is clean after this handoff commit. Canonical `main`, `origin/main`, deployment configuration, PVE, GitOps, production data, and external systems were not modified.
+
+The three remaining blockers are addressed:
+
+* R1: `frontend/src/pages/compositionEditors.tsx` is the explicit platform issue-location mapping. Node, port, binding, parameter, output, asset, entitlement, entry, workflow, and application targets are real focusable controls with stable `data-editor-id` values. Unknown targets focus a keyboard-accessible recovery paragraph and never fall back to `document.body`. Six frontend tests cover all supported locations plus unknown recovery.
+* R2: `WorkflowEntry` is a typed domain field on `TemplateWorkflow`; `CompositionService` preserves it for drafts and published versions, Jackson persistence restores it, the runtime OpenAPI export includes `WorkflowEntry`, and `CompositionValidator` rejects missing, unknown, upstream, or incompatible entry contracts. Tests cover missing-entry single-node, valid single-node, invalid target, disconnected graph, valid two-step chain, missing output, and invalid terminal/output behavior.
+* R3: `contracts/composition/version-range-v1.json` is the platform grammar and `version-range-cases.json` is the conformance set. Java and TypeScript load the same canonical files. Exact versions, `1.x`, `1.*`, `1.2.x`, `1.2.*`, inclusive/exclusive bounds, contradictory ranges, malformed expressions, unsupported operators, prerelease/build metadata, and overflow boundaries are covered. The grammar is published in `docs/api/composition-version-range.md` and the OpenAPI candidate extension.
+
+Changed paths are exactly those shown by `git diff 285b8a93fa7114b6285ea6eea3eb2c986a9102ed --name-status`; no migration was required because the entry is part of the existing JSON definition column and old drafts intentionally validate as missing-entry until edited.
+
+Evidence commands and results:
+
+* `XDG_RUNTIME_DIR=/tmp/codex-runtime scripts/test/podman-hermetic.sh run ./gradlew --no-daemon --console=plain :composition-module:test --no-build-cache`: PASS. 51 tests: Access 2, Foundation 11, VersionRange 33, Repository 5; PostgreSQL persistence, rollback, restart/reconstruction, concurrent publish, stale revisions, and immutable versions included.
+* Clean frontend `npm ci --no-audit --no-fund`; `NODE_OPTIONS=--no-experimental-webstorage npm test -- --run`: PASS, 36 files / 349 tests. Fresh correction additions: 39 (6 navigation/recovery and 33 range cases); reused historical candidate tests: 310; overlap with prior candidate evidence: 310. These populations are reported separately and are not added together.
+* `npm run typecheck`, `npm run lint -- --quiet`, `npm run build`: PASS. Build output was restored so the worktree remains clean.
+* `scripts/api/export-openapi.sh http://127.0.0.1:8080 docs/api/openapi-preview-current.json`: PASS against the locally running application; runtime export had 563 operations and includes `WorkflowEntry`. `python3 scripts/api/verify-composition-openapi.py`: controller/runtime/base/candidate each 18 composition operations; required schemas present.
+* `OASDIFF_BIN=/home/user/Documents/workspace/projects/media-platform-composition/scripts/tools/oasdiff bash scripts/check-api-contract-governance.sh`: PASS, Spectral and pinned oasdiff 1.28.0 including intentional-breaking fixture.
+* `TREE=$(git rev-parse HEAD^{tree}); H7_SOURCE_TREE="$TREE" bash scripts/check-architecture-drift.sh`: PASS against the exact frozen tree. `python3 scripts/governance/check-instruction-governance.py`: PASS.
+* Semgrep: NOT_RUN. Neither an approved `semgrep` executable nor `python3 -m semgrep` is available in this environment.
+
+Explicit NOT_RUN boundaries remain PVE, Temporal, Storage/provider execution, FFmpeg/BMF, external providers, worker topology, production configuration/data, GitOps, deployment, image publication, and real execution. The candidate is not acceptance-approved; the original independent reviewer must independently re-review and close R1, R2, and R3.
