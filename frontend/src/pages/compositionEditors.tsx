@@ -5,6 +5,13 @@ import type { ValidationIssue, WorkflowDraft } from '../api/composition'
 export function validationTarget(issue: ValidationIssue): string | undefined {
   const path = issue.path.replace(/^workflows\[\d+\]\./, '')
   const location = issue.location || path
+  if (issue.objectType === 'application' && (
+    location === 'application:displayName' ||
+    location === 'application.displayName' ||
+    path === 'displayName' ||
+    path === 'application:displayName' ||
+    path === 'application.displayName'
+  )) return 'application:displayName'
   if (/^(node|binding|parameter|output|port):/.test(location)) return location
   if (location.startsWith('asset:') || /^requiredAssets(?:\.|\[|$)/.test(path)) return 'asset:0'
   if (location.startsWith('entitlement:') || /^entitlements(?:\.|\[|$)/.test(path)) return 'entitlement:0'

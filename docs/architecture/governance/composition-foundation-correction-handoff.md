@@ -43,3 +43,32 @@ Evidence commands and results:
 * Semgrep: NOT_RUN. Neither an approved `semgrep` executable nor `python3 -m semgrep` is available in this environment.
 
 Explicit NOT_RUN boundaries remain PVE, Temporal, Storage/provider execution, FFmpeg/BMF, external providers, worker topology, production configuration/data, GitOps, deployment, image publication, and real execution. The candidate is not acceptance-approved; the original independent reviewer must independently re-review and close R1, R2, and R3.
+
+## R1 display-name navigation correction handoff — 2026-09-24
+
+The original independent R1 finding was limited to validation navigation for the Application display-name field: backend location `application:displayName` focused the generic validation fallback instead of the real editor control. R2 (`WorkflowEntry`) and R3 (canonical version-range grammar) were already independently closed and remain preserved.
+
+Correction worktree: `/home/user/Documents/workspace/projects/.worktrees/composition-r1-display-name-20260924`, based on candidate `64fc5a9bc4e2e25590f08fec5205287f2b852c8e` (tree `f81e8b9b2fe8d47dc52147919883b9b6c8060d90`).
+
+Changed files:
+
+* `frontend/src/pages/compositionEditors.tsx` — maps Application issues whose typed object is `application` and whose location/path is the exact `application:displayName` form or its canonical dotted/path equivalent to the stable target `application:displayName`. Unrelated workflow or application fields remain on their existing mappings.
+* `frontend/src/pages/CompositionFoundationPage.test.tsx` — adds a regression that activates an `application:displayName` issue and asserts the real input is focused; extends navigation coverage for entry and workflow targets while retaining node, binding, parameter, port/output, asset, entitlement, and unknown fallback assertions.
+
+The Application editor is the focusable input with `data-editor-id="application:displayName"`. Navigation activates the application editor, scrolls the target into view, and leaves `document.activeElement` on that input. Unknown locations alone use `data-editor-id="validation-fallback"`.
+
+Verification:
+
+* Fresh focused run: `NODE_OPTIONS=--no-experimental-webstorage npm test -- --run src/pages/CompositionFoundationPage.test.tsx` — PASS, 1 file / 7 tests.
+* Fresh full frontend run after `npm ci --no-audit --no-fund`: `NODE_OPTIONS=--no-experimental-webstorage npm test -- --run` — PASS, 36 files / 350 tests.
+* Fresh frontend typecheck: `npm run typecheck` — PASS.
+* Fresh frontend lint: `npm run lint -- --quiet` — PASS.
+* Fresh frontend build: `npm run build` — PASS; generated static output was restored and is not part of this correction.
+* Fresh architecture drift guard: `TREE=$(git rev-parse HEAD^{tree}); H7_SOURCE_TREE="$TREE" bash scripts/check-architecture-drift.sh` — PASS.
+* Fresh instruction-governance guard: `python3 scripts/governance/check-instruction-governance.py` — PASS.
+
+Test accounting is separate: 350 fresh test executions in this correction, 1 newly added test, 349 executions overlapping the prior candidate population, and 0 reused results claimed as fresh evidence. Counts are not summed across overlapping categories. No backend composition contract or generated artifact changed, so backend composition tests and OpenAPI/Spectral/oasdiff were not rerun for this frontend-only correction; prior approvals remain evidence. Semgrep is `NOT_RUN` because neither an approved executable nor `python3 -m semgrep` is available.
+
+PVE, Temporal, Storage/provider execution, FFmpeg/BMF, external providers, worker topology, production configuration/data, GitOps, deployment, image publication, and real execution remain `NOT_RUN`.
+
+R2 and R3 were preserved and not reopened. The worktree is clean after the correction commit. Request independent re-review from the original reviewer; delivery remains blocked until R1 is independently closed while the prior R2/R3 approvals are retained.
