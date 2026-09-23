@@ -65,3 +65,22 @@ For implemented behaviour, executable sources outrank documentation. For
 semantic decisions, accepted governance contracts outrank implementation drift
 and explanatory prose. A conflict is a governance gap until the change ledger
 records its decision; it is not resolved by changing a generated diagram.
+
+## Repository instruction authority (2026-09-23)
+
+`AGENTS.md` at the repository root is the single canonical normative
+instruction source for repository work. A nested `AGENTS.md`, if introduced,
+may narrow only its directory subtree and may not contradict or broaden the
+root authority. `CLAUDE.md` is a Claude-specific tool adapter and may contain
+workflow context only; it defers architecture, API, security, domain,
+persistence, testing, delivery and conflict rules to `AGENTS.md`.
+
+System and developer instructions take precedence over all repository files.
+Explicit user/owner instructions take precedence over repository files, subject
+to system/developer instructions. More-specific nested repository instructions
+may add non-conflicting detail. Conflicts between repository instruction files
+stop implementation, require an exact-path governance finding and require
+explicit alignment before feature work resumes. The inventory and automated
+check are maintained in
+[`instruction-authority-inventory.tsv`](../instruction-authority-inventory.tsv)
+and [`check-instruction-governance.py`](../../../scripts/governance/check-instruction-governance.py).

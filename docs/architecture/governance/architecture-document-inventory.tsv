@@ -8,6 +8,9 @@ CURRENT_NORMATIVE\tdocs/api/openapi-authority.md\tself\tCURRENT\tOpenAPI 3.1.x a
 CURRENT_OPERATIONAL\tdocs/operations/\tdocs/database/flyway-migration-baseline.md\tCURRENT\toperational procedures; individual docs are classified below
 CURRENT_NORMATIVE\tdocs/architecture/adr/\tdocs/architecture/governance/canonical-contracts/canonical-contract-registry.json\tCURRENT/TARGET/DEFERRED\taccepted decisions and explicit candidates
 CURRENT_NORMATIVE\tdocs/architecture/governance/canonical-contracts/\tself\tCURRENT/TARGET/DEFERRED\tcanonical semantic contracts
+CURRENT_NORMATIVE\tdocs/architecture/governance/composition-foundation-authority-decision.md\tself\tACCEPTED\tOwner-approved provider-neutral public/internal composition boundary
+CURRENT_NORMATIVE\tdocs/architecture/governance/instruction-authority-inventory.tsv\tself\tACCEPTED\tComplete repository AGENTS.md and CLAUDE.md instruction inventory
+CURRENT_NORMATIVE\tscripts/governance/check-instruction-governance.py\tdocs/architecture/governance/instruction-authority-inventory.tsv\tACCEPTED\tAutomated instruction precedence and contradiction guard
 HISTORICAL_EVIDENCE\tdocs/review/\tdocs/architecture/current/architecture-entrypoint.md\tHISTORICAL\treview reports and validation evidence; not current policy
 HISTORICAL_EVIDENCE\tdocs/releases/\tdocs/architecture/current/architecture-entrypoint.md\tHISTORICAL\trelease evidence and closeout records
 ARCHIVED\tdocs/archive/\tdocs/architecture/current/architecture-entrypoint.md\tHISTORICAL\tretained for traceability; never current guidance

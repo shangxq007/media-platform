@@ -1,0 +1,4 @@
+path\tscope\towner_audience\tnormative_or_informational\toverlapping_rules\tconflicting_rules\tprecedence_status\tretirement_or_replacement
+AGENTS.md\trepository root and all descendants\tall coding agents and repository governance\tnormative canonical\tworktree safety, scope, evidence, testing, API exposure, provider authority, precedence\tnone after alignment\troot canonical; highest repository scope; below system/developer/user instructions\tretained as canonical authority
+CLAUDE.md\trepository root and Claude sessions\tClaude tool adapter\tinformational/tool-specific adapter\tbranch/worktree workflow, inspection, reporting\tnone; delegates all repository norms to AGENTS.md\tadapter only; subordinate to applicable AGENTS.md\tretained; architecture/product rules moved to AGENTS.md
+NONE\tno nested AGENTS.md or CLAUDE.md files found\tnested tools\tnot applicable\tnot applicable\tnot applicable\troot AGENTS.md applies\tno file retired; no nested scope exists

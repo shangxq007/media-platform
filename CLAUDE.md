@@ -1,74 +1,24 @@
-# CLAUDE.md — media-platform
+# CLAUDE.md — media-platform tool adapter
 
-## Project Identity
+This file is a Claude-specific adapter. The canonical repository instructions are in
+[`AGENTS.md`](AGENTS.md); read and follow that file before using this adapter.
+`AGENTS.md` governs architecture, API, security, domain, persistence, testing,
+deployment, delivery, authority and conflict resolution. This file must not
+redefine those rules.
 
-This repository is Media Capability Platform.
+## Claude workflow context
 
-Product is the canonical communication object.
-Timeline is the canonical editing model.
-StorageRuntime owns physical materialization, checksum, and storage references.
-ProductRuntime owns Product lifecycle, metadata, dependency, and query.
-OpenCue is ExecutionEnvironment, not ExecutionBackend.
-FFmpeg/libass is the baseline subtitle burn-in path.
+- Use one task per branch/worktree and keep implementation updates concise.
+- Before editing, inspect the applicable `AGENTS.md` and the current task record.
+- Prefer existing repository services, contracts and conventions after inspection.
+- In progress updates, state the next concrete verification step and surface blockers promptly.
+- In the final response, report changed files, exact validation commands/results,
+  limitations and whether the worktree is clean.
 
-## Frozen Boundaries
-
-Do not modify:
-- Platform Kernel
-- Stable SPI
-- Product model semantics
-- Timeline model semantics
-- ExecutionJob / ExecutionTask / ExecutionCommand semantics
-- Execution lifecycle semantics
-- StorageRuntime semantics
-- ProductRuntime semantics
-- ProducerRuntime semantics
-- Flyway V1 baseline
-
-Do not introduce:
-- Artifact Runtime
-- new graph runtime
-- provider/backend/environment/storage provider exposure in public API
-
-## Current Development Mode
-
-Single-agent controlled development.
-
-Use one task per branch/worktree.
-Do not auto-merge.
-Do not auto-push.
-Do not deploy.
-Do not use production secrets.
-Do not modify .env files.
-
-## Required Workflow
-
-Before changing code:
-1. Read AGENTS.md if present.
-2. Read AGENT_TASK.md.
-3. Inspect existing code before adding new abstractions.
-4. Prefer existing services and conventions.
-
-Before final response:
-1. Run targeted tests.
-2. Show exact commands and results.
-3. Report unrelated pre-existing failures separately.
-4. Summarize architecture compliance.
-
-## Safety Rules
-
-Never commit secrets.
-Never weaken security checks.
-Never disable tests to pass.
-Never change Flyway V1 baseline.
-Never expose signed URLs or local filesystem paths in public API responses.
-
-## Current Backend Chain
-
-Input RAW_MEDIA Product
-→ StorageRuntime.materialize()
-→ TimelineRevision / RenderJob
-→ FFmpeg/libass baseline render
-→ RenderOutputRegistrationService
-→ ProductRuntime READY FINAL_RENDER Product
-→ ProductDependency lineage
+The following product facts are orientation only and are not independent authority:
+this repository is the Media Capability Platform; Product is the canonical
+communication object, Timeline is the canonical editing model, StorageRuntime
+owns physical materialization/checksum/storage references, ProductRuntime owns
+Product lifecycle/metadata/dependency/query, and OpenCue is an execution
+environment. Consult the source and canonical governance documents for current
+semantics.

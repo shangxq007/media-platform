@@ -1,67 +1,60 @@
-# AGENTS.md - Repository Agent Governance
+# AGENTS.md — Canonical Repository Instruction Authority
 
-You are working in the `media-platform` repository.
+This is the canonical repository instruction source for `/home/user/Documents/workspace/projects/media-platform` and all descendants. It defines durable repository governance for coding agents. Task-specific commands, acceptance gates, branch names, worktree paths, commit SHAs, queues, evidence locations, and runtime session details belong in the current owner task record and external evidence package, not here.
 
-This file defines durable repository-local governance for coding agents. It is not a task brief. Task-specific commands, acceptance gates, branch names, worktree paths, commit SHAs, queues, evidence locations, and runtime session details belong in the current Owner task record and external evidence package, not in this permanent instruction file.
+## Authority and precedence
 
-## Instruction Precedence
+1. System and developer instructions have highest precedence.
+2. Explicit user/owner instructions for the current task override repository instructions.
+3. This root `AGENTS.md` is the canonical repository instruction authority.
+4. A nested `AGENTS.md` applies only to its directory subtree. It may narrow or add requirements within that scope, but it may not contradict, broaden, or weaken this file's authority, safety, security, API, domain, testing, or delivery rules.
+5. `CLAUDE.md` files are tool-specific adapters. They may contain only tool-facing workflow guidance and repository context that does not define or redefine architecture, API, security, domain, testing, persistence, deployment, or delivery authority. Where present, they defer to the applicable `AGENTS.md`.
+6. More-specific nested instructions take precedence over less-specific repository instructions only for additional, non-conflicting scope detail.
 
-1. Follow system and developer instructions first.
-2. Follow the latest explicit Owner/user task authorization next.
-3. Apply repository-local instruction files as durable repository rules within their scope.
-4. If repository-local instructions conflict with a newer explicit Owner task, stop, record the conflict, apply the higher-priority authorization, and schedule instruction alignment as a separate governance change.
+Before work, inspect this root file and every applicable nested `AGENTS.md` from the repository root to the target path. Inspect applicable `CLAUDE.md` adapters when the tool provides them. Record the inventory, scope, conflicts, and precedence in task evidence for governed or safety-sensitive work.
 
-Before work, inspect all applicable instruction files from the repository root to the target path. Record their scope, conflicts, and precedence in the task evidence when the task is governed or safety-sensitive.
+Explicit user instructions override repository instructions. If a user instruction conflicts with a higher-priority system or developer instruction, follow the higher-priority instruction and record the conflict. If repository instruction files conflict with one another, stop implementation, record a governance finding with exact paths and statements, apply the higher-scope/root authority provisionally, and schedule explicit instruction alignment before resuming feature work. Do not silently edit an instruction file to hide an unresolved conflict.
 
-## Repository State and Worktree Governance
+## Repository and worktree governance
 
-Use one owned branch and one linked worktree per active task unless the Owner explicitly authorizes another topology.
+Use one owned branch and one linked worktree per active task unless the owner explicitly authorizes another topology. Do not perform feature development directly in canonical `main`; keep canonical `main` clean except during explicitly authorized serialized integration.
 
-Do not perform feature development directly in the canonical `main` root. Keep canonical `main` clean except during an explicitly authorized serialized integration operation.
+Freeze an exact candidate SHA before verification. Any commit or history change after verification requires renewed verification. Integrate accepted candidates through fast-forward only unless explicitly authorized. Preserve dirty, unique, or owner-created work before cleanup or retirement.
 
-Freeze an exact candidate SHA before verification. Any commit or history change after verification requires renewed verification.
+Do not use `git reset --hard`, `git clean`, wildcard deletion, force branch deletion, destructive batch cleanup, manual ref updates, rebases, squashes, or cherry-picks unless the current owner task explicitly authorizes the operation and evidence proves preservation and scope.
 
-Integrate accepted candidates through fast-forward only unless the Owner explicitly authorizes another strategy.
+Do not fetch, pull, push, publish, deploy, or mutate remote refs unless explicitly authorized. Do not modify PVE, GitOps, production configuration, or production secrets during local foundation work.
 
-After successful post-integration verification on `main`, retire completed task branches and linked worktrees with normal Git commands. Preserve dirty, unique, or Owner-created work before cleanup or retirement.
+## Architecture, API, security and domain authority
 
-Do not use `git reset --hard`, `git clean`, wildcard deletion, force branch deletion, destructive batch cleanup, manual ref updates, rebases, squashes, or cherry-picks unless the current Owner task specifically authorizes the operation and the evidence first proves preservation and scope.
+Source code, executable contracts, controller/DTO definitions, migration bytes, package metadata, and architecture guards are authoritative for implemented behavior. Accepted ADRs and canonical-contract documents are authoritative for accepted semantics. Generated diagrams and reports are derived evidence, not authorities.
 
-Do not fetch, pull, push, publish, deploy, or mutate remote refs unless the current task explicitly authorizes remote operations.
+Do not modify frozen platform kernel, stable SPI, Product, Timeline, ExecutionJob/ExecutionTask/ExecutionCommand, execution lifecycle, StorageRuntime, ProductRuntime, ProducerRuntime, or Flyway V1 semantics unless the owner task explicitly authorizes governance alignment for that authority.
 
-## Change Scope Discipline
+Do not introduce Artifact Runtime, a new graph runtime, compatibility or shadow-authority paths, provider-owned platform contracts, or provider/backend/environment/storage-provider identity in public APIs. Public platform contracts may expose provider-neutral capability identity/version, input/output contracts, supported media/assets, execution mode, summarized eligibility/availability, estimated cost/quota, cancellation/retry characteristics, and Application/Template Workflow compatibility. Provider IDs, manifests, ExecutionBackend and WorkerRuntime identities, worker nodes, internal registry topology, and provider-specific configuration schemas remain internal unless a separate explicit owner decision authorizes a distinct internal/admin contract.
 
-Keep each task within its authorized scope. Do not expand a documentation, governance, test, or feature task into unrelated cleanup.
+The Capability Registry is the authority for capability registration and internal provider resolution. Applications and Template Workflows depend only on platform Capability Contracts and never redefine provider/backend semantics.
 
-Do not modify production source, test source, build files, application configuration, database migrations, or runtime behavior unless the current task explicitly authorizes those changes.
+All API endpoints must enforce canonical authenticated tenant/workspace scope. Do not accept free-form tenant or workspace identifiers as authority overrides. Never expose signed URLs, local filesystem paths, credentials, or private environment dumps in public responses or evidence.
 
-Do not weaken tests, disable tests, bypass security checks, expose internal storage paths, or add temporary architecture exceptions to pass a gate.
+## Change-scope discipline
 
-Use repository documentation and current repository state as source material. Inspect existing code and conventions before adding abstractions.
+Keep each task within its authorized scope. Do not expand a documentation, governance, test, or feature task into unrelated cleanup. Do not modify production source, tests, build files, application configuration, database migrations, or runtime behavior unless explicitly authorized. Do not weaken, disable, bypass, or relabel tests to pass a gate. Prefer existing services and contracts after inspecting the current code.
 
-## Evidence and Verification
+## Testing, verification and delivery
 
-For governed tasks, record:
+Run checks appropriate to the authorized change and record exact commands and results. Use machine-readable reports where available and verify total/passed/failure/error/skipped arithmetic. Do not call cached results fresh; label reused or overlapping evidence. Governance-only changes must not claim product or runtime validation.
 
-- current branch, HEAD, worktree, status, and stash state;
-- applicable instruction files and conflicts;
-- exact changed paths and scope classification;
-- exact commands and results for required gates;
-- final candidate SHA and parent;
-- post-integration main state when integration is authorized.
+Before finalizing a governed task, record current branch, HEAD, tree, worktree status, stash state, applicable instruction inventory, exact changed paths and scope, commands/results, final candidate SHA and parent, and post-integration state when integration is authorized. Stop at explicit blockers, destructive/irreversible actions, unresolved authority conflicts, or missing decisions; continue independent non-blocked work only when safe.
 
-Use machine-readable test reports when reporting test counts. Verify arithmetic for total, passed, failures, errors, and skipped.
+## Evidence and secrets
 
-A summary claim is not a substitute for a manifested artifact, command output, diff, or machine-readable report when the task requires evidence.
+Do not place credentials, secrets, private environment dumps, or hidden reasoning in repository files or evidence. Evidence must be sufficient to verify scope, hashes, commands, and outcomes without unrelated private data.
 
-## Secrets and Evidence Safety
+## Nested instruction files
 
-Do not place credentials, secrets, private environment dumps, or hidden reasoning in repository files or evidence.
+Nested `AGENTS.md` files are valid only when their scope is explicit from their path and their content narrows this authority without contradiction. A missing nested file means the root rules apply. Do not create nested instruction files merely for completeness. Retired instruction files must remain in history or be retained as clearly marked governance evidence; record why retired content moved, its replacement authority, affected tools, and scopes.
 
-Evidence should contain enough command output, hashes, and file paths to verify the result without embedding credentials or unrelated private data.
+## Instruction governance guard
 
-## Nested Instructions
-
-Nested instruction files may add narrower rules for their directory tree. They must not contradict root safety and governance rules.
-
-Retain legitimate directory-specific rules. Remove stale task-specific directives when they become active conflicts. Do not create nested instruction files merely for completeness.
+The repository must maintain an automated check over every tracked `AGENTS.md` and `CLAUDE.md`. The guard must fail when it finds duplicate normative repository rules, conflicting public API exposure rules, contradictory provider/backend authority rules, inconsistent testing or delivery rules, or missing precedence declarations. It must also report the complete file inventory and scopes. The guard is a governance check only and must not inspect or execute product runtime behavior.

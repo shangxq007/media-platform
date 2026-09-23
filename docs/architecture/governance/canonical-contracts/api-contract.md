@@ -54,3 +54,21 @@ Preview endpoints **MUST** be explicitly marked as preview, not stable API.
 ## Change Authority
 - CODE_REVIEW_AND_TESTS
 - ADR_ACCEPTANCE
+
+## Composition Foundation Public Boundary (2026-09-23)
+
+The public composition API is provider-neutral. It may expose stable capability
+identity/version, input/output contract references, supported media/assets,
+execution mode, summarized eligibility/availability, estimated cost/quota,
+cancellation/retry characteristics, compatibility, and typed validation
+results. It must not expose provider IDs or manifests, `ExecutionBackend`,
+`WorkerRuntime`, worker nodes, internal registry topology, or provider-specific
+configuration schemas.
+
+Provider resolution remains internal to the Capability Registry and provider
+runtime. Applications and Template Workflows reference platform Capability
+Contracts only. Any diagnostic/admin provider view requires explicit
+authorization and a separate internal contract. This decision is recorded in
+[`composition-foundation-authority-decision.md`](../composition-foundation-authority-decision.md)
+and in the change ledger
+[`composition-foundation-authority-alignment-change-ledger.tsv`](../composition-foundation-authority-alignment-change-ledger.tsv).
