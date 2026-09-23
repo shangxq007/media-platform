@@ -6,13 +6,14 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Timestamp;
 import java.util.Map;
 
 /** PostgreSQL-backed append-only snapshot store. */
 @Repository
-public final class JdbcFeatureFlagSnapshotStore implements FeatureFlagSnapshotStore {
+public class JdbcFeatureFlagSnapshotStore implements FeatureFlagSnapshotStore {
     private final JdbcTemplate jdbc;
     private final ObjectMapper mapper;
 
@@ -22,6 +23,7 @@ public final class JdbcFeatureFlagSnapshotStore implements FeatureFlagSnapshotSt
     }
 
     @Override
+    @Transactional
     public void persist(FeatureFlagSnapshot snapshot) {
         try {
             String json = mapper.writeValueAsString(snapshot.decisions());
