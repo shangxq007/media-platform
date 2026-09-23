@@ -12,7 +12,7 @@ export function validationTarget(issue: ValidationIssue): string | undefined {
   const indexed = /^(bindings|parameters|outputs)\[(\d+)\](?:\.(.+))?$/.exec(path)
   if (indexed) {
     const kind = { bindings: 'binding', parameters: 'parameter', outputs: 'output' }[indexed[1]]
-    return `${kind}:${indexed[2]}${indexed[3] ? ':' + indexed[3] : ''}`
+    return kind === 'output' && indexed[3] === 'port' ? `port:output:${indexed[2]}` : `${kind}:${indexed[2]}${indexed[3] ? ':' + indexed[3] : ''}`
   }
   const step = /^steps\.([^.]+)/.exec(path) // node IDs normally arrive via location
   if (step) return `node:${step[1]}`
