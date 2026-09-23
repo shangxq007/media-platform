@@ -72,3 +72,26 @@ Test accounting is separate: 350 fresh test executions in this correction, 1 new
 PVE, Temporal, Storage/provider execution, FFmpeg/BMF, external providers, worker topology, production configuration/data, GitOps, deployment, image publication, and real execution remain `NOT_RUN`.
 
 R2 and R3 were preserved and not reopened. The worktree is clean after the correction commit. Request independent re-review from the original reviewer; delivery remains blocked until R1 is independently closed while the prior R2/R3 approvals are retained.
+
+## Test-locator precision correction handoff — 2026-09-24
+
+Independent review found one ambiguous historical frontend assertion: `getByText(/media\\.thumbnail/)`. This correction replaces it with the unique accessible checkbox locator `getByRole('checkbox', { name: /media\\.thumbnail v1\\.0/ })`, targeting the capability control without changing production code or frontend behavior.
+
+Changed file: `frontend/src/pages/CompositionFoundationPage.test.tsx` only. No production code, validation behavior, backend code, persistence, OpenAPI contract, architecture, or authority boundary changed. R1 display-name navigation and keyboard-safe unknown-location fallback remain intact; R2 and R3 remain unchanged.
+
+Final candidate commit and tree: recorded after this handoff update. Worktree is clean.
+
+Fresh verification from clean `npm ci --no-audit --no-fund` environment:
+
+* `NODE_OPTIONS=--no-experimental-webstorage npm test -- --run src/pages/CompositionFoundationPage.test.tsx` — PASS, 1 file / 7 tests.
+* `NODE_OPTIONS=--no-experimental-webstorage npm test -- --run` — PASS, 36 files / 350 tests.
+* `npm run typecheck` — PASS.
+* `npm run lint -- --quiet` — PASS.
+* `npm run build` — PASS; generated static output was restored and is not part of the candidate.
+* `TREE=$(git rev-parse HEAD^{tree}); H7_SOURCE_TREE="$TREE" bash scripts/check-architecture-drift.sh` — PASS.
+* `python3 scripts/governance/check-instruction-governance.py` — PASS.
+* Semgrep — `NOT_RUN`: `/usr/bin/python3 -m semgrep --version` reported `No module named semgrep`; no approved executable is installed.
+
+Test accounting: 350 fresh full-suite test executions, 7 fresh focused executions included within that overlapping population, 0 failed tests, 0 reused test results claimed as fresh, and 0 backend/OpenAPI checks because this is a test-only correction with no shared-contract changes. Overlapping counts are reported separately and not summed. Backend, persistence, OpenAPI/Spectral/oasdiff, PVE, GitOps, deployment, image publication, and real execution remain `NOT_RUN`.
+
+Request independent re-review of this exact candidate. Do not push, merge, publish, deploy, or claim approval.
