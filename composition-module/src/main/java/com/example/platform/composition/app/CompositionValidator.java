@@ -13,12 +13,13 @@ final class CompositionValidator {
             var cap = registry.resolve(step.capabilityId(), step.capabilityVersion());
             if (cap.isEmpty()) issues.add(new ValidationIssue("MISSING_CAPABILITY", "steps."+step.id(), "capability is unavailable", Severity.ERROR));
             else if (cap.get().availability() != Availability.AVAILABLE) issues.add(new ValidationIssue("CAPABILITY_UNAVAILABLE", "steps."+step.id(), cap.get().summary(), Severity.ERROR));
+            else if (Collections.disjoint(cap.get().executionModes(), workflow.executionModes())) issues.add(new ValidationIssue("UNSUPPORTED_EXECUTION_MODE", "steps."+step.id(), "requested execution mode is not supported by the capability", Severity.ERROR));
         }
         for (String cap : workflow.requiredCapabilities()) if (workflow.steps().stream().noneMatch(s -> s.capabilityId().equals(cap))) issues.add(new ValidationIssue("MISSING_CAPABILITY", "requiredCapabilities", cap, Severity.ERROR));
         for (String asset : workflow.requiredAssets()) if (!availableAssets.contains(asset)) issues.add(new ValidationIssue("MISSING_ASSET", "requiredAssets", asset, Severity.ERROR));
         for (Binding b : workflow.bindings()) {
             if (!steps.containsKey(b.fromStep()) || !steps.containsKey(b.toStep())) issues.add(new ValidationIssue("INVALID_BINDING", "bindings", "binding references an unknown step", Severity.ERROR));
-            else if (!b.fromStep().equals(b.toStep()) && !compatible(steps.get(b.fromStep()), steps.get(b.toStep()), b.type(), registry)) issues.add(new ValidationIssue("INCOMPATIBLE_CONTRACT", "bindings", "input/output contracts are incompatible", Severity.ERROR));
+            else if (!compatible(steps.get(b.fromStep()), steps.get(b.toStep()), b.type(), registry)) issues.add(new ValidationIssue("INCOMPATIBLE_CONTRACT", "bindings", "input/output contracts or ports are incompatible", Severity.ERROR));
         }
         if (hasCycle(workflow.steps(), workflow.bindings())) issues.add(new ValidationIssue("CIRCULAR_DEPENDENCY", "bindings", "workflow graph contains a cycle", Severity.ERROR));
         if (workflow.executionModes().isEmpty()) issues.add(new ValidationIssue("UNSUPPORTED_EXECUTION_MODE", "executionModes", "at least one execution mode is required", Severity.ERROR));

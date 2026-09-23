@@ -30,6 +30,24 @@ paths:
       summary: Validate a Template Workflow without execution
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/TemplateWorkflow'}}}}
       responses: {'200': {description: Validation result}}
+  /composition/workflows/drafts/{id}:
+    get:
+      operationId: getTemplateWorkflowDraft
+      summary: Get a workspace-owned workflow draft
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}, {name: workspaceId, in: query, required: true, schema: {type: string}}]
+      responses: {'200': {description: Draft}}
+  /composition/workflows/drafts/{id}/publish:
+    post:
+      operationId: publishTemplateWorkflow
+      summary: Publish a validated workflow draft
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}, {name: workspaceId, in: query, required: true, schema: {type: string}}]
+      responses: {'200': {description: Published immutable version}}
+  /composition/workflows/versions/{id}/{version}:
+    get:
+      operationId: getTemplateWorkflowVersion
+      summary: Get an immutable workflow version
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}, {name: version, in: path, required: true, schema: {type: string}}, {name: workspaceId, in: query, required: true, schema: {type: string}}]
+      responses: {'200': {description: Immutable version}}
   /composition/applications/drafts:
     post:
       operationId: saveApplicationDraft
@@ -42,6 +60,24 @@ paths:
       summary: Validate an Application without execution
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/Application'}}}}
       responses: {'200': {description: Validation result}}
+  /composition/applications/drafts/{id}:
+    get:
+      operationId: getApplicationDraft
+      summary: Get an application draft
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}, {name: workspaceId, in: query, required: true, schema: {type: string}}]
+      responses: {'200': {description: Draft}}
+  /composition/applications/drafts/{id}/publish:
+    post:
+      operationId: publishApplication
+      summary: Publish a validated application draft
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}, {name: workspaceId, in: query, required: true, schema: {type: string}}]
+      responses: {'200': {description: Published immutable version}}
+  /composition/applications/versions/{id}/{version}:
+    get:
+      operationId: getApplicationVersion
+      summary: Get an immutable application version
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}, {name: version, in: path, required: true, schema: {type: string}}, {name: workspaceId, in: query, required: true, schema: {type: string}}]
+      responses: {'200': {description: Immutable version}}
   /tenants/{tenantId}/projects/{projectId}/thumbnails:
     post:
       operationId: submitMediaThumbnail
@@ -168,6 +204,34 @@ paths:
           $ref: "#/components/responses/NotFound"
         default:
           $ref: "#/components/responses/Error"
+  /composition/scope:
+    get:
+      operationId: resolveCompositionScope
+      summary: Resolve the authenticated workspace scope
+      parameters: [{name: workspaceId, in: query, required: false, schema: {type: string}}]
+      responses: {'200': {description: Verified tenant/workspace scope}, '401': {description: Unauthenticated}, '403': {description: Ineligible membership}}
+  /composition/workflows/publish-readiness:
+    post:
+      operationId: checkTemplateWorkflowPublishReadiness
+      summary: Check workflow publish readiness without execution
+      responses: {'200': {description: Typed validation result}}
+  /composition/workflows/versions/{id}/compare:
+    get:
+      operationId: compareTemplateWorkflowVersions
+      summary: Compare immutable workflow versions
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}, {name: workspaceId, in: query, required: true, schema: {type: string}}, {name: left, in: query, required: true, schema: {type: string}}, {name: right, in: query, required: true, schema: {type: string}}]
+      responses: {'200': {description: Version comparison}}
+  /composition/applications/publish-readiness:
+    post:
+      operationId: checkApplicationPublishReadiness
+      summary: Check application publish readiness without execution
+      responses: {'200': {description: Typed validation result}}
+  /composition/applications/versions/{id}/compare:
+    get:
+      operationId: compareApplicationVersions
+      summary: Compare immutable application versions
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}, {name: workspaceId, in: query, required: true, schema: {type: string}}, {name: left, in: query, required: true, schema: {type: string}}, {name: right, in: query, required: true, schema: {type: string}}]
+      responses: {'200': {description: Version comparison}}
 components:
   responses:
     NotFound:
