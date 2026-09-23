@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.time.Instant;
 import java.util.List;
@@ -150,36 +151,48 @@ public class FeatureFlagController {
     }
 
     @GetMapping("/me/feature-flags")
-    public ResponseEntity<List<FeatureFlagDefinition>> getMyFlags() {
-        FeatureFlagContext context = buildCurrentContext();
+    public ResponseEntity<List<FeatureFlagDefinition>> getMyFlags(HttpServletRequest request) {
+        FeatureFlagContext context = buildCurrentContext(request);
         List<FeatureFlagDefinition> flags = featureFlagService.getFlagsForContext(context);
         return ResponseEntity.ok(flags);
     }
 
     @PostMapping("/feature-flags/evaluate")
     public ResponseEntity<FeatureFlagEvaluationResult> evaluateFlag(
-            @RequestBody FeatureFlagEvaluationRequest request) {
+            @RequestBody FeatureFlagEvaluationRequest request,
+            HttpServletRequest servletRequest) {
         try {
             // Browser supplied tenant/workspace/user fields are intentionally ignored.
             // Scope is reconstructed from the authenticated server request boundary.
+            rejectForgedTenantOrUserScope(request.context(), servletRequest);
             FeatureFlagEvaluationRequest authoritative = new FeatureFlagEvaluationRequest(
-                    request.flagKey(), buildCurrentContext(), request.defaultValue());
+                    request.flagKey(), buildCurrentContext(servletRequest), request.defaultValue());
             FeatureFlagEvaluationResult result = featureFlagService.evaluate(authoritative);
-            auditService.auditEvaluated(result.decision(), getCurrentActor());
+            auditService.auditEvaluated(result.decision(), getCurrentActor(servletRequest));
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             auditService.auditEvaluationFailed(
-                    request.flagKey(), "FF-EVAL-001", e.getMessage(), getCurrentActor());
+                    request.flagKey(), "FF-EVAL-001", e.getMessage(), getCurrentActor(servletRequest));
             throw e;
         }
     }
 
     @PostMapping("/feature-flags/batch-evaluate")
     public ResponseEntity<List<FeatureFlagEvaluationResult>> batchEvaluate(
-            @RequestBody List<FeatureFlagEvaluationRequest> requests) {
-        List<FeatureFlagEvaluationResult> results = featureFlagService.evaluateBatch(requests);
-        results.forEach(r -> auditService.auditEvaluated(r.decision(), getCurrentActor()));
+            @RequestBody List<FeatureFlagEvaluationRequest> requests,
+            HttpServletRequest servletRequest) {
+        requests.forEach(r -> rejectForgedTenantOrUserScope(r.context(), servletRequest));
+        FeatureFlagContext authoritativeContext = buildCurrentContext(servletRequest);
+        List<FeatureFlagEvaluationRequest> authoritative = requests.stream()
+                .map(r -> new FeatureFlagEvaluationRequest(r.flagKey(), authoritativeContext, r.defaultValue()))
+                .toList();
+        List<FeatureFlagEvaluationResult> results = featureFlagService.evaluateBatch(authoritative);
+        results.forEach(r -> auditService.auditEvaluated(r.decision(), getCurrentActor(servletRequest)));
         return ResponseEntity.ok(results);
+    }
+
+    private String getCurrentActor() {
+        return "system";
     }
 
     private void checkAdminAccess() {
@@ -188,14 +201,43 @@ public class FeatureFlagController {
     private void checkAdminRole() {
     }
 
-    private String getCurrentActor() {
-        return "system";
+    private String getCurrentActor(HttpServletRequest request) {
+        Object principal = request.getAttribute("jwt.subject");
+        return principal == null || String.valueOf(principal).isBlank() ? "system" : String.valueOf(principal);
     }
 
-    private FeatureFlagContext buildCurrentContext() {
+    private FeatureFlagContext buildCurrentContext(HttpServletRequest request) {
         String tenantId = TenantContext.get();
-        return new FeatureFlagContext(tenantId, null, null, List.of(), List.of(),
+        Object subject = request.getAttribute("auth.subject");
+        Object membershipId = request.getAttribute("jwt.subject");
+        Object role = request.getAttribute("jwt.roles");
+        String userId = subject == null ? null : String.valueOf(subject);
+        List<String> roles = role instanceof List<?> values ? values.stream().map(String::valueOf).toList() : List.of();
+        return new FeatureFlagContext(tenantId, null, userId, roles, List.of(),
                 null, "server", null, null, null, Map.of());
+    }
+
+    private void rejectForgedTenantOrUserScope(FeatureFlagContext supplied, HttpServletRequest request) {
+        if (supplied == null) return;
+        String tenant = TenantContext.get();
+        Object subject = request.getAttribute("auth.subject");
+        String user = subject == null ? null : String.valueOf(subject);
+        if (supplied.tenantId() != null && !supplied.tenantId().equals(tenant)) {
+            throw new PlatformException(new ConfigurableErrorCode("SECURITY-403-001", 403001,
+                    Map.of("en", "Forbidden", "zh", "无权访问"), "security", 403),
+                    "Tenant scope does not match authenticated identity", Map.of(), "en");
+        }
+        if (supplied.userId() != null && !supplied.userId().equals(user)) {
+            throw new PlatformException(new ConfigurableErrorCode("SECURITY-403-001", 403001,
+                    Map.of("en", "Forbidden", "zh", "无权访问"), "security", 403),
+                    "User scope does not match authenticated identity", Map.of(), "en");
+        }
+        // A workspace is not a claim of the local JWT. It must not be accepted from a browser body.
+        if (supplied.workspaceId() != null && !supplied.workspaceId().isBlank()) {
+            throw new PlatformException(new ConfigurableErrorCode("SECURITY-403-001", 403001,
+                    Map.of("en", "Forbidden", "zh", "无权访问"), "security", 403),
+                    "Workspace scope requires an authoritative server binding", Map.of(), "en");
+        }
     }
 
     private PlatformException notFound(String flagKey) {
