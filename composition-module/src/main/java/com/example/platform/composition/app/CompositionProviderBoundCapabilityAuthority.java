@@ -12,12 +12,12 @@ public interface CompositionProviderBoundCapabilityAuthority extends ProviderReg
     Optional<ProviderBoundCapability> resolveProviderBound(String capabilityId, String version);
 
     record ProviderBoundCapability(String capabilityId, String capabilityVersion,
-            String providerId, String providerContractVersion,
+            String providerRegistryReference, String providerContractVersion,
             String inputContract, String inputContractVersion,
             String outputContract, String outputContractVersion) {
         public ProviderBoundCapability {
             require(capabilityId, "capabilityId"); require(capabilityVersion, "capabilityVersion");
-            require(providerId, "providerId"); require(providerContractVersion, "providerContractVersion");
+            require(providerRegistryReference, "providerRegistryReference"); require(providerContractVersion, "providerContractVersion");
             require(inputContract, "inputContract"); require(inputContractVersion, "inputContractVersion");
             require(outputContract, "outputContract"); require(outputContractVersion, "outputContractVersion");
         }

@@ -55,16 +55,22 @@ public record ProviderBoundExecutionPlan(
     }
 
     public record CapabilityProviderBinding(String nodeId, String capabilityId,
-            String capabilityVersion, String providerId, String providerContractVersion,
+            String capabilityVersion, ProviderIdentity providerIdentity,
+            String providerContractVersion,
             String inputContract, String inputContractVersion, String outputContract,
             String outputContractVersion) {
         public CapabilityProviderBinding {
             required(nodeId, "nodeId"); required(capabilityId, "capabilityId");
-            required(capabilityVersion, "capabilityVersion"); required(providerId, "providerId");
+            required(capabilityVersion, "capabilityVersion"); Objects.requireNonNull(providerIdentity, "providerIdentity");
             required(providerContractVersion, "providerContractVersion");
             required(inputContract, "inputContract"); required(inputContractVersion, "inputContractVersion");
             required(outputContract, "outputContract"); required(outputContractVersion, "outputContractVersion");
         }
+    }
+
+    /** Opaque registry reference; provider implementation identity never crosses this boundary. */
+    public record ProviderIdentity(String registryReference) {
+        public ProviderIdentity { required(registryReference, "provider registry reference"); }
     }
 
     public record TypedReference(String name, String contract, String contractVersion,
