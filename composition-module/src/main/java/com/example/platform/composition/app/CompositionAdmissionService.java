@@ -39,7 +39,7 @@ public class CompositionAdmissionService implements PlatformExecutionAdmissionPo
         var authenticated = access.resolve(request.workspaceSelection());
         var scope = new ProviderBoundExecutionPlan.Scope(authenticated.tenantId(), authenticated.workspaceId(), authenticated.actorId());
         ProviderBoundExecutionPlan plan = CompositionProviderBoundExecutionPlanAdapter.lower(revisions, capabilities, resources, entitlements, scope,
-                request.compositionId(), request.publishedVersion(), request.idempotencyKey(), request.requestHash(),
+                request.compositionId(), request.publishedVersion(), request.idempotencyKey(), null,
                 request.cancellationPolicy(), request.retryPolicy(), request.parameters());
         return admit(plan);
     }

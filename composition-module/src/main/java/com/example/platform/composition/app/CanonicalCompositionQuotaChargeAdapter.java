@@ -16,9 +16,15 @@ public class CanonicalCompositionQuotaChargeAdapter implements CompositionQuotaC
         var now = Instant.now();
         var decision = quota.consume(new QuotaConsumptionRequest(
                 new PrincipalRef(plan.scope().tenantId(), PrincipalType.USER, plan.scope().actorId(), plan.scope().workspaceId(), null),
-                plan.capabilityBindings().getFirst().capabilityId(), amount,
+                quotaKey(plan), amount,
                 now.minusSeconds(1), now.plusSeconds(1), "platform-admission:" + executionId,
                 "composition-admission:" + executionId, "composition admission", now));
         if (!decision.allowed()) throw new IllegalStateException("quota admission rejected");
+    }
+
+    private static String quotaKey(ProviderBoundExecutionPlan plan) {
+        return plan.entitlementQuota().entitlements().keySet().stream().findFirst()
+                .map(k -> k.contains("@") ? k.substring(0, k.indexOf('@')) : k)
+                .filter(k -> !k.isBlank()).orElse("composition");
     }
 }

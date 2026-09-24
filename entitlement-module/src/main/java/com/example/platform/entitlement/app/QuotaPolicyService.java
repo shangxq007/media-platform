@@ -12,7 +12,7 @@ public class QuotaPolicyService {
             throw new IllegalArgumentException("quota key is required");
         }
         return switch (featureCode) {
-            case "render.job.create" -> policy("qp-render", featureCode, 10000);
+            case "render.job.create", "composition" -> policy("qp-render", featureCode, 10000);
             case "ai.model.standard" -> policy("qp-ai-std", featureCode, 1000);
             case "ai.model.premium" -> policy("qp-ai-prem", featureCode, 100);
             case "export.gpu" -> policy("qp-gpu", featureCode, 500);

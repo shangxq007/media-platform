@@ -41,7 +41,7 @@ public final class CompositionProviderBoundExecutionPlanAdapter {
         if (entitlementQuota == null) throw new IllegalArgumentException("entitlement/quota decision is unavailable");
         Set<String> granted = new HashSet<>();
         entitlementQuota.entitlements().forEach((name, state) -> {
-            if ("granted".equals(state)) granted.add(name);
+            if (state != null && state.startsWith("granted")) granted.add(name.split("@", 2)[0]);
         });
         ValidationResult validation = CompositionValidator.validate(workflow, authority,
                 resourceResolution.availableAssets(), granted);
