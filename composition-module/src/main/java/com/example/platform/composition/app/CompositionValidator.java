@@ -18,6 +18,8 @@ public final class CompositionValidator {
         }
         for (String cap : workflow.requiredCapabilities()) if (workflow.steps().stream().noneMatch(s -> s.capabilityId().equals(cap))) issues.add(issue("MISSING_CAPABILITY", "requiredCapabilities", cap, "workflow", workflow.id(), "requiredCapabilities"));
         for (String asset : workflow.requiredAssets()) if (!availableAssets.contains(asset)) issues.add(issue("MISSING_ASSET", "requiredAssets", asset, "workflow", workflow.id(), "requiredAssets"));
+        workflow.entitlements().forEach(required -> { String key = required.key() + "@" + required.version(); if (!entitlements.contains(key)) issues.add(issue("MISSING_ENTITLEMENT", "entitlements." + required.key(), key, "workflow", workflow.id(), "entitlement:" + required.key())); });
+        workflow.steps().forEach(step -> step.entitlements().forEach(required -> { String key = required.key() + "@" + required.version(); if (!entitlements.contains(key)) issues.add(issue("MISSING_ENTITLEMENT", "steps." + step.id() + ".entitlements." + required.key(), key, "workflow", workflow.id(), "entitlement:" + required.key())); }));
         for (int i = 0; i < workflow.bindings().size(); i++) {
             Binding b = workflow.bindings().get(i); String path = "bindings[" + i + "]"; String target = b.toStep() + "/" + b.toInput(); inputBindings.merge(target, 1, Integer::sum);
             if (inputBindings.get(target) > 1) issues.add(issue("CARDINALITY_MISMATCH", path, "input has multiple bindings", "workflow", workflow.id(), "binding:" + i));
@@ -63,6 +65,18 @@ public final class CompositionValidator {
         if (workflow.executionModes().isEmpty()) issues.add(issue("UNSUPPORTED_EXECUTION_MODE", "executionModes", "at least one execution mode is required", "workflow", workflow.id(), "executionModes"));
         for (int i = 0; i < workflow.parameters().size(); i++) validateParameter(workflow.parameters().get(i), i, workflow.id(), issues);
         return new ValidationResult(issues.stream().noneMatch(i -> i.severity() == Severity.ERROR), issues, UUID.randomUUID().toString());
+    }
+    static void validateParameters(TemplateWorkflow workflow, Map<String, Object> values) {
+        for (Parameter p : workflow.parameters()) {
+            Object value = values.get(p.name());
+            if (value == null) value = p.defaultValue();
+            if (p.required() && value == null) throw new IllegalArgumentException("required parameter is missing: " + p.name());
+            if (value != null && !valueMatches(value, p.type())) throw new IllegalArgumentException("parameter type is invalid: " + p.name());
+            if (value instanceof Number n && ((p.minimum() != null && n.doubleValue() < p.minimum()) || (p.maximum() != null && n.doubleValue() > p.maximum())))
+                throw new IllegalArgumentException("parameter is outside its published range: " + p.name());
+        }
+        values.keySet().stream().filter(k -> workflow.parameters().stream().noneMatch(p -> p.name().equals(k)))
+                .findFirst().ifPresent(k -> { throw new IllegalArgumentException("unknown parameter: " + k); });
     }
     static ValidationResult validateApplication(Application app, List<TemplateWorkflow> workflows, ProviderRegistryBoundary registry, Set<String> assets, Set<String> entitlements) {
         List<ValidationIssue> issues = new ArrayList<>(); if (app.workflowIds().isEmpty()) issues.add(issue("MISSING_WORKFLOW", "workflowIds", "application requires a workflow", "application", app.id(), "workflowIds"));

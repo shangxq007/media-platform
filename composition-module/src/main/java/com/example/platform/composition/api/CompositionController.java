@@ -13,7 +13,16 @@ import java.util.*;
 public class CompositionController {
     private final CompositionService service;
     private final com.example.platform.composition.app.CompositionAccess access;
-    public CompositionController(CompositionService service,com.example.platform.composition.app.CompositionAccess access){this.service=service;this.access=access;}
+    private final com.example.platform.composition.app.CompositionAdmissionService admission;
+    public CompositionController(CompositionService service,com.example.platform.composition.app.CompositionAccess access, com.example.platform.composition.app.CompositionAdmissionService admission){this.service=service;this.access=access;this.admission=admission;}
+    @PostMapping("/admissions") public AdmissionResponse admit(@RequestBody com.example.platform.composition.app.CompositionAdmissionRequest request){
+        var decision=admission.admit(request);
+        var plan=decision.plan();
+        return new AdmissionResponse(decision.executionId(), decision.ownershipGeneration(), decision.state(), decision.newlyAdmitted(),
+                plan.publishedRevision().subjectId(), plan.publishedRevision().version(), plan.publishedRevision().revision(), plan.planFingerprint().value());
+    }
+    public record AdmissionResponse(String executionId, long ownershipGeneration, String state, boolean newlyAdmitted,
+                                    String compositionId, String version, long revision, String planFingerprint) {}
     @GetMapping("/scope") public com.example.platform.composition.app.CompositionAccess.Scope scope(@RequestParam(required=false) String workspaceId){return access.resolve(workspaceId);}
     @GetMapping("/capabilities") public List<CapabilityAvailability> catalog(@RequestParam(required=false) String workspaceId){return service.catalog(workspaceId);}
     @PostMapping("/workflows/drafts") public TemplateWorkflow saveWorkflow(@RequestBody TemplateWorkflow v,HttpServletRequest r){return service.saveWorkflow(v,tenant(r));}

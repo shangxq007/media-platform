@@ -14,6 +14,16 @@ public final class CompositionProviderBoundExecutionPlanAdapter {
             ProviderBoundExecutionPlan.Scope scope, String compositionId, String version,
             String idempotencyKey, String requestHash,
             String cancellationPolicy, String retryPolicy) {
+        return lower(revisions, authority, resources, entitlements, scope, compositionId, version,
+                idempotencyKey, requestHash, cancellationPolicy, retryPolicy, Map.of());
+    }
+
+    public static ProviderBoundExecutionPlan lower(CompositionPublishedRevisionAuthority revisions,
+            CompositionProviderBoundCapabilityAuthority authority,
+            CompositionResourceResolver resources, CompositionEntitlementQuotaResolver entitlements,
+            ProviderBoundExecutionPlan.Scope scope, String compositionId, String version,
+            String idempotencyKey, String requestHash,
+            String cancellationPolicy, String retryPolicy, Map<String, Object> parameters) {
         Objects.requireNonNull(revisions); Objects.requireNonNull(authority); Objects.requireNonNull(resources);
         Objects.requireNonNull(entitlements); Objects.requireNonNull(scope);
         CompositionPublishedRevisionAuthority.PublishedRevision published = revisions.resolve(
@@ -25,6 +35,7 @@ public final class CompositionProviderBoundExecutionPlanAdapter {
         if (workflow.lifecycle() != Lifecycle.PUBLISHED) throw new IllegalArgumentException("composition revision is not published");
         if (!workflow.tenantId().equals(scope.tenantId()) || !workflow.workspaceId().equals(scope.workspaceId()))
             throw new IllegalArgumentException("composition scope does not match authenticated scope");
+        CompositionValidator.validateParameters(workflow, parameters == null ? Map.of() : parameters);
         var resourceResolution = resources.resolve(workflow, scope.tenantId(), scope.workspaceId());
         var entitlementQuota = entitlements.resolve(workflow, scope.tenantId(), scope.workspaceId(), scope.actorId());
         if (entitlementQuota == null) throw new IllegalArgumentException("entitlement/quota decision is unavailable");
@@ -61,6 +72,9 @@ public final class CompositionProviderBoundExecutionPlanAdapter {
                 entry.contract().version(), "composition:" + workflow.id() + ":entry"));
         workflow.parameters().forEach(p -> inputs.add(new ProviderBoundExecutionPlan.TypedReference(
                 "parameter:" + p.name(), p.type(), "1", String.valueOf(p.defaultValue()))));
+        List<ProviderBoundExecutionPlan.TypedReference> resourceRefs = resourceResolution.references().stream()
+                .map(ref -> new ProviderBoundExecutionPlan.TypedReference(ref, "MediaAsset", "1", "composition:asset:" + ref))
+                .toList();
         List<ProviderBoundExecutionPlan.TypedOutputContract> outputs = workflow.outputs().stream()
                 .map(o -> new ProviderBoundExecutionPlan.TypedOutputContract(o.name(), o.type(),
                         outputVersion(workflow, o, authority), "typed-output"))
@@ -68,7 +82,7 @@ public final class CompositionProviderBoundExecutionPlanAdapter {
         if (workflow.executionModes().size() != 1) throw new IllegalArgumentException("exactly one execution mode is required");
         return new ProviderBoundExecutionPlan(
                 new ProviderBoundExecutionPlan.PublishedRevision("composition", workflow.id(), workflow.version(), workflow.revision()),
-                scope, bindings, inputs, outputs,
+                scope, bindings, inputs, resourceRefs, outputs,
                 ProviderBoundExecutionPlan.ExecutionMode.valueOf(workflow.executionModes().iterator().next().name()),
                 entitlementQuota,
                 new ProviderBoundExecutionPlan.PlanFingerprint(published.planFingerprint()),

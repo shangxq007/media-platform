@@ -20,10 +20,18 @@ class CompositionAdmissionServiceResolutionTest {
         var resources = (CompositionResourceResolver) (wf,t,w) -> new CompositionResourceResolver.ResourceResolution(Set.of());
         var entitlements = (CompositionEntitlementQuotaResolver) (wf,t,w,a) ->
                 new ProviderBoundExecutionPlan.EntitlementQuotaSnapshot("server-quota", Map.of("composition", "granted"), new BigDecimal("0.10"));
+        var accepted = new java.util.concurrent.atomic.AtomicReference<CompositionAdmissionRepository.AdmissionRecord>();
+        when(repo.admit(any())).thenAnswer(inv -> {
+            var p = inv.getArgument(0, ProviderBoundExecutionPlan.class);
+            var record = new CompositionAdmissionRepository.AdmissionRecord("execution", "tenant", "workspace", "actor", "composition", 1, "server-fingerprint", "key", "hash", 0, "ADMITTED", true, true, p);
+            accepted.set(record); return record;
+        });
+        when(repo.claimQuotaCharge(any())).thenReturn(true);
+        when(repo.findByExecutionId(any())).thenAnswer(inv -> Optional.of(accepted.get()));
         var service = new CompositionAdmissionService(repo, charge, results, access, revisions, authority(), resources, entitlements);
         var plan = service.admit(new CompositionAdmissionRequest("workspace-selection", "composition", "1.0", "key", "hash", "cancel", "retry", Map.of()));
-        assertEquals("server-fingerprint", plan.planFingerprint().value());
-        verify(access).resolve("workspace-selection"); verifyNoInteractions(repo, charge);
+        assertEquals("server-fingerprint", plan.plan().planFingerprint().value());
+        verify(access).resolve("workspace-selection"); verify(repo).admit(plan.plan()); verify(charge).charge(plan.plan(), "execution");
         assertThrows(IllegalArgumentException.class, () -> service.admit(mock(com.example.platform.execution.planning.PlatformExecutionPlan.class)));
     }
 

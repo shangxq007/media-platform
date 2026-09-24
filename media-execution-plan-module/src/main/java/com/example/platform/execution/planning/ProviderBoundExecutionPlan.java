@@ -16,6 +16,7 @@ public record ProviderBoundExecutionPlan(
         Scope scope,
         List<CapabilityProviderBinding> capabilityBindings,
         List<TypedReference> inputs,
+        List<TypedReference> resources,
         List<TypedOutputContract> outputs,
         ExecutionMode executionMode,
         EntitlementQuotaSnapshot entitlementQuota,
@@ -28,6 +29,7 @@ public record ProviderBoundExecutionPlan(
         Objects.requireNonNull(scope, "scope");
         Objects.requireNonNull(capabilityBindings, "capabilityBindings");
         Objects.requireNonNull(inputs, "inputs");
+        Objects.requireNonNull(resources, "resources");
         Objects.requireNonNull(outputs, "outputs");
         Objects.requireNonNull(executionMode, "executionMode");
         Objects.requireNonNull(entitlementQuota, "entitlementQuota");
@@ -39,7 +41,18 @@ public record ProviderBoundExecutionPlan(
         }
         capabilityBindings = List.copyOf(capabilityBindings);
         inputs = List.copyOf(inputs);
+        resources = List.copyOf(resources);
         outputs = List.copyOf(outputs);
+    }
+
+    /** Compatibility constructor for older planner callers that had no resource evidence. */
+    public ProviderBoundExecutionPlan(PublishedRevision publishedRevision, Scope scope,
+            List<CapabilityProviderBinding> capabilityBindings, List<TypedReference> inputs,
+            List<TypedOutputContract> outputs, ExecutionMode executionMode,
+            EntitlementQuotaSnapshot entitlementQuota, PlanFingerprint planFingerprint,
+            IdempotencyIdentity idempotency, PolicyReferences policies) {
+        this(publishedRevision, scope, capabilityBindings, inputs, List.of(), outputs,
+                executionMode, entitlementQuota, planFingerprint, idempotency, policies);
     }
 
     public record PublishedRevision(String domain, String subjectId, String version,

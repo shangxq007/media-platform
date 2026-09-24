@@ -14,6 +14,12 @@ info:
 servers:
   - url: /api
 paths:
+  /composition/admissions:
+    post:
+      operationId: admitComposition
+      summary: Admit a published Composition using server-owned authority facts
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/CompositionAdmissionRequest'}}}}
+      responses: {'200': {description: Durable admission decision, content: {application/json: {schema: {$ref: '#/components/schemas/CompositionAdmissionResponse'}}}}, '403': {description: Scope denied}, '409': {description: Idempotency conflict}}
   /composition/capabilities:
     get:
       operationId: listCapabilityAvailability
@@ -206,6 +212,36 @@ components:
       type: object
       required: [id, version, displayName, workflowIds]
       properties: {id: {type: string}, version: {type: string}, displayName: {type: string}, workflowIds: {type: array, items: {type: string}}}
+    EntitlementRequirement:
+      type: object
+      required: [key, version]
+      properties:
+        key: {type: string}
+        version: {type: string}
+    CompositionAdmissionRequest:
+      type: object
+      required: [workspaceSelection, compositionId, publishedVersion, idempotencyKey, requestHash, cancellationPolicy, retryPolicy]
+      properties:
+        workspaceSelection: {type: string}
+        compositionId: {type: string}
+        publishedVersion: {type: string}
+        idempotencyKey: {type: string}
+        requestHash: {type: string}
+        cancellationPolicy: {type: string}
+        retryPolicy: {type: string}
+        parameters: {type: object, additionalProperties: true}
+    CompositionAdmissionResponse:
+      type: object
+      required: [executionId, ownershipGeneration, state, newlyAdmitted, compositionId, version, revision, planFingerprint]
+      properties:
+        executionId: {type: string}
+        ownershipGeneration: {type: integer, format: int64}
+        state: {type: string}
+        newlyAdmitted: {type: boolean}
+        compositionId: {type: string}
+        version: {type: string}
+        revision: {type: integer, format: int64}
+        planFingerprint: {type: string}
     ApiError:
       type: object
       required: [code, message]

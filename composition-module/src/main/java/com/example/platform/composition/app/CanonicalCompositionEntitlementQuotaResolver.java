@@ -19,12 +19,19 @@ public final class CanonicalCompositionEntitlementQuotaResolver implements Compo
             throw new IllegalArgumentException("entitlement scope does not match authenticated scope");
         Map<String, String> granted = new LinkedHashMap<>();
         BigDecimal remaining = null; String provenance = null;
-        for (String entitlement : java.util.Set.of("composition")) {
+        Set<String> requirements = new LinkedHashSet<>();
+        workflow.entitlements().forEach(r -> requirements.add(r.key() + "@" + r.version()));
+        workflow.steps().forEach(step -> step.entitlements().forEach(r -> requirements.add(r.key() + "@" + r.version())));
+        if (requirements.isEmpty()) requirements.add("composition@1");
+        for (String required : requirements) {
+            String[] requirement = required.split("@", 2);
+            String entitlement = requirement[0];
             var decision = decisions.evaluate(new AccessCheckRequest(tenantId, workspaceId, actorId, "USER", actorId,
-                    "composition.admit", "COMPOSITION", workflow.id(), entitlement, null, null, "WEB", null, Map.of()));
+                    "composition.admit", "COMPOSITION", workflow.id(), entitlement, null, null, "WEB", null,
+                    Map.of("requiredEntitlementVersion", requirement.length == 2 ? requirement[1] : "")));
             if (!decision.allowed() || decision.expiresAt() != null && !decision.expiresAt().isAfter(java.time.Instant.now()))
                 throw new IllegalArgumentException("entitlement is unavailable: " + entitlement);
-            granted.put(entitlement, "granted"); provenance = decision.matchedGrantId();
+            granted.put(required, "granted:" + (decision.matchedGrantId() == null ? "authority" : decision.matchedGrantId())); provenance = decision.matchedGrantId();
             if (decision.quotaRemaining() != null) remaining = BigDecimal.valueOf(decision.quotaRemaining());
         }
         if (remaining == null) throw new IllegalArgumentException("quota authority did not return availability");

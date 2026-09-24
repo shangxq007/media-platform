@@ -6,7 +6,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public final class JdbcCompositionResultRepository implements CompositionResultRepository {
+public class JdbcCompositionResultRepository implements CompositionResultRepository {
     private final JdbcTemplate jdbc;
     public JdbcCompositionResultRepository(JdbcTemplate jdbc) { this.jdbc = jdbc; }
     @Override public PlatformCompletionReference record(PlatformCompletionReference c, long generation) {

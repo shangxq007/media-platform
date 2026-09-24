@@ -45,27 +45,37 @@ public final class CompositionModels {
     public record WorkflowOutput(String name, String type, String stepId, String port) {
         public WorkflowOutput { require(name, "output name"); require(type, "output type"); require(stepId, "output stepId"); require(port, "output port"); }
     }
-    public record WorkflowStep(String id, String capabilityId, String capabilityVersion, Map<String, Object> inputs, Set<String> requiredAssets, Set<String> alternatives) {
-        public WorkflowStep { require(id, "step id"); require(capabilityId, "capabilityId"); require(capabilityVersion, "capabilityVersion"); inputs = inputs == null ? Map.of() : Map.copyOf(inputs); requiredAssets = immutable(requiredAssets); alternatives = immutable(alternatives); }
+    public record WorkflowStep(String id, String capabilityId, String capabilityVersion, Map<String, Object> inputs, Set<String> requiredAssets, Set<String> alternatives, Set<EntitlementRequirement> entitlements) {
+        public WorkflowStep { require(id, "step id"); require(capabilityId, "capabilityId"); require(capabilityVersion, "capabilityVersion"); inputs = inputs == null ? Map.of() : Map.copyOf(inputs); requiredAssets = immutable(requiredAssets); alternatives = immutable(alternatives); entitlements = entitlements == null ? Set.of() : Set.copyOf(entitlements); }
+        public WorkflowStep(String id, String capabilityId, String capabilityVersion, Map<String, Object> inputs, Set<String> requiredAssets, Set<String> alternatives) { this(id, capabilityId, capabilityVersion, inputs, requiredAssets, alternatives, Set.of()); }
+    }
+    public record EntitlementRequirement(String key, String version) {
+        public EntitlementRequirement { require(key, "entitlement key"); require(version, "entitlement version"); }
     }
     public record TemplateWorkflow(String id, String version, String name, List<WorkflowStep> steps, List<Binding> bindings,
                                    List<Parameter> parameters, Set<String> requiredCapabilities, Set<ExecutionMode> executionModes,
-                                   Set<String> requiredAssets, List<WorkflowOutput> outputs, WorkflowEntry entry, CostEstimate estimate, Reliability reliability, Lifecycle lifecycle,
+                                   Set<String> requiredAssets, Set<EntitlementRequirement> entitlements, List<WorkflowOutput> outputs, WorkflowEntry entry, CostEstimate estimate, Reliability reliability, Lifecycle lifecycle,
                                    String tenantId, String workspaceId, long revision) {
         public TemplateWorkflow { require(id, "workflow id"); require(version, "workflow version"); require(name, "workflow name"); require(tenantId, "tenantId"); require(workspaceId, "workspaceId");
             steps = steps == null ? List.of() : List.copyOf(steps); bindings = bindings == null ? List.of() : List.copyOf(bindings); parameters = parameters == null ? List.of() : List.copyOf(parameters); outputs = outputs == null ? List.of() : List.copyOf(outputs);
-            requiredCapabilities = immutable(requiredCapabilities); executionModes = executionModes == null ? Set.of() : Set.copyOf(executionModes); requiredAssets = immutable(requiredAssets); if (estimate == null || reliability == null || lifecycle == null) throw new IllegalArgumentException("incomplete workflow metadata"); }
+            requiredCapabilities = immutable(requiredCapabilities); executionModes = executionModes == null ? Set.of() : Set.copyOf(executionModes); requiredAssets = immutable(requiredAssets); entitlements = entitlements == null ? Set.of() : Set.copyOf(entitlements); if (estimate == null || reliability == null || lifecycle == null) throw new IllegalArgumentException("incomplete workflow metadata"); }
+        public TemplateWorkflow(String id, String version, String name, List<WorkflowStep> steps, List<Binding> bindings,
+                                List<Parameter> parameters, Set<String> requiredCapabilities, Set<ExecutionMode> executionModes,
+                                Set<String> requiredAssets, List<WorkflowOutput> outputs, WorkflowEntry entry, CostEstimate estimate, Reliability reliability, Lifecycle lifecycle,
+                                String tenantId, String workspaceId, long revision) {
+            this(id, version, name, steps, bindings, parameters, requiredCapabilities, executionModes, requiredAssets, Set.of(), outputs, entry, estimate, reliability, lifecycle, tenantId, workspaceId, revision);
+        }
         public TemplateWorkflow(String id, String version, String name, List<WorkflowStep> steps, List<Binding> bindings,
                                 List<Parameter> parameters, Set<String> requiredCapabilities, Set<ExecutionMode> executionModes,
                                 Set<String> requiredAssets, List<WorkflowOutput> outputs, CostEstimate estimate, Reliability reliability, Lifecycle lifecycle,
                                 String tenantId, String workspaceId, long revision) {
-            this(id, version, name, steps, bindings, parameters, requiredCapabilities, executionModes, requiredAssets, outputs, null, estimate, reliability, lifecycle, tenantId, workspaceId, revision);
+            this(id, version, name, steps, bindings, parameters, requiredCapabilities, executionModes, requiredAssets, Set.of(), outputs, null, estimate, reliability, lifecycle, tenantId, workspaceId, revision);
         }
         public TemplateWorkflow(String id, String version, String name, List<WorkflowStep> steps, List<Binding> bindings,
                                 List<Parameter> parameters, Set<String> requiredCapabilities, Set<ExecutionMode> executionModes,
                                 Set<String> requiredAssets, CostEstimate estimate, Reliability reliability, Lifecycle lifecycle,
                                 String tenantId, String workspaceId, long revision) {
-            this(id, version, name, steps, bindings, parameters, requiredCapabilities, executionModes, requiredAssets, List.of(), null, estimate, reliability, lifecycle, tenantId, workspaceId, revision);
+            this(id, version, name, steps, bindings, parameters, requiredCapabilities, executionModes, requiredAssets, Set.of(), List.of(), null, estimate, reliability, lifecycle, tenantId, workspaceId, revision);
         }
     }
     public record Application(String id, String version, String displayName, String description, ContractRef input, ContractRef output,

@@ -10,7 +10,7 @@ import org.springframework.stereotype.Repository;
 
 /** Reads only immutable published rows; no caller-supplied revision is trusted. */
 @Repository
-public final class JdbcCompositionPublishedRevisionResolver implements CompositionPublishedRevisionAuthority {
+public class JdbcCompositionPublishedRevisionResolver implements CompositionPublishedRevisionAuthority {
     private final JdbcTemplate jdbc;
     private final ObjectMapper json;
     public JdbcCompositionPublishedRevisionResolver(JdbcTemplate jdbc, ObjectMapper json) {
