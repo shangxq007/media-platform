@@ -15,6 +15,7 @@ import com.example.platform.shared.time.FrameRate;
 import java.util.List;
 import org.jooq.DSLContext;
 import org.springframework.stereotype.Repository;
+import org.springframework.context.annotation.Profile;
 
 /**
  * jOOQ implementation over the canonical media_stream table. All time/rate
@@ -22,6 +23,7 @@ import org.springframework.stereotype.Repository;
  * time/rate authority exists in canonical persistence.
  */
 @Repository
+@Profile("legacy-media-disabled")
 public class JooqMediaStreamRepository implements MediaStreamRepository {
 
     private final DSLContext dsl;

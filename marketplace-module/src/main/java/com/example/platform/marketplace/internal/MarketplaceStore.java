@@ -8,8 +8,10 @@ import java.sql.SQLException;
 import java.util.*;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
+import org.springframework.context.annotation.Profile;
 
 @Repository
+@Profile("legacy-media-disabled")
 public class MarketplaceStore {
     private final JdbcTemplate jdbc;
     public MarketplaceStore(JdbcTemplate jdbc) {this.jdbc=jdbc;}

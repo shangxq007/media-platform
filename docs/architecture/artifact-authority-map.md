@@ -16,3 +16,6 @@ The renamed relations are historical migration inputs and are protected against
 mutation; they do not grant identity, lifecycle, authorization, retrieval or
 result authority. Legacy probe and integrity routes are removed, and the
 timeline validator is disabled behind the `legacy-media-disabled` profile.
+All remaining Spring beans carrying legacy MediaAsset contracts are likewise
+fenced behind that profile; the default production bean graph therefore cannot
+load a MediaAsset authority.

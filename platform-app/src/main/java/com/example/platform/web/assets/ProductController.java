@@ -1,4 +1,5 @@
 package com.example.platform.web.assets;
+import org.springframework.context.annotation.Profile;
 
 import com.example.platform.render.app.product.ProductRuntimeService;
 import com.example.platform.render.domain.product.*;
@@ -9,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
+@Profile("legacy-media-disabled")
 @RequestMapping("/api")
 public class ProductController {
 

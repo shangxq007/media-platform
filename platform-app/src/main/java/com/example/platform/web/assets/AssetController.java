@@ -1,4 +1,5 @@
 package com.example.platform.web.assets;
+import org.springframework.context.annotation.Profile;
 
 import com.example.platform.media.api.Asset;
 import com.example.platform.render.domain.asset.AssetGovernanceMetadata;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
  * <p>All endpoints enforce tenant + project scoping and return redacted metadata.
  */
 @RestController
+@Profile("legacy-media-disabled")
 @RequestMapping("/api/projects/{projectId}/assets")
 @Tag(name = "Asset API", description = "Project asset management")
 public class AssetController {

@@ -11,11 +11,13 @@ import com.example.platform.shared.web.TenantGuard;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.stereotype.Service;
+import org.springframework.context.annotation.Profile;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 import java.util.function.Supplier;
 
 @Service
+@Profile("legacy-media-disabled")
 @Transactional
 public class MarketplaceService implements MarketplaceApi {
     private final MarketplaceStore store;

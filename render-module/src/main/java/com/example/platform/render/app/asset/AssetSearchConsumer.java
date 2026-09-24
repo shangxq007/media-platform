@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
+import org.springframework.context.annotation.Profile;
 
 /**
  * Consumes asset domain events and triggers search reindex jobs.
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Component;
  * absent from the outbox coordination module.</p>
  */
 @Component
+@Profile("legacy-media-disabled")
 public class AssetSearchConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(AssetSearchConsumer.class);

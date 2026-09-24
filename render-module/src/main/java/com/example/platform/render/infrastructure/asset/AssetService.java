@@ -7,6 +7,7 @@ import com.example.platform.shared.web.TenantContext;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
+import org.springframework.context.annotation.Profile;
 
 /**
  * Service for project asset management.
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
  * <p>Enforces tenant isolation and validates storage keys via {@link StorageKeyPolicy}.
  */
 @Service
+@Profile("legacy-media-disabled")
 public class AssetService {
 
     private final MediaAssets assetRepository;

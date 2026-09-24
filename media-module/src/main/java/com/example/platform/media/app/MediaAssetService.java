@@ -3,8 +3,10 @@ import com.example.platform.media.api.*;
 import com.example.platform.media.infrastructure.persistence.JooqMediaAssetRepository;
 import java.util.*;
 import org.springframework.stereotype.Service;
+import org.springframework.context.annotation.Profile;
 import org.springframework.transaction.annotation.Transactional;
 @Service
+@Profile("legacy-media-disabled")
 public class MediaAssetService implements MediaAssets {
     private final JooqMediaAssetRepository repository;
     private final MediaAuthorization authorization;

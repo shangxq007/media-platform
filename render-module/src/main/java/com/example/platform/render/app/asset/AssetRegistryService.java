@@ -11,6 +11,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
+import org.springframework.context.annotation.Profile;
 
 /**
  * Phase 1 lightweight Asset Registry service.
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Service;
  * Lives within {@code render-module} — not a standalone module.</p>
  */
 @Service
+@Profile("legacy-media-disabled")
 public class AssetRegistryService {
 
     private final com.example.platform.media.api.MediaAssets assetRepository;

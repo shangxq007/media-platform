@@ -1,4 +1,5 @@
 package com.example.platform.web.assets;
+import org.springframework.context.annotation.Profile;
 
 import com.example.platform.render.app.asset.AssetSearchService;
 import com.example.platform.render.domain.asset.search.*;
@@ -10,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
+@Profile("legacy-media-disabled")
 @RequestMapping("/api/projects/{projectId}/assets/search")
 @Tag(name = "Asset Search", description = "Search assets by keyword and filters")
 public class AssetSearchController {

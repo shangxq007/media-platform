@@ -27,8 +27,9 @@ if validator.exists() and '@Profile("legacy-media-disabled")' not in validator.r
 for path in ROOT.glob("**/src/main/java/**/*.java"):
     if any(part in str(path) for part in ("/build/", ".gradle/")): continue
     text = path.read_text()
-    if ("@RestController" in text or "@Controller" in text) and ("MediaAsset" in text or "media/assets" in text or "media-probe" in text):
-        failures.append(f"reachable MediaAsset controller remains: {path}")
+    if any(a in text for a in ("@RestController", "@Controller", "@Service", "@Component", "@Repository")) and any(x in text for x in ("MediaAsset", "mediaAsset", "media_asset", "MediaAssets", "MediaAssetQueries", "MediaProbes")):
+        if '@Profile("legacy-media-disabled")' not in text:
+            failures.append(f"reachable MediaAsset Spring authority remains: {path}")
 if (ROOT / "platform-app/src/main/java/com/example/platform/web/media/MediaAssetLifecycleController.java").exists():
     failures.append("MediaAsset lifecycle controller remains present")
 runtime = json.loads((ROOT / "docs/api/openapi-preview-current.json").read_text())

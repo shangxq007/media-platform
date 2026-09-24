@@ -9,6 +9,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.context.annotation.Profile;
 
 /**
  * Asset search service — queries the search_projection read model
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Service;
  * Semantic Metadata scan when projections are not yet built.
  */
 @Service
+@Profile("legacy-media-disabled")
 public class AssetSearchService {
 
     private static final Logger log = LoggerFactory.getLogger(AssetSearchService.class);

@@ -12,6 +12,7 @@ import com.example.platform.storage.domain.StorageObjectRef;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.context.annotation.Profile;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -28,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>Safety: no signed URLs, no storage internals, no local paths exposed.
  */
 @Service
+@Profile("legacy-media-disabled")
 public class RawMediaUploadService {
 
     private static final Logger log = LoggerFactory.getLogger(RawMediaUploadService.class);

@@ -1,4 +1,5 @@
 package com.example.platform.render.infrastructure.media;
+import org.springframework.context.annotation.Profile;
 
 import com.example.platform.storage.domain.BlobStorage;
 import java.io.IOException;
@@ -16,6 +17,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
+@Profile("legacy-media-disabled")
 public class MediaAssetResolver {
 
     private static final Logger log = LoggerFactory.getLogger(MediaAssetResolver.class);

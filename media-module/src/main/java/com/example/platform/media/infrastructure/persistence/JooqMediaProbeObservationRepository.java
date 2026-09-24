@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Optional;
 import org.jooq.DSLContext;
 import org.springframework.stereotype.Repository;
+import org.springframework.context.annotation.Profile;
 
 /**
  * jOOQ implementation over the raw media_probe_observation table.
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Repository;
  * canonical media authority.
  */
 @Repository
+@Profile("legacy-media-disabled")
 public class JooqMediaProbeObservationRepository implements MediaProbeObservationRepository {
 
     private final DSLContext dsl;

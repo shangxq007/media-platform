@@ -1,4 +1,5 @@
 package com.example.platform.web.assets;
+import org.springframework.context.annotation.Profile;
 
 import com.example.platform.render.app.asset.*;
 import com.example.platform.render.domain.asset.AssetGovernanceMetadata;
@@ -14,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
+@Profile("legacy-media-disabled")
 @RequestMapping("/api/assets/{assetId}/workspace")
 @Tag(name = "Asset Workbench", description = "Aggregated asset workspace APIs for frontend")
 public class AssetWorkbenchController {

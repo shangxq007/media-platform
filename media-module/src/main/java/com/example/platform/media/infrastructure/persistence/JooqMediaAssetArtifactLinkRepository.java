@@ -12,12 +12,14 @@ import java.time.ZoneOffset;
 import java.util.List;
 import org.jooq.DSLContext;
 import org.springframework.stereotype.Repository;
+import org.springframework.context.annotation.Profile;
 
 /**
  * jOOQ implementation of the typed MediaAsset<->Artifact linkage
  * (MEDIA_ASSET_ARTIFACT_RELATIONSHIP_V1).
  */
 @Repository
+@Profile("legacy-media-disabled")
 public class JooqMediaAssetArtifactLinkRepository implements MediaAssetArtifactLinkRepository {
 
     private final DSLContext dsl;

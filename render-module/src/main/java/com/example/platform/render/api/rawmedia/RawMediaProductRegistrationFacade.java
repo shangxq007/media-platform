@@ -18,6 +18,7 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.time.Instant;
 import org.springframework.stereotype.Service;
+import org.springframework.context.annotation.Profile;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -27,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
  * ingest to preserve its upload pipeline through a small boundary command/result.
  */
 @Service
+@Profile("legacy-media-disabled")
 public class RawMediaProductRegistrationFacade {
 
     private final ProductRuntimeService productRuntimeService;

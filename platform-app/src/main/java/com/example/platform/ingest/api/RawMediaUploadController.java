@@ -1,4 +1,5 @@
 package com.example.platform.ingest.api;
+import org.springframework.context.annotation.Profile;
 
 import com.example.platform.ingest.api.dto.UploadRawMediaResponse;
 import com.example.platform.ingest.app.RawMediaUploadService;
@@ -30,6 +31,7 @@ import org.springframework.web.multipart.MultipartFile;
  * <p>Safety: no storage references, signed URLs, or internal paths exposed.
  */
 @RestController
+@Profile("legacy-media-disabled")
 @RequestMapping("/api/tenants/{tenantId}/projects/{projectId}/upload")
 @Tag(name = "Upload API", description = "Raw media upload")
 public class RawMediaUploadController {

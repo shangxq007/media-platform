@@ -7,6 +7,7 @@ import com.example.platform.media.domain.probe.MediaProbePort;
 import com.example.platform.media.domain.probe.NormalizedMediaProbe;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
+import org.springframework.context.annotation.Profile;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -17,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
  * structural rows are replaced by the normalized result.
  */
 @Service
+@Profile("legacy-media-disabled")
 public class MediaProbeService implements com.example.platform.media.api.MediaProbes {
 
     private final MediaAssetRepository assets;

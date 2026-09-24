@@ -1,4 +1,5 @@
 package com.example.platform.web.render;
+import org.springframework.context.annotation.Profile;
 
 import com.example.platform.render.app.operation.AddMediaClipCommand;
 import com.example.platform.render.app.operation.AddMediaClipPreview;
@@ -26,6 +27,7 @@ import org.springframework.web.server.ResponseStatusException;
  * typed canonical intent and delegates all mutation to the application layer.
  */
 @RestController
+@Profile("legacy-media-disabled")
 @RequestMapping("/api/tenants/{tenantId}/projects/{projectId}/timeline-operations")
 public class TimelineMediaClipOperationController {
 

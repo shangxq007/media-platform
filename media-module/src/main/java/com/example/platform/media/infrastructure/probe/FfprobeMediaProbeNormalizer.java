@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.springframework.stereotype.Component;
+import org.springframework.context.annotation.Profile;
 
 /**
  * INGEST_NORMALIZATION_BOUNDARY_V1 — single normalization implementation.
@@ -31,6 +32,7 @@ import org.springframework.stereotype.Component;
  * Unknown values are absent; sentinel values are rejected.
  */
 @Component
+@Profile("legacy-media-disabled")
 public class FfprobeMediaProbeNormalizer implements MediaProbeNormalizer {
 
     private static final Pattern RATIONAL = Pattern.compile("^(-?\\d+)\\s*/\\s*(\\d+)$");

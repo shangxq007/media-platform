@@ -17,12 +17,14 @@ import com.example.platform.storage.contract.StorageKeyPolicy;
 import com.example.platform.shared.web.TenantGuard;
 import org.jooq.DSLContext;
 import org.springframework.stereotype.Repository;
+import org.springframework.context.annotation.Profile;
 
 /**
  * jOOQ implementation of {@link MediaAssetRepository} over the canonical
  * media_asset table (MCMV2-C).
  */
 @Repository
+@Profile("legacy-media-disabled")
 public class JooqMediaAssetRepository implements MediaAssetRepository {
 
     private final DSLContext dsl;
