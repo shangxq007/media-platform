@@ -14,6 +14,14 @@ public final class CanonicalExecutableTaskProjection {
     public static ExecutableTask project(RuntimeExecutionRequest runtime,
             ProviderLocalCompositionRequest composition, Collection<BoundaryAction> actions) {
         Objects.requireNonNull(runtime); Objects.requireNonNull(composition); Objects.requireNonNull(actions);
+        if (runtime.ownershipGeneration() < 1) {
+            throw new IllegalArgumentException("runtime request requires a positive admitted ownership generation");
+        }
+        boolean capabilityDeclared = composition.providerExecutionContract().capabilityContractReferences().stream()
+                .anyMatch(reference -> reference.capabilityId().value().equals(runtime.capabilityId()));
+        if (!capabilityDeclared) {
+            throw new IllegalArgumentException("runtime capability is absent from provider execution contract");
+        }
         var decision = ProviderLocalCompositionEvaluator.evaluate(composition);
         if (!decision.evaluatorProvenAllowed()) throw new IllegalArgumentException("provider composition is not allowed");
         return ExecutableTask.create(decision, actions);
