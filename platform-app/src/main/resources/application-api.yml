@@ -1,0 +1,14 @@
+platform:
+  runtime:
+    role: API
+
+app:
+  temporal:
+    task-queue: media-platform-tasks
+
+spring:
+  temporal:
+    start-workers: false
+    workers-auto-discovery:
+      packages: []
+    workers: []

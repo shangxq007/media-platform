@@ -10,10 +10,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /** Temporal Activity adapter; all FFmpeg mechanics remain in the registered Provider. */
 @Component
+@ConditionalOnProperty(name = "platform.runtime.role", havingValue = "WORKER")
 @ActivityImpl(taskQueues = "media-platform-tasks")
 public class ThumbnailActivitiesImpl implements ThumbnailActivities {
     private final ThumbnailTaskStore tasks; private final MediaAssets assets; private final BlobStorage storage;

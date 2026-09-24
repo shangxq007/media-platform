@@ -5,10 +5,12 @@ import com.example.platform.sandbox.execution.*;
 import java.nio.file.*;
 import java.time.Duration;
 import java.util.*;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /** Registered local WorkerRuntime backend for the pinned thumbnail provider. */
 @Component
+@ConditionalOnProperty(name = "platform.runtime.role", havingValue = "WORKER")
 public final class ThumbnailExecutionBackend implements ExecutionBackend {
     @Override public String backendId() { return "thumbnail-worker-runtime.local-process"; }
     @Override public boolean supports(TaskCapability capability) { return capability == TaskCapability.THUMBNAIL; }

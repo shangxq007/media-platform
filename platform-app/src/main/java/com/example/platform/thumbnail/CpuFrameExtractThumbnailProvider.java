@@ -11,6 +11,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.BooleanSupplier;
 import com.example.platform.sandbox.*;
 import com.example.platform.sandbox.execution.*;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -29,6 +30,7 @@ public final class CpuFrameExtractThumbnailProvider implements ThumbnailCapabili
             0, 86_400, 16, 4096, 512L * 1024L * 1024L, 60,
             "trusted-provider", "worker-runtime.local-process");
 
+    @Autowired
     public CpuFrameExtractThumbnailProvider(
             @Value("${app.storage.local-root:./.data/storage}") String root,
             @Value("${thumbnail.ffmpeg-path:ffmpeg}") String ffmpeg,

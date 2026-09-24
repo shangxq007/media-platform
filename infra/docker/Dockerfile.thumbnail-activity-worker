@@ -1,0 +1,31 @@
+# Dedicated Activity host. This is intentionally separate from the API image.
+# The base digest and tool pins must be supplied by the release build manifest.
+ARG BASE_IMAGE=localhost/platform-api-schema2@sha256:d326ff22e4a7df152bd59a9bcc51a4825ef9c97680947686d4a3243e0646c297
+FROM ${BASE_IMAGE}
+
+USER 0
+ARG FFMPEG_VERSION=7:4.4.2-0ubuntu0.22.04.1
+ARG BUBBLEWRAP_VERSION=0.6.1-1ubuntu0.3
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      ffmpeg=${FFMPEG_VERSION} \
+      bubblewrap=${BUBBLEWRAP_VERSION} \
+ && rm -rf /var/lib/apt/lists/* /var/cache/apt/* \
+ && test -x /usr/bin/ffmpeg \
+ && test -x /usr/bin/ffprobe \
+ && test -x /usr/bin/bwrap
+
+COPY platform-thumbnail-worker.jar /app/platform-thumbnail-worker.jar
+RUN chown spring:spring /app/platform-thumbnail-worker.jar
+
+USER spring:spring
+ENV SPRING_PROFILES_ACTIVE=dev,temporal,thumbnail-worker \
+    SPRING_MAIN_WEB_APPLICATION_TYPE=none \
+    SPRING_TEMPORAL_START_WORKERS=true \
+    PLATFORM_RUNTIME_ROLE=WORKER \
+    APP_TEMPORAL_TASK_QUEUE=media-platform-tasks \
+    THUMBNAIL_BWRAP_PATH=/usr/bin/bwrap \
+    THUMBNAIL_FFMPEG_PATH=/usr/bin/ffmpeg \
+    THUMBNAIL_FFPROBE_PATH=/usr/bin/ffprobe
+
+ENTRYPOINT ["java", "-jar", "/app/platform-thumbnail-worker.jar"]

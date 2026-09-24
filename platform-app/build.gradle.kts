@@ -1,5 +1,21 @@
 plugins { id("org.springframework.boot") }
 
+tasks.named<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {
+    mainClass.set("com.example.platform.PlatformApplication")
+}
+
+val thumbnailWorkerBootJar = tasks.register<org.springframework.boot.gradle.tasks.bundling.BootJar>("thumbnailWorkerBootJar") {
+    group = "build"
+    description = "Builds the worker-only executable with no API HTTP entry point."
+    archiveFileName.set("platform-thumbnail-worker.jar")
+    mainClass.set("com.example.platform.thumbnail.ThumbnailWorkerApplication")
+    targetJavaVersion.set(org.gradle.api.JavaVersion.VERSION_25)
+    isPreserveFileTimestamps = false
+    isReproducibleFileOrder = true
+    classpath(sourceSets.main.get().runtimeClasspath)
+    dependsOn(tasks.named("classes"))
+}
+
 dependencies {
     implementation(project(":audit-contract-module")) // owner-published audit ports
     implementation(project(":marketplace-module"))
