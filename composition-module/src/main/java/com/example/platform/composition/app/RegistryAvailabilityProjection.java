@@ -6,7 +6,7 @@ import java.math.BigDecimal;
 import java.util.*;
 
 @Component
-public final class RegistryAvailabilityProjection implements ProviderRegistryBoundary {
+public final class RegistryAvailabilityProjection implements CompositionProviderBoundCapabilityAuthority {
     private final com.example.platform.extension.api.port.CapabilityRegistryPort capabilities;
     private final com.example.platform.extension.api.port.PluginRegistryPort providers;
     private final Map<String, CapabilityAvailability> entries = new LinkedHashMap<>();
@@ -23,6 +23,18 @@ public final class RegistryAvailabilityProjection implements ProviderRegistryBou
     private void register(CapabilityAvailability c) { entries.put(c.capabilityId()+":"+c.version(), c); }
     public List<CapabilityAvailability> publicAvailability() { return entries.values().stream().map(this::project).sorted(Comparator.comparing(CapabilityAvailability::capabilityId).thenComparing(CapabilityAvailability::version)).toList(); }
     public Optional<CapabilityAvailability> resolve(String id, String version) { return entries.values().stream().filter(c -> c.capabilityId().equals(id) && com.example.platform.composition.domain.CompositionVersionRange.check(version, c.version()).equals("OK")).sorted(Comparator.comparing(CapabilityAvailability::version)).findFirst().map(this::project); }
+    @Override public Optional<ProviderBoundCapability> resolveProviderBound(String id, String version) {
+        var capability = entries.values().stream().filter(c -> c.capabilityId().equals(id) && c.version().equals(version)).findFirst();
+        if (capability.isEmpty()) return Optional.empty();
+        var c = capability.get();
+        var candidate = providers.findCapabilityCandidates(c.capabilityId(), c.version()).stream()
+                .filter(p -> providers.healthOf(p.pluginId()).eligible()).findFirst();
+        if (candidate.isEmpty()) return Optional.empty();
+        var p = candidate.get();
+        return Optional.of(new ProviderBoundCapability(c.capabilityId(), c.version(),
+                p.pluginId() + "@" + p.pluginVersion(), c.version(), c.input().name(), c.input().version(),
+                c.output().name(), c.output().version()));
+    }
     private CapabilityAvailability project(CapabilityAvailability contract) {
         var matches=capabilities.findImplementationsForContractVersion(
                 com.example.platform.extension.domain.CapabilityId.of(contract.capabilityId()),
