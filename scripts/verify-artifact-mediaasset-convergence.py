@@ -65,6 +65,20 @@ def find_failures(root: Path) -> list[str]:
         if not is_java_production_source(path):
             continue
         failures.extend(source_failures(path, path.read_text()))
+    # Dependency and external component wiring are part of the production
+    # reachability surface even when no Java source names the deleted type.
+    for path in root.glob("**/build.gradle*"):
+        text = path.read_text()
+        for deleted_type in DELETED_LEGACY_TYPES:
+            if re.search(rf"\b{re.escape(deleted_type)}\b", text):
+                failures.append(f"Gradle wiring names deleted legacy authority: {path}:{deleted_type}")
+    for path in root.glob("**/src/main/resources/**/*"):
+        if not path.is_file() or path.suffix not in {".xml", ".yml", ".yaml", ".properties"}:
+            continue
+        text = path.read_text()
+        for deleted_type in DELETED_LEGACY_TYPES:
+            if re.search(rf"\b{re.escape(deleted_type)}\b", text):
+                failures.append(f"resource component wiring names deleted legacy authority: {path}:{deleted_type}")
     for path in [
         root / "composition-module/src/main/java/com/example/platform/composition/app/CompositionMaterializationAdapter.java",
         root / "composition-module/src/main/java/com/example/platform/composition/app/CompositionMaterializationPort.java",
