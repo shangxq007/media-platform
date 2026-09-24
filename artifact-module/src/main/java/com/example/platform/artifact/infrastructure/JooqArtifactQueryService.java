@@ -45,6 +45,12 @@ public class JooqArtifactQueryService implements ArtifactQueryService {
     }
 
     @Override
+    public boolean isAuthorizedWorkspace(String tenantId, String workspaceId, ArtifactId artifactId) {
+        return workspaceId != null && !workspaceId.isBlank()
+                && artifactRepository.existsInWorkspace(tenantId, workspaceId, artifactId);
+    }
+
+    @Override
     public List<ArtifactReplicaBinding> listReplicas(String tenantId, ArtifactId artifactId) {
         return artifactRepository.listReplicas(tenantId, artifactId);
     }

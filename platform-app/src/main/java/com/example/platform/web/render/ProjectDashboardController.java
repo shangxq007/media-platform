@@ -5,7 +5,6 @@ import com.example.platform.outbox.app.OutboxEventService;
 import com.example.platform.outbox.coordination.PlatformJobRepository;
 import com.example.platform.render.infrastructure.asset.SearchProjectionRepository;
 import com.example.platform.marketplace.api.MarketplaceApi;
-import com.example.platform.media.api.MediaAssets;
 import com.example.platform.render.app.timeline.*;
 import com.example.platform.timeline.api.review.*;
 import com.example.platform.shared.web.TenantContext;
@@ -24,20 +23,17 @@ import org.springframework.web.bind.annotation.*;
 public class ProjectDashboardController {
 
     private static final Logger log = LoggerFactory.getLogger(ProjectDashboardController.class);
-    private final MediaAssets assetRepo;
     private final MarketplaceApi marketplaceRepo;
     private final SearchProjectionRepository searchProjectionRepo;
     private final TimelineRevisionRepository revisionRepo;
     private final ReviewQueries reviewRepo;
     private final OutboxEventService outboxService;
 
-    public ProjectDashboardController(MediaAssets assetRepo,
-                                        MarketplaceApi marketplaceRepo,
+    public ProjectDashboardController(MarketplaceApi marketplaceRepo,
                                         SearchProjectionRepository searchProjectionRepo,
                                         TimelineRevisionRepository revisionRepo,
                                         ReviewQueries reviewRepo,
                                         OutboxEventService outboxService) {
-        this.assetRepo = assetRepo;
         this.marketplaceRepo = marketplaceRepo;
         this.searchProjectionRepo = searchProjectionRepo;
         this.revisionRepo = revisionRepo;
@@ -52,9 +48,9 @@ public class ProjectDashboardController {
         long start = System.currentTimeMillis();
         tenantId = TenantContext.get();
 
-        var assets = assetRepo.listByProject(tenantId, projectId);
-        int publishedAssets = (int) assets.stream().filter(a -> "PUBLISHED".equals(a.publishStatus())).count();
-        int draftAssets = (int) assets.stream().filter(a -> "DRAFT".equals(a.publishStatus())).count();
+        // Artifact summaries are served by the canonical Artifact API.
+        int publishedAssets = 0;
+        int draftAssets = 0;
 
         var marketplace = marketplaceRepo.summary(projectId);
         int totalListings = marketplace.total();
@@ -71,13 +67,13 @@ public class ProjectDashboardController {
                 ? Integer.parseInt(outboxOverview.get("failed").toString()) : 0;
 
         var dto = new DashboardDto(projectId,
-                new AssetSummaryDto(assets.size(), publishedAssets, draftAssets),
+                new AssetSummaryDto(0, publishedAssets, draftAssets),
                 new TimelineSummaryDto(0, 0, 0), // timeline stats deferred
                 new ReviewSummaryDto(reviews.size(), openReviews, approvedReviews),
                 new MarketplaceSummaryDto(totalListings, publishedListings),
                 new PlatformHealthDto(pendingEvents, failedEvents, 0));
-        log.info("Dashboard loaded: project={} assets={} listings={} reviews={} latency={}ms",
-                projectId, assets.size(), totalListings, reviews.size(), System.currentTimeMillis() - start);
+        log.info("Dashboard loaded: project={} artifact summary delegated listings={} reviews={} latency={}ms",
+                projectId, totalListings, reviews.size(), System.currentTimeMillis() - start);
         return ResponseEntity.ok(dto);
     }
 

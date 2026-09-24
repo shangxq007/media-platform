@@ -20,4 +20,4 @@ fi
 for migration in $(find platform-app/src/main/resources/db/migration -name 'V*.sql' -printf '%f\n' | sort -V); do
   podman exec -i "$name" psql -U postgres -d review -v ON_ERROR_STOP=1 -1 < "platform-app/src/main/resources/db/migration/$migration" >/dev/null
 done
-echo "PASS: clean PostgreSQL bootstrap through V19"
+echo "PASS: clean PostgreSQL bootstrap through V20"

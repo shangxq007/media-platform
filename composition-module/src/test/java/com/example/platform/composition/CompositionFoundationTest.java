@@ -51,7 +51,7 @@ class CompositionFoundationTest {
         var providerRegistry = new ProviderRegistryBoundary() {
             private final List<CapabilityAvailability> values = List.of(
                     new CapabilityAvailability("media.transcode", "1.0", new ContractRef("MediaAsset", "1"), new ContractRef("ProviderExecutionOutput", "1"), Set.of(), Set.of(), Set.of(ExecutionMode.ASYNCHRONOUS), Availability.AVAILABLE, "test", new CostEstimate(BigDecimal.ONE, "u", BigDecimal.ONE), new Reliability(true, true, 1), Set.of(), Set.of()),
-                    new CapabilityAvailability("media.consume", "1.0", new ContractRef("MediaAsset", "1"), new ContractRef("MediaAsset", "1"), Set.of(), Set.of(), Set.of(ExecutionMode.ASYNCHRONOUS), Availability.AVAILABLE, "test", new CostEstimate(BigDecimal.ONE, "u", BigDecimal.ONE), new Reliability(true, true, 1), Set.of(), Set.of()));
+                    new CapabilityAvailability("media.consume", "1.0", new ContractRef("Artifact", "1"), new ContractRef("Artifact", "1"), Set.of(), Set.of(), Set.of(ExecutionMode.ASYNCHRONOUS), Availability.AVAILABLE, "test", new CostEstimate(BigDecimal.ONE, "u", BigDecimal.ONE), new Reliability(true, true, 1), Set.of(), Set.of()));
             public List<CapabilityAvailability> publicAvailability() { return values; }
             public Optional<CapabilityAvailability> resolve(String id, String version) { return values.stream().filter(v -> v.capabilityId().equals(id) && v.version().equals(version)).findFirst(); }
         };
@@ -60,7 +60,7 @@ class CompositionFoundationTest {
         var terminal = new TemplateWorkflow("terminal", "1.0", "Terminal", List.of(source), List.of(), List.of(), Set.of("media.transcode"), Set.of(ExecutionMode.ASYNCHRONOUS), Set.of(), List.of(new WorkflowOutput("result", "ProviderExecutionOutput", "source", "output")), new WorkflowEntry("input", new ContractRef("MediaAsset", "1"), "source", "input"), new CostEstimate(BigDecimal.ONE, "u", BigDecimal.ONE), new Reliability(true, true, 1), Lifecycle.DRAFT, "t1", "w1", 0);
         var providerService = new CompositionService(providerRegistry, repository, access, resources);
         assertTrue(providerService.validateWorkflow(terminal, "t1", Set.of()).ready());
-        var rawToMedia = new TemplateWorkflow("raw", "1.0", "Raw", List.of(source, consumer), List.of(new Binding("source", "output", "consumer", "input", "MediaAsset")), List.of(), Set.of("media.transcode", "media.consume"), Set.of(ExecutionMode.ASYNCHRONOUS), Set.of(), List.of(new WorkflowOutput("result", "MediaAsset", "consumer", "output")), new WorkflowEntry("input", new ContractRef("MediaAsset", "1"), "source", "input"), new CostEstimate(BigDecimal.ONE, "u", BigDecimal.ONE), new Reliability(true, true, 1), Lifecycle.DRAFT, "t1", "w1", 0);
+        var rawToMedia = new TemplateWorkflow("raw", "1.0", "Raw", List.of(source, consumer), List.of(new Binding("source", "output", "consumer", "input", "Artifact")), List.of(), Set.of("media.transcode", "media.consume"), Set.of(ExecutionMode.ASYNCHRONOUS), Set.of(), List.of(new WorkflowOutput("result", "Artifact", "consumer", "output")), new WorkflowEntry("input", new ContractRef("MediaAsset", "1"), "source", "input"), new CostEstimate(BigDecimal.ONE, "u", BigDecimal.ONE), new Reliability(true, true, 1), Lifecycle.DRAFT, "t1", "w1", 0);
         assertTrue(providerService.validateWorkflow(rawToMedia, "t1", Set.of()).issues().stream().anyMatch(i -> i.code().equals("MATERIALIZATION_REQUIRED")));
     }
 

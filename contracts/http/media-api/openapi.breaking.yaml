@@ -16,7 +16,7 @@ paths:
     get:
       operationId: getArtifact
       summary: Retrieve an Artifact
-      parameters: [{name: artifactId, in: path, required: true, schema: {type: string}}]
+      parameters: [{name: artifactId, in: path, required: true, schema: {type: string}}, {name: workspaceId, in: query, required: true, schema: {type: string}}]
       responses:
         '200': {description: Artifact}
         '404': {description: Not found}
@@ -24,7 +24,7 @@ paths:
     get:
       operationId: getArtifactLineage
       summary: Retrieve Artifact lineage
-      parameters: [{name: artifactId, in: path, required: true, schema: {type: string}}]
+      parameters: [{name: artifactId, in: path, required: true, schema: {type: string}}, {name: workspaceId, in: query, required: true, schema: {type: string}}]
       responses:
         '200': {description: Artifact lineage}
         '401': {description: Unauthenticated}

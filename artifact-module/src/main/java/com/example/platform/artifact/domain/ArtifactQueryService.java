@@ -22,6 +22,9 @@ public interface ArtifactQueryService {
      */
     Optional<Artifact> getArtifact(String tenantId, ArtifactId artifactId);
 
+    /** Verifies the database-owned workspace scope without exposing workspace as a second identity. */
+    default boolean isAuthorizedWorkspace(String tenantId, String workspaceId, ArtifactId artifactId) { return false; }
+
     /**
      * Lists replica bindings for an artifact.
      *

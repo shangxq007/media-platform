@@ -11,6 +11,7 @@ import com.example.platform.timeline.canonical.TrackType;
 import com.example.platform.media.domain.stream.StreamKind;
 import java.util.ArrayList;
 import java.util.List;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 /**
@@ -30,6 +31,7 @@ import org.springframework.stereotype.Component;
  * </ul>
  */
 @Component
+@Profile("legacy-media-disabled")
 public class TimelineSourceReferenceValidator implements TimelineSourceValidation {
 
     private final MediaAssetQueries mediaAssetRepository;

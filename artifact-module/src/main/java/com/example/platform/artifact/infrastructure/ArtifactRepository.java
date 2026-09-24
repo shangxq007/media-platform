@@ -95,6 +95,13 @@ public class ArtifactRepository {
                         r.get(ARTIFACT.CREATED_AT).toInstant(ZoneOffset.UTC)));
     }
 
+    public boolean existsInWorkspace(String tenantId, String workspaceId, ArtifactId artifactId) {
+        return dsl.fetchExists(dsl.selectOne().from(ARTIFACT)
+                .where(ARTIFACT.TENANT_ID.eq(tenantId))
+                .and(ARTIFACT.ID.eq(artifactId.value()))
+                .and(org.jooq.impl.DSL.field(org.jooq.impl.DSL.name("workspace_id"), String.class).eq(workspaceId)));
+    }
+
     public List<Artifact> findByContentDigest(String tenantId, ContentDigest digest, int limit) {
         return dsl.selectFrom(ARTIFACT)
                 .where(ARTIFACT.TENANT_ID.eq(tenantId)
