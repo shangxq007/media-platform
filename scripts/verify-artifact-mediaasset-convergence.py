@@ -14,6 +14,10 @@ LEGACY_MARKERS = (
     "MediaProbes", "MediaProbePort", "MediaProbeObservation", "MediaAssetId",
     "media-asset", "MediaAuthorization",
 )
+DELETED_LEGACY_TYPES = (
+    "MediaAuthorization", "MediaAssetService", "MediaProbeService",
+    "MediaProbes", "MediaProbePort", "MediaProbePortAdapter",
+)
 
 def is_java_production_source(path: Path) -> bool:
     return "src/main/java/" in str(path) and "/build/" not in str(path)
@@ -28,20 +32,19 @@ def has_legacy_marker(text: str) -> bool:
     code = re.sub(r"//.*", "", code)
     return any(marker in code for marker in LEGACY_MARKERS)
 
-# Fail closed on every default-profile production bean that can carry the retired
-# MediaAsset/MediaProbe authority, including interface-only adapters and classes
-# whose imports are the only legacy signal. This deliberately covers authorization,
-# retrieval, persistence, lifecycle, identity, and probe roles.
+# Fail closed on every production reference to deleted legacy authorities. Comments
+# and historical/test-only material are intentionally excluded from this graph.
 for path in ROOT.glob("**/src/main/java/**/*.java"):
     if not is_java_production_source(path):
         continue
     text = path.read_text()
+    code = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
+    code = re.sub(r"//.*", "", code)
+    for deleted_type in DELETED_LEGACY_TYPES:
+        if re.search(rf"\b{re.escape(deleted_type)}\b", code):
+            failures.append(f"deleted legacy production type remains reachable: {path}:{deleted_type}")
     if has_spring_role(text) and has_legacy_marker(text) and LEGACY_PROFILE not in text:
         failures.append(f"default-profile legacy authority remains: {path}")
-    if "implements MediaProbePort" in text and LEGACY_PROFILE not in text:
-        failures.append(f"default-profile MediaProbePort implementation remains: {path}")
-    if "class MediaAuthorization" in text and LEGACY_PROFILE not in text:
-        failures.append(f"default-profile MediaAuthorization remains: {path}")
 for path in [
     ROOT / "composition-module/src/main/java/com/example/platform/composition/app/CompositionMaterializationAdapter.java",
     ROOT / "composition-module/src/main/java/com/example/platform/composition/app/CompositionMaterializationPort.java",
