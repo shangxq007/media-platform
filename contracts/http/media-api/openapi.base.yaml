@@ -14,6 +14,20 @@ info:
 servers:
   - url: /api
 paths:
+  /artifacts/typed/validate:
+    post:
+      operationId: validateTypedArtifactConversion
+      summary: Validate typed artifact compatibility and a declarative conversion contract
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/TypedArtifactValidationRequest'}}}}
+      responses:
+        '200': {description: Structured validation result, content: {application/json: {schema: {$ref: '#/components/schemas/TypedArtifactValidationResponse'}}}}
+        '422': {description: Invalid typed contract or lineage}
+  /conversion-specifications/{specificationId}:
+    get:
+      operationId: getConversionSpecification
+      summary: Read an immutable declarative conversion specification
+      parameters: [{name: specificationId, in: path, required: true, schema: {type: string}}]
+      responses: {'200': {description: Immutable specification, content: {application/json: {schema: {$ref: '#/components/schemas/ConversionSpecification'}}}}, '404': {description: Not found}}
   /composition/admissions:
     post:
       operationId: admitComposition
@@ -329,3 +343,36 @@ components:
         ready: {type: boolean}
         issues: {type: array, items: {$ref: '#/components/schemas/ValidationIssue'}}
         snapshotId: {type: string}
+
+    LogicalArtifactKind:
+      type: string
+      enum: [VIDEO, AUDIO, IMAGE, THUMBNAIL, SUBTITLE, TRANSCRIPT, STRUCTURED_TEXT, DOCUMENT, MARKDOWN, LATEX, PRESENTATION, ANKI_DECK, MIND_MAP, THREE_D_SCENE, GENERIC_BINARY]
+    TypedArtifactValidationRequest:
+      type: object
+      required: [contract, inputs, tenantId, workspaceId, contractVersion]
+      properties:
+        contract: {type: object}
+        inputs: {type: array, items: {type: object}}
+        outputs: {type: array, items: {type: object}}
+        parameters: {type: object}
+        tenantId: {type: string}
+        workspaceId: {type: string}
+        contractVersion: {type: string}
+    TypedArtifactValidationResponse:
+      type: object
+      required: [valid, errors]
+      properties:
+        valid: {type: boolean}
+        errors: {type: array, items: {type: object, required: [code, location, message]}}
+    ConversionSpecification:
+      type: object
+      required: [specificationId, tenantId, workspaceId, requestedContractId, contractVersion, deterministicFingerprint, sourceArtifactIds]
+      properties:
+        specificationId: {type: string}
+        tenantId: {type: string}
+        workspaceId: {type: string}
+        actorId: {type: string}
+        sourceArtifactIds: {type: array, minItems: 1, items: {type: string}}
+        requestedContractId: {type: string}
+        contractVersion: {type: string}
+        deterministicFingerprint: {type: string, pattern: '^[0-9a-f]{64}$'}

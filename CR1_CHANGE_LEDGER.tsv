@@ -50,3 +50,4 @@ composite-resource-module/src/test/java/com/example/platform/compositeresource/d
 composite-resource-module/src/test/java/com/example/platform/compositeresource/domain/CompositeResourceDiffTest.java	TEST
 composite-resource-module/src/test/java/com/example/platform/compositeresource/domain/CompositeResourceIdentityTest.java	TEST
 composite-resource-module/src/test/java/com/example/platform/compositeresource/domain/CompositeResourceModelTest.java	TEST
+2026-09-25	TYPED-ARTIFACT-CONVERSION	candidate	Added platform-owned typed artifact contracts, immutable conversion specifications, V17 persistence boundary, validation API schemas, ADR and governance docs. No execution or deployment.
