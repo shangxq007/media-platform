@@ -15,7 +15,7 @@ public record CompositionAdmissionRequest(
     public CompositionAdmissionRequest {
         require(workspaceSelection, "workspaceSelection"); require(compositionId, "compositionId");
         require(publishedVersion, "publishedVersion"); require(idempotencyKey, "idempotencyKey");
-        require(requestHash, "requestHash"); require(cancellationPolicy, "cancellationPolicy");
+        require(cancellationPolicy, "cancellationPolicy");
         require(retryPolicy, "retryPolicy"); parameters = parameters == null ? Map.of() : Map.copyOf(parameters);
     }
     private static void require(String v, String n) { if (v == null || v.isBlank()) throw new IllegalArgumentException(n + " is required"); }

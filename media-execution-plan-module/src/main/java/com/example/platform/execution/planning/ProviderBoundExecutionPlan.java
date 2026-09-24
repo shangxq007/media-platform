@@ -106,12 +106,17 @@ public record ProviderBoundExecutionPlan(
     public enum ExecutionMode { SYNCHRONOUS, ASYNCHRONOUS, BATCH }
 
     public record EntitlementQuotaSnapshot(String snapshotId, Map<String, String> entitlements,
-            BigDecimal quotaUnits) {
+            BigDecimal quotaUnits, BigDecimal quotaRemaining) {
         public EntitlementQuotaSnapshot {
             required(snapshotId, "snapshotId");
             Objects.requireNonNull(quotaUnits, "quotaUnits");
             if (quotaUnits.signum() < 0) throw new IllegalArgumentException("quotaUnits must be non-negative");
+            Objects.requireNonNull(quotaRemaining, "quotaRemaining");
+            if (quotaRemaining.signum() < 0) throw new IllegalArgumentException("quotaRemaining must be non-negative");
             entitlements = entitlements == null ? Map.of() : Map.copyOf(entitlements);
+        }
+        public EntitlementQuotaSnapshot(String snapshotId, Map<String, String> entitlements, BigDecimal quotaUnits) {
+            this(snapshotId, entitlements, quotaUnits, quotaUnits);
         }
     }
 

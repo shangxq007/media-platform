@@ -15,3 +15,13 @@ alter table quota_usage_operation
     add constraint quota_usage_operation_limit_value_check check (limit_value >= 0);
 alter table platform_execution_admission
     add column if not exists quota_charged_units numeric(38,18);
+update platform_execution_admission
+   set quota_charged_units = quota_units
+ where quota_charged = true
+   and quota_charged_units is null;
+alter table platform_execution_admission
+    drop constraint if exists chk_platform_execution_admission_quota_charged_units;
+alter table platform_execution_admission
+    add constraint chk_platform_execution_admission_quota_charged_units
+    check ((quota_charged = false and quota_charged_units is null)
+        or (quota_charged = true and quota_charged_units is not null and quota_charged_units >= 0));

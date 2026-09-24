@@ -35,7 +35,10 @@ public final class CanonicalCompositionEntitlementQuotaResolver implements Compo
             if (decision.quotaRemaining() != null) remaining = decision.quotaRemaining();
         }
         if (remaining == null) throw new IllegalArgumentException("quota authority did not return availability");
+        BigDecimal estimate = workflow.estimate().quotaUnits();
+        if (estimate == null || estimate.signum() <= 0) throw new IllegalArgumentException("published Composition estimate must be positive");
+        if (estimate.compareTo(remaining) > 0) throw new IllegalArgumentException("published Composition estimate exceeds remaining quota");
         String snapshot = (provenance == null ? "quota" : provenance) + ":" + remaining.toPlainString();
-        return new ProviderBoundExecutionPlan.EntitlementQuotaSnapshot(snapshot, granted, remaining);
+        return new ProviderBoundExecutionPlan.EntitlementQuotaSnapshot(snapshot, granted, estimate, remaining);
     }
 }

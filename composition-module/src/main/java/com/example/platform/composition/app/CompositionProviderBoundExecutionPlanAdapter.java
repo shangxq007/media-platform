@@ -46,7 +46,9 @@ public final class CompositionProviderBoundExecutionPlanAdapter {
         ValidationResult validation = CompositionValidator.validate(workflow, authority,
                 resourceResolution.availableAssets(), granted);
         if (!validation.ready()) throw new IllegalArgumentException("composition plan is not admissible: " + validation.issues());
-        if (entitlementQuota.quotaUnits().compareTo(workflow.estimate().quotaUnits()) < 0)
+        if (workflow.estimate().quotaUnits() == null || workflow.estimate().quotaUnits().signum() <= 0)
+            throw new IllegalArgumentException("published Composition estimate must be positive");
+        if (entitlementQuota.quotaRemaining().compareTo(workflow.estimate().quotaUnits()) < 0)
             throw new IllegalArgumentException("quota snapshot is below the published Composition estimate");
         List<ProviderBoundExecutionPlan.CapabilityProviderBinding> bindings = new ArrayList<>();
         for (WorkflowStep step : workflow.steps()) {
@@ -86,8 +88,34 @@ public final class CompositionProviderBoundExecutionPlanAdapter {
                 ProviderBoundExecutionPlan.ExecutionMode.valueOf(workflow.executionModes().iterator().next().name()),
                 entitlementQuota,
                 new ProviderBoundExecutionPlan.PlanFingerprint(published.planFingerprint()),
-                new ProviderBoundExecutionPlan.IdempotencyIdentity(idempotencyKey, requestHash),
+                new ProviderBoundExecutionPlan.IdempotencyIdentity(idempotencyKey,
+                        canonicalIntentHash(published, scope, parameters, entitlementQuota, cancellationPolicy, retryPolicy)),
                 new ProviderBoundExecutionPlan.PolicyReferences(cancellationPolicy, retryPolicy));
+    }
+
+    private static String canonicalIntentHash(CompositionPublishedRevisionAuthority.PublishedRevision published,
+            ProviderBoundExecutionPlan.Scope scope, Map<String, Object> parameters,
+            ProviderBoundExecutionPlan.EntitlementQuotaSnapshot quota, String cancellationPolicy, String retryPolicy) {
+        try {
+            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+            StringBuilder canonical = new StringBuilder();
+            canonical.append("composition-admission-v2\n").append(scope.tenantId()).append('\n')
+                    .append(scope.workspaceId()).append('\n').append(scope.actorId()).append('\n')
+                    .append(published.workflow().id()).append('\n').append(published.workflow().version()).append('\n')
+                    .append(published.workflow().revision()).append('\n').append(published.planFingerprint()).append('\n')
+                    .append(cancellationPolicy).append('\n').append(retryPolicy).append('\n')
+                    .append(published.workflow().executionModes()).append('\n')
+                    .append(published.workflow().estimate().quotaUnits().toPlainString()).append('\n')
+                    .append(quota.entitlements()).append('\n');
+            new java.util.TreeMap<>(parameters == null ? Map.of() : parameters).forEach((k,v) -> canonical.append(k).append('=').append(String.valueOf(v)).append('\n'));
+            published.workflow().requiredAssets().stream().sorted().forEach(a -> canonical.append("asset=").append(a).append('\n'));
+            published.workflow().steps().forEach(step -> {
+                canonical.append("step=").append(step.id()).append(':').append(step.capabilityId()).append('@').append(step.capabilityVersion()).append('\n');
+                step.requiredAssets().stream().sorted().forEach(a -> canonical.append("stepAsset=").append(step.id()).append(':').append(a).append('\n'));
+                step.entitlements().stream().sorted(java.util.Comparator.comparing(EntitlementRequirement::key).thenComparing(EntitlementRequirement::version)).forEach(e -> canonical.append("entitlement=").append(e.key()).append('@').append(e.version()).append('\n'));
+            });
+            return java.util.HexFormat.of().formatHex(digest.digest(canonical.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        } catch (java.security.NoSuchAlgorithmException e) { throw new IllegalStateException("SHA-256 unavailable", e); }
     }
 
     private static String outputVersion(TemplateWorkflow workflow, WorkflowOutput output,
