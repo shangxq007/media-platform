@@ -23,6 +23,7 @@ tasks.withType<JavaCompile>().configureEach {
 dependencies {
     implementation(project(":sandbox-isolation-module"))
     implementation(project(":media-execution-plan-module"))
+    implementation(project(":extension-module"))
     implementation(project(":artifact-module"))
     implementation(project(":storage-module"))
     implementation("org.springframework.boot:spring-boot-starter-jooq")
