@@ -12,6 +12,7 @@ import com.example.platform.shared.commercial.PrincipalType;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -68,7 +69,7 @@ class QuotaUsageAuthorityPostgresTest extends PostgresTestContainerSupport {
                     quota_key varchar(128) not null,
                     period_start timestamptz not null,
                     period_end timestamptz not null,
-                    usage_value bigint not null default 0 check (usage_value >= 0),
+                    usage_value numeric(38,18) not null default 0 check (usage_value >= 0),
                     created_at timestamptz not null,
                     updated_at timestamptz not null,
                     unique (tenant_id, principal_type, principal_id, workspace_scope,
@@ -86,14 +87,14 @@ class QuotaUsageAuthorityPostgresTest extends PostgresTestContainerSupport {
                     quota_key varchar(128) not null,
                     period_start timestamptz not null,
                     period_end timestamptz not null,
-                    signed_delta bigint not null,
-                    limit_value bigint not null check (limit_value >= 0),
+                    signed_delta numeric(38,18) not null,
+                    limit_value numeric(38,18) not null check (limit_value >= 0),
                     idempotency_key varchar(255) not null,
                     operation_kind varchar(32) not null check (
                         operation_kind in ('CONSUMPTION', 'ADJUSTMENT', 'REVERSAL', 'RECONCILIATION')),
                     outcome varchar(32) not null check (outcome in ('PENDING', 'APPLIED', 'REJECTED')),
-                    usage_before bigint,
-                    usage_after bigint,
+                    usage_before numeric(38,18),
+                    usage_after numeric(38,18),
                     rejection_reason varchar(64),
                     trace_id varchar(128) not null,
                     reason varchar(512) not null,
@@ -129,7 +130,7 @@ class QuotaUsageAuthorityPostgresTest extends PostgresTestContainerSupport {
                         QuotaOperationKind.CONSUMPTION));
 
         assertEquals(20, results.stream().filter(QuotaUsageResult::applied).count());
-        assertEquals(20, usage(principal, PERIOD_START, PERIOD_END));
+        assertTrue(new BigDecimal("20").compareTo(usage(principal, PERIOD_START, PERIOD_END)) == 0);
         assertEquals(20, auditCount());
     }
 
@@ -142,8 +143,21 @@ class QuotaUsageAuthorityPostgresTest extends PostgresTestContainerSupport {
         QuotaUsageResult replay = authority.execute(command);
 
         assertEquals(first, replay);
-        assertEquals(7, usage(command.principal(), PERIOD_START, PERIOD_END));
+        assertTrue(new BigDecimal("7").compareTo(usage(command.principal(), PERIOD_START, PERIOD_END)) == 0);
         assertEquals(1, auditCount());
+    }
+
+    @Test
+    void fractionalQuotaIsPersistedComparedAndChargedExactly() {
+        PrincipalRef principal = principal("tenant-a", "fractional-user");
+        QuotaUsageCommand command = new QuotaUsageCommand(principal, "fractional", PERIOD_START, PERIOD_END,
+                new BigDecimal("1.25"), new BigDecimal("2.50"), "fractional-key",
+                QuotaOperationKind.CONSUMPTION, "fractional-trace", "fractional test", OCCURRED_AT);
+        QuotaUsageResult result = authority.execute(command);
+        assertTrue(result.applied());
+        assertTrue(new BigDecimal("1.25").compareTo(result.usageAfter()) == 0);
+        assertTrue(new BigDecimal("1.25").compareTo(usage(principal, "fractional", PERIOD_START, PERIOD_END)) == 0);
+        assertTrue(new BigDecimal("1.25").compareTo(authority.execute(command).usageAfter()) == 0);
     }
 
     @Test
@@ -174,7 +188,7 @@ class QuotaUsageAuthorityPostgresTest extends PostgresTestContainerSupport {
                     assertEquals("Idempotency key reused with different quota command payload",
                             failure.getMessage());
                 }));
-        assertEquals(7, usage(principal, PERIOD_START, PERIOD_END));
+        assertTrue(new BigDecimal("7").compareTo(usage(principal, PERIOD_START, PERIOD_END)) == 0);
         assertEquals(1, auditCount());
     }
 
@@ -187,7 +201,7 @@ class QuotaUsageAuthorityPostgresTest extends PostgresTestContainerSupport {
                         QuotaOperationKind.CONSUMPTION));
 
         assertEquals(1, results.stream().distinct().count());
-        assertEquals(9, usage(principal, PERIOD_START, PERIOD_END));
+        assertTrue(new BigDecimal("9").compareTo(usage(principal, PERIOD_START, PERIOD_END)) == 0);
         assertEquals(1, auditCount());
     }
 
@@ -204,7 +218,7 @@ class QuotaUsageAuthorityPostgresTest extends PostgresTestContainerSupport {
                 .filter(result -> result.outcome() == QuotaUsageOutcome.REJECTED)
                 .filter(result -> result.rejectionReason() == QuotaUsageRejectionReason.LIMIT_EXCEEDED)
                 .count());
-        assertEquals(9, usage(principal, PERIOD_START, PERIOD_END));
+        assertTrue(new BigDecimal("9").compareTo(usage(principal, PERIOD_START, PERIOD_END)) == 0);
         assertEquals(10, auditCount());
     }
 
@@ -217,7 +231,7 @@ class QuotaUsageAuthorityPostgresTest extends PostgresTestContainerSupport {
 
         assertEquals(QuotaUsageOutcome.REJECTED, result.outcome());
         assertEquals(QuotaUsageRejectionReason.NEGATIVE_RESULT, result.rejectionReason());
-        assertEquals(0, usage(principal, PERIOD_START, PERIOD_END));
+        assertTrue(new BigDecimal("0").compareTo(usage(principal, PERIOD_START, PERIOD_END)) == 0);
         assertEquals(1, auditCount());
     }
 
@@ -235,7 +249,7 @@ class QuotaUsageAuthorityPostgresTest extends PostgresTestContainerSupport {
         assertTrue(adjustment.applied());
         assertTrue(reversal.applied());
         assertEquals(reversal, replay);
-        assertEquals(17, usage(principal, PERIOD_START, PERIOD_END));
+        assertTrue(new BigDecimal("17").compareTo(usage(principal, PERIOD_START, PERIOD_END)) == 0);
         List<String> operationKinds = jdbc.queryForList(
                 "SELECT operation_kind FROM quota_usage_operation", String.class);
         assertEquals(3, operationKinds.size());
@@ -258,10 +272,10 @@ class QuotaUsageAuthorityPostgresTest extends PostgresTestContainerSupport {
         authority.execute(command(tenantAUserA, "next-period", 4, 100,
                 QuotaOperationKind.CONSUMPTION, nextStart, nextEnd));
 
-        assertEquals(1, usage(tenantAUserA, PERIOD_START, PERIOD_END));
-        assertEquals(2, usage(tenantAUserB, PERIOD_START, PERIOD_END));
-        assertEquals(3, usage(tenantBUserA, PERIOD_START, PERIOD_END));
-        assertEquals(4, usage(tenantAUserA, nextStart, nextEnd));
+        assertTrue(new BigDecimal("1").compareTo(usage(tenantAUserA, PERIOD_START, PERIOD_END)) == 0);
+        assertTrue(new BigDecimal("2").compareTo(usage(tenantAUserB, PERIOD_START, PERIOD_END)) == 0);
+        assertTrue(new BigDecimal("3").compareTo(usage(tenantBUserA, PERIOD_START, PERIOD_END)) == 0);
+        assertTrue(new BigDecimal("4").compareTo(usage(tenantAUserA, nextStart, nextEnd)) == 0);
         assertEquals(4, jdbc.queryForObject("SELECT COUNT(*) FROM quota_usage", Long.class));
     }
 
@@ -272,8 +286,8 @@ class QuotaUsageAuthorityPostgresTest extends PostgresTestContainerSupport {
         authority.execute(command(tenantA, "tenant-a-only", 11, 100,
                 QuotaOperationKind.CONSUMPTION));
 
-        assertEquals(11, usage(tenantA, PERIOD_START, PERIOD_END));
-        assertEquals(0, usage(tenantB, PERIOD_START, PERIOD_END));
+        assertTrue(new BigDecimal("11").compareTo(usage(tenantA, PERIOD_START, PERIOD_END)) == 0);
+        assertTrue(new BigDecimal("0").compareTo(usage(tenantB, PERIOD_START, PERIOD_END)) == 0);
         assertNotEquals(usage(tenantA, PERIOD_START, PERIOD_END),
                 usage(tenantB, PERIOD_START, PERIOD_END));
     }
@@ -302,7 +316,7 @@ class QuotaUsageAuthorityPostgresTest extends PostgresTestContainerSupport {
                 "rollback proof", OCCURRED_AT);
 
         assertThrows(RuntimeException.class, () -> authority.execute(command));
-        assertEquals(0, usage(principal, PERIOD_START, PERIOD_END));
+        assertTrue(new BigDecimal("0").compareTo(usage(principal, PERIOD_START, PERIOD_END)) == 0);
         assertEquals(0, auditCount());
     }
 
@@ -332,9 +346,13 @@ class QuotaUsageAuthorityPostgresTest extends PostgresTestContainerSupport {
                 "test operation", OCCURRED_AT);
     }
 
-    private static long usage(PrincipalRef principal, Instant periodStart, Instant periodEnd) {
+    private static java.math.BigDecimal usage(PrincipalRef principal, Instant periodStart, Instant periodEnd) {
+        return usage(principal, "render", periodStart, periodEnd);
+    }
+
+    private static java.math.BigDecimal usage(PrincipalRef principal, String quotaKey, Instant periodStart, Instant periodEnd) {
         return authority.currentUsage(new QuotaUsageQuery(
-                principal, "render", periodStart, periodEnd, 0, 100,
+                principal, quotaKey, periodStart, periodEnd, 0, 100,
                 "read-trace", OCCURRED_AT));
     }
 

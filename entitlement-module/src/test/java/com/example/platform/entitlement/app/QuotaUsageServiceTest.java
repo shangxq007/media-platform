@@ -9,6 +9,7 @@ import com.example.platform.shared.commercial.PrincipalRef;
 import com.example.platform.shared.commercial.PrincipalType;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
+import java.math.BigDecimal;
 
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.Mockito.mock;
@@ -46,9 +47,9 @@ class QuotaUsageServiceTest {
         QuotaUsageQuery query = new QuotaUsageQuery(
                 PrincipalRef.tenantScoped("tenant-1", PrincipalType.USER, "user-1"),
                 "render", START, END, 0, 100, "trace-read", NOW);
-        when(authority.currentUsage(query)).thenReturn(17L);
+        when(authority.currentUsage(query)).thenReturn(BigDecimal.valueOf(17));
 
-        org.junit.jupiter.api.Assertions.assertEquals(17L, service.currentUsage(query));
+        org.junit.jupiter.api.Assertions.assertEquals(BigDecimal.valueOf(17), service.currentUsage(query));
         verify(authority).currentUsage(query);
     }
 }

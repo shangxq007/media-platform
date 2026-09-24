@@ -1,5 +1,7 @@
 package com.example.platform.entitlement.domain;
 
+import java.math.BigDecimal;
+
 /**
  * Quota policy defining usage limits for a tier.
  */
@@ -7,19 +9,32 @@ public record QuotaPolicy(
         String policyId,
         String tier,
         String featureCode,
-        long limitValue,
+        BigDecimal limitValue,
         String period,
-        long warningThresholdPercent) {
+        BigDecimal warningThresholdPercent) {
 
-    public boolean isExceeded(long currentUsage) {
-        return currentUsage >= limitValue;
+    public QuotaPolicy {
+        limitValue = QuotaQuantity.exact(limitValue, "limitValue");
+        warningThresholdPercent = QuotaQuantity.exact(warningThresholdPercent, "warningThresholdPercent");
+        if (limitValue.signum() < 0 || warningThresholdPercent.signum() < 0)
+            throw new IllegalArgumentException("quota policy quantities must not be negative");
     }
 
-    public boolean isWarning(long currentUsage) {
-        return currentUsage >= limitValue * (warningThresholdPercent / 100.0);
+    public boolean isExceeded(BigDecimal currentUsage) {
+        return currentUsage.compareTo(limitValue) >= 0;
     }
 
-    public long remaining(long currentUsage) {
-        return Math.max(0, limitValue - currentUsage);
+    public boolean isWarning(BigDecimal currentUsage) {
+        return currentUsage.compareTo(limitValue.multiply(warningThresholdPercent).divide(BigDecimal.valueOf(100))) >= 0;
+    }
+
+    public BigDecimal remaining(BigDecimal currentUsage) {
+        return limitValue.subtract(currentUsage).max(BigDecimal.ZERO);
+    }
+
+    public QuotaPolicy(String policyId, String tier, String featureCode, long limitValue,
+            String period, long warningThresholdPercent) {
+        this(policyId, tier, featureCode, BigDecimal.valueOf(limitValue), period,
+                BigDecimal.valueOf(warningThresholdPercent));
     }
 }

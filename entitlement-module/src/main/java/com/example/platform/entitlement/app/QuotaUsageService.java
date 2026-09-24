@@ -22,7 +22,7 @@ public class QuotaUsageService {
         return authority.execute(command);
     }
 
-    public long currentUsage(QuotaUsageQuery query) {
+    public java.math.BigDecimal currentUsage(QuotaUsageQuery query) {
         return authority.currentUsage(query);
     }
 }

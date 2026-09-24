@@ -1,3 +1,6 @@
 package com.example.platform.entitlement.domain;
 
-public record QuotaDecision(String subjectId, String quotaCode, boolean allowed, double limitValue, double usedValue) {}
+import java.math.BigDecimal;
+
+public record QuotaDecision(String subjectId, String quotaCode, boolean allowed, BigDecimal limitValue, BigDecimal usedValue) {
+}

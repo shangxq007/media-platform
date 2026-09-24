@@ -68,7 +68,7 @@ public class ExportPanelGraphQLResolver {
             AccessCheckRequest req = new AccessCheckRequest(
                     tenantId, workspaceId, userId, "USER", userId,
                     "check", "FEATURE", tenantId, "export",
-                    null, null, "GRAPHQL", 0L, Map.of());
+                    null, null, "GRAPHQL", java.math.BigDecimal.ZERO, Map.of());
             EntitlementDecision decision = entitlementDecisionService.evaluate(req);
             return decision.currentTier() != null ? decision.currentTier() : "FREE";
         } catch (Exception e) {

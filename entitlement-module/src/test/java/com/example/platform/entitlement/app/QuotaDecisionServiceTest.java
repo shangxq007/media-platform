@@ -41,6 +41,6 @@ class QuotaDecisionServiceTest {
         assertEquals(principal, query.getValue().principal());
         assertEquals(start, query.getValue().periodStart());
         assertEquals(end, query.getValue().periodEnd());
-        assertEquals(10000, query.getValue().limitUnits());
+        assertEquals(java.math.BigDecimal.valueOf(10000), query.getValue().limitUnits());
     }
 }

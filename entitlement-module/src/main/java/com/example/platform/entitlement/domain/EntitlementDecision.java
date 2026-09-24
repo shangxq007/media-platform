@@ -1,6 +1,7 @@
 package com.example.platform.entitlement.domain;
 
 import java.time.Instant;
+import java.math.BigDecimal;
 import java.util.List;
 
 public record EntitlementDecision(
@@ -13,7 +14,7 @@ public record EntitlementDecision(
         String matchedGrantId,
         String matchedOverrideId,
         String matchedWorkspacePoolId,
-        Long quotaRemaining,
+        BigDecimal quotaRemaining,
         String recommendedAlternative,
         List<String> upgradeOptions,
         Instant expiresAt,

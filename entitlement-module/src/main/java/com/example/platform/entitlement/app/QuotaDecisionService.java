@@ -5,6 +5,7 @@ import com.example.platform.entitlement.domain.QuotaUsageQuery;
 import com.example.platform.shared.commercial.PrincipalRef;
 import com.example.platform.entitlement.api.commercial.QuotaDecision;
 import java.time.Instant;
+import java.math.BigDecimal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -28,10 +29,10 @@ public class QuotaDecisionService {
             String quotaKey,
             Instant periodStart,
             Instant periodEnd,
-            long requestedAmount,
+            BigDecimal requestedAmount,
             String traceId,
             Instant decidedAt) {
-        long limit = quotaPolicyService.getQuotaPolicy(quotaKey).limitValue();
+        BigDecimal limit = quotaPolicyService.getQuotaPolicy(quotaKey).limitValue();
         QuotaDecision decision = quotaUsageAuthority.decide(new QuotaUsageQuery(
                 principal, quotaKey, periodStart, periodEnd, requestedAmount,
                 limit, traceId, decidedAt));
@@ -46,12 +47,23 @@ public class QuotaDecisionService {
             QuotaProfile profile,
             Instant periodStart,
             Instant periodEnd,
-            long requestedAmount,
+            BigDecimal requestedAmount,
             String traceId,
             Instant decidedAt) {
-        long limit = quotaPolicyService.resolveLimitFromProfile(profile, quotaKey);
+        BigDecimal limit = quotaPolicyService.resolveLimitFromProfile(profile, quotaKey);
         return quotaUsageAuthority.decide(new QuotaUsageQuery(
                 principal, quotaKey, periodStart, periodEnd, requestedAmount,
                 limit, traceId, decidedAt));
+    }
+
+    public QuotaDecision evaluate(PrincipalRef principal, String quotaKey, Instant periodStart,
+            Instant periodEnd, long requestedAmount, String traceId, Instant decidedAt) {
+        return evaluate(principal, quotaKey, periodStart, periodEnd, BigDecimal.valueOf(requestedAmount), traceId, decidedAt);
+    }
+
+    public QuotaDecision evaluateWithProfile(PrincipalRef principal, String quotaKey, QuotaProfile profile,
+            Instant periodStart, Instant periodEnd, long requestedAmount, String traceId, Instant decidedAt) {
+        return evaluateWithProfile(principal, quotaKey, profile, periodStart, periodEnd,
+                BigDecimal.valueOf(requestedAmount), traceId, decidedAt);
     }
 }

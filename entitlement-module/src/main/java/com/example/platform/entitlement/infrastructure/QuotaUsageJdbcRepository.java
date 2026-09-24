@@ -8,7 +8,7 @@ import com.example.platform.entitlement.domain.QuotaUsageRejectionReason;
 import com.example.platform.entitlement.domain.QuotaUsageResult;
 import com.example.platform.shared.commercial.PrincipalRef;
 import com.example.platform.shared.commercial.PrincipalType;
-import java.math.BigInteger;
+import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -67,25 +67,25 @@ public class QuotaUsageJdbcRepository {
             return findOperation(command);
         }
 
-        Long usageAfter = atomicUpdate(command, recordedAt);
+        BigDecimal usageAfter = atomicUpdate(command, recordedAt);
         if (usageAfter == null) {
             usageAfter = conditionalInsert(command, recordedAt);
         }
-        if (usageAfter == null && command.signedDelta() >= 0) {
+        if (usageAfter == null && command.signedDelta().signum() >= 0) {
             // A concurrent first writer may have inserted the logical row after our
             // initial UPDATE snapshot. A fresh atomic UPDATE statement completes the race.
             usageAfter = atomicUpdate(command, recordedAt);
         }
 
         if (usageAfter != null) {
-            long usageBefore = Math.subtractExact(usageAfter, command.signedDelta());
+            BigDecimal usageBefore = usageAfter.subtract(command.signedDelta());
             jdbc.update("""
                     UPDATE quota_usage_operation
                     SET outcome = 'APPLIED', usage_before = ?, usage_after = ?, rejection_reason = NULL
                     WHERE id = ?
                     """, usageBefore, usageAfter, operationId);
         } else {
-            long current = currentUsage(command.principal(), command.quotaKey(),
+            BigDecimal current = currentUsage(command.principal(), command.quotaKey(),
                     command.periodStart(), command.periodEnd());
             QuotaUsageRejectionReason rejection = rejectionReason(current, command);
             jdbc.update("""
@@ -98,15 +98,15 @@ public class QuotaUsageJdbcRepository {
         return findOperation(command);
     }
 
-    public long currentUsage(QuotaUsageQuery query) {
+    public BigDecimal currentUsage(QuotaUsageQuery query) {
         return currentUsage(query.principal(), query.quotaKey(),
                 query.periodStart(), query.periodEnd());
     }
 
-    private Long atomicUpdate(QuotaUsageCommand command, Instant updatedAt) {
-        List<Long> rows = jdbc.query("""
+    private BigDecimal atomicUpdate(QuotaUsageCommand command, Instant updatedAt) {
+        List<BigDecimal> rows = jdbc.query("""
                 UPDATE quota_usage
-                SET usage_value = ((usage_value::numeric + ?::numeric)::bigint),
+                SET usage_value = usage_value + ?,
                     updated_at = ?
                 WHERE tenant_id = ?
                   AND principal_type = ?
@@ -116,11 +116,11 @@ public class QuotaUsageJdbcRepository {
                   AND quota_key = ?
                   AND period_start = ?
                   AND period_end = ?
-                  AND (usage_value::numeric + ?::numeric) >= 0
-                  AND (usage_value::numeric + ?::numeric) <= ?::numeric
+                  AND (usage_value + ?) >= 0
+                  AND (usage_value + ?) <= ?
                 RETURNING usage_value
                 """,
-                (resultSet, rowNumber) -> resultSet.getLong("usage_value"),
+                (resultSet, rowNumber) -> resultSet.getBigDecimal("usage_value"),
                 command.signedDelta(),
                 Timestamp.from(updatedAt),
                 command.principal().tenantId(),
@@ -137,20 +137,20 @@ public class QuotaUsageJdbcRepository {
         return rows.isEmpty() ? null : rows.get(0);
     }
 
-    private Long conditionalInsert(QuotaUsageCommand command, Instant recordedAt) {
-        List<Long> rows = jdbc.query("""
+    private BigDecimal conditionalInsert(QuotaUsageCommand command, Instant recordedAt) {
+        List<BigDecimal> rows = jdbc.query("""
                 INSERT INTO quota_usage (
                     id, tenant_id, principal_type, principal_id, workspace_scope,
                     organization_scope, quota_key, period_start, period_end,
                     usage_value, created_at, updated_at)
                 SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
-                WHERE ?::numeric >= 0 AND ?::numeric <= ?::numeric
+                WHERE ? >= 0 AND ? <= ?
                 ON CONFLICT (tenant_id, principal_type, principal_id, workspace_scope,
                              organization_scope, quota_key, period_start, period_end)
                 DO NOTHING
                 RETURNING usage_value
                 """,
-                (resultSet, rowNumber) -> resultSet.getLong("usage_value"),
+                (resultSet, rowNumber) -> resultSet.getBigDecimal("usage_value"),
                 ("qu_" + java.util.UUID.randomUUID().toString().replace("-", "")),
                 command.principal().tenantId(),
                 command.principal().principalType().name(),
@@ -169,9 +169,9 @@ public class QuotaUsageJdbcRepository {
         return rows.isEmpty() ? null : rows.get(0);
     }
 
-    private long currentUsage(
+    private BigDecimal currentUsage(
             PrincipalRef principal, String quotaKey, Instant periodStart, Instant periodEnd) {
-        List<Long> rows = jdbc.query("""
+        List<BigDecimal> rows = jdbc.query("""
                 SELECT usage_value
                 FROM quota_usage
                 WHERE tenant_id = ?
@@ -183,7 +183,7 @@ public class QuotaUsageJdbcRepository {
                   AND period_start = ?
                   AND period_end = ?
                 """,
-                (resultSet, rowNumber) -> resultSet.getLong("usage_value"),
+                (resultSet, rowNumber) -> resultSet.getBigDecimal("usage_value"),
                 principal.tenantId(),
                 principal.principalType().name(),
                 principal.principalId(),
@@ -192,7 +192,7 @@ public class QuotaUsageJdbcRepository {
                 quotaKey,
                 Timestamp.from(periodStart),
                 Timestamp.from(periodEnd));
-        return rows.isEmpty() ? 0L : rows.get(0);
+        return rows.isEmpty() ? BigDecimal.ZERO : rows.get(0);
     }
 
     private QuotaUsageResult findOperation(QuotaUsageCommand command) {
@@ -253,13 +253,13 @@ public class QuotaUsageJdbcRepository {
                 resultSet.getString("quota_key"),
                 resultSet.getTimestamp("period_start").toInstant(),
                 resultSet.getTimestamp("period_end").toInstant(),
-                resultSet.getLong("signed_delta"),
-                resultSet.getLong("limit_value"),
+                resultSet.getBigDecimal("signed_delta"),
+                resultSet.getBigDecimal("limit_value"),
                 resultSet.getString("idempotency_key"),
                 QuotaOperationKind.valueOf(resultSet.getString("operation_kind")),
                 QuotaUsageOutcome.valueOf(resultSet.getString("outcome")),
-                resultSet.getLong("usage_before"),
-                resultSet.getLong("usage_after"),
+                resultSet.getBigDecimal("usage_before"),
+                resultSet.getBigDecimal("usage_after"),
                 rejection == null ? null : QuotaUsageRejectionReason.valueOf(rejection),
                 resultSet.getString("trace_id"),
                 resultSet.getString("reason"),
@@ -268,9 +268,8 @@ public class QuotaUsageJdbcRepository {
     }
 
     private static QuotaUsageRejectionReason rejectionReason(
-            long current, QuotaUsageCommand command) {
-        BigInteger resulting = BigInteger.valueOf(current)
-                .add(BigInteger.valueOf(command.signedDelta()));
+            BigDecimal current, QuotaUsageCommand command) {
+        BigDecimal resulting = current.add(command.signedDelta());
         if (resulting.signum() < 0) {
             return QuotaUsageRejectionReason.NEGATIVE_RESULT;
         }

@@ -2,6 +2,7 @@ package com.example.platform.entitlement.domain;
 
 import com.example.platform.shared.commercial.PrincipalRef;
 import java.time.Instant;
+import java.math.BigDecimal;
 import java.util.Objects;
 
 /** Committed quota operation result returned identically for idempotent replays. */
@@ -11,13 +12,13 @@ public record QuotaUsageResult(
         String quotaKey,
         Instant periodStart,
         Instant periodEnd,
-        long signedDelta,
-        long limitValue,
+        BigDecimal signedDelta,
+        BigDecimal limitValue,
         String idempotencyKey,
         QuotaOperationKind operationKind,
         QuotaUsageOutcome outcome,
-        long usageBefore,
-        long usageAfter,
+        BigDecimal usageBefore,
+        BigDecimal usageAfter,
         QuotaUsageRejectionReason rejectionReason,
         String traceId,
         String reason,
@@ -40,6 +41,21 @@ public record QuotaUsageResult(
         reason = requireNonBlank(reason, "reason");
         Objects.requireNonNull(occurredAt, "occurredAt must not be null");
         Objects.requireNonNull(recordedAt, "recordedAt must not be null");
+        signedDelta = QuotaQuantity.exact(signedDelta, "signedDelta");
+        limitValue = QuotaQuantity.exact(limitValue, "limitValue");
+        usageBefore = QuotaQuantity.exact(usageBefore, "usageBefore");
+        usageAfter = QuotaQuantity.exact(usageAfter, "usageAfter");
+    }
+
+    public QuotaUsageResult(String operationId, PrincipalRef principal, String quotaKey,
+            Instant periodStart, Instant periodEnd, long signedDelta, long limitValue,
+            String idempotencyKey, QuotaOperationKind operationKind, QuotaUsageOutcome outcome,
+            long usageBefore, long usageAfter, QuotaUsageRejectionReason rejectionReason,
+            String traceId, String reason, Instant occurredAt, Instant recordedAt) {
+        this(operationId, principal, quotaKey, periodStart, periodEnd, BigDecimal.valueOf(signedDelta),
+                BigDecimal.valueOf(limitValue), idempotencyKey, operationKind, outcome,
+                BigDecimal.valueOf(usageBefore), BigDecimal.valueOf(usageAfter), rejectionReason,
+                traceId, reason, occurredAt, recordedAt);
     }
 
     public boolean applied() {

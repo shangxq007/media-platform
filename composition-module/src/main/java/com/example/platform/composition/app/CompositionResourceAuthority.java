@@ -7,6 +7,7 @@ import com.example.platform.artifact.domain.ArtifactQueryService;
 import com.example.platform.entitlement.api.EntitlementDecisionQuery;
 import com.example.platform.entitlement.domain.AccessCheckRequest;
 import java.util.*;
+import java.math.BigDecimal;
 import org.springframework.stereotype.Component;
 
 /** Adapter over existing artifact and entitlement authorities; it owns no resource state. */
@@ -18,7 +19,7 @@ public class CompositionResourceAuthority {
     private final EntitlementDecisionQuery entitlements;
     public CompositionResourceAuthority(ArtifactQueryService artifacts, EntitlementDecisionQuery entitlements) { this.artifacts=artifacts; this.entitlements=entitlements; }
 
-    public ResourceCheck resolve(String tenant,String workspace,String subject,String compositionId,Set<String> assetRequirements,Set<String> entitlementRequirements,long quota) {
+    public ResourceCheck resolve(String tenant,String workspace,String subject,String compositionId,Set<String> assetRequirements,Set<String> entitlementRequirements,BigDecimal quota) {
         List<CompositionModelsIssue> issues=new ArrayList<>(); Set<String> available=new HashSet<>();
         for(String requirement: assetRequirements==null?Set.<String>of():assetRequirements) {
             String[] parts=requirement.split("\\|",-1); String id=parts.length==3?parts[2]:requirement;

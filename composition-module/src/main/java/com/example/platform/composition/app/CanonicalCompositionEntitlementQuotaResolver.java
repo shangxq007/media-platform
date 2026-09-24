@@ -32,7 +32,7 @@ public final class CanonicalCompositionEntitlementQuotaResolver implements Compo
             if (!decision.allowed() || decision.expiresAt() != null && !decision.expiresAt().isAfter(java.time.Instant.now()))
                 throw new IllegalArgumentException("entitlement is unavailable: " + entitlement);
             granted.put(required, "granted:" + (decision.matchedGrantId() == null ? "authority" : decision.matchedGrantId())); provenance = decision.matchedGrantId();
-            if (decision.quotaRemaining() != null) remaining = BigDecimal.valueOf(decision.quotaRemaining());
+            if (decision.quotaRemaining() != null) remaining = decision.quotaRemaining();
         }
         if (remaining == null) throw new IllegalArgumentException("quota authority did not return availability");
         String snapshot = (provenance == null ? "quota" : provenance) + ":" + remaining.toPlainString();

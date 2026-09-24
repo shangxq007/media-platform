@@ -27,7 +27,7 @@ public class QuotaConsumptionApplicationService implements QuotaConsumptionPort 
 
     @Override
     public QuotaDecision consume(QuotaConsumptionRequest request) {
-        long limit = policies.getQuotaPolicy(request.quotaKey()).limitValue();
+        var limit = policies.getQuotaPolicy(request.quotaKey()).limitValue();
         QuotaUsageResult result = authority.execute(new QuotaUsageCommand(
                 request.principal(), request.quotaKey(), request.periodStart(), request.periodEnd(),
                 request.amount(), limit, request.idempotencyKey(), QuotaOperationKind.CONSUMPTION,

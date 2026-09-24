@@ -1,6 +1,7 @@
 package com.example.platform.entitlement.domain;
 
 import java.util.Map;
+import java.math.BigDecimal;
 
 public record AccessCheckRequest(
         String tenantId,
@@ -15,6 +16,6 @@ public record AccessCheckRequest(
         String requestedPreset,
         String providerKey,
         String requestSource,
-        Long requestedQuota,
+        BigDecimal requestedQuota,
         Map<String, Object> context
 ) {}

@@ -7,6 +7,9 @@ import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import java.util.*;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 
 @RestController
 @RequestMapping("/api/composition")
@@ -15,6 +18,13 @@ public class CompositionController {
     private final com.example.platform.composition.app.CompositionAccess access;
     private final com.example.platform.composition.app.CompositionAdmissionService admission;
     public CompositionController(CompositionService service,com.example.platform.composition.app.CompositionAccess access, com.example.platform.composition.app.CompositionAdmissionService admission){this.service=service;this.access=access;this.admission=admission;}
+    @Operation(operationId = "admitComposition", summary = "Admit a published Composition for durable execution")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "AdmissionDecision persisted"),
+            @ApiResponse(responseCode = "403", description = "Authenticated scope or workspace membership rejected"),
+            @ApiResponse(responseCode = "409", description = "Idempotency key conflicts with an existing decision"),
+            @ApiResponse(responseCode = "422", description = "Published revision, resource, entitlement or quota validation failed")
+    })
     @PostMapping("/admissions") public AdmissionResponse admit(@RequestBody com.example.platform.composition.app.CompositionAdmissionRequest request){
         var decision=admission.admit(request);
         var plan=decision.plan();

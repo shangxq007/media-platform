@@ -22,28 +22,30 @@ public class QuotaPolicyService {
         };
     }
 
-    public boolean isExceeded(String featureCode, long currentUsage) {
+    public boolean isExceeded(String featureCode, java.math.BigDecimal currentUsage) {
         QuotaPolicy policy = getQuotaPolicy(featureCode);
         return policy.isExceeded(currentUsage);
     }
+    public boolean isExceeded(String featureCode, long currentUsage) { return isExceeded(featureCode, java.math.BigDecimal.valueOf(currentUsage)); }
 
-    public boolean isWarning(String featureCode, long currentUsage) {
+    public boolean isWarning(String featureCode, java.math.BigDecimal currentUsage) {
         QuotaPolicy policy = getQuotaPolicy(featureCode);
         return policy.isWarning(currentUsage);
     }
+    public boolean isWarning(String featureCode, long currentUsage) { return isWarning(featureCode, java.math.BigDecimal.valueOf(currentUsage)); }
 
-    public long remaining(String featureCode, long currentUsage) {
+    public java.math.BigDecimal remaining(String featureCode, java.math.BigDecimal currentUsage) {
         QuotaPolicy policy = getQuotaPolicy(featureCode);
         return policy.remaining(currentUsage);
     }
 
-    public long resolveLimitFromProfile(QuotaProfile profile, String featureCode) {
-        if (featureCode.startsWith("render")) return profile.monthlyRenderMinutes();
-        if (featureCode.startsWith("gpu")) return profile.gpuMinutes();
-        if (featureCode.startsWith("prompt")) return profile.promptExecutions();
-        if (featureCode.startsWith("extension")) return profile.extensionExecutions();
-        if (featureCode.startsWith("api")) return profile.apiCallsPerMinute();
-        if (featureCode.startsWith("mcp")) return profile.mcpCallsPerMinute();
+    public java.math.BigDecimal resolveLimitFromProfile(QuotaProfile profile, String featureCode) {
+        if (featureCode.startsWith("render")) return java.math.BigDecimal.valueOf(profile.monthlyRenderMinutes());
+        if (featureCode.startsWith("gpu")) return java.math.BigDecimal.valueOf(profile.gpuMinutes());
+        if (featureCode.startsWith("prompt")) return java.math.BigDecimal.valueOf(profile.promptExecutions());
+        if (featureCode.startsWith("extension")) return java.math.BigDecimal.valueOf(profile.extensionExecutions());
+        if (featureCode.startsWith("api")) return java.math.BigDecimal.valueOf(profile.apiCallsPerMinute());
+        if (featureCode.startsWith("mcp")) return java.math.BigDecimal.valueOf(profile.mcpCallsPerMinute());
         throw new IllegalArgumentException("Unknown quota profile dimension: " + featureCode);
     }
 

@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.example.platform.entitlement.domain.QuotaProfile;
 import org.junit.jupiter.api.BeforeEach;
+import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 
 class QuotaPolicyServiceTest {
@@ -43,14 +44,14 @@ class QuotaPolicyServiceTest {
 
     @Test
     void remainingReturnsCorrectValue() {
-        long remaining = service.remaining("render.job.create", 200);
-        assertEquals(9800, remaining);
+        BigDecimal remaining = service.remaining("render.job.create", BigDecimal.valueOf(200));
+        assertEquals(BigDecimal.valueOf(9800), remaining);
     }
 
     @Test
     void remainingReturnsZeroWhenExceeded() {
-        long remaining = service.remaining("render.job.create", 20000);
-        assertEquals(0, remaining);
+        BigDecimal remaining = service.remaining("render.job.create", BigDecimal.valueOf(20000));
+        assertEquals(BigDecimal.ZERO, remaining);
     }
 
     @Test
@@ -59,7 +60,7 @@ class QuotaPolicyServiceTest {
                 "id", "test", "Test", "desc",
                 500, 50, 5, 10737418240L, 200, 100,
                 2000, 100, 120, 60, null, null);
-        assertEquals(500, service.resolveLimitFromProfile(profile, "render.job.create"));
+        assertEquals(BigDecimal.valueOf(500), service.resolveLimitFromProfile(profile, "render.job.create"));
     }
 
     @Test
@@ -68,7 +69,7 @@ class QuotaPolicyServiceTest {
                 "id", "test", "Test", "desc",
                 500, 50, 5, 10737418240L, 200, 100,
                 2000, 100, 120, 60, null, null);
-        assertEquals(200, service.resolveLimitFromProfile(profile, "gpu.render"));
+        assertEquals(BigDecimal.valueOf(200), service.resolveLimitFromProfile(profile, "gpu.render"));
     }
 
     @Test
@@ -77,7 +78,7 @@ class QuotaPolicyServiceTest {
                 "id", "test", "Test", "desc",
                 500, 50, 5, 10737418240L, 200, 100,
                 2000, 100, 120, 60, null, null);
-        assertEquals(2000, service.resolveLimitFromProfile(profile, "prompt.execute"));
+        assertEquals(BigDecimal.valueOf(2000), service.resolveLimitFromProfile(profile, "prompt.execute"));
     }
 
 }

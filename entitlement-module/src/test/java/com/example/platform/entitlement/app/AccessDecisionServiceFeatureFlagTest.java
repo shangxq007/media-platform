@@ -1,5 +1,7 @@
 package com.example.platform.entitlement.app;
 
+import java.math.BigDecimal;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -34,7 +36,7 @@ class AccessDecisionServiceFeatureFlagTest {
         QuotaUsageAuthority quotaUsageAuthority = mock(QuotaUsageAuthority.class);
         when(quotaUsageAuthority.decide(any(QuotaUsageQuery.class))).thenAnswer(invocation -> {
             QuotaUsageQuery query = invocation.getArgument(0);
-            boolean allowed = query.requestedUnits() <= query.limitUnits();
+            boolean allowed = query.requestedUnits().compareTo(query.limitUnits()) <= 0;
             return new com.example.platform.entitlement.api.commercial.QuotaDecision(
                     query.principal(), query.quotaKey(), query.requestedUnits(),
                     query.limitUnits(), 0, allowed,
@@ -125,7 +127,7 @@ class AccessDecisionServiceFeatureFlagTest {
                 "TENANT", "tenant-enterprise",
                 "render", "render", null,
                 "render.job.create", null, null,
-                "api", 100L, Map.of());
+                "api", BigDecimal.valueOf(100L), Map.of());
 
         AccessDecisionFeatureFlagService.FeatureFlagAccessResult ffResult =
                 new AccessDecisionFeatureFlagService.FeatureFlagAccessResult(

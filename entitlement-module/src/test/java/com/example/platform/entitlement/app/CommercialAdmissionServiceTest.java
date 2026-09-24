@@ -14,6 +14,7 @@ import com.example.platform.shared.commercial.PrincipalRef;
 import com.example.platform.shared.commercial.PrincipalType;
 import com.example.platform.entitlement.api.commercial.QuotaDecision;
 import java.time.Instant;
+import java.math.BigDecimal;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,7 +40,7 @@ class CommercialAdmissionServiceTest {
     void explicitGrantAndCanonicalQuotaDecisionAreBothRequired() {
         when(entitlements.checkFeature(PRINCIPAL, "render.job.create")).thenReturn(
                 access(true, "grant-1", "explicit-grant"));
-        when(quota.evaluate(PRINCIPAL, "render.job.create", START, END, 1,
+        when(quota.evaluate(PRINCIPAL, "render.job.create", START, END, BigDecimal.ONE,
                 "trace-1", START)).thenReturn(quota(true));
 
         var decision = service.decide(request());
@@ -47,7 +48,7 @@ class CommercialAdmissionServiceTest {
         assertTrue(decision.allowed());
         assertEquals(CommercialDecisionReason.ALLOWED, decision.reason());
         verify(entitlements).checkFeature(PRINCIPAL, "render.job.create");
-        verify(quota).evaluate(PRINCIPAL, "render.job.create", START, END, 1, "trace-1", START);
+        verify(quota).evaluate(PRINCIPAL, "render.job.create", START, END, BigDecimal.ONE, "trace-1", START);
     }
 
     @Test

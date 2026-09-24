@@ -2,6 +2,7 @@ package com.example.platform.entitlement.domain;
 
 import com.example.platform.shared.commercial.PrincipalRef;
 import java.time.Instant;
+import java.math.BigDecimal;
 import java.util.Objects;
 
 /** Canonical, tenant-scoped and idempotent quota mutation command. */
@@ -10,8 +11,8 @@ public record QuotaUsageCommand(
         String quotaKey,
         Instant periodStart,
         Instant periodEnd,
-        long signedDelta,
-        long limitValue,
+        BigDecimal signedDelta,
+        BigDecimal limitValue,
         String idempotencyKey,
         QuotaOperationKind operationKind,
         String traceId,
@@ -26,7 +27,9 @@ public record QuotaUsageCommand(
         if (!periodEnd.isAfter(periodStart)) {
             throw new IllegalArgumentException("periodEnd must be after periodStart");
         }
-        if (limitValue < 0) {
+        signedDelta = QuotaQuantity.exact(signedDelta, "signedDelta");
+        limitValue = QuotaQuantity.exact(limitValue, "limitValue");
+        if (limitValue.signum() < 0) {
             throw new IllegalArgumentException("limitValue must not be negative");
         }
         idempotencyKey = requireNonBlank(idempotencyKey, "idempotencyKey");
@@ -34,6 +37,13 @@ public record QuotaUsageCommand(
         traceId = requireNonBlank(traceId, "traceId");
         reason = requireNonBlank(reason, "reason");
         Objects.requireNonNull(occurredAt, "occurredAt must not be null");
+    }
+
+    public QuotaUsageCommand(PrincipalRef principal, String quotaKey, Instant periodStart,
+            Instant periodEnd, long signedDelta, long limitValue, String idempotencyKey,
+            QuotaOperationKind operationKind, String traceId, String reason, Instant occurredAt) {
+        this(principal, quotaKey, periodStart, periodEnd, BigDecimal.valueOf(signedDelta),
+                BigDecimal.valueOf(limitValue), idempotencyKey, operationKind, traceId, reason, occurredAt);
     }
 
     private static String requireNonBlank(String value, String field) {

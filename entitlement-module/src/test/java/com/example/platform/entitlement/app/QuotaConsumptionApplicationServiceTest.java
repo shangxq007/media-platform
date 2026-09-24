@@ -31,7 +31,7 @@ class QuotaConsumptionApplicationServiceTest {
                 new QuotaPolicy("qp-render", "default", "render.job.create", 100, "MONTHLY", 80));
         when(authority.execute(argThat(command ->
                 command.idempotencyKey().equals("render-job:job-1:completion")
-                        && command.limitValue() == 100
+                        && command.limitValue().compareTo(java.math.BigDecimal.valueOf(100)) == 0
                         && command.operationKind() == QuotaOperationKind.CONSUMPTION)))
                 .thenReturn(new QuotaUsageResult("op-1", PRINCIPAL, "render.job.create",
                         START, END, 1, 100, "render-job:job-1:completion",
@@ -45,6 +45,6 @@ class QuotaConsumptionApplicationServiceTest {
 
         assertTrue(decision.allowed());
         assertEquals(CommercialDecisionReason.ALLOWED, decision.reason());
-        assertEquals(1, decision.usedUnits());
+        assertEquals(java.math.BigDecimal.ONE, decision.usedUnits());
     }
 }

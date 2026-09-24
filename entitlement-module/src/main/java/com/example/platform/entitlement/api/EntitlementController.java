@@ -174,6 +174,6 @@ public class EntitlementController {
             String featureKey,
             String requestedPreset,
             String providerKey,
-            Long requestedQuota,
+            java.math.BigDecimal requestedQuota,
             java.util.Map<String, Object> context) {}
 }

@@ -93,7 +93,7 @@ public class MeOverviewGraphQLResolver {
             AccessCheckRequest req = new AccessCheckRequest(
                     tenantId, workspaceId, userId, "USER", userId,
                     "check", "FEATURE", tenantId, "render",
-                    null, null, "GRAPHQL", 0L, Map.of());
+                    null, null, "GRAPHQL", java.math.BigDecimal.ZERO, Map.of());
             EntitlementDecision decision = entitlementDecisionService.evaluate(req);
             return decision.currentTier() != null ? decision.currentTier() : "FREE";
         } catch (Exception e) {
@@ -110,7 +110,7 @@ public class MeOverviewGraphQLResolver {
                 AccessCheckRequest req = new AccessCheckRequest(
                         tenantId, workspaceId, userId, "USER", userId,
                         "check", "FEATURE", featureKey, featureKey,
-                        null, null, "GRAPHQL", 0L, Map.of());
+                        null, null, "GRAPHQL", java.math.BigDecimal.ZERO, Map.of());
                 EntitlementDecision decision = entitlementDecisionService.evaluate(req);
                 capabilities.add(new CapabilityDto(
                         featureKey,

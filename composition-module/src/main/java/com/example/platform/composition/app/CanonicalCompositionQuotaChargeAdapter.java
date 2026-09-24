@@ -12,9 +12,7 @@ public class CanonicalCompositionQuotaChargeAdapter implements CompositionQuotaC
     private final QuotaConsumptionPort quota;
     public CanonicalCompositionQuotaChargeAdapter(QuotaConsumptionPort quota) { this.quota = quota; }
     @Override public void charge(ProviderBoundExecutionPlan plan, String executionId) {
-        final long amount;
-        try { amount = plan.entitlementQuota().quotaUnits().toBigIntegerExact().longValueExact(); }
-        catch (ArithmeticException ex) { throw new IllegalArgumentException("fractional quota is unsupported by the canonical quota unit", ex); }
+        final var amount = plan.entitlementQuota().quotaUnits();
         var now = Instant.now();
         var decision = quota.consume(new QuotaConsumptionRequest(
                 new PrincipalRef(plan.scope().tenantId(), PrincipalType.USER, plan.scope().actorId(), plan.scope().workspaceId(), null),

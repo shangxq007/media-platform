@@ -8,6 +8,7 @@ import com.example.platform.entitlement.api.commercial.CommercialDecisionReason;
 import com.example.platform.shared.commercial.CommercialEvidenceRef;
 import com.example.platform.entitlement.api.commercial.QuotaDecision;
 import java.util.List;
+import java.math.BigDecimal;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,15 +31,15 @@ public class QuotaUsageAuthority {
     }
 
     @Transactional(readOnly = true)
-    public long currentUsage(QuotaUsageQuery query) {
+    public BigDecimal currentUsage(QuotaUsageQuery query) {
         return repository.currentUsage(query);
     }
 
     @Transactional(readOnly = true)
     public QuotaDecision decide(QuotaUsageQuery query) {
-        long used = repository.currentUsage(query);
-        boolean allowed = used <= query.limitUnits()
-                && query.requestedUnits() <= query.limitUnits() - used;
+        BigDecimal used = repository.currentUsage(query);
+        boolean allowed = used.compareTo(query.limitUnits()) <= 0
+                && query.requestedUnits().compareTo(query.limitUnits().subtract(used)) <= 0;
         String evidenceId = String.join(":",
                 query.principal().tenantId(),
                 query.principal().principalType().name(),

@@ -4,6 +4,7 @@ import com.example.platform.policy.featureflag.domain.FeatureFlagDecision;
 
 import java.time.Instant;
 import java.util.List;
+import java.math.BigDecimal;
 
 public record AccessDecision(
         boolean allowed,
@@ -15,7 +16,7 @@ public record AccessDecision(
         String matchedGrantId,
         String matchedOverrideId,
         String matchedWorkspacePoolId,
-        Long quotaRemaining,
+        BigDecimal quotaRemaining,
         String recommendedAlternative,
         List<String> upgradeOptions,
         Instant expiresAt,
@@ -28,7 +29,7 @@ public record AccessDecision(
                           String userFriendlyMessage, String currentTier,
                           List<String> matchedPolicies, String matchedGrantId,
                           String matchedOverrideId, String matchedWorkspacePoolId,
-                          Long quotaRemaining, String recommendedAlternative,
+                          BigDecimal quotaRemaining, String recommendedAlternative,
                           List<String> upgradeOptions, Instant expiresAt,
                           boolean requiresReview) {
         this(allowed, decision, reasonCode, userFriendlyMessage, currentTier,
@@ -36,4 +37,5 @@ public record AccessDecision(
                 quotaRemaining, recommendedAlternative, upgradeOptions, expiresAt,
                 requiresReview, List.of(), false, List.of());
     }
+
 }

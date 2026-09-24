@@ -19,7 +19,7 @@ paths:
       operationId: admitComposition
       summary: Admit a published Composition using server-owned authority facts
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/CompositionAdmissionRequest'}}}}
-      responses: {'200': {description: Durable admission decision, content: {application/json: {schema: {$ref: '#/components/schemas/CompositionAdmissionResponse'}}}}, '403': {description: Scope denied}, '409': {description: Idempotency conflict}}
+      responses: {'200': {description: Durable admission decision, content: {application/json: {schema: {$ref: '#/components/schemas/CompositionAdmissionResponse'}}}}, '403': {description: Scope denied}, '409': {description: Idempotency conflict}, '422': {description: Invalid admission selectors or published composition}}
   /composition/capabilities:
     get:
       operationId: listCapabilityAvailability

@@ -4,12 +4,13 @@ import com.example.platform.shared.commercial.PrincipalRef;
 
 import java.time.Instant;
 import java.util.Objects;
+import java.math.BigDecimal;
 
 /** Neutral consumption command sent to the sole canonical quota mutation authority. */
 public record QuotaConsumptionRequest(
         PrincipalRef principal,
         String quotaKey,
-        long amount,
+        BigDecimal amount,
         Instant periodStart,
         Instant periodEnd,
         String idempotencyKey,
@@ -20,7 +21,8 @@ public record QuotaConsumptionRequest(
     public QuotaConsumptionRequest {
         Objects.requireNonNull(principal, "principal must not be null");
         quotaKey = AdmissionInvariants.requireNonBlank(quotaKey, "quotaKey");
-        if (amount <= 0) throw new IllegalArgumentException("amount must be positive");
+        amount = com.example.platform.entitlement.domain.QuotaQuantity.exact(amount, "amount");
+        if (amount.signum() <= 0) throw new IllegalArgumentException("amount must be positive");
         Objects.requireNonNull(periodStart, "periodStart must not be null");
         Objects.requireNonNull(periodEnd, "periodEnd must not be null");
         if (!periodEnd.isAfter(periodStart)) throw new IllegalArgumentException("periodEnd must be after periodStart");
@@ -28,5 +30,12 @@ public record QuotaConsumptionRequest(
         traceId = AdmissionInvariants.requireNonBlank(traceId, "traceId");
         reason = AdmissionInvariants.requireNonBlank(reason, "reason");
         Objects.requireNonNull(occurredAt, "occurredAt must not be null");
+    }
+
+    public QuotaConsumptionRequest(PrincipalRef principal, String quotaKey, long amount,
+            Instant periodStart, Instant periodEnd, String idempotencyKey, String traceId,
+            String reason, Instant occurredAt) {
+        this(principal, quotaKey, BigDecimal.valueOf(amount), periodStart, periodEnd,
+                idempotencyKey, traceId, reason, occurredAt);
     }
 }

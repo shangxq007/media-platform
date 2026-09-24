@@ -68,7 +68,7 @@ public class AccessDecisionService {
             );
         }
 
-        if (request.requestedQuota() != null && request.requestedQuota() > 0) {
+        if (request.requestedQuota() != null && request.requestedQuota().signum() > 0) {
             Instant decidedAt = Instant.now();
             YearMonth month = YearMonth.from(decidedAt.atZone(ZoneOffset.UTC));
             Instant periodStart = month.atDay(1).atStartOfDay(ZoneOffset.UTC).toInstant();
@@ -89,7 +89,7 @@ public class AccessDecisionService {
                         entitlementDecision.matchedGrantId(),
                         entitlementDecision.matchedOverrideId(),
                         entitlementDecision.matchedWorkspacePoolId(),
-                        quotaDecision.limitUnits() - quotaDecision.usedUnits(),
+                        quotaDecision.limitUnits().subtract(quotaDecision.usedUnits()),
                         null,
                         List.of("Request a quota increase or reduce usage"),
                         entitlementDecision.expiresAt(),
@@ -107,7 +107,7 @@ public class AccessDecisionService {
                     entitlementDecision.matchedGrantId(),
                     entitlementDecision.matchedOverrideId(),
                     entitlementDecision.matchedWorkspacePoolId(),
-                    quotaDecision.limitUnits() - quotaDecision.usedUnits(),
+                    quotaDecision.limitUnits().subtract(quotaDecision.usedUnits()),
                     null,
                     List.of(),
                     entitlementDecision.expiresAt(),

@@ -58,7 +58,7 @@ public class CompositionAdmissionService implements PlatformExecutionAdmissionPo
         if (!repository.claimQuotaCharge(record.executionId())) return decision(repository.findByExecutionId(record.executionId()).orElseThrow(), false);
         try {
             quota.charge(plan, record.executionId());
-            repository.markQuotaCharged(record.executionId());
+            repository.markQuotaCharged(record.executionId(), plan.entitlementQuota().quotaUnits());
             return decision(repository.findByExecutionId(record.executionId()).orElseThrow(), true);
         } catch (RuntimeException failure) {
             repository.deleteUncharged(record.executionId());
