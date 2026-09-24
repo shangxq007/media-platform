@@ -14,6 +14,14 @@ info:
 servers:
   - url: /api
 paths:
+  /artifacts/{artifactId}:
+    get:
+      operationId: getArtifact
+      summary: Retrieve an Artifact and its typed media details
+      parameters: [{name: artifactId, in: path, required: true, schema: {type: string}}]
+      responses:
+        '200': {description: Artifact, content: {application/json: {schema: {$ref: '#/components/schemas/Artifact'}}}}
+        '404': {description: Not found}
   /artifacts/typed/validate:
     post:
       operationId: validateTypedArtifactConversion
@@ -193,43 +201,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TimelineRevision"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        default:
-          $ref: "#/components/responses/Error"
-  /media/assets/{assetId}:
-    head:
-      operationId: headMediaAsset
-      summary: Media asset existence probe (additive, non-breaking)
-      parameters:
-        - name: assetId
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        "204":
-          description: Exists
-        "404":
-          $ref: "#/components/responses/NotFound"
-        default:
-          $ref: "#/components/responses/Error"
-    get:
-      operationId: getMediaAsset
-      summary: Media asset projection (media-domain logical source)
-      parameters:
-        - name: assetId
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Media asset projection
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/MediaAsset"
         "404":
           $ref: "#/components/responses/NotFound"
         default:
@@ -500,6 +471,18 @@ components:
         name: {type: string}
         version: {type: string}
 
+    Artifact:
+      type: object
+      required: [artifactId, tenantId, workspaceId, kind, schemaVersion, contentDigest, storageReference]
+      properties:
+        artifactId: {type: string}
+        tenantId: {type: string}
+        workspaceId: {type: string}
+        kind: { $ref: '#/components/schemas/LogicalArtifactKind' }
+        schemaVersion: {type: string}
+        contentDigest: {type: string}
+        storageReference: {type: string}
+        mediaDetails: {type: object, additionalProperties: true}
     LogicalArtifactKind:
       type: string
       enum: [VIDEO, AUDIO, IMAGE, THUMBNAIL, SUBTITLE, TRANSCRIPT, STRUCTURED_TEXT, DOCUMENT, MARKDOWN, LATEX, PRESENTATION, ANKI_DECK, MIND_MAP, THREE_D_SCENE, GENERIC_BINARY]

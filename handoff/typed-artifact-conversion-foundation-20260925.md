@@ -1,35 +1,36 @@
 # Typed Artifact and Conversion Foundation handoff
 
-Status: frozen candidate pending independent review. No delivery or push requested.
+Status: candidate frozen for independent review; no delivery or push requested.
 
 - Branch: `feature/typed-artifact-conversion-foundation-20260925`
 - Worktree: `/home/user/Documents/workspace/projects/media-platform/Documents/workspace/projects/.worktrees/typed-artifact-conversion-foundation-20260925`
-- Baseline: `8875461a796c6cee5a54500529dfe5ea86e0e182` (tree `8652a332abd18622e4a4d30a351373295795c2c5`)
-- Candidate commit: `53314bc98bdb36e3a08bc9efd88091d703d1e9a1`
-- Candidate tree: `824c480dc07854f04f09eb901698ed5f72c83d7b`
+- Baseline: `8875461a796c6cee5a54500529dfe5ea86e0e182`
+- Candidate: recorded after commit below
+
+Authority map: Artifact is the only identity, scope, lifecycle, authorization, retrieval and lineage authority. `artifact_media_details` is a one-to-one typed projection keyed by `artifact_id`; Storage supplies object references only. MediaAsset runtime authority and public MediaAsset routes are retired. See `docs/architecture/artifact-authority-map.md` and `docs/adr/artifact-mediaasset-retirement-2026-09-25.md`.
 
 Changed files:
-- `artifact-module/src/main/java/com/example/platform/artifact/domain/typed/*`: platform-owned kinds, typed artifact view, requirements, version ranges, declarative contracts, specifications, validator and stable errors.
-- `artifact-module/src/test/java/com/example/platform/artifact/domain/typed/TypedArtifactFoundationTest.java`: taxonomy, ranges, fingerprints, scope and parameter validation.
-- `platform-app/src/main/resources/db/migration/V17__typed_conversion_specifications.sql`: immutable declarative specification persistence with scoped idempotency and constraints.
-- `contracts/http/media-api/openapi.base.yaml`, `contracts/http/media-api/openapi.candidate.yaml`: inspection/validation paths and platform-owned schemas.
-- `docs/adr/typed-artifact-conversion-foundation.md`, `docs/typed-artifact-conversion-governance.md`: authority and architecture decisions.
-- `CR1_CHANGE_LEDGER.tsv`: ledger entry.
+- `artifact-module/src/main/java/com/example/platform/artifact/domain/typed/ArtifactIdentityGuard.java`
+- `artifact-module/src/main/java/com/example/platform/artifact/domain/typed/MediaArtifactDetails.java`
+- `artifact-module/src/main/java/com/example/platform/artifact/domain/typed/TypedArtifactValidator.java`
+- `artifact-module/src/test/java/com/example/platform/artifact/domain/typed/TypedArtifactFoundationTest.java`
+- `platform-app/src/main/resources/db/migration/V18__artifact_media_authority_convergence.sql`
+- `contracts/http/media-api/openapi.base.yaml`, `openapi.candidate.yaml`, `openapi.breaking.yaml`
+- `docs/adr/artifact-mediaasset-retirement-2026-09-25.md`, `docs/adr/typed-artifact-conversion-foundation.md`
+- `docs/architecture/artifact-authority-map.md`, `docs/architecture/conversion-contract-foundation.md`
+- `docs/typed-artifact-conversion-governance.md`
 
-Authority mapping: existing Artifact catalog remains artifact identity authority; MediaAsset remains media ownership authority; Storage remains data-plane authority. V17 stores plans only and does not create a result repository, queue, admission authority, worker lifecycle or Temporal path.
+Migration list: V18 only. V1–V17 were not rewritten. V18 adds Artifact scope/provenance/storage/idempotency facts, migrates existing `media_asset` rows and links into Artifact and `artifact_media_details`, then renames legacy relations and installs mutation guards. Rollback is a reviewed forward compensating migration; no historical rows are silently dropped.
 
-Migration: V17 only; no backfill. Rollback requires a reviewed forward compensating migration because plans are immutable; historical V1–V16 were not changed.
+OpenAPI: Artifact retrieval is `GET /artifacts/{artifactId}`; typed validation/specification inspection remain. MediaAsset endpoints and schemas were removed from base, candidate and breaking documents.
 
-API/OpenAPI: `POST /artifacts/typed/validate` and `GET /conversion-specifications/{specificationId}` only inspect/validate immutable contracts/specifications. No execution claim and no provider registry exposure.
+Verification:
+- `./gradlew :artifact-module:test --tests '*TypedArtifactFoundationTest' --no-daemon` — PASS (6 tests; fresh run after changes).
+- Ruby YAML parse for all three media API documents — PASS.
+- `git diff --check` — PASS.
+- Full artifact-module suite — NOT_RUN in this revision; prior baseline had Testcontainers Docker initialization failures and is not counted as passing.
 
-Tests:
-- Fresh: `./gradlew :artifact-module:test --tests '*TypedArtifactFoundationTest' --no-daemon` — PASS, 4 tests.
-- Reused/overlapping: none for this candidate.
-- Broader `./gradlew :artifact-module:test --no-daemon` — 116 tests completed; 110 passed, 6 failed during Testcontainers Docker client initialization (`DockerClientProviderStrategy`, Docker unavailable). BLOCKED; not reported as passing.
-- OpenAPI YAML parse and schema presence check — PASS.
+Fresh tests: 6 passed, 0 failed, 0 skipped. Reused tests: 0. Overlapping tests: 0.
+BLOCKED/NOT_RUN: hermetic PostgreSQL migration execution (Docker/Testcontainers availability not established), full suite, runtime provider execution, Temporal activities, FFmpeg/BMF/OpenCV/AI, Storage writes, external providers, deployment/PVE/GitOps, production data.
 
-NOT_RUN/BLOCKED: provider execution, Temporal runtime/activity, FFmpeg/BMF/OpenCV/AI, storage writes/materialization, MediaAsset registration, external providers, deployment/PVE/GitOps, production data, hermetic PostgreSQL migration test (Docker unavailable).
-
-Follow-up required: runtime planning/execution must separately map compatible providers to these contracts without changing the contracts or introducing provider identifiers into lineage.
-
-Explicit statement: no provider execution or deployment was performed.
+Follow-up required: independently review V18 against a production schema snapshot and migrate remaining internal callers from MediaAsset classes to Artifact contracts before runtime execution work. This candidate does not claim provider execution, PVE readiness, delivery, merge, push, deployment or production readiness.
