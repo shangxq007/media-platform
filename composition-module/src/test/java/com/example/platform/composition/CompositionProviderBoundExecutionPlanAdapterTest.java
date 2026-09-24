@@ -11,13 +11,13 @@ import org.junit.jupiter.api.Test;
 
 class CompositionProviderBoundExecutionPlanAdapterTest {
     private static final CompositionProviderBoundCapabilityAuthority AUTHORITY = new Authority();
+    private static final CompositionPublishedRevisionAuthority REVISIONS = (tenant, workspace, id, version) -> Optional.of(published(workflow(Lifecycle.PUBLISHED)));
+    private static final CompositionResourceResolver RESOURCES = (workflow, tenant, workspace) -> new CompositionResourceResolver.ResourceResolution(Set.of());
+    private static final CompositionEntitlementQuotaResolver QUOTA = (workflow, tenant, workspace, actor) -> new ProviderBoundExecutionPlan.EntitlementQuotaSnapshot("ent-1", Map.of("compose", "granted"), 3);
 
     @Test
     void lowersPublishedWorkflowWithTypedProviderBindingAndIo() {
-        var plan = CompositionProviderBoundExecutionPlanAdapter.lower(published(workflow(Lifecycle.PUBLISHED)), AUTHORITY,
-                new ProviderBoundExecutionPlan.Scope("tenant", "workspace", "actor"), Set.of(),
-                new ProviderBoundExecutionPlan.EntitlementQuotaSnapshot("ent-1", Map.of("compose", "granted"), 3),
-                "idem-1", "hash-1", "cancel-1", "retry-1");
+        var plan = lower(workflow(Lifecycle.PUBLISHED), AUTHORITY);
 
         assertEquals("1.0", plan.publishedRevision().version());
         assertEquals(1, plan.publishedRevision().revision());
@@ -34,9 +34,8 @@ class CompositionProviderBoundExecutionPlanAdapterTest {
     @Test
     void rejectsScopeMismatchAndMissingProviderBinding() {
         assertThrows(IllegalArgumentException.class, () ->
-                CompositionProviderBoundExecutionPlanAdapter.lower(published(workflow(Lifecycle.PUBLISHED)), AUTHORITY,
-                        new ProviderBoundExecutionPlan.Scope("other", "workspace", "actor"), Set.of(),
-                        new ProviderBoundExecutionPlan.EntitlementQuotaSnapshot("ent-1", Map.of(), 1),
+                CompositionProviderBoundExecutionPlanAdapter.lower(REVISIONS, AUTHORITY, RESOURCES, QUOTA,
+                        new ProviderBoundExecutionPlan.Scope("other", "workspace", "actor"), "composition", "1.0",
                         "key", "hash", "cancel", "retry"));
         var missing = new Authority(true);
         assertThrows(IllegalArgumentException.class, () -> lower(workflow(Lifecycle.PUBLISHED), missing));
@@ -47,9 +46,9 @@ class CompositionProviderBoundExecutionPlanAdapterTest {
     }
     private static ProviderBoundExecutionPlan lower(TemplateWorkflow workflow,
             CompositionProviderBoundCapabilityAuthority authority) {
-        return CompositionProviderBoundExecutionPlanAdapter.lower(published(workflow), authority,
-                new ProviderBoundExecutionPlan.Scope("tenant", "workspace", "actor"), Set.of(),
-                new ProviderBoundExecutionPlan.EntitlementQuotaSnapshot("ent-1", Map.of(), 1),
+        CompositionPublishedRevisionAuthority revisions = (tenant, workspace, id, version) -> Optional.of(published(workflow));
+        return CompositionProviderBoundExecutionPlanAdapter.lower(revisions, authority, RESOURCES, QUOTA,
+                new ProviderBoundExecutionPlan.Scope("tenant", "workspace", "actor"), "composition", "1.0",
                 "key", "hash", "cancel", "retry");
     }
     private static CompositionPublishedRevisionAuthority.PublishedRevision published(TemplateWorkflow workflow) {

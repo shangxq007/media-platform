@@ -8,24 +8,30 @@ import java.util.*;
 public final class CompositionProviderBoundExecutionPlanAdapter {
     private CompositionProviderBoundExecutionPlanAdapter() {}
 
-    public static ProviderBoundExecutionPlan lower(CompositionPublishedRevisionAuthority.PublishedRevision published,
+    public static ProviderBoundExecutionPlan lower(CompositionPublishedRevisionAuthority revisions,
             CompositionProviderBoundCapabilityAuthority authority,
-            ProviderBoundExecutionPlan.Scope scope, Set<String> assets,
-            ProviderBoundExecutionPlan.EntitlementQuotaSnapshot entitlementQuota,
+            CompositionResourceResolver resources, CompositionEntitlementQuotaResolver entitlements,
+            ProviderBoundExecutionPlan.Scope scope, String compositionId, String version,
             String idempotencyKey, String requestHash,
             String cancellationPolicy, String retryPolicy) {
-        Objects.requireNonNull(published); Objects.requireNonNull(authority); Objects.requireNonNull(scope);
-        Objects.requireNonNull(entitlementQuota, "entitlementQuota");
+        Objects.requireNonNull(revisions); Objects.requireNonNull(authority); Objects.requireNonNull(resources);
+        Objects.requireNonNull(entitlements); Objects.requireNonNull(scope);
+        CompositionPublishedRevisionAuthority.PublishedRevision published = revisions.resolve(
+                scope.tenantId(), scope.workspaceId(), compositionId, version)
+                .orElseThrow(() -> new IllegalArgumentException("published Composition revision is unavailable"));
         TemplateWorkflow workflow = published.workflow();
         if (workflow.lifecycle() != Lifecycle.PUBLISHED) throw new IllegalArgumentException("composition revision is not published");
         if (!workflow.tenantId().equals(scope.tenantId()) || !workflow.workspaceId().equals(scope.workspaceId()))
             throw new IllegalArgumentException("composition scope does not match authenticated scope");
+        var resourceResolution = resources.resolve(workflow, scope.tenantId(), scope.workspaceId());
+        var entitlementQuota = entitlements.resolve(workflow, scope.tenantId(), scope.workspaceId(), scope.actorId());
+        if (entitlementQuota == null) throw new IllegalArgumentException("entitlement/quota decision is unavailable");
         Set<String> granted = new HashSet<>();
         entitlementQuota.entitlements().forEach((name, state) -> {
             if ("granted".equals(state)) granted.add(name);
         });
         ValidationResult validation = CompositionValidator.validate(workflow, authority,
-                assets == null ? Set.of() : assets, granted);
+                resourceResolution.availableAssets(), granted);
         if (!validation.ready()) throw new IllegalArgumentException("composition plan is not admissible: " + validation.issues());
         if (entitlementQuota.quotaUnits() < workflow.estimate().quotaUnits().longValue())
             throw new IllegalArgumentException("quota snapshot is below the published Composition estimate");
