@@ -20,7 +20,15 @@ public record ConversionSpecification(String specificationId, String tenantId, S
         if (deterministicFingerprint == null || deterministicFingerprint.isBlank()) throw new IllegalArgumentException("fingerprint is required");
     }
     public static String fingerprint(String contractId, String version, List<String> sourceIds, JsonNode parameters) {
-        try { String canonical=contractId+"\n"+version+"\n"+String.join("\n", sourceIds.stream().sorted().toList())+"\n"+new ObjectMapper().writeValueAsString(parameters); byte[] d=MessageDigest.getInstance("SHA-256").digest(canonical.getBytes(StandardCharsets.UTF_8)); return HexFormat.of().formatHex(d); }
+        try { String canonical=contractId+"\n"+version+"\n"+String.join("\n", sourceIds.stream().sorted().toList())+"\n"+new ObjectMapper().writeValueAsString(canonicalize(parameters)); byte[] d=MessageDigest.getInstance("SHA-256").digest(canonical.getBytes(StandardCharsets.UTF_8)); return HexFormat.of().formatHex(d); }
         catch(Exception e){throw new IllegalStateException("cannot fingerprint specification",e);}
+    }
+    private static JsonNode canonicalize(JsonNode node) {
+        if (node == null || node.isValueNode()) return node;
+        if (node.isArray()) { var out = new com.fasterxml.jackson.databind.node.ArrayNode(com.fasterxml.jackson.databind.node.JsonNodeFactory.instance); node.forEach(v -> out.add(canonicalize(v))); return out; }
+        var out = new com.fasterxml.jackson.databind.node.ObjectNode(com.fasterxml.jackson.databind.node.JsonNodeFactory.instance);
+        var names = new java.util.ArrayList<String>(); node.fieldNames().forEachRemaining(names::add); java.util.Collections.sort(names);
+        for (String name : names) out.set(name, canonicalize(node.get(name)));
+        return out;
     }
 }

@@ -1,7 +1,6 @@
 package com.example.platform.composition.app;
 
 import com.example.platform.artifact.domain.*;
-import com.example.platform.media.api.MediaAssets;
 import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.shared.digest.ContentDigest;
 import com.example.platform.storage.api.*;
@@ -17,14 +16,13 @@ import java.security.MessageDigest;
 public final class OwnerPortCompositionMaterialization implements CompositionMaterializationPort {
     private final StorageOutputPort storage;
     private final ArtifactCommitService artifacts;
-    private final MediaAssets media;
     private final Path storageRoot;
     private final CompositionResultRepository results;
 
     public OwnerPortCompositionMaterialization(StorageOutputPort storage, ArtifactCommitService artifacts,
-                                               MediaAssets media, Path storageRoot, CompositionResultRepository results) {
+                                               Path storageRoot, CompositionResultRepository results) {
         this.storage = Objects.requireNonNull(storage); this.artifacts = Objects.requireNonNull(artifacts);
-        this.media = Objects.requireNonNull(media); this.storageRoot = storageRoot.toAbsolutePath().normalize();
+        this.storageRoot = storageRoot.toAbsolutePath().normalize();
         this.results = Objects.requireNonNull(results);
     }
 
@@ -32,8 +30,7 @@ public final class OwnerPortCompositionMaterialization implements CompositionMat
         return results.findMaterialized(request.tenantId(), request.idempotencyKey(), request.idempotencyKey())
                 .map(r -> new CompositionMaterializationAdapter.Result(request,
                         new IssuedOutput(request.tenantId(), request.workspaceId(), r.placementId(), r.digest(), r.length()),
-                        new CommittedArtifact(request.tenantId(), request.workspaceId(), r.artifactId(), r.digest()),
-                        new CommittedMediaAsset(request.tenantId(), request.workspaceId(), r.mediaAssetId(), r.artifactId(), r.sourceRevision())));
+                        new CommittedArtifact(request.tenantId(), request.workspaceId(), r.artifactId(), r.digest())));
     }
 
     @Override public IssuedOutput issue(CompositionExecutionRequest request, ProviderExecutionOutput output) {
@@ -67,21 +64,15 @@ public final class OwnerPortCompositionMaterialization implements CompositionMat
         return new CommittedArtifact(request.tenantId(), request.workspaceId(), result.artifact().artifactId().value(), output.digest());
     }
 
-    @Override public CommittedMediaAsset commitMediaAsset(CompositionExecutionRequest request, CommittedArtifact artifact) {
-        var asset = media.register(request.tenantId(), request.workspaceId(), artifact.artifactId(), "VIDEO",
-                request.workflowId() + ".mp4", 0L, artifact.digest());
-        return new CommittedMediaAsset(request.tenantId(), request.workspaceId(), asset.id(), artifact.artifactId(), request.sourceMediaAssetRevision());
-    }
-
     @Override public void compensate(IssuedOutput output) { /* Storage owner recovery reconciles disposable intents. */ }
 
     @Override public void recordCommitted(CompositionExecutionRequest request, IssuedOutput issued,
-            CommittedArtifact artifact, CommittedMediaAsset asset) {
+            CommittedArtifact artifact) {
         results.recordMaterialized(request.tenantId(), request.idempotencyKey(), request.idempotencyKey(),
                 new CompositionResultRepository.MaterializedResult(
                         CompositionExecutionIds.of(request.tenantId(), request.workspaceId(), request.idempotencyKey()),
                         "attempt-0", issued.placementId(), issued.digest(), issued.length(),
-                        artifact.artifactId(), asset.mediaAssetId(), asset.sourceRevision()), 0);
+                        artifact.artifactId()), 0);
     }
 
 }

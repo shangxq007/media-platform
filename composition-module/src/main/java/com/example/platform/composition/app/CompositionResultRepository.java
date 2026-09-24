@@ -10,5 +10,5 @@ public interface CompositionResultRepository {
     Optional<MaterializedResult> findMaterialized(String tenantId, String key, String requestHash);
     void recordMaterialized(String tenantId, String key, String requestHash, MaterializedResult result, long generation);
     record MaterializedResult(String executionId, String attemptId, String placementId, String digest, long length,
-            String artifactId, String mediaAssetId, String sourceRevision) {}
+            String artifactId) {}
 }

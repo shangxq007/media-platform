@@ -1,7 +1,6 @@
 package com.example.platform.composition.app;
 
 import com.example.platform.composition.app.CompositionMaterializationPort.CommittedArtifact;
-import com.example.platform.composition.app.CompositionMaterializationPort.CommittedMediaAsset;
 import com.example.platform.composition.app.CompositionMaterializationPort.IssuedOutput;
 import com.example.platform.workerfabric.domain.providernative.ProviderExecutionOutput;
 import java.io.IOException;
@@ -9,9 +8,9 @@ import java.util.Objects;
 import java.util.function.BooleanSupplier;
 
 /**
- * Explicit ProviderExecutionOutput to MediaAsset bridge.
+ * Explicit ProviderExecutionOutput to the platform Artifact boundary.
  *
- * <p>The adapter never creates a MediaAsset from provider bytes directly. Storage
+ * <p>The adapter never creates a second platform identity from provider bytes. Storage
  * issuance and Artifact commitment must succeed first. Disposable Storage output
  * is compensated only before Artifact commitment; after Artifact commitment a
  * publication failure is fenced for reconciliation rather than deleting durable
@@ -65,11 +64,8 @@ public final class CompositionMaterializationAdapter {
                 throw new IllegalArgumentException("Artifact scope does not match authenticated request");
             artifactCommitted = true;
             if (cancelled.getAsBoolean()) throw new java.util.concurrent.CancellationException("composition execution cancelled after Artifact commitment");
-            CommittedMediaAsset asset = materialization.commitMediaAsset(request, artifact);
-            if (!request.tenantId().equals(asset.tenantId()) || !request.workspaceId().equals(asset.workspaceId()))
-                throw new IllegalArgumentException("MediaAsset scope does not match authenticated request");
-            materialization.recordCommitted(request, issued, artifact, asset);
-            return new Result(request, issued, artifact, asset);
+            materialization.recordCommitted(request, issued, artifact);
+            return new Result(request, issued, artifact);
         } catch (RuntimeException failure) {
             if (issued != null && !artifactCommitted) {
                 try { materialization.compensate(issued); } catch (RuntimeException compensation) { failure.addSuppressed(compensation); }
@@ -84,7 +80,7 @@ public final class CompositionMaterializationAdapter {
         }
     }
 
-    public record Result(CompositionExecutionRequest request, IssuedOutput issuedOutput, CommittedArtifact artifact, CommittedMediaAsset mediaAsset) {
-        public Result { Objects.requireNonNull(request); Objects.requireNonNull(issuedOutput); Objects.requireNonNull(artifact); Objects.requireNonNull(mediaAsset); }
+    public record Result(CompositionExecutionRequest request, IssuedOutput issuedOutput, CommittedArtifact artifact) {
+        public Result { Objects.requireNonNull(request); Objects.requireNonNull(issuedOutput); Objects.requireNonNull(artifact); }
     }
 }

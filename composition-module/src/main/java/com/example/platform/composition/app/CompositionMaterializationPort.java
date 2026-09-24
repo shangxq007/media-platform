@@ -12,10 +12,9 @@ public interface CompositionMaterializationPort {
 
     IssuedOutput issue(CompositionExecutionRequest request, ProviderExecutionOutput output);
     CommittedArtifact commitArtifact(CompositionExecutionRequest request, IssuedOutput output);
-    CommittedMediaAsset commitMediaAsset(CompositionExecutionRequest request, CommittedArtifact artifact);
     void compensate(IssuedOutput output);
     default void recordCommitted(CompositionExecutionRequest request, IssuedOutput issued,
-            CommittedArtifact artifact, CommittedMediaAsset asset) {}
+            CommittedArtifact artifact) {}
 
     record IssuedOutput(String tenantId, String workspaceId, String placementId, String digest, long length) {
         public IssuedOutput {
@@ -25,9 +24,6 @@ public interface CompositionMaterializationPort {
     }
     record CommittedArtifact(String tenantId, String workspaceId, String artifactId, String digest) {
         public CommittedArtifact { require(tenantId, "tenantId"); require(workspaceId, "workspaceId"); require(artifactId, "artifactId"); require(digest, "digest"); }
-    }
-    record CommittedMediaAsset(String tenantId, String workspaceId, String mediaAssetId, String artifactId, String sourceRevision) {
-        public CommittedMediaAsset { require(tenantId, "tenantId"); require(workspaceId, "workspaceId"); require(mediaAssetId, "mediaAssetId"); require(artifactId, "artifactId"); require(sourceRevision, "sourceRevision"); }
     }
     private static void require(String value, String name) { if (value == null || value.isBlank()) throw new IllegalArgumentException(name + " is required"); }
 }

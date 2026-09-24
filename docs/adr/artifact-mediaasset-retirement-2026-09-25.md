@@ -11,9 +11,11 @@ Media is represented by `artifact_media_details`, keyed one-to-one by
 artifact identity.
 
 The former `MediaAsset` root, repositories, lifecycle and authorization paths are
-retired. Migration V18 copies source rows into Artifact and typed details, then
-renames the legacy tables to read-only historical relations. Existing public
-MediaAsset routes are removed; clients use `GET /artifacts/{artifactId}`.
+retired. Migrations V18 and V19 copy source rows, linked Artifact facts, stream
+technical metadata, provenance and lifecycle state into Artifact and typed
+details, then protect the renamed legacy relations as historical inputs.
+Existing public MediaAsset lifecycle routes are removed; clients use
+`GET /artifacts/{artifactId}` and `/lineage`.
 
 Conversion Specification remains declarative and immutable. A Conversion
 Contract is platform-owned and provider-neutral; providers can implement a

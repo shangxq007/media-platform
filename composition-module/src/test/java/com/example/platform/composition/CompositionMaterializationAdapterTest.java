@@ -20,18 +20,17 @@ class CompositionMaterializationAdapterTest {
             "tenant-a", "workspace-a", "source-asset", "rev-1", "workflow", 3,
             "media.transcode", "1.0", "attempt-1", Map.of("profile", "default"), Map.of("composition.publish", "granted"));
 
-    @Test void providerOutputMustPassStorageArtifactAndMediaCommitInOrder() {
+    @Test void providerOutputMustPassStorageAndArtifactCommitInOrder() {
         var order = new StringBuilder();
         CompositionExecutionPort execution = r -> { order.append("execute,"); return new ProviderExecutionOutput(new ByteArrayInputStream(new byte[] {1, 2})); };
         CompositionMaterializationPort materialization = new CompositionMaterializationPort() {
             public IssuedOutput issue(CompositionExecutionRequest r, ProviderExecutionOutput o) { order.append("storage,"); return new IssuedOutput("tenant-a", "workspace-a", "placement", "sha", 2); }
             public CommittedArtifact commitArtifact(CompositionExecutionRequest r, IssuedOutput o) { order.append("artifact,"); return new CommittedArtifact("tenant-a", "workspace-a", "artifact", "sha"); }
-            public CommittedMediaAsset commitMediaAsset(CompositionExecutionRequest r, CommittedArtifact a) { order.append("asset,"); return new CommittedMediaAsset("tenant-a", "workspace-a", "asset", "artifact", "rev-1"); }
             public void compensate(IssuedOutput o) { order.append("compensate,"); }
         };
         var result = new CompositionMaterializationAdapter(compatible, execution, materialization).execute(request);
-        assertEquals("execute,storage,artifact,asset,", order.toString());
-        assertEquals("asset", result.mediaAsset().mediaAssetId());
+        assertEquals("execute,storage,artifact,", order.toString());
+        assertEquals("artifact", result.artifact().artifactId());
     }
 
     @Test void providerFailureCreatesNoStorageOrArtifact() {
@@ -40,7 +39,6 @@ class CompositionMaterializationAdapterTest {
         var materialization = new CompositionMaterializationPort() {
             public IssuedOutput issue(CompositionExecutionRequest r, ProviderExecutionOutput o) { materialized.set(true); throw new AssertionError("must not issue"); }
             public CommittedArtifact commitArtifact(CompositionExecutionRequest r, IssuedOutput o) { throw new AssertionError(); }
-            public CommittedMediaAsset commitMediaAsset(CompositionExecutionRequest r, CommittedArtifact a) { throw new AssertionError(); }
             public void compensate(IssuedOutput o) { throw new AssertionError(); }
         };
         assertThrows(IllegalStateException.class, () -> new CompositionMaterializationAdapter(compatible, execution, materialization).execute(request));
@@ -53,7 +51,6 @@ class CompositionMaterializationAdapterTest {
         var materialization = new CompositionMaterializationPort() {
             public IssuedOutput issue(CompositionExecutionRequest r, ProviderExecutionOutput o) { return new IssuedOutput("tenant-a", "workspace-a", "placement", "sha", 1); }
             public CommittedArtifact commitArtifact(CompositionExecutionRequest r, IssuedOutput o) { throw new IllegalStateException("artifact failed"); }
-            public CommittedMediaAsset commitMediaAsset(CompositionExecutionRequest r, CommittedArtifact a) { throw new AssertionError(); }
             public void compensate(IssuedOutput o) { compensated.set(true); }
         };
         assertThrows(IllegalStateException.class, () -> new CompositionMaterializationAdapter(compatible, execution, materialization).execute(request));
@@ -66,7 +63,6 @@ class CompositionMaterializationAdapterTest {
         var materialization = new CompositionMaterializationPort() {
             public IssuedOutput issue(CompositionExecutionRequest r, ProviderExecutionOutput o) { return new IssuedOutput("tenant-b", "workspace-b", "placement", "sha", 1); }
             public CommittedArtifact commitArtifact(CompositionExecutionRequest r, IssuedOutput o) { throw new AssertionError(); }
-            public CommittedMediaAsset commitMediaAsset(CompositionExecutionRequest r, CommittedArtifact a) { throw new AssertionError(); }
             public void compensate(IssuedOutput o) { compensated.set(true); }
         };
         assertThrows(IllegalArgumentException.class, () -> new CompositionMaterializationAdapter(compatible, execution, materialization).execute(request));
@@ -85,7 +81,6 @@ class CompositionMaterializationAdapterTest {
         var materialization = new CompositionMaterializationPort() {
             public IssuedOutput issue(CompositionExecutionRequest r, ProviderExecutionOutput o) { throw new AssertionError(); }
             public CommittedArtifact commitArtifact(CompositionExecutionRequest r, IssuedOutput o) { throw new AssertionError(); }
-            public CommittedMediaAsset commitMediaAsset(CompositionExecutionRequest r, CommittedArtifact a) { throw new AssertionError(); }
             public void compensate(IssuedOutput o) { throw new AssertionError(); }
         };
         assertThrows(IllegalStateException.class,
@@ -101,13 +96,11 @@ class CompositionMaterializationAdapterTest {
         };
         var existing = new CompositionMaterializationAdapter.Result(request,
                 new CompositionMaterializationPort.IssuedOutput("tenant-a", "workspace-a", "placement", "sha", 1),
-                new CompositionMaterializationPort.CommittedArtifact("tenant-a", "workspace-a", "artifact", "sha"),
-                new CompositionMaterializationPort.CommittedMediaAsset("tenant-a", "workspace-a", "asset", "artifact", "rev-1"));
+                new CompositionMaterializationPort.CommittedArtifact("tenant-a", "workspace-a", "artifact", "sha"));
         var materialization = new CompositionMaterializationPort() {
             public java.util.Optional<CompositionMaterializationAdapter.Result> findCommitted(CompositionExecutionRequest r) { return java.util.Optional.of(existing); }
             public IssuedOutput issue(CompositionExecutionRequest r, ProviderExecutionOutput o) { throw new AssertionError(); }
             public CommittedArtifact commitArtifact(CompositionExecutionRequest r, IssuedOutput o) { throw new AssertionError(); }
-            public CommittedMediaAsset commitMediaAsset(CompositionExecutionRequest r, CommittedArtifact a) { throw new AssertionError(); }
             public void compensate(IssuedOutput o) { throw new AssertionError(); }
         };
         assertSame(existing, new CompositionMaterializationAdapter(compatible, execution, materialization).execute(request));
@@ -123,7 +116,6 @@ class CompositionMaterializationAdapterTest {
         var materialization = new CompositionMaterializationPort() {
             public IssuedOutput issue(CompositionExecutionRequest r, ProviderExecutionOutput o) { throw new AssertionError(); }
             public CommittedArtifact commitArtifact(CompositionExecutionRequest r, IssuedOutput o) { throw new AssertionError(); }
-            public CommittedMediaAsset commitMediaAsset(CompositionExecutionRequest r, CommittedArtifact a) { throw new AssertionError(); }
             public void compensate(IssuedOutput o) { throw new AssertionError(); }
         };
         assertThrows(java.util.concurrent.CancellationException.class,
@@ -132,17 +124,17 @@ class CompositionMaterializationAdapterTest {
         assertFalse(dispatched.get());
     }
 
-    @Test void mediaAssetFailureAfterArtifactCommitDoesNotDeleteDurableArtifact() {
+    @Test void cancellationAfterArtifactCommitDoesNotCompensateDurableArtifact() {
         AtomicBoolean compensated = new AtomicBoolean();
+        AtomicBoolean cancelled = new AtomicBoolean();
         var execution = (CompositionExecutionPort) r -> new ProviderExecutionOutput(new ByteArrayInputStream(new byte[] {1}));
         var materialization = new CompositionMaterializationPort() {
             public IssuedOutput issue(CompositionExecutionRequest r, ProviderExecutionOutput o) { return new IssuedOutput("tenant-a", "workspace-a", "placement", "sha", 1); }
-            public CommittedArtifact commitArtifact(CompositionExecutionRequest r, IssuedOutput o) { return new CommittedArtifact("tenant-a", "workspace-a", "artifact", "sha"); }
-            public CommittedMediaAsset commitMediaAsset(CompositionExecutionRequest r, CommittedArtifact a) { throw new IllegalStateException("media persistence failed"); }
+            public CommittedArtifact commitArtifact(CompositionExecutionRequest r, IssuedOutput o) { cancelled.set(true); return new CommittedArtifact("tenant-a", "workspace-a", "artifact", "sha"); }
             public void compensate(IssuedOutput o) { compensated.set(true); }
         };
-        assertThrows(IllegalStateException.class,
-                () -> new CompositionMaterializationAdapter(compatible, execution, materialization).execute(request));
+        assertThrows(java.util.concurrent.CancellationException.class,
+                () -> new CompositionMaterializationAdapter(compatible, execution, materialization).execute(request, cancelled::get));
         assertFalse(compensated.get(), "durable Artifact output must be reconciled, not implicitly deleted");
     }
 }

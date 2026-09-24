@@ -9,7 +9,9 @@
 | Conversion declaration | Conversion Specification and platform Conversion Contract | Provider-defined public types |
 | Authorization and retrieval | Artifact scope checks and Artifact API | MediaAsset authorization/routes |
 
-V18 preserves legacy rows before retiring the MediaAsset table name. The renamed
+V18 and V19 preserve legacy rows before retiring the MediaAsset table name. V19
+copies linked scope, digest, storage, lifecycle, provenance and stream facts into
+the existing Artifact identity and fails closed on conflicts. The renamed
 relations are historical migration inputs and are protected against mutation;
 they do not grant identity, lifecycle, authorization, retrieval or result
 authority.

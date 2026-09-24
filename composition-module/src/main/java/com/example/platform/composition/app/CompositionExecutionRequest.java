@@ -7,8 +7,8 @@ import java.util.Objects;
 public record CompositionExecutionRequest(
         String tenantId,
         String workspaceId,
-        String sourceMediaAssetId,
-        String sourceMediaAssetRevision,
+        String sourceArtifactId,
+        String sourceArtifactRevision,
         String workflowId,
         long workflowRevision,
         String capabilityId,
@@ -18,7 +18,7 @@ public record CompositionExecutionRequest(
         Map<String, String> entitlementSnapshot) {
     public CompositionExecutionRequest {
         require(tenantId, "tenantId"); require(workspaceId, "workspaceId");
-        require(sourceMediaAssetId, "sourceMediaAssetId"); require(sourceMediaAssetRevision, "sourceMediaAssetRevision");
+        require(sourceArtifactId, "sourceArtifactId"); require(sourceArtifactRevision, "sourceArtifactRevision");
         require(workflowId, "workflowId"); require(capabilityId, "capabilityId");
         require(capabilityVersion, "capabilityVersion"); require(idempotencyKey, "idempotencyKey");
         if (workflowRevision < 0) throw new IllegalArgumentException("workflowRevision must be non-negative");

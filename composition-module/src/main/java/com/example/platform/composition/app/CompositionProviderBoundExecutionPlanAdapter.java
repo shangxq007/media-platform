@@ -79,7 +79,7 @@ public final class CompositionProviderBoundExecutionPlanAdapter {
         workflow.parameters().forEach(p -> inputs.add(new ProviderBoundExecutionPlan.TypedReference(
                 "parameter:" + p.name(), p.type(), "1", String.valueOf(p.defaultValue()))));
         List<ProviderBoundExecutionPlan.TypedReference> resourceRefs = resourceResolution.references().stream()
-                .map(ref -> new ProviderBoundExecutionPlan.TypedReference(ref, "MediaAsset", "1", "composition:asset:" + ref))
+                .map(ref -> new ProviderBoundExecutionPlan.TypedReference(ref, "Artifact", "1", "composition:asset:" + ref))
                 .toList();
         List<ProviderBoundExecutionPlan.TypedOutputContract> outputs = workflow.outputs().stream()
                 .map(o -> new ProviderBoundExecutionPlan.TypedOutputContract(o.name(), o.type(),

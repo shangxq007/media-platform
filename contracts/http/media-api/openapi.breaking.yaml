@@ -12,6 +12,23 @@ info:
 servers:
   - url: /api
 paths:
+  /artifacts/{artifactId}:
+    get:
+      operationId: getArtifact
+      summary: Retrieve an Artifact
+      parameters: [{name: artifactId, in: path, required: true, schema: {type: string}}]
+      responses:
+        '200': {description: Artifact}
+        '404': {description: Not found}
+  /artifacts/{artifactId}/lineage:
+    get:
+      operationId: getArtifactLineage
+      summary: Retrieve Artifact lineage
+      parameters: [{name: artifactId, in: path, required: true, schema: {type: string}}]
+      responses:
+        '200': {description: Artifact lineage}
+        '401': {description: Unauthenticated}
+        '404': {description: Not found}
   /render/jobs/{jobId}:
     get:
       operationId: getRenderJob
