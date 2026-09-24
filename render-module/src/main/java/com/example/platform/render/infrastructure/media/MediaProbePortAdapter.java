@@ -3,6 +3,7 @@ package com.example.platform.render.infrastructure.media;
 import com.example.platform.media.domain.probe.MediaProbeObservation;
 import com.example.platform.media.domain.probe.MediaProbePort;
 import org.springframework.stereotype.Component;
+import org.springframework.context.annotation.Profile;
 
 /**
  * Fail-closed platform adapter for the media-domain {@link MediaProbePort}.
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Component;
  * no probing until a typed provider contribution supplies that capability.</p>
  */
 @Component
+@Profile("legacy-media-disabled")
 public class MediaProbePortAdapter implements MediaProbePort {
 
     static final String ERROR = "TYPED_PROVIDER_PLUGIN_MEDIA_PROBE_REQUIRED";

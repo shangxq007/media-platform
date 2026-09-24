@@ -4,7 +4,9 @@ import com.example.platform.identity.api.authorization.*;
 import com.example.platform.shared.web.TenantGuard;
 import java.util.Map;
 import org.springframework.stereotype.Component;
+import org.springframework.context.annotation.Profile;
 @Component
+@Profile("legacy-media-disabled")
 public class MediaAuthorization {
     private final CanonicalActorResolver actors;
     private final AuthorizationDecisionPort decisions;

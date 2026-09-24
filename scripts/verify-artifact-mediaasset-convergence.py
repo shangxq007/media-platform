@@ -2,9 +2,46 @@
 """Fail-closed static guard for the Artifact-only convergence boundary."""
 from pathlib import Path
 import json
+import re
 
 ROOT = Path(__file__).resolve().parents[1]
 failures = []
+
+LEGACY_PROFILE = '@Profile("legacy-media-disabled")'
+SPRING_ROLES = ("@RestController", "@Controller", "@Service", "@Component", "@Repository", "@Bean")
+LEGACY_MARKERS = (
+    "MediaAsset", "mediaAsset", "media_asset", "MediaAssets", "MediaAssetQueries",
+    "MediaProbes", "MediaProbePort", "MediaProbeObservation", "MediaAssetId",
+    "media-asset", "MediaAuthorization",
+)
+
+def is_java_production_source(path: Path) -> bool:
+    return "src/main/java/" in str(path) and "/build/" not in str(path)
+
+def has_spring_role(text: str) -> bool:
+    return any(role in text for role in SPRING_ROLES)
+
+def has_legacy_marker(text: str) -> bool:
+    # Comments/documentation may describe historical assets without creating a
+    # production authority. Inspect executable/import/annotation text only.
+    code = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
+    code = re.sub(r"//.*", "", code)
+    return any(marker in code for marker in LEGACY_MARKERS)
+
+# Fail closed on every default-profile production bean that can carry the retired
+# MediaAsset/MediaProbe authority, including interface-only adapters and classes
+# whose imports are the only legacy signal. This deliberately covers authorization,
+# retrieval, persistence, lifecycle, identity, and probe roles.
+for path in ROOT.glob("**/src/main/java/**/*.java"):
+    if not is_java_production_source(path):
+        continue
+    text = path.read_text()
+    if has_spring_role(text) and has_legacy_marker(text) and LEGACY_PROFILE not in text:
+        failures.append(f"default-profile legacy authority remains: {path}")
+    if "implements MediaProbePort" in text and LEGACY_PROFILE not in text:
+        failures.append(f"default-profile MediaProbePort implementation remains: {path}")
+    if "class MediaAuthorization" in text and LEGACY_PROFILE not in text:
+        failures.append(f"default-profile MediaAuthorization remains: {path}")
 for path in [
     ROOT / "composition-module/src/main/java/com/example/platform/composition/app/CompositionMaterializationAdapter.java",
     ROOT / "composition-module/src/main/java/com/example/platform/composition/app/CompositionMaterializationPort.java",
@@ -27,7 +64,7 @@ if validator.exists() and '@Profile("legacy-media-disabled")' not in validator.r
 for path in ROOT.glob("**/src/main/java/**/*.java"):
     if any(part in str(path) for part in ("/build/", ".gradle/")): continue
     text = path.read_text()
-    if any(a in text for a in ("@RestController", "@Controller", "@Service", "@Component", "@Repository")) and any(x in text for x in ("MediaAsset", "mediaAsset", "media_asset", "MediaAssets", "MediaAssetQueries", "MediaProbes")):
+    if has_spring_role(text) and has_legacy_marker(text):
         if '@Profile("legacy-media-disabled")' not in text:
             failures.append(f"reachable MediaAsset Spring authority remains: {path}")
 if (ROOT / "platform-app/src/main/java/com/example/platform/web/media/MediaAssetLifecycleController.java").exists():
