@@ -38,5 +38,12 @@ class ThumbnailWorkerApplicationArchitectureTest {
                 .contains("SPRING_MAIN_WEB_APPLICATION_TYPE=none")
                 .doesNotContain("--privileged")
                 .doesNotContain("seccomp=unconfined");
+        String imageCheck = Files.readString(Path.of("../infra/runtime/verify-thumbnail-worker-image.sh"));
+        assertThat(imageCheck).contains("ExposedPorts")
+                .contains("8080/tcp")
+                .contains("cap-drop=all")
+                .contains("no-new-privileges")
+                .contains("id -u")
+                .contains("10001");
     }
 }
