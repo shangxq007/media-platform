@@ -3,10 +3,33 @@
 from pathlib import Path
 import re
 import subprocess
+import importlib.util
 
 ROOT = Path(__file__).resolve().parents[1]
 guard = ROOT / "scripts/verify-artifact-mediaasset-convergence.py"
 source = guard.read_text()
+spec = importlib.util.spec_from_file_location("artifact_convergence_guard", guard)
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+
+# Negative fixture: a deleted authority reintroduced as a default-profile Spring
+# bean/adapter must fail the role-aware guard before packaging.
+negative = """
+import org.springframework.stereotype.Component;
+@Component
+final class MediaProbePortAdapter implements MediaProbePort { }
+"""
+if not module.source_failures(Path("negative-fixture.java"), negative):
+    raise SystemExit("negative reachability fixture was not rejected")
+
+# Positive fixture: explicitly classified historical/schema vocabulary remains
+# allowed when it has no production Spring role.
+positive = """
+// historical schema column: media_asset_id; retained for migration history
+final class HistoricalMediaSchemaReference { }
+"""
+if module.source_failures(Path("historical-fixture.java"), positive):
+    raise SystemExit("classified historical fixture was rejected")
 for marker in (
     "DELETED_LEGACY_TYPES", "MediaAuthorization", "MediaProbePortAdapter",
     "MediaProbePort", "MediaAssetService", "MediaProbeService",
