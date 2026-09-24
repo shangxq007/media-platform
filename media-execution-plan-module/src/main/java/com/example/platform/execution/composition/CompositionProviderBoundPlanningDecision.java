@@ -13,7 +13,8 @@ import java.util.Objects;
 public record CompositionProviderBoundPlanningDecision(Status status, Blocker blocker,
         String detail) {
 
-    public enum Status { READY, BLOCKED }
+    /** No READY value exists until the canonical projection authority exists. */
+    public enum Status { BLOCKED }
 
     public enum Blocker {
         PUBLISHED_IMMUTABLE_REVISION_UNAVAILABLE,
@@ -24,10 +25,7 @@ public record CompositionProviderBoundPlanningDecision(Status status, Blocker bl
 
     public CompositionProviderBoundPlanningDecision {
         Objects.requireNonNull(status, "status");
-        if (status == Status.READY && blocker != null) {
-            throw new IllegalArgumentException("ready decision cannot have a blocker");
-        }
-        if (status == Status.BLOCKED && blocker == null) {
+        if (blocker == null) {
             throw new IllegalArgumentException("blocked decision requires a blocker");
         }
         if (detail == null || detail.isBlank()) {
@@ -42,6 +40,6 @@ public record CompositionProviderBoundPlanningDecision(Status status, Blocker bl
     }
 
     public boolean ready() {
-        return status == Status.READY;
+        return false;
     }
 }

@@ -20,15 +20,6 @@ class CompositionProviderBoundPlanningDecisionTest {
     }
 
     @Test
-    void readyDecisionCannotCarryABlocker() {
-        assertThrows(IllegalArgumentException.class, () ->
-                new CompositionProviderBoundPlanningDecision(
-                        CompositionProviderBoundPlanningDecision.Status.READY,
-                        CompositionProviderBoundPlanningDecision.Blocker.RUNTIME_AUTHORITY_UNAVAILABLE,
-                        "invalid"));
-    }
-
-    @Test
     void blockedDecisionRequiresATypedReason() {
         assertThrows(IllegalArgumentException.class, () ->
                 new CompositionProviderBoundPlanningDecision(
