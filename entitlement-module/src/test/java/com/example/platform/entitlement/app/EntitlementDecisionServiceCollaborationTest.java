@@ -5,6 +5,7 @@ import com.example.platform.entitlement.domain.EntitlementDecision;
 import com.example.platform.entitlement.domain.EntitlementGrantView;
 import com.example.platform.shared.commercial.PrincipalRef;
 import com.example.platform.shared.commercial.PrincipalType;
+import com.example.platform.entitlement.domain.QuotaUsageQuery;
 import java.util.List;
 import java.util.Map;
 import com.example.platform.entitlement.api.collaboration.CollaborationAccessPort;
@@ -23,16 +24,19 @@ class EntitlementDecisionServiceCollaborationTest {
     private CollaborationAccessPort collaborationAccessPort;
     private EntitlementDecisionService decisionService;
     private EntitlementService entitlementService;
+    private QuotaUsageAuthority quotaUsageAuthority;
 
     @BeforeEach
     void setUp() {
         policyService = new EntitlementPolicyService(java.util.Optional.empty());
         collaborationAccessPort = mock(CollaborationAccessPort.class);
         entitlementService = mock(EntitlementService.class);
+        quotaUsageAuthority = mock(QuotaUsageAuthority.class);
+        when(quotaUsageAuthority.currentUsage(any(QuotaUsageQuery.class))).thenReturn(java.math.BigDecimal.ZERO);
         decisionService = new EntitlementDecisionService(
                 policyService, entitlementService, java.util.Optional.empty(),
-                java.util.Optional.empty(),
-                java.util.Optional.of(collaborationAccessPort));
+                java.util.Optional.empty(), java.util.Optional.of(collaborationAccessPort),
+                java.util.Optional.of(new QuotaPolicyService()), java.util.Optional.of(quotaUsageAuthority));
     }
 
     @Test
@@ -54,9 +58,11 @@ class EntitlementDecisionServiceCollaborationTest {
     void directGrantPublishesRemainingQuota() {
         when(entitlementService.listGrants(any())).thenReturn(List.of(
                 new EntitlementGrantView("grant-1", new PrincipalRef("tenant-1", PrincipalType.USER, "user-2", "workspace-1", null),
-                        "render.job.create", null, "TEST", "test", "ACTIVE", null, null, 7, false)));
+                        "render.job.create", null, "TEST", "test", "ACTIVE", java.time.Instant.parse("2026-01-01T00:00:00Z"), null, 7, false)));
         AccessCheckRequest request = new AccessCheckRequest("tenant-1", "workspace-1", "user-2", "USER", "user-2",
-                "composition.admit", "COMPOSITION", "composition-1", "render.job.create", null, null, "WEB", null, Map.of("requiredEntitlementVersion", "7"));
+                "composition.admit", "COMPOSITION", "composition-1", "render.job.create", null, null, "WEB", null, Map.of(),
+                new AccessCheckRequest.VersionedRequirement("render.job.create", "7", "composition",
+                        java.time.Instant.parse("2026-09-01T00:00:00Z"), java.time.Instant.parse("2026-10-01T00:00:00Z")));
         EntitlementDecision decision = decisionService.evaluate(request);
         assertTrue(decision.allowed());
         assertEquals("7", decision.matchedGrantId().equals("grant-1") ? "7" : "");
@@ -68,7 +74,9 @@ class EntitlementDecisionServiceCollaborationTest {
         when(entitlementService.listGrants(any())).thenReturn(List.of(
                 new EntitlementGrantView("grant-1", null, "render.job.create", null, "TEST", "test", "ACTIVE", null, null, 6, false)));
         AccessCheckRequest request = new AccessCheckRequest("tenant-1", "workspace-1", "user-2", "USER", "user-2",
-                "composition.admit", "COMPOSITION", "composition-1", "render.job.create", null, null, "WEB", null, Map.of("requiredEntitlementVersion", "7"));
+                "composition.admit", "COMPOSITION", "composition-1", "render.job.create", null, null, "WEB", null, Map.of(),
+                new AccessCheckRequest.VersionedRequirement("render.job.create", "7", "composition",
+                        java.time.Instant.parse("2026-09-01T00:00:00Z"), java.time.Instant.parse("2026-10-01T00:00:00Z")));
         EntitlementDecision decision = decisionService.evaluate(request);
         assertTrue(!decision.allowed());
         assertEquals("DEFAULT_DENY", decision.reasonCode());

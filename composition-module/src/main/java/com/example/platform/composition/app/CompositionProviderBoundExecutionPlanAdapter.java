@@ -40,9 +40,13 @@ public final class CompositionProviderBoundExecutionPlanAdapter {
         var entitlementQuota = entitlements.resolve(workflow, scope.tenantId(), scope.workspaceId(), scope.actorId());
         if (entitlementQuota == null) throw new IllegalArgumentException("entitlement/quota decision is unavailable");
         Set<String> granted = new HashSet<>();
-        entitlementQuota.entitlements().forEach((name, state) -> {
-            if (state != null && state.startsWith("granted")) granted.add(name.split("@", 2)[0]);
-        });
+        if (!entitlementQuota.entitlementFacts().isEmpty()) {
+            entitlementQuota.entitlementFacts().forEach(f -> granted.add(f.identity() + "@" + f.requiredVersion()));
+        } else {
+            entitlementQuota.entitlements().forEach((name, state) -> {
+                if (state != null && state.startsWith("granted")) granted.add(name);
+            });
+        }
         ValidationResult validation = CompositionValidator.validate(workflow, authority,
                 resourceResolution.availableAssets(), granted);
         if (!validation.ready()) throw new IllegalArgumentException("composition plan is not admissible: " + validation.issues());
@@ -89,33 +93,45 @@ public final class CompositionProviderBoundExecutionPlanAdapter {
                 entitlementQuota,
                 new ProviderBoundExecutionPlan.PlanFingerprint(published.planFingerprint()),
                 new ProviderBoundExecutionPlan.IdempotencyIdentity(idempotencyKey,
-                        canonicalIntentHash(published, scope, parameters, entitlementQuota, cancellationPolicy, retryPolicy)),
+                        canonicalIntentHash(published, scope, parameters, entitlementQuota, cancellationPolicy, retryPolicy, bindings, resourceRefs, inputs, outputs)),
                 new ProviderBoundExecutionPlan.PolicyReferences(cancellationPolicy, retryPolicy));
     }
 
     private static String canonicalIntentHash(CompositionPublishedRevisionAuthority.PublishedRevision published,
             ProviderBoundExecutionPlan.Scope scope, Map<String, Object> parameters,
-            ProviderBoundExecutionPlan.EntitlementQuotaSnapshot quota, String cancellationPolicy, String retryPolicy) {
+            ProviderBoundExecutionPlan.EntitlementQuotaSnapshot quota, String cancellationPolicy, String retryPolicy,
+            List<ProviderBoundExecutionPlan.CapabilityProviderBinding> bindings,
+            List<ProviderBoundExecutionPlan.TypedReference> resourceRefs,
+            List<ProviderBoundExecutionPlan.TypedReference> inputs,
+            List<ProviderBoundExecutionPlan.TypedOutputContract> outputs) {
         try {
             java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
             StringBuilder canonical = new StringBuilder();
-            canonical.append("composition-admission-v2\n").append(scope.tenantId()).append('\n')
-                    .append(scope.workspaceId()).append('\n').append(scope.actorId()).append('\n')
-                    .append(published.workflow().id()).append('\n').append(published.workflow().version()).append('\n')
-                    .append(published.workflow().revision()).append('\n').append(published.planFingerprint()).append('\n')
-                    .append(cancellationPolicy).append('\n').append(retryPolicy).append('\n')
-                    .append(published.workflow().executionModes()).append('\n')
-                    .append(published.workflow().estimate().quotaUnits().toPlainString()).append('\n')
-                    .append(quota.entitlements()).append('\n');
-            new java.util.TreeMap<>(parameters == null ? Map.of() : parameters).forEach((k,v) -> canonical.append(k).append('=').append(String.valueOf(v)).append('\n'));
-            published.workflow().requiredAssets().stream().sorted().forEach(a -> canonical.append("asset=").append(a).append('\n'));
-            published.workflow().steps().forEach(step -> {
-                canonical.append("step=").append(step.id()).append(':').append(step.capabilityId()).append('@').append(step.capabilityVersion()).append('\n');
-                step.requiredAssets().stream().sorted().forEach(a -> canonical.append("stepAsset=").append(step.id()).append(':').append(a).append('\n'));
-                step.entitlements().stream().sorted(java.util.Comparator.comparing(EntitlementRequirement::key).thenComparing(EntitlementRequirement::version)).forEach(e -> canonical.append("entitlement=").append(e.key()).append('@').append(e.version()).append('\n'));
-            });
+            java.util.function.BiConsumer<String,String> field = (k,v) -> {
+                String key = CompositionIntentEncoding.text(k);
+                String value = CompositionIntentEncoding.text(v);
+                canonical.append(key.length()).append(':').append(key).append(value.length()).append(':').append(value);
+            };
+            field.accept("scope.tenant", scope.tenantId()); field.accept("scope.workspace", scope.workspaceId()); field.accept("scope.actor", scope.actorId());
+            field.accept("composition.id", published.workflow().id()); field.accept("composition.version", published.workflow().version());
+            field.accept("composition.revision", Long.toString(published.workflow().revision())); field.accept("composition.fingerprint", published.planFingerprint());
+            field.accept("estimate", published.workflow().estimate().quotaUnits().toPlainString()); field.accept("quota.key", quota.quotaKey());
+            field.accept("quota.start", String.valueOf(quota.quotaPeriodStart())); field.accept("quota.end", String.valueOf(quota.quotaPeriodEnd()));
+            field.accept("execution.mode", published.workflow().executionModes().stream().map(Enum::name).sorted().reduce("", (a,b) -> a + ":" + b));
+            field.accept("policy.cancel", cancellationPolicy); field.accept("policy.retry", retryPolicy);
+            quota.entitlementFacts().stream().sorted(java.util.Comparator.comparing(ProviderBoundExecutionPlan.EntitlementFact::identity).thenComparing(ProviderBoundExecutionPlan.EntitlementFact::requiredVersion)).forEach(f -> { field.accept("entitlement.identity", f.identity()); field.accept("entitlement.requiredVersion", f.requiredVersion()); field.accept("entitlement.grant", f.grantId()); field.accept("entitlement.authoritativeVersion", Long.toString(f.authoritativeVersion())); });
+            published.workflow().parameters().stream().sorted(java.util.Comparator.comparing(Parameter::name)).forEach(p -> { field.accept("parameter.definition.name", p.name()); field.accept("parameter.definition.type", p.type()); field.accept("parameter.definition.required", Boolean.toString(p.required())); field.accept("parameter.definition.minimum", String.valueOf(p.minimum())); field.accept("parameter.definition.maximum", String.valueOf(p.maximum())); appendStructured(field, "parameter.definition.default", p.defaultValue()); });
+            parameters.entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(e -> { field.accept("parameter.name", e.getKey()); appendStructured(field, "parameter.value", e.getValue()); });
+            bindings.stream().sorted(java.util.Comparator.comparing(ProviderBoundExecutionPlan.CapabilityProviderBinding::nodeId)).forEach(b -> { field.accept("binding.node", b.nodeId()); field.accept("binding.capability", b.capabilityId()); field.accept("binding.capabilityVersion", b.capabilityVersion()); field.accept("binding.provider", b.providerIdentity().registryReference()); field.accept("binding.providerContract", b.providerContractVersion()); field.accept("binding.input", b.inputContract()); field.accept("binding.output", b.outputContract()); field.accept("binding.inputVersion", b.inputContractVersion()); field.accept("binding.outputVersion", b.outputContractVersion()); });
+            resourceRefs.stream().sorted(java.util.Comparator.comparing(ProviderBoundExecutionPlan.TypedReference::reference)).forEach(r -> { field.accept("resource.name", r.name()); field.accept("resource.contract", r.contract()); field.accept("resource.version", r.contractVersion()); field.accept("resource.reference", r.reference()); });
+            inputs.forEach(r -> { field.accept("input.name", r.name()); field.accept("input.contract", r.contract()); field.accept("input.version", r.contractVersion()); field.accept("input.reference", r.reference()); });
+            outputs.forEach(o -> { field.accept("output.name", o.name()); field.accept("output.contract", o.contract()); field.accept("output.version", o.contractVersion()); field.accept("output.kind", o.materializationKind()); });
             return java.util.HexFormat.of().formatHex(digest.digest(canonical.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8)));
         } catch (java.security.NoSuchAlgorithmException e) { throw new IllegalStateException("SHA-256 unavailable", e); }
+    }
+
+    private static void appendStructured(java.util.function.BiConsumer<String,String> field, String key, Object value) {
+        field.accept(key, CompositionIntentEncoding.text(value));
     }
 
     private static String outputVersion(TemplateWorkflow workflow, WorkflowOutput output,

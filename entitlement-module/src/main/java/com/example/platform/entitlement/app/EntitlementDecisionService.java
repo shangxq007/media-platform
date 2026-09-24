@@ -46,22 +46,18 @@ class EntitlementDecisionService implements EntitlementDecisionQuery {
         this.quotaUsageAuthority = quotaUsageAuthority.orElse(null);
     }
 
-    public EntitlementDecisionService(EntitlementPolicyService policyService,
-            EntitlementService entitlementService, Optional<EntitlementOverrideRepository> overrideRepository,
-            Optional<WorkspaceEntitlementPoolRepository> poolRepository,
-            Optional<CollaborationAccessPort> collaborationAccessPort) {
-        this(policyService, entitlementService, overrideRepository, poolRepository, collaborationAccessPort,
-                Optional.of(new QuotaPolicyService()), Optional.empty());
-    }
-
     @Override
     public EntitlementDecision evaluate(AccessCheckRequest request) {
         List<String> matchedPolicies = new ArrayList<>();
         Instant now = Instant.now();
 
         String tier = policyService.getTier(request.tenantId());
+        if ("composition.admit".equals(request.action()) && request.requirement() == null)
+            return persistenceDenied(tier, matchedPolicies, "MISSING_ENTITLEMENT_VERSION");
+        if (request.requirement() != null && !request.requirement().identity().equals(request.featureKey()))
+            return persistenceDenied(tier, matchedPolicies, "ENTITLEMENT_IDENTITY_MISMATCH");
 
-        if (collaborationAccessPort != null && isSharedResourceCheck(request)) {
+        if (requiredVersion(request) == null && collaborationAccessPort != null && isSharedResourceCheck(request)) {
             String userId = request.userId() != null ? request.userId() : request.subjectId();
             if (userId != null && collaborationAccessPort.hasSharedAccess(
                     request.tenantId(), userId, request.resourceType(), request.resourceId(), request.action())) {
@@ -96,18 +92,21 @@ class EntitlementDecisionService implements EntitlementDecisionQuery {
             try {
                 PrincipalRef principal = new PrincipalRef(request.tenantId(),
                         principalType(request.subjectType()), request.subjectId(), request.workspaceId(), null);
-                for (EntitlementGrantView g : entitlementService.listGrants(principal)) {
-                    if (g.bundleCode().equals(request.featureKey()) && versionMatches(g, requiredVersion(request))) {
-                        matchedPolicies.add((g.workspaceGrant() ? "workspace-member-grant:" : "grant:")
-                                + g.grantId());
-                        return new EntitlementDecision(
-                                true, "ALLOW", (g.workspaceGrant()
-                                        ? EntitlementDecisionReason.WORKSPACE_MEMBER_GRANT
-                                        : EntitlementDecisionReason.USER_GRANT).name(),
-                                "Access granted by entitlement grant", tier,
-                                matchedPolicies, g.grantId(), null, null, quotaRemaining(request),
-                                null, List.of(), g.expiresAt(), false);
-                    }
+                List<EntitlementGrantView> allMatches = entitlementService.listGrants(principal).stream()
+                        .filter(g -> g.bundleCode().equals(request.featureKey())).toList();
+                if (allMatches.size() > 1) return persistenceDenied(tier, matchedPolicies, "ambiguous active entitlement grants");
+                List<EntitlementGrantView> matches = allMatches.stream()
+                        .filter(g -> versionMatches(g, requiredVersion(request))).toList();
+                if (matches.size() == 1) {
+                    EntitlementGrantView g = matches.getFirst();
+                    if (request.requirement() != null && (!principal.equals(g.principal())
+                            || !"ACTIVE".equals(g.status()) || g.effectiveAt() == null || g.effectiveAt().isAfter(now)
+                            || g.expiresAt() != null && !g.expiresAt().isAfter(now)))
+                        return persistenceDenied(tier, matchedPolicies, "INVALID_ENTITLEMENT_GRANT_SCOPE_OR_STATE");
+                    matchedPolicies.add((g.workspaceGrant() ? "workspace-member-grant:" : "grant:") + g.grantId());
+                    return new EntitlementDecision(true, "ALLOW", (g.workspaceGrant() ? EntitlementDecisionReason.WORKSPACE_MEMBER_GRANT : EntitlementDecisionReason.USER_GRANT).name(),
+                            "Access granted by entitlement grant", tier, matchedPolicies, g.grantId(), null, null, quotaRemaining(request),
+                            null, List.of(), g.expiresAt(), false, g);
                 }
             } catch (Exception e) {
                 log.warn("Member grant check failed: {}", e.getMessage());
@@ -144,25 +143,35 @@ class EntitlementDecisionService implements EntitlementDecisionQuery {
 
     private java.math.BigDecimal quotaRemaining(AccessCheckRequest request) {
         try {
-            if (request.featureKey() == null || quotaPolicyService == null) return java.math.BigDecimal.ZERO;
-            var policy = quotaPolicyService.getQuotaPolicy(request.featureKey());
+            if (request.featureKey() == null || quotaPolicyService == null || quotaUsageAuthority == null) {
+                if ("composition.admit".equals(request.action())) throw new IllegalStateException("quota usage authority unavailable");
+                return null;
+            }
+            String quotaKey = request.requirement() == null ? request.featureKey() : request.requirement().quotaKey();
+            var policy = quotaPolicyService.getQuotaPolicy(quotaKey);
             var now = java.time.Instant.now();
-            var start = now.atZone(java.time.ZoneOffset.UTC).withDayOfMonth(1).toInstant();
-            var end = start.atZone(java.time.ZoneOffset.UTC).plusMonths(1).toInstant();
+            var start = request.requirement() != null ? request.requirement().periodStart() : (now.atZone(java.time.ZoneOffset.UTC).toLocalDate().withDayOfMonth(1).atStartOfDay(java.time.ZoneOffset.UTC).toInstant());
+            var end = request.requirement() != null ? request.requirement().periodEnd() : (start.atZone(java.time.ZoneOffset.UTC).plusMonths(1).toInstant());
             var principal = new PrincipalRef(request.tenantId(), principalType(request.subjectType()),
                     request.subjectId() == null ? request.userId() : request.subjectId(), request.workspaceId(), null);
-            if (quotaUsageAuthority == null) return policy.limitValue();
             return policy.limitValue().subtract(quotaUsageAuthority.currentUsage(new com.example.platform.entitlement.domain.QuotaUsageQuery(
-                    principal, request.featureKey(), start, end, java.math.BigDecimal.ZERO, policy.limitValue(),
+                    principal, quotaKey, start, end, java.math.BigDecimal.ZERO, policy.limitValue(),
                     "entitlement-resolution", now))).max(java.math.BigDecimal.ZERO);
-        } catch (IllegalArgumentException unknownQuota) {
-            return java.math.BigDecimal.ZERO;
         } catch (RuntimeException unavailable) {
+            if (!"composition.admit".equals(request.action())) return null;
             throw new IllegalStateException("quota availability unavailable", unavailable);
         }
     }
 
+    private static Optional<Instant> instantContext(AccessCheckRequest request, String key) {
+        Object value = request.context() == null ? null : request.context().get(key);
+        if (value == null) return Optional.empty();
+        try { return Optional.of(Instant.parse(String.valueOf(value))); }
+        catch (RuntimeException invalid) { throw new IllegalArgumentException("invalid " + key); }
+    }
+
     private static String requiredVersion(AccessCheckRequest request) {
+        if (request.requirement() != null) return request.requirement().version();
         Object v = request.context() == null ? null : request.context().get("requiredEntitlementVersion");
         return v == null || String.valueOf(v).isBlank() ? null : String.valueOf(v);
     }

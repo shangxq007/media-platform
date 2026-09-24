@@ -106,17 +106,43 @@ public record ProviderBoundExecutionPlan(
     public enum ExecutionMode { SYNCHRONOUS, ASYNCHRONOUS, BATCH }
 
     public record EntitlementQuotaSnapshot(String snapshotId, Map<String, String> entitlements,
-            BigDecimal quotaUnits, BigDecimal quotaRemaining) {
+            List<EntitlementFact> entitlementFacts, BigDecimal quotaUnits, BigDecimal quotaRemaining,
+            java.time.Instant quotaPeriodStart, java.time.Instant quotaPeriodEnd, String quotaKey) {
         public EntitlementQuotaSnapshot {
             required(snapshotId, "snapshotId");
             Objects.requireNonNull(quotaUnits, "quotaUnits");
             if (quotaUnits.signum() < 0) throw new IllegalArgumentException("quotaUnits must be non-negative");
             Objects.requireNonNull(quotaRemaining, "quotaRemaining");
             if (quotaRemaining.signum() < 0) throw new IllegalArgumentException("quotaRemaining must be non-negative");
+            entitlementFacts = entitlementFacts == null ? List.of() : List.copyOf(entitlementFacts);
             entitlements = entitlements == null ? Map.of() : Map.copyOf(entitlements);
+            if ((quotaPeriodStart == null) != (quotaPeriodEnd == null) || (quotaPeriodStart != null && !quotaPeriodEnd.isAfter(quotaPeriodStart)))
+                throw new IllegalArgumentException("quota period must be a valid half-open interval");
+            if (quotaKey != null && quotaKey.isBlank()) throw new IllegalArgumentException("quotaKey must not be blank");
         }
         public EntitlementQuotaSnapshot(String snapshotId, Map<String, String> entitlements, BigDecimal quotaUnits) {
-            this(snapshotId, entitlements, quotaUnits, quotaUnits);
+            this(snapshotId, entitlements, List.of(), quotaUnits, quotaUnits, null, null, null);
+        }
+        public EntitlementQuotaSnapshot(String snapshotId, Map<String, String> entitlements, BigDecimal quotaUnits, BigDecimal quotaRemaining) {
+            this(snapshotId, entitlements, List.of(), quotaUnits, quotaRemaining, null, null, null);
+        }
+        public EntitlementQuotaSnapshot(String snapshotId, List<EntitlementFact> entitlementFacts,
+                BigDecimal quotaUnits, BigDecimal quotaRemaining, java.time.Instant periodStart,
+                java.time.Instant periodEnd, String quotaKey) {
+            this(snapshotId, factsMap(entitlementFacts), entitlementFacts, quotaUnits, quotaRemaining, periodStart, periodEnd, quotaKey);
+        }
+        private static Map<String,String> factsMap(List<EntitlementFact> facts) {
+            if (facts == null) return Map.of();
+            Map<String,String> result = new java.util.LinkedHashMap<>();
+            for (EntitlementFact fact : facts) result.put(fact.identity() + "@" + fact.requiredVersion(), "granted:" + fact.grantId());
+            return result;
+        }
+    }
+
+    public record EntitlementFact(String identity, String requiredVersion, String grantId, long authoritativeVersion) {
+        public EntitlementFact {
+            required(identity, "entitlement identity"); required(requiredVersion, "required entitlement version");
+            required(grantId, "grantId"); if (authoritativeVersion < 1) throw new IllegalArgumentException("authoritative entitlement version must be positive");
         }
     }
 

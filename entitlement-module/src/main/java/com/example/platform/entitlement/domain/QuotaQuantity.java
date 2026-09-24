@@ -12,7 +12,7 @@ public final class QuotaQuantity {
 
     public static BigDecimal exact(BigDecimal value, String field) {
         if (value == null) throw new IllegalArgumentException(field + " must not be null");
-        if (value.scale() > SCALE || value.precision() > PRECISION)
+        if (value.scale() > SCALE || value.precision() > PRECISION || value.precision() - value.scale() > PRECISION - SCALE)
             throw new IllegalArgumentException(field + " exceeds NUMERIC(" + PRECISION + "," + SCALE + ")");
         return value;
     }

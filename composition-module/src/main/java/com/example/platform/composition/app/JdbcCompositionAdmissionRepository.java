@@ -23,7 +23,7 @@ public class JdbcCompositionAdmissionRepository implements CompositionAdmissionR
               (execution_id, tenant_id, workspace_id, actor_id, source_domain, composition_id,
                composition_revision, plan_id, idempotency_key, request_hash, ownership_generation,
                state, quota_units, quota_charged_units, quota_charged, quota_claimed, plan_fingerprint, plan_facts, quota_unit, created_at, updated_at)
-            values (?,?,?,?,?,?,?,?,?,?,0,'ADMITTED',?,false,false,?,?,?, ?,?)
+            values (?,?,?,?,?,?,?,?,?,?,0,'ADMITTED',?,null,false,false,?,?::jsonb,?, ?,?)
             on conflict (tenant_id, workspace_id, idempotency_key) do nothing
             """, id, plan.scope().tenantId(), plan.scope().workspaceId(), plan.scope().actorId(),
                 "composition", compositionId, revision, id, plan.idempotency().key(), plan.idempotency().requestHash(),

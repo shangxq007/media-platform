@@ -41,11 +41,10 @@ public class CompositionAdmissionService implements PlatformExecutionAdmissionPo
         ProviderBoundExecutionPlan plan = CompositionProviderBoundExecutionPlanAdapter.lower(revisions, capabilities, resources, entitlements, scope,
                 request.compositionId(), request.publishedVersion(), request.idempotencyKey(), null,
                 request.cancellationPolicy(), request.retryPolicy(), request.parameters());
-        return admit(plan);
+        return admitResolved(plan);
     }
 
-    @Override @Transactional
-    public AdmissionDecision admit(ProviderBoundExecutionPlan plan) {
+    private AdmissionDecision admitResolved(ProviderBoundExecutionPlan plan) {
         var existing = repository.find(plan.scope().tenantId(), plan.scope().workspaceId(), plan.idempotency().key());
         if (existing.isPresent()) {
             var record = existing.get();

@@ -35,9 +35,6 @@ class AccessDecisionServiceTest {
                 grant("export.preset.default_1080p"),
                 grant("render.job.create"),
                 grant("ai.model.premium")));
-        entitlementDecisionService = new EntitlementDecisionService(
-                policyService, entitlements, java.util.Optional.empty(),
-                java.util.Optional.empty(), java.util.Optional.empty());
         QuotaPolicyService quotaPolicyService = new QuotaPolicyService();
         QuotaUsageAuthority quotaUsageAuthority = mock(QuotaUsageAuthority.class);
         when(quotaUsageAuthority.decide(any(QuotaUsageQuery.class))).thenAnswer(invocation -> {
@@ -50,6 +47,9 @@ class AccessDecisionServiceTest {
                     java.util.List.of(), "quota-usage-v1", query.traceId(), query.decidedAt());
         });
         quotaDecisionService = new QuotaDecisionService(quotaPolicyService, quotaUsageAuthority);
+        entitlementDecisionService = new EntitlementDecisionService(policyService, entitlements,
+                java.util.Optional.empty(), java.util.Optional.empty(), java.util.Optional.empty(),
+                java.util.Optional.of(quotaPolicyService), java.util.Optional.of(quotaUsageAuthority));
         accessDecisionService = new AccessDecisionService(entitlementDecisionService, quotaDecisionService);
     }
 

@@ -17,14 +17,14 @@ public class CanonicalCompositionQuotaChargeAdapter implements CompositionQuotaC
         var decision = quota.consume(new QuotaConsumptionRequest(
                 new PrincipalRef(plan.scope().tenantId(), PrincipalType.USER, plan.scope().actorId(), plan.scope().workspaceId(), null),
                 quotaKey(plan), amount,
-                now.minusSeconds(1), now.plusSeconds(1), "platform-admission:" + executionId,
+                plan.entitlementQuota().quotaPeriodStart(), plan.entitlementQuota().quotaPeriodEnd(), "platform-admission:" + executionId,
                 "composition-admission:" + executionId, "composition admission", now));
         if (!decision.allowed()) throw new IllegalStateException("quota admission rejected");
     }
 
     private static String quotaKey(ProviderBoundExecutionPlan plan) {
-        return plan.entitlementQuota().entitlements().keySet().stream().findFirst()
-                .map(k -> k.contains("@") ? k.substring(0, k.indexOf('@')) : k)
-                .filter(k -> !k.isBlank()).orElse("composition");
+        String key = plan.entitlementQuota().quotaKey();
+        if (key == null || key.isBlank()) throw new IllegalArgumentException("quota dimension is unavailable");
+        return key;
     }
 }

@@ -18,5 +18,15 @@ public record EntitlementDecision(
         String recommendedAlternative,
         List<String> upgradeOptions,
         Instant expiresAt,
-        boolean requiresReview
-) {}
+        boolean requiresReview,
+        EntitlementGrantView authoritativeGrant
+) {
+    public EntitlementDecision(boolean allowed, String decision, String reasonCode, String userFriendlyMessage,
+            String currentTier, List<String> matchedPolicies, String matchedGrantId, String matchedOverrideId,
+            String matchedWorkspacePoolId, BigDecimal quotaRemaining, String recommendedAlternative,
+            List<String> upgradeOptions, Instant expiresAt, boolean requiresReview) {
+        this(allowed, decision, reasonCode, userFriendlyMessage, currentTier, matchedPolicies, matchedGrantId,
+                matchedOverrideId, matchedWorkspacePoolId, quotaRemaining, recommendedAlternative,
+                upgradeOptions, expiresAt, requiresReview, null);
+    }
+}
