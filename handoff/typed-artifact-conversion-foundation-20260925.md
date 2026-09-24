@@ -5,8 +5,8 @@ Status: frozen candidate pending independent review. No delivery or push request
 - Branch: `feature/typed-artifact-conversion-foundation-20260925`
 - Worktree: `/home/user/Documents/workspace/projects/media-platform/Documents/workspace/projects/.worktrees/typed-artifact-conversion-foundation-20260925`
 - Baseline: `8875461a796c6cee5a54500529dfe5ea86e0e182` (tree `8652a332abd18622e4a4d30a351373295795c2c5`)
-- Candidate commit: `cdd3d2540e9d73d940225d29b42870f0d87866c3`
-- Candidate tree: `e6d2d7682513920b919f6e3040d28a19342d5185`
+- Candidate commit: `53314bc98bdb36e3a08bc9efd88091d703d1e9a1`
+- Candidate tree: `824c480dc07854f04f09eb901698ed5f72c83d7b`
 
 Changed files:
 - `artifact-module/src/main/java/com/example/platform/artifact/domain/typed/*`: platform-owned kinds, typed artifact view, requirements, version ranges, declarative contracts, specifications, validator and stable errors.
