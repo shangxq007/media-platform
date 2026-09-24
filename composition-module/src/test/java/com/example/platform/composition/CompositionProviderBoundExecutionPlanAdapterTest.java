@@ -13,7 +13,7 @@ class CompositionProviderBoundExecutionPlanAdapterTest {
     private static final CompositionProviderBoundCapabilityAuthority AUTHORITY = new Authority();
     private static final CompositionPublishedRevisionAuthority REVISIONS = (tenant, workspace, id, version) -> Optional.of(published(workflow(Lifecycle.PUBLISHED)));
     private static final CompositionResourceResolver RESOURCES = (workflow, tenant, workspace) -> new CompositionResourceResolver.ResourceResolution(Set.of());
-    private static final CompositionEntitlementQuotaResolver QUOTA = (workflow, tenant, workspace, actor) -> new ProviderBoundExecutionPlan.EntitlementQuotaSnapshot("ent-1", Map.of("compose", "granted"), 3);
+    private static final CompositionEntitlementQuotaResolver QUOTA = (workflow, tenant, workspace, actor) -> new ProviderBoundExecutionPlan.EntitlementQuotaSnapshot("ent-1", Map.of("compose", "granted"), BigDecimal.valueOf(3));
 
     @Test
     void lowersPublishedWorkflowWithTypedProviderBindingAndIo() {

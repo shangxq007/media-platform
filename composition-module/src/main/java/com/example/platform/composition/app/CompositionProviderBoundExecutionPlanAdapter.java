@@ -20,6 +20,8 @@ public final class CompositionProviderBoundExecutionPlanAdapter {
                 scope.tenantId(), scope.workspaceId(), compositionId, version)
                 .orElseThrow(() -> new IllegalArgumentException("published Composition revision is unavailable"));
         TemplateWorkflow workflow = published.workflow();
+        if (!workflow.id().equals(compositionId) || !workflow.version().equals(version))
+            throw new IllegalArgumentException("resolved revision identity does not match requested identity");
         if (workflow.lifecycle() != Lifecycle.PUBLISHED) throw new IllegalArgumentException("composition revision is not published");
         if (!workflow.tenantId().equals(scope.tenantId()) || !workflow.workspaceId().equals(scope.workspaceId()))
             throw new IllegalArgumentException("composition scope does not match authenticated scope");
@@ -33,7 +35,7 @@ public final class CompositionProviderBoundExecutionPlanAdapter {
         ValidationResult validation = CompositionValidator.validate(workflow, authority,
                 resourceResolution.availableAssets(), granted);
         if (!validation.ready()) throw new IllegalArgumentException("composition plan is not admissible: " + validation.issues());
-        if (entitlementQuota.quotaUnits() < workflow.estimate().quotaUnits().longValue())
+        if (entitlementQuota.quotaUnits().compareTo(workflow.estimate().quotaUnits()) < 0)
             throw new IllegalArgumentException("quota snapshot is below the published Composition estimate");
         List<ProviderBoundExecutionPlan.CapabilityProviderBinding> bindings = new ArrayList<>();
         for (WorkflowStep step : workflow.steps()) {

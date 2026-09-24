@@ -3,6 +3,7 @@ package com.example.platform.execution.planning;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.math.BigDecimal;
 
 /**
  * Provider-neutral platform contract between validated domain planning and
@@ -92,10 +93,11 @@ public record ProviderBoundExecutionPlan(
     public enum ExecutionMode { SYNCHRONOUS, ASYNCHRONOUS, BATCH }
 
     public record EntitlementQuotaSnapshot(String snapshotId, Map<String, String> entitlements,
-            long quotaUnits) {
+            BigDecimal quotaUnits) {
         public EntitlementQuotaSnapshot {
             required(snapshotId, "snapshotId");
-            if (quotaUnits < 0) throw new IllegalArgumentException("quotaUnits must be non-negative");
+            Objects.requireNonNull(quotaUnits, "quotaUnits");
+            if (quotaUnits.signum() < 0) throw new IllegalArgumentException("quotaUnits must be non-negative");
             entitlements = entitlements == null ? Map.of() : Map.copyOf(entitlements);
         }
     }
