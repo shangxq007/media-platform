@@ -28,7 +28,7 @@ Verification:
 - `./gradlew :artifact-module:test --tests '*TypedArtifactFoundationTest' --no-daemon` — PASS (6 tests; fresh run after changes).
 - Ruby YAML parse for all three media API documents — PASS.
 - `git diff --check` — PASS.
-- Full artifact-module suite — NOT_RUN in this revision; prior baseline had Testcontainers Docker initialization failures and is not counted as passing.
+- Full `./gradlew :artifact-module:test --no-daemon` — 122 tests completed: 116 passed, 6 failed during Testcontainers Docker client initialization (`DockerClientProviderStrategy`). This is BLOCKED and is not counted as passing.
 
 Fresh tests: 6 passed, 0 failed, 0 skipped. Reused tests: 0. Overlapping tests: 0.
 BLOCKED/NOT_RUN: hermetic PostgreSQL migration execution (Docker/Testcontainers availability not established), full suite, runtime provider execution, Temporal activities, FFmpeg/BMF/OpenCV/AI, Storage writes, external providers, deployment/PVE/GitOps, production data.
