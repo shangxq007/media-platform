@@ -47,3 +47,22 @@ Resolution failure mapping (unchanged in shape):
 Artifact-owned governance/publication/version facts are **not** invented here; the typed-schema
 pre-V18 baseline (which would be needed to read V18+ tables from canonical code) is unchanged. Both
 remain on the backlog. V21 also adds marketplace column drift to that same typed-schema baseline.
+
+## Sign-off decisions (decision TYPED_ARTIFACT_MARKETPLACE_DECISION_001, Path 1b)
+
+| # | Item | Decision recorded by this candidate |
+|---|---|---|
+| 1 | Governance eligibility (`contains_pii`, classification, security level) | **Retired with the media authority; not evaluated.** No artifact-owned governance facts exist and inventing them is out of 1b scope. Public visibility and publish admission are decided by Marketplace-owned state plus the Artifact pin. Restoring the pre-V28 policy requires 1a (artifact-owned governance facts) — backlog. |
+| 2 | Media-version equality → digest pin | **Replaced by the immutable Artifact content pin.** `ArtifactSubject.version` is the canonical Artifact content digest, validated at the contract boundary and compared against the Artifact authority's recorded digest. Because Artifact identity/digest cannot change under one id, an approved review can never be reused for changed content. |
+| 3 | Publication mirroring | **Retired.** Publication state is Marketplace-owned (`marketplace_listing.status`, `published_at`). The Marketplace no longer reads or writes `media_asset.publish_status`; artifact/listing withdrawal is listing-only and never mutates the subject. |
+| 4 | Wire change breaking | **Accepted.** `kind: "MEDIA_ASSET"` → `"ARTIFACT"`; `subject.assetId{value}` → `subject.artifactId{value}`; `managedByAsset` → `managedByArtifact`; `publicationFact(..., assetId)` → `(..., artifactId)`; publish-status/review-summary response keys `assetId` → `artifactId`; marketplace/asset-publish path templates `{assetId}` → `{artifactId}` (path shapes unchanged); `docs/api/openapi-preview-current.json` updated (`MediaAssetSubject` schema removed, `ArtifactSubject` published). |
+| 5 | Historical outbox/audit payloads | **Retained as evidence, never rewritten.** The decoder accepts only `kind=ARTIFACT`; a historical `kind=MEDIA_ASSET` payload no longer decodes and is handled fail-closed by the outbox dispatcher (dead-letter), consistent with the V7 precedent of explicit retirement instead of reconstruction. Audit records embed the subject textually and are untouched. |
+| 6 | Production row volume / migration strategy | **Single transactional migration with a fail-closed pre-flight.** V21 aborts (`MARKETPLACE_SUBJECT_UNMAPPED`) if any listing lacks an Artifact identity derived from `artifact_media_details.legacy_media_asset_id`; the identity backfill is one `UPDATE ... FROM` executed with the V7 immutability fence disabled and re-enabled, so no admitted row is silently dropped or rewritten beyond the subject id. Row counts are not visible from the repository; a large production table may need the same statement executed in reviewed batches. |
+
+### Fence scope change (recorded explicitly)
+
+`MarketplaceService` and `MarketplaceStore` were fenced by V21 **because their subject depended on the
+retired media authority**. With that dependency removed they are default-profile beans, which is what
+makes `MarketplaceApi` satisfiable. No legacy media authority fence was removed: `MediaAssets`,
+`MediaAssetQueries`/`MediaStreamQueries`, their jOOQ implementations and every other retired-media
+consumer remain fenced or deleted, and the convergence guard still reports 0 findings.
