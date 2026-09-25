@@ -1,5 +1,4 @@
 package com.example.platform.timeline.app;
-import org.springframework.context.annotation.Profile;
 import com.example.platform.timeline.api.revision.TimelineRevisionDiff;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -17,7 +16,6 @@ import org.springframework.stereotype.Service;
  * Entity-id-based diff summary between two canonical TimelineDocument payloads.
  */
 @Service
-@Profile("legacy-media-disabled")
 public class TimelineRevisionDiffService implements TimelineRevisionDiff {
 
     private static final ObjectMapper MAPPER = TimelineDocumentJsonSerializer.mapper();

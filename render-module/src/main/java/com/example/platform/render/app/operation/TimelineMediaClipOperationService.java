@@ -46,7 +46,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import org.springframework.stereotype.Service;
-import org.springframework.context.annotation.Profile;
 
 /**
  * H7 canonical application coordinator:
@@ -57,7 +56,6 @@ import org.springframework.context.annotation.Profile;
  * sequencing and never writes canonical state itself.
  */
 @Service
-@Profile("legacy-media-disabled")
 public class TimelineMediaClipOperationService {
 
     public static final String OPERATION = "ADD_MEDIA_CLIP_V1";

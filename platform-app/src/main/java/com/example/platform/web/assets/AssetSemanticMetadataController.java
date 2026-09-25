@@ -5,10 +5,12 @@ import com.example.platform.render.domain.asset.semantic.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.*;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+@Profile("legacy-media-disabled")
 @RestController
 @RequestMapping("/api/projects/{projectId}/assets/{assetId}/semantic-metadata")
 @Tag(name = "Asset Semantic Metadata", description = "AI enrichment metadata for assets")

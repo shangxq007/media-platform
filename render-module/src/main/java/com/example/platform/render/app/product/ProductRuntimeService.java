@@ -6,12 +6,10 @@ import com.example.platform.render.infrastructure.product.ProductDependencyRepos
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.context.annotation.Profile;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 
 @Service
-@Profile("legacy-media-disabled")
 public class ProductRuntimeService {
 
     private static final Logger log = LoggerFactory.getLogger(ProductRuntimeService.class);

@@ -14,12 +14,14 @@ import java.time.Instant;
 import java.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 /**
  * Vision task handler — routes through platform extension runtime.
  * Same governance pattern as RealAsrTaskHandler and OcrTaskHandler.
  */
+@Profile("legacy-media-disabled")
 @Component
 public class VisionTaskHandler implements TaskHandler, Producer {
 

@@ -15,6 +15,7 @@ import java.time.Instant;
 import java.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 /**
@@ -22,6 +23,7 @@ import org.springframework.stereotype.Component;
  * Handler owns business logic. Extension runtime owns provider execution.
  * ExecutionBackend owns process execution.
  */
+@Profile("legacy-media-disabled")
 @Component
 public class RealAsrTaskHandler implements TaskHandler, Producer {
 

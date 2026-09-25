@@ -14,12 +14,14 @@ import java.time.Instant;
 import java.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 /**
  * Embedding task handler — routes through platform extension runtime.
  * Same governance pattern as ASR/OCR/Vision handlers.
  */
+@Profile("legacy-media-disabled")
 @Component
 public class EmbeddingTaskHandler implements TaskHandler, Producer {
 

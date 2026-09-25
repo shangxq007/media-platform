@@ -19,6 +19,35 @@ DELETED_LEGACY_TYPES = (
     "MediaProbes", "MediaProbePort", "MediaProbePortAdapter",
 )
 
+# Legacy MediaAsset authority contracts. Referencing one of these means the unit
+# is (or consumes) a retired MediaAsset authority, so it must be fenced. A plain
+# mention of a media *identity field* (MediaAssetId / mediaAssetId) is NOT an
+# authority reference: those identifiers remain part of the live canonical
+# timeline document model and of persisted historical revision payloads.
+LEGACY_AUTHORITY_CONTRACTS = DELETED_LEGACY_TYPES + (
+    "MediaAssets", "MediaAssetRepository", "MediaAssetResolver",
+    "MediaProbeObservation", "MediaAssetArtifactLinkRepository",
+)
+
+# Canonical units whose only "legacy" signal is the live media identity field.
+# Exemptions are fail-closed: they are rejected unless the unit references no
+# legacy authority contract, and the dependency law below still applies.
+CANONICAL_IDENTITY_ONLY_EXEMPTIONS = {
+    "render-module/src/main/java/com/example/platform/render/app/operation/TimelineMediaClipOperationService.java":
+        "H8 byte-attested canonical ADD_MEDIA_CLIP coordinator; mediaAssetId is the live canonical timeline identity",
+    "timeline-module/src/main/java/com/example/platform/timeline/app/TimelineRevisionDiffService.java":
+        "canonical TimelineDocument diff decoder; mediaAssetId is a persisted canonical document field name",
+}
+
+
+def exemption_for(path: Path) -> str | None:
+    posix = path.as_posix()
+    for rel, rationale in CANONICAL_IDENTITY_ONLY_EXEMPTIONS.items():
+        if posix == rel or posix.endswith("/" + rel):
+            return rationale
+    return None
+
+
 def is_java_production_source(path: Path) -> bool:
     return "src/main/java/" in str(path) and "/build/" not in str(path)
 
@@ -33,6 +62,21 @@ def has_legacy_marker(text: str) -> bool:
     return any(marker in code for marker in LEGACY_MARKERS)
 
 
+def fence_requirement_failures(path: Path, text: str, message: str) -> list[str]:
+    """Require a fence for a marker-bearing Spring role, with validated exemptions."""
+    if not has_spring_role(text) or not has_legacy_marker(text) or LEGACY_PROFILE in text:
+        return []
+    if exemption_for(path) is None:
+        return [f"{message}: {path}"]
+    code = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
+    code = re.sub(r"//.*", "", code)
+    return [
+        f"canonical identity exemption references legacy authority contract: {path}:{contract}"
+        for contract in LEGACY_AUTHORITY_CONTRACTS
+        if re.search(rf"\b{re.escape(contract)}\b", code)
+    ]
+
+
 def source_failures(path: Path, text: str) -> list[str]:
     """Return role-aware failures for one production source unit."""
     failures = []
@@ -44,8 +88,10 @@ def source_failures(path: Path, text: str) -> list[str]:
     # A legacy marker on a Spring stereotype is reachable unless explicitly
     # disabled. This covers classes, interfaces implemented by adapters, and
     # provider/controller/repository/service roles rather than filenames only.
-    if has_spring_role(text) and has_legacy_marker(text) and LEGACY_PROFILE not in text:
-        failures.append(f"default-profile legacy authority remains: {path}")
+    # Canonical identity-only decoders are exempt; the exemption itself is
+    # validated below so it can never cover a real authority reference.
+    failures.extend(
+        fence_requirement_failures(path, text, "default-profile legacy authority remains"))
     # Fail closed on manual registrations, @Bean methods, component scans, and
     # interface/adaptor wiring that names a deleted authority.
     if re.search(r"@Bean[\s\S]{0,240}(?:" + "|".join(map(re.escape, DELETED_LEGACY_TYPES)) + r")", code):
@@ -59,12 +105,56 @@ def source_failures(path: Path, text: str) -> list[str]:
 # Fail closed on every production reference to deleted legacy authorities. Comments
 # and historical/test-only material are intentionally excluded from this graph.
 
+DECLARATION_RE = re.compile(r"public (?:final |abstract )?(?:class|interface|record|enum) (\w+)")
+
+
+def fenced_authority_types(root: Path) -> dict[str, str]:
+    """Map each fenced production type name to its declaring file."""
+    fenced: dict[str, str] = {}
+    for path in root.glob("**/src/main/java/**/*.java"):
+        if not is_java_production_source(path) or LEGACY_PROFILE not in path.read_text():
+            continue
+        code = re.sub(r"/\*.*?\*/", "", path.read_text(), flags=re.S)
+        code = re.sub(r"//.*", "", code)
+        for name in DECLARATION_RE.findall(code):
+            fenced.setdefault(name, str(path))
+    return fenced
+
+
+def unfenced_consumer_failures(root: Path) -> list[str]:
+    """Fail closed when a default-profile Spring bean depends on a fenced authority.
+
+    The V21 retirement fence is only complete when the *whole* consumer chain is
+    fenced. Fencing an upstream authority while leaving a downstream Spring bean
+    unfenced produces a graph that cannot refresh (NoSuchBeanDefinitionException
+    at context load) instead of a disabled flow.
+    """
+    failures: list[str] = []
+    fenced = fenced_authority_types(root)
+    for path in root.glob("**/src/main/java/**/*.java"):
+        if not is_java_production_source(path):
+            continue
+        text = path.read_text()
+        if LEGACY_PROFILE in text or not has_spring_role(text):
+            continue
+        code = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
+        code = re.sub(r"//.*", "", code)
+        for name, owner in sorted(fenced.items()):
+            if str(path) == owner:
+                continue
+            if re.search(rf"\b{re.escape(name)}\b", code):
+                failures.append(
+                    f"default-profile Spring bean depends on fenced authority {name}: {path}")
+    return failures
+
+
 def find_failures(root: Path) -> list[str]:
     failures = []
     for path in root.glob("**/src/main/java/**/*.java"):
         if not is_java_production_source(path):
             continue
         failures.extend(source_failures(path, path.read_text()))
+    failures.extend(unfenced_consumer_failures(root))
     # Dependency and external component wiring are part of the production
     # reachability surface even when no Java source names the deleted type.
     for path in root.glob("**/build.gradle*"):
@@ -101,9 +191,8 @@ def find_failures(root: Path) -> list[str]:
     for path in root.glob("**/src/main/java/**/*.java"):
         if any(part in str(path) for part in ("/build/", ".gradle/")): continue
         text = path.read_text()
-        if has_spring_role(text) and has_legacy_marker(text):
-            if '@Profile("legacy-media-disabled")' not in text:
-                failures.append(f"reachable MediaAsset Spring authority remains: {path}")
+        failures.extend(
+            fence_requirement_failures(path, text, "reachable MediaAsset Spring authority remains"))
     if (root / "platform-app/src/main/java/com/example/platform/web/media/MediaAssetLifecycleController.java").exists():
         failures.append("MediaAsset lifecycle controller remains present")
     runtime = json.loads((root / "docs/api/openapi-preview-current.json").read_text())
