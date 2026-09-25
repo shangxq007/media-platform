@@ -3,14 +3,35 @@ package com.example.platform.coverimage;
 /**
  * Canonical media.cover-image capability contract.
  *
- * <p>Platform owns this contract. One capability, one provider, one execution path. The subject is a
- * canonical Artifact (no second identity) and the produced cover is committed as an image Artifact
- * related to the subject through {@code ProvenanceRelationType.COVER_OF}.
+ * <p>Platform owns this contract. {@link #PROVIDER} is a provider/backend <em>family</em> identity and
+ * is deliberately independent of any single capability; a provider declares the capabilities it
+ * serves through its manifest ({@link CoverImageCapabilityProvider.Manifest#capabilities()}), and a
+ * capability may be served by more than one provider. {@link #CAPABILITY} is one capability of that
+ * family — not a provider identity.
+ *
+ * <p>The subject is a canonical Artifact (no second identity) and the produced cover is committed as
+ * an image Artifact related to the subject through {@code ProvenanceRelationType.COVER_OF}.
  */
 public final class CoverImageContracts {
 
+    /** Capability served by this slice; one of the provider family's declared capabilities. */
     public static final String CAPABILITY = "media.cover-image";
-    public static final String PROVIDER = "platform-ffmpeg-cover-image";
+
+    /** Capability contract version declared alongside {@link #CAPABILITY}. */
+    public static final String CAPABILITY_VERSION = "1.0";
+
+    /**
+     * Provider/backend family identity — never a capability identity. The family may declare several
+     * capabilities; this slice is the {@link #CAPABILITY} one.
+     */
+    public static final String PROVIDER = "platform.ffmpeg";
+
+    /**
+     * One provider runtime/adapter implementation of {@link #PROVIDER}. Implementation identity is
+     * separate from both the family identity and any capability identity.
+     */
+    public static final String PROVIDER_IMPLEMENTATION = "ffmpeg.cpu.frame-extract.v1";
+
     public static final String PROVIDER_VERSION = "1.0.0";
     public static final String OPERATION_ID = "cover-image:" + CAPABILITY + "@1";
 

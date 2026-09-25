@@ -36,9 +36,11 @@ public final class CpuFrameExtractCoverImageProvider implements CoverImageCapabi
     @Override
     public Manifest manifest() {
         return new Manifest(
-                CoverImageContracts.CAPABILITY,
                 CoverImageContracts.PROVIDER,
+                CoverImageContracts.PROVIDER_IMPLEMENTATION,
                 CoverImageContracts.PROVIDER_VERSION,
+                List.of(new CapabilityDeclaration(
+                        CoverImageContracts.CAPABILITY, CoverImageContracts.CAPABILITY_VERSION)),
                 "ffmpeg",
                 Set.of("video/mp4", "video/quicktime", "video/webm", "video/x-matroska"),
                 Set.of("png", "jpeg"),
@@ -54,7 +56,14 @@ public final class CpuFrameExtractCoverImageProvider implements CoverImageCapabi
 
     @Override
     public Result render(
-            CoverImageContracts.Request request, Path inputPath, BooleanSupplier cancelled) {
+            String capabilityId,
+            CoverImageContracts.Request request,
+            Path inputPath,
+            BooleanSupplier cancelled) {
+        // Fail closed: this implementation only executes capabilities it declares.
+        if (!manifest().supports(capabilityId)) {
+            return Result.failure("UNSUPPORTED_CAPABILITY");
+        }
         if (cancelled.getAsBoolean()) {
             return Result.failure("CANCELLED");
         }

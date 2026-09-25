@@ -8,6 +8,12 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Durable, idempotent cover-image task store. One row per (tenant, project, idempotencyKey); the row
  * is the single durable record of a capability request and carries the committed Artifact identity.
+ *
+ * <p>{@code provider_id} stores the capability-independent <em>provider family</em> identity
+ * ({@link CoverImageContracts#PROVIDER}); the capability executed is carried by the workflow/activity,
+ * not by the provider identity. This is a value-semantics change only — the column stays
+ * {@code varchar(128)} and the landed V22 migration is unchanged (backfill of historical
+ * capability-scoped values is not required by this slice).
  */
 @Repository
 public class CoverImageTaskStore {

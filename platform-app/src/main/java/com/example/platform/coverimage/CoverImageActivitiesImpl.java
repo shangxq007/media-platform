@@ -68,7 +68,10 @@ public class CoverImageActivitiesImpl implements CoverImageActivities {
         }
         CoverImageCapabilityProvider.Result produced;
         try {
-            produced = capabilities.invoke(task.toRequest(), input,
+            // The capability id is explicit: resolution and execution are capability-scoped, while
+            // the provider identity is capability-independent (the durable task row stores the
+            // provider family identity, not a capability-scoped provider identity).
+            produced = capabilities.invoke(CoverImageContracts.CAPABILITY, task.toRequest(), input,
                     () -> Thread.currentThread().isInterrupted()
                             || tasks.isCancelled(tenant, project, taskId));
         } catch (RuntimeException failure) {

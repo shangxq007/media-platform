@@ -1,16 +1,21 @@
 # media.cover-image capability
 
-Platform-owned cover-image capability: one capability id, one pinned provider, one execution path,
-no fallback provider and no second asset identity. The slice is deliberately minimal — admission,
-durable task, sandboxed provider execution, a single canonical Artifact commit and read-back.
+Platform-owned cover-image capability: one capability id served by a provider family whose provider
+identity is independent of any capability, capability-keyed provider selection with no fallback
+provider, and no second asset identity. The slice is deliberately minimal — admission, durable task,
+sandboxed provider execution, a single canonical Artifact commit and read-back.
 
 ## Capability
 
 | Field | Value |
 |---|---|
 | Capability id | `media.cover-image` |
-| Provider id (pinned) | `platform-ffmpeg-cover-image` |
+| Capability contract version | `1.0` |
+| Provider family | `platform.ffmpeg` (capability-independent identity; never a capability id) |
+| Provider implementation | `ffmpeg.cpu.frame-extract.v1` |
 | Provider version | `1.0.0` |
+| Declared capabilities | the provider manifest declares a capability **list**; this slice declares `media.cover-image` |
+| Provider pin | deployment configuration only (`app.cover-image.pinned-provider`); no provider identity is hardcoded in the registry |
 | Operation id | `cover-image:media.cover-image@1` |
 | Task queue | `media-platform-tasks` (shared canonical queue; no per-capability queue) |
 | Worker name | `cover-image-worker` |
@@ -76,11 +81,26 @@ admitting a second task.
 
 ## Provider
 
-`platform-ffmpeg-cover-image` (`CpuFrameExtractCoverImageProvider`) declares its manifest
-(capability id, provider id/version, `ffmpeg` toolchain, accepted input formats, `png` output,
-timestamp/width/byte/timeout limits, `sandbox-bwrap` trust and runtime requirements). The registry
-`CoverImageCapabilityRegistry` fails closed when the pinned provider is absent or when two providers
-claim one id — there is no default and no fallback provider.
+`CpuFrameExtractCoverImageProvider` implements provider family `platform.ffmpeg`, implementation
+`ffmpeg.cpu.frame-extract.v1`, and declares its manifest as **provider identity + capability
+declaration list** (`capabilities()`, each entry `capabilityId` + capability contract version) plus
+the `ffmpeg` toolchain, accepted input formats, `png`/`jpeg` outputs, timestamp/width/byte/timeout
+limits, `sandbox-bwrap` trust and runtime requirements.
+
+`CoverImageCapabilityRegistry` resolves **capability → provider** over every registered provider's
+declared list:
+
+- a provider that declares several capabilities is indexed under each of them — it is never skipped
+  for a capability it declares, and one capability may be served by several providers;
+- selection is deterministic and fail-closed: the deployment-pinned provider when it declares the
+  capability, otherwise the single declaring provider; an ambiguous capability with no pin, a
+  capability with no provider, a duplicate provider identity, or a pin naming an unregistered (or
+  non-declaring) provider all fail at construction;
+- the pin is deployment configuration (`app.cover-image.pinned-provider`), not a code constant.
+
+There is no fallback provider and no implicit default provider. `invoke(capabilityId, …)` passes the
+capability being executed to the provider, and a provider fails closed
+(`UNSUPPORTED_CAPABILITY`) when asked for a capability it does not declare.
 
 Execution stays inside `CoverImageExecutionBackend`, which runs the pinned FFmpeg binary inside a
 bubblewrap profile (`--ro-bind / / --dev /dev --proc /proc --tmpfs /tmp --unshare-all
@@ -114,6 +134,7 @@ must happen in the caller (step 1) and is intentionally left unchanged.
 | Queue set | exactly `{media-platform-tasks}`; `workflow-process` must be absent |
 | Binaries | `ffmpeg`, `ffprobe` (probe) and `bwrap` on the pinned paths |
 | Storage | a registered `StorageProvider` bean in the worker role (needed by the digest-verified materializer) |
+| Provider selection | `app.cover-image.pinned-provider` (deployment configuration; required when more than one provider declares `media.cover-image`) |
 | Temporal | 1.26.2 or compatible; namespace resolved from `TEMPORAL_NAMESPACE` |
 | Database | `platform-app` migrations, including `V22__cover_image_tasks.sql` |
 
@@ -134,6 +155,12 @@ profile resources.
 
 ## Acceptance
 
+- `CoverImageCapabilityTest` — vocabulary, capability-independent provider identity, capability-list
+  declaration validation, and registry fail-closed behaviour (empty/foreign capability, duplicate
+  provider identity, invalid pin, multi-provider ambiguity).
+- `CoverImageProviderCapabilityShapeTest` — model-A shape: one provider declaring two capabilities is
+  indexed under both, capability-scoped dispatch passes the executing capability to the provider,
+  dispatch never crosses providers, and a provider fails closed for an undeclared capability.
 - `CoverImageWorkerQueueSetTest` — reflects the real `WorkerFactory.workers` map and asserts exactly
   `{media-platform-tasks}` with `workflow-process` absent (plus a negative control on the base
   profile).
