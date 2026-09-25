@@ -132,6 +132,58 @@ for rel in module.CANONICAL_IDENTITY_ONLY_EXEMPTIONS:
     if module.source_failures(Path(rel), (ROOT / rel).read_text()):
         raise SystemExit(f"canonical identity exemption is not clean: {rel}")
 
+# V27: the published Timeline source-validation port must keep a default-profile
+# implementation, and that implementation must not be backed by a retired media authority.
+if "timeline_source_validation_failures" not in source:
+    raise SystemExit("guard missing Timeline source validation law")
+
+FENCED_PORT_IMPLEMENTATION = """
+package fixture.timeline;
+import org.springframework.stereotype.Component;
+import org.springframework.context.annotation.Profile;
+@Component
+@Profile("legacy-media-disabled")
+class LegacySourceValidator implements TimelineSourceValidation { }
+"""
+ARTIFACT_NATIVE_IMPLEMENTATION = """
+package fixture.timeline;
+import org.springframework.stereotype.Component;
+@Component
+class ArtifactPinValidator implements TimelineSourceValidation { }
+"""
+MEDIA_BACKED_DEFAULT_IMPLEMENTATION = """
+package fixture.timeline;
+import org.springframework.stereotype.Component;
+@Component
+class MediaBackedValidator implements TimelineSourceValidation {
+    private final com.example.platform.media.api.MediaAssets media;
+}
+"""
+
+with tempfile.TemporaryDirectory() as tmp:
+    tree = Path(tmp)
+    write_fixture_tree(
+        tree, ("fixture/timeline/LegacySourceValidator.java", FENCED_PORT_IMPLEMENTATION))
+    if not module.timeline_source_validation_failures(tree):
+        raise SystemExit("fenced-only Timeline source validation port was not rejected")
+
+with tempfile.TemporaryDirectory() as tmp:
+    tree = Path(tmp)
+    write_fixture_tree(
+        tree,
+        ("fixture/timeline/LegacySourceValidator.java", FENCED_PORT_IMPLEMENTATION),
+        ("fixture/timeline/ArtifactPinValidator.java", ARTIFACT_NATIVE_IMPLEMENTATION))
+    if module.timeline_source_validation_failures(tree):
+        raise SystemExit("artifact-native Timeline source validation port was rejected")
+
+with tempfile.TemporaryDirectory() as tmp:
+    tree = Path(tmp)
+    write_fixture_tree(
+        tree,
+        ("fixture/timeline/MediaBackedValidator.java", MEDIA_BACKED_DEFAULT_IMPLEMENTATION))
+    if not module.timeline_source_validation_failures(tree):
+        raise SystemExit("media-backed default-profile source validation was not rejected")
+
 result = subprocess.run(["python3", str(guard)], cwd=ROOT, text=True, capture_output=True)
 if result.returncode != 0:
     raise SystemExit(result.stdout + result.stderr)

@@ -148,6 +148,41 @@ def unfenced_consumer_failures(root: Path) -> list[str]:
     return failures
 
 
+TIMELINE_SOURCE_VALIDATION_PORT = "TimelineSourceValidation"
+
+
+def timeline_source_validation_failures(root: Path) -> list[str]:
+    """Fail closed on the V27 Artifact-native source-validation boundary.
+
+    The published Timeline source-validation port must keep a default-profile implementation
+    (a fenced-only port is exactly the sealed-port defect this guard exists to prevent), and that
+    default-profile implementation must be Artifact-owned rather than backed by a retired media
+    authority contract.
+    """
+    failures: list[str] = []
+    default_profile_implementations: list[str] = []
+    for path in root.glob("**/src/main/java/**/*.java"):
+        if not is_java_production_source(path):
+            continue
+        text = path.read_text()
+        code = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
+        code = re.sub(r"//.*", "", code)
+        if re.search(rf"\bimplements\s+{TIMELINE_SOURCE_VALIDATION_PORT}\b", code) is None:
+            continue
+        if LEGACY_PROFILE in text:
+            continue
+        default_profile_implementations.append(str(path))
+        for contract in LEGACY_AUTHORITY_CONTRACTS:
+            if re.search(rf"\b{re.escape(contract)}\b", code):
+                failures.append(
+                    "default-profile Timeline source validation is backed by a retired media "
+                    f"authority contract: {path}:{contract}")
+    if not default_profile_implementations:
+        failures.append(
+            f"{TIMELINE_SOURCE_VALIDATION_PORT} has no default-profile implementation")
+    return failures
+
+
 def find_failures(root: Path) -> list[str]:
     failures = []
     for path in root.glob("**/src/main/java/**/*.java"):
@@ -155,6 +190,7 @@ def find_failures(root: Path) -> list[str]:
             continue
         failures.extend(source_failures(path, path.read_text()))
     failures.extend(unfenced_consumer_failures(root))
+    failures.extend(timeline_source_validation_failures(root))
     # Dependency and external component wiring are part of the production
     # reachability surface even when no Java source names the deleted type.
     for path in root.glob("**/build.gradle*"):
