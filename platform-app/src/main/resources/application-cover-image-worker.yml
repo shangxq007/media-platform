@@ -1,0 +1,31 @@
+# Cover-image worker role. Overrides the base temporal worker list by profile precedence:
+# exactly one worker on the shared queue, and this process never polls workflow-process.
+platform:
+  runtime:
+    role: WORKER
+  cover-image:
+    sandbox:
+      bwrap: ${COVER_IMAGE_BWRAP_PATH:/usr/bin/bwrap}
+      ffmpeg: ${COVER_IMAGE_FFMPEG_PATH:/usr/bin/ffmpeg}
+    work-root: ${COVER_IMAGE_WORK_ROOT:./.data/cover-image-work}
+    materialization-root: ${COVER_IMAGE_MATERIALIZATION_ROOT:./.data/cover-image-materialized}
+    materialization-capacity-bytes: ${COVER_IMAGE_MATERIALIZATION_CAPACITY_BYTES:1073741824}
+
+app:
+  temporal:
+    enabled: true
+    namespace: ${TEMPORAL_NAMESPACE:media-platform-dev}
+    task-queue: media-platform-tasks
+    worker-required: true
+
+spring:
+  main:
+    web-application-type: none
+  temporal:
+    start-workers: true
+    workers-auto-discovery:
+      packages:
+        - com.example.platform.coverimage
+    workers:
+      - task-queue: media-platform-tasks
+        name: cover-image-worker
