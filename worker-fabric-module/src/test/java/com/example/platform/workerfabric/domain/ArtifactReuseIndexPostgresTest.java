@@ -69,9 +69,9 @@ class ArtifactReuseIndexPostgresTest extends PostgresTestContainerSupport {
                 """
                 insert into artifact (
                     id, tenant_id, content_digest, byte_length, media_type,
-                    artifact_kind, state, schema_version, created_at)
+                    artifact_kind, state, schema_version, created_at, workspace_id)
                 values (?, ?, ?, 14, 'VIDEO', 'RENDER_MASTER', 'AVAILABLE', 1,
-                        cast(? as timestamp))
+                        cast(? as timestamp), 'legacy')
                 """,
                 ARTIFACT_ID.value(), TENANT, ARTIFACT_DIGEST.canonicalValue(),
                 OffsetDateTime.ofInstant(NOW, ZoneOffset.UTC));

@@ -9,6 +9,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * both production endpoint foreign keys because they are part of the bounded
  * new-child provenance proof. Cross-module pin ownership to project and
  * timeline_revision is covered by tests that apply the complete production V1 schema.
+ *
+ * <p>PLATFORM-ARTIFACT-COMMIT-001: {@code artifact.workspace_id} mirrors the V18 production rule
+ * exactly — {@code varchar(128) NOT NULL} with no default — so an insert that forgets it fails here
+ * instead of only in a migrated database.
  */
 public final class ArtifactSchemaFixture {
 
@@ -28,6 +32,7 @@ public final class ArtifactSchemaFixture {
                 + "schema_version int not null default 1,"
                 + "created_at timestamp not null,"
                 + "tombstoned_at timestamp,"
+                + "workspace_id varchar(128) not null,"
                 + "constraint uq_artifact_tenant_id unique (tenant_id, id)"
                 + ")");
         jdbc.execute("CREATE TABLE IF NOT EXISTS artifact_replica ("

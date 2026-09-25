@@ -32,6 +32,17 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class ArtifactRepository {
 
+    /**
+     * V18 ({@code artifact_media_authority_convergence}) adds {@code artifact.workspace_id}, backfills
+     * it as {@code coalesce(nullif(project_id, ''), 'legacy')} and makes it {@code NOT NULL}. The
+     * tracked jOOQ schema is intentionally a bounded identity subset (parity with the canonical
+     * migration covers table identities and owner-idempotency keys, not every column), so the column
+     * is written explicitly from the real project context — never synthesised. Same pattern as
+     * {@link #existsInWorkspace}.
+     */
+    private static final org.jooq.Field<String> WORKSPACE_ID =
+            org.jooq.impl.DSL.field(org.jooq.impl.DSL.name("workspace_id"), String.class);
+
     private final DSLContext dsl;
 
     public ArtifactRepository(DSLContext dsl) {
@@ -43,12 +54,12 @@ public class ArtifactRepository {
                 .columns(ARTIFACT.ID, ARTIFACT.TENANT_ID, ARTIFACT.PROJECT_ID, ARTIFACT.RENDER_JOB_ID,
                         ARTIFACT.CONTENT_DIGEST, ARTIFACT.BYTE_LENGTH, ARTIFACT.MEDIA_TYPE,
                         ARTIFACT.ARTIFACT_KIND, ARTIFACT.STATE, ARTIFACT.SCHEMA_VERSION,
-                        ARTIFACT.CREATED_AT, ARTIFACT.TOMBSTONED_AT)
+                        ARTIFACT.CREATED_AT, ARTIFACT.TOMBSTONED_AT, WORKSPACE_ID)
                 .values(artifact.artifactId().value(), artifact.tenantId(), projectId, renderJobId,
                         artifact.contentDigest().canonicalValue(), artifact.byteLength(),
                         artifact.mediaType().name(), artifact.artifactKind().name(),
                         artifact.state().name(), artifact.schemaVersion(),
-                        toDb(artifact.createdAt()), null)
+                        toDb(artifact.createdAt()), null, workspaceIdFor(projectId))
                 .execute();
         return artifact;
     }
@@ -66,12 +77,19 @@ public class ArtifactRepository {
         dsl.insertInto(ARTIFACT)
                 .columns(ARTIFACT.ID, ARTIFACT.TENANT_ID, ARTIFACT.PROJECT_ID, ARTIFACT.CONTENT_DIGEST,
                         ARTIFACT.BYTE_LENGTH, ARTIFACT.MEDIA_TYPE, ARTIFACT.ARTIFACT_KIND, ARTIFACT.STATE,
-                        ARTIFACT.SCHEMA_VERSION, ARTIFACT.CREATED_AT, ARTIFACT.TOMBSTONED_AT)
+                        ARTIFACT.SCHEMA_VERSION, ARTIFACT.CREATED_AT, ARTIFACT.TOMBSTONED_AT,
+                        WORKSPACE_ID)
                 .values(artifactId.value(), tenantId, projectId, digest.canonicalValue(), byteLength,
                         mediaType.name(), kind.name(), state.name(), 1,
                         toDb(Instant.now()),
-                        tombstonedAt == null ? null : toDb(tombstonedAt))
+                        tombstonedAt == null ? null : toDb(tombstonedAt),
+                        workspaceIdFor(projectId))
                 .execute();
+    }
+
+    /** Canonical V18 derivation: the real project scope, or the migration's own {@code legacy} bucket. */
+    static String workspaceIdFor(String projectId) {
+        return projectId == null || projectId.isBlank() ? "legacy" : projectId;
     }
 
     public void insertReplica(ArtifactReplicaBinding binding) {

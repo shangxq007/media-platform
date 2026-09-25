@@ -2,12 +2,16 @@ package com.example.platform.artifact.domain;
 
 import com.example.platform.shared.identity.ArtifactId;
 import java.io.Serializable;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -34,7 +38,8 @@ public final class ProvenanceValidator implements Serializable {
     /**
      * Validates request-local facts before any endpoint lookup or persistence.
      *
-     * <p>The persisted relation identity is {@code child-parent}; consequently a
+     * <p>The persisted relation identity is the fixed-width digest of
+     * {@code child + NUL + parent} (see {@link #canonicalEdgeId}); consequently a
      * repeated parent is a duplicate canonical edge even if other declaration
      * metadata differs. The semantic identity check is retained independently so
      * the domain rule remains explicit if persistence mechanics evolve.
@@ -92,9 +97,39 @@ public final class ProvenanceValidator implements Serializable {
         return result(firstCode, violations, firstContext);
     }
 
-    /** Canonical identity shared by the domain edge and V1 relation row. */
+    /**
+     * Canonical identity shared by the domain edge and the V1 relation row.
+     *
+     * <p>Fixed-width SHA-256 digest of {@code child + NUL + parent}, rendered as 64 lowercase hex
+     * characters. The previous {@code child + "-" + parent} concatenation overflowed
+     * {@code artifact_relation.id varchar(64)} for real platform identities (an
+     * {@code art-<uuid>} parent at 40 characters is already enough), which blocked every canonical
+     * commit that declared provenance. The digest is:
+     *
+     * <ul>
+     *   <li><b>deterministic</b> — the same (child, parent) pair always yields the same identity, so
+     *       re-commits and duplicate detection stay idempotent;</li>
+     *   <li><b>bounded</b> — exactly 64 characters, so it fits the existing column without widening it
+     *       and without a migration;</li>
+     *   <li><b>fail-closed on collision</b> — a digest collision between two different pairs would
+     *       violate the {@code artifact_relation.id} primary key and abort the commit transaction;</li>
+     *   <li><b>audit-preserving</b> — the endpoints are the authoritative facts and are persisted
+     *       verbatim in {@code source_artifact_id} / {@code target_artifact_id}; only the surrogate row
+     *       identity is hashed, so no provenance information is lost.</li>
+     * </ul>
+     */
     public static String canonicalEdgeId(ArtifactId childArtifactId, ArtifactId parentArtifactId) {
-        return childArtifactId.value() + "-" + parentArtifactId.value();
+        return sha256Hex(childArtifactId.value() + '\u0000' + parentArtifactId.value());
+    }
+
+    private static String sha256Hex(String value) {
+        MessageDigest sha256;
+        try {
+            sha256 = MessageDigest.getInstance("SHA-256");
+        } catch (NoSuchAlgorithmException impossible) {
+            throw new IllegalStateException("SHA-256 is unavailable", impossible);
+        }
+        return HexFormat.of().formatHex(sha256.digest(value.getBytes(StandardCharsets.UTF_8)));
     }
 
     /**
