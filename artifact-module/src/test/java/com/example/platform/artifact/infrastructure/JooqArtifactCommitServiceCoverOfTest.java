@@ -134,23 +134,27 @@ class JooqArtifactCommitServiceCoverOfTest extends PostgresTestContainerSupport 
     }
 
     @Test
-    void idempotencyKeyResolvesToTheSameArtifactAndReCommitFailsClosed() {
+    void idempotencyKeyReplayIsDelegatedToTheCallerAndReCommitFailsClosed() {
         commitService.commit(request("art-subject", TENANT, SUBJECT_DIGEST, "subject-key-2", List.of()));
 
         ArtifactCommitResult first = commitService.commit(request(
                 "art-cover-2", TENANT, COVER_DIGEST, "cover-key-2", List.of(coverOf("art-subject"))));
 
-        // Canonical idempotency is the persisted key lookup; a re-commit of an existing identity fails closed.
-        assertThat(commitService.findByIdempotencyKey(TENANT, "cover-key-2"))
-                .isPresent()
-                .get()
-                .extracting(result -> result.artifact().artifactId().value())
-                .isEqualTo(first.artifact().artifactId().value());
+        // Canonical idempotency contract of the jOOQ adapter (COVER-PROVIDER-001 increment 4): the
+        // adapter is fail-closed on an already-committed identity and does NOT perform an idempotent
+        // re-commit; it delegates idempotency-key replay to the caller's durable record (for the
+        // cover slice: CoverImageTaskStore). The request's idempotency key is carried back on the
+        // canonical result so the caller can re-resolve its own durable record.
         assertThat(first.idempotencyKey()).isEqualTo("cover-key-2");
+        assertThat(commitService.findByIdempotencyKey(TENANT, "cover-key-2")).isEmpty();
+
+        // A re-commit of an existing Artifact identity fails closed and creates no second Artifact,
+        // replica or provenance edge.
         assertThatThrownBy(() -> commitService.commit(request(
                 "art-cover-2", TENANT, COVER_DIGEST, "cover-key-2b", List.of(coverOf("art-subject")))))
                 .isInstanceOf(ArtifactErrorCode.ArtifactDomainException.class)
                 .hasMessageContaining("Artifact already exists");
+        assertThat(dsl.fetchCount(ARTIFACT, ARTIFACT.TENANT_ID.eq(TENANT))).isEqualTo(2);
         assertThat(dsl.fetchCount(ARTIFACT, ARTIFACT.ID.eq("art-cover-2"))).isOne();
         assertThat(dsl.fetchCount(ARTIFACT_RELATION,
                 ARTIFACT_RELATION.SOURCE_ARTIFACT_ID.eq("art-cover-2"))).isOne();

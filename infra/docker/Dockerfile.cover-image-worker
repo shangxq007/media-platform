@@ -1,0 +1,42 @@
+# Dedicated cover-image Activity host. Intentionally separate from the API image (and from the
+# thumbnail worker image, which is not modified by this slice).
+# The base digest and tool pins must be supplied by the release build manifest.
+# This JRE base advertises no ports: the cover worker is web-disabled and only polls its queue.
+ARG BASE_IMAGE=docker.io/library/eclipse-temurin@sha256:abed22bb0186ab4554c339fa41e0a361daed337b938929c95a1f2e4a228c1935
+FROM ${BASE_IMAGE}
+
+USER 0
+ARG FFMPEG_VERSION=7:4.4.2-0ubuntu0.22.04.1
+ARG BUBBLEWRAP_VERSION=0.6.1-1ubuntu0.3
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      ffmpeg=${FFMPEG_VERSION} \
+      bubblewrap=${BUBBLEWRAP_VERSION} \
+ && rm -rf /var/lib/apt/lists/* /var/cache/apt/* \
+ && test -x /usr/bin/ffmpeg \
+ && test -x /usr/bin/ffprobe \
+ && test -x /usr/bin/bwrap
+
+RUN groupadd --system spring \
+ && useradd --system --gid spring --uid 10001 spring
+
+COPY platform-cover-image-worker.jar /app/platform-cover-image-worker.jar
+# Worker-role queue-set override (see docs/api/media-cover-image.md, "Runtime requirements"):
+# `spring.config.additional-location` files take precedence over the packaged profile resources, so
+# the shared base worker list in application-temporal.yml can never add the workflow engine's
+# `workflow-process` queue to this process.
+COPY cover-image-worker-override.yml /app/cover-image-worker-override.yml
+RUN chown spring:spring /app/platform-cover-image-worker.jar /app/cover-image-worker-override.yml
+
+USER spring:spring
+ENV SPRING_PROFILES_ACTIVE=dev,temporal,cover-image-worker \
+    SPRING_CONFIG_ADDITIONAL_LOCATION=optional:file:/app/cover-image-worker-override.yml \
+    SPRING_MAIN_WEB_APPLICATION_TYPE=none \
+    SPRING_TEMPORAL_START_WORKERS=true \
+    PLATFORM_RUNTIME_ROLE=WORKER \
+    APP_TEMPORAL_TASK_QUEUE=media-platform-tasks \
+    COVER_IMAGE_BWRAP_PATH=/usr/bin/bwrap \
+    COVER_IMAGE_FFMPEG_PATH=/usr/bin/ffmpeg \
+    COVER_IMAGE_WORK_ROOT=/var/lib/cover-image-worker/work
+
+ENTRYPOINT ["java", "-jar", "/app/platform-cover-image-worker.jar"]

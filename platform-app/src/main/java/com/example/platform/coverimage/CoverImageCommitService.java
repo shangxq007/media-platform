@@ -54,6 +54,34 @@ public class CoverImageCommitService {
             byte[] bytes,
             Path output,
             String root) {
+        // Increment 4 (COVER-PROVIDER-001): idempotent replay before any re-commit.
+        //
+        // The canonical ArtifactCommitService is fail-closed on an already-committed identity
+        // (ARTIFACT-409-001) and does not perform an idempotent re-commit, so a workflow/activity
+        // retry that reaches this fence after a successful commit must return the existing cover
+        // Artifact instead of committing a second time. Replay is resolved through the canonical
+        // API only — no ArtifactCommitService/JooqArtifactCommitService behaviour is changed, no
+        // commit semantics are relaxed and no second identity is introduced:
+        //   1. ArtifactCommitService.findByIdempotencyKey — the canonical idempotency API;
+        //   2. this task's own durable row — the caller-owned durable record the canonical jOOQ
+        //      adapter delegates idempotency-key replay to, which already carries the committed
+        //      Artifact identity once the commit fence has completed.
+        String replayKey = idempotencyKey(taskId);
+        var canonical = commits.findByIdempotencyKey(tenant, replayKey)
+                .map(result -> result.artifact().artifactId().value())
+                .filter(artifactId -> artifactId != null && !artifactId.isBlank());
+        if (canonical.isPresent()) {
+            // Re-admit the durable row to COMPLETED when the canonical replay resolved first.
+            tasks.completeLocked(tenant, project, taskId, canonical.get());
+            return canonical.get();
+        }
+        var durable = tasks.find(tenant, project, taskId)
+                .filter(task -> task.status() == CoverImageContracts.Status.COMPLETED)
+                .map(CoverImageTaskStore.Task::artifactId)
+                .filter(artifactId -> artifactId != null && !artifactId.isBlank());
+        if (durable.isPresent()) {
+            return durable.get();
+        }
         if (!tasks.lockForCommit(tenant, project, taskId)) {
             return null;
         }
@@ -68,7 +96,7 @@ public class CoverImageCommitService {
                     .relativize(output).toString().replace(java.io.File.separatorChar, '/');
             var written = outputs.write(new StorageOutputPort.OutputCommand(
                     new StorageOwnershipScope(tenant, project),
-                    new IssuanceIdempotencyKey("cover-image:" + taskId),
+                    new IssuanceIdempotencyKey(replayKey),
                     relative,
                     contentType));
             var issue = written.issuance();
@@ -89,7 +117,7 @@ public class CoverImageCommitService {
                     issue.placement().location().providerId(),
                     ReplicaRole.PRIMARY,
                     issue.placement().location().region(),
-                    "cover-image:" + taskId,
+                    replayKey,
                     List.of(new ArtifactCommitRequest.ProvenanceEdgeDeclaration(
                             new ArtifactId(subjectArtifactId),
                             ProvenanceRelationType.COVER_OF,
@@ -114,5 +142,10 @@ public class CoverImageCommitService {
                 // staging cleanup is best effort; the committed Artifact is the durable record
             }
         }
+    }
+
+    /** Canonical cover-image idempotency key: one key per (tenant, project, task). */
+    static String idempotencyKey(String taskId) {
+        return "cover-image:" + taskId;
     }
 }
