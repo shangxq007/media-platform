@@ -183,6 +183,49 @@ def timeline_source_validation_failures(root: Path) -> list[str]:
     return failures
 
 
+MARKETPLACE_SUBJECT_CONTRACT = (
+    "marketplace-module/src/main/java/com/example/platform/marketplace/api/"
+    "MarketplacePublicationSubjectRef.java")
+MARKETPLACE_DEFAULT_PROFILE_SURFACE = "marketplace-module/src/main/java/"
+
+
+def marketplace_subject_failures(root: Path) -> list[str]:
+    """Fail closed on the V28 marketplace subject identity boundary.
+
+    The published marketplace publication subject must be Artifact-keyed (Artifact identity is the
+    platform's canonical asset identity) and no default-profile marketplace unit may name the
+    retired Media subject or persist a media-keyed subject column.
+    """
+    failures: list[str] = []
+    contract = root / MARKETPLACE_SUBJECT_CONTRACT
+    if not contract.is_file():
+        failures.append(
+            f"marketplace publication subject contract missing: {MARKETPLACE_SUBJECT_CONTRACT}")
+    else:
+        text = contract.read_text()
+        if "ArtifactSubject" not in text or "ArtifactId" not in text or '"ARTIFACT"' not in text:
+            failures.append(
+                f"marketplace publication subject is not Artifact-keyed: {MARKETPLACE_SUBJECT_CONTRACT}")
+        if "MediaAssetSubject" in text or "MediaAssetId" in text:
+            failures.append(
+                "marketplace publication subject retains retired Media identity: "
+                f"{MARKETPLACE_SUBJECT_CONTRACT}")
+    for path in root.glob(MARKETPLACE_DEFAULT_PROFILE_SURFACE + "**/*.java"):
+        if not is_java_production_source(path):
+            continue
+        text = path.read_text()
+        if LEGACY_PROFILE in text:
+            continue
+        code = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
+        code = re.sub(r"//.*", "", code)
+        if "MediaAssetSubject" in code or re.search(r"\bMediaAssetId\b", code):
+            failures.append(f"default-profile marketplace unit names retired Media identity: {path}")
+        if re.search(r"\basset_id\b", code):
+            failures.append(
+                f"default-profile marketplace unit persists a media-keyed subject column: {path}")
+    return failures
+
+
 def find_failures(root: Path) -> list[str]:
     failures = []
     for path in root.glob("**/src/main/java/**/*.java"):
@@ -191,6 +234,7 @@ def find_failures(root: Path) -> list[str]:
         failures.extend(source_failures(path, path.read_text()))
     failures.extend(unfenced_consumer_failures(root))
     failures.extend(timeline_source_validation_failures(root))
+    failures.extend(marketplace_subject_failures(root))
     # Dependency and external component wiring are part of the production
     # reachability surface even when no Java source names the deleted type.
     for path in root.glob("**/build.gradle*"):

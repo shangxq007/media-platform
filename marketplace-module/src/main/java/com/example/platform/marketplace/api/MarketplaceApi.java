@@ -41,10 +41,10 @@ public interface MarketplaceApi {
     Review resolve(String projectId, String reviewId, Resolve command);
     boolean canPublish(String projectId, String listingId);
     Listing managedListing(String projectId, String listingId);
-    Optional<Listing> managedByAsset(String assetId);
+    Optional<Listing> managedByArtifact(String artifactId);
     List<Listing> managedByProject(String projectId, int limit);
     Review review(String projectId, String reviewId);
     SearchResult discover(String query, String workspaceId, int offset, int limit);
     Optional<PublicListing> publicListing(String listingId);
-    Optional<PublicationFact> publicationFact(String tenantId, String projectId, String assetId);
+    Optional<PublicationFact> publicationFact(String tenantId, String projectId, String artifactId);
 }

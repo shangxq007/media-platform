@@ -39,8 +39,9 @@ class AccountResourceExecutionAcceptanceTest extends WorkspaceAuthorityHttpTest 
         permissions(tenantB,wsB,ownerB,ownerB,"READ","WRITE","CREATE");permissions(tenantB,wsB,ownerB,membershipB,"READ");
         projectA=readId(callScope(tenant,creator,"POST","/api/identity/tenants/"+tenant+"/projects",Map.of("name","A Project","workspaceId",wsA)),"id");
         projectB=readId(callScope(tenantB,ownerB,"POST","/api/identity/tenants/"+tenantB+"/projects",Map.of("name","B Project","workspaceId",wsB)),"id");
-        asScope(tenant,creator,()->context.getBean(com.example.platform.media.api.MediaAssets.class).register(tenant,projectA,"assets/a.bin","TEST","a.bin",1L,null));
-        asScope(tenantB,ownerB,()->context.getBean(com.example.platform.media.api.MediaAssets.class).register(tenantB,projectB,"assets/b.bin","TEST","b.bin",1L,null));
+        // V28: the canonical asset identity is the Artifact; the retired Media registration surface is gone.
+        asScope(tenant,creator,()->jdbc.update("insert into artifact(id,tenant_id,project_id,workspace_id,content_digest,byte_length,media_type,artifact_kind,state,schema_version,created_at) values (?,?,?,?,?,1,'BINARY','SOURCE_MEDIA','AVAILABLE',1,now())","art_acct_probe_a",tenant,projectA,wsA,"a".repeat(64)));
+        asScope(tenantB,ownerB,()->jdbc.update("insert into artifact(id,tenant_id,project_id,workspace_id,content_digest,byte_length,media_type,artifact_kind,state,schema_version,created_at) values (?,?,?,?,?,1,'BINARY','SOURCE_MEDIA','AVAILABLE',1,now())","art_acct_probe_b",tenantB,projectB,wsB,"b".repeat(64)));
     }
     CanonicalActor operator(){return CanonicalActor.system("system:identity-provisioning",null);}
     HttpResponse<String> callScope(String scope,String subject,String method,String path,Object body) throws Exception {

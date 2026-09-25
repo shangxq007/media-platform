@@ -186,11 +186,27 @@ abstract class MarketplaceTestSupport extends PostgresTestContainerSupport {
         String membership=jdbc.queryForObject("select id from workspace_member where workspace_id=? and user_id=?",String.class,workspace,member);
         as(user,()->context.getBean(WorkspaceService.class).assignRoleToMember(workspace,membership,new AssignRoleRequest(role.roleKey(),user)));
     }
-    String asset() {
-        Asset[] a=new Asset[1];as(user,()->a[0]=context.getBean(MediaAssets.class).register(tenant,project,"marketplace/"+UUID.randomUUID()+".mp4","VIDEO","sample.mp4",1L,"checksum"));return a[0].id();
+    /**
+     * Creates the canonical Artifact subject for a marketplace test. The method keeps the historical
+     * test name; the subject identity it returns is an Artifact id (MARKETPLACE_SUBJECT_ARTIFACT_IDENTITY_V1).
+     */
+    String asset() {return artifact("VIDEO");}
+    /** Creates a canonical Artifact row with a deterministic content-digest pin and returns its id. */
+    String artifact(String mediaType) {
+        String id="art_"+UUID.randomUUID().toString().replace("-","");
+        jdbc.update("insert into artifact(id,tenant_id,project_id,workspace_id,content_digest,byte_length,media_type,artifact_kind,state,schema_version,created_at) values (?,?,?,?,?,1,?,'SOURCE_MEDIA','AVAILABLE',1,now())",
+                id,tenant,project,workspace,digest(id),mediaType);
+        return id;
+    }
+    /** Canonical Artifact content-digest pin used by the marketplace subject. */
+    static String digest(String artifactId) {
+        try {
+            return java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(("artifact:"+artifactId).getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        } catch(java.security.NoSuchAlgorithmException impossible) {throw new IllegalStateException(impossible);}
     }
     String root(){return "/api/projects/"+project+"/marketplace";}
-    Map<String,Object> createBody(String asset,String command) {return Map.of("commandId",command,"subject",Map.of("kind","MEDIA_ASSET","assetId",Map.of("value",asset),"version","v1"),"title","Public title","summary","Public summary","description","Public description");}
+    Map<String,Object> createBody(String artifact,String command) {return Map.of("commandId",command,"subject",Map.of("kind","ARTIFACT","artifactId",Map.of("value",artifact),"version",digest(artifact)),"title","Public title","summary","Public summary","description","Public description");}
     JsonNode response(java.net.http.HttpResponse<String> r,int status) throws Exception {assertThat(r.statusCode()).withFailMessage(r.body()).isEqualTo(status);return JSON.readTree(r.body());}
     JsonNode create(String asset) throws Exception {return response(http(user,"POST",root()+"/listings",createBody(asset,UUID.randomUUID().toString())),201);}
     JsonNode submit(JsonNode listing) throws Exception {return response(http(user,"POST",root()+"/listings/"+listing.path("id").asText()+"/reviews",Map.of("commandId",UUID.randomUUID().toString(),"expectedVersion",listing.path("version").asLong(),"title","Review title","description","Private review details")),201);}
@@ -206,7 +222,8 @@ abstract class MarketplaceTestSupport extends PostgresTestContainerSupport {
         jdbc.queryForObject("select count(*) from marketplace_review_decision d join marketplace_review r on r.id=d.review_id where r.tenant_id=?",Long.class,tenant),
         jdbc.queryForObject("select count(*) from marketplace_review_comment c join marketplace_review r on r.id=c.review_id where r.tenant_id=?",Long.class,tenant),
         jdbc.queryForObject("select count(*) from marketplace_review_thread t join marketplace_review r on r.id=t.review_id where r.tenant_id=? and t.resolved",Long.class,tenant),
-        jdbc.queryForObject("select coalesce(sum(case publish_status when 'PUBLISHED' then 1 when 'ARCHIVED' then 2 else 0 end),0) from media_asset where tenant_id=?",Long.class,tenant));}
+        // Publication state is Marketplace-owned (V28): the retired Media publication mirror is gone.
+        jdbc.queryForObject("select coalesce(sum(case status when 'PUBLISHED' then 1 when 'ARCHIVED' then 2 else 0 end),0) from marketplace_listing where tenant_id=? and admitted_at is not null",Long.class,tenant));}
     List<java.net.http.HttpResponse<String>> race(java.util.concurrent.Callable<java.net.http.HttpResponse<String>> a,java.util.concurrent.Callable<java.net.http.HttpResponse<String>> b) throws Exception {
         try(var connection=context.getBean(javax.sql.DataSource.class).getConnection();var pool=java.util.concurrent.Executors.newFixedThreadPool(2)) {
             connection.setAutoCommit(false);

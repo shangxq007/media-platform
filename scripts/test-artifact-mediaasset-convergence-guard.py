@@ -184,6 +184,61 @@ with tempfile.TemporaryDirectory() as tmp:
     if not module.timeline_source_validation_failures(tree):
         raise SystemExit("media-backed default-profile source validation was not rejected")
 
+# V28: the marketplace publication subject must be Artifact-keyed and the default-profile
+# marketplace surface must not persist a media-keyed subject column.
+if "marketplace_subject_failures" not in source:
+    raise SystemExit("guard missing marketplace subject law")
+
+ARTIFACT_SUBJECT_CONTRACT = """
+package com.example.platform.marketplace.api;
+import com.example.platform.shared.identity.ArtifactId;
+@JsonSubTypes(@JsonSubTypes.Type(value = MarketplacePublicationSubjectRef.ArtifactSubject.class, name = "ARTIFACT"))
+public sealed interface MarketplacePublicationSubjectRef permits ArtifactSubject {
+    record ArtifactSubject(ArtifactId artifactId, String version) implements MarketplacePublicationSubjectRef { }
+}
+"""
+MEDIA_SUBJECT_CONTRACT = """
+package com.example.platform.marketplace.api;
+import com.example.platform.media.domain.identity.MediaAssetId;
+public sealed interface MarketplacePublicationSubjectRef permits MediaAssetSubject {
+    record MediaAssetSubject(MediaAssetId assetId, String version) implements MarketplacePublicationSubjectRef { }
+}
+"""
+MEDIA_KEYED_STORE = """
+package com.example.platform.marketplace.internal;
+import org.springframework.stereotype.Repository;
+@Repository
+class MediaKeyedStore { String sql = "select * from marketplace_listing where asset_id=?"; }
+"""
+
+
+def write_marketplace_fixture(tree: Path, rel: str, body: str) -> None:
+    target = tree / rel
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(body)
+
+
+with tempfile.TemporaryDirectory() as tmp:
+    tree = Path(tmp)
+    write_marketplace_fixture(tree, module.MARKETPLACE_SUBJECT_CONTRACT, ARTIFACT_SUBJECT_CONTRACT)
+    if module.marketplace_subject_failures(tree):
+        raise SystemExit("Artifact-keyed marketplace subject was rejected")
+
+with tempfile.TemporaryDirectory() as tmp:
+    tree = Path(tmp)
+    write_marketplace_fixture(tree, module.MARKETPLACE_SUBJECT_CONTRACT, MEDIA_SUBJECT_CONTRACT)
+    if not module.marketplace_subject_failures(tree):
+        raise SystemExit("Media-keyed marketplace subject was not rejected")
+
+with tempfile.TemporaryDirectory() as tmp:
+    tree = Path(tmp)
+    write_marketplace_fixture(tree, module.MARKETPLACE_SUBJECT_CONTRACT, ARTIFACT_SUBJECT_CONTRACT)
+    write_marketplace_fixture(tree,
+                              "marketplace-module/src/main/java/com/example/platform/marketplace/internal/MediaKeyedStore.java",
+                              MEDIA_KEYED_STORE)
+    if not module.marketplace_subject_failures(tree):
+        raise SystemExit("media-keyed default-profile marketplace column use was not rejected")
+
 result = subprocess.run(["python3", str(guard)], cwd=ROOT, text=True, capture_output=True)
 if result.returncode != 0:
     raise SystemExit(result.stdout + result.stderr)

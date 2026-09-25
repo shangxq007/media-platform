@@ -1,8 +1,8 @@
 package com.example.platform.marketplace.internal;
 
 import com.example.platform.marketplace.api.event.*;
-import com.example.platform.marketplace.api.MarketplacePublicationSubjectRef.MediaAssetSubject;
-import com.example.platform.media.domain.identity.MediaAssetId;
+import com.example.platform.marketplace.api.MarketplacePublicationSubjectRef.ArtifactSubject;
+import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.identity.api.project.ProjectScope;
 import com.example.platform.shared.authorization.ActorType;
 import com.example.platform.outbox.app.OutboxEventRouter;
@@ -12,9 +12,10 @@ import java.time.Instant;
 import java.util.List;
 
 class MarketplaceEventContractTest {
-    MarketplaceEventReference ref(){return new MarketplaceEventReference("fact","listing",new MediaAssetSubject(new MediaAssetId("asset"),"v1"),new ProjectScope("tenant","workspace","project"),4,"actor","account",ActorType.USER,Instant.EPOCH);}
+    static final String PIN="a".repeat(64);
+    MarketplaceEventReference ref(){return new MarketplaceEventReference("fact","listing",new ArtifactSubject(new ArtifactId("art_asset"),PIN),new ProjectScope("tenant","workspace","project"),4,"actor","account",ActorType.USER,Instant.EPOCH);}
     @Test void typedReferencesPreserveOwnerIdentityAndRequiredScope() {
-        var ref=ref();assertThat(ref.subject()).isInstanceOf(MediaAssetSubject.class);assertThat(ref.factKey()).isEqualTo("marketplace:tenant:fact");
+        var ref=ref();assertThat(ref.subject()).isInstanceOf(ArtifactSubject.class);assertThat(ref.factKey()).isEqualTo("marketplace:tenant:fact");
         assertThatThrownBy(()->new MarketplaceEventReference("fact","listing",ref.subject(),ref.scope(),0,"actor","account",ActorType.USER,Instant.EPOCH)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(()->new MarketplaceEventReference("fact","listing",ref.subject(),new ProjectScope("tenant","","project"),1,"actor","account",ActorType.USER,Instant.EPOCH)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(()->new MarketplaceEventReference("fact","listing",ref.subject(),ref.scope(),1,"actor",null,ActorType.USER,Instant.EPOCH)).isInstanceOf(IllegalArgumentException.class);
@@ -27,9 +28,9 @@ class MarketplaceEventContractTest {
     }
     @Test void recordCodecRoundTripRetainsTypedSubjectAndPinnedFacts() {
         var event=new MarketplaceListingPublishedEvent(ref(),"review");
-        var encoded=MarketplaceJson.write(event);assertThat(encoded).contains("MEDIA_ASSET","workspace","account");
+        var encoded=MarketplaceJson.write(event);assertThat(encoded).contains("ARTIFACT","art_asset","workspace","account");
         assertThat(MarketplaceJson.read(encoded,MarketplaceListingPublishedEvent.class)).isEqualTo(event);
-        assertThatThrownBy(()->MarketplaceJson.read(encoded.replace("MEDIA_ASSET","PLUGIN"),MarketplaceListingPublishedEvent.class)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(()->MarketplaceJson.read(encoded.replace("ARTIFACT","PLUGIN"),MarketplaceListingPublishedEvent.class)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(()->MarketplaceJson.read(encoded.replace("\"reviewId\":\"review\"","\"targetType\":\"ASSET\",\"reviewId\":\"review\""),MarketplaceListingPublishedEvent.class)).isInstanceOf(IllegalArgumentException.class);
     }
     @Test void reviewFactsRequireActualDecisionCommentAndThreadIdentities() {

@@ -48,7 +48,7 @@ public class AssetWorkbenchController {
 
         AssetRegistryRecord r = asset.get();
         var semantic = semanticService.get(assetId);
-        var marketplace = marketplaceRepo.managedByAsset(assetId);
+        var marketplace = marketplaceRepo.managedByArtifact(assetId);
         var searchProj = searchProjectionRepo.findByAssetId(assetId);
 
         var dto = new AssetWorkbenchDto(
@@ -101,7 +101,7 @@ public class AssetWorkbenchController {
     @GetMapping("/marketplace")
     @Operation(summary = "Marketplace listing workspace")
     public ResponseEntity<MarketplaceWsDto> marketplace(@PathVariable String assetId) {
-        return marketplaceRepo.managedByAsset(assetId)
+        return marketplaceRepo.managedByArtifact(assetId)
                 .map(m -> ResponseEntity.ok(new MarketplaceWsDto(
                         m.id(), m.status().name(),
                         "MEDIA",

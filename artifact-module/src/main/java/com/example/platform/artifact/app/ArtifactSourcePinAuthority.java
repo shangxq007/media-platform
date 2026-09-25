@@ -43,6 +43,8 @@ public interface ArtifactSourcePinAuthority {
      * @param pinnedDigest   canonical digest carried by the pin
      * @param artifactDigest canonical digest recorded by the Artifact authority, or {@code null}
      *                       when the Artifact is unknown
+     * @param mediaType      canonical Artifact media type (coarse classification recorded at
+     *                       registration), or {@code null} when the Artifact is unknown
      */
     record PinResolution(
             Outcome outcome,
@@ -50,7 +52,8 @@ public interface ArtifactSourcePinAuthority {
             String tenantId,
             String projectId,
             String pinnedDigest,
-            String artifactDigest) {
+            String artifactDigest,
+            String mediaType) {
 
         public PinResolution {
             Objects.requireNonNull(outcome, "outcome");

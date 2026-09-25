@@ -4,7 +4,7 @@ import com.example.platform.outbox.coordination.PlatformCoordinationService;
 import com.example.platform.outbox.coordination.JobType;
 import com.example.platform.sandbox.execution.TaskCapability;
 import com.example.platform.marketplace.api.event.*;
-import com.example.platform.marketplace.api.MarketplacePublicationSubjectRef.MediaAssetSubject;
+import com.example.platform.marketplace.api.MarketplacePublicationSubjectRef.ArtifactSubject;
 import com.example.platform.artifact.api.event.AssetEnrichedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,11 +51,13 @@ public class AssetSearchConsumer {
     private void triggerReindex(MarketplaceEventReference ref,String factKey,String eventType) {
         var delivery=com.example.platform.outbox.api.event.OutboxDeliveryContext.require();
         if(!delivery.tenantId().equals(ref.scope().tenantId()))throw new IllegalArgumentException("Marketplace fact tenant mismatch");
-        var subject=(MediaAssetSubject)ref.subject();
+        var subject=(ArtifactSubject)ref.subject();
         try {
+            // Fenced legacy reindex intent: the subject identity is the canonical Artifact; the
+            // retained payload key and job target keep the disabled handler's existing contract.
             String payload=new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(
-                    java.util.Map.of("assetId",subject.assetId().value(),"tenantId",ref.scope().tenantId(),"projectId",ref.scope().projectId(),"reason",eventType));
-            coordinationService.createJobWithTaskOnce(factKey,JobType.SEARCH_REINDEX,"ASSET",subject.assetId().value(),
+                    java.util.Map.of("assetId",subject.artifactId().value(),"tenantId",ref.scope().tenantId(),"projectId",ref.scope().projectId(),"reason",eventType));
+            coordinationService.createJobWithTaskOnce(factKey,JobType.SEARCH_REINDEX,"ASSET",subject.artifactId().value(),
                     ref.scope().tenantId(),ref.scope().projectId(),payload,"REINDEX",TaskCapability.REINDEX);
         } catch(com.fasterxml.jackson.core.JsonProcessingException e){throw new IllegalArgumentException("Invalid search intent",e);}
     }

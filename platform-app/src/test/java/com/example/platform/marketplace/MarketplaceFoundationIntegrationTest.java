@@ -11,7 +11,8 @@ import java.util.*;
 
 class MarketplaceFoundationIntegrationTest extends MarketplaceTestSupport {
     @Test void authenticatedOwnerLifecycleAndAnonymousDiscoveryDoNotLeakReviewOrStorage() throws Exception {
-        String asset=asset();var identity=jdbc.queryForMap("select id,media_version,storage_key,checksum from media_asset where id=?",asset);
+        // V28: the subject identity is the canonical Artifact; internal Artifact facts must not leak.
+        String asset=asset();var identity=jdbc.queryForMap("select id,content_digest,byte_length,media_type from artifact where id=?",asset);
         var listing=create(asset);assertThat(listing.path("workspaceId").asText()).isEqualTo(workspace).isNotEqualTo(project).isNotEqualTo(tenant);
         assertThat(listing.path("createdBy").asText()).isEqualTo(user);String id=listing.path("id").asText();
         assertThat(http(null,"GET","/api/marketplace/listings/"+id,null).statusCode()).isEqualTo(404);
@@ -23,8 +24,8 @@ class MarketplaceFoundationIntegrationTest extends MarketplaceTestSupport {
         var publicView=http(null,"GET","/api/marketplace/listings/"+id,null);
         assertThat(publicView.statusCode()).isEqualTo(200);assertThat(publicView.body()).contains("Public title").doesNotContain("Private review details", "reviewId", "tenantId", "workspaceId", "createdBy", "storageKey", "marketplace/");
         assertThat(http(null,"GET","/api/marketplace/search?q=Public",null).body()).contains(id);
-        assertThat(jdbc.queryForObject("select publish_status from media_asset where id=?",String.class,asset)).isEqualTo("PUBLISHED");
-        assertThat(jdbc.queryForMap("select id,media_version,storage_key,checksum from media_asset where id=?",asset)).isEqualTo(identity);
+        assertThat(jdbc.queryForObject("select status from marketplace_listing where id=?",String.class,id)).isEqualTo("PUBLISHED");
+        assertThat(jdbc.queryForMap("select id,content_digest,byte_length,media_type from artifact where id=?",asset)).isEqualTo(identity);
         var archived=response(http(user,"POST",root()+"/listings/"+id+"/transitions",Map.of("commandId",UUID.randomUUID().toString(),"expectedVersion",published.path("version").asLong(),"transition","ARCHIVE")),200);
         assertThat(archived.path("status").asText()).isEqualTo("ARCHIVED");assertThat(http(null,"GET","/api/marketplace/listings/"+id,null).statusCode()).isEqualTo(404);
         before=state();assertThat(http(user,"POST",root()+"/listings/"+id+"/transitions",Map.of("commandId",UUID.randomUUID().toString(),"expectedVersion",archived.path("version").asLong(),"transition","PUBLISH")).statusCode()).isEqualTo(409);assertThat(state()).isEqualTo(before);
@@ -39,10 +40,13 @@ class MarketplaceFoundationIntegrationTest extends MarketplaceTestSupport {
         forged.remove("actorId");forged.put("workspaceId",project);assertThat(http(user,"POST",path,forged).statusCode()).isEqualTo(400);
         var unsupported=new HashMap<String,Object>(createBody(asset,"unsupported"));unsupported.put("subject",Map.of("kind","PLUGIN","id",asset));assertThat(http(user,"POST",path,unsupported).statusCode()).isEqualTo(400);
         assertThat(http(user,"POST",path,createBody("missing","missing")).statusCode()).isIn(400,404);
-        jdbc.update("update media_asset set media_version='v2' where id=?",asset);assertThat(http(user,"POST",path,createBody(asset,"stale")).statusCode()).isEqualTo(409);
-        jdbc.update("update media_asset set media_version='v1',classification='restricted' where id=?",asset);assertThat(http(user,"POST",path,createBody(asset,"restricted")).statusCode()).isEqualTo(403);
-        jdbc.update("update media_asset set classification=null,contains_pii=true where id=?",asset);assertThat(http(user,"POST",path,createBody(asset,"pii")).statusCode()).isEqualTo(403);
-        jdbc.update("update media_asset set contains_pii=false where id=?",asset);
+        // V28 exact-subject pin: a pin that does not match the Artifact's recorded digest is rejected.
+        var mismatched=new HashMap<String,Object>(createBody(asset,"pin-mismatch"));
+        mismatched.put("subject",Map.of("kind","ARTIFACT","artifactId",Map.of("value",asset),"version",digest("art_other_subject")));
+        assertThat(http(user,"POST",path,mismatched).statusCode()).isEqualTo(409);
+        // V28 lifecycle rejection replaces the retired Media governance eligibility read.
+        jdbc.update("update artifact set state='QUARANTINED' where id=?",asset);assertThat(http(user,"POST",path,createBody(asset,"unusable")).statusCode()).isEqualTo(409);
+        jdbc.update("update artifact set state='AVAILABLE' where id=?",asset);
         String[] otherProject=new String[1];as(user,()->otherProject[0]=context.getBean(TenantProjectService.class).createProject(tenant,new CreateProjectRequest("other",null,workspace)).id());
         assertThat(http(user,"POST","/api/projects/"+otherProject[0]+"/marketplace/listings",createBody(asset,"mismatch")).statusCode()).isIn(400,403,404);
         assertThat(state()).isEqualTo(before);
@@ -90,16 +94,18 @@ class MarketplaceFoundationIntegrationTest extends MarketplaceTestSupport {
         jdbc.execute("create trigger ep15_outbox_fault before insert on outbox_events for each row execute function ep15_outbox_fault()");
         try {assertThat(http(user,"POST",root()+"/listings/"+id+"/transitions",command).statusCode()).isGreaterThanOrEqualTo(400);}
         finally {jdbc.execute("drop trigger ep15_outbox_fault on outbox_events");jdbc.execute("drop function ep15_outbox_fault()");}
-        assertThat(state()).isEqualTo(before);assertThat(jdbc.queryForObject("select status from marketplace_listing where id=?",String.class,id)).isEqualTo("READY");assertThat(jdbc.queryForObject("select aggregate_version from marketplace_listing where id=?",Long.class,id)).isEqualTo(ready.path("version").asLong());assertThat(jdbc.queryForObject("select publish_status from media_asset where id=?",String.class,asset)).isEqualTo("DRAFT");
+        assertThat(state()).isEqualTo(before);assertThat(jdbc.queryForObject("select status from marketplace_listing where id=?",String.class,id)).isEqualTo("READY");assertThat(jdbc.queryForObject("select aggregate_version from marketplace_listing where id=?",Long.class,id)).isEqualTo(ready.path("version").asLong());assertThat(jdbc.queryForObject("select published_at is null from marketplace_listing where id=?",Boolean.class,id)).isTrue();
         response(http(user,"POST",root()+"/listings/"+id+"/transitions",command),200);assertThat(events()).isEqualTo(before.get(3)+1);assertThat(commands()).isEqualTo(before.get(2)+1);var after=state();response(http(user,"POST",root()+"/listings/"+id+"/transitions",command),200);assertThat(state()).isEqualTo(after);
     }
 
     @Test void exactSubjectPinAndPrivateReadFilteringSurviveLaterSourceChanges() throws Exception {
         String asset=asset();var ready=approve(submit(create(asset)));String id=ready.path("listingId").asText();var before=state();
-        jdbc.update("update media_asset set media_version='v2' where id=?",asset);
+        // V28: an exact Artifact pin whose subject becomes unusable cannot be published.
+        jdbc.update("update artifact set state='DELETED' where id=?",asset);
         assertThat(http(user,"POST",root()+"/listings/"+id+"/transitions",Map.of("commandId","stale-publish","expectedVersion",ready.path("version").asLong(),"transition","PUBLISH")).statusCode()).isEqualTo(409);assertThat(state()).isEqualTo(before);
-        jdbc.update("update media_asset set media_version='v1' where id=?",asset);var published=publish(ready);
-        jdbc.update("update media_asset set classification='confidential' where id=?",asset);
+        jdbc.update("update artifact set state='AVAILABLE' where id=?",asset);var published=publish(ready);
+        // A quarantined Artifact is a canonical state value and is not publicly resolvable.
+        jdbc.update("update artifact set state='QUARANTINED' where id=?",asset);
         assertThat(http(null,"GET","/api/marketplace/listings/"+id,null).statusCode()).isEqualTo(404);assertThat(http(null,"GET","/api/marketplace/search",null).body()).doesNotContain(id);
         assertThat(http(null,"GET","/api/marketplace/search?status=DRAFT",null).statusCode()).isEqualTo(400);
         assertThat(http(null,"GET","/api/marketplace/assets/"+asset+"/listing",null).statusCode()).isIn(401,403);
@@ -158,7 +164,7 @@ class MarketplaceFoundationIntegrationTest extends MarketplaceTestSupport {
 
     @Test void explicitLegacyReadmissionPreservesEvidenceAndNeverReusesOldApproval() throws Exception {
         String asset=asset(),id="legacy-listing-"+UUID.randomUUID();
-        jdbc.update("insert into marketplace_listing(id,asset_id,tenant_id,project_id,listing_type,title,status,version,review_id,legacy_snapshot,created_at,updated_at) values (?,?,'foreign','wrong','MEDIA','Historical title','PUBLISHED','1.0','old-review','{\"status\":\"PUBLISHED\",\"reviewId\":\"old-review\"}'::jsonb,now(),now())",id,asset);
+        jdbc.update("insert into marketplace_listing(id,artifact_id,tenant_id,project_id,listing_type,title,status,version,review_id,legacy_snapshot,created_at,updated_at) values (?,?,'foreign','wrong','MEDIA','Historical title','PUBLISHED','1.0','old-review','{\"status\":\"PUBLISHED\",\"reviewId\":\"old-review\"}'::jsonb,now(),now())",id,asset);
         String snapshot=jdbc.queryForObject("select legacy_snapshot::text from marketplace_listing where id=?",String.class,id);
         assertThat(http(null,"GET","/api/marketplace/listings/"+id,null).statusCode()).isEqualTo(404);
         var before=state();assertThat(http(user,"POST",root()+"/listings",createBody(asset,"foreign-legacy")).statusCode()).isEqualTo(409);assertThat(state()).isEqualTo(before);

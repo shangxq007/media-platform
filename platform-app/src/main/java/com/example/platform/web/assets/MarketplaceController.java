@@ -29,8 +29,8 @@ public class MarketplaceController {
     }
     @GetMapping("/marketplace/listings") public List<PublicListing> list(@RequestParam(required=false) String status,@RequestParam(defaultValue="20") int limit){publishedOnly(status,null);return marketplace.discover(null,null,0,limit).results();}
     @GetMapping("/marketplace/listings/{id}") public ResponseEntity<PublicListing> get(@PathVariable String id){return ResponseEntity.of(marketplace.publicListing(id));}
-    @GetMapping("/marketplace/assets/{assetId}/listing") public ResponseEntity<Listing> byAsset(@PathVariable String assetId,@RequestParam(required=false) String tenantId){
-        if(tenantId!=null)throw new IllegalArgumentException("Actor scope is server-resolved");return ResponseEntity.of(marketplace.managedByAsset(assetId));}
+    @GetMapping("/marketplace/assets/{artifactId}/listing") public ResponseEntity<Listing> byArtifact(@PathVariable String artifactId,@RequestParam(required=false) String tenantId){
+        if(tenantId!=null)throw new IllegalArgumentException("Actor scope is server-resolved");return ResponseEntity.of(marketplace.managedByArtifact(artifactId));}
     @GetMapping("/marketplace/discovery") public Map<String,List<PublicListing>> discovery(@RequestParam(defaultValue="10") int limit){return Map.of("recent",marketplace.discover(null,null,0,limit).results(),"popular",List.of(),"featured",List.of());}
     @GetMapping("/projects/{project}/marketplace/listings") public List<Listing> managed(@PathVariable String project,@RequestParam(defaultValue="20") int limit){return marketplace.managedByProject(project,limit);}
     @GetMapping("/projects/{project}/marketplace/listings/{id}") public Listing managed(@PathVariable String project,@PathVariable String id){return marketplace.managedListing(project,id);}

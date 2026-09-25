@@ -1,35 +1,34 @@
 package com.example.platform.marketplace.internal;
 
 import com.example.platform.marketplace.api.*;
-import com.example.platform.marketplace.api.MarketplacePublicationSubjectRef.MediaAssetSubject;
+import com.example.platform.marketplace.api.MarketplacePublicationSubjectRef.ArtifactSubject;
+import com.example.platform.artifact.app.ArtifactSourcePinAuthority;
 import com.example.platform.identity.api.authorization.*;
 import com.example.platform.identity.api.project.*;
-import com.example.platform.media.api.*;
-import com.example.platform.media.domain.identity.MediaAssetId;
+import com.example.platform.shared.digest.ContentDigest;
 import com.example.platform.shared.authorization.*;
 import com.example.platform.shared.web.TenantGuard;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.stereotype.Service;
-import org.springframework.context.annotation.Profile;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 import java.util.function.Supplier;
 
 @Service
-@Profile("legacy-media-disabled")
 @Transactional
 public class MarketplaceService implements MarketplaceApi {
     private final MarketplaceStore store;
     private final MarketplaceEvents events;
-    private final MediaAssets media;
-    private final MediaAssetQueries mediaFacts;
+    private final ArtifactSourcePinAuthority artifacts;
     private final CanonicalActorResolver actors;
     private final ProjectScopeQueries scopes;
     private final AuthorizationDecisionPort authorization;
-    public MarketplaceService(MarketplaceStore store,MarketplaceEvents events,MediaAssets media,
-            MediaAssetQueries mediaFacts,CanonicalActorResolver actors,ProjectScopeQueries scopes,AuthorizationDecisionPort authorization) {
-        this.store=store;this.events=events;this.media=media;this.mediaFacts=mediaFacts;this.actors=actors;this.scopes=scopes;this.authorization=authorization;
+    /** Publishable Artifact media types. Canonical Artifact fact, not a governance projection. */
+    private static final Set<String> PUBLISHABLE_MEDIA_TYPES=Set.of("VIDEO","AUDIO","IMAGE","SUBTITLE");
+    public MarketplaceService(MarketplaceStore store,MarketplaceEvents events,ArtifactSourcePinAuthority artifacts,
+            CanonicalActorResolver actors,ProjectScopeQueries scopes,AuthorizationDecisionPort authorization) {
+        this.store=store;this.events=events;this.artifacts=artifacts;this.actors=actors;this.scopes=scopes;this.authorization=authorization;
     }
     private record Access(CanonicalActor actor,ProjectScope scope) {}
     private Access access(String project,String permission) {
@@ -62,24 +61,28 @@ public class MarketplaceService implements MarketplaceApi {
         if(!scope.workspaceId().equals(row.workspaceId()))throw conflict("Listing Workspace relationship changed; owner reconciliation required");
         return row;
     }
-    private MediaAssetSubject subject(MarketplacePublicationSubjectRef ref) {
-        if(!(ref instanceof MediaAssetSubject media))throw new IllegalArgumentException("Only the evidenced MediaAsset publication subject is supported");
-        return media;
+    private ArtifactSubject subject(MarketplacePublicationSubjectRef ref) {
+        if(!(ref instanceof ArtifactSubject artifact))throw new IllegalArgumentException("Only the evidenced Artifact publication subject is supported");
+        return artifact;
     }
-    private Asset validateSubject(Access access,MarketplacePublicationSubjectRef ref) {
+    /**
+     * MARKETPLACE_SUBJECT_ARTIFACT_IDENTITY_V1 (V28 Path 1b): the subject is resolved against the
+     * Artifact authority only — identity, tenant/project scope, usable lifecycle, exact content pin
+     * and the publishable media-type allowlist. Media-version equality is replaced by the immutable
+     * Artifact content pin; Media-owned governance eligibility and the Media publication mirror are
+     * retired with the Media authority and recorded in the V28 contract note.
+     */
+    private void validateSubject(Access access,MarketplacePublicationSubjectRef ref) {
         var s=subject(ref);var scope=access.scope();
-        media.requireReadScope(scope.tenantId(),scope.projectId());
-        var asset=media.publicationSnapshot(scope.tenantId(),scope.projectId(),s.assetId().value());
-        if(!scope.tenantId().equals(asset.tenantId())||!scope.projectId().equals(asset.projectId()))throw new ResponseStatusException(HttpStatus.FORBIDDEN);
-        if(!s.version().equals(asset.assetVersion()))throw conflict("Media subject version changed");
-        if(!Set.of("VIDEO","AUDIO","IMAGE","SUBTITLE").contains(asset.mediaType()))throw new IllegalArgumentException("Unsupported Media subject type");
-        if(!eligible(asset.classification(),asset.securityLevel(),asset.containsPii()))throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Restricted Media subject");
-        return asset;
-    }
-    /** Marketplace release policy consumes current Media-owned governance facts; no license/rights grant is invented. */
-    private boolean eligible(String classification,String security,boolean pii) {
-        return !pii && (classification==null||classification.isBlank()||classification.equalsIgnoreCase("public"))
-                && (security==null||security.isBlank()||security.equalsIgnoreCase("L1"));
+        var resolution=artifacts.resolvePin(scope.tenantId(),scope.projectId(),s.artifactId(),ContentDigest.sha256(s.version()));
+        switch(resolution.outcome()) {
+            case UNKNOWN_ARTIFACT -> throw missing("Artifact subject not found");
+            case OUT_OF_SCOPE -> throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Artifact subject is outside the target scope");
+            case NOT_USABLE -> throw conflict("Artifact subject is not usable");
+            case PIN_MISMATCH -> throw conflict("Artifact subject content pin changed");
+            case RESOLVED -> { }
+        }
+        if(!PUBLISHABLE_MEDIA_TYPES.contains(resolution.mediaType()))throw new IllegalArgumentException("Unsupported Artifact subject type");
     }
     private void version(Listing row,long expected) {if(expected<1||row.version()!=expected)throw conflict("Stale listing version");}
     private Listing updated(Access a,Listing row){return requireListing(a,row.id(),false);}
@@ -88,7 +91,7 @@ public class MarketplaceService implements MarketplaceApi {
         if(expectedWorkspace!=null&&!expectedWorkspace.equals(a.scope().workspaceId()))throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Marketplace Workspace mismatch");
         return command(a,c.commandId(),"create",project,c,Listing.class,()->{
             validateSubject(a,c.subject());metadata(c.title(),c.summary(),c.description());var s=subject(c.subject());
-            String id=store.create(a.scope().tenantId(),a.scope().workspaceId(),project,s.assetId().value(),s.version(),a.actor().actorId(),c.title(),normal(c.summary()),c.description());
+            String id=store.create(a.scope().tenantId(),a.scope().workspaceId(),project,s.artifactId().value(),s.version(),a.actor().actorId(),c.title(),normal(c.summary()),c.description());
             var row=requireListing(a,id,false);events.listingCreated(row,a.actor());return row;
         });
     }
@@ -144,18 +147,14 @@ public class MarketplaceService implements MarketplaceApi {
                 if(row.status()!=Status.READY||row.reviewId()==null)throw conflict("An approved review is required");
                 var review=store.reviewRow(row.tenantId(),project,row.reviewId());
                 if(!ReviewStatus.APPROVED.name().equals(review.get("status"))||!subject(row.subject()).version().equals(review.get("subject_version"))||store.unresolved(row.reviewId()))throw conflict("Review does not approve this exact subject");
-                var asset=validateSubject(a,row.subject());media.updatePublishStatus(row.tenantId(),project,asset.id(),asset.publishStatus(),"PUBLISHED");
+                // Publication is Marketplace-owned (listing status + published_at). The retired Media
+                // publication mirror is not written; see MARKETPLACE_SUBJECT_ARTIFACT_IDENTITY_V1.
+                validateSubject(a,row.subject());
                 store.change(row,Status.PUBLISHED,row.reviewId(),a.actor().actorId());var result=updated(a,row);events.published(result,a.actor());return result;
             }
             // Withdrawal belongs to the listing even if its subject is now stale/restricted.
-            // Never mutate a foreign or changed Media version while withdrawing old metadata.
-            var s=subject(row.subject());
-            if (!media.archivePublicationIfCurrent(row.tenantId(),project,s.assetId().value(),s.version())) {
-                // An explicit conditional miss permits listing-only withdrawal. Exceptions
-                // still roll back the entire command; they are never translated into a miss.
-                org.slf4j.LoggerFactory.getLogger(MarketplaceService.class)
-                    .debug("Withdrawing listing {} without changing its stale Media subject", listing);
-            }
+            // Never mutate a foreign or changed subject while withdrawing old metadata: the retired
+            // Media publication mirror is gone, so withdrawal is listing-only by contract.
             store.change(row,Status.ARCHIVED,row.reviewId(),a.actor().actorId());var result=updated(a,row);events.archived(result,a.actor());return result;
         });
     }
@@ -180,17 +179,16 @@ public class MarketplaceService implements MarketplaceApi {
         if(row.status()!=Status.READY||row.reviewId()==null||store.unresolved(row.reviewId()))return false;
         try {
             var a=access(project,"marketplace.publish");
-            media.requireRegistrationScope(a.scope().tenantId(),project);
             validateSubject(a,row.subject());
             var r=store.reviewRow(row.tenantId(),project,row.reviewId());
             return ReviewStatus.APPROVED.name().equals(r.get("status"))&&subject(row.subject()).version().equals(r.get("subject_version"));
         } catch(org.springframework.web.server.ResponseStatusException | com.example.platform.shared.web.PlatformException | com.example.platform.identity.api.authorization.AuthorizationDeniedException | IllegalArgumentException rejected) {return false;}
     }
     @Override public Listing managedListing(String project,String id){return requireListing(access(project,"READ"),id,false);}
-    @Override public Optional<Listing> managedByAsset(String asset) {
+    @Override public Optional<Listing> managedByArtifact(String artifact) {
         var actor=actors.resolveCurrentActor().orElseThrow(()->new ResponseStatusException(HttpStatus.UNAUTHORIZED));
-        var value=media.findById(actor.tenantId(),asset).orElseThrow(()->missing("Media subject not found"));var a=access(value.projectId(),"READ");
-        return store.admittedAsset(a.scope().tenantId(),asset).map(row->requireListing(a,row.id(),false));
+        var row=store.admittedArtifact(actor.tenantId(),artifact).orElseThrow(()->missing("Artifact subject not found"));
+        return Optional.of(requireListing(access(row.projectId(),"READ"),row.id(),false));
     }
     @Override public ProjectSummary summary(String project) {
         var a=access(project,"READ");
@@ -200,13 +198,15 @@ public class MarketplaceService implements MarketplaceApi {
     @Override public Review review(String project,String id){return reviewValue(access(project,"READ"),id);}
     private Review reviewValue(Access a,String id) {
         var r=store.reviewRow(a.scope().tenantId(),a.scope().projectId(),id);var listing=requireListing(a,(String)r.get("listing_id"),false);
-        return new Review(id,listing.id(),new MediaAssetSubject(subject(listing.subject()).assetId(),(String)r.get("subject_version")),ReviewStatus.valueOf((String)r.get("status")),(String)r.get("author_id"),(String)r.get("title"),(String)r.get("description"),((Number)r.get("aggregate_version")).longValue(),store.comments(id));
+        return new Review(id,listing.id(),new ArtifactSubject(subject(listing.subject()).artifactId(),(String)r.get("subject_version")),ReviewStatus.valueOf((String)r.get("status")),(String)r.get("author_id"),(String)r.get("title"),(String)r.get("description"),((Number)r.get("aggregate_version")).longValue(),store.comments(id));
     }
     private boolean visible(Listing row) {
         if(row.status()!=Status.PUBLISHED)return false;
-        var s=subject(row.subject());var asset=mediaFacts.findById(s.assetId());
-        if(asset.isEmpty())return false;var a=asset.get();
-        if(!row.tenantId().equals(a.tenantId())||!row.projectId().equals(a.projectId())||!s.version().equals(a.mediaVersion())||!"PUBLISHED".equals(a.publishStatus())||!eligible(a.classification(),a.securityLevel(),a.containsPii()))return false;
+        // Public visibility is decided by Marketplace-owned publication state plus the canonical
+        // Artifact pin; Media-owned governance/publication facts are no longer consulted (V28).
+        var s=subject(row.subject());
+        var resolution=artifacts.resolvePin(row.tenantId(),row.projectId(),s.artifactId(),ContentDigest.sha256(s.version()));
+        if(!resolution.resolved()||!PUBLISHABLE_MEDIA_TYPES.contains(resolution.mediaType()))return false;
         try {return row.workspaceId().equals(scopes.resolveForAcceptance(row.tenantId(),row.projectId()).workspaceId());}catch(RuntimeException unavailable){return false;}
     }
     private PublicListing publicValue(Listing row){return new PublicListing(row.id(),row.subject(),row.title(),row.summary(),row.description(),"MEDIA",row.version(),row.updatedAt());}
@@ -216,9 +216,9 @@ public class MarketplaceService implements MarketplaceApi {
         var visible=store.published(q==null||q.isBlank()?null:q,workspace).stream().filter(this::visible).map(this::publicValue).toList();
         return new SearchResult(visible.size(),offset,limit,visible.stream().skip(offset).limit(limit).toList());
     }
-    @Override public Optional<PublicationFact> publicationFact(String tenant,String project,String asset) {
+    @Override public Optional<PublicationFact> publicationFact(String tenant,String project,String artifact) {
         TenantGuard.assertSameTenant(tenant);
-        return store.admittedAsset(tenant,asset).filter(x->project.equals(x.projectId())).map(x->new PublicationFact(x.id(),x.version(),x.status(),x.subject()));
+        return store.admittedArtifact(tenant,artifact).filter(x->project.equals(x.projectId())).map(x->new PublicationFact(x.id(),x.version(),x.status(),x.subject()));
     }
     private static int bound(int n){if(n<1||n>100)throw new IllegalArgumentException("Limit must be 1..100");return n;}
     private static String normal(String s){return s==null?"":s;}

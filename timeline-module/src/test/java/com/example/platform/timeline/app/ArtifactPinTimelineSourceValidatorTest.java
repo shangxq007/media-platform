@@ -41,7 +41,7 @@ class ArtifactPinTimelineSourceValidatorTest {
             requests.add(tenantId + "|" + projectId + "|" + artifactId.value() + "|"
                     + pinnedDigest.canonicalValue());
             return new PinResolution(outcome, artifactId, tenantId, projectId,
-                    pinnedDigest.canonicalValue(), DIGEST);
+                    pinnedDigest.canonicalValue(), DIGEST, "VIDEO");
         }
     }
 

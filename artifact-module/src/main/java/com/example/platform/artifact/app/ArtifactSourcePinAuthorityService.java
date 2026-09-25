@@ -34,23 +34,31 @@ public class ArtifactSourcePinAuthorityService implements ArtifactSourcePinAutho
         var found = catalog.findArtifact(tenant, artifactId.value());
         if (found.isEmpty()) {
             return new PinResolution(
-                    Outcome.UNKNOWN_ARTIFACT, artifactId, tenant, project, pinned, null);
+                    Outcome.UNKNOWN_ARTIFACT, artifactId, tenant, project, pinned, null, null);
         }
         var artifact = found.get();
         String recorded = artifact.checksum() == null ? null : artifact.checksum().toLowerCase();
+        // The catalog's media slot carries artifact.media_type (the canonical coarse classification
+        // of the Artifact's content), not a file format.
+        String mediaType = normalize(artifact.format());
         if (!project.equals(artifact.projectId())) {
             return new PinResolution(
-                    Outcome.OUT_OF_SCOPE, artifactId, tenant, project, pinned, recorded);
+                    Outcome.OUT_OF_SCOPE, artifactId, tenant, project, pinned, recorded, mediaType);
         }
         if (!artifact.isUsable()) {
             return new PinResolution(
-                    Outcome.NOT_USABLE, artifactId, tenant, project, pinned, recorded);
+                    Outcome.NOT_USABLE, artifactId, tenant, project, pinned, recorded, mediaType);
         }
         if (recorded == null || !pinned.equals(recorded)) {
             return new PinResolution(
-                    Outcome.PIN_MISMATCH, artifactId, tenant, project, pinned, recorded);
+                    Outcome.PIN_MISMATCH, artifactId, tenant, project, pinned, recorded, mediaType);
         }
-        return new PinResolution(Outcome.RESOLVED, artifactId, tenant, project, pinned, recorded);
+        return new PinResolution(
+                Outcome.RESOLVED, artifactId, tenant, project, pinned, recorded, mediaType);
+    }
+
+    private static String normalize(String value) {
+        return value == null || value.isBlank() ? null : value;
     }
 
     private static String requireScope(String value, String name) {
