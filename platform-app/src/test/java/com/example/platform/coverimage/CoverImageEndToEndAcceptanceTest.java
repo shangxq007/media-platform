@@ -133,10 +133,9 @@ class CoverImageEndToEndAcceptanceTest {
     @Test
     void coverRequestRunsTheFullCanonicalPathAndReplaysIdempotently() throws Exception {
         String runId = Long.toString(System.nanoTime());
-        // NOTE (defect D7, acceptance workaround): artifact_relation.id is varchar(64) and the
-        // canonical edge id is `child + "-" + parent`, so the subject id must stay short for the
-        // COVER_OF row to fit. A realistic subject id (> 17 chars) overflows it — reported, not fixed.
-        String subjectArtifactId = "art-src-" + runId.substring(runId.length() - 6);
+        // Real platform identity shape (art-<uuid>, 40 chars): the platform fix bounds the canonical
+        // edge identity, so no short-id workaround is needed.
+        String subjectArtifactId = "art-" + java.util.UUID.randomUUID();
         String idempotencyKey = "e2e-cover-" + runId;
 
         // 1. seed one canonical subject Artifact whose bytes live in the worker-visible object store
@@ -176,6 +175,10 @@ class CoverImageEndToEndAcceptanceTest {
         assertThat(cover.mediaType()).isEqualTo(ArtifactMediaType.IMAGE);
         assertThat(cover.artifactKind()).isEqualTo(ArtifactKind.DERIVED_MEDIA);
         assertThat(cover.byteLength()).isGreaterThan(0L);
+        // D4 (platform fix): the canonical insert satisfied V18's NOT NULL workspace_id with the real
+        // project scope — no acceptance-database default is needed or present.
+        assertThat(workspaceIdOf(task.artifactId())).isEqualTo(PROJECT);
+        assertThat(workspaceIdOf(subjectArtifactId)).isEqualTo(PROJECT);
 
         // 5. the cover bytes are really on disk and are a PNG
         byte[] coverBytes = readBack(task.artifactId());
@@ -189,10 +192,15 @@ class CoverImageEndToEndAcceptanceTest {
                 task.artifactId(), subjectArtifactId)).isOne();
         assertThat(count("source_artifact_id = ?", subjectArtifactId)).isZero();
         assertThat(count("target_artifact_id = ?", task.artifactId())).isZero();
+        // The canonical edge identity is the bounded 64-char digest of the (child, parent) pair, and
+        // the endpoints stay the authoritative facts stored verbatim (platform fix D7).
         assertThat(jdbc.queryForObject(
                 "select id from artifact_relation where source_artifact_id = ? and target_artifact_id = ?",
                 String.class, task.artifactId(), subjectArtifactId))
-                .isEqualTo(task.artifactId() + "-" + subjectArtifactId);
+                .hasSize(64)
+                .matches("[0-9a-f]{64}")
+                .isEqualTo(com.example.platform.artifact.domain.ProvenanceValidator.canonicalEdgeId(
+                        new ArtifactId(task.artifactId()), new ArtifactId(subjectArtifactId)));
 
         // 7. idempotent re-run: same submission returns the same task and the same cover Artifact
         var replayed = coverService.submit(new CoverImageContracts.Request(
@@ -256,6 +264,11 @@ class CoverImageEndToEndAcceptanceTest {
     private int count(String where, Object... args) {
         return jdbc.queryForObject(
                 "select count(*) from artifact_relation where " + where, Integer.class, args);
+    }
+
+    private String workspaceIdOf(String artifactId) {
+        return jdbc.queryForObject(
+                "select workspace_id from artifact where id = ?", String.class, artifactId);
     }
 
     private static StorageNamespace namespace() {

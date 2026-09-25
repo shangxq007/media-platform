@@ -48,6 +48,17 @@ class JooqArtifactCommitServiceCoverOfTest extends PostgresTestContainerSupport 
     private static final Instant NOW = Instant.parse("2026-09-25T00:00:00Z");
     private static final ContentDigest SUBJECT_DIGEST = ContentDigest.sha256("a".repeat(64));
     private static final ContentDigest COVER_DIGEST = ContentDigest.sha256("b".repeat(64));
+    /**
+     * Real platform identity shapes. The subject is a canonical {@code art-<uuid>} (40 chars) and the
+     * cover uses the slice's derived {@code art-cover-<uuid>} (46 chars); with the bounded canonical
+     * edge identity both fit {@code artifact_relation.id varchar(64)} without any short-id workaround.
+     */
+    private static final String SUBJECT_ARTIFACT_ID = "art-" + java.util.UUID.randomUUID();
+    private static final String COVER_ARTIFACT_ID = "art-cover-" + java.util.UUID.randomUUID();
+    private static final String SUBJECT_ARTIFACT_ID_2 = "art-" + java.util.UUID.randomUUID();
+    private static final String COVER_ARTIFACT_ID_2 = "art-cover-" + java.util.UUID.randomUUID();
+    private static final String SUBJECT_ARTIFACT_ID_3 = "art-" + java.util.UUID.randomUUID();
+    private static final String COVER_ARTIFACT_ID_3 = "art-cover-" + java.util.UUID.randomUUID();
     /** Canonical cover capability operation id (platform-app owns CoverImageContracts; no module cycle here). */
     private static final String COVER_OPERATION_ID = "cover-image:media.cover-image@1";
 
@@ -115,30 +126,34 @@ class JooqArtifactCommitServiceCoverOfTest extends PostgresTestContainerSupport 
 
     @Test
     void coverOfCommitPersistsCanonicalRelationEdgeSubjectToCover() {
-        commitService.commit(request("art-subject", TENANT, SUBJECT_DIGEST, "subject-key", List.of()));
+        commitService.commit(request(SUBJECT_ARTIFACT_ID, TENANT, SUBJECT_DIGEST, "subject-key", List.of()));
 
         ArtifactCommitResult result = commitService.commit(request(
-                "art-cover", TENANT, COVER_DIGEST, "cover-key", List.of(coverOf("art-subject"))));
+                COVER_ARTIFACT_ID, TENANT, COVER_DIGEST, "cover-key",
+                List.of(coverOf(SUBJECT_ARTIFACT_ID))));
 
         assertThat(result.artifact().artifactKind()).isEqualTo(ArtifactKind.DERIVED_MEDIA);
         assertThat(result.artifact().mediaType()).isEqualTo(ArtifactMediaType.IMAGE);
         assertThat(result.provenanceEdges()).hasSize(1);
         assertThat(result.provenanceEdges().get(0).relationType())
                 .isEqualTo(ProvenanceRelationType.COVER_OF);
+        // Real ids: the canonical edge identity must be the bounded 64-char digest.
+        assertThat(result.provenanceEdges().get(0).edgeId()).hasSize(64).matches("[0-9a-f]{64}");
         assertThat(dsl.fetchCount(ARTIFACT_RELATION,
-                ARTIFACT_RELATION.SOURCE_ARTIFACT_ID.eq("art-cover")
-                        .and(ARTIFACT_RELATION.TARGET_ARTIFACT_ID.eq("art-subject"))
+                ARTIFACT_RELATION.SOURCE_ARTIFACT_ID.eq(COVER_ARTIFACT_ID)
+                        .and(ARTIFACT_RELATION.TARGET_ARTIFACT_ID.eq(SUBJECT_ARTIFACT_ID))
                         .and(ARTIFACT_RELATION.RELATION_TYPE.eq("COVER_OF")))).isOne();
         assertThat(dsl.fetchCount(ARTIFACT_RELATION,
-                ARTIFACT_RELATION.SOURCE_ARTIFACT_ID.eq("art-subject"))).isZero();
+                ARTIFACT_RELATION.SOURCE_ARTIFACT_ID.eq(SUBJECT_ARTIFACT_ID))).isZero();
     }
 
     @Test
     void idempotencyKeyReplayIsDelegatedToTheCallerAndReCommitFailsClosed() {
-        commitService.commit(request("art-subject", TENANT, SUBJECT_DIGEST, "subject-key-2", List.of()));
+        commitService.commit(request(SUBJECT_ARTIFACT_ID_2, TENANT, SUBJECT_DIGEST, "subject-key-2", List.of()));
 
         ArtifactCommitResult first = commitService.commit(request(
-                "art-cover-2", TENANT, COVER_DIGEST, "cover-key-2", List.of(coverOf("art-subject"))));
+                COVER_ARTIFACT_ID_2, TENANT, COVER_DIGEST, "cover-key-2",
+                List.of(coverOf(SUBJECT_ARTIFACT_ID_2))));
 
         // Canonical idempotency contract of the jOOQ adapter (COVER-PROVIDER-001 increment 4): the
         // adapter is fail-closed on an already-committed identity and does NOT perform an idempotent
@@ -151,26 +166,29 @@ class JooqArtifactCommitServiceCoverOfTest extends PostgresTestContainerSupport 
         // A re-commit of an existing Artifact identity fails closed and creates no second Artifact,
         // replica or provenance edge.
         assertThatThrownBy(() -> commitService.commit(request(
-                "art-cover-2", TENANT, COVER_DIGEST, "cover-key-2b", List.of(coverOf("art-subject")))))
+                COVER_ARTIFACT_ID_2, TENANT, COVER_DIGEST, "cover-key-2b",
+                List.of(coverOf(SUBJECT_ARTIFACT_ID_2)))))
                 .isInstanceOf(ArtifactErrorCode.ArtifactDomainException.class)
                 .hasMessageContaining("Artifact already exists");
         assertThat(dsl.fetchCount(ARTIFACT, ARTIFACT.TENANT_ID.eq(TENANT))).isEqualTo(2);
-        assertThat(dsl.fetchCount(ARTIFACT, ARTIFACT.ID.eq("art-cover-2"))).isOne();
+        assertThat(dsl.fetchCount(ARTIFACT, ARTIFACT.ID.eq(COVER_ARTIFACT_ID_2))).isOne();
         assertThat(dsl.fetchCount(ARTIFACT_RELATION,
-                ARTIFACT_RELATION.SOURCE_ARTIFACT_ID.eq("art-cover-2"))).isOne();
+                ARTIFACT_RELATION.SOURCE_ARTIFACT_ID.eq(COVER_ARTIFACT_ID_2))).isOne();
     }
 
     @Test
     void conflictingDigestForTheSameIdempotencyKeyFailsClosed() {
-        commitService.commit(request("art-subject", TENANT, SUBJECT_DIGEST, "subject-key-3", List.of()));
+        commitService.commit(request(SUBJECT_ARTIFACT_ID_3, TENANT, SUBJECT_DIGEST, "subject-key-3", List.of()));
         commitService.commit(request(
-                "art-cover-3", TENANT, COVER_DIGEST, "cover-key-3", List.of(coverOf("art-subject"))));
+                COVER_ARTIFACT_ID_3, TENANT, COVER_DIGEST, "cover-key-3",
+                List.of(coverOf(SUBJECT_ARTIFACT_ID_3))));
 
         assertThatThrownBy(() -> commitService.commit(request(
-                "art-cover-3", TENANT, SUBJECT_DIGEST, "cover-key-3", List.of(coverOf("art-subject")))))
+                COVER_ARTIFACT_ID_3, TENANT, SUBJECT_DIGEST, "cover-key-3",
+                List.of(coverOf(SUBJECT_ARTIFACT_ID_3)))))
                 .isInstanceOf(ArtifactErrorCode.ArtifactDomainException.class);
-        assertThat(dsl.fetchCount(ARTIFACT, ARTIFACT.ID.eq("art-cover-3"))).isOne();
+        assertThat(dsl.fetchCount(ARTIFACT, ARTIFACT.ID.eq(COVER_ARTIFACT_ID_3))).isOne();
         assertThat(dsl.fetchCount(ARTIFACT_RELATION,
-                ARTIFACT_RELATION.SOURCE_ARTIFACT_ID.eq("art-cover-3"))).isOne();
+                ARTIFACT_RELATION.SOURCE_ARTIFACT_ID.eq(COVER_ARTIFACT_ID_3))).isOne();
     }
 }
