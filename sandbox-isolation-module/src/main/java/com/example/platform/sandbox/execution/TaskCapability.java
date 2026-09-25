@@ -16,5 +16,6 @@ public enum TaskCapability {
     TRANSCODE,
     FRAME_EXTRACTION,
     FILTER,
-    THUMBNAIL
+    THUMBNAIL,
+    COVER_IMAGE
 }

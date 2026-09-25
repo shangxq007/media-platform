@@ -15,5 +15,7 @@ public enum ProvenanceRelationType {
     UPGRADED_FROM,
     DENOISED_FROM,
     SUBTITLED_FROM,
-    RENDERED_FROM
+    RENDERED_FROM,
+    /** Cover image derived from its subject Artifact (relation-based cover representation). */
+    COVER_OF
 }
