@@ -18,18 +18,27 @@ import org.springframework.stereotype.Component;
  * Sandbox execution backend for the cover-image capability: the registered provider's command runs
  * inside a bubblewrap profile with the pinned FFmpeg binary. No shell is involved and no other
  * capability is accepted.
+ *
+ * <p>Mount profile (COVER-PROVIDER-001 defect 3): everything is read-only except the worker's own
+ * output root, which is bound read-write at the same path so the produced cover bytes are visible to
+ * the parent process. {@code /tmp} is a private tmpfs and therefore cannot carry the provider output:
+ * binding only {@code /tmp} (or binding nothing writable) leaves the provider unable to hand its
+ * bytes back.
  */
 @Component
 public final class CoverImageExecutionBackend implements ExecutionBackend {
 
     private final String bwrap;
     private final String ffmpeg;
+    private final Path outputRoot;
 
     public CoverImageExecutionBackend(
             @Value("${platform.cover-image.sandbox.bwrap:/usr/bin/bwrap}") String bwrap,
-            @Value("${platform.cover-image.sandbox.ffmpeg:/usr/bin/ffmpeg}") String ffmpeg) {
+            @Value("${platform.cover-image.sandbox.ffmpeg:/usr/bin/ffmpeg}") String ffmpeg,
+            @Value("${app.cover-image.work-root:./.data/cover-image-work}") String workRoot) {
         this.bwrap = bwrap;
         this.ffmpeg = ffmpeg;
+        this.outputRoot = Path.of(workRoot).toAbsolutePath().normalize();
     }
 
     @Override
@@ -45,12 +54,20 @@ public final class CoverImageExecutionBackend implements ExecutionBackend {
     @Override
     public ExecutionResult execute(ExecutionRequest request) {
         long started = System.nanoTime();
+        try {
+            // bubblewrap requires the bind source to exist before the namespace is created.
+            Files.createDirectories(outputRoot);
+        } catch (IOException failure) {
+            throw new IllegalStateException("cover-image sandbox output root is unusable", failure);
+        }
         List<String> command = new ArrayList<>(List.of(
                 bwrap,
                 "--ro-bind", "/", "/",
                 "--dev", "/dev",
                 "--proc", "/proc",
                 "--tmpfs", "/tmp",
+                // Host-readable writable output root: the provider writes here and the parent reads it.
+                "--bind", outputRoot.toString(), outputRoot.toString(),
                 "--unshare-all",
                 "--die-with-parent",
                 ffmpeg));

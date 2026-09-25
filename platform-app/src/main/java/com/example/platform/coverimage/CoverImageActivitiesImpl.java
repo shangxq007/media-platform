@@ -4,6 +4,7 @@ import com.example.platform.artifact.app.ArtifactPinService.ArtifactPin;
 import com.example.platform.artifact.domain.ArtifactQueryService;
 import com.example.platform.artifact.domain.ArtifactState;
 import com.example.platform.shared.identity.ArtifactId;
+import com.example.platform.shared.web.TenantContext;
 import com.example.platform.workerfabric.reuse.ArtifactMaterializerPort;
 import io.temporal.spring.boot.ActivityImpl;
 import java.nio.file.Path;
@@ -26,7 +27,7 @@ public class CoverImageActivitiesImpl implements CoverImageActivities {
     private final ArtifactMaterializerPort materializer;
     private final CoverImageCapabilityRegistry capabilities;
     private final CoverImageCommitService commitService;
-    private final Path root;
+    private final Path commitStagingRoot;
 
     public CoverImageActivitiesImpl(
             CoverImageTaskStore tasks,
@@ -34,17 +35,41 @@ public class CoverImageActivitiesImpl implements CoverImageActivities {
             ArtifactMaterializerPort materializer,
             CoverImageCapabilityRegistry capabilities,
             CoverImageCommitService commitService,
-            @Value("${app.cover-image.work-root:./.data/cover-image-work}") String root) {
+            // The canonical StorageOutputPort resolves the relative staged path under ITS root, so the
+            // commit staging area must live there (Continue-5 defect: staging under the provider work
+            // root made publication fail with a missing-file error whenever the two roots differed).
+            @Value("${app.cover-image.commit-staging-root:${app.storage.local-root:./.data/storage}}")
+                    String commitStagingRoot) {
         this.tasks = tasks;
         this.artifacts = artifacts;
         this.materializer = materializer;
         this.capabilities = capabilities;
         this.commitService = commitService;
-        this.root = Path.of(root).toAbsolutePath().normalize();
+        this.commitStagingRoot = Path.of(commitStagingRoot).toAbsolutePath().normalize();
     }
 
     @Override
     public String renderAndCommit(String taskId, String tenant, String project) {
+        // Worker-role tenant scope (COVER-PROVIDER-001 Continue-5): canonical services on this path
+        // (storage publication through StorageOutputPort) assert the ambient tenant context, which
+        // only the API request thread normally establishes. The activity is handed the tenant
+        // explicitly, so it must establish the same scope for its own execution — the same pattern
+        // the platform's delivery background jobs use — and must restore the previous value to avoid
+        // leaking scope across pooled activity threads.
+        String previousTenant = TenantContext.get();
+        try {
+            TenantContext.set(tenant);
+            return renderAndCommitScoped(taskId, tenant, project);
+        } finally {
+            if (previousTenant == null) {
+                TenantContext.clear();
+            } else {
+                TenantContext.set(previousTenant);
+            }
+        }
+    }
+
+    private String renderAndCommitScoped(String taskId, String tenant, String project) {
         if (!tasks.statusIfActive(taskId, CoverImageContracts.Status.RUNNING, null, null)) {
             return null;
         }
@@ -90,11 +115,12 @@ public class CoverImageActivitiesImpl implements CoverImageActivities {
         if (!tasks.statusIfActive(taskId, CoverImageContracts.Status.COMMITTING, null, null)) {
             return null;
         }
-        Path output = root.resolve(task.idempotencyKey()).resolve("provider-output").normalize();
+        Path output = commitStagingRoot.resolve(task.idempotencyKey())
+                .resolve("provider-output").normalize();
         try {
             return commitService.commit(tenant, project, taskId, task.subjectArtifactId(),
                     produced.contentType(), produced.bytes(),
-                    output.resolve("cover." + task.imageFormat()), root.toString());
+                    output.resolve("cover." + task.imageFormat()), commitStagingRoot.toString());
         } catch (Exception failure) {
             tasks.statusIfActive(taskId, CoverImageContracts.Status.FAILED, null, "OUTPUT_COMMIT_FAILED");
             throw new IllegalStateException("cover-image commit failed", failure);

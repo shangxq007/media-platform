@@ -130,13 +130,27 @@ must happen in the caller (step 1) and is intentionally left unchanged.
 | Requirement | Value |
 |---|---|
 | Process | dedicated worker process, `web-application-type: none`, no controller/security scan |
-| Profiles | `dev,temporal,cover-image-worker` (worker profile applied last) |
+| Profiles | `temporal,cover-image-worker` (worker profile applied **last**, per `CoverImageWorkerApplication.WORKER_PROFILES`) |
 | Queue set | exactly `{media-platform-tasks}`; `workflow-process` must be absent |
 | Binaries | `ffmpeg`, `ffprobe` (probe) and `bwrap` on the pinned paths |
-| Storage | a registered `StorageProvider` bean in the worker role (needed by the digest-verified materializer) |
+| Storage (subject read) | a registered `StorageProvider` bean — the worker composes `LocalObjectStoreStorageProvider` (`app.cover-image.storage.provider-id`, `app.cover-image.storage.root`); its object store holds the subject bytes the materializer reads |
+| Storage (cover write) | `StorageOutputPort` (unchanged canonical publication); the commit staging root is `app.cover-image.commit-staging-root`, which defaults to `app.storage.local-root` and **must** be the root the output port resolves relative paths under |
+| Execution backends | the worker composes `RuntimeExecutionBackends` from its own `ExecutionBackend` beans, so `TaskCapability.COVER_IMAGE` resolves to the cover sandbox backend (the API-side PF4J composition is not part of the worker) |
 | Provider selection | `app.cover-image.pinned-provider` (deployment configuration; required when more than one provider declares `media.cover-image`) |
 | Temporal | 1.26.2 or compatible; namespace resolved from `TEMPORAL_NAMESPACE` |
 | Database | `platform-app` migrations, including `V22__cover_image_tasks.sql` |
+
+### Worker-role wiring constraints
+
+- The worker does **not** scan `com.example.platform.config` (API/PF4J composition) and imports the
+  shared clock configuration explicitly.
+- The activity establishes the ambient tenant scope for its own execution
+  (`TenantContext.set(tenant)` … restore), because storage publication asserts it.
+- Sandbox work/staging roots must live **outside** the host `/tmp`: the bubblewrap profile mounts a
+  private tmpfs on `/tmp`, so any host path below it is invisible to the sandboxed provider.
+- `artifact_relation.id` is `varchar(64)` and the canonical edge id is `child + "-" + parent`. The
+  cover Artifact id is `art-cover-<uuid>` (46 chars), so a subject Artifact id longer than 17
+  characters overflows the relation id (known platform limitation, see the Continue-5 report).
 
 ### Profile precedence
 

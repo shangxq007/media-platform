@@ -26,8 +26,18 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
  * {@code application-cover-image-worker.yml}) so the profile-precedence override of the base worker
  * list is exercised, not a synthetic property set. The worker must own exactly the canonical shared
  * queue {@code media-platform-tasks} and must never poll {@code workflow-process}.
+ *
+ * <p>The positive case uses {@link CoverImageWorkerApplication#WORKER_PROFILES} — the ordering the
+ * worker process actually declares — so a regression of the precedence fix (defect 2) fails here.
  */
 class CoverImageWorkerQueueSetTest {
+
+    @Test
+    void workerProfilesApplyTheWorkerProfileLast() {
+        assertThat(CoverImageWorkerApplication.WORKER_PROFILES).contains("temporal");
+        assertThat(CoverImageWorkerApplication.WORKER_PROFILES.getLast())
+                .isEqualTo("cover-image-worker");
+    }
 
     @Test
     void baseTemporalProfileAloneRegistersTheWorkflowEngineQueue() {
@@ -42,7 +52,7 @@ class CoverImageWorkerQueueSetTest {
 
     @Test
     void coverImageWorkerProfileRegistersExactlyTheCanonicalQueue() {
-        runner("temporal,cover-image-worker").run(context -> {
+        runner(String.join(",", CoverImageWorkerApplication.WORKER_PROFILES)).run(context -> {
             assertThat(context).hasNotFailed();
             assertThat(context).hasSingleBean(WorkerFactory.class);
             WorkerFactory factory = context.getBean(WorkerFactory.class);

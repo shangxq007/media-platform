@@ -3,7 +3,6 @@ package com.example.platform.coverimage;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.example.platform.shared.test.PostgresTestContainerSupport;
-import com.example.platform.storage.contract.StorageProviderId;
 import com.example.platform.storage.contract.provider.StorageProvider;
 import io.temporal.client.WorkflowClient;
 import io.temporal.spring.boot.autoconfigure.template.WorkersTemplate;
@@ -34,11 +33,10 @@ import org.springframework.web.bind.annotation.RestController;
  * the base {@code application-temporal.yml} list by profile precedence.
  *
  * <p>Known runtime gap surfaced by this test (reported, not fixed here): the worker role's bean scan
- * registers no {@code StorageProvider}, while
- * {@code CoverImageMaterializationConfiguration} requires at least one
- * ({@code cover-image subject reads require a registered StorageProvider}). The test therefore
- * supplies a test-scoped {@link StorageProvider} stub so the real worker bean graph can be
- * assembled and scanned; the production worker process cannot start without one.
+ * (Resolved in defect 1.) The worker role previously registered no {@code StorageProvider} and its
+ * scan pulled API-level configuration, so the production worker process could not start. The worker
+ * now composes its own storage provider, execution-backend registry and profile ordering; this test
+ * boots the real context with no test-scoped bean stubs.
  */
 @SpringBootTest(
         classes = CoverImageWorkerApplication.class,
@@ -54,32 +52,6 @@ class CoverImageWorkerApplicationTemporalRoleContextTest extends PostgresTestCon
 
     @Autowired ApplicationContext context;
 
-    @org.springframework.boot.test.context.TestConfiguration(proxyBeanMethods = false)
-    static class WorkerStorageProviderStub {
-
-        @org.springframework.context.annotation.Bean
-        StorageProvider coverWorkerStorageProvider() {
-            StorageProvider provider = org.mockito.Mockito.mock(StorageProvider.class);
-            org.mockito.Mockito.when(provider.providerId())
-                    .thenReturn(new StorageProviderId("local"));
-            return provider;
-        }
-
-        @org.springframework.context.annotation.Bean
-        com.example.platform.composition.app.CompositionResultRepository
-                coverWorkerCompositionResultRepository() {
-            return org.mockito.Mockito.mock(
-                    com.example.platform.composition.app.CompositionResultRepository.class);
-        }
-
-        @org.springframework.context.annotation.Bean
-        com.example.platform.extension.api.port.PluginRegistrationPort
-                coverWorkerPluginRegistrationPort() {
-            return org.mockito.Mockito.mock(
-                    com.example.platform.extension.api.port.PluginRegistrationPort.class);
-        }
-    }
-
     @Test
     void workerContextHasNoControllerBeansAndOnlyTheCanonicalQueue() {
         assertThat(context.getBeansWithAnnotation(RestController.class)).isEmpty();
@@ -94,6 +66,27 @@ class CoverImageWorkerApplicationTemporalRoleContextTest extends PostgresTestCon
         assertThat(registeredQueues(factory)).containsExactly("media-platform-tasks");
         assertThat(registeredQueues(factory)).doesNotContain("workflow-process");
         assertThat(factory.tryGetWorker("workflow-process")).isNull();
+    }
+
+    @Test
+    void workerContextOwnsTheStorageProviderAndCoverExecutionBackend() {
+        // Defect 1: the worker role now registers a real StorageProvider ...
+        assertThat(context.getBeansOfType(StorageProvider.class)).hasSize(1);
+        assertThat(context.getBean(CoverImageMaterializationConfiguration.class))
+                .as("worker role assembles the digest-verified materializer")
+                .isNotNull();
+        assertThat(context.getBeansOfType(com.example.platform.workerfabric.reuse.ArtifactMaterializerPort.class))
+                .hasSize(1);
+        // ... and its execution-backend registry resolves the cover capability to the sandbox backend.
+        var backends = context.getBean(com.example.platform.sandbox.execution.ExecutionBackendRegistry.class);
+        assertThat(backends.resolve(com.example.platform.sandbox.execution.TaskCapability.COVER_IMAGE))
+                .isPresent()
+                .get()
+                .extracting(com.example.platform.sandbox.execution.ExecutionBackend::backendId)
+                .isEqualTo("cover-image-sandbox");
+        // API-level configuration is not part of the worker role.
+        assertThat(context.getBeansOfType(
+                com.example.platform.providerplugin.ProviderPluginHost.class)).isEmpty();
     }
 
     @SuppressWarnings("unchecked")
