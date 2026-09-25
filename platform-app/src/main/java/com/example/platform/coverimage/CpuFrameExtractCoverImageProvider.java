@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Component;
  * registered sandbox backend for {@code TaskCapability.COVER_IMAGE}.
  */
 @Component
+@ConditionalOnProperty(name = "platform.runtime.role", havingValue = "WORKER")
 public final class CpuFrameExtractCoverImageProvider implements CoverImageCapabilityProvider {
 
     static final long MAXIMUM_INPUT_BYTES = 512L * 1024L * 1024L;

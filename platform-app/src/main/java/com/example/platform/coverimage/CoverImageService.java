@@ -8,6 +8,7 @@ import io.temporal.client.WorkflowClient;
 import io.temporal.client.WorkflowExecutionAlreadyStarted;
 import io.temporal.client.WorkflowOptions;
 import java.util.Optional;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,17 +22,20 @@ public class CoverImageService {
     private final CoverImageTaskStore tasks;
     private final ArtifactQueryService artifacts;
     private final ArtifactCatalogService catalog;
-    private final WorkflowClient client;
+    private final ObjectProvider<WorkflowClient> clients;
 
     public CoverImageService(
             CoverImageTaskStore tasks,
             ArtifactQueryService artifacts,
             ArtifactCatalogService catalog,
-            WorkflowClient client) {
+            // Optional, exactly like WorkflowDispatch: the API process may run without a Temporal
+            // cluster (the default profile excludes the Temporal client auto-configuration). Admission
+            // then fails closed with a clear error instead of preventing the API context from starting.
+            ObjectProvider<WorkflowClient> clients) {
         this.tasks = tasks;
         this.artifacts = artifacts;
         this.catalog = catalog;
-        this.client = client;
+        this.clients = clients;
     }
 
     @Transactional
@@ -54,7 +58,7 @@ public class CoverImageService {
                     .orElseThrow()
                     .toResult();
         }
-        CoverImageWorkflow workflow = client.newWorkflowStub(
+        CoverImageWorkflow workflow = client().newWorkflowStub(
                 CoverImageWorkflow.class,
                 WorkflowOptions.newBuilder()
                         .setTaskQueue("media-platform-tasks")
@@ -69,6 +73,15 @@ public class CoverImageService {
         return tasks.find(request.tenantId(), request.projectId(), admission.taskId())
                 .orElseThrow()
                 .toResult();
+    }
+
+    private WorkflowClient client() {
+        WorkflowClient client = clients.getIfAvailable();
+        if (client == null) {
+            throw new IllegalStateException(
+                    "Temporal client unavailable; cover-image admission requires an enabled Temporal client");
+        }
+        return client;
     }
 
     public Optional<CoverImageContracts.Result> status(String tenant, String project, String taskId) {

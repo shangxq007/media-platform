@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
@@ -24,6 +25,7 @@ import org.springframework.context.annotation.Configuration;
  * Two providers claiming one id fail closed.
  */
 @Configuration
+@ConditionalOnProperty(name = "platform.runtime.role", havingValue = "WORKER")
 public class CoverImageMaterializationConfiguration {
 
     @Bean

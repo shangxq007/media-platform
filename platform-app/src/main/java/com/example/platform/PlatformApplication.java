@@ -10,6 +10,11 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @SpringBootApplication
 @ComponentScan(basePackages = {
     "com.example.platform.app",
+    // COVER-PROVIDER-FINAL-FIX-001: the cover capability's API-side admission surface
+    // (CoverImageController + CoverImageService + CoverImageTaskStore) lives in this package. The
+    // worker-only beans of the same package are gated on platform.runtime.role=WORKER, so the API
+    // process registers the controller/service and never the provider runtime.
+    "com.example.platform.coverimage",
     "com.example.platform.security",
     "com.example.platform.production",
     "com.example.platform.render",

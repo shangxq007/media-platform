@@ -4,6 +4,7 @@ import com.example.platform.providerplugin.execution.RuntimeExecutionBackends;
 import com.example.platform.sandbox.execution.ExecutionBackend;
 import com.example.platform.sandbox.execution.ExecutionBackendRegistry;
 import java.util.List;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -21,6 +22,7 @@ import org.springframework.context.annotation.Configuration;
  * resolution — no fallback backend is registered.
  */
 @Configuration
+@ConditionalOnProperty(name = "platform.runtime.role", havingValue = "WORKER")
 public class CoverImageWorkerRuntimeConfiguration {
 
     @Bean

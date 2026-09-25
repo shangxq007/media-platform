@@ -33,6 +33,16 @@ Artifact identity stays immutable and is derived deterministically from
 workflow on `media-platform-tasks`. The API process never executes the provider and never touches
 FFmpeg, storage bytes or the sandbox.
 
+`CoverImageController` + `CoverImageService` + `CoverImageTaskStore` are registered by
+`PlatformApplication`'s explicit component scan, which includes `com.example.platform.coverimage`;
+every worker-only bean of the same package (provider, registry, sandbox backend, materializer, local
+object store, commit fence, activities, worker application) is gated on
+`platform.runtime.role=WORKER` and is therefore absent from the API process.
+`CoverImageApiContextRegistrationTest` boots the real API context and asserts exactly that split.
+Admission takes the Temporal client optionally (the default profile runs without a Temporal cluster);
+if no client is available the request fails closed with a clear error instead of admitting a task that
+could never run.
+
 ### Request schema
 
 ```json
@@ -148,9 +158,13 @@ must happen in the caller (step 1) and is intentionally left unchanged.
   (`TenantContext.set(tenant)` … restore), because storage publication asserts it.
 - Sandbox work/staging roots must live **outside** the host `/tmp`: the bubblewrap profile mounts a
   private tmpfs on `/tmp`, so any host path below it is invisible to the sandboxed provider.
-- `artifact_relation.id` is `varchar(64)` and the canonical edge id is `child + "-" + parent`. The
-  cover Artifact id is `art-cover-<uuid>` (46 chars), so a subject Artifact id longer than 17
-  characters overflows the relation id (known platform limitation, see the Continue-5 report).
+- The canonical `COVER_OF` edge identity is the bounded digest introduced by the platform fix
+  `2f75b088` — `sha256(child ‖ 0x00 ‖ parent)` rendered as 64 lowercase hex characters — so it fits
+  `artifact_relation.id varchar(64)` for real identities (`art-<uuid>` subjects at 40 characters,
+  `art-cover-<uuid>` covers at 46). The digest is deterministic (re-commits stay idempotent),
+  direction-sensitive, and the endpoints remain the authoritative facts, stored verbatim in
+  `source_artifact_id` / `target_artifact_id`. The previous `child + "-" + parent` concatenation
+  overflowed the column and is gone.
 
 ### Profile precedence
 
@@ -159,19 +173,24 @@ it, so the **last** profile in the active list wins. `application-cover-image-wo
 only removes the base `application-temporal.yml` worker list when the worker profile is applied
 after `temporal`.
 
-`CoverImageWorkerApplication` currently declares `.profiles("cover-image-worker", "temporal")`.
-Additional profiles are prepended to the active list, so that ordering puts `cover-image-worker`
-before `temporal` and lets the base list win — a worker started that way would additionally poll
-`workflow-process`. Until that ordering is corrected in the worker main class, the deployment must
-pin the queue set with `SPRING_CONFIG_ADDITIONAL_LOCATION` (see
-`infra/docker/cover-image-worker-override.yml`), whose config data takes precedence over the packaged
-profile resources.
+`CoverImageWorkerApplication.WORKER_PROFILES = [temporal, cover-image-worker]` declares exactly that
+order, and `main()` applies it, so the worker profile is last and its single-queue list wins: a cover
+worker polls `media-platform-tasks` only (asserted by `CoverImageWorkerQueueSetTest`, which also keeps
+a negative control showing the base profile alone would poll `workflow-process`).
+
+The deployment keeps `SPRING_CONFIG_ADDITIONAL_LOCATION` pointing at
+`infra/docker/cover-image-worker-override.yml` as defence in depth: additional config data outranks the
+packaged profile resources, so the queue set stays exactly `{media-platform-tasks}` even if the active
+profile order is changed by an operator.
 
 ## Acceptance
 
 - `CoverImageCapabilityTest` — vocabulary, capability-independent provider identity, capability-list
   declaration validation, and registry fail-closed behaviour (empty/foreign capability, duplicate
   provider identity, invalid pin, multi-provider ambiguity).
+- `CoverImageApiContextRegistrationTest` — boots the real `PlatformApplication` context and asserts the
+  API registers exactly `CoverImageController` + `CoverImageService` + `CoverImageTaskStore` from the
+  cover package, that the documented route is present, and that every worker-only cover bean is absent.
 - `CoverImageProviderCapabilityShapeTest` — model-A shape: one provider declaring two capabilities is
   indexed under both, capability-scoped dispatch passes the executing capability to the provider,
   dispatch never crosses providers, and a provider fails closed for an undeclared capability.

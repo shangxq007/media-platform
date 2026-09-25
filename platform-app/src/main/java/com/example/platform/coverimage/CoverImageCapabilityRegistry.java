@@ -13,6 +13,7 @@ import java.util.TreeSet;
 import java.util.function.BooleanSupplier;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /**
@@ -34,6 +35,7 @@ import org.springframework.stereotype.Component;
  * provider identity.
  */
 @Component
+@ConditionalOnProperty(name = "platform.runtime.role", havingValue = "WORKER")
 public final class CoverImageCapabilityRegistry {
 
     private final Map<String, CoverImageCapabilityProvider> byProviderId;

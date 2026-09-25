@@ -19,6 +19,7 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
  * directly.
  */
 @Service
+@ConditionalOnProperty(name = "platform.runtime.role", havingValue = "WORKER")
 public class CoverImageCommitService {
 
     private final CoverImageTaskStore tasks;

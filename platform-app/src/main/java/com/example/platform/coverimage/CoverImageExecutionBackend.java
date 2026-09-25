@@ -11,6 +11,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -26,6 +27,7 @@ import org.springframework.stereotype.Component;
  * bytes back.
  */
 @Component
+@ConditionalOnProperty(name = "platform.runtime.role", havingValue = "WORKER")
 public final class CoverImageExecutionBackend implements ExecutionBackend {
 
     private final String bwrap;
