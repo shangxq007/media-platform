@@ -66,3 +66,18 @@ retired media authority**. With that dependency removed they are default-profile
 makes `MarketplaceApi` satisfiable. No legacy media authority fence was removed: `MediaAssets`,
 `MediaAssetQueries`/`MediaStreamQueries`, their jOOQ implementations and every other retired-media
 consumer remain fenced or deleted, and the convergence guard still reports 0 findings.
+
+### Independent-review acknowledgements (amendment 1)
+
+The independent review of `63df6bf0`
+(`Documents/workspace/audit-runs/TYPED_ARTIFACT_V28_MARKETPLACE_1B_INDEPENDENT_REVIEW_20260925/`)
+accepted the runtime, migration, fence, H8 and guard evidence and required the OpenAPI subject schema
+body to match the runtime contract (fixed in amendment 1). The review's remaining findings are
+acknowledged here verbatim in scope:
+
+| ID | Acknowledgement |
+|---|---|
+| **L2 — governance narrowing** | With sign-off 1 accepted, **any resolvable, usable Artifact can be published**, including content that the retired media authority would have blocked via `contains_pii` / classification / security level. The pre-V28 eligibility gate is gone by decision and can only return with backlog item 1a (artifact-owned governance facts). This is a product/compliance exposure and is acknowledged, not mitigated by this amendment. |
+| **L3 — retired media authorization precondition** | `canPublish` no longer calls the media-owned `requireRegistrationScope` precondition (removed with the media authority). The actual publish decision remains authorized by the Marketplace `marketplace.publish` project permission and the Artifact pin; the removed check was a media-owned precondition, and this was not itemized in the six sign-offs above — recorded here as a documentation gap now closed. |
+| **L4 — outbox event version unchanged** | Marketplace outbox event types remain `version = 1` even though the subject payload schema changed (`kind` value and the subject field name). Historical payloads stay as evidence (sign-off 5) and consumers must branch on `kind`; the event version was deliberately not bumped. Operators integrating against the outbox should treat the marketplace subject payload change as breaking regardless of `event_version`. |
+| **L5 — test-scope reduction** | The amendment lineage removes **36 assertion lines** across the retargeted marketplace test files. Those lines asserted retired behaviour (media publication mirror, search-projection publication state, media-owned governance eligibility, media-version equality) and were replaced by canonical equivalents (listing-owned publication state, Artifact pin/lifecycle rejection, fenced-reindex expectations). Coverage of the retired behaviour is intentionally gone with the retirement and is acknowledged explicitly rather than silently. |
