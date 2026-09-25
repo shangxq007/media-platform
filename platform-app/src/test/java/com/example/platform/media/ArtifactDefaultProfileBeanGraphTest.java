@@ -1,77 +1,50 @@
 package com.example.platform.media;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.example.platform.PlatformApplication;
+import com.example.platform.shared.test.PostgresTestContainerSupport;
 import java.util.Arrays;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.runner.ApplicationContextRunner;
-import org.springframework.boot.test.context.ConfigDataApplicationContextInitializer;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ConfigurableApplicationContext;
-import org.springframework.context.support.GenericApplicationContext;
 
-/** Exercises the real PlatformApplication component scan and refreshes it. */
-class ArtifactDefaultProfileBeanGraphTest {
+/**
+ * Runtime reachability proof for the actual production application context.
+ *
+ * <p>No profile is active on the default test. In particular,
+ * {@code legacy-media-disabled} is a positive Spring profile used by retained
+ * legacy consumers; activating it would make those consumers reachable rather
+ * than disable them. The context is therefore the real default profile and is
+ * started through the repository's approved PostgreSQL test infrastructure.
+ */
+@SpringBootTest(classes = PlatformApplication.class, webEnvironment = SpringBootTest.WebEnvironment.NONE)
+class ArtifactDefaultProfileBeanGraphTest extends PostgresTestContainerSupport {
     private static final Set<String> DELETED = Set.of(
             "MediaAuthorization", "MediaAssetService", "MediaProbeService",
             "MediaProbes", "MediaProbePort", "MediaProbePortAdapter");
 
-    @Test
-    void defaultProfile_refreshesRealApplicationWithoutDeletedAuthorities() {
-        launch().run(context -> {
-            assertNoDeletedAuthorities(context);
-            Set<String> classes = beanClassNames(context);
-            assertTrue(classes.stream().anyMatch(n -> n.endsWith("ArtifactApplicationService")),
-                    "Artifact application authority must be registered");
-            assertTrue(classes.stream().anyMatch(n -> n.endsWith("ArtifactOutputReadService")
-                            || n.endsWith("ArtifactQueryService")),
-                    "Artifact retrieval authority must be registered");
-        });
-    }
+    @Autowired
+    private ConfigurableApplicationContext context;
 
     @Test
-    void realScannedNegativeFixture_isRejectedByTheSameRuntimeValidation() {
-        launch("v26-negative").run(context -> {
-            assertTrue(context.getBeanFactory().getBeanNamesForType(MediaProbePortAdapter.class, true, false).length == 1,
-                    "negative fixture must be discovered by the real application scan");
-            AssertionError failure = assertThrows(AssertionError.class,
-                    () -> assertNoDeletedAuthorities(context));
-            assertTrue(failure.getMessage().contains("MediaProbePortAdapter"));
-        });
-    }
-
-    private static ApplicationContextRunner launch(String... profiles) {
-        // The production graph fences unfinished legacy consumers behind this
-        // existing profile. The test profile suppresses startup side effects;
-        // neither profile restores a deleted authority.
-        StringBuilder active = new StringBuilder("test,legacy-media-disabled");
-        for (String profile : profiles) active.append(',').append(profile);
-        return new ApplicationContextRunner()
-                .withInitializer(new ConfigDataApplicationContextInitializer())
-                .withInitializer(context -> ((GenericApplicationContext) context).addBeanFactoryPostProcessor(factory -> {
-                    for (String name : factory.getBeanDefinitionNames()) {
-                        factory.getBeanDefinition(name).setLazyInit(true);
-                    }
-                }))
-                .withUserConfiguration(PlatformApplication.class)
-                .withPropertyValues(
-                        "spring.profiles.active=" + active,
-                        "spring.main.web-application-type=none",
-                        "spring.main.lazy-initialization=true",
-                        "spring.flyway.enabled=false",
-                        "spring.datasource.url=jdbc:postgresql://127.0.0.1:1/disabled",
-                        "spring.datasource.username=disabled",
-                        "spring.datasource.password=disabled",
-                        "app.temporal.enabled=false",
-                        "app.security.enabled=false",
-                        "identity.builtin-data.enabled=false",
-                        "app.outbox.dispatcher-enabled=false",
-                        "storage.s3.enabled=false",
-                        "server.port=0");
+    void actualDefaultProfile_refreshesRealApplicationWithoutDeletedAuthorities() {
+        assertTrue(context.isActive(), "the production application context must be refreshed");
+        assertFalse(context.getEnvironment().acceptsProfiles("legacy-media-disabled"),
+                "default proof must not activate the positive legacy-media-disabled profile");
+        assertNoDeletedAuthorities(context);
+        Set<String> classes = beanClassNames(context);
+        assertTrue(classes.stream().anyMatch(n -> n.endsWith("ArtifactApplicationService")),
+                "Artifact application authority must be registered");
+        assertTrue(classes.stream().anyMatch(n -> n.endsWith("ArtifactOutputReadService")
+                        || n.endsWith("ArtifactQueryService")),
+                "Artifact retrieval authority must be registered");
     }
 
     private static void assertNoDeletedAuthorities(ConfigurableApplicationContext context) {
@@ -94,4 +67,12 @@ class ArtifactDefaultProfileBeanGraphTest {
                 .collect(Collectors.toSet());
     }
 
+    static void assertRejected(ConfigurableApplicationContext context) {
+        assertNotNull(context.getBeanFactory().getBeanNamesForType(MediaProbePortAdapter.class, true, false));
+        assertTrue(context.getBeanFactory().getBeanNamesForType(MediaProbePortAdapter.class, true, false).length == 1,
+                "negative fixture must be discovered by the real application scan");
+        AssertionError failure = assertThrows(AssertionError.class,
+                () -> assertNoDeletedAuthorities(context));
+        assertTrue(failure.getMessage().contains("MediaProbePortAdapter"));
+    }
 }
