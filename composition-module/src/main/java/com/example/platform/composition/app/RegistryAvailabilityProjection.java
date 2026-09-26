@@ -10,6 +10,20 @@ public final class RegistryAvailabilityProjection implements CompositionProvider
     private final com.example.platform.extension.api.port.CapabilityRegistryPort capabilities;
     private final com.example.platform.extension.api.port.PluginRegistryPort providers;
     private final Map<String, CapabilityAvailability> entries = new LinkedHashMap<>();
+    /**
+     * Capabilities that are registered for discovery but whose platform execution path is
+     * deliberately not wired yet (COVER-PROVIDER-PLATFORM-REGISTER-FIX-001 / backlog C2).
+     *
+     * <p>Their availability is pinned UNAVAILABLE here, independently of the reference-type names a
+     * provider manifest happens to declare, so that aligning those strings cannot silently advertise
+     * a capability the platform cannot dispatch. This is the explicit "C2 not done" flag: removing an
+     * entry is the reviewable step that makes the capability composable, and the pinned reason is the
+     * summary callers observe. An entry in this map is never {@code AVAILABLE} and never resolves to
+     * a provider binding.
+     */
+    private static final Map<String, String> PENDING_PLATFORM_DISPATCH = Map.of(
+            "media.cover-image:1.0",
+            "SLICE_LOCAL_RUNTIME: cover render runs in the cover worker; platform execution-seam integration (OperationInvocationPort) is pending");
     public RegistryAvailabilityProjection(com.example.platform.extension.api.port.CapabilityRegistryPort capabilities,
                                          com.example.platform.extension.api.port.PluginRegistryPort providers) {
         this.capabilities=capabilities;
@@ -37,6 +51,10 @@ public final class RegistryAvailabilityProjection implements CompositionProvider
         var capability = entries.values().stream().filter(c -> c.capabilityId().equals(id) && c.version().equals(version)).findFirst();
         if (capability.isEmpty()) return Optional.empty();
         var c = capability.get();
+        // Fail closed: a capability the catalog does not report AVAILABLE must not resolve to a
+        // provider binding. The gate is the single availability computation used by the projection,
+        // so resolution and the published catalog can never disagree.
+        if (!dispatchAvailable(c)) return Optional.empty();
         var candidate = providers.findCapabilityCandidates(c.capabilityId(), c.version()).stream()
                 .filter(p -> providers.healthOf(p.pluginId()).eligible()).findFirst();
         if (candidate.isEmpty()) return Optional.empty();
@@ -45,18 +63,31 @@ public final class RegistryAvailabilityProjection implements CompositionProvider
                 p.pluginId() + "@" + p.pluginVersion(), c.version(), c.input().name(), c.input().version(),
                 c.output().name(), c.output().version()));
     }
-    private CapabilityAvailability project(CapabilityAvailability contract) {
+    /**
+     * Single availability computation shared by the published catalog and provider-bound resolution:
+     * pinned UNAVAILABLE for capabilities with no platform execution seam yet, otherwise derived from
+     * a registered implementation whose manifest declares the same capability, contract version and
+     * reference types and whose provider is health-eligible.
+     */
+    private boolean dispatchAvailable(CapabilityAvailability contract) {
+        if (PENDING_PLATFORM_DISPATCH.containsKey(contract.capabilityId()+":"+contract.version())) return false;
         var matches=capabilities.findImplementationsForContractVersion(
                 com.example.platform.extension.domain.CapabilityId.of(contract.capabilityId()),
                 com.example.platform.extension.domain.ContractVersion.parse(contract.version()));
-        boolean healthy=matches.stream().anyMatch(implementation -> providers.findByPluginId(implementation.pluginId())
+        return matches.stream().anyMatch(implementation -> providers.findByPluginId(implementation.pluginId())
                 .filter(manifest -> manifest.capabilities().stream().anyMatch(c -> c.capabilityId().equals(contract.capabilityId())
                         && c.capabilityContractVersion().equals(contract.version())
                         && c.inputReferenceType().equals(contract.input().name())
                         && c.outputReferenceType().equals(contract.output().name())))
                 .filter(manifest -> providers.healthOf(manifest.pluginId()).eligible())
                 .isPresent());
+    }
+    private CapabilityAvailability project(CapabilityAvailability contract) {
+        boolean healthy = dispatchAvailable(contract);
+        String pending = PENDING_PLATFORM_DISPATCH.get(contract.capabilityId()+":"+contract.version());
         return new CapabilityAvailability(contract.capabilityId(),contract.version(),contract.input(),contract.output(),contract.assetTypes(),contract.mediaTypes(),contract.executionModes(),
-                healthy?Availability.AVAILABLE:Availability.UNAVAILABLE,healthy?"Capability available":"No compatible healthy implementation",contract.estimate(),contract.reliability(),contract.compatibleWorkflowTypes(),contract.compatibleApplicationTypes());
+                healthy?Availability.AVAILABLE:Availability.UNAVAILABLE,
+                healthy?"Capability available":(pending!=null?pending:"No compatible healthy implementation"),
+                contract.estimate(),contract.reliability(),contract.compatibleWorkflowTypes(),contract.compatibleApplicationTypes());
     }
 }

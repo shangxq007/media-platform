@@ -149,10 +149,22 @@ The runtime that executes the capability today is the cover worker (Temporal act
 FFmpeg sandbox → `ArtifactCommitService`). Routing the capability through the platform
 operation-invocation seam is backlog item C2, so this registration declares the provider-boundary
 shape (`ExecutableTask` / `ProviderExecutionOutput`) without claiming that the platform executes it
-yet: the composition catalog lists the capability but projects it `UNAVAILABLE` until that seam
-exists — the same treatment `media.transcode` receives for its un-materialized output. The worker
-runtime-support requirement (`WorkerRuntimeSupportRequirement`) is likewise not declared here,
-because it belongs to that dispatch path.
+yet.
+
+`UNAVAILABLE` is an explicit, pinned verdict, not a side effect of the declared type names:
+`RegistryAvailabilityProjection` holds a `PENDING_PLATFORM_DISPATCH` declaration for
+`media.cover-image:1.0`, so the composition catalog reports `UNAVAILABLE` (with the
+`SLICE_LOCAL_RUNTIME: … execution-seam integration (OperationInvocationPort) is pending` reason) even
+if a provider manifest aligned its declared reference types with the catalog contract, and
+`resolveProviderBound` returns empty for it. Both the published catalog and provider-bound resolution
+use that single availability computation, so a capability the catalog does not report `AVAILABLE`
+can never resolve to a provider binding — the fail-closed effect is at the resolution seam itself,
+with `CompositionValidator`'s `CAPABILITY_UNAVAILABLE` check as the upstream admission guard. Removing
+the pin is the reviewable step that makes the capability composable once C2 lands; `media.transcode`
+keeps its own un-materialized `UNAVAILABLE` verdict (its provider output has no typed adapter yet).
+
+The worker runtime-support requirement (`WorkerRuntimeSupportRequirement`) is likewise not declared
+here, because it belongs to that dispatch path.
 
 ## Commit path
 

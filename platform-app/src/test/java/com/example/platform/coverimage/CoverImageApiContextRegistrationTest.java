@@ -3,6 +3,7 @@ package com.example.platform.coverimage;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.example.platform.PlatformApplication;
+import com.example.platform.composition.app.CompositionProviderBoundCapabilityAuthority;
 import com.example.platform.composition.app.ProviderRegistryBoundary;
 import com.example.platform.composition.domain.CompositionModels.Availability;
 import com.example.platform.extension.api.port.CapabilityRegistryPort;
@@ -58,6 +59,7 @@ class CoverImageApiContextRegistrationTest extends PostgresTestContainerSupport 
     @Autowired CapabilityRegistryPort capabilityRegistry;
     @Autowired PluginRegistryPort pluginRegistry;
     @Autowired ProviderRegistryBoundary catalog;
+    @Autowired CompositionProviderBoundCapabilityAuthority capabilityAuthority;
 
     @Test
     void apiContextRegistersTheCoverAdmissionSurfaceAndNoWorkerOnlyCoverBeans() {
@@ -121,6 +123,16 @@ class CoverImageApiContextRegistrationTest extends PostgresTestContainerSupport 
         assertThat(entry.availability())
                 .as("not advertised as composable before the platform execution seam (C2) exists")
                 .isEqualTo(Availability.UNAVAILABLE);
+        // COVER-PROVIDER-PLATFORM-REGISTER-FIX-001: the unavailable verdict must have a real runtime
+        // effect — provider-bound resolution fails closed for this capability even though a healthy
+        // candidate provider is registered above.
+        assertThat(capabilityAuthority.resolveProviderBound(
+                CoverImageContracts.CAPABILITY, CoverImageContracts.CAPABILITY_VERSION))
+                .as("UNAVAILABLE capability must not resolve to a provider binding")
+                .isEmpty();
+        assertThat(entry.summary())
+                .as("the pending-dispatch reason is the observable summary, not a generic default")
+                .contains("SLICE_LOCAL_RUNTIME");
     }
 
     private Set<String> coverBeans() {
