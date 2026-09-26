@@ -81,6 +81,12 @@ tasks.named<Test>("test") {
     useJUnitPlatform {
         excludeTags("render-integration")
     }
+    // AUTH-INVENTORY-FIX-002 (F-3): EffectiveAccessFactorVocabularyConsistencyTest reads the client
+    // effective-access factor contract (frontend/src/foundation/effectiveAccess.tsx), a cross-tree
+    // file that is not on the Java classpath. Declaring it as a task input makes the naming guard
+    // re-run when the frontend contract changes, instead of being reported UP-TO-DATE.
+    inputs.file(rootProject.file("frontend/src/foundation/effectiveAccess.tsx"))
+        .withPropertyName("effectiveAccessFactorContract")
 }
 
 tasks.register<Test>("phase17SandboxConformanceTest") {

@@ -65,6 +65,13 @@ JOOQ_BUILD_GRAPH_PATHS = {
     "typed-schema-module/jooq-codegen.xml",
 }
 
+# The client effective-access factor contract is pinned by a platform-app guard test
+# (EffectiveAccessFactorVocabularyConsistencyTest), so a change to it must also run backend
+# verification (which hosts the authorization/effective-access guards job).
+EFFECTIVE_ACCESS_FACTOR_CONTRACT_PATHS = {
+    "frontend/src/foundation/effectiveAccess.tsx",
+}
+
 
 # Exact known entrypoints, not a blanket scripts/ exemption. Hosted runtime execution
 # remains delegated; these selections are consumed by the existing local module runner.
@@ -122,6 +129,9 @@ def classify_path(raw_path: str) -> tuple[str, ...]:
 
     if _under(path, "frontend/"):
         categories.add("frontend")
+
+    if path in EFFECTIVE_ACCESS_FACTOR_CONTRACT_PATHS:
+        categories.add("backend_verification")
 
     if _under(path, "formal/") or _under(path, "scripts/formal/"):
         categories.add("formal_verification")

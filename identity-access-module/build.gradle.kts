@@ -21,3 +21,13 @@ dependencies {
     testImplementation(testFixtures(project(":shared-kernel")))
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
+
+// AUTH-INVENTORY-FIX-002 (F-3): AuthPermissionVocabularyConsistencyTest parses the production
+// permission seed (this module's main sources, already a test input) and the Flyway permission rows
+// under platform-app/src/main/resources/db/migration — cross-module files that are not on this
+// module's classpath. Declaring them as test inputs keeps a migration-only edit from being reported
+// UP-TO-DATE while skipping the consistency check.
+tasks.named<org.gradle.api.tasks.testing.Test>("test") {
+    inputs.dir(rootProject.file("platform-app/src/main/resources/db/migration"))
+        .withPropertyName("permissionMigrationSeeds")
+}

@@ -177,3 +177,6 @@ jobs:
 
       - name: Run permission-vocabulary consistency guard
         run: ./gradlew --no-daemon :identity-access-module:test --tests '*AuthPermissionVocabularyConsistencyTest'
+
+      - name: Run effective-access factor naming guards
+        run: ./gradlew --no-daemon :platform-app:test --tests '*EffectiveAccessFactorVocabularyConsistencyTest' --tests '*EffectiveCapabilityProjectorTest' --tests '*EffectiveCapabilityArchitectureTest' --tests '*CommercialAuthorityDecisionAdapterTest'

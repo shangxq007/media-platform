@@ -69,6 +69,7 @@ JOOQ_CI_INFRASTRUCTURE_PATHS = (
     "typed-schema-module/regenerate-jooq-schema.sh",
 )
 JOOQ_BUILD_GRAPH_PATH = "typed-schema-module/jooq-codegen.xml"
+EFFECTIVE_ACCESS_FACTOR_CONTRACT_PATH = "frontend/src/foundation/effectiveAccess.tsx"
 
 spec = importlib.util.spec_from_file_location("change_impact_classifier", CLASSIFIER_PATH)
 assert spec and spec.loader
@@ -100,6 +101,7 @@ CASES = (
     ("jooq-schema-regeneration", JOOQ_CI_INFRASTRUCTURE_PATHS[2], {"ci_infrastructure"}, FULL_VALIDATION_WITHOUT_IMAGE),
     ("jooq-codegen-build-graph", JOOQ_BUILD_GRAPH_PATH, {"build_graph"}, BUILD_GRAPH_POLICY),
     ("h7-v2-authorization-guard", H7_V2_GUARD_PATH, {"backend_verification"}, {"backend_ci", "architecture_drift"}),
+    ("effective-access-factor-contract", EFFECTIVE_ACCESS_FACTOR_CONTRACT_PATH, {"frontend", "backend_verification"}, {"frontend_ci", "backend_ci", "architecture_drift"}),
     ("unknown", "unowned/new-surface.xyz", {"unknown"}, {"full_ci", "backend_ci", "frontend_ci", "architecture_drift", "gitops_validation", "semgrep_validation", "formal_verification"}),
 )
 
@@ -402,6 +404,22 @@ def main() -> None:
             or not formal_runtime_mixed.policy()["backend_ci"]
             or not formal_runtime_mixed.policy()["runtime_image_publish"]):
         raise AssertionError("actual mixed formal/runtime diff lost runtime effects")
+
+    factor_contract = classifier.Classification.from_paths(
+        [EFFECTIVE_ACCESS_FACTOR_CONTRACT_PATH], "effective_access_factor_contract"
+    )
+    if set(factor_contract.categories) != {"frontend", "backend_verification"}:
+        raise AssertionError(
+            f"{EFFECTIVE_ACCESS_FACTOR_CONTRACT_PATH}: effective-access factor contract "
+            "classification is not exact"
+        )
+    if not (factor_contract.policy()["frontend_ci"]
+            and factor_contract.policy()["backend_ci"]
+            and factor_contract.policy()["architecture_drift"]):
+        raise AssertionError(
+            "effective-access factor contract change must run the frontend job and the "
+            "backend authorization/effective-access guard job"
+        )
 
     standard = STANDARD_CI.read_text()
     foundation = FOUNDATION_CI.read_text()
