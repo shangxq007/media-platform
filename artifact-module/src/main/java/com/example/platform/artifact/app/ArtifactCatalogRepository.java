@@ -54,6 +54,26 @@ public class ArtifactCatalogRepository {
                 .map(this::toEntry);
     }
 
+    /**
+     * PROJECT-SCOPED lookup: the Artifact must belong to the addressed project.
+     *
+     * <p>AUTH-ARTIFACT-BOUNDARY-FIX-002: the project a caller was authorized against
+     * must be bound to the Artifact actually addressed, otherwise an actor
+     * authorized for project A could read/mutate project B's Artifacts within the
+     * same tenant (cross-project IDOR). An Artifact outside the project is treated
+     * as absent (fail closed, non-disclosing).</p>
+     */
+    public Optional<ArtifactCatalogEntry> findByIdAndProject(String tenantId, String projectId, String id) {
+        requireTenantId(tenantId);
+        requireProjectId(projectId);
+        return dsl.selectFrom(ARTIFACT)
+                .where(ARTIFACT.ID.eq(id)
+                        .and(ARTIFACT.TENANT_ID.eq(tenantId))
+                        .and(ARTIFACT.PROJECT_ID.eq(projectId)))
+                .fetchOptional()
+                .map(this::toEntry);
+    }
+
     public int countAll() {
         return dsl.fetchCount(ARTIFACT);
     }
@@ -80,6 +100,12 @@ public class ArtifactCatalogRepository {
     private static void requireTenantId(String tenantId) {
         if (tenantId == null || tenantId.isBlank() || "*".equals(tenantId)) {
             throw new IllegalArgumentException("explicit tenantId is required");
+        }
+    }
+
+    private static void requireProjectId(String projectId) {
+        if (projectId == null || projectId.isBlank() || "*".equals(projectId)) {
+            throw new IllegalArgumentException("explicit projectId is required");
         }
     }
 }

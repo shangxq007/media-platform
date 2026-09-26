@@ -33,7 +33,7 @@ public class ArtifactLifecycleController {
             @RequestParam String projectId) {
         String tenantId = requireCurrentTenant();
         projectAuthorization.requireRead(tenantId, projectId);
-        return lifecycleService.deleteCheck(tenantId, artifactId);
+        return lifecycleService.deleteCheck(tenantId, projectId, artifactId);
     }
 
     @PostMapping("/{artifactId}/tombstone")
@@ -42,7 +42,7 @@ public class ArtifactLifecycleController {
             @RequestParam String projectId) {
         String tenantId = requireCurrentTenant();
         projectAuthorization.requireWrite(tenantId, projectId);
-        var result = lifecycleService.tombstone(tenantId, artifactId);
+        var result = lifecycleService.tombstone(tenantId, projectId, artifactId);
         return new TombstoneResponse(
                 result.id(), result.projectId(), result.status().name(), result.tombstonedAt());
     }

@@ -13,6 +13,7 @@ import com.example.platform.artifact.infrastructure.ArtifactRepository;
 import com.example.platform.shared.digest.ContentDigest;
 import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
+import com.example.platform.shared.web.PlatformException;
 import java.time.Instant;
 import javax.sql.DataSource;
 import org.jooq.DSLContext;
@@ -84,7 +85,7 @@ class ArtifactPinProtectionTest extends PostgresTestContainerSupport {
     }
 
     private void seedPinnedArtifactWithReplica(String replicaId) {
-        artifactRepository.insertRaw(new ArtifactId(ARTIFACT_ID), TENANT, DIGEST, 1024L,
+        artifactRepository.insertRaw(new ArtifactId(ARTIFACT_ID), TENANT, "proj-1", DIGEST, 1024L,
                 ArtifactMediaType.VIDEO, ArtifactKind.RENDER_MASTER, ArtifactState.AVAILABLE, null);
         artifactRepository.insertReplica(new com.example.platform.artifact.domain.ArtifactReplicaBinding(
                 ARTIFACT_ID + ":" + replicaId, new ArtifactId(ARTIFACT_ID),
@@ -100,7 +101,7 @@ class ArtifactPinProtectionTest extends PostgresTestContainerSupport {
     void r1_pinnedArtifactLogicalDeleteRejected() {
         seedPinnedArtifactWithReplica("rep-1");
 
-        var check = lifecycleService.deleteCheck(TENANT, ARTIFACT_ID);
+        var check = lifecycleService.deleteCheck(TENANT, "proj-1", ARTIFACT_ID);
         assertFalse(check.deletable());
         assertTrue(check.references().stream().anyMatch(r -> "PINNED_BY_HISTORICAL_REVISION".equals(r.get("reason"))));
     }
@@ -109,7 +110,7 @@ class ArtifactPinProtectionTest extends PostgresTestContainerSupport {
     void r2_pinnedLastUsableReplicaDeleteRejected() {
         seedPinnedArtifactWithReplica("rep-1");
 
-        var check = lifecycleService.replicaDeleteCheck(TENANT, ARTIFACT_ID, "rep-1");
+        var check = lifecycleService.replicaDeleteCheck(TENANT, "proj-1", ARTIFACT_ID, "rep-1");
         assertFalse(check.deletable());
         assertEquals("PINNED_LAST_USABLE_REPLICA", check.reason());
     }
@@ -126,7 +127,7 @@ class ArtifactPinProtectionTest extends PostgresTestContainerSupport {
 
         // Documented bounded policy: pinned artifacts keep all replicas (no full
         // replica lifecycle tier in GCR-2) -> conservative REJECT.
-        var check = lifecycleService.replicaDeleteCheck(TENANT, ARTIFACT_ID, "rep-1");
+        var check = lifecycleService.replicaDeleteCheck(TENANT, "proj-1", ARTIFACT_ID, "rep-1");
         assertFalse(check.deletable());
         assertEquals("PINNED_MULTI_REPLICA_CONSERVATIVE", check.reason());
     }
@@ -170,5 +171,15 @@ class ArtifactPinProtectionTest extends PostgresTestContainerSupport {
         var canonical = artifactRepository.findById(TENANT, new ArtifactId(ARTIFACT_ID)).orElseThrow();
         assertEquals(2048L, canonical.byteLength());
         assertEquals(DIGEST, canonical.contentDigest());
+    }
+
+    @Test
+    void r7_replicaDeleteCheckIsBoundToTheAddressedProject() {
+        seedPinnedArtifactWithReplica("rep-1");
+
+        // The addressed Artifact belongs to proj-1; addressing it under another project
+        // fails closed (AUTH-ARTIFACT-BOUNDARY-FIX-002).
+        assertThrows(PlatformException.class,
+                () -> lifecycleService.replicaDeleteCheck(TENANT, "proj-other", ARTIFACT_ID, "rep-1"));
     }
 }

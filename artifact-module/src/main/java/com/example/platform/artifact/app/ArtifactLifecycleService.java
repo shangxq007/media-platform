@@ -44,9 +44,12 @@ public class ArtifactLifecycleService {
         this.pinRepository = pinRepository;
     }
 
-    public DeleteCheckResult deleteCheck(String tenantId, String artifactId) {
+    public DeleteCheckResult deleteCheck(String tenantId, String projectId, String artifactId) {
         requireTenantId(tenantId);
-        ArtifactCatalogEntry artifact = catalogService.findArtifact(tenantId, artifactId)
+        requireProjectId(projectId);
+        // AUTH-ARTIFACT-BOUNDARY-FIX-002: resolve the Artifact WITHIN the authorized
+        // project so the caller-supplied projectId is bound to the addressed resource.
+        ArtifactCatalogEntry artifact = catalogService.findArtifact(tenantId, projectId, artifactId)
                 .orElseThrow(() -> ArtifactLifecycleErrors.notFound(artifactId));
 
         // C14: historical pin protection — pinned Artifact cannot be logically deleted.
@@ -68,9 +71,11 @@ public class ArtifactLifecycleService {
      * Non-last replica deletion of pinned artifacts is conservatively rejected
      * (bounded lifecycle policy — full replica lifecycle is out of scope).
      */
-    public ReplicaDeleteCheckResult replicaDeleteCheck(String tenantId, String artifactId, String replicaId) {
+    public ReplicaDeleteCheckResult replicaDeleteCheck(
+            String tenantId, String projectId, String artifactId, String replicaId) {
         requireTenantId(tenantId);
-        if (catalogService.findArtifact(tenantId, artifactId).isEmpty()) {
+        requireProjectId(projectId);
+        if (catalogService.findArtifact(tenantId, projectId, artifactId).isEmpty()) {
             throw ArtifactLifecycleErrors.notFound(artifactId);
         }
         boolean pinned = pinRepository.isPinned(tenantId, artifactId);
@@ -87,20 +92,21 @@ public class ArtifactLifecycleService {
                 "PINNED_MULTI_REPLICA_CONSERVATIVE");
     }
 
-    public ArtifactCatalogEntry tombstone(String tenantId, String artifactId) {
+    public ArtifactCatalogEntry tombstone(String tenantId, String projectId, String artifactId) {
         requireTenantId(tenantId);
-        ArtifactCatalogEntry artifact = requireActiveCatalogEntry(tenantId, artifactId);
-        DeleteCheckResult check = deleteCheck(tenantId, artifactId);
+        requireProjectId(projectId);
+        ArtifactCatalogEntry artifact = requireActiveCatalogEntry(tenantId, projectId, artifactId);
+        DeleteCheckResult check = deleteCheck(tenantId, projectId, artifactId);
         if (!check.deletable()) {
             throw ArtifactLifecycleErrors.stillReferenced(artifactId);
         }
         Instant now = Instant.now();
         ArtifactCatalogEntry tombstoned;
-        if (!canonicalArtifactRepository.updateState(tenantId, artifactId, ArtifactState.DELETING,
+        if (!canonicalArtifactRepository.updateState(tenantId, projectId, artifactId, ArtifactState.DELETING,
                 java.time.LocalDateTime.ofInstant(now, java.time.ZoneOffset.UTC))) {
             throw ArtifactLifecycleErrors.notFound(artifactId);
         }
-        ArtifactCatalogEntry existing = catalogService.findArtifact(tenantId, artifactId).orElse(artifact);
+        ArtifactCatalogEntry existing = catalogService.findArtifact(tenantId, projectId, artifactId).orElse(artifact);
         tombstoned = new ArtifactCatalogEntry(
                 existing.id(), existing.renderJobId(), existing.projectId(),
                 existing.format(), existing.resolution(), existing.duration(), existing.sizeBytes(),
@@ -117,8 +123,9 @@ public class ArtifactLifecycleService {
         }
     }
 
-    private ArtifactCatalogEntry requireActiveCatalogEntry(String tenantId, String artifactId) {
-        java.util.Optional<ArtifactCatalogEntry> found = catalogService.findArtifact(tenantId, artifactId);
+    private ArtifactCatalogEntry requireActiveCatalogEntry(String tenantId, String projectId, String artifactId) {
+        java.util.Optional<ArtifactCatalogEntry> found =
+                catalogService.findArtifact(tenantId, projectId, artifactId);
         if (found.isEmpty()) {
             throw ArtifactLifecycleErrors.notFound(artifactId);
         }
@@ -132,6 +139,12 @@ public class ArtifactLifecycleService {
     private static void requireTenantId(String tenantId) {
         if (tenantId == null || tenantId.isBlank() || "*".equals(tenantId)) {
             throw new IllegalArgumentException("explicit tenantId is required");
+        }
+    }
+
+    private static void requireProjectId(String projectId) {
+        if (projectId == null || projectId.isBlank() || "*".equals(projectId)) {
+            throw new IllegalArgumentException("explicit projectId is required");
         }
     }
 

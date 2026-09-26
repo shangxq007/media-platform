@@ -70,7 +70,7 @@ public class ArtifactGcService {
 
         for (Artifact artifact : candidates.stream().limit(effectiveLimit).toList()) {
             try {
-                var check = lifecycleService.deleteCheck(tenantId, artifact.artifactId().value());
+                var check = lifecycleService.deleteCheck(tenantId, projectId, artifact.artifactId().value());
                 if (!check.deletable()) {
                     skipped++;
                     actions.add("SKIP " + artifact.artifactId().value() + " (" + check.references() + ")");

@@ -92,14 +92,14 @@ class ArtifactLifecycleServiceTest extends PostgresTestContainerSupport {
     @Test
     void deleteCheckAllowsWhenNoReferences() {
         ArtifactCatalogEntry artifact = register("art-1", "rj_1", "prj_1");
-        var check = lifecycleService.deleteCheck(TENANT, artifact.id());
+        var check = lifecycleService.deleteCheck(TENANT, "prj_1", artifact.id());
         assertTrue(check.deletable());
     }
 
     @Test
     void tombstoneUpdatesStatus() {
         ArtifactCatalogEntry artifact = register("art-1", "rj_1", "prj_1");
-        ArtifactCatalogEntry tombstoned = lifecycleService.tombstone(TENANT, artifact.id());
+        ArtifactCatalogEntry tombstoned = lifecycleService.tombstone(TENANT, "prj_1", artifact.id());
         assertEquals(ArtifactStatus.TOMBSTONED, tombstoned.status());
         assertTrue(tombstoned.tombstonedAt() != null);
     }
@@ -110,10 +110,10 @@ class ArtifactLifecycleServiceTest extends PostgresTestContainerSupport {
         ArtifactCatalogEntry target = register("art-target", "rj_2", "prj_1");
         relationRepository.save(new com.example.platform.artifact.domain.ArtifactRelation(
                 "rel-test", source.id(), target.id(), "HAS_SUBTITLE"));
-        var check = lifecycleService.deleteCheck(TENANT, source.id());
+        var check = lifecycleService.deleteCheck(TENANT, "prj_1", source.id());
         assertFalse(check.deletable());
         org.junit.jupiter.api.Assertions.assertThrows(PlatformException.class,
-                () -> lifecycleService.tombstone(TENANT, source.id()));
+                () -> lifecycleService.tombstone(TENANT, "prj_1", source.id()));
     }
 
     private static ArtifactCatalogEntry register(String id, String jobId, String projectId) {

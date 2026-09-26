@@ -33,6 +33,7 @@ class ArtifactRepositoryTenantDestructiveMutationTest extends PostgresTestContai
 
     private static final String OWNER = "tenant-owner";
     private static final String OTHER = "tenant-other";
+    private static final String PROJECT = "prj-owner";
     private static DataSource dataSource;
     private static DSLContext dsl;
 
@@ -66,8 +67,12 @@ class ArtifactRepositoryTenantDestructiveMutationTest extends PostgresTestContai
         ArtifactId purgeId = insertArtifact("art-purge", ArtifactState.DELETING);
 
         assertFalse(repository.updateState(
-                OTHER, updateId.value(), ArtifactState.DELETING, LocalDateTime.now()));
+                OTHER, PROJECT, updateId.value(), ArtifactState.DELETING, LocalDateTime.now()));
         assertFalse(repository.markPurged(OTHER, purgeId.value()));
+        // Cross-PROJECT is also rejected: the addressed Artifact must be in the
+        // authorized project (AUTH-ARTIFACT-BOUNDARY-FIX-002).
+        assertFalse(repository.updateState(
+                OWNER, "prj-other", updateId.value(), ArtifactState.DELETING, LocalDateTime.now()));
 
         assertEquals(ArtifactState.AVAILABLE,
                 repository.findById(OWNER, updateId).orElseThrow().state());
@@ -92,7 +97,7 @@ class ArtifactRepositoryTenantDestructiveMutationTest extends PostgresTestContai
         insertReplica(replicaId, "rep-1");
 
         assertTrue(repository.updateState(
-                OWNER, updateId.value(), ArtifactState.DELETING, LocalDateTime.now()));
+                OWNER, PROJECT, updateId.value(), ArtifactState.DELETING, LocalDateTime.now()));
         assertTrue(repository.markPurged(OWNER, purgeId.value()));
         assertTrue(repository.deleteReplica(OWNER, replicaId.value(), "rep-1"));
 
@@ -110,7 +115,9 @@ class ArtifactRepositoryTenantDestructiveMutationTest extends PostgresTestContai
         assertThrows(IllegalArgumentException.class,
                 () -> repository.findTombstonedBefore(OWNER, " ", Instant.now()));
         assertThrows(IllegalArgumentException.class,
-                () -> repository.updateState(" ", "art-1", ArtifactState.DELETING, LocalDateTime.now()));
+                () -> repository.updateState(" ", PROJECT, "art-1", ArtifactState.DELETING, LocalDateTime.now()));
+        assertThrows(IllegalArgumentException.class,
+                () -> repository.updateState(OWNER, " ", "art-1", ArtifactState.DELETING, LocalDateTime.now()));
         assertThrows(IllegalArgumentException.class,
                 () -> repository.markPurged("*", "art-1"));
         assertThrows(IllegalArgumentException.class,
@@ -119,7 +126,7 @@ class ArtifactRepositoryTenantDestructiveMutationTest extends PostgresTestContai
 
     private ArtifactId insertArtifact(String value, ArtifactState state) {
         ArtifactId artifactId = new ArtifactId(value);
-        repository.insertRaw(artifactId, OWNER, ContentDigest.sha256("a".repeat(64)), 10L,
+        repository.insertRaw(artifactId, OWNER, PROJECT, ContentDigest.sha256("a".repeat(64)), 10L,
                 ArtifactMediaType.VIDEO, ArtifactKind.RENDER_MASTER, state,
                 state == ArtifactState.DELETING ? Instant.now().minusSeconds(864_000) : null);
         return artifactId;

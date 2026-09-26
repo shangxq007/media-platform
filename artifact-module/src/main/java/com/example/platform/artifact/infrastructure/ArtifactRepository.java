@@ -200,12 +200,23 @@ public class ArtifactRepository {
                 .and(ARTIFACT.TENANT_ID.eq(tenantId))));
     }
 
-    public boolean updateState(String tenantId, String artifactId, ArtifactState state, LocalDateTime tombstonedAt) {
+    /**
+     * PROJECT-SCOPED state transition (AUTH-ARTIFACT-BOUNDARY-FIX-002): the addressed
+     * Artifact must belong to {@code projectId}. A cross-project Artifact is not
+     * matched, so the mutation fails closed instead of acting on it.
+     */
+    public boolean updateState(String tenantId, String projectId, String artifactId, ArtifactState state,
+            LocalDateTime tombstonedAt) {
         requireTenantId(tenantId);
+        if (projectId == null || projectId.isBlank() || "*".equals(projectId)) {
+            throw new IllegalArgumentException("explicit projectId is required");
+        }
         var step = dsl.update(ARTIFACT)
                 .set(ARTIFACT.STATE, state.name())
                 .set(ARTIFACT.TOMBSTONED_AT, tombstonedAt)
-                .where(ARTIFACT.ID.eq(artifactId).and(ARTIFACT.TENANT_ID.eq(tenantId)));
+                .where(ARTIFACT.ID.eq(artifactId)
+                        .and(ARTIFACT.TENANT_ID.eq(tenantId))
+                        .and(ARTIFACT.PROJECT_ID.eq(projectId)));
         return step.execute() == 1;
     }
 

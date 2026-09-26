@@ -44,6 +44,15 @@ public class ArtifactCatalogService {
         return artifactRepository.findById(tenantId, id);
     }
 
+    /**
+     * PROJECT-SCOPED lookup (AUTH-ARTIFACT-BOUNDARY-FIX-002): binds the authorized
+     * project to the addressed Artifact. Returns empty when the Artifact is not in
+     * that project, so the caller fails closed instead of acting cross-project.
+     */
+    public Optional<ArtifactCatalogEntry> findArtifact(String tenantId, String projectId, String id) {
+        return artifactRepository.findByIdAndProject(tenantId, projectId, id);
+    }
+
     public List<Map<String, Object>> findRelationReferences(String tenantId, String artifactId) {
         return relationRepository.findReferenceMapsScopedToTenant(tenantId, artifactId);
     }

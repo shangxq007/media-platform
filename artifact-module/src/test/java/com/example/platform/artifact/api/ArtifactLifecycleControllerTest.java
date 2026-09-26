@@ -56,13 +56,13 @@ class ArtifactLifecycleControllerTest {
 
         InOrder order = inOrder(projectAuthorization, lifecycle);
         order.verify(projectAuthorization).requireRead("t1", "prj-1");
-        order.verify(lifecycle).deleteCheck("t1", "art-1");
+        order.verify(lifecycle).deleteCheck("t1", "prj-1", "art-1");
     }
 
     @Test
     void tombstoneAndGcAuthorizeProjectWriteBeforeServiceAccess() {
         TenantContext.set("t1");
-        when(lifecycle.tombstone("t1", "art-1")).thenReturn(new ArtifactCatalogEntry(
+        when(lifecycle.tombstone("t1", "prj-1", "art-1")).thenReturn(new ArtifactCatalogEntry(
                 "art-1", "job-1", "prj-1", "mp4", "1920x1080", 1L, 10L, "sha",
                 ArtifactStatus.TOMBSTONED, Instant.EPOCH, Instant.EPOCH));
 
@@ -71,7 +71,7 @@ class ArtifactLifecycleControllerTest {
 
         InOrder order = inOrder(projectAuthorization, lifecycle, gc);
         order.verify(projectAuthorization).requireWrite("t1", "prj-1");
-        order.verify(lifecycle).tombstone("t1", "art-1");
+        order.verify(lifecycle).tombstone("t1", "prj-1", "art-1");
         order.verify(projectAuthorization).requireWrite("t1", "prj-1");
         order.verify(gc).runGc("t1", "prj-1", 7, false, 50);
     }
