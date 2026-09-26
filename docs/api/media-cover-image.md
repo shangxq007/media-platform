@@ -116,6 +116,44 @@ Execution stays inside `CoverImageExecutionBackend`, which runs the pinned FFmpe
 bubblewrap profile (`--ro-bind / / --dev /dev --proc /proc --tmpfs /tmp --unshare-all
 --die-with-parent`) with no shell involved and no capability other than `COVER_IMAGE`.
 
+## Platform registration (first-class platform capability)
+
+`media.cover-image` is registered with the platform provider/capability registry, not only held as a
+slice-local constant. `CoverImagePlatformProvider` declares the platform metadata and
+`CoverImagePlatformRegistration` registers it at platform start-up.
+
+| Element | Value |
+|---|---|
+| Provider family (`ProviderId`) | `platform.ffmpeg` (capability-independent, model A) |
+| Provider implementation (`ProviderImplementationId`) | `ffmpeg.cpu.frame-extract.v1` |
+| Provider version / execution-contract version | `1.0.0` / `1.0` |
+| Capability (`ProviderCapabilityProfile` / `ProviderExecutionContract`) | `media.cover-image` @ `1.0`, contract range `[1.0, 1.0]` |
+| Contribution (`PluginDescriptor`) identity | `media.coverimage.ffmpeg@1.0.0` (hyphen-free contribution id, mirroring `media.transcode.ffmpeg`; not a provider identity) |
+| Declared platform boundary | `ExecutableTask` in, `ProviderExecutionOutput` out (the platform's P1 provider-facing boundary) |
+| Registered through | `PluginRegistrationPort.registerRuntime(PluginDescriptor)` — the same canonical seam the PF4J provider host uses |
+| Role | platform (API) process only; the cover worker has no capability registry and registers nothing |
+| Composition catalog | `media.cover-image` is listed by the composition capability catalog (`/composition/capabilities`) on the platform Artifact contract (subject Artifact → cover Artifact) |
+
+Every identity value is derived from `CoverImageContracts`, so the slice still has exactly one source
+of truth for the capability id, contract version, provider family and implementation id.
+
+Failure modes stay closed: an invalid descriptor (the platform's own validator) or a duplicate
+contribution identity aborts start-up instead of degrading, and the registration retires exactly its
+own lease on shutdown. The `CapabilityRegistryPort.findCapabilityImplementations` /
+`PluginRegistryPort.findCapabilityCandidates` lookups therefore expose `media.cover-image` for this
+provider family.
+
+### What the registration does not claim
+
+The runtime that executes the capability today is the cover worker (Temporal activity → bubblewrap +
+FFmpeg sandbox → `ArtifactCommitService`). Routing the capability through the platform
+operation-invocation seam is backlog item C2, so this registration declares the provider-boundary
+shape (`ExecutableTask` / `ProviderExecutionOutput`) without claiming that the platform executes it
+yet: the composition catalog lists the capability but projects it `UNAVAILABLE` until that seam
+exists — the same treatment `media.transcode` receives for its un-materialized output. The worker
+runtime-support requirement (`WorkerRuntimeSupportRequirement`) is likewise not declared here,
+because it belongs to that dispatch path.
+
 ## Commit path
 
 `CoverImageCommitService` is one transactional fence:

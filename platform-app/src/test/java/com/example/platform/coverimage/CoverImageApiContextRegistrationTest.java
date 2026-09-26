@@ -3,6 +3,11 @@ package com.example.platform.coverimage;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.example.platform.PlatformApplication;
+import com.example.platform.composition.app.ProviderRegistryBoundary;
+import com.example.platform.composition.domain.CompositionModels.Availability;
+import com.example.platform.extension.api.port.CapabilityRegistryPort;
+import com.example.platform.extension.api.port.PluginRegistryPort;
+import com.example.platform.extension.domain.CapabilityId;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import java.util.Set;
 import java.util.TreeSet;
@@ -44,9 +49,15 @@ class CoverImageApiContextRegistrationTest extends PostgresTestContainerSupport 
     private static final Set<String> API_SIDE_COVER_BEANS = Set.of(
             CoverImageController.class.getName(),
             CoverImageService.class.getName(),
-            CoverImageTaskStore.class.getName());
+            CoverImageTaskStore.class.getName(),
+            // COVER-PROVIDER-PLATFORM-REGISTER-001: platform capability registration is API-side.
+            CoverImagePlatformRegistration.class.getName());
 
     @Autowired ConfigurableApplicationContext context;
+
+    @Autowired CapabilityRegistryPort capabilityRegistry;
+    @Autowired PluginRegistryPort pluginRegistry;
+    @Autowired ProviderRegistryBoundary catalog;
 
     @Test
     void apiContextRegistersTheCoverAdmissionSurfaceAndNoWorkerOnlyCoverBeans() {
@@ -70,6 +81,46 @@ class CoverImageApiContextRegistrationTest extends PostgresTestContainerSupport 
 
         // The whole cover package contributes nothing else to the API graph.
         assertThat(coverBeans()).isEqualTo(new TreeSet<>(API_SIDE_COVER_BEANS));
+    }
+
+    /**
+     * COVER-PROVIDER-PLATFORM-REGISTER-001: with the real API context up, the platform capability
+     * registry must expose {@code media.cover-image} for the cover provider family, and the
+     * composition capability catalog must list it on the platform Artifact contract — while never
+     * advertising it as composable before the platform execution seam exists (backlog C2).
+     */
+    @Test
+    void platformRegistriesExposeMediaCoverImageForTheCoverProvider() {
+        assertThat(context.getBeansOfType(CoverImagePlatformRegistration.class)).hasSize(1);
+        assertThat(context.getBean(CoverImagePlatformRegistration.class).registered())
+                .as("the platform process registered the capability")
+                .isTrue();
+
+        var implementations = capabilityRegistry
+                .findCapabilityImplementations(CapabilityId.of(CoverImageContracts.CAPABILITY));
+        assertThat(implementations).hasSize(1);
+        assertThat(implementations.getFirst().pluginId())
+                .isEqualTo(CoverImagePlatformProvider.PLUGIN_ID);
+        assertThat(implementations.getFirst().contractVersion().toString())
+                .isEqualTo(CoverImageContracts.CAPABILITY_VERSION);
+
+        var candidates = pluginRegistry.findCapabilityCandidates(
+                CoverImageContracts.CAPABILITY, CoverImageContracts.CAPABILITY_VERSION);
+        assertThat(candidates).hasSize(1);
+        assertThat(candidates.getFirst().capabilities())
+                .extracting(capability -> capability.capabilityId())
+                .containsExactly(CoverImageContracts.CAPABILITY);
+
+        var entry = catalog.publicAvailability().stream()
+                .filter(capability -> capability.capabilityId().equals(CoverImageContracts.CAPABILITY))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError(
+                        "media.cover-image missing from the composition capability catalog"));
+        assertThat(entry.input().name()).isEqualTo("Artifact");
+        assertThat(entry.output().name()).isEqualTo("Artifact");
+        assertThat(entry.availability())
+                .as("not advertised as composable before the platform execution seam (C2) exists")
+                .isEqualTo(Availability.UNAVAILABLE);
     }
 
     private Set<String> coverBeans() {

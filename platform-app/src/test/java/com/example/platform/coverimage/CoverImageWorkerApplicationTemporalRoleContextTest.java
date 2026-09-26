@@ -87,6 +87,13 @@ class CoverImageWorkerApplicationTemporalRoleContextTest extends PostgresTestCon
         // API-level configuration is not part of the worker role.
         assertThat(context.getBeansOfType(
                 com.example.platform.providerplugin.ProviderPluginHost.class)).isEmpty();
+        // COVER-PROVIDER-PLATFORM-REGISTER-001: platform capability registration is the platform
+        // (API) process's authority; the cover worker must never own it.
+        assertThat(context.getBeansOfType(
+                com.example.platform.extension.api.port.PluginRegistrationPort.class)).isEmpty();
+        assertThat(context.getBean(CoverImagePlatformRegistration.class).registered())
+                .as("worker role registers no platform capability")
+                .isFalse();
     }
 
     @SuppressWarnings("unchecked")
