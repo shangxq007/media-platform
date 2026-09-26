@@ -96,7 +96,7 @@ def critical_laws(sources: dict[str, str], exact_pg_matrix: str) -> dict[str, in
                      and "diffQuery.compareRevisions" in git_controller) else 1)),
         "REVIEW_OWNERSHIP_SCOPE_MISSING": 0 if (
             "findOwnedById(reviewId, projectId, tenantId)" in workbench
-            and "listByProject(projectId, tenantId" in workbench
+            and "listOwnedByProject(projectId, tenantId, 20)" in workbench
             and len(thread_update_bodies) == 1
             and "REVIEW_THREAD.ID.eq(threadId)" in thread_update_bodies[0]
             and "REVIEW_THREAD.REVIEW_ID.eq(reviewId)" in thread_update_bodies[0]
