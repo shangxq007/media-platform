@@ -33,12 +33,36 @@ public class BaseJobTimelineLoader {
     }
 
     public Optional<String> loadInternalTimelineJson(String baseJobId, String tenantId) {
+        return load(baseJobId, tenantId, null);
+    }
+
+    /**
+     * PROJECT-SCOPED load (AUTH-IDOR-FIX-001): the addressed base job must belong to
+     * {@code projectId}. A base job owned by another project in the same tenant is treated as
+     * absent (fail closed), so an actor authorized for project A cannot read project B's job
+     * timeline through a free {@code baseJobId} input.
+     */
+    public Optional<String> loadInternalTimelineJson(String baseJobId, String tenantId, String projectId) {
+        return load(baseJobId, tenantId, projectId);
+    }
+
+    private Optional<String> load(String baseJobId, String tenantId, String projectId) {
         if (baseJobId == null || baseJobId.isBlank()) {
             return Optional.empty();
         }
         if (tenantId != null && !tenantId.isBlank() && tenantGuard != null) {
             try {
-                tenantGuard.requireJobTenant(tenantId, baseJobId);
+                if (projectId != null) {
+                    if (projectId.isBlank()) {
+                        // Fail closed: a project-scoped load without a usable project must not
+                        // silently degrade to a tenant-wide read.
+                        return Optional.empty();
+                    }
+                    // requireJobAccess binds job -> project (throws on mismatch).
+                    tenantGuard.requireJobAccess(tenantId, projectId, baseJobId);
+                } else {
+                    tenantGuard.requireJobTenant(tenantId, baseJobId);
+                }
             } catch (IllegalArgumentException ex) {
                 return Optional.empty();
             }

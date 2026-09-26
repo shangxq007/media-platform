@@ -376,7 +376,7 @@ public class RenderJobExecutionService {
             PipelineDagExecutorService.DagExecutionResult dag;
             Optional<IncrementalRenderOrchestrationService.IncrementalExecution> incremental =
                     incrementalRenderOrchestrationService.tryResolve(
-                            aiScript, baseJobId, tenantId, spec, profile, tier, outputFormat);
+                            aiScript, baseJobId, tenantId, projectId, spec, profile, tier, outputFormat);
             if (incremental.isPresent()) {
                 PipelineExecutionPlan plan = incremental.get().plan();
                 var incrementalPlan = incremental.get().incrementalPlan();

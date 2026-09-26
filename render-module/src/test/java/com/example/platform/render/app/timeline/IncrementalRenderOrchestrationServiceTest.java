@@ -52,7 +52,7 @@ class IncrementalRenderOrchestrationServiceTest {
 
     @Test
     void resolvesIncrementalPlanWhenBaseJobHasV1Timeline() {
-        when(baseJobTimelineLoader.loadInternalTimelineJson(eq("rj_base"), any()))
+        when(baseJobTimelineLoader.loadInternalTimelineJson(eq("rj_base"), any(), eq("prj_demo")))
                 .thenReturn(Optional.of(sampleJson));
         String patched = sampleJson.replace("\"segmentDurationSec\": 4", "\"segmentDurationSec\": 6");
         var spec = new TimelineSpecResolver(
@@ -62,7 +62,7 @@ class IncrementalRenderOrchestrationServiceTest {
                 .orElseThrow();
 
         var execution = orchestration.tryResolve(
-                patched, "rj_base", "ten_demo", spec, "default_1080p", "PRO", "dash");
+                patched, "rj_base", "ten_demo", "prj_demo", spec, "default_1080p", "PRO", "dash");
 
         assertTrue(execution.isPresent());
         assertEquals("INCREMENTAL", execution.get().incrementalPlan().mode());
@@ -73,13 +73,13 @@ class IncrementalRenderOrchestrationServiceTest {
 
     @Test
     void skipsWhenBaseJobMissing() {
-        when(baseJobTimelineLoader.loadInternalTimelineJson(any(), any())).thenReturn(Optional.empty());
+        when(baseJobTimelineLoader.loadInternalTimelineJson(any(), any(), any())).thenReturn(Optional.empty());
         var spec = new TimelineSpecResolver(
                 TimelineTestSupport.internalTimelineAdapter(),
                 new com.example.platform.render.domain.interchange.TimelineScriptParser())
                 .resolve(sampleJson)
                 .orElseThrow();
         assertTrue(orchestration.tryResolve(
-                sampleJson, "rj_missing", "ten_demo", spec, "default_1080p", "PRO", "dash").isEmpty());
+                sampleJson, "rj_missing", "ten_demo", "prj_demo", spec, "default_1080p", "PRO", "dash").isEmpty());
     }
 }

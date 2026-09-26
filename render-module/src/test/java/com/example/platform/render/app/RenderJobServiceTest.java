@@ -245,6 +245,13 @@ class RenderJobServiceTest {
     @DisplayName("Cancel and retry transitions")
     class CancelAndRetry {
 
+        @BeforeEach
+        void authenticateMutationActor() {
+            // AUTH-IDOR-FIX-001: cancel/retry now authorize the addressed job's OWNING project,
+            // which requires an authenticated actor (mirrors the StatusHistory test convention).
+            TenantContext.set("t-1");
+        }
+
         @Test
         @DisplayName("cancel() transitions QUEUED → CANCELLED")
         void cancelTransitionsToCancelled() {

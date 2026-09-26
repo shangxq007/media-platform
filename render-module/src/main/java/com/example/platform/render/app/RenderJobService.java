@@ -31,6 +31,7 @@ public class RenderJobService {
     private final CanonicalActorResolver actors;
     private final AuthorizationDecisionPort authorization;
     private static final AuthorizationAction READ_JOB = new AuthorizationAction("READ", AuthorizationResourceType.RENDER_JOB, "Read Render job");
+    private static final AuthorizationAction MUTATE_JOB = new AuthorizationAction("WRITE", AuthorizationResourceType.RENDER_JOB, "Mutate Render job");
     private final RenderJobRepository renderJobRepository;
     private final RenderPolicyEngine policyEngine;
     private final RenderLifecyclePublisher publisher;
@@ -132,6 +133,24 @@ public class RenderJobService {
                 new AuthorizationContext("render-job-read", null, Map.of()));
     }
 
+    private AuthorizationRequest jobWrite(CanonicalActor actor, String tenantId, String projectId, String jobId) {
+        return new AuthorizationRequest(actor, MUTATE_JOB,
+                new AuthorizableResourceRef(AuthorizationResourceType.RENDER_JOB, jobId, tenantId, projectId, null),
+                new AuthorizationContext("render-job-write", null, Map.of()));
+    }
+
+    /**
+     * AUTH-IDOR-FIX-001: a mutation addressed by {@code jobId} alone must be authorized against the
+     * project that OWNS the job (derived from the persisted row), not merely against the tenant.
+     * A tenant-only check let any tenant member cancel/retry another project's render job.
+     */
+    private RenderJobResponse authorizeJobMutation(String jobId, String tenantId) {
+        CanonicalActor actor = requireReadActor(tenantId);
+        RenderJobResponse job = mutationJob(jobId);
+        authorization.requireAuthorized(jobWrite(actor, tenantId, job.projectId(), jobId));
+        return job;
+    }
+
     // Existing mutation hydration stays internal; it is not a public read/discovery entry point.
     private RenderJobResponse mutationJob(String jobId) {
         RenderJobResponse job = renderJobRepository.findById(jobId)
@@ -145,7 +164,7 @@ public class RenderJobService {
     @Transactional
     public RenderJobResponse cancel(String jobId, String tenantId) {
         assertTenantAccess(tenantId);
-        RenderJobResponse job = mutationJob(jobId);
+        RenderJobResponse job = authorizeJobMutation(jobId, tenantId);
         RenderJobStatus currentStatus = RenderJobStatus.valueOf(job.status());
         stateMachine.validateTransition(currentStatus, RenderJobStatus.CANCELLED);
 
@@ -163,7 +182,7 @@ public class RenderJobService {
     @Transactional
     public RenderJobResponse retry(String jobId, String tenantId) {
         assertTenantAccess(tenantId);
-        RenderJobResponse job = mutationJob(jobId);
+        RenderJobResponse job = authorizeJobMutation(jobId, tenantId);
         RenderJobStatus currentStatus = RenderJobStatus.valueOf(job.status());
 
         // Retry creates a new RenderJob — old job remains in its terminal state

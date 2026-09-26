@@ -33,6 +33,7 @@ public class IncrementalRenderOrchestrationService {
     public Optional<IncrementalExecution> tryResolve(String newTimelineJson,
                                                      String baseJobId,
                                                      String tenantId,
+                                                     String projectId,
                                                      TimelineSpec spec,
                                                      String profile,
                                                      String tier,
@@ -44,7 +45,9 @@ public class IncrementalRenderOrchestrationService {
             log.debug("Skipping incremental plan: new timeline is not Internal 1.0");
             return Optional.empty();
         }
-        Optional<String> oldJson = baseJobTimelineLoader.loadInternalTimelineJson(baseJobId, tenantId);
+        // AUTH-IDOR-FIX-001: the base job must belong to the addressed project.
+        Optional<String> oldJson =
+                baseJobTimelineLoader.loadInternalTimelineJson(baseJobId, tenantId, projectId);
         if (oldJson.isEmpty()) {
             log.info("Skipping incremental plan: base job {} has no Internal 1.0 timeline", baseJobId);
             return Optional.empty();

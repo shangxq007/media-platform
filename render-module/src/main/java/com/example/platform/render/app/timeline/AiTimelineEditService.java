@@ -98,7 +98,9 @@ public class AiTimelineEditService {
             String instruction,
             AiTimelineEditContext context) {
         String base = baseJobTimelineLoader
-                .loadInternalTimelineJson(baseJobId, tenantId)
+                // AUTH-IDOR-FIX-001: bind the base job to the addressed project (fail closed on
+                // a cross-project baseJobId within the same tenant).
+                .loadInternalTimelineJson(baseJobId, tenantId, context.projectId())
                 .orElseThrow(() -> new IllegalArgumentException(
                         "No Internal Timeline 1.0 found for baseJobId=" + baseJobId));
         AiTimelineEditContext ctx = new AiTimelineEditContext(
