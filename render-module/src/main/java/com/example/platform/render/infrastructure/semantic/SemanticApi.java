@@ -1,5 +1,8 @@
 package com.example.platform.render.infrastructure.semantic;
 
+import com.example.platform.render.app.RenderSurfaceAuthorization;
+import com.example.platform.render.app.dto.RenderJobResponse;
+import com.example.platform.render.infrastructure.RenderJobRepository;
 import com.example.platform.render.infrastructure.unified.UnifiedGraphRepository;
 import com.example.platform.render.infrastructure.unified.UnifiedRequestGraph;
 import org.slf4j.Logger;
@@ -22,10 +25,31 @@ public class SemanticApi {
 
     private final NarrativeEngine narrativeEngine;
     private final UnifiedGraphRepository graphRepository;
+    private final RenderJobRepository renderJobs;
+    private final RenderSurfaceAuthorization authorization;
 
-    public SemanticApi(NarrativeEngine narrativeEngine, UnifiedGraphRepository graphRepository) {
+    public SemanticApi(NarrativeEngine narrativeEngine, UnifiedGraphRepository graphRepository,
+            RenderJobRepository renderJobs, RenderSurfaceAuthorization authorization) {
         this.narrativeEngine = narrativeEngine;
         this.graphRepository = graphRepository;
+        this.renderJobs = renderJobs;
+        this.authorization = authorization;
+    }
+
+    /**
+     * AUTH-UNPROTECTED-FIX-001: a semantic explanation is addressed by {@code jobId} alone, so the
+     * job's OWNING tenant/project (resolved from the persisted row) must authorize the request
+     * before any graph data is disclosed. Fail closed when the job is unknown or unbound.
+     */
+    private void requireJobRead(String jobId) {
+        String tenantId = renderJobs.findTenantIdById(jobId).orElse(null);
+        String projectId = renderJobs.findById(jobId)
+                .map(RenderJobResponse::projectId)
+                .orElse(null);
+        if (tenantId == null || tenantId.isBlank() || projectId == null || projectId.isBlank()) {
+            throw new IllegalArgumentException("No graph found for job: " + jobId);
+        }
+        authorization.requireProjectRead(tenantId, projectId);
     }
 
     /**
@@ -35,6 +59,7 @@ public class SemanticApi {
     public SemanticExplanationResponse explain(@PathVariable String jobId) {
         log.info("Generating semantic explanation for job {}", jobId);
 
+        requireJobRead(jobId);
         UnifiedRequestGraph graph = graphRepository.loadByJobId(jobId)
                 .orElseThrow(() -> new IllegalArgumentException("No graph found for job: " + jobId));
 
@@ -58,6 +83,7 @@ public class SemanticApi {
     public AiExplanationResponse explainForAi(@PathVariable String jobId) {
         log.info("Generating AI explanation for job {}", jobId);
 
+        requireJobRead(jobId);
         UnifiedRequestGraph graph = graphRepository.loadByJobId(jobId)
                 .orElseThrow(() -> new IllegalArgumentException("No graph found for job: " + jobId));
 
@@ -71,6 +97,7 @@ public class SemanticApi {
      */
     @GetMapping("/status/{jobId}")
     public StatusResponse getStatus(@PathVariable String jobId) {
+        requireJobRead(jobId);
         UnifiedRequestGraph graph = graphRepository.loadByJobId(jobId)
                 .orElseThrow(() -> new IllegalArgumentException("No graph found for job: " + jobId));
 
@@ -89,6 +116,7 @@ public class SemanticApi {
      */
     @GetMapping("/cost/{jobId}")
     public CostExplanationResponse getCostExplanation(@PathVariable String jobId) {
+        requireJobRead(jobId);
         UnifiedRequestGraph graph = graphRepository.loadByJobId(jobId)
                 .orElseThrow(() -> new IllegalArgumentException("No graph found for job: " + jobId));
 

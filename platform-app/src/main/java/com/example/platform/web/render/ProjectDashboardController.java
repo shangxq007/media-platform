@@ -28,17 +28,20 @@ public class ProjectDashboardController {
     private final TimelineRevisionRepository revisionRepo;
     private final ReviewQueries reviewRepo;
     private final OutboxEventService outboxService;
+    private final TimelineProjectAuthorizationService projectAuthorization;
 
     public ProjectDashboardController(MarketplaceApi marketplaceRepo,
                                         SearchProjectionRepository searchProjectionRepo,
                                         TimelineRevisionRepository revisionRepo,
                                         ReviewQueries reviewRepo,
-                                        OutboxEventService outboxService) {
+                                        OutboxEventService outboxService,
+                                        TimelineProjectAuthorizationService projectAuthorization) {
         this.marketplaceRepo = marketplaceRepo;
         this.searchProjectionRepo = searchProjectionRepo;
         this.revisionRepo = revisionRepo;
         this.reviewRepo = reviewRepo;
         this.outboxService = outboxService;
+        this.projectAuthorization = projectAuthorization;
     }
 
     @GetMapping
@@ -47,6 +50,8 @@ public class ProjectDashboardController {
             @RequestParam(required = false, defaultValue = "tenant_1") String tenantId) {
         long start = System.currentTimeMillis();
         tenantId = TenantContext.get();
+        // AUTH-UNPROTECTED-FIX-001: authorize a project-scoped READ before aggregating project data.
+        projectAuthorization.requireRead(tenantId, projectId);
 
         // Artifact summaries are served by the canonical Artifact API.
         int publishedAssets = 0;
@@ -81,6 +86,7 @@ public class ProjectDashboardController {
     @Operation(summary = "Recent activity feed")
     public List<Map<String, Object>> activity(@PathVariable String projectId,
             @RequestParam(defaultValue = "20") int limit) {
+        projectAuthorization.requireRead(TenantContext.get(), projectId);
         return outboxService.recent(limit);
     }
 
@@ -88,6 +94,7 @@ public class ProjectDashboardController {
     @Operation(summary = "Pending actions requiring attention")
     public PendingDto pending(@PathVariable String projectId) {
         String tenantId = TenantContext.get();
+        projectAuthorization.requireRead(tenantId, projectId);
         var reviews = reviewRepo.listOwnedByProject(projectId, tenantId, 200);
         int pendingReviews = (int) reviews.stream().filter(r -> "OPEN".equals(r.status())).count();
         int pendingChanges = (int) reviews.stream().filter(r -> "CHANGES_REQUESTED".equals(r.status())).count();
@@ -103,6 +110,7 @@ public class ProjectDashboardController {
     @GetMapping("/health")
     @Operation(summary = "Platform health summary")
     public HealthDto health(@PathVariable String projectId) {
+        projectAuthorization.requireRead(TenantContext.get(), projectId);
         var overview = outboxService.overview();
         int pending = overview.get("pending") != null ? Integer.parseInt(overview.get("pending").toString()) : 0;
         int failed = overview.get("failed") != null ? Integer.parseInt(overview.get("failed").toString()) : 0;

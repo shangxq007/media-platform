@@ -1,8 +1,11 @@
 package com.example.platform.render.api;
 
 import com.example.platform.render.api.dto.*;
+import com.example.platform.render.app.RenderSurfaceAuthorization;
 import com.example.platform.render.app.caption.CaptionTemplateRenderService;
 import com.example.platform.render.app.caption.CaptionTemplateResultLookupService;
+import com.example.platform.render.app.product.ProductRuntimeService;
+import com.example.platform.render.domain.product.Product;
 import com.example.platform.render.app.timeline.compile.RenderCorrelationContext;
 import com.example.platform.render.app.timeline.compile.audit.*;
 import com.example.platform.render.domain.caption.*;
@@ -27,16 +30,22 @@ public class CaptionTemplateRenderController {
     private final CaptionTemplateResultLookupService lookupService;
     private final CaptionTemplateRenderApiMapper mapper;
     private final RenderAuditRecorder auditRecorder;
+    private final RenderSurfaceAuthorization authorization;
+    private final ProductRuntimeService productRuntime;
 
     public CaptionTemplateRenderController(
             CaptionTemplateRenderService service,
             CaptionTemplateResultLookupService lookupService,
             CaptionTemplateRenderApiMapper mapper,
-            RenderAuditRecorder auditRecorder) {
+            RenderAuditRecorder auditRecorder,
+            RenderSurfaceAuthorization authorization,
+            ProductRuntimeService productRuntime) {
         this.service = service;
         this.lookupService = lookupService;
         this.mapper = mapper;
         this.auditRecorder = auditRecorder;
+        this.authorization = authorization;
+        this.productRuntime = productRuntime;
     }
 
     @PostMapping("/tenants/{tenantId}/projects/{projectId}/caption-template/render")
@@ -46,6 +55,10 @@ public class CaptionTemplateRenderController {
             @Valid @RequestBody CaptionTemplateRenderApiRequest request) {
 
         log.info("Caption template render requested: project={}", projectId);
+
+        // AUTH-UNPROTECTED-FIX-001: the tenant/project path parameters must be authorized as a
+        // project-scoped WRITE before any render side effect or data disclosure.
+        authorization.requireProjectWrite(tenantId, projectId);
 
         // Create correlation context
         RenderCorrelationContext correlation = RenderCorrelationContext.create(
@@ -109,6 +122,14 @@ public class CaptionTemplateRenderController {
             @PathVariable String tenantId,
             @PathVariable String projectId,
             @PathVariable String outputProductId) {
+
+        // AUTH-UNPROTECTED-FIX-001: the output product is resolved by a free id, so the result's
+        // OWNING project (from the persisted product) must authorize a project-scoped READ before
+        // any delivery state is disclosed. An unknown product stays a not-found (no leak).
+        Product product = productRuntime.find(outputProductId).orElse(null);
+        if (product != null) {
+            authorization.requireProjectRead(product.tenantId(), product.projectId());
+        }
 
         RenderCorrelationContext correlation = RenderCorrelationContext.create(
                 projectId, null, "PLAN_BASED");

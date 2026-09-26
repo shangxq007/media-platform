@@ -1,5 +1,6 @@
 package com.example.platform.render.api;
 
+import com.example.platform.render.app.RenderSurfaceAuthorization;
 import com.example.platform.render.app.clientexport.ClientExportService;
 import com.example.platform.render.app.clientexport.ClientExportService.ExportConfig;
 import com.example.platform.render.domain.clientexport.ClientExportSession;
@@ -26,9 +27,12 @@ import org.springframework.web.multipart.MultipartFile;
 public class ClientExportController {
 
     private final ClientExportService clientExportService;
+    private final RenderSurfaceAuthorization authorization;
 
-    public ClientExportController(ClientExportService clientExportService) {
+    public ClientExportController(ClientExportService clientExportService,
+            RenderSurfaceAuthorization authorization) {
         this.clientExportService = clientExportService;
+        this.authorization = authorization;
     }
 
     @PostMapping
@@ -39,6 +43,8 @@ public class ClientExportController {
             throw new IllegalArgumentException("Tenant context is required");
         }
         String tier = request.tier() != null ? request.tier() : "FREE";
+        // AUTH-UNPROTECTED-FIX-001: starting an export session is a project-scoped WRITE.
+        authorization.requireProjectWrite(effectiveTenant, request.projectId());
         return clientExportService.createSessionWithConfig(
                 effectiveTenant,
                 request.workspaceId(),
@@ -57,7 +63,8 @@ public class ClientExportController {
         if (effectiveTenant == null || effectiveTenant.isBlank()) {
             throw new IllegalArgumentException("Tenant context is required");
         }
-        clientExportService.findSessionForTenant(sessionId, effectiveTenant);
+        ClientExportSession existing = clientExportService.findSessionForTenant(sessionId, effectiveTenant);
+        authorization.requireProjectWrite(effectiveTenant, existing.projectId());
         ClientExportSession session = clientExportService.updateProgress(
                 sessionId, request.status(), request.progress());
         return Map.of(
@@ -76,7 +83,8 @@ public class ClientExportController {
         if (effectiveTenant == null || effectiveTenant.isBlank()) {
             throw new IllegalArgumentException("Tenant context is required");
         }
-        clientExportService.findSessionForTenant(sessionId, effectiveTenant);
+        ClientExportSession existing = clientExportService.findSessionForTenant(sessionId, effectiveTenant);
+        authorization.requireProjectWrite(effectiveTenant, existing.projectId());
         ClientExportSession session = clientExportService.uploadAndComplete(
                 sessionId, file, checksum);
         return Map.of(
@@ -95,7 +103,8 @@ public class ClientExportController {
         if (effectiveTenant == null || effectiveTenant.isBlank()) {
             throw new IllegalArgumentException("Tenant context is required");
         }
-        clientExportService.findSessionForTenant(sessionId, effectiveTenant);
+        ClientExportSession existing = clientExportService.findSessionForTenant(sessionId, effectiveTenant);
+        authorization.requireProjectWrite(effectiveTenant, existing.projectId());
         ClientExportSession session = clientExportService.failSession(
                 sessionId, request.errorCode(), request.errorMessage());
         return Map.of(
@@ -111,7 +120,8 @@ public class ClientExportController {
         if (effectiveTenant == null || effectiveTenant.isBlank()) {
             throw new IllegalArgumentException("Tenant context is required");
         }
-        clientExportService.findSessionForTenant(sessionId, effectiveTenant);
+        ClientExportSession existing = clientExportService.findSessionForTenant(sessionId, effectiveTenant);
+        authorization.requireProjectWrite(effectiveTenant, existing.projectId());
         ClientExportSession session = clientExportService.cancelSession(sessionId);
         return Map.of("sessionId", session.id(), "status", session.status());
     }
@@ -123,7 +133,9 @@ public class ClientExportController {
         if (effectiveTenant == null || effectiveTenant.isBlank()) {
             throw new IllegalArgumentException("Tenant context is required");
         }
-        return clientExportService.findSessionForTenant(sessionId, effectiveTenant);
+        ClientExportSession session = clientExportService.findSessionForTenant(sessionId, effectiveTenant);
+        authorization.requireProjectRead(effectiveTenant, session.projectId());
+        return session;
     }
 
     @GetMapping
@@ -136,8 +148,10 @@ public class ClientExportController {
             throw new IllegalArgumentException("Tenant context is required");
         }
         if (projectId != null && !projectId.isBlank()) {
+            authorization.requireProjectRead(effectiveTenant, projectId);
             return clientExportService.listByTenantAndProject(effectiveTenant, projectId, limit, offset);
         }
+        authorization.requireTenantRead(effectiveTenant);
         return clientExportService.listByTenant(effectiveTenant, limit, offset);
     }
 
@@ -149,6 +163,7 @@ public class ClientExportController {
             throw new IllegalArgumentException("Tenant context is required");
         }
         ClientExportSession session = clientExportService.findSessionForTenant(sessionId, effectiveTenant);
+        authorization.requireProjectRead(effectiveTenant, session.projectId());
         Path file = clientExportService.resolveUploadPath(sessionId);
         if (!Files.exists(file)) {
             return ResponseEntity.notFound().build();

@@ -16,6 +16,8 @@ import com.example.platform.render.infrastructure.product.ProductDependencyRepos
 import com.example.platform.render.infrastructure.product.ProductRepository;
 import com.example.platform.storage.infrastructure.StorageReferenceRepository;
 import com.example.platform.render.testsupport.TimelineCoreSmokeFixture;
+import com.example.platform.render.testsupport.RenderSurfaceAuthorizationTestSupport;
+import com.example.platform.shared.web.TenantContext;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.http.ResponseEntity;
@@ -58,6 +60,7 @@ class CaptionTemplateRenderApiE2ESmokeTest {
 
     @BeforeEach
     void setUp() {
+        TenantContext.set("tenant-1");
         storageRepo = new InMemoryStorageReferenceRepository();
         ProductRepository productRepo = new InMemoryProductRepository();
         ProductDependencyRepository depRepo = new InMemoryProductDependencyRepository();
@@ -90,7 +93,13 @@ class CaptionTemplateRenderApiE2ESmokeTest {
                 new TimelineInputProductResolver(productRuntime), tempDir);
 
         controller = new CaptionTemplateRenderController(
-                service, null, new CaptionTemplateRenderApiMapper(), auditRecorder);
+                service, null, new CaptionTemplateRenderApiMapper(), auditRecorder,
+                RenderSurfaceAuthorizationTestSupport.allowAll(), productRuntime);
+    }
+
+    @AfterEach
+    void clearTenantContext() {
+        TenantContext.clear();
     }
 
     @Test

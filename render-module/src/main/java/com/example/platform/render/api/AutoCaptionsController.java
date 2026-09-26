@@ -1,5 +1,6 @@
 package com.example.platform.render.api;
 
+import com.example.platform.render.app.RenderSurfaceAuthorization;
 import com.example.platform.render.app.autocaptions.AutoCaptionsService;
 import com.example.platform.render.app.autocaptions.AutoCaptionsService.AutoCaptionsRequest;
 import com.example.platform.render.app.autocaptions.AutoCaptionsService.AutoCaptionsResult;
@@ -14,9 +15,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class AutoCaptionsController {
 
     private final AutoCaptionsService autoCaptionsService;
+    private final RenderSurfaceAuthorization authorization;
 
-    public AutoCaptionsController(AutoCaptionsService autoCaptionsService) {
+    public AutoCaptionsController(AutoCaptionsService autoCaptionsService,
+            RenderSurfaceAuthorization authorization) {
         this.autoCaptionsService = autoCaptionsService;
+        this.authorization = authorization;
     }
 
     @PostMapping
@@ -26,6 +30,10 @@ public class AutoCaptionsController {
         if (effectiveTenant == null || effectiveTenant.isBlank()) {
             throw new IllegalArgumentException("Tenant context is required");
         }
+
+        // AUTH-UNPROTECTED-FIX-001: auto-caption generation mutates project media, so the
+        // addressed project must authorize a project-scoped WRITE before any work happens.
+        authorization.requireProjectWrite(effectiveTenant, request.projectId());
 
         AutoCaptionsResult result = autoCaptionsService.generateCaptions(new AutoCaptionsRequest(
                 effectiveTenant,

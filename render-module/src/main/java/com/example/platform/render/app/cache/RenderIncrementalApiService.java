@@ -1,5 +1,6 @@
 package com.example.platform.render.app.cache;
 
+import com.example.platform.render.app.RenderSurfaceAuthorization;
 import com.example.platform.render.api.dto.GenerateIncrementalPlanRequest;
 import com.example.platform.render.api.dto.IncrementalPlanTaskDto;
 import com.example.platform.render.api.dto.IncrementalRenderPlanResponse;
@@ -23,18 +24,24 @@ public class RenderIncrementalApiService {
     private final IncrementalRenderPlanService incrementalRenderPlanService;
     private final BaseJobTimelineLoader baseJobTimelineLoader;
     private final RenderCacheTenantGuard tenantGuard;
+    private final RenderSurfaceAuthorization authorization;
 
     public RenderIncrementalApiService(IncrementalRenderPlanService incrementalRenderPlanService,
                                        BaseJobTimelineLoader baseJobTimelineLoader,
-                                       RenderCacheTenantGuard tenantGuard) {
+                                       RenderCacheTenantGuard tenantGuard,
+                                       RenderSurfaceAuthorization authorization) {
         this.incrementalRenderPlanService = incrementalRenderPlanService;
         this.baseJobTimelineLoader = baseJobTimelineLoader;
         this.tenantGuard = tenantGuard;
+        this.authorization = authorization;
     }
 
     public IncrementalRenderPlanResponse previewPlan(String tenantId, String projectId,
                                                      GenerateIncrementalPlanRequest request)
             throws java.io.IOException {
+        // AUTH-UNPROTECTED-FIX-001: planning reads project timeline/base-job data, so the addressed
+        // project must authorize a project-scoped READ before anything is hydrated.
+        authorization.requireProjectRead(tenantId, projectId);
         if (request.baseJobId() != null && !request.baseJobId().isBlank()) {
             tenantGuard.requireBaseJobAccess(tenantId, projectId, request.baseJobId());
         }

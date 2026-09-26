@@ -3,6 +3,7 @@ package com.example.platform.identity.api;
 import com.example.platform.identity.api.dto.ProjectImportedMetadataDetailDto;
 import com.example.platform.identity.api.dto.ProjectImportedMetadataSummaryDto;
 import com.example.platform.identity.app.ProjectImportMetadataReadService;
+import com.example.platform.identity.app.IdentitySurfaceAuthorization;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -27,9 +28,12 @@ public class ProjectImportMetadataController {
     private static final Logger log = LoggerFactory.getLogger(ProjectImportMetadataController.class);
 
     private final ProjectImportMetadataReadService readService;
+    private final IdentitySurfaceAuthorization authorization;
 
-    public ProjectImportMetadataController(ProjectImportMetadataReadService readService) {
+    public ProjectImportMetadataController(ProjectImportMetadataReadService readService,
+            IdentitySurfaceAuthorization authorization) {
         this.readService = readService;
+        this.authorization = authorization;
     }
 
     /**
@@ -43,6 +47,9 @@ public class ProjectImportMetadataController {
     public ResponseEntity<?> getLatestImportMetadata(
             @PathVariable String tenantId,
             @PathVariable String projectId) {
+
+        // AUTH-UNPROTECTED-FIX-001: imported metadata is project-scoped; authorize before read.
+        authorization.requireProjectRead(tenantId, projectId);
 
         Optional<ProjectImportedMetadataSummaryDto> summary =
                 readService.findLatestByProject(tenantId, projectId);
@@ -66,6 +73,8 @@ public class ProjectImportMetadataController {
             @PathVariable String tenantId,
             @PathVariable String importId) {
 
+        authorization.requireTenantRead(tenantId);
+
         Optional<ProjectImportedMetadataSummaryDto> summary =
                 readService.findByImportId(tenantId, importId);
 
@@ -88,6 +97,8 @@ public class ProjectImportMetadataController {
             @PathVariable String tenantId,
             @PathVariable String projectId) {
 
+        authorization.requireProjectRead(tenantId, projectId);
+
         Optional<ProjectImportedMetadataDetailDto> detail =
                 readService.findLatestDetailByProject(tenantId, projectId);
 
@@ -109,6 +120,8 @@ public class ProjectImportMetadataController {
     public ResponseEntity<?> getImportMetadataDetailById(
             @PathVariable String tenantId,
             @PathVariable String importId) {
+
+        authorization.requireTenantRead(tenantId);
 
         Optional<ProjectImportedMetadataDetailDto> detail =
                 readService.findDetailByImportId(tenantId, importId);

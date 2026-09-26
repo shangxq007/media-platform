@@ -2,7 +2,10 @@ package com.example.platform.identity.api;
 
 import com.example.platform.identity.api.dto.ProjectImportedMetadataSummaryDto;
 import com.example.platform.identity.app.ProjectImportMetadataReadService;
+import com.example.platform.identity.testsupport.IdentitySurfaceAuthorizationTestSupport;
+import com.example.platform.shared.web.TenantContext;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -25,7 +28,14 @@ class ProjectImportMetadataControllerTest {
 
     @BeforeEach
     void setUp() {
-        controller = new ProjectImportMetadataController(readService);
+        TenantContext.set("tenant-1");
+        controller = new ProjectImportMetadataController(readService,
+                IdentitySurfaceAuthorizationTestSupport.allowAll());
+    }
+
+    @AfterEach
+    void clearTenantContext() {
+        TenantContext.clear();
     }
 
     @Test

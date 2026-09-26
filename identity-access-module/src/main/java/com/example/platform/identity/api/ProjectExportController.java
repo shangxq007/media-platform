@@ -46,11 +46,14 @@ public class ProjectExportController {
 
     private final ProjectExportService projectExportService;
     private final ProjectExportZipPackagingService zipPackagingService;
+    private final com.example.platform.identity.app.IdentitySurfaceAuthorization projectAuthorization;
 
     public ProjectExportController(ProjectExportService projectExportService,
-                                    ProjectExportZipPackagingService zipPackagingService) {
+                                    ProjectExportZipPackagingService zipPackagingService,
+                                    com.example.platform.identity.app.IdentitySurfaceAuthorization projectAuthorization) {
         this.projectExportService = projectExportService;
         this.zipPackagingService = zipPackagingService;
+        this.projectAuthorization = projectAuthorization;
     }
 
     /**
@@ -61,6 +64,9 @@ public class ProjectExportController {
             @PathVariable String tenantId,
             @PathVariable String projectId,
             @RequestBody(required = false) ProjectExportRequest request) {
+
+        // AUTH-UNPROTECTED-FIX-001: exporting project data requires project-scoped READ.
+        projectAuthorization.requireProjectRead(tenantId, projectId);
 
         String mode = (request != null && request.mode() != null && !request.mode().isBlank())
                 ? request.mode() : ProjectExportRequest.MODE_METADATA_ONLY;
@@ -117,6 +123,9 @@ public class ProjectExportController {
             @PathVariable String tenantId,
             @PathVariable String projectId,
             @RequestBody ProjectExportRequest request) {
+
+        // AUTH-UNPROTECTED-FIX-001: exporting project data requires project-scoped READ.
+        projectAuthorization.requireProjectRead(tenantId, projectId);
 
         // Require explicit mode
         if (request == null) {

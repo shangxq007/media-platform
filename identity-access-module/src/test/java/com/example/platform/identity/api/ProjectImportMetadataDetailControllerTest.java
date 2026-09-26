@@ -3,8 +3,11 @@ package com.example.platform.identity.api;
 import com.example.platform.identity.api.dto.ProjectImportedMetadataDetailDto;
 import com.example.platform.identity.api.dto.ProjectImportedMetadataSummaryDto;
 import com.example.platform.identity.app.ProjectImportMetadataReadService;
+import com.example.platform.identity.testsupport.IdentitySurfaceAuthorizationTestSupport;
+import com.example.platform.shared.web.TenantContext;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -27,7 +30,14 @@ class ProjectImportMetadataDetailControllerTest {
 
     @BeforeEach
     void setUp() {
-        controller = new ProjectImportMetadataController(readService);
+        TenantContext.set("tenant-1");
+        controller = new ProjectImportMetadataController(readService,
+                IdentitySurfaceAuthorizationTestSupport.allowAll());
+    }
+
+    @AfterEach
+    void clearTenantContext() {
+        TenantContext.clear();
     }
 
     @Test
@@ -77,16 +87,12 @@ class ProjectImportMetadataDetailControllerTest {
     }
 
     @Test
-    void getImportMetadataDetailByIdShouldReturn404WhenWrongTenant() {
-        // Given
-        when(readService.findDetailByImportId("tenant-2", "imp-1"))
-                .thenReturn(Optional.empty());
-
-        // When
-        ResponseEntity<?> response = controller.getImportMetadataDetailById("tenant-2", "imp-1");
-
-        // Then
-        assertEquals(404, response.getStatusCode().value());
+    void getImportMetadataDetailByIdShouldBeForbiddenWhenWrongTenant() {
+        // AUTH-UNPROTECTED-FIX-001: a path tenant that differs from the authenticated ambient
+        // tenant is rejected by the authorization boundary (fail closed) before any read.
+        var forbidden = assertThrows(org.springframework.web.server.ResponseStatusException.class,
+                () -> controller.getImportMetadataDetailById("tenant-2", "imp-1"));
+        assertEquals(403, forbidden.getStatusCode().value());
     }
 
     @Test

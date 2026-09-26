@@ -3,6 +3,7 @@ package com.example.platform.identity.api;
 import com.example.platform.identity.api.dto.*;
 import com.example.platform.identity.app.ProjectExportService;
 import com.example.platform.identity.app.ProjectExportZipPackagingService;
+import com.example.platform.identity.testsupport.IdentitySurfaceAuthorizationTestSupport;
 import com.example.platform.shared.web.TenantContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,7 +35,8 @@ class ProjectExportControllerArchiveTest {
 
     @BeforeEach
     void setUp() {
-        controller = new ProjectExportController(projectExportService, zipPackagingService);
+        controller = new ProjectExportController(projectExportService, zipPackagingService,
+                IdentitySurfaceAuthorizationTestSupport.allowAll());
         TenantContext.set("tenant-1");
     }
 
