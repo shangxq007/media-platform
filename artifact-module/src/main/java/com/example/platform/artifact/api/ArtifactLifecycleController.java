@@ -2,6 +2,7 @@ package com.example.platform.artifact.api;
 
 import com.example.platform.artifact.app.ArtifactGcService;
 import com.example.platform.artifact.app.ArtifactLifecycleService;
+import com.example.platform.artifact.app.ArtifactProjectAuthorizationPort;
 import com.example.platform.shared.web.TenantContext;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -16,31 +17,45 @@ public class ArtifactLifecycleController {
 
     private final ArtifactLifecycleService lifecycleService;
     private final ArtifactGcService gcService;
+    private final ArtifactProjectAuthorizationPort projectAuthorization;
 
     public ArtifactLifecycleController(ArtifactLifecycleService lifecycleService,
-                                       ArtifactGcService gcService) {
+                                       ArtifactGcService gcService,
+                                       ArtifactProjectAuthorizationPort projectAuthorization) {
         this.lifecycleService = lifecycleService;
         this.gcService = gcService;
+        this.projectAuthorization = projectAuthorization;
     }
 
     @GetMapping("/{artifactId}/delete-check")
-    public ArtifactLifecycleService.DeleteCheckResult deleteCheck(@PathVariable String artifactId) {
-        return lifecycleService.deleteCheck(requireCurrentTenant(), artifactId);
+    public ArtifactLifecycleService.DeleteCheckResult deleteCheck(
+            @PathVariable String artifactId,
+            @RequestParam String projectId) {
+        String tenantId = requireCurrentTenant();
+        projectAuthorization.requireRead(tenantId, projectId);
+        return lifecycleService.deleteCheck(tenantId, artifactId);
     }
 
     @PostMapping("/{artifactId}/tombstone")
-    public TombstoneResponse tombstone(@PathVariable String artifactId) {
-        var result = lifecycleService.tombstone(requireCurrentTenant(), artifactId);
+    public TombstoneResponse tombstone(
+            @PathVariable String artifactId,
+            @RequestParam String projectId) {
+        String tenantId = requireCurrentTenant();
+        projectAuthorization.requireWrite(tenantId, projectId);
+        var result = lifecycleService.tombstone(tenantId, artifactId);
         return new TombstoneResponse(
                 result.id(), result.projectId(), result.status().name(), result.tombstonedAt());
     }
 
     @PostMapping("/gc/run")
     public ArtifactGcService.GcResult runGc(
+            @RequestParam String projectId,
             @RequestParam(value = "dryRun", defaultValue = "false") boolean dryRun,
             @RequestParam(value = "retentionDays", defaultValue = "7") int retentionDays,
             @RequestParam(value = "limit", defaultValue = "50") int limit) {
-        return gcService.runGc(requireCurrentTenant(), retentionDays, dryRun, limit);
+        String tenantId = requireCurrentTenant();
+        projectAuthorization.requireWrite(tenantId, projectId);
+        return gcService.runGc(tenantId, projectId, retentionDays, dryRun, limit);
     }
 
     private static String requireCurrentTenant() {

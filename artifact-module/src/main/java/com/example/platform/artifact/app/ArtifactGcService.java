@@ -20,7 +20,10 @@ import org.springframework.stereotype.Service;
  * GCR-2 (ARTIFACT_AUTHORITY_CONTRACT_V1 C13/C14): Artifact-owned GC.
  *
  * <p>Purges tombstoned canonical Artifacts (state DELETING past retention) by
- * marking them DELETED. Every candidate passes {@link ArtifactLifecycleService}
+ * marking them DELETED. The run is scoped to ONE project: only Artifacts whose
+ * {@code project_id} matches the authorized project are candidates, so a
+ * project-scoped authorization can never purge another project's Artifacts.
+ * Every candidate passes {@link ArtifactLifecycleService}
  * deleteCheck, which FAILS CLOSED on historical pin protection — a pinned
  * Artifact (or its last usable replica) is never GC'd
  * (HISTORICAL_PIN_GC_BYPASS_COUNT = 0). Physical placement deletion remains
@@ -47,18 +50,16 @@ public class ArtifactGcService {
         this.auditPort = auditPort;
     }
 
-    public GcResult runGc(String tenantId, int retentionDays) {
-        return runGc(tenantId, retentionDays, false, properties.getBatchSize());
-    }
-
-    public GcResult runGc(String tenantId, int retentionDays, boolean dryRun, int limit) {
+    public GcResult runGc(String tenantId, String projectId, int retentionDays, boolean dryRun, int limit) {
         requireTenantId(tenantId);
+        requireProjectId(projectId);
         if (artifactRepository.isEmpty()) {
             return new GcResult(0, 0, 0, 0, List.of(), List.of("persistent catalog unavailable"));
         }
 
         Instant cutoff = Instant.now().minus(Math.max(1, retentionDays), ChronoUnit.DAYS);
-        List<Artifact> candidates = artifactRepository.get().findTombstonedBefore(tenantId, cutoff);
+        List<Artifact> candidates =
+                artifactRepository.get().findTombstonedBefore(tenantId, projectId, cutoff);
         int scanned = candidates.size();
         int purged = 0;
         int skipped = 0;
@@ -97,7 +98,7 @@ public class ArtifactGcService {
         }
 
         GcResult result = new GcResult(scanned, purged, skipped, failed, actions, errors);
-        recordGcAudit(result, dryRun, retentionDays);
+        recordGcAudit(result, dryRun, retentionDays, projectId);
         return result;
     }
 
@@ -107,8 +108,14 @@ public class ArtifactGcService {
         }
     }
 
+    private static void requireProjectId(String projectId) {
+        if (projectId == null || projectId.isBlank()) {
+            throw new IllegalArgumentException("explicit projectId is required");
+        }
+    }
+
     @SuppressWarnings("unchecked")
-    private void recordGcAudit(GcResult result, boolean dryRun, int retentionDays) {
+    private void recordGcAudit(GcResult result, boolean dryRun, int retentionDays, String projectId) {
         try {
             if (auditPort != null) {
                 Map<String, Object> payload = new LinkedHashMap<>();
@@ -119,6 +126,7 @@ public class ArtifactGcService {
                 payload.put("failed", result.failed());
                 payload.put("retentionDays", retentionDays);
                 payload.put("dryRun", dryRun);
+                payload.put("projectId", projectId);
                 auditPort.record("SYSTEM", "ARTIFACT_GC", "ARTIFACT",
                         "artifact", "gc", payload);
             }

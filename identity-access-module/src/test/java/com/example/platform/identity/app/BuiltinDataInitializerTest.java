@@ -38,8 +38,10 @@ class BuiltinDataInitializerTest {
 
         initializer.init();
 
-        assertEquals(25, distinctPermissionKeys().size());
+        assertEquals(28, distinctPermissionKeys().size());
         assertTrue(distinctPermissionKeys().containsAll(Set.of("delivery.read", "delivery.manage")));
+        assertTrue(distinctPermissionKeys().containsAll(
+                Set.of("READ", "artifact.read", "artifact.lifecycle.manage")));
     }
 
     @Test
@@ -63,7 +65,7 @@ class BuiltinDataInitializerTest {
 
         initializer.init();
 
-        assertEquals(24, distinctPermissionKeys().size());
+        assertEquals(27, distinctPermissionKeys().size());
     }
 
     @Test
@@ -104,7 +106,8 @@ class BuiltinDataInitializerTest {
 
         Set<String> permKeys = distinctPermissionKeys();
         assertTrue(permKeys.containsAll(Set.of(
-                "ADMIN", "WRITE", "MEMBER_MANAGE",
+                "ADMIN", "READ", "WRITE", "MEMBER_MANAGE",
+                "artifact.read", "artifact.lifecycle.manage",
                 "render.submit", "render.cancel", "render.use_gpu", "render.use_remote_worker",
                 "entitlement.grant", "entitlement.revoke", "billing.manage",
                 "prompt.template.manage", "extension.install", "audit.view",

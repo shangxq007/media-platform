@@ -267,10 +267,14 @@ def main() -> int:
                                  if p.endswith("McpMediaToolsController.java")), "")
     if "projectAuthorization.requireWrite" not in mcp_media_controller:
         controller_auth_missing += 1
-    media_asset_lifecycle = next((s for p, s in sources.items()
-                                  if p.endswith("MediaAssetLifecycleController.java")), "")
-    if ("projectAuthorization.requireRead" not in media_asset_lifecycle
-            or "projectAuthorization.requireWrite" not in media_asset_lifecycle):
+    # The retired MediaAssetLifecycleController was deleted by the artifact-media
+    # convergence (ad2545de); its replacement surface is ArtifactLifecycleController,
+    # which must carry the same project-scoped read/write authorization boundary.
+    # The law follows the surface, not the deleted file.
+    artifact_lifecycle = next((s for p, s in sources.items()
+                               if p.endswith("ArtifactLifecycleController.java")), "")
+    if ("projectAuthorization.requireRead" not in artifact_lifecycle
+            or "projectAuthorization.requireWrite" not in artifact_lifecycle):
         controller_auth_missing += 1
 
     generated = "\n".join(

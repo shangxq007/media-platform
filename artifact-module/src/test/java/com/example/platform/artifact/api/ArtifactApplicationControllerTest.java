@@ -2,10 +2,15 @@ package com.example.platform.artifact.api;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 
 import com.example.platform.artifact.app.ArtifactAccess;
 import com.example.platform.artifact.app.ArtifactApplicationService;
 import com.example.platform.artifact.app.ArtifactIntegrityState;
+import com.example.platform.artifact.app.ArtifactProjectAuthorizationPort;
 import com.example.platform.artifact.app.ArtifactScope;
 import com.example.platform.artifact.app.ArtifactSummary;
 import com.example.platform.artifact.domain.ArtifactKind;
@@ -15,20 +20,32 @@ import com.example.platform.shared.digest.ContentDigest;
 import com.example.platform.shared.identity.ArtifactId;
 import java.net.URI;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.server.ResponseStatusException;
 
 class ArtifactApplicationControllerTest {
 
     private FakeArtifactApplicationService service;
+    private ArtifactProjectAuthorizationPort projectAuthorization;
     private ArtifactApplicationController controller;
+    private final List<String> events = new ArrayList<>();
 
     @BeforeEach
     void setUp() {
         service = new FakeArtifactApplicationService();
-        controller = new ArtifactApplicationController(service);
+        projectAuthorization = mock(ArtifactProjectAuthorizationPort.class);
+        doAnswer(invocation -> {
+            events.add("authorize(" + invocation.getArgument(0) + "," + invocation.getArgument(1) + ")");
+            return null;
+        }).when(projectAuthorization).requireRead(org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString());
+        controller = new ArtifactApplicationController(service, projectAuthorization);
     }
 
     @Test
@@ -65,7 +82,30 @@ class ArtifactApplicationControllerTest {
         assertFalse(body.toString().contains("bucket"));
     }
 
-    private static final class FakeArtifactApplicationService extends ArtifactApplicationService {
+    @Test
+    void listAndAccessAuthorizeProjectReadBeforeServiceAccess() {
+        service.access = new ArtifactAccess(
+                new ArtifactId("artifact-a"), URI.create("https://access.example/artifact-a"),
+                Instant.parse("2026-08-29T01:00:00Z"));
+
+        controller.list("tenant-a", "project-a", "job-a", 25);
+        controller.access("tenant-a", "project-a", "job-a", "artifact-a");
+
+        assertEquals(List.of(
+                "authorize(tenant-a,project-a)", "service.list",
+                "authorize(tenant-a,project-a)", "service.access"), events);
+    }
+
+    @Test
+    void authorizationDenialPreventsServiceInteraction() {
+        doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "denied"))
+                .when(projectAuthorization).requireRead("tenant-a", "project-a");
+
+        assertThrows(ResponseStatusException.class,
+                () -> controller.list("tenant-a", "project-a", "job-a", 25));
+    }
+
+    private final class FakeArtifactApplicationService extends ArtifactApplicationService {
         private List<ArtifactSummary> summaries = List.of();
         private ArtifactAccess access;
 
@@ -75,6 +115,7 @@ class ArtifactApplicationControllerTest {
 
         @Override
         public List<ArtifactSummary> listArtifacts(ArtifactScope scope, int requestedLimit) {
+            events.add("service.list");
             return summaries;
         }
 
@@ -85,6 +126,7 @@ class ArtifactApplicationControllerTest {
 
         @Override
         public ArtifactAccess requestAccess(ArtifactScope scope, ArtifactId artifactId) {
+            events.add("service.access");
             return access;
         }
     }

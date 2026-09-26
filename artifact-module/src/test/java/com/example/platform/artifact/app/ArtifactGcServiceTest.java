@@ -36,6 +36,9 @@ import org.springframework.context.ApplicationEventPublisher;
  */
 class ArtifactGcServiceTest extends PostgresTestContainerSupport {
 
+    private static final String TENANT = "t1";
+    private static final String PROJECT = "prj_1";
+
     private static DataSource dataSource;
     private static DSLContext dsl;
 
@@ -90,46 +93,63 @@ class ArtifactGcServiceTest extends PostgresTestContainerSupport {
         gcService = new ArtifactGcService(artifactRepository, lifecycle, props, auditPort);
     }
 
-    private void insertTombstonedArtifact(String id, Instant tombstonedAt) {
-        artifactRepository.insertRaw(new ArtifactId(id), "t1", ContentDigest.sha256("a".repeat(64)),
+    private void insertTombstonedArtifact(String id, String projectId, Instant tombstonedAt) {
+        artifactRepository.insertRaw(new ArtifactId(id), TENANT, projectId,
+                ContentDigest.sha256("a".repeat(64)),
                 10L, ArtifactMediaType.VIDEO, ArtifactKind.RENDER_MASTER, ArtifactState.DELETING,
                 tombstonedAt);
     }
 
     @Test
     void purgesOldUnpinnedTombstonedArtifacts() {
-        insertTombstonedArtifact("art_gc1", Instant.now().minusSeconds(86400 * 10));
+        insertTombstonedArtifact("art_gc1", PROJECT, Instant.now().minusSeconds(86400 * 10));
 
-        ArtifactGcService.GcResult result = gcService.runGc("t1", 1);
+        ArtifactGcService.GcResult result = gcService.runGc(TENANT, PROJECT, 1, false, 10);
         assertEquals(1, result.purged());
         assertEquals(0, result.failed());
         // Logical purge marks the canonical Artifact DELETED (row remains as history).
-        assertTrue(artifactRepository.findById("t1", new ArtifactId("art_gc1"))
+        assertTrue(artifactRepository.findById(TENANT, new ArtifactId("art_gc1"))
                 .map(a -> a.state() == ArtifactState.DELETED).orElse(false));
     }
 
     @Test
     void skipsPinnedArtifacts() {
-        insertTombstonedArtifact("art_pinned", Instant.now().minusSeconds(86400 * 10));
-        pinRepository.insert("pin_1", "trev_1", "prj_1", "t1", "art_pinned",
+        insertTombstonedArtifact("art_pinned", PROJECT, Instant.now().minusSeconds(86400 * 10));
+        pinRepository.insert("pin_1", "trev_1", PROJECT, TENANT, "art_pinned",
                 ContentDigest.sha256("a".repeat(64)), Instant.now());
 
-        ArtifactGcService.GcResult result = gcService.runGc("t1", 1);
+        ArtifactGcService.GcResult result = gcService.runGc(TENANT, PROJECT, 1, false, 10);
         assertEquals(0, result.purged());
         assertEquals(1, result.skipped());
         // Pinned artifact must remain present (not deleted).
-        assertTrue(artifactRepository.findById("t1", new ArtifactId("art_pinned")).isPresent());
+        assertTrue(artifactRepository.findById(TENANT, new ArtifactId("art_pinned")).isPresent());
     }
 
     @Test
     void keepsYoungTombstonedArtifacts() {
-        insertTombstonedArtifact("art_young", Instant.now().minusSeconds(60));
+        insertTombstonedArtifact("art_young", PROJECT, Instant.now().minusSeconds(60));
 
-        ArtifactGcService.GcResult result = gcService.runGc("t1", 1, false, 10);
+        ArtifactGcService.GcResult result = gcService.runGc(TENANT, PROJECT, 1, false, 10);
         // Young tombstoned artifact is outside the retention window: not a GC candidate.
         assertEquals(0, result.purged());
         assertEquals(0, result.scanned());
-        assertTrue(artifactRepository.findById("t1", new ArtifactId("art_young"))
+        assertTrue(artifactRepository.findById(TENANT, new ArtifactId("art_young"))
+                .map(a -> a.state() == ArtifactState.DELETING).orElse(false));
+    }
+
+    @Test
+    void gcIsScopedToTheAuthorizedProject() {
+        insertTombstonedArtifact("art_a", PROJECT, Instant.now().minusSeconds(86400 * 10));
+        insertTombstonedArtifact("art_b", "prj_other", Instant.now().minusSeconds(86400 * 10));
+
+        ArtifactGcService.GcResult result = gcService.runGc(TENANT, PROJECT, 1, false, 10);
+
+        assertEquals(1, result.purged());
+        assertEquals(1, result.scanned());
+        assertTrue(artifactRepository.findById(TENANT, new ArtifactId("art_a"))
+                .map(a -> a.state() == ArtifactState.DELETED).orElse(false));
+        // A different project's tombstone is never touched by this project's GC run.
+        assertTrue(artifactRepository.findById(TENANT, new ArtifactId("art_b"))
                 .map(a -> a.state() == ArtifactState.DELETING).orElse(false));
     }
 }

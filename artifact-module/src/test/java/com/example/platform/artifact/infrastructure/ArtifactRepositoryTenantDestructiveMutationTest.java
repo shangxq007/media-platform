@@ -106,7 +106,9 @@ class ArtifactRepositoryTenantDestructiveMutationTest extends PostgresTestContai
     @Test
     void destructiveOperationsRejectNullBlankAndWildcardTenant() {
         assertThrows(IllegalArgumentException.class,
-                () -> repository.findTombstonedBefore(null, Instant.now()));
+                () -> repository.findTombstonedBefore(null, "prj-1", Instant.now()));
+        assertThrows(IllegalArgumentException.class,
+                () -> repository.findTombstonedBefore(OWNER, " ", Instant.now()));
         assertThrows(IllegalArgumentException.class,
                 () -> repository.updateState(" ", "art-1", ArtifactState.DELETING, LocalDateTime.now()));
         assertThrows(IllegalArgumentException.class,

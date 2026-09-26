@@ -31,8 +31,15 @@ public class BuiltinDataInitializer {
 
     private void initPermissions() {
         createPermIfNotExists("ADMIN", "Administrator access", "Full workspace administration", "PLATFORM");
+        // Project-scoped read action used by TenantProjectService and every project-scoped
+        // read surface (Timeline/Artifact HTTP boundaries). Was previously unseeded, so every
+        // project-scoped READ failed closed; WRITE was already seeded.
+        createPermIfNotExists("READ", "Read access", "Read project-scoped resources", "PLATFORM");
         createPermIfNotExists("WRITE", "Write access", "Create and edit workspace resources", "PLATFORM");
         createPermIfNotExists("MEMBER_MANAGE", "Manage members", "Invite and manage workspace members", "PLATFORM");
+        // ARTIFACT_AUTHORITY_CONTRACT_V1: Artifact surface action vocabulary (project scope).
+        createPermIfNotExists("artifact.read", "Read Artifact", "Read canonical Artifact records and lifecycle state", "ARTIFACT");
+        createPermIfNotExists("artifact.lifecycle.manage", "Manage Artifact lifecycle", "Tombstone and garbage-collect canonical Artifact records", "ARTIFACT");
         createPermIfNotExists("render.submit", "Submit render job", "Submit a render job", "RENDER");
         createPermIfNotExists("render.cancel", "Cancel render job", "Cancel a running render job", "RENDER");
         createPermIfNotExists("render.use_gpu", "Use GPU rendering", "Use GPU for rendering", "RENDER");
@@ -67,6 +74,14 @@ public class BuiltinDataInitializer {
         linkRolePermissionIfNotExists("ADMIN", "MEMBER_MANAGE");
         linkRolePermissionIfNotExists("ADMIN", "WRITE");
         linkRolePermissionIfNotExists("EDITOR", "WRITE");
+        linkRolePermissionIfNotExists("ADMIN", "READ");
+        linkRolePermissionIfNotExists("EDITOR", "READ");
+        linkRolePermissionIfNotExists("VIEWER", "READ");
+        linkRolePermissionIfNotExists("ADMIN", "artifact.read");
+        linkRolePermissionIfNotExists("EDITOR", "artifact.read");
+        linkRolePermissionIfNotExists("VIEWER", "artifact.read");
+        linkRolePermissionIfNotExists("ADMIN", "artifact.lifecycle.manage");
+        linkRolePermissionIfNotExists("EDITOR", "artifact.lifecycle.manage");
         linkRolePermissionIfNotExists("VIEWER", "render.submit");
         linkRolePermissionIfNotExists("ADMIN", "delivery.read");
         linkRolePermissionIfNotExists("EDITOR", "delivery.read");

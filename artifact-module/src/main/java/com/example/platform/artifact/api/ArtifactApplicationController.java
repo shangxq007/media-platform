@@ -3,6 +3,7 @@ package com.example.platform.artifact.api;
 import com.example.platform.artifact.app.ArtifactAccess;
 import com.example.platform.artifact.app.ArtifactApplicationService;
 import com.example.platform.artifact.app.ArtifactApplicationService.ArtifactAccessException;
+import com.example.platform.artifact.app.ArtifactProjectAuthorizationPort;
 import com.example.platform.artifact.app.ArtifactScope;
 import com.example.platform.artifact.app.ArtifactSummary;
 import com.example.platform.shared.identity.ArtifactId;
@@ -21,9 +22,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class ArtifactApplicationController {
 
     private final ArtifactApplicationService service;
+    private final ArtifactProjectAuthorizationPort projectAuthorization;
 
-    public ArtifactApplicationController(ArtifactApplicationService service) {
+    public ArtifactApplicationController(ArtifactApplicationService service,
+                                         ArtifactProjectAuthorizationPort projectAuthorization) {
         this.service = service;
+        this.projectAuthorization = projectAuthorization;
     }
 
     @GetMapping
@@ -32,6 +36,7 @@ public class ArtifactApplicationController {
             @PathVariable String projectId,
             @PathVariable String renderJobId,
             @RequestParam(defaultValue = "100") int limit) {
+        projectAuthorization.requireRead(tenantId, projectId);
         List<ArtifactSummaryResponse> items = service.listArtifacts(
                 new ArtifactScope(tenantId, projectId, renderJobId), limit).stream()
                 .map(ArtifactApplicationController::toResponse)
@@ -46,6 +51,7 @@ public class ArtifactApplicationController {
             @PathVariable String projectId,
             @PathVariable String renderJobId,
             @PathVariable String artifactId) {
+        projectAuthorization.requireRead(tenantId, projectId);
         try {
             ArtifactAccess access = service.requestAccess(
                     new ArtifactScope(tenantId, projectId, renderJobId), new ArtifactId(artifactId));

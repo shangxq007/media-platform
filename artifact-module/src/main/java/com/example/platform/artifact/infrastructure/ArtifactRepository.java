@@ -56,11 +56,18 @@ public class ArtifactRepository {
     /** Test/operational helper: insert a canonical row in an explicit state. */
     public void insertRaw(ArtifactId artifactId, String tenantId, ContentDigest digest, long byteLength,
             ArtifactMediaType mediaType, ArtifactKind kind, ArtifactState state, Instant tombstonedAt) {
+        insertRaw(artifactId, tenantId, null, digest, byteLength, mediaType, kind, state, tombstonedAt);
+    }
+
+    /** Test/operational helper: insert a canonical row with an explicit project scope. */
+    public void insertRaw(ArtifactId artifactId, String tenantId, String projectId, ContentDigest digest,
+            long byteLength, ArtifactMediaType mediaType, ArtifactKind kind, ArtifactState state,
+            Instant tombstonedAt) {
         dsl.insertInto(ARTIFACT)
-                .columns(ARTIFACT.ID, ARTIFACT.TENANT_ID, ARTIFACT.CONTENT_DIGEST, ARTIFACT.BYTE_LENGTH,
-                        ARTIFACT.MEDIA_TYPE, ARTIFACT.ARTIFACT_KIND, ARTIFACT.STATE,
+                .columns(ARTIFACT.ID, ARTIFACT.TENANT_ID, ARTIFACT.PROJECT_ID, ARTIFACT.CONTENT_DIGEST,
+                        ARTIFACT.BYTE_LENGTH, ARTIFACT.MEDIA_TYPE, ARTIFACT.ARTIFACT_KIND, ARTIFACT.STATE,
                         ARTIFACT.SCHEMA_VERSION, ARTIFACT.CREATED_AT, ARTIFACT.TOMBSTONED_AT)
-                .values(artifactId.value(), tenantId, digest.canonicalValue(), byteLength,
+                .values(artifactId.value(), tenantId, projectId, digest.canonicalValue(), byteLength,
                         mediaType.name(), kind.name(), state.name(), 1,
                         toDb(Instant.now()),
                         tombstonedAt == null ? null : toDb(tombstonedAt))
@@ -202,12 +209,16 @@ public class ArtifactRepository {
         return step.execute() == 1;
     }
 
-    public List<Artifact> findTombstonedBefore(String tenantId, Instant cutoff) {
+    public List<Artifact> findTombstonedBefore(String tenantId, String projectId, Instant cutoff) {
         requireTenantId(tenantId);
+        if (projectId == null || projectId.isBlank()) {
+            throw new IllegalArgumentException("explicit projectId is required");
+        }
         var condition = ARTIFACT.STATE.eq(ArtifactState.DELETING.name())
                 .and(ARTIFACT.TOMBSTONED_AT.isNotNull())
                 .and(ARTIFACT.TOMBSTONED_AT.lt(toDb(cutoff)))
-                .and(ARTIFACT.TENANT_ID.eq(tenantId));
+                .and(ARTIFACT.TENANT_ID.eq(tenantId))
+                .and(ARTIFACT.PROJECT_ID.eq(projectId));
         return dsl.selectFrom(ARTIFACT)
                 .where(condition)
                 .fetch()
