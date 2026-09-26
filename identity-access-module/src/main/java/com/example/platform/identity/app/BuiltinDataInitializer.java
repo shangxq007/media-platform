@@ -36,6 +36,10 @@ public class BuiltinDataInitializer {
         // project-scoped READ failed closed; WRITE was already seeded.
         createPermIfNotExists("READ", "Read access", "Read project-scoped resources", "PLATFORM");
         createPermIfNotExists("WRITE", "Write access", "Create and edit workspace resources", "PLATFORM");
+        // AUTH-INVENTORY-FIX-001 (P0): CREATE was referenced by TenantProjectService but never
+        // seeded, so project creation failed closed for every actor (no role can hold an
+        // undefined key).
+        createPermIfNotExists("CREATE", "Create project", "Create projects within the tenant", "PLATFORM");
         createPermIfNotExists("MEMBER_MANAGE", "Manage members", "Invite and manage workspace members", "PLATFORM");
         // ARTIFACT_AUTHORITY_CONTRACT_V1: Artifact surface action vocabulary (project scope).
         createPermIfNotExists("artifact.read", "Read Artifact", "Read canonical Artifact records and lifecycle state", "ARTIFACT");
@@ -64,6 +68,14 @@ public class BuiltinDataInitializer {
         createPermIfNotExists("workflow-definition.edit", "Edit workflow definition", "Create and edit workflow definitions", "WORKFLOW");
         createPermIfNotExists("workflow-definition.publish", "Publish workflow definition", "Publish a validated workflow definition", "WORKFLOW");
         createPermIfNotExists("workflow-definition.archive", "Archive workflow definition", "Archive a workflow definition", "WORKFLOW");
+
+        // UWEV1-FV1 / AUTH-INVENTORY-FIX-001 (P0): the workflow-execution action vocabulary
+        // declared by workflow-module AuthorizationActions was never seeded, so every
+        // workflow execution request failed closed for all users.
+        createPermIfNotExists("workflow.execution.start", "Start workflow execution", "Start a workflow execution", "WORKFLOW");
+        createPermIfNotExists("workflow.execution.read", "Read workflow execution", "Read workflow executions", "WORKFLOW");
+        createPermIfNotExists("workflow.execution.cancel", "Cancel workflow execution", "Cancel a running workflow execution", "WORKFLOW");
+        createPermIfNotExists("workflow.execution.approve", "Approve workflow execution", "Approve or reject a workflow execution", "WORKFLOW");
     }
 
     private void initRoles() {
@@ -77,6 +89,8 @@ public class BuiltinDataInitializer {
         linkRolePermissionIfNotExists("ADMIN", "READ");
         linkRolePermissionIfNotExists("EDITOR", "READ");
         linkRolePermissionIfNotExists("VIEWER", "READ");
+        linkRolePermissionIfNotExists("ADMIN", "CREATE");
+        linkRolePermissionIfNotExists("EDITOR", "CREATE");
         linkRolePermissionIfNotExists("ADMIN", "artifact.read");
         linkRolePermissionIfNotExists("EDITOR", "artifact.read");
         linkRolePermissionIfNotExists("VIEWER", "artifact.read");
@@ -107,6 +121,29 @@ public class BuiltinDataInitializer {
         linkRolePermissionIfNotExists("EDITOR", "workflow-definition.read");
         linkRolePermissionIfNotExists("EDITOR", "workflow-definition.edit");
         linkRolePermissionIfNotExists("VIEWER", "workflow-definition.read");
+
+        // UWEV1-FV1 / AUTH-INVENTORY-FIX-001 (P0): execution role mappings (owner/editor may
+        // start/cancel/approve; member may read; viewer baseline read).
+        linkRolePermissionIfNotExists("ADMIN", "workflow.execution.start");
+        linkRolePermissionIfNotExists("EDITOR", "workflow.execution.start");
+        linkRolePermissionIfNotExists("ADMIN", "workflow.execution.read");
+        linkRolePermissionIfNotExists("EDITOR", "workflow.execution.read");
+        linkRolePermissionIfNotExists("VIEWER", "workflow.execution.read");
+        linkRolePermissionIfNotExists("ADMIN", "workflow.execution.cancel");
+        linkRolePermissionIfNotExists("EDITOR", "workflow.execution.cancel");
+        linkRolePermissionIfNotExists("ADMIN", "workflow.execution.approve");
+
+        // AUTH-INVENTORY-FIX-001 (P0): keys that were seeded but had no role link, so no role
+        // could obtain them (admin could not publish a social post or a Marketplace listing
+        // through RBAC alone). marketplace.* keys are seeded by migration V6.
+        linkRolePermissionIfNotExists("ADMIN", "social.publish");
+        linkRolePermissionIfNotExists("EDITOR", "social.publish");
+        linkRolePermissionIfNotExists("ADMIN", "marketplace.manage");
+        linkRolePermissionIfNotExists("EDITOR", "marketplace.manage");
+        linkRolePermissionIfNotExists("ADMIN", "marketplace.review");
+        linkRolePermissionIfNotExists("EDITOR", "marketplace.review");
+        linkRolePermissionIfNotExists("ADMIN", "marketplace.publish");
+        linkRolePermissionIfNotExists("EDITOR", "marketplace.publish");
     }
 
     private void linkRolePermissionIfNotExists(String roleKey, String permissionKey) {

@@ -71,7 +71,8 @@ JOOQ_BUILD_GRAPH_PATHS = {
 AUTHORITY_GROUPS = ("identity", "observation", "billing", "execution", "outbox", "render-read")
 AUTHORITY_TEST_ENTRYPOINT = "scripts/test-authority-modules.sh"
 H8_GUARD_PATH = "scripts/guards/h8-operation-invocation-boundary-guard.py"
-KNOWN_BACKEND_VERIFICATION_PATHS = {AUTHORITY_TEST_ENTRYPOINT, H8_GUARD_PATH}
+H7_V2_GUARD_PATH = "scripts/guards/h7-v2-architecture-guard.py"
+KNOWN_BACKEND_VERIFICATION_PATHS = {AUTHORITY_TEST_ENTRYPOINT, H8_GUARD_PATH, H7_V2_GUARD_PATH}
 
 
 def _under(path: str, prefix: str) -> bool:
@@ -226,7 +227,7 @@ class Classification:
                 return AUTHORITY_GROUPS
             if path.startswith("identity-access-module/"):
                 selected.add("render-read")
-            if path == H8_GUARD_PATH:
+            if path in {H8_GUARD_PATH, H7_V2_GUARD_PATH}:
                 selected.add("identity")
             for prefixes, groups in (
                 (("identity-access-module/", "delivery-module/", "workflow-module/"), ("identity",)),

@@ -61,6 +61,8 @@ BUILD_GRAPH_POLICY = {
 STORAGE_GOVERNANCE_CI_INFRASTRUCTURE_PATHS = (
     "scripts/guards/validate-storage-object-identity-placement-migration-contract.py",
 )
+H8_GUARD_PATH = "scripts/guards/h8-operation-invocation-boundary-guard.py"
+H7_V2_GUARD_PATH = "scripts/guards/h7-v2-architecture-guard.py"
 JOOQ_CI_INFRASTRUCTURE_PATHS = (
     "scripts/test_verify_jooq_generated_schema_parity.py",
     "scripts/verify-jooq-generated-schema-parity.py",
@@ -97,6 +99,7 @@ CASES = (
     ("jooq-schema-parity-verifier", JOOQ_CI_INFRASTRUCTURE_PATHS[1], {"ci_infrastructure"}, FULL_VALIDATION_WITHOUT_IMAGE),
     ("jooq-schema-regeneration", JOOQ_CI_INFRASTRUCTURE_PATHS[2], {"ci_infrastructure"}, FULL_VALIDATION_WITHOUT_IMAGE),
     ("jooq-codegen-build-graph", JOOQ_BUILD_GRAPH_PATH, {"build_graph"}, BUILD_GRAPH_POLICY),
+    ("h7-v2-authorization-guard", H7_V2_GUARD_PATH, {"backend_verification"}, {"backend_ci", "architecture_drift"}),
     ("unknown", "unowned/new-surface.xyz", {"unknown"}, {"full_ci", "backend_ci", "frontend_ci", "architecture_drift", "gitops_validation", "semgrep_validation", "formal_verification"}),
 )
 
@@ -573,6 +576,11 @@ def assert_authority_test_selection() -> None:
     assert h8.policy()["backend_ci"] and h8.policy()["architecture_drift"]
     assert not h8.policy()["full_ci"] and not h8.policy()["frontend_ci"]
     assert h8.authority_test_groups() == ("identity",)
+    h7_v2 = classifier.Classification.from_paths([classifier.H7_V2_GUARD_PATH])
+    assert set(h7_v2.categories) == {"backend_verification"}
+    assert h7_v2.policy()["backend_ci"] and h7_v2.policy()["architecture_drift"]
+    assert not h7_v2.policy()["full_ci"] and not h7_v2.policy()["frontend_ci"]
+    assert h7_v2.authority_test_groups() == ("identity",)
     entry = classifier.Classification.from_paths([classifier.AUTHORITY_TEST_ENTRYPOINT])
     assert entry.authority_test_groups() == classifier.AUTHORITY_GROUPS
     assert not entry.policy()["full_ci"] and "docs" not in entry.categories

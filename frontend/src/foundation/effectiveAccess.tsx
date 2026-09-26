@@ -15,12 +15,17 @@ export type EffectiveAccessFactorStatus =
   | 'UNKNOWN'
   | 'NOT_APPLICABLE'
 
+// Canonical factor vocabulary shared with the backend effective-capability projection
+// (platform-app `EffectiveCapabilitySource.factorKey()`). Keep these five names, in this
+// order: capability, runtime, entitlement, quota, policy — the order is the backend
+// projection's fixed source order, and `EffectiveAccessFactorVocabularyConsistencyTest`
+// pins both lists together. Factors are always read by name, never positionally.
 export interface EffectiveAccessFactors {
   readonly capability: EffectiveAccessFactorStatus
   readonly runtime: EffectiveAccessFactorStatus
   readonly entitlement: EffectiveAccessFactorStatus
-  readonly policy: EffectiveAccessFactorStatus
   readonly quota: EffectiveAccessFactorStatus
+  readonly policy: EffectiveAccessFactorStatus
 }
 
 export interface EffectiveAccessEntry {

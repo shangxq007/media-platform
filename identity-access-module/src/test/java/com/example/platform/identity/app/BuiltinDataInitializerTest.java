@@ -38,10 +38,12 @@ class BuiltinDataInitializerTest {
 
         initializer.init();
 
-        assertEquals(28, distinctPermissionKeys().size());
+        assertEquals(33, distinctPermissionKeys().size());
         assertTrue(distinctPermissionKeys().containsAll(Set.of("delivery.read", "delivery.manage")));
         assertTrue(distinctPermissionKeys().containsAll(
-                Set.of("READ", "artifact.read", "artifact.lifecycle.manage")));
+                Set.of("READ", "CREATE", "artifact.read", "artifact.lifecycle.manage",
+                        "workflow.execution.start", "workflow.execution.read",
+                        "workflow.execution.cancel", "workflow.execution.approve")));
     }
 
     @Test
@@ -65,7 +67,7 @@ class BuiltinDataInitializerTest {
 
         initializer.init();
 
-        assertEquals(27, distinctPermissionKeys().size());
+        assertEquals(32, distinctPermissionKeys().size());
     }
 
     @Test
@@ -106,7 +108,7 @@ class BuiltinDataInitializerTest {
 
         Set<String> permKeys = distinctPermissionKeys();
         assertTrue(permKeys.containsAll(Set.of(
-                "ADMIN", "READ", "WRITE", "MEMBER_MANAGE",
+                "ADMIN", "READ", "WRITE", "CREATE", "MEMBER_MANAGE",
                 "artifact.read", "artifact.lifecycle.manage",
                 "render.submit", "render.cancel", "render.use_gpu", "render.use_remote_worker",
                 "entitlement.grant", "entitlement.revoke", "billing.manage",
@@ -114,7 +116,9 @@ class BuiltinDataInitializerTest {
                 "navigation.manage", "notification.manage", "social.publish", "social.read",
                 "social.content.read", "social.artifact.read",
                 "workflow-definition.read", "workflow-definition.edit",
-                "workflow-definition.publish", "workflow-definition.archive")));
+                "workflow-definition.publish", "workflow-definition.archive",
+                "workflow.execution.start", "workflow.execution.read",
+                "workflow.execution.cancel", "workflow.execution.approve")));
     }
 
     private Set<String> distinctPermissionKeys() {
