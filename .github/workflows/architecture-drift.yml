@@ -55,6 +55,37 @@ jobs:
       - name: Run architecture drift guard
         run: bash scripts/check-architecture-drift.sh
 
+  api-contract-gate-controls:
+    runs-on: ubuntu-latest
+    needs: change-impact
+    # Governance/architecture/contract changes (the classifier maps contracts/**, governance docs and
+    # the gate/harness scripts into these two signals), so the four API contract gate controls can
+    # never regress silently. A failure here fails the workflow run and blocks the merge.
+    if: needs.change-impact.outputs.architecture_drift == 'true' || needs.change-impact.outputs.backend_ci == 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node 22 (contract lint tooling, pinned in contracts/package.json)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install pinned contract tooling
+        working-directory: contracts
+        run: npm ci --no-audit --no-fund
+
+      - name: Script syntax check
+        run: |
+          set -euo pipefail
+          bash -n scripts/check-api-contract-governance.sh
+          bash -n scripts/test/api-contract-governance-gate-controls.sh
+
+      - name: Run API contract governance gate controls
+        run: bash scripts/test/api-contract-governance-gate-controls.sh
+
   foundation-verification:
     runs-on: ubuntu-latest
     needs: change-impact
