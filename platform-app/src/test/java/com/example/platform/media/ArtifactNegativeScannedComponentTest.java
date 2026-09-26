@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.TestPropertySource;
 
 /**
  * Regression proof: a realistic legacy component reintroduced through normal
@@ -16,6 +17,7 @@ import org.springframework.test.context.ActiveProfiles;
  */
 @SpringBootTest(classes = PlatformApplication.class, webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @ActiveProfiles("v26-negative")
+@TestPropertySource(properties = "app.security.jwt.secret-key=platform-api-context-test-secret-at-least-256-bits-long!!")
 class ArtifactNegativeScannedComponentTest extends PostgresTestContainerSupport {
     @Autowired
     private ConfigurableApplicationContext context;

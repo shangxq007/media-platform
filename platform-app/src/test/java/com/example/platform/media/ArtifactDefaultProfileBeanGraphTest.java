@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.test.context.TestPropertySource;
 
 /**
  * Runtime reachability proof for the actual production application context.
@@ -25,6 +26,7 @@ import org.springframework.context.ConfigurableApplicationContext;
  * started through the repository's approved PostgreSQL test infrastructure.
  */
 @SpringBootTest(classes = PlatformApplication.class, webEnvironment = SpringBootTest.WebEnvironment.NONE)
+@TestPropertySource(properties = "app.security.jwt.secret-key=platform-api-context-test-secret-at-least-256-bits-long!!")
 class ArtifactDefaultProfileBeanGraphTest extends PostgresTestContainerSupport {
     private static final Set<String> DELETED = Set.of(
             "MediaAuthorization", "MediaAssetService", "MediaProbeService",

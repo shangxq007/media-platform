@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.test.context.TestPropertySource;
 
 /**
  * Runtime proof for the narrowed Timeline source-validation contract
@@ -25,6 +26,7 @@ import org.springframework.context.ConfigurableApplicationContext;
  * {@link TimelineMediaClipOperationService} consumer must be present and wired to that port.
  */
 @SpringBootTest(classes = PlatformApplication.class, webEnvironment = SpringBootTest.WebEnvironment.NONE)
+@TestPropertySource(properties = "app.security.jwt.secret-key=platform-api-context-test-secret-at-least-256-bits-long!!")
 class TimelineSourceValidationArtifactPinWiringTest extends PostgresTestContainerSupport {
 
     @Autowired
