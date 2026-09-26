@@ -16,19 +16,10 @@ class ModularityTest {
      * Each entry documents: source module, target module, reason, and tracking issue.
      */
     private static final List<String> ALLOWED_VIOLATIONS = List.of(
-        // identity -> artifact: required for project asset listing during import/export
-        "identity' depends on named interface(s) 'artifact",
         // identity -> storage: required for project asset storage during import/export
         "identity' depends on named interface(s) 'storage",
         // render -> outbox: render module records delivery coordination intents for marketplace/search
         "render' depends on module 'outbox",
-        // render -> outbox app: render uses OutboxEventService for event publishing
-        "render' depends on named interface(s) 'outbox",
-        // render -> storage infrastructure: render needs S3ObjectMaterializer/Writer for artifact I/O
-        "render' depends on named interface(s) 'storage :: infrastructure",
-        // PMPR-ST1: render consumes canonical storage contracts (ContentDigest/StorageObjectId/...)
-        // through storage authority — LEGAL target dependency (STORAGE_SPI_BELONGS_TO_STORAGE_AUTHORITY)
-        "render' depends on named interface(s) 'storage :: contract",
         // PMPR-ST1-CRR1: web StorageRuntimeController consumes storage contracts through storage authority
         "web' depends on named interface(s) 'storage :: contract",
         // web -> render: web controllers delegate to render app/domain services
@@ -55,12 +46,6 @@ class ModularityTest {
         // PMPR-S1: render providers implement canonical PluginRuntimeProviderBinding
         // (extension::runtime) — provider effect binding under single PluginRuntime authority.
         "render' depends on named interface(s) 'extension :: runtime",
-        // PMPR-S1: lifecycle coordinator retains no superseded sandbox runtime authority.
-        "lifecycle' depends on module 'extension",
-        // K2 (K2-04): cost ports (CostEstimationPort/BudgetGuardPort + nested results) rehomed
-        // from shared-kernel to billing::app — entitlement consumes the cost-facing contract at
-        // the billing owner (EUMF usage/cost semantics preserved at billing).
-        "entitlement' depends on named interface(s) 'billing :: app",
         // ROADMAP_19 (C1/C34): render (Timeline) consumes font-text-module value
         // semantics for the Timeline-owned TextElement (frozen direction:
         // Render -> FontText; pure domain, zero outward deps).
@@ -68,10 +53,6 @@ class ModularityTest {
         // ROADMAP_19 CORR-2: web MCP controller supplies explicit SRT import font
         // policy (application-layer); font-text value semantics consumed at API boundary.
         "web' depends on module 'fonttext",
-        // K2 (K2-05): EntitlementPort rehomed from shared-kernel to entitlement::app — render
-        // consumes the entitlement validation contract at its owner (render -> entitlement was
-        // already an allowed module edge; the port now lives in the app named interface).
-        "render' depends on named interface(s) 'entitlement :: app",
         // MCMV2-C (F1-F4): render -> media is the frozen dependency direction
         // (Timeline/Render/Workflow/AI/Delivery/Adapter -> Media Canonical Model).
         // MediaProbeController/MediaAssetProbeService consume the canonical media model;
@@ -87,17 +68,6 @@ class ModularityTest {
         // violations — same class as the pre-existing render entries above.
         "render' depends on module 'timeline",
         "render' depends on module 'operation",
-        // GCR-2 reference-integrity dependency: Timeline validates immutable
-        // ArtifactId + ContentDigest pins through the Artifact authority
-        // (ArtifactQueryService) before revision commit. Bounded to Artifact-facing
-        // query contracts; Artifact does not depend on Timeline (no cycle).
-        "timeline' depends on module 'artifact",
-        // GCR-2 render reconnect: Render is Artifact producer/consumer through
-        // Artifact-owned services (ArtifactQueryService / ArtifactCatalogService /
-        // ArtifactCommitService) and domain value types. Frozen direction
-        // Render -> Artifact; artifact-module has no dependency on render.
-        "render' depends on named interface(s) 'artifact :: domain",
-        "render' depends on named interface(s) 'artifact :: app",
         "web' depends on module 'timeline",
         "timeline' depends on non-exposed type com.example.platform.audio",
         "timeline' depends on non-exposed type com.example.platform.fonttext",
