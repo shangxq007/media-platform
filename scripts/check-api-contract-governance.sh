@@ -13,9 +13,14 @@
 #     can therefore no longer turn a break into a silent pass.
 #   * A document oasdiff cannot load (exit >= 100, or "failed to load" on stderr) is a
 #     FAIL-CLOSED gate error — never treated as a detected break and never treated as safe.
-#   * The gate proves its own detection on every run against two checked-in controls:
+#   * A verdict report that cannot be read (unparseable JSON, non-list JSON, non-integer level, or an
+#     empty/crashed reader) is likewise a FAIL-CLOSED gate error: the reader emits the "-1 -1 -1"
+#     sentinel and verdict_fails_closed() refuses to turn it into a pass.
+#   * The gate proves its own detection on every run against two checked-in controls plus the
+#     unreadable-report control:
 #       - contracts/http/media-api/openapi.nonbreaking.yaml (additive)   -> must be NON-breaking;
 #       - contracts/http/media-api/openapi.breaking.yaml    (intentional) -> must be BREAKING.
+#       - an unparseable verdict report                                   -> must fail closed.
 #     Each control must also be a real difference from the base (`oasdiff diff` non-empty), so a
 #     control that degenerates into "identical to base" fails the self-test instead of passing it.
 #
@@ -129,6 +134,10 @@ else
 fi
 
 # Structured readers: verdicts come from the JSON report, never from grepping text.
+#
+# A verdict that cannot be read is a GATE ERROR, never a pass: the reader prints the sentinel
+# "-1 -1 -1" for unparseable JSON, non-list JSON, or any entry whose level is not an integer, and
+# verdict_fails_closed() below turns that sentinel (and any non-numeric count) into a failure.
 oasdiff_levels() {  # <json-file> -> "errors warnings infos" ("-1 -1 -1" when unreadable)
   python3 - "$1" <<'PY'
 import json
@@ -142,11 +151,29 @@ except Exception:
 if not isinstance(data, list):
     print("-1 -1 -1")
     raise SystemExit(0)
-levels = [int(entry.get("level", 0)) for entry in data]
+try:
+    levels = [int(entry.get("level", 0)) for entry in data]
+except Exception:
+    # A level that is not an integer makes the whole report unreadable -> fail-closed sentinel.
+    print("-1 -1 -1")
+    raise SystemExit(0)
 print(sum(1 for level in levels if level >= 3),
       sum(1 for level in levels if level == 2),
       sum(1 for level in levels if level == 1))
 PY
+}
+
+# verdict_fails_closed <load-fail> <errors> -> exit 0 when the pair must fail the gate.
+# Fail-closed cases: the document did not load, the reader printed its negative sentinel, or the
+# count is not even a number (reader crashed / empty output). Only a real, non-negative count of
+# error-level findings is evaluated normally — a clean 0 is still accepted.
+verdict_fails_closed() {
+  [ "$1" = "1" ] && return 0
+  case "$2" in
+    ''|*[!0-9-]*) return 0 ;;
+  esac
+  [ "$2" -lt 0 ] && return 0
+  return 1
 }
 
 oasdiff_diff_nonempty() {  # <json-file> -> exit 0 when the structural diff is non-empty
@@ -199,14 +226,27 @@ if [ "$OASDIFF_USABLE" = "1" ]; then
     sed -n '1,3p' /tmp/oasdiff-breaking.err
   fi
 
+  echo "== oasdiff self-test: unreadable verdict report must fail closed =="
+  printf 'not-a-json-verdict-report\n' >/tmp/oasdiff-unreadable.json
+  read -r UNREADABLE_ERRORS UNREADABLE_WARNINGS UNREADABLE_INFOS \
+    < <(oasdiff_levels /tmp/oasdiff-unreadable.json)
+  if [ "$UNREADABLE_ERRORS" = "-1" ] && [ "$UNREADABLE_WARNINGS" = "-1" ] \
+      && [ "$UNREADABLE_INFOS" = "-1" ] \
+      && verdict_fails_closed 0 "$UNREADABLE_ERRORS" \
+      && ! verdict_fails_closed 0 0; then
+    ck 0 "unreadable verdict report is fail-closed (sentinel $UNREADABLE_ERRORS; a clean 0-error verdict is still accepted)"
+  else
+    ck 1 "unreadable verdict report handling is wrong (sentinel '$UNREADABLE_ERRORS $UNREADABLE_WARNINGS $UNREADABLE_INFOS')"
+  fi
+
   echo "== oasdiff breaking: base vs candidate (candidate must not break the frozen base) =="
   echo "   candidate: $CANDIDATE_YAML"
   if [ ! -f "$CANDIDATE_YAML" ]; then
     ck 1 "candidate document not found: $CANDIDATE_YAML"
   else
     oasdiff_compare "$BASE_YAML" "$CANDIDATE_YAML" candidate
-    if [ "$LOAD_FAIL" = "1" ]; then
-      ck 1 "candidate document could not be loaded by oasdiff (fail-closed)"
+    if verdict_fails_closed "$LOAD_FAIL" "$ERRORS"; then
+      ck 1 "candidate verdict is unusable: document unloadable or report unreadable (fail-closed; load_fail=$LOAD_FAIL errors=${ERRORS:-<none>})"
       sed -n '1,3p' /tmp/oasdiff-candidate.err
     elif [ "$ERRORS" -gt 0 ]; then
       ck 1 "candidate introduces $ERRORS error-level breaking change(s) vs base ($WARNINGS warning, $INFOS info)"

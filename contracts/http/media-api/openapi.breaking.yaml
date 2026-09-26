@@ -163,6 +163,32 @@ paths:
       responses:
         '200':
           description: Validation result
+  /composition/applications/drafts:
+    post:
+      operationId: saveApplicationDraft
+      summary: Save an Application draft
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Application'
+      responses:
+        '200':
+          description: Draft saved
+  /composition/applications/validate:
+    post:
+      operationId: validateApplication
+      summary: Validate an Application without execution
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Application'
+      responses:
+        '200':
+          description: Validation result
   /composition/workflows/drafts/{id}:
     get:
       operationId: getTemplateWorkflowDraft
@@ -183,7 +209,6 @@ paths:
           description: Draft
     put:
       operationId: updateTemplateWorkflowDraft
-      summary: Update a workflow draft with optimistic concurrency
       parameters:
       - name: id
         in: path
@@ -198,9 +223,7 @@ paths:
               $ref: '#/components/schemas/TemplateWorkflow'
       responses:
         '200':
-          description: Draft saved
-        '409':
-          description: Stale draft
+          description: Draft updated
   /composition/workflows/drafts/{id}/publish:
     post:
       operationId: publishTemplateWorkflow
@@ -242,32 +265,6 @@ paths:
       responses:
         '200':
           description: Immutable version
-  /composition/applications/drafts:
-    post:
-      operationId: saveApplicationDraft
-      summary: Save an Application draft
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Application'
-      responses:
-        '200':
-          description: Draft saved
-  /composition/applications/validate:
-    post:
-      operationId: validateApplication
-      summary: Validate an Application without execution
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Application'
-      responses:
-        '200':
-          description: Validation result
   /composition/applications/drafts/{id}:
     get:
       operationId: getApplicationDraft
@@ -288,7 +285,6 @@ paths:
           description: Draft
     put:
       operationId: updateApplicationDraft
-      summary: Update an application draft with optimistic concurrency
       parameters:
       - name: id
         in: path
@@ -303,9 +299,7 @@ paths:
               $ref: '#/components/schemas/Application'
       responses:
         '200':
-          description: Draft saved
-        '409':
-          description: Stale draft
+          description: Draft updated
   /composition/applications/drafts/{id}/publish:
     post:
       operationId: publishApplication
@@ -327,7 +321,7 @@ paths:
   /composition/applications/versions/{id}/{version}:
     get:
       operationId: getApplicationVersion
-      summary: Get an immutable application version
+      summary: Get an application immutable version
       parameters:
       - name: id
         in: path
@@ -500,7 +494,18 @@ components:
       - name
       - steps
       - bindings
+      - parameters
+      - requiredCapabilities
       - executionModes
+      - requiredAssets
+      - outputs
+      - entry
+      - estimate
+      - reliability
+      - lifecycle
+      - tenantId
+      - workspaceId
+      - revision
       - mandatoryCoverageField
       properties:
         id:
@@ -512,15 +517,57 @@ components:
         steps:
           type: array
           items:
-            type: object
+            $ref: '#/components/schemas/WorkflowStep'
         bindings:
           type: array
           items:
-            type: object
+            $ref: '#/components/schemas/Binding'
+        parameters:
+          type: array
+          items:
+            $ref: '#/components/schemas/Parameter'
+        requiredCapabilities:
+          type: array
+          items:
+            type: string
         executionModes:
           type: array
           items:
             type: string
+            enum:
+            - SYNCHRONOUS
+            - ASYNCHRONOUS
+            - BATCH
+        requiredAssets:
+          type: array
+          items:
+            type: string
+        entitlements:
+          type: array
+          items:
+            $ref: '#/components/schemas/EntitlementRequirement'
+        outputs:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkflowOutput'
+        entry:
+          $ref: '#/components/schemas/WorkflowEntry'
+        estimate:
+          $ref: '#/components/schemas/CostEstimate'
+        reliability:
+          $ref: '#/components/schemas/Reliability'
+        lifecycle:
+          type: string
+          enum:
+          - DRAFT
+          - PUBLISHED
+        tenantId:
+          type: string
+        workspaceId:
+          type: string
+        revision:
+          type: integer
+          format: int64
         mandatoryCoverageField:
           type: string
     Application:
@@ -541,6 +588,38 @@ components:
           type: array
           items:
             type: string
+        requiredCapabilities:
+          type: array
+          items:
+            type: string
+        requiredAssets:
+          type: array
+          items:
+            type: string
+        entitlements:
+          type: array
+          items:
+            type: string
+        executionModes:
+          type: array
+          items:
+            type: string
+            enum:
+            - SYNCHRONOUS
+            - ASYNCHRONOUS
+            - BATCH
+        lifecycle:
+          type: string
+          enum:
+          - DRAFT
+          - PUBLISHED
+        tenantId:
+          type: string
+        workspaceId:
+          type: string
+        revision:
+          type: integer
+          format: int64
     EntitlementRequirement:
       type: object
       required:
@@ -646,28 +725,55 @@ components:
           type: array
           items:
             type: object
-    CapabilityAvailability:
-      type: object
-      properties:
-        capabilityId:
-          type: string
-        version:
-          type: string
-        input:
-          $ref: '#/components/schemas/ContractRef'
-        output:
-          $ref: '#/components/schemas/ContractRef'
-        availability:
-          type: string
-    ContractRef:
+    WorkflowStep:
       type: object
       required:
-      - name
-      - version
+      - id
+      - capabilityId
+      - capabilityVersion
+      - inputs
+      - requiredAssets
+      - alternatives
       properties:
-        name:
+        id:
           type: string
-        version:
+        capabilityId:
+          type: string
+        capabilityVersion:
+          type: string
+        inputs:
+          type: object
+          additionalProperties: true
+        requiredAssets:
+          type: array
+          items:
+            type: string
+        alternatives:
+          type: array
+          items:
+            type: string
+        entitlements:
+          type: array
+          items:
+            $ref: '#/components/schemas/EntitlementRequirement'
+    Binding:
+      type: object
+      required:
+      - fromStep
+      - fromOutput
+      - toStep
+      - toInput
+      - type
+      properties:
+        fromStep:
+          type: string
+        fromOutput:
+          type: string
+        toStep:
+          type: string
+        toInput:
+          type: string
+        type:
           type: string
     WorkflowEntry:
       type: object
@@ -701,30 +807,85 @@ components:
           type: string
         port:
           type: string
+    Parameter:
+      type: object
+      required:
+      - name
+      - type
+      - required
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum:
+          - string
+          - integer
+          - number
+          - boolean
+          - object
+          - array
+        defaultValue: {}
+        minimum:
+          type: number
+        maximum:
+          type: number
+        required:
+          type: boolean
+    CostEstimate:
+      type: object
+      required:
+      - units
+      - unit
+      - quotaUnits
+      properties:
+        units:
+          type: number
+        unit:
+          type: string
+        quotaUnits:
+          type: number
+    Reliability:
+      type: object
+      required:
+      - cancellable
+      - retryable
+      - maxRetries
+      properties:
+        cancellable:
+          type: boolean
+        retryable:
+          type: boolean
+        maxRetries:
+          type: integer
+          minimum: 0
     ValidationIssue:
       type: object
       required:
       - code
+      - path
+      - message
       - severity
       - objectType
       - objectId
-      - path
       - location
-      - message
       properties:
         code:
           type: string
+        path:
+          type: string
+        message:
+          type: string
         severity:
           type: string
+          enum:
+          - ERROR
+          - WARNING
         objectType:
           type: string
         objectId:
           type: string
-        path:
-          type: string
         location:
-          type: string
-        message:
           type: string
     ValidationResult:
       type: object
@@ -740,6 +901,49 @@ components:
           items:
             $ref: '#/components/schemas/ValidationIssue'
         snapshotId:
+          type: string
+    CapabilityAvailability:
+      type: object
+      required:
+      - capabilityId
+      - version
+      - input
+      - output
+      - availability
+      properties:
+        capabilityId:
+          type: string
+        version:
+          type: string
+        input:
+          $ref: '#/components/schemas/ContractRef'
+        output:
+          $ref: '#/components/schemas/ContractRef'
+        assetTypes:
+          type: array
+          items:
+            type: string
+        mediaTypes:
+          type: array
+          items:
+            type: string
+        executionModes:
+          type: array
+          items:
+            type: string
+        availability:
+          type: string
+        summary:
+          type: string
+    ContractRef:
+      type: object
+      required:
+      - name
+      - version
+      properties:
+        name:
+          type: string
+        version:
           type: string
     Artifact:
       type: object
