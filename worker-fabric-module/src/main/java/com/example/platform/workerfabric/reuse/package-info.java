@@ -1,9 +1,9 @@
 /**
- * Worker-local artifact reuse seam (materialization port, direct storage materializer, bounded cache).
+ * Worker-local artifact reuse seam (materialization, direct storage materialization, bounded cache).
  *
- * <p>Exposed as the worker-fabric {@code runtime} named interface, consistent with the class-level
- * {@code @NamedInterface("runtime")} already declared in this package
- * (COVER-PROVIDER-MODULITH-001).
+ * <p>This package is deliberately <em>not</em> exposed as a whole: the worker-fabric {@code runtime}
+ * named interface is declared per consumed type, so only the artifact-reuse seam an external consumer
+ * actually needs becomes part of the module's public surface
+ * (COVER-PROVIDER-MODULITH-001 / MODULITH-NARROW-001).
  */
-@org.springframework.modulith.NamedInterface("runtime")
 package com.example.platform.workerfabric.reuse;

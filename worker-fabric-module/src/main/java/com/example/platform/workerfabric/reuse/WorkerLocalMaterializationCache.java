@@ -19,6 +19,7 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 /** Bounded rebuildable worker-local byte cache keyed only by immutable ContentDigest. */
+@org.springframework.modulith.NamedInterface("runtime")
 public final class WorkerLocalMaterializationCache {
 
     private final Path root;

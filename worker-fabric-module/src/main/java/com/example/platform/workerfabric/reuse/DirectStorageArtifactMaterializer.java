@@ -17,6 +17,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 /** Direct materialization through the backend-neutral StorageProvider SPI. */
+@org.springframework.modulith.NamedInterface("runtime")
 public final class DirectStorageArtifactMaterializer implements ArtifactMaterializerPort {
 
     private final ArtifactQueryService artifacts;
