@@ -1,1 +1,3 @@
-oasdiff
+# The pinned oasdiff binary is VENDORED (tracked) at scripts/tools/oasdiff so the API
+# contract governance gate needs no manual provisioning; verify it with
+# scripts/tools/oasdiff.sha256 (TYPED-ARTIFACT-API-GOVERNANCE-001). Do not ignore it.

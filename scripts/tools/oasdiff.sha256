@@ -1,0 +1,10 @@
+# Pinned oasdiff toolchain for the API contract governance gate.
+# Consumed by scripts/check-api-contract-governance.sh (verification) and
+# scripts/tools/download-oasdiff.sh (provisioning). Tool versions are PINNED — no "latest".
+version: 1.28.0
+platform: linux-amd64
+url: https://github.com/oasdiff/oasdiff/releases/download/v1.28.0/oasdiff_1.28.0_linux_amd64.tar.gz
+sha256_tarball: e0ef076f2cf953d922addc04be9c3851cf3ec18f7678d2b94d44cea23dca51b5
+sha256_binary: 69f23d7d1899ba1bd27af6c1dd3db18c425937f7b85c0a3ad72efd01670957d2
+vendored_path: scripts/tools/oasdiff
+override_env: OASDIFF_BIN

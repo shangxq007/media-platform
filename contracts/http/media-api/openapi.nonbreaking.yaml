@@ -1,14 +1,11 @@
-# SELF-TEST FIXTURE (negative control) — intentionally BREAKING evolution of
+# SELF-TEST FIXTURE (positive control) — additively-evolved, NON-BREAKING variant of
 # contracts/http/media-api/openapi.base.yaml. Consumed only by
 # scripts/check-api-contract-governance.sh (oasdiff self-test); it is not a published contract.
 #
 # Deterministic transformation of openapi.base.yaml:
-#   1. removed the path  /composition/capabilities              -> api-path-removed (error)
-#   2. added a required request property `mandatoryCoverageField` (schema + required list) to the
-#      request schema TemplateWorkflow (used by POST /composition/workflows/{drafts,validate} and
-#      PUT /composition/workflows/drafts/{id})                  -> new-required-request-property (error)
-# The /artifacts/{artifactId}/lineage path is deliberately retained (required by
-# scripts/verify-artifact-mediaasset-convergence.py).
+#   1. added a new path /composition/governance-self-test (GET)   -> endpoint added (info)
+#   2. added an OPTIONAL property `detail` to the ApiError schema  -> additive (info)
+# No existing operation, parameter, response code, required property or type is modified.
 openapi: 3.1.0
 info:
   title: media-api
@@ -22,7 +19,7 @@ info:
     schema, capability semantic authority or revision authority (TRANSPORT_SCHEMA_IS_A_PROJECTION_NOT_DOMAIN_AUTHORITY_V1).
 
     '
-  x-fixture: intentional-breaking-control
+  x-fixture: non-breaking-control
 servers:
 - url: /api
 paths:
@@ -137,6 +134,13 @@ paths:
           description: Idempotency conflict
         '422':
           description: Invalid admission selectors or published composition
+  /composition/capabilities:
+    get:
+      operationId: listCapabilityAvailability
+      summary: Read provider-neutral capability availability
+      responses:
+        '200':
+          description: Capability availability catalog
   /composition/workflows/drafts:
     post:
       operationId: saveTemplateWorkflowDraft
@@ -477,6 +481,13 @@ paths:
       responses:
         '200':
           description: Version comparison
+  /composition/governance-self-test:
+    get:
+      operationId: governanceSelfTest
+      summary: Additive self-test endpoint (positive control; no behaviour implied)
+      responses:
+        '200':
+          description: Self-test acknowledgement
 components:
   responses:
     NotFound:
@@ -501,7 +512,6 @@ components:
       - steps
       - bindings
       - executionModes
-      - mandatoryCoverageField
       properties:
         id:
           type: string
@@ -521,8 +531,6 @@ components:
           type: array
           items:
             type: string
-        mandatoryCoverageField:
-          type: string
     Application:
       type: object
       required:
@@ -618,6 +626,8 @@ components:
         code:
           type: string
         message:
+          type: string
+        detail:
           type: string
       x-error-shape: consistent
     RenderJob:
