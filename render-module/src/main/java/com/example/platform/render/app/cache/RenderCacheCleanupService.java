@@ -48,6 +48,13 @@ public class RenderCacheCleanupService {
 
     public record CleanupResult(int jobsScanned, int objectsDeleted, int jobsUpdated) {}
 
+    /**
+     * NOTE (AUTH-UNPROTECTED-FIX-001, Part B decision item): this service is shared by the
+     * project-addressed render endpoint and the cross-tenant, admin-gated
+     * {@code AssetGovernanceController} surface. A service-level project RBAC gate here would break
+     * the admin cross-tenant sweep (its ambient tenant differs from the target tenant), so the
+     * authority model for the shared entry point is a decision, not a mechanical fix.
+     */
     public CleanupResult runCleanup(String tenantId, String projectId) {
         if (!cacheProperties.isCleanupEnabled()) {
             return new CleanupResult(0, 0, 0);

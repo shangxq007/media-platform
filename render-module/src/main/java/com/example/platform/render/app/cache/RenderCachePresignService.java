@@ -1,5 +1,6 @@
 package com.example.platform.render.app.cache;
 
+import com.example.platform.render.app.RenderSurfaceAuthorization;
 import com.example.platform.render.app.planner.PipelinePlanPersistenceService;
 import com.example.platform.render.infrastructure.RenderCacheProperties;
 import com.example.platform.storage.domain.BlobStorage;
@@ -23,15 +24,18 @@ public class RenderCachePresignService {
     private final PipelinePlanPersistenceService planPersistence;
     private final BlobStorage blobStorage;
     private final RenderCacheProperties cacheProperties;
+    private final RenderSurfaceAuthorization authorization;
 
     public RenderCachePresignService(RenderCacheTenantGuard tenantGuard,
                                      PipelinePlanPersistenceService planPersistence,
                                      BlobStorage blobStorage,
-                                     RenderCacheProperties cacheProperties) {
+                                     RenderCacheProperties cacheProperties,
+                                     RenderSurfaceAuthorization authorization) {
         this.tenantGuard = tenantGuard;
         this.planPersistence = planPersistence;
         this.blobStorage = blobStorage;
         this.cacheProperties = cacheProperties;
+        this.authorization = authorization;
     }
 
     public record CacheEntryPresign(
@@ -46,6 +50,9 @@ public class RenderCachePresignService {
     public record CachePresignResponse(String jobId, List<CacheEntryPresign> entries) {}
 
     public CachePresignResponse presignAll(String tenantId, String projectId, String jobId) {
+        // AUTH-UNPROTECTED-FIX-001: presigned cache URLs disclose render artifacts, so the
+        // addressed project must authorize a project-scoped READ before any URL is minted.
+        authorization.requireProjectRead(tenantId, projectId);
         tenantGuard.requireJobAccess(tenantId, projectId, jobId);
         Map<String, Object> state = planPersistence.loadExecutionState(jobId).orElse(Map.of());
         tenantGuard.assertExecutionStateTenant(tenantId, state);
@@ -56,6 +63,8 @@ public class RenderCachePresignService {
     }
 
     public CacheEntryPresign presignOne(String tenantId, String projectId, String jobId, String cacheKey) {
+        // AUTH-UNPROTECTED-FIX-001: same fail-closed project READ gate as presignAll.
+        authorization.requireProjectRead(tenantId, projectId);
         tenantGuard.requireJobAccess(tenantId, projectId, jobId);
         Map<String, Object> state = planPersistence.loadExecutionState(jobId).orElse(Map.of());
         tenantGuard.assertExecutionStateTenant(tenantId, state);
