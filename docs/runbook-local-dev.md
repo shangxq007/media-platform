@@ -45,6 +45,23 @@ curl -s http://localhost:8080/actuator/health | jq .
 
 Expected: `{"status":"UP"}`
 
+## Dev Auth Secret (`/api/dev/auth/token`)
+
+The dev token endpoint mints a JWT for local development and is protected by the
+`X-Dev-Auth-Secret` header. Every caller — the backend, the frontend dev server and the
+shell smoke scripts — must share the same `DEV_AUTH_SECRET`. When it is unset the endpoint
+fails closed (401) and the smoke scripts refuse to run.
+
+```bash
+export DEV_AUTH_SECRET="$(openssl rand -hex 32)"   # backend + frontend + smoke scripts
+```
+
+* Frontend: `DEV_AUTH_SECRET` is read by the vite dev server (Node side) and injected as the
+  header by the `/dev-auth/token` proxy. It is never inlined into the browser bundle.
+* Smoke scripts: read `DEV_AUTH_SECRET` from the environment or a `.env` file.
+
+Full details: [docs/development/dev-auth.md](development/dev-auth.md).
+
 ## Run Backend Locally with Gradle
 
 ```bash

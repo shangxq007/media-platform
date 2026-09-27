@@ -4,6 +4,10 @@
 
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/dev-auth.sh
+. "$SCRIPT_DIR/lib/dev-auth.sh"
+
 API_BASE="${API_BASE:-https://api.render.cc.cd}"
 TENANT_ID="ten_307b8956545642a9a45097f2f480a7b4"
 PROJECT_ID="prj_6802ca7a12c24aafa31cf77fa63890be"
@@ -16,12 +20,12 @@ fi
 echo "=== Real Media Render Smoke ==="
 echo "API: $API_BASE"
 
-# Get token
-TOKEN=$(curl -sS -X POST "$API_BASE/api/v1/dev/auth/token" \
-    -H "Content-Type: application/json" \
-    -d '{"tenantId":"smoke-tenant","userId":"smoke-user"}' 2>/dev/null | grep -o '"accessToken":"[^"]*"' | cut -d'"' -f4)
+# AUTH-DEV-AUTH-CALLER-ADAPT-001: the dev token endpoint requires
+# X-Dev-Auth-Secret. Fail closed before doing any work if it is not configured.
+smoke_require_dev_auth_secret || exit 1
 
-if [ -z "$TOKEN" ]; then
+# Get token
+if ! TOKEN=$(smoke_dev_auth_token "$API_BASE" "smoke-tenant" "smoke-user"); then
     echo "❌ Failed to get token"
     exit 1
 fi

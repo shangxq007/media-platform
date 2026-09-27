@@ -3,6 +3,10 @@
 # Usage: RENDER_EXECUTION_WRITE=1 ./scripts/smoke/render-execution-smoke.sh
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/dev-auth.sh
+. "$SCRIPT_DIR/lib/dev-auth.sh"
+
 API_BASE="${API_BASE_URL:-https://api.render.cc.cd}"
 WRITE_MODE="${RENDER_EXECUTION_WRITE:-0}"
 POLL_INTERVAL="${POLL_INTERVAL_SECONDS:-3}"
@@ -31,13 +35,13 @@ if [ "$WRITE_MODE" != "1" ]; then
     exit 0
 fi
 
+# AUTH-DEV-AUTH-CALLER-ADAPT-001: the dev token endpoint requires
+# X-Dev-Auth-Secret. Fail closed before any write if it is not configured.
+smoke_require_dev_auth_secret || exit 1
+
 # 2. Get dev token
 echo "2. Getting dev token..."
-TOKEN_RESPONSE=$(curl -sS -X POST "$API_BASE/api/v1/dev/auth/token" \
-    -H "Content-Type: application/json" \
-    -d "{\"tenantId\":\"$TENANT_ID\",\"userId\":\"smoke-user\"}" 2>/dev/null)
-TOKEN=$(echo "$TOKEN_RESPONSE" | grep -o '"accessToken":"[^"]*"' | cut -d'"' -f4)
-if [ -z "$TOKEN" ]; then
+if ! TOKEN=$(smoke_dev_auth_token "$API_BASE" "$TENANT_ID" "smoke-user"); then
     echo "   ❌ Failed to get token"
     exit 1
 fi

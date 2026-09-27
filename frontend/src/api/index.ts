@@ -4,6 +4,7 @@ import { getErrorMessage } from '@/utils/i18n'
 import { isOidcEnabled } from '@/auth/oidcConfig'
 import { bindOidcRequest, expectOidcRequestBinding, handleOidcResponseError } from './oidc-transport'
 import { getOidcRequestBinding, subscribeOidcSessionRetirement } from '@/auth/oidcClient'
+import { DEV_AUTH_TOKEN_PROXY_PATH } from './dev/dev-auth'
 
 const api = axios.create({
   baseURL: '/api/v1',
@@ -23,7 +24,9 @@ export async function bootstrapDevAuth(): Promise<void> {
         return
       }
       try {
-        const { data } = await axios.post('/api/dev/auth/token', { userId: 'user-1' })
+        // Dev-only: go through the vite dev-server proxy, which injects X-Dev-Auth-Secret.
+        // The browser never sees the secret (see src/api/dev/dev-auth.ts and vite.config.ts).
+        const { data } = await axios.post(DEV_AUTH_TOKEN_PROXY_PATH, { userId: 'user-1' })
         if (data?.accessToken) {
           localStorage.setItem('dev_access_token', data.accessToken)
           api.defaults.headers.common.Authorization = `Bearer ${data.accessToken}`

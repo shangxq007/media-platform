@@ -4,6 +4,7 @@ import { afterEach, expect, it, vi } from 'vitest'
 
 vi.mock('../auth/oidcConfig', () => ({ isOidcEnabled: () => false }))
 import api from './index'
+import { DEV_AUTH_TOKEN_PROXY_PATH } from './dev/dev-auth'
 import { versionlessApi } from './app/versionless-api'
 import { apiRequest } from './core/api-client'
 
@@ -32,7 +33,9 @@ it('bootstraps the explicit dev token once and binds it to both clients, preserv
     await expect(client.get('/dev-failure')).rejects.toBe(error)
   }
   expect(bootstrap).toHaveBeenCalledOnce()
-  expect(bootstrap).toHaveBeenCalledWith('/api/dev/auth/token', { userId: 'user-1' })
+  // AUTH-DEV-AUTH-CALLER-ADAPT-001: dev bootstrap goes through the vite dev-server proxy,
+  // which injects X-Dev-Auth-Secret; the browser bundle never carries the secret.
+  expect(bootstrap).toHaveBeenCalledWith(DEV_AUTH_TOKEN_PROXY_PATH, { userId: 'user-1' })
   expect(localStorage.getItem('dev_access_token')).toBe('dev-test-token')
   expect(sessionStorage.getItem('oidc_post_login_redirect')).toBeNull()
 })

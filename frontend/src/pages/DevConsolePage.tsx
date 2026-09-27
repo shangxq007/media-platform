@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
+import axios from 'axios'
 import api from '../api/index'
+import { DEV_AUTH_TOKEN_PROXY_PATH } from '../api/dev/dev-auth'
 import type { ArtifactListResponse, ArtifactSummary } from '../contracts/app/artifact'
 
 const DEV_TENANT_ID = 'ten_307b8956545642a9a45097f2f480a7b4'
@@ -19,7 +21,8 @@ function useHealth() {
 function useDevToken() {
   return useQuery({
     queryKey: ['devToken'],
-    queryFn: () => api.post('/dev/auth/token', { tenantId: 'smoke-tenant', userId: 'dev-console' })
+    // Dev-only: the vite dev-server proxy injects X-Dev-Auth-Secret on this path.
+    queryFn: () => axios.post(DEV_AUTH_TOKEN_PROXY_PATH, { tenantId: 'smoke-tenant', userId: 'dev-console' })
       .then(r => r.data.accessToken),
     staleTime: 300000,
   })

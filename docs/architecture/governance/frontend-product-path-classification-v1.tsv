@@ -41,6 +41,7 @@ frontend/src/api/core/endpoint-builder.ts	REUSE	CONTRACT_FIRST_DATA_FOUNDATION
 frontend/src/api/delivery.ts	MIGRATE	HANDWRITTEN_OR_LEGACY_CLIENT_TO_PLATFORM_CLIENT
 frontend/src/api/dev/diagnostics.client.ts	REUSE	TYPED_READ_ONLY_DEVELOPER_DIAGNOSTICS_CLIENT
 frontend/src/api/dev/diagnostics.client.test.ts	REUSE	DEVELOPER_DIAGNOSTICS_TRANSPORT_CONTRACT_EVIDENCE
+frontend/src/api/dev/dev-auth.ts	REUSE	EXPLICIT_DEVELOPMENT_AUTH_TRANSPORT_PROXY_PATH
 frontend/src/api/dev/index.ts	REUSE	CONTRACT_FIRST_DATA_FOUNDATION
 frontend/src/api/dev/safe-preflight-reports.client.ts	REUSE	CONTRACT_FIRST_DATA_FOUNDATION
 frontend/src/api/graphqlClient.ts	REUSE	CONTRACT_FIRST_DATA_FOUNDATION

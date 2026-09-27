@@ -41,6 +41,10 @@ docker compose up -d db
 cd frontend && npm install && npm run dev
 ```
 
+启用本地 dev 登录（`preview` profile / `/api/dev/auth/token`）时，后端、前端 dev server 与
+smoke 脚本必须共享同一个 `DEV_AUTH_SECRET`；缺省即 fail closed，且 secret 不会进入浏览器 bundle。
+设置方式见 [docs/development/dev-auth.md](docs/development/dev-auth.md)。
+
 生产环境请使用 **`SPRING_PROFILES_ACTIVE=prod`**（勿带 `dev`），配置 PostgreSQL 与 OIDC。
 启动门禁见 [docs/production-safety.md](docs/production-safety.md)。
 
