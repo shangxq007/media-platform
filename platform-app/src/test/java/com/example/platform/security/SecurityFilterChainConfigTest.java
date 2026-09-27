@@ -28,7 +28,9 @@ class SecurityFilterChainConfigTest {
         cors.registerCorsConfiguration("/**", corsConfig);
         ObjectProvider<ApiKeyAuthFilter> apiKeyProvider = mock(ObjectProvider.class);
         when(apiKeyProvider.getIfAvailable()).thenReturn(apiKeyFilter);
-        SecurityFilterChainConfig config = new SecurityFilterChainConfig(jwtFilter, apiKeyProvider, cors);
+        DevAuthSecretGuard devAuthGuard = new DevAuthSecretGuard(
+                new org.springframework.mock.env.MockEnvironment(), true, "test-secret");
+        SecurityFilterChainConfig config = new SecurityFilterChainConfig(jwtFilter, apiKeyProvider, cors, devAuthGuard);
         var registration = config.mcpApiKeyAuthFilterRegistration();
 
         assertNotNull(registration);

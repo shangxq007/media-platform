@@ -127,6 +127,9 @@ app:
   security:
     enabled: true
     dev-auth-endpoint: false
+    # AUTH-UNPROTECTED-FIX-002: mandatory shared secret for the dev token endpoint. Never committed;
+    # supply DEV_AUTH_SECRET in the environment. Empty = fail closed (the endpoint refuses to mint).
+    dev-auth-secret: ${DEV_AUTH_SECRET:}
     oidc-dev-bootstrap:
       enabled: false
     oauth2:

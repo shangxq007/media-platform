@@ -30,12 +30,14 @@ public class SecurityFilterChainConfig {
     private final JwtAuthFilter jwtAuthFilter;
     private final ObjectProvider<ApiKeyAuthFilter> apiKeyAuthFilterProvider;
     private final CorsConfigurationSource corsConfigurationSource;
+    private final DevAuthSecretGuard devAuthSecretGuard;
 
     public SecurityFilterChainConfig(JwtAuthFilter jwtAuthFilter, ObjectProvider<ApiKeyAuthFilter> apiKeyAuthFilterProvider,
-            CorsConfigurationSource corsConfigurationSource) {
+            CorsConfigurationSource corsConfigurationSource, DevAuthSecretGuard devAuthSecretGuard) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.apiKeyAuthFilterProvider = apiKeyAuthFilterProvider;
         this.corsConfigurationSource = corsConfigurationSource;
+        this.devAuthSecretGuard = devAuthSecretGuard;
     }
 
     @Bean
@@ -67,7 +69,8 @@ public class SecurityFilterChainConfig {
                 .frameOptions(frame -> frame.deny())
                 .permissionsPolicyHeader(permissions -> permissions
                     .policy("camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()")))
-            .authorizeHttpRequests(SecurityHttpRules::applyApiAuthorization)
+            .authorizeHttpRequests(auth ->
+                    SecurityHttpRules.applyApiAuthorization(auth, devAuthSecretGuard))
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

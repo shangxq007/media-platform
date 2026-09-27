@@ -103,7 +103,8 @@ public class OAuth2ResourceServerSecurityConfiguration {
             JwtDecoder platformJwtDecoder,
             PlatformJwtAuthenticationConverter jwtAuthenticationConverter,
             OAuth2RequestContextFilter requestContextFilter,
-            TenantHeaderGuardFilter tenantHeaderGuardFilter) throws Exception {
+            TenantHeaderGuardFilter tenantHeaderGuardFilter,
+            DevAuthSecretGuard devAuthSecretGuard) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -116,7 +117,8 @@ public class OAuth2ResourceServerSecurityConfiguration {
                     .frameOptions(frame -> frame.deny())
                     .permissionsPolicyHeader(permissions -> permissions
                         .policy("camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()")))
-                .authorizeHttpRequests(auth -> SecurityHttpRules.applyApiAuthorization(auth))
+                .authorizeHttpRequests(auth ->
+                        SecurityHttpRules.applyApiAuthorization(auth, devAuthSecretGuard))
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt
                         .decoder(platformJwtDecoder)
                         .jwtAuthenticationConverter(jwtAuthenticationConverter)))
