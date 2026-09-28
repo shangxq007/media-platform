@@ -50,6 +50,8 @@ class UserWorkflowDefinitionApiTest extends PostgresTestContainerSupport {
 
     @Autowired org.springframework.context.ApplicationContext context;
     private String token;
+    private String workspaceId;
+    private String projectId;
     @org.junit.jupiter.api.BeforeEach void authenticatedAuthor() {
         String user="author-"+java.util.UUID.randomUUID();
         jdbcTemplate.update("insert into tenant(id,name,status,created_at) values ('tenant-a','Workflow','ACTIVE',now()) on conflict do nothing");
@@ -65,6 +67,12 @@ class UserWorkflowDefinitionApiTest extends PostgresTestContainerSupport {
             roles.saveRolePermission(new com.example.platform.identity.domain.RolePermission(java.util.UUID.randomUUID().toString(),role.id(),permission.id(),java.time.Instant.now()));
         }
         roles.saveUserRoleAssignment(new com.example.platform.identity.domain.UserRoleAssignment(java.util.UUID.randomUUID().toString(),"tenant-a",null,user,role.id(),user,java.time.Instant.now()));
+        this.workspaceId="ws-"+java.util.UUID.randomUUID();
+        this.projectId="proj-"+java.util.UUID.randomUUID();
+        jdbcTemplate.update("insert into workspace(id,tenant_id,name,plan_tier,status,created_at,updated_at) values (?,?,?,'FREE','ACTIVE',now(),now())",workspaceId,"tenant-a","wf-ws");
+        jdbcTemplate.update("insert into workspace_member(id,workspace_id,user_id,role,status,joined_at,updated_at) values (?,?,?,'MEMBER','ACTIVE',now(),now())","wm-"+java.util.UUID.randomUUID(),workspaceId,user);
+        jdbcTemplate.update("insert into project(id,tenant_id,name,status,created_at,workspace_id) values (?,?,?,'ACTIVE',now(),?)",projectId,"tenant-a","wf-project",workspaceId);
+        roles.saveUserRoleAssignment(new com.example.platform.identity.domain.UserRoleAssignment(java.util.UUID.randomUUID().toString(),"tenant-a",workspaceId,user,role.id(),user,java.time.Instant.now()));
         token=io.jsonwebtoken.Jwts.builder().subject(user).claim("tenantId","tenant-a").expiration(new java.util.Date(System.currentTimeMillis()+600000))
                 .signWith(io.jsonwebtoken.security.Keys.hmacShaKeyFor("ep07-definition-contract-key-at-least-256-bits".getBytes(java.nio.charset.StandardCharsets.UTF_8))).compact();
     }
@@ -90,16 +98,49 @@ class UserWorkflowDefinitionApiTest extends PostgresTestContainerSupport {
                 + ",\"inputDeclarations\":[],\"outputDeclarations\":[],\"errorPolicy\":\"FAIL\"}";
     }
 
-    private static String createBody(String name, String nodes, String edges) {
-        return "{\"name\":\"" + name + "\",\"description\":null,\"projectId\":null,\"schemaVersion\":1"
+    /** Executable schema-2 node: a real OPERATION_INVOCATION node JSON produced by the
+     * canonical WorkflowPlanCodec so it compiles under WorkflowPlanCompiler. */
+    private static String executableNodeJson(String nodeId) throws Exception {
+        var request = new com.example.platform.operation.operation.OperationRequest(
+                new com.example.platform.operation.operation.OperationDefinitionId("test.echo"),
+                com.example.platform.operation.operation.OperationDefinitionVersion.V1_0,
+                new com.example.platform.operation.operation.OperationTargetRequest.TimelineTargetRequest(
+                        "timeline-" + nodeId),
+                new com.example.platform.operation.operation.OperationParameters.NoParameters(),
+                "base", "base-hash", null);
+        var node = new com.example.platform.workflow.plan.WorkflowPlan.Node(
+                nodeId,
+                com.example.platform.workflow.plan.WorkflowPlan.Kind.OPERATION_INVOCATION,
+                null, null, 0, 0, null, request,
+                java.util.List.of(), java.util.Map.of(),
+                new com.example.platform.workflow.plan.WorkflowPlan.Retry(3, 1), null);
+        var plan = new com.example.platform.workflow.plan.WorkflowPlan(
+                1, "generated", 1, "tenant-a", "project-a", nodeId,
+                java.util.List.of(node), java.util.List.of());
+        String encoded = new com.example.platform.workflow.plan.WorkflowPlanCodec().encode(plan);
+        return new com.fasterxml.jackson.databind.ObjectMapper()
+                .readTree(encoded).path("nodes").get(0).toString();
+    }
+
+    private static String executableNode(String nodeId) {
+        try {
+            return "{\"nodeId\":\"" + nodeId + "\",\"nodeType\":\"OPERATION_INVOCATION\",\"name\":\"node-" + nodeId
+                    + "\",\"configSchemaRef\":\"workflow.node.v2\",\"configValues\":" + executableNodeJson(nodeId)
+                    + ",\"inputDeclarations\":[],\"outputDeclarations\":[],\"errorPolicy\":\"RETRY\"}";
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    private String createBody(String name, String nodes, String edges) {
+        return "{\"name\":\"" + name + "\",\"description\":null,\"projectId\":\"" + projectId + "\",\"schemaVersion\":2"
                 + ",\"nodes\":" + nodes + ",\"edges\":" + edges
                 + ",\"parameters\":[],\"trigger\":{\"triggerType\":\"MANUAL\",\"referenceId\":null,\"referenceVersion\":null}}";
     }
 
-    private static final String VALID_NODE = nodeJson("n0", "ACTION",
-            "{\"capabilityKey\":\"render.render-job.create\",\"capabilityVersion\":\"1\"}");
+    private static final String VALID_NODE = executableNode("n0");
 
-    private static String validBody(String name) {
+    private String validBody(String name) {
         return createBody(name, "[" + VALID_NODE + "]", "[]");
     }
 
@@ -180,23 +221,27 @@ class UserWorkflowDefinitionApiTest extends PostgresTestContainerSupport {
     }
 
     @Test
-    void invalidGraphRejectedWith422() throws Exception {
+    void invalidGraphRejectedWith400() throws Exception {
+        // Schema 2 compiles the definition: a self-edge leaves no structured root,
+        // surfacing WORKFLOW-400-009 (legacy schema 1 emitted 422 WORKFLOW-422-001 via G-006).
         String selfEdgeBody = createBody("wf", "[" + VALID_NODE + "]", edgeBody("e1", "n0", "n0"));
         HttpResponse<String> r = send("POST", BASE, selfEdgeBody);
-        assertEquals(422, r.statusCode(), r.body());
-        assertTrue(r.body().contains("WORKFLOW-422-001"), r.body());
+        assertEquals(400, r.statusCode(), r.body());
+        assertTrue(r.body().contains("WORKFLOW-400-009"), r.body());
     }
 
     @Test
-    void oversizedGraphRejectedWith422() throws Exception {
+    void oversizedGraphRejectedWith400() throws Exception {
+        // Schema 2 rejects more than 100 nodes in the compiler as WORKFLOW-400-009
+        // (legacy schema 1 emitted 422 WORKFLOW-422-001 via G-001).
         StringBuilder nodes = new StringBuilder();
         for (int i = 0; i < 101; i++) {
             if (i > 0) nodes.append(",");
-            nodes.append(nodeJson("n" + i, "ACTION", "{\"capabilityKey\":\"k" + i + "\",\"capabilityVersion\":\"1\"}"));
+            nodes.append(executableNode("n" + i));
         }
         HttpResponse<String> r = send("POST", BASE, createBody("wf-big", "[" + nodes + "]", "[]"));
-        assertEquals(422, r.statusCode(), r.body());
-        assertTrue(r.body().contains("WORKFLOW-422-001"), r.body());
+        assertEquals(400, r.statusCode(), r.body());
+        assertTrue(r.body().contains("WORKFLOW-400-009"), r.body());
     }
 
     @Test

@@ -12,6 +12,13 @@ import com.example.platform.identity.api.authorization.CanonicalActorResolver;
 import com.example.platform.workflow.definition.api.dto.UserWorkflowDefinitionCreateRequest;
 import com.example.platform.workflow.definition.api.dto.UserWorkflowDefinitionDto;
 import com.example.platform.workflow.definition.api.dto.UserWorkflowDefinitionPublishRequest;
+import com.example.platform.operation.operation.OperationDefinitionId;
+import com.example.platform.operation.operation.OperationDefinitionVersion;
+import com.example.platform.operation.operation.OperationParameters;
+import com.example.platform.operation.operation.OperationRequest;
+import com.example.platform.operation.operation.OperationTargetRequest;
+import com.example.platform.workflow.plan.WorkflowPlan;
+import com.example.platform.workflow.plan.WorkflowPlanCodec;
 import com.example.platform.workflow.definition.app.UserWorkflowDefinitionService;
 import com.example.platform.workflow.definition.domain.UserWorkflowDefinition;
 import com.example.platform.workflow.definition.domain.UserWorkflowDefinition.UserWorkflowErrorCode;
@@ -157,12 +164,36 @@ class UserWorkflowDefinitionAuthorizationTest {
     @SuppressWarnings("unchecked")
     private static UserWorkflowDefinitionCreateRequest createRequest(String name) {
         UserWorkflowDefinitionDto.NodeDto node = new UserWorkflowDefinitionDto.NodeDto(
-                "n0", "ACTION", "node-n0", "w2/action/config/v1",
-                Map.of("capabilityKey", "render.render-job.create", "capabilityVersion", "1"),
-                List.of(), List.of(), "FAIL");
+                "n0", "OPERATION_INVOCATION", "node-n0", "workflow.node.v2",
+                UserWorkflowDefinitionDto.parseConfig(executableNodeJson("n0")),
+                List.of(), List.of(), "RETRY");
         return new UserWorkflowDefinitionCreateRequest(
-                name, null, null, 1, List.of(node), List.of(), List.of(),
+                name, null, "project-a", 2, List.of(node), List.of(), List.of(),
                 new UserWorkflowDefinitionDto.TriggerDto("MANUAL", null, null));
+    }
+
+    /** Executable schema-2 node JSON: a real OPERATION_INVOCATION node produced by the
+     * canonical WorkflowPlanCodec so it compiles under WorkflowPlanCompiler. */
+    private static String executableNodeJson(String nodeId) {
+        try {
+            var request = new OperationRequest(
+                    new OperationDefinitionId("test.echo"),
+                    OperationDefinitionVersion.V1_0,
+                    new OperationTargetRequest.TimelineTargetRequest("timeline-" + nodeId),
+                    new OperationParameters.NoParameters(),
+                    "base", "base-hash", null);
+            var node = new WorkflowPlan.Node(
+                    nodeId, WorkflowPlan.Kind.OPERATION_INVOCATION,
+                    null, null, 0, 0, null, request,
+                    List.of(), Map.of(), new WorkflowPlan.Retry(3, 1), null);
+            var plan = new WorkflowPlan(
+                    1, "generated", 1, "tenant-a", "project-a", nodeId, List.of(node), List.of());
+            String encoded = new WorkflowPlanCodec().encode(plan);
+            return new com.fasterxml.jackson.databind.ObjectMapper()
+                    .readTree(encoded).path("nodes").get(0).toString();
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     /** In-memory repository port for boundary tests (no DB). */
