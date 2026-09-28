@@ -160,7 +160,7 @@ GOVERNED_RUNTIME_SOURCE_SHA256 = {
     "workflow-module/src/main/java/com/example/platform/workflow/plan/WorkflowDataValidation.java": "6f56dbc4bf5287a7ae322ba328fb234c9e1169bc58817c8fa9aea896855ba682",
     "workflow-module/src/main/java/com/example/platform/workflow/plan/WorkflowOperationValueJson.java": "fae3e1a2e9fb1e95955e21a564e2f6b00cb3ef753999d76ea5aa35d548b92066",
     "workflow-module/src/main/java/com/example/platform/workflow/plan/WorkflowPlan.java": "c0f1d94ccce3312d09b7f7af77185ffb3c900391e04b450ac74cd9526d20b564",
-    "workflow-module/src/main/java/com/example/platform/workflow/plan/WorkflowPlanCodec.java": "0dd5ad32ae9fc4a7727a537f397aa5590a295aefac18b0302981f1f7a2c72aad",
+    "workflow-module/src/main/java/com/example/platform/workflow/plan/WorkflowPlanCodec.java": "ab11eb5123d7a167f318bce523caac4b6a8e1e51dc752b345cd67bd2c61a001a",
     "workflow-module/src/main/java/com/example/platform/workflow/plan/WorkflowPlanCompiler.java": "49874769f19425894be800664ca5f8ea167d90d94b9ab705acbe8ad9ffaabf27",
     "workflow-module/src/main/java/com/example/platform/workflow/plan/WorkflowPlanValidator.java": "2551842bfe6495a8ddfe0936a3f091eb8ca3df8aea85f616a88a22cdc0a77fa9",
     "workflow-module/src/main/java/com/example/platform/workflow/plan/WorkflowStepIdentity.java": "a55ac157b0e5f2d56cc25d969eef648ce93e3c23f6e2c2884d5d787111f46538",
