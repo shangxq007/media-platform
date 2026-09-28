@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.example.platform.composition.app.*;
 import com.example.platform.composition.domain.CompositionModels.*;
-import com.example.platform.execution.planning.ProviderBoundExecutionPlan;
+import com.example.platform.execution.admission.ProviderBoundExecutionPlan;
 import java.math.BigDecimal;
 import java.util.*;
 import org.junit.jupiter.api.Test;

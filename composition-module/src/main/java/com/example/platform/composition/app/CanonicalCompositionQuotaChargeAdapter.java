@@ -1,7 +1,7 @@
 package com.example.platform.composition.app;
 
 import com.example.platform.entitlement.api.commercial.*;
-import com.example.platform.execution.planning.ProviderBoundExecutionPlan;
+import com.example.platform.execution.admission.ProviderBoundExecutionPlan;
 import com.example.platform.shared.commercial.*;
 import java.time.*;
 import org.springframework.stereotype.Service;

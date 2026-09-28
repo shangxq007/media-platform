@@ -1,6 +1,6 @@
 package com.example.platform.composition.app;
 
-import com.example.platform.execution.planning.ProviderBoundExecutionPlan;
+import com.example.platform.execution.admission.ProviderBoundExecutionPlan;
 import java.util.Optional;
 import java.math.BigDecimal;
 

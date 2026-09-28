@@ -4,7 +4,7 @@ import com.example.platform.composition.domain.CompositionModels.TemplateWorkflo
 import com.example.platform.composition.domain.CompositionModels.EntitlementRequirement;
 import com.example.platform.entitlement.api.EntitlementDecisionQuery;
 import com.example.platform.entitlement.domain.AccessCheckRequest;
-import com.example.platform.execution.planning.ProviderBoundExecutionPlan;
+import com.example.platform.execution.admission.ProviderBoundExecutionPlan;
 import java.math.BigDecimal;
 import java.util.*;
 import org.springframework.stereotype.Component;

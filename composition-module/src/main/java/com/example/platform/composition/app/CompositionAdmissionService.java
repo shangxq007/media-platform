@@ -2,7 +2,7 @@ package com.example.platform.composition.app;
 
 import com.example.platform.execution.admission.PlatformExecutionAdmissionPort;
 import com.example.platform.execution.planning.PlatformExecutionPlan;
-import com.example.platform.execution.planning.ProviderBoundExecutionPlan;
+import com.example.platform.execution.admission.ProviderBoundExecutionPlan;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 import org.springframework.stereotype.Service;

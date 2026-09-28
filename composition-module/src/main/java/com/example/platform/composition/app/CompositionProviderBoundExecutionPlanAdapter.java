@@ -1,7 +1,7 @@
 package com.example.platform.composition.app;
 
 import com.example.platform.composition.domain.CompositionModels.*;
-import com.example.platform.execution.planning.ProviderBoundExecutionPlan;
+import com.example.platform.execution.admission.ProviderBoundExecutionPlan;
 import java.util.*;
 
 /** Lowers only validated, published Composition data plus registry authority facts. */
