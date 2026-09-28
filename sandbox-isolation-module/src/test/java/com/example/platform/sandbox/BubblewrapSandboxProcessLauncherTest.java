@@ -1,6 +1,8 @@
 package com.example.platform.sandbox;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static com.example.platform.testsupport.Phase17SandboxConformance.requireCapability;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -14,7 +16,91 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class BubblewrapSandboxProcessLauncherTest {
+    private static final Path BWRAP = Path.of("/usr/bin/bwrap");
+
     @TempDir Path temp;
+
+    @Test
+    void prepared_command_must_start_with_the_launcher_probed_bwrap_executable() {
+        BubblewrapSandboxProcessLauncher launcher = preparedCommandLauncher();
+
+        assertThatThrownBy(() -> launcher.launchPreparedCommand(
+                List.of("/bin/true", "--unshare-all", "--die-with-parent"),
+                temp, Duration.ofSeconds(1), 1024, SandboxCancellation.never()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("bwrap executable");
+    }
+
+    @Test
+    void prepared_command_missing_namespace_unsharing_is_rejected() {
+        BubblewrapSandboxProcessLauncher launcher = preparedCommandLauncher();
+
+        assertThatThrownBy(() -> launcher.launchPreparedCommand(
+                List.of(BWRAP.toString(), "--die-with-parent", "/bin/true"),
+                temp, Duration.ofSeconds(1), 1024, SandboxCancellation.never()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("--unshare-all");
+    }
+
+    @Test
+    void prepared_command_missing_parent_lifetime_binding_is_rejected() {
+        BubblewrapSandboxProcessLauncher launcher = preparedCommandLauncher();
+
+        assertThatThrownBy(() -> launcher.launchPreparedCommand(
+                List.of(BWRAP.toString(), "--unshare-all", "/bin/true"),
+                temp, Duration.ofSeconds(1), 1024, SandboxCancellation.never()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("--die-with-parent");
+    }
+
+    @Test
+    void prepared_command_that_declares_the_launcher_policy_executes_under_bubblewrap()
+            throws Exception {
+        requireCapability(Files.isRegularFile(BWRAP) && Files.isExecutable(BWRAP),
+                "/usr/bin/bwrap is not installed");
+        BubblewrapSandboxDetection detection = BubblewrapSandboxCapabilityDetector.detect(BWRAP);
+        requireCapability(detection.launcher().isPresent(), detection.diagnostic());
+        BubblewrapSandboxProcessLauncher launcher = detection.launcher().orElseThrow();
+        Path work = Files.createDirectory(temp.resolve("prepared-work"));
+
+        SandboxExecutionResult result = launcher.launchPreparedCommand(
+                List.of(BWRAP.toString(), "--ro-bind", "/", "/", "--dev", "/dev",
+                        "--proc", "/proc", "--tmpfs", "/tmp", "--unshare-all",
+                        "--die-with-parent", "/usr/bin/true"),
+                work, Duration.ofSeconds(10), 4096, SandboxCancellation.never());
+
+        assertThat(result.failure()).as(result.toString()).isEmpty();
+        assertThat(result.exitCode()).hasValue(0);
+    }
+
+    @Test
+    void detector_probes_the_configured_binary_and_rejects_a_non_bwrap_path() throws Exception {
+        Path notBubblewrap = Files.writeString(temp.resolve("not-bwrap"), "#!/bin/sh\nexit 1\n");
+        notBubblewrap.toFile().setExecutable(true);
+
+        BubblewrapSandboxDetection detection =
+                BubblewrapSandboxCapabilityDetector.detect(notBubblewrap);
+
+        assertThat(detection.bubblewrapInstalled()).isTrue();
+        assertThat(detection.launcher()).isEmpty();
+    }
+
+    @Test
+    void detector_falls_back_to_the_canonical_bwrap_when_the_configured_path_is_absent() {
+        requireCapability(Files.isRegularFile(BWRAP) && Files.isExecutable(BWRAP),
+                "/usr/bin/bwrap is not installed");
+
+        BubblewrapSandboxDetection detection =
+                BubblewrapSandboxCapabilityDetector.detect(temp.resolve("absent-bwrap"));
+
+        assertThat(detection.bubblewrapInstalled()).isTrue();
+        assertThat(detection.launcher()).as(detection.diagnostic()).isPresent();
+    }
+
+    private static BubblewrapSandboxProcessLauncher preparedCommandLauncher() {
+        return new BubblewrapSandboxProcessLauncher(
+                BWRAP, SandboxRuntimeCapabilities.unavailable("prepared-command-test"));
+    }
 
     @Test
     void production_argv_has_only_the_approved_mount_namespace_and_exact_environment()

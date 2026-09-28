@@ -90,7 +90,15 @@ public final class CoverImageExecutionBackend implements ExecutionBackend {
                 ffmpeg));
         command.addAll(request.arguments());
 
-        BubblewrapSandboxDetection detection = BubblewrapSandboxCapabilityDetector.detect();
+        BubblewrapSandboxDetection detection;
+        try {
+            // Probe the configured binary so the validated path and the executed argv[0] are the
+            // same bwrap, instead of validating /usr/bin/bwrap while launching something else.
+            detection = BubblewrapSandboxCapabilityDetector.detect(Path.of(bwrap));
+        } catch (RuntimeException invalidConfiguredPath) {
+            return failed(started, "EXECUTION_UNAVAILABLE",
+                    "cover-image sandbox is unavailable: configured bwrap path is invalid");
+        }
         if (detection.launcher().isEmpty()) {
             return failed(started, "EXECUTION_UNAVAILABLE",
                     "cover-image sandbox is unavailable: " + detection.diagnostic());

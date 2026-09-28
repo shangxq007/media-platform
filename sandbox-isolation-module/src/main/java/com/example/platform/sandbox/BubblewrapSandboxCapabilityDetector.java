@@ -20,11 +20,22 @@ public final class BubblewrapSandboxCapabilityDetector {
     private BubblewrapSandboxCapabilityDetector() {}
 
     public static BubblewrapSandboxDetection detect() {
-        if (!Files.isRegularFile(BWRAP) || !Files.isExecutable(BWRAP)) {
+        return detect(null);
+    }
+
+    /**
+     * Detects bwrap by probing the caller-configured binary, so the path that is validated here is
+     * the same path the caller executes. When the configured path is absent this falls back to the
+     * canonical {@code /usr/bin/bwrap} so the probe and the executed binary stay aligned instead of
+     * validating one binary while running another.
+     */
+    public static BubblewrapSandboxDetection detect(Path configuredBubblewrap) {
+        Path bubblewrap = resolveBubblewrap(configuredBubblewrap);
+        if (!Files.isRegularFile(bubblewrap) || !Files.isExecutable(bubblewrap)) {
             return new BubblewrapSandboxDetection(
-                    false, Optional.empty(), "/usr/bin/bwrap is not installed");
+                    false, Optional.empty(), bubblewrap + " is not installed");
         }
-        ProbeObservation probe = productionShapeProbe();
+        ProbeObservation probe = productionShapeProbe(bubblewrap);
         if (!probe.succeeded()) {
             return new BubblewrapSandboxDetection(true, Optional.empty(), probe.diagnostic());
         }
@@ -42,11 +53,21 @@ public final class BubblewrapSandboxCapabilityDetector {
         SandboxRuntimeCapabilities evidence = SandboxRuntimeCapabilities.detected(
                 capabilities, "bubblewrap-production-shape", Instant.now());
         return new BubblewrapSandboxDetection(true,
-                Optional.of(new BubblewrapSandboxProcessLauncher(BWRAP, evidence)),
+                Optional.of(new BubblewrapSandboxProcessLauncher(bubblewrap, evidence)),
                 "bubblewrap production-shape enforcement probe passed");
     }
 
-    private static ProbeObservation productionShapeProbe() {
+    private static Path resolveBubblewrap(Path configuredBubblewrap) {
+        if (configuredBubblewrap != null) {
+            Path candidate = configuredBubblewrap.toAbsolutePath().normalize();
+            if (Files.exists(candidate)) {
+                return candidate;
+            }
+        }
+        return BWRAP;
+    }
+
+    private static ProbeObservation productionShapeProbe(Path bubblewrap) {
         Path probeRoot = null;
         try {
             probeRoot = Files.createTempDirectory("media-platform-bwrap-probe-");
@@ -67,7 +88,7 @@ public final class BubblewrapSandboxCapabilityDetector {
                     EffectiveSandboxExecutionSpecification.resolved(requirement,
                             SandboxRuntimeCapabilities.unavailable("bubblewrap-probe"));
             List<String> command = BubblewrapSandboxProcessLauncher.buildCommand(
-                    BWRAP, specification);
+                    bubblewrap, specification);
             BubblewrapProcess.ProbeResult result = BubblewrapProcess.execute(
                     command, Duration.ofSeconds(5));
             Set<String> environment = result.stdout().lines()

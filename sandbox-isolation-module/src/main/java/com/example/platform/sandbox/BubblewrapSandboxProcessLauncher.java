@@ -85,6 +85,12 @@ public final class BubblewrapSandboxProcessLauncher implements BoundedProcessLau
      * bounded capture, wall-clock timeout and process-tree termination. The caller owns policy
      * composition (the mount and namespace plan); this entry owns only launching, so process
      * spawning stays inside the sandbox module even when a caller composes its own profile.
+     *
+     * <p>The prepared command is bound back to this launcher's isolation policy fail-closed: the
+     * argv must be driven by the probe-validated bubblewrap executable that this launcher was
+     * created with, and must declare {@code --unshare-all} and {@code --die-with-parent}. A caller
+     * cannot repurpose this entry to spawn a host process with zero isolation: a mismatch throws
+     * {@link IllegalArgumentException}, which the cover backend normalises to a failed execution.
      */
     public SandboxExecutionResult launchPreparedCommand(
             List<String> command,
@@ -108,6 +114,16 @@ public final class BubblewrapSandboxProcessLauncher implements BoundedProcessLau
             throw new IllegalArgumentException("capture budget must be positive");
         }
         Objects.requireNonNull(cancellation, "cancellation");
+        if (!command.getFirst().equals(executable.toString())) {
+            throw new IllegalArgumentException(
+                    "prepared command must start with the launcher's probed bwrap executable");
+        }
+        if (!command.contains("--unshare-all")) {
+            throw new IllegalArgumentException("prepared command missing --unshare-all");
+        }
+        if (!command.contains("--die-with-parent")) {
+            throw new IllegalArgumentException("prepared command missing --die-with-parent");
+        }
         return runCommand(List.copyOf(command), workingDirectory, timeout, captureBytes, cancellation);
     }
 
