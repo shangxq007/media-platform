@@ -21,7 +21,14 @@ public final class ThumbnailCapabilityRegistry {
         if (!providers.containsKey(ThumbnailContracts.PROVIDER))
             throw new IllegalStateException("pinned media.thumbnail provider is not registered");
     }
-    public ThumbnailCapabilityRegistry(ThumbnailCapabilityProvider provider) { this(java.util.List.of(provider)); }
+    /**
+     * Convenience entry point for non-Spring callers that hold exactly one provider.
+     * Deliberately a static factory: the class must expose a single public constructor so
+     * Spring can select it implicitly, without {@code @Autowired}.
+     */
+    public static ThumbnailCapabilityRegistry of(ThumbnailCapabilityProvider provider) {
+        return new ThumbnailCapabilityRegistry(java.util.List.of(provider));
+    }
     public ThumbnailCapabilityProvider provider() { return providers.get(ThumbnailContracts.PROVIDER); }
     public ThumbnailCapabilityProvider provider(String providerId) {
         var provider = providers.get(providerId);
