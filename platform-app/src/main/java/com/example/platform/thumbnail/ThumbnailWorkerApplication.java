@@ -1,6 +1,5 @@
 package com.example.platform.thumbnail;
 
-import com.example.platform.artifact.ArtifactCatalogConfiguration;
 import com.example.platform.datasource.DataSourceConfiguration;
 import com.example.platform.runtime.PlatformRuntimeRoleGuard;
 import com.example.platform.storage.infrastructure.StorageModuleConfiguration;
@@ -48,7 +47,6 @@ import org.springframework.context.annotation.Import;
     DataSourceConfiguration.class,
     StorageModuleConfiguration.class,
     StorageRootConfiguration.class,
-    ArtifactCatalogConfiguration.class,
     TemporalEnablementConfiguration.class,
     PlatformRuntimeRoleGuard.class
 })
