@@ -1,7 +1,7 @@
 package com.example.platform.thumbnail;
 
 import com.example.platform.artifact.domain.*;
-import com.example.platform.media.app.MediaAuthorization;
+import com.example.platform.artifact.app.ArtifactProjectAuthorizationPort;
 import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.shared.web.TenantGuard;
 import com.example.platform.storage.api.*;
@@ -10,10 +10,10 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class ThumbnailArtifactReadService {
-    private final ThumbnailTaskStore tasks; private final ArtifactQueryService artifacts; private final StoragePlacementQuery storage; private final MediaAuthorization authorization;
-    public ThumbnailArtifactReadService(ThumbnailTaskStore tasks,ArtifactQueryService artifacts,StoragePlacementQuery storage,MediaAuthorization authorization){this.tasks=tasks;this.artifacts=artifacts;this.storage=storage;this.authorization=authorization;}
+    private final ThumbnailTaskStore tasks; private final ArtifactQueryService artifacts; private final StoragePlacementQuery storage; private final ArtifactProjectAuthorizationPort authorization;
+    public ThumbnailArtifactReadService(ThumbnailTaskStore tasks,ArtifactQueryService artifacts,StoragePlacementQuery storage,ArtifactProjectAuthorizationPort authorization){this.tasks=tasks;this.artifacts=artifacts;this.storage=storage;this.authorization=authorization;}
     public Image read(String tenant,String project,String taskId){
-        TenantGuard.assertSameTenant(tenant); authorization.require(tenant,project,false); var result=tasks.find(tenant,project,taskId).orElseThrow(()->new IllegalArgumentException("thumbnail not found"));
+        TenantGuard.assertSameTenant(tenant); authorization.requireRead(tenant,project); var result=tasks.find(tenant,project,taskId).orElseThrow(()->new IllegalArgumentException("thumbnail not found"));
         if(result.status()!=ThumbnailContracts.Status.COMPLETED||result.artifactId()==null) throw new IllegalStateException("thumbnail is not available");
         Artifact artifact=artifacts.getArtifact(tenant,new ArtifactId(result.artifactId())).orElseThrow(()->new IllegalArgumentException("artifact unavailable"));
         if(artifact.state()!=ArtifactState.AVAILABLE||artifact.artifactKind()!=ArtifactKind.THUMBNAIL||artifact.mediaType()!=ArtifactMediaType.IMAGE) throw new IllegalStateException("artifact is not an accepted thumbnail");
