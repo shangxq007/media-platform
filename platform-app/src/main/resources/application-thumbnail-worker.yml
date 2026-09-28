@@ -20,8 +20,12 @@ spring:
   temporal:
     start-workers: true
     workers-auto-discovery:
-      packages:
-        - com.example.platform.thumbnail
+      # Scalar form is load-bearing, not cosmetic: Spring Boot flattens a YAML list into indexed keys
+      # (packages[0], ...), and PlatformRuntimeRoleGuard validates this key with a plain
+      # getProperty(key, String[].class) lookup, which cannot see indexed keys and would therefore
+      # fail the worker role closed. The Temporal starter binds the same comma-separated scalar to its
+      # List<String> discovery packages.
+      packages: com.example.platform.thumbnail
     workers:
       - task-queue: media-platform-tasks
         name: thumbnail-worker

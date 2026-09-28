@@ -1,6 +1,5 @@
 package com.example.platform.thumbnail;
 
-import com.example.platform.media.api.MediaAssets;
 import com.example.platform.artifact.app.ArtifactProjectAuthorizationPort;
 import com.example.platform.entitlement.api.commercial.*;
 import com.example.platform.shared.commercial.*;
@@ -13,11 +12,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ThumbnailService {
-    private final ThumbnailTaskStore tasks; private final WorkflowClient client; private final MediaAssets assets; private final ArtifactProjectAuthorizationPort authorization; private final QuotaConsumptionPort quota;
-    public ThumbnailService(ThumbnailTaskStore tasks, WorkflowClient client, MediaAssets assets, ArtifactProjectAuthorizationPort authorization, QuotaConsumptionPort quota){this.tasks=tasks;this.client=client;this.assets=assets;this.authorization=authorization;this.quota=quota;}
+    private final ThumbnailTaskStore tasks; private final WorkflowClient client; private final ArtifactProjectAuthorizationPort authorization; private final QuotaConsumptionPort quota;
+    public ThumbnailService(ThumbnailTaskStore tasks, WorkflowClient client, ArtifactProjectAuthorizationPort authorization, QuotaConsumptionPort quota){this.tasks=tasks;this.client=client;this.authorization=authorization;this.quota=quota;}
     @Transactional
     public ThumbnailContracts.Result submit(ThumbnailContracts.Request request){
-        assets.requireReadScope(request.tenantId(),request.projectId());
+        // Retired media authority replaced by the owner-published Artifact project-authorization
+        // boundary: admission still requires an authorized project read before any task row exists.
+        authorization.requireRead(request.tenantId(),request.projectId());
         var admission=tasks.admit(request); String id=admission.taskId();
         if (!admission.created()) return tasks.find(request.tenantId(), request.projectId(), id).orElseThrow();
         if (tasks.find(request.tenantId(), request.projectId(), id).map(r -> r.status() == ThumbnailContracts.Status.CANCELLED).orElse(false))

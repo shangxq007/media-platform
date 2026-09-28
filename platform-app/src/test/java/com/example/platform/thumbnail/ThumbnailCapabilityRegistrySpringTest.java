@@ -11,9 +11,9 @@ import java.util.function.BooleanSupplier;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.FilterType;
 
 /**
@@ -108,8 +108,17 @@ class ThumbnailCapabilityRegistrySpringTest {
         assertThat(registry.provider(ThumbnailContracts.PROVIDER)).isSameAs(provider);
     }
 
-    /** Production discovery path: component scan, default autowire mode (no @Autowired). */
-    @Configuration(proxyBeanMethods = false)
+    /**
+     * Production discovery path: component scan, default autowire mode (no {@code @Autowired}).
+     *
+     * <p>These nested fixtures are {@code @TestConfiguration}, not plain {@code @Configuration}: the
+     * real worker context test bootstraps {@code ThumbnailWorkerApplication} from the test classpath,
+     * and its production component scan of {@code com.example.platform.thumbnail} would otherwise
+     * pick these nested configurations up and register duplicate/foreign thumbnail providers.
+     * {@code @TestComponent} semantics keep them exclusively wired through the explicit
+     * {@code withUserConfiguration(...)} calls below.
+     */
+    @TestConfiguration(proxyBeanMethods = false)
     @ComponentScan(
             basePackageClasses = ThumbnailCapabilityRegistry.class,
             useDefaultFilters = false,
@@ -117,7 +126,7 @@ class ThumbnailCapabilityRegistrySpringTest {
                     type = FilterType.ASSIGNABLE_TYPE, classes = ThumbnailCapabilityRegistry.class))
     static class ScannedRegistryConfiguration {}
 
-    @Configuration(proxyBeanMethods = false)
+    @TestConfiguration(proxyBeanMethods = false)
     static class CanonicalProviderConfiguration {
         @Bean
         ThumbnailCapabilityProvider canonicalProvider() {
@@ -125,7 +134,7 @@ class ThumbnailCapabilityRegistrySpringTest {
         }
     }
 
-    @Configuration(proxyBeanMethods = false)
+    @TestConfiguration(proxyBeanMethods = false)
     static class SecondaryProviderConfiguration {
         @Bean
         ThumbnailCapabilityProvider secondaryProvider() {
@@ -133,7 +142,7 @@ class ThumbnailCapabilityRegistrySpringTest {
         }
     }
 
-    @Configuration(proxyBeanMethods = false)
+    @TestConfiguration(proxyBeanMethods = false)
     static class DuplicateProviderConfiguration {
         @Bean
         ThumbnailCapabilityProvider duplicateCanonicalProvider() {
