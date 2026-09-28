@@ -25,6 +25,28 @@ Do not use `git reset --hard`, `git clean`, wildcard deletion, force branch dele
 
 Do not fetch, pull, push, publish, deploy, or mutate remote refs unless explicitly authorized. Do not modify PVE, GitOps, production configuration, or production secrets during local foundation work.
 
+## Branch and worktree discipline
+
+### Single active branch
+
+At most one active task branch and one linked worktree exist at a time. A task branch must end either fast-forwarded into `main` or deleted on task completion; orphaned worktrees are not permitted.
+
+### Main as the only long-lived branch
+
+All work branches from `main` and all completed work merges back into `main`. Long-lived feature branches are not supported; `main` is the single canonical integration line.
+
+### Task lifecycle
+
+Each task follows create worktree, do the authorized work, integrate or discard, and clean up. Record the candidate SHA and tree when freezing, and retire the linked worktree with normal Git commands once the outcome is recorded.
+
+### Remote branch policy
+
+GitHub keeps only `main`. Branches whose content is integrated are deleted on the remote promptly, and periodic audits keep the remote branch count at one. Remote mutations require the same explicit authorization as any other push.
+
+### Serialization
+
+One agent operates at a time, or explicitly coordinated multi-agent work is required. Owners must not run concurrent integration on the same branch or worktree.
+
 ## Architecture, API, security and domain authority
 
 Source code, executable contracts, controller/DTO definitions, migration bytes, package metadata, and architecture guards are authoritative for implemented behavior. Accepted ADRs and canonical-contract documents are authoritative for accepted semantics. Generated diagrams and reports are derived evidence, not authorities.
