@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.OptionalLong;
@@ -75,25 +76,64 @@ public final class BubblewrapSandboxProcessLauncher implements BoundedProcessLau
                     "bubblewrap mount path policy is unsatisfied", Set.of()));
         }
 
+        return runCommand(command, spec.filesystem().workingDirectory(),
+                spec.process().timeout(), spec.resources().captureBytes(), cancellation);
+    }
+
+    /**
+     * Runs an already-composed bubblewrap argv under the canonical bounded-process mechanics:
+     * bounded capture, wall-clock timeout and process-tree termination. The caller owns policy
+     * composition (the mount and namespace plan); this entry owns only launching, so process
+     * spawning stays inside the sandbox module even when a caller composes its own profile.
+     */
+    public SandboxExecutionResult launchPreparedCommand(
+            List<String> command,
+            Path workingDirectory,
+            Duration timeout,
+            long captureBytes,
+            SandboxCancellation cancellation) throws IOException {
+        Objects.requireNonNull(command, "command");
+        if (command.isEmpty()) {
+            throw new IllegalArgumentException("command must not be empty");
+        }
+        Objects.requireNonNull(workingDirectory, "workingDirectory");
+        if (!workingDirectory.isAbsolute()) {
+            throw new IllegalArgumentException("working directory must be absolute");
+        }
+        Objects.requireNonNull(timeout, "timeout");
+        if (timeout.isZero() || timeout.isNegative()) {
+            throw new IllegalArgumentException("timeout must be positive");
+        }
+        if (captureBytes < 1) {
+            throw new IllegalArgumentException("capture budget must be positive");
+        }
+        Objects.requireNonNull(cancellation, "cancellation");
+        return runCommand(List.copyOf(command), workingDirectory, timeout, captureBytes, cancellation);
+    }
+
+    private SandboxExecutionResult runCommand(
+            List<String> command,
+            Path workingDirectory,
+            Duration timeout,
+            long captureBytes,
+            SandboxCancellation cancellation) throws IOException {
         Instant launchedAt = Instant.now();
         Process process;
         try {
             process = BubblewrapProcess.start(command, Map.of());
         } catch (IOException failure) {
-            return setupFailure(spec.filesystem().workingDirectory(), SandboxFailure.of(
+            return setupFailure(workingDirectory, SandboxFailure.of(
                     SandboxFailureCode.PROCESS_LAUNCH_FAILED,
                     "bubblewrap process launch failed", Set.of()));
         }
 
         SandboxExecutionHandle handle = new SandboxExecutionHandle(process.pid(), launchedAt);
-        CaptureReader stdout = new CaptureReader(
-                process.getInputStream(), spec.resources().captureBytes());
-        CaptureReader stderr = new CaptureReader(
-                process.getErrorStream(), spec.resources().captureBytes());
+        CaptureReader stdout = new CaptureReader(process.getInputStream(), captureBytes);
+        CaptureReader stderr = new CaptureReader(process.getErrorStream(), captureBytes);
         Thread outThread = Thread.ofVirtual().start(stdout);
         Thread errThread = Thread.ofVirtual().start(stderr);
         SandboxFailure primaryFailure = null;
-        long deadline = System.nanoTime() + spec.process().timeout().toNanos();
+        long deadline = System.nanoTime() + timeout.toNanos();
         while (process.isAlive()) {
             if (cancellation.isCancellationRequested()) {
                 primaryFailure = SandboxFailure.of(
@@ -141,8 +181,7 @@ public final class BubblewrapSandboxProcessLauncher implements BoundedProcessLau
         }
         return new SandboxExecutionResult(exit, stdout.capture(), stderr.capture(),
                 selectResultFailure(primaryFailure, cleanup),
-                new SandboxExecutionObservation(handle,
-                        spec.filesystem().workingDirectory().toRealPath(),
+                new SandboxExecutionObservation(handle, workingDirectory.toRealPath(),
                         Duration.between(launchedAt, Instant.now()), cleanup));
     }
 
