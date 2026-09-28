@@ -154,7 +154,7 @@ yet.
 `UNAVAILABLE` is an explicit, pinned verdict, not a side effect of the declared type names:
 `RegistryAvailabilityProjection` holds a `PENDING_PLATFORM_DISPATCH` declaration for
 `media.cover-image:1.0`, so the composition catalog reports `UNAVAILABLE` (with the
-`SLICE_LOCAL_RUNTIME: … execution-seam integration (OperationInvocationPort) is pending` reason) even
+`SLICE_LOCAL_RUNTIME: … execution-seam integration (operation invocation boundary) is pending` reason) even
 if a provider manifest aligned its declared reference types with the catalog contract, and
 `resolveProviderBound` returns empty for it. Both the published catalog and provider-bound resolution
 use that single availability computation, so a capability the catalog does not report `AVAILABLE`

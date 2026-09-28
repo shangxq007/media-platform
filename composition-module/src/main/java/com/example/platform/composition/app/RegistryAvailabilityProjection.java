@@ -23,7 +23,7 @@ public final class RegistryAvailabilityProjection implements CompositionProvider
      */
     private static final Map<String, String> PENDING_PLATFORM_DISPATCH = Map.of(
             "media.cover-image:1.0",
-            "SLICE_LOCAL_RUNTIME: cover render runs in the cover worker; platform execution-seam integration (OperationInvocationPort) is pending");
+            "SLICE_LOCAL_RUNTIME: cover render runs in the cover worker; platform execution-seam integration (operation invocation boundary) is pending");
     public RegistryAvailabilityProjection(com.example.platform.extension.api.port.CapabilityRegistryPort capabilities,
                                          com.example.platform.extension.api.port.PluginRegistryPort providers) {
         this.capabilities=capabilities;
@@ -38,7 +38,7 @@ public final class RegistryAvailabilityProjection implements CompositionProvider
         // until the platform operation-invocation seam (backlog C2) executes the capability. Like
         // media.transcode, the entry is NEVER reported AVAILABLE on the strength of a slice-local
         // runtime.
-        register(new CapabilityAvailability("media.cover-image", "1.0", new ContractRef("Artifact", "1"), new ContractRef("Artifact", "1"), Set.of("image"), Set.of("video/mp4", "video/webm", "video/quicktime", "video/x-matroska"), Set.of(ExecutionMode.ASYNCHRONOUS), Availability.UNAVAILABLE, "SLICE_LOCAL_RUNTIME: cover render runs in the cover worker; platform execution-seam integration (OperationInvocationPort) is pending", new CostEstimate(new BigDecimal("0.1"), "quota-unit", new BigDecimal("0.1")), new Reliability(true, true, 3), Set.of("media.template"), Set.of("media.application")));
+        register(new CapabilityAvailability("media.cover-image", "1.0", new ContractRef("Artifact", "1"), new ContractRef("Artifact", "1"), Set.of("image"), Set.of("video/mp4", "video/webm", "video/quicktime", "video/x-matroska"), Set.of(ExecutionMode.ASYNCHRONOUS), Availability.UNAVAILABLE, "SLICE_LOCAL_RUNTIME: cover render runs in the cover worker; platform execution-seam integration (operation invocation boundary) is pending", new CostEstimate(new BigDecimal("0.1"), "quota-unit", new BigDecimal("0.1")), new Reliability(true, true, 3), Set.of("media.template"), Set.of("media.application")));
         // Capabilities expose only the platform Artifact contract. Raw provider
         // output remains behind the explicit materialization boundary.
         register(new CapabilityAvailability("media.transcode", "1.0", new ContractRef("Artifact", "1"), new ContractRef("Artifact", "1"), Set.of("video"), Set.of("video/mp4", "video/webm"), Set.of(ExecutionMode.ASYNCHRONOUS, ExecutionMode.BATCH), Availability.UNAVAILABLE, "MATERIALIZATION_REQUIRED: no typed output adapter is registered", new CostEstimate(BigDecimal.ONE, "quota-unit", BigDecimal.ONE), new Reliability(true, true, 3), Set.of("media.template"), Set.of("media.application")));
