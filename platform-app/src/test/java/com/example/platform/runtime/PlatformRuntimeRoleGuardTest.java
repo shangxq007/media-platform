@@ -26,14 +26,88 @@ class PlatformRuntimeRoleGuardTest {
 
     @Test
     void workerRoleRequiresNoneWebAndCanonicalThumbnailDiscovery() {
+        // Scalar discovery form must keep working (backward compatibility with the previous
+        // workaround): the binder resolves a comma-separated scalar into the same single-element list.
+        MockEnvironment env = workerBase()
+                .withProperty("spring.temporal.workers-auto-discovery.packages", "com.example.platform.thumbnail");
+        assertThatCode(() -> new PlatformRuntimeRoleGuard(env)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void workerRoleAcceptsYamlListDiscoveryPackages() {
+        // Profile YAML lists flatten into indexed keys (packages[0], ...); the parent key does not
+        // exist, which is exactly the shape a raw getProperty(key, String[].class) lookup could not
+        // read. The binder must resolve it to the canonical single package.
+        MockEnvironment env = workerBase()
+                .withProperty("spring.temporal.workers-auto-discovery.packages[0]", "com.example.platform.thumbnail");
+        assertThatCode(() -> new PlatformRuntimeRoleGuard(env)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void workerRoleRejectsEmptyDiscoveryPackages() {
+        MockEnvironment env = workerBase()
+                .withProperty("spring.temporal.workers-auto-discovery.packages", "");
+        assertThatThrownBy(() -> new PlatformRuntimeRoleGuard(env))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("discover only");
+    }
+
+    @Test
+    void workerRoleRejectsMultipleDiscoveryPackages() {
+        MockEnvironment env = workerBase()
+                .withProperty("spring.temporal.workers-auto-discovery.packages[0]", "com.example.platform.thumbnail")
+                .withProperty("spring.temporal.workers-auto-discovery.packages[1]", "com.example.platform.workflow");
+        assertThatThrownBy(() -> new PlatformRuntimeRoleGuard(env))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("discover only");
+    }
+
+    @Test
+    void apiRoleFailsClosedWhenWorkerListIsConfigured() {
+        // The binder workers binding must also gate the API role: any configured worker list fails
+        // closed even when start-workers is false and the discovery list is empty.
+        MockEnvironment env = base("API")
+                .withProperty("spring.temporal.start-workers", "false")
+                .withProperty("spring.temporal.workers[0].task-queue", "media-platform-tasks");
+        assertThatThrownBy(() -> new PlatformRuntimeRoleGuard(env))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("API role");
+    }
+
+    @Test
+    void workerRoleRejectsEveryAdditionalOrDuplicateQueueEntry() {
+        MockEnvironment third = yamlListPackage(workerBase())
+                .withProperty("spring.temporal.workers[1].task-queue", "media-platform-tasks")
+                .withProperty("spring.temporal.workers[2].task-queue", "media-platform-tasks");
+        assertThatThrownBy(() -> new PlatformRuntimeRoleGuard(third))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("exactly the canonical queue");
+
+        MockEnvironment secondQueue = yamlListPackage(workerBase())
+                .withProperty("spring.temporal.workers[1].task-queue", "workflow-process");
+        assertThatThrownBy(() -> new PlatformRuntimeRoleGuard(secondQueue))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("exactly the canonical queue");
+
+        MockEnvironment duplicateCanonical = yamlListPackage(workerBase())
+                .withProperty("spring.temporal.workers[1].task-queue", "media-platform-tasks");
+        assertThatThrownBy(() -> new PlatformRuntimeRoleGuard(duplicateCanonical))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("exactly the canonical queue");
+    }
+
+    @Test
+    void workerRoleRejectsMissingWorkerList() {
         MockEnvironment env = base("WORKER")
                 .withProperty("spring.temporal.start-workers", "true")
                 .withProperty("spring.main.web-application-type", "none")
-                .withProperty("spring.temporal.workers-auto-discovery.packages", "com.example.platform.thumbnail")
+                .withProperty("spring.temporal.workers-auto-discovery.packages[0]", "com.example.platform.thumbnail")
                 .withProperty("platform.thumbnail.sandbox.bwrap", "/bin/true")
                 .withProperty("platform.thumbnail.sandbox.ffmpeg", "/bin/true")
                 .withProperty("platform.thumbnail.sandbox.ffprobe", "/bin/true");
-        assertThatCode(() -> new PlatformRuntimeRoleGuard(env)).doesNotThrowAnyException();
+        assertThatThrownBy(() -> new PlatformRuntimeRoleGuard(env))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("exactly the canonical queue");
     }
 
     @Test
@@ -63,6 +137,22 @@ class PlatformRuntimeRoleGuardTest {
         assertThatThrownBy(() -> new PlatformRuntimeRoleGuard(http))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("HTTP");
+    }
+
+    private static MockEnvironment workerBase() {
+        return base("WORKER")
+                .withProperty("spring.temporal.start-workers", "true")
+                .withProperty("spring.main.web-application-type", "none")
+                .withProperty("spring.temporal.workers[0].task-queue", "media-platform-tasks")
+                .withProperty("platform.thumbnail.sandbox.bwrap", "/bin/true")
+                .withProperty("platform.thumbnail.sandbox.ffmpeg", "/bin/true")
+                .withProperty("platform.thumbnail.sandbox.ffprobe", "/bin/true");
+    }
+
+    /** The YAML-list discovery form, flattened exactly as Spring Boot flattens a profile list. */
+    private static MockEnvironment yamlListPackage(MockEnvironment environment) {
+        return environment.withProperty(
+                "spring.temporal.workers-auto-discovery.packages[0]", "com.example.platform.thumbnail");
     }
 
     private static MockEnvironment base(String role) {
