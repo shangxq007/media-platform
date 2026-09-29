@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationContext;
@@ -39,7 +40,14 @@ import org.springframework.web.bind.annotation.RestController;
  * role is {@code WORKER}, the queue stays canonical, the HTTP server is disabled, the Temporal
  * discovery package is exactly {@code com.example.platform.thumbnail} and the sandbox executables
  * exist — so a successful boot here is itself the role guard proof.
+ *
+ * <p>Gated on {@code THUMBNAIL_WORKER_CONTEXT=true} (mirroring the {@code COVER_E2E} convention in
+ * {@code CoverImageEndToEndAcceptanceTest}): booting this role requires a reachable Temporal
+ * endpoint ({@code spring.temporal.start-workers=true} is mandated by
+ * {@code PlatformRuntimeRoleGuard}), so the test is skipped (not silently passing) in the ordinary
+ * suite. Set {@code THUMBNAIL_WORKER_CONTEXT=true} with a live Temporal cluster to run it.
  */
+@EnabledIfEnvironmentVariable(named = "THUMBNAIL_WORKER_CONTEXT", matches = "true")
 @SpringBootTest(
         classes = ThumbnailWorkerApplication.class,
         webEnvironment = SpringBootTest.WebEnvironment.NONE)
