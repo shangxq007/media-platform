@@ -4,6 +4,7 @@ import com.example.platform.datasource.DataSourceConfiguration;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Import;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
@@ -15,6 +16,12 @@ import org.springframework.scheduling.annotation.EnableScheduling;
     // worker-only beans of the same package are gated on platform.runtime.role=WORKER, so the API
     // process registers the controller/service and never the provider runtime.
     "com.example.platform.coverimage",
+    // THUMBNAIL-SLICE-API-WIRING-001: the thumbnail capability's API-side admission surface
+    // (ThumbnailController + ThumbnailService + ThumbnailTaskStore + ThumbnailArtifactReadService)
+    // lives in this package. The worker-only beans of the same package are gated on
+    // platform.runtime.role=WORKER (the same mechanism the cover slice uses), so the API process
+    // registers the admission surface and never the provider runtime.
+    "com.example.platform.thumbnail",
     "com.example.platform.security",
     "com.example.platform.production",
     "com.example.platform.render",
@@ -51,7 +58,15 @@ import org.springframework.scheduling.annotation.EnableScheduling;
     "com.example.platform.health",
     "com.example.platform.workerfabric",
     "com.example.platform.composition"
-})
+    },
+    // Mirrors the filter @SpringBootApplication installs by default: an explicit @ComponentScan must
+    // opt in to it, otherwise @TestComponent/@TestConfiguration classes living on the test classpath
+    // inside a scanned package are pulled into the context. This is required now that the thumbnail
+    // slice is scanned (its package carries test fixtures, the same reason the thumbnail worker
+    // application opts in). Test-only classes never exist in the production jar, so production
+    // registration is unchanged.
+    excludeFilters = @ComponentScan.Filter(
+            type = FilterType.CUSTOM, classes = org.springframework.boot.context.TypeExcludeFilter.class))
 @EnableScheduling
 @Import({BuiltinDataBootstrapRunner.class,
     com.example.platform.lifecycle.PlatformGracefulShutdownCoordinator.class,

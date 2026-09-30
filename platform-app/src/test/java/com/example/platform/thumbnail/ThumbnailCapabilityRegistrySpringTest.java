@@ -28,6 +28,9 @@ import org.springframework.context.annotation.FilterType;
 class ThumbnailCapabilityRegistrySpringTest {
 
     private final ApplicationContextRunner canonicalRunner = new ApplicationContextRunner()
+            // The registry is worker-role composition (platform.runtime.role=WORKER), exactly like the
+            // cover-image registry; the scanned production component is gated on that role.
+            .withPropertyValues("platform.runtime.role=WORKER")
             .withUserConfiguration(ScannedRegistryConfiguration.class, CanonicalProviderConfiguration.class);
 
     @Test
@@ -59,6 +62,7 @@ class ThumbnailCapabilityRegistrySpringTest {
     @Test
     void secondaryProviderIsRegisteredWithoutDisplacingThePinnedProvider() {
         new ApplicationContextRunner()
+                .withPropertyValues("platform.runtime.role=WORKER")
                 .withUserConfiguration(
                         ScannedRegistryConfiguration.class,
                         CanonicalProviderConfiguration.class,
@@ -74,6 +78,7 @@ class ThumbnailCapabilityRegistrySpringTest {
     @Test
     void duplicateProviderIdsFailClosed() {
         new ApplicationContextRunner()
+                .withPropertyValues("platform.runtime.role=WORKER")
                 .withUserConfiguration(
                         ScannedRegistryConfiguration.class,
                         CanonicalProviderConfiguration.class,
@@ -90,6 +95,7 @@ class ThumbnailCapabilityRegistrySpringTest {
     @Test
     void missingPinnedProviderFailsClosed() {
         new ApplicationContextRunner()
+                .withPropertyValues("platform.runtime.role=WORKER")
                 .withUserConfiguration(ScannedRegistryConfiguration.class, SecondaryProviderConfiguration.class)
                 .run(context -> {
                     assertThat(context).hasFailed();

@@ -7,6 +7,7 @@ import com.example.platform.storage.infrastructure.StorageRootConfiguration;
 import com.example.platform.workflow.temporal.TemporalEnablementConfiguration;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.annotation.ComponentScan;
@@ -35,6 +36,8 @@ import org.springframework.context.annotation.Import;
  */
 @SpringBootConfiguration
 @EnableAutoConfiguration
+// Worker-only entry point: never registered when the API process scans com.example.platform.thumbnail.
+@ConditionalOnProperty(name = "platform.runtime.role", havingValue = "WORKER")
 @ComponentScan(
         basePackages = {
             "com.example.platform.thumbnail",

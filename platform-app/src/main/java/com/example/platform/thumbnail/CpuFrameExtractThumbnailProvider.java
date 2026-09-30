@@ -13,10 +13,12 @@ import com.example.platform.sandbox.*;
 import com.example.platform.sandbox.execution.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /** Registered provider boundary for media.thumbnail. Process mechanics are confined here. */
 @Component
+@ConditionalOnProperty(name = "platform.runtime.role", havingValue = "WORKER")
 public final class CpuFrameExtractThumbnailProvider implements ThumbnailCapabilityProvider {
     public static final String PROVIDER_ID = "ffmpeg.cpu.frame-extract.v1";
     public static final String TOOLCHAIN = "ffmpeg+ffprobe";

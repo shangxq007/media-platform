@@ -7,11 +7,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /** One transactional fence for Storage publication, Artifact commitment, and task completion. */
 @Service
+@ConditionalOnProperty(name = "platform.runtime.role", havingValue = "WORKER")
 public class ThumbnailCommitService {
     private final ThumbnailTaskStore tasks; private final StorageOutputPort outputs; private final ArtifactCommitService commits;
     public ThumbnailCommitService(ThumbnailTaskStore tasks, StorageOutputPort outputs, ArtifactCommitService commits) { this.tasks=tasks; this.outputs=outputs; this.commits=commits; }

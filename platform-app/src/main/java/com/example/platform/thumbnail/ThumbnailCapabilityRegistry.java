@@ -2,10 +2,12 @@ package com.example.platform.thumbnail;
 
 import java.util.Objects;
 import java.util.function.BooleanSupplier;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /** Runtime composition point for the one registered media.thumbnail capability. */
 @Component
+@ConditionalOnProperty(name = "platform.runtime.role", havingValue = "WORKER")
 public final class ThumbnailCapabilityRegistry {
     private final java.util.Map<String, ThumbnailCapabilityProvider> providers;
     public ThumbnailCapabilityRegistry(java.util.List<ThumbnailCapabilityProvider> registered) {
