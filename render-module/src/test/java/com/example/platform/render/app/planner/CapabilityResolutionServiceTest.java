@@ -1,9 +1,9 @@
 package com.example.platform.render.app.planner;
 
-import com.example.platform.extension.domain.CapabilityId;
+import com.example.platform.shared.capability.CapabilityId;
 import com.example.platform.extension.domain.CapabilityRequirement;
-import com.example.platform.extension.domain.ContractVersion;
-import com.example.platform.extension.domain.ContractVersionRange;
+import com.example.platform.shared.capability.ContractVersion;
+import com.example.platform.shared.capability.ContractVersionRange;
 import com.example.platform.render.app.capability.CapabilityCatalogService;
 import com.example.platform.render.domain.capability.CapabilityDescriptor;
 import org.junit.jupiter.api.Test;

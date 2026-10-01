@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.example.platform.shared.capability.CapabilityParameterContract;
 import com.example.platform.shared.capability.MediaFrameExtractParametersV1;
+import com.example.platform.shared.capability.ContractVersion;
 import org.junit.jupiter.api.Test;
 
 class MediaCapabilityContractsTest {

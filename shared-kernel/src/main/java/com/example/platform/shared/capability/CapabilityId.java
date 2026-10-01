@@ -1,4 +1,4 @@
-package com.example.platform.extension.domain;
+package com.example.platform.shared.capability;
 
 import java.util.List;
 import java.util.Objects;
@@ -20,6 +20,11 @@ import java.util.Objects;
  *       STRUCTURAL (well-formed dotted name), not a fixed TLD catalog.</li>
  * </ul>
  * Invalid namespaces fail closed at construction.
+ *
+ * <p>CAPABILITY_OPERATION_PARAMETER_MODEL / E-2b-1b: moved from
+ * {@code extension.domain} to {@code shared.capability} (single authority) so the
+ * Operation model can reference capability identity without depending on the
+ * extension module.</p>
  */
 public record CapabilityId(String value) {
 

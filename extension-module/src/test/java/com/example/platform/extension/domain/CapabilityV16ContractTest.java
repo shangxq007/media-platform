@@ -5,6 +5,10 @@ import com.example.platform.extension.api.port.PluginRegistryPort;
 import com.example.platform.extension.app.PluginDescriptorValidator;
 import com.example.platform.extension.app.PluginHealthRegistry;
 import com.example.platform.extension.app.PluginRegistryImpl;
+import com.example.platform.shared.capability.CapabilityId;
+import com.example.platform.shared.capability.CapabilityNamespaceValidator;
+import com.example.platform.shared.capability.ContractVersion;
+import com.example.platform.shared.capability.ContractVersionRange;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

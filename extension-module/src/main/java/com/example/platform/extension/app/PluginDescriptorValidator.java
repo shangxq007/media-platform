@@ -1,7 +1,7 @@
 package com.example.platform.extension.app;
 
 import com.example.platform.extension.domain.CapabilityDescriptor;
-import com.example.platform.extension.domain.CapabilityNamespaceValidator;
+import com.example.platform.shared.capability.CapabilityNamespaceValidator;
 import com.example.platform.extension.domain.ExtensionTrustLevel;
 import com.example.platform.extension.domain.HandledObjectDescriptor;
 import com.example.platform.extension.domain.PermissionDescriptor;

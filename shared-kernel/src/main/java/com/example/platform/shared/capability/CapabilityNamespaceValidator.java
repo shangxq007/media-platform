@@ -1,4 +1,4 @@
-package com.example.platform.extension.domain;
+package com.example.platform.shared.capability;
 
 /**
  * #16 (R1/C16): capability id namespace validator.
@@ -17,6 +17,9 @@ package com.example.platform.extension.domain;
  *   <li>Malformed ids (bare names, leading/trailing dots, double dots, upper
  *       case, underscores, hyphens, unknown prefixes) are rejected.</li>
  * </ul>
+ *
+ * <p>CAPABILITY_OPERATION_PARAMETER_MODEL / E-2b-1b: moved from
+ * {@code extension.domain} to {@code shared.capability} (single authority).</p>
  */
 public final class CapabilityNamespaceValidator {
 

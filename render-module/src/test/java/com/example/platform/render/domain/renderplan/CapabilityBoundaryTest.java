@@ -1,6 +1,6 @@
 package com.example.platform.render.domain.renderplan;
 
-import com.example.platform.extension.domain.CapabilityId;
+import com.example.platform.shared.capability.CapabilityId;
 import org.junit.jupiter.api.Test;
 
 import java.util.Set;

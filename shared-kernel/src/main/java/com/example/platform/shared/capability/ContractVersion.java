@@ -1,4 +1,4 @@
-package com.example.platform.extension.domain;
+package com.example.platform.shared.capability;
 
 import java.util.Objects;
 
@@ -11,6 +11,11 @@ import java.util.Objects;
  * versions are compatible when the major segment matches and the requirement's
  * range includes the provider's contract version. Version comparison is
  * numeric (never string-lexicographic).
+ *
+ * <p>CAPABILITY_OPERATION_PARAMETER_MODEL / E-2b-1b: moved from
+ * {@code extension.domain} to {@code shared.capability} (single authority). This
+ * is the <em>capability</em> contract version; the Operation's own version
+ * authority remains {@code OperationDefinitionVersion} (operation-module).</p>
  */
 public record ContractVersion(int major, int minor) {
 

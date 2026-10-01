@@ -1,5 +1,8 @@
 package com.example.platform.extension.domain;
 
+import com.example.platform.shared.capability.CapabilityId;
+import com.example.platform.shared.capability.ContractVersion;
+import com.example.platform.shared.capability.ContractVersionRange;
 import java.util.List;
 import java.util.Objects;
 

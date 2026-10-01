@@ -163,7 +163,7 @@ class DualDistributionPluginConformanceTest {
                 assertThat(registry.findByPluginId(loaded.pluginId())).contains(loaded.pluginDescriptor());
                 assertThat(next.catalog().find(loaded.providerBindingPin())).contains(loaded);
                 assertThat(((com.example.platform.extension.api.port.CapabilityRegistryPort) registry)
-                        .findCapabilityImplementations(com.example.platform.extension.domain.CapabilityId.of(
+                        .findCapabilityImplementations(com.example.platform.shared.capability.CapabilityId.of(
                                 loaded.pluginDescriptor().capabilities().getFirst().capabilityId()))).isNotEmpty();
             }
             assertThat(registry.enumerate()).isEmpty();

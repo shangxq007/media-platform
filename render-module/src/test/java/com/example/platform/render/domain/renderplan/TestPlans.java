@@ -6,7 +6,7 @@ import com.example.platform.audio.domain.mix.AudioMixInput;
 import com.example.platform.audio.domain.mix.AudioMute;
 import com.example.platform.audio.domain.mix.AudioRoute;
 import com.example.platform.audio.domain.mix.StereoBalance;
-import com.example.platform.extension.domain.CapabilityId;
+import com.example.platform.shared.capability.CapabilityId;
 import com.example.platform.fonttext.resolution.FontFallbackPolicy;
 import com.example.platform.fonttext.resolution.ResolvedFontInstance;
 import com.example.platform.fonttext.resolution.ResolvedFontRun;

@@ -170,9 +170,9 @@ class Roadmap21Correction5Test {
                 opKey,
                 List.of(), List.of(
                         new com.example.platform.extension.domain.CapabilityRequirement(
-                                com.example.platform.extension.domain.CapabilityId.of("media.op"),
-                                com.example.platform.extension.domain.ContractVersionRange.atLeast(
-                                        com.example.platform.extension.domain.ContractVersion.of(1, 0)),
+                                com.example.platform.shared.capability.CapabilityId.of("media.op"),
+                                com.example.platform.shared.capability.ContractVersionRange.atLeast(
+                                        com.example.platform.shared.capability.ContractVersion.of(1, 0)),
                                 true, List.of())),
                 List.of(com.example.platform.render.domain.renderplan.RenderOutputRequirement.of(
                         com.example.platform.render.domain.renderplan.RenderOutputRole.RENDER_MASTER)),

@@ -8,7 +8,7 @@ import com.example.platform.composition.app.ProviderRegistryBoundary;
 import com.example.platform.composition.domain.CompositionModels.Availability;
 import com.example.platform.extension.api.port.CapabilityRegistryPort;
 import com.example.platform.extension.api.port.PluginRegistryPort;
-import com.example.platform.extension.domain.CapabilityId;
+import com.example.platform.shared.capability.CapabilityId;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import java.util.Set;
 import java.util.TreeSet;

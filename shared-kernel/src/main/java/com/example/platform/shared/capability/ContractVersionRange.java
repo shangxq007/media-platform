@@ -1,4 +1,4 @@
-package com.example.platform.extension.domain;
+package com.example.platform.shared.capability;
 
 import java.util.Objects;
 
@@ -9,6 +9,9 @@ import java.util.Objects;
  * is explicit: major must match the requirement's min major and the version
  * must lie within [min, max] (numeric comparison). "Higher plugin version"
  * never implies contract compatibility.
+ *
+ * <p>CAPABILITY_OPERATION_PARAMETER_MODEL / E-2b-1b: moved from
+ * {@code extension.domain} to {@code shared.capability} (single authority).</p>
  */
 public record ContractVersionRange(ContractVersion min, ContractVersion max) {
 

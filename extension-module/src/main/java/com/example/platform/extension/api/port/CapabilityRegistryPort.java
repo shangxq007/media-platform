@@ -1,9 +1,9 @@
 package com.example.platform.extension.api.port;
 
-import com.example.platform.extension.domain.CapabilityId;
+import com.example.platform.shared.capability.CapabilityId;
 import com.example.platform.extension.domain.CapabilityImplementation;
 import com.example.platform.extension.domain.CapabilityImplementationId;
-import com.example.platform.extension.domain.ContractVersion;
+import com.example.platform.shared.capability.ContractVersion;
 
 import java.util.List;
 import java.util.Optional;

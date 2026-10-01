@@ -165,7 +165,7 @@ public class WorkflowAdmission {
             if (!pins.containsKey(key)) {
                 pins.put(key, RunJson.write(List.of(base.definitionId(), base.version())));
                 for (var requirement : node.capabilities()) {
-                    var ids = new ArrayList<com.example.platform.extension.domain.CapabilityId>();
+                    var ids = new ArrayList<com.example.platform.shared.capability.CapabilityId>();
                     ids.add(requirement.capabilityId());
                     ids.addAll(requirement.alternatives());
                     var available =

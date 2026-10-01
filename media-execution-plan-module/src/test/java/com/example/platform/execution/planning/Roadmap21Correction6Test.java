@@ -43,9 +43,9 @@ class Roadmap21Correction6Test {
                 "decode",
                 List.of(), List.of(
                         new com.example.platform.extension.domain.CapabilityRequirement(
-                                com.example.platform.extension.domain.CapabilityId.of("media.decode"),
-                                com.example.platform.extension.domain.ContractVersionRange.atLeast(
-                                        com.example.platform.extension.domain.ContractVersion.of(1, 0)),
+                                com.example.platform.shared.capability.CapabilityId.of("media.decode"),
+                                com.example.platform.shared.capability.ContractVersionRange.atLeast(
+                                        com.example.platform.shared.capability.ContractVersion.of(1, 0)),
                                 true, List.of())),
                 List.of(), List.of(
                         new com.example.platform.render.domain.renderplan.RenderExecutionRequirement(

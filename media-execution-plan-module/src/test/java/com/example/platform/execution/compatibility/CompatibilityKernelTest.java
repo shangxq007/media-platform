@@ -31,10 +31,10 @@ import com.example.platform.execution.planning.ExecutionIoProjection.CapabilityR
 import com.example.platform.execution.planning.ExecutionIoProjection.ExecutionIntentRef;
 import com.example.platform.execution.planning.ExecutionIoProjection.InputBinding;
 import com.example.platform.execution.planning.PhysicalExecutionPlan.PhysicalPlanUnit;
-import com.example.platform.extension.domain.CapabilityId;
+import com.example.platform.shared.capability.CapabilityId;
 import com.example.platform.extension.domain.CapabilityRequirement;
-import com.example.platform.extension.domain.ContractVersion;
-import com.example.platform.extension.domain.ContractVersionRange;
+import com.example.platform.shared.capability.ContractVersion;
+import com.example.platform.shared.capability.ContractVersionRange;
 import com.example.platform.render.domain.renderplan.RenderArtifactReference;
 import com.example.platform.render.domain.renderplan.RenderExecutionRequirement;
 import com.example.platform.render.domain.renderplan.RenderExecutionRequirement.GpuRequirement;

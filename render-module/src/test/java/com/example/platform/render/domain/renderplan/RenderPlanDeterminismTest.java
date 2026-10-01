@@ -1,6 +1,6 @@
 package com.example.platform.render.domain.renderplan;
 
-import com.example.platform.extension.domain.CapabilityId;
+import com.example.platform.shared.capability.CapabilityId;
 import com.example.platform.shared.digest.ContentDigest;
 import com.example.platform.shared.time.MediaTime;
 import com.example.platform.timeline.canonical.TimelineContentDigester;

@@ -45,9 +45,9 @@ class Roadmap21Correction7Test {
                 "decode",
                 List.of(), List.of(
                         new com.example.platform.extension.domain.CapabilityRequirement(
-                                com.example.platform.extension.domain.CapabilityId.of("media.decode"),
-                                com.example.platform.extension.domain.ContractVersionRange.atLeast(
-                                        com.example.platform.extension.domain.ContractVersion.of(1, 0)),
+                                com.example.platform.shared.capability.CapabilityId.of("media.decode"),
+                                com.example.platform.shared.capability.ContractVersionRange.atLeast(
+                                        com.example.platform.shared.capability.ContractVersion.of(1, 0)),
                                 true, List.of())),
                 List.of(), List.of(
                         new com.example.platform.render.domain.renderplan.RenderExecutionRequirement(
@@ -66,9 +66,9 @@ class Roadmap21Correction7Test {
                 "decode",
                 artifacts, List.of(
                         new com.example.platform.extension.domain.CapabilityRequirement(
-                                com.example.platform.extension.domain.CapabilityId.of("media.decode"),
-                                com.example.platform.extension.domain.ContractVersionRange.atLeast(
-                                        com.example.platform.extension.domain.ContractVersion.of(1, 0)),
+                                com.example.platform.shared.capability.CapabilityId.of("media.decode"),
+                                com.example.platform.shared.capability.ContractVersionRange.atLeast(
+                                        com.example.platform.shared.capability.ContractVersion.of(1, 0)),
                                 true, List.of())),
                 List.of(), List.of(), List.of(), java.util.Optional.empty(), coverage(0, 10000));
     }
@@ -211,14 +211,14 @@ class Roadmap21Correction7Test {
     @Test
     void capabilityOrderInvariance() { // C7-T06 + T14
         var capA = new com.example.platform.extension.domain.CapabilityRequirement(
-                com.example.platform.extension.domain.CapabilityId.of("media.decode"),
-                com.example.platform.extension.domain.ContractVersionRange.atLeast(
-                        com.example.platform.extension.domain.ContractVersion.of(1, 0)),
+                com.example.platform.shared.capability.CapabilityId.of("media.decode"),
+                com.example.platform.shared.capability.ContractVersionRange.atLeast(
+                        com.example.platform.shared.capability.ContractVersion.of(1, 0)),
                 true, List.of());
         var capB = new com.example.platform.extension.domain.CapabilityRequirement(
-                com.example.platform.extension.domain.CapabilityId.of("media.transcode"),
-                com.example.platform.extension.domain.ContractVersionRange.atLeast(
-                        com.example.platform.extension.domain.ContractVersion.of(2, 0)),
+                com.example.platform.shared.capability.CapabilityId.of("media.transcode"),
+                com.example.platform.shared.capability.ContractVersionRange.atLeast(
+                        com.example.platform.shared.capability.ContractVersion.of(2, 0)),
                 true, List.of());
         var nA = new RenderNode(new RenderNodeId("n1"),
                 new com.example.platform.render.domain.renderplan.RenderNodeKind.Source(),

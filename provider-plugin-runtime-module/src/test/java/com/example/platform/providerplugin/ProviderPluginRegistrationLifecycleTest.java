@@ -3,6 +3,7 @@ package com.example.platform.providerplugin;
 import com.example.platform.execution.domain.provider.*;
 import com.example.platform.extension.api.port.*;
 import com.example.platform.extension.domain.*;
+import com.example.platform.shared.capability.CapabilityId;
 import com.example.platform.workerfabric.domain.WorkerRuntimeSupportRequirement;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;

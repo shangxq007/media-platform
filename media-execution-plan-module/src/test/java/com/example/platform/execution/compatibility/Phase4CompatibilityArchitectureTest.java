@@ -3,7 +3,7 @@ package com.example.platform.execution.compatibility;
 import com.example.platform.execution.domain.provider.ProviderBindingPin;
 import com.example.platform.execution.domain.provider.ProviderId;
 import com.example.platform.execution.domain.provider.ProviderImplementationId;
-import com.example.platform.extension.domain.CapabilityId;
+import com.example.platform.shared.capability.CapabilityId;
 import com.example.platform.extension.domain.CapabilityImplementationId;
 import java.io.IOException;
 import java.nio.file.Files;

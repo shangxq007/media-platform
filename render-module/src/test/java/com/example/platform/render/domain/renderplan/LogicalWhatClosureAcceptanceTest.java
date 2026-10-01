@@ -1,7 +1,7 @@
 package com.example.platform.render.domain.renderplan;
 
 import com.example.platform.audio.domain.mix.AudioMix;
-import com.example.platform.extension.domain.CapabilityId;
+import com.example.platform.shared.capability.CapabilityId;
 import com.example.platform.fonttext.resolution.FontFallbackPolicy;
 import com.example.platform.fonttext.resolution.ResolvedFontInstance;
 import com.example.platform.fonttext.resolution.ResolvedFontRun;

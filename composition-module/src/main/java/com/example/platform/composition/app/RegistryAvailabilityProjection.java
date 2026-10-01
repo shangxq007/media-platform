@@ -72,8 +72,8 @@ public final class RegistryAvailabilityProjection implements CompositionProvider
     private boolean dispatchAvailable(CapabilityAvailability contract) {
         if (PENDING_PLATFORM_DISPATCH.containsKey(contract.capabilityId()+":"+contract.version())) return false;
         var matches=capabilities.findImplementationsForContractVersion(
-                com.example.platform.extension.domain.CapabilityId.of(contract.capabilityId()),
-                com.example.platform.extension.domain.ContractVersion.parse(contract.version()));
+                com.example.platform.shared.capability.CapabilityId.of(contract.capabilityId()),
+                com.example.platform.shared.capability.ContractVersion.parse(contract.version()));
         return matches.stream().anyMatch(implementation -> providers.findByPluginId(implementation.pluginId())
                 .filter(manifest -> manifest.capabilities().stream().anyMatch(c -> c.capabilityId().equals(contract.capabilityId())
                         && c.capabilityContractVersion().equals(contract.version())

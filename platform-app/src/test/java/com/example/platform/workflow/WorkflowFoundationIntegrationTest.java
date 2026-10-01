@@ -751,10 +751,10 @@ class WorkflowFoundationIntegrationTest extends PostgresTestContainerSupport {
                 .isInstanceOf(IllegalArgumentException.class);
         var capability =
                 com.example.platform.extension.domain.CapabilityRequirement.of(
-                        new com.example.platform.extension.domain.CapabilityId(
+                        new com.example.platform.shared.capability.CapabilityId(
                                 "missing.capability"),
-                        com.example.platform.extension.domain.ContractVersionRange.exactly(
-                                new com.example.platform.extension.domain.ContractVersion(1, 0)));
+                        com.example.platform.shared.capability.ContractVersionRange.exactly(
+                                new com.example.platform.shared.capability.ContractVersion(1, 0)));
         var missing =
                 new Node(
                         "root",

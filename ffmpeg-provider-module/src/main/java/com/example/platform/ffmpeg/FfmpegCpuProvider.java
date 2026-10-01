@@ -16,9 +16,9 @@ import com.example.platform.execution.domain.provider.ProviderVersion;
 import com.example.platform.workerfabric.domain.RuntimeLifecycleKind;
 import com.example.platform.workerfabric.domain.RuntimeSupportIdentifier;
 import com.example.platform.workerfabric.domain.WorkerRuntimeSupportRequirement;
-import com.example.platform.extension.domain.CapabilityId;
-import com.example.platform.extension.domain.ContractVersion;
-import com.example.platform.extension.domain.ContractVersionRange;
+import com.example.platform.shared.capability.CapabilityId;
+import com.example.platform.shared.capability.ContractVersion;
+import com.example.platform.shared.capability.ContractVersionRange;
 import java.util.List;
 
 /** Immutable identity and exact binding for the bounded CPU-only FFmpeg transcode provider. */

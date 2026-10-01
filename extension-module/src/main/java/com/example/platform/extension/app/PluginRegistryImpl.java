@@ -2,6 +2,8 @@ package com.example.platform.extension.app;
 
 import com.example.platform.extension.api.port.*;
 import com.example.platform.extension.domain.*;
+import com.example.platform.shared.capability.CapabilityId;
+import com.example.platform.shared.capability.ContractVersion;
 import java.util.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;

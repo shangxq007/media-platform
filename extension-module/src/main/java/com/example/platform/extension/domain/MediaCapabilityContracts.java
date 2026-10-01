@@ -1,5 +1,8 @@
 package com.example.platform.extension.domain;
 
+import com.example.platform.shared.capability.CapabilityId;
+import com.example.platform.shared.capability.ContractVersion;
+
 /**
  * Platform (platform-reserved {@code media.*}) capability model-layer declarations
  * (CAPABILITY_OPERATION_PARAMETER_MODEL / E-2b, D2).

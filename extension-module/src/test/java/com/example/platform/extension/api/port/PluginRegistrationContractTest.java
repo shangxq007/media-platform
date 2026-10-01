@@ -1,6 +1,8 @@
 package com.example.platform.extension.api.port;
 
 import com.example.platform.extension.domain.*;
+import com.example.platform.shared.capability.CapabilityId;
+import com.example.platform.shared.capability.ContractVersion;
 import java.util.*;
 import java.util.concurrent.*;
 import org.junit.jupiter.api.Test;
