@@ -32,6 +32,31 @@ public final class FfmpegCpuRuntimeBindingFactory {
             Duration timeout,
             long captureBytes,
             SandboxCancellation cancellation) {
+        return new ProviderNativeRuntimeBinding<>(
+                new FfmpegCpuTranscodeLowerer(),
+                new FfmpegCpuRuntimeAdapter(executable),
+                executor(executable, workspace, timeout, captureBytes, cancellation));
+    }
+
+    /** The capability-aware binding exposed by the provider contribution. */
+    public static ProviderNativeRuntimeBinding<FfmpegCpuRenderPlan> createRender(
+            Path executable,
+            FfmpegSandboxWorkspace workspace,
+            Duration timeout,
+            long captureBytes,
+            SandboxCancellation cancellation) {
+        return new ProviderNativeRuntimeBinding<>(
+                new FfmpegCpuRenderLowerer(),
+                new FfmpegCpuRenderAdapter(executable),
+                executor(executable, workspace, timeout, captureBytes, cancellation));
+    }
+
+    private static SandboxRuntimeCommandExecutor executor(
+            Path executable,
+            FfmpegSandboxWorkspace workspace,
+            Duration timeout,
+            long captureBytes,
+            SandboxCancellation cancellation) {
         BubblewrapSandboxDetection detection = BubblewrapSandboxCapabilityDetector.detect();
         SandboxRuntimeCapabilities capabilities = detection.launcher()
                 .map(launcher -> launcher.capabilities())
@@ -40,14 +65,11 @@ public final class FfmpegCpuRuntimeBindingFactory {
                 .<com.example.platform.sandbox.BoundedProcessLauncher>map(value -> value)
                 .orElse((specification, ignored) -> unavailable(
                         specification.filesystem().workingDirectory(), detection.diagnostic()));
-        return new ProviderNativeRuntimeBinding<>(
-                new FfmpegCpuTranscodeLowerer(),
-                new FfmpegCpuRuntimeAdapter(executable),
-                new SandboxRuntimeCommandExecutor(
-                        launcher,
-                        new FfmpegSandboxExecutionPolicyResolver(
-                                executable, workspace, timeout, captureBytes, capabilities),
-                        cancellation));
+        return new SandboxRuntimeCommandExecutor(
+                launcher,
+                new FfmpegSandboxExecutionPolicyResolver(
+                        executable, workspace, timeout, captureBytes, capabilities),
+                cancellation);
     }
 
     private static SandboxExecutionResult unavailable(Path workingDirectory, String diagnostic) {
