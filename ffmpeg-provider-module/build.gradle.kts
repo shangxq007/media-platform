@@ -33,6 +33,9 @@ dependencies {
     testImplementation(project(":artifact-module"))
     testImplementation(project(":storage-module"))
     testImplementation(project(":render-module"))
+    // Canonical Audio Mix authority is needed by the TimelineDocument fixture of the
+    // typed-chain integration test (render/timeline expose it only as an implementation dep).
+    testImplementation(project(":audio-module"))
     testImplementation(project(":shared-kernel"))
     testImplementation("io.micrometer:micrometer-core")
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.3")
