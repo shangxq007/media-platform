@@ -1159,9 +1159,9 @@ else
     pass "operation never in Timeline hash"
 fi
 
-# OMG-30: exactly 15 definitions
+# OMG-30: exactly 25 definitions
 if grep -q 'MOVE, DELETE, TRIM, SET_TEMPORAL_RATE, SET_TEMPORAL_DIRECTION, FREEZE' operation-module/src/main/java/com/example/platform/operation/operation/OperationDefinition.java; then
-    pass "frozen 15-operation vocabulary"
+    pass "frozen 25-operation vocabulary"
 else
     fail "operation vocabulary drifted"
 fi
