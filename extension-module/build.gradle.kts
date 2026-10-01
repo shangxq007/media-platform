@@ -3,7 +3,9 @@ plugins { id("java-library") }
 dependencies {
     implementation(project(":audit-contract-module")) // owner-published audit ports
     api(project(":usage-contract-module")) // owner-published observation/ingestion contracts
-    implementation(project(":shared-kernel"))
+    // `api`: the published CapabilityContractDescriptor references the shared
+    // provider-neutral capability parameter contract in its public signature.
+    api(project(":shared-kernel"))
     implementation("org.springframework.boot:spring-boot-starter")
     implementation("org.springframework.boot:spring-boot-starter-web")
     // Direct Jackson 2.x usage (HttpSandboxWorkerAdapter); previously obtained
