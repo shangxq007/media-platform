@@ -24,6 +24,7 @@ import com.example.platform.shared.web.TenantContext;
 import org.jooq.DSLContext;
 import org.jooq.impl.DSL;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -75,6 +76,15 @@ class TimelinePatchApplicationServiceHydrationIntegrationTest extends PostgresTe
     @AfterAll
     static void tearDownDatabase() {
         closeDataSource(dataSource);
+    }
+
+    /**
+     * TenantContext is a thread-local set in {@link #setUp()}; it MUST be cleared so
+     * this class never leaks a tenant into unrelated tests that share the JVM.
+     */
+    @AfterEach
+    void clearTenantContext() {
+        TenantContext.clear();
     }
 
     @BeforeEach
