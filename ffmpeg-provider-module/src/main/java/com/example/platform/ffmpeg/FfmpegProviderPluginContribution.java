@@ -4,6 +4,7 @@ import com.example.platform.execution.domain.provider.ProviderBindingPin;
 import com.example.platform.execution.domain.provider.ProviderCapabilityProfile;
 import com.example.platform.execution.domain.provider.ProviderDescriptor;
 import com.example.platform.execution.domain.provider.ProviderExecutionContract;
+import com.example.platform.execution.compatibility.ProviderStaticCompatibility;
 import com.example.platform.extension.domain.CapabilityDescriptor;
 import com.example.platform.extension.domain.HandledObjectDescriptor;
 import com.example.platform.extension.domain.InvocationContract;
@@ -89,9 +90,14 @@ public final class FfmpegProviderPluginContribution implements ProviderPluginCon
     }
 
     @Override
+    public ProviderStaticCompatibility providerStaticCompatibility() {
+        return FfmpegCpuProvider.STATIC_COMPATIBILITY;
+    }
+
+    @Override
     public ProviderNativeRuntimeBinding<?> createRuntimeBinding(
             ProviderPluginRuntimeContext context) {
-        return FfmpegCpuRuntimeBindingFactory.create(
+        return FfmpegCpuRuntimeBindingFactory.createRender(
                 context.executable(),
                 FfmpegSandboxWorkspace.under(context.workspaceRoot()),
                 context.timeout(),

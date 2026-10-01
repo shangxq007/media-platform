@@ -51,9 +51,13 @@ class FfmpegProviderContractTest {
         assertThat(FfmpegCpuProvider.RUNTIME_SUPPORT_REQUIREMENT.requiredRuntimeKind())
                 .isEqualTo(RuntimeLifecycleKind.EPHEMERAL_TASK);
         assertThat(FfmpegCpuProvider.CAPABILITY_PROFILE.supportDeclarations())
-                .singleElement()
-                .satisfies(support -> assertThat(support.capabilityId().value())
-                        .isEqualTo("media.transcode"));
+                .extracting(support -> support.capabilityId().value())
+                .containsExactlyInAnyOrder(
+                        "media.transcode", "video.decode", "render.composite", "render.output");
+        assertThat(FfmpegCpuProvider.EXECUTION_CONTRACT.capabilityContractReferences())
+                .extracting(reference -> reference.capabilityId().value())
+                .containsExactlyInAnyOrder(
+                        "media.transcode", "video.decode", "render.composite", "render.output");
     }
 
     @Test
