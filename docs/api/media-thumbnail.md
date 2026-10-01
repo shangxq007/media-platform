@@ -9,8 +9,10 @@ of the HTTP contract.
 
 `V10__media_thumbnail_tasks.sql` owns durable admission and lifecycle state. The
 Temporal `ThumbnailWorkflow` persists admission before the activity, retries bounded
-provider work, honors cancellation, and commits an IMAGE/THUMBNAIL Artifact only
-after readable output and Storage integrity verification. Artifact retrieval checks
+provider work, honors cancellation, and commits an IMAGE Artifact (generic
+`ArtifactKind.DERIVED_MEDIA`) related to its subject by a `THUMBNAIL_OF` provenance
+edge only after readable output and Storage integrity verification; the legacy
+`ArtifactKind.THUMBNAIL` is retained for rows committed before the rebuild. Artifact retrieval checks
 tenant/project scope, Artifact availability/kind/media type, replica integrity, and
 returns a controlled image response.
 

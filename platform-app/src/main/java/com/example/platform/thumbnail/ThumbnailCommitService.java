@@ -19,7 +19,8 @@ public class ThumbnailCommitService {
     public ThumbnailCommitService(ThumbnailTaskStore tasks, StorageOutputPort outputs, ArtifactCommitService commits) { this.tasks=tasks; this.outputs=outputs; this.commits=commits; }
 
     @Transactional
-    public String commit(String tenant, String project, String taskId, String contentType, byte[] bytes, Path output, String root) {
+    public String commit(String tenant, String project, String taskId, String subjectArtifactId,
+            String contentType, byte[] bytes, Path output, String root) {
         if (!tasks.lockForCommit(tenant, project, taskId)) return null;
         try {
             try { Files.createDirectories(output.getParent()); Files.write(output, bytes); }
@@ -27,7 +28,11 @@ public class ThumbnailCommitService {
             String relative=Path.of(root).toAbsolutePath().normalize().relativize(output).toString().replace(java.io.File.separatorChar,'/');
             var written=outputs.write(new StorageOutputPort.OutputCommand(new StorageOwnershipScope(tenant,project),new IssuanceIdempotencyKey("thumbnail:"+taskId),relative,contentType));
             var issue=written.issuance(); var aid=new ArtifactId("art-"+java.util.UUID.nameUUIDFromBytes((tenant+"\0"+project+"\0"+taskId+"\0"+issue.objectId().value()).getBytes(java.nio.charset.StandardCharsets.UTF_8)));
-            var accepted=commits.commit(new ArtifactCommitRequest(aid,tenant,issue.placement().committedDigest(),issue.placement().committedLength(),ArtifactMediaType.IMAGE,ArtifactKind.THUMBNAIL,Artifact.CURRENT_SCHEMA_VERSION,issue.objectId(),issue.placement().replicaId(),issue.placement().location().providerId(),ReplicaRole.PRIMARY,issue.placement().location().region(),"thumbnail:"+taskId,List.of(),Instant.now(),Instant.now(),taskId,project));
+            // COVER-THUMBNAIL-REBUILD-001 (action 5): a thumbnail is an image Artifact that plays the
+            // thumbnail role through a THUMBNAIL_OF provenance relation (the same relation-based model
+            // the cover capability uses with COVER_OF), not through a dedicated ArtifactKind.
+            String pin=issue.placement().committedDigest().canonicalValue();
+            var accepted=commits.commit(new ArtifactCommitRequest(aid,tenant,issue.placement().committedDigest(),issue.placement().committedLength(),ArtifactMediaType.IMAGE,ArtifactKind.DERIVED_MEDIA,Artifact.CURRENT_SCHEMA_VERSION,issue.objectId(),issue.placement().replicaId(),issue.placement().location().providerId(),ReplicaRole.PRIMARY,issue.placement().location().region(),"thumbnail:"+taskId,List.of(new ArtifactCommitRequest.ProvenanceEdgeDeclaration(new ArtifactId(subjectArtifactId),ProvenanceRelationType.THUMBNAIL_OF,ThumbnailContracts.OPERATION_ID,1,taskId,pin,pin)),Instant.now(),Instant.now(),taskId,project));
             return tasks.completeLocked(tenant, project, taskId, accepted.artifact().artifactId().value()) ? accepted.artifact().artifactId().value() : null;
         } finally { try { Files.deleteIfExists(output); Files.deleteIfExists(output.getParent()); } catch (Exception ignored) {} }
     }

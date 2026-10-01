@@ -17,5 +17,13 @@ public enum ProvenanceRelationType {
     SUBTITLED_FROM,
     RENDERED_FROM,
     /** Cover image derived from its subject Artifact (relation-based cover representation). */
-    COVER_OF
+    COVER_OF,
+    /**
+     * Thumbnail image derived from its subject Artifact (relation-based thumbnail representation).
+     *
+     * <p>COVER-THUMBNAIL-REBUILD-001 (action 5): a thumbnail is an image Artifact that plays the
+     * thumbnail role through this provenance relation — the same relation-based model the cover
+     * capability uses ({@link #COVER_OF}) — instead of a dedicated {@code ArtifactKind}.
+     */
+    THUMBNAIL_OF
 }

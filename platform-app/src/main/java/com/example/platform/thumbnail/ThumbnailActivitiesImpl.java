@@ -65,7 +65,7 @@ public class ThumbnailActivitiesImpl implements ThumbnailActivities {
         if (!result.succeeded()) { tasks.statusIfActive(taskId, "CANCELLED".equals(result.failureCode())?ThumbnailContracts.Status.CANCELLED:ThumbnailContracts.Status.FAILED, null, result.failureCode()); return null; }
         if (!tasks.statusIfActive(taskId, ThumbnailContracts.Status.COMMITTING, null, null)) return null;
         Path output=root.resolve("thumbnail-work").resolve(req.idempotencyKey()).resolve("provider-output").normalize();
-        try { return commitService.commit(tenant, project, taskId, result.contentType(), result.bytes(), output, root.toString()); }
+        try { return commitService.commit(tenant, project, taskId, req.sourceAssetId(), result.contentType(), result.bytes(), output, root.toString()); }
         catch (Exception failure) { tasks.statusIfActive(taskId, ThumbnailContracts.Status.FAILED, null, "OUTPUT_COMMIT_FAILED"); throw new IllegalStateException(failure); }
     }
     /** Digest-verified read of the source Artifact bytes through the canonical Storage receipt path. */

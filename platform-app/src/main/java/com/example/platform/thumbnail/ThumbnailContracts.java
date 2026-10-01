@@ -32,6 +32,13 @@ public final class ThumbnailContracts {
     /** Provider version, aligned with the platform registration contribution version. */
     public static final String PROVIDER_VERSION = "1.0.0";
 
+    /**
+     * Provenance operation tag carried on the single {@code THUMBNAIL_OF} edge — a
+     * capability-independent semantic label, never a capability id and never a canonical
+     * {@code OperationDefinitionId} (mirrors {@code CoverImageContracts.OPERATION_ID}).
+     */
+    public static final String OPERATION_ID = "thumbnail";
+
     private ThumbnailContracts() {}
 
     static void require(String value, String field) {

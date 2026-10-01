@@ -16,7 +16,15 @@ public class ThumbnailArtifactReadService {
         TenantGuard.assertSameTenant(tenant); authorization.requireRead(tenant,project); var result=tasks.find(tenant,project,taskId).orElseThrow(()->new IllegalArgumentException("thumbnail not found"));
         if(result.status()!=ThumbnailContracts.Status.COMPLETED||result.artifactId()==null) throw new IllegalStateException("thumbnail is not available");
         Artifact artifact=artifacts.getArtifact(tenant,new ArtifactId(result.artifactId())).orElseThrow(()->new IllegalArgumentException("artifact unavailable"));
-        if(artifact.state()!=ArtifactState.AVAILABLE||artifact.artifactKind()!=ArtifactKind.THUMBNAIL||artifact.mediaType()!=ArtifactMediaType.IMAGE) throw new IllegalStateException("artifact is not an accepted thumbnail");
+        boolean accepted = artifact.state()==ArtifactState.AVAILABLE
+                && artifact.mediaType()==ArtifactMediaType.IMAGE
+                // COVER-THUMBNAIL-REBUILD-001 (action 5): a new thumbnail is a DERIVED_MEDIA image
+                // whose thumbnail role is the THUMBNAIL_OF provenance relation; the legacy
+                // ArtifactKind.THUMBNAIL is retained for rows committed before the rebuild.
+                && (artifact.artifactKind()==ArtifactKind.THUMBNAIL
+                    || (artifact.artifactKind()==ArtifactKind.DERIVED_MEDIA
+                        && hasThumbnailOfEdge(tenant, artifact.artifactId())));
+        if(!accepted) throw new IllegalStateException("artifact is not an accepted thumbnail");
         var binding=artifacts.listReplicas(tenant,artifact.artifactId()).stream().findFirst().orElseThrow(()->new IllegalStateException("thumbnail replica unavailable"));
         var owner=new StorageOwnershipScope(tenant,project);
         byte[] bytes=storage.read(owner,binding.storageObjectId(),binding.storageReplicaId());
@@ -26,5 +34,9 @@ public class ThumbnailArtifactReadService {
         return new Image(bytes,type,artifact.artifactId().value());
     }
     private static com.example.platform.shared.digest.ContentDigest digest(byte[] b){try{return com.example.platform.shared.digest.ContentDigest.sha256(java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(b)));}catch(Exception e){throw new IllegalStateException(e);}}
+    private boolean hasThumbnailOfEdge(String tenant, ArtifactId artifactId){
+        return artifacts.getDirectProvenance(tenant, artifactId).stream()
+                .anyMatch(edge -> edge.relationType()==ProvenanceRelationType.THUMBNAIL_OF);
+    }
     public record Image(byte[] bytes,String contentType,String artifactId){ public Image{bytes=Arrays.copyOf(bytes,bytes.length);} }
 }
