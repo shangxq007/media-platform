@@ -259,7 +259,6 @@ would poll `workflow-process`). The retired per-capability worker profiles and t
 - `JooqArtifactCommitServiceCoverOfTest` — DB-backed canonical `COVER_OF` edge, fail-closed
   conflicting digest and fail-closed identity re-commit.
 
-Local runtime stack: `docker-compose.cover-acceptance.yml` (Temporal 1.26.2 + MinIO + Postgres) with
-the merged `platform-ffmpeg-worker.jar` worker image built from
+Local acceptance uses the merged `platform-ffmpeg-worker.jar` worker image built from
 `infra/docker/Dockerfile.ffmpeg-worker` and guarded by
 `PlatformFfmpegWorkerApplicationArchitectureTest`.
