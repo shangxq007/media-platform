@@ -149,7 +149,7 @@ class CompatibilityKernelTest {
         ProviderStaticCompatibility noSandbox = staticSupport(
                 List.of(), List.of(), List.of(), List.of(),
                 List.of(SandboxMode.UNSANDBOXED),
-                List.of(RenderDeterminismClass.DETERMINISTIC),
+                List.of(ProviderStaticCompatibility.DeterminismClass.DETERMINISTIC),
                 List.of(), LoweringSupport.SUPPORTED);
         var sandboxed = new ExecutionIntentRef(new RenderExecutionRequirement(
                 GpuRequirement.NONE, RenderDeterminismClass.DETERMINISTIC, true));
@@ -316,7 +316,7 @@ class CompatibilityKernelTest {
                         ProviderRuntimeClass.ISOLATED_PROCESS,
                         ProviderRuntimeClass.CONTAINERIZED),
                 List.of(SandboxMode.UNSANDBOXED, SandboxMode.SANDBOXED),
-                List.of(RenderDeterminismClass.values()),
+                List.of(ProviderStaticCompatibility.DeterminismClass.values()),
                 List.of(ARTIFACT_BOUNDARY),
                 LoweringSupport.SUPPORTED);
     }
@@ -327,7 +327,7 @@ class CompatibilityKernelTest {
             List<ProviderDeviceKind> devices,
             List<ProviderRuntimeClass> runtimes,
             List<SandboxMode> sandboxes,
-            List<RenderDeterminismClass> determinism,
+            List<ProviderStaticCompatibility.DeterminismClass> determinism,
             List<BoundaryContractId> boundaries,
             LoweringSupport lowering) {
         return new ProviderStaticCompatibility(

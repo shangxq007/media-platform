@@ -3,7 +3,6 @@ package com.example.platform.execution.compatibility;
 import com.example.platform.execution.compatibility.StaticCompatibilityConstraint.BoundaryContractId;
 import com.example.platform.execution.compatibility.StaticCompatibilityConstraint.CodecId;
 import com.example.platform.execution.compatibility.StaticCompatibilityConstraint.ProviderRuntimeClass;
-import com.example.platform.render.domain.renderplan.RenderExecutionRequirement.RenderDeterminismClass;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -20,7 +19,7 @@ public record ProviderStaticCompatibility(
         List<StaticCompatibilityConstraint.ProviderDeviceKind> supportedDeviceKinds,
         List<ProviderRuntimeClass> supportedRuntimeClasses,
         List<SandboxMode> supportedSandboxModes,
-        List<RenderDeterminismClass> supportedDeterminismClasses,
+        List<DeterminismClass> supportedDeterminismClasses,
         List<BoundaryContractId> supportedBoundaryContracts,
         LoweringSupport loweringSupport) {
 
@@ -83,6 +82,20 @@ public record ProviderStaticCompatibility(
     public enum SandboxMode {
         UNSANDBOXED,
         SANDBOXED
+    }
+
+    /**
+     * Provider-side determinism vocabulary.
+     *
+     * <p>Deliberately independent of the #20 render semantics: a declaration must be
+     * expressible by any execution-side module without reaching into render types.
+     * The Stage-1 kernel translates the authored render determinism class into this
+     * vocabulary at the boundary, exactly as it does for the sandbox intent.</p>
+     */
+    public enum DeterminismClass {
+        DETERMINISTIC,
+        CONDITIONALLY_DETERMINISTIC,
+        NON_DETERMINISTIC
     }
 
     public enum LoweringSupport {

@@ -258,14 +258,30 @@ public final class CompatibilityKernel {
                         ReferenceKind.SANDBOX_MODE,
                         requiredSandbox.name());
             }
+            ProviderStaticCompatibility.DeterminismClass requiredDeterminism =
+                    determinismClass(intent.determinism());
             if (!candidate.staticCompatibility().supportedDeterminismClasses()
-                    .contains(intent.determinism())) {
+                    .contains(requiredDeterminism)) {
                 add(failures, evidence,
                         StaticCompatibilityFailure.DETERMINISM_UNSUPPORTED,
                         ReferenceKind.DETERMINISM,
-                        intent.determinism().name());
+                        requiredDeterminism.name());
             }
         }
+    }
+
+    /**
+     * Translates the authored #20 render determinism class into the provider-side
+     * declaration vocabulary; the two vocabularies are intentionally distinct.
+     */
+    private static ProviderStaticCompatibility.DeterminismClass determinismClass(
+            com.example.platform.render.domain.renderplan.RenderExecutionRequirement.RenderDeterminismClass determinism) {
+        return switch (determinism) {
+            case DETERMINISTIC -> ProviderStaticCompatibility.DeterminismClass.DETERMINISTIC;
+            case CONDITIONALLY_DETERMINISTIC ->
+                    ProviderStaticCompatibility.DeterminismClass.CONDITIONALLY_DETERMINISTIC;
+            case NON_DETERMINISTIC -> ProviderStaticCompatibility.DeterminismClass.NON_DETERMINISTIC;
+        };
     }
 
     private static void evaluateAdditionalConstraints(
