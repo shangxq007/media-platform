@@ -12,18 +12,22 @@ public final class RegistryAvailabilityProjection implements CompositionProvider
     private final Map<String, CapabilityAvailability> entries = new LinkedHashMap<>();
     /**
      * Capabilities that are registered for discovery but whose platform execution path is
-     * deliberately not wired yet (COVER-PROVIDER-PLATFORM-REGISTER-FIX-001 / backlog C2).
+     * deliberately not wired yet.
      *
      * <p>Their availability is pinned UNAVAILABLE here, independently of the reference-type names a
      * provider manifest happens to declare, so that aligning those strings cannot silently advertise
-     * a capability the platform cannot dispatch. This is the explicit "C2 not done" flag: removing an
-     * entry is the reviewable step that makes the capability composable, and the pinned reason is the
-     * summary callers observe. An entry in this map is never {@code AVAILABLE} and never resolves to
-     * a provider binding.
+     * a capability the platform cannot dispatch. Removing an entry is the reviewable step that makes
+     * the capability composable, and the pinned reason is the summary callers observe. An entry in
+     * this map is never {@code AVAILABLE} and never resolves to a provider binding.
+     *
+     * <p>COVER-THUMBNAIL-REBUILD-001 (action 1): {@code media.cover-image} no longer has a pending
+     * entry. Its contribution now declares the platform Artifact capability contract
+     * ({@code media.cover-image} subject Artifact in / cover Artifact out) that the catalog publishes,
+     * so its availability is derived from the registered, healthy implementation exactly like
+     * {@code media.thumbnail} — not pinned. The map is kept as the explicit fail-closed seam for any
+     * future capability whose platform execution path is genuinely not wired.
      */
-    private static final Map<String, String> PENDING_PLATFORM_DISPATCH = Map.of(
-            "media.cover-image:1.0",
-            "SLICE_LOCAL_RUNTIME: cover render runs in the cover worker; platform execution-seam integration (operation invocation boundary) is pending");
+    private static final Map<String, String> PENDING_PLATFORM_DISPATCH = Map.of();
     public RegistryAvailabilityProjection(com.example.platform.extension.api.port.CapabilityRegistryPort capabilities,
                                          com.example.platform.extension.api.port.PluginRegistryPort providers) {
         this.capabilities=capabilities;
@@ -33,11 +37,9 @@ public final class RegistryAvailabilityProjection implements CompositionProvider
         // declared by CoverImagePlatformProvider and registered in the capability registry by
         // CoverImagePlatformRegistration). The capability contract is the platform Artifact contract
         // (subject Artifact in, cover Artifact out, committed through ArtifactCommitService).
-        // Registration alone does not make it composable: the provider-native boundary the registry
-        // declares is ExecutableTask/ProviderExecutionOutput, so this projection reports UNAVAILABLE
-        // until the platform operation-invocation seam (backlog C2) executes the capability. Like
-        // media.transcode, the entry is NEVER reported AVAILABLE on the strength of a slice-local
-        // runtime.
+        // COVER-THUMBNAIL-REBUILD-001 (action 1): the contribution now declares that same Artifact
+        // capability contract, so this entry's availability is derived from the registered, healthy
+        // implementation (media.thumbnail is registered the same way) instead of being pinned.
         register(new CapabilityAvailability("media.cover-image", "1.0", new ContractRef("Artifact", "1"), new ContractRef("Artifact", "1"), Set.of("image"), Set.of("video/mp4", "video/webm", "video/quicktime", "video/x-matroska"), Set.of(ExecutionMode.ASYNCHRONOUS), Availability.UNAVAILABLE, "SLICE_LOCAL_RUNTIME: cover render runs in the cover worker; platform execution-seam integration (operation invocation boundary) is pending", new CostEstimate(new BigDecimal("0.1"), "quota-unit", new BigDecimal("0.1")), new Reliability(true, true, 3), Set.of("media.template"), Set.of("media.application")));
         // Capabilities expose only the platform Artifact contract. Raw provider
         // output remains behind the explicit materialization boundary.

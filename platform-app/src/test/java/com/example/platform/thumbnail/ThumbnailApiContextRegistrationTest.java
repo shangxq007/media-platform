@@ -46,7 +46,9 @@ class ThumbnailApiContextRegistrationTest extends PostgresTestContainerSupport {
             ThumbnailController.class.getName(),
             ThumbnailService.class.getName(),
             ThumbnailTaskStore.class.getName(),
-            ThumbnailArtifactReadService.class.getName());
+            ThumbnailArtifactReadService.class.getName(),
+            // COVER-THUMBNAIL-REBUILD-001 (action 1): platform capability registration is API-side.
+            ThumbnailPlatformRegistration.class.getName());
 
     @Autowired ConfigurableApplicationContext context;
 
@@ -59,6 +61,7 @@ class ThumbnailApiContextRegistrationTest extends PostgresTestContainerSupport {
         assertThat(context.getBeansOfType(ThumbnailService.class)).hasSize(1);
         assertThat(context.getBeansOfType(ThumbnailTaskStore.class)).hasSize(1);
         assertThat(context.getBeansOfType(ThumbnailArtifactReadService.class)).hasSize(1);
+        assertThat(context.getBeansOfType(ThumbnailPlatformRegistration.class)).hasSize(1);
         assertThat(thumbnailRoutePatterns())
                 .contains("/api/tenants/{tenantId}/projects/{projectId}/thumbnails");
 

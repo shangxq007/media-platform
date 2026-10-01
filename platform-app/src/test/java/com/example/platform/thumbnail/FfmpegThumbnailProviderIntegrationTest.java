@@ -22,7 +22,9 @@ class FfmpegThumbnailProviderIntegrationTest {
         Path source = temp.resolve("source.mp4");
         new ProcessBuilder("/usr/bin/ffmpeg", "-y", "-f", "lavfi", "-i", "color=c=blue:s=320x180:d=1", "-pix_fmt", "yuv420p", source.toString()).redirectErrorStream(true).start().waitFor();
         var request = new ThumbnailContracts.Request("tenant", "project", "asset", .25, "jpeg", 160, 80, "real-provider");
-        var result = new CpuFrameExtractThumbnailProvider(temp.toString(), "/usr/bin/ffmpeg", "/usr/bin/ffprobe").extract(request, Files.readAllBytes(source), new AtomicBoolean(false)::get);
+        var result = new CpuFrameExtractThumbnailProvider(temp.toString(), "/usr/bin/ffmpeg", "/usr/bin/ffprobe")
+                .extract(ThumbnailContracts.CAPABILITY, request, Files.readAllBytes(source),
+                        new AtomicBoolean(false)::get);
         assertThat(result.succeeded()).isTrue();
         assertThat(result.contentType()).isEqualTo("image/jpeg");
         assertThat(result.bytes()).startsWith((byte) 0xff, (byte) 0xd8, (byte) 0xff);

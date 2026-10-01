@@ -154,13 +154,13 @@ public final class CoverImagePlatformProvider {
             PLUGIN_VERSION,
             PLATFORM_API_VERSION,
             VENDOR,
-            List.of(new CapabilityDescriptor(
-                    CoverImageContracts.CAPABILITY,
-                    CoverImageContracts.CAPABILITY_VERSION,
-                    "cover",
-                    "ExecutableTask",
-                    "ProviderExecutionOutput",
-                    CapabilityDescriptor.InvocationMode.SYNC_ONLY)),
+                List.of(new CapabilityDescriptor(
+                        CoverImageContracts.CAPABILITY,
+                        CoverImageContracts.CAPABILITY_VERSION,
+                        "cover",
+                        "Artifact",
+                        "Artifact",
+                        CapabilityDescriptor.InvocationMode.SYNC_ONLY)),
             List.of(new HandledObjectDescriptor(
                     "ExecutableTask",
                     "1",

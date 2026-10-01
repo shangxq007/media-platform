@@ -11,6 +11,9 @@ import java.util.Locale;
 public final class ThumbnailContracts {
     public static final String CAPABILITY = "media.thumbnail";
 
+    /** Capability contract version declared alongside {@link #CAPABILITY}. */
+    public static final String CAPABILITY_VERSION = "1.0";
+
     /**
      * Provider/backend <em>family</em> identity — capability-independent and never a capability id,
      * mirroring {@link com.example.platform.coverimage.CoverImageContracts#PROVIDER}. The family
@@ -25,6 +28,9 @@ public final class ThumbnailContracts {
      * manifest's {@code providerImplementationId} slot, never in the {@code providerId} slot.
      */
     public static final String PROVIDER_IMPLEMENTATION = "ffmpeg.cpu.frame-extract.v1";
+
+    /** Provider version, aligned with the platform registration contribution version. */
+    public static final String PROVIDER_VERSION = "1.0.0";
 
     private ThumbnailContracts() {}
 

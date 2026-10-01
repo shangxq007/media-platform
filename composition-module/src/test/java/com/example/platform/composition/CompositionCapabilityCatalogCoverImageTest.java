@@ -20,11 +20,16 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /**
- * COVER-PROVIDER-PLATFORM-REGISTER-001: {@code media.cover-image} is part of the composition
- * capability catalog, declared on the platform Artifact contract (subject Artifact in, cover
- * Artifact out). The entry is declared by the platform, not derived from a provider being loaded,
- * so it is listed even when no provider implementation is registered — and it must never be
- * reported AVAILABLE on the strength of an unregistered slice-local runtime.
+ * COVER-PROVIDER-PLATFORM-REGISTER-001 + COVER-THUMBNAIL-REBUILD-001 (action 1):
+ * {@code media.cover-image} and {@code media.thumbnail} are part of the composition capability
+ * catalog, declared on the platform Artifact contract (subject Artifact in, produced Artifact out).
+ * The entries are declared by the platform, not derived from a provider being loaded, so they are
+ * listed even when no provider implementation is registered.
+ *
+ * <p>Availability is derived from the registered, healthy implementation whose declared contract
+ * matches the catalog: with no matching implementation the capability is UNAVAILABLE and does not
+ * resolve to a provider binding (fail-closed), and a registered contribution declaring the catalog
+ * Artifact contract makes it AVAILABLE and resolvable.
  */
 class CompositionCapabilityCatalogCoverImageTest {
 
@@ -92,9 +97,8 @@ class CompositionCapabilityCatalogCoverImageTest {
         assertThat(entry.mediaTypes()).contains("video/mp4");
         assertThat(entry.reliability().cancellable()).isTrue();
         assertThat(entry.reliability().retryable()).isTrue();
-        // The slice-local runtime is not the platform execution seam: no provider is registered in
-        // this catalog composition, so the projection must be UNAVAILABLE (fail-closed, never
-        // advertised as composable).
+        // No provider implementation is registered in this catalog composition, so availability is
+        // fail-closed UNAVAILABLE.
         assertThat(entry.availability()).isEqualTo(Availability.UNAVAILABLE);
     }
 
@@ -115,9 +119,9 @@ class CompositionCapabilityCatalogCoverImageTest {
     }
 
     /**
-     * COVER-PROVIDER-PLATFORM-REGISTER-FIX-001 (P2): an entry the catalog reports UNAVAILABLE must
-     * not resolve to a provider binding, even when a healthy candidate provider is registered for it.
-     * Before the fix this returned a binding (the registered cover provider is exactly that case).
+     * Fail-closed control: a healthy candidate whose declared contract does NOT match the catalog
+     * entry keeps the capability UNAVAILABLE, and an UNAVAILABLE capability never resolves to a
+     * provider binding.
      */
     @Test
     void unavailableCapabilityDoesNotResolveToAProviderBinding() {
@@ -134,22 +138,36 @@ class CompositionCapabilityCatalogCoverImageTest {
     }
 
     /**
-     * The UNAVAILABLE verdict must not be a reference-type-name coincidence: a manifest that declares
-     * the catalog's Artifact types (the flip scenario the review demonstrated) still must not make a
-     * capability with no platform execution seam composable.
+     * A registered contribution that declares the catalog's Artifact capability contract makes
+     * {@code media.cover-image} AVAILABLE and resolvable. This is the corrected catalog semantics
+     * for the cover capability (COVER-THUMBNAIL-REBUILD-001, action 1), consistent with the
+     * thumbnail control below; availability is derived from a real registration, not pinned.
      */
     @Test
-    void aligningDeclaredReferenceTypesCannotFlipTheUnavailableVerdict() {
+    void registeredContributionDeclaringTheCatalogContractMakesCoverImageAvailable() {
         var underTest = composition();
         registerProvider(underTest.registry(), "media.coverimage.ffmpeg", "media.cover-image",
                 "Artifact", "Artifact");
 
         assertThat(availabilityOf(underTest.projection(), "media.cover-image"))
-                .as("pinned by the explicit pending-dispatch declaration, not by type names")
-                .isEqualTo(Availability.UNAVAILABLE);
-        assertThat(underTest.projection().resolveProviderBound("media.cover-image", "1.0")).isEmpty();
-        assertThat(underTest.projection().resolve("media.cover-image", "1.0").orElseThrow().summary())
-                .contains("SLICE_LOCAL_RUNTIME");
+                .isEqualTo(Availability.AVAILABLE);
+        assertThat(underTest.projection().resolveProviderBound("media.cover-image", "1.0"))
+                .isPresent()
+                .get()
+                .extracting(binding -> binding.providerRegistryReference())
+                .isEqualTo("media.coverimage.ffmpeg@1.0.0");
+    }
+
+    /**
+     * Fail-closed control for cover: with no healthy implementation registered, the capability is
+     * UNAVAILABLE and resolution is empty (the pending pin is gone, but the guard is not weakened).
+     */
+    @Test
+    void coverImageWithoutAHealthyImplementationStaysUnavailableAndDoesNotResolve() {
+        var projection = catalog();
+
+        assertThat(availabilityOf(projection, "media.cover-image")).isEqualTo(Availability.UNAVAILABLE);
+        assertThat(projection.resolveProviderBound("media.cover-image", "1.0")).isEmpty();
     }
 
     /**
@@ -170,5 +188,24 @@ class CompositionCapabilityCatalogCoverImageTest {
                 .get()
                 .extracting(binding -> binding.providerRegistryReference())
                 .isEqualTo("media.thumbnail.ffmpeg@1.0.0");
+    }
+
+    /**
+     * COVER-THUMBNAIL-REBUILD-001 (action 1): with both platform contributions registered and
+     * declaring the catalog Artifact contract, {@code media.cover-image} and {@code media.thumbnail}
+     * are both reported AVAILABLE.
+     */
+    @Test
+    void bothCoverAndThumbnailAreAvailableWhenTheirContributionsAreRegistered() {
+        var underTest = composition();
+        registerProvider(underTest.registry(), "media.coverimage.ffmpeg", "media.cover-image",
+                "Artifact", "Artifact");
+        registerProvider(underTest.registry(), "media.thumbnail.ffmpeg", "media.thumbnail",
+                "Artifact", "Artifact");
+
+        assertThat(availabilityOf(underTest.projection(), "media.cover-image"))
+                .isEqualTo(Availability.AVAILABLE);
+        assertThat(availabilityOf(underTest.projection(), "media.thumbnail"))
+                .isEqualTo(Availability.AVAILABLE);
     }
 }

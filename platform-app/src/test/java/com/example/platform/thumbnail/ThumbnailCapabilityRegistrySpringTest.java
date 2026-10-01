@@ -187,13 +187,15 @@ class ThumbnailCapabilityRegistrySpringTest {
     static class CanonicalProvider implements ThumbnailCapabilityProvider {
         @Override
         public ThumbnailCapabilityProvider.Manifest manifest() {
-            return providerManifest(ThumbnailContracts.CAPABILITY, ThumbnailContracts.PROVIDER,
-                    ThumbnailContracts.PROVIDER_IMPLEMENTATION);
+            return providerManifest(List.of(new ThumbnailCapabilityProvider.CapabilityDeclaration(
+                            ThumbnailContracts.CAPABILITY, ThumbnailContracts.CAPABILITY_VERSION)),
+                    ThumbnailContracts.PROVIDER, ThumbnailContracts.PROVIDER_IMPLEMENTATION);
         }
 
         @Override
         public ThumbnailCapabilityProvider.Result extract(
-                ThumbnailContracts.Request request, byte[] input, BooleanSupplier cancelled) {
+                String capabilityId, ThumbnailContracts.Request request, byte[] input,
+                BooleanSupplier cancelled) {
             return ThumbnailCapabilityProvider.Result.failure("NOT_RUN");
         }
     }
@@ -201,13 +203,15 @@ class ThumbnailCapabilityRegistrySpringTest {
     static final class SecondaryProvider implements ThumbnailCapabilityProvider {
         @Override
         public ThumbnailCapabilityProvider.Manifest manifest() {
-            return providerManifest(ThumbnailContracts.CAPABILITY, "thumbnail.secondary",
-                    "thumbnail.secondary.impl");
+            return providerManifest(List.of(new ThumbnailCapabilityProvider.CapabilityDeclaration(
+                            ThumbnailContracts.CAPABILITY, ThumbnailContracts.CAPABILITY_VERSION)),
+                    "thumbnail.secondary", "thumbnail.secondary.impl");
         }
 
         @Override
         public ThumbnailCapabilityProvider.Result extract(
-                ThumbnailContracts.Request request, byte[] input, BooleanSupplier cancelled) {
+                String capabilityId, ThumbnailContracts.Request request, byte[] input,
+                BooleanSupplier cancelled) {
             return ThumbnailCapabilityProvider.Result.failure("NOT_RUN");
         }
     }
@@ -215,21 +219,24 @@ class ThumbnailCapabilityRegistrySpringTest {
     static final class MisplacedIdentityProvider implements ThumbnailCapabilityProvider {
         @Override
         public ThumbnailCapabilityProvider.Manifest manifest() {
-            return providerManifest(ThumbnailContracts.CAPABILITY, "ffmpeg.cpu.frame-extract.v1",
-                    "ffmpeg.cpu.frame-extract.v1");
+            return providerManifest(List.of(new ThumbnailCapabilityProvider.CapabilityDeclaration(
+                            ThumbnailContracts.CAPABILITY, ThumbnailContracts.CAPABILITY_VERSION)),
+                    "ffmpeg.cpu.frame-extract.v1", "ffmpeg.cpu.frame-extract.v1");
         }
 
         @Override
         public ThumbnailCapabilityProvider.Result extract(
-                ThumbnailContracts.Request request, byte[] input, BooleanSupplier cancelled) {
+                String capabilityId, ThumbnailContracts.Request request, byte[] input,
+                BooleanSupplier cancelled) {
             return ThumbnailCapabilityProvider.Result.failure("NOT_RUN");
         }
     }
 
     private static ThumbnailCapabilityProvider.Manifest providerManifest(
-            String capabilityId, String providerId, String providerImplementationId) {
-        return new ThumbnailCapabilityProvider.Manifest(capabilityId, providerId,
-                providerImplementationId, "1.0.0", "test-toolchain",
+            List<ThumbnailCapabilityProvider.CapabilityDeclaration> capabilities,
+            String providerId, String providerImplementationId) {
+        return new ThumbnailCapabilityProvider.Manifest(providerId,
+                providerImplementationId, "1.0.0", capabilities, "test-toolchain",
                 Set.of("video/*"), Set.of("image/png"), 0, 60, 16, 4096, 1024, 10,
                 "trusted-provider", "test-runtime");
     }

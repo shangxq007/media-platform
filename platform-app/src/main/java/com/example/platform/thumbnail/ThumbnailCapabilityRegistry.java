@@ -24,7 +24,7 @@ public final class ThumbnailCapabilityRegistry {
         for (var provider : registered) {
             Objects.requireNonNull(provider, "provider");
             var manifest = provider.manifest();
-            if (!ThumbnailContracts.CAPABILITY.equals(manifest.capabilityId())) continue;
+            if (!manifest.supports(ThumbnailContracts.CAPABILITY)) continue;
             if (manifest.providerId().equals(manifest.providerImplementationId()))
                 throw new IllegalStateException("thumbnail provider family and implementation identity"
                         + " must differ: " + manifest.providerId());
@@ -49,6 +49,9 @@ public final class ThumbnailCapabilityRegistry {
         return provider;
     }
     public ThumbnailCapabilityProvider.Result invoke(ThumbnailContracts.Request request, byte[] input, BooleanSupplier cancelled) {
-        return provider(ThumbnailContracts.PROVIDER).extract(request, input, cancelled);
+        return invoke(ThumbnailContracts.CAPABILITY, request, input, cancelled);
+    }
+    public ThumbnailCapabilityProvider.Result invoke(String capabilityId, ThumbnailContracts.Request request, byte[] input, BooleanSupplier cancelled) {
+        return provider(ThumbnailContracts.PROVIDER).extract(capabilityId, request, input, cancelled);
     }
 }

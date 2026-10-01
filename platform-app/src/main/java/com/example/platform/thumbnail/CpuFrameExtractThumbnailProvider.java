@@ -30,7 +30,10 @@ public final class CpuFrameExtractThumbnailProvider implements ThumbnailCapabili
     private final String ffprobe;
     private final WorkerRuntime runtime;
     private static final Manifest MANIFEST = new Manifest(
-            ThumbnailContracts.CAPABILITY, PROVIDER_ID, PROVIDER_IMPLEMENTATION_ID, "1.0.0", TOOLCHAIN,
+            PROVIDER_ID, PROVIDER_IMPLEMENTATION_ID, ThumbnailContracts.PROVIDER_VERSION,
+            java.util.List.of(new CapabilityDeclaration(
+                    ThumbnailContracts.CAPABILITY, ThumbnailContracts.CAPABILITY_VERSION)),
+            TOOLCHAIN,
             Set.of("video/*"), Set.of("image/jpeg", "image/png"),
             0, 86_400, 16, 4096, 512L * 1024L * 1024L, 60,
             "trusted-provider", "worker-runtime.local-process");
@@ -52,7 +55,12 @@ public final class CpuFrameExtractThumbnailProvider implements ThumbnailCapabili
 
     @Override public Manifest manifest() { return MANIFEST; }
 
-    @Override public Result extract(ThumbnailContracts.Request request, byte[] input, BooleanSupplier cancelled) {
+    @Override public Result extract(String capabilityId, ThumbnailContracts.Request request,
+            byte[] input, BooleanSupplier cancelled) {
+        // Fail closed: this implementation only executes capabilities it declares.
+        if (!manifest().supports(capabilityId)) {
+            return Result.failure("UNSUPPORTED_CAPABILITY");
+        }
         // Parameter authority: the shared capability parameter contract must accept this request
         // before any execution. A request the transport admitted but the shared contract rejects
         // (e.g. a source instant that is not an exact, non-negative rational) fails closed here

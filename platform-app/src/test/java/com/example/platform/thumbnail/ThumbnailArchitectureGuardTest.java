@@ -17,7 +17,14 @@ class ThumbnailArchitectureGuardTest {
     @Test
     void providerManifestPinsCapabilityToolchainLimitsAndTrust() {
         var manifest = new CpuFrameExtractThumbnailProvider("./.data/storage", "ffmpeg", "ffprobe").manifest();
-        assertThat(manifest.capabilityId()).isEqualTo("media.thumbnail");
+        // The manifest declares a capability list (N:M-capable), aligned with the cover manifest;
+        // this slice's provider declares exactly media.thumbnail.
+        assertThat(manifest.capabilities())
+                .extracting(ThumbnailCapabilityProvider.CapabilityDeclaration::capabilityId)
+                .containsExactly("media.thumbnail");
+        assertThat(manifest.capabilities().getFirst().contractVersion()).isEqualTo("1.0");
+        assertThat(manifest.supports("media.thumbnail")).isTrue();
+        assertThat(manifest.supports("media.cover-image")).isFalse();
         // Provider identity is a capability-independent family plus a separate implementation slot,
         // aligned with the cover-image manifest; the implementation id must never sit in the
         // provider-id position.

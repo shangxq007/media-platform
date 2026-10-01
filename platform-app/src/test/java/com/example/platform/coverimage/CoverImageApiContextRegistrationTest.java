@@ -88,8 +88,8 @@ class CoverImageApiContextRegistrationTest extends PostgresTestContainerSupport 
     /**
      * COVER-PROVIDER-PLATFORM-REGISTER-001: with the real API context up, the platform capability
      * registry must expose {@code media.cover-image} for the cover provider family, and the
-     * composition capability catalog must list it on the platform Artifact contract — while never
-     * advertising it as composable before the platform execution seam exists (backlog C2).
+     * composition capability catalog must list it on the platform Artifact contract and report it
+     * AVAILABLE from the registered, healthy implementation (COVER-THUMBNAIL-REBUILD-001, action 1).
      */
     @Test
     void platformRegistriesExposeMediaCoverImageForTheCoverProvider() {
@@ -121,18 +121,17 @@ class CoverImageApiContextRegistrationTest extends PostgresTestContainerSupport 
         assertThat(entry.input().name()).isEqualTo("Artifact");
         assertThat(entry.output().name()).isEqualTo("Artifact");
         assertThat(entry.availability())
-                .as("not advertised as composable before the platform execution seam (C2) exists")
-                .isEqualTo(Availability.UNAVAILABLE);
-        // COVER-PROVIDER-PLATFORM-REGISTER-FIX-001: the unavailable verdict must have a real runtime
-        // effect — provider-bound resolution fails closed for this capability even though a healthy
-        // candidate provider is registered above.
+                .as("available from the registered platform contribution that declares the catalog contract")
+                .isEqualTo(Availability.AVAILABLE);
+        // The availability verdict has a real runtime effect: an AVAILABLE capability resolves to the
+        // registered provider binding.
         assertThat(capabilityAuthority.resolveProviderBound(
                 CoverImageContracts.CAPABILITY, CoverImageContracts.CAPABILITY_VERSION))
-                .as("UNAVAILABLE capability must not resolve to a provider binding")
-                .isEmpty();
-        assertThat(entry.summary())
-                .as("the pending-dispatch reason is the observable summary, not a generic default")
-                .contains("SLICE_LOCAL_RUNTIME");
+                .isPresent()
+                .get()
+                .extracting(binding -> binding.providerRegistryReference())
+                .isEqualTo(CoverImagePlatformProvider.PLUGIN_ID
+                        + "@" + CoverImagePlatformProvider.PLUGIN_VERSION);
     }
 
     private Set<String> coverBeans() {
