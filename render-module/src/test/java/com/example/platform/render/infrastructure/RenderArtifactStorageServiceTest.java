@@ -3,10 +3,15 @@ import com.example.platform.artifact.app.*;
 import com.example.platform.storage.api.*;
 import com.example.platform.shared.web.TenantContext;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.AfterEach;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 class RenderArtifactStorageServiceTest {
+ // TenantContext is a thread-local shared across the whole test JVM: this class
+ // asserts the ABSENT-tenant contract, so it must establish that precondition
+ // itself instead of relying on execution order.
+ @BeforeEach void clearTenantBefore(){TenantContext.clear();}
  @AfterEach void clear(){TenantContext.clear();}
  @Test void unsupportedMediaRejectsBeforeWrite(){
    TenantContext.set("tenant"); var storage=mock(StorageOutputPort.class); var artifacts=mock(ArtifactOutputCommit.class);
