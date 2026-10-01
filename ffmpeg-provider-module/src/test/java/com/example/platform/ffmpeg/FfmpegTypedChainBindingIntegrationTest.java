@@ -4,11 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.example.platform.audio.domain.mix.AudioMix;
 import com.example.platform.execution.binding.ProviderBindingEntryService;
+import com.example.platform.execution.binding.BoundGraphInputs;
+import com.example.platform.execution.binding.BoundGraphRederivation;
 import com.example.platform.execution.compatibility.ProviderCandidate;
 import com.example.platform.execution.compatibility.ProviderStaticCompatibility;
 import com.example.platform.execution.domain.ExecutionPlanId;
 import com.example.platform.execution.planning.PhysicalExecutionPlan;
 import com.example.platform.execution.planning.PhysicalPlanningEntryService;
+import com.example.platform.execution.taskgraph.ProviderBoundExecutableTaskGraph;
 import com.example.platform.providerplugin.ProviderCandidateProjection;
 import com.example.platform.render.app.renderplan.RenderPlanningEntryService;
 import com.example.platform.render.domain.renderplan.CapabilityContext;
@@ -129,6 +132,25 @@ class FfmpegTypedChainBindingIntegrationTest {
                         failure -> assertThat(failure.reason())
                                 .isEqualTo(com.example.platform.execution.binding.ProviderBindingException.Reason
                                         .UNIT_UNBINDABLE));
+    }
+
+    @Test
+    void durableInputsReDeriveTheSameBoundGraphForTheRealProvider() {
+        PhysicalExecutionPlan plan = physicalPlan();
+        List<ProviderCandidate> candidates = ProviderCandidateProjection.project(
+                List.of(new FfmpegProviderPluginContribution()));
+        ProviderBoundExecutableTaskGraph bound = providerBindingEntry
+                .bind(plan, candidates, List.of())
+                .executableTaskGraph();
+
+        ProviderBoundExecutableTaskGraph rederived = BoundGraphRederivation.rederive(
+                new BoundGraphInputs(plan, candidates, List.of(), bound.digest()));
+
+        assertThat(rederived.digest()).isEqualTo(bound.digest());
+        assertThat(rederived.tasks()).hasSameSizeAs(bound.tasks());
+        assertThat(rederived.tasks())
+                .allSatisfy(task -> assertThat(task.providerBindingPin())
+                        .isEqualTo(FfmpegCpuProvider.BINDING));
     }
 
     // ---------- fixture ----------
