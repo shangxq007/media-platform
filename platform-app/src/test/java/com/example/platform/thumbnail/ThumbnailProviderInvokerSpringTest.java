@@ -17,30 +17,34 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
 
 /**
- * Spring-composition proof for the thumbnail capability registry.
+ * Spring-composition proof for the thumbnail worker execution adapter
+ * (COVER-THUMBNAIL-REBUILD-001, action 2).
  *
- * <p>The registry is discovered exactly the way production discovers it — {@code @Component}
- * scanning, i.e. a {@code ScannedGenericBeanDefinition} with the default {@code AUTOWIRE_NO} mode —
- * so a multi-constructor class would fail here the same way it fails in a real application
- * ({@code No default constructor found}). The registry must therefore expose a single public
- * constructor and must not rely on {@code @Autowired}.
+ * <p>The retired slice-local {@code ThumbnailCapabilityRegistry} is replaced by
+ * {@link ThumbnailProviderInvoker} — a worker-side execution adapter only: capability
+ * discovery/registration happens through the platform capability registry
+ * ({@code ThumbnailPlatformRegistration}). The adapter is discovered exactly the way production
+ * discovers it — {@code @Component} scanning, i.e. a {@code ScannedGenericBeanDefinition} with the
+ * default {@code AUTOWIRE_NO} mode — so a multi-constructor class would fail here the same way it
+ * fails in a real application. It must therefore expose a single public constructor and must not
+ * rely on {@code @Autowired}.
  */
-class ThumbnailCapabilityRegistrySpringTest {
+class ThumbnailProviderInvokerSpringTest {
 
     private final ApplicationContextRunner canonicalRunner = new ApplicationContextRunner()
-            // The registry is worker-role composition (platform.runtime.role=WORKER), exactly like the
-            // cover-image registry; the scanned production component is gated on that role.
+            // The invoker is worker-role composition (platform.runtime.role=WORKER); the scanned
+            // production component is gated on that role.
             .withPropertyValues("platform.runtime.role=WORKER")
-            .withUserConfiguration(ScannedRegistryConfiguration.class, CanonicalProviderConfiguration.class);
+            .withUserConfiguration(ScannedInvokerConfiguration.class, CanonicalProviderConfiguration.class);
 
     @Test
-    void registryExposesExactlyOnePublicConstructorAndNoAutowired() throws Exception {
-        Constructor<?>[] publicConstructors = Arrays.stream(ThumbnailCapabilityRegistry.class.getDeclaredConstructors())
+    void invokerExposesExactlyOnePublicConstructorAndNoAutowired() throws Exception {
+        Constructor<?>[] publicConstructors = Arrays.stream(ThumbnailProviderInvoker.class.getDeclaredConstructors())
                 .filter(constructor -> Modifier.isPublic(constructor.getModifiers()))
                 .toArray(Constructor[]::new);
         assertThat(publicConstructors).hasSize(1);
         assertThat(publicConstructors[0].getParameterTypes()).containsExactly(List.class);
-        for (Constructor<?> constructor : ThumbnailCapabilityRegistry.class.getDeclaredConstructors()) {
+        for (Constructor<?> constructor : ThumbnailProviderInvoker.class.getDeclaredConstructors()) {
             assertThat(constructor.isAnnotationPresent(Autowired.class))
                     .as("@Autowired must not be required to select a constructor")
                     .isFalse();
@@ -48,17 +52,17 @@ class ThumbnailCapabilityRegistrySpringTest {
     }
 
     @Test
-    void componentScanInstantiatesRegistryWithoutAutowired() {
+    void componentScanInstantiatesInvokerWithoutAutowired() {
         canonicalRunner.run(context -> {
             assertThat(context).hasNotFailed();
-            assertThat(context).hasSingleBean(ThumbnailCapabilityRegistry.class);
-            ThumbnailCapabilityRegistry registry = context.getBean(ThumbnailCapabilityRegistry.class);
-            assertThat(registry.provider()).isInstanceOf(CanonicalProvider.class);
-            assertThat(registry.provider(ThumbnailContracts.PROVIDER)).isSameAs(registry.provider());
-            assertThat(registry.provider(ThumbnailContracts.PROVIDER).manifest().providerVersion()).isEqualTo("1.0.0");
-            assertThat(registry.provider(ThumbnailContracts.PROVIDER).manifest().providerId())
+            assertThat(context).hasSingleBean(ThumbnailProviderInvoker.class);
+            ThumbnailProviderInvoker invoker = context.getBean(ThumbnailProviderInvoker.class);
+            assertThat(invoker.provider()).isInstanceOf(CanonicalProvider.class);
+            assertThat(invoker.provider(ThumbnailContracts.PROVIDER)).isSameAs(invoker.provider());
+            assertThat(invoker.provider(ThumbnailContracts.PROVIDER).manifest().providerVersion()).isEqualTo("1.0.0");
+            assertThat(invoker.provider(ThumbnailContracts.PROVIDER).manifest().providerId())
                     .isEqualTo("platform.ffmpeg");
-            assertThat(registry.provider(ThumbnailContracts.PROVIDER).manifest().providerImplementationId())
+            assertThat(invoker.provider(ThumbnailContracts.PROVIDER).manifest().providerImplementationId())
                     .isEqualTo("ffmpeg.cpu.frame-extract.v1");
         });
     }
@@ -68,14 +72,14 @@ class ThumbnailCapabilityRegistrySpringTest {
         new ApplicationContextRunner()
                 .withPropertyValues("platform.runtime.role=WORKER")
                 .withUserConfiguration(
-                        ScannedRegistryConfiguration.class,
+                        ScannedInvokerConfiguration.class,
                         CanonicalProviderConfiguration.class,
                         SecondaryProviderConfiguration.class)
                 .run(context -> {
                     assertThat(context).hasNotFailed();
-                    ThumbnailCapabilityRegistry registry = context.getBean(ThumbnailCapabilityRegistry.class);
-                    assertThat(registry.provider()).isInstanceOf(CanonicalProvider.class);
-                    assertThat(registry.provider("thumbnail.secondary")).isInstanceOf(SecondaryProvider.class);
+                    ThumbnailProviderInvoker invoker = context.getBean(ThumbnailProviderInvoker.class);
+                    assertThat(invoker.provider()).isInstanceOf(CanonicalProvider.class);
+                    assertThat(invoker.provider("thumbnail.secondary")).isInstanceOf(SecondaryProvider.class);
                 });
     }
 
@@ -84,7 +88,7 @@ class ThumbnailCapabilityRegistrySpringTest {
         new ApplicationContextRunner()
                 .withPropertyValues("platform.runtime.role=WORKER")
                 .withUserConfiguration(
-                        ScannedRegistryConfiguration.class,
+                        ScannedInvokerConfiguration.class,
                         CanonicalProviderConfiguration.class,
                         DuplicateProviderConfiguration.class)
                 .run(context -> {
@@ -100,7 +104,7 @@ class ThumbnailCapabilityRegistrySpringTest {
     void missingPinnedProviderFailsClosed() {
         new ApplicationContextRunner()
                 .withPropertyValues("platform.runtime.role=WORKER")
-                .withUserConfiguration(ScannedRegistryConfiguration.class, SecondaryProviderConfiguration.class)
+                .withUserConfiguration(ScannedInvokerConfiguration.class, SecondaryProviderConfiguration.class)
                 .run(context -> {
                     assertThat(context).hasFailed();
                     assertThat(context.getStartupFailure())
@@ -115,7 +119,7 @@ class ThumbnailCapabilityRegistrySpringTest {
         new ApplicationContextRunner()
                 .withPropertyValues("platform.runtime.role=WORKER")
                 .withUserConfiguration(
-                        ScannedRegistryConfiguration.class, MisplacedIdentityProviderConfiguration.class)
+                        ScannedInvokerConfiguration.class, MisplacedIdentityProviderConfiguration.class)
                 .run(context -> {
                     assertThat(context).hasFailed();
                     assertThat(context.getStartupFailure())
@@ -128,9 +132,9 @@ class ThumbnailCapabilityRegistrySpringTest {
     @Test
     void staticFactoryKeepsTheSingleProviderPathWithoutSecondConstructor() {
         CanonicalProvider provider = new CanonicalProvider();
-        ThumbnailCapabilityRegistry registry = ThumbnailCapabilityRegistry.of(provider);
-        assertThat(registry.provider()).isSameAs(provider);
-        assertThat(registry.provider(ThumbnailContracts.PROVIDER)).isSameAs(provider);
+        ThumbnailProviderInvoker invoker = ThumbnailProviderInvoker.of(provider);
+        assertThat(invoker.provider()).isSameAs(provider);
+        assertThat(invoker.provider(ThumbnailContracts.PROVIDER)).isSameAs(provider);
     }
 
     /**
@@ -145,11 +149,11 @@ class ThumbnailCapabilityRegistrySpringTest {
      */
     @TestConfiguration(proxyBeanMethods = false)
     @ComponentScan(
-            basePackageClasses = ThumbnailCapabilityRegistry.class,
+            basePackageClasses = ThumbnailProviderInvoker.class,
             useDefaultFilters = false,
             includeFilters = @ComponentScan.Filter(
-                    type = FilterType.ASSIGNABLE_TYPE, classes = ThumbnailCapabilityRegistry.class))
-    static class ScannedRegistryConfiguration {}
+                    type = FilterType.ASSIGNABLE_TYPE, classes = ThumbnailProviderInvoker.class))
+    static class ScannedInvokerConfiguration {}
 
     @TestConfiguration(proxyBeanMethods = false)
     static class CanonicalProviderConfiguration {

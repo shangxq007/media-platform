@@ -21,10 +21,10 @@ import org.springframework.stereotype.Component;
 public class ThumbnailActivitiesImpl implements ThumbnailActivities {
     private final ThumbnailTaskStore tasks; private final ArtifactQueryService artifacts; private final ArtifactCatalogService catalog;
     private final StoragePlacementQuery storage;
-    private final ThumbnailCommitService commitService; private final ThumbnailCapabilityRegistry capabilities; private final Path root;
+    private final ThumbnailCommitService commitService; private final ThumbnailProviderInvoker capabilities; private final Path root;
     public ThumbnailActivitiesImpl(ThumbnailTaskStore tasks, ArtifactQueryService artifacts,
             ArtifactCatalogService catalog, StoragePlacementQuery storage,
-            ThumbnailCommitService commitService, ThumbnailCapabilityRegistry capabilities,
+            ThumbnailCommitService commitService, ThumbnailProviderInvoker capabilities,
             @Value("${app.storage.local-root:./.data/storage}") String root) {
         this.tasks=tasks; this.artifacts=artifacts; this.catalog=catalog; this.storage=storage;
         this.commitService=commitService; this.capabilities=capabilities;

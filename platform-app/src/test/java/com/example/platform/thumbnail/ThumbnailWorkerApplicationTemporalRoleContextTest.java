@@ -79,8 +79,8 @@ class ThumbnailWorkerApplicationTemporalRoleContextTest extends PostgresTestCont
         assertThat(context.getBeansOfType(ThumbnailCapabilityProvider.class))
                 .as("worker role registers exactly the pinned thumbnail provider")
                 .hasSize(1);
-        assertThat(context.getBean(ThumbnailCapabilityRegistry.class))
-                .as("worker role composes the thumbnail capability registry")
+        assertThat(context.getBean(ThumbnailProviderInvoker.class))
+                .as("worker role composes the thumbnail worker execution adapter")
                 .isNotNull();
         var backends = context.getBean(ExecutionBackendRegistry.class);
         assertThat(backends.resolve(TaskCapability.THUMBNAIL))

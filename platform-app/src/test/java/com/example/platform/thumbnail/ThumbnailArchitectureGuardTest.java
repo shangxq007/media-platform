@@ -11,7 +11,30 @@ class ThumbnailArchitectureGuardTest {
     void temporalActivityDoesNotOwnProcessExecutionOrArtifactAuthority() throws Exception {
         String source = Files.readString(Path.of("src/main/java/com/example/platform/thumbnail/ThumbnailActivitiesImpl.java"));
         assertThat(source).doesNotContain("ProcessBuilder", "Runtime.getRuntime", "ffmpeg", "ffprobe");
-        assertThat(source).contains("ThumbnailCapabilityRegistry", "ThumbnailCommitService");
+        assertThat(source).contains("ThumbnailProviderInvoker", "ThumbnailCommitService");
+        // The retired slice-local registry must not reappear in the activity path.
+        assertThat(source).doesNotContain("ThumbnailCapabilityRegistry");
+    }
+
+    /**
+     * COVER-THUMBNAIL-REBUILD-001 (action 2): the slice-local registry is retired and replaced by
+     * the worker execution adapter; capability discovery/registration is the platform capability
+     * registry's job (ThumbnailPlatformRegistration).
+     */
+    @Test
+    void sliceLocalCapabilityRegistryIsRetiredInFavourOfTheWorkerAdapter() {
+        assertThat(Files.exists(Path.of(
+                "src/main/java/com/example/platform/thumbnail/ThumbnailCapabilityRegistry.java")))
+                .as("the slice-local registry is deleted")
+                .isFalse();
+        assertThat(Files.exists(Path.of(
+                "src/main/java/com/example/platform/thumbnail/ThumbnailProviderInvoker.java")))
+                .as("the worker execution adapter exists")
+                .isTrue();
+        assertThat(Files.exists(Path.of(
+                "src/main/java/com/example/platform/thumbnail/ThumbnailPlatformRegistration.java")))
+                .as("the unified platform registration exists")
+                .isTrue();
     }
 
     @Test

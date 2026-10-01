@@ -66,7 +66,7 @@ class ThumbnailApiContextRegistrationTest extends PostgresTestContainerSupport {
                 .contains("/api/tenants/{tenantId}/projects/{projectId}/thumbnails");
 
         // Worker-only thumbnail beans must never exist in the API process.
-        assertThat(context.getBeansOfType(ThumbnailCapabilityRegistry.class)).isEmpty();
+        assertThat(context.getBeansOfType(ThumbnailProviderInvoker.class)).isEmpty();
         assertThat(context.getBeansOfType(CpuFrameExtractThumbnailProvider.class)).isEmpty();
         assertThat(context.getBeansOfType(ThumbnailExecutionBackend.class)).isEmpty();
         assertThat(context.getBeansOfType(ThumbnailWorkerRuntimeConfiguration.class)).isEmpty();
