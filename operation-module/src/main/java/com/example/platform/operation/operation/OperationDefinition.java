@@ -41,7 +41,7 @@ public record OperationDefinition(
         }
     }
 
-    /** Static code-owned V1 vocabulary (exactly 15, frozen). */
+    /** Static code-owned V1 vocabulary (exactly 25, frozen). */
     public static final class V1 {
         /** H7: first vertically complete real-media authoring operation. */
         public static final OperationDefinition ADD_MEDIA_CLIP = new OperationDefinition(

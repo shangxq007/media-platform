@@ -202,7 +202,7 @@ public final class OperationPlanner {
                 base.getAudioMix(), base.getSemanticRelationships(), base.getTextElements());
     }
 
-    // ---- 15 operations ----
+    // ---- 16 non-text operations ----
     private TimelineDocument planMove(OperationInstance inst, TimelineDocument base, List<PlannedChange> changes) {
         var params = (OperationParameters.MoveParameters) inst.parameters();
         TimelineDocument cur = base;
