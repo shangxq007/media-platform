@@ -3,6 +3,12 @@ package com.example.platform.thumbnail;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.example.platform.PlatformApplication;
+import com.example.platform.extension.api.port.CapabilityRegistryPort;
+import com.example.platform.frameextract.FfmpegCpuFrameExtractProvider;
+import com.example.platform.frameextract.FrameExtractExecutionAdapter;
+import com.example.platform.frameextract.FrameExtractPlatformProvider;
+import com.example.platform.frameextract.FrameExtractPlatformRegistration;
+import com.example.platform.shared.capability.CapabilityId;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import java.util.Set;
 import java.util.TreeSet;
@@ -46,11 +52,18 @@ class ThumbnailApiContextRegistrationTest extends PostgresTestContainerSupport {
             ThumbnailController.class.getName(),
             ThumbnailService.class.getName(),
             ThumbnailTaskStore.class.getName(),
-            ThumbnailArtifactReadService.class.getName(),
-            // COVER-THUMBNAIL-REBUILD-001 (action 1): platform capability registration is API-side.
-            ThumbnailPlatformRegistration.class.getName());
+            ThumbnailArtifactReadService.class.getName());
+
+    /**
+     * Exactly the frame-extract beans the API process may own: the one capability-neutral platform
+     * registration (COVER-THUMBNAIL-UNIFY-001). Its worker-only provider and execution adapter are
+     * gated on {@code platform.runtime.role=WORKER} and must be absent here.
+     */
+    private static final Set<String> API_SIDE_FRAME_EXTRACT_BEANS = Set.of(
+            FrameExtractPlatformRegistration.class.getName());
 
     @Autowired ConfigurableApplicationContext context;
+    @Autowired CapabilityRegistryPort capabilityRegistry;
 
     @Test
     void apiContextRegistersTheThumbnailAdmissionSurfaceAndNoWorkerOnlyThumbnailBeans() {
@@ -61,13 +74,12 @@ class ThumbnailApiContextRegistrationTest extends PostgresTestContainerSupport {
         assertThat(context.getBeansOfType(ThumbnailService.class)).hasSize(1);
         assertThat(context.getBeansOfType(ThumbnailTaskStore.class)).hasSize(1);
         assertThat(context.getBeansOfType(ThumbnailArtifactReadService.class)).hasSize(1);
-        assertThat(context.getBeansOfType(ThumbnailPlatformRegistration.class)).hasSize(1);
         assertThat(thumbnailRoutePatterns())
                 .contains("/api/tenants/{tenantId}/projects/{projectId}/thumbnails");
 
         // Worker-only thumbnail beans must never exist in the API process.
-        assertThat(context.getBeansOfType(ThumbnailProviderInvoker.class)).isEmpty();
-        assertThat(context.getBeansOfType(CpuFrameExtractThumbnailProvider.class)).isEmpty();
+        assertThat(context.getBeansOfType(FrameExtractExecutionAdapter.class)).isEmpty();
+        assertThat(context.getBeansOfType(FfmpegCpuFrameExtractProvider.class)).isEmpty();
         assertThat(context.getBeansOfType(ThumbnailExecutionBackend.class)).isEmpty();
         assertThat(context.getBeansOfType(ThumbnailWorkerRuntimeConfiguration.class)).isEmpty();
         assertThat(context.getBeansOfType(ThumbnailCommitService.class)).isEmpty();
@@ -77,6 +89,27 @@ class ThumbnailApiContextRegistrationTest extends PostgresTestContainerSupport {
 
         // The whole thumbnail package contributes nothing else to the API graph.
         assertThat(thumbnailBeans()).isEqualTo(new TreeSet<>(API_SIDE_THUMBNAIL_BEANS));
+        // The one capability-neutral frame-extract contribution is the only frameextract API bean.
+        assertThat(frameExtractBeans()).isEqualTo(new TreeSet<>(API_SIDE_FRAME_EXTRACT_BEANS));
+    }
+
+    /**
+     * COVER-THUMBNAIL-UNIFY-001: with the real API context up, the platform capability registry must
+     * expose {@code media.thumbnail} for the one frame-extract contribution registered by the API
+     * process.
+     */
+    @Test
+    void platformRegistriesExposeMediaThumbnailForTheFrameExtractContribution() {
+        assertThat(context.getBeansOfType(FrameExtractPlatformRegistration.class)).hasSize(1);
+        assertThat(context.getBean(FrameExtractPlatformRegistration.class).registered())
+                .as("the platform process registered the contribution")
+                .isTrue();
+
+        var implementations = capabilityRegistry
+                .findCapabilityImplementations(CapabilityId.of(ThumbnailContracts.CAPABILITY));
+        assertThat(implementations).hasSize(1);
+        assertThat(implementations.getFirst().pluginId())
+                .isEqualTo(FrameExtractPlatformProvider.PLUGIN_ID);
     }
 
     private Set<String> thumbnailBeans() {
@@ -104,5 +137,19 @@ class ThumbnailApiContextRegistrationTest extends PostgresTestContainerSupport {
             }
         }
         return patterns;
+    }
+
+    private Set<String> frameExtractBeans() {
+        Set<String> names = new TreeSet<>();
+        for (String name : context.getBeanDefinitionNames()) {
+            Class<?> type = context.getType(name);
+            String className = type != null
+                    ? type.getName()
+                    : context.getBeanFactory().getBeanDefinition(name).getBeanClassName();
+            if (className != null && className.startsWith("com.example.platform.frameextract.")) {
+                names.add(className.contains("$$") ? className.substring(0, className.indexOf("$$")) : className);
+            }
+        }
+        return names;
     }
 }

@@ -54,14 +54,27 @@ class CompositionCapabilityCatalogCoverImageTest {
             String capabilityId,
             String inputReferenceType,
             String outputReferenceType) {
+        registerContribution(
+                registry, pluginId, inputReferenceType, outputReferenceType, List.of(capabilityId));
+    }
+
+    /** A provider contribution declaring a capability list with the given reference-type names. */
+    private static void registerContribution(
+            PluginRegistrationPort registry,
+            String pluginId,
+            String inputReferenceType,
+            String outputReferenceType,
+            List<String> capabilityIds) {
         registry.registerRuntime(new PluginDescriptor(
                 pluginId,
                 "1.0.0",
                 "1",
                 "test-vendor",
-                List.of(new CapabilityDescriptor(
-                        capabilityId, "1.0", "test", inputReferenceType, outputReferenceType,
-                        CapabilityDescriptor.InvocationMode.SYNC_ONLY)),
+                capabilityIds.stream()
+                        .map(capabilityId -> new CapabilityDescriptor(
+                                capabilityId, "1.0", "test", inputReferenceType, outputReferenceType,
+                                CapabilityDescriptor.InvocationMode.SYNC_ONLY))
+                        .toList(),
                 List.of(new HandledObjectDescriptor(
                         "ExecutableTask", "1",
                         "com.example.platform.execution.taskgraph.ExecutableTask",
@@ -126,7 +139,7 @@ class CompositionCapabilityCatalogCoverImageTest {
     @Test
     void unavailableCapabilityDoesNotResolveToAProviderBinding() {
         var underTest = composition();
-        registerProvider(underTest.registry(), "media.coverimage.ffmpeg", "media.cover-image",
+        registerProvider(underTest.registry(), "media.ffmpeg.frameextract", "media.cover-image",
                 "ExecutableTask", "ProviderExecutionOutput");
 
         assertThat(availabilityOf(underTest.projection(), "media.cover-image"))
@@ -146,7 +159,7 @@ class CompositionCapabilityCatalogCoverImageTest {
     @Test
     void registeredContributionDeclaringTheCatalogContractMakesCoverImageAvailable() {
         var underTest = composition();
-        registerProvider(underTest.registry(), "media.coverimage.ffmpeg", "media.cover-image",
+        registerProvider(underTest.registry(), "media.ffmpeg.frameextract", "media.cover-image",
                 "Artifact", "Artifact");
 
         assertThat(availabilityOf(underTest.projection(), "media.cover-image"))
@@ -155,7 +168,7 @@ class CompositionCapabilityCatalogCoverImageTest {
                 .isPresent()
                 .get()
                 .extracting(binding -> binding.providerRegistryReference())
-                .isEqualTo("media.coverimage.ffmpeg@1.0.0");
+                .isEqualTo("media.ffmpeg.frameextract@1.0.0");
     }
 
     /**
@@ -178,7 +191,7 @@ class CompositionCapabilityCatalogCoverImageTest {
     @Test
     void availableCapabilityStillResolvesToAProviderBinding() {
         var underTest = composition();
-        registerProvider(underTest.registry(), "media.thumbnail.ffmpeg", "media.thumbnail",
+        registerProvider(underTest.registry(), "media.ffmpeg.frameextract", "media.thumbnail",
                 "Artifact", "Artifact");
 
         assertThat(availabilityOf(underTest.projection(), "media.thumbnail"))
@@ -187,21 +200,19 @@ class CompositionCapabilityCatalogCoverImageTest {
                 .isPresent()
                 .get()
                 .extracting(binding -> binding.providerRegistryReference())
-                .isEqualTo("media.thumbnail.ffmpeg@1.0.0");
+                .isEqualTo("media.ffmpeg.frameextract@1.0.0");
     }
 
     /**
-     * COVER-THUMBNAIL-REBUILD-001 (action 1): with both platform contributions registered and
-     * declaring the catalog Artifact contract, {@code media.cover-image} and {@code media.thumbnail}
-     * are both reported AVAILABLE.
+     * COVER-THUMBNAIL-UNIFY-001: the single capability-neutral frame-extract contribution declares
+     * both frame-extract capabilities on the catalog Artifact contract, so {@code media.cover-image}
+     * and {@code media.thumbnail} are both reported AVAILABLE from one registration.
      */
     @Test
-    void bothCoverAndThumbnailAreAvailableWhenTheirContributionsAreRegistered() {
+    void oneMultiCapabilityContributionMakesCoverAndThumbnailAvailable() {
         var underTest = composition();
-        registerProvider(underTest.registry(), "media.coverimage.ffmpeg", "media.cover-image",
-                "Artifact", "Artifact");
-        registerProvider(underTest.registry(), "media.thumbnail.ffmpeg", "media.thumbnail",
-                "Artifact", "Artifact");
+        registerContribution(underTest.registry(), "media.ffmpeg.frameextract", "Artifact", "Artifact",
+                List.of("media.cover-image", "media.thumbnail"));
 
         assertThat(availabilityOf(underTest.projection(), "media.cover-image"))
                 .isEqualTo(Availability.AVAILABLE);

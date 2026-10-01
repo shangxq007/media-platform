@@ -8,6 +8,10 @@ import com.example.platform.composition.app.ProviderRegistryBoundary;
 import com.example.platform.composition.domain.CompositionModels.Availability;
 import com.example.platform.extension.api.port.CapabilityRegistryPort;
 import com.example.platform.extension.api.port.PluginRegistryPort;
+import com.example.platform.frameextract.FfmpegCpuFrameExtractProvider;
+import com.example.platform.frameextract.FrameExtractExecutionAdapter;
+import com.example.platform.frameextract.FrameExtractPlatformProvider;
+import com.example.platform.frameextract.FrameExtractPlatformRegistration;
 import com.example.platform.shared.capability.CapabilityId;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import java.util.Set;
@@ -50,9 +54,15 @@ class CoverImageApiContextRegistrationTest extends PostgresTestContainerSupport 
     private static final Set<String> API_SIDE_COVER_BEANS = Set.of(
             CoverImageController.class.getName(),
             CoverImageService.class.getName(),
-            CoverImageTaskStore.class.getName(),
-            // COVER-PROVIDER-PLATFORM-REGISTER-001: platform capability registration is API-side.
-            CoverImagePlatformRegistration.class.getName());
+            CoverImageTaskStore.class.getName());
+
+    /**
+     * Exactly the frame-extract beans the API process may own: the one capability-neutral platform
+     * registration (COVER-THUMBNAIL-UNIFY-001). Its worker-only provider and execution adapter are
+     * gated on {@code platform.runtime.role=WORKER} and must be absent here.
+     */
+    private static final Set<String> API_SIDE_FRAME_EXTRACT_BEANS = Set.of(
+            FrameExtractPlatformRegistration.class.getName());
 
     @Autowired ConfigurableApplicationContext context;
 
@@ -72,8 +82,8 @@ class CoverImageApiContextRegistrationTest extends PostgresTestContainerSupport 
         assertThat(coverRoutePatterns()).contains("/api/projects/{projectId}/cover-images");
 
         // Worker-only cover beans must never exist in the API process.
-        assertThat(context.getBeansOfType(CoverImageCapabilityRegistry.class)).isEmpty();
-        assertThat(context.getBeansOfType(CpuFrameExtractCoverImageProvider.class)).isEmpty();
+        assertThat(context.getBeansOfType(FrameExtractExecutionAdapter.class)).isEmpty();
+        assertThat(context.getBeansOfType(FfmpegCpuFrameExtractProvider.class)).isEmpty();
         assertThat(context.getBeansOfType(CoverImageExecutionBackend.class)).isEmpty();
         assertThat(context.getBeansOfType(CoverImageMaterializationConfiguration.class)).isEmpty();
         assertThat(context.getBeansOfType(CoverImageWorkerRuntimeConfiguration.class)).isEmpty();
@@ -83,6 +93,8 @@ class CoverImageApiContextRegistrationTest extends PostgresTestContainerSupport 
 
         // The whole cover package contributes nothing else to the API graph.
         assertThat(coverBeans()).isEqualTo(new TreeSet<>(API_SIDE_COVER_BEANS));
+        // The one capability-neutral frame-extract contribution is the only frameextract API bean.
+        assertThat(frameExtractBeans()).isEqualTo(new TreeSet<>(API_SIDE_FRAME_EXTRACT_BEANS));
     }
 
     /**
@@ -93,8 +105,8 @@ class CoverImageApiContextRegistrationTest extends PostgresTestContainerSupport 
      */
     @Test
     void platformRegistriesExposeMediaCoverImageForTheCoverProvider() {
-        assertThat(context.getBeansOfType(CoverImagePlatformRegistration.class)).hasSize(1);
-        assertThat(context.getBean(CoverImagePlatformRegistration.class).registered())
+        assertThat(context.getBeansOfType(FrameExtractPlatformRegistration.class)).hasSize(1);
+        assertThat(context.getBean(FrameExtractPlatformRegistration.class).registered())
                 .as("the platform process registered the capability")
                 .isTrue();
 
@@ -102,7 +114,7 @@ class CoverImageApiContextRegistrationTest extends PostgresTestContainerSupport 
                 .findCapabilityImplementations(CapabilityId.of(CoverImageContracts.CAPABILITY));
         assertThat(implementations).hasSize(1);
         assertThat(implementations.getFirst().pluginId())
-                .isEqualTo(CoverImagePlatformProvider.PLUGIN_ID);
+                .isEqualTo(FrameExtractPlatformProvider.PLUGIN_ID);
         assertThat(implementations.getFirst().contractVersion().toString())
                 .isEqualTo(CoverImageContracts.CAPABILITY_VERSION);
 
@@ -111,7 +123,8 @@ class CoverImageApiContextRegistrationTest extends PostgresTestContainerSupport 
         assertThat(candidates).hasSize(1);
         assertThat(candidates.getFirst().capabilities())
                 .extracting(capability -> capability.capabilityId())
-                .containsExactly(CoverImageContracts.CAPABILITY);
+                .as("one contribution declares both frame-extract capabilities")
+                .contains(CoverImageContracts.CAPABILITY, "media.thumbnail");
 
         var entry = catalog.publicAvailability().stream()
                 .filter(capability -> capability.capabilityId().equals(CoverImageContracts.CAPABILITY))
@@ -130,8 +143,8 @@ class CoverImageApiContextRegistrationTest extends PostgresTestContainerSupport 
                 .isPresent()
                 .get()
                 .extracting(binding -> binding.providerRegistryReference())
-                .isEqualTo(CoverImagePlatformProvider.PLUGIN_ID
-                        + "@" + CoverImagePlatformProvider.PLUGIN_VERSION);
+                .isEqualTo(FrameExtractPlatformProvider.PLUGIN_ID
+                        + "@" + FrameExtractPlatformProvider.PLUGIN_VERSION);
     }
 
     private Set<String> coverBeans() {
@@ -159,5 +172,19 @@ class CoverImageApiContextRegistrationTest extends PostgresTestContainerSupport 
             }
         }
         return patterns;
+    }
+
+    private Set<String> frameExtractBeans() {
+        Set<String> names = new TreeSet<>();
+        for (String name : context.getBeanDefinitionNames()) {
+            Class<?> type = context.getType(name);
+            String className = type != null
+                    ? type.getName()
+                    : context.getBeanFactory().getBeanDefinition(name).getBeanClassName();
+            if (className != null && className.startsWith("com.example.platform.frameextract.")) {
+                names.add(className.contains("$$") ? className.substring(0, className.indexOf("$$")) : className);
+            }
+        }
+        return names;
     }
 }

@@ -34,8 +34,8 @@ public final class RegistryAvailabilityProjection implements CompositionProvider
         this.providers=providers;
         // COVER-PROVIDER-PLATFORM-REGISTER-001: media.cover-image is a first-class capability of
         // the platform provider family platform.ffmpeg (implementation ffmpeg.cpu.frame-extract.v1,
-        // declared by CoverImagePlatformProvider and registered in the capability registry by
-        // CoverImagePlatformRegistration). The capability contract is the platform Artifact contract
+        // declared by FrameExtractPlatformProvider and registered in the capability registry by
+        // FrameExtractPlatformRegistration). The capability contract is the platform Artifact contract
         // (subject Artifact in, cover Artifact out, committed through ArtifactCommitService).
         // COVER-THUMBNAIL-REBUILD-001 (action 1): the contribution now declares that same Artifact
         // capability contract, so this entry's availability is derived from the registered, healthy
