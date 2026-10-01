@@ -16,6 +16,11 @@ import org.springframework.scheduling.annotation.EnableScheduling;
     // worker-only beans of the same package are gated on platform.runtime.role=WORKER, so the API
     // process registers the controller/service and never the provider runtime.
     "com.example.platform.coverimage",
+    // COVER-THUMBNAIL-UNIFY-001: the single capability-neutral ffmpeg frame-extract contribution
+    // (one PluginDescriptor declaring media.cover-image + media.thumbnail) lives in this package on the
+    // platform (API) side. Its worker-only provider/adapter beans are gated on
+    // platform.runtime.role=WORKER, so the API process registers only the registration.
+    "com.example.platform.frameextract",
     // THUMBNAIL-SLICE-API-WIRING-001: the thumbnail capability's API-side admission surface
     // (ThumbnailController + ThumbnailService + ThumbnailTaskStore + ThumbnailArtifactReadService)
     // lives in this package. The worker-only beans of the same package are gated on

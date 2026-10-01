@@ -3,6 +3,8 @@ package com.example.platform.coverimage;
 import com.example.platform.artifact.app.ArtifactPinService.ArtifactPin;
 import com.example.platform.artifact.domain.ArtifactQueryService;
 import com.example.platform.artifact.domain.ArtifactState;
+import com.example.platform.frameextract.FrameExtractExecutionAdapter;
+import com.example.platform.frameextract.FrameExtractResult;
 import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.shared.web.TenantContext;
 import com.example.platform.workerfabric.reuse.ArtifactMaterializerPort;
@@ -25,7 +27,7 @@ public class CoverImageActivitiesImpl implements CoverImageActivities {
     private final CoverImageTaskStore tasks;
     private final ArtifactQueryService artifacts;
     private final ArtifactMaterializerPort materializer;
-    private final CoverImageCapabilityRegistry capabilities;
+    private final FrameExtractExecutionAdapter capabilities;
     private final CoverImageCommitService commitService;
     private final Path commitStagingRoot;
 
@@ -33,7 +35,7 @@ public class CoverImageActivitiesImpl implements CoverImageActivities {
             CoverImageTaskStore tasks,
             ArtifactQueryService artifacts,
             ArtifactMaterializerPort materializer,
-            CoverImageCapabilityRegistry capabilities,
+            FrameExtractExecutionAdapter capabilities,
             CoverImageCommitService commitService,
             // The canonical StorageOutputPort resolves the relative staged path under ITS root, so the
             // commit staging area must live there (Continue-5 defect: staging under the provider work
@@ -91,7 +93,7 @@ public class CoverImageActivitiesImpl implements CoverImageActivities {
         } catch (java.io.IOException failure) {
             throw fail(taskId, "SUBJECT_MATERIALIZATION_FAILED", "subject artifact could not be materialized");
         }
-        CoverImageCapabilityProvider.Result produced;
+        FrameExtractResult produced;
         try {
             // The capability id is explicit: resolution and execution are capability-scoped, while
             // the provider identity is capability-independent (the durable task row stores the

@@ -2,6 +2,8 @@ package com.example.platform.thumbnail;
 
 import com.example.platform.artifact.domain.*;
 import com.example.platform.artifact.app.ArtifactCatalogService;
+import com.example.platform.frameextract.FrameExtractExecutionAdapter;
+import com.example.platform.frameextract.FrameExtractResult;
 import com.example.platform.shared.digest.ContentDigest;
 import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.shared.web.TenantContext;
@@ -21,10 +23,10 @@ import org.springframework.stereotype.Component;
 public class ThumbnailActivitiesImpl implements ThumbnailActivities {
     private final ThumbnailTaskStore tasks; private final ArtifactQueryService artifacts; private final ArtifactCatalogService catalog;
     private final StoragePlacementQuery storage;
-    private final ThumbnailCommitService commitService; private final ThumbnailProviderInvoker capabilities; private final Path root;
+    private final ThumbnailCommitService commitService; private final FrameExtractExecutionAdapter capabilities; private final Path root;
     public ThumbnailActivitiesImpl(ThumbnailTaskStore tasks, ArtifactQueryService artifacts,
             ArtifactCatalogService catalog, StoragePlacementQuery storage,
-            ThumbnailCommitService commitService, ThumbnailProviderInvoker capabilities,
+            ThumbnailCommitService commitService, FrameExtractExecutionAdapter capabilities,
             @Value("${app.storage.local-root:./.data/storage}") String root) {
         this.tasks=tasks; this.artifacts=artifacts; this.catalog=catalog; this.storage=storage;
         this.commitService=commitService; this.capabilities=capabilities;
@@ -59,7 +61,7 @@ public class ThumbnailActivitiesImpl implements ThumbnailActivities {
         if(source.mediaType()!=ArtifactMediaType.VIDEO) throw fail(taskId,"UNSUPPORTED_MEDIA", "source media is not a video");
         byte[] input=readSourceBytes(taskId,tenant,project,source);
         if (input.length == 0 || input.length > 512L * 1024L * 1024L) throw fail(taskId,"INPUT_TOO_LARGE", "source exceeds thumbnail input limit");
-        ThumbnailCapabilityProvider.Result result;
+        FrameExtractResult result;
         try { result=capabilities.invoke(req,input,()->Thread.currentThread().isInterrupted()||tasks.isCancelled(tenant,project,taskId)); }
         catch (RuntimeException failure) { tasks.statusIfActive(taskId, ThumbnailContracts.Status.FAILED, null, "PROVIDER_FAILED"); throw failure; }
         if (!result.succeeded()) { tasks.statusIfActive(taskId, "CANCELLED".equals(result.failureCode())?ThumbnailContracts.Status.CANCELLED:ThumbnailContracts.Status.FAILED, null, result.failureCode()); return null; }

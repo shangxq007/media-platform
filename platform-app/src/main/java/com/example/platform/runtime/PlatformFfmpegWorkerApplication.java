@@ -44,6 +44,7 @@ import org.springframework.context.annotation.Import;
 @ComponentScan(
         basePackages = {
             "com.example.platform.coverimage",
+            "com.example.platform.frameextract",
             "com.example.platform.thumbnail",
             "com.example.platform.storage",
             "com.example.platform.artifact",

@@ -7,6 +7,13 @@ asset id, a finite timestamp, a bounded image format/size/quality, and an idempo
 key. Physical paths, URLs, FFmpeg arguments, and Storage credentials are never part
 of the HTTP contract.
 
+`media.thumbnail` and `media.cover-image` share one capability-neutral provider
+(`FfmpegCpuFrameExtractProvider`) and one platform contribution
+(`FrameExtractPlatformProvider` / `FrameExtractPlatformRegistration`, contribution id
+`media.ffmpeg.frameextract`). The provider declares the capability list and selects the
+thumbnail execution profile from the executing `capabilityId`; the worker dispatch is
+`FrameExtractExecutionAdapter`.
+
 `V10__media_thumbnail_tasks.sql` owns durable admission and lifecycle state. The
 Temporal `ThumbnailWorkflow` persists admission before the activity, retries bounded
 provider work, honors cancellation, and commits an IMAGE Artifact (generic

@@ -15,7 +15,7 @@ sandboxed provider execution, a single canonical Artifact commit and read-back.
 | Provider implementation | `ffmpeg.cpu.frame-extract.v1` |
 | Provider version | `1.0.0` |
 | Declared capabilities | the provider manifest declares a capability **list**; this slice declares `media.cover-image` |
-| Provider pin | deployment configuration only (`app.cover-image.pinned-provider`); no provider identity is hardcoded in the registry |
+| Provider pin | the capability-neutral platform frame-extract family `platform.ffmpeg`, pinned in the one worker execution adapter (`FrameExtractExecutionAdapter.PINNED_PROVIDER_ID`); the pin names a provider family, never a capability |
 | Provenance operation tag | `cover-image` (capability-independent label; the capability id is carried separately and is never embedded in the tag) |
 | Task queue | `media-platform-tasks` (shared canonical queue; no per-capability queue) |
 | Worker name | `ffmpeg-worker` (shared runtime-grouped worker; hosts `media.cover-image` and `media.thumbnail`) |
@@ -91,22 +91,27 @@ admitting a second task.
 
 ## Provider
 
-`CpuFrameExtractCoverImageProvider` implements provider family `platform.ffmpeg`, implementation
-`ffmpeg.cpu.frame-extract.v1`, and declares its manifest as **provider identity + capability
-declaration list** (`capabilities()`, each entry `capabilityId` + capability contract version) plus
-the `ffmpeg` toolchain, accepted input formats, `png`/`jpeg` outputs, timestamp/width/byte/timeout
-limits, `sandbox-bwrap` trust and runtime requirements.
+`FfmpegCpuFrameExtractProvider` is the **single capability-neutral provider** of the
+`platform.ffmpeg` family (implementation `ffmpeg.cpu.frame-extract.v1`). It declares its manifest as
+**provider identity + capability declaration list** (`capabilities()`, each entry `capabilityId` +
+capability contract version) and serves both `media.cover-image` and `media.thumbnail` from the one
+implementation. Everything that genuinely differs per capability — the accepted input form, the
+width bound (`8192` for cover, `4096` for thumbnail), the timeout (`120s` / `60s`) and the sandbox
+task capability the bytes run through — is carried by a `FrameExtractCapabilityProfile` selected from
+the executing `capabilityId`, not by a second provider class.
 
-`CoverImageCapabilityRegistry` resolves **capability → provider** over every registered provider's
-declared list:
+`FrameExtractExecutionAdapter` is the one worker-side execution adapter over the registered
+providers:
 
 - a provider that declares several capabilities is indexed under each of them — it is never skipped
-  for a capability it declares, and one capability may be served by several providers;
-- selection is deterministic and fail-closed: the deployment-pinned provider when it declares the
-  capability, otherwise the single declaring provider; an ambiguous capability with no pin, a
-  capability with no provider, a duplicate provider identity, or a pin naming an unregistered (or
-  non-declaring) provider all fail at construction;
-- the pin is deployment configuration (`app.cover-image.pinned-provider`), not a code constant.
+  for a capability it declares, and one capability may be served by several providers (N:M);
+- selection is deterministic and fail-closed: the pinned family `platform.ffmpeg`
+  (`FrameExtractExecutionAdapter.PINNED_PROVIDER_ID`, a provider family, never a capability) owns
+  every routed capability and any additional provider that declares the same capability stays
+  registered but is never chosen;
+- an empty registration, a duplicate provider family, a provider whose family and implementation
+  identity collapse into one value, a missing pinned family, a capability no registered provider
+  declares, and a pinned family that does not declare a routed capability all fail at construction.
 
 There is no fallback provider and no implicit default provider. `invoke(capabilityId, …)` passes the
 capability being executed to the provider, and a provider fails closed
@@ -119,16 +124,18 @@ bubblewrap profile (`--ro-bind / / --dev /dev --proc /proc --tmpfs /tmp --unshar
 ## Platform registration (first-class platform capability)
 
 `media.cover-image` is registered with the platform provider/capability registry, not only held as a
-slice-local constant. `CoverImagePlatformProvider` declares the platform metadata and
-`CoverImagePlatformRegistration` registers it at platform start-up.
+slice-local constant. `FrameExtractPlatformProvider` declares the platform metadata and
+`FrameExtractPlatformRegistration` registers it at platform start-up — one capability-neutral
+contribution that also declares `media.thumbnail`, so both capabilities resolve from the same
+registration.
 
 | Element | Value |
 |---|---|
 | Provider family (`ProviderId`) | `platform.ffmpeg` (capability-independent, model A) |
 | Provider implementation (`ProviderImplementationId`) | `ffmpeg.cpu.frame-extract.v1` |
 | Provider version / execution-contract version | `1.0.0` / `1.0` |
-| Capability (`ProviderCapabilityProfile` / `ProviderExecutionContract`) | `media.cover-image` @ `1.0`, contract range `[1.0, 1.0]` |
-| Contribution (`PluginDescriptor`) identity | `media.coverimage.ffmpeg@1.0.0` (hyphen-free contribution id, mirroring `media.transcode.ffmpeg`; not a provider identity) |
+| Capabilities (`ProviderCapabilityProfile` / `ProviderExecutionContract`) | `media.cover-image` @ `1.0` and `media.thumbnail` @ `1.0`, both contract range `[1.0, 1.0]` |
+| Contribution (`PluginDescriptor`) identity | `media.ffmpeg.frameextract@1.0.0` (capability-neutral, hyphen-free contribution id; it names the frame-extract contribution, not any capability, and is not a provider identity) |
 | Declared platform boundary | `ExecutableTask` in, `ProviderExecutionOutput` out (the platform's P1 provider-facing boundary) |
 | Registered through | `PluginRegistrationPort.registerRuntime(PluginDescriptor)` — the same canonical seam the PF4J provider host uses |
 | Role | platform (API) process only; the cover worker has no capability registry and registers nothing |
@@ -192,7 +199,7 @@ must happen in the caller (step 1) and is intentionally left unchanged.
 | Storage (subject read) | a registered `StorageProvider` bean — the worker composes `LocalObjectStoreStorageProvider` (`app.cover-image.storage.provider-id`, `app.cover-image.storage.root`); its object store holds the subject bytes the materializer reads |
 | Storage (cover write) | `StorageOutputPort` (unchanged canonical publication); the commit staging root is `app.cover-image.commit-staging-root`, which defaults to `app.storage.local-root` and **must** be the root the output port resolves relative paths under |
 | Execution backends | the worker composes `RuntimeExecutionBackends` from its own `ExecutionBackend` beans, so `TaskCapability.COVER_IMAGE` resolves to the cover sandbox backend (the API-side PF4J composition is not part of the worker) |
-| Provider selection | `app.cover-image.pinned-provider` (deployment configuration; required when more than one provider declares `media.cover-image`) |
+| Provider selection | the pinned family `platform.ffmpeg` (`FrameExtractExecutionAdapter.PINNED_PROVIDER_ID`); a provider family, never a capability, and never a hardcoded capability id |
 | Temporal | 1.26.2 or compatible; namespace resolved from `TEMPORAL_NAMESPACE` |
 | Database | `platform-app` migrations, including `V22__cover_image_tasks.sql` |
 

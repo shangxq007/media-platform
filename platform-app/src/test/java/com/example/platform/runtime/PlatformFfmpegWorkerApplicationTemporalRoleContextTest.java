@@ -2,22 +2,19 @@ package com.example.platform.runtime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.example.platform.coverimage.CoverImageCapabilityRegistry;
 import com.example.platform.coverimage.CoverImageCapabilityProvider;
 import com.example.platform.coverimage.CoverImageExecutionBackend;
 import com.example.platform.coverimage.CoverImageMaterializationConfiguration;
-import com.example.platform.coverimage.CoverImagePlatformRegistration;
-import com.example.platform.coverimage.CpuFrameExtractCoverImageProvider;
+import com.example.platform.frameextract.FfmpegCpuFrameExtractProvider;
+import com.example.platform.frameextract.FrameExtractExecutionAdapter;
+import com.example.platform.frameextract.FrameExtractPlatformRegistration;
 import com.example.platform.sandbox.execution.ExecutionBackend;
 import com.example.platform.sandbox.execution.ExecutionBackendRegistry;
 import com.example.platform.sandbox.execution.TaskCapability;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import com.example.platform.storage.contract.provider.StorageProvider;
-import com.example.platform.thumbnail.CpuFrameExtractThumbnailProvider;
 import com.example.platform.thumbnail.ThumbnailCapabilityProvider;
 import com.example.platform.thumbnail.ThumbnailExecutionBackend;
-import com.example.platform.thumbnail.ThumbnailPlatformRegistration;
-import com.example.platform.thumbnail.ThumbnailProviderInvoker;
 import com.example.platform.workerfabric.reuse.ArtifactMaterializerPort;
 import io.temporal.client.WorkflowClient;
 import io.temporal.spring.boot.autoconfigure.template.WorkersTemplate;
@@ -77,14 +74,13 @@ class PlatformFfmpegWorkerApplicationTemporalRoleContextTest extends PostgresTes
 
     @Test
     void workerContextOwnsBothCapabilitiesAndTheirExecutionBackends() {
-        // One provider per capability, both in the same process.
+        // One capability-neutral provider serves both capabilities in the same process.
         assertThat(context.getBeansOfType(CoverImageCapabilityProvider.class)).hasSize(1);
-        assertThat(context.getBean(CpuFrameExtractCoverImageProvider.class)).isNotNull();
+        assertThat(context.getBean(FfmpegCpuFrameExtractProvider.class)).isNotNull();
         assertThat(context.getBeansOfType(ThumbnailCapabilityProvider.class)).hasSize(1);
-        assertThat(context.getBean(CpuFrameExtractThumbnailProvider.class)).isNotNull();
-        // Worker-side execution adapters behind the platform registration.
-        assertThat(context.getBean(CoverImageCapabilityRegistry.class)).isNotNull();
-        assertThat(context.getBean(ThumbnailProviderInvoker.class)).isNotNull();
+        assertThat(context.getBeansOfType(FfmpegCpuFrameExtractProvider.class)).hasSize(1);
+        // One capability-neutral worker-side execution adapter behind the platform registration.
+        assertThat(context.getBean(FrameExtractExecutionAdapter.class)).isNotNull();
 
         var backends = context.getBean(ExecutionBackendRegistry.class);
         assertThat(backends.resolve(TaskCapability.COVER_IMAGE))
@@ -107,8 +103,7 @@ class PlatformFfmpegWorkerApplicationTemporalRoleContextTest extends PostgresTes
         // Platform capability registration is the platform (API) process's authority.
         assertThat(context.getBeansOfType(
                 com.example.platform.extension.api.port.PluginRegistrationPort.class)).isEmpty();
-        assertThat(context.getBean(CoverImagePlatformRegistration.class).registered()).isFalse();
-        assertThat(context.getBean(ThumbnailPlatformRegistration.class).registered()).isFalse();
+        assertThat(context.getBean(FrameExtractPlatformRegistration.class).registered()).isFalse();
     }
 
     @SuppressWarnings("unchecked")
