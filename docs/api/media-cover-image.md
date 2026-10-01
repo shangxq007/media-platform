@@ -235,15 +235,19 @@ would poll `workflow-process`). The retired per-capability worker profiles and t
 
 ## Acceptance
 
-- `CoverImageCapabilityTest` — vocabulary, capability-independent provider identity, capability-list
-  declaration validation, and registry fail-closed behaviour (empty/foreign capability, duplicate
-  provider identity, invalid pin, multi-provider ambiguity).
+- `FrameExtractProviderContractTest` — the merged capability-neutral frame-extract provider: one
+  provider family plus one implementation declares a capability list, the manifest vocabulary is
+  capability-independent, and everything that genuinely differs per capability is carried by a
+  profile selected from the executing `capabilityId`.
 - `CoverImageApiContextRegistrationTest` — boots the real `PlatformApplication` context and asserts the
   API registers exactly `CoverImageController` + `CoverImageService` + `CoverImageTaskStore` from the
   cover package, that the documented route is present, and that every worker-only cover bean is absent.
-- `CoverImageProviderCapabilityShapeTest` — model-A shape: one provider declaring two capabilities is
-  indexed under both, capability-scoped dispatch passes the executing capability to the provider,
-  dispatch never crosses providers, and a provider fails closed for an undeclared capability.
+- `FrameExtractExecutionAdapterTest` — N:M worker-side topology: one provider declaring two
+  capabilities is indexed under each, capability-scoped dispatch passes the executing capability to
+  the provider, and dispatch never crosses providers.
+- `FrameExtractPlatformRegistrationTest` — the single merged contribution is registered in the
+  platform capability registry and declares exactly `media.cover-image@1.0` and `media.thumbnail@1.0`
+  (model A, N:M), failing closed on invalid or duplicate contributions.
 - `PlatformFfmpegWorkerQueueSetTest` — reflects the real `WorkerFactory.workers` map for the merged
   worker and asserts exactly `{media-platform-tasks}` with `workflow-process` absent (plus a negative
   control on the base profile).
@@ -256,5 +260,6 @@ would poll `workflow-process`). The retired per-capability worker profiles and t
   conflicting digest and fail-closed identity re-commit.
 
 Local runtime stack: `docker-compose.cover-acceptance.yml` (Temporal 1.26.2 + MinIO + Postgres) with
-`infra/docker/Dockerfile.ffmpeg-worker` and
-`infra/runtime/verify-cover-image-worker-image.sh`.
+the merged `platform-ffmpeg-worker.jar` worker image built from
+`infra/docker/Dockerfile.ffmpeg-worker` and guarded by
+`PlatformFfmpegWorkerApplicationArchitectureTest`.
