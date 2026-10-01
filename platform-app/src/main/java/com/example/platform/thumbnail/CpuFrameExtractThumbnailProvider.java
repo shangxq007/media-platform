@@ -41,8 +41,8 @@ public final class CpuFrameExtractThumbnailProvider implements ThumbnailCapabili
     @Autowired
     public CpuFrameExtractThumbnailProvider(
             @Value("${app.storage.local-root:./.data/storage}") String root,
-            @Value("${thumbnail.ffmpeg-path:ffmpeg}") String ffmpeg,
-            @Value("${thumbnail.ffprobe-path:ffprobe}") String ffprobe,
+            @Value("${platform.ffmpeg-worker.sandbox.ffmpeg:/usr/bin/ffmpeg}") String ffmpeg,
+            @Value("${platform.ffmpeg-worker.sandbox.ffprobe:/usr/bin/ffprobe}") String ffprobe,
             com.example.platform.sandbox.execution.ExecutionBackendRegistry backends) {
         this.root = Path.of(root).toAbsolutePath().normalize();
         this.ffmpeg = ffmpeg;

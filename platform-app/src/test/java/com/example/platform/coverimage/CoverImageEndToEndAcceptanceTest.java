@@ -57,7 +57,7 @@ import org.springframework.test.context.DynamicPropertySource;
  */
 @EnabledIfEnvironmentVariable(named = "COVER_E2E", matches = "true")
 @SpringBootTest(
-        classes = CoverImageWorkerApplication.class,
+        classes = com.example.platform.runtime.PlatformFfmpegWorkerApplication.class,
         webEnvironment = SpringBootTest.WebEnvironment.NONE,
         properties = {
             "spring.temporal.start-workers=true",
@@ -67,7 +67,7 @@ import org.springframework.test.context.DynamicPropertySource;
             // PostgreSQL fixtures; the application must not migrate a shared acceptance database.
             "spring.flyway.enabled=false"
         })
-@ActiveProfiles({"temporal", "cover-image-worker"})
+@ActiveProfiles({"temporal", "ffmpeg-worker"})
 @ContextConfiguration(initializers = CoverImageEndToEndAcceptanceTest.AcceptanceDatabaseInitializer.class)
 class CoverImageEndToEndAcceptanceTest {
 

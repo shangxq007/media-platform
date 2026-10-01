@@ -72,7 +72,8 @@ class ThumbnailApiContextRegistrationTest extends PostgresTestContainerSupport {
         assertThat(context.getBeansOfType(ThumbnailWorkerRuntimeConfiguration.class)).isEmpty();
         assertThat(context.getBeansOfType(ThumbnailCommitService.class)).isEmpty();
         assertThat(context.getBeansOfType(ThumbnailActivitiesImpl.class)).isEmpty();
-        assertThat(context.getBeansOfType(ThumbnailWorkerApplication.class)).isEmpty();
+        assertThat(context.getBeansOfType(
+                com.example.platform.runtime.PlatformFfmpegWorkerApplication.class)).isEmpty();
 
         // The whole thumbnail package contributes nothing else to the API graph.
         assertThat(thumbnailBeans()).isEqualTo(new TreeSet<>(API_SIDE_THUMBNAIL_BEANS));

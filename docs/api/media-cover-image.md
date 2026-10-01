@@ -18,7 +18,7 @@ sandboxed provider execution, a single canonical Artifact commit and read-back.
 | Provider pin | deployment configuration only (`app.cover-image.pinned-provider`); no provider identity is hardcoded in the registry |
 | Provenance operation tag | `cover-image` (capability-independent label; the capability id is carried separately and is never embedded in the tag) |
 | Task queue | `media-platform-tasks` (shared canonical queue; no per-capability queue) |
-| Worker name | `cover-image-worker` |
+| Worker name | `ffmpeg-worker` (shared runtime-grouped worker; hosts `media.cover-image` and `media.thumbnail`) |
 | Provenance | one `COVER_OF` edge, subject → cover, committed through `ArtifactCommitService` |
 
 The cover is **not** a new `ArtifactKind`. It is an existing image Artifact
@@ -145,23 +145,19 @@ provider family.
 
 ### What the registration does not claim
 
-The runtime that executes the capability today is the cover worker (Temporal activity → bubblewrap +
-FFmpeg sandbox → `ArtifactCommitService`). Routing the capability through the platform
-operation-invocation seam is backlog item C2, so this registration declares the provider-boundary
-shape (`ExecutableTask` / `ProviderExecutionOutput`) without claiming that the platform executes it
-yet.
+The runtime that executes the capability today is the shared runtime-grouped `ffmpeg-worker`
+(Temporal activity → bubblewrap + FFmpeg sandbox → `ArtifactCommitService`), which also hosts
+`media.thumbnail`. The registration declares the provider-boundary shape
+(`ExecutableTask` / `ProviderExecutionOutput`) on the execution descriptor and the platform Artifact
+capability contract (subject Artifact in / cover Artifact out) on the contribution.
 
-`UNAVAILABLE` is an explicit, pinned verdict, not a side effect of the declared type names:
-`RegistryAvailabilityProjection` holds a `PENDING_PLATFORM_DISPATCH` declaration for
-`media.cover-image:1.0`, so the composition catalog reports `UNAVAILABLE` (with the
-`SLICE_LOCAL_RUNTIME: … execution-seam integration (operation invocation boundary) is pending` reason) even
-if a provider manifest aligned its declared reference types with the catalog contract, and
-`resolveProviderBound` returns empty for it. Both the published catalog and provider-bound resolution
-use that single availability computation, so a capability the catalog does not report `AVAILABLE`
-can never resolve to a provider binding — the fail-closed effect is at the resolution seam itself,
-with `CompositionValidator`'s `CAPABILITY_UNAVAILABLE` check as the upstream admission guard. Removing
-the pin is the reviewable step that makes the capability composable once C2 lands; `media.transcode`
-keeps its own un-materialized `UNAVAILABLE` verdict (its provider output has no typed adapter yet).
+`RegistryAvailabilityProjection` reports `media.cover-image` `AVAILABLE` from that registered,
+healthy contribution (`media.thumbnail` the same way), not from a pinned value. The availability gate
+is still the single computation shared by the published catalog and provider-bound resolution: a
+capability with no matching healthy implementation is `UNAVAILABLE` and never resolves to a provider
+binding (fail-closed), with `CompositionValidator`'s `CAPABILITY_UNAVAILABLE` check as the upstream
+admission guard. `media.transcode` keeps its own un-materialized `UNAVAILABLE` verdict (its provider
+output has no typed adapter yet).
 
 The worker runtime-support requirement (`WorkerRuntimeSupportRequirement`) is likewise not declared
 here, because it belongs to that dispatch path.
@@ -190,7 +186,7 @@ must happen in the caller (step 1) and is intentionally left unchanged.
 | Requirement | Value |
 |---|---|
 | Process | dedicated worker process, `web-application-type: none`, no controller/security scan |
-| Profiles | `temporal,cover-image-worker` (worker profile applied **last**, per `CoverImageWorkerApplication.WORKER_PROFILES`) |
+| Profiles | `temporal,ffmpeg-worker` (worker profile applied **last**, per `PlatformFfmpegWorkerApplication.WORKER_PROFILES`; shared with `media.thumbnail`) |
 | Queue set | exactly `{media-platform-tasks}`; `workflow-process` must be absent |
 | Binaries | `ffmpeg`, `ffprobe` (probe) and `bwrap` on the pinned paths |
 | Storage (subject read) | a registered `StorageProvider` bean — the worker composes `LocalObjectStoreStorageProvider` (`app.cover-image.storage.provider-id`, `app.cover-image.storage.root`); its object store holds the subject bytes the materializer reads |
@@ -219,19 +215,16 @@ must happen in the caller (step 1) and is intentionally left unchanged.
 ### Profile precedence
 
 Spring Boot replaces a list property with the value from the highest-precedence source that defines
-it, so the **last** profile in the active list wins. `application-cover-image-worker.yml` therefore
+it, so the **last** profile in the active list wins. `application-ffmpeg-worker.yml` therefore
 only removes the base `application-temporal.yml` worker list when the worker profile is applied
 after `temporal`.
 
-`CoverImageWorkerApplication.WORKER_PROFILES = [temporal, cover-image-worker]` declares exactly that
-order, and `main()` applies it, so the worker profile is last and its single-queue list wins: a cover
-worker polls `media-platform-tasks` only (asserted by `CoverImageWorkerQueueSetTest`, which also keeps
-a negative control showing the base profile alone would poll `workflow-process`).
-
-The deployment keeps `SPRING_CONFIG_ADDITIONAL_LOCATION` pointing at
-`infra/docker/cover-image-worker-override.yml` as defence in depth: additional config data outranks the
-packaged profile resources, so the queue set stays exactly `{media-platform-tasks}` even if the active
-profile order is changed by an operator.
+`PlatformFfmpegWorkerApplication.WORKER_PROFILES = [temporal, ffmpeg-worker]` declares exactly that
+order, and `main()` applies it, so the worker profile is last and its single-queue list wins: the
+runtime-grouped ffmpeg worker polls `media-platform-tasks` only (asserted by
+`PlatformFfmpegWorkerQueueSetTest`, which also keeps a negative control showing the base profile alone
+would poll `workflow-process`). The retired per-capability worker profiles and their
+`SPRING_CONFIG_ADDITIONAL_LOCATION` override are gone with the merged worker.
 
 ## Acceptance
 
@@ -244,17 +237,17 @@ profile order is changed by an operator.
 - `CoverImageProviderCapabilityShapeTest` — model-A shape: one provider declaring two capabilities is
   indexed under both, capability-scoped dispatch passes the executing capability to the provider,
   dispatch never crosses providers, and a provider fails closed for an undeclared capability.
-- `CoverImageWorkerQueueSetTest` — reflects the real `WorkerFactory.workers` map and asserts exactly
-  `{media-platform-tasks}` with `workflow-process` absent (plus a negative control on the base
-  profile).
-- `CoverImageWorkerApplicationTemporalRoleContextTest` — boots the real worker context and scans the
-  bean graph: no `@RestController`/`@Controller` bean, web disabled, one `WorkerFactory` on the
-  canonical queue.
+- `PlatformFfmpegWorkerQueueSetTest` — reflects the real `WorkerFactory.workers` map for the merged
+  worker and asserts exactly `{media-platform-tasks}` with `workflow-process` absent (plus a negative
+  control on the base profile).
+- `PlatformFfmpegWorkerApplicationTemporalRoleContextTest` — boots the real merged worker context and
+  scans the bean graph: no `@RestController`/`@Controller` bean, web disabled, one `WorkerFactory` on
+  the canonical queue, and both cover and thumbnail capabilities present.
 - `CoverImageCommitServiceIdempotencyTest` — DB-backed (Testcontainers) replay proof: the same
   Artifact is returned and the commit fence is never reached again.
 - `JooqArtifactCommitServiceCoverOfTest` — DB-backed canonical `COVER_OF` edge, fail-closed
   conflicting digest and fail-closed identity re-commit.
 
 Local runtime stack: `docker-compose.cover-acceptance.yml` (Temporal 1.26.2 + MinIO + Postgres) with
-`infra/docker/Dockerfile.cover-image-worker` and
+`infra/docker/Dockerfile.ffmpeg-worker` and
 `infra/runtime/verify-cover-image-worker-image.sh`.

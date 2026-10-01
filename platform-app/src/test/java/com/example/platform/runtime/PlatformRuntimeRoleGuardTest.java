@@ -25,12 +25,32 @@ class PlatformRuntimeRoleGuardTest {
     }
 
     @Test
-    void workerRoleRequiresNoneWebAndCanonicalThumbnailDiscovery() {
+    void workerRoleRequiresNoneWebAndCanonicalCapabilityDiscovery() {
         // Scalar discovery form must keep working (backward compatibility with the previous
         // workaround): the binder resolves a comma-separated scalar into the same single-element list.
         MockEnvironment env = workerBase()
                 .withProperty("spring.temporal.workers-auto-discovery.packages", "com.example.platform.thumbnail");
         assertThatCode(() -> new PlatformRuntimeRoleGuard(env)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void workerRoleAcceptsBothFfmpegCapabilityPackages() {
+        // COVER-THUMBNAIL-REBUILD-001 (action 3): the runtime-grouped ffmpeg worker hosts both
+        // capability packages in one process.
+        MockEnvironment env = workerBase()
+                .withProperty("spring.temporal.workers-auto-discovery.packages[0]", "com.example.platform.coverimage")
+                .withProperty("spring.temporal.workers-auto-discovery.packages[1]", "com.example.platform.thumbnail");
+        assertThatCode(() -> new PlatformRuntimeRoleGuard(env)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void workerRoleRejectsNonFfmpegDiscoveryPackages() {
+        MockEnvironment env = workerBase()
+                .withProperty("spring.temporal.workers-auto-discovery.packages[0]", "com.example.platform.thumbnail")
+                .withProperty("spring.temporal.workers-auto-discovery.packages[1]", "com.example.platform.audio");
+        assertThatThrownBy(() -> new PlatformRuntimeRoleGuard(env))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("discover only");
     }
 
     @Test
@@ -102,9 +122,9 @@ class PlatformRuntimeRoleGuardTest {
                 .withProperty("spring.temporal.start-workers", "true")
                 .withProperty("spring.main.web-application-type", "none")
                 .withProperty("spring.temporal.workers-auto-discovery.packages[0]", "com.example.platform.thumbnail")
-                .withProperty("platform.thumbnail.sandbox.bwrap", "/bin/true")
-                .withProperty("platform.thumbnail.sandbox.ffmpeg", "/bin/true")
-                .withProperty("platform.thumbnail.sandbox.ffprobe", "/bin/true");
+                .withProperty("platform.ffmpeg-worker.sandbox.bwrap", "/bin/true")
+                .withProperty("platform.ffmpeg-worker.sandbox.ffmpeg", "/bin/true")
+                .withProperty("platform.ffmpeg-worker.sandbox.ffprobe", "/bin/true");
         assertThatThrownBy(() -> new PlatformRuntimeRoleGuard(env))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("exactly the canonical queue");
@@ -144,9 +164,9 @@ class PlatformRuntimeRoleGuardTest {
                 .withProperty("spring.temporal.start-workers", "true")
                 .withProperty("spring.main.web-application-type", "none")
                 .withProperty("spring.temporal.workers[0].task-queue", "media-platform-tasks")
-                .withProperty("platform.thumbnail.sandbox.bwrap", "/bin/true")
-                .withProperty("platform.thumbnail.sandbox.ffmpeg", "/bin/true")
-                .withProperty("platform.thumbnail.sandbox.ffprobe", "/bin/true");
+                .withProperty("platform.ffmpeg-worker.sandbox.bwrap", "/bin/true")
+                .withProperty("platform.ffmpeg-worker.sandbox.ffmpeg", "/bin/true")
+                .withProperty("platform.ffmpeg-worker.sandbox.ffprobe", "/bin/true");
     }
 
     /** The YAML-list discovery form, flattened exactly as Spring Boot flattens a profile list. */

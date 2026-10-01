@@ -1,12 +1,16 @@
-# Cover-image worker role. Overrides the base temporal worker list by profile precedence:
-# exactly one worker on the shared queue, and this process never polls workflow-process.
+# Profile: the single runtime-grouped platform ffmpeg worker (COVER-THUMBNAIL-REBUILD-001,
+# action 3 / EXEC-CAN-009). It hosts the ffmpeg frame-extract capabilities media.cover-image and
+# media.thumbnail on the shared canonical queue. Overrides the base temporal worker list by profile
+# precedence: exactly one worker, and this process never polls workflow-process.
 platform:
   runtime:
     role: WORKER
-  cover-image:
+  ffmpeg-worker:
     sandbox:
-      bwrap: ${COVER_IMAGE_BWRAP_PATH:/usr/bin/bwrap}
-      ffmpeg: ${COVER_IMAGE_FFMPEG_PATH:/usr/bin/ffmpeg}
+      bwrap: ${FFMPEG_WORKER_BWRAP_PATH:/usr/bin/bwrap}
+      ffmpeg: ${FFMPEG_WORKER_FFMPEG_PATH:/usr/bin/ffmpeg}
+      ffprobe: ${FFMPEG_WORKER_FFPROBE_PATH:/usr/bin/ffprobe}
+  cover-image:
     work-root: ${COVER_IMAGE_WORK_ROOT:./.data/cover-image-work}
     materialization-root: ${COVER_IMAGE_MATERIALIZATION_ROOT:./.data/cover-image-materialized}
     materialization-capacity-bytes: ${COVER_IMAGE_MATERIALIZATION_CAPACITY_BYTES:1073741824}
@@ -26,6 +30,7 @@ spring:
     workers-auto-discovery:
       packages:
         - com.example.platform.coverimage
+        - com.example.platform.thumbnail
     workers:
       - task-queue: media-platform-tasks
-        name: cover-image-worker
+        name: ffmpeg-worker

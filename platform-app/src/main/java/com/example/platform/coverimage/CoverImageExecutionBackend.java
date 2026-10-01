@@ -50,8 +50,8 @@ public final class CoverImageExecutionBackend implements ExecutionBackend {
     private final Path outputRoot;
 
     public CoverImageExecutionBackend(
-            @Value("${platform.cover-image.sandbox.bwrap:/usr/bin/bwrap}") String bwrap,
-            @Value("${platform.cover-image.sandbox.ffmpeg:/usr/bin/ffmpeg}") String ffmpeg,
+            @Value("${platform.ffmpeg-worker.sandbox.bwrap:/usr/bin/bwrap}") String bwrap,
+            @Value("${platform.ffmpeg-worker.sandbox.ffmpeg:/usr/bin/ffmpeg}") String ffmpeg,
             @Value("${app.cover-image.work-root:./.data/cover-image-work}") String workRoot) {
         this.bwrap = bwrap;
         this.ffmpeg = ffmpeg;

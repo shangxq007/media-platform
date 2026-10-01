@@ -4,11 +4,13 @@ tasks.named<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {
     mainClass.set("com.example.platform.PlatformApplication")
 }
 
-val thumbnailWorkerBootJar = tasks.register<org.springframework.boot.gradle.tasks.bundling.BootJar>("thumbnailWorkerBootJar") {
+// COVER-THUMBNAIL-REBUILD-001 (action 3): one runtime-grouped ffmpeg worker boot jar replaces the
+// retired cover-image and thumbnail per-capability worker boot jars.
+val ffmpegWorkerBootJar = tasks.register<org.springframework.boot.gradle.tasks.bundling.BootJar>("ffmpegWorkerBootJar") {
     group = "build"
     description = "Builds the worker-only executable with no API HTTP entry point."
-    archiveFileName.set("platform-thumbnail-worker.jar")
-    mainClass.set("com.example.platform.thumbnail.ThumbnailWorkerApplication")
+    archiveFileName.set("platform-ffmpeg-worker.jar")
+    mainClass.set("com.example.platform.runtime.PlatformFfmpegWorkerApplication")
     targetJavaVersion.set(org.gradle.api.JavaVersion.VERSION_25)
     isPreserveFileTimestamps = false
     isReproducibleFileOrder = true
@@ -131,17 +133,4 @@ tasks.register<Test>("renderIntegrationTest") {
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
     shouldRunAfter(tasks.test)
-}
-// COVER-PROVIDER-001: dedicated cover-image worker boot jar. The worker process is a separate
-// artifact from the API jar (same pattern as the thumbnail worker boot jar).
-val coverImageWorkerBootJar = tasks.register<org.springframework.boot.gradle.tasks.bundling.BootJar>("coverImageWorkerBootJar") {
-    group = "build"
-    description = "Builds the standalone cover-image Temporal worker jar."
-    archiveFileName.set("platform-cover-image-worker.jar")
-    mainClass.set("com.example.platform.coverimage.CoverImageWorkerApplication")
-    targetJavaVersion.set(org.gradle.api.JavaVersion.VERSION_25)
-    isPreserveFileTimestamps = false
-    isReproducibleFileOrder = true
-    classpath(sourceSets.main.get().runtimeClasspath)
-    dependsOn(tasks.named("classes"))
 }
