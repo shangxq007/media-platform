@@ -1,6 +1,7 @@
 package com.example.platform.shared.capability;
 
 import com.example.platform.shared.time.MediaTime;
+import com.example.platform.shared.time.ExactDecimalSeconds;
 import java.util.Objects;
 
 /**
@@ -26,5 +27,25 @@ public record MediaFrameExtractParametersV1(
         Objects.requireNonNull(position, "position");
         Objects.requireNonNull(encoding, "encoding");
         Objects.requireNonNull(width, "width");
+    }
+
+    /**
+     * Transport-adapter factory: decodes an exact decimal-seconds <em>string</em> into the
+     * canonical {@link MediaTime} position and assembles the typed parameter value.
+     *
+     * <p>This is the single supported bridge from a transport time value to this capability's
+     * parameter authority. It never uses a {@code double}: the caller must supply the exact
+     * decimal string (e.g. from a Jackson {@code BigDecimal}/{@code DecimalNode}), and the
+     * conversion goes through {@link ExactDecimalSeconds#toMediaTime(String)} — exactly the
+     * {@code decimal -> exact rational} rule the repository already uses at the ingest boundary.
+     * Non-finite, negative or non-representable values fail closed.
+     *
+     * @throws IllegalArgumentException when {@code decimalSeconds} is null/blank/negative,
+     *         malformed, or not representable as an exact long-rational {@link MediaTime}
+     */
+    public static MediaFrameExtractParametersV1 ofExactSeconds(
+            String decimalSeconds, RasterImageEncoding encoding, FrameWidth width) {
+        return new MediaFrameExtractParametersV1(
+                ExactDecimalSeconds.toMediaTime(decimalSeconds), encoding, width);
     }
 }

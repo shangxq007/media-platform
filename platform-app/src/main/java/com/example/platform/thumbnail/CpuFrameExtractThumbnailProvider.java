@@ -53,6 +53,15 @@ public final class CpuFrameExtractThumbnailProvider implements ThumbnailCapabili
     @Override public Manifest manifest() { return MANIFEST; }
 
     @Override public Result extract(ThumbnailContracts.Request request, byte[] input, BooleanSupplier cancelled) {
+        // Parameter authority: the shared capability parameter contract must accept this request
+        // before any execution. A request the transport admitted but the shared contract rejects
+        // (e.g. a source instant that is not an exact, non-negative rational) fails closed here
+        // instead of reaching FFmpeg/ffprobe. The transport DTO no longer owns the vocabulary.
+        try {
+            request.capabilityParameters();
+        } catch (IllegalArgumentException rejectedParameters) {
+            return Result.failure("UNSUPPORTED_PARAMETERS");
+        }
         Path work = root.resolve("thumbnail-work").resolve(request.idempotencyKey()).normalize();
         try {
             Files.createDirectories(work);

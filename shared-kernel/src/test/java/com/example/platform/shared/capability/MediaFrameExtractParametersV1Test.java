@@ -80,4 +80,32 @@ class MediaFrameExtractParametersV1Test {
         assertTrue(CapabilityParameterContract.class
                 .isAssignableFrom(MediaFrameExtractParametersV1.class));
     }
+
+    @Test
+    void ofExactSecondsDecodesToAnExactRationalWithoutFloatingAuthority() {
+        MediaFrameExtractParametersV1 parameters = MediaFrameExtractParametersV1.ofExactSeconds(
+                "1.25", RasterImageEncoding.Png.PNG, FrameWidth.Native.NATIVE);
+        assertEquals(MediaTime.ofRational(5, 4), parameters.position());
+
+        // "0.1" must be exactly 1/10, never the binary-double approximation.
+        assertEquals(MediaTime.ofRational(1, 10),
+                MediaFrameExtractParametersV1.ofExactSeconds(
+                        "0.1", RasterImageEncoding.Png.PNG, FrameWidth.Native.NATIVE).position());
+
+        assertEquals(MediaTime.ZERO,
+                MediaFrameExtractParametersV1.ofExactSeconds(
+                        "0", RasterImageEncoding.Png.PNG, FrameWidth.Native.NATIVE).position());
+    }
+
+    @Test
+    void ofExactSecondsFailsClosedOnInvalidTransportValues() {
+        assertThrows(IllegalArgumentException.class, () -> MediaFrameExtractParametersV1.ofExactSeconds(
+                "not-a-number", RasterImageEncoding.Png.PNG, FrameWidth.Native.NATIVE));
+        assertThrows(IllegalArgumentException.class, () -> MediaFrameExtractParametersV1.ofExactSeconds(
+                "-1", RasterImageEncoding.Png.PNG, FrameWidth.Native.NATIVE));
+        assertThrows(IllegalArgumentException.class, () -> MediaFrameExtractParametersV1.ofExactSeconds(
+                "1e3", RasterImageEncoding.Png.PNG, FrameWidth.Native.NATIVE));
+        assertThrows(NullPointerException.class, () -> MediaFrameExtractParametersV1.ofExactSeconds(
+                null, RasterImageEncoding.Png.PNG, FrameWidth.Native.NATIVE));
+    }
 }

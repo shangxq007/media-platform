@@ -69,6 +69,15 @@ public final class CpuFrameExtractCoverImageProvider implements CoverImageCapabi
         if (cancelled.getAsBoolean()) {
             return Result.failure("CANCELLED");
         }
+        // Parameter authority: the shared capability parameter contract must accept this request
+        // before any execution. A request the transport admitted but the shared contract rejects
+        // (e.g. a source instant that is not an exact, non-negative rational) fails closed here
+        // instead of reaching FFmpeg. The transport DTO no longer owns the parameter vocabulary.
+        try {
+            request.capabilityParameters();
+        } catch (IllegalArgumentException rejectedParameters) {
+            return Result.failure("UNSUPPORTED_PARAMETERS");
+        }
         try {
             Path output = workRoot.resolve(request.idempotencyKey())
                     .resolve("provider-output")
