@@ -18,7 +18,15 @@ class ThumbnailArchitectureGuardTest {
     void providerManifestPinsCapabilityToolchainLimitsAndTrust() {
         var manifest = new CpuFrameExtractThumbnailProvider("./.data/storage", "ffmpeg", "ffprobe").manifest();
         assertThat(manifest.capabilityId()).isEqualTo("media.thumbnail");
-        assertThat(manifest.providerId()).isEqualTo("ffmpeg.cpu.frame-extract.v1");
+        // Provider identity is a capability-independent family plus a separate implementation slot,
+        // aligned with the cover-image manifest; the implementation id must never sit in the
+        // provider-id position.
+        assertThat(manifest.providerId()).isEqualTo("platform.ffmpeg");
+        assertThat(manifest.providerImplementationId()).isEqualTo("ffmpeg.cpu.frame-extract.v1");
+        assertThat(manifest.providerId()).isNotEqualTo(manifest.providerImplementationId());
+        assertThat(CpuFrameExtractThumbnailProvider.PROVIDER_ID).isEqualTo("platform.ffmpeg");
+        assertThat(CpuFrameExtractThumbnailProvider.PROVIDER_IMPLEMENTATION_ID)
+                .isEqualTo("ffmpeg.cpu.frame-extract.v1");
         assertThat(manifest.providerVersion()).isEqualTo("1.0.0");
         assertThat(manifest.inputFormats()).contains("video/*");
         assertThat(manifest.outputFormats()).containsExactlyInAnyOrder("image/jpeg", "image/png");

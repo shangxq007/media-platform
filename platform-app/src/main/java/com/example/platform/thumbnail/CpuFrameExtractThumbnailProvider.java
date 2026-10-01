@@ -20,14 +20,17 @@ import org.springframework.stereotype.Component;
 @Component
 @ConditionalOnProperty(name = "platform.runtime.role", havingValue = "WORKER")
 public final class CpuFrameExtractThumbnailProvider implements ThumbnailCapabilityProvider {
-    public static final String PROVIDER_ID = "ffmpeg.cpu.frame-extract.v1";
+    /** Provider/backend family identity (capability-independent); never the implementation identity. */
+    public static final String PROVIDER_ID = ThumbnailContracts.PROVIDER;
+    /** Implementation identity of this runtime/adapter within the {@link #PROVIDER_ID} family. */
+    public static final String PROVIDER_IMPLEMENTATION_ID = ThumbnailContracts.PROVIDER_IMPLEMENTATION;
     public static final String TOOLCHAIN = "ffmpeg+ffprobe";
     private final Path root;
     private final String ffmpeg;
     private final String ffprobe;
     private final WorkerRuntime runtime;
     private static final Manifest MANIFEST = new Manifest(
-            ThumbnailContracts.CAPABILITY, PROVIDER_ID, "1.0.0", TOOLCHAIN,
+            ThumbnailContracts.CAPABILITY, PROVIDER_ID, PROVIDER_IMPLEMENTATION_ID, "1.0.0", TOOLCHAIN,
             Set.of("video/*"), Set.of("image/jpeg", "image/png"),
             0, 86_400, 16, 4096, 512L * 1024L * 1024L, 60,
             "trusted-provider", "worker-runtime.local-process");

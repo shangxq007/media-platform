@@ -33,7 +33,20 @@ public final class CoverImageContracts {
     public static final String PROVIDER_IMPLEMENTATION = "ffmpeg.cpu.frame-extract.v1";
 
     public static final String PROVIDER_VERSION = "1.0.0";
-    public static final String OPERATION_ID = "cover-image:" + CAPABILITY + "@1";
+
+    /**
+     * Provenance operation tag carried on the single {@code COVER_OF} edge.
+     *
+     * <p>This is a capability-independent semantic label, never a capability id and never a
+     * canonical {@code OperationDefinitionId}. The capability is an independent fact
+     * ({@link #CAPABILITY}); the previous value {@code "cover-image:" + CAPABILITY + "@1"} fused the
+     * operation, capability and version identities into one string, which is exactly the
+     * operation/capability conflation the boundary contract forbids. The provenance contract only
+     * requires a non-blank {@code operationId}
+     * ({@link com.example.platform.artifact.domain.ArtifactCommitRequest.ProvenanceEdgeDeclaration#operationId()}),
+     * so the tag stays a plain slice operation label.
+     */
+    public static final String OPERATION_ID = "cover-image";
 
     private CoverImageContracts() {}
 

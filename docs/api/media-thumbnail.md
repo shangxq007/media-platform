@@ -1,7 +1,8 @@
 # Media thumbnail vertical slice
 
-The canonical capability is `media.thumbnail`; the registered provider identity is
-`ffmpeg.cpu.frame-extract.v1`. Clients submit only a tenant/project scope, a Media
+The canonical capability is `media.thumbnail`; the registered provider is the capability-independent
+family `platform.ffmpeg` with implementation identity `ffmpeg.cpu.frame-extract.v1`. Clients submit
+only a tenant/project scope, a Media
 asset id, a finite timestamp, a bounded image format/size/quality, and an idempotency
 key. Physical paths, URLs, FFmpeg arguments, and Storage credentials are never part
 of the HTTP contract.

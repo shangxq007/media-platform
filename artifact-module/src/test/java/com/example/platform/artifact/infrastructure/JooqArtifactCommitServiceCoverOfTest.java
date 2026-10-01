@@ -59,8 +59,11 @@ class JooqArtifactCommitServiceCoverOfTest extends PostgresTestContainerSupport 
     private static final String COVER_ARTIFACT_ID_2 = "art-cover-" + java.util.UUID.randomUUID();
     private static final String SUBJECT_ARTIFACT_ID_3 = "art-" + java.util.UUID.randomUUID();
     private static final String COVER_ARTIFACT_ID_3 = "art-cover-" + java.util.UUID.randomUUID();
-    /** Canonical cover capability operation id (platform-app owns CoverImageContracts; no module cycle here). */
-    private static final String COVER_OPERATION_ID = "cover-image:media.cover-image@1";
+    /**
+     * Canonical cover provenance operation tag (platform-app owns CoverImageContracts; no module
+     * cycle here). It is a capability-independent label — the capability id is never embedded in it.
+     */
+    private static final String COVER_OPERATION_TAG = "cover-image";
 
     private static DataSource dataSource;
     private static DSLContext dsl;
@@ -117,7 +120,7 @@ class JooqArtifactCommitServiceCoverOfTest extends PostgresTestContainerSupport 
         return new ProvenanceEdgeDeclaration(
                 new ArtifactId(subjectArtifactId),
                 ProvenanceRelationType.COVER_OF,
-                COVER_OPERATION_ID,
+                COVER_OPERATION_TAG,
                 1,
                 "attempt-cover",
                 COVER_DIGEST.canonicalValue(),
@@ -137,6 +140,8 @@ class JooqArtifactCommitServiceCoverOfTest extends PostgresTestContainerSupport 
         assertThat(result.provenanceEdges()).hasSize(1);
         assertThat(result.provenanceEdges().get(0).relationType())
                 .isEqualTo(ProvenanceRelationType.COVER_OF);
+        // The capability-independent provenance tag survives the canonical commit path unchanged.
+        assertThat(result.provenanceEdges().get(0).operationId()).isEqualTo(COVER_OPERATION_TAG);
         // Real ids: the canonical edge identity must be the bounded 64-char digest.
         assertThat(result.provenanceEdges().get(0).edgeId()).hasSize(64).matches("[0-9a-f]{64}");
         assertThat(dsl.fetchCount(ARTIFACT_RELATION,

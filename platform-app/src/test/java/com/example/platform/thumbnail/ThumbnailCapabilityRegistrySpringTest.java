@@ -56,6 +56,10 @@ class ThumbnailCapabilityRegistrySpringTest {
             assertThat(registry.provider()).isInstanceOf(CanonicalProvider.class);
             assertThat(registry.provider(ThumbnailContracts.PROVIDER)).isSameAs(registry.provider());
             assertThat(registry.provider(ThumbnailContracts.PROVIDER).manifest().providerVersion()).isEqualTo("1.0.0");
+            assertThat(registry.provider(ThumbnailContracts.PROVIDER).manifest().providerId())
+                    .isEqualTo("platform.ffmpeg");
+            assertThat(registry.provider(ThumbnailContracts.PROVIDER).manifest().providerImplementationId())
+                    .isEqualTo("ffmpeg.cpu.frame-extract.v1");
         });
     }
 
@@ -103,6 +107,21 @@ class ThumbnailCapabilityRegistrySpringTest {
                             .rootCause()
                             .isInstanceOf(IllegalStateException.class)
                             .hasMessageContaining("pinned media.thumbnail provider is not registered");
+                });
+    }
+
+    @Test
+    void implementationIdInTheProviderFamilySlotFailsClosed() {
+        new ApplicationContextRunner()
+                .withPropertyValues("platform.runtime.role=WORKER")
+                .withUserConfiguration(
+                        ScannedRegistryConfiguration.class, MisplacedIdentityProviderConfiguration.class)
+                .run(context -> {
+                    assertThat(context).hasFailed();
+                    assertThat(context.getStartupFailure())
+                            .rootCause()
+                            .isInstanceOf(IllegalStateException.class)
+                            .hasMessageContaining("must differ");
                 });
     }
 
@@ -156,10 +175,20 @@ class ThumbnailCapabilityRegistrySpringTest {
         }
     }
 
+    @TestConfiguration(proxyBeanMethods = false)
+    static class MisplacedIdentityProviderConfiguration {
+        @Bean
+        ThumbnailCapabilityProvider misplacedIdentityProvider() {
+            // The pre-fix defect shape: the implementation id repeated in the provider family slot.
+            return new MisplacedIdentityProvider();
+        }
+    }
+
     static class CanonicalProvider implements ThumbnailCapabilityProvider {
         @Override
         public ThumbnailCapabilityProvider.Manifest manifest() {
-            return providerManifest(ThumbnailContracts.CAPABILITY, ThumbnailContracts.PROVIDER);
+            return providerManifest(ThumbnailContracts.CAPABILITY, ThumbnailContracts.PROVIDER,
+                    ThumbnailContracts.PROVIDER_IMPLEMENTATION);
         }
 
         @Override
@@ -172,7 +201,8 @@ class ThumbnailCapabilityRegistrySpringTest {
     static final class SecondaryProvider implements ThumbnailCapabilityProvider {
         @Override
         public ThumbnailCapabilityProvider.Manifest manifest() {
-            return providerManifest(ThumbnailContracts.CAPABILITY, "thumbnail.secondary");
+            return providerManifest(ThumbnailContracts.CAPABILITY, "thumbnail.secondary",
+                    "thumbnail.secondary.impl");
         }
 
         @Override
@@ -182,8 +212,24 @@ class ThumbnailCapabilityRegistrySpringTest {
         }
     }
 
-    private static ThumbnailCapabilityProvider.Manifest providerManifest(String capabilityId, String providerId) {
-        return new ThumbnailCapabilityProvider.Manifest(capabilityId, providerId, "1.0.0", "test-toolchain",
+    static final class MisplacedIdentityProvider implements ThumbnailCapabilityProvider {
+        @Override
+        public ThumbnailCapabilityProvider.Manifest manifest() {
+            return providerManifest(ThumbnailContracts.CAPABILITY, "ffmpeg.cpu.frame-extract.v1",
+                    "ffmpeg.cpu.frame-extract.v1");
+        }
+
+        @Override
+        public ThumbnailCapabilityProvider.Result extract(
+                ThumbnailContracts.Request request, byte[] input, BooleanSupplier cancelled) {
+            return ThumbnailCapabilityProvider.Result.failure("NOT_RUN");
+        }
+    }
+
+    private static ThumbnailCapabilityProvider.Manifest providerManifest(
+            String capabilityId, String providerId, String providerImplementationId) {
+        return new ThumbnailCapabilityProvider.Manifest(capabilityId, providerId,
+                providerImplementationId, "1.0.0", "test-toolchain",
                 Set.of("video/*"), Set.of("image/png"), 0, 60, 16, 4096, 1024, 10,
                 "trusted-provider", "test-runtime");
     }

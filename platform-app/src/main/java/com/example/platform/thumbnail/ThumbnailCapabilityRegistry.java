@@ -5,7 +5,15 @@ import java.util.function.BooleanSupplier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
-/** Runtime composition point for the one registered media.thumbnail capability. */
+/**
+ * Runtime composition point for the one registered media.thumbnail capability.
+ *
+ * <p>The pinned provider is a capability-independent provider <em>family</em> identity
+ * ({@link ThumbnailContracts#PROVIDER}); the manifest carries the implementation identity in its own
+ * {@code providerImplementationId} slot. Registration fails closed if a provider repeats the family
+ * id in the implementation slot — the exact "implementation id in the provider-id position" defect
+ * this composition replaces — so the two identities can never silently collapse again.
+ */
 @Component
 @ConditionalOnProperty(name = "platform.runtime.role", havingValue = "WORKER")
 public final class ThumbnailCapabilityRegistry {
@@ -17,6 +25,9 @@ public final class ThumbnailCapabilityRegistry {
             Objects.requireNonNull(provider, "provider");
             var manifest = provider.manifest();
             if (!ThumbnailContracts.CAPABILITY.equals(manifest.capabilityId())) continue;
+            if (manifest.providerId().equals(manifest.providerImplementationId()))
+                throw new IllegalStateException("thumbnail provider family and implementation identity"
+                        + " must differ: " + manifest.providerId());
             if (providers.putIfAbsent(manifest.providerId(), provider) != null)
                 throw new IllegalStateException("duplicate thumbnail provider: " + manifest.providerId());
         }

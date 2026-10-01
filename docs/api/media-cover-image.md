@@ -16,7 +16,7 @@ sandboxed provider execution, a single canonical Artifact commit and read-back.
 | Provider version | `1.0.0` |
 | Declared capabilities | the provider manifest declares a capability **list**; this slice declares `media.cover-image` |
 | Provider pin | deployment configuration only (`app.cover-image.pinned-provider`); no provider identity is hardcoded in the registry |
-| Operation id | `cover-image:media.cover-image@1` |
+| Provenance operation tag | `cover-image` (capability-independent label; the capability id is carried separately and is never embedded in the tag) |
 | Task queue | `media-platform-tasks` (shared canonical queue; no per-capability queue) |
 | Worker name | `cover-image-worker` |
 | Provenance | one `COVER_OF` edge, subject → cover, committed through `ArtifactCommitService` |
