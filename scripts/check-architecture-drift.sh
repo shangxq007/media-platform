@@ -546,7 +546,7 @@ fi
 
 # T16 Gate 1 (R1/C16 + C16-CORR-1): typed namespaced CapabilityId; STRUCTURAL vendor
 # validation (no hardcoded TLD allowlist); squatting/malformed fail closed
-if grep -q 'PLATFORM_RESERVED_PREFIXES' extension-module/src/main/java/com/example/platform/extension/domain/CapabilityId.java && grep -q 'CapabilityNamespaceValidator' extension-module/src/main/java/com/example/platform/extension/app/PluginDescriptorValidator.java && grep -q 'reverse-DNS' extension-module/src/main/java/com/example/platform/extension/domain/CapabilityNamespaceValidator.java && ! grep -q 'VENDOR_PREFIXES' extension-module/src/main/java/com/example/platform/extension/domain/CapabilityId.java; then
+if grep -q 'PLATFORM_RESERVED_PREFIXES' shared-kernel/src/main/java/com/example/platform/shared/capability/CapabilityId.java && grep -q 'CapabilityNamespaceValidator' extension-module/src/main/java/com/example/platform/extension/app/PluginDescriptorValidator.java && grep -q 'reverse-DNS' shared-kernel/src/main/java/com/example/platform/shared/capability/CapabilityNamespaceValidator.java && ! grep -q 'VENDOR_PREFIXES' shared-kernel/src/main/java/com/example/platform/shared/capability/CapabilityId.java; then
     pass "capability namespace validation enforced (structural, no TLD allowlist)"
 else
     fail "capability namespace validation missing or TLD allowlist present"
@@ -560,7 +560,7 @@ else
 fi
 
 # T16 Gate 6 (C16-CORR-2): canonical contract version major.minor only; single-segment rejected
-if grep -q 'major.minor' extension-module/src/main/java/com/example/platform/extension/domain/ContractVersion.java && grep -q 'parts.length != 2' extension-module/src/main/java/com/example/platform/extension/domain/ContractVersion.java; then
+if grep -q 'major.minor' shared-kernel/src/main/java/com/example/platform/shared/capability/ContractVersion.java && grep -q 'parts.length != 2' shared-kernel/src/main/java/com/example/platform/shared/capability/ContractVersion.java; then
     pass "contract version canonical major.minor enforced"
 else
     fail "contract version canonical syntax missing"
@@ -581,7 +581,7 @@ else
 fi
 
 # T16 Gate 4 (C17): no entitlement/commercial fields in capability canonical contract types
-if grep -rq 'proOnly\|enterpriseOnly\|remainingQuota\|subscriptionSku' extension-module/src/main/java/com/example/platform/extension/domain/Capability*.java extension-module/src/main/java/com/example/platform/extension/domain/ContractVersion*.java 2>/dev/null; then
+if grep -rq 'proOnly\|enterpriseOnly\|remainingQuota\|subscriptionSku' shared-kernel/src/main/java/com/example/platform/shared/capability/*.java extension-module/src/main/java/com/example/platform/extension/domain/Capability*.java 2>/dev/null; then
     fail "entitlement leakage into capability contract"
 else
     pass "no entitlement leakage in capability contract"
@@ -838,7 +838,7 @@ if grep -rq 'class VersionV1\|class LegacyVersion\|VersionParityCompat' shared-k
 else
     pass "zero legacy version compatibility code"
 fi
-if grep -rq 'parse("1")\s*;' extension-module/src/main/java/com/example/platform/extension/domain/ContractVersion.java 2>/dev/null; then
+if grep -rq 'parse("1")\s*;' shared-kernel/src/main/java/com/example/platform/shared/capability/ContractVersion.java 2>/dev/null; then
     fail "single-segment contract version compatibility present"
 else
     pass "single-segment ContractVersion support absent"
