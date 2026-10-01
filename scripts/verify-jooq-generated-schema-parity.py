@@ -3,8 +3,9 @@
 
 CANONICAL_SCHEMA_DEFINES_GENERATED_SCHEMA_EXPECTATION_V1:
 
-* expected identities come only from complete ``CREATE TABLE name (...) ;``
-  declarations in the canonical migration;
+* expected identities come only from complete
+  ``CREATE TABLE [IF NOT EXISTS] name (...) ;`` declarations in the canonical
+  migration;
 * generated table identities come from the no-argument table constructors'
   ``DSL.name("name")`` values; and
 * generated record identities come from ``super(TableClass.CONSTANT)`` and are
@@ -216,18 +217,29 @@ def _parse_create_table_statement(tokens: Sequence[SqlToken], terminated: bool) 
         raise _sql_error(
             "only CREATE TABLE <identifier> (...) declarations are recognized", start
         )
-    name = tokens[2]
+    # SQL-standard optional guard clause: CREATE TABLE [IF NOT EXISTS] <name> ( ... )
+    name_index = 2
+    if (len(tokens) >= 7
+            and _is_word(tokens[2], "if")
+            and _is_word(tokens[3], "not")
+            and _is_word(tokens[4], "exists")):
+        name_index = 5
+    name = tokens[name_index]
     if name.kind not in {"WORD", "IDENT"}:
         raise _sql_error("CREATE TABLE is missing a valid table identifier", name.offset)
     if name.kind == "WORD" and not _SQL_IDENTITY.fullmatch(name.value):
         raise _sql_error("invalid unquoted table identifier", name.offset)
     identity = name.value.casefold() if name.kind == "WORD" else name.value
-    if tokens[3].kind != "(":
-        raise _sql_error("CREATE TABLE identifier must be followed by '('", tokens[3].offset)
+    body_index = name_index + 1
+    if body_index >= len(tokens) or tokens[body_index].kind != "(":
+        raise _sql_error(
+            "CREATE TABLE identifier must be followed by '('",
+            tokens[min(body_index, len(tokens) - 1)].offset,
+        )
 
     depth = 0
     closing_index: int | None = None
-    for token_index, token in enumerate(tokens[3:], start=3):
+    for token_index, token in enumerate(tokens[body_index:], start=body_index):
         if token.kind == "(":
             depth += 1
         elif token.kind == ")":
