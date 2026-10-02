@@ -265,6 +265,11 @@ final class TaskCTestFixture {
         }
 
         @Override
+        public Optional<AssignmentGrant> findCurrentGrant(ExecutableTaskId taskId) {
+            return Optional.empty();
+        }
+
+        @Override
         public synchronized Optional<RequestWorkResult> findResolution(RequestWork requestWork) {
             StoredResolution stored = resolutions.get(requestWork.requestWorkId());
             if (stored == null) {

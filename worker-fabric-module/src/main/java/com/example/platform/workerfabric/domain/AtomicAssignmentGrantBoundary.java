@@ -1,5 +1,6 @@
 package com.example.platform.workerfabric.domain;
 
+import com.example.platform.execution.taskgraph.ExecutableTaskId;
 import java.util.Optional;
 import java.util.Set;
 
@@ -45,6 +46,15 @@ public interface AtomicAssignmentGrantBoundary {
 
     /** Executes ASSIGNMENT_GRANT_V1 as the single Task D transaction boundary. */
     RequestWorkResult tryGrant(AtomicAssignmentGrantCommand command);
+
+    /**
+     * Reloads the current non-claimable Native Pull ownership for one task, if any.
+     *
+     * <p>This is the recovery read a granted task needs before its runtime execution can be
+     * constructed: the assignment, its reservations, the lease and the attempt are returned as the
+     * one grant record that established them. An unclaimed or already-released task yields empty.
+     */
+    Optional<AssignmentGrant> findCurrentGrant(ExecutableTaskId taskId);
 
     enum GrantAuthority {
         EXECUTION_ASSIGNMENT,

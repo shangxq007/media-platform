@@ -255,6 +255,12 @@ class PendingNativeWorkAdmissionTest {
         }
 
         @Override
+        public Optional<com.example.platform.workerfabric.domain.AssignmentGrant> findCurrentGrant(
+                ExecutableTaskId taskId) {
+            return Optional.empty();
+        }
+
+        @Override
         public RequestWorkResult resolveTerminal(
                 RequestWork requestWork, RequestWorkResult terminalResult) {
             resolutions.putIfAbsent(requestWork.requestWorkId(), terminalResult);
