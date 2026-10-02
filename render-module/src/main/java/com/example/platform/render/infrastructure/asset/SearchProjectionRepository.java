@@ -23,11 +23,11 @@ public class SearchProjectionRepository {
         LocalDateTime now = LocalDateTime.now();
         String searchText = proj.searchText() != null ? proj.searchText() : "";
         dsl.execute(
-                "INSERT INTO search_projection (asset_id, tenant_id, project_id, filename, asset_type, "
+                "INSERT INTO search_projection (artifact_id, tenant_id, project_id, filename, asset_type, "
                         + "transcript_text, scene_labels, objects, brands, people, "
                         + "classification, license, publish_status, search_text, search_vector, updated_at) "
                         + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, to_tsvector('english', ?), ?) "
-                        + "ON CONFLICT (asset_id) DO UPDATE SET "
+                        + "ON CONFLICT (artifact_id) DO UPDATE SET "
                         + "filename = EXCLUDED.filename, asset_type = EXCLUDED.asset_type, "
                         + "transcript_text = EXCLUDED.transcript_text, scene_labels = EXCLUDED.scene_labels, "
                         + "objects = EXCLUDED.objects, brands = EXCLUDED.brands, people = EXCLUDED.people, "
@@ -46,7 +46,7 @@ public class SearchProjectionRepository {
 
     public Optional<SearchProjection> findByAssetId(String assetId) {
         Record r = dsl.select().from(SEARCH_PROJECTION)
-                .where(SEARCH_PROJECTION.ASSET_ID.eq(assetId)).fetchOne();
+                .where(SEARCH_PROJECTION.ARTIFACT_ID.eq(assetId)).fetchOne();
         return r == null ? Optional.empty() : Optional.of(map(r));
     }
 
@@ -85,12 +85,12 @@ public class SearchProjectionRepository {
 
     public void delete(String assetId) {
         dsl.deleteFrom(SEARCH_PROJECTION)
-                .where(SEARCH_PROJECTION.ASSET_ID.eq(assetId)).execute();
+                .where(SEARCH_PROJECTION.ARTIFACT_ID.eq(assetId)).execute();
     }
 
     private static SearchProjection map(Record r) {
         return new SearchProjection(
-                r.get(SEARCH_PROJECTION.ASSET_ID),
+                r.get(SEARCH_PROJECTION.ARTIFACT_ID),
                 r.get(SEARCH_PROJECTION.TENANT_ID),
                 r.get(SEARCH_PROJECTION.PROJECT_ID),
                 r.get(SEARCH_PROJECTION.FILENAME),

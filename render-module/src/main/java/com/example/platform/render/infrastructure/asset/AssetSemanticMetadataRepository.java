@@ -22,11 +22,11 @@ public class AssetSemanticMetadataRepository {
                        String language, String semanticJson) {
         LocalDateTime now = LocalDateTime.now();
         dsl.insertInto(ASSET_SEMANTIC_METADATA)
-                .columns(ASSET_SEMANTIC_METADATA.ASSET_ID, ASSET_SEMANTIC_METADATA.ASSET_VERSION, ASSET_SEMANTIC_METADATA.STATUS,
+                .columns(ASSET_SEMANTIC_METADATA.ARTIFACT_ID, ASSET_SEMANTIC_METADATA.ASSET_VERSION, ASSET_SEMANTIC_METADATA.STATUS,
                         ASSET_SEMANTIC_METADATA.LANGUAGE, ASSET_SEMANTIC_METADATA.SEMANTIC_JSON,
                         ASSET_SEMANTIC_METADATA.CREATED_AT, ASSET_SEMANTIC_METADATA.UPDATED_AT)
                 .values(assetId, assetVersion, status, language, semanticJson, now, now)
-                .onConflict(ASSET_SEMANTIC_METADATA.ASSET_ID)
+                .onConflict(ASSET_SEMANTIC_METADATA.ARTIFACT_ID)
                 .doUpdate()
                 .set(ASSET_SEMANTIC_METADATA.ASSET_VERSION, assetVersion)
                 .set(ASSET_SEMANTIC_METADATA.STATUS, status)
@@ -41,32 +41,32 @@ public class AssetSemanticMetadataRepository {
                 .set(ASSET_SEMANTIC_METADATA.STATUS, status)
                 .set(ASSET_SEMANTIC_METADATA.SEMANTIC_JSON, semanticJson)
                 .set(ASSET_SEMANTIC_METADATA.UPDATED_AT, LocalDateTime.now())
-                .where(ASSET_SEMANTIC_METADATA.ASSET_ID.eq(assetId)).and(ASSET_SEMANTIC_METADATA.ASSET_VERSION.eq(assetVersion))
+                .where(ASSET_SEMANTIC_METADATA.ARTIFACT_ID.eq(assetId)).and(ASSET_SEMANTIC_METADATA.ASSET_VERSION.eq(assetVersion))
                 .execute();
         if(changed!=1)throw new IllegalStateException("Semantic metadata missing or version changed");
     }
 
     public Optional<SemanticRow> findById(String assetId) {
         Record r = dsl.select().from(ASSET_SEMANTIC_METADATA)
-                .where(ASSET_SEMANTIC_METADATA.ASSET_ID.eq(assetId))
+                .where(ASSET_SEMANTIC_METADATA.ARTIFACT_ID.eq(assetId))
                 .fetchOne();
         return r == null ? Optional.empty() : Optional.of(map(r));
     }
 
     public boolean exists(String assetId) {
         return dsl.fetchCount(ASSET_SEMANTIC_METADATA,
-                ASSET_SEMANTIC_METADATA.ASSET_ID.eq(assetId)) > 0;
+                ASSET_SEMANTIC_METADATA.ARTIFACT_ID.eq(assetId)) > 0;
     }
 
     public void delete(String assetId) {
         dsl.deleteFrom(ASSET_SEMANTIC_METADATA)
-                .where(ASSET_SEMANTIC_METADATA.ASSET_ID.eq(assetId))
+                .where(ASSET_SEMANTIC_METADATA.ARTIFACT_ID.eq(assetId))
                 .execute();
     }
 
     private static SemanticRow map(Record r) {
         return new SemanticRow(
-                r.get(ASSET_SEMANTIC_METADATA.ASSET_ID),
+                r.get(ASSET_SEMANTIC_METADATA.ARTIFACT_ID),
                 r.get(ASSET_SEMANTIC_METADATA.ASSET_VERSION),
                 r.get(ASSET_SEMANTIC_METADATA.STATUS),
                 r.get(ASSET_SEMANTIC_METADATA.LANGUAGE),
