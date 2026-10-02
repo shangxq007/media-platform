@@ -5,9 +5,8 @@ CANONICAL_SCHEMA_DEFINES_GENERATED_SCHEMA_EXPECTATION_V1:
 
 * expected identities come only from complete
   ``CREATE TABLE [IF NOT EXISTS] name (...) ;`` declarations in the canonical
-  migration, with any later ``ALTER TABLE old RENAME TO new`` applied so that the
-  expected identity is the FINAL table name (the canonical migrations rename
-  tables during authority convergence);
+  migration; the consolidated canonical schema declares final table names
+  directly, and any unrecognized ``CREATE ... TABLE`` form fails closed;
 * generated table identities come from the no-argument table constructors'
   ``DSL.name("name")`` values; and
 * generated record identities come from ``super(TableClass.CONSTANT)`` and are
@@ -274,17 +273,16 @@ def _sql_statements(sql: str) -> list[tuple[list[SqlToken], bool]]:
 
 
 def parse_canonical_table_identities(sql: str) -> list[str]:
-    """Parse the canonical migration's bounded CREATE TABLE and rename grammar.
+    """Parse the canonical migration's bounded CREATE TABLE grammar.
 
-    Declared identities are the FINAL table names: a later
-    ``ALTER TABLE old RENAME TO new`` replaces the declared identity, exactly as
-    PostgreSQL resolves the schema. Intermediate (renamed-away) names are never
-    expected identities.
+    The consolidated canonical schema declares final table names directly; it
+    contains no ``ALTER TABLE ... RENAME TO`` sequence. A statement that starts
+    with ``CREATE`` and mentions ``TABLE`` but is not a complete
+    ``CREATE TABLE [IF NOT EXISTS] name (...) ;`` declaration fails closed.
     """
     statements = _sql_statements(sql)
 
     declared: list[str] = []
-    renames: dict[str, str] = {}
     for tokens, terminated in statements:
         create_positions = [
             index
@@ -298,49 +296,14 @@ def parse_canonical_table_identities(sql: str) -> list[str]:
                 raise _sql_error("CREATE TABLE must begin its own statement", tokens[create_positions[0]].offset)
             declared.append(_parse_create_table_statement(tokens, terminated))
             continue
-        rename = _parse_alter_table_rename_to(tokens)
-        if rename is not None:
-            renames[rename[0]] = rename[1]
-            continue
         if starts_with_create and contains_table:
             raise _sql_error(
                 "unrecognized CREATE ... TABLE declaration; canonical grammar is CREATE TABLE <identifier> (...) ;",
                 tokens[0].offset,
             )
 
-    identities = [_resolve_final_table_name(name, renames) for name in declared]
-    _reject_duplicates_or_empty("CANONICAL_TABLE", identities)
-    return identities
-
-
-def _parse_alter_table_rename_to(tokens: Sequence[SqlToken]) -> tuple[str, str] | None:
-    """Parse exactly ``ALTER TABLE <name> RENAME TO <name>``; anything else is None.
-
-    ``ALTER TABLE ... RENAME COLUMN ...`` and every other ALTER form are ignored
-    here because they do not change table identity.
-    """
-    if len(tokens) != 6:
-        return None
-    if not (_is_word(tokens[0], "alter") and _is_word(tokens[1], "table")):
-        return None
-    if not (_is_word(tokens[3], "rename") and _is_word(tokens[4], "to")):
-        return None
-    return (
-        _sql_identifier(tokens[2], "ALTER TABLE RENAME"),
-        _sql_identifier(tokens[5], "ALTER TABLE RENAME TO"),
-    )
-
-
-def _resolve_final_table_name(name: str, renames: dict[str, str]) -> str:
-    """Follows a rename chain to the final table name; a cycle fails closed."""
-    seen: set[str] = set()
-    current = name
-    while current in renames:
-        if current in seen:
-            raise _sql_error("cyclic ALTER TABLE RENAME TO chain", 0)
-        seen.add(current)
-        current = renames[current]
-    return current
+    _reject_duplicates_or_empty("CANONICAL_TABLE", declared)
+    return declared
 
 
 def _sql_identifier(token: SqlToken, context: str) -> str:

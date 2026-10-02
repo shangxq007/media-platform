@@ -281,10 +281,17 @@ def find_failures(root: Path) -> list[str]:
     for name in ("openapi.base.yaml", "openapi.candidate.yaml", "openapi.breaking.yaml"):
         text = (root / "contracts/http/media-api" / name).read_text()
         if "/artifacts/{artifactId}/lineage:" not in text: failures.append(f"missing Artifact lineage route: {name}")
-    v20 = (root / "platform-app/src/main/resources/db/migration/V20__artifact_convergence_fail_closed.sql").read_text()
-    for marker in ("V20_DUPLICATE_ARTIFACT_LINK", "V20_INVALID_MEDIA_FACTS", "V20_INVALID_ARTIFACT_FACTS", "V20_ARTIFACT_SCOPE_DIGEST_STORAGE_CONFLICT"):
-        if marker not in v20: failures.append(f"V20 missing fail-closed marker: {marker}")
-    if "legacy-media:" in v20 or "coalesce(nullif" in v20: failures.append("V20 contains a defaulting repair")
+    # Consolidated canonical schema (V1..Vn): the retired relations must not exist at all, and the
+    # Artifact identity fail-closed invariants must be expressed directly instead of by V20 archaeology.
+    migration_dir = root / "platform-app/src/main/resources/db/migration"
+    consolidated = "\n".join(
+        path.read_text() for path in sorted(migration_dir.glob("V*__*.sql")))
+    for retired_relation in ("media_asset_retired", "artifact_legacy_media_link", "media_asset_artifact"):
+        if retired_relation in consolidated:
+            failures.append(f"retired relation remains in canonical schema: {retired_relation}")
+    for marker in ("V19_ARTIFACT_IDENTITY_IMMUTABLE", "reject_artifact_identity_mutation"):
+        if marker not in consolidated:
+            failures.append(f"canonical schema missing Artifact identity fail-closed marker: {marker}")
     return failures
 
 

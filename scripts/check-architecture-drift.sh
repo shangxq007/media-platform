@@ -1559,13 +1559,13 @@ else
 fi
 
 # ROADMAP_18 CIP2D/CIP2E gates
-# CIP2DG1-7: DB-enforced ownership (V6 composite FKs)
-if grep -q 'fk_svd_stream_asset' platform-app/src/main/resources/db/migration/V1__initial_schema.sql && grep -q 'fk_svd_asset_artifact' platform-app/src/main/resources/db/migration/V1__initial_schema.sql; then
+# CIP2DG1-7: DB-enforced ownership (composite FKs, Artifact-keyed after convergence)
+if grep -q 'fk_svd_stream_artifact' platform-app/src/main/resources/db/migration/V1__initial_schema.sql && grep -q 'fk_svd_artifact' platform-app/src/main/resources/db/migration/V1__initial_schema.sql; then
     pass "CIP2DG1/2/3/4 DB-enforced stream+artifact ownership (composite FKs)"
 else
     fail "CIP2DG1-4 ownership FKs missing"
 fi
-if grep -q 'uq_ms_id_asset' platform-app/src/main/resources/db/migration/V1__initial_schema.sql && grep -q 'uq_maa_asset_artifact' platform-app/src/main/resources/db/migration/V1__initial_schema.sql; then
+if grep -q 'uq_ms_id_artifact' platform-app/src/main/resources/db/migration/V1__initial_schema.sql; then
     pass "CIP2DG1/5/6/7 composite-FK prerequisite UNIQUE keys present"
 else
     fail "CIP2DG5-7 UNIQUE prerequisites missing"
@@ -1632,9 +1632,9 @@ if grep -q 'create table artifact (' platform-app/src/main/resources/db/migratio
 else
     fail "CIP2GG1 artifact immutability unproven"
 fi
-# V6 regression: composite FKs still present
-if grep -q 'fk_svd_stream_asset' platform-app/src/main/resources/db/migration/V1__initial_schema.sql && grep -q 'fk_svd_asset_artifact' platform-app/src/main/resources/db/migration/V1__initial_schema.sql; then
-    pass "V6 regression: cross-asset ownership FKs retained"
+# V6 regression: composite ownership FKs still present (Artifact-keyed)
+if grep -q 'fk_svd_stream_artifact' platform-app/src/main/resources/db/migration/V1__initial_schema.sql && grep -q 'fk_svd_artifact' platform-app/src/main/resources/db/migration/V1__initial_schema.sql; then
+    pass "V6 regression: cross-artifact ownership FKs retained"
 else
     fail "V6 ownership regression"
 fi
