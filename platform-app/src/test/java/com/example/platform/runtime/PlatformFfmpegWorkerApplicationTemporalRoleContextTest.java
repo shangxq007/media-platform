@@ -2,7 +2,7 @@ package com.example.platform.runtime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.example.platform.coverimage.CoverImageCapabilityProvider;
+import com.example.platform.contract.media.CoverImageCapabilityProvider;
 import com.example.platform.coverimage.CoverImageExecutionBackend;
 import com.example.platform.coverimage.CoverImageMaterializationConfiguration;
 import com.example.platform.frameextract.FfmpegCpuProvider;
@@ -13,7 +13,7 @@ import com.example.platform.sandbox.execution.ExecutionBackendRegistry;
 import com.example.platform.sandbox.execution.TaskCapability;
 import com.example.platform.shared.test.PostgresTestContainerSupport;
 import com.example.platform.storage.contract.provider.StorageProvider;
-import com.example.platform.thumbnail.ThumbnailCapabilityProvider;
+import com.example.platform.contract.media.ThumbnailCapabilityProvider;
 import com.example.platform.thumbnail.ThumbnailExecutionBackend;
 import com.example.platform.workerfabric.reuse.ArtifactMaterializerPort;
 import io.temporal.client.WorkflowClient;

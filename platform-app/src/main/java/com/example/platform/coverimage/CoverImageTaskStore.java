@@ -1,5 +1,7 @@
 package com.example.platform.coverimage;
 
+import com.example.platform.contract.media.CoverImageContracts;
+
 import java.util.Optional;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;

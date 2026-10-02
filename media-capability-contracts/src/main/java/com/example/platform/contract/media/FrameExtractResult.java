@@ -1,4 +1,4 @@
-package com.example.platform.frameextract;
+package com.example.platform.contract.media;
 
 /** Result of one frame extraction: either bytes + content type, or a failure code. */
 public record FrameExtractResult(byte[] bytes, String contentType, String failureCode) {

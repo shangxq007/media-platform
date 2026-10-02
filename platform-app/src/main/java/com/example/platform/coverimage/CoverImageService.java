@@ -1,5 +1,7 @@
 package com.example.platform.coverimage;
 
+import com.example.platform.contract.media.CoverImageContracts;
+
 import com.example.platform.artifact.app.ArtifactCatalogService;
 import com.example.platform.artifact.domain.ArtifactQueryService;
 import com.example.platform.artifact.domain.ArtifactState;

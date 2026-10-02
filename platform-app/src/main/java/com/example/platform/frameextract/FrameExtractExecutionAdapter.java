@@ -1,9 +1,13 @@
 package com.example.platform.frameextract;
 
-import com.example.platform.coverimage.CoverImageCapabilityProvider;
-import com.example.platform.coverimage.CoverImageContracts;
-import com.example.platform.thumbnail.ThumbnailCapabilityProvider;
-import com.example.platform.thumbnail.ThumbnailContracts;
+import com.example.platform.contract.media.FrameExtractProvider;
+import com.example.platform.contract.media.FrameExtractManifest;
+import com.example.platform.contract.media.FrameExtractResult;
+
+import com.example.platform.contract.media.CoverImageCapabilityProvider;
+import com.example.platform.contract.media.CoverImageContracts;
+import com.example.platform.contract.media.ThumbnailCapabilityProvider;
+import com.example.platform.contract.media.ThumbnailContracts;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;

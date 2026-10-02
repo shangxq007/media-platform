@@ -1,7 +1,7 @@
-package com.example.platform.coverimage;
+package com.example.platform.contract.media;
 
-import com.example.platform.frameextract.FrameExtractManifest;
-import com.example.platform.frameextract.FrameExtractResult;
+import com.example.platform.contract.media.FrameExtractManifest;
+import com.example.platform.contract.media.FrameExtractResult;
 import java.nio.file.Path;
 import java.util.function.BooleanSupplier;
 

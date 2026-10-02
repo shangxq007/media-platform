@@ -1,6 +1,12 @@
 package com.example.platform.frameextract;
 
-import com.example.platform.coverimage.CoverImageContracts;
+import com.example.platform.contract.media.FrameExtractProvider;
+import com.example.platform.contract.media.FrameExtractManifest;
+import com.example.platform.contract.media.FrameExtractResult;
+import com.example.platform.contract.media.FrameExtractCapabilityProfile;
+import com.example.platform.contract.media.FrameExtractCapabilityDeclaration;
+
+import com.example.platform.contract.media.CoverImageContracts;
 import com.example.platform.sandbox.execution.ExecutionBackendRegistry;
 import com.example.platform.sandbox.execution.ExecutionRequest;
 import com.example.platform.sandbox.execution.TaskCapability;
@@ -8,7 +14,7 @@ import com.example.platform.shared.capability.FrameWidth;
 import com.example.platform.shared.capability.JpegQuality;
 import com.example.platform.shared.capability.MediaFrameExtractParametersV1;
 import com.example.platform.shared.capability.RasterImageEncoding;
-import com.example.platform.thumbnail.ThumbnailContracts;
+import com.example.platform.contract.media.ThumbnailContracts;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.file.Files;

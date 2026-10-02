@@ -1,5 +1,7 @@
 package com.example.platform.thumbnail;
 
+import com.example.platform.contract.media.ThumbnailContracts;
+
 import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.Test;
 

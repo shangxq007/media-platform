@@ -1,7 +1,7 @@
-package com.example.platform.thumbnail;
+package com.example.platform.contract.media;
 
-import com.example.platform.frameextract.FrameExtractManifest;
-import com.example.platform.frameextract.FrameExtractResult;
+import com.example.platform.contract.media.FrameExtractManifest;
+import com.example.platform.contract.media.FrameExtractResult;
 import java.util.function.BooleanSupplier;
 
 /**

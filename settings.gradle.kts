@@ -7,6 +7,7 @@ rootProject.name = "media-platform"
 include(
     "platform-app",
     "shared-kernel",
+    "media-capability-contracts",
     "render-module",
     "marketplace-module",
     "notification-module",

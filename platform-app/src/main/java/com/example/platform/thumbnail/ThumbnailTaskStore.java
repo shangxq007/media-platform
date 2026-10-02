@@ -1,5 +1,7 @@
 package com.example.platform.thumbnail;
 
+import com.example.platform.contract.media.ThumbnailContracts;
+
 import java.util.Optional;
 import org.jooq.DSLContext;
 import org.springframework.stereotype.Repository;

@@ -3,7 +3,7 @@ package com.example.platform.frameextract;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.example.platform.coverimage.CoverImageContracts;
+import com.example.platform.contract.media.CoverImageContracts;
 import com.example.platform.extension.api.port.CapabilityRegistryPort;
 import com.example.platform.extension.api.port.PluginRegistries;
 import com.example.platform.extension.api.port.PluginRegistrationException;
@@ -17,7 +17,7 @@ import com.example.platform.extension.domain.PluginGuarantee;
 import com.example.platform.extension.domain.PluginRuntimeRequirement;
 import com.example.platform.shared.capability.CapabilityId;
 import com.example.platform.shared.capability.ContractVersion;
-import com.example.platform.thumbnail.ThumbnailContracts;
+import com.example.platform.contract.media.ThumbnailContracts;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 

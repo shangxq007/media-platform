@@ -1,10 +1,12 @@
 package com.example.platform.thumbnail;
 
+import com.example.platform.contract.media.ThumbnailContracts;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.example.platform.coverimage.CoverImageContracts;
+import com.example.platform.contract.media.CoverImageContracts;
 import com.example.platform.frameextract.FfmpegCpuProvider;
-import com.example.platform.frameextract.FrameExtractCapabilityDeclaration;
+import com.example.platform.contract.media.FrameExtractCapabilityDeclaration;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;

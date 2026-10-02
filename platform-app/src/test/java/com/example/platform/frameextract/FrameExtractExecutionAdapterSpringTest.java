@@ -1,9 +1,14 @@
 package com.example.platform.frameextract;
 
+import com.example.platform.contract.media.FrameExtractProvider;
+import com.example.platform.contract.media.FrameExtractManifest;
+import com.example.platform.contract.media.FrameExtractResult;
+import com.example.platform.contract.media.FrameExtractCapabilityDeclaration;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.example.platform.coverimage.CoverImageContracts;
-import com.example.platform.thumbnail.ThumbnailContracts;
+import com.example.platform.contract.media.CoverImageContracts;
+import com.example.platform.contract.media.ThumbnailContracts;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
 import java.nio.file.Path;

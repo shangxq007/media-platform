@@ -1,5 +1,7 @@
 package com.example.platform.thumbnail;
 
+import com.example.platform.contract.media.ThumbnailContracts;
+
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 

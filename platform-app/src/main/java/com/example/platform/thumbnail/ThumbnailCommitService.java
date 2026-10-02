@@ -1,5 +1,7 @@
 package com.example.platform.thumbnail;
 
+import com.example.platform.contract.media.ThumbnailContracts;
+
 import com.example.platform.artifact.domain.*;
 import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.storage.api.*;

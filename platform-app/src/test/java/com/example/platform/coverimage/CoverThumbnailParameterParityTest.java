@@ -1,5 +1,7 @@
 package com.example.platform.coverimage;
 
+import com.example.platform.contract.media.CoverImageContracts;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.example.platform.shared.capability.FrameWidth;
@@ -7,7 +9,7 @@ import com.example.platform.shared.capability.JpegQuality;
 import com.example.platform.shared.capability.MediaFrameExtractParametersV1;
 import com.example.platform.shared.capability.RasterImageEncoding;
 import com.example.platform.shared.time.MediaTime;
-import com.example.platform.thumbnail.ThumbnailContracts;
+import com.example.platform.contract.media.ThumbnailContracts;
 import com.example.platform.thumbnail.ThumbnailController;
 import java.lang.reflect.RecordComponent;
 import java.util.Arrays;

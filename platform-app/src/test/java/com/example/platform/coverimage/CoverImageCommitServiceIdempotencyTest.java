@@ -1,5 +1,7 @@
 package com.example.platform.coverimage;
 
+import com.example.platform.contract.media.CoverImageContracts;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;

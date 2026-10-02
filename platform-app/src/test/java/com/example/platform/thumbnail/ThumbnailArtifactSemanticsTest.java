@@ -1,5 +1,7 @@
 package com.example.platform.thumbnail;
 
+import com.example.platform.contract.media.ThumbnailContracts;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.example.platform.artifact.domain.ArtifactKind;

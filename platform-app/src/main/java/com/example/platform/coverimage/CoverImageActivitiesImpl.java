@@ -1,10 +1,12 @@
 package com.example.platform.coverimage;
 
+import com.example.platform.contract.media.CoverImageContracts;
+
 import com.example.platform.artifact.app.ArtifactPinService.ArtifactPin;
 import com.example.platform.artifact.domain.ArtifactQueryService;
 import com.example.platform.artifact.domain.ArtifactState;
 import com.example.platform.frameextract.FrameExtractExecutionAdapter;
-import com.example.platform.frameextract.FrameExtractResult;
+import com.example.platform.contract.media.FrameExtractResult;
 import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.shared.web.TenantContext;
 import com.example.platform.workerfabric.reuse.ArtifactMaterializerPort;

@@ -1,4 +1,4 @@
-package com.example.platform.frameextract;
+package com.example.platform.contract.media;
 
 import java.nio.file.Path;
 import java.util.function.BooleanSupplier;

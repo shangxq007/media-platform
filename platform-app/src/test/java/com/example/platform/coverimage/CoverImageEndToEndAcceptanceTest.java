@@ -1,5 +1,7 @@
 package com.example.platform.coverimage;
 
+import com.example.platform.contract.media.CoverImageContracts;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.example.platform.artifact.domain.Artifact;

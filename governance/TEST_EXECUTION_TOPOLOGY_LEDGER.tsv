@@ -54,3 +54,4 @@ PROJECT	TEST_TASK	SOURCE_SET	DISCOVERED_TEST_COUNT	USES_SPRING_CONTEXT	USES_SPRI
 :marketplace-module	test	test	5	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	1	2g	REVIEW_REQUIRED	New Marketplace owner suite stays single-fork pending independent review
 :usage-contract-module	test	test	4	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	1	2g	REVIEW_REQUIRED	EP28A owner contract relocation; conservative single fork, no parallel promotion requested
 :audit-contract-module	test	test	0	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	1	2g	REVIEW_REQUIRED	EP27B contract-only artifact; no test sources, conservative single-fork task
+:media-capability-contracts	test	test	0	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	1	2g	REVIEW_REQUIRED	Provider-neutral media capability contracts (PROVIDER-MERGE-1-R2): pure value/SPI types with no tests yet; classified conservatively until a test matrix is added

@@ -1,12 +1,17 @@
 package com.example.platform.frameextract;
 
+import com.example.platform.contract.media.FrameExtractProvider;
+import com.example.platform.contract.media.FrameExtractManifest;
+import com.example.platform.contract.media.FrameExtractResult;
+import com.example.platform.contract.media.FrameExtractCapabilityDeclaration;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.example.platform.artifact.domain.ProvenanceRelationType;
-import com.example.platform.coverimage.CoverImageContracts;
+import com.example.platform.contract.media.CoverImageContracts;
 import com.example.platform.sandbox.execution.TaskCapability;
-import com.example.platform.thumbnail.ThumbnailContracts;
+import com.example.platform.contract.media.ThumbnailContracts;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;

@@ -1,6 +1,6 @@
 package com.example.platform.frameextract;
 
-import com.example.platform.coverimage.CoverImageContracts;
+import com.example.platform.contract.media.CoverImageContracts;
 import com.example.platform.execution.domain.provider.ProviderBindingPin;
 import com.example.platform.execution.domain.provider.ProviderCapabilityContractReference;
 import com.example.platform.execution.domain.provider.ProviderCapabilityProfile;
@@ -25,7 +25,7 @@ import com.example.platform.extension.domain.ResourceRequirement;
 import com.example.platform.shared.capability.CapabilityId;
 import com.example.platform.shared.capability.ContractVersion;
 import com.example.platform.shared.capability.ContractVersionRange;
-import com.example.platform.thumbnail.ThumbnailContracts;
+import com.example.platform.contract.media.ThumbnailContracts;
 import java.util.List;
 
 /**

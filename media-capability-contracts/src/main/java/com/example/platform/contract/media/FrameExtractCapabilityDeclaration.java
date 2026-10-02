@@ -1,4 +1,4 @@
-package com.example.platform.frameextract;
+package com.example.platform.contract.media;
 
 /** One capability declared by a provider, with the capability contract version it implements. */
 public record FrameExtractCapabilityDeclaration(String capabilityId, String contractVersion) {

@@ -1,5 +1,7 @@
 package com.example.platform.thumbnail;
 
+import com.example.platform.contract.media.ThumbnailContracts;
+
 import com.example.platform.artifact.app.ArtifactProjectAuthorizationPort;
 import com.example.platform.entitlement.api.commercial.*;
 import com.example.platform.shared.commercial.*;

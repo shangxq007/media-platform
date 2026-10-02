@@ -1,5 +1,7 @@
 package com.example.platform.coverimage;
 
+import com.example.platform.contract.media.CoverImageContracts;
+
 import com.example.platform.artifact.domain.Artifact;
 import com.example.platform.artifact.domain.ArtifactCommitRequest;
 import com.example.platform.artifact.domain.ArtifactCommitResult;

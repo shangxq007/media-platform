@@ -1,4 +1,4 @@
-package com.example.platform.thumbnail;
+package com.example.platform.contract.media;
 
 import com.example.platform.shared.capability.FrameWidth;
 import com.example.platform.shared.capability.JpegQuality;
@@ -16,7 +16,7 @@ public final class ThumbnailContracts {
 
     /**
      * Provider/backend <em>family</em> identity — capability-independent and never a capability id,
-     * mirroring {@link com.example.platform.coverimage.CoverImageContracts#PROVIDER}. The family
+     * mirroring {@link com.example.platform.contract.media.CoverImageContracts#PROVIDER}. The family
      * declares the capabilities it serves through its manifest; the registry and the worker pin the
      * family, never a single implementation.
      */

@@ -1,9 +1,11 @@
 package com.example.platform.thumbnail;
 
+import com.example.platform.contract.media.ThumbnailContracts;
+
 import com.example.platform.artifact.domain.*;
 import com.example.platform.artifact.app.ArtifactCatalogService;
 import com.example.platform.frameextract.FrameExtractExecutionAdapter;
-import com.example.platform.frameextract.FrameExtractResult;
+import com.example.platform.contract.media.FrameExtractResult;
 import com.example.platform.shared.digest.ContentDigest;
 import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.shared.web.TenantContext;

@@ -1,8 +1,10 @@
 package com.example.platform.thumbnail;
 
+import com.example.platform.contract.media.ThumbnailContracts;
+
 import static org.assertj.core.api.Assertions.*;
 
-import com.example.platform.coverimage.CoverImageContracts;
+import com.example.platform.contract.media.CoverImageContracts;
 import com.example.platform.frameextract.FfmpegCpuProvider;
 import com.example.platform.frameextract.FrameExtractExecutionAdapter;
 import com.example.platform.sandbox.execution.*;

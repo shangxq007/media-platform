@@ -62,6 +62,7 @@ dependencies {
     implementation(project(":worker-fabric-module"))
     implementation(project(":provider-plugin-runtime-module"))
     implementation(project(":composition-module"))
+    implementation(project(":media-capability-contracts"))
 
     implementation("org.springframework.boot:spring-boot-starter-graphql")
 

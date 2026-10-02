@@ -1,4 +1,4 @@
-package com.example.platform.coverimage;
+package com.example.platform.contract.media;
 
 import com.example.platform.shared.capability.FrameWidth;
 import com.example.platform.shared.capability.JpegQuality;
@@ -12,7 +12,7 @@ import java.math.BigDecimal;
  * <p>Platform owns this contract. {@link #PROVIDER} is a provider/backend <em>family</em> identity and
  * is deliberately independent of any single capability; a provider declares the capabilities it
  * serves through its manifest
- * ({@link com.example.platform.frameextract.FrameExtractManifest#capabilities()}), and a capability
+ * ({@link com.example.platform.contract.media.FrameExtractManifest#capabilities()}), and a capability
  * may be served by more than one provider. {@link #CAPABILITY} is one capability of that family —
  * not a provider identity.
  *
