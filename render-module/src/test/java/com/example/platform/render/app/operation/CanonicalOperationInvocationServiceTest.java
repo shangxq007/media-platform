@@ -22,7 +22,6 @@ import com.example.platform.shared.time.MediaTime;
 import com.example.platform.timeline.app.InternalTimelineValidationService;
 import com.example.platform.timeline.api.revision.TimelineMutationContext;
 import com.example.platform.timeline.app.TimelineRevisionSaveService;
-import com.example.platform.timeline.app.TimelineSourceReferenceValidator;
 import com.example.platform.timeline.canonical.TimelineClipId;
 import com.example.platform.timeline.canonical.TimelineContentDigester;
 import com.example.platform.timeline.canonical.TimelineDocument;
@@ -186,7 +185,7 @@ class CanonicalOperationInvocationServiceTest {
                     return new TimelineRevisionCommands.RevisionWriteResult(
                             "revision-R1", BASE_REVISION, DIGESTER.digest(candidate), false);
                 });
-        TimelineSourceReferenceValidator sources = mock(TimelineSourceReferenceValidator.class);
+        TimelineSourceValidation sources = mock(TimelineSourceValidation.class);
         when(sources.validate(any(MediaStreamSourceBinding.class), eq(TENANT), eq(PROJECT),
                 eq(TrackType.VIDEO)))
                 .thenReturn(new TimelineSourceValidation.ValidationResult(true, List.of()));
@@ -310,7 +309,7 @@ class CanonicalOperationInvocationServiceTest {
     @Test
     void wrongTenantActorDeniedBeforeBaseHydration() {
         TimelineRevisionSaveService writer = mock(TimelineRevisionSaveService.class);
-        TimelineSourceReferenceValidator sources = mock(TimelineSourceReferenceValidator.class);
+        TimelineSourceValidation sources = mock(TimelineSourceValidation.class);
         AuthorizationDecisionPort authorization = authorizationRequest ->
                 com.example.platform.shared.authorization.AuthorizationDecision.deny(
                         "WRONG_TENANT", "rbac", "hidden");

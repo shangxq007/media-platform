@@ -53,7 +53,6 @@ class TimelineReviewOwnerIntegrationTest extends PostgresTestContainerSupport {
   context.registerBean(com.example.platform.notification.app.NotificationRenderingService.class);
   context.registerBean(com.example.platform.notification.app.NotificationEventHandler.class,()->new com.example.platform.notification.app.NotificationEventHandler(context.getBean(DSLContext.class),List.of(),context.getBean(com.example.platform.notification.app.NotificationRenderingService.class),null));
   context.registerBean(OutboxEventDispatcher.class,()->new OutboxEventDispatcher(context.getBean(OutboxEventService.class),context,context.getBean(OutboxEventRouter.class),3,new io.micrometer.core.instrument.simple.SimpleMeterRegistry()));
-  context.registerBean(com.example.platform.media.infrastructure.persistence.JooqMediaAssetRepository.class);
   context.refresh();
   jdbc.update("insert into tenant(id,name,created_at) values ('tenant','test',now())");
   for(String project:List.of("project","other")){

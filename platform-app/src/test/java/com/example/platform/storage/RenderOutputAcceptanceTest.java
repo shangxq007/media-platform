@@ -157,13 +157,32 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
         context.registerBean(OutboxEventDispatcher.class,()->new OutboxEventDispatcher(context.getBean(OutboxEventService.class),context,context.getBean(OutboxEventRouter.class),3,new io.micrometer.core.instrument.simple.SimpleMeterRegistry()));
         context.registerBean(com.example.platform.artifact.api.event.ArtifactMetadataEventPublisher.class);
         context.registerBean(com.example.platform.render.infrastructure.asset.AssetSemanticMetadataRepository.class);
-        context.registerBean(com.example.platform.media.infrastructure.persistence.JooqMediaAssetRepository.class);
-        context.registerBean(com.example.platform.render.app.asset.AssetRegistryService.class);
-        context.registerBean(com.example.platform.render.app.asset.AssetSemanticMetadataService.class);
+        var mediaAssets = mock(com.example.platform.media.api.MediaAssets.class);
+        org.mockito.Mockito.when(mediaAssets.findById("ep04-tenant", "metadata-fact"))
+                .thenReturn(java.util.Optional.of(new com.example.platform.media.api.Asset(
+                        "metadata-fact", "ep04-tenant", "project", "ref", "VIDEO", null, 1L,
+                        "metadata-fact-digest", "v3", null, null, null, null, null, null,
+                        false, false, "DRAFT", Instant.now(), Instant.now())));
+        context.registerBean(com.example.platform.media.api.MediaAssets.class, () -> mediaAssets);
+        // These two services carry @Profile("legacy-media-disabled"); register them directly so the
+        // test still exercises their repository path without activating the legacy profile.
+        registerProfileFenced("assetRegistryService",
+                com.example.platform.render.app.asset.AssetRegistryService.class,
+                () -> new com.example.platform.render.app.asset.AssetRegistryService(
+                        context.getBean(com.example.platform.media.api.MediaAssets.class)));
+        registerProfileFenced("assetSemanticMetadataService",
+                com.example.platform.render.app.asset.AssetSemanticMetadataService.class,
+                () -> new com.example.platform.render.app.asset.AssetSemanticMetadataService(
+                        context.getBean(com.example.platform.render.infrastructure.asset.AssetSemanticMetadataRepository.class),
+                        context.getBean(com.example.platform.artifact.api.event.ArtifactMetadataEventPublisher.class),
+                        context.getBean(com.example.platform.render.app.asset.AssetRegistryService.class)));
         context.registerBean(com.example.platform.outbox.coordination.PlatformJobRepository.class);
         context.registerBean(com.example.platform.outbox.coordination.PlatformTaskRepository.class);
         context.registerBean(com.example.platform.outbox.coordination.PlatformCoordinationService.class);
-        context.registerBean(com.example.platform.render.app.asset.AssetSearchConsumer.class);
+        registerProfileFenced("assetSearchConsumer",
+                com.example.platform.render.app.asset.AssetSearchConsumer.class,
+                () -> new com.example.platform.render.app.asset.AssetSearchConsumer(
+                        context.getBean(com.example.platform.outbox.coordination.PlatformCoordinationService.class)));
         context.registerBean(StorageFileService.class,()->new StorageFileService(backend,context.getBean(StorageReferenceStore.class),
                 root.toString(),context.getBean(StorageWriteIntentRecovery.class),context.getBean(StorageObjectAuthorityRepository.class),new StorageS3Properties()));
         context.registerBean(com.example.platform.render.infrastructure.product.ProductRepository.class,()->{
@@ -207,6 +226,11 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
 
     StorageOutputPort.OutputCommand command(String key,String path){return new StorageOutputPort.OutputCommand(new StorageOwnershipScope("ep04-tenant","project"),new IssuanceIdempotencyKey(key),path,"video/mp4");}
     long count(String table){return jdbc.queryForObject("select count(*) from "+table,Long.class);}
+    static void registerProfileFenced(String name,Class<?> type,java.util.function.Supplier<?> supplier){
+        var definition=new org.springframework.beans.factory.support.RootBeanDefinition(type);
+        definition.setInstanceSupplier(supplier);
+        context.registerBeanDefinition(name,definition);
+    }
 
     @Test void realWriteReadbackCommitAndRenderReferenceReplay() throws Exception {
         String path=file("accepted.mp4");
@@ -539,7 +563,8 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
     }
     @Test void enrichmentUpdateAppendRollbackAndDuplicateSearchIntentUseActualScope() throws Exception {
         var service=context.getBean(com.example.platform.render.app.asset.AssetSemanticMetadataService.class);
-        jdbc.update("insert into media_asset(id,tenant_id,project_id,storage_key,media_type,created_at) values ('metadata-fact','ep04-tenant','project','test-metadata-source','VIDEO',now())");
+        jdbc.update("insert into artifact(id,tenant_id,project_id,workspace_id,content_digest,byte_length,media_type,artifact_kind,state,schema_version,created_at)"
+                + " values ('metadata-fact','ep04-tenant','project','project','metadata-fact-digest',1,'VIDEO','SOURCE_MEDIA','AVAILABLE',1,now())");
         var before=service.create("metadata-fact","v3");
         var updated=new com.example.platform.render.domain.asset.semantic.AssetSemanticMetadata(before.assetId(),before.assetVersion(),
             com.example.platform.render.domain.asset.semantic.AssetSemanticMetadata.EnrichmentStatus.COMPLETE,"en",List.of(),List.of(),List.of(),List.of(),List.of(),List.of(),List.of(),before.createdAt(),Instant.now());
@@ -559,7 +584,7 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
         assertEquals(1L,jdbc.queryForObject("select count(*) from notification_event where subject_id='metadata-fact'",Long.class));
         assertThrows(IllegalArgumentException.class,()->service.completeEnrichment(updated,"ep04-tenant","wrong-project","ASR"));
         TenantContext.set("foreign");assertThrows(IllegalArgumentException.class,()->service.completeEnrichment(updated,"foreign","project","ASR"));TenantContext.set("ep04-tenant");
-        jdbc.update("update asset_semantic_metadata set asset_version='v4' where asset_id='metadata-fact'");
+        jdbc.update("update asset_semantic_metadata set asset_version='v4' where artifact_id='metadata-fact'");
         assertThrows(IllegalStateException.class,()->service.completeEnrichment(updated,"ep04-tenant","project","ASR"));assertEquals(1,jobEvents(before.assetId()));
         TenantContext.set("foreign");assertThrows(RuntimeException.class,()->service.completeEnrichment(updated,"ep04-tenant","project","ASR"));
     }
@@ -620,7 +645,7 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
                 new com.example.platform.render.api.request.PreviewUploadKey(key),previewBytes(),"video/mp4");
     }
     @Test void previewRealWriteReceiptProductAndDuplicateAreAcceptedWithoutCanonicalMediaClaims() throws Exception {
-        long products=count("product"),assets=count("media_asset"),artifacts=count("artifact"),events=count("outbox_events");
+        long products=count("product"),artifacts=count("artifact"),events=count("outbox_events");
         var result=preview("preview-real");var replay=preview("preview-real");
         assertEquals(result,replay);assertEquals(previewBytes().length,result.size());assertEquals(products+1,count("product"));
         var product=previewProducts.findByAsset(result.mediaId()).getFirst();
@@ -631,7 +656,7 @@ class RenderOutputAcceptanceTest extends PostgresTestContainerSupport {
         String object=reference.relativePath().split("/")[1];
         assertEquals("CANONICAL_COMMITTED",jdbc.queryForObject("select intent_state from storage_write_intent where object_id=?",String.class,object));
         assertEquals(1,jdbc.queryForObject("select count(*) from storage_object_placement where object_id=? and placement_state='AVAILABLE'",Integer.class,object));
-        assertEquals(assets,count("media_asset"));assertEquals(artifacts,count("artifact"));assertEquals(events,count("outbox_events"));
+        assertEquals(artifacts,count("artifact"));assertEquals(events,count("outbox_events"));
     }
     @Test void previewProductRollbackRetainsPhysicalEvidenceAndRetryUsesSamePlacement() throws Exception {
         long products=count("product"),intents=count("storage_write_intent"),refs=count("storage_reference");

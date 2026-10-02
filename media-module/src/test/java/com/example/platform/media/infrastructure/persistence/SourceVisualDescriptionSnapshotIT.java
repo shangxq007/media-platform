@@ -20,7 +20,6 @@ import com.example.platform.colorimage.SourceOrientation;
 import com.example.platform.colorimage.SourceVisualDescription;
 import com.example.platform.colorimage.StaticHdrMetadata;
 import com.example.platform.colorimage.TransferCharacteristic;
-import com.example.platform.media.domain.identity.MediaAssetId;
 import com.example.platform.media.domain.stream.MediaStreamId;
 import com.example.platform.shared.identity.ArtifactId;
 import org.jooq.DSLContext;
@@ -51,7 +50,6 @@ class SourceVisualDescriptionSnapshotIT {
 
     private static DSLContext dsl;
     private static JooqSourceVisualDescriptionSnapshotRepository repo;
-    private static final MediaAssetId ASSET = new MediaAssetId("asset-1");
     private static final MediaStreamId STREAM = new MediaStreamId("stream-1");
     private static final ArtifactId ARTIFACT_V1 = new ArtifactId("artifact-v1");
 
@@ -62,14 +60,13 @@ class SourceVisualDescriptionSnapshotIT {
         dsl.execute("""
                 create table media_stream (
                     id varchar(64) primary key,
-                    media_asset_id varchar(64) not null,
+                    artifact_id varchar(64) not null,
                     stream_index int not null,
                     stream_kind varchar(16) not null
                 )""");
         dsl.execute("""
                 create table source_visual_description_snapshot (
                     media_stream_id varchar(64) not null,
-                    media_asset_id   varchar(64) not null,
                     artifact_id      varchar(64) not null,
                     canonical_payload text not null,
                     created_at       timestamp not null default current_timestamp,
@@ -82,7 +79,6 @@ class SourceVisualDescriptionSnapshotIT {
                 create or replace function trg_fn_svd_snapshot_immutable() returns trigger as $$
                 begin
                     if new.media_stream_id is distinct from old.media_stream_id
-                       or new.media_asset_id is distinct from old.media_asset_id
                        or new.artifact_id is distinct from old.artifact_id
                        or new.canonical_payload is distinct from old.canonical_payload then
                         raise exception 'SOURCE_VISUAL_SNAPSHOT_IMMUTABLE';
@@ -94,17 +90,11 @@ class SourceVisualDescriptionSnapshotIT {
                 + "source_visual_description_snapshot for each row "
                 + "execute function trg_fn_svd_snapshot_immutable()");
         dsl.execute("create table artifact (id varchar(64) primary key)");
-        dsl.execute("create table media_asset_artifact (media_asset_id varchar(64) not null, "
-                + "artifact_id varchar(64) not null, relationship varchar(16) not null, "
-                + "constraint pk_maa primary key (media_asset_id, artifact_id, relationship), "
-                + "constraint fk_maa_artifact foreign key (artifact_id) references artifact(id))");
         dsl.execute("insert into artifact (id) values ('artifact-v1'), ('artifact-v2')");
-        dsl.execute("insert into media_asset_artifact (media_asset_id, artifact_id, relationship) "
-                + "values ('asset-1', 'artifact-v1', 'SOURCE_MEDIA'), ('asset-1', 'artifact-v2', 'DERIVED_MEDIA')");
-        dsl.execute("insert into media_stream (id, media_asset_id, stream_index, stream_kind) "
-                + "values ('stream-1', 'asset-1', 0, 'VIDEO')");
-        dsl.execute("insert into media_stream (id, media_asset_id, stream_index, stream_kind) "
-                + "values ('stream-audio', 'asset-1', 1, 'AUDIO')");
+        dsl.execute("insert into media_stream (id, artifact_id, stream_index, stream_kind) "
+                + "values ('stream-1', 'artifact-v1', 0, 'VIDEO')");
+        dsl.execute("insert into media_stream (id, artifact_id, stream_index, stream_kind) "
+                + "values ('stream-audio', 'artifact-v1', 1, 'AUDIO')");
         repo = new JooqSourceVisualDescriptionSnapshotRepository(dsl);
     }
 
@@ -140,7 +130,7 @@ class SourceVisualDescriptionSnapshotIT {
     @Test
     void exactRoundtripS1EqualsS2() {
         SourceVisualDescription s1 = sample();
-        repo.save(ASSET, STREAM, ARTIFACT_V1, s1);
+        repo.save(STREAM, ARTIFACT_V1, s1);
         Optional<SourceVisualDescription> loaded = repo.findByStreamAndArtifact(STREAM, ARTIFACT_V1);
         assertTrue(loaded.isPresent());
         assertEquals(s1, loaded.get(), "S1 == S2 exact semantic equality");
@@ -149,7 +139,7 @@ class SourceVisualDescriptionSnapshotIT {
     @Test
     void historicalReloadDoesNotInvokeNormalizerOrProvider() {
         SourceVisualDescription s1 = sample();
-        repo.save(ASSET, STREAM, ARTIFACT_V1, s1);
+        repo.save(STREAM, ARTIFACT_V1, s1);
         Optional<SourceVisualDescription> loaded = repo.findByStreamAndArtifact(STREAM, ARTIFACT_V1);
         assertEquals(s1, loaded.get());
         // structural proof: the snapshot repository has zero probe/normalizer/ffprobe refs
@@ -160,7 +150,7 @@ class SourceVisualDescriptionSnapshotIT {
 
     @Test
     void immutableContentBinding() {
-        repo.save(ASSET, STREAM, ARTIFACT_V1, sample());
+        repo.save(STREAM, ARTIFACT_V1, sample());
         ArtifactId artifactV2 = new ArtifactId("artifact-v2");
         SourceVisualDescription s2 = new SourceVisualDescription(
                 new EncodedRasterExtent(1280, 720), PixelAspectRatio.square(),
@@ -169,7 +159,7 @@ class SourceVisualDescriptionSnapshotIT {
                         TransferCharacteristic.BT709, MatrixCoefficients.BT709, SignalRange.LIMITED),
                 AlphaDescription.NO_ALPHA, SourceOrientation.NORMAL,
                 new ScanDescription.Progressive(), Optional.empty());
-        repo.save(ASSET, STREAM, artifactV2, s2);
+        repo.save(STREAM, artifactV2, s2);
         assertEquals(s2, repo.findByStreamAndArtifact(STREAM, artifactV2).orElseThrow());
         // old snapshot for X must survive the Y insert (F2 coexistence)
         assertEquals(sample(), repo.findByStreamAndArtifact(STREAM, ARTIFACT_V1).orElseThrow());
@@ -184,7 +174,7 @@ class SourceVisualDescriptionSnapshotIT {
                 RasterSampleDescription.rgb(8, false), profile,
                 AlphaDescription.NO_ALPHA, SourceOrientation.NORMAL,
                 new ScanDescription.Progressive(), Optional.empty());
-        repo.save(ASSET, STREAM, ARTIFACT_V1, s);
+        repo.save(STREAM, ARTIFACT_V1, s);
         SourceVisualDescription loaded = repo.findByStreamAndArtifact(STREAM, ARTIFACT_V1).orElseThrow();
         assertEquals(profile, loaded.colorDescription());
         ColorDescription.ProfileBasedColorDescription p =
@@ -210,10 +200,10 @@ class SourceVisualDescriptionSnapshotIT {
                         TransferCharacteristic.UNKNOWN, MatrixCoefficients.UNKNOWN, SignalRange.UNKNOWN),
                 AlphaDescription.NO_ALPHA, SourceOrientation.NORMAL,
                 new ScanDescription.Progressive(), Optional.empty());
-        repo.save(ASSET, STREAM, ARTIFACT_V1, unspecified);
+        repo.save(STREAM, ARTIFACT_V1, unspecified);
         assertEquals(unspecified, repo.findByStreamAndArtifact(STREAM, ARTIFACT_V1).orElseThrow());
         assertThrows(IllegalStateException.class,
-                () -> repo.save(ASSET, STREAM, ARTIFACT_V1, unknown),
+                () -> repo.save(STREAM, ARTIFACT_V1, unknown),
                 "same exact content key with different description must fail closed");
         assertEquals(unspecified, repo.findByStreamAndArtifact(STREAM, ARTIFACT_V1).orElseThrow());
         assertNotEquals(unspecified, unknown, "UNSPECIFIED != UNKNOWN after roundtrip");
@@ -229,7 +219,7 @@ class SourceVisualDescriptionSnapshotIT {
                         TransferCharacteristic.BT709, MatrixCoefficients.BT709, SignalRange.LIMITED),
                 AlphaDescription.NO_ALPHA, SourceOrientation.NORMAL,
                 new ScanDescription.Progressive(), Optional.empty());
-        repo.save(ASSET, STREAM, ARTIFACT_V1, s);
+        repo.save(STREAM, ARTIFACT_V1, s);
         SourceVisualDescription loaded = repo.findByStreamAndArtifact(STREAM, ARTIFACT_V1).orElseThrow();
         assertEquals(PixelAspectRatio.of(64, 45), loaded.pixelAspectRatio());
         assertEquals(Rational.of(64, 45), loaded.pixelAspectRatio().value());
@@ -244,7 +234,7 @@ class SourceVisualDescriptionSnapshotIT {
                         TransferCharacteristic.BT709, MatrixCoefficients.BT709, SignalRange.LIMITED),
                 AlphaDescription.NO_ALPHA, SourceOrientation.NORMAL,
                 new ScanDescription.Progressive(), Optional.empty());
-        repo.save(ASSET, STREAM, ARTIFACT_V1, noHdr);
+        repo.save(STREAM, ARTIFACT_V1, noHdr);
         assertTrue(repo.findByStreamAndArtifact(STREAM, ARTIFACT_V1).orElseThrow().staticHdrMetadata().isEmpty());
         SourceVisualDescription clOnly = new SourceVisualDescription(
                 new EncodedRasterExtent(640, 480), PixelAspectRatio.square(),
@@ -256,7 +246,7 @@ class SourceVisualDescriptionSnapshotIT {
                 Optional.of(StaticHdrMetadata.of(new ContentLightMetadata(Rational.of(1000, 1), Rational.of(400, 1)))));
         com.example.platform.shared.identity.ArtifactId artifactV2 =
                 new com.example.platform.shared.identity.ArtifactId("artifact-v2");
-        repo.save(ASSET, STREAM, artifactV2, clOnly);
+        repo.save(STREAM, artifactV2, clOnly);
         SourceVisualDescription loaded = repo.findByStreamAndArtifact(STREAM, artifactV2).orElseThrow();
         assertTrue(loaded.staticHdrMetadata().isPresent());
         assertTrue(loaded.staticHdrMetadata().get().contentLight().isPresent());

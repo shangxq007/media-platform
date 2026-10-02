@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.example.platform.PlatformApplication;
 import com.example.platform.artifact.app.ArtifactSourcePinAuthority;
-import com.example.platform.media.api.MediaAssetQueries;
 import com.example.platform.media.api.MediaAssets;
 import com.example.platform.media.api.MediaStreamQueries;
 import com.example.platform.render.app.operation.TimelineMediaClipOperationService;
@@ -47,7 +46,6 @@ class TimelineSourceValidationArtifactPinWiringTest extends PostgresTestContaine
         assertThat(context.getBeanNamesForType(TimelineMediaClipOperationService.class)).hasSize(1);
 
         assertThat(context.getBeanNamesForType(MediaAssets.class)).isEmpty();
-        assertThat(context.getBeanNamesForType(MediaAssetQueries.class)).isEmpty();
         assertThat(context.getBeanNamesForType(MediaStreamQueries.class)).isEmpty();
     }
 }

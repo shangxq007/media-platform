@@ -201,9 +201,11 @@ class H7V2CanonicalOwnershipInvariantTest {
         var applied = Arrays.stream(flyway.info().applied())
                 .filter(info -> info.getVersion() != null)
                 .toList();
-        assertEquals(1, applied.size(), "the classpath contains exactly consolidated Flyway V1");
-        assertEquals("1", applied.getFirst().getVersion().getVersion());
-        assertEquals("V1__initial_schema.sql", applied.getFirst().getScript());
+        assertEquals(2, applied.size(), "the classpath contains exactly the consolidated V1 + V2 baseline");
+        assertEquals("1", applied.get(0).getVersion().getVersion());
+        assertEquals("V1__initial_schema.sql", applied.get(0).getScript());
+        assertEquals("2", applied.get(1).getVersion().getVersion());
+        assertEquals("V2__render_binding_inputs.sql", applied.get(1).getScript());
     }
 
     @Test
@@ -304,15 +306,10 @@ class H7V2CanonicalOwnershipInvariantTest {
                 values (?, 'ta', ?, ?, 1024, 'VIDEO', 'SOURCE_MEDIA', 'AVAILABLE', 1, now())
                 """, artifactId, project, contentDigest);
         jdbc.update("""
-                insert into media_asset(id,tenant_id,project_id,storage_key,media_type,
-                    media_version,created_at,publish_status)
-                values (?, 'ta', ?, 'source/key', 'VIDEO', 'v1', now(), 'DRAFT')
-                """, mediaAssetId, project);
-        jdbc.update("""
-                insert into media_stream(id,media_asset_id,stream_index,stream_kind,codec,
+                insert into media_stream(id,artifact_id,stream_index,stream_kind,codec,
                     timebase_num,timebase_den,rate_num,rate_den,is_vfr,width,height)
                 values (?, ?, 0, 'VIDEO', 'h264', 1, 1000, 24, 1, false, 1920, 1080)
-                """, mediaStreamId, mediaAssetId);
+                """, mediaStreamId, artifactId);
 
         TimelineDocument baseDocument = new TimelineDocument(
                 TimelineDocument.CURRENT_SCHEMA_VERSION,
@@ -322,9 +319,22 @@ class H7V2CanonicalOwnershipInvariantTest {
                 "ta", project, null, baseDocument, "server-author");
         var actor = com.example.platform.shared.authorization.CanonicalActor.user(
                 "server-author", "ta", Set.of("EDITOR"), "test-authenticated");
-        var sourceValidator = new com.example.platform.timeline.app.TimelineSourceReferenceValidator(
-                new com.example.platform.media.infrastructure.persistence.JooqMediaAssetRepository(dsl),
-                new com.example.platform.media.infrastructure.persistence.JooqMediaStreamRepository(dsl));
+        com.example.platform.artifact.app.ArtifactSourcePinAuthority pins =
+                (tenant, proj, aid, pinned) -> {
+                    var rows = jdbc.queryForList(
+                            "select project_id, content_digest from artifact where id=?", aid.value());
+                    var outcome = rows.isEmpty()
+                            ? com.example.platform.artifact.app.ArtifactSourcePinAuthority.Outcome.UNKNOWN_ARTIFACT
+                            : !proj.equals(rows.get(0).get("project_id"))
+                                    ? com.example.platform.artifact.app.ArtifactSourcePinAuthority.Outcome.OUT_OF_SCOPE
+                                    : !pinned.canonicalValue().equals(rows.get(0).get("content_digest"))
+                                            ? com.example.platform.artifact.app.ArtifactSourcePinAuthority.Outcome.PIN_MISMATCH
+                                            : com.example.platform.artifact.app.ArtifactSourcePinAuthority.Outcome.RESOLVED;
+                    return new com.example.platform.artifact.app.ArtifactSourcePinAuthority.PinResolution(
+                            outcome, aid, tenant, proj, pinned.canonicalValue(),
+                            rows.isEmpty() ? null : (String) rows.get(0).get("content_digest"), null);
+                };
+        var sourceValidator = new com.example.platform.timeline.app.ArtifactPinTimelineSourceValidator(pins);
         var operationService = new com.example.platform.render.app.operation.TimelineMediaClipOperationService(
                 saveService,
                 sourceValidator,

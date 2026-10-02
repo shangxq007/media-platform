@@ -13,7 +13,6 @@ import com.example.platform.shared.time.MediaTime;
 import com.example.platform.timeline.app.InternalTimelineValidationService;
 import com.example.platform.timeline.api.revision.TimelineMutationContext;
 import com.example.platform.timeline.app.TimelineRevisionSaveService;
-import com.example.platform.timeline.app.TimelineSourceReferenceValidator;
 import com.example.platform.timeline.canonical.TimelineContentDigester;
 import com.example.platform.timeline.canonical.TimelineDocument;
 import com.example.platform.timeline.canonical.TimelineMetadata;
@@ -76,7 +75,7 @@ class H7FirstRealMediaCutTest {
                             "revision-R1", BASE_REVISION, DIGESTER.digest(document), false);
                 });
 
-        TimelineSourceReferenceValidator sourceValidator = mock(TimelineSourceReferenceValidator.class);
+        TimelineSourceValidation sourceValidator = mock(TimelineSourceValidation.class);
         when(sourceValidator.validate(any(MediaStreamSourceBinding.class), eq(TENANT), eq(PROJECT), eq(TrackType.VIDEO)))
                 .thenReturn(new TimelineSourceValidation.ValidationResult(true, List.of()));
         List<String> authorizationActions = new ArrayList<>();
@@ -160,7 +159,7 @@ class H7FirstRealMediaCutTest {
         when(writer.findById(TENANT, BASE_REVISION))
                 .thenReturn(revision(BASE_REVISION, null, base, "base"));
         when(writer.findPayloadDocument(TENANT, BASE_REVISION)).thenReturn(Optional.of(base));
-        TimelineSourceReferenceValidator sources = mock(TimelineSourceReferenceValidator.class);
+        TimelineSourceValidation sources = mock(TimelineSourceValidation.class);
         when(sources.validate(any(), anyString(), anyString(), any()))
                 .thenReturn(new TimelineSourceValidation.ValidationResult(true, List.of()));
         OperationPlanApplyService apply = mock(OperationPlanApplyService.class);
@@ -194,7 +193,7 @@ class H7FirstRealMediaCutTest {
         when(writer.findById(TENANT, BASE_REVISION))
                 .thenReturn(revision(BASE_REVISION, null, base, "base"));
         when(writer.findPayloadDocument(TENANT, BASE_REVISION)).thenReturn(Optional.of(base));
-        TimelineSourceReferenceValidator sources = mock(TimelineSourceReferenceValidator.class);
+        TimelineSourceValidation sources = mock(TimelineSourceValidation.class);
         when(sources.validate(any(), anyString(), anyString(), any()))
                 .thenReturn(new TimelineSourceValidation.ValidationResult(true, List.of()));
         OperationPlanApplyService apply = mock(OperationPlanApplyService.class);
@@ -223,7 +222,7 @@ class H7FirstRealMediaCutTest {
         when(writer.findById(TENANT, BASE_REVISION))
                 .thenReturn(revision(BASE_REVISION, null, base, "base"));
         when(writer.findPayloadDocument(TENANT, BASE_REVISION)).thenReturn(Optional.of(base));
-        TimelineSourceReferenceValidator sources = mock(TimelineSourceReferenceValidator.class);
+        TimelineSourceValidation sources = mock(TimelineSourceValidation.class);
         when(sources.validate(any(), anyString(), anyString(), any()))
                 .thenReturn(new TimelineSourceValidation.ValidationResult(true, List.of()));
         OperationPlanApplyService apply = mock(OperationPlanApplyService.class);
@@ -260,7 +259,7 @@ class H7FirstRealMediaCutTest {
     @Test
     void unauthorizedPreviewFailsBeforeBaseOrSourceDisclosure() {
         TimelineRevisionSaveService writer = mock(TimelineRevisionSaveService.class);
-        TimelineSourceReferenceValidator sources = mock(TimelineSourceReferenceValidator.class);
+        TimelineSourceValidation sources = mock(TimelineSourceValidation.class);
         var service = new TimelineMediaClipOperationService(
                 writer, sources, new InternalTimelineValidationService(),
                 request -> com.example.platform.shared.authorization.AuthorizationDecision.deny(
@@ -278,7 +277,7 @@ class H7FirstRealMediaCutTest {
     @Test
     void explicitAndAuthenticatedTenantMismatchFailsBeforeHydration() {
         TimelineRevisionSaveService writer = mock(TimelineRevisionSaveService.class);
-        TimelineSourceReferenceValidator sources = mock(TimelineSourceReferenceValidator.class);
+        TimelineSourceValidation sources = mock(TimelineSourceValidation.class);
         var service = new TimelineMediaClipOperationService(
                 writer, sources, new InternalTimelineValidationService(),
                 request -> com.example.platform.shared.authorization.AuthorizationDecision.allow("rbac"),

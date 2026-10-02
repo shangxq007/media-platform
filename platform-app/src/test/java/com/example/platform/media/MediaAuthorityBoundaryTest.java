@@ -42,8 +42,7 @@ class MediaAuthorityBoundaryTest {
         }
         assertTrue(foreignMediaImplementation("import com.example.platform.media.app.MediaAssetRepository;"));
         assertTrue(foreignMediaImplementation("import com.example.platform.media.app.MediaStreamRepository;"));
-        assertFalse(foreignMediaImplementation("import com.example.platform.media.api.MediaAssetQueries;"));
-        assertEquals(Set.of("findById"),Arrays.stream(com.example.platform.media.api.MediaAssetQueries.class.getMethods()).map(java.lang.reflect.Method::getName).collect(java.util.stream.Collectors.toSet()));
-        assertEquals(Set.of("findByMediaAssetId"),Arrays.stream(com.example.platform.media.api.MediaStreamQueries.class.getMethods()).map(java.lang.reflect.Method::getName).collect(java.util.stream.Collectors.toSet()));
+        assertFalse(foreignMediaImplementation("import com.example.platform.media.api.MediaStreamQueries;"));
+        assertEquals(Set.of("findByArtifactId"),Arrays.stream(com.example.platform.media.api.MediaStreamQueries.class.getMethods()).map(java.lang.reflect.Method::getName).collect(java.util.stream.Collectors.toSet()));
     }
 }
