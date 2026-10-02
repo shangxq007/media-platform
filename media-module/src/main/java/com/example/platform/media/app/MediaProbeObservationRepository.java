@@ -1,7 +1,7 @@
 package com.example.platform.media.app;
 
-import com.example.platform.media.domain.identity.MediaAssetId;
 import com.example.platform.media.domain.probe.MediaProbeObservation;
+import com.example.platform.shared.identity.ArtifactId;
 import java.util.Optional;
 
 /**
@@ -9,7 +9,7 @@ import java.util.Optional;
  */
 public interface MediaProbeObservationRepository {
 
-    void save(MediaAssetId mediaAssetId, String tenantId, String projectId, MediaProbeObservation observation);
+    void save(ArtifactId artifactId, String tenantId, String projectId, MediaProbeObservation observation);
 
-    Optional<MediaProbeObservation> findLatest(MediaAssetId mediaAssetId);
+    Optional<MediaProbeObservation> findLatest(ArtifactId artifactId);
 }

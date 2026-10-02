@@ -1,8 +1,8 @@
 package com.example.platform.media.api;
-import com.example.platform.media.domain.identity.MediaAssetId;
 import com.example.platform.media.domain.stream.MediaStream;
+import com.example.platform.shared.identity.ArtifactId;
 import java.util.List;
-/** Canonical streams belonging to exactly one Media asset. No mutation surface. */
+/** Canonical streams belonging to exactly one Artifact. No mutation surface. */
 public interface MediaStreamQueries {
-    List<MediaStream> findByMediaAssetId(MediaAssetId mediaAssetId);
+    List<MediaStream> findByArtifactId(ArtifactId artifactId);
 }

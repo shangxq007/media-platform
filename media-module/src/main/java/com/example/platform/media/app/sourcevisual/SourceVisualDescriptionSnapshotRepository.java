@@ -1,7 +1,6 @@
 package com.example.platform.media.app.sourcevisual;
 
 import com.example.platform.colorimage.SourceVisualDescription;
-import com.example.platform.media.domain.identity.MediaAssetId;
 import com.example.platform.media.domain.stream.MediaStreamId;
 import com.example.platform.shared.identity.ArtifactId;
 
@@ -21,7 +20,7 @@ public interface SourceVisualDescriptionSnapshotRepository {
      * Conflicting duplicate for the same (stream, artifact) key fails closed;
      * identical payload for the same key is accepted idempotently.
      */
-    void save(MediaAssetId mediaAssetId, MediaStreamId streamId, ArtifactId artifactId,
+    void save(MediaStreamId streamId, ArtifactId artifactId,
               SourceVisualDescription description);
 
     /**

@@ -1,7 +1,7 @@
 package com.example.platform.media.app;
 
-import com.example.platform.media.domain.identity.MediaAssetId;
 import com.example.platform.media.domain.stream.MediaStream;
+import com.example.platform.shared.identity.ArtifactId;
 import java.util.List;
 
 /**
@@ -9,7 +9,7 @@ import java.util.List;
  */
 public interface MediaStreamRepository extends com.example.platform.media.api.MediaStreamQueries {
 
-    void saveAll(MediaAssetId mediaAssetId, List<MediaStream> streams);
+    void saveAll(ArtifactId artifactId, List<MediaStream> streams);
 
-    void deleteByMediaAssetId(MediaAssetId mediaAssetId);
+    void deleteByArtifactId(ArtifactId artifactId);
 }

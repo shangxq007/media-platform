@@ -3,8 +3,8 @@ package com.example.platform.media.infrastructure.persistence;
 import static com.example.platform.typedschema.jooq.generated.tables.MediaProbeObservation.MEDIA_PROBE_OBSERVATION;
 
 import com.example.platform.media.app.MediaProbeObservationRepository;
-import com.example.platform.media.domain.identity.MediaAssetId;
 import com.example.platform.media.domain.probe.MediaProbeObservation;
+import com.example.platform.shared.identity.ArtifactId;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -29,16 +29,16 @@ public class JooqMediaProbeObservationRepository implements MediaProbeObservatio
     }
 
     @Override
-    public void save(MediaAssetId mediaAssetId, String tenantId, String projectId, MediaProbeObservation observation) {
-        String id = "mpo-" + System.nanoTime() + "-" + mediaAssetId.value().hashCode();
+    public void save(ArtifactId artifactId, String tenantId, String projectId, MediaProbeObservation observation) {
+        String id = "mpo-" + System.nanoTime() + "-" + artifactId.value().hashCode();
         dsl.insertInto(MEDIA_PROBE_OBSERVATION)
                 .columns(MEDIA_PROBE_OBSERVATION.ID, MEDIA_PROBE_OBSERVATION.TENANT_ID,
-                        MEDIA_PROBE_OBSERVATION.PROJECT_ID, MEDIA_PROBE_OBSERVATION.MEDIA_ASSET_ID,
+                        MEDIA_PROBE_OBSERVATION.PROJECT_ID, MEDIA_PROBE_OBSERVATION.ARTIFACT_ID,
                         MEDIA_PROBE_OBSERVATION.PROVIDER, MEDIA_PROBE_OBSERVATION.RAW_PAYLOAD,
                         MEDIA_PROBE_OBSERVATION.VALID, MEDIA_PROBE_OBSERVATION.CLIENT_EXPORT_COMPATIBLE,
                         MEDIA_PROBE_OBSERVATION.NORMALIZE_REQUIRED, MEDIA_PROBE_OBSERVATION.WARNINGS,
                         MEDIA_PROBE_OBSERVATION.ERROR_MESSAGE, MEDIA_PROBE_OBSERVATION.PROBED_AT)
-                .values(id, tenantId, projectId, mediaAssetId.value(),
+                .values(id, tenantId, projectId, artifactId.value(),
                         observation.provider(), observation.rawPayload(),
                         observation.valid(), observation.clientExportCompatible(),
                         observation.normalizeRequired(),
@@ -49,9 +49,9 @@ public class JooqMediaProbeObservationRepository implements MediaProbeObservatio
     }
 
     @Override
-    public Optional<MediaProbeObservation> findLatest(MediaAssetId mediaAssetId) {
+    public Optional<MediaProbeObservation> findLatest(ArtifactId artifactId) {
         var row = dsl.selectFrom(MEDIA_PROBE_OBSERVATION)
-                .where(MEDIA_PROBE_OBSERVATION.MEDIA_ASSET_ID.eq(mediaAssetId.value()))
+                .where(MEDIA_PROBE_OBSERVATION.ARTIFACT_ID.eq(artifactId.value()))
                 .orderBy(MEDIA_PROBE_OBSERVATION.PROBED_AT.desc())
                 .limit(1)
                 .fetchOne();

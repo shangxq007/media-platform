@@ -6,11 +6,11 @@ import com.example.platform.media.app.MediaStreamRepository;
 import com.example.platform.media.domain.description.SourceAudioDescription;
 import com.example.platform.media.domain.description.SourceColorDescription;
 import com.example.platform.media.domain.description.SourceVideoDescription;
-import com.example.platform.media.domain.identity.MediaAssetId;
 import com.example.platform.media.domain.stream.MediaStream;
 import com.example.platform.media.domain.stream.MediaStreamId;
 import com.example.platform.media.domain.stream.StreamKind;
 import com.example.platform.media.domain.time.TimeBase;
+import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.shared.time.FrameRate;
 import java.util.List;
 import org.jooq.DSLContext;
@@ -33,10 +33,10 @@ public class JooqMediaStreamRepository implements MediaStreamRepository {
     }
 
     @Override
-    public void saveAll(MediaAssetId mediaAssetId, List<MediaStream> streams) {
+    public void saveAll(ArtifactId artifactId, List<MediaStream> streams) {
         for (MediaStream s : streams) {
             dsl.insertInto(MEDIA_STREAM)
-                    .columns(MEDIA_STREAM.ID, MEDIA_STREAM.MEDIA_ASSET_ID, MEDIA_STREAM.STREAM_INDEX,
+                    .columns(MEDIA_STREAM.ID, MEDIA_STREAM.ARTIFACT_ID, MEDIA_STREAM.STREAM_INDEX,
                             MEDIA_STREAM.STREAM_KIND, MEDIA_STREAM.CODEC,
                             MEDIA_STREAM.TIMEBASE_NUM, MEDIA_STREAM.TIMEBASE_DEN,
                             MEDIA_STREAM.RATE_NUM, MEDIA_STREAM.RATE_DEN, MEDIA_STREAM.IS_VFR,
@@ -47,7 +47,7 @@ public class JooqMediaStreamRepository implements MediaStreamRepository {
                             MEDIA_STREAM.COLOR_MATRIX, MEDIA_STREAM.COLOR_RANGE,
                             MEDIA_STREAM.HDR_MASTERING_DISPLAY_REF, MEDIA_STREAM.HDR_CONTENT_LIGHT_REF,
                             MEDIA_STREAM.CONTAINER_STREAM_DESCRIPTION)
-                    .values(s.id().value(), mediaAssetId.value(), s.streamIndex(),
+                    .values(s.id().value(), artifactId.value(), s.streamIndex(),
                             s.kind().name(), s.codec(),
                             s.timeBase().numerator(), s.timeBase().denominator(),
                             s.nominalFrameRate() != null ? s.nominalFrameRate().numerator().longValueExact() : null,
@@ -73,9 +73,9 @@ public class JooqMediaStreamRepository implements MediaStreamRepository {
     }
 
     @Override
-    public List<MediaStream> findByMediaAssetId(MediaAssetId mediaAssetId) {
+    public List<MediaStream> findByArtifactId(ArtifactId artifactId) {
         return dsl.selectFrom(MEDIA_STREAM)
-                .where(MEDIA_STREAM.MEDIA_ASSET_ID.eq(mediaAssetId.value()))
+                .where(MEDIA_STREAM.ARTIFACT_ID.eq(artifactId.value()))
                 .orderBy(MEDIA_STREAM.STREAM_INDEX)
                 .fetch()
                 .map(r -> new MediaStream(
@@ -102,9 +102,9 @@ public class JooqMediaStreamRepository implements MediaStreamRepository {
     }
 
     @Override
-    public void deleteByMediaAssetId(MediaAssetId mediaAssetId) {
+    public void deleteByArtifactId(ArtifactId artifactId) {
         dsl.deleteFrom(MEDIA_STREAM)
-                .where(MEDIA_STREAM.MEDIA_ASSET_ID.eq(mediaAssetId.value()))
+                .where(MEDIA_STREAM.ARTIFACT_ID.eq(artifactId.value()))
                 .execute();
     }
 }
