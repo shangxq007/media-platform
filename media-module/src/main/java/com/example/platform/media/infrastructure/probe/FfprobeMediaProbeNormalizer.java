@@ -2,7 +2,6 @@ package com.example.platform.media.infrastructure.probe;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.example.platform.media.domain.identity.MediaAssetId;
 import com.example.platform.media.domain.probe.MediaProbeObservation;
 import com.example.platform.media.domain.probe.MediaProbeNormalizer;
 import com.example.platform.media.domain.probe.NormalizedMediaProbe;
@@ -13,6 +12,7 @@ import com.example.platform.media.domain.description.SourceAudioDescription;
 import com.example.platform.media.domain.description.SourceColorDescription;
 import com.example.platform.media.domain.description.SourceVideoDescription;
 import com.example.platform.media.domain.time.TimeBase;
+import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.shared.time.FrameRate;
 import com.example.platform.shared.time.MediaTime;
 import java.math.BigInteger;
@@ -39,9 +39,9 @@ public class FfprobeMediaProbeNormalizer implements MediaProbeNormalizer {
     private static final Pattern DECIMAL = Pattern.compile("^(-?\\d+)(?:\\.(\\d+))?$");
 
     @Override
-    public NormalizedMediaProbe normalize(MediaProbeObservation observation, MediaAssetId mediaAssetId) {
+    public NormalizedMediaProbe normalize(MediaProbeObservation observation, ArtifactId artifactId) {
         if (observation == null || !observation.valid()) {
-            return new NormalizedMediaProbe(mediaAssetId, null, null, false,
+            return new NormalizedMediaProbe(artifactId, null, null, false,
                     observation != null && observation.clientExportCompatible(),
                     true, List.of());
         }
@@ -61,11 +61,11 @@ public class FfprobeMediaProbeNormalizer implements MediaProbeNormalizer {
             SourceColorDescription color = new SourceColorDescription(
                     s.colorPrimaries, s.colorTransfer, s.colorMatrix, s.colorRange, null, null);
             streams.add(new MediaStream(
-                    MediaStreamId.of(mediaAssetId.value() + ":s" + s.index),
+                    MediaStreamId.of(artifactId.value() + ":s" + s.index),
                     s.index, kind, s.codecName, tb, rate, s.isVfr,
                     video, audio, color, s.codecType));
         }
-        return new NormalizedMediaProbe(mediaAssetId, duration, parsed.container,
+        return new NormalizedMediaProbe(artifactId, duration, parsed.container,
                 parsed.isVfr, observation.clientExportCompatible(),
                 observation.normalizeRequired(), streams);
     }

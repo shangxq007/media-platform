@@ -1,7 +1,7 @@
 package com.example.platform.media.domain.probe;
 
-import com.example.platform.media.domain.identity.MediaAssetId;
 import com.example.platform.media.domain.stream.MediaStream;
+import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.shared.time.MediaTime;
 import java.io.Serializable;
 import java.util.List;
@@ -15,7 +15,7 @@ import java.util.List;
  * provider values are NOT part of this record.
  */
 public record NormalizedMediaProbe(
-        MediaAssetId mediaAssetId,
+        ArtifactId artifactId,
         MediaTime duration,
         String container,
         boolean isVfr,
@@ -24,8 +24,8 @@ public record NormalizedMediaProbe(
         List<MediaStream> streams) implements Serializable {
 
     public NormalizedMediaProbe {
-        if (mediaAssetId == null) {
-            throw new IllegalArgumentException("mediaAssetId must not be null");
+        if (artifactId == null) {
+            throw new IllegalArgumentException("artifactId must not be null");
         }
         if (streams == null) {
             streams = List.of();

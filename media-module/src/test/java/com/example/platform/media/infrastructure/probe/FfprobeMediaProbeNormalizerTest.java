@@ -2,7 +2,7 @@ package com.example.platform.media.infrastructure.probe;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.example.platform.media.domain.identity.MediaAssetId;
+import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.media.domain.probe.MediaProbeObservation;
 import com.example.platform.media.domain.probe.NormalizedMediaProbe;
 import com.example.platform.media.domain.stream.StreamKind;
@@ -32,19 +32,19 @@ class FfprobeMediaProbeNormalizerTest {
     void durationIsExactRationalOfObservationString() {
         NormalizedMediaProbe probe = normalizer.normalize(
                 new MediaProbeObservation("ffprobe", SAMPLE, true, true, false, List.of(), null),
-                MediaAssetId.of("asset-1"));
+                new ArtifactId("asset-1"));
         assertThat(probe.duration()).isNotNull();
         // 12.50 -> 1250/100 -> 25/2
         assertThat(probe.duration().ticks()).isEqualTo(25L);
         assertThat(probe.duration().timeScale()).isEqualTo(2L);
-        assertThat(probe.mediaAssetId()).isEqualTo(MediaAssetId.of("asset-1"));
+        assertThat(probe.artifactId()).isEqualTo(new ArtifactId("asset-1"));
     }
 
     @Test
     void frameRateIsExactRational() {
         NormalizedMediaProbe probe = normalizer.normalize(
                 new MediaProbeObservation("ffprobe", SAMPLE, true, true, false, List.of(), null),
-                MediaAssetId.of("asset-1"));
+                new ArtifactId("asset-1"));
         var video = probe.streams().stream()
                 .filter(s -> s.kind() == StreamKind.VIDEO).findFirst().orElseThrow();
         // 30000/1001 preserved exactly; NOT coerced to double
@@ -58,7 +58,7 @@ class FfprobeMediaProbeNormalizerTest {
     void audioStreamDescriptionIsSourceLevel() {
         NormalizedMediaProbe probe = normalizer.normalize(
                 new MediaProbeObservation("ffprobe", SAMPLE, true, true, false, List.of(), null),
-                MediaAssetId.of("asset-1"));
+                new ArtifactId("asset-1"));
         var audio = probe.streams().stream()
                 .filter(s -> s.kind() == StreamKind.AUDIO).findFirst().orElseThrow();
         assertThat(audio.audio().sampleRate()).isEqualTo(48000);
@@ -67,15 +67,18 @@ class FfprobeMediaProbeNormalizerTest {
     }
 
     @Test
-    void streamIdsAreStableAndReProbeDoesNotChangeAssetIdentity() {
-        MediaAssetId assetId = MediaAssetId.of("asset-1");
+    void streamIdsAreStableAndReProbeDoesNotChangeArtifactIdentity() {
+        ArtifactId artifactId = new ArtifactId("asset-1");
         NormalizedMediaProbe first = normalizer.normalize(
-                new MediaProbeObservation("ffprobe", SAMPLE, true, true, false, List.of(), null), assetId);
+                new MediaProbeObservation("ffprobe", SAMPLE, true, true, false, List.of(), null), artifactId);
         NormalizedMediaProbe second = normalizer.normalize(
-                new MediaProbeObservation("ffprobe", SAMPLE, true, true, false, List.of(), null), assetId);
-        assertThat(second.mediaAssetId()).isEqualTo(first.mediaAssetId());
+                new MediaProbeObservation("ffprobe", SAMPLE, true, true, false, List.of(), null), artifactId);
+        assertThat(second.artifactId()).isEqualTo(first.artifactId());
         assertThat(second.streams()).hasSize(first.streams().size());
         assertThat(second.streams().get(0).id()).isEqualTo(first.streams().get(0).id());
+        // Stream identity is minted from the Artifact identity, not the retired MediaAsset identity.
+        assertThat(first.streams().get(0).id().value()).isEqualTo("asset-1:s0");
+        assertThat(first.streams().get(1).id().value()).isEqualTo("asset-1:s1");
     }
 
     @Test
@@ -87,7 +90,7 @@ class FfprobeMediaProbeNormalizerTest {
                 """;
         NormalizedMediaProbe probe = normalizer.normalize(
                 new MediaProbeObservation("ffprobe", vfrJson, true, true, false, List.of(), null),
-                MediaAssetId.of("asset-1"));
+                new ArtifactId("asset-1"));
         var video = probe.streams().get(0);
         assertThat(video.isVfr()).isTrue();
         assertThat(video.nominalFrameRate()).isNull(); // no fake nominal rate
@@ -96,7 +99,7 @@ class FfprobeMediaProbeNormalizerTest {
     @Test
     void invalidObservationYieldsAbsentCanonicalFieldsNotSentinels() {
         NormalizedMediaProbe probe = normalizer.normalize(
-                MediaProbeObservation.failed("ffprobe", "boom"), MediaAssetId.of("asset-1"));
+                MediaProbeObservation.failed("ffprobe", "boom"), new ArtifactId("asset-1"));
         assertThat(probe.duration()).isNull();
         assertThat(probe.streams()).isEmpty();
         assertThat(probe.normalizeRequired()).isTrue();
@@ -107,7 +110,7 @@ class FfprobeMediaProbeNormalizerTest {
         MediaProbeObservation observation = new MediaProbeObservation(
                 "ffprobe", SAMPLE, true, true, false, List.of(), null);
         // raw payload is preserved as observation, never surfaced in normalized model
-        NormalizedMediaProbe probe = normalizer.normalize(observation, MediaAssetId.of("asset-1"));
+        NormalizedMediaProbe probe = normalizer.normalize(observation, new ArtifactId("asset-1"));
         assertThat(probe.container()).isEqualTo("mov,mp4,m4a,3gp,3g2,mj2");
         assertThat(probe.duration().ticks()).isEqualTo(25L);
     }
