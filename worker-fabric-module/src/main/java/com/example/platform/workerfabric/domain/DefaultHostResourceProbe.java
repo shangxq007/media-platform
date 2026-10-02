@@ -50,6 +50,15 @@ public final class DefaultHostResourceProbe implements HostResourceAgent.Resourc
                 DEFAULT_PROC_ROOT, temporaryStorage, HostLocation.of("local"), TrustZoneId.of("local"));
     }
 
+    /**
+     * The temporary-storage root whose file store supplies this probe's temporary-storage capacity and
+     * observed usage. Behaviour-neutral accessor: it exposes the configured path only, never new
+     * measurement behaviour.
+     */
+    public Path workRoot() {
+        return temporaryStorage;
+    }
+
     @Override
     public PhysicalHostDescriptor fingerprintStaticHostResources(PhysicalHostId physicalHostId) {
         // Deterministic: identity + configured location only; bounded V1 carries no device inventory.
