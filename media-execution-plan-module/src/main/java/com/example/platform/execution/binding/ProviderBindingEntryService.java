@@ -19,6 +19,8 @@ import com.example.platform.execution.planning.LogicalExecutionGraph.LogicalDepe
 import com.example.platform.execution.planning.PhysicalExecutionPlan;
 import com.example.platform.execution.planning.PhysicalExecutionPlan.PhysicalPlanUnit;
 import com.example.platform.execution.taskgraph.ExecutableTask;
+import com.example.platform.execution.taskgraph.BoundaryAction;
+import com.example.platform.execution.taskgraph.TerminalOutputDeriver;
 import com.example.platform.execution.taskgraph.ExecutionArtifactBoundary;
 import com.example.platform.execution.taskgraph.ProviderBoundExecutableTaskGraph;
 import java.util.ArrayList;
@@ -97,10 +99,16 @@ public final class ProviderBindingEntryService {
         ProviderFeasibilityView feasibilityView = ProviderFeasibilityView.build(
                 physicalExecutionPlan, requests, declaredCandidates, transitionDeclarations);
 
+        Map<ExecutionStepId, List<BoundaryAction>> terminalActions =
+                TerminalOutputDeriver.derive(physicalExecutionPlan);
         Map<ExecutionStepId, ExecutableTask> taskByUnit = new LinkedHashMap<>();
         for (PhysicalPlanUnit unit : physicalExecutionPlan.units()) {
             ProviderCandidate candidate = singleFeasibleCandidate(feasibilityView, unit);
-            taskByUnit.put(unit.stepId(), executableTask(feasibilityView, candidate, unit));
+            taskByUnit.put(unit.stepId(), executableTask(
+                    feasibilityView,
+                    candidate,
+                    unit,
+                    terminalActions.getOrDefault(unit.stepId(), List.of())));
         }
 
         List<ExecutionArtifactBoundary> boundaries = executionArtifactBoundaries(
@@ -154,7 +162,10 @@ public final class ProviderBindingEntryService {
     }
 
     private static ExecutableTask executableTask(
-            ProviderFeasibilityView view, ProviderCandidate candidate, PhysicalPlanUnit unit) {
+            ProviderFeasibilityView view,
+            ProviderCandidate candidate,
+            PhysicalPlanUnit unit,
+            List<BoundaryAction> terminalActions) {
         ProviderCompositionDeclaration declaration = new ProviderCompositionDeclaration(
                 candidate.bindingPin(), NativePipelineSupport.UNKNOWN);
         ProviderLocalCompositionRequest request = ProviderLocalCompositionRequest.of(
@@ -170,7 +181,11 @@ public final class ProviderBindingEntryService {
                     "provider-local composition is not ALLOWED for unit " + unit.stepId().value()
                             + " (" + decision.status() + ")");
         }
-        return ExecutableTask.create(decision, List.of());
+        // TERMINAL-OUTPUT-DERIVER-001: a unit whose output nothing in the graph consumes declares
+        // the graph's terminal semantics, so its already-declared materialization expectation becomes
+        // the task's authoritative output. Non-terminal units still receive their boundary actions
+        // from the execution-Artifact lowering during graph derivation.
+        return ExecutableTask.create(decision, terminalActions);
     }
 
     // ── inter-task execution Artifact boundaries ─────────────────────────────
