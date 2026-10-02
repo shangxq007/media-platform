@@ -18,6 +18,9 @@ dependencies {
     // conditional-path-allowlist.tsv): W2 graph validation reuses the deterministic
     // platform-algorithms/graph kernel (G-008/G-009/G-010).
     api(project(":platform-algorithms:graph"))
+    // P2-5b-1: bound-graph stable references for the per-graph media task workflow
+    // (published execution::binding NamedInterface only; no planning dependency in workflows).
+    implementation(project(":media-execution-plan-module"))
     api("org.springframework.boot:spring-boot-starter")
     api("org.springframework.boot:spring-boot-starter-validation")
     api("io.temporal:temporal-sdk:1.33.0")
