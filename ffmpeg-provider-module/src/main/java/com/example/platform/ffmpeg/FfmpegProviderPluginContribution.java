@@ -15,6 +15,10 @@ import com.example.platform.extension.domain.PluginRuntimeRequirement;
 import com.example.platform.extension.domain.ResourceRequirement;
 import com.example.platform.workerfabric.domain.WorkerRuntimeSupportRequirement;
 import com.example.platform.workerfabric.domain.ProviderResourceProfile;
+import com.example.platform.workerfabric.domain.CpuArchitecture;
+import com.example.platform.workerfabric.domain.ProviderHardwareRequirement;
+import com.example.platform.workerfabric.domain.RuntimeDependencyRequirement;
+import com.example.platform.workerfabric.domain.SandboxRuntimeRequirement;
 import com.example.platform.workerfabric.domain.providernative.ProviderNativeRuntimeBinding;
 import com.example.platform.providerplugin.ProviderPluginContribution;
 import com.example.platform.providerplugin.ProviderPluginRuntimeContext;
@@ -114,6 +118,33 @@ public final class FfmpegProviderPluginContribution implements ProviderPluginCon
                 1073741824L,
                 2147483648L,
                 Map.of()));
+    }
+
+    /**
+     * Bounded V1 capability needs for the FFmpeg software runtime: x86-64, no device requirement, and
+     * no extra build/codec features or sandbox permissions beyond the process sandbox itself.
+     */
+    @Override
+    public Optional<ProviderHardwareRequirement> providerHardwareRequirement() {
+        return Optional.of(new ProviderHardwareRequirement(
+                FfmpegCpuProvider.IMPLEMENTATION_ID,
+                CpuArchitecture.X86_64,
+                Optional.empty(),
+                List.of(),
+                List.of(),
+                List.of()));
+    }
+
+    /** FFmpeg links its codecs statically in the bounded image: no external runtime dependency. */
+    @Override
+    public List<RuntimeDependencyRequirement> runtimeDependencyRequirements() {
+        return List.of();
+    }
+
+    /** The bounded ffmpeg execution runs inside the platform sandbox. */
+    @Override
+    public SandboxRuntimeRequirement sandboxRequirement() {
+        return SandboxRuntimeRequirement.REQUIRED;
     }
 
     @Override

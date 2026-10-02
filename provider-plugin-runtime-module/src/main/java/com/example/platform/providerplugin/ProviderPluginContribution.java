@@ -8,7 +8,11 @@ import com.example.platform.execution.compatibility.ProviderStaticCompatibility;
 import com.example.platform.extension.domain.PluginDescriptor;
 import com.example.platform.workerfabric.domain.WorkerRuntimeSupportRequirement;
 import com.example.platform.workerfabric.domain.ProviderResourceProfile;
+import com.example.platform.workerfabric.domain.ProviderHardwareRequirement;
+import com.example.platform.workerfabric.domain.RuntimeDependencyRequirement;
+import com.example.platform.workerfabric.domain.SandboxRuntimeRequirement;
 import com.example.platform.workerfabric.domain.providernative.ProviderNativeRuntimeBinding;
+import java.util.List;
 import java.util.Optional;
 import org.pf4j.ExtensionPoint;
 
@@ -64,6 +68,37 @@ public interface ProviderPluginContribution extends ExtensionPoint {
      */
     default Optional<ProviderResourceProfile> resourceProfile() {
         return Optional.empty();
+    }
+
+    /**
+     * Declared capability needs (CPU architecture, provider build/codec features, sandbox
+     * permissions). Distinct from {@link ProviderResourceProfile}, which carries amounts.
+     *
+     * <p>Default empty: an undeclared contributor produces no hardware requirement, and the
+     * scheduling chain fails closed instead of assuming one.
+     */
+    default Optional<ProviderHardwareRequirement> providerHardwareRequirement() {
+        return Optional.empty();
+    }
+
+    /**
+     * Declared external runtime dependencies (libraries, ABIs, features).
+     *
+     * <p>Default empty: a contributor with no declared dependency. An undeclared dependency is never
+     * assumed present.
+     */
+    default List<RuntimeDependencyRequirement> runtimeDependencyRequirements() {
+        return List.of();
+    }
+
+    /**
+     * Whether this contribution requires sandboxed runtime mechanics.
+     *
+     * <p>Default {@link SandboxRuntimeRequirement#REQUIRED}: fail closed — a contributor that says
+     * nothing is assumed to need a sandbox rather than being granted unsandboxed execution.
+     */
+    default SandboxRuntimeRequirement sandboxRequirement() {
+        return SandboxRuntimeRequirement.REQUIRED;
     }
 
     WorkerRuntimeSupportRequirement workerRuntimeSupportRequirement();
