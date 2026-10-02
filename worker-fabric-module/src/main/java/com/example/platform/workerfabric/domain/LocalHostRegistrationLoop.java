@@ -78,10 +78,17 @@ public final class LocalHostRegistrationLoop {
         PhysicalHostIncarnationId incarnationId =
                 PhysicalHostIncarnationId.of(stableIncarnationFingerprint(staticCapacity));
         Instant now = clock.instant();
+        // The registration boundary requires every published snapshot generation to strictly exceed
+        // the durable per-host-incarnation authority (the restart-reload contract). A tick therefore
+        // advances the generation by one; the first tick for a new incarnation starts at first().
+        HostResourceSnapshotGeneration generation = registrationBoundary
+                .currentSnapshotGeneration(physicalHostId, incarnationId)
+                .map(current -> new HostResourceSnapshotGeneration(current.value() + 1))
+                .orElseGet(HostResourceSnapshotGeneration::first);
         HostResourceSnapshot snapshot = new HostResourceSnapshot(
                 physicalHostId,
                 incarnationId,
-                HostResourceSnapshotGeneration.first(),
+                generation,
                 now,
                 HostResourceSnapshotSchemaVersion.CURRENT,
                 staticCapacity,

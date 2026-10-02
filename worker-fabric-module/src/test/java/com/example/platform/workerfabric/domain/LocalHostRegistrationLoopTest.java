@@ -81,6 +81,26 @@ class LocalHostRegistrationLoopTest {
     }
 
     @Test
+    void advancesSnapshotGenerationOnEveryTick() {
+        RecordingBoundary boundary = new RecordingBoundary();
+        LocalHostRegistrationLoop loop = new LocalHostRegistrationLoop(probe(), boundary, CLOCK, HOST_ID);
+
+        loop.registerOnce();
+        loop.registerOnce();
+        loop.registerOnce();
+
+        assertThat(boundary.hosts).hasSize(3);
+        assertThat(boundary.hosts.get(0).hostResourceSnapshot().snapshotGeneration())
+                .isEqualTo(HostResourceSnapshotGeneration.first());
+        assertThat(boundary.hosts.get(1).hostResourceSnapshot().snapshotGeneration())
+                .isEqualTo(new HostResourceSnapshotGeneration(2L));
+        assertThat(boundary.hosts.get(2).hostResourceSnapshot().snapshotGeneration())
+                .isEqualTo(new HostResourceSnapshotGeneration(3L));
+        // Every published generation strictly exceeds the previous durable authority.
+        assertThat(boundary.hosts.get(2).hostResourceSnapshot().snapshotGeneration().value()).isEqualTo(3L);
+    }
+
+    @Test
     void failsClosedAndRegistersNothingWhenObservationIsUnavailable() {
         RecordingBoundary boundary = new RecordingBoundary();
         HostResourceAgent.ResourceProbe failing = new HostResourceAgent.ResourceProbe() {
@@ -143,10 +163,12 @@ class LocalHostRegistrationLoopTest {
 
         private final List<HostRegistration> hosts = new ArrayList<>();
         private final List<RuntimeRegistration> runtimes = new ArrayList<>();
+        private HostResourceSnapshotGeneration lastGeneration;
 
         @Override
         public void registerHost(HostRegistration registration) {
             hosts.add(registration);
+            lastGeneration = registration.hostResourceSnapshot().snapshotGeneration();
         }
 
         @Override
@@ -157,7 +179,7 @@ class LocalHostRegistrationLoopTest {
         @Override
         public Optional<HostResourceSnapshotGeneration> currentSnapshotGeneration(
                 PhysicalHostId physicalHostId, PhysicalHostIncarnationId physicalHostIncarnationId) {
-            return Optional.empty();
+            return Optional.ofNullable(lastGeneration);
         }
     }
 }
