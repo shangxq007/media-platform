@@ -54,6 +54,17 @@ class PlatformRuntimeRoleGuardTest {
     }
 
     @Test
+    void workerRoleAcceptsTheMediaTaskActivityPackage() {
+        // P2-5b-2b-2a: the media task activity adapter runs on this same ffmpeg runtime.
+        MockEnvironment env = workerBase()
+                .withProperty("spring.temporal.workers-auto-discovery.packages[0]", "com.example.platform.coverimage")
+                .withProperty("spring.temporal.workers-auto-discovery.packages[1]", "com.example.platform.thumbnail")
+                .withProperty("spring.temporal.workers-auto-discovery.packages[2]",
+                        "com.example.platform.runtime.mediatask");
+        assertThatCode(() -> new PlatformRuntimeRoleGuard(env)).doesNotThrowAnyException();
+    }
+
+    @Test
     void workerRoleAcceptsYamlListDiscoveryPackages() {
         // Profile YAML lists flatten into indexed keys (packages[0], ...); the parent key does not
         // exist, which is exactly the shape a raw getProperty(key, String[].class) lookup could not

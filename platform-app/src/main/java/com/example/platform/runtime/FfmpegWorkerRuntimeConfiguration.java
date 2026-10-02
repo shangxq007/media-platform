@@ -2,9 +2,12 @@ package com.example.platform.runtime;
 
 import com.example.platform.artifact.domain.ArtifactCommitService;
 import com.example.platform.artifact.domain.ArtifactQueryService;
+import com.example.platform.artifact.domain.ArtifactKind;
+import com.example.platform.artifact.domain.ArtifactMediaType;
 import com.example.platform.execution.binding.BoundGraphInputStore;
 import com.example.platform.execution.domain.provider.ProviderBindingPin;
 import com.example.platform.runtime.mediatask.MediaTaskActivity;
+import com.example.platform.runtime.mediatask.MediaTaskPublicationSettings;
 import com.example.platform.storage.contract.StorageProviderId;
 import com.example.platform.storage.contract.provider.StorageProvider;
 import com.example.platform.workerfabric.domain.AtomicAssignmentGrantBoundary;
@@ -21,6 +24,7 @@ import com.example.platform.workerfabric.reuse.Phase16RuntimeMetrics;
 import com.example.platform.workerfabric.reuse.RuntimeClosedLoopOrchestrator;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -121,6 +125,11 @@ public class FfmpegWorkerRuntimeConfiguration {
             @Qualifier("providerNativeRuntimeBindings")
             Map<ProviderBindingPin, ProviderNativeRuntimeBinding<?>> providerNativeRuntimeBindings,
             Phase16RuntimeMetrics phase16RuntimeMetrics) {
+        if (providerNativeRuntimeBindings.isEmpty()) {
+            throw new IllegalStateException(
+                    "the ffmpeg worker requires at least one provider runtime binding: the provider "
+                            + "plugin catalog is empty, so no task could ever execute");
+        }
         return new RuntimeClosedLoopOrchestrator(
                 artifactReuseResolver,
                 artifactMaterializerPort,
@@ -137,8 +146,34 @@ public class FfmpegWorkerRuntimeConfiguration {
         return new NativePullAdmissionPort(atomicAssignmentGrantBoundary);
     }
 
+    /**
+     * P2-5b-2b-2a: the configured publication scope of media task outputs. Held as configured so a
+     * worker with an unset scope still boots; the value is validated when a context is built.
+     */
     @Bean
-    MediaTaskActivity mediaTaskActivity(BoundGraphInputStore boundGraphInputStore) {
-        return new MediaTaskActivity(boundGraphInputStore);
+    MediaTaskPublicationSettings mediaTaskPublicationSettings(
+            Clock clock,
+            @Value("${platform.ffmpeg-worker.publication.project-id:}") String projectId,
+            @Value("${platform.ffmpeg-worker.publication.storage-provider:}") String storageProvider,
+            @Value("${platform.ffmpeg-worker.publication.region:local}") String region,
+            @Value("${platform.ffmpeg-worker.publication.media-type:VIDEO}")
+                    ArtifactMediaType mediaType,
+            @Value("${platform.ffmpeg-worker.publication.artifact-kind:RENDER_MASTER}")
+                    ArtifactKind artifactKind) {
+        return new MediaTaskPublicationSettings(
+                projectId, storageProvider, region, mediaType, artifactKind, clock);
+    }
+
+    @Bean
+    MediaTaskActivity mediaTaskActivity(
+            BoundGraphInputStore boundGraphInputStore,
+            AtomicAssignmentGrantBoundary atomicAssignmentGrantBoundary,
+            RuntimeClosedLoopOrchestrator runtimeClosedLoopOrchestrator,
+            MediaTaskPublicationSettings mediaTaskPublicationSettings) {
+        return new MediaTaskActivity(
+                boundGraphInputStore,
+                atomicAssignmentGrantBoundary,
+                runtimeClosedLoopOrchestrator,
+                mediaTaskPublicationSettings);
     }
 }

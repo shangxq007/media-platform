@@ -48,6 +48,13 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.MountableFile;
+import static org.mockito.Mockito.mock;
+
+import com.example.platform.artifact.domain.ArtifactKind;
+import com.example.platform.artifact.domain.ArtifactMediaType;
+import com.example.platform.workerfabric.domain.AtomicAssignmentGrantBoundary;
+import com.example.platform.workerfabric.reuse.RuntimeClosedLoopOrchestrator;
+import java.time.Clock;
 
 /**
  * P2-5b-1-R2 integration: bound-graph canonical persistence (V1 + V2 migrations on real PostgreSQL)
@@ -86,7 +93,14 @@ class MediaTaskActivityIntegrationTest {
         applyMigration("/migrations/V2.sql");
         DSLContext dsl = DSL.using(PG.getJdbcUrl(), PG.getUsername(), PG.getPassword());
         store = new JooqBoundGraphInputStore(dsl);
-        activity = new MediaTaskActivity(store);
+        // Preparation-only test: the execution collaborators stay unused doubles.
+        activity = new MediaTaskActivity(
+                store,
+                mock(AtomicAssignmentGrantBoundary.class),
+                mock(RuntimeClosedLoopOrchestrator.class),
+                new MediaTaskPublicationSettings(
+                        "project-1", "provider-1", "local",
+                        ArtifactMediaType.VIDEO, ArtifactKind.RENDER_MASTER, Clock.systemUTC()));
     }
 
     private static void applyMigration(String path) throws Exception {

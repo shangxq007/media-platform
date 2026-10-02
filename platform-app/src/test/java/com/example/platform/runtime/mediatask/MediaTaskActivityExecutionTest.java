@@ -46,6 +46,7 @@ import com.example.platform.storage.contract.namespace.NamespaceClass;
 import com.example.platform.storage.contract.namespace.RegionPolicy;
 import com.example.platform.storage.contract.namespace.StorageNamespace;
 import com.example.platform.workerfabric.domain.AssignmentGrant;
+import com.example.platform.workerfabric.domain.AtomicAssignmentGrantBoundary;
 import com.example.platform.workerfabric.domain.ExecutionAssignment;
 import com.example.platform.workerfabric.domain.ExecutionAssignmentId;
 import com.example.platform.workerfabric.domain.ExecutionAttempt;
@@ -197,7 +198,14 @@ class MediaTaskActivityExecutionTest {
     }
 
     private static MediaTaskActivity activity() {
-        return new MediaTaskActivity(new UnusedBoundGraphInputStore());
+        return new MediaTaskActivity(
+                new UnusedBoundGraphInputStore(),
+                mock(AtomicAssignmentGrantBoundary.class),
+                mock(RuntimeClosedLoopOrchestrator.class),
+                new MediaTaskPublicationSettings(
+                        "project-1", "provider-1", "local",
+                        ArtifactMediaType.VIDEO, ArtifactKind.RENDER_MASTER,
+                        java.time.Clock.systemUTC()));
     }
 
     /** TEST-ONLY store double: the execution half is always called with an already-prepared graph. */

@@ -3,7 +3,10 @@ package com.example.platform.runtime.mediatask;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
 
+import com.example.platform.artifact.domain.ArtifactKind;
+import com.example.platform.artifact.domain.ArtifactMediaType;
 import com.example.platform.execution.binding.BoundGraphDigestMismatchException;
 import com.example.platform.execution.binding.BoundGraphInputStore;
 import com.example.platform.execution.binding.BoundGraphInputs;
@@ -28,6 +31,9 @@ import com.example.platform.execution.domain.provider.ProviderImplementationId;
 import com.example.platform.execution.domain.provider.ProviderVersion;
 import com.example.platform.execution.planning.ExecutionIoProjection.OutputDeclaration;
 import com.example.platform.execution.planning.PhysicalExecutionPlan;
+import com.example.platform.workerfabric.domain.AtomicAssignmentGrantBoundary;
+import com.example.platform.workerfabric.reuse.RuntimeClosedLoopOrchestrator;
+import java.time.Clock;
 import com.example.platform.execution.planning.PhysicalExecutionPlan.PhysicalPlanUnit;
 import com.example.platform.execution.planning.PhysicalExecutionPlanDigest;
 import com.example.platform.execution.taskgraph.ExecutableTaskGraphDigest;
@@ -49,7 +55,7 @@ class MediaTaskActivityTest {
     @Test
     void prepareTaskLoadsRederivesAndVerifiesTheDigest() {
         BoundGraphInputs inputs = boundInputs();
-        MediaTaskActivity activity = new MediaTaskActivity(new FixedStore(JOB, inputs));
+        MediaTaskActivity activity = activity(new FixedStore(JOB, inputs));
 
         PreparedTask prepared = activity.prepareTask(
                 reference(inputs.expectedExecutableTaskGraphDigest().sha256Hex()), TENANT);
@@ -66,7 +72,7 @@ class MediaTaskActivityTest {
     @Test
     void prepareTaskFailsClosedWhenTheReferenceDigestDisagreesWithTheDerivedGraph() {
         BoundGraphInputs inputs = boundInputs();
-        MediaTaskActivity activity = new MediaTaskActivity(new FixedStore(JOB, inputs));
+        MediaTaskActivity activity = activity(new FixedStore(JOB, inputs));
 
         BoundGraphReference tampered = reference("0".repeat(64));
 
@@ -82,7 +88,7 @@ class MediaTaskActivityTest {
                 inputs.candidates(),
                 inputs.transitionDeclarations(),
                 new ExecutableTaskGraphDigest("b".repeat(64)));
-        MediaTaskActivity activity = new MediaTaskActivity(new FixedStore(JOB, inconsistent));
+        MediaTaskActivity activity = activity(new FixedStore(JOB, inconsistent));
 
         assertThrows(BoundGraphDigestMismatchException.class,
                 () -> activity.prepareTask(reference("b".repeat(64)), TENANT));
@@ -90,7 +96,7 @@ class MediaTaskActivityTest {
 
     @Test
     void prepareTaskFailsClosedWhenTheTenantScopeDoesNotMatch() {
-        MediaTaskActivity activity = new MediaTaskActivity(new FixedStore(JOB, boundInputs()));
+        MediaTaskActivity activity = activity(new FixedStore(JOB, boundInputs()));
         BoundGraphReference reference = reference("a".repeat(64));
 
         assertThrows(IllegalArgumentException.class,
@@ -100,7 +106,7 @@ class MediaTaskActivityTest {
 
     @Test
     void prepareTaskFailsClosedWhenNoRecordExistsForTheReference() {
-        MediaTaskActivity activity = new MediaTaskActivity(new FixedStore("other-job", boundInputs()));
+        MediaTaskActivity activity = activity(new FixedStore("other-job", boundInputs()));
 
         IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
                 () -> activity.prepareTask(reference("a".repeat(64)), TENANT));
@@ -108,6 +114,17 @@ class MediaTaskActivityTest {
     }
 
     // ---------- fixture ----------
+
+    /** The preparation tests never execute, so the execution collaborators stay unused doubles. */
+    private static MediaTaskActivity activity(BoundGraphInputStore store) {
+        return new MediaTaskActivity(
+                store,
+                mock(AtomicAssignmentGrantBoundary.class),
+                mock(RuntimeClosedLoopOrchestrator.class),
+                new MediaTaskPublicationSettings(
+                        "project-1", "provider-1", "local",
+                        ArtifactMediaType.VIDEO, ArtifactKind.RENDER_MASTER, Clock.systemUTC()));
+    }
 
     private static BoundGraphReference reference(String expectedEtgDigest) {
         return new BoundGraphReference(TENANT, JOB, "render-binding-inputs/" + TENANT + "/" + JOB,

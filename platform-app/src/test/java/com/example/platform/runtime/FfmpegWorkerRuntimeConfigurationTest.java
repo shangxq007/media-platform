@@ -8,6 +8,7 @@ import com.example.platform.artifact.domain.ArtifactCommitService;
 import com.example.platform.artifact.domain.ArtifactQueryService;
 import com.example.platform.execution.binding.BoundGraphInputStore;
 import com.example.platform.runtime.mediatask.MediaTaskActivity;
+import com.example.platform.runtime.mediatask.MediaTaskPublicationSettings;
 import com.example.platform.storage.contract.StorageProviderId;
 import com.example.platform.storage.contract.provider.StorageProvider;
 import com.example.platform.workerfabric.domain.AtomicAssignmentGrantBoundary;
@@ -21,13 +22,19 @@ import com.example.platform.workerfabric.reuse.FencedReuseCompletionOrchestrator
 import com.example.platform.workerfabric.reuse.OutputStagingArea;
 import com.example.platform.workerfabric.reuse.Phase16RuntimeMetrics;
 import com.example.platform.workerfabric.reuse.RuntimeClosedLoopOrchestrator;
+import com.example.platform.workerfabric.domain.providernative.ProviderNativeRuntimeBinding;
+import com.example.platform.execution.domain.provider.ProviderBindingPin;
+import java.time.Clock;
+import java.util.Map;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.context.annotation.Bean;
 
 /**
  * P2-5b-2b-1b: the worker-scoped runtime configuration assembles the closed loop, the admission port
@@ -51,6 +58,7 @@ class FfmpegWorkerRuntimeConfigurationTest {
             assertThat(context).hasSingleBean(FencedReuseCompletionOrchestrator.class);
             assertThat(context).hasSingleBean(Phase16RuntimeMetrics.class);
             assertThat(context).hasBean("workerStorageProviders");
+            assertThat(context).hasSingleBean(MediaTaskPublicationSettings.class);
         });
     }
 
@@ -85,8 +93,9 @@ class FfmpegWorkerRuntimeConfigurationTest {
     void missingArtifactMaterializerFailsClosed() throws Exception {
         new ApplicationContextRunner()
                 .withUserConfiguration(
-                        FfmpegWorkerRuntimeConfiguration.class, FfmpegWorkerPluginConfiguration.class)
+                        FfmpegWorkerRuntimeConfiguration.class, RuntimeBindingMapConfiguration.class)
                 .withBean(MeterRegistry.class, SimpleMeterRegistry::new)
+                .withBean(Clock.class, Clock::systemUTC)
                 .withBean(ArtifactQueryService.class, () -> mock(ArtifactQueryService.class))
                 .withBean(ArtifactCommitService.class, () -> mock(ArtifactCommitService.class))
                 .withBean(ArtifactReuseIndexPort.class, () -> mock(ArtifactReuseIndexPort.class))
@@ -104,13 +113,63 @@ class FfmpegWorkerRuntimeConfigurationTest {
                 });
     }
 
+    @Test
+    void emptyProviderRuntimeBindingsFailTheContextClosed() throws Exception {
+        Files.createDirectories(temp.resolve("workspace"));
+        new ApplicationContextRunner()
+                .withUserConfiguration(
+                        FfmpegWorkerRuntimeConfiguration.class,
+                        EmptyRuntimeBindingMapConfiguration.class)
+                .withBean(MeterRegistry.class, SimpleMeterRegistry::new)
+                .withBean(Clock.class, Clock::systemUTC)
+                .withBean(ArtifactQueryService.class, () -> mock(ArtifactQueryService.class))
+                .withBean(ArtifactCommitService.class, () -> mock(ArtifactCommitService.class))
+                .withBean(ArtifactReuseIndexPort.class, () -> mock(ArtifactReuseIndexPort.class))
+                .withBean(CompletionAuthorityPort.class, () -> mock(CompletionAuthorityPort.class))
+                .withBean(AtomicAssignmentGrantBoundary.class,
+                        () -> mock(AtomicAssignmentGrantBoundary.class))
+                .withBean(BoundGraphInputStore.class, () -> mock(BoundGraphInputStore.class))
+                .withBean(ArtifactMaterializerPort.class, () -> mock(ArtifactMaterializerPort.class))
+                .withBean(StorageProvider.class, () -> provider("test-provider"))
+                .withPropertyValues(workerProperties(temp))
+                .run(context -> {
+                    assertThat(context).hasFailed();
+                    assertThat(context.getStartupFailure())
+                            .rootCause()
+                            .isInstanceOf(IllegalStateException.class)
+                            .hasMessageContaining("at least one provider runtime binding");
+                });
+    }
+
+    /** TEST-ONLY replacement for the plugin wiring: one runtime binding, no plugin JAR needed. */
+    @TestConfiguration
+    static class RuntimeBindingMapConfiguration {
+
+        @Bean
+        Map<ProviderBindingPin, ProviderNativeRuntimeBinding<?>> providerNativeRuntimeBindings() {
+            return Map.of(
+                    mock(ProviderBindingPin.class),
+                    mock(ProviderNativeRuntimeBinding.class));
+        }
+    }
+
+    @TestConfiguration
+    static class EmptyRuntimeBindingMapConfiguration {
+
+        @Bean
+        Map<ProviderBindingPin, ProviderNativeRuntimeBinding<?>> providerNativeRuntimeBindings() {
+            return Map.of();
+        }
+    }
+
     private ApplicationContextRunner runner() throws Exception {
         Files.createDirectories(temp.resolve("plugins"));
         Files.createDirectories(temp.resolve("workspace"));
         return new ApplicationContextRunner()
                 .withUserConfiguration(
-                        FfmpegWorkerRuntimeConfiguration.class, FfmpegWorkerPluginConfiguration.class)
+                        FfmpegWorkerRuntimeConfiguration.class, RuntimeBindingMapConfiguration.class)
                 .withBean(MeterRegistry.class, SimpleMeterRegistry::new)
+                .withBean(Clock.class, Clock::systemUTC)
                 .withBean(ArtifactQueryService.class, () -> mock(ArtifactQueryService.class))
                 .withBean(ArtifactCommitService.class, () -> mock(ArtifactCommitService.class))
                 .withBean(ArtifactReuseIndexPort.class, () -> mock(ArtifactReuseIndexPort.class))

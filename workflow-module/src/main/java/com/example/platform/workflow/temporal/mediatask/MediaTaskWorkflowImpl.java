@@ -7,15 +7,14 @@ import io.temporal.common.RetryOptions;
 import io.temporal.spring.boot.WorkflowImpl;
 import io.temporal.workflow.Workflow;
 import java.time.Duration;
-import java.util.List;
 
 /**
  * Skeleton implementation of {@link MediaTaskWorkflow} (P2-5b-1-R2).
  *
  * <p>Deterministic workflow code only: no clock, no random, no I/O, no repository access — every
  * side effect happens inside {@link MediaTaskActivities}. The workflow iterates nothing yet: the
- * whole graph is one activity (Option C, decided). {@code executeTask} is declared but not called
- * until P2-5b-2, so this skeleton stops after {@code prepareTask} and reports PREPARED.
+ * whole graph is one activity (Option C, decided). The workflow prepares the graph and then executes
+ * it in one further activity call (P2-5b-2b-2a); the activity owns every side effect.
  *
  * <p>Retry policy is bounded and mirrors {@code RenderWorkflowImpl}: a retry re-invokes the same
  * activity with the same stable reference; it must never mint a new attempt/generation (the
@@ -54,15 +53,7 @@ public class MediaTaskWorkflowImpl implements MediaTaskWorkflow {
 
         PreparedTaskRef prepared = activities.prepareTask(reference, tenantId);
 
-        // P2-5b-2: activities.executeTask(prepared, tenantId) — whole-graph execution (Option C).
-        // The call is intentionally absent so no partially-wired execution can run.
-        List<String> taskIds = prepared.executableTaskIds();
-        return new MediaTaskWorkflowResult(
-                prepared.tenantId(),
-                prepared.renderJobId(),
-                prepared.planDigest(),
-                prepared.expectedExecutableTaskGraphDigest(),
-                taskIds,
-                "PREPARED");
+        // Whole-graph execution (Option C): one activity call executes every task of the graph.
+        return activities.executeTask(prepared, tenantId);
     }
 }

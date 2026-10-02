@@ -20,6 +20,15 @@ platform:
     plugin-capture-bytes: ${FFMPEG_WORKER_PLUGIN_CAPTURE_BYTES:67108864}
     # P2-5b-2b-1b: staging root the closed loop publishes provider output through.
     staging-root: ${FFMPEG_WORKER_STAGING_ROOT:/tmp/media-platform-ffmpeg-worker/staging}
+    # P2-5b-2b-2a: publication scope of media task outputs. project-id and storage-provider are
+    # deployment facts with no safe default, so they are blank unless configured and the worker
+    # fails closed when it is asked to execute without them.
+    publication:
+      project-id: ${FFMPEG_WORKER_PUBLICATION_PROJECT_ID:}
+      storage-provider: ${FFMPEG_WORKER_PUBLICATION_STORAGE_PROVIDER:}
+      region: ${FFMPEG_WORKER_PUBLICATION_REGION:local}
+      media-type: ${FFMPEG_WORKER_PUBLICATION_MEDIA_TYPE:VIDEO}
+      artifact-kind: ${FFMPEG_WORKER_PUBLICATION_ARTIFACT_KIND:RENDER_MASTER}
     sandbox:
       bwrap: ${FFMPEG_WORKER_BWRAP_PATH:/usr/bin/bwrap}
       ffmpeg: ${FFMPEG_WORKER_FFMPEG_PATH:/usr/bin/ffmpeg}
@@ -45,6 +54,8 @@ spring:
       packages:
         - com.example.platform.coverimage
         - com.example.platform.thumbnail
+        # P2-5b-2b-2a: the media task activity adapter (whole-graph execution).
+        - com.example.platform.runtime.mediatask
     workers:
       - task-queue: media-platform-tasks
         name: ffmpeg-worker
