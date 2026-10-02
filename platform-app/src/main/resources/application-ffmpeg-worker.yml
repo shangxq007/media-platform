@@ -18,6 +18,8 @@ platform:
     # Provider runtime bounding applied to each catalog-derived runtime binding.
     plugin-timeout: ${FFMPEG_WORKER_PLUGIN_TIMEOUT:PT1M}
     plugin-capture-bytes: ${FFMPEG_WORKER_PLUGIN_CAPTURE_BYTES:67108864}
+    # P2-5b-2b-1b: staging root the closed loop publishes provider output through.
+    staging-root: ${FFMPEG_WORKER_STAGING_ROOT:/tmp/media-platform-ffmpeg-worker/staging}
     sandbox:
       bwrap: ${FFMPEG_WORKER_BWRAP_PATH:/usr/bin/bwrap}
       ffmpeg: ${FFMPEG_WORKER_FFMPEG_PATH:/usr/bin/ffmpeg}
