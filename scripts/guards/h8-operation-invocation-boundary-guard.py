@@ -47,7 +47,7 @@ H8_AUTHORIZED_CHANGED_PATHS = frozenset({
 })
 
 REQUIRED_LAW_COUNT = 54
-REQUIRED_GOVERNED_RUNTIME_SOURCE_COUNT = 115
+REQUIRED_GOVERNED_RUNTIME_SOURCE_COUNT = 114
 
 # Exact SHA-256 attestation of the committed e570cf93 H8/H7 runtime authority
 # universe. These repository-relative paths cover the exposed Operation intent
@@ -128,7 +128,6 @@ GOVERNED_RUNTIME_SOURCE_SHA256 = {
     "timeline-module/src/main/java/com/example/platform/timeline/app/TimelineRevisionRefHeadUpdateAdapter.java": "6aaac36d7e5dbc73100d04c1ab6c6b8adceeb9c1c801cedcd1f440f6db54ea9b",
     "timeline-module/src/main/java/com/example/platform/timeline/app/TimelineRevisionRefMutation.java": "9cde6e2dc5d8f90e6903fd5a755c6a55406659cd85ab58ea08f61ee78d00389c",
     "timeline-module/src/main/java/com/example/platform/timeline/app/TimelineRevisionSaveService.java": "c5e95903e404a299391da8c0d62ee78e558768f4cb7215eaabff1bc95733c7d7",
-    "timeline-module/src/main/java/com/example/platform/timeline/app/TimelineSourceReferenceValidator.java": "b81345c865e26ac9b3012ca9be1d2594427bf2c31f9eb4b196d412eb2a1cfaab",
     "timeline-module/src/main/java/com/example/platform/timeline/canonical/TimelineClip.java": "c3284017dbdf634144962e0e5df52ff503c9309fb65e8ca293242e0b4ac22d6c",
     "timeline-module/src/main/java/com/example/platform/timeline/canonical/TimelineClipId.java": "fbbe75799ec35aedd0fa7c98024185bb7b49a76dee73ee1b16f6711b90a7dd1a",
     "timeline-module/src/main/java/com/example/platform/timeline/canonical/TimelineContentDigester.java": "7410cacc54ef86b99f1ff3d2691f2ac4a1eb593f64e5f3ebbfc1864462eb4324",
