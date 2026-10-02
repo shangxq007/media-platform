@@ -9,6 +9,15 @@ platform:
     # Bounded V1 host registration scratch root (P2-5b-2a-1-2): the temporary-storage capacity/
     # usage the registration probe reports is this volume's file store.
     work-root: ${FFMPEG_WORKER_WORK_ROOT:/tmp/media-platform-ffmpeg-worker}
+    # P2-5b-2b-1a provider plugin wiring (mirrors the remote worker's app.remote-worker.* keys).
+    # The typed PF4J provider plugin JARs are loaded from this directory when the worker starts;
+    # a missing directory fails the worker context closed.
+    plugins-directory: ${FFMPEG_WORKER_PLUGINS_DIRECTORY:./.data/ffmpeg-worker-plugins}
+    # Bounded workspace root handed to every provider runtime binding.
+    workspace-root: ${FFMPEG_WORKER_PLUGIN_WORKSPACE_ROOT:/tmp/media-platform-ffmpeg-worker/plugin-workspace}
+    # Provider runtime bounding applied to each catalog-derived runtime binding.
+    plugin-timeout: ${FFMPEG_WORKER_PLUGIN_TIMEOUT:PT1M}
+    plugin-capture-bytes: ${FFMPEG_WORKER_PLUGIN_CAPTURE_BYTES:67108864}
     sandbox:
       bwrap: ${FFMPEG_WORKER_BWRAP_PATH:/usr/bin/bwrap}
       ffmpeg: ${FFMPEG_WORKER_FFMPEG_PATH:/usr/bin/ffmpeg}

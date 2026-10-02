@@ -52,6 +52,9 @@ import org.springframework.context.annotation.Import;
             "com.example.platform.shared",
             "com.example.platform.workerfabric",
             "com.example.platform.outbox",
+            // P2-5b-2b-1a: the worker-scoped provider plugin wiring and the typed PF4J
+            // contribution vocabulary the catalog is projected from.
+            "com.example.platform.providerplugin",
             // P2-5b-2a-1-2-R3b-R2 (owner-authorized exception): the worker-scoped bounded host
             // registration wiring lives with the worker runtime classes. Only worker-profile
             // configurations under this package are picked up (@ConditionalOnProperty WORKER).
