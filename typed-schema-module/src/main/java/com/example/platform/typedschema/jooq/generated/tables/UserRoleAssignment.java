@@ -98,11 +98,8 @@ public class UserRoleAssignment extends TableImpl<UserRoleAssignmentRecord> {
 
     /**
      * The column <code>public.user_role_assignment.scope_unresolved</code>.
-     * Historical unproven or colliding scope; excluded from all authorization
-     * and ordinary scope removal. Original fields retained. No automatic
-     * resolution.
      */
-    public final TableField<UserRoleAssignmentRecord, Boolean> SCOPE_UNRESOLVED = createField(DSL.name("scope_unresolved"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.field(DSL.raw("false"), SQLDataType.BOOLEAN)), this, "Historical unproven or colliding scope; excluded from all authorization and ordinary scope removal. Original fields retained. No automatic resolution.");
+    public final TableField<UserRoleAssignmentRecord, Boolean> SCOPE_UNRESOLVED = createField(DSL.name("scope_unresolved"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.field(DSL.raw("false"), SQLDataType.BOOLEAN)), this, "");
 
     private UserRoleAssignment(Name alias, Table<UserRoleAssignmentRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);

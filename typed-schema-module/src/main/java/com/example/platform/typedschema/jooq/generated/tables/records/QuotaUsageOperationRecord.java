@@ -6,6 +6,7 @@ package com.example.platform.typedschema.jooq.generated.tables.records;
 
 import com.example.platform.typedschema.jooq.generated.tables.QuotaUsageOperation;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 
 import org.jooq.Record1;
@@ -149,29 +150,29 @@ public class QuotaUsageOperationRecord extends UpdatableRecordImpl<QuotaUsageOpe
     /**
      * Setter for <code>public.quota_usage_operation.signed_delta</code>.
      */
-    public void setSignedDelta(Long value) {
+    public void setSignedDelta(BigDecimal value) {
         set(9, value);
     }
 
     /**
      * Getter for <code>public.quota_usage_operation.signed_delta</code>.
      */
-    public Long getSignedDelta() {
-        return (Long) get(9);
+    public BigDecimal getSignedDelta() {
+        return (BigDecimal) get(9);
     }
 
     /**
      * Setter for <code>public.quota_usage_operation.limit_value</code>.
      */
-    public void setLimitValue(Long value) {
+    public void setLimitValue(BigDecimal value) {
         set(10, value);
     }
 
     /**
      * Getter for <code>public.quota_usage_operation.limit_value</code>.
      */
-    public Long getLimitValue() {
-        return (Long) get(10);
+    public BigDecimal getLimitValue() {
+        return (BigDecimal) get(10);
     }
 
     /**
@@ -219,29 +220,29 @@ public class QuotaUsageOperationRecord extends UpdatableRecordImpl<QuotaUsageOpe
     /**
      * Setter for <code>public.quota_usage_operation.usage_before</code>.
      */
-    public void setUsageBefore(Long value) {
+    public void setUsageBefore(BigDecimal value) {
         set(14, value);
     }
 
     /**
      * Getter for <code>public.quota_usage_operation.usage_before</code>.
      */
-    public Long getUsageBefore() {
-        return (Long) get(14);
+    public BigDecimal getUsageBefore() {
+        return (BigDecimal) get(14);
     }
 
     /**
      * Setter for <code>public.quota_usage_operation.usage_after</code>.
      */
-    public void setUsageAfter(Long value) {
+    public void setUsageAfter(BigDecimal value) {
         set(15, value);
     }
 
     /**
      * Getter for <code>public.quota_usage_operation.usage_after</code>.
      */
-    public Long getUsageAfter() {
-        return (Long) get(15);
+    public BigDecimal getUsageAfter() {
+        return (BigDecimal) get(15);
     }
 
     /**
@@ -337,7 +338,7 @@ public class QuotaUsageOperationRecord extends UpdatableRecordImpl<QuotaUsageOpe
     /**
      * Create a detached, initialised QuotaUsageOperationRecord
      */
-    public QuotaUsageOperationRecord(String id, String tenantId, String principalType, String principalId, String workspaceScope, String organizationScope, String quotaKey, Instant periodStart, Instant periodEnd, Long signedDelta, Long limitValue, String idempotencyKey, String operationKind, String outcome, Long usageBefore, Long usageAfter, String rejectionReason, String traceId, String reason, Instant occurredAt, Instant createdAt) {
+    public QuotaUsageOperationRecord(String id, String tenantId, String principalType, String principalId, String workspaceScope, String organizationScope, String quotaKey, Instant periodStart, Instant periodEnd, BigDecimal signedDelta, BigDecimal limitValue, String idempotencyKey, String operationKind, String outcome, BigDecimal usageBefore, BigDecimal usageAfter, String rejectionReason, String traceId, String reason, Instant occurredAt, Instant createdAt) {
         super(QuotaUsageOperation.QUOTA_USAGE_OPERATION);
 
         setId(id);

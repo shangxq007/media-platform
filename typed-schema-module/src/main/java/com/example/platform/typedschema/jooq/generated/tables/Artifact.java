@@ -4,28 +4,38 @@
 package com.example.platform.typedschema.jooq.generated.tables;
 
 
+import com.example.platform.typedschema.contract.InstantConverter;
 import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
+import com.example.platform.typedschema.jooq.generated.tables.ArtifactDetails.ArtifactDetailsPath;
+import com.example.platform.typedschema.jooq.generated.tables.ArtifactGovernance.ArtifactGovernancePath;
 import com.example.platform.typedschema.jooq.generated.tables.ArtifactPin.ArtifactPinPath;
 import com.example.platform.typedschema.jooq.generated.tables.ArtifactRelation.ArtifactRelationPath;
 import com.example.platform.typedschema.jooq.generated.tables.ArtifactReplica.ArtifactReplicaPath;
-import com.example.platform.typedschema.jooq.generated.tables.MediaAsset.MediaAssetPath;
-import com.example.platform.typedschema.jooq.generated.tables.MediaAssetArtifact.MediaAssetArtifactPath;
+import com.example.platform.typedschema.jooq.generated.tables.AssetSemanticMetadata.AssetSemanticMetadataPath;
+import com.example.platform.typedschema.jooq.generated.tables.MarketplaceListing.MarketplaceListingPath;
+import com.example.platform.typedschema.jooq.generated.tables.MediaProbeObservation.MediaProbeObservationPath;
+import com.example.platform.typedschema.jooq.generated.tables.MediaStream.MediaStreamPath;
+import com.example.platform.typedschema.jooq.generated.tables.SearchProjection.SearchProjectionPath;
 import com.example.platform.typedschema.jooq.generated.tables.SocialPost.SocialPostPath;
+import com.example.platform.typedschema.jooq.generated.tables.SourceVisualDescriptionSnapshot.SourceVisualDescriptionSnapshotPath;
 import com.example.platform.typedschema.jooq.generated.tables.WfArtifactReuseIndex.WfArtifactReuseIndexPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.ArtifactRecord;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
+import org.jooq.Check;
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
 import org.jooq.Index;
 import org.jooq.InverseForeignKey;
+import org.jooq.JSONB;
 import org.jooq.Name;
 import org.jooq.Path;
 import org.jooq.PlainSQL;
@@ -40,6 +50,7 @@ import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
@@ -86,6 +97,11 @@ public class Artifact extends TableImpl<ArtifactRecord> {
     public final TableField<ArtifactRecord, String> RENDER_JOB_ID = createField(DSL.name("render_job_id"), SQLDataType.VARCHAR(64), this, "");
 
     /**
+     * The column <code>public.artifact.workspace_id</code>.
+     */
+    public final TableField<ArtifactRecord, String> WORKSPACE_ID = createField(DSL.name("workspace_id"), SQLDataType.VARCHAR(128).nullable(false).defaultValue(DSL.field(DSL.raw("'legacy'::character varying"), SQLDataType.VARCHAR)), this, "");
+
+    /**
      * The column <code>public.artifact.content_digest</code>.
      */
     public final TableField<ArtifactRecord, String> CONTENT_DIGEST = createField(DSL.name("content_digest"), SQLDataType.VARCHAR(128).nullable(false), this, "");
@@ -114,6 +130,46 @@ public class Artifact extends TableImpl<ArtifactRecord> {
      * The column <code>public.artifact.schema_version</code>.
      */
     public final TableField<ArtifactRecord, Integer> SCHEMA_VERSION = createField(DSL.name("schema_version"), SQLDataType.INTEGER.nullable(false).defaultValue(DSL.field(DSL.raw("1"), SQLDataType.INTEGER)), this, "");
+
+    /**
+     * The column <code>public.artifact.storage_reference</code>.
+     */
+    public final TableField<ArtifactRecord, String> STORAGE_REFERENCE = createField(DSL.name("storage_reference"), SQLDataType.CLOB, this, "");
+
+    /**
+     * The column <code>public.artifact.provenance</code>.
+     */
+    public final TableField<ArtifactRecord, JSONB> PROVENANCE = createField(DSL.name("provenance"), SQLDataType.JSONB.nullable(false).defaultValue(DSL.field(DSL.raw("'{}'::jsonb"), SQLDataType.JSONB)), this, "");
+
+    /**
+     * The column <code>public.artifact.source_lineage</code>.
+     */
+    public final TableField<ArtifactRecord, JSONB> SOURCE_LINEAGE = createField(DSL.name("source_lineage"), SQLDataType.JSONB.nullable(false).defaultValue(DSL.field(DSL.raw("'[]'::jsonb"), SQLDataType.JSONB)), this, "");
+
+    /**
+     * The column <code>public.artifact.conversion_specification_id</code>.
+     */
+    public final TableField<ArtifactRecord, String> CONVERSION_SPECIFICATION_ID = createField(DSL.name("conversion_specification_id"), SQLDataType.VARCHAR(128), this, "");
+
+    /**
+     * The column <code>public.artifact.idempotency_key</code>.
+     */
+    public final TableField<ArtifactRecord, String> IDEMPOTENCY_KEY = createField(DSL.name("idempotency_key"), SQLDataType.VARCHAR(256), this, "");
+
+    /**
+     * The column <code>public.artifact.lifecycle_state</code>.
+     */
+    public final TableField<ArtifactRecord, String> LIFECYCLE_STATE = createField(DSL.name("lifecycle_state"), SQLDataType.VARCHAR(32), this, "");
+
+    /**
+     * The column <code>public.artifact.lifecycle_changed_at</code>.
+     */
+    public final TableField<ArtifactRecord, Instant> LIFECYCLE_CHANGED_AT = createField(DSL.name("lifecycle_changed_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "", new InstantConverter());
+
+    /**
+     * The column <code>public.artifact.audit_provenance</code>.
+     */
+    public final TableField<ArtifactRecord, JSONB> AUDIT_PROVENANCE = createField(DSL.name("audit_provenance"), SQLDataType.JSONB.nullable(false).defaultValue(DSL.field(DSL.raw("'{}'::jsonb"), SQLDataType.JSONB)), this, "");
 
     /**
      * The column <code>public.artifact.created_at</code>.
@@ -204,7 +260,48 @@ public class Artifact extends TableImpl<ArtifactRecord> {
 
     @Override
     public List<UniqueKey<ArtifactRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.UQ_ARTIFACT_TENANT_ID);
+        return Arrays.asList(Keys.UQ_ARTIFACT_SCOPE_IDEMPOTENCY, Keys.UQ_ARTIFACT_TENANT_ID);
+    }
+
+    private transient ArtifactDetailsPath _fkArtifactDetailsArtifact;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.artifact_details</code> table, via the
+     * <code>fk_artifact_details_artifact</code> key
+     */
+    public ArtifactDetailsPath fkArtifactDetailsArtifact() {
+        if (_fkArtifactDetailsArtifact == null)
+            _fkArtifactDetailsArtifact = new ArtifactDetailsPath(this, null, Keys.ARTIFACT_DETAILS__FK_ARTIFACT_DETAILS_ARTIFACT.getInverseKey());
+
+        return _fkArtifactDetailsArtifact;
+    }
+
+    private transient ArtifactDetailsPath _fkArtifactDetailsThumbnail;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.artifact_details</code> table, via the
+     * <code>fk_artifact_details_thumbnail</code> key
+     */
+    public ArtifactDetailsPath fkArtifactDetailsThumbnail() {
+        if (_fkArtifactDetailsThumbnail == null)
+            _fkArtifactDetailsThumbnail = new ArtifactDetailsPath(this, null, Keys.ARTIFACT_DETAILS__FK_ARTIFACT_DETAILS_THUMBNAIL.getInverseKey());
+
+        return _fkArtifactDetailsThumbnail;
+    }
+
+    private transient ArtifactGovernancePath _artifactGovernance;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.artifact_governance</code> table
+     */
+    public ArtifactGovernancePath artifactGovernance() {
+        if (_artifactGovernance == null)
+            _artifactGovernance = new ArtifactGovernancePath(this, null, Keys.ARTIFACT_GOVERNANCE__FK_ARTIFACT_GOVERNANCE_ARTIFACT.getInverseKey());
+
+        return _artifactGovernance;
     }
 
     private transient ArtifactPinPath _artifactPin;
@@ -261,17 +358,56 @@ public class Artifact extends TableImpl<ArtifactRecord> {
         return _artifactReplica;
     }
 
-    private transient MediaAssetArtifactPath _mediaAssetArtifact;
+    private transient AssetSemanticMetadataPath _assetSemanticMetadata;
 
     /**
      * Get the implicit to-many join path to the
-     * <code>public.media_asset_artifact</code> table
+     * <code>public.asset_semantic_metadata</code> table
      */
-    public MediaAssetArtifactPath mediaAssetArtifact() {
-        if (_mediaAssetArtifact == null)
-            _mediaAssetArtifact = new MediaAssetArtifactPath(this, null, Keys.MEDIA_ASSET_ARTIFACT__FK_MAA_ARTIFACT.getInverseKey());
+    public AssetSemanticMetadataPath assetSemanticMetadata() {
+        if (_assetSemanticMetadata == null)
+            _assetSemanticMetadata = new AssetSemanticMetadataPath(this, null, Keys.ASSET_SEMANTIC_METADATA__FK_ASM_ARTIFACT.getInverseKey());
 
-        return _mediaAssetArtifact;
+        return _assetSemanticMetadata;
+    }
+
+    private transient MarketplaceListingPath _marketplaceListing;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.marketplace_listing</code> table
+     */
+    public MarketplaceListingPath marketplaceListing() {
+        if (_marketplaceListing == null)
+            _marketplaceListing = new MarketplaceListingPath(this, null, Keys.MARKETPLACE_LISTING__FK_ML_ARTIFACT.getInverseKey());
+
+        return _marketplaceListing;
+    }
+
+    private transient MediaProbeObservationPath _mediaProbeObservation;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.media_probe_observation</code> table
+     */
+    public MediaProbeObservationPath mediaProbeObservation() {
+        if (_mediaProbeObservation == null)
+            _mediaProbeObservation = new MediaProbeObservationPath(this, null, Keys.MEDIA_PROBE_OBSERVATION__FK_MPO_ARTIFACT.getInverseKey());
+
+        return _mediaProbeObservation;
+    }
+
+    private transient MediaStreamPath _mediaStream;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.media_stream</code> table
+     */
+    public MediaStreamPath mediaStream() {
+        if (_mediaStream == null)
+            _mediaStream = new MediaStreamPath(this, null, Keys.MEDIA_STREAM__FK_MS_ARTIFACT.getInverseKey());
+
+        return _mediaStream;
     }
 
     private transient SocialPostPath _socialPost;
@@ -287,6 +423,32 @@ public class Artifact extends TableImpl<ArtifactRecord> {
         return _socialPost;
     }
 
+    private transient SearchProjectionPath _searchProjection;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.search_projection</code> table
+     */
+    public SearchProjectionPath searchProjection() {
+        if (_searchProjection == null)
+            _searchProjection = new SearchProjectionPath(this, null, Keys.SEARCH_PROJECTION__FK_SP_ARTIFACT.getInverseKey());
+
+        return _searchProjection;
+    }
+
+    private transient SourceVisualDescriptionSnapshotPath _sourceVisualDescriptionSnapshot;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.source_visual_description_snapshot</code> table
+     */
+    public SourceVisualDescriptionSnapshotPath sourceVisualDescriptionSnapshot() {
+        if (_sourceVisualDescriptionSnapshot == null)
+            _sourceVisualDescriptionSnapshot = new SourceVisualDescriptionSnapshotPath(this, null, Keys.SOURCE_VISUAL_DESCRIPTION_SNAPSHOT__FK_SVD_ARTIFACT.getInverseKey());
+
+        return _sourceVisualDescriptionSnapshot;
+    }
+
     private transient WfArtifactReuseIndexPath _wfArtifactReuseIndex;
 
     /**
@@ -300,12 +462,11 @@ public class Artifact extends TableImpl<ArtifactRecord> {
         return _wfArtifactReuseIndex;
     }
 
-    /**
-     * Get the implicit many-to-many join path to the
-     * <code>public.media_asset</code> table
-     */
-    public MediaAssetPath mediaAsset() {
-        return mediaAssetArtifact().mediaAsset();
+    @Override
+    public List<Check<ArtifactRecord>> getChecks() {
+        return Arrays.asList(
+            Internal.createCheck(this, DSL.name("chk_artifact_lifecycle_state"), "(((lifecycle_state IS NULL) OR ((lifecycle_state)::text = ANY ((ARRAY['DRAFT'::character varying, 'AVAILABLE'::character varying, 'TOMBSTONED'::character varying, 'ARCHIVED'::character varying, 'FAILED'::character varying])::text[]))))", true)
+        );
     }
 
     @Override

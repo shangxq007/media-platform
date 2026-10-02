@@ -7,7 +7,7 @@ package com.example.platform.typedschema.jooq.generated.tables;
 import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
-import com.example.platform.typedschema.jooq.generated.tables.MediaAsset.MediaAssetPath;
+import com.example.platform.typedschema.jooq.generated.tables.Artifact.ArtifactPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.AssetSemanticMetadataRecord;
 
 import java.time.LocalDateTime;
@@ -60,9 +60,9 @@ public class AssetSemanticMetadata extends TableImpl<AssetSemanticMetadataRecord
     }
 
     /**
-     * The column <code>public.asset_semantic_metadata.asset_id</code>.
+     * The column <code>public.asset_semantic_metadata.artifact_id</code>.
      */
-    public final TableField<AssetSemanticMetadataRecord, String> ASSET_ID = createField(DSL.name("asset_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
+    public final TableField<AssetSemanticMetadataRecord, String> ARTIFACT_ID = createField(DSL.name("artifact_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
     /**
      * The column <code>public.asset_semantic_metadata.asset_version</code>.
@@ -175,19 +175,19 @@ public class AssetSemanticMetadata extends TableImpl<AssetSemanticMetadataRecord
 
     @Override
     public List<ForeignKey<AssetSemanticMetadataRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.ASSET_SEMANTIC_METADATA__FK_ASM_ASSET);
+        return Arrays.asList(Keys.ASSET_SEMANTIC_METADATA__FK_ASM_ARTIFACT);
     }
 
-    private transient MediaAssetPath _mediaAsset;
+    private transient ArtifactPath _artifact;
 
     /**
-     * Get the implicit join path to the <code>public.media_asset</code> table.
+     * Get the implicit join path to the <code>public.artifact</code> table.
      */
-    public MediaAssetPath mediaAsset() {
-        if (_mediaAsset == null)
-            _mediaAsset = new MediaAssetPath(this, Keys.ASSET_SEMANTIC_METADATA__FK_ASM_ASSET, null);
+    public ArtifactPath artifact() {
+        if (_artifact == null)
+            _artifact = new ArtifactPath(this, Keys.ASSET_SEMANTIC_METADATA__FK_ASM_ARTIFACT, null);
 
-        return _mediaAsset;
+        return _artifact;
     }
 
     @Override

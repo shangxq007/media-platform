@@ -10,6 +10,7 @@ import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
 import com.example.platform.typedschema.jooq.generated.tables.records.QuotaUsageRecord;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collection;
@@ -105,7 +106,7 @@ public class QuotaUsage extends TableImpl<QuotaUsageRecord> {
     /**
      * The column <code>public.quota_usage.usage_value</code>.
      */
-    public final TableField<QuotaUsageRecord, Long> USAGE_VALUE = createField(DSL.name("usage_value"), SQLDataType.BIGINT.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.BIGINT)), this, "");
+    public final TableField<QuotaUsageRecord, BigDecimal> USAGE_VALUE = createField(DSL.name("usage_value"), SQLDataType.NUMERIC(38, 18).nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.NUMERIC)), this, "");
 
     /**
      * The column <code>public.quota_usage.created_at</code>.
@@ -169,7 +170,7 @@ public class QuotaUsage extends TableImpl<QuotaUsageRecord> {
     @Override
     public List<Check<QuotaUsageRecord>> getChecks() {
         return Arrays.asList(
-            Internal.createCheck(this, DSL.name("quota_usage_usage_value_check"), "((usage_value >= 0))", true)
+            Internal.createCheck(this, DSL.name("quota_usage_usage_value_check"), "((usage_value >= (0)::numeric))", true)
         );
     }
 

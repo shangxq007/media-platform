@@ -33,16 +33,16 @@ public class MediaStreamRecord extends UpdatableRecordImpl<MediaStreamRecord> {
     }
 
     /**
-     * Setter for <code>public.media_stream.media_asset_id</code>.
+     * Setter for <code>public.media_stream.artifact_id</code>.
      */
-    public void setMediaAssetId(String value) {
+    public void setArtifactId(String value) {
         set(1, value);
     }
 
     /**
-     * Getter for <code>public.media_stream.media_asset_id</code>.
+     * Getter for <code>public.media_stream.artifact_id</code>.
      */
-    public String getMediaAssetId() {
+    public String getArtifactId() {
         return (String) get(1);
     }
 
@@ -391,11 +391,11 @@ public class MediaStreamRecord extends UpdatableRecordImpl<MediaStreamRecord> {
     /**
      * Create a detached, initialised MediaStreamRecord
      */
-    public MediaStreamRecord(String id, String mediaAssetId, Integer streamIndex, String streamKind, String codec, Long timebaseNum, Long timebaseDen, Long rateNum, Long rateDen, Boolean isVfr, Integer width, Integer height, String pixelFormat, Integer sampleRate, Integer channels, String channelLayout, String sampleFormat, Integer bitDepth, String colorPrimaries, String colorTransfer, String colorMatrix, String colorRange, String hdrMasteringDisplayRef, String hdrContentLightRef, String containerStreamDescription) {
+    public MediaStreamRecord(String id, String artifactId, Integer streamIndex, String streamKind, String codec, Long timebaseNum, Long timebaseDen, Long rateNum, Long rateDen, Boolean isVfr, Integer width, Integer height, String pixelFormat, Integer sampleRate, Integer channels, String channelLayout, String sampleFormat, Integer bitDepth, String colorPrimaries, String colorTransfer, String colorMatrix, String colorRange, String hdrMasteringDisplayRef, String hdrContentLightRef, String containerStreamDescription) {
         super(MediaStream.MEDIA_STREAM);
 
         setId(id);
-        setMediaAssetId(mediaAssetId);
+        setArtifactId(artifactId);
         setStreamIndex(streamIndex);
         setStreamKind(streamKind);
         setCodec(codec);

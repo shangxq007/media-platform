@@ -7,7 +7,7 @@ package com.example.platform.typedschema.jooq.generated.tables;
 import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
-import com.example.platform.typedschema.jooq.generated.tables.MediaAsset.MediaAssetPath;
+import com.example.platform.typedschema.jooq.generated.tables.Artifact.ArtifactPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.MediaProbeObservationRecord;
 
 import java.time.LocalDateTime;
@@ -75,9 +75,9 @@ public class MediaProbeObservation extends TableImpl<MediaProbeObservationRecord
     public final TableField<MediaProbeObservationRecord, String> PROJECT_ID = createField(DSL.name("project_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
     /**
-     * The column <code>public.media_probe_observation.media_asset_id</code>.
+     * The column <code>public.media_probe_observation.artifact_id</code>.
      */
-    public final TableField<MediaProbeObservationRecord, String> MEDIA_ASSET_ID = createField(DSL.name("media_asset_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
+    public final TableField<MediaProbeObservationRecord, String> ARTIFACT_ID = createField(DSL.name("artifact_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
     /**
      * The column <code>public.media_probe_observation.provider</code>.
@@ -192,7 +192,7 @@ public class MediaProbeObservation extends TableImpl<MediaProbeObservationRecord
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.IX_MPO_PROBED_AT, Indexes.IX_MPO_PROJECT, Indexes.IX_MPO_TENANT_ASSET);
+        return Arrays.asList(Indexes.IX_MPO_PROBED_AT, Indexes.IX_MPO_PROJECT, Indexes.IX_MPO_TENANT_ARTIFACT);
     }
 
     @Override
@@ -202,19 +202,19 @@ public class MediaProbeObservation extends TableImpl<MediaProbeObservationRecord
 
     @Override
     public List<ForeignKey<MediaProbeObservationRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.MEDIA_PROBE_OBSERVATION__FK_MPO_MEDIA_ASSET);
+        return Arrays.asList(Keys.MEDIA_PROBE_OBSERVATION__FK_MPO_ARTIFACT);
     }
 
-    private transient MediaAssetPath _mediaAsset;
+    private transient ArtifactPath _artifact;
 
     /**
-     * Get the implicit join path to the <code>public.media_asset</code> table.
+     * Get the implicit join path to the <code>public.artifact</code> table.
      */
-    public MediaAssetPath mediaAsset() {
-        if (_mediaAsset == null)
-            _mediaAsset = new MediaAssetPath(this, Keys.MEDIA_PROBE_OBSERVATION__FK_MPO_MEDIA_ASSET, null);
+    public ArtifactPath artifact() {
+        if (_artifact == null)
+            _artifact = new ArtifactPath(this, Keys.MEDIA_PROBE_OBSERVATION__FK_MPO_ARTIFACT, null);
 
-        return _mediaAsset;
+        return _artifact;
     }
 
     @Override

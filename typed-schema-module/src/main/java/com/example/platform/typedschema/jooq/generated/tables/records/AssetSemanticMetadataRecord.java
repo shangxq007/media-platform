@@ -21,16 +21,16 @@ public class AssetSemanticMetadataRecord extends UpdatableRecordImpl<AssetSemant
     private static final long serialVersionUID = 1L;
 
     /**
-     * Setter for <code>public.asset_semantic_metadata.asset_id</code>.
+     * Setter for <code>public.asset_semantic_metadata.artifact_id</code>.
      */
-    public void setAssetId(String value) {
+    public void setArtifactId(String value) {
         set(0, value);
     }
 
     /**
-     * Getter for <code>public.asset_semantic_metadata.asset_id</code>.
+     * Getter for <code>public.asset_semantic_metadata.artifact_id</code>.
      */
-    public String getAssetId() {
+    public String getArtifactId() {
         return (String) get(0);
     }
 
@@ -141,10 +141,10 @@ public class AssetSemanticMetadataRecord extends UpdatableRecordImpl<AssetSemant
     /**
      * Create a detached, initialised AssetSemanticMetadataRecord
      */
-    public AssetSemanticMetadataRecord(String assetId, String assetVersion, String status, String language, String semanticJson, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public AssetSemanticMetadataRecord(String artifactId, String assetVersion, String status, String language, String semanticJson, LocalDateTime createdAt, LocalDateTime updatedAt) {
         super(AssetSemanticMetadata.ASSET_SEMANTIC_METADATA);
 
-        setAssetId(assetId);
+        setArtifactId(artifactId);
         setAssetVersion(assetVersion);
         setStatus(status);
         setLanguage(language);

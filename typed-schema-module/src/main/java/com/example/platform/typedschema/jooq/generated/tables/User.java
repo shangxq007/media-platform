@@ -95,11 +95,9 @@ public class User extends TableImpl<UserRecord> {
     public final TableField<UserRecord, LocalDateTime> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.LOCALDATETIME(6).nullable(false), this, "");
 
     /**
-     * The column <code>public.user.account_id</code>. Verified Account link.
-     * NULL preserves historical membership awaiting explicit identity mapping;
-     * never infer by email.
+     * The column <code>public.user.account_id</code>.
      */
-    public final TableField<UserRecord, String> ACCOUNT_ID = createField(DSL.name("account_id"), SQLDataType.VARCHAR(64), this, "Verified Account link. NULL preserves historical membership awaiting explicit identity mapping; never infer by email.");
+    public final TableField<UserRecord, String> ACCOUNT_ID = createField(DSL.name("account_id"), SQLDataType.VARCHAR(64), this, "");
 
     private User(Name alias, Table<UserRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);

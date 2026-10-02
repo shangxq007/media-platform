@@ -10,6 +10,7 @@ import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
 import com.example.platform.typedschema.jooq.generated.tables.records.QuotaUsageOperationRecord;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collection;
@@ -105,12 +106,12 @@ public class QuotaUsageOperation extends TableImpl<QuotaUsageOperationRecord> {
     /**
      * The column <code>public.quota_usage_operation.signed_delta</code>.
      */
-    public final TableField<QuotaUsageOperationRecord, Long> SIGNED_DELTA = createField(DSL.name("signed_delta"), SQLDataType.BIGINT.nullable(false), this, "");
+    public final TableField<QuotaUsageOperationRecord, BigDecimal> SIGNED_DELTA = createField(DSL.name("signed_delta"), SQLDataType.NUMERIC(38, 18).nullable(false), this, "");
 
     /**
      * The column <code>public.quota_usage_operation.limit_value</code>.
      */
-    public final TableField<QuotaUsageOperationRecord, Long> LIMIT_VALUE = createField(DSL.name("limit_value"), SQLDataType.BIGINT.nullable(false), this, "");
+    public final TableField<QuotaUsageOperationRecord, BigDecimal> LIMIT_VALUE = createField(DSL.name("limit_value"), SQLDataType.NUMERIC(38, 18).nullable(false), this, "");
 
     /**
      * The column <code>public.quota_usage_operation.idempotency_key</code>.
@@ -130,12 +131,12 @@ public class QuotaUsageOperation extends TableImpl<QuotaUsageOperationRecord> {
     /**
      * The column <code>public.quota_usage_operation.usage_before</code>.
      */
-    public final TableField<QuotaUsageOperationRecord, Long> USAGE_BEFORE = createField(DSL.name("usage_before"), SQLDataType.BIGINT, this, "");
+    public final TableField<QuotaUsageOperationRecord, BigDecimal> USAGE_BEFORE = createField(DSL.name("usage_before"), SQLDataType.NUMERIC(38, 18), this, "");
 
     /**
      * The column <code>public.quota_usage_operation.usage_after</code>.
      */
-    public final TableField<QuotaUsageOperationRecord, Long> USAGE_AFTER = createField(DSL.name("usage_after"), SQLDataType.BIGINT, this, "");
+    public final TableField<QuotaUsageOperationRecord, BigDecimal> USAGE_AFTER = createField(DSL.name("usage_after"), SQLDataType.NUMERIC(38, 18), this, "");
 
     /**
      * The column <code>public.quota_usage_operation.rejection_reason</code>.
@@ -216,7 +217,7 @@ public class QuotaUsageOperation extends TableImpl<QuotaUsageOperationRecord> {
     @Override
     public List<Check<QuotaUsageOperationRecord>> getChecks() {
         return Arrays.asList(
-            Internal.createCheck(this, DSL.name("quota_usage_operation_limit_value_check"), "((limit_value >= 0))", true),
+            Internal.createCheck(this, DSL.name("quota_usage_operation_limit_value_check"), "((limit_value >= (0)::numeric))", true),
             Internal.createCheck(this, DSL.name("quota_usage_operation_operation_kind_check"), "(((operation_kind)::text = ANY ((ARRAY['CONSUMPTION'::character varying, 'ADJUSTMENT'::character varying, 'REVERSAL'::character varying, 'RECONCILIATION'::character varying])::text[])))", true),
             Internal.createCheck(this, DSL.name("quota_usage_operation_outcome_check"), "(((outcome)::text = ANY ((ARRAY['PENDING'::character varying, 'APPLIED'::character varying, 'REJECTED'::character varying])::text[])))", true)
         );

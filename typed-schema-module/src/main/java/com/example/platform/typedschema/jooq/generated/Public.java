@@ -10,7 +10,10 @@ import com.example.platform.typedschema.jooq.generated.tables.ApiKey;
 import com.example.platform.typedschema.jooq.generated.tables.AppDatasource;
 import com.example.platform.typedschema.jooq.generated.tables.ApplyCommand;
 import com.example.platform.typedschema.jooq.generated.tables.Artifact;
+import com.example.platform.typedschema.jooq.generated.tables.ArtifactDetails;
+import com.example.platform.typedschema.jooq.generated.tables.ArtifactGovernance;
 import com.example.platform.typedschema.jooq.generated.tables.ArtifactGraph;
+import com.example.platform.typedschema.jooq.generated.tables.ArtifactMediaDetails;
 import com.example.platform.typedschema.jooq.generated.tables.ArtifactNode;
 import com.example.platform.typedschema.jooq.generated.tables.ArtifactPin;
 import com.example.platform.typedschema.jooq.generated.tables.ArtifactRelation;
@@ -28,7 +31,13 @@ import com.example.platform.typedschema.jooq.generated.tables.CommerceCart;
 import com.example.platform.typedschema.jooq.generated.tables.CommerceCartLine;
 import com.example.platform.typedschema.jooq.generated.tables.CommerceProduct;
 import com.example.platform.typedschema.jooq.generated.tables.CommercialOffering;
+import com.example.platform.typedschema.jooq.generated.tables.CompositionApplicationDraft;
+import com.example.platform.typedschema.jooq.generated.tables.CompositionTemplateWorkflowDraft;
+import com.example.platform.typedschema.jooq.generated.tables.CompositionValidationSnapshot;
+import com.example.platform.typedschema.jooq.generated.tables.CompositionVersion;
 import com.example.platform.typedschema.jooq.generated.tables.ConfigItem;
+import com.example.platform.typedschema.jooq.generated.tables.ConversionSpecification;
+import com.example.platform.typedschema.jooq.generated.tables.CoverImageTask;
 import com.example.platform.typedschema.jooq.generated.tables.CreditReservation;
 import com.example.platform.typedschema.jooq.generated.tables.CreditTransaction;
 import com.example.platform.typedschema.jooq.generated.tables.CreditWallet;
@@ -54,6 +63,7 @@ import com.example.platform.typedschema.jooq.generated.tables.FeatureBundle;
 import com.example.platform.typedschema.jooq.generated.tables.FeatureBundleItem;
 import com.example.platform.typedschema.jooq.generated.tables.FeatureDefinition;
 import com.example.platform.typedschema.jooq.generated.tables.FeatureFlagDefinition;
+import com.example.platform.typedschema.jooq.generated.tables.FeatureFlagEvaluationSnapshot;
 import com.example.platform.typedschema.jooq.generated.tables.FeatureFlagTargetingRule;
 import com.example.platform.typedschema.jooq.generated.tables.FrontendRouteDefinition;
 import com.example.platform.typedschema.jooq.generated.tables.GroupRoleAssignment;
@@ -65,10 +75,9 @@ import com.example.platform.typedschema.jooq.generated.tables.MarketplaceReview;
 import com.example.platform.typedschema.jooq.generated.tables.MarketplaceReviewComment;
 import com.example.platform.typedschema.jooq.generated.tables.MarketplaceReviewDecision;
 import com.example.platform.typedschema.jooq.generated.tables.MarketplaceReviewThread;
-import com.example.platform.typedschema.jooq.generated.tables.MediaAsset;
-import com.example.platform.typedschema.jooq.generated.tables.MediaAssetArtifact;
 import com.example.platform.typedschema.jooq.generated.tables.MediaProbeObservation;
 import com.example.platform.typedschema.jooq.generated.tables.MediaStream;
+import com.example.platform.typedschema.jooq.generated.tables.MediaThumbnailTask;
 import com.example.platform.typedschema.jooq.generated.tables.NavigationPolicy;
 import com.example.platform.typedschema.jooq.generated.tables.NlqQueryHistory;
 import com.example.platform.typedschema.jooq.generated.tables.NlqReportDefinition;
@@ -90,6 +99,8 @@ import com.example.platform.typedschema.jooq.generated.tables.PaymentOutbox;
 import com.example.platform.typedschema.jooq.generated.tables.PaymentRefund;
 import com.example.platform.typedschema.jooq.generated.tables.PaymentTransaction;
 import com.example.platform.typedschema.jooq.generated.tables.Permission;
+import com.example.platform.typedschema.jooq.generated.tables.PlatformExecutionAdmission;
+import com.example.platform.typedschema.jooq.generated.tables.PlatformExecutionResult;
 import com.example.platform.typedschema.jooq.generated.tables.PlatformJob;
 import com.example.platform.typedschema.jooq.generated.tables.PlatformTask;
 import com.example.platform.typedschema.jooq.generated.tables.PricingRule;
@@ -117,6 +128,7 @@ import com.example.platform.typedschema.jooq.generated.tables.QuotaProfile;
 import com.example.platform.typedschema.jooq.generated.tables.QuotaUsage;
 import com.example.platform.typedschema.jooq.generated.tables.QuotaUsageOperation;
 import com.example.platform.typedschema.jooq.generated.tables.RatedUsageRecord;
+import com.example.platform.typedschema.jooq.generated.tables.RenderBindingInputs;
 import com.example.platform.typedschema.jooq.generated.tables.RenderExecutionContext;
 import com.example.platform.typedschema.jooq.generated.tables.RenderJob;
 import com.example.platform.typedschema.jooq.generated.tables.RenderJobLease;
@@ -261,9 +273,24 @@ public class Public extends SchemaImpl {
     public final Artifact ARTIFACT = Artifact.ARTIFACT;
 
     /**
+     * The table <code>public.artifact_details</code>.
+     */
+    public final ArtifactDetails ARTIFACT_DETAILS = ArtifactDetails.ARTIFACT_DETAILS;
+
+    /**
+     * The table <code>public.artifact_governance</code>.
+     */
+    public final ArtifactGovernance ARTIFACT_GOVERNANCE = ArtifactGovernance.ARTIFACT_GOVERNANCE;
+
+    /**
      * The table <code>public.artifact_graph</code>.
      */
     public final ArtifactGraph ARTIFACT_GRAPH = ArtifactGraph.ARTIFACT_GRAPH;
+
+    /**
+     * The table <code>public.artifact_media_details</code>.
+     */
+    public final ArtifactMediaDetails ARTIFACT_MEDIA_DETAILS = ArtifactMediaDetails.ARTIFACT_MEDIA_DETAILS;
 
     /**
      * The table <code>public.artifact_node</code>.
@@ -351,9 +378,39 @@ public class Public extends SchemaImpl {
     public final CommercialOffering COMMERCIAL_OFFERING = CommercialOffering.COMMERCIAL_OFFERING;
 
     /**
+     * The table <code>public.composition_application_draft</code>.
+     */
+    public final CompositionApplicationDraft COMPOSITION_APPLICATION_DRAFT = CompositionApplicationDraft.COMPOSITION_APPLICATION_DRAFT;
+
+    /**
+     * The table <code>public.composition_template_workflow_draft</code>.
+     */
+    public final CompositionTemplateWorkflowDraft COMPOSITION_TEMPLATE_WORKFLOW_DRAFT = CompositionTemplateWorkflowDraft.COMPOSITION_TEMPLATE_WORKFLOW_DRAFT;
+
+    /**
+     * The table <code>public.composition_validation_snapshot</code>.
+     */
+    public final CompositionValidationSnapshot COMPOSITION_VALIDATION_SNAPSHOT = CompositionValidationSnapshot.COMPOSITION_VALIDATION_SNAPSHOT;
+
+    /**
+     * The table <code>public.composition_version</code>.
+     */
+    public final CompositionVersion COMPOSITION_VERSION = CompositionVersion.COMPOSITION_VERSION;
+
+    /**
      * The table <code>public.config_item</code>.
      */
     public final ConfigItem CONFIG_ITEM = ConfigItem.CONFIG_ITEM;
+
+    /**
+     * The table <code>public.conversion_specification</code>.
+     */
+    public final ConversionSpecification CONVERSION_SPECIFICATION = ConversionSpecification.CONVERSION_SPECIFICATION;
+
+    /**
+     * The table <code>public.cover_image_task</code>.
+     */
+    public final CoverImageTask COVER_IMAGE_TASK = CoverImageTask.COVER_IMAGE_TASK;
 
     /**
      * The table <code>public.credit_reservation</code>.
@@ -481,6 +538,11 @@ public class Public extends SchemaImpl {
     public final FeatureFlagDefinition FEATURE_FLAG_DEFINITION = FeatureFlagDefinition.FEATURE_FLAG_DEFINITION;
 
     /**
+     * The table <code>public.feature_flag_evaluation_snapshot</code>.
+     */
+    public final FeatureFlagEvaluationSnapshot FEATURE_FLAG_EVALUATION_SNAPSHOT = FeatureFlagEvaluationSnapshot.FEATURE_FLAG_EVALUATION_SNAPSHOT;
+
+    /**
      * The table <code>public.feature_flag_targeting_rule</code>.
      */
     public final FeatureFlagTargetingRule FEATURE_FLAG_TARGETING_RULE = FeatureFlagTargetingRule.FEATURE_FLAG_TARGETING_RULE;
@@ -536,16 +598,6 @@ public class Public extends SchemaImpl {
     public final MarketplaceReviewThread MARKETPLACE_REVIEW_THREAD = MarketplaceReviewThread.MARKETPLACE_REVIEW_THREAD;
 
     /**
-     * The table <code>public.media_asset</code>.
-     */
-    public final MediaAsset MEDIA_ASSET = MediaAsset.MEDIA_ASSET;
-
-    /**
-     * The table <code>public.media_asset_artifact</code>.
-     */
-    public final MediaAssetArtifact MEDIA_ASSET_ARTIFACT = MediaAssetArtifact.MEDIA_ASSET_ARTIFACT;
-
-    /**
      * The table <code>public.media_probe_observation</code>.
      */
     public final MediaProbeObservation MEDIA_PROBE_OBSERVATION = MediaProbeObservation.MEDIA_PROBE_OBSERVATION;
@@ -554,6 +606,11 @@ public class Public extends SchemaImpl {
      * The table <code>public.media_stream</code>.
      */
     public final MediaStream MEDIA_STREAM = MediaStream.MEDIA_STREAM;
+
+    /**
+     * The table <code>public.media_thumbnail_task</code>.
+     */
+    public final MediaThumbnailTask MEDIA_THUMBNAIL_TASK = MediaThumbnailTask.MEDIA_THUMBNAIL_TASK;
 
     /**
      * The table <code>public.navigation_policy</code>.
@@ -659,6 +716,16 @@ public class Public extends SchemaImpl {
      * The table <code>public.permission</code>.
      */
     public final Permission PERMISSION = Permission.PERMISSION;
+
+    /**
+     * The table <code>public.platform_execution_admission</code>.
+     */
+    public final PlatformExecutionAdmission PLATFORM_EXECUTION_ADMISSION = PlatformExecutionAdmission.PLATFORM_EXECUTION_ADMISSION;
+
+    /**
+     * The table <code>public.platform_execution_result</code>.
+     */
+    public final PlatformExecutionResult PLATFORM_EXECUTION_RESULT = PlatformExecutionResult.PLATFORM_EXECUTION_RESULT;
 
     /**
      * The table <code>public.platform_job</code>.
@@ -794,6 +861,11 @@ public class Public extends SchemaImpl {
      * The table <code>public.rated_usage_record</code>.
      */
     public final RatedUsageRecord RATED_USAGE_RECORD = RatedUsageRecord.RATED_USAGE_RECORD;
+
+    /**
+     * The table <code>public.render_binding_inputs</code>.
+     */
+    public final RenderBindingInputs RENDER_BINDING_INPUTS = RenderBindingInputs.RENDER_BINDING_INPUTS;
 
     /**
      * The table <code>public.render_execution_context</code>.
@@ -1272,7 +1344,10 @@ public class Public extends SchemaImpl {
             AppDatasource.APP_DATASOURCE,
             ApplyCommand.APPLY_COMMAND,
             Artifact.ARTIFACT,
+            ArtifactDetails.ARTIFACT_DETAILS,
+            ArtifactGovernance.ARTIFACT_GOVERNANCE,
             ArtifactGraph.ARTIFACT_GRAPH,
+            ArtifactMediaDetails.ARTIFACT_MEDIA_DETAILS,
             ArtifactNode.ARTIFACT_NODE,
             ArtifactPin.ARTIFACT_PIN,
             ArtifactRelation.ARTIFACT_RELATION,
@@ -1290,7 +1365,13 @@ public class Public extends SchemaImpl {
             CommerceCartLine.COMMERCE_CART_LINE,
             CommerceProduct.COMMERCE_PRODUCT,
             CommercialOffering.COMMERCIAL_OFFERING,
+            CompositionApplicationDraft.COMPOSITION_APPLICATION_DRAFT,
+            CompositionTemplateWorkflowDraft.COMPOSITION_TEMPLATE_WORKFLOW_DRAFT,
+            CompositionValidationSnapshot.COMPOSITION_VALIDATION_SNAPSHOT,
+            CompositionVersion.COMPOSITION_VERSION,
             ConfigItem.CONFIG_ITEM,
+            ConversionSpecification.CONVERSION_SPECIFICATION,
+            CoverImageTask.COVER_IMAGE_TASK,
             CreditReservation.CREDIT_RESERVATION,
             CreditTransaction.CREDIT_TRANSACTION,
             CreditWallet.CREDIT_WALLET,
@@ -1316,6 +1397,7 @@ public class Public extends SchemaImpl {
             FeatureBundleItem.FEATURE_BUNDLE_ITEM,
             FeatureDefinition.FEATURE_DEFINITION,
             FeatureFlagDefinition.FEATURE_FLAG_DEFINITION,
+            FeatureFlagEvaluationSnapshot.FEATURE_FLAG_EVALUATION_SNAPSHOT,
             FeatureFlagTargetingRule.FEATURE_FLAG_TARGETING_RULE,
             FrontendRouteDefinition.FRONTEND_ROUTE_DEFINITION,
             GroupRoleAssignment.GROUP_ROLE_ASSIGNMENT,
@@ -1327,10 +1409,9 @@ public class Public extends SchemaImpl {
             MarketplaceReviewComment.MARKETPLACE_REVIEW_COMMENT,
             MarketplaceReviewDecision.MARKETPLACE_REVIEW_DECISION,
             MarketplaceReviewThread.MARKETPLACE_REVIEW_THREAD,
-            MediaAsset.MEDIA_ASSET,
-            MediaAssetArtifact.MEDIA_ASSET_ARTIFACT,
             MediaProbeObservation.MEDIA_PROBE_OBSERVATION,
             MediaStream.MEDIA_STREAM,
+            MediaThumbnailTask.MEDIA_THUMBNAIL_TASK,
             NavigationPolicy.NAVIGATION_POLICY,
             NlqQueryHistory.NLQ_QUERY_HISTORY,
             NlqReportDefinition.NLQ_REPORT_DEFINITION,
@@ -1352,6 +1433,8 @@ public class Public extends SchemaImpl {
             PaymentRefund.PAYMENT_REFUND,
             PaymentTransaction.PAYMENT_TRANSACTION,
             Permission.PERMISSION,
+            PlatformExecutionAdmission.PLATFORM_EXECUTION_ADMISSION,
+            PlatformExecutionResult.PLATFORM_EXECUTION_RESULT,
             PlatformJob.PLATFORM_JOB,
             PlatformTask.PLATFORM_TASK,
             PricingRule.PRICING_RULE,
@@ -1379,6 +1462,7 @@ public class Public extends SchemaImpl {
             QuotaUsage.QUOTA_USAGE,
             QuotaUsageOperation.QUOTA_USAGE_OPERATION,
             RatedUsageRecord.RATED_USAGE_RECORD,
+            RenderBindingInputs.RENDER_BINDING_INPUTS,
             RenderExecutionContext.RENDER_EXECUTION_CONTEXT,
             RenderJob.RENDER_JOB,
             RenderJobLease.RENDER_JOB_LEASE,

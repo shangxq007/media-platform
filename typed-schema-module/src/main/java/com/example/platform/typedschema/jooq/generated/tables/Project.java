@@ -100,11 +100,9 @@ public class Project extends TableImpl<ProjectRecord> {
     public final TableField<ProjectRecord, LocalDateTime> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.LOCALDATETIME(6).nullable(false), this, "");
 
     /**
-     * The column <code>public.project.workspace_id</code>. Canonical resource
-     * Workspace within tenant. NULL is an unresolved historical mapping, not a
-     * tenant/Project alias.
+     * The column <code>public.project.workspace_id</code>.
      */
-    public final TableField<ProjectRecord, String> WORKSPACE_ID = createField(DSL.name("workspace_id"), SQLDataType.VARCHAR(64), this, "Canonical resource Workspace within tenant. NULL is an unresolved historical mapping, not a tenant/Project alias.");
+    public final TableField<ProjectRecord, String> WORKSPACE_ID = createField(DSL.name("workspace_id"), SQLDataType.VARCHAR(64), this, "");
 
     private Project(Name alias, Table<ProjectRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);

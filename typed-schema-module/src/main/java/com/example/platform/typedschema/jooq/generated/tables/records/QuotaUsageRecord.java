@@ -6,6 +6,7 @@ package com.example.platform.typedschema.jooq.generated.tables.records;
 
 import com.example.platform.typedschema.jooq.generated.tables.QuotaUsage;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 
 import org.jooq.Record1;
@@ -149,15 +150,15 @@ public class QuotaUsageRecord extends UpdatableRecordImpl<QuotaUsageRecord> {
     /**
      * Setter for <code>public.quota_usage.usage_value</code>.
      */
-    public void setUsageValue(Long value) {
+    public void setUsageValue(BigDecimal value) {
         set(9, value);
     }
 
     /**
      * Getter for <code>public.quota_usage.usage_value</code>.
      */
-    public Long getUsageValue() {
-        return (Long) get(9);
+    public BigDecimal getUsageValue() {
+        return (BigDecimal) get(9);
     }
 
     /**
@@ -211,7 +212,7 @@ public class QuotaUsageRecord extends UpdatableRecordImpl<QuotaUsageRecord> {
     /**
      * Create a detached, initialised QuotaUsageRecord
      */
-    public QuotaUsageRecord(String id, String tenantId, String principalType, String principalId, String workspaceScope, String organizationScope, String quotaKey, Instant periodStart, Instant periodEnd, Long usageValue, Instant createdAt, Instant updatedAt) {
+    public QuotaUsageRecord(String id, String tenantId, String principalType, String principalId, String workspaceScope, String organizationScope, String quotaKey, Instant periodStart, Instant periodEnd, BigDecimal usageValue, Instant createdAt, Instant updatedAt) {
         super(QuotaUsage.QUOTA_USAGE);
 
         setId(id);

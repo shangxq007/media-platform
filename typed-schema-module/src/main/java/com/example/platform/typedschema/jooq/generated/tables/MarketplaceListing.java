@@ -10,8 +10,8 @@ import com.example.platform.typedschema.contract.TsvectorValue;
 import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
+import com.example.platform.typedschema.jooq.generated.tables.Artifact.ArtifactPath;
 import com.example.platform.typedschema.jooq.generated.tables.MarketplaceReview.MarketplaceReviewPath;
-import com.example.platform.typedschema.jooq.generated.tables.MediaAsset.MediaAssetPath;
 import com.example.platform.typedschema.jooq.generated.tables.Workspace.WorkspacePath;
 import com.example.platform.typedschema.jooq.generated.tables.records.MarketplaceListingRecord;
 
@@ -75,9 +75,9 @@ public class MarketplaceListing extends TableImpl<MarketplaceListingRecord> {
     public final TableField<MarketplaceListingRecord, String> ID = createField(DSL.name("id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
     /**
-     * The column <code>public.marketplace_listing.asset_id</code>.
+     * The column <code>public.marketplace_listing.artifact_id</code>.
      */
-    public final TableField<MarketplaceListingRecord, String> ASSET_ID = createField(DSL.name("asset_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
+    public final TableField<MarketplaceListingRecord, String> ARTIFACT_ID = createField(DSL.name("artifact_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
     /**
      * The column <code>public.marketplace_listing.tenant_id</code>.
@@ -88,6 +88,11 @@ public class MarketplaceListing extends TableImpl<MarketplaceListingRecord> {
      * The column <code>public.marketplace_listing.project_id</code>.
      */
     public final TableField<MarketplaceListingRecord, String> PROJECT_ID = createField(DSL.name("project_id"), SQLDataType.VARCHAR(64), this, "");
+
+    /**
+     * The column <code>public.marketplace_listing.workspace_id</code>.
+     */
+    public final TableField<MarketplaceListingRecord, String> WORKSPACE_ID = createField(DSL.name("workspace_id"), SQLDataType.VARCHAR(64), this, "");
 
     /**
      * The column <code>public.marketplace_listing.listing_type</code>.
@@ -122,47 +127,17 @@ public class MarketplaceListing extends TableImpl<MarketplaceListingRecord> {
     /**
      * The column <code>public.marketplace_listing.version</code>.
      */
-    public final TableField<MarketplaceListingRecord, String> VERSION = createField(DSL.name("version"), SQLDataType.VARCHAR(32).nullable(false).defaultValue(DSL.field(DSL.raw("'1.0'::character varying"), SQLDataType.VARCHAR)), this, "");
-
-    /**
-     * The column <code>public.marketplace_listing.status</code>.
-     */
-    public final TableField<MarketplaceListingRecord, String> STATUS = createField(DSL.name("status"), SQLDataType.VARCHAR(32).nullable(false).defaultValue(DSL.field(DSL.raw("'DRAFT'::character varying"), SQLDataType.VARCHAR)), this, "");
-
-    /**
-     * The column <code>public.marketplace_listing.search_text</code>.
-     */
-    public final TableField<MarketplaceListingRecord, String> SEARCH_TEXT = createField(DSL.name("search_text"), SQLDataType.CLOB, this, "");
-
-    /**
-     * The column <code>public.marketplace_listing.search_vector</code>.
-     */
-    public final TableField<MarketplaceListingRecord, TsvectorValue> SEARCH_VECTOR = createField(DSL.name("search_vector"), DefaultDataType.getDefaultDataType("\"pg_catalog\".\"tsvector\""), this, "", new TsvectorBinding());
-
-    /**
-     * The column <code>public.marketplace_listing.review_id</code>.
-     */
-    public final TableField<MarketplaceListingRecord, String> REVIEW_ID = createField(DSL.name("review_id"), SQLDataType.VARCHAR(64), this, "");
-
-    /**
-     * The column <code>public.marketplace_listing.created_at</code>.
-     */
-    public final TableField<MarketplaceListingRecord, LocalDateTime> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.LOCALDATETIME(6).nullable(false), this, "");
-
-    /**
-     * The column <code>public.marketplace_listing.updated_at</code>.
-     */
-    public final TableField<MarketplaceListingRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("updated_at"), SQLDataType.LOCALDATETIME(6).nullable(false), this, "");
-
-    /**
-     * The column <code>public.marketplace_listing.workspace_id</code>.
-     */
-    public final TableField<MarketplaceListingRecord, String> WORKSPACE_ID = createField(DSL.name("workspace_id"), SQLDataType.VARCHAR(64), this, "");
+    public final TableField<MarketplaceListingRecord, String> VERSION = createField(DSL.name("version"), SQLDataType.VARCHAR(64).nullable(false).defaultValue(DSL.field(DSL.raw("'1.0'::character varying"), SQLDataType.VARCHAR)), this, "");
 
     /**
      * The column <code>public.marketplace_listing.subject_version</code>.
      */
     public final TableField<MarketplaceListingRecord, String> SUBJECT_VERSION = createField(DSL.name("subject_version"), SQLDataType.VARCHAR(64), this, "");
+
+    /**
+     * The column <code>public.marketplace_listing.status</code>.
+     */
+    public final TableField<MarketplaceListingRecord, String> STATUS = createField(DSL.name("status"), SQLDataType.VARCHAR(32).nullable(false).defaultValue(DSL.field(DSL.raw("'DRAFT'::character varying"), SQLDataType.VARCHAR)), this, "");
 
     /**
      * The column <code>public.marketplace_listing.aggregate_version</code>.
@@ -193,6 +168,31 @@ public class MarketplaceListing extends TableImpl<MarketplaceListingRecord> {
      * The column <code>public.marketplace_listing.legacy_snapshot</code>.
      */
     public final TableField<MarketplaceListingRecord, JSONB> LEGACY_SNAPSHOT = createField(DSL.name("legacy_snapshot"), SQLDataType.JSONB, this, "");
+
+    /**
+     * The column <code>public.marketplace_listing.search_text</code>.
+     */
+    public final TableField<MarketplaceListingRecord, String> SEARCH_TEXT = createField(DSL.name("search_text"), SQLDataType.CLOB, this, "");
+
+    /**
+     * The column <code>public.marketplace_listing.search_vector</code>.
+     */
+    public final TableField<MarketplaceListingRecord, TsvectorValue> SEARCH_VECTOR = createField(DSL.name("search_vector"), DefaultDataType.getDefaultDataType("\"pg_catalog\".\"tsvector\""), this, "", new TsvectorBinding());
+
+    /**
+     * The column <code>public.marketplace_listing.review_id</code>.
+     */
+    public final TableField<MarketplaceListingRecord, String> REVIEW_ID = createField(DSL.name("review_id"), SQLDataType.VARCHAR(64), this, "");
+
+    /**
+     * The column <code>public.marketplace_listing.created_at</code>.
+     */
+    public final TableField<MarketplaceListingRecord, LocalDateTime> CREATED_AT = createField(DSL.name("created_at"), SQLDataType.LOCALDATETIME(6).nullable(false), this, "");
+
+    /**
+     * The column <code>public.marketplace_listing.updated_at</code>.
+     */
+    public final TableField<MarketplaceListingRecord, LocalDateTime> UPDATED_AT = createField(DSL.name("updated_at"), SQLDataType.LOCALDATETIME(6).nullable(false), this, "");
 
     private MarketplaceListing(Name alias, Table<MarketplaceListingRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
@@ -273,24 +273,24 @@ public class MarketplaceListing extends TableImpl<MarketplaceListingRecord> {
 
     @Override
     public List<UniqueKey<MarketplaceListingRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.UQ_ML_ASSET);
+        return Arrays.asList(Keys.UQ_ML_ARTIFACT);
     }
 
     @Override
     public List<ForeignKey<MarketplaceListingRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.MARKETPLACE_LISTING__FK_ML_ASSET, Keys.MARKETPLACE_LISTING__MARKETPLACE_WORKSPACE_FK);
+        return Arrays.asList(Keys.MARKETPLACE_LISTING__FK_ML_ARTIFACT, Keys.MARKETPLACE_LISTING__MARKETPLACE_WORKSPACE_FK);
     }
 
-    private transient MediaAssetPath _mediaAsset;
+    private transient ArtifactPath _artifact;
 
     /**
-     * Get the implicit join path to the <code>public.media_asset</code> table.
+     * Get the implicit join path to the <code>public.artifact</code> table.
      */
-    public MediaAssetPath mediaAsset() {
-        if (_mediaAsset == null)
-            _mediaAsset = new MediaAssetPath(this, Keys.MARKETPLACE_LISTING__FK_ML_ASSET, null);
+    public ArtifactPath artifact() {
+        if (_artifact == null)
+            _artifact = new ArtifactPath(this, Keys.MARKETPLACE_LISTING__FK_ML_ARTIFACT, null);
 
-        return _mediaAsset;
+        return _artifact;
     }
 
     private transient WorkspacePath _workspace;

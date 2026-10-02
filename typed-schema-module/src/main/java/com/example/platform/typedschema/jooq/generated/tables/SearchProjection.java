@@ -9,7 +9,7 @@ import com.example.platform.typedschema.contract.TsvectorValue;
 import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
-import com.example.platform.typedschema.jooq.generated.tables.MediaAsset.MediaAssetPath;
+import com.example.platform.typedschema.jooq.generated.tables.Artifact.ArtifactPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.SearchProjectionRecord;
 
 import java.time.LocalDateTime;
@@ -63,9 +63,9 @@ public class SearchProjection extends TableImpl<SearchProjectionRecord> {
     }
 
     /**
-     * The column <code>public.search_projection.asset_id</code>.
+     * The column <code>public.search_projection.artifact_id</code>.
      */
-    public final TableField<SearchProjectionRecord, String> ASSET_ID = createField(DSL.name("asset_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
+    public final TableField<SearchProjectionRecord, String> ARTIFACT_ID = createField(DSL.name("artifact_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
     /**
      * The column <code>public.search_projection.tenant_id</code>.
@@ -221,19 +221,19 @@ public class SearchProjection extends TableImpl<SearchProjectionRecord> {
 
     @Override
     public List<ForeignKey<SearchProjectionRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.SEARCH_PROJECTION__FK_SP_ASSET);
+        return Arrays.asList(Keys.SEARCH_PROJECTION__FK_SP_ARTIFACT);
     }
 
-    private transient MediaAssetPath _mediaAsset;
+    private transient ArtifactPath _artifact;
 
     /**
-     * Get the implicit join path to the <code>public.media_asset</code> table.
+     * Get the implicit join path to the <code>public.artifact</code> table.
      */
-    public MediaAssetPath mediaAsset() {
-        if (_mediaAsset == null)
-            _mediaAsset = new MediaAssetPath(this, Keys.SEARCH_PROJECTION__FK_SP_ASSET, null);
+    public ArtifactPath artifact() {
+        if (_artifact == null)
+            _artifact = new ArtifactPath(this, Keys.SEARCH_PROJECTION__FK_SP_ARTIFACT, null);
 
-        return _mediaAsset;
+        return _artifact;
     }
 
     @Override

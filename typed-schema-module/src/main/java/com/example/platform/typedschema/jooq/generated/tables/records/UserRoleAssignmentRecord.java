@@ -134,9 +134,6 @@ public class UserRoleAssignmentRecord extends UpdatableRecordImpl<UserRoleAssign
 
     /**
      * Setter for <code>public.user_role_assignment.scope_unresolved</code>.
-     * Historical unproven or colliding scope; excluded from all authorization
-     * and ordinary scope removal. Original fields retained. No automatic
-     * resolution.
      */
     public void setScopeUnresolved(Boolean value) {
         set(8, value);
@@ -144,9 +141,6 @@ public class UserRoleAssignmentRecord extends UpdatableRecordImpl<UserRoleAssign
 
     /**
      * Getter for <code>public.user_role_assignment.scope_unresolved</code>.
-     * Historical unproven or colliding scope; excluded from all authorization
-     * and ordinary scope removal. Original fields retained. No automatic
-     * resolution.
      */
     public Boolean getScopeUnresolved() {
         return (Boolean) get(8);

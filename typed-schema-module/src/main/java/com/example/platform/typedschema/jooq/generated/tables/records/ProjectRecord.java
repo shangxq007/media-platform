@@ -105,18 +105,14 @@ public class ProjectRecord extends UpdatableRecordImpl<ProjectRecord> {
     }
 
     /**
-     * Setter for <code>public.project.workspace_id</code>. Canonical resource
-     * Workspace within tenant. NULL is an unresolved historical mapping, not a
-     * tenant/Project alias.
+     * Setter for <code>public.project.workspace_id</code>.
      */
     public void setWorkspaceId(String value) {
         set(6, value);
     }
 
     /**
-     * Getter for <code>public.project.workspace_id</code>. Canonical resource
-     * Workspace within tenant. NULL is an unresolved historical mapping, not a
-     * tenant/Project alias.
+     * Getter for <code>public.project.workspace_id</code>.
      */
     public String getWorkspaceId() {
         return (String) get(6);

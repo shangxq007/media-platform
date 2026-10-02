@@ -22,16 +22,16 @@ public class SearchProjectionRecord extends UpdatableRecordImpl<SearchProjection
     private static final long serialVersionUID = 1L;
 
     /**
-     * Setter for <code>public.search_projection.asset_id</code>.
+     * Setter for <code>public.search_projection.artifact_id</code>.
      */
-    public void setAssetId(String value) {
+    public void setArtifactId(String value) {
         set(0, value);
     }
 
     /**
-     * Getter for <code>public.search_projection.asset_id</code>.
+     * Getter for <code>public.search_projection.artifact_id</code>.
      */
-    public String getAssetId() {
+    public String getArtifactId() {
         return (String) get(0);
     }
 
@@ -268,10 +268,10 @@ public class SearchProjectionRecord extends UpdatableRecordImpl<SearchProjection
     /**
      * Create a detached, initialised SearchProjectionRecord
      */
-    public SearchProjectionRecord(String assetId, String tenantId, String projectId, String filename, String assetType, String transcriptText, String sceneLabels, String objects, String brands, String people, String classification, String license, String publishStatus, String searchText, TsvectorValue searchVector, LocalDateTime updatedAt) {
+    public SearchProjectionRecord(String artifactId, String tenantId, String projectId, String filename, String assetType, String transcriptText, String sceneLabels, String objects, String brands, String people, String classification, String license, String publishStatus, String searchText, TsvectorValue searchVector, LocalDateTime updatedAt) {
         super(SearchProjection.SEARCH_PROJECTION);
 
-        setAssetId(assetId);
+        setArtifactId(artifactId);
         setTenantId(tenantId);
         setProjectId(projectId);
         setFilename(filename);

@@ -119,18 +119,14 @@ public class UserRecord extends UpdatableRecordImpl<UserRecord> {
     }
 
     /**
-     * Setter for <code>public.user.account_id</code>. Verified Account link.
-     * NULL preserves historical membership awaiting explicit identity mapping;
-     * never infer by email.
+     * Setter for <code>public.user.account_id</code>.
      */
     public void setAccountId(String value) {
         set(7, value);
     }
 
     /**
-     * Getter for <code>public.user.account_id</code>. Verified Account link.
-     * NULL preserves historical membership awaiting explicit identity mapping;
-     * never infer by email.
+     * Getter for <code>public.user.account_id</code>.
      */
     public String getAccountId() {
         return (String) get(7);

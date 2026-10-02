@@ -38,26 +38,10 @@ public class SourceVisualDescriptionSnapshotRecord extends UpdatableRecordImpl<S
 
     /**
      * Setter for
-     * <code>public.source_visual_description_snapshot.media_asset_id</code>.
-     */
-    public void setMediaAssetId(String value) {
-        set(1, value);
-    }
-
-    /**
-     * Getter for
-     * <code>public.source_visual_description_snapshot.media_asset_id</code>.
-     */
-    public String getMediaAssetId() {
-        return (String) get(1);
-    }
-
-    /**
-     * Setter for
      * <code>public.source_visual_description_snapshot.artifact_id</code>.
      */
     public void setArtifactId(String value) {
-        set(2, value);
+        set(1, value);
     }
 
     /**
@@ -65,7 +49,7 @@ public class SourceVisualDescriptionSnapshotRecord extends UpdatableRecordImpl<S
      * <code>public.source_visual_description_snapshot.artifact_id</code>.
      */
     public String getArtifactId() {
-        return (String) get(2);
+        return (String) get(1);
     }
 
     /**
@@ -73,7 +57,7 @@ public class SourceVisualDescriptionSnapshotRecord extends UpdatableRecordImpl<S
      * <code>public.source_visual_description_snapshot.canonical_payload</code>.
      */
     public void setCanonicalPayload(String value) {
-        set(3, value);
+        set(2, value);
     }
 
     /**
@@ -81,7 +65,7 @@ public class SourceVisualDescriptionSnapshotRecord extends UpdatableRecordImpl<S
      * <code>public.source_visual_description_snapshot.canonical_payload</code>.
      */
     public String getCanonicalPayload() {
-        return (String) get(3);
+        return (String) get(2);
     }
 
     /**
@@ -89,7 +73,7 @@ public class SourceVisualDescriptionSnapshotRecord extends UpdatableRecordImpl<S
      * <code>public.source_visual_description_snapshot.created_at</code>.
      */
     public void setCreatedAt(LocalDateTime value) {
-        set(4, value);
+        set(3, value);
     }
 
     /**
@@ -97,7 +81,7 @@ public class SourceVisualDescriptionSnapshotRecord extends UpdatableRecordImpl<S
      * <code>public.source_visual_description_snapshot.created_at</code>.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(4);
+        return (LocalDateTime) get(3);
     }
 
     // -------------------------------------------------------------------------
@@ -123,11 +107,10 @@ public class SourceVisualDescriptionSnapshotRecord extends UpdatableRecordImpl<S
     /**
      * Create a detached, initialised SourceVisualDescriptionSnapshotRecord
      */
-    public SourceVisualDescriptionSnapshotRecord(String mediaStreamId, String mediaAssetId, String artifactId, String canonicalPayload, LocalDateTime createdAt) {
+    public SourceVisualDescriptionSnapshotRecord(String mediaStreamId, String artifactId, String canonicalPayload, LocalDateTime createdAt) {
         super(SourceVisualDescriptionSnapshot.SOURCE_VISUAL_DESCRIPTION_SNAPSHOT);
 
         setMediaStreamId(mediaStreamId);
-        setMediaAssetId(mediaAssetId);
         setArtifactId(artifactId);
         setCanonicalPayload(canonicalPayload);
         setCreatedAt(createdAt);

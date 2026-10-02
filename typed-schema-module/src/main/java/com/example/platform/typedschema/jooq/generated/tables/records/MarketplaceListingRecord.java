@@ -38,16 +38,16 @@ public class MarketplaceListingRecord extends UpdatableRecordImpl<MarketplaceLis
     }
 
     /**
-     * Setter for <code>public.marketplace_listing.asset_id</code>.
+     * Setter for <code>public.marketplace_listing.artifact_id</code>.
      */
-    public void setAssetId(String value) {
+    public void setArtifactId(String value) {
         set(1, value);
     }
 
     /**
-     * Getter for <code>public.marketplace_listing.asset_id</code>.
+     * Getter for <code>public.marketplace_listing.artifact_id</code>.
      */
-    public String getAssetId() {
+    public String getArtifactId() {
         return (String) get(1);
     }
 
@@ -80,297 +80,297 @@ public class MarketplaceListingRecord extends UpdatableRecordImpl<MarketplaceLis
     }
 
     /**
-     * Setter for <code>public.marketplace_listing.listing_type</code>.
-     */
-    public void setListingType(String value) {
-        set(4, value);
-    }
-
-    /**
-     * Getter for <code>public.marketplace_listing.listing_type</code>.
-     */
-    public String getListingType() {
-        return (String) get(4);
-    }
-
-    /**
-     * Setter for <code>public.marketplace_listing.title</code>.
-     */
-    public void setTitle(String value) {
-        set(5, value);
-    }
-
-    /**
-     * Getter for <code>public.marketplace_listing.title</code>.
-     */
-    public String getTitle() {
-        return (String) get(5);
-    }
-
-    /**
-     * Setter for <code>public.marketplace_listing.summary</code>.
-     */
-    public void setSummary(String value) {
-        set(6, value);
-    }
-
-    /**
-     * Getter for <code>public.marketplace_listing.summary</code>.
-     */
-    public String getSummary() {
-        return (String) get(6);
-    }
-
-    /**
-     * Setter for <code>public.marketplace_listing.description</code>.
-     */
-    public void setDescription(String value) {
-        set(7, value);
-    }
-
-    /**
-     * Getter for <code>public.marketplace_listing.description</code>.
-     */
-    public String getDescription() {
-        return (String) get(7);
-    }
-
-    /**
-     * Setter for <code>public.marketplace_listing.preview_url</code>.
-     */
-    public void setPreviewUrl(String value) {
-        set(8, value);
-    }
-
-    /**
-     * Getter for <code>public.marketplace_listing.preview_url</code>.
-     */
-    public String getPreviewUrl() {
-        return (String) get(8);
-    }
-
-    /**
-     * Setter for <code>public.marketplace_listing.cover_url</code>.
-     */
-    public void setCoverUrl(String value) {
-        set(9, value);
-    }
-
-    /**
-     * Getter for <code>public.marketplace_listing.cover_url</code>.
-     */
-    public String getCoverUrl() {
-        return (String) get(9);
-    }
-
-    /**
-     * Setter for <code>public.marketplace_listing.version</code>.
-     */
-    public void setVersion(String value) {
-        set(10, value);
-    }
-
-    /**
-     * Getter for <code>public.marketplace_listing.version</code>.
-     */
-    public String getVersion() {
-        return (String) get(10);
-    }
-
-    /**
-     * Setter for <code>public.marketplace_listing.status</code>.
-     */
-    public void setStatus(String value) {
-        set(11, value);
-    }
-
-    /**
-     * Getter for <code>public.marketplace_listing.status</code>.
-     */
-    public String getStatus() {
-        return (String) get(11);
-    }
-
-    /**
-     * Setter for <code>public.marketplace_listing.search_text</code>.
-     */
-    public void setSearchText(String value) {
-        set(12, value);
-    }
-
-    /**
-     * Getter for <code>public.marketplace_listing.search_text</code>.
-     */
-    public String getSearchText() {
-        return (String) get(12);
-    }
-
-    /**
-     * Setter for <code>public.marketplace_listing.search_vector</code>.
-     */
-    public void setSearchVector(TsvectorValue value) {
-        set(13, value);
-    }
-
-    /**
-     * Getter for <code>public.marketplace_listing.search_vector</code>.
-     */
-    public TsvectorValue getSearchVector() {
-        return (TsvectorValue) get(13);
-    }
-
-    /**
-     * Setter for <code>public.marketplace_listing.review_id</code>.
-     */
-    public void setReviewId(String value) {
-        set(14, value);
-    }
-
-    /**
-     * Getter for <code>public.marketplace_listing.review_id</code>.
-     */
-    public String getReviewId() {
-        return (String) get(14);
-    }
-
-    /**
-     * Setter for <code>public.marketplace_listing.created_at</code>.
-     */
-    public void setCreatedAt(LocalDateTime value) {
-        set(15, value);
-    }
-
-    /**
-     * Getter for <code>public.marketplace_listing.created_at</code>.
-     */
-    public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(15);
-    }
-
-    /**
-     * Setter for <code>public.marketplace_listing.updated_at</code>.
-     */
-    public void setUpdatedAt(LocalDateTime value) {
-        set(16, value);
-    }
-
-    /**
-     * Getter for <code>public.marketplace_listing.updated_at</code>.
-     */
-    public LocalDateTime getUpdatedAt() {
-        return (LocalDateTime) get(16);
-    }
-
-    /**
      * Setter for <code>public.marketplace_listing.workspace_id</code>.
      */
     public void setWorkspaceId(String value) {
-        set(17, value);
+        set(4, value);
     }
 
     /**
      * Getter for <code>public.marketplace_listing.workspace_id</code>.
      */
     public String getWorkspaceId() {
-        return (String) get(17);
+        return (String) get(4);
+    }
+
+    /**
+     * Setter for <code>public.marketplace_listing.listing_type</code>.
+     */
+    public void setListingType(String value) {
+        set(5, value);
+    }
+
+    /**
+     * Getter for <code>public.marketplace_listing.listing_type</code>.
+     */
+    public String getListingType() {
+        return (String) get(5);
+    }
+
+    /**
+     * Setter for <code>public.marketplace_listing.title</code>.
+     */
+    public void setTitle(String value) {
+        set(6, value);
+    }
+
+    /**
+     * Getter for <code>public.marketplace_listing.title</code>.
+     */
+    public String getTitle() {
+        return (String) get(6);
+    }
+
+    /**
+     * Setter for <code>public.marketplace_listing.summary</code>.
+     */
+    public void setSummary(String value) {
+        set(7, value);
+    }
+
+    /**
+     * Getter for <code>public.marketplace_listing.summary</code>.
+     */
+    public String getSummary() {
+        return (String) get(7);
+    }
+
+    /**
+     * Setter for <code>public.marketplace_listing.description</code>.
+     */
+    public void setDescription(String value) {
+        set(8, value);
+    }
+
+    /**
+     * Getter for <code>public.marketplace_listing.description</code>.
+     */
+    public String getDescription() {
+        return (String) get(8);
+    }
+
+    /**
+     * Setter for <code>public.marketplace_listing.preview_url</code>.
+     */
+    public void setPreviewUrl(String value) {
+        set(9, value);
+    }
+
+    /**
+     * Getter for <code>public.marketplace_listing.preview_url</code>.
+     */
+    public String getPreviewUrl() {
+        return (String) get(9);
+    }
+
+    /**
+     * Setter for <code>public.marketplace_listing.cover_url</code>.
+     */
+    public void setCoverUrl(String value) {
+        set(10, value);
+    }
+
+    /**
+     * Getter for <code>public.marketplace_listing.cover_url</code>.
+     */
+    public String getCoverUrl() {
+        return (String) get(10);
+    }
+
+    /**
+     * Setter for <code>public.marketplace_listing.version</code>.
+     */
+    public void setVersion(String value) {
+        set(11, value);
+    }
+
+    /**
+     * Getter for <code>public.marketplace_listing.version</code>.
+     */
+    public String getVersion() {
+        return (String) get(11);
     }
 
     /**
      * Setter for <code>public.marketplace_listing.subject_version</code>.
      */
     public void setSubjectVersion(String value) {
-        set(18, value);
+        set(12, value);
     }
 
     /**
      * Getter for <code>public.marketplace_listing.subject_version</code>.
      */
     public String getSubjectVersion() {
-        return (String) get(18);
+        return (String) get(12);
+    }
+
+    /**
+     * Setter for <code>public.marketplace_listing.status</code>.
+     */
+    public void setStatus(String value) {
+        set(13, value);
+    }
+
+    /**
+     * Getter for <code>public.marketplace_listing.status</code>.
+     */
+    public String getStatus() {
+        return (String) get(13);
     }
 
     /**
      * Setter for <code>public.marketplace_listing.aggregate_version</code>.
      */
     public void setAggregateVersion(Long value) {
-        set(19, value);
+        set(14, value);
     }
 
     /**
      * Getter for <code>public.marketplace_listing.aggregate_version</code>.
      */
     public Long getAggregateVersion() {
-        return (Long) get(19);
+        return (Long) get(14);
     }
 
     /**
      * Setter for <code>public.marketplace_listing.created_by</code>.
      */
     public void setCreatedBy(String value) {
-        set(20, value);
+        set(15, value);
     }
 
     /**
      * Getter for <code>public.marketplace_listing.created_by</code>.
      */
     public String getCreatedBy() {
-        return (String) get(20);
+        return (String) get(15);
     }
 
     /**
      * Setter for <code>public.marketplace_listing.updated_by</code>.
      */
     public void setUpdatedBy(String value) {
-        set(21, value);
+        set(16, value);
     }
 
     /**
      * Getter for <code>public.marketplace_listing.updated_by</code>.
      */
     public String getUpdatedBy() {
-        return (String) get(21);
+        return (String) get(16);
     }
 
     /**
      * Setter for <code>public.marketplace_listing.admitted_at</code>.
      */
     public void setAdmittedAt(Instant value) {
-        set(22, value);
+        set(17, value);
     }
 
     /**
      * Getter for <code>public.marketplace_listing.admitted_at</code>.
      */
     public Instant getAdmittedAt() {
-        return (Instant) get(22);
+        return (Instant) get(17);
     }
 
     /**
      * Setter for <code>public.marketplace_listing.published_at</code>.
      */
     public void setPublishedAt(Instant value) {
-        set(23, value);
+        set(18, value);
     }
 
     /**
      * Getter for <code>public.marketplace_listing.published_at</code>.
      */
     public Instant getPublishedAt() {
-        return (Instant) get(23);
+        return (Instant) get(18);
     }
 
     /**
      * Setter for <code>public.marketplace_listing.legacy_snapshot</code>.
      */
     public void setLegacySnapshot(JSONB value) {
-        set(24, value);
+        set(19, value);
     }
 
     /**
      * Getter for <code>public.marketplace_listing.legacy_snapshot</code>.
      */
     public JSONB getLegacySnapshot() {
-        return (JSONB) get(24);
+        return (JSONB) get(19);
+    }
+
+    /**
+     * Setter for <code>public.marketplace_listing.search_text</code>.
+     */
+    public void setSearchText(String value) {
+        set(20, value);
+    }
+
+    /**
+     * Getter for <code>public.marketplace_listing.search_text</code>.
+     */
+    public String getSearchText() {
+        return (String) get(20);
+    }
+
+    /**
+     * Setter for <code>public.marketplace_listing.search_vector</code>.
+     */
+    public void setSearchVector(TsvectorValue value) {
+        set(21, value);
+    }
+
+    /**
+     * Getter for <code>public.marketplace_listing.search_vector</code>.
+     */
+    public TsvectorValue getSearchVector() {
+        return (TsvectorValue) get(21);
+    }
+
+    /**
+     * Setter for <code>public.marketplace_listing.review_id</code>.
+     */
+    public void setReviewId(String value) {
+        set(22, value);
+    }
+
+    /**
+     * Getter for <code>public.marketplace_listing.review_id</code>.
+     */
+    public String getReviewId() {
+        return (String) get(22);
+    }
+
+    /**
+     * Setter for <code>public.marketplace_listing.created_at</code>.
+     */
+    public void setCreatedAt(LocalDateTime value) {
+        set(23, value);
+    }
+
+    /**
+     * Getter for <code>public.marketplace_listing.created_at</code>.
+     */
+    public LocalDateTime getCreatedAt() {
+        return (LocalDateTime) get(23);
+    }
+
+    /**
+     * Setter for <code>public.marketplace_listing.updated_at</code>.
+     */
+    public void setUpdatedAt(LocalDateTime value) {
+        set(24, value);
+    }
+
+    /**
+     * Getter for <code>public.marketplace_listing.updated_at</code>.
+     */
+    public LocalDateTime getUpdatedAt() {
+        return (LocalDateTime) get(24);
     }
 
     // -------------------------------------------------------------------------
@@ -396,13 +396,14 @@ public class MarketplaceListingRecord extends UpdatableRecordImpl<MarketplaceLis
     /**
      * Create a detached, initialised MarketplaceListingRecord
      */
-    public MarketplaceListingRecord(String id, String assetId, String tenantId, String projectId, String listingType, String title, String summary, String description, String previewUrl, String coverUrl, String version, String status, String searchText, TsvectorValue searchVector, String reviewId, LocalDateTime createdAt, LocalDateTime updatedAt, String workspaceId, String subjectVersion, Long aggregateVersion, String createdBy, String updatedBy, Instant admittedAt, Instant publishedAt, JSONB legacySnapshot) {
+    public MarketplaceListingRecord(String id, String artifactId, String tenantId, String projectId, String workspaceId, String listingType, String title, String summary, String description, String previewUrl, String coverUrl, String version, String subjectVersion, String status, Long aggregateVersion, String createdBy, String updatedBy, Instant admittedAt, Instant publishedAt, JSONB legacySnapshot, String searchText, TsvectorValue searchVector, String reviewId, LocalDateTime createdAt, LocalDateTime updatedAt) {
         super(MarketplaceListing.MARKETPLACE_LISTING);
 
         setId(id);
-        setAssetId(assetId);
+        setArtifactId(artifactId);
         setTenantId(tenantId);
         setProjectId(projectId);
+        setWorkspaceId(workspaceId);
         setListingType(listingType);
         setTitle(title);
         setSummary(summary);
@@ -410,20 +411,19 @@ public class MarketplaceListingRecord extends UpdatableRecordImpl<MarketplaceLis
         setPreviewUrl(previewUrl);
         setCoverUrl(coverUrl);
         setVersion(version);
-        setStatus(status);
-        setSearchText(searchText);
-        setSearchVector(searchVector);
-        setReviewId(reviewId);
-        setCreatedAt(createdAt);
-        setUpdatedAt(updatedAt);
-        setWorkspaceId(workspaceId);
         setSubjectVersion(subjectVersion);
+        setStatus(status);
         setAggregateVersion(aggregateVersion);
         setCreatedBy(createdBy);
         setUpdatedBy(updatedBy);
         setAdmittedAt(admittedAt);
         setPublishedAt(publishedAt);
         setLegacySnapshot(legacySnapshot);
+        setSearchText(searchText);
+        setSearchVector(searchVector);
+        setReviewId(reviewId);
+        setCreatedAt(createdAt);
+        setUpdatedAt(updatedAt);
         resetChangedOnNotNull();
     }
 }

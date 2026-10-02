@@ -7,7 +7,7 @@ package com.example.platform.typedschema.jooq.generated.tables;
 import com.example.platform.typedschema.jooq.generated.Indexes;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
-import com.example.platform.typedschema.jooq.generated.tables.MediaAsset.MediaAssetPath;
+import com.example.platform.typedschema.jooq.generated.tables.Artifact.ArtifactPath;
 import com.example.platform.typedschema.jooq.generated.tables.SourceVisualDescriptionSnapshot.SourceVisualDescriptionSnapshotPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.MediaStreamRecord;
 
@@ -65,9 +65,9 @@ public class MediaStream extends TableImpl<MediaStreamRecord> {
     public final TableField<MediaStreamRecord, String> ID = createField(DSL.name("id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
     /**
-     * The column <code>public.media_stream.media_asset_id</code>.
+     * The column <code>public.media_stream.artifact_id</code>.
      */
-    public final TableField<MediaStreamRecord, String> MEDIA_ASSET_ID = createField(DSL.name("media_asset_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
+    public final TableField<MediaStreamRecord, String> ARTIFACT_ID = createField(DSL.name("artifact_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
     /**
      * The column <code>public.media_stream.stream_index</code>.
@@ -253,7 +253,7 @@ public class MediaStream extends TableImpl<MediaStreamRecord> {
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.IX_MS_MEDIA_ASSET);
+        return Arrays.asList(Indexes.IX_MS_ARTIFACT);
     }
 
     @Override
@@ -263,24 +263,24 @@ public class MediaStream extends TableImpl<MediaStreamRecord> {
 
     @Override
     public List<UniqueKey<MediaStreamRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.UQ_MS_ID_ASSET);
+        return Arrays.asList(Keys.UQ_MS_ID_ARTIFACT);
     }
 
     @Override
     public List<ForeignKey<MediaStreamRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.MEDIA_STREAM__FK_MS_MEDIA_ASSET);
+        return Arrays.asList(Keys.MEDIA_STREAM__FK_MS_ARTIFACT);
     }
 
-    private transient MediaAssetPath _mediaAsset;
+    private transient ArtifactPath _artifact;
 
     /**
-     * Get the implicit join path to the <code>public.media_asset</code> table.
+     * Get the implicit join path to the <code>public.artifact</code> table.
      */
-    public MediaAssetPath mediaAsset() {
-        if (_mediaAsset == null)
-            _mediaAsset = new MediaAssetPath(this, Keys.MEDIA_STREAM__FK_MS_MEDIA_ASSET, null);
+    public ArtifactPath artifact() {
+        if (_artifact == null)
+            _artifact = new ArtifactPath(this, Keys.MEDIA_STREAM__FK_MS_ARTIFACT, null);
 
-        return _mediaAsset;
+        return _artifact;
     }
 
     private transient SourceVisualDescriptionSnapshotPath _fkSourceVisualSnapshotStream;
@@ -297,18 +297,18 @@ public class MediaStream extends TableImpl<MediaStreamRecord> {
         return _fkSourceVisualSnapshotStream;
     }
 
-    private transient SourceVisualDescriptionSnapshotPath _fkSvdStreamAsset;
+    private transient SourceVisualDescriptionSnapshotPath _fkSvdStreamArtifact;
 
     /**
      * Get the implicit to-many join path to the
      * <code>public.source_visual_description_snapshot</code> table, via the
-     * <code>fk_svd_stream_asset</code> key
+     * <code>fk_svd_stream_artifact</code> key
      */
-    public SourceVisualDescriptionSnapshotPath fkSvdStreamAsset() {
-        if (_fkSvdStreamAsset == null)
-            _fkSvdStreamAsset = new SourceVisualDescriptionSnapshotPath(this, null, Keys.SOURCE_VISUAL_DESCRIPTION_SNAPSHOT__FK_SVD_STREAM_ASSET.getInverseKey());
+    public SourceVisualDescriptionSnapshotPath fkSvdStreamArtifact() {
+        if (_fkSvdStreamArtifact == null)
+            _fkSvdStreamArtifact = new SourceVisualDescriptionSnapshotPath(this, null, Keys.SOURCE_VISUAL_DESCRIPTION_SNAPSHOT__FK_SVD_STREAM_ARTIFACT.getInverseKey());
 
-        return _fkSvdStreamAsset;
+        return _fkSvdStreamArtifact;
     }
 
     @Override

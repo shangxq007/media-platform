@@ -6,7 +6,7 @@ package com.example.platform.typedschema.jooq.generated.tables;
 
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
-import com.example.platform.typedschema.jooq.generated.tables.MediaAssetArtifact.MediaAssetArtifactPath;
+import com.example.platform.typedschema.jooq.generated.tables.Artifact.ArtifactPath;
 import com.example.platform.typedschema.jooq.generated.tables.MediaStream.MediaStreamPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.SourceVisualDescriptionSnapshotRecord;
 
@@ -64,12 +64,6 @@ public class SourceVisualDescriptionSnapshot extends TableImpl<SourceVisualDescr
      * <code>public.source_visual_description_snapshot.media_stream_id</code>.
      */
     public final TableField<SourceVisualDescriptionSnapshotRecord, String> MEDIA_STREAM_ID = createField(DSL.name("media_stream_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
-
-    /**
-     * The column
-     * <code>public.source_visual_description_snapshot.media_asset_id</code>.
-     */
-    public final TableField<SourceVisualDescriptionSnapshotRecord, String> MEDIA_ASSET_ID = createField(DSL.name("media_asset_id"), SQLDataType.VARCHAR(64).nullable(false), this, "");
 
     /**
      * The column
@@ -166,7 +160,7 @@ public class SourceVisualDescriptionSnapshot extends TableImpl<SourceVisualDescr
 
     @Override
     public List<ForeignKey<SourceVisualDescriptionSnapshotRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.SOURCE_VISUAL_DESCRIPTION_SNAPSHOT__FK_SOURCE_VISUAL_SNAPSHOT_STREAM, Keys.SOURCE_VISUAL_DESCRIPTION_SNAPSHOT__FK_SVD_ASSET_ARTIFACT, Keys.SOURCE_VISUAL_DESCRIPTION_SNAPSHOT__FK_SVD_STREAM_ASSET);
+        return Arrays.asList(Keys.SOURCE_VISUAL_DESCRIPTION_SNAPSHOT__FK_SOURCE_VISUAL_SNAPSHOT_STREAM, Keys.SOURCE_VISUAL_DESCRIPTION_SNAPSHOT__FK_SVD_ARTIFACT, Keys.SOURCE_VISUAL_DESCRIPTION_SNAPSHOT__FK_SVD_STREAM_ARTIFACT);
     }
 
     private transient MediaStreamPath _fkSourceVisualSnapshotStream;
@@ -182,30 +176,29 @@ public class SourceVisualDescriptionSnapshot extends TableImpl<SourceVisualDescr
         return _fkSourceVisualSnapshotStream;
     }
 
-    private transient MediaAssetArtifactPath _mediaAssetArtifact;
+    private transient ArtifactPath _artifact;
 
     /**
-     * Get the implicit join path to the
-     * <code>public.media_asset_artifact</code> table.
+     * Get the implicit join path to the <code>public.artifact</code> table.
      */
-    public MediaAssetArtifactPath mediaAssetArtifact() {
-        if (_mediaAssetArtifact == null)
-            _mediaAssetArtifact = new MediaAssetArtifactPath(this, Keys.SOURCE_VISUAL_DESCRIPTION_SNAPSHOT__FK_SVD_ASSET_ARTIFACT, null);
+    public ArtifactPath artifact() {
+        if (_artifact == null)
+            _artifact = new ArtifactPath(this, Keys.SOURCE_VISUAL_DESCRIPTION_SNAPSHOT__FK_SVD_ARTIFACT, null);
 
-        return _mediaAssetArtifact;
+        return _artifact;
     }
 
-    private transient MediaStreamPath _fkSvdStreamAsset;
+    private transient MediaStreamPath _fkSvdStreamArtifact;
 
     /**
      * Get the implicit join path to the <code>public.media_stream</code> table,
-     * via the <code>fk_svd_stream_asset</code> key.
+     * via the <code>fk_svd_stream_artifact</code> key.
      */
-    public MediaStreamPath fkSvdStreamAsset() {
-        if (_fkSvdStreamAsset == null)
-            _fkSvdStreamAsset = new MediaStreamPath(this, Keys.SOURCE_VISUAL_DESCRIPTION_SNAPSHOT__FK_SVD_STREAM_ASSET, null);
+    public MediaStreamPath fkSvdStreamArtifact() {
+        if (_fkSvdStreamArtifact == null)
+            _fkSvdStreamArtifact = new MediaStreamPath(this, Keys.SOURCE_VISUAL_DESCRIPTION_SNAPSHOT__FK_SVD_STREAM_ARTIFACT, null);
 
-        return _fkSvdStreamAsset;
+        return _fkSvdStreamArtifact;
     }
 
     @Override

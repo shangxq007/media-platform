@@ -6,8 +6,10 @@ package com.example.platform.typedschema.jooq.generated.tables.records;
 
 import com.example.platform.typedschema.jooq.generated.tables.Artifact;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 
+import org.jooq.JSONB;
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
 
@@ -77,115 +79,241 @@ public class ArtifactRecord extends UpdatableRecordImpl<ArtifactRecord> {
     }
 
     /**
+     * Setter for <code>public.artifact.workspace_id</code>.
+     */
+    public void setWorkspaceId(String value) {
+        set(4, value);
+    }
+
+    /**
+     * Getter for <code>public.artifact.workspace_id</code>.
+     */
+    public String getWorkspaceId() {
+        return (String) get(4);
+    }
+
+    /**
      * Setter for <code>public.artifact.content_digest</code>.
      */
     public void setContentDigest(String value) {
-        set(4, value);
+        set(5, value);
     }
 
     /**
      * Getter for <code>public.artifact.content_digest</code>.
      */
     public String getContentDigest() {
-        return (String) get(4);
+        return (String) get(5);
     }
 
     /**
      * Setter for <code>public.artifact.byte_length</code>.
      */
     public void setByteLength(Long value) {
-        set(5, value);
+        set(6, value);
     }
 
     /**
      * Getter for <code>public.artifact.byte_length</code>.
      */
     public Long getByteLength() {
-        return (Long) get(5);
+        return (Long) get(6);
     }
 
     /**
      * Setter for <code>public.artifact.media_type</code>.
      */
     public void setMediaType(String value) {
-        set(6, value);
+        set(7, value);
     }
 
     /**
      * Getter for <code>public.artifact.media_type</code>.
      */
     public String getMediaType() {
-        return (String) get(6);
+        return (String) get(7);
     }
 
     /**
      * Setter for <code>public.artifact.artifact_kind</code>.
      */
     public void setArtifactKind(String value) {
-        set(7, value);
+        set(8, value);
     }
 
     /**
      * Getter for <code>public.artifact.artifact_kind</code>.
      */
     public String getArtifactKind() {
-        return (String) get(7);
+        return (String) get(8);
     }
 
     /**
      * Setter for <code>public.artifact.state</code>.
      */
     public void setState(String value) {
-        set(8, value);
+        set(9, value);
     }
 
     /**
      * Getter for <code>public.artifact.state</code>.
      */
     public String getState() {
-        return (String) get(8);
+        return (String) get(9);
     }
 
     /**
      * Setter for <code>public.artifact.schema_version</code>.
      */
     public void setSchemaVersion(Integer value) {
-        set(9, value);
+        set(10, value);
     }
 
     /**
      * Getter for <code>public.artifact.schema_version</code>.
      */
     public Integer getSchemaVersion() {
-        return (Integer) get(9);
+        return (Integer) get(10);
+    }
+
+    /**
+     * Setter for <code>public.artifact.storage_reference</code>.
+     */
+    public void setStorageReference(String value) {
+        set(11, value);
+    }
+
+    /**
+     * Getter for <code>public.artifact.storage_reference</code>.
+     */
+    public String getStorageReference() {
+        return (String) get(11);
+    }
+
+    /**
+     * Setter for <code>public.artifact.provenance</code>.
+     */
+    public void setProvenance(JSONB value) {
+        set(12, value);
+    }
+
+    /**
+     * Getter for <code>public.artifact.provenance</code>.
+     */
+    public JSONB getProvenance() {
+        return (JSONB) get(12);
+    }
+
+    /**
+     * Setter for <code>public.artifact.source_lineage</code>.
+     */
+    public void setSourceLineage(JSONB value) {
+        set(13, value);
+    }
+
+    /**
+     * Getter for <code>public.artifact.source_lineage</code>.
+     */
+    public JSONB getSourceLineage() {
+        return (JSONB) get(13);
+    }
+
+    /**
+     * Setter for <code>public.artifact.conversion_specification_id</code>.
+     */
+    public void setConversionSpecificationId(String value) {
+        set(14, value);
+    }
+
+    /**
+     * Getter for <code>public.artifact.conversion_specification_id</code>.
+     */
+    public String getConversionSpecificationId() {
+        return (String) get(14);
+    }
+
+    /**
+     * Setter for <code>public.artifact.idempotency_key</code>.
+     */
+    public void setIdempotencyKey(String value) {
+        set(15, value);
+    }
+
+    /**
+     * Getter for <code>public.artifact.idempotency_key</code>.
+     */
+    public String getIdempotencyKey() {
+        return (String) get(15);
+    }
+
+    /**
+     * Setter for <code>public.artifact.lifecycle_state</code>.
+     */
+    public void setLifecycleState(String value) {
+        set(16, value);
+    }
+
+    /**
+     * Getter for <code>public.artifact.lifecycle_state</code>.
+     */
+    public String getLifecycleState() {
+        return (String) get(16);
+    }
+
+    /**
+     * Setter for <code>public.artifact.lifecycle_changed_at</code>.
+     */
+    public void setLifecycleChangedAt(Instant value) {
+        set(17, value);
+    }
+
+    /**
+     * Getter for <code>public.artifact.lifecycle_changed_at</code>.
+     */
+    public Instant getLifecycleChangedAt() {
+        return (Instant) get(17);
+    }
+
+    /**
+     * Setter for <code>public.artifact.audit_provenance</code>.
+     */
+    public void setAuditProvenance(JSONB value) {
+        set(18, value);
+    }
+
+    /**
+     * Getter for <code>public.artifact.audit_provenance</code>.
+     */
+    public JSONB getAuditProvenance() {
+        return (JSONB) get(18);
     }
 
     /**
      * Setter for <code>public.artifact.created_at</code>.
      */
     public void setCreatedAt(LocalDateTime value) {
-        set(10, value);
+        set(19, value);
     }
 
     /**
      * Getter for <code>public.artifact.created_at</code>.
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(10);
+        return (LocalDateTime) get(19);
     }
 
     /**
      * Setter for <code>public.artifact.tombstoned_at</code>.
      */
     public void setTombstonedAt(LocalDateTime value) {
-        set(11, value);
+        set(20, value);
     }
 
     /**
      * Getter for <code>public.artifact.tombstoned_at</code>.
      */
     public LocalDateTime getTombstonedAt() {
-        return (LocalDateTime) get(11);
+        return (LocalDateTime) get(20);
     }
 
     // -------------------------------------------------------------------------
@@ -211,19 +339,28 @@ public class ArtifactRecord extends UpdatableRecordImpl<ArtifactRecord> {
     /**
      * Create a detached, initialised ArtifactRecord
      */
-    public ArtifactRecord(String id, String tenantId, String projectId, String renderJobId, String contentDigest, Long byteLength, String mediaType, String artifactKind, String state, Integer schemaVersion, LocalDateTime createdAt, LocalDateTime tombstonedAt) {
+    public ArtifactRecord(String id, String tenantId, String projectId, String renderJobId, String workspaceId, String contentDigest, Long byteLength, String mediaType, String artifactKind, String state, Integer schemaVersion, String storageReference, JSONB provenance, JSONB sourceLineage, String conversionSpecificationId, String idempotencyKey, String lifecycleState, Instant lifecycleChangedAt, JSONB auditProvenance, LocalDateTime createdAt, LocalDateTime tombstonedAt) {
         super(Artifact.ARTIFACT);
 
         setId(id);
         setTenantId(tenantId);
         setProjectId(projectId);
         setRenderJobId(renderJobId);
+        setWorkspaceId(workspaceId);
         setContentDigest(contentDigest);
         setByteLength(byteLength);
         setMediaType(mediaType);
         setArtifactKind(artifactKind);
         setState(state);
         setSchemaVersion(schemaVersion);
+        setStorageReference(storageReference);
+        setProvenance(provenance);
+        setSourceLineage(sourceLineage);
+        setConversionSpecificationId(conversionSpecificationId);
+        setIdempotencyKey(idempotencyKey);
+        setLifecycleState(lifecycleState);
+        setLifecycleChangedAt(lifecycleChangedAt);
+        setAuditProvenance(auditProvenance);
         setCreatedAt(createdAt);
         setTombstonedAt(tombstonedAt);
         resetChangedOnNotNull();

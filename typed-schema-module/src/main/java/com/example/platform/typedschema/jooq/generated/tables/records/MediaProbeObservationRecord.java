@@ -63,16 +63,16 @@ public class MediaProbeObservationRecord extends UpdatableRecordImpl<MediaProbeO
     }
 
     /**
-     * Setter for <code>public.media_probe_observation.media_asset_id</code>.
+     * Setter for <code>public.media_probe_observation.artifact_id</code>.
      */
-    public void setMediaAssetId(String value) {
+    public void setArtifactId(String value) {
         set(3, value);
     }
 
     /**
-     * Getter for <code>public.media_probe_observation.media_asset_id</code>.
+     * Getter for <code>public.media_probe_observation.artifact_id</code>.
      */
-    public String getMediaAssetId() {
+    public String getArtifactId() {
         return (String) get(3);
     }
 
@@ -215,13 +215,13 @@ public class MediaProbeObservationRecord extends UpdatableRecordImpl<MediaProbeO
     /**
      * Create a detached, initialised MediaProbeObservationRecord
      */
-    public MediaProbeObservationRecord(String id, String tenantId, String projectId, String mediaAssetId, String provider, String rawPayload, Boolean valid, Boolean clientExportCompatible, Boolean normalizeRequired, String warnings, String errorMessage, LocalDateTime probedAt) {
+    public MediaProbeObservationRecord(String id, String tenantId, String projectId, String artifactId, String provider, String rawPayload, Boolean valid, Boolean clientExportCompatible, Boolean normalizeRequired, String warnings, String errorMessage, LocalDateTime probedAt) {
         super(MediaProbeObservation.MEDIA_PROBE_OBSERVATION);
 
         setId(id);
         setTenantId(tenantId);
         setProjectId(projectId);
-        setMediaAssetId(mediaAssetId);
+        setArtifactId(artifactId);
         setProvider(provider);
         setRawPayload(rawPayload);
         setValid(valid);

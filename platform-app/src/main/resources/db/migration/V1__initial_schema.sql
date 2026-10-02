@@ -1,5 +1,7 @@
 -- Greenfield initial schema baseline.
--- Consolidated from development migrations V1-V4.
+-- Consolidated from development migrations V1-V22 into a single canonical V1.
+-- Artifact is the sole artifact/media identity: the retired MediaAsset root and
+-- its link relation are not part of this schema.
 -- This is the single source of truth for the database schema.
 -- Post-release: migrations append only (V2, V3, ...).
 
@@ -793,16 +795,43 @@ create table artifact (
     tenant_id varchar(64) not null,
     project_id varchar(64),
     render_job_id varchar(64),
+    workspace_id varchar(128) not null default 'legacy',
     content_digest varchar(128) not null,
     byte_length bigint not null,
     media_type varchar(64) not null,
     artifact_kind varchar(32) not null,
     state varchar(32) not null,
     schema_version int not null default 1,
+    storage_reference text,
+    provenance jsonb not null default '{}'::jsonb,
+    source_lineage jsonb not null default '[]'::jsonb,
+    conversion_specification_id varchar(128),
+    idempotency_key varchar(256),
+    lifecycle_state varchar(32),
+    lifecycle_changed_at timestamptz,
+    audit_provenance jsonb not null default '{}'::jsonb,
     created_at timestamp not null,
     tombstoned_at timestamp,
-    constraint uq_artifact_tenant_id unique (tenant_id, id)
+    constraint uq_artifact_tenant_id unique (tenant_id, id),
+    constraint uq_artifact_scope_idempotency unique (tenant_id, workspace_id, idempotency_key),
+    constraint chk_artifact_lifecycle_state check (
+        lifecycle_state is null or lifecycle_state in ('DRAFT','AVAILABLE','TOMBSTONED','ARCHIVED','FAILED'))
 );
+
+-- Artifact identity/scope/digest/storage/lineage are immutable once written.
+create or replace function reject_artifact_identity_mutation() returns trigger language plpgsql as $$
+begin
+    if new.id is distinct from old.id or new.tenant_id is distinct from old.tenant_id
+        or new.workspace_id is distinct from old.workspace_id
+        or new.content_digest is distinct from old.content_digest
+        or new.storage_reference is distinct from old.storage_reference
+        or new.source_lineage is distinct from old.source_lineage then
+        raise exception 'V19_ARTIFACT_IDENTITY_IMMUTABLE';
+    end if;
+    return new;
+end $$;
+create trigger artifact_identity_immutable before update on artifact
+for each row execute function reject_artifact_identity_mutation();
 
 -- Artifact identity is independent of byte equality; distinct scoped outputs may contain identical bytes.
 create index ix_artifact_tenant_digest on artifact(tenant_id, content_digest, byte_length);
@@ -810,6 +839,62 @@ create index ix_artifact_render_job_id on artifact(render_job_id);
 create index ix_artifact_project_id on artifact(project_id);
 create index ix_artifact_state on artifact(state);
 create index ix_artifact_content_digest on artifact(content_digest);
+
+-- ARTIFACT DETAILS (generic 1:1): representation facts shared by every artifact kind.
+-- Artifact is the sole identity authority; the retired MediaAsset root no longer exists.
+create table artifact_details (
+    artifact_id varchar(64) primary key,
+    mime_type varchar(128) not null,
+    container varchar(128),
+    subtype varchar(64),
+    thumbnail_artifact_id varchar(64),
+    media_version varchar(64),
+    constraint fk_artifact_details_artifact
+        foreign key (artifact_id) references artifact(id) on delete restrict,
+    constraint fk_artifact_details_thumbnail
+        foreign key (thumbnail_artifact_id) references artifact(id) on delete restrict
+);
+
+create index ix_artifact_details_thumbnail on artifact_details(thumbnail_artifact_id);
+
+-- ARTIFACT GOVERNANCE (1:1): classification/license/retention/security/PII/AI provenance.
+-- These facts were governance columns on the retired MediaAsset root; they are Artifact facts now.
+create table artifact_governance (
+    artifact_id varchar(64) primary key,
+    classification varchar(64),
+    license varchar(128),
+    retention_policy varchar(128),
+    security_level varchar(64),
+    contains_pii boolean not null default false,
+    ai_generated boolean not null default false,
+    updated_at timestamp,
+    constraint fk_artifact_governance_artifact
+        foreign key (artifact_id) references artifact(id) on delete restrict
+);
+
+create index ix_artifact_governance_classification on artifact_governance(classification);
+create index ix_artifact_governance_ai_generated on artifact_governance(ai_generated);
+
+-- ARTIFACT MEDIA DETAILS (media-specific 1:1): structural media facts under the same identity.
+create table artifact_media_details (
+    artifact_id varchar(64) primary key,
+    codec varchar(128),
+    duration_millis bigint,
+    width integer,
+    height integer,
+    frame_rate varchar(64),
+    tracks jsonb not null default '[]'::jsonb,
+    color_space varchar(128),
+    sample_rate integer,
+    channel_layout varchar(128),
+    keyframe_index_reference text,
+    constraint fk_artifact_media_details_details
+        foreign key (artifact_id) references artifact_details(artifact_id) on delete restrict,
+    constraint chk_artifact_media_duration check (duration_millis is null or duration_millis >= 0),
+    constraint chk_artifact_media_dimensions check ((width is null or width > 0) and (height is null or height > 0)),
+    constraint chk_artifact_media_sample_rate check (sample_rate is null or sample_rate > 0),
+    constraint chk_artifact_media_tracks_array check (jsonb_typeof(tracks) = 'array')
+);
 
 create table artifact_replica (
     artifact_id varchar(64) not null,
@@ -1976,7 +2061,7 @@ create table quota_usage (
     quota_key varchar(128) not null,
     period_start timestamp with time zone not null,
     period_end timestamp with time zone not null,
-    usage_value bigint not null default 0 check (usage_value >= 0),
+    usage_value numeric(38,18) not null default 0 check (usage_value >= 0),
     created_at timestamp with time zone not null,
     updated_at timestamp with time zone not null,
     constraint uq_quota_usage_logical_period unique (
@@ -1998,14 +2083,14 @@ create table quota_usage_operation (
     quota_key varchar(128) not null,
     period_start timestamp with time zone not null,
     period_end timestamp with time zone not null,
-    signed_delta bigint not null,
-    limit_value bigint not null check (limit_value >= 0),
+    signed_delta numeric(38,18) not null,
+    limit_value numeric(38,18) not null check (limit_value >= 0),
     idempotency_key varchar(255) not null,
     operation_kind varchar(32) not null check (
         operation_kind in ('CONSUMPTION', 'ADJUSTMENT', 'REVERSAL', 'RECONCILIATION')),
     outcome varchar(32) not null check (outcome in ('PENDING', 'APPLIED', 'REJECTED')),
-    usage_before bigint,
-    usage_after bigint,
+    usage_before numeric(38,18),
+    usage_after numeric(38,18),
     rejection_reason varchar(64),
     trace_id varchar(128) not null,
     reason varchar(512) not null,
@@ -2408,25 +2493,6 @@ create table problematic_data_rule_config (
     created_at timestamp not null default now(),
     updated_at timestamp not null default now()
 );
-
-insert into problematic_data_rule_config (rule_id, rule_name, data_type, default_severity, description, auto_fixable, auto_fix_action, enabled)
-values ('RJB-001', 'Missing RenderJob Output', 'MISSING_FIELD', 'HIGH', 'RenderJob completed but has no output artifact', false, '', true);
-insert into problematic_data_rule_config (rule_id, rule_name, data_type, default_severity, description, auto_fixable, auto_fix_action, enabled)
-values ('RJB-002', 'Stuck RenderJob', 'INVALID_STATE_TRANSITION', 'MEDIUM', 'RenderJob stuck in non-terminal state for too long', true, 'MARK_STALE_AND_RETRY', true);
-insert into problematic_data_rule_config (rule_id, rule_name, data_type, default_severity, description, auto_fixable, auto_fix_action, enabled)
-values ('RJB-003', 'Duplicate RenderJob', 'DUPLICATE_ENTRY', 'LOW', 'Multiple render jobs with same project+profile+timeline hash', true, 'MARK_DUPLICATE', true);
-insert into problematic_data_rule_config (rule_id, rule_name, data_type, default_severity, description, auto_fixable, auto_fix_action, enabled)
-values ('PMT-001', 'Prompt Sensitive Data Leak', 'MISSING_FIELD', 'CRITICAL', 'Sensitive prompt variable found in execution record', false, '', true);
-insert into problematic_data_rule_config (rule_id, rule_name, data_type, default_severity, description, auto_fixable, auto_fix_action, enabled)
-values ('PMT-002', 'Prompt Output Mismatch', 'OUTPUT_MISMATCH', 'HIGH', 'Prompt execution output does not match expected format', false, '', true);
-insert into problematic_data_rule_config (rule_id, rule_name, data_type, default_severity, description, auto_fixable, auto_fix_action, enabled)
-values ('PRV-001', 'Provider Error Spike', 'ERROR_RATE_SPIKE', 'HIGH', 'Provider error rate exceeds threshold in time window', false, '', true);
-insert into problematic_data_rule_config (rule_id, rule_name, data_type, default_severity, description, auto_fixable, auto_fix_action, enabled)
-values ('WRK-001', 'Worker Stale Heartbeat', 'PERFORMANCE_ANOMALY', 'MEDIUM', 'Remote worker has not sent heartbeat within expected interval', true, 'MARK_WORKER_OFFLINE', true);
-insert into problematic_data_rule_config (rule_id, rule_name, data_type, default_severity, description, auto_fixable, auto_fix_action, enabled)
-values ('SLA-001', 'SLA Breach', 'SLA_BREACH', 'CRITICAL', 'Render job exceeded SLA time limit', false, '', true);
-insert into problematic_data_rule_config (rule_id, rule_name, data_type, default_severity, description, auto_fixable, auto_fix_action, enabled)
-values ('CST-001', 'Cost Anomaly', 'COST_ANOMALY', 'HIGH', 'Render job cost significantly exceeds estimated cost', false, '', true);
 
 create table nlq_report_definition (
     report_id varchar(64) not null primary key,
@@ -3002,54 +3068,17 @@ create index ix_lease_status on render_job_lease(status);
 create index ix_lease_until on render_job_lease(lease_until);
 
 -- ============================================================
--- ASSET TABLE
+-- MEDIA SOURCE TRUTH (Artifact-keyed)
 -- ============================================================
+-- Artifact is the only identity. The former MediaAsset root and its link relation
+-- are retired and do not exist in the consolidated schema; every remaining media
+-- fact is keyed directly by artifact_id.
 
-create table media_asset (
-    id varchar(64) primary key,
-    tenant_id varchar(64) not null,
-    project_id varchar(128) not null,
-    storage_key text not null,
-    media_type varchar(32) not null,
-    filename varchar(256),
-    size_bytes bigint,
-    checksum varchar(128),
-    media_version varchar(64),
-    owner_id varchar(128),
-    entity_ref text,
-    classification varchar(64),
-    license varchar(128),
-    retention_policy varchar(128),
-    security_level varchar(64),
-    contains_pii boolean not null default false,
-    ai_generated boolean not null default false,
-    created_at timestamp not null,
-    updated_at timestamp,
-    publish_status varchar(32) not null default 'DRAFT'
-);
-
-create index ix_media_asset_tenant_project on media_asset(tenant_id, project_id);
-create index ix_media_asset_tenant_created on media_asset(tenant_id, created_at desc);
-create index ix_media_asset_classification on media_asset(classification);
-create index ix_media_asset_ai_generated on media_asset(ai_generated);
-
--- MCMV2-C: typed MediaAsset <-> Artifact linkage (MEDIA_ASSET_ARTIFACT_RELATIONSHIP_V1)
-create table media_asset_artifact (
-    media_asset_id varchar(64) not null,
-    artifact_id varchar(64) not null,
-    relationship varchar(16) not null,
-    created_at timestamp not null default current_timestamp,
-    constraint pk_maa primary key (media_asset_id, artifact_id, relationship),
-    constraint fk_maa_media_asset foreign key (media_asset_id) references media_asset(id) on delete restrict,
-    constraint fk_maa_artifact foreign key (artifact_id) references artifact(id) on delete restrict
-);
-
-create index ix_maa_artifact on media_asset_artifact(artifact_id);
-
--- MCMV2-C: canonical source stream structural model (exact time/rate)
+-- MCMV2-C: canonical source stream structural model (exact time/rate).
+-- Multiple stream rows per artifact are preserved (multi-stream fidelity).
 create table media_stream (
     id varchar(64) primary key,
-    media_asset_id varchar(64) not null,
+    artifact_id varchar(64) not null,
     stream_index int not null,
     stream_kind varchar(16) not null,
     codec varchar(64),
@@ -3073,19 +3102,20 @@ create table media_stream (
     hdr_mastering_display_ref varchar(128),
     hdr_content_light_ref varchar(128),
     container_stream_description varchar(128),
-    constraint fk_ms_media_asset foreign key (media_asset_id) references media_asset(id) on delete restrict
+    constraint fk_ms_artifact foreign key (artifact_id) references artifact(id) on delete restrict,
+    constraint uq_ms_id_artifact unique (id, artifact_id)
 );
 
-create index ix_ms_media_asset on media_stream(media_asset_id);
+create index ix_ms_artifact on media_stream(artifact_id);
 
 -- MCMV2-C: raw probe observation (RAW_PROBE_RESULT_IS_NOT_CANONICAL_MEDIA_AUTHORITY_V1)
 -- Provider-specific raw payload is opaque; canonical structural truth lives in
--- media_stream / media_asset. No double time/rate authority persists here.
+-- media_stream / artifact. No double time/rate authority persists here.
 create table media_probe_observation (
     id varchar(64) primary key,
     tenant_id varchar(64) not null,
     project_id varchar(64) not null,
-    media_asset_id varchar(64) not null,
+    artifact_id varchar(64) not null,
     provider varchar(64),
     raw_payload text,
     valid boolean not null default false,
@@ -3094,29 +3124,29 @@ create table media_probe_observation (
     warnings varchar(4096),
     error_message varchar(1024),
     probed_at timestamp not null default current_timestamp,
-    constraint fk_mpo_media_asset foreign key (media_asset_id) references media_asset(id) on delete cascade
+    constraint fk_mpo_artifact foreign key (artifact_id) references artifact(id) on delete cascade
 );
 
-create index ix_mpo_tenant_asset on media_probe_observation(tenant_id, media_asset_id);
+create index ix_mpo_tenant_artifact on media_probe_observation(tenant_id, artifact_id);
 create index ix_mpo_project on media_probe_observation(project_id);
 create index ix_mpo_probed_at on media_probe_observation(probed_at);
 
 create table asset_semantic_metadata (
-    asset_id varchar(64) primary key,
+    artifact_id varchar(64) primary key,
     asset_version varchar(64),
     status varchar(32) not null default 'PENDING',
     language varchar(16),
     semantic_json text,
     created_at timestamp not null,
     updated_at timestamp,
-    constraint fk_asm_asset foreign key (asset_id) references media_asset(id)
+    constraint fk_asm_artifact foreign key (artifact_id) references artifact(id)
 );
 
 create index ix_asm_status on asset_semantic_metadata(status);
 create index ix_asm_language on asset_semantic_metadata(language);
 
 create table search_projection (
-    asset_id varchar(64) primary key,
+    artifact_id varchar(64) primary key,
     tenant_id varchar(64),
     project_id varchar(64),
     filename varchar(256),
@@ -3132,7 +3162,7 @@ create table search_projection (
     search_text text,
     search_vector tsvector,
     updated_at timestamp not null,
-    constraint fk_sp_asset foreign key (asset_id) references media_asset(id)
+    constraint fk_sp_artifact foreign key (artifact_id) references artifact(id)
 );
 
 create index ix_sp_tenant on search_projection(tenant_id);
@@ -3140,26 +3170,41 @@ create index ix_sp_project on search_projection(project_id);
 create index ix_sp_publish_status on search_projection(publish_status);
 create index ix_sp_fts on search_projection using gin(search_vector);
 
+-- Marketplace publication subject identity is the canonical Artifact (TYPED_ARTIFACT_MARKETPLACE_DECISION_001).
 create table marketplace_listing (
     id varchar(64) primary key,
-    asset_id varchar(64) not null,
+    artifact_id varchar(64) not null,
     tenant_id varchar(64),
     project_id varchar(64),
+    workspace_id varchar(64),
     listing_type varchar(32) not null,
     title varchar(256) not null,
     summary text,
     description text,
     preview_url varchar(512),
     cover_url varchar(512),
-    version varchar(32) not null default '1.0',
+    version varchar(64) not null default '1.0',
+    subject_version varchar(64),
     status varchar(32) not null default 'DRAFT',
+    aggregate_version bigint not null default 0,
+    created_by varchar(128),
+    updated_by varchar(128),
+    admitted_at timestamptz,
+    published_at timestamptz,
+    legacy_snapshot jsonb,
     search_text text,
     search_vector tsvector,
     review_id varchar(64),
     created_at timestamp not null,
     updated_at timestamp not null,
-    constraint uq_ml_asset unique(asset_id),
-    constraint fk_ml_asset foreign key (asset_id) references media_asset(id)
+    constraint uq_ml_artifact unique(artifact_id),
+    constraint fk_ml_artifact foreign key (artifact_id) references artifact(id),
+    constraint marketplace_workspace_fk foreign key(workspace_id) references workspace(id),
+    constraint marketplace_admitted_scope check
+        (admitted_at is null or (tenant_id is not null and project_id is not null and workspace_id is not null
+        and subject_version is not null and created_by is not null and aggregate_version > 0)),
+    constraint marketplace_admitted_status check
+        (admitted_at is null or status in ('DRAFT','READY','PUBLISHED','ARCHIVED'))
 );
 
 create index ix_ml_status on marketplace_listing(status);
@@ -3676,12 +3721,9 @@ create index ix_workflow_execution_tenant_status on workflow_execution (tenant_i
 -- as FINAL schema definitions. No incremental migration archaeology.
 -- ============================================================
 
--- OWNERSHIP UNIQUES (former V6): enable composite ownership FKs.
-alter table media_stream
-    add constraint uq_ms_id_asset unique (id, media_asset_id);
-
-alter table media_asset_artifact
-    add constraint uq_maa_asset_artifact unique (media_asset_id, artifact_id);
+-- OWNERSHIP UNIQUES: uq_ms_id_artifact is declared inline on media_stream and enables the
+-- composite source-visual-snapshot FK below. The retired media link relation no longer
+-- exists, so its ownership unique is gone with it.
 
 -- REVISION PARENT GRAPH (former V4): composite FK target + ordered parent edges.
 create table timeline_revision_parent (
@@ -3773,31 +3815,28 @@ alter table apply_command
         deferrable initially deferred;
 
 -- SOURCE VISUAL DESCRIPTION SNAPSHOT (former V5/V6/V7): durable canonical
--- Media-owned snapshot, bound to immutable source content. Final shape:
+-- Artifact-owned snapshot, bound to immutable source content. Final shape:
 -- composite PK (media_stream_id, artifact_id) supports F2 multi-content-version
--- coexistence; ownership FKs reject cross-asset/unlinked bindings; append-only
+-- coexistence; ownership FKs reject cross-artifact/unlinked bindings; append-only
 -- immutability is enforced by PostgreSQL trigger (no semantic UPDATE).
 create table source_visual_description_snapshot (
     media_stream_id varchar(64) not null,
-    media_asset_id   varchar(64) not null,
     artifact_id      varchar(64) not null,
     canonical_payload text not null,
     created_at       timestamp not null default current_timestamp,
     constraint pk_svd_stream_artifact primary key (media_stream_id, artifact_id),
     constraint fk_source_visual_snapshot_stream
         foreign key (media_stream_id) references media_stream(id),
-    constraint fk_svd_stream_asset
-        foreign key (media_stream_id, media_asset_id)
-        references media_stream (id, media_asset_id),
-    constraint fk_svd_asset_artifact
-        foreign key (media_asset_id, artifact_id)
-        references media_asset_artifact (media_asset_id, artifact_id)
+    constraint fk_svd_artifact
+        foreign key (artifact_id) references artifact(id),
+    constraint fk_svd_stream_artifact
+        foreign key (media_stream_id, artifact_id)
+        references media_stream (id, artifact_id)
 );
 
 create or replace function trg_fn_svd_snapshot_immutable() returns trigger as $$
 begin
     if new.media_stream_id is distinct from old.media_stream_id
-       or new.media_asset_id is distinct from old.media_asset_id
        or new.artifact_id is distinct from old.artifact_id
        or new.canonical_payload is distinct from old.canonical_payload then
         raise exception 'SOURCE_VISUAL_SNAPSHOT_IMMUTABLE: semantic mutation of '
@@ -4317,7 +4356,435 @@ create trigger wf_attempt_terminal_closes_backend_selection
 after update of state on wf_execution_attempt
 for each row execute function wf_close_terminal_backend_selection();
 
--- Durable greenfield commercial seeds. These are data, not a second Java catalog/plan writer.
+-- ============================================================
+-- CONSOLIDATED INCREMENTAL SCHEMA (former migrations V2..V22)
+-- Final-state definitions only: no ALTER ... RENAME chain, no retired-table
+-- drops, and no back-fill data migration. Historical unproven facts are not
+-- reconstructed; the platform has never been launched.
+-- ============================================================
+
+-- (former V2) verified global login identity + Project/Workspace scope.
+create table account (
+    id varchar(64) primary key,
+    issuer varchar(512) not null,
+    subject varchar(512) not null,
+    platform_admin boolean not null default false,
+    status varchar(32) not null,
+    created_at timestamp not null,
+    unique (issuer, subject)
+);
+
+alter table "user" add column account_id varchar(64) references account(id);
+create unique index ux_user_account_tenant on "user"(account_id, tenant_id) where account_id is not null;
+
+alter table workspace add constraint ux_workspace_id_tenant unique(id, tenant_id);
+alter table project add column workspace_id varchar(64);
+alter table project add constraint fk_project_workspace_tenant foreign key(workspace_id, tenant_id) references workspace(id, tenant_id);
+
+create function preserve_project_workspace_scope() returns trigger language plpgsql as $$
+begin
+    if old.workspace_id is not null and (new.workspace_id is distinct from old.workspace_id or new.tenant_id is distinct from old.tenant_id) then
+        raise exception 'Established Project scope is immutable';
+    end if;
+    return new;
+end $$;
+create trigger project_workspace_scope_immutable before update on project for each row execute function preserve_project_workspace_scope();
+
+alter table project add constraint ux_project_scope unique(id,tenant_id,workspace_id);
+
+create table render_execution_context (
+    job_id varchar(64) primary key references render_job(id),
+    tenant_id varchar(64) not null,
+    workspace_id varchar(64) not null,
+    project_id varchar(64) not null,
+    context_json jsonb not null,
+    created_at timestamp not null,
+    foreign key(project_id,tenant_id,workspace_id) references project(id,tenant_id,workspace_id)
+);
+create function preserve_render_execution_context() returns trigger language plpgsql as $$
+begin raise exception 'Accepted execution context is immutable'; end $$;
+create trigger render_execution_context_immutable before update or delete on render_execution_context for each row execute function preserve_render_execution_context();
+
+alter table user_role_assignment add column project_id varchar(64);
+alter table user_role_assignment add column scope_unresolved boolean not null default false;
+alter table user_role_assignment add constraint ck_role_assignment_scope check (workspace_id is null or project_id is null);
+
+-- (former V5) forward-only Workflow process authority.
+create table workflow_run (
+    id text primary key,
+    tenant_id text not null,
+    workspace_id text not null,
+    project_id text not null,
+    request_key text not null,
+    request_digest text not null,
+    actor_json text not null,
+    definition_id text not null,
+    definition_version integer not null,
+    workflow_plan_digest text not null,
+    plan_json text not null,
+    inputs_json text not null,
+    bindings_json text not null,
+    status text not null check (status in ('ACCEPTED','RUNNING','SUCCEEDED','FAILED','CANCELLED','TIMED_OUT')),
+    cancelled_by_json text,
+    cancel_requested boolean not null default false,
+    failure_code text,
+    created_at timestamptz not null default now(),
+    completed_at timestamptz,
+    unique(tenant_id, request_key),
+    foreign key(project_id) references project(id)
+);
+create table workflow_run_step (
+    run_id text not null references workflow_run(id),
+    step_id text not null,
+    status text not null check (status in ('WAITING','COMPLETED','FAILED','CANCELLED','TIMED_OUT')),
+    failure_code text,
+    wait_kind text,
+    deadline_at timestamptz,
+    release_id text,
+    released_by_json text,
+    approved boolean,
+    result_json text,
+    primary key(run_id,step_id)
+);
+create table workflow_operation_receipt (
+    run_id text not null references workflow_run(id),
+    step_id text not null,
+    request_digest text not null,
+    result_json text not null,
+    primary key(run_id,step_id)
+);
+
+-- (former V6) Marketplace publication/review authority (subject identity is artifact_id, above).
+create table marketplace_review (
+    id varchar(64) primary key,
+    listing_id varchar(64) not null references marketplace_listing(id),
+    tenant_id varchar(64) not null,
+    workspace_id varchar(64) not null,
+    project_id varchar(64) not null,
+    subject_version varchar(64) not null,
+    author_id varchar(128) not null,
+    title varchar(256) not null,
+    description text,
+    status varchar(32) not null check(status in ('OPEN','APPROVED','CHANGES_REQUESTED','REJECTED')),
+    aggregate_version bigint not null,
+    created_at timestamptz not null default now()
+);
+create table marketplace_review_decision (
+    id varchar(64) primary key,
+    review_id varchar(64) not null references marketplace_review(id),
+    actor_json text not null,
+    decision varchar(32) not null,
+    aggregate_version bigint not null,
+    created_at timestamptz not null default now()
+);
+create table marketplace_review_thread (
+    id varchar(64) primary key,
+    review_id varchar(64) not null references marketplace_review(id),
+    resolved boolean not null default false,
+    resolved_by varchar(128)
+);
+create table marketplace_review_comment (
+    id varchar(64) primary key,
+    review_id varchar(64) not null references marketplace_review(id),
+    thread_id varchar(64) not null references marketplace_review_thread(id),
+    author_id varchar(128) not null,
+    content text not null,
+    created_at timestamptz not null default now()
+);
+create table marketplace_command (
+    tenant_id varchar(64) not null,
+    command_id varchar(128) not null,
+    request_digest varchar(64) not null,
+    actor_json text not null,
+    result_json text not null,
+    created_at timestamptz not null default now(),
+    primary key(tenant_id,command_id)
+);
+
+-- (former V7) admitted listing identity immutability fence.
+create function enforce_marketplace_listing_revision() returns trigger language plpgsql as $$
+begin
+    if old.admitted_at is not null then
+        if new.admitted_at is distinct from old.admitted_at
+            or new.artifact_id is distinct from old.artifact_id
+            or new.subject_version is distinct from old.subject_version
+            or new.tenant_id is distinct from old.tenant_id
+            or new.project_id is distinct from old.project_id
+            or new.workspace_id is distinct from old.workspace_id
+            or new.created_by is distinct from old.created_by
+            or new.legacy_snapshot is distinct from old.legacy_snapshot
+            or new.aggregate_version <> old.aggregate_version + 1 then
+            raise exception 'Marketplace admitted identity is immutable and every mutation must advance its version';
+        end if;
+    end if;
+    return new;
+end $$;
+create trigger marketplace_listing_revision before update on marketplace_listing
+for each row execute function enforce_marketplace_listing_revision();
+
+-- (former V8/V9) durable publication ownership + non-secret credential generation.
+alter table social_post
+    add column publication_attempt_id varchar(36),
+    add column dispatch_started_at timestamp,
+    add column attempt_project_id varchar(64),
+    add column attempt_account_id varchar(64),
+    add column attempt_binding_version bigint,
+    add column attempt_credential_revision bigint,
+    add column attempt_credential_expires_at timestamp;
+alter table social_post add constraint ck_social_dispatch_owned check (
+    dispatch_started_at is null or publication_attempt_id is not null);
+
+alter table social_connected_platform
+    add column credential_revision bigint not null default 1 check (credential_revision > 0);
+
+create function advance_social_credential_revision() returns trigger language plpgsql as $$
+begin
+    if new.access_token_encrypted is distinct from old.access_token_encrypted
+       or new.refresh_token_encrypted is distinct from old.refresh_token_encrypted
+       or new.token_expires_at is distinct from old.token_expires_at
+       or new.status is distinct from old.status then
+        new.credential_revision := old.credential_revision + 1;
+    else
+        new.credential_revision := old.credential_revision;
+    end if;
+    return new;
+end $$;
+create trigger social_connected_platform_credential_revision
+    before update on social_connected_platform
+    for each row execute function advance_social_credential_revision();
+
+-- (former V10) thumbnail task queue keyed to source asset identity.
+create table media_thumbnail_task (
+    id varchar(64) primary key,
+    tenant_id varchar(64) not null,
+    project_id varchar(128) not null,
+    source_asset_id varchar(64) not null,
+    timestamp_seconds double precision not null,
+    image_format varchar(16) not null,
+    width integer,
+    quality integer,
+    idempotency_key varchar(256) not null,
+    provider_id varchar(128) not null,
+    provider_version varchar(32) not null,
+    status varchar(32) not null,
+    artifact_id varchar(128),
+    failure_code varchar(64),
+    created_at timestamp not null default current_timestamp,
+    updated_at timestamp not null default current_timestamp,
+    constraint uq_media_thumbnail_task_idempotency unique (tenant_id, project_id, idempotency_key)
+);
+create index ix_media_thumbnail_task_scope on media_thumbnail_task(tenant_id, project_id, created_at desc);
+
+-- (former V11/V12) composition drafts + immutable published versions.
+create table composition_template_workflow_draft (
+    tenant_id varchar(255) not null, workspace_id varchar(255) not null, workflow_id varchar(255) not null,
+    version varchar(64) not null, revision bigint not null, lifecycle varchar(32) not null default 'DRAFT',
+    definition jsonb not null, updated_at timestamp with time zone not null default now(),
+    primary key (tenant_id, workspace_id, workflow_id)
+);
+create table composition_application_draft (
+    tenant_id varchar(255) not null, workspace_id varchar(255) not null, application_id varchar(255) not null,
+    version varchar(64) not null, revision bigint not null, lifecycle varchar(32) not null default 'DRAFT',
+    definition jsonb not null, updated_at timestamp with time zone not null default now(),
+    primary key (tenant_id, workspace_id, application_id)
+);
+create table composition_validation_snapshot (
+    snapshot_id varchar(255) primary key, tenant_id varchar(255) not null, workspace_id varchar(255) not null,
+    subject_id varchar(255) not null, result jsonb not null, created_at timestamp with time zone not null default now()
+);
+create table composition_version (
+    tenant_id varchar(255) not null,
+    workspace_id varchar(255) not null,
+    kind varchar(32) not null check (kind in ('WORKFLOW','APPLICATION')),
+    composition_id varchar(255) not null,
+    version varchar(64) not null,
+    definition jsonb not null,
+    published_at timestamptz not null default now(),
+    primary key (tenant_id, workspace_id, kind, composition_id, version)
+);
+create function composition_version_immutable() returns trigger language plpgsql as $$
+begin
+    raise exception 'Published composition versions are immutable';
+end;
+$$;
+create trigger composition_version_no_mutation before update or delete on composition_version
+    for each row execute function composition_version_immutable();
+
+-- (former V13) immutable OpenFeature evaluation snapshots.
+create table feature_flag_evaluation_snapshot (
+    snapshot_id varchar(128) primary key,
+    provider_revision varchar(128) not null,
+    tenant_id varchar(200) not null,
+    workspace_id varchar(200),
+    captured_at timestamptz not null,
+    decisions_json jsonb not null
+);
+create index ix_feature_flag_snapshot_scope
+    on feature_flag_evaluation_snapshot(tenant_id, workspace_id, captured_at);
+create function reject_feature_flag_snapshot_mutation()
+returns trigger language plpgsql as $$
+begin
+    raise exception 'feature flag evaluation snapshots are immutable';
+end;
+$$;
+create trigger trg_feature_flag_snapshot_immutable
+before update or delete on feature_flag_evaluation_snapshot
+for each row execute function reject_feature_flag_snapshot_mutation();
+
+-- (former V14/V15/V16) platform execution admission + result authority.
+create table platform_execution_admission (
+    execution_id varchar(128) primary key,
+    tenant_id varchar(128) not null,
+    workspace_id varchar(128) not null,
+    actor_id varchar(128) not null,
+    source_domain varchar(64) not null,
+    composition_id varchar(128) not null,
+    composition_revision bigint not null check (composition_revision >= 0),
+    plan_id varchar(256) not null,
+    idempotency_key varchar(256) not null,
+    request_hash varchar(128) not null,
+    plan_fingerprint varchar(256),
+    plan_facts jsonb,
+    ownership_generation bigint not null default 0 check (ownership_generation >= 0),
+    state varchar(32) not null check (state in ('ADMITTED','RUNNING','RETRYING','COMPLETED','FAILED','CANCELLED')),
+    quota_units numeric(38,18) not null check (quota_units >= 0),
+    quota_unit varchar(64) not null default 'quota-unit',
+    quota_charged boolean not null default false,
+    quota_claimed boolean not null default false,
+    quota_charged_units numeric(38,18),
+    created_at timestamp with time zone not null,
+    updated_at timestamp with time zone not null,
+    constraint uq_platform_execution_admission_idempotency unique (tenant_id, workspace_id, idempotency_key),
+    constraint uq_platform_execution_admission_plan unique (tenant_id, workspace_id, plan_id),
+    constraint chk_platform_execution_admission_plan_fingerprint
+        check (plan_fingerprint is not null and length(plan_fingerprint) > 0),
+    constraint chk_platform_execution_admission_quota_charged_units
+        check ((quota_charged = false and quota_charged_units is null)
+            or (quota_charged = true and quota_charged_units is not null and quota_charged_units >= 0))
+);
+
+create table platform_execution_result (
+    execution_id varchar(128) not null references platform_execution_admission(execution_id),
+    attempt_id varchar(128) not null,
+    ownership_generation bigint not null check (ownership_generation >= 0),
+    result_id varchar(256) not null,
+    storage_receipt varchar(256) not null,
+    artifact_id varchar(256) not null,
+    output_digest varchar(256),
+    output_length bigint,
+    materialization_state varchar(32) not null check (materialization_state in ('STORAGE_ISSUED','ARTIFACT_COMMITTED','FAILED','COMPENSATING')),
+    reconciliation_state varchar(32) not null check (reconciliation_state in ('NONE','PENDING','RESOLVED','DEAD_LETTER')),
+    created_at timestamp with time zone not null,
+    updated_at timestamp with time zone not null,
+    primary key (execution_id, attempt_id),
+    constraint uq_platform_execution_result_id unique (result_id)
+);
+
+create index ix_platform_execution_admission_scope_state on platform_execution_admission (tenant_id, workspace_id, state);
+
+create function platform_execution_admission_state_guard() returns trigger language plpgsql as $$
+begin
+    if old.state = 'CANCELLED' and new.state <> old.state then raise exception 'terminal admission state'; end if;
+    if old.state = 'COMPLETED' and new.state <> old.state then raise exception 'terminal admission state'; end if;
+    if old.state = 'FAILED' and new.state not in ('FAILED','RETRYING') then raise exception 'invalid admission transition'; end if;
+    if old.state = 'ADMITTED' and new.state not in ('ADMITTED','RUNNING','CANCELLED','FAILED') then raise exception 'invalid admission transition'; end if;
+    if old.state = 'RETRYING' and new.state not in ('RETRYING','RUNNING','CANCELLED','FAILED') then raise exception 'invalid admission transition'; end if;
+    return new;
+end $$;
+create trigger platform_execution_admission_state_guard before update of state on platform_execution_admission
+for each row execute function platform_execution_admission_state_guard();
+
+create function platform_execution_result_state_guard() returns trigger language plpgsql as $$
+begin
+    if old.materialization_state = 'MEDIA_REGISTERED' and new.materialization_state <> old.materialization_state then raise exception 'terminal materialization state'; end if;
+    if old.materialization_state = 'STORAGE_ISSUED' and new.materialization_state not in ('STORAGE_ISSUED','ARTIFACT_COMMITTED','FAILED','COMPENSATING') then raise exception 'invalid materialization transition'; end if;
+    if old.materialization_state = 'ARTIFACT_COMMITTED' and new.materialization_state not in ('ARTIFACT_COMMITTED','MEDIA_REGISTERED','FAILED') then raise exception 'invalid materialization transition'; end if;
+    return new;
+end $$;
+create trigger platform_execution_result_state_guard before update of materialization_state on platform_execution_result
+for each row execute function platform_execution_result_state_guard();
+
+-- (former V17) immutable declarative conversion specifications.
+create table conversion_specification (
+    specification_id varchar(128) primary key,
+    tenant_id varchar(128) not null,
+    workspace_id varchar(128) not null,
+    actor_id varchar(128) not null,
+    source_artifact_ids jsonb not null,
+    normalized_parameters jsonb not null,
+    requested_contract_id varchar(160) not null,
+    contract_version varchar(64) not null,
+    authority_scope varchar(160) not null,
+    entitlement_snapshot_reference varchar(160),
+    quota_snapshot_reference varchar(160),
+    deterministic_fingerprint varchar(64) not null,
+    parent_lineage jsonb not null default '[]'::jsonb,
+    created_by varchar(128) not null,
+    created_at timestamptz not null,
+    constraint uq_conversion_spec_scope_fingerprint unique (tenant_id, workspace_id, deterministic_fingerprint),
+    constraint chk_conversion_spec_fingerprint check (deterministic_fingerprint ~ '^[0-9a-f]{64}$'),
+    constraint chk_conversion_spec_sources_array check (jsonb_typeof(source_artifact_ids) = 'array' and jsonb_array_length(source_artifact_ids) > 0),
+    constraint chk_conversion_spec_parameters_object check (jsonb_typeof(normalized_parameters) = 'object'),
+    constraint chk_conversion_spec_lineage_array check (jsonb_typeof(parent_lineage) = 'array')
+);
+create function reject_conversion_specification_mutation() returns trigger language plpgsql as $$
+begin raise exception 'conversion_specification is immutable'; end; $$;
+create trigger conversion_specification_immutable before update or delete on conversion_specification
+for each row execute function reject_conversion_specification_mutation();
+
+-- (former V22) cover image task queue keyed to the subject artifact.
+create table cover_image_task (
+    id varchar(64) primary key,
+    tenant_id varchar(64) not null,
+    project_id varchar(128) not null,
+    subject_artifact_id varchar(128) not null,
+    timestamp_seconds double precision not null,
+    image_format varchar(16) not null,
+    width integer,
+    quality integer,
+    idempotency_key varchar(256) not null,
+    provider_id varchar(128) not null,
+    provider_version varchar(32) not null,
+    status varchar(32) not null,
+    artifact_id varchar(128),
+    failure_code varchar(64),
+    created_at timestamp not null default current_timestamp,
+    updated_at timestamp not null default current_timestamp,
+    constraint uq_cover_image_task_idempotency unique (tenant_id, project_id, idempotency_key)
+);
+create index ix_cover_image_task_scope on cover_image_task(tenant_id, project_id, created_at desc);
+
+-- ============================================================
+-- ===== SEED DATA =====
+-- Deterministic platform seed rows only. These are data, not a second catalog/plan writer.
+-- No back-fill data migration is retained.
+-- ============================================================
+insert into problematic_data_rule_config (rule_id, rule_name, data_type, default_severity, description, auto_fixable, auto_fix_action, enabled)
+values ('RJB-001', 'Missing RenderJob Output', 'MISSING_FIELD', 'HIGH', 'RenderJob completed but has no output artifact', false, '', true);
+insert into problematic_data_rule_config (rule_id, rule_name, data_type, default_severity, description, auto_fixable, auto_fix_action, enabled)
+values ('RJB-002', 'Stuck RenderJob', 'INVALID_STATE_TRANSITION', 'MEDIUM', 'RenderJob stuck in non-terminal state for too long', true, 'MARK_STALE_AND_RETRY', true);
+insert into problematic_data_rule_config (rule_id, rule_name, data_type, default_severity, description, auto_fixable, auto_fix_action, enabled)
+values ('RJB-003', 'Duplicate RenderJob', 'DUPLICATE_ENTRY', 'LOW', 'Multiple render jobs with same project+profile+timeline hash', true, 'MARK_DUPLICATE', true);
+insert into problematic_data_rule_config (rule_id, rule_name, data_type, default_severity, description, auto_fixable, auto_fix_action, enabled)
+values ('PMT-001', 'Prompt Sensitive Data Leak', 'MISSING_FIELD', 'CRITICAL', 'Sensitive prompt variable found in execution record', false, '', true);
+insert into problematic_data_rule_config (rule_id, rule_name, data_type, default_severity, description, auto_fixable, auto_fix_action, enabled)
+values ('PMT-002', 'Prompt Output Mismatch', 'OUTPUT_MISMATCH', 'HIGH', 'Prompt execution output does not match expected format', false, '', true);
+insert into problematic_data_rule_config (rule_id, rule_name, data_type, default_severity, description, auto_fixable, auto_fix_action, enabled)
+values ('PRV-001', 'Provider Error Spike', 'ERROR_RATE_SPIKE', 'HIGH', 'Provider error rate exceeds threshold in time window', false, '', true);
+insert into problematic_data_rule_config (rule_id, rule_name, data_type, default_severity, description, auto_fixable, auto_fix_action, enabled)
+values ('WRK-001', 'Worker Stale Heartbeat', 'PERFORMANCE_ANOMALY', 'MEDIUM', 'Remote worker has not sent heartbeat within expected interval', true, 'MARK_WORKER_OFFLINE', true);
+insert into problematic_data_rule_config (rule_id, rule_name, data_type, default_severity, description, auto_fixable, auto_fix_action, enabled)
+values ('SLA-001', 'SLA Breach', 'SLA_BREACH', 'CRITICAL', 'Render job exceeded SLA time limit', false, '', true);
+insert into problematic_data_rule_config (rule_id, rule_name, data_type, default_severity, description, auto_fixable, auto_fix_action, enabled)
+values ('CST-001', 'Cost Anomaly', 'COST_ANOMALY', 'HIGH', 'Render job cost significantly exceeds estimated cost', false, '', true);
+
+insert into permission(id,permission_key,name,resource_type,created_at) values
+ ('perm-marketplace-manage','marketplace.manage','Manage Marketplace listing','PROJECT',now()),
+ ('perm-marketplace-review','marketplace.review','Decide Marketplace review','PROJECT',now()),
+ ('perm-marketplace-publish','marketplace.publish','Publish Marketplace listing','PROJECT',now())
+on conflict(permission_key) do nothing;
+
+-- (former V1 seed) commercial catalog.
 insert into subscription_plan(id,plan_key,name,description,billing_interval,base_price_minor,currency_code,included_quota,status) values
  ('seed-plan-basic','basic_monthly','Basic Monthly','Catalog seed','MONTHLY',2999,'USD','{}','ACTIVE'),
  ('seed-plan-pro','pro_monthly','Pro Monthly','Catalog seed','MONTHLY',9999,'USD','{}','ACTIVE'),
