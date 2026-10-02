@@ -14,6 +14,8 @@ import com.example.platform.extension.domain.PluginGuarantee;
 import com.example.platform.extension.domain.PluginRuntimeRequirement;
 import com.example.platform.extension.domain.ResourceRequirement;
 import com.example.platform.workerfabric.domain.WorkerRuntimeSupportRequirement;
+import com.example.platform.workerfabric.domain.ExecutionBackend;
+import com.example.platform.workerfabric.domain.ProviderBackendExecutionSupport;
 import com.example.platform.workerfabric.domain.ProviderResourceProfile;
 import com.example.platform.workerfabric.domain.CpuArchitecture;
 import com.example.platform.workerfabric.domain.ProviderHardwareRequirement;
@@ -25,6 +27,7 @@ import com.example.platform.providerplugin.ProviderPluginRuntimeContext;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.pf4j.Extension;
 
 /** Typed FFmpeg provider contribution discovered exclusively through PF4J. */
@@ -145,6 +148,18 @@ public final class FfmpegProviderPluginContribution implements ProviderPluginCon
     @Override
     public SandboxRuntimeRequirement sandboxRequirement() {
         return SandboxRuntimeRequirement.REQUIRED;
+    }
+
+    /**
+     * The bounded FFmpeg provider executes only through the platform-managed native pull worker: its
+     * runtime binding is a {@code ProviderNativeRuntimeBinding} driven by
+     * {@link FfmpegCpuRuntimeBindingFactory} against the local sandbox, so it declares exactly
+     * {@link ExecutionBackend#NATIVE_PULL_WORKER} and no farm or remote-provider backend.
+     */
+    @Override
+    public Optional<ProviderBackendExecutionSupport> providerBackendExecutionSupport() {
+        return Optional.of(ProviderBackendExecutionSupport.declared(
+                providerBindingPin(), Set.of(ExecutionBackend.NATIVE_PULL_WORKER)));
     }
 
     @Override

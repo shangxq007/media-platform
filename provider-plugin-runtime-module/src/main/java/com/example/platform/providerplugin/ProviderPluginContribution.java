@@ -7,6 +7,7 @@ import com.example.platform.execution.domain.provider.ProviderExecutionContract;
 import com.example.platform.execution.compatibility.ProviderStaticCompatibility;
 import com.example.platform.extension.domain.PluginDescriptor;
 import com.example.platform.workerfabric.domain.WorkerRuntimeSupportRequirement;
+import com.example.platform.workerfabric.domain.ProviderBackendExecutionSupport;
 import com.example.platform.workerfabric.domain.ProviderResourceProfile;
 import com.example.platform.workerfabric.domain.ProviderHardwareRequirement;
 import com.example.platform.workerfabric.domain.RuntimeDependencyRequirement;
@@ -99,6 +100,23 @@ public interface ProviderPluginContribution extends ExtensionPoint {
      */
     default SandboxRuntimeRequirement sandboxRequirement() {
         return SandboxRuntimeRequirement.REQUIRED;
+    }
+
+    /**
+     * Declared execution-mechanics backends this contribution can execute on.
+     *
+     * <p>Distinct from {@link com.example.platform.workerfabric.domain.ProviderHardwareRequirement}
+     * and {@link com.example.platform.workerfabric.domain.SandboxRuntimeRequirement}, which describe
+     * runtime capability needs rather than where execution is placed. This declaration names the
+     * placement backends the provider itself supports (for example a provider that only runs on a
+     * platform-managed native pull worker), so the placement chain can fail closed instead of
+     * assuming every backend.
+     *
+     * <p>Default {@link Optional#empty()}: an undeclared contributor claims no backend, so the
+     * placement chain fails closed rather than assuming one.
+     */
+    default Optional<ProviderBackendExecutionSupport> providerBackendExecutionSupport() {
+        return Optional.empty();
     }
 
     WorkerRuntimeSupportRequirement workerRuntimeSupportRequirement();

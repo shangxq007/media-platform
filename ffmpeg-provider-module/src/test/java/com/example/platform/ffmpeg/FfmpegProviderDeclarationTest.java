@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.example.platform.providerplugin.ProviderPluginContribution;
 import com.example.platform.workerfabric.domain.CpuArchitecture;
+import com.example.platform.workerfabric.domain.ExecutionBackend;
+import com.example.platform.workerfabric.domain.ProviderBackendExecutionSupport;
 import com.example.platform.workerfabric.domain.ProviderHardwareRequirement;
 import com.example.platform.workerfabric.domain.SandboxRuntimeRequirement;
 import java.lang.reflect.Method;
@@ -22,6 +24,8 @@ class FfmpegProviderDeclarationTest {
         Method hardware = ProviderPluginContribution.class.getMethod("providerHardwareRequirement");
         Method dependencies = ProviderPluginContribution.class.getMethod("runtimeDependencyRequirements");
         Method sandbox = ProviderPluginContribution.class.getMethod("sandboxRequirement");
+        Method backendExecutionSupport =
+                ProviderPluginContribution.class.getMethod("providerBackendExecutionSupport");
 
         assertThat(hardware.isDefault()).isTrue();
         assertThat(hardware.getReturnType()).isEqualTo(Optional.class);
@@ -30,6 +34,9 @@ class FfmpegProviderDeclarationTest {
         // No "unknown" enum value exists: the fail-closed default is REQUIRED, never unsandboxed.
         assertThat(sandbox.isDefault()).isTrue();
         assertThat(sandbox.getReturnType()).isEqualTo(SandboxRuntimeRequirement.class);
+        // Undeclared backends fail closed: the default claims no backend rather than all of them.
+        assertThat(backendExecutionSupport.isDefault()).isTrue();
+        assertThat(backendExecutionSupport.getReturnType()).isEqualTo(Optional.class);
     }
 
     @Test
@@ -53,5 +60,20 @@ class FfmpegProviderDeclarationTest {
 
         assertThat(contribution.runtimeDependencyRequirements()).isEmpty();
         assertThat(contribution.sandboxRequirement()).isEqualTo(SandboxRuntimeRequirement.REQUIRED);
+    }
+
+    @Test
+    void ffmpegDeclaresOnlyTheNativePullWorkerBackend() {
+        FfmpegProviderPluginContribution contribution = new FfmpegProviderPluginContribution();
+
+        Optional<ProviderBackendExecutionSupport> declared =
+                contribution.providerBackendExecutionSupport();
+
+        assertThat(declared).isPresent();
+        ProviderBackendExecutionSupport support = declared.orElseThrow();
+        assertThat(support.providerBindingPin()).isEqualTo(FfmpegCpuProvider.BINDING);
+        assertThat(support.knowledge()).isEqualTo(ProviderBackendExecutionSupport.Knowledge.DECLARED);
+        assertThat(support.supportedBackends())
+                .containsExactly(ExecutionBackend.NATIVE_PULL_WORKER);
     }
 }
