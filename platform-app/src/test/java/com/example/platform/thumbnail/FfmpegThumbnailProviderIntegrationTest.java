@@ -2,7 +2,7 @@ package com.example.platform.thumbnail;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.example.platform.frameextract.FfmpegCpuFrameExtractProvider;
+import com.example.platform.frameextract.FfmpegCpuProvider;
 import com.example.platform.frameextract.FrameExtractExecutionAdapter;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -24,7 +24,7 @@ class FfmpegThumbnailProviderIntegrationTest {
         Path source = temp.resolve("source.mp4");
         new ProcessBuilder("/usr/bin/ffmpeg", "-y", "-f", "lavfi", "-i", "color=c=blue:s=320x180:d=1", "-pix_fmt", "yuv420p", source.toString()).redirectErrorStream(true).start().waitFor();
         var request = new ThumbnailContracts.Request("tenant", "project", "asset", .25, "jpeg", 160, 80, "real-provider");
-        var provider = new FfmpegCpuFrameExtractProvider("/usr/bin/ffmpeg", "/usr/bin/ffprobe");
+        var provider = new FfmpegCpuProvider("/usr/bin/ffmpeg", "/usr/bin/ffprobe");
         var result = FrameExtractExecutionAdapter.of(provider, temp)
                 .extract(ThumbnailContracts.CAPABILITY, request, Files.readAllBytes(source),
                         new AtomicBoolean(false)::get);

@@ -59,7 +59,7 @@ public final class FrameExtractPlatformProvider {
     public static final String PLUGIN_ID = "media.ffmpeg.frameextract";
 
     /** Contribution version, aligned with the slice's provider version. */
-    public static final String PLUGIN_VERSION = FfmpegCpuFrameExtractProvider.PROVIDER_VERSION;
+    public static final String PLUGIN_VERSION = FfmpegCpuProvider.PROVIDER_VERSION;
 
     /** Platform plugin-API version accepted by the frozen registry contract. */
     public static final String PLATFORM_API_VERSION = "1";
@@ -68,11 +68,11 @@ public final class FrameExtractPlatformProvider {
 
     /** Provider family — capability-independent (model A). */
     public static final ProviderId PROVIDER_ID =
-            ProviderId.of(FfmpegCpuFrameExtractProvider.PROVIDER_ID);
+            ProviderId.of(FfmpegCpuProvider.PROVIDER_ID);
 
     /** One runtime/adapter implementation of the family. */
     public static final ProviderImplementationId IMPLEMENTATION_ID =
-            ProviderImplementationId.of(FfmpegCpuFrameExtractProvider.PROVIDER_IMPLEMENTATION_ID);
+            ProviderImplementationId.of(FfmpegCpuProvider.PROVIDER_IMPLEMENTATION_ID);
 
     public static final ProviderVersion VERSION = ProviderVersion.of(PLUGIN_VERSION);
 
@@ -173,11 +173,11 @@ public final class FrameExtractPlatformProvider {
                 256,
                 50,
                 0,
-                FfmpegCpuFrameExtractProvider.MAXIMUM_INPUT_BYTES,
+                FfmpegCpuProvider.MAXIMUM_INPUT_BYTES,
                 64L * 1024 * 1024,
                 120_000L,
                 false,
-                FfmpegCpuFrameExtractProvider.COVER_MAXIMUM_WIDTH,
+                FfmpegCpuProvider.COVER_MAXIMUM_WIDTH,
                 false,
                 120_000L);
     }

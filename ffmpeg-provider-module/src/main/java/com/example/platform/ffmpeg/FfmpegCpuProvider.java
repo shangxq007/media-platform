@@ -42,7 +42,7 @@ public final class FfmpegCpuProvider {
             ProviderCapabilityProfileVersionOrDigest.version(
                     ProviderCapabilityProfileVersion.of(1, 0));
     public static final RuntimeSupportIdentifier RUNTIME_SUPPORT_IDENTIFIER =
-            RuntimeSupportIdentifier.of("ffmpeg.cpu.transcode.v1");
+            RuntimeSupportIdentifier.of("ffmpeg.cpu.v1");
     public static final CapabilityId TRANSCODE_CAPABILITY = CapabilityId.of("media.transcode");
     /** #20 render-planning decode capability. */
     public static final CapabilityId VIDEO_DECODE_CAPABILITY = CapabilityId.of("video.decode");

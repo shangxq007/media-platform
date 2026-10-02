@@ -42,7 +42,7 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @ConditionalOnProperty(name = "platform.runtime.role", havingValue = "WORKER")
-public final class FfmpegCpuFrameExtractProvider implements FrameExtractProvider {
+public final class FfmpegCpuProvider implements FrameExtractProvider {
 
     /** Provider/backend family identity (capability-independent); never a capability identity. */
     public static final String PROVIDER_ID = CoverImageContracts.PROVIDER;
@@ -73,7 +73,7 @@ public final class FfmpegCpuFrameExtractProvider implements FrameExtractProvider
      * Worker composition: the provider takes the worker's {@link ExecutionBackendRegistry} so both
      * capability profiles run through the registered sandbox backend for their task capability.
      */
-    public FfmpegCpuFrameExtractProvider(
+    public FfmpegCpuProvider(
             ExecutionBackendRegistry backends,
             @Value("${app.cover-image.work-root:./.data/cover-image-work}") String workRoot,
             @Value("${platform.ffmpeg-worker.sandbox.ffmpeg:/usr/bin/ffmpeg}") String ffmpeg,
@@ -89,7 +89,7 @@ public final class FfmpegCpuFrameExtractProvider implements FrameExtractProvider
      * worker-runtime backend, which is enough to exercise the thumbnail profile. The cover profile
      * still requires the worker context's cover sandbox backend and fails closed without it.
      */
-    public FfmpegCpuFrameExtractProvider(String ffmpeg, String ffprobe) {
+    public FfmpegCpuProvider(String ffmpeg, String ffprobe) {
         this(new com.example.platform.providerplugin.execution.RuntimeExecutionBackends(
                         java.util.List.of(new com.example.platform.thumbnail.ThumbnailExecutionBackend())),
                 "./.data/cover-image-work", ffmpeg, ffprobe);
@@ -99,7 +99,7 @@ public final class FfmpegCpuFrameExtractProvider implements FrameExtractProvider
      * Registry-backed composition for tests that supply their own execution backends and do not need
      * to override the worker scratch root.
      */
-    public FfmpegCpuFrameExtractProvider(
+    public FfmpegCpuProvider(
             ExecutionBackendRegistry backends, String ffmpeg, String ffprobe) {
         this(backends, "./.data/cover-image-work", ffmpeg, ffprobe);
     }

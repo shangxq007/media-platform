@@ -196,8 +196,8 @@ class FrameExtractExecutionAdapterSpringTest {
         @Override
         public FrameExtractManifest manifest() {
             return providerManifest(
-                    FfmpegCpuFrameExtractProvider.PROVIDER_ID,
-                    FfmpegCpuFrameExtractProvider.PROVIDER_IMPLEMENTATION_ID,
+                    FfmpegCpuProvider.PROVIDER_ID,
+                    FfmpegCpuProvider.PROVIDER_IMPLEMENTATION_ID,
                     CoverImageContracts.CAPABILITY, ThumbnailContracts.CAPABILITY);
         }
 

@@ -3,7 +3,7 @@ package com.example.platform.thumbnail;
 import static org.assertj.core.api.Assertions.*;
 
 import com.example.platform.coverimage.CoverImageContracts;
-import com.example.platform.frameextract.FfmpegCpuFrameExtractProvider;
+import com.example.platform.frameextract.FfmpegCpuProvider;
 import com.example.platform.frameextract.FrameExtractExecutionAdapter;
 import com.example.platform.sandbox.execution.*;
 import java.nio.file.Files;
@@ -39,7 +39,7 @@ class ThumbnailRuntimeAuthorityIntegrationTest {
             public Optional<ExecutionBackend> resolve(TaskCapability c) { return c == TaskCapability.THUMBNAIL ? Optional.of(backend) : Optional.empty(); }
             public int size() { return 1; }
         };
-        var provider = new FfmpegCpuFrameExtractProvider(registry, "/usr/bin/ffmpeg", "/usr/bin/ffprobe");
+        var provider = new FfmpegCpuProvider(registry, "/usr/bin/ffmpeg", "/usr/bin/ffprobe");
         Path input = temp.resolve("input");
         Files.write(input, new byte[] {1, 2, 3});
 

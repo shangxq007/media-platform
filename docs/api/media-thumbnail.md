@@ -8,7 +8,7 @@ key. Physical paths, URLs, FFmpeg arguments, and Storage credentials are never p
 of the HTTP contract.
 
 `media.thumbnail` and `media.cover-image` share one capability-neutral provider
-(`FfmpegCpuFrameExtractProvider`) and one platform contribution
+(`FfmpegCpuProvider`) and one platform contribution
 (`FrameExtractPlatformProvider` / `FrameExtractPlatformRegistration`, contribution id
 `media.ffmpeg.frameextract`). The provider declares the capability list and selects the
 thumbnail execution profile from the executing `capabilityId`; the worker dispatch is

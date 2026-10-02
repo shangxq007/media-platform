@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.example.platform.coverimage.CoverImageCapabilityProvider;
 import com.example.platform.coverimage.CoverImageExecutionBackend;
 import com.example.platform.coverimage.CoverImageMaterializationConfiguration;
-import com.example.platform.frameextract.FfmpegCpuFrameExtractProvider;
+import com.example.platform.frameextract.FfmpegCpuProvider;
 import com.example.platform.frameextract.FrameExtractExecutionAdapter;
 import com.example.platform.frameextract.FrameExtractPlatformRegistration;
 import com.example.platform.sandbox.execution.ExecutionBackend;
@@ -76,9 +76,9 @@ class PlatformFfmpegWorkerApplicationTemporalRoleContextTest extends PostgresTes
     void workerContextOwnsBothCapabilitiesAndTheirExecutionBackends() {
         // One capability-neutral provider serves both capabilities in the same process.
         assertThat(context.getBeansOfType(CoverImageCapabilityProvider.class)).hasSize(1);
-        assertThat(context.getBean(FfmpegCpuFrameExtractProvider.class)).isNotNull();
+        assertThat(context.getBean(FfmpegCpuProvider.class)).isNotNull();
         assertThat(context.getBeansOfType(ThumbnailCapabilityProvider.class)).hasSize(1);
-        assertThat(context.getBeansOfType(FfmpegCpuFrameExtractProvider.class)).hasSize(1);
+        assertThat(context.getBeansOfType(FfmpegCpuProvider.class)).hasSize(1);
         // One capability-neutral worker-side execution adapter behind the platform registration.
         assertThat(context.getBean(FrameExtractExecutionAdapter.class)).isNotNull();
 

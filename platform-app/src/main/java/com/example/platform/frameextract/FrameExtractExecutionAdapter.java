@@ -49,7 +49,7 @@ public final class FrameExtractExecutionAdapter
      * capability-scoped facts (width bound, timeout, sandbox task capability) are carried by the
      * executing {@code capabilityId} the caller passes in, not by the pin.
      */
-    public static final String PINNED_PROVIDER_ID = FfmpegCpuFrameExtractProvider.PROVIDER_ID;
+    public static final String PINNED_PROVIDER_ID = FfmpegCpuProvider.PROVIDER_ID;
 
     private final Map<String, FrameExtractProvider> byProviderId;
     private final Map<String, String> capabilityFamily;

@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.example.platform.PlatformApplication;
 import com.example.platform.extension.api.port.CapabilityRegistryPort;
-import com.example.platform.frameextract.FfmpegCpuFrameExtractProvider;
+import com.example.platform.frameextract.FfmpegCpuProvider;
 import com.example.platform.frameextract.FrameExtractExecutionAdapter;
 import com.example.platform.frameextract.FrameExtractPlatformProvider;
 import com.example.platform.frameextract.FrameExtractPlatformRegistration;
@@ -79,7 +79,7 @@ class ThumbnailApiContextRegistrationTest extends PostgresTestContainerSupport {
 
         // Worker-only thumbnail beans must never exist in the API process.
         assertThat(context.getBeansOfType(FrameExtractExecutionAdapter.class)).isEmpty();
-        assertThat(context.getBeansOfType(FfmpegCpuFrameExtractProvider.class)).isEmpty();
+        assertThat(context.getBeansOfType(FfmpegCpuProvider.class)).isEmpty();
         assertThat(context.getBeansOfType(ThumbnailExecutionBackend.class)).isEmpty();
         assertThat(context.getBeansOfType(ThumbnailWorkerRuntimeConfiguration.class)).isEmpty();
         assertThat(context.getBeansOfType(ThumbnailCommitService.class)).isEmpty();

@@ -91,7 +91,7 @@ admitting a second task.
 
 ## Provider
 
-`FfmpegCpuFrameExtractProvider` is the **single capability-neutral provider** of the
+`FfmpegCpuProvider` is the **single capability-neutral provider** of the
 `platform.ffmpeg` family (implementation `ffmpeg.cpu.frame-extract.v1`). It declares its manifest as
 **provider identity + capability declaration list** (`capabilities()`, each entry `capabilityId` +
 capability contract version) and serves both `media.cover-image` and `media.thumbnail` from the one

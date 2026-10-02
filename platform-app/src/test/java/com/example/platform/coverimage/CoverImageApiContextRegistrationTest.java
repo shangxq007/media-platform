@@ -8,7 +8,7 @@ import com.example.platform.composition.app.ProviderRegistryBoundary;
 import com.example.platform.composition.domain.CompositionModels.Availability;
 import com.example.platform.extension.api.port.CapabilityRegistryPort;
 import com.example.platform.extension.api.port.PluginRegistryPort;
-import com.example.platform.frameextract.FfmpegCpuFrameExtractProvider;
+import com.example.platform.frameextract.FfmpegCpuProvider;
 import com.example.platform.frameextract.FrameExtractExecutionAdapter;
 import com.example.platform.frameextract.FrameExtractPlatformProvider;
 import com.example.platform.frameextract.FrameExtractPlatformRegistration;
@@ -83,7 +83,7 @@ class CoverImageApiContextRegistrationTest extends PostgresTestContainerSupport 
 
         // Worker-only cover beans must never exist in the API process.
         assertThat(context.getBeansOfType(FrameExtractExecutionAdapter.class)).isEmpty();
-        assertThat(context.getBeansOfType(FfmpegCpuFrameExtractProvider.class)).isEmpty();
+        assertThat(context.getBeansOfType(FfmpegCpuProvider.class)).isEmpty();
         assertThat(context.getBeansOfType(CoverImageExecutionBackend.class)).isEmpty();
         assertThat(context.getBeansOfType(CoverImageMaterializationConfiguration.class)).isEmpty();
         assertThat(context.getBeansOfType(CoverImageWorkerRuntimeConfiguration.class)).isEmpty();

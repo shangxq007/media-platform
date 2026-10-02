@@ -28,13 +28,13 @@ class FrameExtractProviderContractTest {
         assertThat(TaskCapability.valueOf("COVER_IMAGE")).isNotNull();
         assertThat(TaskCapability.valueOf("THUMBNAIL")).isNotNull();
 
-        assertThat(FfmpegCpuFrameExtractProvider.PROVIDER_ID).isEqualTo("platform.ffmpeg");
-        assertThat(FfmpegCpuFrameExtractProvider.PROVIDER_IMPLEMENTATION_ID)
+        assertThat(FfmpegCpuProvider.PROVIDER_ID).isEqualTo("platform.ffmpeg");
+        assertThat(FfmpegCpuProvider.PROVIDER_IMPLEMENTATION_ID)
                 .isEqualTo("ffmpeg.cpu.frame-extract.v1");
-        assertThat(FfmpegCpuFrameExtractProvider.PROVIDER_ID)
+        assertThat(FfmpegCpuProvider.PROVIDER_ID)
                 .doesNotContain(CoverImageContracts.CAPABILITY)
                 .doesNotContain(ThumbnailContracts.CAPABILITY);
-        assertThat(FfmpegCpuFrameExtractProvider.PROVIDER_IMPLEMENTATION_ID)
+        assertThat(FfmpegCpuProvider.PROVIDER_IMPLEMENTATION_ID)
                 .doesNotContain(CoverImageContracts.CAPABILITY)
                 .doesNotContain(ThumbnailContracts.CAPABILITY);
     }
@@ -42,7 +42,7 @@ class FrameExtractProviderContractTest {
     @Test
     void oneProviderDeclaresBothCapabilitiesAsAList() {
         FrameExtractManifest manifest =
-                new FfmpegCpuFrameExtractProvider("ffmpeg", "ffprobe").manifest();
+                new FfmpegCpuProvider("ffmpeg", "ffprobe").manifest();
 
         assertThat(manifest.capabilities())
                 .extracting(FrameExtractCapabilityDeclaration::capabilityId)
@@ -59,7 +59,7 @@ class FrameExtractProviderContractTest {
 
     @Test
     void capabilityProfilesCarryThePerCapabilityDifferences() {
-        var profiles = FfmpegCpuFrameExtractProvider.profiles();
+        var profiles = FfmpegCpuProvider.profiles();
         assertThat(profiles).containsOnlyKeys(
                 CoverImageContracts.CAPABILITY, ThumbnailContracts.CAPABILITY);
 
@@ -100,7 +100,7 @@ class FrameExtractProviderContractTest {
 
     @Test
     void providerFailsClosedForAnUndeclaredCapabilityAndAMissingInput() {
-        var provider = new FfmpegCpuFrameExtractProvider("ffmpeg", "ffprobe");
+        var provider = new FfmpegCpuProvider("ffmpeg", "ffprobe");
 
         assertThat(provider.render("media.unrelated", Path.of("/tmp/in"), Path.of("/tmp/work"),
                 "png", null, null, 0d, () -> false).failureCode())
