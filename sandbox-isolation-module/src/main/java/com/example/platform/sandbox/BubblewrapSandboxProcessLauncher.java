@@ -26,6 +26,18 @@ public final class BubblewrapSandboxProcessLauncher implements BoundedProcessLau
     private static final Duration TERMINATION_GRACE = Duration.ofMillis(500);
     private static final List<Path> SYSTEM_ROOTS = List.of(
             Path.of("/usr"), Path.of("/bin"), Path.of("/lib"), Path.of("/lib64"));
+    /**
+     * Individual system files (not directories) that dynamically linked binaries need but that are
+     * not covered by {@link #SYSTEM_ROOTS}. The dynamic loader cache maps a shared-library soname to
+     * the bound root that physically holds it; without it, binaries whose libraries are registered
+     * outside the default loader search path abort with {@code cannot open shared object file}
+     * before {@code main} runs. Only the single cache file is bound, never the {@code /etc}
+     * directory, so {@code /etc} stays forbidden as a mount root. Evidence:
+     * FFMPEG-SANDBOX-STDERR-CAPTURE-001 (exit 127 on {@code libjack.so.0}, resolved by this file).
+     * Backlog: express this as a declared "loader-cache" sandbox permission
+     * (SANDBOX-PERMISSION-VOCABULARY).
+     */
+    private static final List<Path> SYSTEM_READ_ONLY_FILES = List.of(Path.of("/etc/ld.so.cache"));
     private static final List<Path> FORBIDDEN_MOUNT_ROOTS = List.of(
             Path.of("/etc"), Path.of("/proc"), Path.of("/dev"), Path.of("/run"),
             Path.of("/var/run"));
@@ -213,6 +225,12 @@ public final class BubblewrapSandboxProcessLauncher implements BoundedProcessLau
             if (Files.exists(systemRoot)) {
                 command.addAll(List.of(
                         "--ro-bind", systemRoot.toRealPath().toString(), systemRoot.toString()));
+            }
+        }
+        for (Path systemFile : SYSTEM_READ_ONLY_FILES) {
+            if (Files.exists(systemFile)) {
+                command.addAll(List.of(
+                        "--ro-bind", systemFile.toRealPath().toString(), systemFile.toString()));
             }
         }
         command.addAll(List.of("--proc", "/proc", "--dev", "/dev", "--tmpfs", "/tmp",
