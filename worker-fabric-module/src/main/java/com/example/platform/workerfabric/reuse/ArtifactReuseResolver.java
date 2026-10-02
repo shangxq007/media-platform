@@ -1,5 +1,7 @@
 package com.example.platform.workerfabric.reuse;
 
+import com.example.platform.execution.taskgraph.Cacheability;
+
 import com.example.platform.artifact.domain.Artifact;
 import com.example.platform.artifact.domain.ArtifactQueryService;
 import com.example.platform.artifact.domain.ArtifactState;

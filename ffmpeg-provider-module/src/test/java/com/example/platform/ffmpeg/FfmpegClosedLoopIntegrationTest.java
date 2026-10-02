@@ -57,7 +57,7 @@ import com.example.platform.workerfabric.reuse.ArtifactCommitMetadata;
 import com.example.platform.workerfabric.reuse.ArtifactOutputCommitOrchestrator;
 import com.example.platform.workerfabric.reuse.ArtifactReuseIndexPort;
 import com.example.platform.workerfabric.reuse.ArtifactReuseResolver;
-import com.example.platform.workerfabric.reuse.Cacheability;
+import com.example.platform.execution.taskgraph.Cacheability;
 import com.example.platform.workerfabric.reuse.DirectStorageArtifactMaterializer;
 import com.example.platform.workerfabric.reuse.DurableOutputTarget;
 import com.example.platform.workerfabric.reuse.FencedReuseCompletionOrchestrator;

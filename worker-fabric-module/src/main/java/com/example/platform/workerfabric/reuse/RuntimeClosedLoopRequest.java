@@ -1,5 +1,7 @@
 package com.example.platform.workerfabric.reuse;
 
+import com.example.platform.execution.taskgraph.Cacheability;
+
 import com.example.platform.execution.taskgraph.ExecutableTaskId;
 import com.example.platform.execution.taskgraph.ProviderBoundExecutableTaskGraph;
 import java.util.Map;

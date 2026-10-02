@@ -1,5 +1,7 @@
 package com.example.platform.workerfabric.reuse;
 
+import com.example.platform.execution.taskgraph.Cacheability;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;

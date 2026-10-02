@@ -1,5 +1,7 @@
 package com.example.platform.workerfabric.reuse;
 
+import com.example.platform.execution.taskgraph.Cacheability;
+
 import com.example.platform.artifact.app.ArtifactPinService.ArtifactPin;
 import com.example.platform.execution.domain.ExecutionInputId;
 import com.example.platform.execution.domain.provider.ProviderBindingPin;
