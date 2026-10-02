@@ -14,10 +14,13 @@ import com.example.platform.extension.domain.PluginGuarantee;
 import com.example.platform.extension.domain.PluginRuntimeRequirement;
 import com.example.platform.extension.domain.ResourceRequirement;
 import com.example.platform.workerfabric.domain.WorkerRuntimeSupportRequirement;
+import com.example.platform.workerfabric.domain.ProviderResourceProfile;
 import com.example.platform.workerfabric.domain.providernative.ProviderNativeRuntimeBinding;
 import com.example.platform.providerplugin.ProviderPluginContribution;
 import com.example.platform.providerplugin.ProviderPluginRuntimeContext;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import org.pf4j.Extension;
 
 /** Typed FFmpeg provider contribution discovered exclusively through PF4J. */
@@ -92,6 +95,25 @@ public final class FfmpegProviderPluginContribution implements ProviderPluginCon
     @Override
     public ProviderStaticCompatibility providerStaticCompatibility() {
         return FfmpegCpuProvider.STATIC_COMPATIBILITY;
+    }
+
+    /**
+     * Bounded V1 declared footprint for one FFmpeg software-transcode execution.
+     *
+     * <p>Owner-approved conservative values: two CPU cores (2000 millicores), 1 GiB memory and 2 GiB
+     * temporary storage, with no device demands (the bounded host declares no GPU). Software x264
+     * transcoding of the bounded source fragments runs well inside these bounds, so the declaration
+     * does not overstate the footprint. This is the scheduling footprint — distinct from
+     * {@link com.example.platform.workerfabric.domain.ProviderHardwareRequirement} (capability needs)
+     * and from the plugin-descriptor {@code ResourceRequirement} (registry metadata).
+     */
+    @Override
+    public Optional<ProviderResourceProfile> resourceProfile() {
+        return Optional.of(new ProviderResourceProfile(
+                2000L,
+                1073741824L,
+                2147483648L,
+                Map.of()));
     }
 
     @Override

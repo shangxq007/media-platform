@@ -7,7 +7,9 @@ import com.example.platform.execution.domain.provider.ProviderExecutionContract;
 import com.example.platform.execution.compatibility.ProviderStaticCompatibility;
 import com.example.platform.extension.domain.PluginDescriptor;
 import com.example.platform.workerfabric.domain.WorkerRuntimeSupportRequirement;
+import com.example.platform.workerfabric.domain.ProviderResourceProfile;
 import com.example.platform.workerfabric.domain.providernative.ProviderNativeRuntimeBinding;
+import java.util.Optional;
 import org.pf4j.ExtensionPoint;
 
 /**
@@ -47,6 +49,21 @@ public interface ProviderPluginContribution extends ExtensionPoint {
      */
     default ProviderStaticCompatibility providerStaticCompatibility() {
         return ProviderStaticCompatibility.unknown();
+    }
+
+    /**
+     * Declared resource footprint for one task execution.
+     *
+     * <p>Distinct from {@link com.example.platform.workerfabric.domain.ProviderHardwareRequirement},
+     * which describes capability needs (CPU architecture, build/codec features, sandbox permissions);
+     * this carries only the amounts the runtime consumes (CPU millicores, memory bytes,
+     * temporary-storage bytes, device demands).
+     *
+     * <p>Default is {@link Optional#empty()}: a contributor that declares nothing has no footprint, and
+     * the demand derivation fails closed instead of inventing one.
+     */
+    default Optional<ProviderResourceProfile> resourceProfile() {
+        return Optional.empty();
     }
 
     WorkerRuntimeSupportRequirement workerRuntimeSupportRequirement();
