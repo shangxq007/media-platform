@@ -3,6 +3,7 @@ package com.example.platform.runtime.mediatask;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -41,7 +42,7 @@ import com.example.platform.render.domain.renderplan.RenderNodeId;
 import com.example.platform.render.domain.renderplan.RenderNodeKind;
 import com.example.platform.render.domain.renderplan.RenderPlanFingerprint;
 import com.example.platform.render.domain.renderplan.LogicalArtifactId;
-import com.example.platform.render.domain.renderplan.RenderArtifactReference.IntermediateArtifactExpectation;
+import com.example.platform.render.domain.renderplan.RenderArtifactReference.FinalArtifactExpectation;
 import com.example.platform.render.domain.renderplan.RenderOutputRole;
 import com.example.platform.render.domain.renderplan.RenderExecutionCoverage;
 import com.example.platform.render.domain.renderplan.RenderExtent;
@@ -73,6 +74,8 @@ import com.example.platform.workerfabric.domain.TaskLease;
 import com.example.platform.workerfabric.domain.WorkerRuntimeId;
 import com.example.platform.workerfabric.domain.WorkerRuntimeIncarnationId;
 import com.example.platform.workerfabric.reuse.RuntimeClosedLoopOrchestrator;
+import com.example.platform.workerfabric.reuse.RuntimeClosedLoopRequest;
+import com.example.platform.workerfabric.reuse.RuntimeClosedLoopResult;
 import com.example.platform.workflow.temporal.mediatask.MediaTaskWorkflowResult;
 import com.example.platform.workflow.temporal.mediatask.PreparedTaskRef;
 import java.nio.file.Files;
@@ -86,6 +89,7 @@ import org.jooq.DSLContext;
 import org.jooq.impl.DSL;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -141,6 +145,37 @@ class MediaTaskExecuteTaskIntegrationTest {
         applyMigration("/migrations/V2.sql");
         DSLContext dsl = DSL.using(PG.getJdbcUrl(), PG.getUsername(), PG.getPassword());
         store = new JooqBoundGraphInputStore(dsl);
+    }
+
+    @Test
+    void executesTheStoredGraphAndPlansTheTerminalOutputPublication() throws Exception {
+        Fixture fixture = seed();
+        RuntimeClosedLoopOrchestrator orchestrator = mock(RuntimeClosedLoopOrchestrator.class);
+        RuntimeClosedLoopResult canned = mock(RuntimeClosedLoopResult.class);
+        when(orchestrator.execute(any())).thenReturn(canned);
+        MediaTaskActivity activity = activity(grantBoundary(fixture.taskId()), orchestrator);
+
+        MediaTaskWorkflowResult result = activity.executeTask(preparedRef(fixture), TENANT);
+
+        assertThat(result.status()).isEqualTo(MediaTaskWorkflowResult.STATUS_EXECUTED);
+        assertThat(result.tenantId()).isEqualTo(TENANT);
+        assertThat(result.renderJobId()).isEqualTo(JOB);
+        assertThat(result.executableTaskIds()).containsExactly(fixture.taskId().sha256Hex());
+
+        RuntimeClosedLoopRequest request = capturedRequest(orchestrator);
+        assertThat(request.tenantId()).isEqualTo(TENANT);
+        assertThat(request.graph().digest()).isEqualTo(fixture.graph().digest());
+        assertThat(request.requestedTasks()).containsExactly(fixture.taskId());
+        assertThat(request.taskExecutions()).containsOnlyKeys(fixture.taskId());
+        var execution = request.taskExecutions().get(fixture.taskId());
+        assertThat(execution.durableOutputTarget().writeSessionId())
+                .isEqualTo("task-output-" + fixture.taskId().sha256Hex());
+        assertThat(execution.artifactCommitMetadata().artifactId().value())
+                .isEqualTo("render-task-" + fixture.taskId().sha256Hex());
+        assertThat(execution.artifactCommitMetadata().tenantId()).isEqualTo(TENANT);
+        assertThat(execution.artifactCommitMetadata().renderJobId()).isEqualTo(JOB);
+        assertThat(execution.runtimeContext().platformExecutionAttemptId())
+                .isEqualTo(new ExecutionAttemptId("attempt-exec"));
     }
 
     @Test
@@ -221,6 +256,24 @@ class MediaTaskExecuteTaskIntegrationTest {
         return new Fixture(graph, graph.tasks().getFirst().id(), reference);
     }
 
+    private static PreparedTaskRef preparedRef(Fixture fixture) {
+        return new PreparedTaskRef(
+                TENANT,
+                JOB,
+                fixture.reference().planRef(),
+                fixture.reference().planDigest(),
+                fixture.reference().expectedExecutableTaskGraphDigest(),
+                List.of(fixture.taskId().sha256Hex()));
+    }
+
+    private static RuntimeClosedLoopRequest capturedRequest(
+            RuntimeClosedLoopOrchestrator orchestrator) throws Exception {
+        ArgumentCaptor<RuntimeClosedLoopRequest> captor =
+                ArgumentCaptor.forClass(RuntimeClosedLoopRequest.class);
+        org.mockito.Mockito.verify(orchestrator).execute(captor.capture());
+        return captor.getValue();
+    }
+
     private static MediaTaskActivity activity(
             AtomicAssignmentGrantBoundary grantBoundary, RuntimeClosedLoopOrchestrator orchestrator) {
         return new MediaTaskActivity(
@@ -280,10 +333,8 @@ class MediaTaskExecuteTaskIntegrationTest {
                         "logical-unit-2b2b1",
                         new RenderNodeId("render-unit-2b2b1"),
                         List.of(), List.of(),
-                        List.of(new IntermediateArtifactExpectation(
-                                new LogicalArtifactId("logical-artifact-output-1"),
-                                RenderOutputRole.RENDER_MASTER)),
-                        List.of())),
+                        List.of(),
+                        List.of(new FinalArtifactExpectation(RenderOutputRole.RENDER_MASTER)))),
                 List.of(),
                 new RenderSampleWindow(ZERO, TWO, FPS),
                 new RenderExecutionCoverage(ZERO, TWO, FPS),
@@ -320,7 +371,7 @@ class MediaTaskExecuteTaskIntegrationTest {
                 new ProviderCapabilityProfile(profileReference, List.of()),
                 new ProviderStaticCompatibility(
                         ProviderStaticCompatibility.Knowledge.DECLARED,
-                        List.of(ProviderStaticCompatibility.ArtifactRequirementKind.INTERMEDIATE_OUTPUT),
+                        List.of(ProviderStaticCompatibility.ArtifactRequirementKind.FINAL_OUTPUT),
                         List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
                         ProviderStaticCompatibility.LoweringSupport.SUPPORTED));
     }
