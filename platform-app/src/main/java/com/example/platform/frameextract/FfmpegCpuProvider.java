@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -79,6 +80,7 @@ public final class FfmpegCpuProvider implements FrameExtractProvider {
      * Worker composition: the provider takes the worker's {@link ExecutionBackendRegistry} so both
      * capability profiles run through the registered sandbox backend for their task capability.
      */
+    @Autowired
     public FfmpegCpuProvider(
             ExecutionBackendRegistry backends,
             @Value("${app.cover-image.work-root:./.data/cover-image-work}") String workRoot,
