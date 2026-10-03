@@ -3,8 +3,12 @@ package com.example.platform.operation.plan;
 import com.example.platform.audio.domain.mix.AudioMix;
 import com.example.platform.audio.domain.mix.AudioRoute;
 import com.example.platform.operation.operation.OperationInstance;
+import com.example.platform.operation.operation.OperationDefinitionId;
 import com.example.platform.operation.operation.OperationParameters;
+import com.example.platform.operation.operation.OperationRequest;
 import com.example.platform.operation.operation.OperationTarget;
+import com.example.platform.operation.operation.OperationTargetRequest;
+import com.example.platform.operation.operation.TextOperationPlanner;
 import com.example.platform.timeline.canonical.TimelineClip;
 import com.example.platform.timeline.canonical.TimelineClipId;
 import com.example.platform.timeline.canonical.TimelineContentDigester;
@@ -80,6 +84,48 @@ public final class OperationPlanner {
         return new OperationPlan(OperationPlan.FORMAT_VERSION, instance.baseRevisionId(),
                 instance.baseContentHash(), instance, List.copyOf(changes), candidate,
                 candidateHash, true, digest, noOp);
+    }
+
+    /**
+     * P2-5.5 text-op planning entry (Option A overload). Routes the nine
+     * {@code timeline.text.*} operations to {@link TextOperationPlanner} and
+     * ADOPTS that planner's plan digest (the text planner owns its digest
+     * formula; it is never recomputed here). Every non-text operation delegates
+     * to {@link #plan(OperationInstance, String, TimelineDocument)} unchanged.
+     *
+     * <p>No dynamic registry / map schema — dispatch is a static prefix check,
+     * consistent with OPERATION_MODEL_FOUNDATION_V1.
+     */
+    public OperationPlan plan(OperationInstance instance, String hydratedBaseRevisionId,
+                              TimelineDocument base, TextOperationPlanner.FontResolutionInput fontInput) {
+        if (!isTextOperation(instance.definitionId())) {
+            return plan(instance, hydratedBaseRevisionId, base);
+        }
+        if (!instance.baseRevisionId().equals(hydratedBaseRevisionId)) {
+            throw new PlanException(PlanErrorCode.STALE_BASE_REVISION,
+                    "instance base " + instance.baseRevisionId()
+                            + " does not match independently hydrated base " + hydratedBaseRevisionId);
+        }
+        return new TextOperationPlanner(digester).plan(toRequest(instance), base, fontInput);
+    }
+
+    /** Static text-op predicate — id-prefix based, no registry. */
+    private static boolean isTextOperation(OperationDefinitionId definitionId) {
+        String value = definitionId.value();
+        return value != null && value.startsWith("timeline.text.");
+    }
+
+    /** Rebuild the caller-facing request the text planner consumes from a resolved instance. */
+    private static OperationRequest toRequest(OperationInstance instance) {
+        OperationTargetRequest target = switch (instance.target()) {
+            case OperationTarget.TimelineTarget t ->
+                    new OperationTargetRequest.TimelineTargetRequest(t.timelineId());
+            default -> throw new PlanException(PlanErrorCode.INVALID_PLAN,
+                    "text operation requires a Timeline target");
+        };
+        return new OperationRequest(instance.definitionId(), instance.version(), target,
+                instance.parameters(), instance.baseRevisionId(), instance.baseContentHash(),
+                instance.invocationId());
     }
 
     private static List<String> targetIdentities(OperationTarget target) {
