@@ -150,8 +150,8 @@ class TimelineNonConflictingMergePlannerTest {
 
     @Test @DisplayName("Operation supports manual review")
     void operationSupportsManualReview() {
-        TimelineChangeOperation op = changeOp(TimelineChangeType.CAPTION_SEGMENT_CHANGED,
-                "timeline.captions.cap-1.text", "Hello", "Ours");
+        TimelineChangeOperation op = changeOp(TimelineChangeType.WATERMARK_CHANGED,
+                "timeline.watermarks.wm-1", "Hello", "Ours");
         TimelineMergePlanOperation planOp = TimelineMergePlanOperation.conflict(
                 TimelineMergePlanOperationSource.OURS, op, List.of(), List.of());
         assertEquals(TimelineMergePlanOperationStatus.CONFLICT_REQUIRES_MANUAL_REVIEW, planOp.status());
@@ -292,12 +292,12 @@ class TimelineNonConflictingMergePlannerTest {
         CanonicalTimelineSnapshot base = snap("rev-1");
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
                 base.id(), "rev-ours", MediaTime.ofMillis(9999),
-                base.tracks(), base.captions(), base.watermarks(),
+                base.tracks(), base.watermarks(),
                 base.templateApplications(), base.workflowSteps(), base.outputProfile(),
                 base.safeMetadata(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
                 base.id(), "rev-theirs", MediaTime.ofMillis(7777),
-                base.tracks(), base.captions(), base.watermarks(),
+                base.tracks(), base.watermarks(),
                 base.templateApplications(), base.workflowSteps(), base.outputProfile(),
                 base.safeMetadata(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
 
@@ -373,7 +373,7 @@ class TimelineNonConflictingMergePlannerTest {
         // theirs changes duration instead of metadata
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
                 snapId("snap-rev-theirs"), "rev-theirs", MediaTime.ofMillis(9999),
-                base.tracks(), base.captions(), base.watermarks(),
+                base.tracks(), base.watermarks(),
                 base.templateApplications(), base.workflowSteps(), base.outputProfile(),
                 base.safeMetadata(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
 
@@ -389,48 +389,13 @@ class TimelineNonConflictingMergePlannerTest {
                 "Different path changes should be safe");
     }
 
-    @Test @DisplayName("Different captions changed -> safe operations")
-    void differentCaptionsChangedSafe() {
-        CanonicalTimelineCaptionSnapshot cap1 = new CanonicalTimelineCaptionSnapshot(
-                "cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Hello", Map.of(), Map.of());
-        CanonicalTimelineCaptionSnapshot cap2 = new CanonicalTimelineCaptionSnapshot(
-                "cap-2", MediaTime.ofMillis(3000), MediaTime.ofMillis(6000), "World", Map.of(), Map.of());
-        CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-1", MediaTime.ofMillis(5000),
-                List.of(), List.of(cap1, cap2), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
-
-        // ours changes cap-1
-        CanonicalTimelineCaptionSnapshot cap1ours = new CanonicalTimelineCaptionSnapshot(
-                "cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Hi", Map.of(), Map.of());
-        CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-ours", MediaTime.ofMillis(5000),
-                List.of(), List.of(cap1ours, cap2), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
-
-        // theirs changes cap-2
-        CanonicalTimelineCaptionSnapshot cap2theirs = new CanonicalTimelineCaptionSnapshot(
-                "cap-2", MediaTime.ofMillis(3000), MediaTime.ofMillis(6000), "Earth", Map.of(), Map.of());
-        CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-theirs", MediaTime.ofMillis(5000),
-                List.of(), List.of(cap1, cap2theirs), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
-
-        TimelineMergePlanRequest req = new TimelineMergePlanRequest(
-                new TimelineMergePlanRequestId("req-1"),
-                base, ours, theirs,
-                TimelineMergePlanPolicy.CONSERVATIVE, Map.of());
-        TimelineNonConflictingMergePlan plan = planner.plan(req);
-
-        assertTrue(plan.operations().stream()
-                .allMatch(op -> op.status() == TimelineMergePlanOperationStatus.SAFE_TO_APPLY_LATER),
-                "Different caption changes should be safe");
-    }
-
     @Test @DisplayName("One-sided operation -> safe operation")
     void oneSidedOperationSafe() {
         CanonicalTimelineSnapshot base = snap("rev-1");
         // Only ours changes duration
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
                 base.id(), "rev-ours", MediaTime.ofMillis(9999),
-                base.tracks(), base.captions(), base.watermarks(),
+                base.tracks(), base.watermarks(),
                 base.templateApplications(), base.workflowSteps(), base.outputProfile(),
                 base.safeMetadata(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
         CanonicalTimelineSnapshot theirs = snap("rev-theirs");
@@ -448,37 +413,6 @@ class TimelineNonConflictingMergePlannerTest {
 
     // ===== Stage 6: Conflicting Operation Classification Tests =====
 
-    @Test @DisplayName("Same caption text changed differently -> conflict manual review")
-    void sameCaptionChangedDifferentlyManualReview() {
-        CanonicalTimelineCaptionSnapshot cap = new CanonicalTimelineCaptionSnapshot(
-                "cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Hello", Map.of(), Map.of());
-        CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-1", MediaTime.ofMillis(5000),
-                List.of(), List.of(cap), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
-
-        CanonicalTimelineCaptionSnapshot capOurs = new CanonicalTimelineCaptionSnapshot(
-                "cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Ours", Map.of(), Map.of());
-        CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-ours", MediaTime.ofMillis(5000),
-                List.of(), List.of(capOurs), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
-
-        CanonicalTimelineCaptionSnapshot capTheirs = new CanonicalTimelineCaptionSnapshot(
-                "cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Theirs", Map.of(), Map.of());
-        CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-theirs", MediaTime.ofMillis(5000),
-                List.of(), List.of(capTheirs), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
-
-        TimelineMergePlanRequest req = new TimelineMergePlanRequest(
-                new TimelineMergePlanRequestId("req-1"),
-                base, ours, theirs,
-                TimelineMergePlanPolicy.CONSERVATIVE, Map.of());
-        TimelineNonConflictingMergePlan plan = planner.plan(req);
-
-        assertEquals(TimelineMergePlanStatus.MANUAL_REVIEW_REQUIRED, plan.status());
-        assertTrue(plan.operations().stream().anyMatch(
-                op -> op.status() == TimelineMergePlanOperationStatus.CONFLICT_REQUIRES_MANUAL_REVIEW));
-    }
-
     @Test @DisplayName("Same output profile changed differently -> manual review")
     void sameOutputProfileChangedDifferentlyManualReview() {
         CanonicalTimelineOutputProfileSnapshot p1 = new CanonicalTimelineOutputProfileSnapshot(
@@ -487,13 +421,13 @@ class TimelineNonConflictingMergePlannerTest {
                 "p2", "mp4", "16:9", 1280, 720, Map.of());
         CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
                 snapId("s1"), "rev-1", MediaTime.ofMillis(5000),
-                List.of(), List.of(), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
+                List.of(), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
                 snapId("s1"), "rev-ours", MediaTime.ofMillis(5000),
-                List.of(), List.of(), List.of(), List.of(), List.of(), p1, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
+                List.of(), List.of(), List.of(), List.of(), p1, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
                 snapId("s1"), "rev-theirs", MediaTime.ofMillis(5000),
-                List.of(), List.of(), List.of(), List.of(), List.of(), p2, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
+                List.of(), List.of(), List.of(), List.of(), p2, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
 
         TimelineMergePlanRequest req = new TimelineMergePlanRequest(
                 new TimelineMergePlanRequestId("req-1"),
@@ -511,19 +445,19 @@ class TimelineNonConflictingMergePlannerTest {
                 "wm-1", "logo", "BOTTOM_RIGHT", 50, Map.of());
         CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
                 snapId("s1"), "rev-1", MediaTime.ofMillis(5000),
-                List.of(), List.of(), List.of(wm), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
+                List.of(), List.of(wm), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
 
         CanonicalTimelineWatermarkSnapshot wmOurs = new CanonicalTimelineWatermarkSnapshot(
                 "wm-1", "logo", "TOP_LEFT", 80, Map.of());
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
                 snapId("s1"), "rev-ours", MediaTime.ofMillis(5000),
-                List.of(), List.of(), List.of(wmOurs), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
+                List.of(), List.of(wmOurs), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
 
         CanonicalTimelineWatermarkSnapshot wmTheirs = new CanonicalTimelineWatermarkSnapshot(
                 "wm-1", "logo", "CENTER", 30, Map.of());
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
                 snapId("s1"), "rev-theirs", MediaTime.ofMillis(5000),
-                List.of(), List.of(), List.of(wmTheirs), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
+                List.of(), List.of(wmTheirs), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
 
         TimelineMergePlanRequest req = new TimelineMergePlanRequest(
                 new TimelineMergePlanRequestId("req-1"),
@@ -554,46 +488,19 @@ class TimelineNonConflictingMergePlannerTest {
                 "Identical same-path changes should be SKIPPED_DUPLICATE with ALLOW_IDENTICAL policy");
     }
 
-    @Test @DisplayName("Same caption changed to same value -> SKIPPED_DUPLICATE with ALLOW_IDENTICAL")
-    void sameCaptionSameValueSkippedDuplicate() {
-        CanonicalTimelineCaptionSnapshot cap = new CanonicalTimelineCaptionSnapshot(
-                "cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Hello", Map.of(), Map.of());
-        CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-1", MediaTime.ofMillis(5000),
-                List.of(), List.of(cap), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
-
-        CanonicalTimelineCaptionSnapshot capChanged = new CanonicalTimelineCaptionSnapshot(
-                "cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "World", Map.of(), Map.of());
-        CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-ours", MediaTime.ofMillis(5000),
-                List.of(), List.of(capChanged), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
-        CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-theirs", MediaTime.ofMillis(5000),
-                List.of(), List.of(capChanged), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
-
-        TimelineMergePlanRequest req = new TimelineMergePlanRequest(
-                new TimelineMergePlanRequestId("req-1"),
-                base, ours, theirs,
-                TimelineMergePlanPolicy.ALLOW_IDENTICAL_SAME_PATH_CHANGES, Map.of());
-        TimelineNonConflictingMergePlan plan = planner.plan(req);
-
-        assertTrue(plan.operations().stream().anyMatch(
-                op -> op.status() == TimelineMergePlanOperationStatus.SKIPPED_DUPLICATE));
-    }
-
     @Test @DisplayName("Same output profile changed to same value -> SKIPPED_DUPLICATE with ALLOW_IDENTICAL")
     void sameOutputProfileSameValueSkippedDuplicate() {
         CanonicalTimelineOutputProfileSnapshot p = new CanonicalTimelineOutputProfileSnapshot(
                 "p1", "mp4", "16:9", 1920, 1080, Map.of());
         CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
                 snapId("s1"), "rev-1", MediaTime.ofMillis(5000),
-                List.of(), List.of(), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
+                List.of(), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
                 snapId("s1"), "rev-ours", MediaTime.ofMillis(5000),
-                List.of(), List.of(), List.of(), List.of(), List.of(), p, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
+                List.of(), List.of(), List.of(), List.of(), p, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
                 snapId("s1"), "rev-theirs", MediaTime.ofMillis(5000),
-                List.of(), List.of(), List.of(), List.of(), List.of(), p, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
+                List.of(), List.of(), List.of(), List.of(), p, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
 
         TimelineMergePlanRequest req = new TimelineMergePlanRequest(
                 new TimelineMergePlanRequestId("req-1"),
@@ -623,7 +530,7 @@ class TimelineNonConflictingMergePlannerTest {
         CanonicalTimelineSnapshot ours = snapWithMetadata("rev-ours", Map.of("title", "New"));
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
                 snapId("snap-rev-theirs"), "rev-theirs", MediaTime.ofMillis(9999),
-                base.tracks(), base.captions(), base.watermarks(),
+                base.tracks(), base.watermarks(),
                 base.templateApplications(), base.workflowSteps(), base.outputProfile(),
                 base.safeMetadata(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
 
@@ -641,12 +548,12 @@ class TimelineNonConflictingMergePlannerTest {
         CanonicalTimelineSnapshot base = snap("rev-1");
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
                 base.id(), "rev-ours", MediaTime.ofMillis(9999),
-                base.tracks(), base.captions(), base.watermarks(),
+                base.tracks(), base.watermarks(),
                 base.templateApplications(), base.workflowSteps(), base.outputProfile(),
                 base.safeMetadata(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
                 base.id(), "rev-theirs", MediaTime.ofMillis(7777),
-                base.tracks(), base.captions(), base.watermarks(),
+                base.tracks(), base.watermarks(),
                 base.templateApplications(), base.workflowSteps(), base.outputProfile(),
                 base.safeMetadata(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
 
@@ -660,43 +567,6 @@ class TimelineNonConflictingMergePlannerTest {
     }
 
     // ===== Stage 9: Determinism and Safety Tests =====
-
-    @Test @DisplayName("Plan operation ordering deterministic across double-run")
-    void planOperationOrderingDeterministic() {
-        CanonicalTimelineCaptionSnapshot cap = new CanonicalTimelineCaptionSnapshot(
-                "cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Hello", Map.of(), Map.of());
-        CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-1", MediaTime.ofMillis(5000),
-                List.of(), List.of(cap), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
-
-        CanonicalTimelineCaptionSnapshot capOurs = new CanonicalTimelineCaptionSnapshot(
-                "cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Ours", Map.of(), Map.of());
-        CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-ours", MediaTime.ofMillis(5000),
-                List.of(), List.of(capOurs), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
-
-        CanonicalTimelineCaptionSnapshot capTheirs = new CanonicalTimelineCaptionSnapshot(
-                "cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Theirs", Map.of(), Map.of());
-        CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev-theirs", MediaTime.ofMillis(5000),
-                List.of(), List.of(capTheirs), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
-
-        TimelineMergePlanRequest req = new TimelineMergePlanRequest(
-                new TimelineMergePlanRequestId("req-1"),
-                base, ours, theirs,
-                TimelineMergePlanPolicy.CONSERVATIVE, Map.of());
-
-        TimelineNonConflictingMergePlan plan1 = planner.plan(req);
-        TimelineNonConflictingMergePlan plan2 = planner.plan(req);
-
-        assertEquals(plan1.status(), plan2.status());
-        assertEquals(plan1.operations().size(), plan2.operations().size());
-        for (int i = 0; i < plan1.operations().size(); i++) {
-            assertEquals(plan1.operations().get(i).status(), plan2.operations().get(i).status());
-            assertEquals(plan1.operations().get(i).source(), plan2.operations().get(i).source());
-            assertEquals(plan1.operations().get(i).path(), plan2.operations().get(i).path());
-        }
-    }
 
     @Test @DisplayName("Summary counts stable across double-run")
     void summaryCountsStable() {
@@ -796,12 +666,12 @@ class TimelineNonConflictingMergePlannerTest {
 
     private CanonicalTimelineSnapshot snap(String revId) {
         return new CanonicalTimelineSnapshot(snapId("snap-" + revId), revId, MediaTime.ofMillis(5000),
-                List.of(track("track-1", 0)), List.of(), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
+                List.of(track("track-1", 0)), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
     }
 
     private CanonicalTimelineSnapshot snapWithMetadata(String revId, Map<String, String> metadata) {
         return new CanonicalTimelineSnapshot(snapId("snap-" + revId), revId, MediaTime.ofMillis(5000),
-                List.of(track("track-1", 0)), List.of(), List.of(), List.of(), List.of(), null, metadata, List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
+                List.of(track("track-1", 0)), List.of(), List.of(), List.of(), null, metadata, List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
     }
 
     private CanonicalTimelineTrackSnapshot track(String id, int order) {

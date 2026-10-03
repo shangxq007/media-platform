@@ -72,7 +72,7 @@ class TimelinePatchApplierTest {
         CanonicalTimelineOutputProfileSnapshot p = new CanonicalTimelineOutputProfileSnapshot("p1", "mp4", "16:9", 1920, 1080, Map.of());
         CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
                 new CanonicalTimelineSnapshotId("s1"), "rev-1", MediaTime.ofMillis(5000),
-                List.of(), List.of(), List.of(), List.of(), List.of(), p, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
+                List.of(), List.of(), List.of(), List.of(), p, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
         TimelinePatchApplicationResult r = applier.apply(base, patchOf(TimelineChangeType.OUTPUT_PROFILE_CHANGED, "timeline.outputProfile", "1920x1080", "1280x720"));
         assertTrue(r.isApplied());
         assertEquals(1280, r.patchedSnapshot().outputProfile().width());
@@ -98,29 +98,12 @@ class TimelinePatchApplierTest {
         assertTrue(r.isApplied());
     }
 
-    @Test @DisplayName("Caption text changed")
-    void captionChanged() {
-        CanonicalTimelineCaptionSnapshot cap = new CanonicalTimelineCaptionSnapshot("cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Hello", Map.of(), Map.of());
-        CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
-                new CanonicalTimelineSnapshotId("s1"), "rev-1", MediaTime.ofMillis(5000),
-                List.of(), List.of(cap), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
-        TimelinePatchApplicationResult r = applier.apply(base, patchOf(TimelineChangeType.CAPTION_SEGMENT_CHANGED, "timeline.captions.cap-1.text", "Hello", "World"));
-        assertTrue(r.isApplied());
-        assertEquals("World", r.patchedSnapshot().captions().get(0).text());
-    }
-
-    @Test @DisplayName("Missing caption fails")
-    void missingCaption() {
-        TimelinePatchApplicationResult r = applier.apply(snap("rev-1"), patchOf(TimelineChangeType.CAPTION_SEGMENT_CHANGED, "timeline.captions.missing.text", "old", "new"));
-        assertEquals(TimelinePatchApplicationStatus.VALIDATION_FAILED, r.status());
-    }
-
     @Test @DisplayName("Watermark opacity changed")
     void watermarkChanged() {
         CanonicalTimelineWatermarkSnapshot wm = new CanonicalTimelineWatermarkSnapshot("wm-1", "logo", "BOTTOM_RIGHT", 50, Map.of());
         CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
                 new CanonicalTimelineSnapshotId("s1"), "rev-1", MediaTime.ofMillis(5000),
-                List.of(), List.of(), List.of(wm), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
+                List.of(), List.of(wm), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
         TimelinePatchApplicationResult r = applier.apply(base, patchOf(TimelineChangeType.WATERMARK_CHANGED, "timeline.watermarks.wm-1", "BOTTOM_RIGHT:50", "TOP_LEFT:80"));
         assertTrue(r.isApplied());
         assertEquals("TOP_LEFT", r.patchedSnapshot().watermarks().get(0).position());
@@ -132,7 +115,7 @@ class TimelinePatchApplierTest {
         CanonicalTimelineTemplateApplicationSnapshot ta = new CanonicalTimelineTemplateApplicationSnapshot("app-1", "tpl-1", "1.0", Map.of("fontSize", "24"), Map.of());
         CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
                 new CanonicalTimelineSnapshotId("s1"), "rev-1", MediaTime.ofMillis(5000),
-                List.of(), List.of(), List.of(), List.of(ta), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
+                List.of(), List.of(), List.of(ta), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
         TimelinePatchApplicationResult r = applier.apply(base, patchOf(TimelineChangeType.TEMPLATE_PARAMETER_CHANGED,
                 "timeline.templateApplications.app-1.parameters.fontSize", "24", "fontSize=32"));
         assertTrue(r.isApplied());
@@ -144,7 +127,7 @@ class TimelinePatchApplierTest {
         CanonicalTimelineSnapshot before = snap("rev-1");
         CanonicalTimelineSnapshot after = new CanonicalTimelineSnapshot(
                 new CanonicalTimelineSnapshotId("s2"), "rev-2", MediaTime.ofMillis(10000),
-                List.of(track("track-1", 0)), List.of(), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
+                List.of(track("track-1", 0)), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
 
         CanonicalTimelineDiffCalculationResult diff = diffCalculator.calculate(before, after);
         assertTrue(diff.successful());
@@ -161,10 +144,10 @@ class TimelinePatchApplierTest {
     void roundTripMetadata() {
         CanonicalTimelineSnapshot before = new CanonicalTimelineSnapshot(
                 new CanonicalTimelineSnapshotId("s1"), "rev-1", MediaTime.ofMillis(5000),
-                List.of(), List.of(), List.of(), List.of(), List.of(), null, Map.of("title", "Old"), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
+                List.of(), List.of(), List.of(), List.of(), null, Map.of("title", "Old"), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
         CanonicalTimelineSnapshot after = new CanonicalTimelineSnapshot(
                 new CanonicalTimelineSnapshotId("s2"), "rev-2", MediaTime.ofMillis(5000),
-                List.of(), List.of(), List.of(), List.of(), List.of(), null, Map.of("title", "New"), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
+                List.of(), List.of(), List.of(), List.of(), null, Map.of("title", "New"), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
 
         CanonicalTimelineDiffCalculationResult diff = diffCalculator.calculate(before, after);
         assertTrue(diff.successful());
@@ -187,7 +170,7 @@ class TimelinePatchApplierTest {
 
     private CanonicalTimelineSnapshot snap(String revId) {
         return new CanonicalTimelineSnapshot(new CanonicalTimelineSnapshotId("snap-" + revId), revId, MediaTime.ofMillis(5000),
-                List.of(track("track-1", 0)), List.of(), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
+                List.of(track("track-1", 0)), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
     }
 
     private CanonicalTimelineTrackSnapshot track(String id, int order) {
@@ -207,8 +190,6 @@ class TimelinePatchApplierTest {
             case TIMELINE_DURATION_CHANGED -> TimelineChangeScope.TIMELINE;
             case TRACK_ADDED, TRACK_REMOVED, TRACK_REORDERED -> TimelineChangeScope.TRACK;
             case CLIP_ADDED, CLIP_REMOVED, CLIP_MOVED, CLIP_TRIMMED -> TimelineChangeScope.CLIP;
-            case CAPTION_SEGMENT_CHANGED -> TimelineChangeScope.CAPTION;
-            case TEXT_STYLE_CHANGED -> TimelineChangeScope.TEXT_OVERLAY;
             case WATERMARK_CHANGED -> TimelineChangeScope.WATERMARK;
             case TEMPLATE_PARAMETER_CHANGED, TEMPLATE_PROFILE_CHANGED -> TimelineChangeScope.TEMPLATE_APPLICATION;
             case OUTPUT_PROFILE_CHANGED -> TimelineChangeScope.OUTPUT_PROFILE;

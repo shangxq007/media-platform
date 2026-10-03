@@ -764,7 +764,7 @@ class TimelineCheckoutRollbackApplicationServiceTest {
             var snapshot = new CanonicalTimelineSnapshot(
                     new CanonicalTimelineSnapshotId("snap-" + revisionId),
                     revisionId,
-                    MediaTime.ofMillis(0), List.of(), List.of(), List.of(),
+                    MediaTime.ofMillis(0), List.of(), List.of(),
                     List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
             snapshots.put(revisionId, snapshot);
         }

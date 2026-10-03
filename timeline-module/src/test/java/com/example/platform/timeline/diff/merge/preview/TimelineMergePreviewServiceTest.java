@@ -200,13 +200,13 @@ class TimelineMergePreviewServiceTest {
         // ours changes duration
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
                 base.id(), "rev-ours", MediaTime.ofMillis(9999),
-                base.tracks(), base.captions(), base.watermarks(),
+                base.tracks(), base.watermarks(),
                 base.templateApplications(), base.workflowSteps(), base.outputProfile(),
                 base.safeMetadata(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
         // theirs changes duration differently
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
                 base.id(), "rev-theirs", MediaTime.ofMillis(7777),
-                base.tracks(), base.captions(), base.watermarks(),
+                base.tracks(), base.watermarks(),
                 base.templateApplications(), base.workflowSteps(), base.outputProfile(),
                 base.safeMetadata(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
 
@@ -378,12 +378,12 @@ class TimelineMergePreviewServiceTest {
         CanonicalTimelineSnapshot base = snap("rev-1");
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
                 base.id(), "rev-ours", MediaTime.ofMillis(9999),
-                base.tracks(), base.captions(), base.watermarks(),
+                base.tracks(), base.watermarks(),
                 base.templateApplications(), base.workflowSteps(), base.outputProfile(),
                 base.safeMetadata(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
                 base.id(), "rev-theirs", MediaTime.ofMillis(7777),
-                base.tracks(), base.captions(), base.watermarks(),
+                base.tracks(), base.watermarks(),
                 base.templateApplications(), base.workflowSteps(), base.outputProfile(),
                 base.safeMetadata(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
 
@@ -402,12 +402,12 @@ class TimelineMergePreviewServiceTest {
         CanonicalTimelineSnapshot base = snap("rev-1");
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
                 base.id(), "rev-ours", MediaTime.ofMillis(9999),
-                base.tracks(), base.captions(), base.watermarks(),
+                base.tracks(), base.watermarks(),
                 base.templateApplications(), base.workflowSteps(), base.outputProfile(),
                 base.safeMetadata(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
                 base.id(), "rev-theirs", MediaTime.ofMillis(9999),
-                base.tracks(), base.captions(), base.watermarks(),
+                base.tracks(), base.watermarks(),
                 base.templateApplications(), base.workflowSteps(), base.outputProfile(),
                 base.safeMetadata(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
 
@@ -426,12 +426,12 @@ class TimelineMergePreviewServiceTest {
         CanonicalTimelineSnapshot base = snap("rev-1");
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
                 base.id(), "rev-ours", MediaTime.ofMillis(9999),
-                base.tracks(), base.captions(), base.watermarks(),
+                base.tracks(), base.watermarks(),
                 base.templateApplications(), base.workflowSteps(), base.outputProfile(),
                 base.safeMetadata(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
                 base.id(), "rev-theirs", MediaTime.ofMillis(7777),
-                base.tracks(), base.captions(), base.watermarks(),
+                base.tracks(), base.watermarks(),
                 base.templateApplications(), base.workflowSteps(), base.outputProfile(),
                 base.safeMetadata(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
 
@@ -454,12 +454,12 @@ class TimelineMergePreviewServiceTest {
         CanonicalTimelineSnapshot base = snap("rev-1");
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
                 base.id(), "rev-ours", base.duration(),
-                base.tracks(), base.captions(), base.watermarks(),
+                base.tracks(), base.watermarks(),
                 base.templateApplications(), base.workflowSteps(), base.outputProfile(),
                 Map.of("title", "Ours"), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
                 base.id(), "rev-theirs", MediaTime.ofMillis(9999),
-                base.tracks(), base.captions(), base.watermarks(),
+                base.tracks(), base.watermarks(),
                 base.templateApplications(), base.workflowSteps(), base.outputProfile(),
                 base.safeMetadata(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
 
@@ -474,37 +474,6 @@ class TimelineMergePreviewServiceTest {
         assertFalse(r.hasConflicts());
     }
 
-    @Test @DisplayName("Same caption changed differently = MANUAL_REVIEW_REQUIRED preview")
-    void sameCaptionChangedDifferentlyManualReviewPreview() {
-        CanonicalTimelineCaptionSnapshot cap = new CanonicalTimelineCaptionSnapshot(
-                "cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Hello", Map.of(), Map.of());
-        CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev", MediaTime.ofMillis(5000),
-                List.of(), List.of(cap), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
-
-        CanonicalTimelineCaptionSnapshot capOurs = new CanonicalTimelineCaptionSnapshot(
-                "cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Ours", Map.of(), Map.of());
-        CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev", MediaTime.ofMillis(5000),
-                List.of(), List.of(capOurs), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
-
-        CanonicalTimelineCaptionSnapshot capTheirs = new CanonicalTimelineCaptionSnapshot(
-                "cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Theirs", Map.of(), Map.of());
-        CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev", MediaTime.ofMillis(5000),
-                List.of(), List.of(capTheirs), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
-
-        TimelineMergePreviewRequest req = new TimelineMergePreviewRequest(
-                new TimelineMergePreviewRequestId("req-1"),
-                base, ours, theirs,
-                TimelineMergePreviewMode.DIFF_AND_CONFLICTS,
-                TimelineMergePreviewPolicy.CONSERVATIVE, Map.of());
-        TimelineMergePreviewResult r = service.preview(req);
-
-        assertEquals(TimelineMergePreviewStatus.MANUAL_REVIEW_REQUIRED, r.status());
-        assertTrue(r.hasConflicts());
-    }
-
     @Test @DisplayName("Output profile changed differently = MANUAL_REVIEW_REQUIRED preview")
     void outputProfileChangedDifferentlyManualReviewPreview() {
         CanonicalTimelineOutputProfileSnapshot p1 = new CanonicalTimelineOutputProfileSnapshot(
@@ -513,13 +482,13 @@ class TimelineMergePreviewServiceTest {
                 "p2", "mp4", "16:9", 1280, 720, Map.of());
         CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
                 snapId("s1"), "rev", MediaTime.ofMillis(5000),
-                List.of(), List.of(), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
+                List.of(), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
                 snapId("s1"), "rev", MediaTime.ofMillis(5000),
-                List.of(), List.of(), List.of(), List.of(), List.of(), p1, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
+                List.of(), List.of(), List.of(), List.of(), p1, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
                 snapId("s1"), "rev", MediaTime.ofMillis(5000),
-                List.of(), List.of(), List.of(), List.of(), List.of(), p2, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
+                List.of(), List.of(), List.of(), List.of(), p2, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
 
         TimelineMergePreviewRequest req = new TimelineMergePreviewRequest(
                 new TimelineMergePreviewRequestId("req-1"),
@@ -543,41 +512,6 @@ class TimelineMergePreviewServiceTest {
         TimelineMergePreviewResult r = service.preview(req);
 
         assertEquals(TimelineMergePreviewStatus.BLOCKED, r.status());
-    }
-
-    @Test @DisplayName("Deterministic preview result double-run")
-    void deterministicPreviewResultDoubleRun() {
-        CanonicalTimelineCaptionSnapshot cap = new CanonicalTimelineCaptionSnapshot(
-                "cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Hello", Map.of(), Map.of());
-        CanonicalTimelineSnapshot base = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev", MediaTime.ofMillis(5000),
-                List.of(), List.of(cap), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
-
-        CanonicalTimelineCaptionSnapshot capOurs = new CanonicalTimelineCaptionSnapshot(
-                "cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Ours", Map.of(), Map.of());
-        CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev", MediaTime.ofMillis(5000),
-                List.of(), List.of(capOurs), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
-
-        CanonicalTimelineCaptionSnapshot capTheirs = new CanonicalTimelineCaptionSnapshot(
-                "cap-1", MediaTime.ofMillis(0), MediaTime.ofMillis(3000), "Theirs", Map.of(), Map.of());
-        CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
-                snapId("s1"), "rev", MediaTime.ofMillis(5000),
-                List.of(), List.of(capTheirs), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
-
-        TimelineMergePreviewRequest req = new TimelineMergePreviewRequest(
-                new TimelineMergePreviewRequestId("req-1"),
-                base, ours, theirs,
-                TimelineMergePreviewMode.DIFF_AND_CONFLICTS,
-                TimelineMergePreviewPolicy.CONSERVATIVE, Map.of());
-
-        TimelineMergePreviewResult r1 = service.preview(req);
-        TimelineMergePreviewResult r2 = service.preview(req);
-
-        assertEquals(r1.status(), r2.status());
-        assertEquals(r1.summary().conflictCount(), r2.summary().conflictCount());
-        assertEquals(r1.summary().mergeReady(), r2.summary().mergeReady());
-        assertEquals(r1.issues().size(), r2.issues().size());
     }
 
     // ===== Stage 7: Safety and Boundary Tests =====
@@ -688,7 +622,7 @@ class TimelineMergePreviewServiceTest {
 
     private CanonicalTimelineSnapshot snap(String revId) {
         return new CanonicalTimelineSnapshot(snapId("snap-" + revId), revId, MediaTime.ofMillis(5000),
-                List.of(track("track-1", 0)), List.of(), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
+                List.of(track("track-1", 0)), List.of(), List.of(), List.of(), null, Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
     }
 
     private CanonicalTimelineTrackSnapshot track(String id, int order) {
