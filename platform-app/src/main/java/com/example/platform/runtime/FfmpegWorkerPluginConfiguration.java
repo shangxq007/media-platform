@@ -4,6 +4,8 @@ import com.example.platform.execution.domain.provider.ProviderBindingPin;
 import com.example.platform.providerplugin.ProviderPluginCatalog;
 import com.example.platform.providerplugin.ProviderPluginContribution;
 import com.example.platform.providerplugin.ProviderPluginHost;
+import com.example.platform.providerplugin.InProcessProviderPlugins;
+import com.example.platform.providerplugin.bmf.BmfProviderExtension;
 import com.example.platform.providerplugin.ProviderPluginRuntimeContext;
 import com.example.platform.sandbox.SandboxCancellation;
 import com.example.platform.workerfabric.domain.providernative.ProviderNativeRuntimeBinding;
@@ -11,6 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -54,8 +57,19 @@ public class FfmpegWorkerPluginConfiguration {
     }
 
     @Bean
-    ProviderPluginCatalog providerPluginCatalog(ProviderPluginHost providerPluginHost) {
-        return providerPluginHost.catalog();
+    BmfProviderExtension bmfProviderExtension() {
+        return new BmfProviderExtension();
+    }
+
+    /**
+     * The catalog is the host's own instance plus the in-process infrastructure contributions (BMF
+     * is an embedded framework, not a plugin JAR), so the worker keeps exactly one catalog.
+     */
+    @Bean
+    ProviderPluginCatalog providerPluginCatalog(
+            ProviderPluginHost providerPluginHost, BmfProviderExtension bmfProviderExtension) {
+        return InProcessProviderPlugins.catalogWith(
+                providerPluginHost.catalog(), List.of(bmfProviderExtension));
     }
 
     @Bean
@@ -70,6 +84,13 @@ public class FfmpegWorkerPluginConfiguration {
         long captureBudget = Long.parseLong(captureBytes);
         Map<ProviderBindingPin, ProviderNativeRuntimeBinding<?>> bindings = new LinkedHashMap<>();
         for (ProviderPluginContribution contribution : providerPluginCatalog.contributions()) {
+            // A contribution whose lowering is declared unsupported has no executable binding: it
+            // stays registry-visible (the Stage-1 kernel refuses it) and contributes nothing here.
+            if (contribution.providerStaticCompatibility().loweringSupport()
+                    == com.example.platform.execution.compatibility.ProviderStaticCompatibility
+                            .LoweringSupport.UNSUPPORTED) {
+                continue;
+            }
             ProviderNativeRuntimeBinding<?> binding = contribution.createRuntimeBinding(
                     new ProviderPluginRuntimeContext(executable, workspace, Duration.parse(timeout),
                             captureBudget, SandboxCancellation.never()));

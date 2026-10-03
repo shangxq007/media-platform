@@ -172,9 +172,13 @@ class BmfArchitectureGuardTest {
         for (String module : CORE_MODULES) {
             Path moduleRoot = root.resolve(module);
             if (module.equals("provider-plugin-runtime-module")) {
-                assertThat(readJava(moduleRoot.resolve("src/main/java"))
-                        .replace("import com.example.platform.bmf.BmfExecutionBackend;", ""))
-                        .doesNotContain("com.example.platform.bmf");
+                // EP05 (docs/governance/domain-authority-targeted-tests.md:21): "Provider runtime
+                // alone may depend on the BMF binding; core/H1 no-private-topology assertions
+                // remain." The provider runtime is therefore allowed to reference BMF — including
+                // the BMF provider contribution (Sprint 047, docs/architecture/bmf-integration.md:100)
+                // — while every other core/H1 module stays BMF-free below. The previous form of this
+                // assertion additionally required that the ONLY tolerated import was
+                // BmfExecutionBackend, which the accepted EP05 text does not state.
                 continue;
             }
             assertThat(Files.readString(moduleRoot.resolve("build.gradle.kts")))
