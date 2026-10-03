@@ -152,6 +152,20 @@ public final class OperationRequestResolver {
                 }
                 return new OperationTarget.AudioTarget(audioReq.audioMixInput());
             }
+            case TEXT -> {
+                // P2-5.5: text operations target the Timeline aggregate; the exact
+                // TextElementId is carried in the typed parameters, not the target.
+                if (!(target instanceof OperationTargetRequest.TimelineTargetRequest timelineReq)) {
+                    throw new OperationResolutionException(OperationErrorCode.INVALID_SCOPE,
+                            "definition " + def.definitionId() + " requires Timeline target");
+                }
+                if (!timelineReq.timelineId().equals(base.timelineId())) {
+                    throw new OperationResolutionException(OperationErrorCode.INVALID_SCOPE,
+                            "target Timeline " + timelineReq.timelineId()
+                                    + " != resolved Timeline " + base.timelineId());
+                }
+                return new OperationTarget.TimelineTarget(base.timelineId());
+            }
         }
         throw new OperationResolutionException(OperationErrorCode.INVALID_SCOPE, "unresolved target kind");
     }
