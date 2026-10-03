@@ -79,8 +79,6 @@ public class TimelinePatchApplier {
                 }
                 yield applyClipField(s, op, "assetBindingId");
             }
-            case CAPTION_SEGMENT_CHANGED -> applyCaptionText(s, op);
-            case TEXT_STYLE_CHANGED -> applyCaptionText(s, op);
             case WATERMARK_CHANGED -> applyWatermark(s, op);
             case TEMPLATE_PARAMETER_CHANGED -> applyTemplateParam(s, op);
             case TEMPLATE_PROFILE_CHANGED -> applyTemplateProfile(s, op);
@@ -392,25 +390,6 @@ public class TimelinePatchApplier {
             }
         }
         return ok(withUpdatedTrack(s, trackId, newTrackWithClips(track, clips)));
-    }
-
-    // --- Caption ---
-
-    private TimelinePatchApplicationResult applyCaptionText(CanonicalTimelineSnapshot s, TimelineChangeOperation op) {
-        String rawCapId = extractId(op.path().value(), "timeline.captions.");
-        final String capId = rawCapId.contains(".") ? rawCapId.split("\\.")[0] : rawCapId;
-        Optional<CanonicalTimelineCaptionSnapshot> capOpt = s.captions().stream()
-                .filter(c -> c.captionId().equals(capId)).findFirst();
-        if (capOpt.isEmpty()) return fail(TimelinePatchApplicationIssueCode.TARGET_NOT_FOUND, op.path().value(), "Caption not found");
-        CanonicalTimelineCaptionSnapshot cap = capOpt.get();
-        String newText = afterVal(op) != null ? afterVal(op) : cap.text();
-        CanonicalTimelineCaptionSnapshot updated = new CanonicalTimelineCaptionSnapshot(
-                cap.captionId(), cap.start(), cap.end(), newText, cap.style(), cap.safeMetadata());
-        List<CanonicalTimelineCaptionSnapshot> captions = s.captions().stream()
-                .map(c -> c.captionId().equals(capId) ? updated : c).collect(Collectors.toList());
-        return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
-                s.tracks(), captions, s.watermarks(), s.templateApplications(),
-                s.workflowSteps(), s.outputProfile(), s.safeMetadata(), s.textElements(), s.transitions(), s.automations(), s.audioMix(), s.semanticRelationships()));
     }
 
     // --- Watermark ---
