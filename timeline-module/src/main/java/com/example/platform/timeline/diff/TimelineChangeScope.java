@@ -10,7 +10,6 @@ public enum TimelineChangeScope {
     CLIP,
     ASSET_BINDING,
     TEXT_OVERLAY,
-    CAPTION,
     WATERMARK,
     TEXT_ELEMENT,
     TEMPLATE_APPLICATION,
