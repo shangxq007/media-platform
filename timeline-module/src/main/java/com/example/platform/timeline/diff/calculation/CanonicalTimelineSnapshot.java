@@ -24,7 +24,6 @@ public record CanonicalTimelineSnapshot(
         String revisionId,
         MediaTime duration,
         List<CanonicalTimelineTrackSnapshot> tracks,
-        List<CanonicalTimelineCaptionSnapshot> captions,
         List<CanonicalTimelineWatermarkSnapshot> watermarks,
         List<CanonicalTimelineTemplateApplicationSnapshot> templateApplications,
         List<CanonicalTimelineWorkflowStepSnapshot> workflowSteps,
@@ -53,13 +52,13 @@ public record CanonicalTimelineSnapshot(
 
     public CanonicalTimelineSnapshot withTracks(List<CanonicalTimelineTrackSnapshot> tracks) {
         return new CanonicalTimelineSnapshot(id, revisionId, duration,
-                tracks, captions, watermarks, templateApplications, workflowSteps,
+                tracks, watermarks, templateApplications, workflowSteps,
                 outputProfile, safeMetadata, textElements, transitions, automations, audioMix, semanticRelationships);
     }
 
     public CanonicalTimelineSnapshot withDuration(MediaTime newDuration) {
         return new CanonicalTimelineSnapshot(id, revisionId, newDuration,
-                tracks, captions, watermarks, templateApplications, workflowSteps,
+                tracks, watermarks, templateApplications, workflowSteps,
                 outputProfile, safeMetadata, textElements, transitions, automations, audioMix, semanticRelationships);
     }
 
@@ -67,26 +66,26 @@ public record CanonicalTimelineSnapshot(
     // fields, including effects via tracks, transitions and automations).
     public CanonicalTimelineSnapshot withTextElements(List<com.example.platform.timeline.canonical.TextElement> newTextElements) {
         return new CanonicalTimelineSnapshot(id, revisionId, duration,
-                tracks, captions, watermarks, templateApplications, workflowSteps,
+                tracks, watermarks, templateApplications, workflowSteps,
                 outputProfile, safeMetadata, newTextElements, transitions, automations, audioMix, semanticRelationships);
     }
 
     public CanonicalTimelineSnapshot withTransitions(List<CanonicalTimelineTransitionSnapshot> newTransitions) {
         return new CanonicalTimelineSnapshot(id, revisionId, duration,
-                tracks, captions, watermarks, templateApplications, workflowSteps,
+                tracks, watermarks, templateApplications, workflowSteps,
                 outputProfile, safeMetadata, textElements, newTransitions, automations, audioMix, semanticRelationships);
     }
 
     public CanonicalTimelineSnapshot withAutomations(List<CanonicalTimelineAutomationSnapshot> newAutomations) {
         return new CanonicalTimelineSnapshot(id, revisionId, duration,
-                tracks, captions, watermarks, templateApplications, workflowSteps,
+                tracks, watermarks, templateApplications, workflowSteps,
                 outputProfile, safeMetadata, textElements, transitions, newAutomations, audioMix, semanticRelationships);
     }
 
     // CHECKPOINT_A: AudioMix / relationship-aware copy helpers (full-state).
     public CanonicalTimelineSnapshot withAudioMix(com.example.platform.audio.domain.mix.AudioMix newAudioMix) {
         return new CanonicalTimelineSnapshot(id, revisionId, duration,
-                tracks, captions, watermarks, templateApplications, workflowSteps,
+                tracks, watermarks, templateApplications, workflowSteps,
                 outputProfile, safeMetadata, textElements, transitions, automations,
                 newAudioMix, semanticRelationships);
     }
@@ -94,14 +93,14 @@ public record CanonicalTimelineSnapshot(
     public CanonicalTimelineSnapshot withSemanticRelationships(
             List<com.example.platform.timeline.semantics.relationship.SemanticRelationship> newRelationships) {
         return new CanonicalTimelineSnapshot(id, revisionId, duration,
-                tracks, captions, watermarks, templateApplications, workflowSteps,
+                tracks, watermarks, templateApplications, workflowSteps,
                 outputProfile, safeMetadata, textElements, transitions, automations,
                 audioMix, newRelationships);
     }
 
     public CanonicalTimelineSnapshot withMetadata(Map<String, String> newMetadata) {
         return new CanonicalTimelineSnapshot(id, revisionId, duration,
-                tracks, captions, watermarks, templateApplications, workflowSteps,
+                tracks, watermarks, templateApplications, workflowSteps,
                 outputProfile, newMetadata, textElements, transitions, automations, audioMix, semanticRelationships);
     }
 }
