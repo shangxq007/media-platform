@@ -22,9 +22,12 @@ import org.springframework.stereotype.Service;
 public final class CanonicalOperationInvocationService implements OperationInvocationPort {
 
     private final TimelineMediaClipOperationService mediaClipService;
+    private final TextOperationService textOperationService;
 
-    CanonicalOperationInvocationService(TimelineMediaClipOperationService mediaClipService) {
+    CanonicalOperationInvocationService(TimelineMediaClipOperationService mediaClipService,
+                                        TextOperationService textOperationService) {
         this.mediaClipService = Objects.requireNonNull(mediaClipService, "mediaClipService");
+        this.textOperationService = Objects.requireNonNull(textOperationService, "textOperationService");
     }
 
     @Override
@@ -41,8 +44,10 @@ public final class CanonicalOperationInvocationService implements OperationInvoc
                 || request.baseContentHash().isBlank()) {
             throw failure(OperationInvocationFailureCode.INVALID_REQUEST, "invalid-request");
         }
-        if (!OperationDefinition.V1.ADD_MEDIA_CLIP.definitionId().equals(request.definitionId())
-                || !OperationDefinition.V1.ADD_MEDIA_CLIP.version().equals(request.version())) {
+        boolean mediaClip = OperationDefinition.V1.ADD_MEDIA_CLIP.definitionId().equals(request.definitionId());
+        boolean textOperation = request.definitionId().value() != null
+                && request.definitionId().value().startsWith("timeline.text.");
+        if (!mediaClip && !textOperation) {
             throw failure(
                     OperationInvocationFailureCode.UNSUPPORTED_OPERATION,
                     "unsupported-operation");
@@ -50,8 +55,15 @@ public final class CanonicalOperationInvocationService implements OperationInvoc
         if (!(request.target() instanceof OperationTargetRequest.TimelineTargetRequest)) {
             throw failure(OperationInvocationFailureCode.INVALID_SCOPE, "invalid-scope");
         }
-        if (!(request.parameters() instanceof OperationParameters.AddMediaClipParameters)) {
-            throw failure(OperationInvocationFailureCode.INVALID_PARAMETER, "invalid-parameter");
+        if (mediaClip) {
+            if (!OperationDefinition.V1.ADD_MEDIA_CLIP.version().equals(request.version())) {
+                throw failure(
+                        OperationInvocationFailureCode.UNSUPPORTED_OPERATION,
+                        "unsupported-operation");
+            }
+            if (!(request.parameters() instanceof OperationParameters.AddMediaClipParameters)) {
+                throw failure(OperationInvocationFailureCode.INVALID_PARAMETER, "invalid-parameter");
+            }
         }
         if (context == null
                 || context.actor() == null
@@ -67,8 +79,9 @@ public final class CanonicalOperationInvocationService implements OperationInvoc
         }
 
         try {
-            var outcome = mediaClipService.invoke(request, context);
-            var result = outcome.result();
+            var result = mediaClip
+                    ? mediaClipService.invoke(request, context).result()
+                    : textOperationService.invoke(request, context).result();
             String correlationId = context.provenance().correlationId();
             if (com.example.platform.operation.plan.ApplyResult.NO_OP.equals(result.status())) {
                 return new OperationInvocationResult.NoOp(
@@ -94,15 +107,31 @@ public final class CanonicalOperationInvocationService implements OperationInvoc
 
     @Override
     public void validate(OperationRequest request, OperationInvocationContext context, String projectId) {
-        if (projectId==null || request == null || !OperationDefinition.V1.ADD_MEDIA_CLIP.definitionId().equals(request.definitionId())
-                || !OperationDefinition.V1.ADD_MEDIA_CLIP.version().equals(request.version())
+        boolean mediaClip = request != null && request.definitionId() != null
+                && OperationDefinition.V1.ADD_MEDIA_CLIP.definitionId().equals(request.definitionId());
+        boolean textOperation = request != null && request.definitionId() != null
+                && request.definitionId().value() != null
+                && request.definitionId().value().startsWith("timeline.text.");
+        if (projectId == null || request == null
                 || !(request.target() instanceof OperationTargetRequest.TimelineTargetRequest target)
                 || !projectId.equals(target.timelineId())
-                || !(request.parameters() instanceof OperationParameters.AddMediaClipParameters))
+                || (!mediaClip && !textOperation)) {
             throw failure(OperationInvocationFailureCode.UNSUPPORTED_OPERATION, "unsupported-operation-or-scope");
+        }
+        if (mediaClip
+                && (!OperationDefinition.V1.ADD_MEDIA_CLIP.version().equals(request.version())
+                    || !(request.parameters() instanceof OperationParameters.AddMediaClipParameters))) {
+            throw failure(OperationInvocationFailureCode.UNSUPPORTED_OPERATION, "unsupported-operation-or-scope");
+        }
         if(context==null||context.actor()==null||context.actor().tenantId()==null||context.actor().tenantId().isBlank())
             throw failure(OperationInvocationFailureCode.INVALID_REQUEST,"invalid-context");
-        try {mediaClipService.validateInvocation(request, context);}
+        try {
+            if (mediaClip) {
+                mediaClipService.validateInvocation(request, context);
+            } else {
+                textOperationService.validateInvocation(request, context);
+            }
+        }
         catch(TimelineOperationException rejected){throw translate(rejected.code());}
         catch(OperationInvocationException rejected){throw rejected;}
         catch(RuntimeException rejected){throw failure(OperationInvocationFailureCode.APPLY_FAILURE,"preflight-failure");}
