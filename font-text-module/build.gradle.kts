@@ -9,6 +9,7 @@ java {
 }
 
 dependencies {
+    implementation(project(":shared-kernel"))
     implementation("com.fasterxml.jackson.core:jackson-annotations") // serialization visibility only, never semantic authority
     testImplementation("org.junit.jupiter:junit-jupiter:6.0.3")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:6.0.3")
