@@ -216,7 +216,7 @@ public final class TextOperationPlanner {
                 List.of(request.target().toString()), List.of(changeKey), candidateHash);
         return new OperationPlan(OperationPlan.FORMAT_VERSION, request.baseRevisionId(),
                 request.baseContentHash(), null, changes, candidate, candidateHash,
-                true, planDigest, noOp);
+                true, planDigest, noOp, false);
     }
 
     public OperationPlan preview(OperationPlan plan) {

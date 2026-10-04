@@ -84,15 +84,24 @@ public class OperationPlanApplyService {
                     "exact base content hash no longer matches the plan");
         }
 
-        // Re-plan from the immutable instance + exact base immediately before
-        // authorization-consuming apply. Any plan/candidate drift fails closed.
-        OperationPlan verified = planner.plan(
-                plan.sourceInstance(), context.expectedHeadRevisionId(), exactBase);
-        if (!verified.planDigest().equals(plan.planDigest())
-                || !verified.candidateContentHash().equals(plan.candidateContentHash())
-                || !digester.digest(plan.candidateTimeline()).equals(plan.candidateContentHash())) {
+        // Candidate integrity: the frozen candidate must match its digest (ALL plans).
+        if (!digester.digest(plan.candidateTimeline()).equals(plan.candidateContentHash())) {
             throw new PlanException(PlanErrorCode.PLAN_CHANGED,
                     "OperationPlan or candidate changed after preview");
+        }
+        // Reproducibility re-plan (plannable plans only): re-plan from the immutable
+        // instance + exact base immediately before authorization-consuming apply; any
+        // plan/candidate drift fails closed. TEXT-OP-APPLY-NPE: typed text plans set
+        // replanRequired=false — they are consumed as a frozen plan (the 3-arg
+        // planner has no text cases, and text resolution inputs are absent at apply).
+        if (plan.replanRequired()) {
+            OperationPlan verified = planner.plan(
+                    plan.sourceInstance(), context.expectedHeadRevisionId(), exactBase);
+            if (!verified.planDigest().equals(plan.planDigest())
+                    || !verified.candidateContentHash().equals(plan.candidateContentHash())) {
+                throw new PlanException(PlanErrorCode.PLAN_CHANGED,
+                        "OperationPlan or candidate changed after preview");
+            }
         }
 
         try {

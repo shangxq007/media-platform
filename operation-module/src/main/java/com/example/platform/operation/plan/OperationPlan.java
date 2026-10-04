@@ -11,6 +11,13 @@ import java.util.List;
  * identity, planned semantic changes (primary/secondary), fully materialized
  * candidate Timeline, candidate hash, validation proof, deterministic digest.
  * Plan itself never contains authorization/principal/targetRef/expectedHead.
+ *
+ * <p>{@code replanRequired} tells the apply boundary whether the plan must be
+ * reproduced from its {@code sourceInstance} via the 3-arg planner before the
+ * atomic mutation. Non-text plans set it {@code true} (unchanged behavior);
+ * typed text plans set it {@code false} — they are consumed as a frozen plan
+ * (text resolution inputs are structurally absent at apply). It is NEVER an
+ * input to {@link OperationPlanDigest}, so it does not affect the plan digest.
  */
 public record OperationPlan(
         String formatVersion,
@@ -22,7 +29,8 @@ public record OperationPlan(
         String candidateContentHash,
         boolean validated,
         String planDigest,
-        boolean noOp) {
+        boolean noOp,
+        boolean replanRequired) {
 
     public OperationPlan {
         if (baseRevisionId == null || baseRevisionId.isBlank()) {

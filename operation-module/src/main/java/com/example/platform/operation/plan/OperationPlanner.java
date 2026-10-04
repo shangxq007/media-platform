@@ -83,7 +83,7 @@ public final class OperationPlanner {
                 candidateHash);
         return new OperationPlan(OperationPlan.FORMAT_VERSION, instance.baseRevisionId(),
                 instance.baseContentHash(), instance, List.copyOf(changes), candidate,
-                candidateHash, true, digest, noOp);
+                candidateHash, true, digest, noOp, true);
     }
 
     /**
@@ -122,7 +122,8 @@ public final class OperationPlanner {
                 textPlan.candidateContentHash(),
                 textPlan.validated(),
                 textPlan.planDigest(),
-                textPlan.noOp());
+                textPlan.noOp(),
+                textPlan.replanRequired());
     }
 
     /** Static text-op predicate — id-prefix based, no registry. */
