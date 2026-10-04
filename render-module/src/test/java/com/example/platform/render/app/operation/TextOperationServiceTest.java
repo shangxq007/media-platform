@@ -140,14 +140,18 @@ class TextOperationServiceTest {
     }
 
     @Test
-    void applyWithMatchingDigestReturnsResult() {
-        // Uses REMOVE (deterministic plan). ADD_TEXT_ELEMENT assigns a random
-        // TextElementId per plan, so its digest is not reproducible across
-        // preview/apply — a known limitation recorded for the Owner.
+    void addTextElementPlanIsReproducibleAcrossPreviewAndApply() {
+        // ADD_TEXT_ELEMENT now derives a deterministic TextElementId from a
+        // stable seed, so preview and apply produce the SAME plan digest.
         when(revisionSaveService.findPayloadDocument(TENANT, BASE_REV))
-                .thenReturn(Optional.of(documentWith(element("e1"))));
-        OperationRequest request = removeRequest("e1");
+                .thenReturn(Optional.of(emptyDocument()));
+        OperationRequest request = addRequest();
+
         var preview = service.preview(TENANT, PROJECT, request, actor());
+        assertEquals(preview.planDigest(),
+                service.preview(TENANT, PROJECT, request, actor()).planDigest(),
+                "same ADD request must yield the same plan digest");
+
         when(applyService.apply(any(), any(), eq(PROJECT), any()))
                 .thenReturn(ApplyResult.applied(preview.planDigest(), "apply-1", BASE_REV,
                         "rev-new", "hash-new", BASE_REV, "MAIN"));
