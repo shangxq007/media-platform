@@ -106,7 +106,23 @@ public final class OperationPlanner {
                     "instance base " + instance.baseRevisionId()
                             + " does not match independently hydrated base " + hydratedBaseRevisionId);
         }
-        return new TextOperationPlanner(digester).plan(toRequest(instance), base, fontInput);
+        OperationPlan textPlan =
+                new TextOperationPlanner(digester).plan(toRequest(instance), base, fontInput);
+        // TEXT-OP-APPLY-NPE: the text planner emits a plan whose sourceInstance is
+        // null (it only receives an OperationRequest). Re-attach the resolved
+        // instance here — it is NOT an input to OperationPlanDigest, so the plan
+        // digest is preserved verbatim.
+        return new OperationPlan(
+                textPlan.formatVersion(),
+                textPlan.baseRevisionId(),
+                textPlan.baseContentHash(),
+                instance,
+                textPlan.plannedChanges(),
+                textPlan.candidateTimeline(),
+                textPlan.candidateContentHash(),
+                textPlan.validated(),
+                textPlan.planDigest(),
+                textPlan.noOp());
     }
 
     /** Static text-op predicate — id-prefix based, no registry. */
