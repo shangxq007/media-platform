@@ -53,7 +53,7 @@ class CheckpointARound4ComponentAuthorityTest {
     private static CanonicalTimelineSnapshot withTransitions(CanonicalTimelineSnapshot base,
             List<CanonicalTimelineTransitionSnapshot> transitions) {
         return new CanonicalTimelineSnapshot(base.id(), base.revisionId(), base.duration(),
-                base.tracks(), base.captions(), base.watermarks(), base.templateApplications(),
+                base.tracks(), base.watermarks(), base.templateApplications(),
                 base.workflowSteps(), base.outputProfile(), base.safeMetadata(), base.textElements(),
                 transitions, base.automations(), base.audioMix(), base.semanticRelationships());
     }
@@ -73,7 +73,7 @@ class CheckpointARound4ComponentAuthorityTest {
     private static CanonicalTimelineSnapshot withAutomations(CanonicalTimelineSnapshot base,
             List<CanonicalTimelineAutomationSnapshot> automations) {
         return new CanonicalTimelineSnapshot(base.id(), base.revisionId(), base.duration(),
-                base.tracks(), base.captions(), base.watermarks(), base.templateApplications(),
+                base.tracks(), base.watermarks(), base.templateApplications(),
                 base.workflowSteps(), base.outputProfile(), base.safeMetadata(), base.textElements(),
                 base.transitions(), automations, base.audioMix(), base.semanticRelationships());
     }

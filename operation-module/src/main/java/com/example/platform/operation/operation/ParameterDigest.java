@@ -111,6 +111,20 @@ public final class ParameterDigest {
         if (p instanceof OperationParameters.UpdateSyncAnchorParameters ua) {
             return "sync-anchor(" + ua.localAnchorA() + "," + ua.localAnchorB() + ")";
         }
+        // ROADMAP_19 / P2-5.5: nine typed Text operations. Value-based components
+        // (records/classes with value equality) yield a deterministic parameter
+        // serialization; the text plan digest itself is owned by TextOperationPlanner.
+        if (p instanceof OperationParameters.AddTextElementParameters
+                || p instanceof OperationParameters.RemoveTextElementParameters
+                || p instanceof OperationParameters.ReplaceTextContentParameters
+                || p instanceof OperationParameters.SetTextStyleRangeParameters
+                || p instanceof OperationParameters.SetParagraphStyleParameters
+                || p instanceof OperationParameters.SetFontSelectionParameters
+                || p instanceof OperationParameters.SetFontFallbackPolicyParameters
+                || p instanceof OperationParameters.SetVariableFontAxisParameters
+                || p instanceof OperationParameters.SetTextLayoutParameters) {
+            return "text(" + p.getClass().getSimpleName() + "," + Integer.toHexString(p.hashCode()) + ")";
+        }
         throw new IllegalArgumentException("unknown parameters: " + p.getClass());
     }
 

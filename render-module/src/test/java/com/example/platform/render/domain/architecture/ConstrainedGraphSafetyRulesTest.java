@@ -30,7 +30,7 @@ class ConstrainedGraphSafetyRulesTest {
         CanonicalTimelineSnapshot before = simpleSnapshot("rev-1");
         CanonicalTimelineSnapshot after = new CanonicalTimelineSnapshot(
                 new CanonicalTimelineSnapshotId("snap-2"), "rev-2", MediaTime.ofMillis(10000),
-                before.tracks(), before.captions(), before.watermarks(),
+                before.tracks(), before.watermarks(),
                 before.templateApplications(), before.workflowSteps(),
                 before.outputProfile(), Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
 
@@ -53,7 +53,7 @@ class ConstrainedGraphSafetyRulesTest {
         CanonicalTimelineSnapshot original = simpleSnapshot("rev-1");
         CanonicalTimelineSnapshot copy = new CanonicalTimelineSnapshot(
                 original.id(), original.revisionId(), original.duration(),
-                original.tracks(), original.captions(), original.watermarks(),
+                original.tracks(), original.watermarks(),
                 original.templateApplications(), original.workflowSteps(),
                 original.outputProfile(), original.safeMetadata(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
 
@@ -86,12 +86,12 @@ class ConstrainedGraphSafetyRulesTest {
         CanonicalTimelineSnapshot base = simpleSnapshot("rev-base");
         CanonicalTimelineSnapshot ours = new CanonicalTimelineSnapshot(
                 new CanonicalTimelineSnapshotId("snap-ours"), "rev-ours", MediaTime.ofMillis(8000),
-                base.tracks(), base.captions(), base.watermarks(),
+                base.tracks(), base.watermarks(),
                 base.templateApplications(), base.workflowSteps(),
                 base.outputProfile(), Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
         CanonicalTimelineSnapshot theirs = new CanonicalTimelineSnapshot(
                 new CanonicalTimelineSnapshotId("snap-theirs"), "rev-theirs", MediaTime.ofMillis(12000),
-                base.tracks(), base.captions(), base.watermarks(),
+                base.tracks(), base.watermarks(),
                 base.templateApplications(), base.workflowSteps(),
                 base.outputProfile(), Map.of(), List.of(), List.of(), List.of(), com.example.platform.audio.domain.mix.AudioMix.empty(), java.util.List.of());
 
@@ -217,7 +217,6 @@ class ConstrainedGraphSafetyRulesTest {
                 List.of(new CanonicalTimelineTrackSnapshot(
                         "track-v", 0, "VIDEO", List.of(
                         new CanonicalTimelineClipSnapshot("clip-1", "asset-1", MediaTime.ofMillis(0), MediaTime.ofMillis(5000), MediaTime.ofMillis(0), MediaTime.ofMillis(5000), FrameRate.of(30, 1), List.of(), Map.of(), null, null, null, null, null)), Map.of())),
-                List.of(),
                 List.of(),
                 List.of(),
                 List.of(),

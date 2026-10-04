@@ -69,7 +69,7 @@ class CheckpointARound4RelationshipAuthorityTest {
     private static CanonicalTimelineSnapshot withRels(CanonicalTimelineSnapshot base,
             List<SemanticRelationship> rels) {
         return new CanonicalTimelineSnapshot(base.id(), base.revisionId(), base.duration(),
-                base.tracks(), base.captions(), base.watermarks(), base.templateApplications(),
+                base.tracks(), base.watermarks(), base.templateApplications(),
                 base.workflowSteps(), base.outputProfile(), base.safeMetadata(), base.textElements(),
                 base.transitions(), base.automations(), base.audioMix(), rels);
     }

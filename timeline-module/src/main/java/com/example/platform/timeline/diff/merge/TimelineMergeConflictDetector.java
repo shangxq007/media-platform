@@ -280,7 +280,7 @@ public class TimelineMergeConflictDetector {
             case CLIP_MOVED, CLIP_TRIMMED -> TimelineConflictType.CLIP_RANGE_CONFLICT;
             case CLIP_REMOVED -> TimelineConflictType.CLIP_REMOVED_AND_MODIFIED;
             case ASSET_BINDING_CHANGED -> TimelineConflictType.CLIP_RANGE_CONFLICT;
-            case CAPTION_SEGMENT_CHANGED, TEXT_STYLE_CHANGED, WATERMARK_CHANGED,
+            case WATERMARK_CHANGED,
                     TEXT_ELEMENT_CHANGED, TEMPLATE_PARAMETER_CHANGED,
                     TEMPLATE_PROFILE_CHANGED -> TimelineConflictType.EFFECT_CONFLICT;
             case COMPOSITE_CHILD_TEMPLATE_CHANGED, WORKFLOW_APPLY_TEMPLATE_STEP_CHANGED ->
@@ -295,8 +295,6 @@ public class TimelineMergeConflictDetector {
         return switch (changeType) {
             case TRACK_REORDERED -> TimelineMergeConflictIssueCode.TRACK_ORDER_DIVERGENCE;
             case CLIP_MOVED, CLIP_TRIMMED -> TimelineMergeConflictIssueCode.CLIP_TIMING_OVERLAP;
-            case CAPTION_SEGMENT_CHANGED -> TimelineMergeConflictIssueCode.CAPTION_TEXT_DIVERGENCE;
-            case TEXT_STYLE_CHANGED -> TimelineMergeConflictIssueCode.TEXT_STYLE_DIVERGENCE;
             case WATERMARK_CHANGED -> TimelineMergeConflictIssueCode.WATERMARK_POSITION_DIVERGENCE;
             case TEXT_ELEMENT_CHANGED -> TimelineMergeConflictIssueCode.TEXT_ELEMENT_DIVERGENCE;
             case TEMPLATE_PARAMETER_CHANGED -> TimelineMergeConflictIssueCode.TEMPLATE_PARAMETER_DIVERGENCE;

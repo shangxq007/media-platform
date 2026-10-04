@@ -44,19 +44,6 @@ class TimelineDiffDomainTest {
     }
 
     @Test
-    @DisplayName("Supports CAPTION_SEGMENT_CHANGED")
-    void supportsCaptionSegmentChanged() {
-        TimelineChangeOperation op = new TimelineChangeOperation(
-                new TimelineChangeOperationId("op1"),
-                TimelineChangeType.CAPTION_SEGMENT_CHANGED,
-                TimelineChangeScope.CAPTION,
-                new TimelineChangePath("captions[0].text"),
-                TimelineChangePayload.ofString("Old"), TimelineChangePayload.ofString("New"),
-                Map.of());
-        assertEquals(TimelineChangeType.CAPTION_SEGMENT_CHANGED, op.type());
-    }
-
-    @Test
     @DisplayName("Supports WATERMARK_CHANGED")
     void supportsWatermarkChanged() {
         TimelineChangeOperation op = new TimelineChangeOperation(

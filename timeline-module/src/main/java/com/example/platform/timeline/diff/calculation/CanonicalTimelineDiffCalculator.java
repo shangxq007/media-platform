@@ -47,9 +47,6 @@ public class CanonicalTimelineDiffCalculator {
         diffAudioMix(before, after, operations, opSeq);
         diffRelationships(before, after, operations, opSeq);
 
-        // Captions
-        diffCaptions(before, after, operations, opSeq);
-
         // Watermarks
         diffWatermarks(before, after, operations, opSeq);
 
@@ -549,45 +546,6 @@ public class CanonicalTimelineDiffCalculator {
                 meta);
     }
 
-    // --- Caption diff ---
-
-    private void diffCaptions(CanonicalTimelineSnapshot before, CanonicalTimelineSnapshot after,
-                               List<TimelineChangeOperation> ops, int[] seq) {
-        Map<String, CanonicalTimelineCaptionSnapshot> beforeCaptions = toCaptionMap(before.captions());
-        Map<String, CanonicalTimelineCaptionSnapshot> afterCaptions = toCaptionMap(after.captions());
-
-        for (String id : beforeCaptions.keySet()) {
-            CanonicalTimelineCaptionSnapshot bc = beforeCaptions.get(id);
-            if (!afterCaptions.containsKey(id)) {
-                ops.add(change(seq, TimelineChangeType.CAPTION_SEGMENT_CHANGED,
-                        TimelineChangeScope.CAPTION, "timeline.captions." + id,
-                        bc.text(), null));
-            } else {
-                CanonicalTimelineCaptionSnapshot ac = afterCaptions.get(id);
-                if (!Objects.equals(bc.text(), ac.text())
-                        || !bc.start().isEqualTo(ac.start())
-                        || !bc.end().isEqualTo(ac.end())) {
-                    ops.add(change(seq, TimelineChangeType.CAPTION_SEGMENT_CHANGED,
-                            TimelineChangeScope.CAPTION, "timeline.captions." + id + ".text",
-                            bc.text(), ac.text()));
-                }
-                if (!Objects.equals(bc.style(), ac.style())) {
-                    ops.add(change(seq, TimelineChangeType.TEXT_STYLE_CHANGED,
-                            TimelineChangeScope.TEXT_OVERLAY, "timeline.captions." + id + ".style",
-                            String.valueOf(bc.style()), String.valueOf(ac.style())));
-                }
-            }
-        }
-        for (String id : afterCaptions.keySet()) {
-            if (!beforeCaptions.containsKey(id)) {
-                CanonicalTimelineCaptionSnapshot ac = afterCaptions.get(id);
-                ops.add(change(seq, TimelineChangeType.CAPTION_SEGMENT_CHANGED,
-                        TimelineChangeScope.CAPTION, "timeline.captions." + id,
-                        null, ac.text()));
-            }
-        }
-    }
-
     // --- Watermark diff ---
 
     private void diffWatermarks(CanonicalTimelineSnapshot before, CanonicalTimelineSnapshot after,
@@ -801,8 +759,6 @@ public class CanonicalTimelineDiffCalculator {
                 || op.type() == TimelineChangeType.CLIP_REMOVED
                 || op.type() == TimelineChangeType.CLIP_MOVED
                 || op.type() == TimelineChangeType.CLIP_TRIMMED
-                || op.type() == TimelineChangeType.CAPTION_SEGMENT_CHANGED
-                || op.type() == TimelineChangeType.TEXT_STYLE_CHANGED
                 || op.type() == TimelineChangeType.WATERMARK_CHANGED
                 || op.type() == TimelineChangeType.TEMPLATE_PARAMETER_CHANGED
                 || op.type() == TimelineChangeType.TEMPLATE_PROFILE_CHANGED);
@@ -835,8 +791,6 @@ public class CanonicalTimelineDiffCalculator {
             case CLIP_MOVED -> 7;
             case CLIP_TRIMMED -> 8;
             case ASSET_BINDING_CHANGED -> 9;
-            case CAPTION_SEGMENT_CHANGED -> 10;
-            case TEXT_STYLE_CHANGED -> 11;
             case WATERMARK_CHANGED -> 12;
             case TEMPLATE_PROFILE_CHANGED -> 13;
             case TEMPLATE_PARAMETER_CHANGED -> 14;
@@ -963,12 +917,6 @@ public class CanonicalTimelineDiffCalculator {
     private Map<String, CanonicalTimelineClipSnapshot> toClipMap(List<CanonicalTimelineClipSnapshot> clips) {
         Map<String, CanonicalTimelineClipSnapshot> map = new LinkedHashMap<>();
         if (clips != null) clips.forEach(c -> map.put(c.clipId(), c));
-        return map;
-    }
-
-    private Map<String, CanonicalTimelineCaptionSnapshot> toCaptionMap(List<CanonicalTimelineCaptionSnapshot> captions) {
-        Map<String, CanonicalTimelineCaptionSnapshot> map = new LinkedHashMap<>();
-        if (captions != null) captions.forEach(c -> map.put(c.captionId(), c));
         return map;
     }
 

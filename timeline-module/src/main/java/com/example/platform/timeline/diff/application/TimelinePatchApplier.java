@@ -42,7 +42,7 @@ public class TimelinePatchApplier {
 
         CanonicalTimelineSnapshot patched = new CanonicalTimelineSnapshot(
                 current.id(), base.revisionId() + "+patched", current.duration(),
-                current.tracks(), current.captions(), current.watermarks(),
+                current.tracks(), current.watermarks(),
                 current.templateApplications(), current.workflowSteps(),
                 current.outputProfile(), current.safeMetadata(), current.textElements(),
                 current.transitions(), current.automations(), current.audioMix(), current.semanticRelationships());
@@ -79,8 +79,6 @@ public class TimelinePatchApplier {
                 }
                 yield applyClipField(s, op, "assetBindingId");
             }
-            case CAPTION_SEGMENT_CHANGED -> applyCaptionText(s, op);
-            case TEXT_STYLE_CHANGED -> applyCaptionText(s, op);
             case WATERMARK_CHANGED -> applyWatermark(s, op);
             case TEMPLATE_PARAMETER_CHANGED -> applyTemplateParam(s, op);
             case TEMPLATE_PROFILE_CHANGED -> applyTemplateProfile(s, op);
@@ -237,7 +235,7 @@ public class TimelinePatchApplier {
     private TimelinePatchApplicationResult applyDuration(CanonicalTimelineSnapshot s, TimelineChangeOperation op) {
         MediaTime val = parseMediaTime(afterVal(op), s.duration());
         return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), val,
-                s.tracks(), s.captions(), s.watermarks(),
+                s.tracks(), s.watermarks(),
                 s.templateApplications(), s.workflowSteps(), s.outputProfile(), s.safeMetadata(), s.textElements(), s.transitions(), s.automations(), s.audioMix(), s.semanticRelationships()));
     }
 
@@ -394,25 +392,6 @@ public class TimelinePatchApplier {
         return ok(withUpdatedTrack(s, trackId, newTrackWithClips(track, clips)));
     }
 
-    // --- Caption ---
-
-    private TimelinePatchApplicationResult applyCaptionText(CanonicalTimelineSnapshot s, TimelineChangeOperation op) {
-        String rawCapId = extractId(op.path().value(), "timeline.captions.");
-        final String capId = rawCapId.contains(".") ? rawCapId.split("\\.")[0] : rawCapId;
-        Optional<CanonicalTimelineCaptionSnapshot> capOpt = s.captions().stream()
-                .filter(c -> c.captionId().equals(capId)).findFirst();
-        if (capOpt.isEmpty()) return fail(TimelinePatchApplicationIssueCode.TARGET_NOT_FOUND, op.path().value(), "Caption not found");
-        CanonicalTimelineCaptionSnapshot cap = capOpt.get();
-        String newText = afterVal(op) != null ? afterVal(op) : cap.text();
-        CanonicalTimelineCaptionSnapshot updated = new CanonicalTimelineCaptionSnapshot(
-                cap.captionId(), cap.start(), cap.end(), newText, cap.style(), cap.safeMetadata());
-        List<CanonicalTimelineCaptionSnapshot> captions = s.captions().stream()
-                .map(c -> c.captionId().equals(capId) ? updated : c).collect(Collectors.toList());
-        return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
-                s.tracks(), captions, s.watermarks(), s.templateApplications(),
-                s.workflowSteps(), s.outputProfile(), s.safeMetadata(), s.textElements(), s.transitions(), s.automations(), s.audioMix(), s.semanticRelationships()));
-    }
-
     // --- Watermark ---
 
     private TimelinePatchApplicationResult applyWatermark(CanonicalTimelineSnapshot s, TimelineChangeOperation op) {
@@ -434,7 +413,7 @@ public class TimelinePatchApplier {
         List<CanonicalTimelineWatermarkSnapshot> wms = s.watermarks().stream()
                 .map(w -> w.watermarkId().equals(wmId) ? updated : w).collect(Collectors.toList());
         return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
-                s.tracks(), s.captions(), wms, s.templateApplications(),
+                s.tracks(), wms, s.templateApplications(),
                 s.workflowSteps(), s.outputProfile(), s.safeMetadata(), s.textElements(), s.transitions(), s.automations(), s.audioMix(), s.semanticRelationships()));
     }
 
@@ -458,7 +437,7 @@ public class TimelinePatchApplier {
         List<CanonicalTimelineTemplateApplicationSnapshot> apps = s.templateApplications().stream()
                 .map(t -> t.templateApplicationId().equals(appId) ? updated : t).collect(Collectors.toList());
         return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
-                s.tracks(), s.captions(), s.watermarks(), apps,
+                s.tracks(), s.watermarks(), apps,
                 s.workflowSteps(), s.outputProfile(), s.safeMetadata(), s.textElements(), s.transitions(), s.automations(), s.audioMix(), s.semanticRelationships()));
     }
 
@@ -475,7 +454,7 @@ public class TimelinePatchApplier {
         List<CanonicalTimelineTemplateApplicationSnapshot> apps = s.templateApplications().stream()
                 .map(t -> t.templateApplicationId().equals(appId) ? updated : t).collect(Collectors.toList());
         return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
-                s.tracks(), s.captions(), s.watermarks(), apps,
+                s.tracks(), s.watermarks(), apps,
                 s.workflowSteps(), s.outputProfile(), s.safeMetadata(), s.textElements(), s.transitions(), s.automations(), s.audioMix(), s.semanticRelationships()));
     }
 
@@ -493,7 +472,7 @@ public class TimelinePatchApplier {
         List<CanonicalTimelineWorkflowStepSnapshot> steps = s.workflowSteps().stream()
                 .map(w -> w.workflowStepId().equals(stepId) ? updated : w).collect(Collectors.toList());
         return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
-                s.tracks(), s.captions(), s.watermarks(), s.templateApplications(),
+                s.tracks(), s.watermarks(), s.templateApplications(),
                 steps, s.outputProfile(), s.safeMetadata(), s.textElements(), s.transitions(), s.automations(), s.audioMix(), s.semanticRelationships()));
     }
 
@@ -513,7 +492,7 @@ public class TimelinePatchApplier {
                 old != null ? old.profileId() : "default", old != null ? old.format() : "mp4",
                 old != null ? old.aspectRatio() : "16:9", newW, newH, Map.of());
         return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
-                s.tracks(), s.captions(), s.watermarks(), s.templateApplications(),
+                s.tracks(), s.watermarks(), s.templateApplications(),
                 s.workflowSteps(), profile, s.safeMetadata(), s.textElements(), s.transitions(), s.automations(), s.audioMix(), s.semanticRelationships()));
     }
 
@@ -534,7 +513,7 @@ public class TimelinePatchApplier {
             }
         }
         return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
-                s.tracks(), s.captions(), s.watermarks(), s.templateApplications(),
+                s.tracks(), s.watermarks(), s.templateApplications(),
                 s.workflowSteps(), s.outputProfile(), meta, s.textElements(),
                 s.transitions(), s.automations(), s.audioMix(), s.semanticRelationships()));
     }
@@ -666,7 +645,7 @@ public class TimelinePatchApplier {
             transitions.add(updated);
         }
         return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
-                s.tracks(), s.captions(), s.watermarks(), s.templateApplications(),
+                s.tracks(), s.watermarks(), s.templateApplications(),
                 s.workflowSteps(), s.outputProfile(), s.safeMetadata(), s.textElements(),
                 List.copyOf(transitions), s.automations(), s.audioMix(), s.semanticRelationships()));
     }
@@ -721,7 +700,7 @@ public class TimelinePatchApplier {
             automations.add(updated);
         }
         return ok(new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
-                s.tracks(), s.captions(), s.watermarks(), s.templateApplications(),
+                s.tracks(), s.watermarks(), s.templateApplications(),
                 s.workflowSteps(), s.outputProfile(), s.safeMetadata(), s.textElements(),
                 s.transitions(), List.copyOf(automations), s.audioMix(), s.semanticRelationships()));
     }
@@ -872,7 +851,7 @@ public class TimelinePatchApplier {
 
     private CanonicalTimelineSnapshot withTracks(CanonicalTimelineSnapshot s, List<CanonicalTimelineTrackSnapshot> tracks) {
         return new CanonicalTimelineSnapshot(s.id(), s.revisionId(), s.duration(),
-                tracks, s.captions(), s.watermarks(), s.templateApplications(),
+                tracks, s.watermarks(), s.templateApplications(),
                 s.workflowSteps(), s.outputProfile(), s.safeMetadata(), s.textElements(), s.transitions(), s.automations(), s.audioMix(), s.semanticRelationships());
     }
 

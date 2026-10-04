@@ -85,7 +85,7 @@ public final class TextOperationPlanner {
 
         switch (request.parameters()) {
             case OperationParameters.AddTextElementParameters p -> {
-                TextElementId id = TextElementId.random();
+                TextElementId id = TextElementId.fromSeed(addSeed(request));
                 if (resolutionInput == null) {
                     throw new TextPlanException("ADD_TEXT_ELEMENT requires font resolution input");
                 }
@@ -319,5 +319,20 @@ public final class TextOperationPlanner {
             }
         }
         throw new TextPlanException("Unknown operation definition: " + id.value());
+    }
+
+    /**
+     * P2-5.5: stable seed for a DETERMINISTIC ADD_TEXT_ELEMENT identity. Derived
+     * only from fields invariant between preview and apply of the same logical
+     * request (definition, version, target, exact base, typed parameters). No
+     * client-supplied id field is introduced here.
+     */
+    private static String addSeed(OperationRequest request) {
+        return "ADD_TEXT_ELEMENT|" + request.definitionId().value()
+                + "|" + request.version()
+                + "|" + request.target()
+                + "|" + request.baseRevisionId()
+                + "|" + request.baseContentHash()
+                + "|" + Integer.toHexString(request.parameters().hashCode());
     }
 }

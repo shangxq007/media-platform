@@ -77,7 +77,7 @@ class CanonicalOperationInvocationServiceTest {
     @Test
     void preflightUsesCanonicalOwnerWithoutApplyingAnEffect() {
         var owner=mock(TimelineMediaClipOperationService.class);
-        var service=new CanonicalOperationInvocationService(owner);
+        var service=new CanonicalOperationInvocationService(owner, mock(TextOperationService.class));
         var request=validRequest("base-hash");var context=context(TENANT);
         service.validate(request,context,PROJECT);
         verify(owner).validateInvocation(request,context);
@@ -89,7 +89,7 @@ class CanonicalOperationInvocationServiceTest {
     void unsupportedDefinitionFailsBeforeAnyOperationMechanics() {
         TimelineMediaClipOperationService mediaClipService =
                 mock(TimelineMediaClipOperationService.class);
-        var service = new CanonicalOperationInvocationService(mediaClipService);
+        var service = new CanonicalOperationInvocationService(mediaClipService, mock(TextOperationService.class));
         OperationRequest request = new OperationRequest(
                 OperationDefinition.V1.DELETE.definitionId(),
                 OperationDefinition.V1.DELETE.version(),
@@ -110,7 +110,7 @@ class CanonicalOperationInvocationServiceTest {
     void unknownDefinitionAndVersionFailBeforeAnyOperationMechanics() {
         TimelineMediaClipOperationService mediaClipService =
                 mock(TimelineMediaClipOperationService.class);
-        var service = new CanonicalOperationInvocationService(mediaClipService);
+        var service = new CanonicalOperationInvocationService(mediaClipService, mock(TextOperationService.class));
         OperationRequest request = new OperationRequest(
                 OperationDefinitionId.of("timeline.unknown"),
                 OperationDefinitionVersion.of(99, 7),
@@ -130,7 +130,7 @@ class CanonicalOperationInvocationServiceTest {
     void supportedDefinitionWithInvalidTargetFailsBeforeAnyOperationMechanics() {
         TimelineMediaClipOperationService mediaClipService =
                 mock(TimelineMediaClipOperationService.class);
-        var service = new CanonicalOperationInvocationService(mediaClipService);
+        var service = new CanonicalOperationInvocationService(mediaClipService, mock(TextOperationService.class));
         OperationRequest request = new OperationRequest(
                 OperationDefinition.V1.ADD_MEDIA_CLIP.definitionId(),
                 OperationDefinition.V1.ADD_MEDIA_CLIP.version(),
@@ -150,7 +150,7 @@ class CanonicalOperationInvocationServiceTest {
     void supportedDefinitionWithInvalidParametersFailsBeforeAnyOperationMechanics() {
         TimelineMediaClipOperationService mediaClipService =
                 mock(TimelineMediaClipOperationService.class);
-        var service = new CanonicalOperationInvocationService(mediaClipService);
+        var service = new CanonicalOperationInvocationService(mediaClipService, mock(TextOperationService.class));
         OperationRequest request = new OperationRequest(
                 OperationDefinition.V1.ADD_MEDIA_CLIP.definitionId(),
                 OperationDefinition.V1.ADD_MEDIA_CLIP.version(),
@@ -204,7 +204,7 @@ class CanonicalOperationInvocationServiceTest {
         var h7Service = new TimelineMediaClipOperationService(
                 writer, sources, new InternalTimelineValidationService(), authorization,
                 new OperationPlanApplyService(writer));
-        OperationInvocationPort port = new CanonicalOperationInvocationService(h7Service);
+        OperationInvocationPort port = new CanonicalOperationInvocationService(h7Service, mock(TextOperationService.class));
         OperationRequest request = validRequest(baseHash);
         OperationInvocationContext context = new OperationInvocationContext(
                 actor, "invocation-apply-1",
@@ -251,7 +251,7 @@ class CanonicalOperationInvocationServiceTest {
                 "unchanged-hash", OperationPlanApplyService.CURRENT_REVISION_REF);
         when(mediaClipService.invoke(request, context))
                 .thenReturn(new TimelineMediaClipOperationService.InvocationOutcome(noOp));
-        OperationInvocationPort port = new CanonicalOperationInvocationService(mediaClipService);
+        OperationInvocationPort port = new CanonicalOperationInvocationService(mediaClipService, mock(TextOperationService.class));
 
         OperationInvocationResult.NoOp result = assertInstanceOf(
                 OperationInvocationResult.NoOp.class, port.invoke(request, context));
@@ -282,7 +282,7 @@ class CanonicalOperationInvocationServiceTest {
                 "same-hash", BASE_REVISION, OperationPlanApplyService.CURRENT_REVISION_REF);
         when(mediaClipService.invoke(eq(request), any()))
                 .thenReturn(new TimelineMediaClipOperationService.InvocationOutcome(applied));
-        OperationInvocationPort port = new CanonicalOperationInvocationService(mediaClipService);
+        OperationInvocationPort port = new CanonicalOperationInvocationService(mediaClipService, mock(TextOperationService.class));
 
         OperationInvocationResult.Applied firstResult = assertInstanceOf(
                 OperationInvocationResult.Applied.class, port.invoke(request, first));
@@ -316,7 +316,7 @@ class CanonicalOperationInvocationServiceTest {
         var h7Service = new TimelineMediaClipOperationService(
                 writer, sources, new InternalTimelineValidationService(), authorization,
                 new OperationPlanApplyService(writer));
-        OperationInvocationPort port = new CanonicalOperationInvocationService(h7Service);
+        OperationInvocationPort port = new CanonicalOperationInvocationService(h7Service, mock(TextOperationService.class));
 
         OperationInvocationException failure = assertThrows(
                 OperationInvocationException.class,
@@ -330,7 +330,7 @@ class CanonicalOperationInvocationServiceTest {
     void missingInvocationContractFailsWithOneSafeStableDiagnostic() {
         TimelineMediaClipOperationService mediaClipService =
                 mock(TimelineMediaClipOperationService.class);
-        var service = new CanonicalOperationInvocationService(mediaClipService);
+        var service = new CanonicalOperationInvocationService(mediaClipService, mock(TextOperationService.class));
 
         OperationInvocationException failure = assertThrows(
                 OperationInvocationException.class,
@@ -345,7 +345,7 @@ class CanonicalOperationInvocationServiceTest {
     void tenantlessActorFailsAsAuthorizationContextMismatchBeforeDelegation() {
         TimelineMediaClipOperationService mediaClipService =
                 mock(TimelineMediaClipOperationService.class);
-        var service = new CanonicalOperationInvocationService(mediaClipService);
+        var service = new CanonicalOperationInvocationService(mediaClipService, mock(TextOperationService.class));
         OperationInvocationContext context = new OperationInvocationContext(
                 CanonicalActor.user("editor-1", null, Set.of("EDITOR"), "test"),
                 "invocation-1",
@@ -369,7 +369,7 @@ class CanonicalOperationInvocationServiceTest {
         OperationInvocationContext context = context(TENANT);
         when(mediaClipService.invoke(request, context)).thenThrow(
                 new RuntimeException("provider secret", new SQLException("jdbc secret")));
-        var service = new CanonicalOperationInvocationService(mediaClipService);
+        var service = new CanonicalOperationInvocationService(mediaClipService, mock(TextOperationService.class));
 
         OperationInvocationException failure = assertThrows(
                 OperationInvocationException.class,
@@ -394,7 +394,7 @@ class CanonicalOperationInvocationServiceTest {
         when(mediaClipService.invoke(request, context))
                 .thenThrow(new TimelineOperationException(
                         internalCode, List.of("secret provider or SQL detail")));
-        var service = new CanonicalOperationInvocationService(mediaClipService);
+        var service = new CanonicalOperationInvocationService(mediaClipService, mock(TextOperationService.class));
 
         OperationInvocationException failure = assertThrows(
                 OperationInvocationException.class,
