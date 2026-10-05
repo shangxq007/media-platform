@@ -462,6 +462,22 @@ public class TimelineRevisionSaveService implements TimelineRevisionCommands {
                         expectedCurrentRevisionId, revisionId);
             }
 
+            // REVISION-CREATED-EVENT: every newly created canonical revision publishes
+            // REVISION_CREATED in the SAME physical transaction as the revision/ref/HEAD
+            // write. The payload is the already-declared TimelineRevisionCreatedEvent
+            // schema; no operation-specific fields are added (OPERATION-DOMAIN-EVENTS is
+            // out of scope) and no consumer/listener is introduced here.
+            var revisionCreatedFact = new TimelineRevisionCreatedEvent(
+                    new TimelineRevisionIdentity(tenantId, productId, revisionId),
+                    nextRevisionNumber,
+                    createdBy,
+                    revisionSource,
+                    null,
+                    !additionalParents.isEmpty(),
+                    Instant.now());
+            outbox.appendInTransaction(
+                    TimelineOutboxEvents.REVISION_CREATED.append(tenantId, revisionCreatedFact, null), tx.dsl());
+
             if(!additionalParents.isEmpty()) {
                 var fact=new TimelineMergedEvent(new TimelineRevisionIdentity(tenantId,productId,revisionId),
                     new TimelineRevisionIdentity(tenantId,productId,mergeBaseRevisionId),
