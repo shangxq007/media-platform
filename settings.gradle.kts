@@ -51,6 +51,7 @@ include(
     "media-module",
     "color-image-module",
     "font-text-module",
+    "font-pipeline-module",
     "audio-module",
     "timeline-module",
     "operation-module",

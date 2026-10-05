@@ -241,8 +241,8 @@ def validate_repository(root: Path) -> PolicyReport:
         raise ValueError(f"topology ledger universe mismatch: missing={sorted(expected - actual)}, extra={sorted(actual - expected)}")
     # The sealed Phase A receipt remains historical at 51 tasks. EP15, EP28A and EP27B
     # add exactly three unpromoted owner suites; none changes historical totals.
-    owner_tasks = {(":audit-contract-module", "test"), (":marketplace-module", "test"), (":usage-contract-module", "test")}
-    if len(actual) != 56 or not owner_tasks.issubset(actual):
+    owner_tasks = {(":audit-contract-module", "test"), (":marketplace-module", "test"), (":usage-contract-module", "test"), (":font-pipeline-module", "test")}
+    if len(actual) != 57 or not owner_tasks.issubset(actual):
         raise ValueError(f"expected Phase A 51 plus Marketplace, Usage and Audit owner Test tasks, got {len(actual)}")
     for project, task in owner_tasks:
         owner = next(row for row in topology if row["PROJECT"] == project and row["TEST_TASK"] == task)
