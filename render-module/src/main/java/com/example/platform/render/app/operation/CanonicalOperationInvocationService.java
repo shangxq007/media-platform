@@ -9,8 +9,10 @@ import com.example.platform.operation.operation.OperationDefinition;
 import com.example.platform.operation.operation.OperationParameters;
 import com.example.platform.operation.operation.OperationRequest;
 import com.example.platform.operation.operation.OperationTargetRequest;
+import com.example.platform.observability.context.TraceKeys;
 import java.util.Map;
 import java.util.Objects;
+import org.slf4j.MDC;
 import org.springframework.stereotype.Service;
 
 /**
@@ -32,6 +34,24 @@ public final class CanonicalOperationInvocationService implements OperationInvoc
 
     @Override
     public OperationInvocationResult invoke(
+            OperationRequest request, OperationInvocationContext context) {
+        String correlationId = (context != null && context.provenance() != null)
+                ? context.provenance().correlationId() : null;
+        boolean mdcSet = false;
+        if (correlationId != null && !correlationId.isBlank()) {
+            MDC.put(TraceKeys.WORKFLOW_ID, correlationId);
+            mdcSet = true;
+        }
+        try {
+            return invokeInternal(request, context);
+        } finally {
+            if (mdcSet) {
+                MDC.remove(TraceKeys.WORKFLOW_ID);
+            }
+        }
+    }
+
+    private OperationInvocationResult invokeInternal(
             OperationRequest request, OperationInvocationContext context) {
         if (request == null
                 || request.definitionId() == null
