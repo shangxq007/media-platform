@@ -125,7 +125,41 @@ public final class ParameterDigest {
                 || p instanceof OperationParameters.SetTextLayoutParameters) {
             return "text(" + p.getClass().getSimpleName() + "," + Integer.toHexString(p.hashCode()) + ")";
         }
+        if (p instanceof OperationParameters.CreateAlignmentParameters cap) {
+            // L5 lineage: deterministic canonical serialization — endpoints sorted by value,
+            // attributes sorted by tag (order-insensitive descriptor => stable digest).
+            return "alignment(" + cap.alignmentId().value()
+                    + ",sourceUnits=" + sortedUnits(cap.sourceUnits())
+                    + ",derivedUnits=" + sortedUnits(cap.derivedUnits())
+                    + ",attributes=" + sortedAttributes(cap.attributes()) + ")";
+        }
         throw new IllegalArgumentException("unknown parameters: " + p.getClass());
+    }
+
+    private static String sortedUnits(
+            java.util.Set<com.example.platform.timeline.semantics.relationship.SourceUnitId> units) {
+        return units.stream().map(u -> u.value()).sorted().toList().toString();
+    }
+
+    private static String sortedAttributes(
+            java.util.List<com.example.platform.timeline.semantics.relationship.AlignmentAttribute> attributes) {
+        return attributes.stream()
+                .sorted(java.util.Comparator.comparing(
+                        com.example.platform.timeline.semantics.relationship.AlignmentAttribute::tag))
+                .map(a -> a.tag() + "=" + attributeValue(a.value()))
+                .toList().toString();
+    }
+
+    private static String attributeValue(
+            com.example.platform.timeline.semantics.relationship.AlignmentAttributeValue value) {
+        return switch (value) {
+            case com.example.platform.timeline.semantics.relationship.AlignmentAttributeValue.TextValue t ->
+                    "text:" + t.value();
+            case com.example.platform.timeline.semantics.relationship.AlignmentAttributeValue.NumberValue n ->
+                    "number:" + n.value();
+            case com.example.platform.timeline.semantics.relationship.AlignmentAttributeValue.BooleanValue b ->
+                    "boolean:" + b.value();
+        };
     }
 
     private static String temporalMapping(
