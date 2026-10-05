@@ -2,8 +2,12 @@
 type: architecture-governance-record
 milestone: RC
 name: REVISION_COMMAND_MODEL_V1
-status: CLOSED
+status: PARTIAL / SPECIFIED_NOT_IMPLEMENTED
 date: 2026-08-15
+last_reviewed: 2026-10-05
+review_note: |
+  Documentation drift corrected. See "Implementation status (2026-10-05)"
+  section below.
 authority: REVISION_COMMAND_BOUNDED_ARCHITECTURE_CONTRACT_V1 (DR PASS) + RCI1-RCI5
 ---
 
@@ -46,11 +50,60 @@ V4__revision_command_parent_graph.sql: timeline_revision_parent (+composite FK
 targets), project_revision_counter, apply_command.command_domain, single-parent
 history migration (order 0 edges), legacy fields non-authoritative.
 
+## Implementation status (2026-10-05)
+
+This section records the reconciliation of the original CLOSED status
+with the actual repository state, as of 2026-10-05.
+
+### Implemented (verified in repo)
+
+- `timeline_revision` + `timeline_revision_parent` DAG (ordered multi-parent edges)
+- `timeline_revision_ref` HEAD CAS (main ref only)
+- Revision-number allocation via `project_revision_counter`
+- `TimelineRevisionSaveService` (save / restore / merge revision)
+- `TimelineMergeEngine` (three-way merge, base/source/target by caller)
+- `RevisionGraphService` (readParents / isAncestor / findBestMergeBase)
+- `TimelineContentDigester` (SHA-256 canonical JSON)
+- `RevisionRef` / `RevisionCommandPlan` (types)
+
+### Specified but NOT implemented
+
+- `RevisionCommandApplyService` — specified in this document's Model
+  section; **no repository implementation** (`rg` zero hits).
+  CREATE_REF / DELETE_REF are types only; RESTORE / MERGE are handled
+  by `TimelineRevisionSaveService` via different paths, not through a
+  `RevisionCommandApplyService`.
+- Branch / create-ref / delete-ref — ref mutation authority currently
+  rejects anything but the `main` ref
+  (`TimelineRevisionRefMutation.identity()`); no branch endpoint.
+
+### Documented test claims not verifiable in repo
+
+- `RevisionCommandConcurrencyIT` — declared "12 PASS" in the original
+  Verification section; **the class is not present in this repository**.
+  This claim cannot be independently verified from repo state and
+  should not be cited as evidence of implementation.
+
+### Preserved design intent
+
+The original design intent (sealed `RevisionCommandPlan` variants;
+apply service as the sole writer authority) is **retained as a design
+direction** but must not be read as an implementation status.
+
+See also: `audit-runs/L5_TIMELINE_20261005/TIMELINE_REVISION_SEMANTICS_PROBE.md`
+(20-row Fact Matrix).
+
 ## Verification
 RevisionCommandConcurrencyIT 12 PASS (real PostgreSQL 16): create/delete ref,
 restore + NO_OP + stale, merge parent order/conflict/NO_OP, merge-base
 unique/ambiguous/no-ancestor, cross-project DB reject, multi-ref concurrent
 allocation, command-domain separation; OperationPlan IT regression PASS.
+
+> **Drift correction (2026-10-05):** The `RevisionCommandConcurrencyIT`
+> class is not present in the current repository. The "12 PASS" claim
+> cannot be independently verified from repo state. See
+> "Implementation status (2026-10-05)" above.
+
 Drift 162/162 (+15 RCG). Full suite 7136 GREEN (0/0). bootJar, pfirr1,
 Modulith PASS. Blockers = 0. Escalation = NONE. NEXT_ACTION =
 ROADMAP_18_COLOR_IMAGE_FOUNDATION_DECISION_RECOVERY.
