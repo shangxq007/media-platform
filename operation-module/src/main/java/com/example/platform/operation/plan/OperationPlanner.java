@@ -164,11 +164,12 @@ public final class OperationPlanner {
         throw new PlanException(PlanErrorCode.INVALID_PLAN, "clip-scope target required");
     }
 
-    private static TimelineDocument rebuild(List<TimelineTrack> tracks, AudioMix audioMix,
-                                            List<SemanticRelationship> rels) {
-        return new TimelineDocument(TimelineDocument.CURRENT_SCHEMA_VERSION, tracks,
-                com.example.platform.timeline.canonical.TimelineMetadata.empty(),
-                audioMix, rels);
+    private static TimelineDocument rebuild(TimelineDocument base, List<TimelineTrack> tracks,
+                                            AudioMix audioMix, List<SemanticRelationship> rels) {
+        return new TimelineDocument(base.getSchemaVersion(), tracks,
+                base.getMetadata(),
+                audioMix, rels,
+                base.getTextElements(), base.getTransitions(), base.getAutomations());
     }
 
     private static TimelineDocument replaceClip(TimelineDocument base, TimelineClipId id, TimelineClip newClip) {
@@ -180,7 +181,7 @@ public final class OperationPlanner {
             }
             tracks.add(new TimelineTrack(track.trackId(), track.name(), track.type(), clips));
         }
-        return rebuild(tracks, base.getAudioMix(), base.getSemanticRelationships());
+        return rebuild(base, tracks, base.getAudioMix(), base.getSemanticRelationships());
     }
 
     private static TimelineDocument removeClip(TimelineDocument base, TimelineClipId id) {
@@ -194,7 +195,7 @@ public final class OperationPlanner {
             }
             tracks.add(new TimelineTrack(track.trackId(), track.name(), track.type(), clips));
         }
-        return rebuild(tracks, base.getAudioMix(), base.getSemanticRelationships());
+        return rebuild(base, tracks, base.getAudioMix(), base.getSemanticRelationships());
     }
 
     private static TimelineClip clipOf(TimelineDocument base, TimelineClipId id) {
@@ -312,7 +313,7 @@ public final class OperationPlanner {
             }
             kept.add(rel);
         }
-        return rebuild(cur.getTracks(), base.getAudioMix(), kept);
+        return rebuild(base, cur.getTracks(), base.getAudioMix(), kept);
     }
 
     private TimelineDocument planTrim(OperationInstance inst, TimelineDocument base, List<PlannedChange> changes) {
@@ -417,7 +418,7 @@ public final class OperationPlanner {
         AudioMix newMix = mix.withRoutes(routes);
         String summary = inst.definitionId().value() + "@" + audioTarget.audioMixInput();
         changes.add(new PlannedChange.AudioMixReplaced(summary));
-        return rebuild(base.getTracks(), newMix, base.getSemanticRelationships());
+        return rebuild(base, base.getTracks(), newMix, base.getSemanticRelationships());
     }
 
     private TimelineDocument planGroupCreate(OperationInstance inst, TimelineDocument base, List<PlannedChange> changes) {
@@ -429,7 +430,7 @@ public final class OperationPlanner {
         List<SemanticRelationship> rels = new ArrayList<>(base.getSemanticRelationships());
         rels.add(group);
         changes.add(new PlannedChange.RelationshipAdded(group));
-        return rebuild(base.getTracks(), base.getAudioMix(), rels);
+        return rebuild(base, base.getTracks(), base.getAudioMix(), rels);
     }
 
     private TimelineDocument planGroupUpdate(OperationInstance inst, TimelineDocument base, List<PlannedChange> changes) {
@@ -455,7 +456,7 @@ public final class OperationPlanner {
         GroupRelationship updated = GroupRelationship.of(groupTarget.groupId(), new ArrayList<>(members));
         rels.add(updated);
         changes.add(new PlannedChange.RelationshipAdded(updated));
-        return rebuild(base.getTracks(), base.getAudioMix(), rels);
+        return rebuild(base, base.getTracks(), base.getAudioMix(), rels);
     }
 
     private TimelineDocument planGroupRemove(OperationInstance inst, TimelineDocument base, List<PlannedChange> changes) {
@@ -475,7 +476,7 @@ public final class OperationPlanner {
         if (!removed) {
             throw new PlanException(PlanErrorCode.TARGET_MISSING, "group missing in base");
         }
-        return rebuild(base.getTracks(), base.getAudioMix(), rels);
+        return rebuild(base, base.getTracks(), base.getAudioMix(), rels);
     }
 
     private TimelineDocument planSyncCreate(OperationInstance inst, TimelineDocument base, List<PlannedChange> changes) {
@@ -485,7 +486,7 @@ public final class OperationPlanner {
         List<SemanticRelationship> rels = new ArrayList<>(base.getSemanticRelationships());
         rels.add(sync);
         changes.add(new PlannedChange.RelationshipAdded(sync));
-        return rebuild(base.getTracks(), base.getAudioMix(), rels);
+        return rebuild(base, base.getTracks(), base.getAudioMix(), rels);
     }
 
     private TimelineDocument planSyncUpdateAnchor(OperationInstance inst, TimelineDocument base, List<PlannedChange> changes) {
@@ -509,7 +510,7 @@ public final class OperationPlanner {
         if (!found) {
             throw new PlanException(PlanErrorCode.TARGET_MISSING, "sync missing in base");
         }
-        return rebuild(base.getTracks(), base.getAudioMix(), rels);
+        return rebuild(base, base.getTracks(), base.getAudioMix(), rels);
     }
 
     private TimelineDocument planSyncRemove(OperationInstance inst, TimelineDocument base, List<PlannedChange> changes) {
@@ -529,6 +530,6 @@ public final class OperationPlanner {
         if (!removed) {
             throw new PlanException(PlanErrorCode.TARGET_MISSING, "sync missing in base");
         }
-        return rebuild(base.getTracks(), base.getAudioMix(), rels);
+        return rebuild(base, base.getTracks(), base.getAudioMix(), rels);
     }
 }
