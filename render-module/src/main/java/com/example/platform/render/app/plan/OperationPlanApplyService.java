@@ -16,6 +16,8 @@ import com.example.platform.timeline.revisioncommand.RevisionRef;
 import com.example.platform.timeline.version.TimelineConflictException;
 import com.example.platform.shared.digest.CanonicalCommandFingerprint;
 import java.util.Objects;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
@@ -31,6 +33,8 @@ import org.springframework.stereotype.Service;
 public class OperationPlanApplyService {
 
     public static final String CURRENT_REVISION_REF = RevisionRef.MAIN_REF;
+
+    private static final Logger log = LoggerFactory.getLogger(OperationPlanApplyService.class);
 
     private final TimelineRevisionCommands revisionSaveService;
     private final TimelineContentDigester digester = new TimelineContentDigester();
@@ -66,26 +70,39 @@ public class OperationPlanApplyService {
         Objects.requireNonNull(projectId, "projectId");
         Objects.requireNonNull(exactBase, "exactBase");
 
+        log.info("operation.apply.start planDigest={} baseRevisionId={}",
+                plan.planDigest(), plan.baseRevisionId());
+
         verifyAuthorization(plan, context, projectId);
         if (!CURRENT_REVISION_REF.equals(context.targetRef().refId())) {
+            log.warn("operation.apply.fail failureCode={} planDigest={}",
+                    PlanErrorCode.AUTHORIZATION_CONTEXT_MISMATCH, plan.planDigest());
             throw new PlanException(PlanErrorCode.AUTHORIZATION_CONTEXT_MISMATCH,
                     "canonical apply targets only the main Timeline revision ref");
         }
         if (!plan.baseRevisionId().equals(context.expectedHeadRevisionId())) {
+            log.warn("operation.apply.fail failureCode={} planDigest={}",
+                    PlanErrorCode.STALE_BASE_REVISION, plan.planDigest());
             throw new PlanException(PlanErrorCode.STALE_BASE_REVISION,
                     "expected head must equal the plan base revision");
         }
         if (!plan.validated()) {
+            log.warn("operation.apply.fail failureCode={} planDigest={}",
+                    PlanErrorCode.INVALID_PLAN, plan.planDigest());
             throw new PlanException(PlanErrorCode.INVALID_PLAN, "plan is not validated");
         }
         String suppliedBaseHash = digester.digest(exactBase);
         if (!Objects.equals(plan.baseContentHash(), suppliedBaseHash)) {
+            log.warn("operation.apply.fail failureCode={} planDigest={}",
+                    PlanErrorCode.STALE_BASE_REVISION, plan.planDigest());
             throw new PlanException(PlanErrorCode.STALE_BASE_REVISION,
                     "exact base content hash no longer matches the plan");
         }
 
         // Candidate integrity: the frozen candidate must match its digest (ALL plans).
         if (!digester.digest(plan.candidateTimeline()).equals(plan.candidateContentHash())) {
+            log.warn("operation.apply.fail failureCode={} planDigest={}",
+                    PlanErrorCode.PLAN_CHANGED, plan.planDigest());
             throw new PlanException(PlanErrorCode.PLAN_CHANGED,
                     "OperationPlan or candidate changed after preview");
         }
@@ -99,6 +116,8 @@ public class OperationPlanApplyService {
                     plan.sourceInstance(), context.expectedHeadRevisionId(), exactBase);
             if (!verified.planDigest().equals(plan.planDigest())
                     || !verified.candidateContentHash().equals(plan.candidateContentHash())) {
+                log.warn("operation.apply.fail failureCode={} planDigest={}",
+                        PlanErrorCode.PLAN_CHANGED, plan.planDigest());
                 throw new PlanException(PlanErrorCode.PLAN_CHANGED,
                         "OperationPlan or candidate changed after preview");
             }
@@ -130,6 +149,8 @@ public class OperationPlanApplyService {
                     plan.candidateTimeline(), command);
             String committedTimelineHash = result.timelineContentHash();
             if (!plan.candidateContentHash().equals(committedTimelineHash)) {
+                log.warn("operation.apply.fail failureCode={} planDigest={}",
+                        PlanErrorCode.PERSISTENCE_FAILURE, plan.planDigest());
                 throw new PlanException(PlanErrorCode.PERSISTENCE_FAILURE,
                         "canonical writer committed a different Timeline digest");
             }
@@ -137,8 +158,12 @@ public class OperationPlanApplyService {
                     plan.baseRevisionId(), result.revisionId(), committedTimelineHash,
                     result.parentRevisionId(), context.targetRef().refId());
         } catch (TimelineConflictException conflict) {
+            log.warn("operation.apply.fail failureCode={} planDigest={}",
+                    PlanErrorCode.STALE_BASE_REVISION, plan.planDigest());
             throw new PlanException(PlanErrorCode.STALE_BASE_REVISION, conflict.getMessage());
         } catch (TimelineRevisionCommandConflictException conflict) {
+            log.warn("operation.apply.fail failureCode={} planDigest={}",
+                    PlanErrorCode.IDEMPOTENCY_KEY_CONFLICT, plan.planDigest());
             throw new PlanException(PlanErrorCode.IDEMPOTENCY_KEY_CONFLICT, conflict.getMessage());
         }
     }
@@ -153,12 +178,17 @@ public class OperationPlanApplyService {
                 || !authorization.tenantId().equals(context.tenantId())
                 || !authorization.targetRefId().equals(context.targetRef().refId())
                 || !authorization.principalRef().equals(context.principalRef())) {
+            log.warn("operation.authorization decision=denied reason={}",
+                    PlanErrorCode.AUTHORIZATION_CONTEXT_MISMATCH);
             throw new PlanException(PlanErrorCode.AUTHORIZATION_CONTEXT_MISMATCH,
                     "authorization context does not match apply context");
         }
         if (!authorization.allowed()) {
+            log.warn("operation.authorization decision=denied reason={}",
+                    PlanErrorCode.AUTHORIZATION_DENIED);
             throw new PlanException(PlanErrorCode.AUTHORIZATION_DENIED, "authorization denied");
         }
+        log.debug("operation.authorization decision=allowed");
     }
 
 }
