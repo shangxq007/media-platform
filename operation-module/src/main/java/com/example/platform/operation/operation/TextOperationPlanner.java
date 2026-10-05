@@ -207,7 +207,8 @@ public final class TextOperationPlanner {
         }
 
         TimelineDocument candidate = new TimelineDocument(base.getSchemaVersion(), base.getTracks(),
-                base.getMetadata(), base.getAudioMix(), base.getSemanticRelationships(), textElements);
+                base.getMetadata(), base.getAudioMix(), base.getSemanticRelationships(), textElements,
+                base.getTransitions(), base.getAutomations());
         String candidateHash = digester.digest(candidate);
         String planDigest = OperationPlanDigest.compute(
                 request.baseRevisionId(), request.baseContentHash(),
