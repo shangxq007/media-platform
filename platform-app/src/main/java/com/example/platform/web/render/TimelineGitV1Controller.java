@@ -233,6 +233,21 @@ public class TimelineGitV1Controller {
 
     // Request/Response DTOs
 
+    /**
+     * HTTP API projection for creating a new Timeline revision.
+     *
+     * <p><b>Intent contract:</b> this DTO intentionally carries only {@code tracks}.
+     * It is NOT a full {@code TimelineDocument} serialization surface.
+     *
+     * <p><b>Semantics:</b> unprovided fields (audioMix, semanticRelationships,
+     * textElements, transitions, automations, metadata) are intentionally
+     * materialized as empty/default values. This endpoint creates a fresh
+     * revision from tracks only — it does NOT inherit from any base revision.
+     *
+     * <p>If a future API requires deriving a revision from an existing base,
+     * it must use a base-aware derivation path (TimelineDocument.copyOf or
+     * equivalent) rather than this DTO's short constructor.
+     */
     public record SaveRevisionRequest(
             String expectedCurrentRevisionId,
             List<TrackDto> tracks) {
