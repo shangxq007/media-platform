@@ -141,9 +141,8 @@ public class TimelineDocument {
     private static final java.util.Comparator<SemanticRelationship> RELATIONSHIP_ORDER =
             java.util.Comparator
                     .comparing((SemanticRelationship r) -> r.kind().name())
-                    .thenComparing(r -> r instanceof com.example.platform.timeline.semantics.relationship.SyncRelationship s
-                            ? s.identityKey()
-                            : ((com.example.platform.timeline.semantics.relationship.GroupRelationship) r).groupId().value());
+                    .thenComparing(com.example.platform.timeline.semantics.relationship
+                            .RelationshipCanonicalSemantics::canonicalKey);
 
     /** ROADMAP_19 (C51): deterministic TextElement compositing order by id. */
     private static final java.util.Comparator<TextElement> TEXT_ELEMENT_ORDER =
