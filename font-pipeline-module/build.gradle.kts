@@ -10,6 +10,8 @@ java {
 
 dependencies {
     implementation(project(":font-text-module"))
+    // AD-05: the font-pipeline may run isolated font security processors (OTS) in the sandbox.
+    implementation(project(":sandbox-isolation-module"))
     // V1 font metadata adapter. Apache FontBox is a pure-Java font parser (no native code).
     // Version is pinned inline: the Spring Boot / Spring AI / Testcontainers BOMs do not
     // manage org.apache.pdfbox:* (verified in the Phase 2 governance probe).
