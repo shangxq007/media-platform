@@ -57,7 +57,12 @@ public final class TimelinePatchEngine {
         TimelineDocument result = new TimelineDocument(
                 base.getSchemaVersion(),
                 tracks,
-                base.getMetadata());
+                base.getMetadata(),
+                base.getAudioMix(),
+                base.getSemanticRelationships(),
+                base.getTextElements(),
+                base.getTransitions(),
+                base.getAutomations());
 
         return PatchApplicationResult.success(result);
     }
