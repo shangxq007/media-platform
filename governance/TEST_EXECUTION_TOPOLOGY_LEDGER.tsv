@@ -18,7 +18,7 @@ PROJECT	TEST_TASK	SOURCE_SET	DISCOVERED_TEST_COUNT	USES_SPRING_CONTEXT	USES_SPRI
 :federation-query-module	test	test	304	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	2	2g	PURE_PARALLEL_SAFE	Hermes sealed promotion receipt V1 proves candidate profile correctness and collision-free two-fork execution
 :ffmpeg-provider-module	test	test	11	NO	NO	NO	NO	NO	NO	YES	NO	YES	NO	YES	YES	NO	HOST_FFMPEG_AND_ENVIRONMENT	1	2g	REVIEW_REQUIRED	Native executable and environment controls require replay evidence
 :font-text-module	test	test	11	NO	NO	NO	NO	NO	NO	NO	NO	YES	NO	NO	NO	NO	FONT_FIXTURES	1	2g	REVIEW_REQUIRED	Font fixture filesystem behavior requires review
-:font-pipeline-module	test	test	16	NO	NO	NO	NO	NO	NO	NO	NO	YES	NO	NO	NO	NO	FONT_FIXTURES	1	2g	REVIEW_REQUIRED	Font fixture filesystem behavior requires review
+:font-pipeline-module	test	test	28	NO	NO	NO	NO	NO	NO	NO	NO	YES	NO	NO	NO	NO	FONT_FIXTURES	1	2g	REVIEW_REQUIRED	Font fixture filesystem behavior requires review
 :identity-access-module	test	test	397	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	2	2g	PURE_PARALLEL_SAFE	Hermes sealed promotion receipt V1 proves candidate profile correctness and collision-free two-fork execution
 :media-execution-plan-module	test	test	325	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	NO	2	2g	PURE_PARALLEL_SAFE	Hermes sealed promotion receipt V1 proves candidate profile correctness and collision-free two-fork execution
 :media-module	test	test	33	NO	NO	NO	NO	NO	NO	YES	NO	YES	NO	YES	YES	NO	MEDIA_NATIVE_TOOLS	1	2g	SERIAL_ONLY	Native media tools and filesystem fixtures share host process resources
