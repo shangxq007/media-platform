@@ -263,7 +263,8 @@ public final class OperationPlanner {
         }
         changes.add(new PlannedChange.ClipAdded(parameters.trackId(), added));
         return new TimelineDocument(base.getSchemaVersion(), tracks, base.getMetadata(),
-                base.getAudioMix(), base.getSemanticRelationships(), base.getTextElements());
+                base.getAudioMix(), base.getSemanticRelationships(), base.getTextElements(),
+                base.getTransitions(), base.getAutomations());
     }
 
     // ---- 16 non-text operations ----
