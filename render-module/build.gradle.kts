@@ -14,6 +14,7 @@ dependencies {
     implementation(project(":media-module")) // MCMV2-C: Media Canonical Model (frozen direction: Render -> Media)
     implementation(project(":audio-module")) // AUDIO_V2: canonical Audio Mix authority (frozen direction: Render -> Audio)
     implementation(project(":font-text-module")) // ROADMAP_19: canonical Font/Text value semantics (frozen direction: Render -> FontText)
+    implementation(project(":font-pipeline-module")) // FONT-V1 Phase 6b: isolated font processing pipeline (Render -> FontPipeline)
     implementation(project(":color-image-module")) // ROADMAP20: typed color/image value semantics (frozen direction: Render -> ColorImage)
     implementation(project(":platform-algorithms:graph")) // ROADMAP20: graph kernel mechanics for RenderGraph (C30)
     api(project(":timeline-module")) // GCR-1: canonical Timeline semantics (frozen direction: Render -> Timeline)
