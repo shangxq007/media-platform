@@ -357,6 +357,8 @@ public class CanonicalTimelineDiffCalculator {
             } else {
                 // Conservative whole-relationship replace (unknown variant pairing
                 // can never reach here: identity matching guarantees same kind).
+                // L5 lineage: ALIGNMENT intentionally lands here — typed alignment
+                // delta semantics are deferred to backlog ALIGNMENT-TYPED-DELTA-SEMANTICS.
                 ops.add(change(seq, TimelineChangeType.RELATIONSHIP_REMOVED,
                         TimelineChangeScope.TIMELINE, "timeline.semanticRelationships." + key,
                         key, null));

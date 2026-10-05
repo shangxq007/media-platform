@@ -32,6 +32,10 @@ public final class RelationshipCanonicalSemantics {
             String b = s.endpointB().value();
             return a.compareTo(b) <= 0 ? "sync:" + a + ":" + b : "sync:" + b + ":" + a;
         }
+        if (r instanceof AlignmentRelationship a) {
+            // L5 lineage: identity is the caller-minted alignmentId (endpoints excluded).
+            return "alignment:" + a.alignmentId().value();
+        }
         throw new IllegalStateException(
                 "Unknown SemanticRelationship variant: " + r.getClass().getName());
     }
