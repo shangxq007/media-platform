@@ -42,7 +42,8 @@ public sealed interface OperationParameters permits
         OperationParameters.SetFontSelectionParameters,
         OperationParameters.SetFontFallbackPolicyParameters,
         OperationParameters.SetVariableFontAxisParameters,
-        OperationParameters.SetTextLayoutParameters {
+        OperationParameters.SetTextLayoutParameters,
+        OperationParameters.CreateAlignmentParameters {
 
     /**
      * ADD_MEDIA_CLIP_V1. The first supported variant adds exactly one
@@ -282,5 +283,32 @@ public sealed interface OperationParameters permits
     record SetTextLayoutParameters(
             com.example.platform.timeline.canonical.TextElementId textElementId,
             com.example.platform.fonttext.typography.TextFrame frame) implements OperationParameters {
+    }
+
+    /**
+     * CREATE_ALIGNMENT (L5 lineage): typed alignment descriptor. The caller mints the stable
+     * {@link com.example.platform.timeline.semantics.relationship.AlignmentId}; both endpoint sets
+     * are typed {@code SourceUnitId}s and must be non-empty; attributes are typed values (never a
+     * Map/String). {@code sourceBaseline} is provenance materialised by the owner layer, so it is
+     * deliberately NOT part of this intent parameter.
+     */
+    @org.springframework.modulith.NamedInterface("invocation")
+    record CreateAlignmentParameters(
+            com.example.platform.timeline.semantics.relationship.AlignmentId alignmentId,
+            java.util.Set<com.example.platform.timeline.semantics.relationship.SourceUnitId> sourceUnits,
+            java.util.Set<com.example.platform.timeline.semantics.relationship.SourceUnitId> derivedUnits,
+            java.util.List<com.example.platform.timeline.semantics.relationship.AlignmentAttribute> attributes)
+            implements OperationParameters {
+        public CreateAlignmentParameters {
+            if (alignmentId == null || sourceUnits == null || derivedUnits == null) {
+                throw new IllegalArgumentException("alignmentId, sourceUnits and derivedUnits required");
+            }
+            if (sourceUnits.isEmpty() || derivedUnits.isEmpty()) {
+                throw new IllegalArgumentException("sourceUnits and derivedUnits must be non-empty");
+            }
+            sourceUnits = new java.util.TreeSet<>(sourceUnits);
+            derivedUnits = new java.util.TreeSet<>(derivedUnits);
+            attributes = attributes == null ? java.util.List.of() : java.util.List.copyOf(attributes);
+        }
     }
 }

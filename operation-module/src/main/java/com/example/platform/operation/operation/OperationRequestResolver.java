@@ -88,7 +88,7 @@ public final class OperationRequestResolver {
     }
 
     static OperationDefinition findDefinition(OperationDefinitionId id) throws OperationResolutionException {
-        for (OperationDefinition def : OperationDefinition.V1.ALL) {
+        for (OperationDefinition def : OperationDefinition.V2.ALL) {
             if (def.definitionId().equals(id)) {
                 return def;
             }
@@ -155,6 +155,21 @@ public final class OperationRequestResolver {
             case TEXT -> {
                 // P2-5.5: text operations target the Timeline aggregate; the exact
                 // TextElementId is carried in the typed parameters, not the target.
+                if (!(target instanceof OperationTargetRequest.TimelineTargetRequest timelineReq)) {
+                    throw new OperationResolutionException(OperationErrorCode.INVALID_SCOPE,
+                            "definition " + def.definitionId() + " requires Timeline target");
+                }
+                if (!timelineReq.timelineId().equals(base.timelineId())) {
+                    throw new OperationResolutionException(OperationErrorCode.INVALID_SCOPE,
+                            "target Timeline " + timelineReq.timelineId()
+                                    + " != resolved Timeline " + base.timelineId());
+                }
+                return new OperationTarget.TimelineTarget(base.timelineId());
+            }
+            case ALIGNMENT -> {
+                // L5 lineage: an alignment operation targets the Timeline aggregate; the
+                // AlignmentId + endpoint sets are carried in the typed parameters, not the target
+                // (mirrors TEXT; no new OperationTarget type — owner decision G3).
                 if (!(target instanceof OperationTargetRequest.TimelineTargetRequest timelineReq)) {
                     throw new OperationResolutionException(OperationErrorCode.INVALID_SCOPE,
                             "definition " + def.definitionId() + " requires Timeline target");

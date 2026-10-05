@@ -14,8 +14,10 @@ import com.example.platform.timeline.canonical.TimelineClipId;
 import com.example.platform.timeline.canonical.TimelineContentDigester;
 import com.example.platform.timeline.canonical.TimelineDocument;
 import com.example.platform.timeline.canonical.TimelineTrack;
+import com.example.platform.timeline.semantics.relationship.AlignmentRelationship;
 import com.example.platform.timeline.semantics.relationship.GroupRelationship;
 import com.example.platform.timeline.semantics.relationship.SemanticRelationship;
+import com.example.platform.timeline.semantics.relationship.SourceBaseline;
 import com.example.platform.timeline.semantics.relationship.SyncRelationship;
 import com.example.platform.timeline.semantics.selection.ResolvedScope;
 import com.example.platform.timeline.semantics.temporal.ConstantRateTemporalMapping;
@@ -68,6 +70,7 @@ public final class OperationPlanner {
             case "timeline.sync.create" -> planSyncCreate(instance, base, changes);
             case "timeline.sync.update-anchor" -> planSyncUpdateAnchor(instance, base, changes);
             case "timeline.sync.remove" -> planSyncRemove(instance, base, changes);
+            case "timeline.alignment.create" -> planCreateAlignment(instance, base, changes);
             default -> throw new PlanException(PlanErrorCode.INVALID_PLAN,
                     "unsupported operation " + instance.definitionId());
         };
@@ -531,6 +534,24 @@ public final class OperationPlanner {
         if (!removed) {
             throw new PlanException(PlanErrorCode.TARGET_MISSING, "sync missing in base");
         }
+        return rebuild(base, base.getTracks(), base.getAudioMix(), rels);
+    }
+
+    /**
+     * L5 lineage (CREATE_ALIGNMENT): the planner materialises the caller's typed descriptor into a
+     * canonical {@link AlignmentRelationship} inside the candidate Timeline. The source baseline is
+     * provenance derived from the exact base revision (V1 simplification: the base document content
+     * digest; source-unit-scoped digest is backlog L5-BASELINE-SOURCE-UNIT-SCOPED-DIGEST).
+     */
+    private TimelineDocument planCreateAlignment(
+            OperationInstance inst, TimelineDocument base, List<PlannedChange> changes) {
+        var params = (OperationParameters.CreateAlignmentParameters) inst.parameters();
+        SourceBaseline baseline = new SourceBaseline(inst.baseRevisionId(), digester.digest(base));
+        AlignmentRelationship rel = new AlignmentRelationship(
+                params.alignmentId(), params.sourceUnits(), params.derivedUnits(), baseline, params.attributes());
+        List<SemanticRelationship> rels = new ArrayList<>(base.getSemanticRelationships());
+        rels.add(rel);
+        changes.add(new PlannedChange.RelationshipAdded(rel));
         return rebuild(base, base.getTracks(), base.getAudioMix(), rels);
     }
 }

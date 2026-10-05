@@ -28,7 +28,8 @@ public record OperationDefinition(
         GROUP,
         SYNC,
         AUDIO,
-        TEXT
+        TEXT,
+        ALIGNMENT
     }
 
     public OperationDefinition {
@@ -96,6 +97,28 @@ public record OperationDefinition(
                 SET_FONT_FALLBACK_POLICY, SET_VARIABLE_FONT_AXIS, SET_TEXT_LAYOUT);
 
         private V1() {
+        }
+    }
+
+    /**
+     * L5 lineage vocabulary (Operation V2, Gate 1 Design Freeze): V2 = V1 + added definitions.
+     *
+     * <p>{@code V1} is frozen and literally unchanged; the added definition carries per-definition
+     * version {@code 1.0} (V2 is a vocabulary snapshot, NOT an "Operation 2.0").
+     */
+    public static final class V2 {
+        /** L5: creates one directional source-units -> derived-units alignment. */
+        public static final OperationDefinition CREATE_ALIGNMENT = new OperationDefinition(
+                OperationDefinitionId.of("timeline.alignment.create"),
+                OperationDefinitionVersion.of(1, 0), Lifecycle.ACTIVE, TargetKind.ALIGNMENT,
+                1, 1, OperationParameters.CreateAlignmentParameters.class);
+
+        /** V1.ALL + added definitions (fresh, additive; V1.ALL is never mutated). */
+        public static final java.util.List<OperationDefinition> ALL =
+                java.util.List.copyOf(java.util.stream.Stream.concat(
+                        V1.ALL.stream(), java.util.stream.Stream.of(CREATE_ALIGNMENT)).toList());
+
+        private V2() {
         }
     }
 }
