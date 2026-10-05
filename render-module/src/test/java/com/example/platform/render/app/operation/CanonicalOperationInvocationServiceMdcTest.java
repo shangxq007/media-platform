@@ -75,7 +75,8 @@ class CanonicalOperationInvocationServiceMdcTest {
                     "plan", "cmd", "R0", "R1", "hash", "R0", "main"));
         });
         return new CanonicalOperationInvocationService(
-                mock(TimelineMediaClipOperationService.class), text);
+                mock(TimelineMediaClipOperationService.class), text,
+                mock(AlignmentOperationService.class));
     }
 
     private static OperationInvocationContext context(String correlationId) {
