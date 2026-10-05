@@ -5,10 +5,17 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+import com.example.platform.fonttext.resolution.FontFallbackPolicy;
+import com.example.platform.fonttext.resolution.TechnicalFontResolver;
+import com.example.platform.fonttext.text.TextContent;
+import com.example.platform.fonttext.typography.FontFamilyName;
+import com.example.platform.fonttext.typography.FontSelectionIntent;
+import com.example.platform.fonttext.typography.OpticalSizingIntent;
 import com.example.platform.operation.operation.TextOperationPlanner;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -57,6 +64,26 @@ class FontResolutionConfigurationIntegrationTest {
 
             assertNotNull(input.catalog());
             assertEquals(1, input.catalog().entries().size());
+
+            // The pre-existing resolver gate now resolves against the real font in the catalog.
+            String family = input.catalog().entries().get(0).manifest().familyName();
+            assertNotNull(family);
+            FontSelectionIntent intent = new FontSelectionIntent(
+                    List.of(new FontFamilyName(family)),
+                    FontSelectionIntent.WeightIntent.NORMAL,
+                    FontSelectionIntent.StretchIntent.NORMAL,
+                    FontSelectionIntent.SlantIntent.NORMAL,
+                    OpticalSizingIntent.disabled(),
+                    List.of());
+            FontFallbackPolicy fallback = new FontFallbackPolicy(
+                    List.of(new FontFamilyName(family)), List.of(), List.of(), List.of());
+
+            TechnicalFontResolver.Result result = input.resolver()
+                    .resolve(new TextContent("Hello"), intent, fallback, input.catalog(), null);
+
+            assertTrue(result.diagnostics().isEmpty(),
+                    "resolver gate should pass with a populated catalog, got " + result.diagnostics());
+            assertEquals(1, result.runs().size());
         }
     }
 
