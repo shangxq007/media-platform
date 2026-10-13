@@ -16,7 +16,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -42,7 +42,8 @@ import org.springframework.context.annotation.Configuration;
  * {@link SandboxCancellation#never()} at this seam and is bounded by the configured timeout.
  */
 @Configuration
-@ConditionalOnProperty(name = "platform.runtime.role", havingValue = "WORKER")
+@ConditionalOnExpression(
+        "'${platform.runtime.role:}' == 'WORKER' or '${platform.runtime.role:}' == 'COMBINED'")
 public class FfmpegWorkerPluginConfiguration {
 
     @Bean(initMethod = "loadAndStart", destroyMethod = "close")

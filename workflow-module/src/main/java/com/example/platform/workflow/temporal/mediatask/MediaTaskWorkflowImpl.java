@@ -25,17 +25,50 @@ public class MediaTaskWorkflowImpl implements MediaTaskWorkflow {
 
     private static final String VERSION_MARKER = "P25B1-MEDIA-TASK-WF-V1";
 
+    /**
+     * Deterministic precondition failures the activity must not retry: a retry can only reproduce
+     * the same outcome. Referenced by fully-qualified name because this module does not depend on the
+     * modules that own the exceptions. Transient failures (database faults, provider execution
+     * faults, I/O) deliberately stay retryable — see {@link #mediaTaskActivityRetryOptions()}.
+     *
+     * <ul>
+     *   <li>{@code IllegalArgumentException} — invalid workflow arguments (tenant mismatch) and an
+     *       unconfigured publication scope (fail closed, never an invented value).</li>
+     *   <li>{@code TaskRuntimeExecutionConstructionException} — {@code GRANT_ABSENT},
+     *       {@code GRANT_MINT_REJECTED}, {@code PROVIDER_CONTRIBUTION_ABSENT/UNAVAILABLE}, missing
+     *       durable output target or artifact commit metadata.</li>
+     *   <li>{@code TaskOutputPublicationPlanningException} — the task output publication intent
+     *       cannot be planned.</li>
+     *   <li>{@code BoundGraphDigestMismatchException} — the durable graph and the current binding
+     *       inputs disagree; re-running the same reference cannot repair that.</li>
+     * </ul>
+     */
+    private static final String[] DETERMINISTIC_NO_RETRY_TYPES = {
+        IllegalArgumentException.class.getName(),
+        "com.example.platform.workerfabric.reuse.TaskRuntimeExecutionConstructionException",
+        "com.example.platform.workerfabric.reuse.TaskOutputPublicationPlanningException",
+        "com.example.platform.execution.binding.BoundGraphDigestMismatchException",
+    };
+
+    /**
+     * Bounded retry policy for the media-task activities, unchanged except for the deterministic
+     * no-retry classification (attempts 3, initial 1 s, coefficient 2.0).
+     */
+    static RetryOptions mediaTaskActivityRetryOptions() {
+        return RetryOptions.newBuilder()
+                .setMaximumAttempts(3)
+                .setInitialInterval(Duration.ofSeconds(1))
+                .setBackoffCoefficient(2.0)
+                .setDoNotRetry(DETERMINISTIC_NO_RETRY_TYPES)
+                .build();
+    }
+
     private final MediaTaskActivities activities = Workflow.newActivityStub(
             MediaTaskActivities.class,
             ActivityOptions.newBuilder()
                     .setStartToCloseTimeout(Duration.ofHours(2))
                     .setHeartbeatTimeout(Duration.ofMinutes(5))
-                    .setRetryOptions(RetryOptions.newBuilder()
-                            .setMaximumAttempts(3)
-                            .setInitialInterval(Duration.ofSeconds(1))
-                            .setBackoffCoefficient(2.0)
-                            .setDoNotRetry(IllegalArgumentException.class.getName())
-                            .build())
+                    .setRetryOptions(mediaTaskActivityRetryOptions())
                     .build());
 
     @Override

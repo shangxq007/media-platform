@@ -8,8 +8,8 @@ import com.example.platform.execution.domain.provider.ProviderBindingPin;
 import com.example.platform.execution.planning.PhysicalExecutionPlan.PhysicalPlanUnit;
 import com.example.platform.execution.taskgraph.ExecutableTask;
 import com.example.platform.execution.taskgraph.ProviderBoundExecutableTaskGraph;
-import com.example.platform.workerfabric.domain.BoundedV1ReservationFeasibility;
 import com.example.platform.workerfabric.domain.PendingNativeWorkCandidate;
+import com.example.platform.workerfabric.domain.ReservationFeasibility;
 import com.example.platform.workerfabric.domain.PendingNativeWorkCandidate.ClaimState;
 import com.example.platform.workerfabric.domain.ProviderBackendExecutionSupport;
 import com.example.platform.workerfabric.domain.ProviderHardwareRequirement;
@@ -54,12 +54,14 @@ public final class PendingNativeWorkProjection {
      */
     public static List<PendingNativeWorkCandidate> projectAll(
             ProviderBoundExecutableTaskGraph graph,
-            ProviderPluginContribution contribution) {
+            ProviderPluginContribution contribution,
+            ReservationFeasibility reservationFeasibility) {
         Objects.requireNonNull(graph, "graph");
         Objects.requireNonNull(contribution, "contribution");
+        Objects.requireNonNull(reservationFeasibility, "reservationFeasibility");
         List<PendingNativeWorkCandidate> candidates = new ArrayList<>(graph.tasks().size());
         for (ExecutableTask task : graph.tasks()) {
-            candidates.add(project(task, graph, contribution));
+            candidates.add(project(task, graph, contribution, reservationFeasibility));
         }
         return List.copyOf(candidates);
     }
@@ -73,10 +75,12 @@ public final class PendingNativeWorkProjection {
     public static PendingNativeWorkCandidate project(
             ExecutableTask task,
             ProviderBoundExecutableTaskGraph graph,
-            ProviderPluginContribution contribution) {
+            ProviderPluginContribution contribution,
+            ReservationFeasibility reservationFeasibility) {
         Objects.requireNonNull(task, "task");
         Objects.requireNonNull(graph, "graph");
         Objects.requireNonNull(contribution, "contribution");
+        Objects.requireNonNull(reservationFeasibility, "reservationFeasibility");
         ProviderCandidate providerCandidate = requireStaticallyCompatibleCandidate(task, graph);
         ProviderHardwareRequirement hardwareRequirement = requireDeclared(
                 contribution.providerHardwareRequirement(),
@@ -99,7 +103,7 @@ public final class PendingNativeWorkProjection {
                 backendExecutionSupport,
                 ClaimState.PENDING,
                 resourceDemand,
-                BoundedV1ReservationFeasibility.value(),
+                reservationFeasibility,
                 contribution.sandboxRequirement(),
                 Optional.of(Objects.requireNonNull(
                         contribution.workerRuntimeSupportRequirement(),

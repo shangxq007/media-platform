@@ -12,6 +12,8 @@ import com.example.platform.execution.taskgraph.TaskCacheabilityDeriver;
 import com.example.platform.execution.taskgraph.ProviderBoundExecutableTaskGraph;
 import com.example.platform.workflow.temporal.mediatask.MediaTaskWorkflowResult;
 import com.example.platform.workflow.temporal.mediatask.PreparedTaskRef;
+import com.example.platform.providerplugin.ProviderPluginCatalog;
+import com.example.platform.providerplugin.ProviderPluginContribution;
 import com.example.platform.workerfabric.domain.AssignmentGrant;
 import com.example.platform.workerfabric.domain.AtomicAssignmentGrantBoundary;
 import com.example.platform.workerfabric.reuse.ArtifactCommitMetadata;
@@ -62,18 +64,41 @@ public final class MediaTaskActivity {
     private final AtomicAssignmentGrantBoundary grantBoundary;
     private final RuntimeClosedLoopOrchestrator orchestrator;
     private final MediaTaskPublicationSettings publicationSettings;
+    private final FirstRenderGrantMinter grantMinter;
+    private final ProviderPluginCatalog providerPluginCatalog;
 
     public MediaTaskActivity(
             BoundGraphInputStore boundGraphInputStore,
             AtomicAssignmentGrantBoundary grantBoundary,
             RuntimeClosedLoopOrchestrator orchestrator,
             MediaTaskPublicationSettings publicationSettings) {
+        this(boundGraphInputStore, grantBoundary, orchestrator, publicationSettings, null);
+    }
+
+    public MediaTaskActivity(
+            BoundGraphInputStore boundGraphInputStore,
+            AtomicAssignmentGrantBoundary grantBoundary,
+            RuntimeClosedLoopOrchestrator orchestrator,
+            MediaTaskPublicationSettings publicationSettings,
+            FirstRenderGrantMinter grantMinter) {
+        this(boundGraphInputStore, grantBoundary, orchestrator, publicationSettings, grantMinter, null);
+    }
+
+    public MediaTaskActivity(
+            BoundGraphInputStore boundGraphInputStore,
+            AtomicAssignmentGrantBoundary grantBoundary,
+            RuntimeClosedLoopOrchestrator orchestrator,
+            MediaTaskPublicationSettings publicationSettings,
+            FirstRenderGrantMinter grantMinter,
+            ProviderPluginCatalog providerPluginCatalog) {
         this.boundGraphInputStore = Objects.requireNonNull(
                 boundGraphInputStore, "boundGraphInputStore");
         this.grantBoundary = Objects.requireNonNull(grantBoundary, "grantBoundary");
         this.orchestrator = Objects.requireNonNull(orchestrator, "orchestrator");
         this.publicationSettings = Objects.requireNonNull(
                 publicationSettings, "publicationSettings");
+        this.grantMinter = grantMinter;
+        this.providerPluginCatalog = providerPluginCatalog;
     }
 
     /**
@@ -203,10 +228,8 @@ public final class MediaTaskActivity {
         Map<ExecutableTaskId, DurableOutputTarget> durableOutputTargets = new LinkedHashMap<>();
         Map<ExecutableTaskId, ArtifactCommitMetadata> artifactCommitMetadata = new LinkedHashMap<>();
         for (ExecutableTask executableTask : graph.tasks()) {
-            AssignmentGrant grant = grantBoundary.findCurrentGrant(executableTask.id())
-                    .orElseThrow(() -> new TaskRuntimeExecutionConstructionException(
-                            "GRANT_ABSENT",
-                            "no current grant exists for this task"));
+            AssignmentGrant grant = currentGrantOrMint(
+                    prepared.renderJobId(), executableTask.id(), graph, executableTask);
             TaskOutputPublicationPlan publicationPlan =
                     TaskOutputPublicationPlanner.plan(executableTask, publicationContext);
             grants.put(executableTask.id(), grant);
@@ -228,5 +251,54 @@ public final class MediaTaskActivity {
                         .map(executableTask -> executableTask.id().sha256Hex())
                         .toList(),
                 MediaTaskWorkflowResult.STATUS_EXECUTED);
+    }
+
+    /**
+     * Resolves the current grant, delegating to the First Render minter exactly once when absent.
+     *
+     * <p>Fail-closed: a missing or incomplete authoritative context still raises
+     * {@code GRANT_ABSENT}; nothing is fabricated and the existing success path is unchanged.
+     */
+    private AssignmentGrant currentGrantOrMint(
+            String renderJobId,
+            ExecutableTaskId taskId,
+            ProviderBoundExecutableTaskGraph graph,
+            ExecutableTask executableTask) {
+        var current = grantBoundary.findCurrentGrant(taskId);
+        if (current.isPresent()) {
+            return current.orElseThrow();
+        }
+        if (grantMinter != null) {
+            FirstRenderGrantMinter.Result result = grantMinter.mint(
+                    renderJobId, taskId, graph, requireContribution(executableTask));
+            if (result instanceof FirstRenderGrantMinter.Result.Minted minted) {
+                return grantBoundary.findCurrentGrant(taskId).orElse(minted.grant());
+            }
+            if (result instanceof FirstRenderGrantMinter.Result.Rejected rejected) {
+                throw new TaskRuntimeExecutionConstructionException(
+                        "GRANT_MINT_REJECTED", rejected.reason());
+            }
+        }
+        throw new TaskRuntimeExecutionConstructionException(
+                "GRANT_ABSENT", "no current grant exists for this task");
+    }
+
+    /**
+     * Resolves the exact provider contribution for the task's authoritative binding pin.
+     *
+     * <p>Fail closed: no catalog, or no contribution matching the task's {@code providerBindingPin},
+     * raises rather than selecting an arbitrary contribution. Ambiguity for one binding pin is already
+     * rejected at plugin-load time, so no selection policy is invented here.
+     */
+    private ProviderPluginContribution requireContribution(ExecutableTask executableTask) {
+        if (providerPluginCatalog == null) {
+            throw new TaskRuntimeExecutionConstructionException(
+                    "PROVIDER_CONTRIBUTION_UNAVAILABLE",
+                    "the worker has no provider plugin catalog; the task cannot be admitted");
+        }
+        return providerPluginCatalog.find(executableTask.providerBindingPin())
+                .orElseThrow(() -> new TaskRuntimeExecutionConstructionException(
+                        "PROVIDER_CONTRIBUTION_ABSENT",
+                        "no catalog contribution matches the task's provider binding pin"));
     }
 }

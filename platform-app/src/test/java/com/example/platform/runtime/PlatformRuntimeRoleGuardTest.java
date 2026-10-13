@@ -87,7 +87,7 @@ class PlatformRuntimeRoleGuardTest {
     void workerRoleRejectsMultipleDiscoveryPackages() {
         MockEnvironment env = workerBase()
                 .withProperty("spring.temporal.workers-auto-discovery.packages[0]", "com.example.platform.thumbnail")
-                .withProperty("spring.temporal.workers-auto-discovery.packages[1]", "com.example.platform.workflow");
+                .withProperty("spring.temporal.workers-auto-discovery.packages[1]", "com.example.platform.audio");
         assertThatThrownBy(() -> new PlatformRuntimeRoleGuard(env))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("discover only");

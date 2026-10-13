@@ -118,7 +118,8 @@ public final class PhysicalExecutionPlanCanonicalCodec {
                 .field("schemaVersion", Integer.toString(plan.schemaVersion().value()))
                 .field("planFingerprint", plan.planFingerprint().sha256Hex())
                 .list(units)
-                .optional(plan.propagatedExtent() != null, extent(plan.propagatedExtent()))
+                .optional(plan.propagatedExtent() != null,
+                        plan.propagatedExtent() == null ? null : extent(plan.propagatedExtent()))
                 .field("digest", plan.digest().sha256Hex())
                 .build();
     }
@@ -136,13 +137,16 @@ public final class PhysicalExecutionPlanCanonicalCodec {
                 .list(unit.typedInputs().stream().map(PhysicalExecutionPlanCanonicalCodec::input).toList())
                 .list(unit.typedOutputs().stream().map(PhysicalExecutionPlanCanonicalCodec::output).toList())
                 .list(unit.typedDependencies().stream().map(PhysicalExecutionPlanCanonicalCodec::edge).toList())
-                .optional(unit.temporalWindow() != null, window(unit.temporalWindow()))
-                .optional(unit.executionCoverage() != null, coverage(unit.executionCoverage()))
+                .optional(unit.temporalWindow() != null,
+                        unit.temporalWindow() == null ? null : window(unit.temporalWindow()))
+                .optional(unit.executionCoverage() != null,
+                        unit.executionCoverage() == null ? null : coverage(unit.executionCoverage()))
                 .list(unit.capabilityRequirementRefs().stream()
                         .map(PhysicalExecutionPlanCanonicalCodec::capabilityRef).toList())
                 .list(unit.executionIntentRefs().stream()
                         .map(PhysicalExecutionPlanCanonicalCodec::intentRef).toList())
-                .optional(unit.propagatedExtent() != null, extent(unit.propagatedExtent()))
+                .optional(unit.propagatedExtent() != null,
+                        unit.propagatedExtent() == null ? null : extent(unit.propagatedExtent()))
                 .field("deterministicallyCacheable", Boolean.toString(unit.deterministicallyCacheable()))
                 .build();
     }

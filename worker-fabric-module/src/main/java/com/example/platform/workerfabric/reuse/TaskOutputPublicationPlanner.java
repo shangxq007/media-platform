@@ -20,9 +20,11 @@ import java.util.Objects;
  * taken from the caller's {@link TaskOutputPublicationContext}; nothing is invented and nothing is
  * random, so a replay of the same task plans the same intent:
  * <ul>
- *   <li>artifact identity — {@code render-task-<executableTaskId>}, the deterministic
+ *   <li>artifact identity — {@code render-task-<first-52-hex-of-executableTaskId>}, the deterministic
  *       platform-issued identity for one task's output (the same style as the composition
- *       materializer's {@code composition-<idempotencyKey>});</li>
+ *       materializer's {@code composition-<idempotencyKey>}). The 64-hex task id is truncated to its
+ *       first 52 hex characters so the id is exactly 64 chars, matching {@code artifact.id}
+ *       {@code varchar(64)} (P1-1A.10/P1-1A.11, Option A2);</li>
  *   <li>write session — {@code task-output-<executableTaskId>}, stable so an idempotent retry resumes
  *       the same storage write instead of creating a second object;</li>
  *   <li>storage namespace — {@code (tenantId, projectId, DERIVED, SINGLE_REGION, INTERNAL)}, the exact
@@ -70,7 +72,10 @@ public final class TaskOutputPublicationPlanner {
         DurableOutputTarget durableOutputTarget = new DurableOutputTarget(
                 context.storageProviderId(), namespace, "task-output-" + taskId);
         ArtifactCommitMetadata artifactCommitMetadata = new ArtifactCommitMetadata(
-                new ArtifactId("render-task-" + taskId),
+                // P1-1A.11 (Option A2): exactly 64 chars to fit artifact.id varchar(64). The task id is
+                // a validated 64-hex string (ExecutableTaskId), so the first 52 hex chars are a safe,
+                // deterministic prefix (208 bits; collision-negligible) and the id stays content-derived.
+                new ArtifactId("render-task-" + taskId.substring(0, 52)),
                 context.tenantId(),
                 context.mediaType(),
                 context.artifactKind(),

@@ -1,9 +1,13 @@
 package com.example.platform;
 
 import com.example.platform.datasource.DataSourceConfiguration;
+import com.example.platform.runtime.FfmpegWorkerPluginConfiguration;
+import com.example.platform.runtime.PlatformRuntimeRoleGuard;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Import;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -80,5 +84,20 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 public class PlatformApplication {
     public static void main(String[] args) {
         SpringApplication.run(PlatformApplication.class, args);
+    }
+
+    /**
+     * Phase 2: explicit COMBINED runtime-role assembly.
+     *
+     * <p>Activates only when {@code platform.runtime.role=COMBINED}, so it is completely inert for
+     * the API and WORKER assemblies (regression-preserving). It co-registers the runtime role guard
+     * and the ffmpeg-worker provider-plugin configuration so that HTTP (this application's
+     * controllers) and the provider catalog can coexist in one process. It does not carry a role
+     * condition of its own beyond COMBINED, and it does not change any API/WORKER wiring.
+     */
+    @Configuration
+    @ConditionalOnProperty(name = "platform.runtime.role", havingValue = "COMBINED")
+    @Import({PlatformRuntimeRoleGuard.class, FfmpegWorkerPluginConfiguration.class})
+    static class CombinedRuntimeAssembly {
     }
 }

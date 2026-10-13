@@ -373,6 +373,11 @@ platform:
   runtime:
     production-checks-enabled: false
     modulith-violation-budget: 13
+
+  provider-interoperability:
+    format: p25a.provider-interoperability.v1
+    declarations: []
+
   artifact:
     gc:
       enabled: true

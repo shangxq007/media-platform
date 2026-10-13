@@ -46,7 +46,11 @@ public final class PlatformRuntimeRoleGuard {
             // P2-5b-2b-2a: the media task activity adapter carries the whole-graph execution
             // capability of this same ffmpeg runtime (WORKER-PACKAGE-TAXONOMY backlog: revisit the
             // capability-vs-runtime naming of this set).
-            "com.example.platform.runtime.mediatask");
+            "com.example.platform.runtime.mediatask",
+            // P0-5 D2: the worker/COMBINED process must also discover the platform workflow package
+            // so that the existing MediaTaskWorkflowImpl is registered on the canonical queue. This
+            // is a discovery-scope allowance only; it adds no new workflow, queue or runtime authority.
+            "com.example.platform.workflow");
 
     /** Unified ffmpeg-worker sandbox configuration keys. */
     static final String SANDBOX_BWRAP_KEY = "platform.ffmpeg-worker.sandbox.bwrap";
@@ -78,6 +82,27 @@ public final class PlatformRuntimeRoleGuard {
             if (startWorkers || workerListConfigured || !packages.isEmpty()) {
                 throw new IllegalStateException("API role must not register Temporal workers");
             }
+            return;
+        }
+
+        // COMBINED role: HTTP and Temporal workers coexist. Explicit new branch — the API and
+        // WORKER rules above/below are unchanged. Unlike WORKER, the embedded HTTP server is
+        // allowed; every other worker requirement (single canonical worker, ffmpeg capability
+        // discovery, sandbox executables) still applies.
+        if (role == PlatformRuntimeRole.COMBINED) {
+            if (!startWorkers) {
+                throw new IllegalStateException("COMBINED role requires spring.temporal.start-workers=true");
+            }
+            if (!workerCapabilityPackages) {
+                throw new IllegalStateException("COMBINED role must discover only the platform ffmpeg "
+                        + "worker capability packages " + WORKER_CAPABILITY_PACKAGES);
+            }
+            if (workers.size() != 1 || !CANONICAL_QUEUE.equals(workers.get(0).getTaskQueue())) {
+                throw new IllegalStateException("COMBINED role must register exactly the canonical queue");
+            }
+            requireExecutable(environment.getProperty(SANDBOX_BWRAP_KEY, "/usr/bin/bwrap"));
+            requireExecutable(environment.getProperty(SANDBOX_FFMPEG_KEY, "/usr/bin/ffmpeg"));
+            requireExecutable(environment.getProperty(SANDBOX_FFPROBE_KEY, "/usr/bin/ffprobe"));
             return;
         }
 

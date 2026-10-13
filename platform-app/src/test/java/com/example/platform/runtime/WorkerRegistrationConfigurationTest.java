@@ -7,6 +7,7 @@ import com.example.platform.workerfabric.domain.DefaultHostResourceProbe;
 import com.example.platform.workerfabric.domain.LocalHostRegistrationLoop;
 import com.example.platform.workerfabric.domain.PhysicalHostId;
 import com.example.platform.workerfabric.domain.WorkerFabricRegistrationBoundary;
+import com.example.platform.workerfabric.domain.WorkerReadinessProbe;
 import java.lang.reflect.Method;
 import java.time.Clock;
 import org.junit.jupiter.api.Test;
@@ -30,6 +31,7 @@ class WorkerRegistrationConfigurationTest {
         runner.withPropertyValues("platform.runtime.role=WORKER").run(context -> {
             assertThat(context).hasSingleBean(PhysicalHostId.class);
             assertThat(context).hasSingleBean(DefaultHostResourceProbe.class);
+            assertThat(context).hasSingleBean(WorkerReadinessProbe.class);
             assertThat(context).hasSingleBean(LocalHostRegistrationLoop.class);
             assertThat(context).hasSingleBean(WorkerRegistrationConfiguration.LocalHostRegistrationScheduler.class);
             assertThat(context.getBean(PhysicalHostId.class).value())
@@ -42,6 +44,7 @@ class WorkerRegistrationConfigurationTest {
         runner.withPropertyValues("platform.runtime.role=API").run(context -> {
             assertThat(context).doesNotHaveBean(PhysicalHostId.class);
             assertThat(context).doesNotHaveBean(DefaultHostResourceProbe.class);
+            assertThat(context).doesNotHaveBean(WorkerReadinessProbe.class);
             assertThat(context).doesNotHaveBean(LocalHostRegistrationLoop.class);
             assertThat(context).doesNotHaveBean(WorkerRegistrationConfiguration.LocalHostRegistrationScheduler.class);
         });

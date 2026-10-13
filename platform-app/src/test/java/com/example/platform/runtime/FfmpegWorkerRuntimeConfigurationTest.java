@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 import com.example.platform.artifact.domain.ArtifactCommitService;
 import com.example.platform.artifact.domain.ArtifactQueryService;
 import com.example.platform.execution.binding.BoundGraphInputStore;
+import com.example.platform.providerplugin.ProviderPluginCatalog;
 import com.example.platform.runtime.mediatask.MediaTaskActivity;
 import com.example.platform.runtime.mediatask.MediaTaskPublicationSettings;
 import com.example.platform.storage.contract.StorageProviderId;
@@ -14,6 +15,7 @@ import com.example.platform.storage.contract.provider.StorageProvider;
 import com.example.platform.workerfabric.domain.AtomicAssignmentGrantBoundary;
 import com.example.platform.workerfabric.domain.CompletionAuthorityPort;
 import com.example.platform.workerfabric.domain.NativePullAdmissionPort;
+import com.example.platform.workerfabric.domain.WorkerFabricRegistrationBoundary;
 import com.example.platform.workerfabric.reuse.ArtifactMaterializerPort;
 import com.example.platform.workerfabric.reuse.ArtifactOutputCommitOrchestrator;
 import com.example.platform.workerfabric.reuse.ArtifactReuseIndexPort;
@@ -176,6 +178,9 @@ class FfmpegWorkerRuntimeConfigurationTest {
                 .withBean(CompletionAuthorityPort.class, () -> mock(CompletionAuthorityPort.class))
                 .withBean(AtomicAssignmentGrantBoundary.class,
                         () -> mock(AtomicAssignmentGrantBoundary.class))
+                .withBean(WorkerFabricRegistrationBoundary.class,
+                        () -> mock(WorkerFabricRegistrationBoundary.class))
+                .withBean(ProviderPluginCatalog.class, () -> mock(ProviderPluginCatalog.class))
                 .withBean(BoundGraphInputStore.class, () -> mock(BoundGraphInputStore.class))
                 .withBean(ArtifactMaterializerPort.class, () -> mock(ArtifactMaterializerPort.class))
                 .withBean(StorageProvider.class, () -> provider("test-provider"))

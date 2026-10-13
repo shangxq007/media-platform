@@ -69,6 +69,7 @@ import com.example.platform.workerfabric.domain.RequestWorkFailureReason;
 import com.example.platform.workerfabric.domain.RequestWorkId;
 import com.example.platform.workerfabric.domain.RequestWorkResult;
 import com.example.platform.workerfabric.domain.RequestWorkValidationContext;
+import com.example.platform.workerfabric.domain.ReservationFeasibility;
 import com.example.platform.workerfabric.domain.RuntimeEnvironmentAvailability;
 import com.example.platform.workerfabric.domain.RuntimeLifecycleKind;
 import com.example.platform.workerfabric.domain.SandboxRuntimeAvailability;
@@ -113,12 +114,14 @@ class PendingNativeWorkAdmissionTest {
         when(port.admit(any(), any(), any())).thenReturn(canned);
 
         RequestWorkResult result = PendingNativeWorkAdmission.admit(
-                port, graph, contribution, runtime.requestWork(), runtime.validationContext());
+                port, graph, contribution, ReservationFeasibility.FEASIBLE,
+                runtime.requestWork(), runtime.validationContext());
 
         assertThat(result).isSameAs(canned);
         List<PendingNativeWorkCandidate> supplied = capturedCandidates(port);
         assertThat(supplied)
-                .isEqualTo(PendingNativeWorkProjection.projectAll(graph, contribution));
+                .isEqualTo(PendingNativeWorkProjection.projectAll(
+                        graph, contribution, ReservationFeasibility.FEASIBLE));
         assertThat(supplied).hasSize(graph.tasks().size());
     }
 
@@ -132,10 +135,12 @@ class PendingNativeWorkAdmissionTest {
                 new RequestWorkResult.NoWork(runtime.requestWork().requestWorkId()));
 
         PendingNativeWorkAdmission.admit(
-                port, graph, contribution, runtime.requestWork(), runtime.validationContext());
+                port, graph, contribution, ReservationFeasibility.FEASIBLE,
+                runtime.requestWork(), runtime.validationContext());
 
         assertThat(capturedCandidates(port))
-                .isEqualTo(PendingNativeWorkProjection.projectAll(graph, contribution))
+                .isEqualTo(PendingNativeWorkProjection.projectAll(
+                        graph, contribution, ReservationFeasibility.FEASIBLE))
                 .hasSize(2);
     }
 
@@ -147,18 +152,21 @@ class PendingNativeWorkAdmissionTest {
         NativePullAdmissionPort port = new NativePullAdmissionPort(new InMemoryGrantBoundary());
 
         RequestWorkResult result = PendingNativeWorkAdmission.admit(
-                port, graph, contribution, runtime.requestWork(), runtime.validationContext());
+                port, graph, contribution, ReservationFeasibility.FEASIBLE,
+                runtime.requestWork(), runtime.validationContext());
 
         assertThat(result.requestWorkId()).isEqualTo(runtime.requestWork().requestWorkId());
         // The helper is exactly "projection + admit": the port's own call returns the same result.
         assertThat(port.admit(
                         runtime.requestWork(),
                         runtime.validationContext(),
-                        PendingNativeWorkProjection.projectAll(graph, contribution)))
+                        PendingNativeWorkProjection.projectAll(
+                                graph, contribution, ReservationFeasibility.FEASIBLE)))
                 .isEqualTo(result);
         // Deterministic for identical inputs.
         assertThat(PendingNativeWorkAdmission.admit(
-                        port, graph, contribution, runtime.requestWork(), runtime.validationContext()))
+                        port, graph, contribution, ReservationFeasibility.FEASIBLE,
+                        runtime.requestWork(), runtime.validationContext()))
                 .isEqualTo(result);
     }
 
@@ -171,7 +179,8 @@ class PendingNativeWorkAdmissionTest {
                 withoutHardwareRequirement();
 
         assertThatThrownBy(() -> PendingNativeWorkAdmission.admit(
-                port, graph, undeclaredHardware, runtime.requestWork(), runtime.validationContext()))
+                port, graph, undeclaredHardware, ReservationFeasibility.FEASIBLE,
+                runtime.requestWork(), runtime.validationContext()))
                 .isInstanceOf(PendingNativeWorkProjectionException.class);
         verifyNoInteractions(port);
     }
@@ -184,16 +193,23 @@ class PendingNativeWorkAdmissionTest {
         NativePullAdmissionPort port = new NativePullAdmissionPort(new InMemoryGrantBoundary());
 
         assertThatThrownBy(() -> PendingNativeWorkAdmission.admit(
-                null, graph, contribution, runtime.requestWork(), runtime.validationContext()))
+                null, graph, contribution, ReservationFeasibility.FEASIBLE,
+                runtime.requestWork(), runtime.validationContext()))
                 .isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> PendingNativeWorkAdmission.admit(
-                port, null, contribution, runtime.requestWork(), runtime.validationContext()))
+                port, null, contribution, ReservationFeasibility.FEASIBLE,
+                runtime.requestWork(), runtime.validationContext()))
                 .isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> PendingNativeWorkAdmission.admit(
-                port, graph, contribution, null, runtime.validationContext()))
+                port, graph, null, ReservationFeasibility.FEASIBLE,
+                runtime.requestWork(), runtime.validationContext()))
                 .isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> PendingNativeWorkAdmission.admit(
-                port, graph, contribution, runtime.requestWork(), null))
+                port, graph, contribution, null, runtime.requestWork(), runtime.validationContext()))
+                .isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> PendingNativeWorkAdmission.admit(
+                port, graph, contribution, ReservationFeasibility.FEASIBLE,
+                runtime.requestWork(), null))
                 .isInstanceOf(NullPointerException.class);
     }
 

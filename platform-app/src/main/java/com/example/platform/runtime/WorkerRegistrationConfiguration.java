@@ -4,6 +4,7 @@ import com.example.platform.workerfabric.domain.DefaultHostResourceProbe;
 import com.example.platform.workerfabric.domain.LocalHostRegistrationLoop;
 import com.example.platform.workerfabric.domain.PhysicalHostId;
 import com.example.platform.workerfabric.domain.WorkerFabricRegistrationBoundary;
+import com.example.platform.workerfabric.domain.WorkerReadinessProbe;
 import java.nio.file.Path;
 import java.time.Clock;
 import org.slf4j.Logger;
@@ -50,13 +51,30 @@ public class WorkerRegistrationConfiguration {
     }
 
     @Bean
+    public WorkerReadinessProbe workerReadinessProbe(
+            @Value("${platform.ffmpeg-worker.work-root:/tmp/media-platform-ffmpeg-worker}")
+            String workRoot,
+            @Value("${platform.ffmpeg-worker.workspace-root:"
+                    + "/tmp/media-platform-ffmpeg-worker/plugin-workspace}")
+            String workspaceRoot,
+            @Value("${platform.ffmpeg-worker.staging-root:/tmp/media-platform-ffmpeg-worker/staging}")
+            String stagingRoot,
+            @Value("${platform.ffmpeg-worker.sandbox.bwrap:/usr/bin/bwrap}") String bubblewrap) {
+        // P1-1A.4 / WORKER_READINESS_EVIDENCE_V1: the bounded-V1 environment probe observes the real
+        // execution roots and the sandbox signal reuses the production bubblewrap capability
+        // detector. Neither signal is derived from the other.
+        return FfmpegWorkerReadinessProbe.of(workRoot, workspaceRoot, stagingRoot, bubblewrap);
+    }
+
+    @Bean
     public LocalHostRegistrationLoop localHostRegistrationLoop(
             DefaultHostResourceProbe probe,
+            WorkerReadinessProbe workerReadinessProbe,
             WorkerFabricRegistrationBoundary registrationBoundary,
             Clock clock,
             PhysicalHostId localPhysicalHostId) {
         return new LocalHostRegistrationLoop(
-                probe, registrationBoundary, clock, localPhysicalHostId);
+                probe, workerReadinessProbe, registrationBoundary, clock, localPhysicalHostId);
     }
 
     @Bean

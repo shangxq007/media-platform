@@ -9,6 +9,10 @@ import com.example.platform.workerfabric.domain.HostResourceSnapshotGeneration;
 import com.example.platform.workerfabric.domain.LocalHostRegistrationLoop;
 import com.example.platform.workerfabric.domain.PhysicalHostId;
 import com.example.platform.workerfabric.domain.PhysicalHostIncarnationId;
+import com.example.platform.workerfabric.domain.RuntimeEnvironmentAvailability;
+import com.example.platform.workerfabric.domain.SandboxRuntimeAvailability;
+import com.example.platform.workerfabric.domain.WorkerReadinessEvidence;
+import com.example.platform.workerfabric.domain.WorkerReadinessProbe;
 import com.example.platform.workerfabric.infrastructure.JooqWorkerFabricRegistrationBoundary;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -56,8 +60,18 @@ class LocalHostRegistrationRoundTripIT {
         PG.copyFileToContainer(
                 MountableFile.forHostPath(migrationDir.resolve("V2__render_binding_inputs.sql")),
                 "/migrations/V2.sql");
+        PG.copyFileToContainer(
+                MountableFile.forHostPath(
+                        migrationDir.resolve("V3__worker_fabric_admission_evidence.sql")),
+                "/migrations/V3.sql");
+        PG.copyFileToContainer(
+                MountableFile.forHostPath(
+                        migrationDir.resolve("V4__worker_readiness_evidence.sql")),
+                "/migrations/V4.sql");
         applyMigration("/migrations/V1.sql");
         applyMigration("/migrations/V2.sql");
+        applyMigration("/migrations/V3.sql");
+        applyMigration("/migrations/V4.sql");
         dsl = DSL.using(PG.getJdbcUrl(), PG.getUsername(), PG.getPassword());
         boundary = new JooqWorkerFabricRegistrationBoundary(dsl);
     }
@@ -85,7 +99,23 @@ class LocalHostRegistrationRoundTripIT {
         DefaultHostResourceProbe probe = DefaultHostResourceProbe.forLocalHost(workRoot);
         assertEquals(workRoot, probe.workRoot(), "probe exposes its configured temporary-storage root");
         LocalHostRegistrationLoop loop = new LocalHostRegistrationLoop(
-                probe, boundary, Clock.systemUTC(), PhysicalHostId.of(HOST_ID));
+                probe,
+                // Test-only readiness double: this IT exercises the durable registration round-trip,
+                // not the readiness probes (those have their own focused tests).
+                new WorkerReadinessProbe() {
+                    @Override
+                    public RuntimeEnvironmentAvailability observeEnvironmentReadiness() {
+                        return RuntimeEnvironmentAvailability.AVAILABLE;
+                    }
+
+                    @Override
+                    public SandboxRuntimeAvailability observeSandboxReadiness() {
+                        return SandboxRuntimeAvailability.AVAILABLE;
+                    }
+                },
+                boundary,
+                Clock.systemUTC(),
+                PhysicalHostId.of(HOST_ID));
 
         loop.registerOnce();
 
@@ -104,6 +134,33 @@ class LocalHostRegistrationRoundTripIT {
                 Duration.between(registeredAt.toInstant(), validUntil.toInstant()),
                 "validity window is the owner-decided 30s");
         assertEquals(1L, generation(incarnation).value(), "first tick publishes generation 1");
+
+        // P1-1A.4 readiness re-read: read the record just written by this tick through the real
+        // PostgreSQL boundary (findReadiness), never from memory, and assert its persisted fields.
+        WorkerReadinessEvidence readiness = boundary
+                .findReadiness(PhysicalHostId.of(HOST_ID), PhysicalHostIncarnationId.of(incarnation))
+                .orElseThrow(() -> new IllegalStateException("readiness row was not persisted"));
+        assertEquals(PhysicalHostId.of(HOST_ID), readiness.physicalHostId(),
+                "readiness host id read back from PostgreSQL");
+        assertEquals(PhysicalHostIncarnationId.of(incarnation), readiness.physicalHostIncarnationId(),
+                "readiness host incarnation matches the host registration row");
+        assertEquals(LocalHostRegistrationLoop.WORKER_RUNTIME_ID, readiness.workerRuntimeId().value(),
+                "readiness worker runtime id");
+        assertEquals(LocalHostRegistrationLoop.WORKER_RUNTIME_INCARNATION_ID,
+                readiness.workerRuntimeIncarnationId().value(), "readiness runtime incarnation id");
+        assertEquals(RuntimeEnvironmentAvailability.AVAILABLE, readiness.environmentReadiness(),
+                "environment readiness persisted from this tick's probe");
+        assertEquals(SandboxRuntimeAvailability.AVAILABLE, readiness.sandboxReadiness(),
+                "sandbox readiness persisted from this tick's probe");
+        assertEquals(generation(incarnation), readiness.snapshotGeneration(),
+                "readiness snapshot generation is the generation published by this tick");
+        assertEquals(registeredAt.toInstant(), readiness.capturedAt(),
+                "readiness captured_at equals this tick's host registered_at (real DB round-trip)");
+        assertEquals(validUntil.toInstant(), readiness.validUntil(),
+                "readiness valid_until equals this tick's host valid_until (real DB round-trip)");
+        assertEquals(LocalHostRegistrationLoop.REGISTRATION_VALIDITY,
+                Duration.between(readiness.capturedAt(), readiness.validUntil()),
+                "readiness window is the owner-decided 30s (microsecond-safe)");
 
         loop.registerOnce();
 

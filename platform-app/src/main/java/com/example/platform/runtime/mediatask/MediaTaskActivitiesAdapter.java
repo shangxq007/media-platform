@@ -7,7 +7,7 @@ import com.example.platform.workflow.temporal.mediatask.MediaTaskWorkflowResult;
 import com.example.platform.workflow.temporal.mediatask.PreparedTaskRef;
 import io.temporal.spring.boot.ActivityImpl;
 import java.util.Objects;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.stereotype.Component;
 
 /**
@@ -19,7 +19,8 @@ import org.springframework.stereotype.Component;
  * logic of its own — the activity keeps its own public API unchanged.
  */
 @Component
-@ConditionalOnProperty(name = "platform.runtime.role", havingValue = "WORKER")
+@ConditionalOnExpression(
+        "'${platform.runtime.role:}' == 'WORKER' or '${platform.runtime.role:}' == 'COMBINED'")
 @ActivityImpl(taskQueues = "media-platform-tasks")
 public class MediaTaskActivitiesAdapter implements MediaTaskActivities {
 

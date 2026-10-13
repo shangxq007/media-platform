@@ -6,6 +6,7 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
@@ -22,7 +23,9 @@ import java.util.Optional;
  * <p>Owner decisions applied: validity 30 s with a 10 s cadence and a worker-local timer; safety
  * headroom = CPU {@code max(1 core, 10%)}, memory 10 %, temporary storage 10 % with **floor**
  * rounding; identities {@code local} / {@code local} / {@code local-ffmpeg} / {@code local-ffmpeg-v1};
- * snapshot generation stays {@code first()} for bounded V1 (never advanced per tick).
+ * snapshot generation advances by one on every registration tick (bounded V1): the first tick for a new
+ * incarnation starts at {@code first()}, each later tick at {@code current.value() + 1}, because the
+ * durable {@code wf_host_snapshot_generation_authority} requires strictly increasing generations.
  *
  * <p><b>Idempotent</b>: the incarnation identity is a stable fingerprint of the host identity and its
  * static capacity, so repeated ticks update the same durable registration row instead of minting new
@@ -31,6 +34,12 @@ import java.util.Optional;
  * <p><b>Fail closed</b>: an observation failure propagates
  * ({@link HostObservationUnavailableException}) and the tick registers nothing; the previous
  * registration then expires on its own validity window.
+ *
+ * <p>P1-1A.4: every tick also publishes a {@link WorkerReadinessEvidence} record carrying the two
+ * independent bounded-V1 readiness signals (environment and sandbox) observed through the injected
+ * {@link WorkerReadinessProbe}. The record is bound to the exact host/runtime incarnation and to the
+ * snapshot generation published by the same tick; it is persisted after the host registration row
+ * exists so the durable foreign key holds. A readiness observation is never fabricated here.
  */
 public final class LocalHostRegistrationLoop {
 
@@ -47,6 +56,7 @@ public final class LocalHostRegistrationLoop {
     public static final double HEADROOM_RATIO = 0.10d;
 
     private final HostResourceAgent.ResourceProbe probe;
+    private final WorkerReadinessProbe readinessProbe;
     private final WorkerFabricRegistrationBoundary registrationBoundary;
     private final Clock clock;
     private final PhysicalHostId physicalHostId;
@@ -59,12 +69,17 @@ public final class LocalHostRegistrationLoop {
             new HostResourceSnapshotFreshnessPolicy(
                     REGISTRATION_VALIDITY, HostResourceSnapshotSchemaVersion.CURRENT);
 
+    /** Readiness evidence shares the registration validity window (30 s / 10 s cadence). */
+    public static final Duration READINESS_VALIDITY = REGISTRATION_VALIDITY;
+
     public LocalHostRegistrationLoop(
             HostResourceAgent.ResourceProbe probe,
+            WorkerReadinessProbe readinessProbe,
             WorkerFabricRegistrationBoundary registrationBoundary,
             Clock clock,
             PhysicalHostId physicalHostId) {
         this.probe = Objects.requireNonNull(probe, "probe");
+        this.readinessProbe = Objects.requireNonNull(readinessProbe, "readinessProbe");
         this.registrationBoundary = Objects.requireNonNull(registrationBoundary, "registrationBoundary");
         this.clock = Objects.requireNonNull(clock, "clock");
         this.physicalHostId = Objects.requireNonNull(physicalHostId, "physicalHostId");
@@ -77,7 +92,11 @@ public final class LocalHostRegistrationLoop {
         ObservedUsage observedUsage = probe.collectHostAndDeviceObservation(descriptor);
         PhysicalHostIncarnationId incarnationId =
                 PhysicalHostIncarnationId.of(stableIncarnationFingerprint(staticCapacity));
-        Instant now = clock.instant();
+        // PostgreSQL timestamptz persists microsecond precision, so truncate the tick time to
+        // microseconds before deriving the registration windows: the value read back from the
+        // database then equals the in-memory instant exactly and the strict host/runtime validity
+        // coverage check in JooqWorkerFabricRegistrationBoundary.registerRuntime holds.
+        Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
         // The registration boundary requires every published snapshot generation to strictly exceed
         // the durable per-host-incarnation authority (the restart-reload contract). A tick therefore
         // advances the generation by one; the first tick for a new incarnation starts at first().
@@ -96,12 +115,32 @@ public final class LocalHostRegistrationLoop {
                 Optional.empty());
         SafetyHeadroom safetyHeadroom = headroomFor(staticCapacity);
 
+        // A-2: publish the authoritative static host descriptor (location, trust zone, device
+        // inventory) so admission can read it from the durable registration authority. The
+        // descriptor is produced by the same probe as the snapshot; it is never invented here.
+        registrationBoundary.registerHostDescriptor(descriptor);
         registrationBoundary.registerHost(new WorkerFabricRegistrationBoundary.HostRegistration(
                 physicalHostId, incarnationId, snapshot, safetyHeadroom,
                 now, now.plus(REGISTRATION_VALIDITY)));
         registrationBoundary.registerRuntime(new WorkerFabricRegistrationBoundary.RuntimeRegistration(
                 workerRuntimeId, workerRuntimeIncarnationId, physicalHostId, incarnationId,
                 now, now.plus(REGISTRATION_VALIDITY)));
+
+        // P1-1A.4 / WORKER_READINESS_EVIDENCE_V1: observe environment and sandbox readiness
+        // independently and persist them bound to this exact host/runtime incarnation and to the
+        // generation published by this same tick. The host registration row exists by now, so the
+        // durable foreign key holds. Nothing is defaulted: a probe that cannot conclude yields
+        // UNKNOWN, never AVAILABLE.
+        registrationBoundary.saveReadiness(new WorkerReadinessEvidence(
+                physicalHostId,
+                incarnationId,
+                workerRuntimeId,
+                workerRuntimeIncarnationId,
+                readinessProbe.observeEnvironmentReadiness(),
+                readinessProbe.observeSandboxReadiness(),
+                generation,
+                now,
+                now.plus(READINESS_VALIDITY)));
 
         SchedulableCapacity capacity = SchedulableCapacity.forLocalRuntime(
                 snapshot,
@@ -113,7 +152,14 @@ public final class LocalHostRegistrationLoop {
                 new LocalWorkerRuntimeIncarnationBinding(
                         workerRuntimeId, workerRuntimeIncarnationId, physicalHostId, incarnationId),
                 new WorkerRuntimeDescriptor(
-                        workerRuntimeId, RuntimeLifecycleKind.RESIDENT_RUNTIME, Optional.of(physicalHostId)),
+                        // P1-1A.6 (Gate 0): the frozen Roadmap-22 lifecycle-kind model maps the
+                        // FFmpeg process to EPHEMERAL_TASK ("EPHEMERAL_TASK (FFmpeg process, ...)",
+                        // roadmap-22-shared-worker-fabric-provider-local-composition-amendment-1.md
+                        // §"Runtime lifecycle kind (frozen)"). The bounded worker PROCESS stays
+                        // resident (it is the Temporal worker); its TASK runtime is ephemeral. This
+                        // value is only capacity-math input here and never persisted; the admission
+                        // descriptor is derived from the matched provider requirement in the minter.
+                        workerRuntimeId, RuntimeLifecycleKind.EPHEMERAL_TASK, Optional.of(physicalHostId)),
                 freshnessPolicy,
                 now);
         if (!capacity.available()) {

@@ -171,7 +171,7 @@ class MediaTaskExecuteTaskIntegrationTest {
         assertThat(execution.durableOutputTarget().writeSessionId())
                 .isEqualTo("task-output-" + fixture.taskId().sha256Hex());
         assertThat(execution.artifactCommitMetadata().artifactId().value())
-                .isEqualTo("render-task-" + fixture.taskId().sha256Hex());
+                .isEqualTo("render-task-" + fixture.taskId().sha256Hex().substring(0, 52));
         assertThat(execution.artifactCommitMetadata().tenantId()).isEqualTo(TENANT);
         assertThat(execution.artifactCommitMetadata().renderJobId()).isEqualTo(JOB);
         assertThat(execution.runtimeContext().platformExecutionAttemptId())

@@ -74,7 +74,8 @@ class PendingNativeWorkProjectionTest {
         FfmpegProviderPluginContribution contribution = new FfmpegProviderPluginContribution();
 
         PendingNativeWorkCandidate candidate =
-                PendingNativeWorkProjection.project(task, graph, contribution);
+                PendingNativeWorkProjection.project(
+                        task, graph, contribution, ReservationFeasibility.FEASIBLE);
 
         assertThat(candidate.providerBoundGraph()).isSameAs(graph);
         assertThat(candidate.executableTask()).isSameAs(task);
@@ -90,7 +91,7 @@ class PendingNativeWorkProjectionTest {
         assertThat(candidate.resourceDemand())
                 .isEqualTo(new RuntimeResourceDemand(2000L, 1073741824L, 2147483648L, Map.of()));
         assertThat(candidate.authoritativeReservationFeasibility())
-                .isEqualTo(ReservationFeasibility.UNKNOWN);
+                .isEqualTo(ReservationFeasibility.FEASIBLE);
         assertThat(candidate.sandboxRequirement()).isEqualTo(SandboxRuntimeRequirement.REQUIRED);
         assertThat(candidate.runtimeSupportRequirement())
                 .contains(FfmpegCpuProvider.RUNTIME_SUPPORT_REQUIREMENT);
@@ -105,7 +106,7 @@ class PendingNativeWorkProjectionTest {
         ExecutableTask task = graph.tasks().getFirst();
 
         PendingNativeWorkCandidate candidate = PendingNativeWorkProjection.project(
-                task, graph, new FfmpegProviderPluginContribution());
+                task, graph, new FfmpegProviderPluginContribution(), ReservationFeasibility.FEASIBLE);
 
         ProviderCandidate fromGraph = graph.providerFeasibilityView().unitCandidates().stream()
                 .flatMap(node -> node.compatibilityProofs().stream())
@@ -126,9 +127,11 @@ class PendingNativeWorkProjectionTest {
         FfmpegProviderPluginContribution contribution = new FfmpegProviderPluginContribution();
 
         List<PendingNativeWorkCandidate> first =
-                PendingNativeWorkProjection.projectAll(graph, contribution);
+                PendingNativeWorkProjection.projectAll(
+                        graph, contribution, ReservationFeasibility.FEASIBLE);
         List<PendingNativeWorkCandidate> second =
-                PendingNativeWorkProjection.projectAll(graph, contribution);
+                PendingNativeWorkProjection.projectAll(
+                        graph, contribution, ReservationFeasibility.FEASIBLE);
 
         assertThat(graph.tasks()).hasSize(2);
         assertThat(first).hasSize(graph.tasks().size());
@@ -147,15 +150,18 @@ class PendingNativeWorkProjectionTest {
         ExecutableTask task = graph.tasks().getFirst();
 
         assertThatThrownBy(() -> PendingNativeWorkProjection.project(
-                task, graph, OverridingContribution.withoutHardwareRequirement()))
+                task, graph, OverridingContribution.withoutHardwareRequirement(),
+                ReservationFeasibility.FEASIBLE))
                 .isInstanceOf(PendingNativeWorkProjectionException.class)
                 .hasMessageContaining("PROVIDER_HARDWARE_REQUIREMENT_UNDECLARED");
         assertThatThrownBy(() -> PendingNativeWorkProjection.project(
-                task, graph, OverridingContribution.withoutBackendExecutionSupport()))
+                task, graph, OverridingContribution.withoutBackendExecutionSupport(),
+                ReservationFeasibility.FEASIBLE))
                 .isInstanceOf(PendingNativeWorkProjectionException.class)
                 .hasMessageContaining("PROVIDER_BACKEND_EXECUTION_SUPPORT_UNDECLARED");
         assertThatThrownBy(() -> PendingNativeWorkProjection.project(
-                task, graph, OverridingContribution.withoutResourceProfile()))
+                task, graph, OverridingContribution.withoutResourceProfile(),
+                ReservationFeasibility.FEASIBLE))
                 .isInstanceOf(PendingNativeWorkProjectionException.class)
                 .hasMessageContaining("PROVIDER_RESOURCE_PROFILE_UNDECLARED");
     }
@@ -166,12 +172,31 @@ class PendingNativeWorkProjectionTest {
         ExecutableTask task = graph.tasks().getFirst();
         FfmpegProviderPluginContribution contribution = new FfmpegProviderPluginContribution();
 
-        assertThatThrownBy(() -> PendingNativeWorkProjection.project(null, graph, contribution))
+        assertThatThrownBy(() -> PendingNativeWorkProjection.project(
+                null, graph, contribution, ReservationFeasibility.FEASIBLE))
                 .isInstanceOf(NullPointerException.class);
-        assertThatThrownBy(() -> PendingNativeWorkProjection.project(task, null, contribution))
+        assertThatThrownBy(() -> PendingNativeWorkProjection.project(
+                task, null, contribution, ReservationFeasibility.FEASIBLE))
                 .isInstanceOf(NullPointerException.class);
-        assertThatThrownBy(() -> PendingNativeWorkProjection.project(task, graph, null))
+        assertThatThrownBy(() -> PendingNativeWorkProjection.project(
+                task, graph, null, ReservationFeasibility.FEASIBLE))
                 .isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> PendingNativeWorkProjection.project(task, graph, contribution, null))
+                .isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void carriesTheSuppliedReservationFeasibility() {
+        ProviderBoundExecutableTaskGraph graph = FfmpegCanonicalGraphFixture.single(SOURCE_DIGEST);
+        ExecutableTask task = graph.tasks().getFirst();
+        FfmpegProviderPluginContribution contribution = new FfmpegProviderPluginContribution();
+
+        for (ReservationFeasibility feasibility : ReservationFeasibility.values()) {
+            assertThat(PendingNativeWorkProjection.project(
+                            task, graph, contribution, feasibility)
+                    .authoritativeReservationFeasibility())
+                    .isEqualTo(feasibility);
+        }
     }
 
     /** Two independent single-unit memberships: two tasks, no cross-task dependency. */

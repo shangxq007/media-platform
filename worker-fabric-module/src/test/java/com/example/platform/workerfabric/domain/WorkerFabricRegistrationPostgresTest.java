@@ -220,6 +220,113 @@ class WorkerFabricRegistrationPostgresTest extends PostgresTestContainerSupport 
                 .hasMessageContaining("must be inserted in snapshot publication transaction");
     }
 
+    // ---- A-2V: focused verification of the authoritative evidence read path ----
+
+    @Test
+    void hostDescriptorRoundTripsThroughDurableAuthority() {
+        var boundary = new JooqWorkerFabricRegistrationBoundary(dsl);
+        PhysicalHostDescriptor descriptor = new PhysicalHostDescriptor(
+                new PhysicalHostId("host-descriptor-roundtrip"),
+                HostLocation.of("dc-a"),
+                TrustZoneId.of("zone-a"),
+                java.util.List.of(new DeviceDescriptor(
+                        DeviceId.of("gpu-0"),
+                        DeviceKind.GPU,
+                        DeviceVendor.of("acme"),
+                        DeviceModel.of("x100"))));
+
+        boundary.registerHostDescriptor(descriptor);
+        var read = boundary.findHostDescriptor(descriptor.id()).orElseThrow();
+
+        assertThat(read.physicalHostId()).isEqualTo(descriptor.id());
+        assertThat(read.location().value()).isEqualTo("dc-a");
+        assertThat(read.trustZoneId().value()).isEqualTo("zone-a");
+        assertThat(read.devices()).hasSize(1);
+        assertThat(read.devices().getFirst().deviceId()).isEqualTo("gpu-0");
+        assertThat(read.devices().getFirst().kind()).isEqualTo(DeviceKind.GPU);
+        assertThat(read.devices().getFirst().vendor()).isEqualTo("acme");
+        assertThat(read.devices().getFirst().model()).isEqualTo("x100");
+
+        // unknown host -> empty; never a synthesised default descriptor
+        assertThat(boundary.findHostDescriptor(new PhysicalHostId("host-descriptor-absent"))).isEmpty();
+    }
+
+    @Test
+    void observedUsageRoundTripsThroughDurableAuthority() {
+        TaskCTestFixture.RuntimeFixture runtime =
+                TaskCTestFixture.runtimeWithDeviceEvidence("observed-usage-roundtrip");
+        HostResourceSnapshot snapshot = runtime.requestWork().hostResourceSnapshot();
+        var boundary = new JooqWorkerFabricRegistrationBoundary(dsl);
+        boundary.registerHost(registration(snapshot));
+
+        var read = boundary.findHostSnapshot(
+                snapshot.physicalHostId(),
+                snapshot.physicalHostIncarnationId(),
+                snapshot.snapshotGeneration()).orElseThrow();
+
+        ObservedUsage expected = snapshot.observedUsage();
+        var observed = read.observedUsage().orElseThrow();
+        assertThat(observed.cpuUtilizationRatio()).isEqualTo(expected.cpu().utilizationRatio());
+        assertThat(observed.memoryUsedBytes()).isEqualTo(expected.memory().usedBytes());
+        assertThat(observed.temporaryStorageUsedBytes())
+                .isEqualTo(expected.temporaryStorage().usedBytes());
+
+        var expectedDevice = expected.deviceUsage().values().iterator().next();
+        var readDevice = observed.devices().stream()
+                .filter(device -> device.deviceId().equals(expectedDevice.deviceId().value()))
+                .findFirst()
+                .orElseThrow();
+        assertThat(readDevice.vramUsedBytes()).isEqualTo(expectedDevice.vramUsedBytes());
+        assertThat(readDevice.computeUtilizationRatio())
+                .isEqualTo(expectedDevice.computeUtilizationRatio());
+        assertThat(readDevice.encoderUtilizationRatio())
+                .isEqualTo(expectedDevice.encoderUtilizationRatio());
+        assertThat(readDevice.decoderUtilizationRatio())
+                .isEqualTo(expectedDevice.decoderUtilizationRatio());
+    }
+
+    @Test
+    void preV3SnapshotWithoutObservedUsageReadsAsEmptyAndNeverZero() {
+        String hostId = "host-pre-v3-snapshot";
+        String hostIncarnationId = "host-pre-v3-incarnation";
+        // Publish a pre-V3-shaped snapshot row (observed-usage columns NULL) in one publication
+        // transaction, mirroring the durable publication contract.
+        dsl.transaction(configuration -> {
+            DSLContext tx = DSL.using(configuration);
+            tx.execute(
+                    "insert into wf_host_registration (physical_host_id, physical_host_incarnation_id,"
+                            + " registered_at, valid_until, active) values (?, ?, now(), now()"
+                            + " + interval '1 hour', true)",
+                    hostId,
+                    hostIncarnationId);
+            tx.execute(
+                    "insert into wf_host_snapshot_generation_authority (physical_host_id,"
+                            + " physical_host_incarnation_id, current_generation) values (?, ?, 1)",
+                    hostId,
+                    hostIncarnationId);
+            tx.execute(
+                    "insert into wf_host_resource_snapshot (physical_host_id,"
+                            + " physical_host_incarnation_id, snapshot_generation, snapshot_fingerprint,"
+                            + " captured_at, schema_version, cpu_millicores, memory_bytes,"
+                            + " temporary_storage_bytes, safety_headroom_cpu_millicores,"
+                            + " safety_headroom_memory_bytes, safety_headroom_temporary_storage_bytes)"
+                            + " values (?, ?, 1, ?, now(), 1, 1000, 2000, 3000, 100, 200, 300)",
+                    hostId,
+                    hostIncarnationId,
+                    "0".repeat(64));
+        });
+
+        var boundary = new JooqWorkerFabricRegistrationBoundary(dsl);
+        var read = boundary.findHostSnapshot(
+                new PhysicalHostId(hostId),
+                new PhysicalHostIncarnationId(hostIncarnationId),
+                new HostResourceSnapshotGeneration(1L)).orElseThrow();
+
+        // missing observation is a real state: empty, never a zero-usage projection
+        assertThat(read.observedUsage()).isEmpty();
+        assertThat(read.cpuMillicores()).isEqualTo(1000L);
+    }
+
     private static HostResourceSnapshot publish(String suffix) {
         HostResourceSnapshot snapshot =
                 TaskCTestFixture.runtime(suffix).requestWork().hostResourceSnapshot();

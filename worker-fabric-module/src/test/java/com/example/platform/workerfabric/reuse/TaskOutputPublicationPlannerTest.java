@@ -52,7 +52,8 @@ class TaskOutputPublicationPlannerTest {
         assertThat(target.writeSessionId()).isEqualTo("task-output-" + TASK_ID.sha256Hex());
 
         ArtifactCommitMetadata metadata = plan.artifactCommitMetadata();
-        assertThat(metadata.artifactId()).isEqualTo(new ArtifactId("render-task-" + TASK_ID.sha256Hex()));
+        assertThat(metadata.artifactId())
+                .isEqualTo(new ArtifactId("render-task-" + TASK_ID.sha256Hex().substring(0, 52)));
         assertThat(metadata.tenantId()).isEqualTo("tenant-planner");
         assertThat(metadata.mediaType()).isEqualTo(ArtifactMediaType.VIDEO);
         assertThat(metadata.artifactKind()).isEqualTo(ArtifactKind.RENDER_MASTER);

@@ -1,0 +1,19 @@
+package com.example.platform.config.firstrender;
+
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
+
+/**
+ * HTTP extent shape for the First Render plan request.
+ *
+ * <p>{@code startMillis}/{@code endMillis} are the requested half-open range start (inclusive) and
+ * end (exclusive) in milliseconds; {@code frameRateNumerator}/{@code frameRateDenominator} express
+ * the exact rational frame rate. The controller validates {@code start < end}.
+ */
+public record FirstRenderExtentHttpRequest(
+        @NotNull @PositiveOrZero Long startMillis,
+        @NotNull @PositiveOrZero Long endMillis,
+        @NotNull @Positive Integer frameRateNumerator,
+        @NotNull @Positive Integer frameRateDenominator) {
+}

@@ -8,11 +8,18 @@ import com.example.platform.execution.binding.BoundGraphInputStore;
 import com.example.platform.execution.domain.provider.ProviderBindingPin;
 import com.example.platform.runtime.mediatask.MediaTaskActivity;
 import com.example.platform.runtime.mediatask.MediaTaskPublicationSettings;
+import com.example.platform.runtime.mediatask.FirstRenderGrantMinter;
+import com.example.platform.runtime.mediatask.FirstRenderAdmissionEvidenceFactory;
+import com.example.platform.runtime.CpuArchitectureProbe;
+import com.example.platform.runtime.ProviderExecutableDependencyProbe;
+import com.example.platform.providerplugin.ProviderPluginCatalog;
 import com.example.platform.storage.contract.StorageProviderId;
 import com.example.platform.storage.contract.provider.StorageProvider;
 import com.example.platform.workerfabric.domain.AtomicAssignmentGrantBoundary;
 import com.example.platform.workerfabric.domain.CompletionAuthorityPort;
 import com.example.platform.workerfabric.domain.NativePullAdmissionPort;
+import com.example.platform.workerfabric.domain.ReservationFeasibilityQuery;
+import com.example.platform.workerfabric.domain.WorkerFabricRegistrationBoundary;
 import com.example.platform.workerfabric.domain.providernative.ProviderNativeRuntimeBinding;
 import com.example.platform.workerfabric.reuse.ArtifactMaterializerPort;
 import com.example.platform.workerfabric.reuse.ArtifactOutputCommitOrchestrator;
@@ -25,12 +32,13 @@ import com.example.platform.workerfabric.reuse.RuntimeClosedLoopOrchestrator;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.nio.file.Path;
 import java.time.Clock;
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -57,7 +65,8 @@ import org.springframework.context.annotation.Configuration;
  * bean is worker-role scoped.
  */
 @Configuration
-@ConditionalOnProperty(name = "platform.runtime.role", havingValue = "WORKER")
+@ConditionalOnExpression(
+        "'${platform.runtime.role:}' == 'WORKER' or '${platform.runtime.role:}' == 'COMBINED'")
 public class FfmpegWorkerRuntimeConfiguration {
 
     /**
@@ -165,15 +174,61 @@ public class FfmpegWorkerRuntimeConfiguration {
     }
 
     @Bean
+    FirstRenderAdmissionEvidenceFactory firstRenderAdmissionEvidenceFactory(
+            ProviderPluginCatalog providerPluginCatalog,
+            @Value("${platform.ffmpeg-worker.sandbox.ffmpeg:/usr/bin/ffmpeg}") String ffmpeg,
+            @Value("${platform.ffmpeg-worker.workspace-root}") String workspaceRoot,
+            @Value("${platform.ffmpeg-worker.plugin-timeout:PT1M}") String timeout,
+            @Value("${platform.ffmpeg-worker.plugin-capture-bytes:67108864}") String captureBytes,
+            Clock clock) {
+        // P1-1A.6/P1-1A.7: the three authoritative admission-evidence inputs are produced from the
+        // real provider catalog, the live worker JVM architecture, and the exact configured
+        // executable. The runtime-dependency input is completed by a controlled start probe inside
+        // the production sandbox, bound to the executable's probed identity.
+        return new FirstRenderAdmissionEvidenceFactory(
+                providerPluginCatalog,
+                new CpuArchitectureProbe(),
+                new ProviderExecutableDependencyProbe(),
+                new BubblewrapSandboxedExecutableStartProbe(
+                        Path.of(workspaceRoot),
+                        Duration.parse(timeout),
+                        Long.parseLong(captureBytes)),
+                Path.of(ffmpeg),
+                clock,
+                FirstRenderAdmissionEvidenceFactory.EVIDENCE_VALIDITY);
+    }
+
+    @Bean
+    FirstRenderGrantMinter firstRenderGrantMinter(
+            WorkerFabricRegistrationBoundary workerFabricRegistrationBoundary,
+            AtomicAssignmentGrantBoundary atomicAssignmentGrantBoundary,
+            NativePullAdmissionPort nativePullAdmissionPort,
+            FirstRenderAdmissionEvidenceFactory firstRenderAdmissionEvidenceFactory,
+            ReservationFeasibilityQuery reservationFeasibilityQuery,
+            Clock clock) {
+        return new FirstRenderGrantMinter(
+                workerFabricRegistrationBoundary,
+                atomicAssignmentGrantBoundary,
+                nativePullAdmissionPort,
+                firstRenderAdmissionEvidenceFactory,
+                reservationFeasibilityQuery,
+                clock);
+    }
+
+    @Bean
     MediaTaskActivity mediaTaskActivity(
             BoundGraphInputStore boundGraphInputStore,
             AtomicAssignmentGrantBoundary atomicAssignmentGrantBoundary,
             RuntimeClosedLoopOrchestrator runtimeClosedLoopOrchestrator,
-            MediaTaskPublicationSettings mediaTaskPublicationSettings) {
+            MediaTaskPublicationSettings mediaTaskPublicationSettings,
+            FirstRenderGrantMinter firstRenderGrantMinter,
+            ProviderPluginCatalog providerPluginCatalog) {
         return new MediaTaskActivity(
                 boundGraphInputStore,
                 atomicAssignmentGrantBoundary,
                 runtimeClosedLoopOrchestrator,
-                mediaTaskPublicationSettings);
+                mediaTaskPublicationSettings,
+                firstRenderGrantMinter,
+                providerPluginCatalog);
     }
 }

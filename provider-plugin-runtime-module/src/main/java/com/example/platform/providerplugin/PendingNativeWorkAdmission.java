@@ -3,6 +3,7 @@ package com.example.platform.providerplugin;
 import com.example.platform.execution.taskgraph.ProviderBoundExecutableTaskGraph;
 import com.example.platform.workerfabric.domain.NativePullAdmissionPort;
 import com.example.platform.workerfabric.domain.PendingNativeWorkCandidate;
+import com.example.platform.workerfabric.domain.ReservationFeasibility;
 import com.example.platform.workerfabric.domain.RequestWork;
 import com.example.platform.workerfabric.domain.RequestWorkResult;
 import com.example.platform.workerfabric.domain.RequestWorkValidationContext;
@@ -42,13 +43,15 @@ public final class PendingNativeWorkAdmission {
             NativePullAdmissionPort admissionPort,
             ProviderBoundExecutableTaskGraph graph,
             ProviderPluginContribution contribution,
+            ReservationFeasibility reservationFeasibility,
             RequestWork requestWork,
             RequestWorkValidationContext validationContext) {
         Objects.requireNonNull(admissionPort, "admissionPort");
+        Objects.requireNonNull(reservationFeasibility, "reservationFeasibility");
         Objects.requireNonNull(requestWork, "requestWork");
         Objects.requireNonNull(validationContext, "validationContext");
         List<PendingNativeWorkCandidate> candidates =
-                PendingNativeWorkProjection.projectAll(graph, contribution);
+                PendingNativeWorkProjection.projectAll(graph, contribution, reservationFeasibility);
         return admissionPort.admit(requestWork, validationContext, candidates);
     }
 }

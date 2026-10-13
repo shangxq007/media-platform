@@ -22,7 +22,8 @@ class LocalHostRegistrationLoopTest {
     @Test
     void registersHostAndRuntimeWithBoundedValidity() {
         RecordingBoundary boundary = new RecordingBoundary();
-        new LocalHostRegistrationLoop(probe(), boundary, CLOCK, HOST_ID).registerOnce();
+        new LocalHostRegistrationLoop(probe(), readinessProbe(), boundary, CLOCK, HOST_ID)
+                .registerOnce();
 
         assertThat(boundary.hosts).hasSize(1);
         WorkerFabricRegistrationBoundary.HostRegistration host = boundary.hosts.getFirst();
@@ -66,7 +67,8 @@ class LocalHostRegistrationLoopTest {
     @Test
     void incarnationFingerprintIsStableAcrossTicks() {
         RecordingBoundary boundary = new RecordingBoundary();
-        LocalHostRegistrationLoop loop = new LocalHostRegistrationLoop(probe(), boundary, CLOCK, HOST_ID);
+        LocalHostRegistrationLoop loop =
+                new LocalHostRegistrationLoop(probe(), readinessProbe(), boundary, CLOCK, HOST_ID);
 
         loop.registerOnce();
         loop.registerOnce();
@@ -83,7 +85,8 @@ class LocalHostRegistrationLoopTest {
     @Test
     void advancesSnapshotGenerationOnEveryTick() {
         RecordingBoundary boundary = new RecordingBoundary();
-        LocalHostRegistrationLoop loop = new LocalHostRegistrationLoop(probe(), boundary, CLOCK, HOST_ID);
+        LocalHostRegistrationLoop loop =
+                new LocalHostRegistrationLoop(probe(), readinessProbe(), boundary, CLOCK, HOST_ID);
 
         loop.registerOnce();
         loop.registerOnce();
@@ -120,13 +123,108 @@ class LocalHostRegistrationLoopTest {
             }
         };
 
-        assertThatThrownBy(() -> new LocalHostRegistrationLoop(failing, boundary, CLOCK, HOST_ID).registerOnce())
+        assertThatThrownBy(() -> new LocalHostRegistrationLoop(
+                        failing, readinessProbe(), boundary, CLOCK, HOST_ID)
+                .registerOnce())
                 .isInstanceOf(HostObservationUnavailableException.class);
         assertThat(boundary.hosts).isEmpty();
         assertThat(boundary.runtimes).isEmpty();
     }
 
+    @Test
+    void publishesBothIndependentReadinessSignalsBoundToThisTick() {
+        RecordingBoundary boundary = new RecordingBoundary();
+        WorkerReadinessProbe probe = new WorkerReadinessProbe() {
+            @Override
+            public RuntimeEnvironmentAvailability observeEnvironmentReadiness() {
+                return RuntimeEnvironmentAvailability.AVAILABLE;
+            }
+
+            @Override
+            public SandboxRuntimeAvailability observeSandboxReadiness() {
+                return SandboxRuntimeAvailability.UNAVAILABLE;
+            }
+        };
+
+        new LocalHostRegistrationLoop(probe(), probe, boundary, CLOCK, HOST_ID).registerOnce();
+
+        assertThat(boundary.readiness).hasSize(1);
+        WorkerReadinessEvidence evidence = boundary.readiness.getFirst();
+        WorkerFabricRegistrationBoundary.HostRegistration host = boundary.hosts.getFirst();
+        assertThat(evidence.physicalHostId()).isEqualTo(HOST_ID);
+        assertThat(evidence.physicalHostIncarnationId())
+                .isEqualTo(host.physicalHostIncarnationId());
+        assertThat(evidence.workerRuntimeId().value())
+                .isEqualTo(LocalHostRegistrationLoop.WORKER_RUNTIME_ID);
+        assertThat(evidence.workerRuntimeIncarnationId().value())
+                .isEqualTo(LocalHostRegistrationLoop.WORKER_RUNTIME_INCARNATION_ID);
+        // The two signals are independent: the sandbox verdict is stored unchanged, never inferred
+        // from the environment verdict.
+        assertThat(evidence.environmentReadiness())
+                .isEqualTo(RuntimeEnvironmentAvailability.AVAILABLE);
+        assertThat(evidence.sandboxReadiness())
+                .isEqualTo(SandboxRuntimeAvailability.UNAVAILABLE);
+        // Bound to the exact generation published by the same tick.
+        assertThat(evidence.snapshotGeneration())
+                .isEqualTo(host.hostResourceSnapshot().snapshotGeneration());
+        assertThat(evidence.capturedAt()).isEqualTo(CLOCK.instant());
+        assertThat(evidence.validUntil()).isEqualTo(CLOCK.instant().plus(LocalHostRegistrationLoop.READINESS_VALIDITY));
+    }
+
+    @Test
+    void unknownReadinessIsPersistedAsUnknownNeverPromotedToAvailable() {
+        RecordingBoundary boundary = new RecordingBoundary();
+        WorkerReadinessProbe probe = new WorkerReadinessProbe() {
+            @Override
+            public RuntimeEnvironmentAvailability observeEnvironmentReadiness() {
+                return RuntimeEnvironmentAvailability.UNKNOWN;
+            }
+
+            @Override
+            public SandboxRuntimeAvailability observeSandboxReadiness() {
+                return SandboxRuntimeAvailability.UNKNOWN;
+            }
+        };
+
+        new LocalHostRegistrationLoop(probe(), probe, boundary, CLOCK, HOST_ID).registerOnce();
+
+        assertThat(boundary.readiness.getFirst().environmentReadiness())
+                .isEqualTo(RuntimeEnvironmentAvailability.UNKNOWN);
+        assertThat(boundary.readiness.getFirst().sandboxReadiness())
+                .isEqualTo(SandboxRuntimeAvailability.UNKNOWN);
+    }
+
+    @Test
+    void readinessGenerationAdvancesWithTheRegistrationGeneration() {
+        RecordingBoundary boundary = new RecordingBoundary();
+        LocalHostRegistrationLoop loop =
+                new LocalHostRegistrationLoop(probe(), readinessProbe(), boundary, CLOCK, HOST_ID);
+
+        loop.registerOnce();
+        loop.registerOnce();
+
+        assertThat(boundary.readiness).hasSize(2);
+        assertThat(boundary.readiness.get(0).snapshotGeneration())
+                .isEqualTo(HostResourceSnapshotGeneration.first());
+        assertThat(boundary.readiness.get(1).snapshotGeneration())
+                .isEqualTo(new HostResourceSnapshotGeneration(2L));
+    }
+
     // ---------- fixture ----------
+
+    private static WorkerReadinessProbe readinessProbe() {
+        return new WorkerReadinessProbe() {
+            @Override
+            public RuntimeEnvironmentAvailability observeEnvironmentReadiness() {
+                return RuntimeEnvironmentAvailability.AVAILABLE;
+            }
+
+            @Override
+            public SandboxRuntimeAvailability observeSandboxReadiness() {
+                return SandboxRuntimeAvailability.AVAILABLE;
+            }
+        };
+    }
 
     private static HostResourceAgent.ResourceProbe probe() {
         return new HostResourceAgent.ResourceProbe() {
@@ -163,6 +261,7 @@ class LocalHostRegistrationLoopTest {
 
         private final List<HostRegistration> hosts = new ArrayList<>();
         private final List<RuntimeRegistration> runtimes = new ArrayList<>();
+        private final List<WorkerReadinessEvidence> readiness = new ArrayList<>();
         private HostResourceSnapshotGeneration lastGeneration;
 
         @Override
@@ -174,6 +273,11 @@ class LocalHostRegistrationLoopTest {
         @Override
         public void registerRuntime(RuntimeRegistration registration) {
             runtimes.add(registration);
+        }
+
+        @Override
+        public void saveReadiness(WorkerReadinessEvidence evidence) {
+            readiness.add(evidence);
         }
 
         @Override
