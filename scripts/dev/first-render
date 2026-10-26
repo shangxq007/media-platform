@@ -8,8 +8,10 @@ from pathlib import Path
 import argparse,json,os,subprocess,sys,time,secrets,shutil,hashlib
 W=Path(__file__).resolve().parents[2];HELP=W/'scripts/dev/_local_validation'
 p=argparse.ArgumentParser(description=__doc__);p.add_argument('--output',type=Path,required=True);p.add_argument('--gradle',type=Path,help='Optional existing Gradle9.1 executable; default uses committed wrapper');p.add_argument('--cache',type=Path,help='Explicit modules-2 cache seed, copied without user configuration');p.add_argument('--offline',action='store_true');a=p.parse_args()
-R=a.output.absolute()
-if R==W or W in R.parents or R.exists() or any(x.is_symlink() for x in [R,*R.parents]):p.error('new external nonsymlink output directory required')
+raw=a.output.absolute()
+if '..' in raw.parts or any(x.is_symlink() for x in [raw,*raw.parents]):p.error('output traversal or symlink refused')
+R=raw.resolve()
+if R==W or W in R.parents or R.exists():p.error('new external nonsymlink output directory required')
 for tool in ['podman','bwrap','nsenter','openssl','javac','ffmpeg','curl']:
  if not shutil.which(tool):p.error('required tool missing: '+tool)
 R.mkdir(mode=0o700,parents=True)
@@ -74,14 +76,14 @@ try:
   time.sleep(1)
  else:raise RuntimeError('application startup deadline')
  for name in ['exercise_first_render','check_product','runtime_proof','check_cancel']:command(name,['python3','-B',str(HELP/(name+'.py'))],timeout=240)
- (R/'result.json').write_text(json.dumps({'result':'PASS','source':str(W),'real_pg18':True,'real_api_worker_temporal_ffmpeg_http_download':True,'deployment':'DEPLOYMENT_ISOLATION_NOT_VERIFIED'}));print('FIRST_RENDER_LOCAL_VALIDATION_PASS '+str(R),flush=True)
+ (R/'product-result.json').write_text(json.dumps({'result':'PASS','source':str(W),'real_pg18':True,'real_api_worker_temporal_ffmpeg_http_download':True,'deployment':'DEPLOYMENT_ISOLATION_NOT_VERIFIED'}))
 finally:
  if clients:
   current=R/'07-runtime/current-apps.txt'
   if current.exists():(Path(current.read_text().strip())/'STOP').touch()
   clients.wait(timeout=60)
  # Fail closed on client uncertainty. On a failed run, retain owned resources and evidence.
- if cid and tid and (R/'result.json').exists():
+ if cid and tid and (R/'product-result.json').exists():
   proof=json.loads((Path((R/'07-runtime/current-apps.txt').read_text().strip())/'complete.json').read_text());dbproof=json.loads((R/'04-tests/pg18/result.json').read_text());assert proof['all_children_reaped'] and dbproof['executor_closed']
   active=json.loads(command('active-workflows',B+['exec',tid,'temporal','--address','127.0.0.1:7233','--namespace','f8-pg18-'+run,'workflow','list','--query',"ExecutionStatus = 'Running'",'--output','json'],environment=E));assert active==[] or active=={'executions':[]}
   inspect(cid);inspect(tid);sql="ALTER ROLE mp_test_canon_a2 NOLOGIN; ALTER DATABASE mp_f8_canon_a2 ALLOW_CONNECTIONS false; SELECT count(*) FROM pg_stat_activity WHERE datname='mp_f8_canon_a2';";command('fence-zero-sessions',admin,input=sql,environment=E)
@@ -90,3 +92,8 @@ finally:
   for ident in [tid,cid]:
    inspect(ident);command('stop-'+ident[:12],B+['stop','--time','30',ident],environment=E);d=inspect(ident);assert not d['State']['Running'] and d['State']['Pid']==0;command('remove-'+ident[:12],B+['rm',ident],environment=E)
   d=json.loads(command('inspect-volume',B+['volume','inspect',volume],environment=E))[0];assert d['Name']==volume and d['Labels']['media-platform.f8-run']==run;command('remove-volume',B+['volume','rm',volume],environment=E);(R/'cleanup.json').write_text(json.dumps({'result':'PASS','exact_containers':[tid,cid],'exact_volume':volume,'clients_complete':True,'zero_sessions':True}))
+
+# Overall success is published only after all owned resources have been closed and cleaned.
+product=json.loads((R/'product-result.json').read_text());cleanup=json.loads((R/'cleanup.json').read_text());assert cleanup['result']=='PASS'
+(R/'result.json').write_text(json.dumps({**product,'cleanup':'PASS'}))
+print('FIRST_RENDER_LOCAL_VALIDATION_PASS '+str(R),flush=True)
