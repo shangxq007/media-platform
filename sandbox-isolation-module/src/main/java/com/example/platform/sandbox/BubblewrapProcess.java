@@ -24,22 +24,31 @@ final class BubblewrapProcess {
     }
 
     static ProbeResult execute(List<String> command, Duration timeout) {
-        Process process = null;
         try {
-            process = start(command, Map.of());
+            return captureProbe(start(command, Map.of()), timeout);
+        } catch (IOException failure) {
+            return new ProbeResult(-1, "", failure.getClass().getSimpleName(), false);
+        }
+    }
+
+    /** Drain a naturally exited process before destroy(), which may close unread JDK pipes. */
+    static ProbeResult captureProbe(Process process, Duration timeout) {
+        try {
             DiagnosticReader stdout = new DiagnosticReader(process.getInputStream());
             DiagnosticReader stderr = new DiagnosticReader(process.getErrorStream());
             Thread outThread = Thread.ofVirtual().start(stdout);
             Thread errThread = Thread.ofVirtual().start(stderr);
             boolean processCompleted = process.waitFor(timeout.toMillis(), TimeUnit.MILLISECONDS);
+            // Process.destroy() closes its streams even when the root already exited.
+            // On natural exit, consume EOF first; on timeout, stop the live tree first.
+            boolean capturesClosed = false;
+            if (processCompleted) capturesClosed = closeAndJoin(stdout, outThread, stderr, errThread);
             SandboxCleanupObservation cleanup = LocalBoundedProcessLauncher.terminateTree(
                     process, Duration.ofMillis(250));
-            boolean capturesClosed = closeAndJoin(stdout, outThread, stderr, errThread);
+            if (!processCompleted) capturesClosed = closeAndJoin(stdout, outThread, stderr, errThread);
             return new ProbeResult(processCompleted ? process.exitValue() : -1,
                     stdout.text(), stderr.text(), processCompleted && cleanup.completed()
                             && capturesClosed);
-        } catch (IOException failure) {
-            return new ProbeResult(-1, "", failure.getClass().getSimpleName(), false);
         } catch (InterruptedException interrupted) {
             Thread.currentThread().interrupt();
             return new ProbeResult(-1, "", "interrupted", false);
