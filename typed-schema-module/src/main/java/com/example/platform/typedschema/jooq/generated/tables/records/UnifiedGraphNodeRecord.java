@@ -166,6 +166,6 @@ public class UnifiedGraphNodeRecord extends UpdatableRecordImpl<UnifiedGraphNode
         setStatus(status);
         setData(data);
         setTimestamp(timestamp);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

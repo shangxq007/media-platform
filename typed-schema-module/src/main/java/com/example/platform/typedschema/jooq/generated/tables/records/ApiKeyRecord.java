@@ -166,6 +166,6 @@ public class ApiKeyRecord extends UpdatableRecordImpl<ApiKeyRecord> {
         setCreatedAt(createdAt);
         setLastUsedAt(lastUsedAt);
         setRevokedAt(revokedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

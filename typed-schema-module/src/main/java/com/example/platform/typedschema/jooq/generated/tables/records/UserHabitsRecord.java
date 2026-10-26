@@ -106,6 +106,6 @@ public class UserHabitsRecord extends UpdatableRecordImpl<UserHabitsRecord> {
         setUserId(userId);
         setHabitsJson(habitsJson);
         setComputedAt(computedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

@@ -196,6 +196,6 @@ public class EntitlementOverrideRecord extends UpdatableRecordImpl<EntitlementOv
         setStatus(status);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

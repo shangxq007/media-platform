@@ -151,6 +151,6 @@ public class WfTaskOwnershipRecord extends UpdatableRecordImpl<WfTaskOwnershipRe
         setActiveLeaseId(activeLeaseId);
         setClaimable(claimable);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

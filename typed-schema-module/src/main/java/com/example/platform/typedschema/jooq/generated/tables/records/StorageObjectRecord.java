@@ -181,6 +181,6 @@ public class StorageObjectRecord extends UpdatableRecordImpl<StorageObjectRecord
         setFileSizeBytes(fileSizeBytes);
         setLifecyclePolicy(lifecyclePolicy);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

@@ -9,6 +9,7 @@ import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
 import com.example.platform.typedschema.jooq.generated.tables.WfExecutionAssignmentDevice.WfExecutionAssignmentDevicePath;
 import com.example.platform.typedschema.jooq.generated.tables.WfExecutionAttempt.WfExecutionAttemptPath;
+import com.example.platform.typedschema.jooq.generated.tables.WfLocalAdmission.WfLocalAdmissionPath;
 import com.example.platform.typedschema.jooq.generated.tables.WfRequestWorkResolution.WfRequestWorkResolutionPath;
 import com.example.platform.typedschema.jooq.generated.tables.WfReservation.WfReservationPath;
 import com.example.platform.typedschema.jooq.generated.tables.WfTaskLease.WfTaskLeasePath;
@@ -31,13 +32,14 @@ import org.jooq.QueryPart;
 import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.Select;
 import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
+import org.jooq.TableLike;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
@@ -320,6 +322,14 @@ public class WfExecutionAssignment extends TableImpl<WfExecutionAssignmentRecord
         return _wfTaskOwnership;
     }
 
+    /**
+     * Get the implicit many-to-many join path to the
+     * <code>public.wf_local_admission</code> table
+     */
+    public WfLocalAdmissionPath wfLocalAdmission() {
+        return wfTaskLeaseAssignmentIdTaskIdAttemptIdGenerationFkey().wfLocalAdmissionLeaseIdFkey();
+    }
+
     @Override
     public WfExecutionAssignment as(String alias) {
         return new WfExecutionAssignment(DSL.name(alias), this);
@@ -364,7 +374,7 @@ public class WfExecutionAssignment extends TableImpl<WfExecutionAssignmentRecord
      */
     @Override
     public WfExecutionAssignment where(Condition condition) {
-        return new WfExecutionAssignment(getQualifiedName(), aliased() ? this : null, null, condition);
+        return new WfExecutionAssignment(getQualifiedName(), aliased() ? this : null, null, Internal.condition(this, condition));
     }
 
     /**
@@ -431,7 +441,7 @@ public class WfExecutionAssignment extends TableImpl<WfExecutionAssignmentRecord
      * Create an inline derived table from this table
      */
     @Override
-    public WfExecutionAssignment whereExists(Select<?> select) {
+    public WfExecutionAssignment whereExists(TableLike<?> select) {
         return where(DSL.exists(select));
     }
 
@@ -439,7 +449,7 @@ public class WfExecutionAssignment extends TableImpl<WfExecutionAssignmentRecord
      * Create an inline derived table from this table
      */
     @Override
-    public WfExecutionAssignment whereNotExists(Select<?> select) {
+    public WfExecutionAssignment whereNotExists(TableLike<?> select) {
         return where(DSL.notExists(select));
     }
 }

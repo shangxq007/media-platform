@@ -196,6 +196,6 @@ public class WorkflowRunStepRecord extends UpdatableRecordImpl<WorkflowRunStepRe
         setReleasedByJson(releasedByJson);
         setApproved(approved);
         setResultJson(resultJson);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

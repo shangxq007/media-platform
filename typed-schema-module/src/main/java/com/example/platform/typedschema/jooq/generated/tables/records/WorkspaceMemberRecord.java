@@ -151,6 +151,6 @@ public class WorkspaceMemberRecord extends UpdatableRecordImpl<WorkspaceMemberRe
         setStatus(status);
         setJoinedAt(joinedAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

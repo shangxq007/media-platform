@@ -241,6 +241,6 @@ public class NlqQueryHistoryRecord extends UpdatableRecordImpl<NlqQueryHistoryRe
         setStatus(status);
         setErrorCode(errorCode);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

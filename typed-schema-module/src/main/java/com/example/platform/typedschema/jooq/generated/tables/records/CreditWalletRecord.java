@@ -211,6 +211,6 @@ public class CreditWalletRecord extends UpdatableRecordImpl<CreditWalletRecord> 
         setVersion(version);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

@@ -211,6 +211,6 @@ public class SubscriptionPlanRecord extends UpdatableRecordImpl<SubscriptionPlan
         setStatus(status);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

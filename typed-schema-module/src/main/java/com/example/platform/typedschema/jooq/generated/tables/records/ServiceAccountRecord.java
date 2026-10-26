@@ -151,6 +151,6 @@ public class ServiceAccountRecord extends UpdatableRecordImpl<ServiceAccountReco
         setDescription(description);
         setStatus(status);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

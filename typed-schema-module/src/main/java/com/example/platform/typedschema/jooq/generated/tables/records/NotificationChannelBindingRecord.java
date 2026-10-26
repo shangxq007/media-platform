@@ -316,6 +316,6 @@ public class NotificationChannelBindingRecord extends UpdatableRecordImpl<Notifi
         setDisabledReason(disabledReason);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

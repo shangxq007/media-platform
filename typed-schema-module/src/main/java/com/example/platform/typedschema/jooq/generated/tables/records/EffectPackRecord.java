@@ -226,6 +226,6 @@ public class EffectPackRecord extends UpdatableRecordImpl<EffectPackRecord> {
         setBuiltin(builtin);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

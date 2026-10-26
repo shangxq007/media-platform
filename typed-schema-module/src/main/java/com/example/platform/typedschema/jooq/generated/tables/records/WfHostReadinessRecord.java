@@ -185,6 +185,6 @@ public class WfHostReadinessRecord extends UpdatableRecordImpl<WfHostReadinessRe
         setSnapshotGeneration(snapshotGeneration);
         setCapturedAt(capturedAt);
         setValidUntil(validUntil);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

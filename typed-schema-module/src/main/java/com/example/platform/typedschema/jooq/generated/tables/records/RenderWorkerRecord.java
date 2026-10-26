@@ -391,6 +391,6 @@ public class RenderWorkerRecord extends UpdatableRecordImpl<RenderWorkerRecord> 
         setMetadataJson(metadataJson);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

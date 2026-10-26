@@ -57,12 +57,7 @@ class UserWorkflowDefinitionV1SchemaMigrationTest extends PostgresTestContainerS
                 assertEquals("1", rs.getString("version"), "first migration version must be 1");
                 assertEquals("V1__baseline.sql", rs.getString("script"),
                         "script must be the canonical consolidated V1 baseline");
-                // GCR-2 (GREENFIELD_DATABASE_HAS_ONE_CONSOLIDATED_CANONICAL_FLYWAY_V1_V1):
-                // former V2..V7 incremental migrations are consolidated into V1.
-                assertTrue(rs.next(), "approved graph execution migration required");
-                assertEquals("2",rs.getString("version"));
-                assertEquals("V2__graph_render_execution.sql",rs.getString("script"));
-                assertFalse(rs.next(), "only the unchanged baseline and graph execution migration are authorized");
+                assertFalse(rs.next(), "only one consolidated canonical V1 is authorized");
             }
         }
     }

@@ -243,6 +243,6 @@ public class FeatureFlagDefinitionRecord extends UpdatableRecordImpl<FeatureFlag
         setArchived(archived);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

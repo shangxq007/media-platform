@@ -212,6 +212,6 @@ public class ArtifactMediaDetailsRecord extends UpdatableRecordImpl<ArtifactMedi
         setSampleRate(sampleRate);
         setChannelLayout(channelLayout);
         setKeyframeIndexReference(keyframeIndexReference);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

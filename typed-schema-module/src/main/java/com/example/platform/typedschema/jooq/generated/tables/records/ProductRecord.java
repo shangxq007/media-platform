@@ -316,6 +316,6 @@ public class ProductRecord extends UpdatableRecordImpl<ProductRecord> {
         setMetadataJson(metadataJson);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

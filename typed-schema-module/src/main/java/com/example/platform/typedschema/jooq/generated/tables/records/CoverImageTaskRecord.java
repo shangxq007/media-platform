@@ -286,6 +286,6 @@ public class CoverImageTaskRecord extends UpdatableRecordImpl<CoverImageTaskReco
         setFailureCode(failureCode);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

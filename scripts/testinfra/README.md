@@ -44,7 +44,7 @@ network and mounts readonly code, jars and CA plus its writable scratch root. It
 join an existing database or historical container. Resource creation and exact cleanup remain
 controller operations; the CLI neither discovers nor deletes arbitrary containers.
 
-The fixed real selection runs the 28 business targets, 30 migrated test methods and 13
+The fixed real selection runs 83 methods: the 28 business targets, 30 migrated test methods, 6 graph lifecycle cases and 13
 connection-capacity checks, plus six Artifact commit recovery scenarios. Before tests it validates PG18/DB/role/TLS, runs canonical classpath
 Flyway migrations, executes jOOQ GenerationTool against the real schema, and compiles every
 generated Java source in scratch. `CONTROLLED_TEST` records each actual JUnit outcome.
@@ -115,7 +115,7 @@ namespaces and synthetic permission models do not certify D01–D05, Neon/BWS or
 
 `contracts/safety.tsv` retains the original 32 requirements. Independent fixtures record actual
 calls and forbidden side effects. `test-equivalence.json` records PG18 corrections to obsolete
-business assumptions; the 28 method identities remain, with 245 assertions (input 238; original 237).
+business assumptions; the 28 method identities remain, with 239 assertions after Owner-authorized single-V1 consolidation (accepted V1+V2 input245; only six V2 bookkeeping assertions retired).
 The six migrated classes retain 30 methods and now 91 assertions (previously 90): rollback now
 requires genuine FK SQLSTATE 23503 rather than accepting an obsolete-column error. Artifact ownership
 uses the canonical Artifact model; RESTRICT deletion requires PostgreSQL SQLSTATE 23001.
@@ -159,7 +159,7 @@ status or choose the final Artifact.
 
 Canonical completion now carries the committed ArtifactId, with exact duplicate-event identity
 checks and reuse activation bound to that same Artifact. Opaque commit-reference/time columns are
-retired from the write path; canonical V1 is unchanged. Artifact commits persist a full receipt in
+retired from the write path; canonical V1 includes the accepted graph execution constraints. Artifact commits persist a full receipt in
 the existing audit_provenance field and serialize same-tenant/key attempts with a transactional
 advisory lock. Exact immutable intent replays its durable result; identity, scope, digest, storage,
 provider, role or provenance drift conflicts. Retry clock readings are not new commit identities.

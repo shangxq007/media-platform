@@ -226,6 +226,6 @@ public class ExtensionAuditEventRecord extends UpdatableRecordImpl<ExtensionAudi
         setDetails(details);
         setSeverity(severity);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

@@ -316,6 +316,6 @@ public class WfHostResourceSnapshotDeviceRecord extends UpdatableRecordImpl<WfHo
         setObservedVramUsedBytes(observedVramUsedBytes);
         setObservedEncoderUtilizationRatio(observedEncoderUtilizationRatio);
         setObservedDecoderUtilizationRatio(observedDecoderUtilizationRatio);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

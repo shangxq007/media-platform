@@ -151,6 +151,6 @@ public class ApiClientRecord extends UpdatableRecordImpl<ApiClientRecord> {
         setClientKeyHash(clientKeyHash);
         setStatus(status);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

@@ -23,10 +23,10 @@ import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
 import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.Select;
 import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
+import org.jooq.TableLike;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
@@ -236,7 +236,7 @@ public class SubscriptionContract extends TableImpl<SubscriptionContractRecord> 
      */
     @Override
     public SubscriptionContract where(Condition condition) {
-        return new SubscriptionContract(getQualifiedName(), aliased() ? this : null, null, condition);
+        return new SubscriptionContract(getQualifiedName(), aliased() ? this : null, null, Internal.condition(this, condition));
     }
 
     /**
@@ -303,7 +303,7 @@ public class SubscriptionContract extends TableImpl<SubscriptionContractRecord> 
      * Create an inline derived table from this table
      */
     @Override
-    public SubscriptionContract whereExists(Select<?> select) {
+    public SubscriptionContract whereExists(TableLike<?> select) {
         return where(DSL.exists(select));
     }
 
@@ -311,7 +311,7 @@ public class SubscriptionContract extends TableImpl<SubscriptionContractRecord> 
      * Create an inline derived table from this table
      */
     @Override
-    public SubscriptionContract whereNotExists(Select<?> select) {
+    public SubscriptionContract whereNotExists(TableLike<?> select) {
         return where(DSL.notExists(select));
     }
 }

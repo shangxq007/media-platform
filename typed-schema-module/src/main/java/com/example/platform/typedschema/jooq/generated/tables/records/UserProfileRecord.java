@@ -226,6 +226,6 @@ public class UserProfileRecord extends UpdatableRecordImpl<UserProfileRecord> {
         setFirstSeenAt(firstSeenAt);
         setLastActiveAt(lastActiveAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

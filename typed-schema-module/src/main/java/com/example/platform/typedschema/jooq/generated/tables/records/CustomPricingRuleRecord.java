@@ -241,6 +241,6 @@ public class CustomPricingRuleRecord extends UpdatableRecordImpl<CustomPricingRu
         setEffectiveTo(effectiveTo);
         setStatus(status);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

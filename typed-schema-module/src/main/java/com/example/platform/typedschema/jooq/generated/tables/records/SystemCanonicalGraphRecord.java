@@ -151,6 +151,6 @@ public class SystemCanonicalGraphRecord extends UpdatableRecordImpl<SystemCanoni
         setStatus(status);
         setCreatedAt(createdAt);
         setCompletedAt(completedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

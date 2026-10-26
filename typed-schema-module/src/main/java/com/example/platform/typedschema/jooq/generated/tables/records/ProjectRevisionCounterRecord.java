@@ -76,6 +76,6 @@ public class ProjectRevisionCounterRecord extends UpdatableRecordImpl<ProjectRev
 
         setProjectId(projectId);
         setNextRevisionNumber(nextRevisionNumber);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

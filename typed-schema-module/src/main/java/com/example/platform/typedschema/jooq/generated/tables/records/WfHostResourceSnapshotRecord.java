@@ -310,6 +310,6 @@ public class WfHostResourceSnapshotRecord extends UpdatableRecordImpl<WfHostReso
         setObservedCpuUtilizationRatio(observedCpuUtilizationRatio);
         setObservedMemoryUsedBytes(observedMemoryUsedBytes);
         setObservedTemporaryStorageUsedBytes(observedTemporaryStorageUsedBytes);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

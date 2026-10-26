@@ -211,6 +211,6 @@ public class PaymentOutboxRecord extends UpdatableRecordImpl<PaymentOutboxRecord
         setTraceId(traceId);
         setCreatedAt(createdAt);
         setDispatchedAt(dispatchedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

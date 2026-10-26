@@ -296,6 +296,6 @@ public class ProjectImportMetadataRecord extends UpdatableRecordImpl<ProjectImpo
         setAppliedEffectsJson(appliedEffectsJson);
         setAssetMappingJson(assetMappingJson);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

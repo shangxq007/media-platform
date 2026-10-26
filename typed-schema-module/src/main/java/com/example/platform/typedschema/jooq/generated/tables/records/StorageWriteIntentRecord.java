@@ -279,6 +279,6 @@ public class StorageWriteIntentRecord extends UpdatableRecordImpl<StorageWriteIn
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
         setCompletedAt(completedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

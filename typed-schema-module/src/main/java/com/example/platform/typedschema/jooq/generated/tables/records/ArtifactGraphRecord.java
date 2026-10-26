@@ -121,6 +121,6 @@ public class ArtifactGraphRecord extends UpdatableRecordImpl<ArtifactGraphRecord
         setRootArtifactId(rootArtifactId);
         setVersion(version);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

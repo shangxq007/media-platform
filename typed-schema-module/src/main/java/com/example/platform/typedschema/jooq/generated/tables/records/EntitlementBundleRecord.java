@@ -394,6 +394,6 @@ public class EntitlementBundleRecord extends UpdatableRecordImpl<EntitlementBund
         setMcpAccessAllowed(mcpAccessAllowed);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

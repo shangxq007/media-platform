@@ -309,6 +309,6 @@ public class ProductCatalogCommandRecord extends UpdatableRecordImpl<ProductCata
         setReason(reason);
         setTraceId(traceId);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

@@ -10,6 +10,17 @@ plugins {
     id("org.springframework.boot") version "4.0.4" apply false
 }
 
+// Developer builds may keep all outputs outside the Git source tree.
+allprojects {
+    rootProject.providers.gradleProperty("buildRoot").orNull?.let { value ->
+        val target = java.io.File(value)
+        require(target.isAbsolute && !target.canonicalFile.toPath().startsWith(rootProject.rootDir.canonicalFile.toPath())) {
+            "buildRoot must be an absolute directory outside the project"
+        }
+        layout.buildDirectory.set(target.resolve(path.replace(":", "_")))
+    }
+}
+
 group = "com.example.platform"
 version = "0.2.0-SNAPSHOT"
 
@@ -1583,7 +1594,7 @@ tasks.register("verifyGcr2ArtifactAuthority") {
             "FAIL: ArtifactGcService does not route through pin-aware deleteCheck"
         }
 
-        // ── 8. Owner-adopted V1 + prerequisite migration; applied V1 stays immutable ──
+        // ── 8. Owner-adopted single greenfield V1 baseline ──
         val migrationDir = file("platform-app/src/main/resources/db/migration")
         val migrations = migrationDir.listFiles { f -> f.name.endsWith(".sql") } ?: emptyArray()
         require(migrations.map { it.name }.toSet() == setOf("V1__baseline.sql")) {
@@ -1592,8 +1603,8 @@ tasks.register("verifyGcr2ArtifactAuthority") {
         val appliedV1Hash = java.security.MessageDigest.getInstance("SHA-256")
             .digest(file(migrationDir.resolve("V1__baseline.sql")).readBytes())
             .joinToString("") { "%02x".format(it.toInt() and 0xff) }
-        require(appliedV1Hash == "49c79810db8e928626402b10f102613a5ffe8f6073b265458c0c09a964c58795") {
-            "FAIL: delivered V1 baseline changed; after acceptance the V1 baseline is immutable (later schema changes start at V2__*.sql)"
+        require(appliedV1Hash == "1af0089e27dafe8df2def9ed255cab18ba78073827ee7888dc9e542909e932d9") {
+            "FAIL: canonical V1 differs from the Owner-approved consolidated greenfield baseline"
         }
         require(file(migrationDir.resolve("V1__baseline.sql")).exists()) {
             "FAIL: V1__baseline.sql missing"

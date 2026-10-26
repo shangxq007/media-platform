@@ -121,6 +121,6 @@ public class GroupRoleAssignmentRecord extends UpdatableRecordImpl<GroupRoleAssi
         setGroupId(groupId);
         setRoleId(roleId);
         setAssignedAt(assignedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

@@ -29,10 +29,10 @@ import org.jooq.QueryPart;
 import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.Select;
 import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
+import org.jooq.TableLike;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
@@ -323,7 +323,7 @@ public class ObservedRuntimeUsage extends TableImpl<ObservedRuntimeUsageRecord> 
      */
     @Override
     public ObservedRuntimeUsage where(Condition condition) {
-        return new ObservedRuntimeUsage(getQualifiedName(), aliased() ? this : null, null, condition);
+        return new ObservedRuntimeUsage(getQualifiedName(), aliased() ? this : null, null, Internal.condition(this, condition));
     }
 
     /**
@@ -390,7 +390,7 @@ public class ObservedRuntimeUsage extends TableImpl<ObservedRuntimeUsageRecord> 
      * Create an inline derived table from this table
      */
     @Override
-    public ObservedRuntimeUsage whereExists(Select<?> select) {
+    public ObservedRuntimeUsage whereExists(TableLike<?> select) {
         return where(DSL.exists(select));
     }
 
@@ -398,7 +398,7 @@ public class ObservedRuntimeUsage extends TableImpl<ObservedRuntimeUsageRecord> 
      * Create an inline derived table from this table
      */
     @Override
-    public ObservedRuntimeUsage whereNotExists(Select<?> select) {
+    public ObservedRuntimeUsage whereNotExists(TableLike<?> select) {
         return where(DSL.notExists(select));
     }
 }

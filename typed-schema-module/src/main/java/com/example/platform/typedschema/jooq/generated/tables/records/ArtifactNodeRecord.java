@@ -271,6 +271,6 @@ public class ArtifactNodeRecord extends UpdatableRecordImpl<ArtifactNodeRecord> 
         setHash(hash);
         setMetadata(metadata);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

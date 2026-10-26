@@ -138,6 +138,6 @@ public class MarketplaceReviewDecisionRecord extends UpdatableRecordImpl<Marketp
         setDecision(decision);
         setAggregateVersion(aggregateVersion);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

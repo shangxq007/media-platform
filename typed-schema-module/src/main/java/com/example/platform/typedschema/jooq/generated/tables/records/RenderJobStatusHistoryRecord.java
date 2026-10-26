@@ -151,6 +151,6 @@ public class RenderJobStatusHistoryRecord extends UpdatableRecordImpl<RenderJobS
         setReason(reason);
         setErrorCode(errorCode);
         setOccurredAt(occurredAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

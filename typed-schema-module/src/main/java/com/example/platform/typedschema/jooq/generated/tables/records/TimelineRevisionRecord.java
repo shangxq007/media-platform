@@ -348,6 +348,6 @@ public class TimelineRevisionRecord extends UpdatableRecordImpl<TimelineRevision
         setIsMerge(isMerge);
         setMergeParentRevisionIds(mergeParentRevisionIds);
         setMergeBaseRevisionId(mergeBaseRevisionId);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

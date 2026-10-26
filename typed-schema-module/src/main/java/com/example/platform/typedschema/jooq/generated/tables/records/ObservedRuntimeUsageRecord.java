@@ -378,6 +378,6 @@ public class ObservedRuntimeUsageRecord extends UpdatableRecordImpl<ObservedRunt
         setSourceReference(sourceReference);
         setTraceId(traceId);
         setIdempotencyKey(idempotencyKey);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

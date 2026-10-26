@@ -271,6 +271,6 @@ public class NotificationUserInboxRecord extends UpdatableRecordImpl<Notificatio
         setResourceId(resourceId);
         setCreatedAt(createdAt);
         setReadAt(readAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

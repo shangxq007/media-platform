@@ -213,6 +213,6 @@ public class QuarantinedRenderJobsRecord extends UpdatableRecordImpl<Quarantined
         setResolvedAt(resolvedAt);
         setResolvedBy(resolvedBy);
         setResolutionNotes(resolutionNotes);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

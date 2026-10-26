@@ -316,6 +316,6 @@ public class PlatformJobRecord extends UpdatableRecordImpl<PlatformJobRecord> {
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
         setCompletedAt(completedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

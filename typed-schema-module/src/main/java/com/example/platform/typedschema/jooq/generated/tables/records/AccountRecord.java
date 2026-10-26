@@ -136,6 +136,6 @@ public class AccountRecord extends UpdatableRecordImpl<AccountRecord> {
         setPlatformAdmin(platformAdmin);
         setStatus(status);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

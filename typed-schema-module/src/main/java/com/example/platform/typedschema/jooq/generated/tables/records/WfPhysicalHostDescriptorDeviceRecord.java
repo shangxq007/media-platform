@@ -129,6 +129,6 @@ public class WfPhysicalHostDescriptorDeviceRecord extends UpdatableRecordImpl<Wf
         setDeviceKind(deviceKind);
         setDeviceVendor(deviceVendor);
         setDeviceModel(deviceModel);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

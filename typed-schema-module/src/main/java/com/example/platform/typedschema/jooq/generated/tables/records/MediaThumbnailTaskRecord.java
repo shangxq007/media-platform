@@ -286,6 +286,6 @@ public class MediaThumbnailTaskRecord extends UpdatableRecordImpl<MediaThumbnail
         setFailureCode(failureCode);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

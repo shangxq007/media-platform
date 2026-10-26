@@ -181,6 +181,6 @@ public class UnifiedRequestGraphRecord extends UpdatableRecordImpl<UnifiedReques
         setStatus(status);
         setCreatedAt(createdAt);
         setCompletedAt(completedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

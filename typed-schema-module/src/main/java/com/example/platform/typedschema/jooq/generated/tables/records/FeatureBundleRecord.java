@@ -106,6 +106,6 @@ public class FeatureBundleRecord extends UpdatableRecordImpl<FeatureBundleRecord
         setBundleCode(bundleCode);
         setDescription(description);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

@@ -91,6 +91,6 @@ public class TenantEntitlementTierRecord extends UpdatableRecordImpl<TenantEntit
         setTenantId(tenantId);
         setTier(tier);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

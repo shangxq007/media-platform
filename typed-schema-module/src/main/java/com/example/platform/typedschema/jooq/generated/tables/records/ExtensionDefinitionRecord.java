@@ -361,6 +361,6 @@ public class ExtensionDefinitionRecord extends UpdatableRecordImpl<ExtensionDefi
         setMaxOutputBytes(maxOutputBytes);
         setRequiresReview(requiresReview);
         setReviewStatus(reviewStatus);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

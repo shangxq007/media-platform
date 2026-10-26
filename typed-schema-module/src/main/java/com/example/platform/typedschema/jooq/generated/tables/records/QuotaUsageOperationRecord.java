@@ -362,6 +362,6 @@ public class QuotaUsageOperationRecord extends UpdatableRecordImpl<QuotaUsageOpe
         setReason(reason);
         setOccurredAt(occurredAt);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

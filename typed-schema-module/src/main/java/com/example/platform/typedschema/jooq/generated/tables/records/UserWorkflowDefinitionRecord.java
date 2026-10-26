@@ -121,6 +121,6 @@ public class UserWorkflowDefinitionRecord extends UpdatableRecordImpl<UserWorkfl
         setProjectId(projectId);
         setCreatedAt(createdAt);
         setCreatedBy(createdBy);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

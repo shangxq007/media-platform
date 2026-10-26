@@ -279,6 +279,6 @@ public class CreditWalletCommandRecord extends UpdatableRecordImpl<CreditWalletC
         setReason(reason);
         setTraceId(traceId);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

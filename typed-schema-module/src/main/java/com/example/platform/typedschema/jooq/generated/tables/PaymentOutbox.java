@@ -24,10 +24,10 @@ import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
 import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.Select;
 import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
+import org.jooq.TableLike;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
@@ -212,7 +212,7 @@ public class PaymentOutbox extends TableImpl<PaymentOutboxRecord> {
      */
     @Override
     public PaymentOutbox where(Condition condition) {
-        return new PaymentOutbox(getQualifiedName(), aliased() ? this : null, null, condition);
+        return new PaymentOutbox(getQualifiedName(), aliased() ? this : null, null, Internal.condition(this, condition));
     }
 
     /**
@@ -279,7 +279,7 @@ public class PaymentOutbox extends TableImpl<PaymentOutboxRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public PaymentOutbox whereExists(Select<?> select) {
+    public PaymentOutbox whereExists(TableLike<?> select) {
         return where(DSL.exists(select));
     }
 
@@ -287,7 +287,7 @@ public class PaymentOutbox extends TableImpl<PaymentOutboxRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public PaymentOutbox whereNotExists(Select<?> select) {
+    public PaymentOutbox whereNotExists(TableLike<?> select) {
         return where(DSL.notExists(select));
     }
 }

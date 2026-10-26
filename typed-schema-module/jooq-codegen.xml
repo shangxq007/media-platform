@@ -28,6 +28,7 @@
         </forcedType>
       </forcedTypes>
     </database>
+    <generate><generatedAnnotationDate>false</generatedAnnotationDate></generate>
     <target>
       <packageName>com.example.platform.typedschema.jooq.generated</packageName>
       <directory>src/main/java</directory>

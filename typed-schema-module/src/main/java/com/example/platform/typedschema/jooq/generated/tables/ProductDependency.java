@@ -27,13 +27,14 @@ import org.jooq.QueryPart;
 import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.Select;
 import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
+import org.jooq.TableLike;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
@@ -251,7 +252,7 @@ public class ProductDependency extends TableImpl<ProductDependencyRecord> {
      */
     @Override
     public ProductDependency where(Condition condition) {
-        return new ProductDependency(getQualifiedName(), aliased() ? this : null, null, condition);
+        return new ProductDependency(getQualifiedName(), aliased() ? this : null, null, Internal.condition(this, condition));
     }
 
     /**
@@ -318,7 +319,7 @@ public class ProductDependency extends TableImpl<ProductDependencyRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public ProductDependency whereExists(Select<?> select) {
+    public ProductDependency whereExists(TableLike<?> select) {
         return where(DSL.exists(select));
     }
 
@@ -326,7 +327,7 @@ public class ProductDependency extends TableImpl<ProductDependencyRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public ProductDependency whereNotExists(Select<?> select) {
+    public ProductDependency whereNotExists(TableLike<?> select) {
         return where(DSL.notExists(select));
     }
 }

@@ -136,6 +136,6 @@ public class PermissionRecord extends UpdatableRecordImpl<PermissionRecord> {
         setDescription(description);
         setResourceType(resourceType);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

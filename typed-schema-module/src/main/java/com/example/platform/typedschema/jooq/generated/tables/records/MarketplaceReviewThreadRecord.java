@@ -104,6 +104,6 @@ public class MarketplaceReviewThreadRecord extends UpdatableRecordImpl<Marketpla
         setReviewId(reviewId);
         setResolved(resolved);
         setResolvedBy(resolvedBy);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

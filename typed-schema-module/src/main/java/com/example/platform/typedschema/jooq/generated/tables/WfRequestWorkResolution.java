@@ -8,6 +8,7 @@ import com.example.platform.typedschema.contract.InstantConverter;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
 import com.example.platform.typedschema.jooq.generated.tables.WfExecutionAssignment.WfExecutionAssignmentPath;
+import com.example.platform.typedschema.jooq.generated.tables.WfExecutionAttempt.WfExecutionAttemptPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.WfRequestWorkResolutionRecord;
 
 import java.time.Instant;
@@ -27,10 +28,10 @@ import org.jooq.QueryPart;
 import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.Select;
 import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
+import org.jooq.TableLike;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
@@ -209,6 +210,14 @@ public class WfRequestWorkResolution extends TableImpl<WfRequestWorkResolutionRe
         return _wfRequestWorkResolutionAssignmentIdTaskIdFkey;
     }
 
+    /**
+     * Get the implicit many-to-many join path to the
+     * <code>public.wf_execution_attempt</code> table
+     */
+    public WfExecutionAttemptPath wfExecutionAttempt() {
+        return wfRequestWorkResolutionAssignmentIdFkey().wfExecutionAttempt();
+    }
+
     @Override
     public List<Check<WfRequestWorkResolutionRecord>> getChecks() {
         return Arrays.asList(
@@ -262,7 +271,7 @@ public class WfRequestWorkResolution extends TableImpl<WfRequestWorkResolutionRe
      */
     @Override
     public WfRequestWorkResolution where(Condition condition) {
-        return new WfRequestWorkResolution(getQualifiedName(), aliased() ? this : null, null, condition);
+        return new WfRequestWorkResolution(getQualifiedName(), aliased() ? this : null, null, Internal.condition(this, condition));
     }
 
     /**
@@ -329,7 +338,7 @@ public class WfRequestWorkResolution extends TableImpl<WfRequestWorkResolutionRe
      * Create an inline derived table from this table
      */
     @Override
-    public WfRequestWorkResolution whereExists(Select<?> select) {
+    public WfRequestWorkResolution whereExists(TableLike<?> select) {
         return where(DSL.exists(select));
     }
 
@@ -337,7 +346,7 @@ public class WfRequestWorkResolution extends TableImpl<WfRequestWorkResolutionRe
      * Create an inline derived table from this table
      */
     @Override
-    public WfRequestWorkResolution whereNotExists(Select<?> select) {
+    public WfRequestWorkResolution whereNotExists(TableLike<?> select) {
         return where(DSL.notExists(select));
     }
 }

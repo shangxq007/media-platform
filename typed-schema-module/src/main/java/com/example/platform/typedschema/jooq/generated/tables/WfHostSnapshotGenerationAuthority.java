@@ -25,10 +25,10 @@ import org.jooq.QueryPart;
 import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.Select;
 import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
+import org.jooq.TableLike;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
@@ -221,7 +221,7 @@ public class WfHostSnapshotGenerationAuthority extends TableImpl<WfHostSnapshotG
      */
     @Override
     public WfHostSnapshotGenerationAuthority where(Condition condition) {
-        return new WfHostSnapshotGenerationAuthority(getQualifiedName(), aliased() ? this : null, null, condition);
+        return new WfHostSnapshotGenerationAuthority(getQualifiedName(), aliased() ? this : null, null, Internal.condition(this, condition));
     }
 
     /**
@@ -288,7 +288,7 @@ public class WfHostSnapshotGenerationAuthority extends TableImpl<WfHostSnapshotG
      * Create an inline derived table from this table
      */
     @Override
-    public WfHostSnapshotGenerationAuthority whereExists(Select<?> select) {
+    public WfHostSnapshotGenerationAuthority whereExists(TableLike<?> select) {
         return where(DSL.exists(select));
     }
 
@@ -296,7 +296,7 @@ public class WfHostSnapshotGenerationAuthority extends TableImpl<WfHostSnapshotG
      * Create an inline derived table from this table
      */
     @Override
-    public WfHostSnapshotGenerationAuthority whereNotExists(Select<?> select) {
+    public WfHostSnapshotGenerationAuthority whereNotExists(TableLike<?> select) {
         return where(DSL.notExists(select));
     }
 }

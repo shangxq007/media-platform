@@ -302,6 +302,6 @@ public class OutboxEventsRecord extends UpdatableRecordImpl<OutboxEventsRecord> 
         setMaxRetries(maxRetries);
         setLastErrorCode(lastErrorCode);
         setLastErrorMessage(lastErrorMessage);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

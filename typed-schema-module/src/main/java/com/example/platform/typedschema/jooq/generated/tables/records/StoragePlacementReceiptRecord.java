@@ -379,6 +379,6 @@ public class StoragePlacementReceiptRecord extends UpdatableRecordImpl<StoragePl
         setCommittedLength(committedLength);
         setProviderCorrelationId(providerCorrelationId);
         setIssuedAt(issuedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

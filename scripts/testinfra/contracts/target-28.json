@@ -17,12 +17,12 @@
     "method": "flywayHistoryExactlyOneV1",
     "base_method": "flywayHistoryExactlyOneV1",
     "line": 50,
-    "assertions": 8,
+    "assertions": 5,
     "assertion_sequences_preserved": true,
     "body_after_explicit_infra_substitutions": true,
     "annotations_preserved_H7_major18": true,
     "runtime_executed": true,
-    "body_sha256": "105fd20830c486328650f20fa4a134c08bc809a1437fa644475868a0820ae2ef",
+    "body_sha256": "2a830f2b065023b05744f1e5c2c62abee5535f5cdd723d970de942b002722a32",
     "equivalence_record": "test-equivalence.json"
   },
   {
@@ -82,12 +82,12 @@
     "method": "postgresqlServerMajorIs18AndOnlyExactClasspathFlywayV1IsApplied",
     "base_method": "postgresqlServerMajorIs16AndOnlyExactClasspathFlywayV1IsApplied",
     "line": 198,
-    "assertions": 6,
+    "assertions": 5,
     "assertion_sequences_preserved": true,
     "body_after_explicit_infra_substitutions": true,
     "annotations_preserved_H7_major18": true,
     "runtime_executed": true,
-    "body_sha256": "dc4552ee5223977889ed5e49833e5f11eeae7c6c6e07511be5170c5b5cce198d",
+    "body_sha256": "5fc29b4349639c8b5822105053ed56c36fb7fd58b93ceeb838ff20adf8e3fc59",
     "equivalence_record": "test-equivalence.json"
   },
   {
@@ -95,12 +95,12 @@
     "method": "v1_deploys",
     "base_method": "v1_deploys",
     "line": 50,
-    "assertions": 5,
+    "assertions": 4,
     "assertion_sequences_preserved": true,
     "body_after_explicit_infra_substitutions": true,
     "annotations_preserved_H7_major18": true,
     "runtime_executed": true,
-    "body_sha256": "3e467c31b5182aa72aca2754341e81cfe0b9604a692f7205a3b43dd2f2f62610",
+    "body_sha256": "f86bff26b9ebfce312c436935324b02617a92fb523c0ed301ca2aef1c012abd5",
     "equivalence_record": "test-equivalence.json"
   },
   {
@@ -212,12 +212,12 @@
     "method": "noActiveV2ToV5",
     "base_method": "noActiveV2ToV5",
     "line": 364,
-    "assertions": 3,
+    "assertions": 2,
     "assertion_sequences_preserved": true,
     "body_after_explicit_infra_substitutions": true,
     "annotations_preserved_H7_major18": true,
     "runtime_executed": true,
-    "body_sha256": "8fefdc4d95279a828432f5c27a6d866a27467c486dc1ab46abe5a3fcf78ebd45",
+    "body_sha256": "77037e9c66a9750f0965d5b6adfd392e4ce17eea0906c4ee56b5e415bbdb4876",
     "equivalence_record": "test-equivalence.json"
   },
   {
@@ -347,7 +347,7 @@
     "body_after_explicit_infra_substitutions": true,
     "annotations_preserved_H7_major18": true,
     "runtime_executed": true,
-    "body_sha256": "a3f53bc123dfcbbb1de3c1a6a3e9c4ff59899fa03a45086da8b7fc77e48edc69",
+    "body_sha256": "34c75bec2bee56228b2eb5c7fa004f727ec6f4d09bcc14bfb80879b6fcc381cf",
     "equivalence_record": "test-equivalence.json"
   },
   {

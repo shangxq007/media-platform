@@ -245,6 +245,6 @@ public class ProviderWebhookReceiptRecord extends UpdatableRecordImpl<ProviderWe
         setTransactionId(transactionId);
         setOccurredAt(occurredAt);
         setReceivedAt(receivedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

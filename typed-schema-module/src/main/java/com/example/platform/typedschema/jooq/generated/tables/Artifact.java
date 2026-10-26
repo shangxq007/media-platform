@@ -17,6 +17,7 @@ import com.example.platform.typedschema.jooq.generated.tables.AssetSemanticMetad
 import com.example.platform.typedschema.jooq.generated.tables.MarketplaceListing.MarketplaceListingPath;
 import com.example.platform.typedschema.jooq.generated.tables.MediaProbeObservation.MediaProbeObservationPath;
 import com.example.platform.typedschema.jooq.generated.tables.MediaStream.MediaStreamPath;
+import com.example.platform.typedschema.jooq.generated.tables.RenderGraphExecution.RenderGraphExecutionPath;
 import com.example.platform.typedschema.jooq.generated.tables.SearchProjection.SearchProjectionPath;
 import com.example.platform.typedschema.jooq.generated.tables.SocialPost.SocialPostPath;
 import com.example.platform.typedschema.jooq.generated.tables.SourceVisualDescriptionSnapshot.SourceVisualDescriptionSnapshotPath;
@@ -44,10 +45,10 @@ import org.jooq.QueryPart;
 import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.Select;
 import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
+import org.jooq.TableLike;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
@@ -261,7 +262,7 @@ public class Artifact extends TableImpl<ArtifactRecord> {
 
     @Override
     public List<UniqueKey<ArtifactRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.UQ_ARTIFACT_SCOPE_IDEMPOTENCY, Keys.UQ_ARTIFACT_TENANT_ID);
+        return Arrays.asList(Keys.UQ_ARTIFACT_RENDER_OUTPUT_SCOPE, Keys.UQ_ARTIFACT_SCOPE_IDEMPOTENCY, Keys.UQ_ARTIFACT_TENANT_ID);
     }
 
     private transient ArtifactDetailsPath _fkArtifactDetailsArtifact;
@@ -450,6 +451,19 @@ public class Artifact extends TableImpl<ArtifactRecord> {
         return _sourceVisualDescriptionSnapshot;
     }
 
+    private transient RenderGraphExecutionPath _renderGraphExecution;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.render_graph_execution</code> table
+     */
+    public RenderGraphExecutionPath renderGraphExecution() {
+        if (_renderGraphExecution == null)
+            _renderGraphExecution = new RenderGraphExecutionPath(this, null, Keys.RENDER_GRAPH_EXECUTION__RENDER_GRAPH_EXECUTION_TENANT_ID_PROJECT_ID_JOB_ID_FINAL_A_FKEY.getInverseKey());
+
+        return _renderGraphExecution;
+    }
+
     private transient WfArtifactReuseIndexPath _wfArtifactReuseIndex;
 
     /**
@@ -527,7 +541,7 @@ public class Artifact extends TableImpl<ArtifactRecord> {
      */
     @Override
     public Artifact where(Condition condition) {
-        return new Artifact(getQualifiedName(), aliased() ? this : null, null, condition);
+        return new Artifact(getQualifiedName(), aliased() ? this : null, null, Internal.condition(this, condition));
     }
 
     /**
@@ -594,7 +608,7 @@ public class Artifact extends TableImpl<ArtifactRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public Artifact whereExists(Select<?> select) {
+    public Artifact whereExists(TableLike<?> select) {
         return where(DSL.exists(select));
     }
 
@@ -602,7 +616,7 @@ public class Artifact extends TableImpl<ArtifactRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public Artifact whereNotExists(Select<?> select) {
+    public Artifact whereNotExists(TableLike<?> select) {
         return where(DSL.notExists(select));
     }
 }

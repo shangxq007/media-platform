@@ -12,6 +12,7 @@ import com.example.platform.typedschema.jooq.generated.tables.ArtifactGraph.Arti
 import com.example.platform.typedschema.jooq.generated.tables.ArtifactNode.ArtifactNodePath;
 import com.example.platform.typedschema.jooq.generated.tables.Project.ProjectPath;
 import com.example.platform.typedschema.jooq.generated.tables.RenderExecutionContext.RenderExecutionContextPath;
+import com.example.platform.typedschema.jooq.generated.tables.RenderGraphExecution.RenderGraphExecutionPath;
 import com.example.platform.typedschema.jooq.generated.tables.SystemCanonicalGraph.SystemCanonicalGraphPath;
 import com.example.platform.typedschema.jooq.generated.tables.UnifiedRequestGraph.UnifiedRequestGraphPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.RenderJobRecord;
@@ -34,13 +35,14 @@ import org.jooq.QueryPart;
 import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.Select;
 import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
+import org.jooq.TableLike;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
@@ -244,6 +246,11 @@ public class RenderJob extends TableImpl<RenderJobRecord> {
     }
 
     @Override
+    public List<UniqueKey<RenderJobRecord>> getUniqueKeys() {
+        return Arrays.asList(Keys.UQ_RENDER_JOB_EXECUTION_SCOPE);
+    }
+
+    @Override
     public List<ForeignKey<RenderJobRecord, ?>> getReferences() {
         return Arrays.asList(Keys.RENDER_JOB__FK_RENDER_JOB_PROJECT);
     }
@@ -325,6 +332,19 @@ public class RenderJob extends TableImpl<RenderJobRecord> {
         return _renderExecutionContext;
     }
 
+    private transient RenderGraphExecutionPath _renderGraphExecution;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.render_graph_execution</code> table
+     */
+    public RenderGraphExecutionPath renderGraphExecution() {
+        if (_renderGraphExecution == null)
+            _renderGraphExecution = new RenderGraphExecutionPath(this, null, Keys.RENDER_GRAPH_EXECUTION__RENDER_GRAPH_EXECUTION_TENANT_ID_PROJECT_ID_JOB_ID_FKEY.getInverseKey());
+
+        return _renderGraphExecution;
+    }
+
     @Override
     public RenderJob as(String alias) {
         return new RenderJob(DSL.name(alias), this);
@@ -369,7 +389,7 @@ public class RenderJob extends TableImpl<RenderJobRecord> {
      */
     @Override
     public RenderJob where(Condition condition) {
-        return new RenderJob(getQualifiedName(), aliased() ? this : null, null, condition);
+        return new RenderJob(getQualifiedName(), aliased() ? this : null, null, Internal.condition(this, condition));
     }
 
     /**
@@ -436,7 +456,7 @@ public class RenderJob extends TableImpl<RenderJobRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public RenderJob whereExists(Select<?> select) {
+    public RenderJob whereExists(TableLike<?> select) {
         return where(DSL.exists(select));
     }
 
@@ -444,7 +464,7 @@ public class RenderJob extends TableImpl<RenderJobRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public RenderJob whereNotExists(Select<?> select) {
+    public RenderJob whereNotExists(TableLike<?> select) {
         return where(DSL.notExists(select));
     }
 }

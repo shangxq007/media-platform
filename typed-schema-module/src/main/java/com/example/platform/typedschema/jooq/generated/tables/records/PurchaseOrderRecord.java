@@ -271,6 +271,6 @@ public class PurchaseOrderRecord extends UpdatableRecordImpl<PurchaseOrderRecord
         setCurrencyCode(currencyCode);
         setCreatedAt(createdAt);
         setTenantId(tenantId);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

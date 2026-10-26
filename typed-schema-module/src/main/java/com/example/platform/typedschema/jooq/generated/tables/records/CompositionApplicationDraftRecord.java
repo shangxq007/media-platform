@@ -171,6 +171,6 @@ public class CompositionApplicationDraftRecord extends UpdatableRecordImpl<Compo
         setLifecycle(lifecycle);
         setDefinition(definition);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

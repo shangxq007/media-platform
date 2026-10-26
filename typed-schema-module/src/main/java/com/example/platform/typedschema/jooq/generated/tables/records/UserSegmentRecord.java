@@ -166,6 +166,6 @@ public class UserSegmentRecord extends UpdatableRecordImpl<UserSegmentRecord> {
         setUserIdsJson(userIdsJson);
         setUserCount(userCount);
         setComputedAt(computedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

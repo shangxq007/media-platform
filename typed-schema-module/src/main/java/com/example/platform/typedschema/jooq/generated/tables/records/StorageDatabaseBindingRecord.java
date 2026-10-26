@@ -266,6 +266,6 @@ public class StorageDatabaseBindingRecord extends UpdatableRecordImpl<StorageDat
         setIsCanonical(isCanonical);
         setFirstSeenAt(firstSeenAt);
         setLastObservedAt(lastObservedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

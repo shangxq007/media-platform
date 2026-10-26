@@ -213,6 +213,6 @@ public class PromptTemplateVersionRecord extends UpdatableRecordImpl<PromptTempl
         setChecksum(checksum);
         setPreviousVersion(previousVersion);
         setDeprecated(deprecated);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

@@ -106,6 +106,6 @@ public class QuotaDefinitionsRecord extends UpdatableRecordImpl<QuotaDefinitions
         setQuotaCode(quotaCode);
         setUnit(unit);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

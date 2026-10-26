@@ -211,6 +211,6 @@ public class StorageReferenceRecord extends UpdatableRecordImpl<StorageReference
         setMimeType(mimeType);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

@@ -211,6 +211,6 @@ public class PromptTemplateRecord extends UpdatableRecordImpl<PromptTemplateReco
         setCurrentPromptVersion(currentPromptVersion);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

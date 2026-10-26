@@ -136,6 +136,6 @@ public class MarketplaceCommandRecord extends UpdatableRecordImpl<MarketplaceCom
         setActorJson(actorJson);
         setResultJson(resultJson);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

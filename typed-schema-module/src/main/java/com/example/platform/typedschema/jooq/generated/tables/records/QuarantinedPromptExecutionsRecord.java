@@ -225,6 +225,6 @@ public class QuarantinedPromptExecutionsRecord extends UpdatableRecordImpl<Quara
         setResolvedAt(resolvedAt);
         setResolvedBy(resolvedBy);
         setResolutionNotes(resolutionNotes);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

@@ -121,6 +121,6 @@ public class CommerceCartRecord extends UpdatableRecordImpl<CommerceCartRecord> 
         setUserId(userId);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

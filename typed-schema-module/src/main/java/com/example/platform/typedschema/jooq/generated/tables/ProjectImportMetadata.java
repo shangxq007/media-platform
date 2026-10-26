@@ -27,13 +27,14 @@ import org.jooq.QueryPart;
 import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.Select;
 import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
+import org.jooq.TableLike;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
@@ -289,7 +290,7 @@ public class ProjectImportMetadata extends TableImpl<ProjectImportMetadataRecord
      */
     @Override
     public ProjectImportMetadata where(Condition condition) {
-        return new ProjectImportMetadata(getQualifiedName(), aliased() ? this : null, null, condition);
+        return new ProjectImportMetadata(getQualifiedName(), aliased() ? this : null, null, Internal.condition(this, condition));
     }
 
     /**
@@ -356,7 +357,7 @@ public class ProjectImportMetadata extends TableImpl<ProjectImportMetadataRecord
      * Create an inline derived table from this table
      */
     @Override
-    public ProjectImportMetadata whereExists(Select<?> select) {
+    public ProjectImportMetadata whereExists(TableLike<?> select) {
         return where(DSL.exists(select));
     }
 
@@ -364,7 +365,7 @@ public class ProjectImportMetadata extends TableImpl<ProjectImportMetadataRecord
      * Create an inline derived table from this table
      */
     @Override
-    public ProjectImportMetadata whereNotExists(Select<?> select) {
+    public ProjectImportMetadata whereNotExists(TableLike<?> select) {
         return where(DSL.notExists(select));
     }
 }

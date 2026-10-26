@@ -239,6 +239,6 @@ public class EffectPackEffectRecord extends UpdatableRecordImpl<EffectPackEffect
         setSortOrder(sortOrder);
         setTaxonomyCategory(taxonomyCategory);
         setIsEffect(isEffect);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

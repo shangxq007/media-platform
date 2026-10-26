@@ -228,6 +228,6 @@ public class CommerceCartLineRecord extends UpdatableRecordImpl<CommerceCartLine
         setCurrencyCodeSnapshot(currencyCodeSnapshot);
         setQuantity(quantity);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

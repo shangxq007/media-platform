@@ -1,7 +1,7 @@
 {
   "original_target_methods": 28,
   "original_assertions": 237,
-  "current_assertions": 245,
+  "current_assertions": 239,
   "migrated_methods": 30,
   "original_migrated_assertions": 90,
   "current_migrated_assertions": 91,
@@ -10,25 +10,29 @@
       "path": "platform-app/src/test/java/com/example/platform/migration/UserWorkflowDefinitionV1SchemaMigrationTest.java",
       "old_sha256": "bde7743e30db84edc851a1a6d1ca2eca5df4213074b6cf12793d21be80af9e7d",
       "new_sha256": "c5d17e9eea4a8ba1d9328622736b09350d51e00d3a80444159abaeac7d674ea1",
-      "reason": "Real PG18: classpath migration resolution; canonical Artifact FK ownership; schema-bound Hikari pool; SQLSTATE 23001 for RESTRICT; schema-creation history is not a versioned SQL migration. Business methods retained and assertions strengthened."
+      "reason": "Owner consolidates accepted V1+V2 into single V1; exact one-row migration inventory, full business schema semantics preserved.",
+      "after": "572c47a39708e68fba02be9e65ab361c08361dd8fae5b160f9d364cd4047e5b3"
     },
     {
       "path": "platform-app/src/test/java/com/example/platform/SchemaEquivalenceVerificationTest.java",
       "old_sha256": "6fe379ea03dac7f3eccfbe1c8eaba6942f3faa7b6bc261f6b7a083d385ea2371",
       "new_sha256": "fa41c6b1859e05da7d1c3c3c234182213e3733e2a485399df155f51d65926d46",
-      "reason": "Real PG18: classpath migration resolution; canonical Artifact FK ownership; schema-bound Hikari pool; SQLSTATE 23001 for RESTRICT; schema-creation history is not a versioned SQL migration. Business methods retained and assertions strengthened."
+      "reason": "Owner consolidates accepted V1+V2 into single V1; exact one-row migration inventory, full business schema semantics preserved.",
+      "after": "fe8f66a001ed1e6af84353998963068608b294982ad3ef3ebc4eeeb05844fd1f"
     },
     {
       "path": "platform-app/src/test/java/com/example/platform/Gcr5Gcr6DatabaseStructuralIntegrityTest.java",
       "old_sha256": "08c036c1d555e17a164dcfc64522623e23f8378666d8cbb23f7fb6865ce8b9df",
       "new_sha256": "f302c5468165e9e2c1c55a48b580067183e3cc08f685f6ecceb1d3c401067ebf",
-      "reason": "Real PG18: classpath migration resolution; canonical Artifact FK ownership; schema-bound Hikari pool; SQLSTATE 23001 for RESTRICT; schema-creation history is not a versioned SQL migration. Business methods retained and assertions strengthened."
+      "reason": "Owner consolidates accepted V1+V2 into single V1; exact one-row migration inventory, full business schema semantics preserved.",
+      "after": "f302c5468165e9e2c1c55a48b580067183e3cc08f685f6ecceb1d3c401067ebf"
     },
     {
       "path": "platform-app/src/test/java/com/example/platform/FlywaySchemaIntegrationTest.java",
       "old_sha256": "75157957c8b65fc3e0deb6544c852c9f27106cf21956e406c047cb8196e8951a",
       "new_sha256": "a242cc3a484232a3e908cfeb8b3b3fe8e9a58884c09d7ecf1ee5b909ec023586",
-      "reason": "Real PG18: classpath migration resolution; canonical Artifact FK ownership; schema-bound Hikari pool; SQLSTATE 23001 for RESTRICT; schema-creation history is not a versioned SQL migration. Business methods retained and assertions strengthened."
+      "reason": "Owner consolidates accepted V1+V2 into single V1; exact one-row migration inventory, full business schema semantics preserved.",
+      "after": "a242cc3a484232a3e908cfeb8b3b3fe8e9a58884c09d7ecf1ee5b909ec023586"
     },
     {
       "path": "media-module/src/test/java/com/example/platform/media/infrastructure/persistence/SourceVisualDescriptionSnapshotIT.java",
@@ -59,29 +63,36 @@
     {
       "path": "platform-app/src/test/java/com/example/platform/migration/UserWorkflowDefinitionV1SchemaMigrationTest.java",
       "before": "c5d17e9eea4a8ba1d9328622736b09350d51e00d3a80444159abaeac7d674ea1",
-      "after": "dc67b3af8cbaf8412002d62dacc2abfff0428a0ea42a16c2d51c2e55b60caa84",
-      "reason": "Owner authorized additive graph execution V2; unchanged V1 baseline remains exactly checked, complete applied migration list now V1+V2. Existing business methods retained and assertions strengthened."
+      "after": "572c47a39708e68fba02be9e65ab361c08361dd8fae5b160f9d364cd4047e5b3",
+      "reason": "Owner consolidates accepted V1+V2 into single V1; exact one-row migration inventory, full business schema semantics preserved."
     },
     {
       "path": "platform-app/src/test/java/com/example/platform/H7V2CanonicalOwnershipInvariantTest.java",
       "before": "25dcabda64877f48a088abfccd5b47d78edf0f8933764003c554dd2892a6d799",
-      "after": "e563b05d3332e842eaa58611a9772d677a071afc95b407f7569dddba635ffdb5",
-      "reason": "Owner authorized additive graph execution V2; unchanged V1 baseline remains exactly checked, complete applied migration list now V1+V2. Existing business methods retained and assertions strengthened."
+      "after": "c3782d37326b57b785979702c2f187e48fb8f1e2bdb81204d637e17e7aa5e29b",
+      "reason": "Owner consolidates accepted V1+V2 into single V1; exact one-row migration inventory, full business schema semantics preserved."
     },
     {
       "path": "platform-app/src/test/java/com/example/platform/SchemaEquivalenceVerificationTest.java",
       "before": "fa41c6b1859e05da7d1c3c3c234182213e3733e2a485399df155f51d65926d46",
-      "after": "8a8a785cdee11a6de6a94ab051f9f07bcf3788e4573e72477348666fddec3682",
-      "reason": "Owner authorized additive graph execution V2; unchanged V1 baseline remains exactly checked, complete applied migration list now V1+V2. Existing business methods retained and assertions strengthened."
+      "after": "fe8f66a001ed1e6af84353998963068608b294982ad3ef3ebc4eeeb05844fd1f",
+      "reason": "Owner consolidates accepted V1+V2 into single V1; exact one-row migration inventory, full business schema semantics preserved."
     },
     {
       "path": "platform-app/src/test/java/com/example/platform/testinfra/TestDatabaseIsolationGuardTest.java",
       "before": "6f8658dd91ec7613a6a05876a7e3a7fdaac4dd39b8e8b14dfa6ef34d9e37479b",
-      "after": "55837ca12b7163478b8097f51265119e5b231cc9fa4ee199dea0abe73e5312f2",
-      "reason": "Owner authorized additive graph execution V2; unchanged V1 baseline remains exactly checked, complete applied migration list now V1+V2. Existing business methods retained and assertions strengthened."
+      "after": "a0c1d2919aaeac4130b154fae466f1c10f8d83391e2add39502320b34b2114a1",
+      "reason": "Owner consolidates accepted V1+V2 into single V1; exact one-row migration inventory, full business schema semantics preserved."
     }
   ],
   "real_evidence": "PG18 18.6, target JDBC42.7.14/Flyway11.20.3/jOOQ3.21.9; controlled pg18-local suite. Historical snapshots remain authoritative for previous bytes.",
   "closure_input_assertions": 238,
-  "closure_semantics": "Owner FIRST-RENDER-PRODUCT-CLOSURE-R1 authorizes additive V2; no protected V1 changes, no removal of original28 or migrated30 business methods. Updated fenced task publication expected identity includes tenant/project/job/attempt/generation. Actual PG outcomes are recorded outside source."
+  "closure_semantics": "Current Owner authorizes a single greenfield V1 equivalent to accepted V1+V2; historical V1 remains frozen outside this Git workspace.",
+  "canonical_baseline_integration": {
+    "task": "MEDIA-PLATFORM-CANONICAL-BASELINE-INTEGRATION-R1",
+    "previous_target_assertions": 245,
+    "current_target_assertions": 239,
+    "reason": "Owner consolidates accepted V2 into the single greenfield V1. Remove only V2 history-row assertions; retain exact one-V1 inventory and all table/column/ownership/business assertions. Actual original-V1+V2 versus new-V1 catalog and codegen comparison is additional external evidence.",
+    "methods_preserved": 28
+  }
 }

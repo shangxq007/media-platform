@@ -22,13 +22,14 @@ import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
 import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.Select;
 import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
+import org.jooq.TableLike;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
@@ -199,7 +200,7 @@ public class SocialPostAnalytics extends TableImpl<SocialPostAnalyticsRecord> {
      */
     @Override
     public SocialPostAnalytics where(Condition condition) {
-        return new SocialPostAnalytics(getQualifiedName(), aliased() ? this : null, null, condition);
+        return new SocialPostAnalytics(getQualifiedName(), aliased() ? this : null, null, Internal.condition(this, condition));
     }
 
     /**
@@ -266,7 +267,7 @@ public class SocialPostAnalytics extends TableImpl<SocialPostAnalyticsRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public SocialPostAnalytics whereExists(Select<?> select) {
+    public SocialPostAnalytics whereExists(TableLike<?> select) {
         return where(DSL.exists(select));
     }
 
@@ -274,7 +275,7 @@ public class SocialPostAnalytics extends TableImpl<SocialPostAnalyticsRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public SocialPostAnalytics whereNotExists(Select<?> select) {
+    public SocialPostAnalytics whereNotExists(TableLike<?> select) {
         return where(DSL.notExists(select));
     }
 }

@@ -25,10 +25,10 @@ import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
 import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.Select;
 import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
+import org.jooq.TableLike;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
@@ -267,7 +267,7 @@ public class QuotaUsageOperation extends TableImpl<QuotaUsageOperationRecord> {
      */
     @Override
     public QuotaUsageOperation where(Condition condition) {
-        return new QuotaUsageOperation(getQualifiedName(), aliased() ? this : null, null, condition);
+        return new QuotaUsageOperation(getQualifiedName(), aliased() ? this : null, null, Internal.condition(this, condition));
     }
 
     /**
@@ -334,7 +334,7 @@ public class QuotaUsageOperation extends TableImpl<QuotaUsageOperationRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public QuotaUsageOperation whereExists(Select<?> select) {
+    public QuotaUsageOperation whereExists(TableLike<?> select) {
         return where(DSL.exists(select));
     }
 
@@ -342,7 +342,7 @@ public class QuotaUsageOperation extends TableImpl<QuotaUsageOperationRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public QuotaUsageOperation whereNotExists(Select<?> select) {
+    public QuotaUsageOperation whereNotExists(TableLike<?> select) {
         return where(DSL.notExists(select));
     }
 }

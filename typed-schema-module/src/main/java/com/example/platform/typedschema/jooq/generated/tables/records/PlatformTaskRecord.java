@@ -286,6 +286,6 @@ public class PlatformTaskRecord extends UpdatableRecordImpl<PlatformTaskRecord> 
         setCompletedAt(completedAt);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

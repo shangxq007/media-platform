@@ -401,6 +401,6 @@ public class FrontendRouteDefinitionRecord extends UpdatableRecordImpl<FrontendR
         setUpgradeOptions(upgradeOptions);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

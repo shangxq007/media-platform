@@ -136,6 +136,6 @@ public class WfExecutionObservationRecord extends UpdatableRecordImpl<WfExecutio
         setObservedState(observedState);
         setCurrentEvidence(currentEvidence);
         setObservedAt(observedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

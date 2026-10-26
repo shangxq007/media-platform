@@ -256,6 +256,6 @@ public class ExtensionRoutingRuleRecord extends UpdatableRecordImpl<ExtensionRou
         setCreatedAt(createdAt);
         setCreatedBy(createdBy);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

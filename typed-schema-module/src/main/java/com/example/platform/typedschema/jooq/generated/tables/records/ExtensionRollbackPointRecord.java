@@ -181,6 +181,6 @@ public class ExtensionRollbackPointRecord extends UpdatableRecordImpl<ExtensionR
         setCreatedAt(createdAt);
         setCreatedBy(createdBy);
         setIsActive(isActive);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

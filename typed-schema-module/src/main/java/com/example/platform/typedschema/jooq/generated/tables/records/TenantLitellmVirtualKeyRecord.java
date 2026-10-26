@@ -151,6 +151,6 @@ public class TenantLitellmVirtualKeyRecord extends UpdatableRecordImpl<TenantLit
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
         setVaultRef(vaultRef);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

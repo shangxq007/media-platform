@@ -468,6 +468,6 @@ public class SocialPostRecord extends UpdatableRecordImpl<SocialPostRecord> {
         setAttemptBindingVersion(attemptBindingVersion);
         setAttemptCredentialRevision(attemptCredentialRevision);
         setAttemptCredentialExpiresAt(attemptCredentialExpiresAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

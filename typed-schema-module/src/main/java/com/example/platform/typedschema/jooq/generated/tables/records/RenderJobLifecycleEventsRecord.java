@@ -365,6 +365,6 @@ public class RenderJobLifecycleEventsRecord extends UpdatableRecordImpl<RenderJo
         setCreatedAt(createdAt);
         setPayloadJson(payloadJson);
         setSource(source);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

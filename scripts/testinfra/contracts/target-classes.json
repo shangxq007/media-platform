@@ -5,7 +5,7 @@
     "candidate_total": 6,
     "selected": 6,
     "file_identical": false,
-    "sha256": "dc67b3af8cbaf8412002d62dacc2abfff0428a0ea42a16c2d51c2e55b60caa84"
+    "sha256": "572c47a39708e68fba02be9e65ab361c08361dd8fae5b160f9d364cd4047e5b3"
   },
   {
     "path": "platform-app/src/test/java/com/example/platform/H7V2CanonicalOwnershipInvariantTest.java",
@@ -13,7 +13,7 @@
     "candidate_total": 27,
     "selected": 1,
     "file_identical": false,
-    "sha256": "e563b05d3332e842eaa58611a9772d677a071afc95b407f7569dddba635ffdb5"
+    "sha256": "c3782d37326b57b785979702c2f187e48fb8f1e2bdb81204d637e17e7aa5e29b"
   },
   {
     "path": "platform-app/src/test/java/com/example/platform/SchemaEquivalenceVerificationTest.java",
@@ -21,7 +21,7 @@
     "candidate_total": 10,
     "selected": 10,
     "file_identical": true,
-    "sha256": "8a8a785cdee11a6de6a94ab051f9f07bcf3788e4573e72477348666fddec3682"
+    "sha256": "fe8f66a001ed1e6af84353998963068608b294982ad3ef3ebc4eeeb05844fd1f"
   },
   {
     "path": "platform-app/src/test/java/com/example/platform/Gcr5Gcr6DatabaseStructuralIntegrityTest.java",
@@ -45,6 +45,6 @@
     "candidate_total": 2,
     "selected": 2,
     "file_identical": true,
-    "sha256": "55837ca12b7163478b8097f51265119e5b231cc9fa4ee199dea0abe73e5312f2"
+    "sha256": "a0c1d2919aaeac4130b154fae466f1c10f8d83391e2add39502320b34b2114a1"
   }
 ]

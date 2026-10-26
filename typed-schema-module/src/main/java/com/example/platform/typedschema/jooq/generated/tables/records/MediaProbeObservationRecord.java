@@ -230,6 +230,6 @@ public class MediaProbeObservationRecord extends UpdatableRecordImpl<MediaProbeO
         setWarnings(warnings);
         setErrorMessage(errorMessage);
         setProbedAt(probedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

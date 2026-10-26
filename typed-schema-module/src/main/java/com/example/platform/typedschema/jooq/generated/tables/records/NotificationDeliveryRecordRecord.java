@@ -245,6 +245,6 @@ public class NotificationDeliveryRecordRecord extends UpdatableRecordImpl<Notifi
         setSentAt(sentAt);
         setFailedAt(failedAt);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

@@ -256,6 +256,6 @@ public class CreditTransactionRecord extends UpdatableRecordImpl<CreditTransacti
         setIdempotencyKey(idempotencyKey);
         setPayloadFingerprint(payloadFingerprint);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

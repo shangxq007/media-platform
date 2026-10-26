@@ -22,13 +22,14 @@ import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
 import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.Select;
 import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
+import org.jooq.TableLike;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
@@ -209,7 +210,7 @@ public class FeatureFlagTargetingRule extends TableImpl<FeatureFlagTargetingRule
      */
     @Override
     public FeatureFlagTargetingRule where(Condition condition) {
-        return new FeatureFlagTargetingRule(getQualifiedName(), aliased() ? this : null, null, condition);
+        return new FeatureFlagTargetingRule(getQualifiedName(), aliased() ? this : null, null, Internal.condition(this, condition));
     }
 
     /**
@@ -276,7 +277,7 @@ public class FeatureFlagTargetingRule extends TableImpl<FeatureFlagTargetingRule
      * Create an inline derived table from this table
      */
     @Override
-    public FeatureFlagTargetingRule whereExists(Select<?> select) {
+    public FeatureFlagTargetingRule whereExists(TableLike<?> select) {
         return where(DSL.exists(select));
     }
 
@@ -284,7 +285,7 @@ public class FeatureFlagTargetingRule extends TableImpl<FeatureFlagTargetingRule
      * Create an inline derived table from this table
      */
     @Override
-    public FeatureFlagTargetingRule whereNotExists(Select<?> select) {
+    public FeatureFlagTargetingRule whereNotExists(TableLike<?> select) {
         return where(DSL.notExists(select));
     }
 }

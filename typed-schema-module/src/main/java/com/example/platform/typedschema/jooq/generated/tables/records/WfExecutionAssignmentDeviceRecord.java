@@ -76,6 +76,6 @@ public class WfExecutionAssignmentDeviceRecord extends UpdatableRecordImpl<WfExe
 
         setAssignmentId(assignmentId);
         setDeviceId(deviceId);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

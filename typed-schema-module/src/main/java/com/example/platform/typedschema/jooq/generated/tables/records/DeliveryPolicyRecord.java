@@ -181,6 +181,6 @@ public class DeliveryPolicyRecord extends UpdatableRecordImpl<DeliveryPolicyReco
         setTriggerMode(triggerMode);
         setEnabled(enabled);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

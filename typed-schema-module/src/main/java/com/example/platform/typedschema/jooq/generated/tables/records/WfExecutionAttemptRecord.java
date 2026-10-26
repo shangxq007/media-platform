@@ -183,6 +183,6 @@ public class WfExecutionAttemptRecord extends UpdatableRecordImpl<WfExecutionAtt
         setBackendLocalHandleReference(backendLocalHandleReference);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

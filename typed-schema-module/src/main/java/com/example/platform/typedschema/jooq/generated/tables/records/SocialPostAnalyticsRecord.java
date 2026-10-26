@@ -211,6 +211,6 @@ public class SocialPostAnalyticsRecord extends UpdatableRecordImpl<SocialPostAna
         setClicks(clicks);
         setFetchedAt(fetchedAt);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

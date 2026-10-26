@@ -238,6 +238,6 @@ public class QuarantinedProviderWorkersRecord extends UpdatableRecordImpl<Quaran
         setResolvedAt(resolvedAt);
         setResolvedBy(resolvedBy);
         setResolutionNotes(resolutionNotes);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

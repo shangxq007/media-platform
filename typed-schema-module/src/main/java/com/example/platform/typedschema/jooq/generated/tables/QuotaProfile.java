@@ -22,13 +22,14 @@ import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
 import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.Select;
 import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
+import org.jooq.TableLike;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
@@ -227,7 +228,7 @@ public class QuotaProfile extends TableImpl<QuotaProfileRecord> {
      */
     @Override
     public QuotaProfile where(Condition condition) {
-        return new QuotaProfile(getQualifiedName(), aliased() ? this : null, null, condition);
+        return new QuotaProfile(getQualifiedName(), aliased() ? this : null, null, Internal.condition(this, condition));
     }
 
     /**
@@ -294,7 +295,7 @@ public class QuotaProfile extends TableImpl<QuotaProfileRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public QuotaProfile whereExists(Select<?> select) {
+    public QuotaProfile whereExists(TableLike<?> select) {
         return where(DSL.exists(select));
     }
 
@@ -302,7 +303,7 @@ public class QuotaProfile extends TableImpl<QuotaProfileRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public QuotaProfile whereNotExists(Select<?> select) {
+    public QuotaProfile whereNotExists(TableLike<?> select) {
         return where(DSL.notExists(select));
     }
 }

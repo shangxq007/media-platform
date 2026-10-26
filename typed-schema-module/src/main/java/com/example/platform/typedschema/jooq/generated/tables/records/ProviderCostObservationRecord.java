@@ -301,6 +301,6 @@ public class ProviderCostObservationRecord extends UpdatableRecordImpl<ProviderC
         setUsageRecordId(usageRecordId);
         setIdempotencyKey(idempotencyKey);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

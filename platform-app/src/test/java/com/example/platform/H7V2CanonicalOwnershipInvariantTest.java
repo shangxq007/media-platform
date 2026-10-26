@@ -203,11 +203,10 @@ class H7V2CanonicalOwnershipInvariantTest extends PostgresTestContainerSupport {
         var applied = Arrays.stream(flyway.info().applied())
                 .filter(info -> info.getVersion() != null)
                 .toList();
-        assertEquals(2, applied.size(), "exact baseline plus graph execution migration inventory");
+        assertEquals(1, applied.size(), "exact single consolidated V1 inventory");
         assertEquals("1", applied.get(0).getVersion().getVersion());
         assertEquals("V1__baseline.sql", applied.get(0).getScript());
         assertEquals("2",applied.get(1).getVersion().getVersion());
-        assertEquals("V2__graph_render_execution.sql",applied.get(1).getScript());
     }
 
     @Test

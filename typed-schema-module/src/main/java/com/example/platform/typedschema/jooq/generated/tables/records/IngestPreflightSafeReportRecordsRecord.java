@@ -810,6 +810,6 @@ public class IngestPreflightSafeReportRecordsRecord extends UpdatableRecordImpl<
         setExpiredAt(expiredAt);
         setDeletedAt(deletedAt);
         setSchemaVersion(schemaVersion);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

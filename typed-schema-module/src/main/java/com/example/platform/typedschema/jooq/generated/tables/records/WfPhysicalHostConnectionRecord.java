@@ -110,6 +110,6 @@ public class WfPhysicalHostConnectionRecord extends UpdatableRecordImpl<WfPhysic
         setCurrentIncarnationId(currentIncarnationId);
         setConnected(connected);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

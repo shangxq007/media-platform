@@ -151,6 +151,6 @@ public class RenderJobQueueRecord extends UpdatableRecordImpl<RenderJobQueueReco
         setPriority(priority);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

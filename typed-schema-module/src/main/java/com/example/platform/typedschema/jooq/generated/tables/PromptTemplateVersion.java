@@ -27,13 +27,14 @@ import org.jooq.QueryPart;
 import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.Select;
 import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
+import org.jooq.TableLike;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
@@ -261,7 +262,7 @@ public class PromptTemplateVersion extends TableImpl<PromptTemplateVersionRecord
      */
     @Override
     public PromptTemplateVersion where(Condition condition) {
-        return new PromptTemplateVersion(getQualifiedName(), aliased() ? this : null, null, condition);
+        return new PromptTemplateVersion(getQualifiedName(), aliased() ? this : null, null, Internal.condition(this, condition));
     }
 
     /**
@@ -328,7 +329,7 @@ public class PromptTemplateVersion extends TableImpl<PromptTemplateVersionRecord
      * Create an inline derived table from this table
      */
     @Override
-    public PromptTemplateVersion whereExists(Select<?> select) {
+    public PromptTemplateVersion whereExists(TableLike<?> select) {
         return where(DSL.exists(select));
     }
 
@@ -336,7 +337,7 @@ public class PromptTemplateVersion extends TableImpl<PromptTemplateVersionRecord
      * Create an inline derived table from this table
      */
     @Override
-    public PromptTemplateVersion whereNotExists(Select<?> select) {
+    public PromptTemplateVersion whereNotExists(TableLike<?> select) {
         return where(DSL.notExists(select));
     }
 }

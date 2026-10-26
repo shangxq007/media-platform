@@ -286,6 +286,6 @@ public class PricingRuleRecord extends UpdatableRecordImpl<PricingRuleRecord> {
         setEffectiveTo(effectiveTo);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

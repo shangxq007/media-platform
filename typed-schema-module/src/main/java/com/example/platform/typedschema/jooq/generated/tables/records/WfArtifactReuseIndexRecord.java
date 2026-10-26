@@ -251,6 +251,6 @@ public class WfArtifactReuseIndexRecord extends UpdatableRecordImpl<WfArtifactRe
         setPublicationStatus(publicationStatus);
         setCompletionEventId(completionEventId);
         setPublishedAt(publishedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

@@ -243,6 +243,6 @@ public class EntitlementCommandAuditRecord extends UpdatableRecordImpl<Entitleme
         setTraceId(traceId);
         setCreatedAt(createdAt);
         setCompletedAt(completedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

@@ -174,6 +174,6 @@ public class UserWorkflowDefinitionEdgeRecord extends UpdatableRecordImpl<UserWo
         setTargetNodeId(targetNodeId);
         setConditionRef(conditionRef);
         setSortOrder(sortOrder);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

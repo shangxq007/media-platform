@@ -363,6 +363,6 @@ public class ArtifactRecord extends UpdatableRecordImpl<ArtifactRecord> {
         setAuditProvenance(auditProvenance);
         setCreatedAt(createdAt);
         setTombstonedAt(tombstonedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

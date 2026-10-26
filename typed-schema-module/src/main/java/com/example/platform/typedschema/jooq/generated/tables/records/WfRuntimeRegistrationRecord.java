@@ -155,6 +155,6 @@ public class WfRuntimeRegistrationRecord extends UpdatableRecordImpl<WfRuntimeRe
         setRegisteredAt(registeredAt);
         setValidUntil(validUntil);
         setActive(active);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

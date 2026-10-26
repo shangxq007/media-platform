@@ -151,6 +151,6 @@ public class ProductDependencyRecord extends UpdatableRecordImpl<ProductDependen
         setDependsOnProductId(dependsOnProductId);
         setDependencyType(dependencyType);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

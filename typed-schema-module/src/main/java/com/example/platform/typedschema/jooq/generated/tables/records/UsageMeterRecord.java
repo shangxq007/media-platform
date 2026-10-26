@@ -166,6 +166,6 @@ public class UsageMeterRecord extends UpdatableRecordImpl<UsageMeterRecord> {
         setAggregationType(aggregationType);
         setStatus(status);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

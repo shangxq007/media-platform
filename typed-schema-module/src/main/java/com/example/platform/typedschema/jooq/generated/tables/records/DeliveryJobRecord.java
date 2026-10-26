@@ -271,6 +271,6 @@ public class DeliveryJobRecord extends UpdatableRecordImpl<DeliveryJobRecord> {
         setErrorMessage(errorMessage);
         setCreatedAt(createdAt);
         setCompletedAt(completedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

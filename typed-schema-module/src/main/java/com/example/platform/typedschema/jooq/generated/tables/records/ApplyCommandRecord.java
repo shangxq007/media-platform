@@ -271,6 +271,6 @@ public class ApplyCommandRecord extends UpdatableRecordImpl<ApplyCommandRecord> 
         setExpectedResultStatus(expectedResultStatus);
         setCreatedAt(createdAt);
         setCompletedAt(completedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

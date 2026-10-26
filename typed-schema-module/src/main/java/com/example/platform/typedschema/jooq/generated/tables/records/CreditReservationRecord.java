@@ -211,6 +211,6 @@ public class CreditReservationRecord extends UpdatableRecordImpl<CreditReservati
         setReferenceId(referenceId);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

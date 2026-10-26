@@ -73,9 +73,8 @@ class SchemaEquivalenceVerificationTest extends PostgresTestContainerSupport {
         // (timeline_revision_ref, apply_command, timeline_revision_parent,
         // project_revision_counter, source_visual_description_snapshot, ownership
         // FKs/UNIQUEs, immutable snapshot trigger). ONE pre-release migration.
-        assertEquals(2, info.all().length, "Exact unchanged V1 plus approved graph execution migration");
+        assertEquals(1, info.all().length, "exact single consolidated V1 inventory");
         assertEquals("1", info.all()[0].getVersion().getVersion());
-        assertEquals("V2__graph_render_execution.sql",info.all()[1].getScript());
         assertEquals("V1__baseline.sql", info.all()[0].getScript());
         deployed = true;
     }
@@ -372,9 +371,8 @@ class SchemaEquivalenceVerificationTest extends PostgresTestContainerSupport {
         var info = flyway.info();
         // GCR-2 (GREENFIELD_DATABASE_HAS_ONE_CONSOLIDATED_CANONICAL_FLYWAY_V1_V1):
         // exactly one canonical V1 migration; no incremental V2..V7.
-        assertEquals(2, info.all().length, "Only canonical V1 and approved graph execution V2 should be active");
+        assertEquals(1, info.all().length, "only canonical consolidated V1 should be active");
         assertEquals("1", info.all()[0].getVersion().getVersion());
-        assertEquals("V2__graph_render_execution.sql",info.all()[1].getScript());
     }
 
     private static int count(Statement statement, String table) throws SQLException {

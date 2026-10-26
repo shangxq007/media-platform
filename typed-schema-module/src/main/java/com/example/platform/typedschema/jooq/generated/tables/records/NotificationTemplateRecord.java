@@ -149,6 +149,6 @@ public class NotificationTemplateRecord extends UpdatableRecordImpl<Notification
         setVersion(version);
         setSubjectTemplate(subjectTemplate);
         setBodyTemplate(bodyTemplate);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

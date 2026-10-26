@@ -286,6 +286,6 @@ public class BillingInvoiceRecord extends UpdatableRecordImpl<BillingInvoiceReco
         setPaidAt(paidAt);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

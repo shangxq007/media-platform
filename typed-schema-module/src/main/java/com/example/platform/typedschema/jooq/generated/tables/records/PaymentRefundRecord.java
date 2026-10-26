@@ -286,6 +286,6 @@ public class PaymentRefundRecord extends UpdatableRecordImpl<PaymentRefundRecord
         setTraceId(traceId);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

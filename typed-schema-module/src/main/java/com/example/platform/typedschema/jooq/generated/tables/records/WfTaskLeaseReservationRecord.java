@@ -89,6 +89,6 @@ public class WfTaskLeaseReservationRecord extends UpdatableRecordImpl<WfTaskLeas
         setLeaseId(leaseId);
         setReservationId(reservationId);
         setAssignmentId(assignmentId);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

@@ -181,6 +181,6 @@ public class AppDatasourceRecord extends UpdatableRecordImpl<AppDatasourceRecord
         setIsPrimary(isPrimary);
         setUsageRole(usageRole);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

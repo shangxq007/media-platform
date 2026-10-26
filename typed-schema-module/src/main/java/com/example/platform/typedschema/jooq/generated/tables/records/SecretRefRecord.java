@@ -136,6 +136,6 @@ public class SecretRefRecord extends UpdatableRecordImpl<SecretRefRecord> {
         setBackendType(backendType);
         setBackendRef(backendRef);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

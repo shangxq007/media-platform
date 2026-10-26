@@ -108,6 +108,6 @@ public class WfPhysicalHostDescriptorRecord extends UpdatableRecordImpl<WfPhysic
         setHostLocation(hostLocation);
         setTrustZoneId(trustZoneId);
         setCapturedAt(capturedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

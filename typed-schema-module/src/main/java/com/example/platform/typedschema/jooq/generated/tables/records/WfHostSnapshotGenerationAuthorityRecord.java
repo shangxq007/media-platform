@@ -95,6 +95,6 @@ public class WfHostSnapshotGenerationAuthorityRecord extends UpdatableRecordImpl
         setPhysicalHostId(physicalHostId);
         setPhysicalHostIncarnationId(physicalHostIncarnationId);
         setCurrentGeneration(currentGeneration);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

@@ -181,6 +181,6 @@ public class TimelineSnapshotRecord extends UpdatableRecordImpl<TimelineSnapshot
         setContentHash(contentHash);
         setRevisionNumber(revisionNumber);
         setSemanticRevisionId(semanticRevisionId);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

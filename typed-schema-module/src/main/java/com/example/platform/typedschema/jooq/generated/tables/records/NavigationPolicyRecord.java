@@ -241,6 +241,6 @@ public class NavigationPolicyRecord extends UpdatableRecordImpl<NavigationPolicy
         setEnabled(enabled);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

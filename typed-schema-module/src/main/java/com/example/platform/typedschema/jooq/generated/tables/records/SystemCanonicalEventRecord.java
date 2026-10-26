@@ -196,6 +196,6 @@ public class SystemCanonicalEventRecord extends UpdatableRecordImpl<SystemCanoni
         setSourceSystem(sourceSystem);
         setSequenceNumber(sequenceNumber);
         setPayload(payload);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

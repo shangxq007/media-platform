@@ -314,6 +314,6 @@ public class WorkspaceMemberEntitlementGrantRecord extends UpdatableRecordImpl<W
         setGrantedBy(grantedBy);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

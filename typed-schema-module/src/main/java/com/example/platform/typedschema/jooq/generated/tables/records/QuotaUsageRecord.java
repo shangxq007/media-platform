@@ -227,6 +227,6 @@ public class QuotaUsageRecord extends UpdatableRecordImpl<QuotaUsageRecord> {
         setUsageValue(usageValue);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

@@ -130,6 +130,7 @@ import com.example.platform.typedschema.jooq.generated.tables.QuotaUsageOperatio
 import com.example.platform.typedschema.jooq.generated.tables.RatedUsageRecord;
 import com.example.platform.typedschema.jooq.generated.tables.RenderBindingInputs;
 import com.example.platform.typedschema.jooq.generated.tables.RenderExecutionContext;
+import com.example.platform.typedschema.jooq.generated.tables.RenderGraphExecution;
 import com.example.platform.typedschema.jooq.generated.tables.RenderJob;
 import com.example.platform.typedschema.jooq.generated.tables.RenderJobLease;
 import com.example.platform.typedschema.jooq.generated.tables.RenderJobLifecycleEvents;
@@ -861,6 +862,11 @@ public class Tables {
      * The table <code>public.render_execution_context</code>.
      */
     public static final RenderExecutionContext RENDER_EXECUTION_CONTEXT = RenderExecutionContext.RENDER_EXECUTION_CONTEXT;
+
+    /**
+     * The table <code>public.render_graph_execution</code>.
+     */
+    public static final RenderGraphExecution RENDER_GRAPH_EXECUTION = RenderGraphExecution.RENDER_GRAPH_EXECUTION;
 
     /**
      * The table <code>public.render_job</code>.

@@ -213,6 +213,6 @@ public class RenderBindingInputsRecord extends UpdatableRecordImpl<RenderBinding
         setDeclarationsJson(declarationsJson);
         setCreatedAt(createdAt);
         setCandidateSetDigest(candidateSetDigest);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

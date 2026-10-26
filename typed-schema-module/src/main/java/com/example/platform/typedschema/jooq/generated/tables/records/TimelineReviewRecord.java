@@ -211,6 +211,6 @@ public class TimelineReviewRecord extends UpdatableRecordImpl<TimelineReviewReco
         setStatus(status);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

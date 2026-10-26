@@ -140,6 +140,6 @@ public class StorageLogicalObjectRecord extends UpdatableRecordImpl<StorageLogic
         setIssuanceIdempotencyKey(issuanceIdempotencyKey);
         setSemanticFingerprint(semanticFingerprint);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

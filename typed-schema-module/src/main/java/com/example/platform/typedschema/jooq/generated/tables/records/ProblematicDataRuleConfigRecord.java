@@ -217,6 +217,6 @@ public class ProblematicDataRuleConfigRecord extends UpdatableRecordImpl<Problem
         setEnabled(enabled);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

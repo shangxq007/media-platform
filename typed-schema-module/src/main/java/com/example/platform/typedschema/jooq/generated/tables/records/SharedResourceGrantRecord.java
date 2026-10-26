@@ -243,6 +243,6 @@ public class SharedResourceGrantRecord extends UpdatableRecordImpl<SharedResourc
         setStatus(status);
         setCreatedAt(createdAt);
         setExpiresAt(expiresAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

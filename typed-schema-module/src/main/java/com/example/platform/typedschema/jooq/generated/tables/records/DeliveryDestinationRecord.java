@@ -211,6 +211,6 @@ public class DeliveryDestinationRecord extends UpdatableRecordImpl<DeliveryDesti
         setVerifiedAt(verifiedAt);
         setCreatedAt(createdAt);
         setCredentialRef(credentialRef);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

@@ -424,6 +424,6 @@ public class MarketplaceListingRecord extends UpdatableRecordImpl<MarketplaceLis
         setReviewId(reviewId);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

@@ -347,6 +347,6 @@ public class RenderJobRecord extends UpdatableRecordImpl<RenderJobRecord> {
         setTimelineRevisionId(timelineRevisionId);
         setSelectedProvider(selectedProvider);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

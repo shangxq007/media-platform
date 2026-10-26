@@ -200,6 +200,6 @@ public class ProviderProductMappingRecord extends UpdatableRecordImpl<ProviderPr
         setVersion(version);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

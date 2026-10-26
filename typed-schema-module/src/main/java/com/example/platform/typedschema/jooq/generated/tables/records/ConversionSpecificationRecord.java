@@ -284,6 +284,6 @@ public class ConversionSpecificationRecord extends UpdatableRecordImpl<Conversio
         setParentLineage(parentLineage);
         setCreatedBy(createdBy);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

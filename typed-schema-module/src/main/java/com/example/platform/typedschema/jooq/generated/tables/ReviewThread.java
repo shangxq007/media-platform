@@ -27,13 +27,14 @@ import org.jooq.QueryPart;
 import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.Select;
 import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
+import org.jooq.TableLike;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
@@ -228,7 +229,7 @@ public class ReviewThread extends TableImpl<ReviewThreadRecord> {
      */
     @Override
     public ReviewThread where(Condition condition) {
-        return new ReviewThread(getQualifiedName(), aliased() ? this : null, null, condition);
+        return new ReviewThread(getQualifiedName(), aliased() ? this : null, null, Internal.condition(this, condition));
     }
 
     /**
@@ -295,7 +296,7 @@ public class ReviewThread extends TableImpl<ReviewThreadRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public ReviewThread whereExists(Select<?> select) {
+    public ReviewThread whereExists(TableLike<?> select) {
         return where(DSL.exists(select));
     }
 
@@ -303,7 +304,7 @@ public class ReviewThread extends TableImpl<ReviewThreadRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public ReviewThread whereNotExists(Select<?> select) {
+    public ReviewThread whereNotExists(TableLike<?> select) {
         return where(DSL.notExists(select));
     }
 }

@@ -151,6 +151,6 @@ public class ProjectRecord extends UpdatableRecordImpl<ProjectRecord> {
         setStatus(status);
         setCreatedAt(createdAt);
         setWorkspaceId(workspaceId);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

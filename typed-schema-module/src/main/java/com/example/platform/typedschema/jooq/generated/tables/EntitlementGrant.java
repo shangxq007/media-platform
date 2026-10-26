@@ -23,10 +23,10 @@ import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
 import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.Select;
 import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
+import org.jooq.TableLike;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
@@ -226,7 +226,7 @@ public class EntitlementGrant extends TableImpl<EntitlementGrantRecord> {
      */
     @Override
     public EntitlementGrant where(Condition condition) {
-        return new EntitlementGrant(getQualifiedName(), aliased() ? this : null, null, condition);
+        return new EntitlementGrant(getQualifiedName(), aliased() ? this : null, null, Internal.condition(this, condition));
     }
 
     /**
@@ -293,7 +293,7 @@ public class EntitlementGrant extends TableImpl<EntitlementGrantRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public EntitlementGrant whereExists(Select<?> select) {
+    public EntitlementGrant whereExists(TableLike<?> select) {
         return where(DSL.exists(select));
     }
 
@@ -301,7 +301,7 @@ public class EntitlementGrant extends TableImpl<EntitlementGrantRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public EntitlementGrant whereNotExists(Select<?> select) {
+    public EntitlementGrant whereNotExists(TableLike<?> select) {
         return where(DSL.notExists(select));
     }
 }

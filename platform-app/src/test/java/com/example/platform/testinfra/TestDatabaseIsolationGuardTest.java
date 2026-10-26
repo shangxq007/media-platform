@@ -79,7 +79,7 @@ class TestDatabaseIsolationGuardTest extends PostgresTestContainerSupport {
                 "first applied migration script must be V1__baseline.sql");
         // GCR-2 (GREENFIELD_DATABASE_HAS_ONE_CONSOLIDATED_CANONICAL_FLYWAY_V1_V1):
         // former V2..V7 incremental migrations are consolidated into canonical V1.
-        assertEquals(java.util.List.of("V1__baseline.sql","V2__graph_render_execution.sql"),scripts,
+        assertEquals(java.util.List.of("V1__baseline.sql"),scripts,
                 "No non-V1 migration may be present in the shared runtime: " + scripts);
         assertFalse(scripts.contains("V7__user_workflow_definition_v1.sql"),
                 "No leaked V7 migration must be present");

@@ -136,6 +136,6 @@ public class MarketplaceReviewCommentRecord extends UpdatableRecordImpl<Marketpl
         setAuthorId(authorId);
         setContent(content);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

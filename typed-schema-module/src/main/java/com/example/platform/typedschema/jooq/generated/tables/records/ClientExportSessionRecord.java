@@ -423,6 +423,6 @@ public class ClientExportSessionRecord extends UpdatableRecordImpl<ClientExportS
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
         setExpiresAt(expiresAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

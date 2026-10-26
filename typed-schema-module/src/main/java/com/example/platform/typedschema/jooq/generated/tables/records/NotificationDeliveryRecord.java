@@ -181,6 +181,6 @@ public class NotificationDeliveryRecord extends UpdatableRecordImpl<Notification
         setResponsePayload(responsePayload);
         setAttemptCount(attemptCount);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

@@ -166,6 +166,6 @@ public class ArtifactReplicaRecord extends UpdatableRecordImpl<ArtifactReplicaRe
         setRole(role);
         setState(state);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

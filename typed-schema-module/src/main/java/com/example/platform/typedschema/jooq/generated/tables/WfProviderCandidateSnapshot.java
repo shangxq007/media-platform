@@ -24,10 +24,10 @@ import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
 import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.Select;
 import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
+import org.jooq.TableLike;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
@@ -217,7 +217,7 @@ public class WfProviderCandidateSnapshot extends TableImpl<WfProviderCandidateSn
      */
     @Override
     public WfProviderCandidateSnapshot where(Condition condition) {
-        return new WfProviderCandidateSnapshot(getQualifiedName(), aliased() ? this : null, null, condition);
+        return new WfProviderCandidateSnapshot(getQualifiedName(), aliased() ? this : null, null, Internal.condition(this, condition));
     }
 
     /**
@@ -284,7 +284,7 @@ public class WfProviderCandidateSnapshot extends TableImpl<WfProviderCandidateSn
      * Create an inline derived table from this table
      */
     @Override
-    public WfProviderCandidateSnapshot whereExists(Select<?> select) {
+    public WfProviderCandidateSnapshot whereExists(TableLike<?> select) {
         return where(DSL.exists(select));
     }
 
@@ -292,7 +292,7 @@ public class WfProviderCandidateSnapshot extends TableImpl<WfProviderCandidateSn
      * Create an inline derived table from this table
      */
     @Override
-    public WfProviderCandidateSnapshot whereNotExists(Select<?> select) {
+    public WfProviderCandidateSnapshot whereNotExists(TableLike<?> select) {
         return where(DSL.notExists(select));
     }
 }

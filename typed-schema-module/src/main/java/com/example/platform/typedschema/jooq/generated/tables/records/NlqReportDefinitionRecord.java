@@ -243,6 +243,6 @@ public class NlqReportDefinitionRecord extends UpdatableRecordImpl<NlqReportDefi
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
         setArchived(archived);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

@@ -123,6 +123,6 @@ public class WfHostRegistrationRecord extends UpdatableRecordImpl<WfHostRegistra
         setRegisteredAt(registeredAt);
         setValidUntil(validUntil);
         setActive(active);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

@@ -152,6 +152,6 @@ public class CompositionVersionRecord extends UpdatableRecordImpl<CompositionVer
         setVersion(version);
         setDefinition(definition);
         setPublishedAt(publishedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

@@ -31,10 +31,10 @@ import org.jooq.QueryPart;
 import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.Select;
 import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
+import org.jooq.TableLike;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
@@ -298,7 +298,7 @@ public class CommerceProduct extends TableImpl<CommerceProductRecord> {
      */
     @Override
     public CommerceProduct where(Condition condition) {
-        return new CommerceProduct(getQualifiedName(), aliased() ? this : null, null, condition);
+        return new CommerceProduct(getQualifiedName(), aliased() ? this : null, null, Internal.condition(this, condition));
     }
 
     /**
@@ -365,7 +365,7 @@ public class CommerceProduct extends TableImpl<CommerceProductRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public CommerceProduct whereExists(Select<?> select) {
+    public CommerceProduct whereExists(TableLike<?> select) {
         return where(DSL.exists(select));
     }
 
@@ -373,7 +373,7 @@ public class CommerceProduct extends TableImpl<CommerceProductRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public CommerceProduct whereNotExists(Select<?> select) {
+    public CommerceProduct whereNotExists(TableLike<?> select) {
         return where(DSL.notExists(select));
     }
 }

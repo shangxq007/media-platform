@@ -121,6 +121,6 @@ public class ReviewDecisionRecord extends UpdatableRecordImpl<ReviewDecisionReco
         setReviewerUserId(reviewerUserId);
         setDecision(decision);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

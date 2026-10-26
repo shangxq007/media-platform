@@ -365,6 +365,6 @@ public class UserWorkflowDefinitionVersionRecord extends UpdatableRecordImpl<Use
         setPublishedBy(publishedBy);
         setArchivedAt(archivedAt);
         setArchivedBy(archivedBy);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

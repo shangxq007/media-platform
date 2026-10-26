@@ -166,6 +166,6 @@ public class WorkspaceRecord extends UpdatableRecordImpl<WorkspaceRecord> {
         setStatus(status);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

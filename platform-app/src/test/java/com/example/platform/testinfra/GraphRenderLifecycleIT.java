@@ -27,7 +27,7 @@ class GraphRenderLifecycleIT {
         final RenderJobRepository jobs;
         World() throws Exception {
             TenantContext.set("tenant-a");schema=TestDatabaseSchema.open(TestDatabaseConnectionProvider.fromControlledLaunch());
-            for(String file:List.of("V1__baseline.sql","V2__graph_render_execution.sql"))try(var input=getClass().getResourceAsStream("/db/migration/"+file)){schema.executeScript(new String(input.readAllBytes(),java.nio.charset.StandardCharsets.UTF_8));}
+            for(String file:List.of("V1__baseline.sql"))try(var input=getClass().getResourceAsStream("/db/migration/"+file)){schema.executeScript(new String(input.readAllBytes(),java.nio.charset.StandardCharsets.UTF_8));}
             db=schema.dsl();
             db.execute("insert into tenant(id,name,created_at) values('tenant-a','test',current_timestamp),('tenant-b','other',current_timestamp)");
             db.execute("insert into project(id,tenant_id,name,created_at) values('project-a','tenant-a','test',current_timestamp),('project-b','tenant-b','other',current_timestamp)");

@@ -346,6 +346,6 @@ public class RenderJobLeaseRecord extends UpdatableRecordImpl<RenderJobLeaseReco
         setCreatedByScheduler(createdByScheduler);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

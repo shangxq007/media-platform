@@ -106,6 +106,6 @@ public class RolePermissionRecord extends UpdatableRecordImpl<RolePermissionReco
         setRoleId(roleId);
         setPermissionId(permissionId);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

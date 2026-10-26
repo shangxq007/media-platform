@@ -446,6 +446,6 @@ public class CommercialOfferingRecord extends UpdatableRecordImpl<CommercialOffe
         setSeatFeatureKey(seatFeatureKey);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

@@ -215,6 +215,6 @@ public class UserWorkflowDefinitionNodeRecord extends UpdatableRecordImpl<UserWo
         setOutputJson(outputJson);
         setErrorPolicy(errorPolicy);
         setSortOrder(sortOrder);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

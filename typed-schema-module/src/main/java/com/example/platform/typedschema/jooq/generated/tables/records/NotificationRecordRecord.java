@@ -196,6 +196,6 @@ public class NotificationRecordRecord extends UpdatableRecordImpl<NotificationRe
         setMetadataJson(metadataJson);
         setAttemptCount(attemptCount);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

@@ -260,6 +260,6 @@ public class BillingInvoiceCommandRecord extends UpdatableRecordImpl<BillingInvo
         setReason(reason);
         setTraceId(traceId);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

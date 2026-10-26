@@ -241,6 +241,6 @@ public class InvoiceLineItemRecord extends UpdatableRecordImpl<InvoiceLineItemRe
         setPeriodStart(periodStart);
         setPeriodEnd(periodEnd);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

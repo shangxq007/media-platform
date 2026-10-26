@@ -243,6 +243,6 @@ public class NotificationPreferenceRecord extends UpdatableRecordImpl<Notificati
         setCriticalOverride(criticalOverride);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

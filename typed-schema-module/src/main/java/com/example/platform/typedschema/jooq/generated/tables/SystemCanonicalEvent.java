@@ -28,13 +28,14 @@ import org.jooq.QueryPart;
 import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.Select;
 import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
+import org.jooq.TableLike;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
@@ -279,7 +280,7 @@ public class SystemCanonicalEvent extends TableImpl<SystemCanonicalEventRecord> 
      */
     @Override
     public SystemCanonicalEvent where(Condition condition) {
-        return new SystemCanonicalEvent(getQualifiedName(), aliased() ? this : null, null, condition);
+        return new SystemCanonicalEvent(getQualifiedName(), aliased() ? this : null, null, Internal.condition(this, condition));
     }
 
     /**
@@ -346,7 +347,7 @@ public class SystemCanonicalEvent extends TableImpl<SystemCanonicalEventRecord> 
      * Create an inline derived table from this table
      */
     @Override
-    public SystemCanonicalEvent whereExists(Select<?> select) {
+    public SystemCanonicalEvent whereExists(TableLike<?> select) {
         return where(DSL.exists(select));
     }
 
@@ -354,7 +355,7 @@ public class SystemCanonicalEvent extends TableImpl<SystemCanonicalEventRecord> 
      * Create an inline derived table from this table
      */
     @Override
-    public SystemCanonicalEvent whereNotExists(Select<?> select) {
+    public SystemCanonicalEvent whereNotExists(TableLike<?> select) {
         return where(DSL.notExists(select));
     }
 }

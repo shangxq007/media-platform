@@ -151,6 +151,6 @@ public class WfLocalAdmissionRecord extends UpdatableRecordImpl<WfLocalAdmission
         setDeclineReason(declineReason);
         setResult(result);
         setReceivedAt(receivedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

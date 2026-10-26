@@ -22,13 +22,14 @@ import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
 import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.Select;
 import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
+import org.jooq.TableLike;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
@@ -192,7 +193,7 @@ public class NotificationRecord extends TableImpl<NotificationRecordRecord> {
      */
     @Override
     public NotificationRecord where(Condition condition) {
-        return new NotificationRecord(getQualifiedName(), aliased() ? this : null, null, condition);
+        return new NotificationRecord(getQualifiedName(), aliased() ? this : null, null, Internal.condition(this, condition));
     }
 
     /**
@@ -259,7 +260,7 @@ public class NotificationRecord extends TableImpl<NotificationRecordRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public NotificationRecord whereExists(Select<?> select) {
+    public NotificationRecord whereExists(TableLike<?> select) {
         return where(DSL.exists(select));
     }
 
@@ -267,7 +268,7 @@ public class NotificationRecord extends TableImpl<NotificationRecordRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public NotificationRecord whereNotExists(Select<?> select) {
+    public NotificationRecord whereNotExists(TableLike<?> select) {
         return where(DSL.notExists(select));
     }
 }

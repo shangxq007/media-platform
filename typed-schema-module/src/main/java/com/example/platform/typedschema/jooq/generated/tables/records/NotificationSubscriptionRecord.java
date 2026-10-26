@@ -260,6 +260,6 @@ public class NotificationSubscriptionRecord extends UpdatableRecordImpl<Notifica
         setQuietHoursTimezone(quietHoursTimezone);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

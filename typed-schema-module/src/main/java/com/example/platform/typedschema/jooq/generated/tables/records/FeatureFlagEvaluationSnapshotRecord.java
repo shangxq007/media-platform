@@ -149,6 +149,6 @@ public class FeatureFlagEvaluationSnapshotRecord extends UpdatableRecordImpl<Fea
         setWorkspaceId(workspaceId);
         setCapturedAt(capturedAt);
         setDecisionsJson(decisionsJson);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

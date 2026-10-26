@@ -136,6 +136,6 @@ public class WfCompletionEventRecord extends UpdatableRecordImpl<WfCompletionEve
         setGeneration(generation);
         setArtifactId(artifactId);
         setCompletedAt(completedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

@@ -19,13 +19,14 @@ import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
 import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.Select;
 import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
+import org.jooq.TableLike;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
@@ -164,7 +165,7 @@ public class MarketplaceCommand extends TableImpl<MarketplaceCommandRecord> {
      */
     @Override
     public MarketplaceCommand where(Condition condition) {
-        return new MarketplaceCommand(getQualifiedName(), aliased() ? this : null, null, condition);
+        return new MarketplaceCommand(getQualifiedName(), aliased() ? this : null, null, Internal.condition(this, condition));
     }
 
     /**
@@ -231,7 +232,7 @@ public class MarketplaceCommand extends TableImpl<MarketplaceCommandRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public MarketplaceCommand whereExists(Select<?> select) {
+    public MarketplaceCommand whereExists(TableLike<?> select) {
         return where(DSL.exists(select));
     }
 
@@ -239,7 +240,7 @@ public class MarketplaceCommand extends TableImpl<MarketplaceCommandRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public MarketplaceCommand whereNotExists(Select<?> select) {
+    public MarketplaceCommand whereNotExists(TableLike<?> select) {
         return where(DSL.notExists(select));
     }
 }

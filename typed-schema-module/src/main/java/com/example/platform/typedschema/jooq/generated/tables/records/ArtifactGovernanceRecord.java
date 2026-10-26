@@ -166,6 +166,6 @@ public class ArtifactGovernanceRecord extends UpdatableRecordImpl<ArtifactGovern
         setContainsPii(containsPii);
         setAiGenerated(aiGenerated);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

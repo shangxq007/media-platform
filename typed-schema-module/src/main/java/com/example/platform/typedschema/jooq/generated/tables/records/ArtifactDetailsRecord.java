@@ -134,6 +134,6 @@ public class ArtifactDetailsRecord extends UpdatableRecordImpl<ArtifactDetailsRe
         setSubtype(subtype);
         setThumbnailArtifactId(thumbnailArtifactId);
         setMediaVersion(mediaVersion);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

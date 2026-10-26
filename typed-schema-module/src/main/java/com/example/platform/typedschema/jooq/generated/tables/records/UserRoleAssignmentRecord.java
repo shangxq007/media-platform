@@ -181,6 +181,6 @@ public class UserRoleAssignmentRecord extends UpdatableRecordImpl<UserRoleAssign
         setCreatedAt(createdAt);
         setProjectId(projectId);
         setScopeUnresolved(scopeUnresolved);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

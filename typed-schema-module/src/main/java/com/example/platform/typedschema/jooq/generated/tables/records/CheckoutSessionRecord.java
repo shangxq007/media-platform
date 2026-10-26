@@ -316,6 +316,6 @@ public class CheckoutSessionRecord extends UpdatableRecordImpl<CheckoutSessionRe
         setTenantId(tenantId);
         setUserId(userId);
         setCartId(cartId);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

@@ -367,6 +367,6 @@ public class BillableUsageRecord extends UpdatableRecordImpl<BillableUsageRecord
         setIdempotencyKey(idempotencyKey);
         setTraceId(traceId);
         setProvenanceReference(provenanceReference);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

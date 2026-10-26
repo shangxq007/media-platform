@@ -256,6 +256,6 @@ public class BillingLedgerEntryRecord extends UpdatableRecordImpl<BillingLedgerE
         setIdempotencyKey(idempotencyKey);
         setPayloadFingerprint(payloadFingerprint);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

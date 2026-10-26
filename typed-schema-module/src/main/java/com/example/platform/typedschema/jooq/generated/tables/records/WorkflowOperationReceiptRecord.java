@@ -104,6 +104,6 @@ public class WorkflowOperationReceiptRecord extends UpdatableRecordImpl<Workflow
         setStepId(stepId);
         setRequestDigest(requestDigest);
         setResultJson(resultJson);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

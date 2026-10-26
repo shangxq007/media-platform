@@ -271,6 +271,6 @@ public class SandboxExecutionJobRecord extends UpdatableRecordImpl<SandboxExecut
         setOutputPreview(outputPreview);
         setErrorMessage(errorMessage);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

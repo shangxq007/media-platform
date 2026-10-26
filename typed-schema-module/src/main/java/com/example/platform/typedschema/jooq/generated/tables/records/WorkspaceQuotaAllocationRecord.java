@@ -185,6 +185,6 @@ public class WorkspaceQuotaAllocationRecord extends UpdatableRecordImpl<Workspac
         setPeriod(period);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

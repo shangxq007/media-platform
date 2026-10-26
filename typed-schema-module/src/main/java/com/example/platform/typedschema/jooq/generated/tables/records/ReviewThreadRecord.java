@@ -136,6 +136,6 @@ public class ReviewThreadRecord extends UpdatableRecordImpl<ReviewThreadRecord> 
         setDiffId(diffId);
         setStatus(status);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

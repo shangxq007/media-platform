@@ -121,6 +121,6 @@ public class NotificationEventRecord extends UpdatableRecordImpl<NotificationEve
         setSubjectId(subjectId);
         setPayload(payload);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

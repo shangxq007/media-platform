@@ -121,6 +121,6 @@ public class TimelineRevisionParentRecord extends UpdatableRecordImpl<TimelineRe
         setRevisionId(revisionId);
         setParentRevisionId(parentRevisionId);
         setParentOrder(parentOrder);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

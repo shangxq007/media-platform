@@ -266,6 +266,6 @@ public class PromptEvaluationResultRecord extends UpdatableRecordImpl<PromptEval
         setHasFalseClaims(hasFalseClaims);
         setOverallVerdict(overallVerdict);
         setEvaluatedAt(evaluatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

@@ -26,13 +26,14 @@ import org.jooq.QueryPart;
 import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.Select;
 import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
+import org.jooq.TableLike;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
@@ -225,7 +226,7 @@ public class MarketplaceReviewDecision extends TableImpl<MarketplaceReviewDecisi
      */
     @Override
     public MarketplaceReviewDecision where(Condition condition) {
-        return new MarketplaceReviewDecision(getQualifiedName(), aliased() ? this : null, null, condition);
+        return new MarketplaceReviewDecision(getQualifiedName(), aliased() ? this : null, null, Internal.condition(this, condition));
     }
 
     /**
@@ -292,7 +293,7 @@ public class MarketplaceReviewDecision extends TableImpl<MarketplaceReviewDecisi
      * Create an inline derived table from this table
      */
     @Override
-    public MarketplaceReviewDecision whereExists(Select<?> select) {
+    public MarketplaceReviewDecision whereExists(TableLike<?> select) {
         return where(DSL.exists(select));
     }
 
@@ -300,7 +301,7 @@ public class MarketplaceReviewDecision extends TableImpl<MarketplaceReviewDecisi
      * Create an inline derived table from this table
      */
     @Override
-    public MarketplaceReviewDecision whereNotExists(Select<?> select) {
+    public MarketplaceReviewDecision whereNotExists(TableLike<?> select) {
         return where(DSL.notExists(select));
     }
 }

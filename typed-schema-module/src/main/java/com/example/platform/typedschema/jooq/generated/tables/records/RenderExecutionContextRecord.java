@@ -137,6 +137,6 @@ public class RenderExecutionContextRecord extends UpdatableRecordImpl<RenderExec
         setProjectId(projectId);
         setContextJson(contextJson);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

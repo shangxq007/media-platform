@@ -397,6 +397,6 @@ public class ProblematicDataRecordRecord extends UpdatableRecordImpl<Problematic
         setDetectedAt(detectedAt);
         setResolvedAt(resolvedAt);
         setResolvedBy(resolvedBy);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

@@ -151,6 +151,6 @@ public class AssetSemanticMetadataRecord extends UpdatableRecordImpl<AssetSemant
         setSemanticJson(semanticJson);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

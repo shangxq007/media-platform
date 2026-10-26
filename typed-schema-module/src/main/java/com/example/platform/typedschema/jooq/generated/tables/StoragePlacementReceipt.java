@@ -30,10 +30,10 @@ import org.jooq.QueryPart;
 import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.Select;
 import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
+import org.jooq.TableLike;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
@@ -347,7 +347,7 @@ public class StoragePlacementReceipt extends TableImpl<StoragePlacementReceiptRe
      */
     @Override
     public StoragePlacementReceipt where(Condition condition) {
-        return new StoragePlacementReceipt(getQualifiedName(), aliased() ? this : null, null, condition);
+        return new StoragePlacementReceipt(getQualifiedName(), aliased() ? this : null, null, Internal.condition(this, condition));
     }
 
     /**
@@ -414,7 +414,7 @@ public class StoragePlacementReceipt extends TableImpl<StoragePlacementReceiptRe
      * Create an inline derived table from this table
      */
     @Override
-    public StoragePlacementReceipt whereExists(Select<?> select) {
+    public StoragePlacementReceipt whereExists(TableLike<?> select) {
         return where(DSL.exists(select));
     }
 
@@ -422,7 +422,7 @@ public class StoragePlacementReceipt extends TableImpl<StoragePlacementReceiptRe
      * Create an inline derived table from this table
      */
     @Override
-    public StoragePlacementReceipt whereNotExists(Select<?> select) {
+    public StoragePlacementReceipt whereNotExists(TableLike<?> select) {
         return where(DSL.notExists(select));
     }
 }

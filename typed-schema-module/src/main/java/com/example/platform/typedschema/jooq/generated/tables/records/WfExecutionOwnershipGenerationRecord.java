@@ -95,6 +95,6 @@ public class WfExecutionOwnershipGenerationRecord extends UpdatableRecordImpl<Wf
         setTaskId(taskId);
         setGeneration(generation);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

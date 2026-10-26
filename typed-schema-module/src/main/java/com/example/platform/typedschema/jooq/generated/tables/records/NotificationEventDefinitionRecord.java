@@ -347,6 +347,6 @@ public class NotificationEventDefinitionRecord extends UpdatableRecordImpl<Notif
         setArchived(archived);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

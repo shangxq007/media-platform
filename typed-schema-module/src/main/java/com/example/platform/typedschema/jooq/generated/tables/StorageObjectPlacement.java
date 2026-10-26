@@ -30,10 +30,10 @@ import org.jooq.QueryPart;
 import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.Select;
 import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
+import org.jooq.TableLike;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
@@ -326,7 +326,7 @@ public class StorageObjectPlacement extends TableImpl<StorageObjectPlacementReco
      */
     @Override
     public StorageObjectPlacement where(Condition condition) {
-        return new StorageObjectPlacement(getQualifiedName(), aliased() ? this : null, null, condition);
+        return new StorageObjectPlacement(getQualifiedName(), aliased() ? this : null, null, Internal.condition(this, condition));
     }
 
     /**
@@ -393,7 +393,7 @@ public class StorageObjectPlacement extends TableImpl<StorageObjectPlacementReco
      * Create an inline derived table from this table
      */
     @Override
-    public StorageObjectPlacement whereExists(Select<?> select) {
+    public StorageObjectPlacement whereExists(TableLike<?> select) {
         return where(DSL.exists(select));
     }
 
@@ -401,7 +401,7 @@ public class StorageObjectPlacement extends TableImpl<StorageObjectPlacementReco
      * Create an inline derived table from this table
      */
     @Override
-    public StorageObjectPlacement whereNotExists(Select<?> select) {
+    public StorageObjectPlacement whereNotExists(TableLike<?> select) {
         return where(DSL.notExists(select));
     }
 }

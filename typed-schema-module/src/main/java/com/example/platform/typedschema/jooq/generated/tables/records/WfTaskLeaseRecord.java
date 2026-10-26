@@ -258,6 +258,6 @@ public class WfTaskLeaseRecord extends UpdatableRecordImpl<WfTaskLeaseRecord> {
         setFencingToken(fencingToken);
         setActive(active);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

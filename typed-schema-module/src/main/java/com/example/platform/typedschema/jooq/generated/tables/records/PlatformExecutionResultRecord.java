@@ -232,6 +232,6 @@ public class PlatformExecutionResultRecord extends UpdatableRecordImpl<PlatformE
         setReconciliationState(reconciliationState);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

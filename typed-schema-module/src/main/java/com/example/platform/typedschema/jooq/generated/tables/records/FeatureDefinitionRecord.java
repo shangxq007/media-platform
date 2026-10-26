@@ -106,6 +106,6 @@ public class FeatureDefinitionRecord extends UpdatableRecordImpl<FeatureDefiniti
         setFeatureCode(featureCode);
         setDescription(description);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

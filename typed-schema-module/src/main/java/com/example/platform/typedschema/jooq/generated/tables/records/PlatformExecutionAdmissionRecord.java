@@ -381,6 +381,6 @@ public class PlatformExecutionAdmissionRecord extends UpdatableRecordImpl<Platfo
         setQuotaChargedUnits(quotaChargedUnits);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

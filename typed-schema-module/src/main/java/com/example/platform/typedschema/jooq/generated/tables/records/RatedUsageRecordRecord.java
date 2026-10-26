@@ -241,6 +241,6 @@ public class RatedUsageRecordRecord extends UpdatableRecordImpl<RatedUsageRecord
         setTraceId(traceId);
         setIdempotencyKey(idempotencyKey);
         setPayloadFingerprint(payloadFingerprint);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

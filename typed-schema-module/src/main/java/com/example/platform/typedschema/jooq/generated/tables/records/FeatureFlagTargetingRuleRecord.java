@@ -241,6 +241,6 @@ public class FeatureFlagTargetingRuleRecord extends UpdatableRecordImpl<FeatureF
         setEnabled(enabled);
         setRuleJson(ruleJson);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

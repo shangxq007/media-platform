@@ -18,13 +18,14 @@ import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
 import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.Select;
 import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
+import org.jooq.TableLike;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
@@ -191,7 +192,7 @@ public class QuarantinedRenderJobs extends TableImpl<QuarantinedRenderJobsRecord
      */
     @Override
     public QuarantinedRenderJobs where(Condition condition) {
-        return new QuarantinedRenderJobs(getQualifiedName(), aliased() ? this : null, null, condition);
+        return new QuarantinedRenderJobs(getQualifiedName(), aliased() ? this : null, null, Internal.condition(this, condition));
     }
 
     /**
@@ -258,7 +259,7 @@ public class QuarantinedRenderJobs extends TableImpl<QuarantinedRenderJobsRecord
      * Create an inline derived table from this table
      */
     @Override
-    public QuarantinedRenderJobs whereExists(Select<?> select) {
+    public QuarantinedRenderJobs whereExists(TableLike<?> select) {
         return where(DSL.exists(select));
     }
 
@@ -266,7 +267,7 @@ public class QuarantinedRenderJobs extends TableImpl<QuarantinedRenderJobsRecord
      * Create an inline derived table from this table
      */
     @Override
-    public QuarantinedRenderJobs whereNotExists(Select<?> select) {
+    public QuarantinedRenderJobs whereNotExists(TableLike<?> select) {
         return where(DSL.notExists(select));
     }
 }

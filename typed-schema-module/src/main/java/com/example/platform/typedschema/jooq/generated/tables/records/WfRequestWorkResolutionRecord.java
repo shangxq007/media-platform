@@ -155,6 +155,6 @@ public class WfRequestWorkResolutionRecord extends UpdatableRecordImpl<WfRequest
         setAssignmentId(assignmentId);
         setTaskId(taskId);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

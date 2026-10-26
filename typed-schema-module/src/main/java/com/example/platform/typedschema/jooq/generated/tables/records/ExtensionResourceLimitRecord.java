@@ -181,6 +181,6 @@ public class ExtensionResourceLimitRecord extends UpdatableRecordImpl<ExtensionR
         setWindowSeconds(windowSeconds);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

@@ -181,6 +181,6 @@ public class UserBehaviorEventRecord extends UpdatableRecordImpl<UserBehaviorEve
         setResourceId(resourceId);
         setMetadataJson(metadataJson);
         setOccurredAt(occurredAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

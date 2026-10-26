@@ -7,6 +7,7 @@ package com.example.platform.typedschema.jooq.generated.tables;
 import com.example.platform.typedschema.contract.InstantConverter;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
+import com.example.platform.typedschema.jooq.generated.tables.WfExecutionAssignment.WfExecutionAssignmentPath;
 import com.example.platform.typedschema.jooq.generated.tables.WfTaskLease.WfTaskLeasePath;
 import com.example.platform.typedschema.jooq.generated.tables.records.WfLocalAdmissionRecord;
 
@@ -27,10 +28,10 @@ import org.jooq.QueryPart;
 import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.Select;
 import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
+import org.jooq.TableLike;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
@@ -199,6 +200,14 @@ public class WfLocalAdmission extends TableImpl<WfLocalAdmissionRecord> {
         return _wfLocalAdmissionLeaseIdFkey;
     }
 
+    /**
+     * Get the implicit many-to-many join path to the
+     * <code>public.wf_execution_assignment</code> table
+     */
+    public WfExecutionAssignmentPath wfExecutionAssignment() {
+        return wfLocalAdmissionLeaseIdFkey().wfTaskLeaseAssignmentIdTaskIdAttemptIdGenerationFkey();
+    }
+
     @Override
     public List<Check<WfLocalAdmissionRecord>> getChecks() {
         return Arrays.asList(
@@ -251,7 +260,7 @@ public class WfLocalAdmission extends TableImpl<WfLocalAdmissionRecord> {
      */
     @Override
     public WfLocalAdmission where(Condition condition) {
-        return new WfLocalAdmission(getQualifiedName(), aliased() ? this : null, null, condition);
+        return new WfLocalAdmission(getQualifiedName(), aliased() ? this : null, null, Internal.condition(this, condition));
     }
 
     /**
@@ -318,7 +327,7 @@ public class WfLocalAdmission extends TableImpl<WfLocalAdmissionRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public WfLocalAdmission whereExists(Select<?> select) {
+    public WfLocalAdmission whereExists(TableLike<?> select) {
         return where(DSL.exists(select));
     }
 
@@ -326,7 +335,7 @@ public class WfLocalAdmission extends TableImpl<WfLocalAdmissionRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public WfLocalAdmission whereNotExists(Select<?> select) {
+    public WfLocalAdmission whereNotExists(TableLike<?> select) {
         return where(DSL.notExists(select));
     }
 }

@@ -290,6 +290,6 @@ public class SubscriptionContractRecord extends UpdatableRecordImpl<Subscription
         setPlanKey(planKey);
         setIncludedQuotaUsed(includedQuotaUsed);
         setVersion(version);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

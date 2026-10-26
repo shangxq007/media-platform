@@ -313,6 +313,6 @@ public class StorageObjectPlacementRecord extends UpdatableRecordImpl<StorageObj
         setCommittedLength(committedLength);
         setProviderCorrelationId(providerCorrelationId);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

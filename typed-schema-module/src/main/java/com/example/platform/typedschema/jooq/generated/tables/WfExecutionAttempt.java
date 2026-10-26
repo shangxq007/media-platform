@@ -7,12 +7,14 @@ package com.example.platform.typedschema.jooq.generated.tables;
 import com.example.platform.typedschema.contract.InstantConverter;
 import com.example.platform.typedschema.jooq.generated.Keys;
 import com.example.platform.typedschema.jooq.generated.Public;
+import com.example.platform.typedschema.jooq.generated.tables.RenderGraphExecution.RenderGraphExecutionPath;
 import com.example.platform.typedschema.jooq.generated.tables.WfArtifactReuseIndex.WfArtifactReuseIndexPath;
 import com.example.platform.typedschema.jooq.generated.tables.WfCompletionEvent.WfCompletionEventPath;
 import com.example.platform.typedschema.jooq.generated.tables.WfExecutionAssignment.WfExecutionAssignmentPath;
 import com.example.platform.typedschema.jooq.generated.tables.WfExecutionBackendSelection.WfExecutionBackendSelectionPath;
 import com.example.platform.typedschema.jooq.generated.tables.WfExecutionObservation.WfExecutionObservationPath;
 import com.example.platform.typedschema.jooq.generated.tables.WfExecutionOwnershipGeneration.WfExecutionOwnershipGenerationPath;
+import com.example.platform.typedschema.jooq.generated.tables.WfRequestWorkResolution.WfRequestWorkResolutionPath;
 import com.example.platform.typedschema.jooq.generated.tables.records.WfExecutionAttemptRecord;
 
 import java.time.Instant;
@@ -32,10 +34,10 @@ import org.jooq.QueryPart;
 import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.Select;
 import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
+import org.jooq.TableLike;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
@@ -221,6 +223,19 @@ public class WfExecutionAttempt extends TableImpl<WfExecutionAttemptRecord> {
         return _wfExecutionOwnershipGeneration;
     }
 
+    private transient RenderGraphExecutionPath _renderGraphExecution;
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.render_graph_execution</code> table
+     */
+    public RenderGraphExecutionPath renderGraphExecution() {
+        if (_renderGraphExecution == null)
+            _renderGraphExecution = new RenderGraphExecutionPath(this, null, Keys.RENDER_GRAPH_EXECUTION__RENDER_GRAPH_EXECUTION_TASK_ATTEMPT_ID_FINAL_TASK_ID_TASK__FKEY.getInverseKey());
+
+        return _renderGraphExecution;
+    }
+
     private transient WfArtifactReuseIndexPath _wfArtifactReuseIndex;
 
     /**
@@ -271,6 +286,14 @@ public class WfExecutionAttempt extends TableImpl<WfExecutionAttemptRecord> {
             _wfExecutionObservation = new WfExecutionObservationPath(this, null, Keys.WF_EXECUTION_OBSERVATION__WF_EXECUTION_OBSERVATION_ATTEMPT_ID_GENERATION_FKEY.getInverseKey());
 
         return _wfExecutionObservation;
+    }
+
+    /**
+     * Get the implicit many-to-many join path to the
+     * <code>public.wf_request_work_resolution</code> table
+     */
+    public WfRequestWorkResolutionPath wfRequestWorkResolution() {
+        return wfExecutionAssignment().wfRequestWorkResolutionAssignmentIdFkey();
     }
 
     @Override
@@ -324,7 +347,7 @@ public class WfExecutionAttempt extends TableImpl<WfExecutionAttemptRecord> {
      */
     @Override
     public WfExecutionAttempt where(Condition condition) {
-        return new WfExecutionAttempt(getQualifiedName(), aliased() ? this : null, null, condition);
+        return new WfExecutionAttempt(getQualifiedName(), aliased() ? this : null, null, Internal.condition(this, condition));
     }
 
     /**
@@ -391,7 +414,7 @@ public class WfExecutionAttempt extends TableImpl<WfExecutionAttemptRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public WfExecutionAttempt whereExists(Select<?> select) {
+    public WfExecutionAttempt whereExists(TableLike<?> select) {
         return where(DSL.exists(select));
     }
 
@@ -399,7 +422,7 @@ public class WfExecutionAttempt extends TableImpl<WfExecutionAttemptRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public WfExecutionAttempt whereNotExists(Select<?> select) {
+    public WfExecutionAttempt whereNotExists(TableLike<?> select) {
         return where(DSL.notExists(select));
     }
 }

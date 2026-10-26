@@ -27,13 +27,14 @@ import org.jooq.QueryPart;
 import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.Select;
 import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
+import org.jooq.TableLike;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
@@ -236,7 +237,7 @@ public class ArtifactRelation extends TableImpl<ArtifactRelationRecord> {
      */
     @Override
     public ArtifactRelation where(Condition condition) {
-        return new ArtifactRelation(getQualifiedName(), aliased() ? this : null, null, condition);
+        return new ArtifactRelation(getQualifiedName(), aliased() ? this : null, null, Internal.condition(this, condition));
     }
 
     /**
@@ -303,7 +304,7 @@ public class ArtifactRelation extends TableImpl<ArtifactRelationRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public ArtifactRelation whereExists(Select<?> select) {
+    public ArtifactRelation whereExists(TableLike<?> select) {
         return where(DSL.exists(select));
     }
 
@@ -311,7 +312,7 @@ public class ArtifactRelation extends TableImpl<ArtifactRelationRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public ArtifactRelation whereNotExists(Select<?> select) {
+    public ArtifactRelation whereNotExists(TableLike<?> select) {
         return where(DSL.notExists(select));
     }
 }

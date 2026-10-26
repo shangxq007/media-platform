@@ -33,10 +33,10 @@ import org.jooq.QueryPart;
 import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.Select;
 import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
+import org.jooq.TableLike;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
@@ -410,7 +410,7 @@ public class CommercialOffering extends TableImpl<CommercialOfferingRecord> {
      */
     @Override
     public CommercialOffering where(Condition condition) {
-        return new CommercialOffering(getQualifiedName(), aliased() ? this : null, null, condition);
+        return new CommercialOffering(getQualifiedName(), aliased() ? this : null, null, Internal.condition(this, condition));
     }
 
     /**
@@ -477,7 +477,7 @@ public class CommercialOffering extends TableImpl<CommercialOfferingRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public CommercialOffering whereExists(Select<?> select) {
+    public CommercialOffering whereExists(TableLike<?> select) {
         return where(DSL.exists(select));
     }
 
@@ -485,7 +485,7 @@ public class CommercialOffering extends TableImpl<CommercialOfferingRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public CommercialOffering whereNotExists(Select<?> select) {
+    public CommercialOffering whereNotExists(TableLike<?> select) {
         return where(DSL.notExists(select));
     }
 }

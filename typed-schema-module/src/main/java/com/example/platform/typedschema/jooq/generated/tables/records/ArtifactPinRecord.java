@@ -151,6 +151,6 @@ public class ArtifactPinRecord extends UpdatableRecordImpl<ArtifactPinRecord> {
         setArtifactId(artifactId);
         setContentDigest(contentDigest);
         setPinnedAt(pinnedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

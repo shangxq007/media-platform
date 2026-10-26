@@ -17,7 +17,13 @@ WORK=HERE.parents[1]
 def manifest():
     import stat
     rows=[]
-    for p in sorted(WORK.rglob('*'),key=lambda p:str(p.relative_to(WORK))):
+    import os
+    paths=[]
+    for current,dirs,files in os.walk(WORK,followlinks=False):
+        if Path(current)==WORK:dirs[:]=[d for d in dirs if d!='.git']
+        paths.extend(Path(current)/name for name in files)
+        paths.extend(Path(current)/name for name in dirs if (Path(current)/name).is_symlink())
+    for p in sorted(paths,key=lambda p:str(p.relative_to(WORK))):
         if p.is_symlink():raise PolicyError('source symlinks refused')
         if p.is_dir():continue
         if not p.is_file():raise PolicyError('source special file refused')

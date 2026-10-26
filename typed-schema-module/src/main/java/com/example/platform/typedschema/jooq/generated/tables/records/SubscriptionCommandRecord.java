@@ -241,6 +241,6 @@ public class SubscriptionCommandRecord extends UpdatableRecordImpl<SubscriptionC
         setTraceId(traceId);
         setCreatedAt(createdAt);
         setCompletedAt(completedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

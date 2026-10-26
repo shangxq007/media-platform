@@ -166,6 +166,6 @@ public class UserRecord extends UpdatableRecordImpl<UserRecord> {
         setStatus(status);
         setCreatedAt(createdAt);
         setAccountId(accountId);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

@@ -214,6 +214,6 @@ public class WfProviderCandidateSnapshotRecord extends UpdatableRecordImpl<WfPro
         setContent(content);
         setCapturedAt(capturedAt);
         setValidUntil(validUntil);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

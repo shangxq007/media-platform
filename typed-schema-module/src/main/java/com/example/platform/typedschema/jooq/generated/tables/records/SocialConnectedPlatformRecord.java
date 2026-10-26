@@ -268,6 +268,6 @@ public class SocialConnectedPlatformRecord extends UpdatableRecordImpl<SocialCon
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
         setCredentialRevision(credentialRevision);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

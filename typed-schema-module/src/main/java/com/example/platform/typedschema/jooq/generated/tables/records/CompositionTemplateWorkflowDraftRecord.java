@@ -183,6 +183,6 @@ public class CompositionTemplateWorkflowDraftRecord extends UpdatableRecordImpl<
         setLifecycle(lifecycle);
         setDefinition(definition);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

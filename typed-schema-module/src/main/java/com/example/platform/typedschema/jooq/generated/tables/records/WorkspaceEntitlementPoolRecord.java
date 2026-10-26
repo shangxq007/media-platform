@@ -166,6 +166,6 @@ public class WorkspaceEntitlementPoolRecord extends UpdatableRecordImpl<Workspac
         setPeriod(period);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

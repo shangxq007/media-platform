@@ -145,6 +145,6 @@ public class CompositionValidationSnapshotRecord extends UpdatableRecordImpl<Com
         setSubjectId(subjectId);
         setResult(result);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

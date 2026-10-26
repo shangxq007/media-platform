@@ -287,6 +287,6 @@ public class SearchProjectionRecord extends UpdatableRecordImpl<SearchProjection
         setSearchText(searchText);
         setSearchVector(searchVector);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

@@ -136,6 +136,6 @@ public class UnifiedGraphEdgeRecord extends UpdatableRecordImpl<UnifiedGraphEdge
         setTargetNodeId(targetNodeId);
         setEdgeType(edgeType);
         setTimestamp(timestamp);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

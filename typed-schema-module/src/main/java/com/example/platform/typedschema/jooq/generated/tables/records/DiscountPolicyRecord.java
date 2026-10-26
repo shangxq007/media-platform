@@ -301,6 +301,6 @@ public class DiscountPolicyRecord extends UpdatableRecordImpl<DiscountPolicyReco
         setEffectiveFrom(effectiveFrom);
         setEffectiveTo(effectiveTo);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

@@ -185,6 +185,6 @@ public class WfExecutionAssignmentRecord extends UpdatableRecordImpl<WfExecution
         setPhysicalHostId(physicalHostId);
         setPhysicalHostIncarnationId(physicalHostIncarnationId);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

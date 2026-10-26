@@ -367,6 +367,6 @@ public class PromptExecutionRunRecord extends UpdatableRecordImpl<PromptExecutio
         setErrorDetailsJson(errorDetailsJson);
         setRelatedPromptFile(relatedPromptFile);
         setRelatedManifestEntry(relatedManifestEntry);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

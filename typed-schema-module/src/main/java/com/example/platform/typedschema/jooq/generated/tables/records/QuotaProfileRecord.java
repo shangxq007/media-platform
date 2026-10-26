@@ -286,6 +286,6 @@ public class QuotaProfileRecord extends UpdatableRecordImpl<QuotaProfileRecord> 
         setMcpCallsPerMinute(mcpCallsPerMinute);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

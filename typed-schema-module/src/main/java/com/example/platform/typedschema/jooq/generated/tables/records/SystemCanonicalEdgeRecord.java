@@ -136,6 +136,6 @@ public class SystemCanonicalEdgeRecord extends UpdatableRecordImpl<SystemCanonic
         setTargetEventId(targetEventId);
         setEdgeType(edgeType);
         setTimestamp(timestamp);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

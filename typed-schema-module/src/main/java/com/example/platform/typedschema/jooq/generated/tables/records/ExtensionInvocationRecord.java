@@ -286,6 +286,6 @@ public class ExtensionInvocationRecord extends UpdatableRecordImpl<ExtensionInvo
         setCpuTimeMs(cpuTimeMs);
         setMemoryPeakMb(memoryPeakMb);
         setRoutingRuleId(routingRuleId);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

@@ -114,6 +114,6 @@ public class SourceVisualDescriptionSnapshotRecord extends UpdatableRecordImpl<S
         setArtifactId(artifactId);
         setCanonicalPayload(canonicalPayload);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

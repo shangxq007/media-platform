@@ -393,6 +393,6 @@ public class PaymentTransactionRecord extends UpdatableRecordImpl<PaymentTransac
         setTraceId(traceId);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

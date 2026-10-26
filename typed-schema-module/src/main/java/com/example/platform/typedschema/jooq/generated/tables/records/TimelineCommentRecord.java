@@ -166,6 +166,6 @@ public class TimelineCommentRecord extends UpdatableRecordImpl<TimelineCommentRe
         setAuthorUserId(authorUserId);
         setContent(content);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

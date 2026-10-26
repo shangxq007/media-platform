@@ -286,6 +286,6 @@ public class WorkflowExecutionRecord extends UpdatableRecordImpl<WorkflowExecuti
         setCreatedAt(createdAt);
         setStartedAt(startedAt);
         setCompletedAt(completedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

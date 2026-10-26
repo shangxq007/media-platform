@@ -301,6 +301,6 @@ public class PaymentCommandRecord extends UpdatableRecordImpl<PaymentCommandReco
         setReason(reason);
         setTraceId(traceId);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

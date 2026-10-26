@@ -110,6 +110,6 @@ public class WfWorkerRuntimeConnectionRecord extends UpdatableRecordImpl<WfWorke
         setCurrentIncarnationId(currentIncarnationId);
         setConnected(connected);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

@@ -136,6 +136,6 @@ public class ConfigItemRecord extends UpdatableRecordImpl<ConfigItemRecord> {
         setValueJson(valueJson);
         setValueVersion(valueVersion);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

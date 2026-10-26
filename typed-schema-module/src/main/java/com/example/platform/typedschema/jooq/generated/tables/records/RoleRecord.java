@@ -136,6 +136,6 @@ public class RoleRecord extends UpdatableRecordImpl<RoleRecord> {
         setDescription(description);
         setScope(scope);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

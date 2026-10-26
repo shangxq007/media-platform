@@ -166,6 +166,6 @@ public class CommerceProductRecord extends UpdatableRecordImpl<CommerceProductRe
         setVersion(version);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

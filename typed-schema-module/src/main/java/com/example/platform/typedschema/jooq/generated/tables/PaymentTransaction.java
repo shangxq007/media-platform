@@ -24,10 +24,10 @@ import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
 import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.Select;
 import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
+import org.jooq.TableLike;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
@@ -278,7 +278,7 @@ public class PaymentTransaction extends TableImpl<PaymentTransactionRecord> {
      */
     @Override
     public PaymentTransaction where(Condition condition) {
-        return new PaymentTransaction(getQualifiedName(), aliased() ? this : null, null, condition);
+        return new PaymentTransaction(getQualifiedName(), aliased() ? this : null, null, Internal.condition(this, condition));
     }
 
     /**
@@ -345,7 +345,7 @@ public class PaymentTransaction extends TableImpl<PaymentTransactionRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public PaymentTransaction whereExists(Select<?> select) {
+    public PaymentTransaction whereExists(TableLike<?> select) {
         return where(DSL.exists(select));
     }
 
@@ -353,7 +353,7 @@ public class PaymentTransaction extends TableImpl<PaymentTransactionRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public PaymentTransaction whereNotExists(Select<?> select) {
+    public PaymentTransaction whereNotExists(TableLike<?> select) {
         return where(DSL.notExists(select));
     }
 }

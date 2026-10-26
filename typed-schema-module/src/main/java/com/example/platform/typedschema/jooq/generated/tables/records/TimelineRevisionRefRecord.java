@@ -136,6 +136,6 @@ public class TimelineRevisionRefRecord extends UpdatableRecordImpl<TimelineRevis
         setHeadRevisionId(headRevisionId);
         setVersion(version);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

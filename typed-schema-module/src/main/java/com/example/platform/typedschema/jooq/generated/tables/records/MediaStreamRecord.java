@@ -419,6 +419,6 @@ public class MediaStreamRecord extends UpdatableRecordImpl<MediaStreamRecord> {
         setHdrMasteringDisplayRef(hdrMasteringDisplayRef);
         setHdrContentLightRef(hdrContentLightRef);
         setContainerStreamDescription(containerStreamDescription);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

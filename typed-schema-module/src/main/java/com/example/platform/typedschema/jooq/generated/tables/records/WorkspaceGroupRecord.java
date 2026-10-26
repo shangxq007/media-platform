@@ -121,6 +121,6 @@ public class WorkspaceGroupRecord extends UpdatableRecordImpl<WorkspaceGroupReco
         setName(name);
         setDescription(description);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

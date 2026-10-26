@@ -331,6 +331,6 @@ public class WorkflowRunRecord extends UpdatableRecordImpl<WorkflowRunRecord> {
         setFailureCode(failureCode);
         setCreatedAt(createdAt);
         setCompletedAt(completedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

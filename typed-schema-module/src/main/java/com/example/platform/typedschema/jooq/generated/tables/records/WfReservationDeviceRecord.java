@@ -134,6 +134,6 @@ public class WfReservationDeviceRecord extends UpdatableRecordImpl<WfReservation
         setComputeUnits(computeUnits);
         setEncoderEngines(encoderEngines);
         setDecoderEngines(decoderEngines);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

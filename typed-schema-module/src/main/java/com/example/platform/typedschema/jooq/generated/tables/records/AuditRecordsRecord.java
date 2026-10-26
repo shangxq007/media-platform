@@ -181,6 +181,6 @@ public class AuditRecordsRecord extends UpdatableRecordImpl<AuditRecordsRecord> 
         setPayload(payload);
         setCreatedAt(createdAt);
         setCategory(category);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

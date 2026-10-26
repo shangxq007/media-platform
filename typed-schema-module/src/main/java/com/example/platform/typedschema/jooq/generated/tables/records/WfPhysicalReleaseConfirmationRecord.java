@@ -95,6 +95,6 @@ public class WfPhysicalReleaseConfirmationRecord extends UpdatableRecordImpl<WfP
         setConfirmationId(confirmationId);
         setLeaseId(leaseId);
         setConfirmedAt(confirmedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

@@ -256,6 +256,6 @@ public class EntitlementGrantRecord extends UpdatableRecordImpl<EntitlementGrant
         setVersion(version);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

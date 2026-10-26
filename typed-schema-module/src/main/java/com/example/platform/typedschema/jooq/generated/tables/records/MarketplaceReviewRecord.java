@@ -226,6 +226,6 @@ public class MarketplaceReviewRecord extends UpdatableRecordImpl<MarketplaceRevi
         setStatus(status);
         setAggregateVersion(aggregateVersion);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

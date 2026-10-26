@@ -213,6 +213,6 @@ public class WfReservationRecord extends UpdatableRecordImpl<WfReservationRecord
         setMemoryBytes(memoryBytes);
         setTemporaryStorageBytes(temporaryStorageBytes);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

@@ -121,6 +121,6 @@ public class ArtifactRelationRecord extends UpdatableRecordImpl<ArtifactRelation
         setTargetArtifactId(targetArtifactId);
         setRelationType(relationType);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

@@ -121,6 +121,6 @@ public class SchedulesRecord extends UpdatableRecordImpl<SchedulesRecord> {
         setHandlerCode(handlerCode);
         setEnabled(enabled);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

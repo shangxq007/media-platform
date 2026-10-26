@@ -151,6 +151,6 @@ public class CloudResourceDefinitionRecord extends UpdatableRecordImpl<CloudReso
         setSpecJson(specJson);
         setStatus(status);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

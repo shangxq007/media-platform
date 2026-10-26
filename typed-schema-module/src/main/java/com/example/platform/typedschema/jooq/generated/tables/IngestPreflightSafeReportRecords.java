@@ -25,10 +25,10 @@ import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
 import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.Select;
 import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
+import org.jooq.TableLike;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
@@ -62,7 +62,7 @@ public class IngestPreflightSafeReportRecords extends TableImpl<IngestPreflightS
     /**
      * The column <code>public.ingest_preflight_safe_report_records.id</code>.
      */
-    public final TableField<IngestPreflightSafeReportRecordsRecord, Long> ID = createField(DSL.name("id"), SQLDataType.BIGINT.nullable(false).identity(true), this, "");
+    public final TableField<IngestPreflightSafeReportRecordsRecord, Long> ID = createField(DSL.name("id"), SQLDataType.BIGINT.nullable(false).generatedByDefaultAsIdentity(), this, "");
 
     /**
      * The column
@@ -438,7 +438,7 @@ public class IngestPreflightSafeReportRecords extends TableImpl<IngestPreflightS
      */
     @Override
     public IngestPreflightSafeReportRecords where(Condition condition) {
-        return new IngestPreflightSafeReportRecords(getQualifiedName(), aliased() ? this : null, null, condition);
+        return new IngestPreflightSafeReportRecords(getQualifiedName(), aliased() ? this : null, null, Internal.condition(this, condition));
     }
 
     /**
@@ -505,7 +505,7 @@ public class IngestPreflightSafeReportRecords extends TableImpl<IngestPreflightS
      * Create an inline derived table from this table
      */
     @Override
-    public IngestPreflightSafeReportRecords whereExists(Select<?> select) {
+    public IngestPreflightSafeReportRecords whereExists(TableLike<?> select) {
         return where(DSL.exists(select));
     }
 
@@ -513,7 +513,7 @@ public class IngestPreflightSafeReportRecords extends TableImpl<IngestPreflightS
      * Create an inline derived table from this table
      */
     @Override
-    public IngestPreflightSafeReportRecords whereNotExists(Select<?> select) {
+    public IngestPreflightSafeReportRecords whereNotExists(TableLike<?> select) {
         return where(DSL.notExists(select));
     }
 }

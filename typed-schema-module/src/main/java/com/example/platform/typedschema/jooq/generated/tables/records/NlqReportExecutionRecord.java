@@ -151,6 +151,6 @@ public class NlqReportExecutionRecord extends UpdatableRecordImpl<NlqReportExecu
         setDurationMs(durationMs);
         setErrorCode(errorCode);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }

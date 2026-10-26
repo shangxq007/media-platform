@@ -159,6 +159,6 @@ public class WfExecutionBackendSelectionRecord extends UpdatableRecordImpl<WfExe
         setActive(active);
         setSelectedAt(selectedAt);
         setTerminalAt(terminalAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 }
