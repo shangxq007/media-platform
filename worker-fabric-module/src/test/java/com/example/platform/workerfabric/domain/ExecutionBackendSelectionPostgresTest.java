@@ -18,19 +18,22 @@ import org.junit.jupiter.api.Test;
 class ExecutionBackendSelectionPostgresTest extends PostgresTestContainerSupport {
 
     private static final Instant SELECTED_AT = Instant.parse("2026-08-24T12:00:00Z");
+    private static com.example.platform.shared.test.TestDatabaseSchema schema;
     private static DataSource dataSource;
     private static DSLContext dsl;
 
     @BeforeAll
-    static void migrateCanonicalSchema() {
-        dataSource = createDataSource();
+    static void migrateCanonicalSchema() throws Exception {
+        schema = com.example.platform.shared.test.TestDatabaseSchema.open(PROVIDER);
+        dataSource = createDataSourceForSchema(schema.name());
         AssignmentGrantPostgresFixture.migrate(dataSource);
         dsl = DSL.using(dataSource, SQLDialect.POSTGRES);
     }
 
     @AfterAll
-    static void closeDatabaseAuthority() {
+    static void closeDatabaseAuthority() throws Exception {
         closeDataSource(dataSource);
+        if (schema != null) schema.close();
     }
 
     @BeforeEach

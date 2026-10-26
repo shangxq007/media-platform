@@ -23,6 +23,16 @@ class QuotaPolicyServiceTest {
     }
 
     @Test
+    void thumbnailAdmissionUsesItsOwnBoundedCanonicalQuota() {
+        var thumbnail = service.getQuotaPolicy("media.thumbnail");
+        assertEquals(BigDecimal.valueOf(10000), thumbnail.limitValue());
+        assertFalse(service.isExceeded("media.thumbnail", 9999));
+        assertTrue(service.isExceeded("media.thumbnail", 10001));
+        assertEquals(BigDecimal.ONE, service.remaining("media.thumbnail", BigDecimal.valueOf(9999)));
+        assertThrows(IllegalArgumentException.class, () -> service.getQuotaPolicy("media.thumbnail.other"));
+    }
+
+    @Test
     void isExceededReturnsFalseForLowUsage() {
         assertFalse(service.isExceeded("render.job.create", 5));
     }

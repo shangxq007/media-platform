@@ -231,6 +231,18 @@ public abstract class PostgresTestContainerSupport {
         return PROVIDER.dataSource(maxPoolSize, MANUAL_MIN_IDLE);
     }
 
+    /** Class-owned schema with the same run, role, TLS and ordinary lazy-pool ceiling. */
+    protected static DataSource createDataSourceForSchema(String schema) {
+        var config = new HikariConfig();
+        config.setJdbcUrl(PROVIDER.scopedJdbcUrl(schema));
+        config.setUsername(PROVIDER.username());
+        config.setPassword(PROVIDER.secret());
+        config.setMaximumPoolSize(MANUAL_MAX_POOL_SIZE);
+        config.setMinimumIdle(MANUAL_MIN_IDLE);
+        config.setConnectionTimeout(10000);
+        return new HikariDataSource(config);
+    }
+
     /**
      * Close a DataSource if it implements AutoCloseable.
      * Should be called in @AfterAll to release connection pool resources.

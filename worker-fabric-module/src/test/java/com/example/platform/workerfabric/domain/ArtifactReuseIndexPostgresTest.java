@@ -44,21 +44,24 @@ class ArtifactReuseIndexPostgresTest extends PostgresTestContainerSupport {
     private static final ContentDigest ARTIFACT_DIGEST = digest("artifact-bytes");
     private static final ExecutionReuseKey REUSE_KEY = key("postgres-index");
 
+    private static com.example.platform.shared.test.TestDatabaseSchema schema;
     private static DataSource dataSource;
     private static DSLContext dsl;
 
     private JooqArtifactReuseIndex index;
 
     @BeforeAll
-    static void startDatabaseAuthority() {
-        dataSource = createDataSource();
+    static void startDatabaseAuthority() throws Exception {
+        schema = com.example.platform.shared.test.TestDatabaseSchema.open(PROVIDER);
+        dataSource = createDataSourceForSchema(schema.name());
         dsl = DSL.using(dataSource, SQLDialect.POSTGRES);
         AssignmentGrantPostgresFixture.migrate(dataSource);
     }
 
     @AfterAll
-    static void closeDatabaseAuthority() {
+    static void closeDatabaseAuthority() throws Exception {
         closeDataSource(dataSource);
+        if (schema != null) schema.close();
     }
 
     @BeforeEach

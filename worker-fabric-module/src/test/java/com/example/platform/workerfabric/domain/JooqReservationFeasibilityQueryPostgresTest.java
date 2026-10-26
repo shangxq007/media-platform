@@ -39,21 +39,24 @@ class JooqReservationFeasibilityQueryPostgresTest extends PostgresTestContainerS
     private static final Clock FIXED_CLOCK =
             Clock.fixed(Instant.parse("2026-08-24T12:00:00Z"), ZoneOffset.UTC);
 
+    private static com.example.platform.shared.test.TestDatabaseSchema schema;
     private static DataSource dataSource;
     private static DSLContext dsl;
     private static JooqReservationFeasibilityQuery query;
 
     @BeforeAll
-    static void startDatabaseAuthority() {
-        dataSource = createDataSource();
+    static void startDatabaseAuthority() throws Exception {
+        schema = com.example.platform.shared.test.TestDatabaseSchema.open(PROVIDER);
+        dataSource = createDataSourceForSchema(schema.name());
         dsl = DSL.using(dataSource, SQLDialect.POSTGRES);
         AssignmentGrantPostgresFixture.migrate(dataSource);
         query = new JooqReservationFeasibilityQuery(dsl);
     }
 
     @AfterAll
-    static void closeDatabaseAuthority() {
+    static void closeDatabaseAuthority() throws Exception {
         closeDataSource(dataSource);
+        if (schema != null) schema.close();
     }
 
     @BeforeEach

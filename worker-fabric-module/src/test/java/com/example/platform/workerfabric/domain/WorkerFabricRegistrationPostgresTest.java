@@ -21,19 +21,22 @@ import org.junit.jupiter.api.Test;
 class WorkerFabricRegistrationPostgresTest extends PostgresTestContainerSupport {
 
     private static final Instant REGISTERED_AT = Instant.parse("2026-08-24T12:00:00Z");
+    private static com.example.platform.shared.test.TestDatabaseSchema schema;
     private static DataSource dataSource;
     private static DSLContext dsl;
 
     @BeforeAll
-    static void startDatabaseAuthority() {
-        dataSource = createDataSource();
+    static void startDatabaseAuthority() throws Exception {
+        schema = com.example.platform.shared.test.TestDatabaseSchema.open(PROVIDER);
+        dataSource = createDataSourceForSchema(schema.name());
         dsl = DSL.using(dataSource, SQLDialect.POSTGRES);
         AssignmentGrantPostgresFixture.migrate(dataSource);
     }
 
     @AfterAll
-    static void closeDatabaseAuthority() {
+    static void closeDatabaseAuthority() throws Exception {
         closeDataSource(dataSource);
+        if (schema != null) schema.close();
     }
 
     @BeforeEach
