@@ -8,6 +8,7 @@ import com.example.platform.contract.media.FrameExtractCapabilityDeclaration;
 
 import com.example.platform.contract.media.CoverImageContracts;
 import com.example.platform.sandbox.execution.ExecutionBackendRegistry;
+import com.example.platform.sandbox.execution.CancellableExecutionBackend;
 import com.example.platform.sandbox.execution.ExecutionRequest;
 import com.example.platform.sandbox.execution.TaskCapability;
 import com.example.platform.shared.capability.FrameWidth;
@@ -328,7 +329,10 @@ public final class FfmpegCpuProvider implements FrameExtractProvider {
             arguments.addAll(List.of("-q:v", Integer.toString(jpegQuality(quality))));
         }
         arguments.add(output.toString());
-        var execution = backend.execute(new ExecutionRequest(
+        if (!(backend instanceof CancellableExecutionBackend cancellable)) {
+            throw new IllegalStateException("thumbnail execution backend must support bounded cancellation");
+        }
+        var execution = cancellable.execute(new ExecutionRequest(
                 "frame-extract:thumbnail:" + output.getParent().getFileName(),
                 output.getParent().getFileName().toString(),
                 TaskCapability.THUMBNAIL,
@@ -340,7 +344,7 @@ public final class FfmpegCpuProvider implements FrameExtractProvider {
                 "",
                 Map.of("executable", Path.of(ffmpeg).toString(),
                         "input", input.toString(),
-                        "providerId", PROVIDER_ID)));
+                        "providerId", PROVIDER_ID)), cancelled);
         if (cancelled.getAsBoolean()) {
             return FrameExtractResult.failure("CANCELLED");
         }
@@ -356,7 +360,10 @@ public final class FfmpegCpuProvider implements FrameExtractProvider {
         var backend = backends.resolve(TaskCapability.THUMBNAIL)
                 .orElseThrow(() -> new IllegalStateException(
                         "thumbnail execution backend is not registered"));
-        var execution = backend.execute(new ExecutionRequest(
+        if (!(backend instanceof CancellableExecutionBackend cancellable)) {
+            throw new IllegalStateException("thumbnail execution backend must support bounded cancellation");
+        }
+        var execution = cancellable.execute(new ExecutionRequest(
                 "frame-extract:thumbnail:probe",
                 "probe",
                 TaskCapability.THUMBNAIL,
@@ -369,7 +376,10 @@ public final class FfmpegCpuProvider implements FrameExtractProvider {
                 "",
                 Map.of("executable", Path.of(ffprobe).toString(),
                         "input", input.toString(),
-                        "providerId", PROVIDER_ID)));
+                        "providerId", PROVIDER_ID)), cancelled);
+        if (cancelled.getAsBoolean() || "CANCELLED".equals(execution.errorCode())) {
+            throw new InterruptedException("cancelled during probe");
+        }
         if (!execution.success()) {
             throw new IllegalArgumentException("UNSUPPORTED_MEDIA");
         }

@@ -132,6 +132,25 @@ class LocalHostRegistrationLoopTest {
     }
 
     @Test
+    void failedReadinessProbeCannotPartiallyRefreshHostOrRuntimeRegistration() {
+        for(boolean environmentFails:java.util.List.of(true,false)) {
+            RecordingBoundary boundary=new RecordingBoundary();
+            WorkerReadinessProbe failure=new WorkerReadinessProbe() {
+                public RuntimeEnvironmentAvailability observeEnvironmentReadiness() {
+                    if(environmentFails)throw new IllegalStateException("environment observation unavailable");
+                    return RuntimeEnvironmentAvailability.AVAILABLE;
+                }
+                public SandboxRuntimeAvailability observeSandboxReadiness() {
+                    throw new IllegalStateException("sandbox observation unavailable");
+                }
+            };
+            assertThatThrownBy(()->new LocalHostRegistrationLoop(probe(),failure,boundary,CLOCK,HOST_ID).registerOnce())
+                    .isInstanceOf(IllegalStateException.class);
+            assertThat(boundary.hosts).isEmpty();assertThat(boundary.runtimes).isEmpty();assertThat(boundary.readiness).isEmpty();
+        }
+    }
+
+    @Test
     void publishesBothIndependentReadinessSignalsBoundToThisTick() {
         RecordingBoundary boundary = new RecordingBoundary();
         WorkerReadinessProbe probe = new WorkerReadinessProbe() {

@@ -11,7 +11,9 @@ import org.springframework.stereotype.Service;
  * <p>Order is fixed and fail-closed: the bound-graph inputs are saved first and the workflow is
  * started only after a successful save with the exact {@link BoundGraphReference} returned by the
  * store. A save failure propagates before any start; a first start failure propagates to the caller.
- * The service does not advance {@code render_job.status}, does not retry, and does not compensate.
+ * Render remains the sole lifecycle owner: dispatch failure is projected through its public
+ * lifecycle contract; a projection failure is preserved as a suppressed error. No local status
+ * model, retry loop or compensation authority is introduced here.
  */
 @Service
 public class FirstRenderSaveAndStartService {

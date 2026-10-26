@@ -17,6 +17,7 @@ public class VerifiedStorageReadService implements VerifiedStorageRead {
         for(var provider:supplied)if(map.put(provider.providerId(),provider)!=null)throw new IllegalStateException("duplicate storage provider identity");
         providers=Map.copyOf(map);
     }
+    @Override public boolean supports(StorageProviderId id) { return providers.containsKey(id); }
     public byte[] read(StorageProviderId id,StorageObjectId object,ContentDigest expected,long length,long limit) {
         if(length<0||length>limit||limit>Integer.MAX_VALUE-1)throw new IllegalArgumentException("content exceeds bounded download limit");
         StorageProvider provider=Optional.ofNullable(providers.get(id)).orElseThrow(()->new IllegalStateException("content unavailable"));

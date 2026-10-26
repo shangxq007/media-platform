@@ -75,7 +75,7 @@ try:
   if clients.poll() is not None:raise RuntimeError('application startup failed')
   time.sleep(1)
  else:raise RuntimeError('application startup deadline')
- for name in ['exercise_first_render','check_product','runtime_proof','check_cancel']:command(name,['python3','-B',str(HELP/(name+'.py'))],timeout=240)
+ for name in ['exercise_first_render','check_product','runtime_proof','check_thumbnail','check_cancel']:command(name,['python3','-B',str(HELP/(name+'.py'))],timeout=240)
  (R/'product-result.json').write_text(json.dumps({'result':'PASS','source':str(W),'real_pg18':True,'real_api_worker_temporal_ffmpeg_http_download':True,'deployment':'DEPLOYMENT_ISOLATION_NOT_VERIFIED'}))
 finally:
  if clients:

@@ -18,8 +18,8 @@ import com.example.platform.render.domain.renderplan.RenderSourceResolutionState
 import com.example.platform.render.domain.renderplan.SourceResolutionInput;
 import com.example.platform.shared.identity.ArtifactId;
 import com.example.platform.timeline.app.TimelineDocumentJsonSerializer;
-import com.example.platform.timeline.app.TimelineRevisionQueryService;
-import com.example.platform.timeline.app.TimelineRevisionSaveService;
+import com.example.platform.timeline.api.revision.TimelineRevisionQueries;
+import com.example.platform.timeline.api.revision.TimelineRevisionCommands;
 import com.example.platform.timeline.api.revision.TimelineRevisionQueries.RevisionSnapshotPayload;
 import com.example.platform.timeline.canonical.TimelineDocument;
 import com.example.platform.timeline.version.TimelineRevision;
@@ -51,22 +51,22 @@ import org.springframework.stereotype.Service;
 public class FirstRenderPlanningApplicationService {
 
     private final RenderJobService renderJobService;
-    private final TimelineRevisionSaveService timelineRevisionSaveService;
-    private final TimelineRevisionQueryService timelineRevisionQueryService;
+    private final TimelineRevisionCommands timelineRevisionCommands;
+    private final TimelineRevisionQueries timelineRevisionQueries;
     private final ArtifactQueryService artifactQueries;
     private final ProviderInteroperabilityAuthority providerInteroperabilityAuthority;
 
     public FirstRenderPlanningApplicationService(
             RenderJobService renderJobService,
-            TimelineRevisionSaveService timelineRevisionSaveService,
-            TimelineRevisionQueryService timelineRevisionQueryService,
+            TimelineRevisionCommands timelineRevisionCommands,
+            TimelineRevisionQueries timelineRevisionQueries,
             ArtifactQueryService artifactQueries,
             ProviderInteroperabilityAuthority providerInteroperabilityAuthority) {
         this.renderJobService = Objects.requireNonNull(renderJobService, "renderJobService");
-        this.timelineRevisionSaveService = Objects.requireNonNull(
-                timelineRevisionSaveService, "timelineRevisionSaveService");
-        this.timelineRevisionQueryService = Objects.requireNonNull(
-                timelineRevisionQueryService, "timelineRevisionQueryService");
+        this.timelineRevisionCommands = Objects.requireNonNull(
+                timelineRevisionCommands, "timelineRevisionCommands");
+        this.timelineRevisionQueries = Objects.requireNonNull(
+                timelineRevisionQueries, "timelineRevisionQueries");
         this.artifactQueries = Objects.requireNonNull(artifactQueries, "artifactQueries");
         this.providerInteroperabilityAuthority = Objects.requireNonNull(
                 providerInteroperabilityAuthority, "providerInteroperabilityAuthority");
@@ -84,12 +84,12 @@ public class FirstRenderPlanningApplicationService {
         String revisionId = request.revisionId();
 
         // 1. Minimal revision read: the revision row yields the project scope (Q4: clip artifact ids only).
-        TimelineRevision revision = timelineRevisionSaveService.findById(tenantId, revisionId);
+        TimelineRevision revision = timelineRevisionCommands.findById(tenantId, revisionId);
         if (revision == null) {
             throw new IllegalArgumentException("Timeline revision not found: " + revisionId);
         }
         String projectId = revision.productId();
-        RevisionSnapshotPayload payload = timelineRevisionQueryService
+        RevisionSnapshotPayload payload = timelineRevisionQueries
                 .getRevisionSnapshotPayload(projectId, tenantId, revisionId)
                 .orElseThrow(() -> new IllegalStateException(
                         "Timeline revision snapshot unavailable: " + revisionId));

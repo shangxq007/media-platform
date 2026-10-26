@@ -21,7 +21,9 @@ def manifest():
     paths=[]
     for current,dirs,files in os.walk(WORK,followlinks=False):
         if Path(current)==WORK:dirs[:]=[d for d in dirs if d!='.git']
-        paths.extend(Path(current)/name for name in files)
+        # A linked worktree has a .git file, a standalone clone a .git directory.
+        # Neither is source; every other path (including unknown generated files) is retained.
+        paths.extend(Path(current)/name for name in files if not (Path(current)==WORK and name=='.git'))
         paths.extend(Path(current)/name for name in dirs if (Path(current)/name).is_symlink())
     for p in sorted(paths,key=lambda p:str(p.relative_to(WORK))):
         if p.is_symlink():raise PolicyError('source symlinks refused')

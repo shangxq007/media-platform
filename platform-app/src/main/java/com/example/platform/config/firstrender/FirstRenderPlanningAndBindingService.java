@@ -12,8 +12,8 @@ import com.example.platform.providerplugin.ProviderPluginCatalog;
 import com.example.platform.render.app.renderplan.RenderPlanningEntryService;
 import com.example.platform.render.domain.renderplan.RenderPlanningResult;
 import com.example.platform.timeline.app.TimelineDocumentJsonSerializer;
-import com.example.platform.timeline.app.TimelineRevisionQueryService;
-import com.example.platform.timeline.app.TimelineRevisionSaveService;
+import com.example.platform.timeline.api.revision.TimelineRevisionQueries;
+import com.example.platform.timeline.api.revision.TimelineRevisionCommands;
 import com.example.platform.timeline.api.revision.TimelineRevisionQueries.RevisionSnapshotPayload;
 import com.example.platform.timeline.semantics.effect.EffectSemanticSnapshot;
 import com.example.platform.timeline.semantics.effect.EffectSemanticSnapshotReference;
@@ -47,8 +47,8 @@ import org.springframework.stereotype.Service;
 public class FirstRenderPlanningAndBindingService {
 
     private final FirstRenderPlanningApplicationService planningApplicationService;
-    private final TimelineRevisionSaveService timelineRevisionSaveService;
-    private final TimelineRevisionQueryService timelineRevisionQueryService;
+    private final TimelineRevisionCommands timelineRevisionCommands;
+    private final TimelineRevisionQueries timelineRevisionQueries;
     private final EffectSemanticSnapshotStore effectSemanticSnapshotStore;
     private final ProviderPluginCatalog providerPluginCatalog;
     private final RenderPlanningEntryService renderPlanningEntryService;
@@ -57,8 +57,8 @@ public class FirstRenderPlanningAndBindingService {
 
     public FirstRenderPlanningAndBindingService(
             FirstRenderPlanningApplicationService planningApplicationService,
-            TimelineRevisionSaveService timelineRevisionSaveService,
-            TimelineRevisionQueryService timelineRevisionQueryService,
+            TimelineRevisionCommands timelineRevisionCommands,
+            TimelineRevisionQueries timelineRevisionQueries,
             EffectSemanticSnapshotStore effectSemanticSnapshotStore,
             ProviderPluginCatalog providerPluginCatalog,
             RenderPlanningEntryService renderPlanningEntryService,
@@ -66,10 +66,10 @@ public class FirstRenderPlanningAndBindingService {
             ProviderBindingEntryService providerBindingEntryService) {
         this.planningApplicationService = Objects.requireNonNull(
                 planningApplicationService, "planningApplicationService");
-        this.timelineRevisionSaveService = Objects.requireNonNull(
-                timelineRevisionSaveService, "timelineRevisionSaveService");
-        this.timelineRevisionQueryService = Objects.requireNonNull(
-                timelineRevisionQueryService, "timelineRevisionQueryService");
+        this.timelineRevisionCommands = Objects.requireNonNull(
+                timelineRevisionCommands, "timelineRevisionCommands");
+        this.timelineRevisionQueries = Objects.requireNonNull(
+                timelineRevisionQueries, "timelineRevisionQueries");
         this.effectSemanticSnapshotStore = Objects.requireNonNull(
                 effectSemanticSnapshotStore, "effectSemanticSnapshotStore");
         this.providerPluginCatalog = Objects.requireNonNull(
@@ -95,12 +95,12 @@ public class FirstRenderPlanningAndBindingService {
         FirstRenderPlanningResult planning = planningApplicationService.prepare(request);
 
         // Complete hydration for #20.
-        TimelineRevision revision = timelineRevisionSaveService.findById(tenantId, revisionId);
+        TimelineRevision revision = timelineRevisionCommands.findById(tenantId, revisionId);
         if (revision == null) {
             throw new IllegalArgumentException("Timeline revision not found: " + revisionId);
         }
         String projectId = revision.productId();
-        RevisionSnapshotPayload payload = timelineRevisionQueryService
+        RevisionSnapshotPayload payload = timelineRevisionQueries
                 .getRevisionSnapshotPayload(projectId, tenantId, revisionId)
                 .orElseThrow(() -> new IllegalStateException(
                         "Timeline revision snapshot unavailable: " + revisionId));

@@ -13,7 +13,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** One transactional fence for Storage publication, Artifact commitment, and task completion. */
+/** Artifact and task completion share the caller transaction. Storage owns its durable write intent:
+ * published bytes/receipts survive downstream failure for exact retry, never blind physical discard. */
 @Service
 @ConditionalOnProperty(name = "platform.runtime.role", havingValue = "WORKER")
 public class ThumbnailCommitService {
@@ -35,7 +36,9 @@ public class ThumbnailCommitService {
             // the cover capability uses with COVER_OF), not through a dedicated ArtifactKind.
             String pin=issue.placement().committedDigest().canonicalValue();
             var accepted=commits.commit(new ArtifactCommitRequest(aid,tenant,issue.placement().committedDigest(),issue.placement().committedLength(),ArtifactMediaType.IMAGE,ArtifactKind.DERIVED_MEDIA,Artifact.CURRENT_SCHEMA_VERSION,issue.objectId(),issue.placement().replicaId(),issue.placement().location().providerId(),ReplicaRole.PRIMARY,issue.placement().location().region(),"thumbnail:"+taskId,List.of(new ArtifactCommitRequest.ProvenanceEdgeDeclaration(new ArtifactId(subjectArtifactId),ProvenanceRelationType.THUMBNAIL_OF,ThumbnailContracts.OPERATION_ID,1,taskId,pin,pin)),Instant.now(),Instant.now(),taskId,project));
-            return tasks.completeLocked(tenant, project, taskId, accepted.artifact().artifactId().value()) ? accepted.artifact().artifactId().value() : null;
+            if (!tasks.completeLocked(tenant, project, taskId, accepted.artifact().artifactId().value()))
+                throw new IllegalStateException("thumbnail commit lost its locked task ownership");
+            return accepted.artifact().artifactId().value();
         } finally { try { Files.deleteIfExists(output); Files.deleteIfExists(output.getParent()); } catch (Exception ignored) {} }
     }
 }

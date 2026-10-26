@@ -20,13 +20,11 @@ public class ThumbnailArtifactReadService {
         Artifact artifact=artifacts.getArtifact(tenant,new ArtifactId(result.artifactId())).orElseThrow(()->new IllegalArgumentException("artifact unavailable"));
         boolean accepted = artifact.state()==ArtifactState.AVAILABLE
                 && artifact.mediaType()==ArtifactMediaType.IMAGE
-                // COVER-THUMBNAIL-REBUILD-001 (action 5): a new thumbnail is a DERIVED_MEDIA image
-                // whose thumbnail role is the THUMBNAIL_OF provenance relation; the legacy
-                // ArtifactKind.THUMBNAIL is retained for rows committed before the rebuild.
-                && (artifact.artifactKind()==ArtifactKind.THUMBNAIL
-                    || (artifact.artifactKind()==ArtifactKind.DERIVED_MEDIA
-                        && hasThumbnailOfEdge(tenant, artifact.artifactId())));
+                // Thumbnail role is the canonical provenance edge, never a historical kind shortcut.
+                && artifact.artifactKind()==ArtifactKind.DERIVED_MEDIA
+                && hasThumbnailOfEdge(tenant, artifact.artifactId());
         if(!accepted) throw new IllegalStateException("artifact is not an accepted thumbnail");
+        if(artifact.byteLength()>64L*1024*1024)throw new IllegalStateException("thumbnail exceeds download limit");
         var binding=artifacts.listReplicas(tenant,artifact.artifactId()).stream().findFirst().orElseThrow(()->new IllegalStateException("thumbnail replica unavailable"));
         var owner=new StorageOwnershipScope(tenant,project);
         byte[] bytes=storage.read(owner,binding.storageObjectId(),binding.storageReplicaId());
@@ -40,5 +38,5 @@ public class ThumbnailArtifactReadService {
         return artifacts.getDirectProvenance(tenant, artifactId).stream()
                 .anyMatch(edge -> edge.relationType()==ProvenanceRelationType.THUMBNAIL_OF);
     }
-    public record Image(byte[] bytes,String contentType,String artifactId){ public Image{bytes=Arrays.copyOf(bytes,bytes.length);} }
+    public record Image(byte[] bytes,String contentType,String artifactId){ public Image{bytes=Arrays.copyOf(bytes,bytes.length);} @Override public byte[] bytes(){return bytes.clone();} }
 }

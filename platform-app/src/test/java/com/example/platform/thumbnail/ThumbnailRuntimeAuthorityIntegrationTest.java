@@ -19,10 +19,11 @@ class ThumbnailRuntimeAuthorityIntegrationTest {
     @TempDir Path temp;
 
     @Test void typedBackendPathCarriesPinnedProviderIdentity() throws Exception {
-        var backend = new ExecutionBackend() {
+        var backend = new CancellableExecutionBackend() {
             @Override public String backendId() { return "test-worker-runtime"; }
             @Override public boolean supports(TaskCapability c) { return c == TaskCapability.THUMBNAIL; }
-            @Override public ExecutionResult execute(ExecutionRequest r) {
+            @Override public ExecutionResult execute(ExecutionRequest r, java.util.function.BooleanSupplier cancelled) {
+                assertThat(cancelled.getAsBoolean()).isFalse();
                 assertThat(r.taskCapability()).isEqualTo(TaskCapability.THUMBNAIL);
                 assertThat(r.payload()).containsEntry("providerId", ThumbnailContracts.PROVIDER);
                 // The merged provider runs its ffprobe duration probe through the same backend.

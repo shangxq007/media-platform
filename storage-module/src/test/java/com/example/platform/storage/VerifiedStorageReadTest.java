@@ -32,5 +32,11 @@ class VerifiedStorageReadTest {
         }
     }
     @Test void oversizedContentNeverTouchesProvider(){var p=mock(StorageProvider.class);var id=new StorageProviderId("local");when(p.providerId()).thenReturn(id);var service=new VerifiedStorageReadService(List.of(p));clearInvocations(p);assertThrows(IllegalArgumentException.class,()->service.read(id,new StorageObjectId("object"),ContentDigest.sha256("a".repeat(64)),11,10));verifyNoInteractions(p);}
+    @Test void supportedIdentityComesOnlyFromTheRegisteredProviderSet() {
+        var provider=mock(StorageProvider.class);var id=new StorageProviderId("registered");when(provider.providerId()).thenReturn(id);
+        var service=new VerifiedStorageReadService(List.of(provider));clearInvocations(provider);
+        assertTrue(service.supports(id));assertFalse(service.supports(new StorageProviderId("not-registered")));
+        verifyNoInteractions(provider);
+    }
     static class Tracked extends ByteArrayInputStream { boolean closed;Tracked(byte[] b){super(b);}@Override public void close() throws IOException {closed=true;super.close();}}
 }

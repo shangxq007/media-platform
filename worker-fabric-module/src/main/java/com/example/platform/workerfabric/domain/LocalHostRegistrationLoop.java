@@ -115,6 +115,11 @@ public final class LocalHostRegistrationLoop {
                 Optional.empty());
         SafetyHeadroom safetyHeadroom = headroomFor(staticCapacity);
 
+        // Observe both independent signals before any durable registration is refreshed. If either
+        // probe throws, this tick publishes nothing; prior evidence expires without a partial refresh.
+        RuntimeEnvironmentAvailability environmentReadiness=readinessProbe.observeEnvironmentReadiness();
+        SandboxRuntimeAvailability sandboxReadiness=readinessProbe.observeSandboxReadiness();
+
         // A-2: publish the authoritative static host descriptor (location, trust zone, device
         // inventory) so admission can read it from the durable registration authority. The
         // descriptor is produced by the same probe as the snapshot; it is never invented here.
@@ -136,8 +141,8 @@ public final class LocalHostRegistrationLoop {
                 incarnationId,
                 workerRuntimeId,
                 workerRuntimeIncarnationId,
-                readinessProbe.observeEnvironmentReadiness(),
-                readinessProbe.observeSandboxReadiness(),
+                environmentReadiness,
+                sandboxReadiness,
                 generation,
                 now,
                 now.plus(READINESS_VALIDITY)));
