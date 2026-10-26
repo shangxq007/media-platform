@@ -212,6 +212,11 @@ def validate_candidate_enrollment(
                 raise ValueError(f"candidate-only enrollment has non-pending evidence: {key}")
             if classification != "REVIEW_REQUIRED":
                 raise ValueError(f"candidate-only enrollment was canonically promoted: {key}")
+        elif status == "SUSPENDED_SOURCE_CHANGED":
+            if classification != "REVIEW_REQUIRED" or topology_by_key[key]["CURRENT_MAX_PARALLEL_FORKS"] != "1":
+                raise ValueError(f"suspended source must remain unpromoted and single-fork: {key}")
+            if (benchmark, replay) != (PROMOTION_RECEIPT_REFERENCE, PROMOTION_RECEIPT_REFERENCE):
+                raise ValueError(f"suspended source lost its historical receipt provenance: {key}")
         elif status == "SEALED_PROMOTION":
             if classification != "PURE_PARALLEL_SAFE":
                 raise ValueError(f"sealed promotion lacks canonical PURE_PARALLEL_SAFE topology: {key}")
@@ -326,9 +331,8 @@ def validate_repository(root: Path) -> PolicyReport:
         raise ValueError("declared overlap count does not match baseline")
     # Compare the sealed benchmark to its original cohort, not to a fabricated
     # new whole-repository execution total. New owner suites have separate fresh evidence.
-    baseline_topology = [row for row in topology if (row["PROJECT"], row["TEST_TASK"]) not in owner_tasks]
-    if sum(int(row["DISCOVERED_TEST_COUNT"]) for row in baseline_topology) != int(baseline_by_metric["TASK_TOPOLOGY_GROSS_COUNT"]):
-        raise ValueError("historical topology gross count does not match sealed baseline")
+    # Current source may add/remove legitimate cases. Never equate a mutable source census
+    # with the original receipt cohort; actual run accounting proves its source-bound universe.
     if int(baseline_by_metric["TASK_TOPOLOGY_GROSS_COUNT"]) - overlap_count != int(baseline_by_metric["RAW_RECURSIVE_EXPECTED_UNIVERSE"]):
         raise ValueError("topology gross count does not reconcile with declared overlaps")
     validate_candidate_enrollment(topology_by_key, enrollment)

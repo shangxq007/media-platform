@@ -100,3 +100,5 @@ When a view conflicts with executable behaviour, source/executable contracts
 win for what is implemented. When a semantic decision conflicts with a guide,
 the accepted ADR or canonical contract wins. Resolve conflicts in the authority
 model and change ledger; do not edit a generated view to hide drift.
+
+Legacy implementation dispositions and explicit remaining dependencies: [current bounded consolidation](../../development/legacy-work-consolidation.md). This is a maintenance record, not a competing authority.

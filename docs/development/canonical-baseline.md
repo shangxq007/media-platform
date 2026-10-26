@@ -83,9 +83,10 @@ render lifecycle. Local downloads currently validate whole objects up to64MiB be
 
 Original dirty repository changes are not overwritten or assumed obsolete. Divergent later work is
 preserved in the external integration audit with per-path dispositions; choosing it over the accepted
-implementation requires explicit reconciliation. The independent repository is the new development
-candidate. Do not replace the old directory or merge its dirty index automatically. No remote push or
-main integration is implied by opening this workspace.
+implementation requires explicit reconciliation. The formal repository is the sole ongoing development baseline. Original dirty sources and linked
+worktrees remain protected historical evidence. Develop on a task branch from main, verify and review
+before an authorized fast-forward, then remove only the safely merged task branch/worktree. Opening a
+workspace never authorizes remote push or disposal of historical files.
 
 `DEPLOYMENT_ISOLATION_NOT_VERIFIED`: formal protected runner/executor/cgroup containment, sustained
 native RECOVERY_HOLD capacity recovery, production Neon/BWS permission scopes and production readiness
