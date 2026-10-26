@@ -15,6 +15,10 @@ Before work, inspect this root file and every applicable nested `AGENTS.md` from
 
 Explicit user instructions override repository instructions. If a user instruction conflicts with a higher-priority system or developer instruction, follow the higher-priority instruction and record the conflict. If repository instruction files conflict with one another, stop implementation, record a governance finding with exact paths and statements, apply the higher-scope/root authority provisionally, and schedule explicit instruction alignment before resuming feature work. Do not silently edit an instruction file to hide an unresolved conflict.
 
+## Engineering principle index
+
+For daily design, development and refactoring, read the [function-driven development and module principles](docs/engineering/functional-development-and-module-principles.md). The [execution architecture principles](docs/architecture/current/execution-architecture-principles.md) and [Flyway development baseline](docs/database/flyway-migration-baseline.md) are scoped supplements, not competing default guides. These documents grant no task permissions, replace no accepted domain contracts, and do not weaken the authority, safety or workflow constraints above and below; unresolved formal conflicts must be reported.
+
 ## Repository and worktree governance
 
 Use one owned branch and one linked worktree per active task unless the owner explicitly authorizes another topology. Do not perform feature development directly in canonical `main`; keep canonical `main` clean except during explicitly authorized serialized integration.

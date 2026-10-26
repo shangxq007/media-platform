@@ -50,6 +50,9 @@ identifier file is a cross-view key, not a third architecture model.
 
 | View | Link | Fact class | Source |
 |---|---|---|---|
+| Default engineering guidance | [功能驱动开发与模块架构原则](../../engineering/functional-development-and-module-principles.md) | CURRENT adopted guidance; original full text not recovered, explicitly consolidated from adopted decisions | Owner decisions + AGENTS; not a second domain authority |
+| Execution architecture supplement | [执行架构原则](execution-architecture-principles.md) | CURRENT adopted boundaries; incomplete/deferred implementation explicitly labelled | Owner decisions, ADR-025 and adopted execution amendments |
+| Database development policy | [Flyway baseline](../../database/flyway-migration-baseline.md) | CURRENT pre-launch single-V1 policy; revalidation required for changed bytes | Owner decision + current migration identity |
 | Logical architecture | [01-system-architecture](../01-system-architecture.md), [03-module-architecture](../03-module-architecture.md) | CURRENT + TARGET labels in source docs | ADRs, canonical contracts, source |
 | Physical/deployment architecture | [08-deployment-architecture](../08-deployment-architecture.md), [deployment trust view](../maps/likec4/media-platform.likec4) | CURRENT deployment units; TARGET boundaries explicitly marked | source, deployment configuration, LikeC4 intent |
 | Human intent map | [LikeC4 source](../maps/likec4/media-platform.likec4) | CURRENT/TARGET/DEFERRED intent | human-curated |
