@@ -206,7 +206,6 @@ class H7V2CanonicalOwnershipInvariantTest extends PostgresTestContainerSupport {
         assertEquals(1, applied.size(), "exact single consolidated V1 inventory");
         assertEquals("1", applied.get(0).getVersion().getVersion());
         assertEquals("V1__baseline.sql", applied.get(0).getScript());
-        assertEquals("2",applied.get(1).getVersion().getVersion());
     }
 
     @Test

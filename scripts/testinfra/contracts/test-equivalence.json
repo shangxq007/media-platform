@@ -1,7 +1,7 @@
 {
   "original_target_methods": 28,
   "original_assertions": 237,
-  "current_assertions": 239,
+  "current_assertions": 238,
   "migrated_methods": 30,
   "original_migrated_assertions": 90,
   "current_migrated_assertions": 91,
@@ -10,28 +10,28 @@
       "path": "platform-app/src/test/java/com/example/platform/migration/UserWorkflowDefinitionV1SchemaMigrationTest.java",
       "old_sha256": "bde7743e30db84edc851a1a6d1ca2eca5df4213074b6cf12793d21be80af9e7d",
       "new_sha256": "c5d17e9eea4a8ba1d9328622736b09350d51e00d3a80444159abaeac7d674ea1",
-      "reason": "Owner consolidates accepted V1+V2 into single V1; exact one-row migration inventory, full business schema semantics preserved.",
+      "reason": "Owner consolidates accepted V1+V2 into one greenfield V1; retire only seven V2 bookkeeping assertions, retain exact one-V1 inventory and every business schema/ownership assertion. Fresh full business DDL and447-source codegen equivalence independently validated.",
       "after": "572c47a39708e68fba02be9e65ab361c08361dd8fae5b160f9d364cd4047e5b3"
     },
     {
       "path": "platform-app/src/test/java/com/example/platform/SchemaEquivalenceVerificationTest.java",
       "old_sha256": "6fe379ea03dac7f3eccfbe1c8eaba6942f3faa7b6bc261f6b7a083d385ea2371",
       "new_sha256": "fa41c6b1859e05da7d1c3c3c234182213e3733e2a485399df155f51d65926d46",
-      "reason": "Owner consolidates accepted V1+V2 into single V1; exact one-row migration inventory, full business schema semantics preserved.",
+      "reason": "Owner consolidates accepted V1+V2 into one greenfield V1; retire only seven V2 bookkeeping assertions, retain exact one-V1 inventory and every business schema/ownership assertion. Fresh full business DDL and447-source codegen equivalence independently validated.",
       "after": "fe8f66a001ed1e6af84353998963068608b294982ad3ef3ebc4eeeb05844fd1f"
     },
     {
       "path": "platform-app/src/test/java/com/example/platform/Gcr5Gcr6DatabaseStructuralIntegrityTest.java",
       "old_sha256": "08c036c1d555e17a164dcfc64522623e23f8378666d8cbb23f7fb6865ce8b9df",
       "new_sha256": "f302c5468165e9e2c1c55a48b580067183e3cc08f685f6ecceb1d3c401067ebf",
-      "reason": "Owner consolidates accepted V1+V2 into single V1; exact one-row migration inventory, full business schema semantics preserved.",
+      "reason": "Owner consolidates accepted V1+V2 into one greenfield V1; retire only seven V2 bookkeeping assertions, retain exact one-V1 inventory and every business schema/ownership assertion. Fresh full business DDL and447-source codegen equivalence independently validated.",
       "after": "f302c5468165e9e2c1c55a48b580067183e3cc08f685f6ecceb1d3c401067ebf"
     },
     {
       "path": "platform-app/src/test/java/com/example/platform/FlywaySchemaIntegrationTest.java",
       "old_sha256": "75157957c8b65fc3e0deb6544c852c9f27106cf21956e406c047cb8196e8951a",
       "new_sha256": "a242cc3a484232a3e908cfeb8b3b3fe8e9a58884c09d7ecf1ee5b909ec023586",
-      "reason": "Owner consolidates accepted V1+V2 into single V1; exact one-row migration inventory, full business schema semantics preserved.",
+      "reason": "Owner consolidates accepted V1+V2 into one greenfield V1; retire only seven V2 bookkeeping assertions, retain exact one-V1 inventory and every business schema/ownership assertion. Fresh full business DDL and447-source codegen equivalence independently validated.",
       "after": "a242cc3a484232a3e908cfeb8b3b3fe8e9a58884c09d7ecf1ee5b909ec023586"
     },
     {
@@ -64,25 +64,25 @@
       "path": "platform-app/src/test/java/com/example/platform/migration/UserWorkflowDefinitionV1SchemaMigrationTest.java",
       "before": "c5d17e9eea4a8ba1d9328622736b09350d51e00d3a80444159abaeac7d674ea1",
       "after": "572c47a39708e68fba02be9e65ab361c08361dd8fae5b160f9d364cd4047e5b3",
-      "reason": "Owner consolidates accepted V1+V2 into single V1; exact one-row migration inventory, full business schema semantics preserved."
+      "reason": "Owner consolidates accepted V1+V2 into one greenfield V1; retire only seven V2 bookkeeping assertions, retain exact one-V1 inventory and every business schema/ownership assertion. Fresh full business DDL and447-source codegen equivalence independently validated."
     },
     {
       "path": "platform-app/src/test/java/com/example/platform/H7V2CanonicalOwnershipInvariantTest.java",
       "before": "25dcabda64877f48a088abfccd5b47d78edf0f8933764003c554dd2892a6d799",
-      "after": "c3782d37326b57b785979702c2f187e48fb8f1e2bdb81204d637e17e7aa5e29b",
-      "reason": "Owner consolidates accepted V1+V2 into single V1; exact one-row migration inventory, full business schema semantics preserved."
+      "after": "d411f8ccfb37dc02f11d643d81046b0ab5d8a6720a2d1337b846cc2b2883955d",
+      "reason": "Owner consolidates accepted V1+V2 into one greenfield V1; retire only seven V2 bookkeeping assertions, retain exact one-V1 inventory and every business schema/ownership assertion. Fresh full business DDL and447-source codegen equivalence independently validated."
     },
     {
       "path": "platform-app/src/test/java/com/example/platform/SchemaEquivalenceVerificationTest.java",
       "before": "fa41c6b1859e05da7d1c3c3c234182213e3733e2a485399df155f51d65926d46",
       "after": "fe8f66a001ed1e6af84353998963068608b294982ad3ef3ebc4eeeb05844fd1f",
-      "reason": "Owner consolidates accepted V1+V2 into single V1; exact one-row migration inventory, full business schema semantics preserved."
+      "reason": "Owner consolidates accepted V1+V2 into one greenfield V1; retire only seven V2 bookkeeping assertions, retain exact one-V1 inventory and every business schema/ownership assertion. Fresh full business DDL and447-source codegen equivalence independently validated."
     },
     {
       "path": "platform-app/src/test/java/com/example/platform/testinfra/TestDatabaseIsolationGuardTest.java",
       "before": "6f8658dd91ec7613a6a05876a7e3a7fdaac4dd39b8e8b14dfa6ef34d9e37479b",
-      "after": "a0c1d2919aaeac4130b154fae466f1c10f8d83391e2add39502320b34b2114a1",
-      "reason": "Owner consolidates accepted V1+V2 into single V1; exact one-row migration inventory, full business schema semantics preserved."
+      "after": "3796ff9a4ab1dfe8e894cd461f72345167bf642d2b1d38f280001a25ff017372",
+      "reason": "Owner consolidates accepted V1+V2 into one greenfield V1; retire only seven V2 bookkeeping assertions, retain exact one-V1 inventory and every business schema/ownership assertion. Fresh full business DDL and447-source codegen equivalence independently validated."
     }
   ],
   "real_evidence": "PG18 18.6, target JDBC42.7.14/Flyway11.20.3/jOOQ3.21.9; controlled pg18-local suite. Historical snapshots remain authoritative for previous bytes.",
@@ -91,7 +91,7 @@
   "canonical_baseline_integration": {
     "task": "MEDIA-PLATFORM-CANONICAL-BASELINE-INTEGRATION-R1",
     "previous_target_assertions": 245,
-    "current_target_assertions": 239,
+    "current_target_assertions": 238,
     "reason": "Owner consolidates accepted V2 into the single greenfield V1. Remove only V2 history-row assertions; retain exact one-V1 inventory and all table/column/ownership/business assertions. Actual original-V1+V2 versus new-V1 catalog and codegen comparison is additional external evidence.",
     "methods_preserved": 28
   }

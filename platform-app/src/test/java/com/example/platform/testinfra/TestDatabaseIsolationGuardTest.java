@@ -72,7 +72,7 @@ class TestDatabaseIsolationGuardTest extends PostgresTestContainerSupport {
             }
         }
 
-        assertEquals(2, versions.size(),
+        assertEquals(1, versions.size(),
                 "Expected exactly the canonical V1 migration in the shared runtime, got: " + versions);
         assertEquals("1", versions.get(0), "first applied migration must be version 1");
         assertEquals("V1__baseline.sql", scripts.get(0),

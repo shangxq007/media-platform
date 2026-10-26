@@ -115,7 +115,7 @@ namespaces and synthetic permission models do not certify D01–D05, Neon/BWS or
 
 `contracts/safety.tsv` retains the original 32 requirements. Independent fixtures record actual
 calls and forbidden side effects. `test-equivalence.json` records PG18 corrections to obsolete
-business assumptions; the 28 method identities remain, with 239 assertions after Owner-authorized single-V1 consolidation (accepted V1+V2 input245; only six V2 bookkeeping assertions retired).
+business assumptions; the 28 method identities remain, with 238 assertions after Owner-authorized single-V1 consolidation (accepted V1+V2 input245; only seven V2 bookkeeping assertions retired).
 The six migrated classes retain 30 methods and now 91 assertions (previously 90): rollback now
 requires genuine FK SQLSTATE 23503 rather than accepting an obsolete-column error. Artifact ownership
 uses the canonical Artifact model; RESTRICT deletion requires PostgreSQL SQLSTATE 23001.

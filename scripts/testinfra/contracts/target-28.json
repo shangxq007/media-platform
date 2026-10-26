@@ -82,12 +82,12 @@
     "method": "postgresqlServerMajorIs18AndOnlyExactClasspathFlywayV1IsApplied",
     "base_method": "postgresqlServerMajorIs16AndOnlyExactClasspathFlywayV1IsApplied",
     "line": 198,
-    "assertions": 5,
+    "assertions": 4,
     "assertion_sequences_preserved": true,
     "body_after_explicit_infra_substitutions": true,
     "annotations_preserved_H7_major18": true,
     "runtime_executed": true,
-    "body_sha256": "5fc29b4349639c8b5822105053ed56c36fb7fd58b93ceeb838ff20adf8e3fc59",
+    "body_sha256": "e25eaf440ce8ce10ddb908a137f48facfd800df7c3789c438239503ac03b87a8",
     "equivalence_record": "test-equivalence.json"
   },
   {
@@ -347,7 +347,7 @@
     "body_after_explicit_infra_substitutions": true,
     "annotations_preserved_H7_major18": true,
     "runtime_executed": true,
-    "body_sha256": "34c75bec2bee56228b2eb5c7fa004f727ec6f4d09bcc14bfb80879b6fcc381cf",
+    "body_sha256": "d7a4ac94d3875e94578975f8fdc17e4fa4eb52e494d175d0ae78cd04809e6e2e",
     "equivalence_record": "test-equivalence.json"
   },
   {
